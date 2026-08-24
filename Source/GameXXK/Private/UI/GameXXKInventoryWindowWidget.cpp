@@ -518,17 +518,7 @@ namespace
 
 	FText EquipmentQualityText(const EGameXXKEquipmentQuality Quality)
 	{
-		switch (Quality)
-		{
-		case EGameXXKEquipmentQuality::Common:
-			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityCommon", "普通");
-		case EGameXXKEquipmentQuality::Rare:
-			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityRare", "稀有");
-		case EGameXXKEquipmentQuality::Epic:
-			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityEpic", "珍稀");
-		default:
-			return NSLOCTEXT("GameXXKInventoryWindow", "EquipmentQualityUnknown", "未知");
-		}
+		return FGameXXKEquipmentQualityRules::GetDisplayName(Quality);
 	}
 
 	FText EquipmentSlotText(const EGameXXKEquipmentSlot Slot)

@@ -289,11 +289,11 @@ int32 FGameXXKEquipmentCatalog::GetEnhancementStoneCost(const int32 CurrentEnhan
 
 int32 FGameXXKEquipmentCatalog::GetReforgeSandCost(const EGameXXKEquipmentQuality Quality)
 {
-	// One refinement sand per wash, regardless of quality.
-	return 1;
+	// One refinement sand per wash for every supported quality.
+	return FGameXXKEquipmentQualityRules::IsValid(Quality) ? 1 : 0;
 }
 
 int32 FGameXXKEquipmentCatalog::GetDismantleSandYield(const EGameXXKEquipmentQuality Quality)
 {
-	return Quality >= EGameXXKEquipmentQuality::Common && Quality <= EGameXXKEquipmentQuality::Epic ? 1 : 0;
+	return FGameXXKEquipmentQualityRules::IsValid(Quality) ? 1 : 0;
 }

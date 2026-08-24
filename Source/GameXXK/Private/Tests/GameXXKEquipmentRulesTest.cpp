@@ -12,11 +12,6 @@
 
 namespace
 {
-	bool IsValidTier(const EGameXXKAffixTier Tier)
-	{
-		return Tier >= EGameXXKAffixTier::Common && Tier <= EGameXXKAffixTier::Epic;
-	}
-
 	TArray<uint8> SerializeCollection(const FGameXXKEquipmentCollectionState& Collection)
 	{
 		TArray<uint8> Bytes;
@@ -147,6 +142,61 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentRulesTenQualityCreationTest,
+	"GameXXK.Equipment.Rules.TenQualityCreation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentRulesTenQualityCreationTest::RunTest(const FString& Parameters)
+{
+	const EGameXXKEquipmentQuality Qualities[] = {
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentQuality::Rare,
+		EGameXXKEquipmentQuality::Epic,
+		EGameXXKEquipmentQuality::Legendary,
+		EGameXXKEquipmentQuality::Immortal,
+		EGameXXKEquipmentQuality::Treasure,
+		EGameXXKEquipmentQuality::Transcendent,
+		EGameXXKEquipmentQuality::Celestial,
+		EGameXXKEquipmentQuality::Ascendant,
+		EGameXXKEquipmentQuality::Cosmic,
+	};
+	const int32 ExpectedAffixCounts[] = {1, 2, 3, 4, 5, 5, 5, 5, 5, 5};
+	FGameXXKEquipmentCollectionState Collection;
+	Collection.CollectionSeed = 0x10A117;
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Qualities)); ++Index)
+	{
+		const int32 Rank = Index + 1;
+		FName InstanceId;
+		FString Error;
+		const bool bCreated = FGameXXKEquipmentRules::CreateRolledInstance(
+			Collection,
+			MakeRequest(EGameXXKEquipmentSet::ShanHe, Qualities[Index], Rank, EGameXXKEquipmentSlot::Weapon),
+			InstanceId,
+			&Error);
+		TestTrue(FString::Printf(TEXT("quality %d instance can be created: %s"), Rank, *Error), bCreated);
+		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(Collection, InstanceId);
+		TestNotNull(FString::Printf(TEXT("quality %d instance resolves"), Rank), Instance);
+		if (!Instance)
+		{
+			continue;
+		}
+		TestEqual(FString::Printf(TEXT("quality %d is stored exactly"), Rank), Instance->Quality, Qualities[Index]);
+		TestEqual(FString::Printf(TEXT("quality %d has the exact affix count"), Rank), Instance->RolledAffixes.Num(), ExpectedAffixCounts[Index]);
+		TestEqual(FString::Printf(TEXT("quality %d helper reports the exact affix count"), Rank), FGameXXKEquipmentQualityRules::GetAffixCount(Qualities[Index]), ExpectedAffixCounts[Index]);
+		TestTrue(FString::Printf(TEXT("quality %d instance rolls only legal affixes"), Rank), IsLegalRoll(*Instance));
+		for (const FGameXXKEquipmentAffixRoll& Roll : Instance->RolledAffixes)
+		{
+			TestTrue(FString::Printf(TEXT("quality %d roll has a valid tier"), Rank), FGameXXKEquipmentQualityRules::IsValid(Roll.Tier));
+			TestTrue(FString::Printf(TEXT("quality %d roll tier never exceeds equipment quality"), Rank), FGameXXKEquipmentQualityRules::GetRank(Roll.Tier) <= Rank);
+		}
+		const bool bCollectionValid = FGameXXKEquipmentRules::ValidateCollectionState(Collection, &Error);
+		TestTrue(FString::Printf(TEXT("collection validates after creating quality %d: %s"), Rank, *Error), bCollectionValid);
+	}
+	TestEqual(TEXT("one instance of every quality was retained"), Collection.EquipmentInstances.Num(), 10);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKEquipmentRulesDeterministicRollTest,
 	"GameXXK.Equipment.Rules.DeterministicRolls",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -155,7 +205,7 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 {
 	const double StartSeconds = FPlatformTime::Seconds();
 	int32 SlotCounts[6] = {};
-	int32 TierCounts[3] = {};
+	int32 TierCounts[FGameXXKEquipmentQualityRules::MaximumRank] = {};
 	int32 RetiredSpeedRollCount = 0;
 	for (int32 FixedSeed = 1; FixedSeed <= 10000; ++FixedSeed)
 	{
@@ -193,9 +243,17 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 		for (const FGameXXKEquipmentAffixRoll& Roll : Instance->RolledAffixes)
 		{
 			RetiredSpeedRollCount += Roll.AffixId == FName(TEXT("Affix.Universal.Speed")) ? 1 : 0;
-			if (IsValidTier(Roll.Tier))
+			const int32 TierRank = FGameXXKEquipmentQualityRules::GetRank(Roll.Tier);
+			if (TierRank < FGameXXKEquipmentQualityRules::MinimumRank
+				|| TierRank > FGameXXKEquipmentQualityRules::MaximumRank)
 			{
-				++TierCounts[static_cast<uint8>(Roll.Tier) - 1];
+				AddError(FString::Printf(TEXT("epic-quality roll produced invalid tier value %d"), static_cast<int32>(static_cast<uint8>(Roll.Tier))));
+				continue;
+			}
+			++TierCounts[TierRank - 1];
+			if (TierRank > FGameXXKEquipmentQualityRules::GetRank(EGameXXKEquipmentQuality::Epic))
+			{
+				AddError(FString::Printf(TEXT("epic-quality roll illegally produced tier rank %d"), TierRank));
 			}
 		}
 	}
@@ -206,6 +264,12 @@ bool FGameXXKEquipmentRulesDeterministicRollTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("epic-quality common tiers follow the catalog's 50% weight"), TierCounts[0] >= 14000 && TierCounts[0] <= 16000);
 	TestTrue(TEXT("epic-quality rare tiers follow the catalog's 35% weight"), TierCounts[1] >= 9500 && TierCounts[1] <= 11500);
 	TestTrue(TEXT("epic-quality epic tiers follow the catalog's 15% weight"), TierCounts[2] >= 3500 && TierCounts[2] <= 5500);
+	for (int32 TierIndex = FGameXXKEquipmentQualityRules::GetRank(EGameXXKEquipmentQuality::Epic);
+		TierIndex < FGameXXKEquipmentQualityRules::MaximumRank;
+		++TierIndex)
+	{
+		TestEqual(FString::Printf(TEXT("epic-quality rolls never reach appended tier rank %d"), TierIndex + 1), TierCounts[TierIndex], 0);
+	}
 	TestEqual(TEXT("new equipment never rolls the retired Speed affix"), RetiredSpeedRollCount, 0);
 	AddInfo(FString::Printf(TEXT("[EquipmentRules] 10000 deterministic rolls completed in %.3f seconds"), FPlatformTime::Seconds() - StartSeconds));
 
@@ -522,9 +586,16 @@ bool FGameXXKEquipmentRulesValidationRollbackTest::RunTest(const FString& Parame
 	BadAffixCount.EquipmentInstances[0].RolledAffixes.Pop();
 	ExpectInvalid(TEXT("epic equipment requires exactly three affixes"), BadAffixCount);
 
+	FGameXXKEquipmentCollectionState UnknownQuality = Base;
+	UnknownQuality.EquipmentInstances[0].Quality = static_cast<EGameXXKEquipmentQuality>(11);
+	ExpectInvalid(TEXT("an unknown appended equipment quality is rejected"), UnknownQuality);
+
 	FGameXXKEquipmentCollectionState BadTier = Base;
 	BadTier.EquipmentInstances[0].RolledAffixes[0].Tier = EGameXXKAffixTier::Invalid;
 	ExpectInvalid(TEXT("invalid affix tier is rejected"), BadTier);
+	FGameXXKEquipmentCollectionState UnknownTier = Base;
+	UnknownTier.EquipmentInstances[0].RolledAffixes[0].Tier = static_cast<EGameXXKAffixTier>(11);
+	ExpectInvalid(TEXT("an unknown appended affix tier is rejected"), UnknownTier);
 
 	auto SetLegalMagnitudeForTier = [](FGameXXKEquipmentAffixRoll& Roll, const EGameXXKAffixTier Tier)
 	{
@@ -631,6 +702,10 @@ bool FGameXXKEquipmentRulesValidationRollbackTest::RunTest(const FString& Parame
 	InvalidRequest.ItemLevel = 0;
 	TestFalse(TEXT("invalid creation request fails"), FGameXXKEquipmentRules::CreateRolledInstance(InvalidRequestCollection, InvalidRequest, InvalidRequestId));
 	TestBytesEqual(*this, TEXT("invalid request failure is byte-for-byte atomic"), InvalidRequestBefore, InvalidRequestCollection);
+	InvalidRequest = MakeRequest();
+	InvalidRequest.Quality = static_cast<EGameXXKEquipmentQuality>(11);
+	TestFalse(TEXT("unknown quality creation request fails"), FGameXXKEquipmentRules::CreateRolledInstance(InvalidRequestCollection, InvalidRequest, InvalidRequestId));
+	TestBytesEqual(*this, TEXT("unknown quality request failure is byte-for-byte atomic"), InvalidRequestBefore, InvalidRequestCollection);
 
 	FGameXXKEquipmentCollectionState ExhaustedOrdinalCollection;
 	ExhaustedOrdinalCollection.NextInstanceOrdinal = MAX_int32;

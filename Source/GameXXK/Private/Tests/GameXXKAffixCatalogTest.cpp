@@ -115,39 +115,88 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("Legacy has no modern exclusive affix pool"), FGameXXKAffixCatalog::GetSetDefinitions(EGameXXKEquipmentSet::Legacy).Num(), 0);
 
-	const FGameXXKAffixTierWeights CommonWeights = FGameXXKAffixCatalog::GetTierWeights(EGameXXKEquipmentQuality::Common);
-	const FGameXXKAffixTierWeights RareWeights = FGameXXKAffixCatalog::GetTierWeights(EGameXXKEquipmentQuality::Rare);
-	const FGameXXKAffixTierWeights EpicWeights = FGameXXKAffixCatalog::GetTierWeights(EGameXXKEquipmentQuality::Epic);
-	TestEqual(TEXT("common quality common-tier weight"), CommonWeights.Common, 100);
-	TestEqual(TEXT("common quality rare-tier weight"), CommonWeights.Rare, 0);
-	TestEqual(TEXT("common quality epic-tier weight"), CommonWeights.Epic, 0);
-	TestEqual(TEXT("rare quality common-tier weight"), RareWeights.Common, 70);
-	TestEqual(TEXT("rare quality rare-tier weight"), RareWeights.Rare, 30);
-	TestEqual(TEXT("rare quality epic-tier weight"), RareWeights.Epic, 0);
-	TestEqual(TEXT("epic quality common-tier weight"), EpicWeights.Common, 50);
-	TestEqual(TEXT("epic quality rare-tier weight"), EpicWeights.Rare, 35);
-	TestEqual(TEXT("epic quality epic-tier weight"), EpicWeights.Epic, 15);
+	const EGameXXKEquipmentQuality Qualities[] = {
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentQuality::Rare,
+		EGameXXKEquipmentQuality::Epic,
+		EGameXXKEquipmentQuality::Legendary,
+		EGameXXKEquipmentQuality::Immortal,
+		EGameXXKEquipmentQuality::Treasure,
+		EGameXXKEquipmentQuality::Transcendent,
+		EGameXXKEquipmentQuality::Celestial,
+		EGameXXKEquipmentQuality::Ascendant,
+		EGameXXKEquipmentQuality::Cosmic,
+	};
+	const EGameXXKAffixTier Tiers[] = {
+		EGameXXKAffixTier::Common,
+		EGameXXKAffixTier::Rare,
+		EGameXXKAffixTier::Epic,
+		EGameXXKAffixTier::Legendary,
+		EGameXXKAffixTier::Immortal,
+		EGameXXKAffixTier::Treasure,
+		EGameXXKAffixTier::Transcendent,
+		EGameXXKAffixTier::Celestial,
+		EGameXXKAffixTier::Ascendant,
+		EGameXXKAffixTier::Cosmic,
+	};
+	for (int32 QualityIndex = 0; QualityIndex < static_cast<int32>(UE_ARRAY_COUNT(Qualities)); ++QualityIndex)
+	{
+		const int32 QualityRank = QualityIndex + 1;
+		const FGameXXKAffixTierWeights Weights = FGameXXKAffixCatalog::GetTierWeights(Qualities[QualityIndex]);
+		int32 TotalWeight = 0;
+		for (int32 TierIndex = 0; TierIndex < static_cast<int32>(UE_ARRAY_COUNT(Tiers)); ++TierIndex)
+		{
+			const int32 TierRank = TierIndex + 1;
+			const int32 ExpectedWeight = QualityRank == 1
+				? (TierRank == 1 ? 100 : 0)
+				: QualityRank == 2
+					? (TierRank == 1 ? 70 : TierRank == 2 ? 30 : 0)
+					: (TierRank == QualityRank - 2 ? 50 : TierRank == QualityRank - 1 ? 35 : TierRank == QualityRank ? 15 : 0);
+			const int32 ActualWeight = Weights.GetWeight(Tiers[TierIndex]);
+			TestEqual(
+				FString::Printf(TEXT("quality %d tier %d has exact deterministic weight"), QualityRank, TierRank),
+				ActualWeight,
+				ExpectedWeight);
+			TotalWeight += ActualWeight;
+		}
+		TestEqual(FString::Printf(TEXT("quality %d tier weights sum to 100"), QualityRank), TotalWeight, 100);
+	}
 
-	struct FRangeExpectation
+	FGameXXKAffixTierWeights MutableWeights;
+	for (int32 TierIndex = 0; TierIndex < static_cast<int32>(UE_ARRAY_COUNT(Tiers)); ++TierIndex)
 	{
-		EGameXXKEquipmentMagnitudeUnit Unit;
-		EGameXXKAffixTier Tier;
-		int32 Minimum;
-		int32 Maximum;
-	};
-	const FRangeExpectation Ranges[] = {
-		{EGameXXKEquipmentMagnitudeUnit::BasisPoints, EGameXXKAffixTier::Common, 300, 500},
-		{EGameXXKEquipmentMagnitudeUnit::BasisPoints, EGameXXKAffixTier::Rare, 600, 900},
-		{EGameXXKEquipmentMagnitudeUnit::BasisPoints, EGameXXKAffixTier::Epic, 1000, 1400},
-		{EGameXXKEquipmentMagnitudeUnit::FlatCount, EGameXXKAffixTier::Common, 1, 1},
-		{EGameXXKEquipmentMagnitudeUnit::FlatCount, EGameXXKAffixTier::Rare, 1, 2},
-		{EGameXXKEquipmentMagnitudeUnit::FlatCount, EGameXXKAffixTier::Epic, 2, 3},
-	};
-	for (const FRangeExpectation& Expected : Ranges)
+		MutableWeights.SetWeight(Tiers[TierIndex], 11 + TierIndex);
+		TestEqual(TEXT("SetWeight roundtrips through GetWeight"), MutableWeights.GetWeight(Tiers[TierIndex]), 11 + TierIndex);
+	}
+	TestEqual(TEXT("legacy Common named field remains first and writable"), MutableWeights.Common, 11);
+	TestEqual(TEXT("legacy Rare named field remains second and writable"), MutableWeights.Rare, 12);
+	TestEqual(TEXT("legacy Epic named field remains third and writable"), MutableWeights.Epic, 13);
+	TestEqual(TEXT("Legendary named field is appended"), MutableWeights.Legendary, 14);
+	TestEqual(TEXT("Immortal named field is appended"), MutableWeights.Immortal, 15);
+	TestEqual(TEXT("Treasure named field is appended"), MutableWeights.Treasure, 16);
+	TestEqual(TEXT("Transcendent named field is appended"), MutableWeights.Transcendent, 17);
+	TestEqual(TEXT("Celestial named field is appended"), MutableWeights.Celestial, 18);
+	TestEqual(TEXT("Ascendant named field is appended"), MutableWeights.Ascendant, 19);
+	TestEqual(TEXT("Cosmic named field is appended"), MutableWeights.Cosmic, 20);
+	TestEqual(TEXT("invalid tier reads zero weight"), MutableWeights.GetWeight(EGameXXKAffixTier::Invalid), 0);
+
+	for (int32 TierIndex = 0; TierIndex < static_cast<int32>(UE_ARRAY_COUNT(Tiers)); ++TierIndex)
 	{
-		const FGameXXKAffixMagnitudeRange Actual = FGameXXKAffixCatalog::GetMagnitudeRange(Expected.Unit, Expected.Tier);
-		TestEqual(TEXT("tier range minimum is frozen"), Actual.Minimum, Expected.Minimum);
-		TestEqual(TEXT("tier range maximum is frozen"), Actual.Maximum, Expected.Maximum);
+		const int64 Rank = TierIndex + 1;
+		const int32 ExpectedBasisMin = static_cast<int32>(100LL * (Rank + 1) * (Rank + 2) / 2);
+		const int32 ExpectedBasisMax = ExpectedBasisMin + static_cast<int32>(100LL * (Rank + 1));
+		const int32 ExpectedFlatMin = static_cast<int32>((Rank + 1) / 2);
+		const int32 ExpectedFlatMax = static_cast<int32>(Rank);
+		const FGameXXKAffixMagnitudeRange BasisRange = FGameXXKAffixCatalog::GetMagnitudeRange(
+			EGameXXKEquipmentMagnitudeUnit::BasisPoints,
+			Tiers[TierIndex]);
+		const FGameXXKAffixMagnitudeRange FlatRange = FGameXXKAffixCatalog::GetMagnitudeRange(
+			EGameXXKEquipmentMagnitudeUnit::FlatCount,
+			Tiers[TierIndex]);
+		TestEqual(FString::Printf(TEXT("tier %lld basis minimum is exact"), Rank), BasisRange.Minimum, ExpectedBasisMin);
+		TestEqual(FString::Printf(TEXT("tier %lld basis maximum is exact"), Rank), BasisRange.Maximum, ExpectedBasisMax);
+		TestEqual(FString::Printf(TEXT("tier %lld flat minimum is exact"), Rank), FlatRange.Minimum, ExpectedFlatMin);
+		TestEqual(FString::Printf(TEXT("tier %lld flat maximum is exact"), Rank), FlatRange.Maximum, ExpectedFlatMax);
 	}
 	return true;
 }

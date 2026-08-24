@@ -241,17 +241,27 @@ namespace
 		const EGameXXKEquipmentQuality Quality)
 	{
 		const FGameXXKAffixTierWeights Weights = FGameXXKAffixCatalog::GetTierWeights(Quality);
-		const int32 Total = Weights.Common + Weights.Rare + Weights.Epic;
+		int32 Total = 0;
+		for (int32 Rank = FGameXXKEquipmentQualityRules::MinimumRank; Rank <= FGameXXKEquipmentQualityRules::MaximumRank; ++Rank)
+		{
+			Total += Weights.GetWeight(FGameXXKEquipmentQualityRules::AffixTierFromRank(Rank));
+		}
+		if (Total <= 0)
+		{
+			return EGameXXKAffixTier::Invalid;
+		}
 		const int32 Pick = Stream.RandRange(1, Total);
-		if (Pick <= Weights.Common)
+		int32 CumulativeWeight = 0;
+		for (int32 Rank = FGameXXKEquipmentQualityRules::MinimumRank; Rank <= FGameXXKEquipmentQualityRules::MaximumRank; ++Rank)
 		{
-			return EGameXXKAffixTier::Common;
+			const EGameXXKAffixTier Tier = FGameXXKEquipmentQualityRules::AffixTierFromRank(Rank);
+			CumulativeWeight += Weights.GetWeight(Tier);
+			if (Pick <= CumulativeWeight)
+			{
+				return Tier;
+			}
 		}
-		if (Pick <= Weights.Common + Weights.Rare)
-		{
-			return EGameXXKAffixTier::Rare;
-		}
-		return EGameXXKAffixTier::Epic;
+		return EGameXXKAffixTier::Invalid;
 	}
 
 	bool BuildReforgeCandidate(

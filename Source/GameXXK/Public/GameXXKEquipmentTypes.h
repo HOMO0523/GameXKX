@@ -33,18 +33,53 @@ UENUM(BlueprintType)
 enum class EGameXXKEquipmentQuality : uint8
 {
 	Invalid = 0 UMETA(Hidden),
-	Common = 1,
-	Rare = 2,
-	Epic = 3
+	Common = 1 UMETA(DisplayName = "普通"),
+	Rare = 2 UMETA(DisplayName = "稀有"),
+	Epic = 3 UMETA(DisplayName = "珍稀"),
+	Legendary = 4 UMETA(DisplayName = "传奇"),
+	Immortal = 5 UMETA(DisplayName = "不朽"),
+	Treasure = 6 UMETA(DisplayName = "至宝"),
+	Transcendent = 7 UMETA(DisplayName = "超凡"),
+	Celestial = 8 UMETA(DisplayName = "天界"),
+	Ascendant = 9 UMETA(DisplayName = "登神"),
+	Cosmic = 10 UMETA(DisplayName = "宇宙")
 };
 
 UENUM(BlueprintType)
 enum class EGameXXKAffixTier : uint8
 {
 	Invalid = 0 UMETA(Hidden),
-	Common = 1,
-	Rare = 2,
-	Epic = 3
+	Common = 1 UMETA(DisplayName = "普通"),
+	Rare = 2 UMETA(DisplayName = "稀有"),
+	Epic = 3 UMETA(DisplayName = "珍稀"),
+	Legendary = 4 UMETA(DisplayName = "传奇"),
+	Immortal = 5 UMETA(DisplayName = "不朽"),
+	Treasure = 6 UMETA(DisplayName = "至宝"),
+	Transcendent = 7 UMETA(DisplayName = "超凡"),
+	Celestial = 8 UMETA(DisplayName = "天界"),
+	Ascendant = 9 UMETA(DisplayName = "登神"),
+	Cosmic = 10 UMETA(DisplayName = "宇宙")
+};
+
+/** Single authority for serialized equipment-quality and affix-tier rank semantics. */
+class GAMEXXK_API FGameXXKEquipmentQualityRules final
+{
+public:
+	static constexpr int32 MinimumRank = 1;
+	static constexpr int32 MaximumRank = 10;
+	static constexpr int32 MaximumAffixCount = 5;
+
+	static bool IsValid(EGameXXKEquipmentQuality Quality);
+	static bool IsValid(EGameXXKAffixTier Tier);
+	static int32 GetRank(EGameXXKEquipmentQuality Quality);
+	static int32 GetRank(EGameXXKAffixTier Tier);
+	static EGameXXKEquipmentQuality EquipmentQualityFromRank(int32 Rank);
+	static EGameXXKAffixTier AffixTierFromRank(int32 Rank);
+	static FText GetDisplayName(EGameXXKEquipmentQuality Quality);
+	static FText GetDisplayName(EGameXXKAffixTier Tier);
+	static EGameXXKEquipmentQuality GetNext(EGameXXKEquipmentQuality Quality);
+	static EGameXXKAffixTier GetNext(EGameXXKAffixTier Tier);
+	static int32 GetAffixCount(EGameXXKEquipmentQuality Quality);
 };
 
 UENUM(BlueprintType)

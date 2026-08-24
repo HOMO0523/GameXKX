@@ -37,21 +37,6 @@ namespace
 			|| (Set >= EGameXXKEquipmentSet::PoJun && Set <= EGameXXKEquipmentSet::ShanHe);
 	}
 
-	bool IsValidQuality(const EGameXXKEquipmentQuality Quality)
-	{
-		return Quality >= EGameXXKEquipmentQuality::Common && Quality <= EGameXXKEquipmentQuality::Epic;
-	}
-
-	bool IsValidTier(const EGameXXKAffixTier Tier)
-	{
-		return Tier >= EGameXXKAffixTier::Common && Tier <= EGameXXKAffixTier::Epic;
-	}
-
-	int32 ExpectedAffixCount(const EGameXXKEquipmentQuality Quality)
-	{
-		return IsValidQuality(Quality) ? static_cast<int32>(static_cast<uint8>(Quality)) : INDEX_NONE;
-	}
-
 	FName* GetSlotPtr(FGameXXKEquipmentLoadout& Loadout, const EGameXXKEquipmentSlot Slot)
 	{
 		switch (Slot)
@@ -121,17 +106,27 @@ namespace
 	EGameXXKAffixTier RollTier(FRandomStream& Stream, const EGameXXKEquipmentQuality Quality)
 	{
 		const FGameXXKAffixTierWeights Weights = FGameXXKAffixCatalog::GetTierWeights(Quality);
-		const int32 TotalWeight = Weights.Common + Weights.Rare + Weights.Epic;
+		int32 TotalWeight = 0;
+		for (int32 Rank = FGameXXKEquipmentQualityRules::MinimumRank; Rank <= FGameXXKEquipmentQualityRules::MaximumRank; ++Rank)
+		{
+			TotalWeight += Weights.GetWeight(FGameXXKEquipmentQualityRules::AffixTierFromRank(Rank));
+		}
+		if (TotalWeight <= 0)
+		{
+			return EGameXXKAffixTier::Invalid;
+		}
 		const int32 Pick = Stream.RandRange(1, TotalWeight);
-		if (Pick <= Weights.Common)
+		int32 CumulativeWeight = 0;
+		for (int32 Rank = FGameXXKEquipmentQualityRules::MinimumRank; Rank <= FGameXXKEquipmentQualityRules::MaximumRank; ++Rank)
 		{
-			return EGameXXKAffixTier::Common;
+			const EGameXXKAffixTier Tier = FGameXXKEquipmentQualityRules::AffixTierFromRank(Rank);
+			CumulativeWeight += Weights.GetWeight(Tier);
+			if (Pick <= CumulativeWeight)
+			{
+				return Tier;
+			}
 		}
-		if (Pick <= Weights.Common + Weights.Rare)
-		{
-			return EGameXXKAffixTier::Rare;
-		}
-		return EGameXXKAffixTier::Epic;
+		return EGameXXKAffixTier::Invalid;
 	}
 
 	bool AffixRollsEqual(const FGameXXKEquipmentAffixRoll& A, const FGameXXKEquipmentAffixRoll& B)
@@ -169,9 +164,9 @@ namespace
 			SetError(OutError, TEXT("Equipment contains an affix from another set."));
 			return false;
 		}
-		if (!IsValidTier(Roll.Tier)
-			|| !IsValidQuality(EquipmentQuality)
-			|| static_cast<uint8>(Roll.Tier) > static_cast<uint8>(EquipmentQuality)
+		if (!FGameXXKEquipmentQualityRules::IsValid(Roll.Tier)
+			|| !FGameXXKEquipmentQualityRules::IsValid(EquipmentQuality)
+			|| FGameXXKEquipmentQualityRules::GetRank(Roll.Tier) > FGameXXKEquipmentQualityRules::GetRank(EquipmentQuality)
 			|| Roll.Unit != Affix->Unit)
 		{
 			SetError(OutError, TEXT("Equipment affix tier exceeds its quality or its unit is invalid."));
@@ -596,8 +591,8 @@ bool FGameXXKEquipmentRules::SortWarehouseInstanceIds(
 			return LeftSlot < RightSlot;
 		}
 
-		const uint8 LeftQuality = Left ? static_cast<uint8>(Left->Quality) : 0;
-		const uint8 RightQuality = Right ? static_cast<uint8>(Right->Quality) : 0;
+		const int32 LeftQuality = Left ? FGameXXKEquipmentQualityRules::GetRank(Left->Quality) : 0;
+		const int32 RightQuality = Right ? FGameXXKEquipmentQualityRules::GetRank(Right->Quality) : 0;
 		if (LeftQuality != RightQuality)
 		{
 			return LeftQuality > RightQuality;
@@ -676,7 +671,7 @@ bool FGameXXKEquipmentRules::ValidateCollectionState(
 		}
 		if (Instance.ItemLevel < 1 || Instance.ItemLevel > MaxItemLevel
 			|| Instance.EnhancementLevel < 0 || Instance.EnhancementLevel > MaxEnhancementLevel
-			|| !IsValidQuality(Instance.Quality)
+			|| !FGameXXKEquipmentQualityRules::IsValid(Instance.Quality)
 			|| Instance.ScalingRule != Definition->ScalingRule)
 		{
 			SetError(OutError, TEXT("Equipment instance level, quality, enhancement, or scaling is invalid."));
@@ -696,9 +691,9 @@ bool FGameXXKEquipmentRules::ValidateCollectionState(
 		else
 		{
 			if (!IsModernSet(Definition->Set)
-				|| Instance.RolledAffixes.Num() != ExpectedAffixCount(Instance.Quality))
+				|| Instance.RolledAffixes.Num() != FGameXXKEquipmentQualityRules::GetAffixCount(Instance.Quality))
 			{
-				SetError(OutError, TEXT("Modern equipment must have exactly one, two, or three affixes for its quality."));
+				SetError(OutError, TEXT("Modern equipment must have its exact quality-derived affix count, capped at five."));
 				return false;
 			}
 			TSet<EGameXXKEquipmentModifierKind> ModifierKinds;
@@ -898,7 +893,7 @@ bool FGameXXKEquipmentRules::CreateRolledInstance(
 		SetError(OutError, FString::Printf(TEXT("Collection is invalid before creation: %s"), *ValidationError));
 		return false;
 	}
-	if (!IsModernSet(Request.Set) || !IsValidQuality(Request.Quality)
+	if (!IsModernSet(Request.Set) || !FGameXXKEquipmentQualityRules::IsValid(Request.Quality)
 		|| Request.ItemLevel < 1 || Request.ItemLevel > MaxItemLevel
 		|| (Request.bForceSlot && !IsValidSlot(Request.ForcedSlot)))
 	{
@@ -959,7 +954,7 @@ bool FGameXXKEquipmentRules::CreateRolledInstance(
 	Instance.AcquisitionSeed = static_cast<int32>(StreamSeed);
 	Instance.ScalingRule = EquipmentDefinition->ScalingRule;
 	Instance.OwnerKind = EGameXXKEquipmentOwnerKind::Warehouse;
-	for (int32 AffixIndex = 0; AffixIndex < ExpectedAffixCount(Request.Quality); ++AffixIndex)
+	for (int32 AffixIndex = 0; AffixIndex < FGameXXKEquipmentQualityRules::GetAffixCount(Request.Quality); ++AffixIndex)
 	{
 		const int32 CandidateIndex = Stream.RandRange(0, Candidates.Num() - 1);
 		const FGameXXKAffixDefinition* Definition = Candidates[CandidateIndex];
@@ -1196,7 +1191,7 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 		{
 			OutSnapshot.SetPieceCounts.FindOrAdd(Definition->Set) += 1;
 			ScoresBySet.FindOrAdd(Definition->Set) +=
-				static_cast<int32>(static_cast<uint8>(Instance->Quality)) * 10 + Instance->EnhancementLevel;
+				FGameXXKEquipmentQualityRules::GetRank(Instance->Quality) * 10 + Instance->EnhancementLevel;
 		}
 
 		for (const FGameXXKEquipmentAffixRoll& Roll : Instance->RolledAffixes)

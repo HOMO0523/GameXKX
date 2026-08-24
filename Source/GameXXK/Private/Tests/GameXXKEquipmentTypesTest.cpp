@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 
+#include "GameXXKCardQualityRules.h"
 #include "GameXXKEquipmentTypes.h"
 #include "GameXXKMVPRules.h"
 
@@ -14,8 +15,22 @@ bool FGameXXKEquipmentTypesContractTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("six equipment slots use contiguous saved values"), static_cast<uint8>(EGameXXKEquipmentSlot::Accessory), static_cast<uint8>(6));
 	TestEqual(TEXT("Starter and six combat sets follow Legacy in the saved enum"), static_cast<uint8>(EGameXXKEquipmentSet::ShanHe), static_cast<uint8>(8));
-	TestEqual(TEXT("three equipment qualities use contiguous saved values"), static_cast<uint8>(EGameXXKEquipmentQuality::Epic), static_cast<uint8>(3));
-	TestEqual(TEXT("three affix tiers use contiguous saved values"), static_cast<uint8>(EGameXXKAffixTier::Epic), static_cast<uint8>(3));
+	TestEqual(TEXT("equipment quality Common keeps saved value one"), static_cast<uint8>(EGameXXKEquipmentQuality::Common), static_cast<uint8>(1));
+	TestEqual(TEXT("equipment quality Rare keeps saved value two"), static_cast<uint8>(EGameXXKEquipmentQuality::Rare), static_cast<uint8>(2));
+	TestEqual(TEXT("equipment quality Epic keeps saved value three"), static_cast<uint8>(EGameXXKEquipmentQuality::Epic), static_cast<uint8>(3));
+	TestEqual(TEXT("equipment quality Legendary appends at saved value four"), static_cast<uint8>(EGameXXKEquipmentQuality::Legendary), static_cast<uint8>(4));
+	TestEqual(TEXT("equipment quality Cosmic appends at saved value ten"), static_cast<uint8>(EGameXXKEquipmentQuality::Cosmic), static_cast<uint8>(10));
+	TestEqual(TEXT("affix tier Common keeps saved value one"), static_cast<uint8>(EGameXXKAffixTier::Common), static_cast<uint8>(1));
+	TestEqual(TEXT("affix tier Rare keeps saved value two"), static_cast<uint8>(EGameXXKAffixTier::Rare), static_cast<uint8>(2));
+	TestEqual(TEXT("affix tier Epic keeps saved value three"), static_cast<uint8>(EGameXXKAffixTier::Epic), static_cast<uint8>(3));
+	TestEqual(TEXT("affix tier Legendary appends at saved value four"), static_cast<uint8>(EGameXXKAffixTier::Legendary), static_cast<uint8>(4));
+	TestEqual(TEXT("affix tier Cosmic appends at saved value ten"), static_cast<uint8>(EGameXXKAffixTier::Cosmic), static_cast<uint8>(10));
+	TestEqual(TEXT("independent card quality Common stays at one"), static_cast<uint8>(EGameXXKCardQuality::Common), static_cast<uint8>(1));
+	TestEqual(TEXT("independent card quality Rare stays at two"), static_cast<uint8>(EGameXXKCardQuality::Rare), static_cast<uint8>(2));
+	TestEqual(TEXT("independent card quality Epic stays capped at three"), static_cast<uint8>(EGameXXKCardQuality::Epic), static_cast<uint8>(3));
+	TestEqual(TEXT("independent Common card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Common).ToString(), FString(TEXT("普通")));
+	TestEqual(TEXT("independent Rare card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Rare).ToString(), FString(TEXT("稀有")));
+	TestEqual(TEXT("independent Epic card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Epic).ToString(), FString(TEXT("珍稀")));
 	TestEqual(TEXT("the approved five universal and thirty set-specific modifier kinds are present"), static_cast<uint8>(EGameXXKEquipmentModifierKind::TeamTerrainPower), static_cast<uint8>(35));
 
 	const FGameXXKEquipmentCollectionState Collection;

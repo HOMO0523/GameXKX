@@ -2,6 +2,39 @@
 
 namespace
 {
+	bool TryMultiplyNonNegativeInt64(const int64 Left, const int64 Right, int64& OutResult)
+	{
+		if (Left < 0 || Right < 0
+			|| (Left != 0 && Right > TNumericLimits<int64>::Max() / Left))
+		{
+			return false;
+		}
+		OutResult = Left * Right;
+		return true;
+	}
+
+	bool TryAddNonNegativeInt64(const int64 Left, const int64 Right, int64& OutResult)
+	{
+		if (Left < 0 || Right < 0 || Right > TNumericLimits<int64>::Max() - Left)
+		{
+			return false;
+		}
+		OutResult = Left + Right;
+		return true;
+	}
+
+	bool TryAssignRange(const int64 Minimum, const int64 Maximum, FGameXXKAffixMagnitudeRange& OutRange)
+	{
+		if (Minimum <= 0 || Maximum < Minimum
+			|| Maximum > static_cast<int64>(TNumericLimits<int32>::Max()))
+		{
+			return false;
+		}
+		OutRange.Minimum = static_cast<int32>(Minimum);
+		OutRange.Maximum = static_cast<int32>(Maximum);
+		return true;
+	}
+
 	FGameXXKAffixDefinition MakeAffix(
 		const TCHAR* Id,
 		const TCHAR* DisplayName,
@@ -144,6 +177,42 @@ namespace
 	}
 }
 
+int32 FGameXXKAffixTierWeights::GetWeight(const EGameXXKAffixTier Tier) const
+{
+	switch (Tier)
+	{
+	case EGameXXKAffixTier::Common: return Common;
+	case EGameXXKAffixTier::Rare: return Rare;
+	case EGameXXKAffixTier::Epic: return Epic;
+	case EGameXXKAffixTier::Legendary: return Legendary;
+	case EGameXXKAffixTier::Immortal: return Immortal;
+	case EGameXXKAffixTier::Treasure: return Treasure;
+	case EGameXXKAffixTier::Transcendent: return Transcendent;
+	case EGameXXKAffixTier::Celestial: return Celestial;
+	case EGameXXKAffixTier::Ascendant: return Ascendant;
+	case EGameXXKAffixTier::Cosmic: return Cosmic;
+	default: return 0;
+	}
+}
+
+void FGameXXKAffixTierWeights::SetWeight(const EGameXXKAffixTier Tier, const int32 Weight)
+{
+	switch (Tier)
+	{
+	case EGameXXKAffixTier::Common: Common = Weight; break;
+	case EGameXXKAffixTier::Rare: Rare = Weight; break;
+	case EGameXXKAffixTier::Epic: Epic = Weight; break;
+	case EGameXXKAffixTier::Legendary: Legendary = Weight; break;
+	case EGameXXKAffixTier::Immortal: Immortal = Weight; break;
+	case EGameXXKAffixTier::Treasure: Treasure = Weight; break;
+	case EGameXXKAffixTier::Transcendent: Transcendent = Weight; break;
+	case EGameXXKAffixTier::Celestial: Celestial = Weight; break;
+	case EGameXXKAffixTier::Ascendant: Ascendant = Weight; break;
+	case EGameXXKAffixTier::Cosmic: Cosmic = Weight; break;
+	default: break;
+	}
+}
+
 const TArray<FGameXXKAffixDefinition>& FGameXXKAffixCatalog::GetUniversalDefinitions()
 {
 	return UniversalDefinitions();
@@ -169,22 +238,21 @@ const FGameXXKAffixDefinition* FGameXXKAffixCatalog::FindDefinition(const FName 
 FGameXXKAffixTierWeights FGameXXKAffixCatalog::GetTierWeights(const EGameXXKEquipmentQuality Quality)
 {
 	FGameXXKAffixTierWeights Weights;
-	switch (Quality)
+	const int32 QualityRank = FGameXXKEquipmentQualityRules::GetRank(Quality);
+	if (QualityRank == 1)
 	{
-	case EGameXXKEquipmentQuality::Common:
-		Weights.Common = 100;
-		break;
-	case EGameXXKEquipmentQuality::Rare:
-		Weights.Common = 70;
-		Weights.Rare = 30;
-		break;
-	case EGameXXKEquipmentQuality::Epic:
-		Weights.Common = 50;
-		Weights.Rare = 35;
-		Weights.Epic = 15;
-		break;
-	default:
-		break;
+		Weights.SetWeight(EGameXXKAffixTier::Common, 100);
+	}
+	else if (QualityRank == 2)
+	{
+		Weights.SetWeight(EGameXXKAffixTier::Common, 70);
+		Weights.SetWeight(EGameXXKAffixTier::Rare, 30);
+	}
+	else if (QualityRank >= 3)
+	{
+		Weights.SetWeight(FGameXXKEquipmentQualityRules::AffixTierFromRank(QualityRank - 2), 50);
+		Weights.SetWeight(FGameXXKEquipmentQualityRules::AffixTierFromRank(QualityRank - 1), 35);
+		Weights.SetWeight(FGameXXKEquipmentQualityRules::AffixTierFromRank(QualityRank), 15);
 	}
 	return Weights;
 }
@@ -194,24 +262,39 @@ FGameXXKAffixMagnitudeRange FGameXXKAffixCatalog::GetMagnitudeRange(
 	const EGameXXKAffixTier Tier)
 {
 	FGameXXKAffixMagnitudeRange Range;
+	const int64 Rank = FGameXXKEquipmentQualityRules::GetRank(Tier);
+	if (Rank == 0)
+	{
+		return Range;
+	}
+
+	int64 RankPlusOne = 0;
+	int64 RankPlusTwo = 0;
+	if (!TryAddNonNegativeInt64(Rank, 1, RankPlusOne)
+		|| !TryAddNonNegativeInt64(RankPlusOne, 1, RankPlusTwo))
+	{
+		return Range;
+	}
 	if (Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
 	{
-		switch (Tier)
+		int64 FirstProduct = 0;
+		int64 Numerator = 0;
+		int64 MaximumIncrement = 0;
+		int64 Maximum = 0;
+		if (!TryMultiplyNonNegativeInt64(100, RankPlusOne, FirstProduct)
+			|| !TryMultiplyNonNegativeInt64(FirstProduct, RankPlusTwo, Numerator)
+			|| !TryMultiplyNonNegativeInt64(100, RankPlusOne, MaximumIncrement)
+			|| !TryAddNonNegativeInt64(Numerator / 2, MaximumIncrement, Maximum)
+			|| !TryAssignRange(Numerator / 2, Maximum, Range))
 		{
-		case EGameXXKAffixTier::Common: Range.Minimum = 300; Range.Maximum = 500; break;
-		case EGameXXKAffixTier::Rare: Range.Minimum = 600; Range.Maximum = 900; break;
-		case EGameXXKAffixTier::Epic: Range.Minimum = 1000; Range.Maximum = 1400; break;
-		default: break;
+			return FGameXXKAffixMagnitudeRange();
 		}
 	}
 	else if (Unit == EGameXXKEquipmentMagnitudeUnit::FlatCount)
 	{
-		switch (Tier)
+		if (!TryAssignRange(RankPlusOne / 2, Rank, Range))
 		{
-		case EGameXXKAffixTier::Common: Range.Minimum = 1; Range.Maximum = 1; break;
-		case EGameXXKAffixTier::Rare: Range.Minimum = 1; Range.Maximum = 2; break;
-		case EGameXXKAffixTier::Epic: Range.Minimum = 2; Range.Maximum = 3; break;
-		default: break;
+			return FGameXXKAffixMagnitudeRange();
 		}
 	}
 	return Range;

@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKAffixCatalog.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
@@ -17,6 +18,7 @@
 #include "MVP/GameXXKSaveGame.h"
 
 #include "Engine/GameInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -449,6 +451,188 @@ bool FGameXXKEquipmentSaveMigrationVersionContractTest::RunTest(const FString& P
 		TEXT("a pending event cannot reference a node outside the generated route"),
 		FGameXXKSaveMigration::MigrateToCurrent(UnknownPendingSource, Migrated, Report));
 	TestTrue(TEXT("unknown pending source reports its contract"), Report.Error.Contains(TEXT("node")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentTenQualitySaveRoundTripTest,
+	"GameXXK.Equipment.SaveMigration.TenQualityV25RoundTrip",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("ten equipment qualities do not advance the save version"), FGameXXKSaveMigration::CurrentSaveVersion, 25);
+	const EGameXXKEquipmentQuality Qualities[] = {
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentQuality::Rare,
+		EGameXXKEquipmentQuality::Epic,
+		EGameXXKEquipmentQuality::Legendary,
+		EGameXXKEquipmentQuality::Immortal,
+		EGameXXKEquipmentQuality::Treasure,
+		EGameXXKEquipmentQuality::Transcendent,
+		EGameXXKEquipmentQuality::Celestial,
+		EGameXXKEquipmentQuality::Ascendant,
+		EGameXXKEquipmentQuality::Cosmic,
+	};
+	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("ten-quality fixture starts with a saveable ordered party"),
+		FixtureSubsystem && FixtureSubsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState Runtime = FixtureSubsystem->GetRuntimeStateCopy();
+	TArray<FName> CreatedInstanceIds;
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Qualities)); ++Index)
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::ShanHe;
+		Request.Quality = Qualities[Index];
+		Request.ItemLevel = Index + 1;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = EGameXXKEquipmentSlot::Weapon;
+		FName InstanceId;
+		FString Error;
+		const bool bCreated = FGameXXKEquipmentRules::CreateRolledInstance(
+			Runtime.EquipmentCollection,
+			Request,
+			InstanceId,
+			&Error);
+		TestTrue(FString::Printf(TEXT("quality %d save fixture creates: %s"), Index + 1, *Error), bCreated);
+		if (!bCreated)
+		{
+			return false;
+		}
+		FGameXXKEquipmentInstance* Created = Runtime.EquipmentCollection.EquipmentInstances.FindByPredicate(
+			[InstanceId](const FGameXXKEquipmentInstance& Instance)
+			{
+				return Instance.InstanceId == InstanceId;
+			});
+		if (!TestNotNull(FString::Printf(TEXT("quality %d save fixture resolves for exact affix setup"), Index + 1), Created))
+		{
+			return false;
+		}
+		const int32 QualityRank = Index + 1;
+		const int32 AffixCount = FGameXXKEquipmentQualityRules::GetAffixCount(Qualities[Index]);
+		const int32 FirstTierRank = FMath::Max(1, QualityRank - AffixCount + 1);
+		for (int32 AffixIndex = 0; AffixIndex < Created->RolledAffixes.Num(); ++AffixIndex)
+		{
+			FGameXXKEquipmentAffixRoll& Roll = Created->RolledAffixes[AffixIndex];
+			Roll.Tier = FGameXXKEquipmentQualityRules::AffixTierFromRank(FirstTierRank + AffixIndex);
+			const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier);
+			Roll.Magnitude = AffixIndex % 2 == 0 ? Range.Minimum : Range.Maximum;
+		}
+		CreatedInstanceIds.Add(InstanceId);
+	}
+	Runtime.PlayerGold = 24680;
+	Runtime.DesktopInventory.bToolAutoFillIncludesWarehouse = false;
+	FString NormalizeError;
+	const bool bNormalized = FGameXXKDesktopInventoryRules::Normalize(Runtime, &NormalizeError);
+	TestTrue(FString::Printf(TEXT("ten-quality fixture normalizes into physical desktop storage: %s"), *NormalizeError), bNormalized);
+	TestTrue(TEXT("ten-quality fixture synchronizes runtime mirrors"), FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Runtime));
+	FString RuntimeError;
+	const bool bRuntimeValid = FGameXXKSaveMigration::ValidateRuntimeState(Runtime, RuntimeError);
+	TestTrue(FString::Printf(TEXT("ten-quality fixture is a valid v25 runtime: %s"), *RuntimeError), bRuntimeValid);
+	if (!bRuntimeValid)
+	{
+		return false;
+	}
+
+	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
+	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(Runtime);
+	const FGameXXKSaveState Source = SaveObject->SaveState;
+	TestEqual(TEXT("source SaveGame remains v25"), Source.SaveVersion, 25);
+	TArray<FGameXXKEquipmentInstance> ExpectedInstances;
+	for (const FName InstanceId : CreatedInstanceIds)
+	{
+		const FGameXXKEquipmentInstance* Expected = FGameXXKEquipmentRules::FindInstance(
+			Source.RuntimeState.EquipmentCollection,
+			InstanceId);
+		if (!TestNotNull(TEXT("every ten-quality source instance is present before memory serialization"), Expected))
+		{
+			return false;
+		}
+		ExpectedInstances.Add(*Expected);
+	}
+
+	TArray<uint8> SaveBytes;
+	if (!TestTrue(TEXT("ten-quality v25 state serializes through UGameplayStatics::SaveGameToMemory"),
+		UGameplayStatics::SaveGameToMemory(SaveObject, SaveBytes)))
+	{
+		return false;
+	}
+	TestTrue(TEXT("ten-quality memory payload is non-empty"), !SaveBytes.IsEmpty());
+	UGameXXKSaveGame* ReloadedObject = Cast<UGameXXKSaveGame>(
+		UGameplayStatics::LoadGameFromMemory(SaveBytes));
+	if (!TestNotNull(TEXT("ten-quality memory payload reloads as UGameXXKSaveGame"), ReloadedObject))
+	{
+		return false;
+	}
+	const FGameXXKSaveState& Reloaded = ReloadedObject->SaveState;
+	TestEqual(TEXT("memory round-trip preserves save version 25"), Reloaded.SaveVersion, 25);
+	TestEqual(TEXT("memory round-trip preserves unrelated player gold"), Reloaded.RuntimeState.PlayerGold, Source.RuntimeState.PlayerGold);
+	TestEqual(TEXT("memory round-trip preserves collection seed"), Reloaded.RuntimeState.EquipmentCollection.CollectionSeed, Source.RuntimeState.EquipmentCollection.CollectionSeed);
+	TestEqual(TEXT("memory round-trip preserves next instance ordinal"), Reloaded.RuntimeState.EquipmentCollection.NextInstanceOrdinal, Source.RuntimeState.EquipmentCollection.NextInstanceOrdinal);
+	TestEqual(TEXT("memory round-trip preserves the non-default Tool warehouse preference"),
+		Reloaded.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse,
+		Source.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse);
+	TestTrue(TEXT("memory round-trip preserves every other reflected save field"),
+		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Reloaded, &Source, PPF_None));
+
+	for (int32 Index = 0; Index < ExpectedInstances.Num(); ++Index)
+	{
+		const FGameXXKEquipmentInstance& Expected = ExpectedInstances[Index];
+		const FGameXXKEquipmentInstance* Restored = FGameXXKEquipmentRules::FindInstance(
+			Reloaded.RuntimeState.EquipmentCollection,
+			Expected.InstanceId);
+		if (!TestNotNull(FString::Printf(TEXT("quality %d instance survives true SaveGame memory round-trip"), Index + 1), Restored))
+		{
+			continue;
+		}
+		TestEqual(FString::Printf(TEXT("quality %d instance id is exact"), Index + 1), Restored->InstanceId, Expected.InstanceId);
+		TestEqual(FString::Printf(TEXT("quality %d base equipment id is exact"), Index + 1), Restored->BaseEquipmentId, Expected.BaseEquipmentId);
+		TestEqual(FString::Printf(TEXT("quality %d item level is exact"), Index + 1), Restored->ItemLevel, Expected.ItemLevel);
+		TestEqual(FString::Printf(TEXT("quality %d ordinal is exact"), Index + 1), Restored->Quality, Expected.Quality);
+		TestEqual(FString::Printf(TEXT("quality %d affix count is exact"), Index + 1), Restored->RolledAffixes.Num(), Expected.RolledAffixes.Num());
+		for (int32 AffixIndex = 0; AffixIndex < Expected.RolledAffixes.Num() && Restored->RolledAffixes.IsValidIndex(AffixIndex); ++AffixIndex)
+		{
+			const FGameXXKEquipmentAffixRoll& ExpectedRoll = Expected.RolledAffixes[AffixIndex];
+			const FGameXXKEquipmentAffixRoll& RestoredRoll = Restored->RolledAffixes[AffixIndex];
+			const FString AffixLabel = FString::Printf(TEXT("quality %d affix %d"), Index + 1, AffixIndex + 1);
+			TestEqual(AffixLabel + TEXT(" id is exact"), RestoredRoll.AffixId, ExpectedRoll.AffixId);
+			TestEqual(AffixLabel + TEXT(" tier is exact"), RestoredRoll.Tier, ExpectedRoll.Tier);
+			TestEqual(AffixLabel + TEXT(" magnitude is exact"), RestoredRoll.Magnitude, ExpectedRoll.Magnitude);
+			TestEqual(AffixLabel + TEXT(" unit is exact"), RestoredRoll.Unit, ExpectedRoll.Unit);
+		}
+	}
+
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	const bool bMigrated = FGameXXKSaveMigration::MigrateToCurrent(Reloaded, Migrated, Report);
+	TestTrue(FString::Printf(TEXT("memory-reloaded ten-quality save validates at v25: %s"), *Report.Error), bMigrated);
+	if (!bMigrated)
+	{
+		return false;
+	}
+	TestEqual(TEXT("validated memory round-trip remains v25"), Migrated.SaveVersion, 25);
+	TestTrue(TEXT("v25 validation introduces no drift after true memory serialization"),
+		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Migrated, &Reloaded, PPF_None));
+
+	FGameXXKSaveState UnknownQuality = Reloaded;
+	if (FGameXXKEquipmentInstance* CorruptInstance = UnknownQuality.RuntimeState.EquipmentCollection.EquipmentInstances.FindByPredicate(
+		[&CreatedInstanceIds](const FGameXXKEquipmentInstance& Instance)
+		{
+			return Instance.InstanceId == CreatedInstanceIds[0];
+		}))
+	{
+		CorruptInstance->Quality = static_cast<EGameXXKEquipmentQuality>(11);
+	}
+	FGameXXKSaveState Rejected;
+	FGameXXKSaveMigrationReport RejectedReport;
+	TestFalse(TEXT("v25 migration rejects an unknown equipment quality"), FGameXXKSaveMigration::MigrateToCurrent(
+		UnknownQuality,
+		Rejected,
+		RejectedReport));
+	TestEqual(TEXT("unknown-quality rejection exposes no partial save"), Rejected.SaveVersion, 0);
 	return true;
 }
 

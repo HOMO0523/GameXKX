@@ -87,13 +87,7 @@ namespace
 
 	FText ShopEquipmentQualityText(const EGameXXKEquipmentQuality Quality)
 	{
-		switch (Quality)
-		{
-		case EGameXXKEquipmentQuality::Common: return NSLOCTEXT("GameXXKMetaShop", "QualityCommon", "普通");
-		case EGameXXKEquipmentQuality::Rare: return NSLOCTEXT("GameXXKMetaShop", "QualityRare", "稀有");
-		case EGameXXKEquipmentQuality::Epic: return NSLOCTEXT("GameXXKMetaShop", "QualityEpic", "珍稀");
-		default: return NSLOCTEXT("GameXXKMetaShop", "QualityUnknown", "未知");
-		}
+		return FGameXXKEquipmentQualityRules::GetDisplayName(Quality);
 	}
 
 	FText ShopRoleDisplayName(const EGameXXKCharacterRole Role)

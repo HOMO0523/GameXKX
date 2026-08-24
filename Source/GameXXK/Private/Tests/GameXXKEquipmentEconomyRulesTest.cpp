@@ -155,6 +155,58 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentEconomyTenQualityCompatibilityTest,
+	"GameXXK.Equipment.Economy.TenQualityCompatibility",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentEconomyTenQualityCompatibilityTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("invalid quality has no reforge cost"),
+		FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Invalid), 0);
+	TestEqual(TEXT("unknown quality has no reforge cost"),
+		FGameXXKEquipmentCatalog::GetReforgeSandCost(static_cast<EGameXXKEquipmentQuality>(11)), 0);
+	const EGameXXKEquipmentQuality Qualities[] = {
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentQuality::Rare,
+		EGameXXKEquipmentQuality::Epic,
+		EGameXXKEquipmentQuality::Legendary,
+		EGameXXKEquipmentQuality::Immortal,
+		EGameXXKEquipmentQuality::Treasure,
+		EGameXXKEquipmentQuality::Transcendent,
+		EGameXXKEquipmentQuality::Celestial,
+		EGameXXKEquipmentQuality::Ascendant,
+		EGameXXKEquipmentQuality::Cosmic,
+	};
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Qualities)); ++Index)
+	{
+		const int32 Rank = Index + 1;
+		const EGameXXKEquipmentQuality Quality = Qualities[Index];
+		TestEqual(FString::Printf(TEXT("quality %d reforge keeps the one-sand compatibility cost"), Rank), FGameXXKEquipmentCatalog::GetReforgeSandCost(Quality), 1);
+		TestEqual(FString::Printf(TEXT("quality %d dismantle keeps the one-sand compatibility yield"), Rank), FGameXXKEquipmentCatalog::GetDismantleSandYield(Quality), 1);
+
+		FGameXXKRuntimeState State = MakeState(0, 2);
+		State.EquipmentCollection.CollectionSeed += Rank;
+		const FName InstanceId = CreateModern(
+			*this,
+			State,
+			Quality,
+			EGameXXKEquipmentSlot::Weapon,
+			EGameXXKEquipmentSet::QingNang,
+			Rank);
+		FGameXXKEquipmentTransactionResult Result;
+		TestTrue(FString::Printf(TEXT("quality %d can begin a paid reforge"), Rank), FGameXXKEquipmentEconomyRules::BeginReforge(State, InstanceId, 0, Result));
+		const FGameXXKEquipmentAffixRoll& Candidate = State.EquipmentCollection.PendingReforge.CandidateAffix;
+		const FGameXXKAffixTierWeights Weights = FGameXXKAffixCatalog::GetTierWeights(Quality);
+		TestTrue(FString::Printf(TEXT("quality %d reforge chooses a weighted tier"), Rank), Weights.GetWeight(Candidate.Tier) > 0);
+		TestTrue(FString::Printf(TEXT("quality %d reforge tier does not exceed quality"), Rank), FGameXXKEquipmentQualityRules::GetRank(Candidate.Tier) <= Rank);
+		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Candidate.Unit, Candidate.Tier);
+		TestTrue(FString::Printf(TEXT("quality %d reforge magnitude stays in the exact tier range"), Rank), Candidate.Magnitude >= Range.Minimum && Candidate.Magnitude <= Range.Maximum);
+		TestTrue(FString::Printf(TEXT("quality %d paid preview remains collection-valid"), Rank), FGameXXKEquipmentRules::ValidateCollectionState(State.EquipmentCollection));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKEquipmentEconomyEnhancementTest,
 	"GameXXK.Equipment.Economy.EnhancementAndRuntimeWrappers",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

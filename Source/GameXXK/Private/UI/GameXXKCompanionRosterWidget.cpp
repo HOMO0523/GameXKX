@@ -441,13 +441,7 @@ namespace
 
 	FText CompanionEquipmentQualityText(const EGameXXKEquipmentQuality Quality)
 	{
-		switch (Quality)
-		{
-		case EGameXXKEquipmentQuality::Common: return NSLOCTEXT("GameXXKCompanionRoster", "QualityCommon", "普通");
-		case EGameXXKEquipmentQuality::Rare: return NSLOCTEXT("GameXXKCompanionRoster", "QualityRare", "稀有");
-		case EGameXXKEquipmentQuality::Epic: return NSLOCTEXT("GameXXKCompanionRoster", "QualityEpic", "珍稀");
-		default: return NSLOCTEXT("GameXXKCompanionRoster", "QualityUnknown", "未知");
-		}
+		return FGameXXKEquipmentQualityRules::GetDisplayName(Quality);
 	}
 
 	FText BuildCompanionEquipmentInstanceDetail(

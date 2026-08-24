@@ -18,6 +18,30 @@ struct GAMEXXK_API FGameXXKAffixTierWeights
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 Epic = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Legendary = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Immortal = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Treasure = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Transcendent = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Celestial = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Ascendant = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Cosmic = 0;
+
+	int32 GetWeight(EGameXXKAffixTier Tier) const;
+	void SetWeight(EGameXXKAffixTier Tier, int32 Weight);
 };
 
 USTRUCT(BlueprintType)

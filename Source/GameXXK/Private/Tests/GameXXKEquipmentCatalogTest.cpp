@@ -88,6 +88,62 @@ namespace
 
 bool FGameXXKEquipmentCatalogTest::RunTest(const FString& Parameters)
 {
+	struct FQualityExpectation
+	{
+		EGameXXKEquipmentQuality Quality;
+		EGameXXKAffixTier Tier;
+		int32 Rank;
+		const TCHAR* DisplayName;
+	};
+	const FQualityExpectation QualityExpectations[] = {
+		{EGameXXKEquipmentQuality::Common, EGameXXKAffixTier::Common, 1, TEXT("普通")},
+		{EGameXXKEquipmentQuality::Rare, EGameXXKAffixTier::Rare, 2, TEXT("稀有")},
+		{EGameXXKEquipmentQuality::Epic, EGameXXKAffixTier::Epic, 3, TEXT("珍稀")},
+		{EGameXXKEquipmentQuality::Legendary, EGameXXKAffixTier::Legendary, 4, TEXT("传奇")},
+		{EGameXXKEquipmentQuality::Immortal, EGameXXKAffixTier::Immortal, 5, TEXT("不朽")},
+		{EGameXXKEquipmentQuality::Treasure, EGameXXKAffixTier::Treasure, 6, TEXT("至宝")},
+		{EGameXXKEquipmentQuality::Transcendent, EGameXXKAffixTier::Transcendent, 7, TEXT("超凡")},
+		{EGameXXKEquipmentQuality::Celestial, EGameXXKAffixTier::Celestial, 8, TEXT("天界")},
+		{EGameXXKEquipmentQuality::Ascendant, EGameXXKAffixTier::Ascendant, 9, TEXT("登神")},
+		{EGameXXKEquipmentQuality::Cosmic, EGameXXKAffixTier::Cosmic, 10, TEXT("宇宙")},
+	};
+	const UEnum* EquipmentQualityEnum = StaticEnum<EGameXXKEquipmentQuality>();
+	const UEnum* AffixTierEnum = StaticEnum<EGameXXKAffixTier>();
+	TestNotNull(TEXT("equipment quality is reflected"), EquipmentQualityEnum);
+	TestNotNull(TEXT("affix tier is reflected"), AffixTierEnum);
+	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(QualityExpectations)); ++Index)
+	{
+		const FQualityExpectation& Expected = QualityExpectations[Index];
+		const FString Label = FString::Printf(TEXT("quality rank %d"), Expected.Rank);
+		TestEqual(Label + TEXT(" equipment ordinal"), static_cast<int32>(static_cast<uint8>(Expected.Quality)), Expected.Rank);
+		TestEqual(Label + TEXT(" affix ordinal"), static_cast<int32>(static_cast<uint8>(Expected.Tier)), Expected.Rank);
+		TestEqual(Label + TEXT(" equipment helper rank"), FGameXXKEquipmentQualityRules::GetRank(Expected.Quality), Expected.Rank);
+		TestEqual(Label + TEXT(" affix helper rank"), FGameXXKEquipmentQualityRules::GetRank(Expected.Tier), Expected.Rank);
+		TestEqual(Label + TEXT(" equipment helper display"), FGameXXKEquipmentQualityRules::GetDisplayName(Expected.Quality).ToString(), FString(Expected.DisplayName));
+		TestEqual(Label + TEXT(" affix helper display"), FGameXXKEquipmentQualityRules::GetDisplayName(Expected.Tier).ToString(), FString(Expected.DisplayName));
+		TestEqual(Label + TEXT(" equipment from rank"), FGameXXKEquipmentQualityRules::EquipmentQualityFromRank(Expected.Rank), Expected.Quality);
+		TestEqual(Label + TEXT(" affix from rank"), FGameXXKEquipmentQualityRules::AffixTierFromRank(Expected.Rank), Expected.Tier);
+		if (EquipmentQualityEnum && AffixTierEnum)
+		{
+			TestEqual(Label + TEXT(" reflected equipment display"), EquipmentQualityEnum->GetDisplayNameTextByValue(Expected.Rank).ToString(), FString(Expected.DisplayName));
+			TestEqual(Label + TEXT(" reflected affix display"), AffixTierEnum->GetDisplayNameTextByValue(Expected.Rank).ToString(), FString(Expected.DisplayName));
+		}
+		const EGameXXKEquipmentQuality ExpectedNextQuality = Index + 1 < static_cast<int32>(UE_ARRAY_COUNT(QualityExpectations))
+			? QualityExpectations[Index + 1].Quality
+			: EGameXXKEquipmentQuality::Invalid;
+		const EGameXXKAffixTier ExpectedNextTier = Index + 1 < static_cast<int32>(UE_ARRAY_COUNT(QualityExpectations))
+			? QualityExpectations[Index + 1].Tier
+			: EGameXXKAffixTier::Invalid;
+		TestEqual(Label + TEXT(" next equipment quality"), FGameXXKEquipmentQualityRules::GetNext(Expected.Quality), ExpectedNextQuality);
+		TestEqual(Label + TEXT(" next affix tier"), FGameXXKEquipmentQualityRules::GetNext(Expected.Tier), ExpectedNextTier);
+	}
+	TestEqual(TEXT("Cosmic equipment has no next quality"), FGameXXKEquipmentQualityRules::GetNext(EGameXXKEquipmentQuality::Cosmic), EGameXXKEquipmentQuality::Invalid);
+	TestEqual(TEXT("Cosmic affix has no next tier"), FGameXXKEquipmentQualityRules::GetNext(EGameXXKAffixTier::Cosmic), EGameXXKAffixTier::Invalid);
+	TestFalse(TEXT("equipment rank eleven is not a known quality"), FGameXXKEquipmentQualityRules::IsValid(static_cast<EGameXXKEquipmentQuality>(11)));
+	TestFalse(TEXT("affix rank eleven is not a known tier"), FGameXXKEquipmentQualityRules::IsValid(static_cast<EGameXXKAffixTier>(11)));
+	TestEqual(TEXT("equipment rank eleven converts to Invalid"), FGameXXKEquipmentQualityRules::EquipmentQualityFromRank(11), EGameXXKEquipmentQuality::Invalid);
+	TestEqual(TEXT("affix rank eleven converts to Invalid"), FGameXXKEquipmentQualityRules::AffixTierFromRank(11), EGameXXKAffixTier::Invalid);
+
 	const TArray<FGameXXKEquipmentDefinition>& Packages = FGameXXKEquipmentCatalog::GetPackageDefinitions();
 	TestEqual(TEXT("six combat sets plus Starter across six slots produce exactly 42 package definitions"), Packages.Num(), 42);
 	TSet<FName> AllPackageIds;
