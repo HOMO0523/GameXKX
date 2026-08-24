@@ -17,6 +17,7 @@
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
+#include "GameXXKTrainingRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -490,6 +491,35 @@ namespace
 			State.Inventory.Add(SandId, State.EquipmentCollection.RefinementSand);
 		}
 		State.EquipmentCollection.RefinementSand = FMath::Max(0, State.Inventory.FindRef(SandId));
+	}
+
+	bool MigrateLegacyTrainingChestStacks(FGameXXKRuntimeState& State, FString& OutError)
+	{
+		const FName NormalId = UGameXXKMVPRules::ItemTrainingNormalChest();
+		const FName AdvancedId = UGameXXKMVPRules::ItemTrainingAdvancedChest();
+		const int64 NormalCount = static_cast<int64>(State.Inventory.FindRef(NormalId))
+			+ State.DesktopInventory.WarehouseItems.FindRef(NormalId);
+		const int64 AdvancedCount = static_cast<int64>(State.Inventory.FindRef(AdvancedId))
+			+ State.DesktopInventory.WarehouseItems.FindRef(AdvancedId);
+		if (NormalCount < 0 || AdvancedCount < 0 || NormalCount > MAX_int32 || AdvancedCount > MAX_int32)
+		{
+			OutError = TEXT("Legacy Training chest count is invalid.");
+			return false;
+		}
+		FName StageId = State.Training.CurrentTravelStageId;
+		if (StageId.IsNone()) StageId = State.Training.SelectedStageId;
+		if (StageId.IsNone()) StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+		for (int32 Index = 0; Index < static_cast<int32>(NormalCount); ++Index)
+			if (!FGameXXKTrainingRules::AppendChestToken(State.Training, EGameXXKTrainingRewardTier::NormalChest, StageId, State.PlayerLevel, &OutError)) return false;
+		for (int32 Index = 0; Index < static_cast<int32>(AdvancedCount); ++Index)
+			if (!FGameXXKTrainingRules::AppendChestToken(State.Training, EGameXXKTrainingRewardTier::AdvancedChest, StageId, State.PlayerLevel, &OutError)) return false;
+		State.Inventory.Remove(NormalId);
+		State.Inventory.Remove(AdvancedId);
+		State.DesktopInventory.WarehouseItems.Remove(NormalId);
+		State.DesktopInventory.WarehouseItems.Remove(AdvancedId);
+		State.DesktopInventory.LockedItemIds.Remove(NormalId);
+		State.DesktopInventory.LockedItemIds.Remove(AdvancedId);
+		return FGameXXKDesktopInventoryRules::Normalize(State, &OutError);
 	}
 
 	void MigrateInventoryCategories(FGameXXKRuntimeState& State)
@@ -1206,7 +1236,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
 		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
-			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress))
+			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
+			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1233,7 +1264,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
 		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
-			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress))
+			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
+			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1412,6 +1444,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
 		|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
+		|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, MigrationError)
 		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
@@ -1476,6 +1509,10 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		return false;
 	}
 	if (!FGameXXKEquipmentToolRules::ValidateProgress(State.ToolProgress, &OutError))
+	{
+		return false;
+	}
+	if (!FGameXXKTrainingRules::ValidateChestTokens(State.Training, &OutError))
 	{
 		return false;
 	}

@@ -276,6 +276,8 @@
 	static constexpr const TCHAR* TruthTopToolbarAlwaysOnTopOffTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTopOffGray.T_TrainingTopToolbarAlwaysOnTopOffGray");
 	static constexpr const TCHAR* TravelHeroAtlasTexturePath = TEXT("/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_1K/T_TrainingHeroWalkLeft_1K.T_TrainingHeroWalkLeft_1K");
 	static constexpr const TCHAR* TravelBackgroundTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background");
+	static constexpr const TCHAR* TrainingNormalChestTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingNormalChest.T_Item_TrainingNormalChest");
+	static constexpr const TCHAR* TrainingAdvancedChestTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingAdvancedChest.T_Item_TrainingAdvancedChest");
 	static constexpr const TCHAR* TravelBackgroundFallbackTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Map.T_TownPsd_Background_Map");
 	static constexpr const TCHAR* TravelHeroFallbackTexturePaths[] = {
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
@@ -2683,6 +2685,38 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		*FormatCooldown(Progress.TravelNormalChestCooldownRemainingSeconds),
 		*FormatCooldown(Progress.TravelAdvancedChestCooldownRemainingSeconds));
 	Strip->SetToolTipText(FText::FromString(RewardTooltip));
+	const int32 NormalChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::NormalChest) : 0;
+	const int32 AdvancedChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::AdvancedChest) : 0;
+	const struct FChestButtonSpec
+	{
+		const TCHAR* Name;
+		const TCHAR* TexturePath;
+		int32 ActionId;
+		int32 Count;
+		const TCHAR* Label;
+		float Y;
+	} ChestButtons[] = {
+		{TEXT("TrainingNormalChestButton"), TrainingNormalChestTexturePath, 600, NormalChestCount, TEXT("普通历练宝箱"), 49.0f},
+		{TEXT("TrainingAdvancedChestButton"), TrainingAdvancedChestTexturePath, 601, AdvancedChestCount, TEXT("高级历练宝箱"), 116.0f},
+	};
+	for (const FChestButtonSpec& Spec : ChestButtons)
+	{
+		UGameXXKDesktopTrainingActionButton* ChestButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(), Spec.Name);
+		ChestButton->Configure(this, Spec.ActionId);
+		ChestButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, FVector2D(58.0f, 58.0f)));
+		ChestButton->SetBackgroundColor(FLinearColor::White);
+		ChestButton->SetContent(MakeIconLabelContent(
+			WidgetTree,
+			Spec.TexturePath,
+			FVector2D(48.0f, 48.0f),
+			FText::FromString(FString::Printf(TEXT("×%d"), Spec.Count))));
+		ChestButton->SetIsEnabled(Spec.Count > 0);
+		ChestButton->SetToolTipText(FText::FromString(FString::Printf(
+			TEXT("%s ×%d\n左键开启1个；右键开启全部"), Spec.Label, Spec.Count)));
+		AddCanvas(RootCanvas, ChestButton, FVector2D(1284.0f, Spec.Y), FVector2D(58.0f, 58.0f));
+		ActionButtons.Add(ChestButton);
+	}
 	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("TravelRetryButton"));
@@ -2691,7 +2725,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	RetryButton->SetBackgroundColor(FLinearColor::White);
 	RetryButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
 	RetryButton->SetToolTipText(FText::FromString(TEXT("关闭时阵亡会回退到前一关；1-1 失败仍重试 1-1。")));
-	AddCanvas(RootCanvas, RetryButton, FVector2D(1223.0f, 150.0f), FVector2D(104.0f, 45.0f));
+	AddCanvas(RootCanvas, RetryButton, FVector2D(1168.0f, 150.0f), FVector2D(104.0f, 45.0f));
 	ActionButtons.Add(RetryButton);
 	UpdateTravelVisuals();
 }
@@ -5249,6 +5283,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			OpenBackpack();
 		}
 		break;
+	case 600:
+	case 601:
+		if (Subsystem)
+		{
+			FGameXXKTrainingChestOpenResult Result;
+			const EGameXXKTrainingRewardTier Tier = ActionId == 600
+				? EGameXXKTrainingRewardTier::NormalChest : EGameXXKTrainingRewardTier::AdvancedChest;
+			if (Subsystem->OpenOneTrainingChest(Tier, Result))
+			{
+				SetNotice(FText::FromString(FString::Printf(TEXT("已开启 1 个宝箱：装备 %d 件，道具 %d 类"), Result.EquipmentInstanceIds.Num(), Result.ItemDeltas.Num())));
+				RefreshLayout();
+			}
+			else SetNotice(Result.Message);
+		}
+		break;
 	case 310:
 		ActiveToolCombineKind = ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment
 			? EGameXXKToolCombineKind::Gem : EGameXXKToolCombineKind::Equipment;
@@ -5356,6 +5405,22 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionRightClicked(const int3
 	if (!Subsystem)
 	{
 		return false;
+	}
+	if (ActionId == 600 || ActionId == 601)
+	{
+		FGameXXKTrainingChestOpenResult Result;
+		const EGameXXKTrainingRewardTier Tier = ActionId == 600
+			? EGameXXKTrainingRewardTier::NormalChest : EGameXXKTrainingRewardTier::AdvancedChest;
+		const bool bSucceeded = Subsystem->OpenAllTrainingChests(Tier, Result);
+		SetNotice(bSucceeded
+			? FText::FromString(FString::Printf(TEXT("已开启 %d 个宝箱：装备 %d 件，道具 %d 类%s"),
+				Result.OpenedCount,
+				Result.EquipmentInstanceIds.Num(),
+				Result.ItemDeltas.Num(),
+				Result.Error == EGameXXKTrainingChestOpenError::BackpackFull ? TEXT("；背包已满，剩余宝箱保留") : TEXT("")))
+			: Result.Message);
+		if (bSucceeded) RefreshLayout();
+		return bSucceeded;
 	}
 	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
 	{

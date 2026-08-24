@@ -369,7 +369,12 @@ bool FGameXXKTrainingRewardCooldownMigrationTest::RunTest(const FString& Paramet
 		Migrated.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds,
 		0);
 
-	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
+	UGameXXKMVPSubsystem* CurrentFixture = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("current cooldown fixture starts with a saveable party"), CurrentFixture && CurrentFixture->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(CurrentFixture->GetRuntimeStateCopy());
 	CurrentSave.RuntimeState.Training.TravelNormalChestCooldownRemainingSeconds =
 		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds;
 	CurrentSave.RuntimeState.Training.TravelAdvancedChestCooldownRemainingSeconds =
@@ -957,7 +962,7 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 	State.Training.ChallengeRewardSeed = GuaranteedSeed;
 
 	TestTrue(TEXT("travel chest inventory bridge starts a cleared stage"), Subsystem->StartTrainingTravel(StageTwo));
-	const int32 NormalChestBefore = UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemTrainingNormalChest());
+	const int32 NormalChestBefore = FGameXXKTrainingRules::CountChestTokens(State.Training, EGameXXKTrainingRewardTier::NormalChest);
 	FGameXXKTrainingReward Reward;
 	bool bEncounterCompleted = false;
 	bool bStageCompleted = false;
@@ -974,12 +979,14 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 	TestTrue(TEXT("travel chest inventory bridge settles an encounter"), bEncounterCompleted);
 	TestTrue(TEXT("travel chest inventory bridge reports the normal chest"), Reward.bChestRolled);
 	TestEqual(TEXT("travel chest inventory bridge reports the canonical item"), Reward.ChestItemId, UGameXXKMVPRules::ItemTrainingNormalChest());
-	TestEqual(TEXT("travel chest inventory bridge writes one normal chest to inventory"),
-		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemTrainingNormalChest()),
+	TestEqual(TEXT("travel chest bridge appends one normal token"),
+		FGameXXKTrainingRules::CountChestTokens(Subsystem->GetRuntimeState().Training, EGameXXKTrainingRewardTier::NormalChest),
 		NormalChestBefore + 1);
-	TestEqual(TEXT("normal Travel chest settlement starts the four-minute cooldown"),
+	TestEqual(TEXT("normal Travel chest settlement starts the two-minute cooldown"),
 		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds,
 		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds);
+	TestEqual(TEXT("online chest never enters legacy inventory"),
+		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemTrainingNormalChest()), 0);
 	bool bCooldownEncounterCompleted = false;
 	bool bCooldownStageCompleted = false;
 	bool bCooldownDefeated = false;
@@ -998,8 +1005,8 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 	FGameXXKSaveMigrationReport MigrationReport;
 	TestTrue(TEXT("travel chest inventory save round-trip succeeds"),
 		FGameXXKSaveMigration::MigrateToCurrent(SaveState, RoundTrip, MigrationReport));
-	TestEqual(TEXT("travel chest inventory survives save round-trip"),
-		UGameXXKMVPRules::GetItemCount(RoundTrip.RuntimeState, UGameXXKMVPRules::ItemTrainingNormalChest()),
+	TestEqual(TEXT("travel chest token survives save round-trip"),
+		FGameXXKTrainingRules::CountChestTokens(RoundTrip.RuntimeState.Training, EGameXXKTrainingRewardTier::NormalChest),
 		NormalChestBefore + 1);
 	return true;
 }

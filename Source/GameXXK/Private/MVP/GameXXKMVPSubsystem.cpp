@@ -14,6 +14,7 @@
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRouteSettlementRules.h"
+#include "GameXXKTrainingChestRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -48,14 +49,26 @@ namespace
 
 	static bool ApplyTrainingRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingReward& Reward)
 	{
-		State.PlayerGold = FMath::Max(0, State.PlayerGold + Reward.Gold);
-		State.PlayerXP = FMath::Max(0, State.PlayerXP + Reward.Experience);
+		FGameXXKRuntimeState Candidate = State;
+		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
+		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + Reward.Experience);
 		if (!Reward.bChestRolled)
 		{
+			State = MoveTemp(Candidate);
 			return true;
 		}
-		return !Reward.ChestItemId.IsNone()
-			&& UGameXXKMVPRules::AddItem(State, Reward.ChestItemId, 1);
+		FName StageId = Candidate.Training.ActiveChallengeStageId;
+		if (StageId.IsNone()) StageId = Candidate.Training.CurrentTravelStageId;
+		if (StageId.IsNone()) StageId = Candidate.Training.SelectedStageId;
+		FString Error;
+		if (!FGameXXKTrainingRules::AppendChestToken(
+			Candidate.Training,
+			Reward.ChestTier,
+			StageId,
+			Candidate.PlayerLevel,
+			&Error)) return false;
+		State = MoveTemp(Candidate);
+		return true;
 	}
 
 	static bool BuildTrainingTravelParty(
@@ -141,11 +154,17 @@ namespace
 		return OutParty.Num() == 3;
 	}
 
-	static bool AddTrainingChestCount(FGameXXKRuntimeState& State, const FName ChestItemId, const int32 Count)
+	static bool AddTrainingChestCount(
+		FGameXXKRuntimeState& State,
+		const EGameXXKTrainingRewardTier Tier,
+		const int32 Count)
 	{
+		FName StageId = State.Training.CurrentTravelStageId;
+		if (StageId.IsNone()) StageId = State.Training.SelectedStageId;
+		FString Error;
 		for (int32 Index = 0; Index < FMath::Max(0, Count); ++Index)
 		{
-			if (!UGameXXKMVPRules::AddItem(State, ChestItemId, 1))
+			if (!FGameXXKTrainingRules::AppendChestToken(State.Training, Tier, StageId, State.PlayerLevel, &Error))
 			{
 				return false;
 			}
@@ -1692,12 +1711,12 @@ bool UGameXXKMVPSubsystem::ApplyTrainingOfflineRewardToRuntime(
 	Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
 	Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + Reward.Experience);
 	if (!AddTrainingChestCount(
-		Candidate,
-		UGameXXKMVPRules::ItemTrainingNormalChest(),
-		Reward.NormalChestCount)
+			Candidate,
+			EGameXXKTrainingRewardTier::NormalChest,
+			Reward.NormalChestCount)
 		|| !AddTrainingChestCount(
 			Candidate,
-			UGameXXKMVPRules::ItemTrainingAdvancedChest(),
+			EGameXXKTrainingRewardTier::AdvancedChest,
 			Reward.AdvancedChestCount))
 	{
 		return false;
@@ -3077,6 +3096,33 @@ bool UGameXXKMVPSubsystem::ExecuteToolSocket(
 	}
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	if (!FGameXXKEquipmentToolRules::SocketGem(Candidate, Request, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+int32 UGameXXKMVPSubsystem::GetTrainingChestCount(const EGameXXKTrainingRewardTier Tier) const
+{
+	return FGameXXKTrainingRules::CountChestTokens(RuntimeState.Training, Tier);
+}
+
+bool UGameXXKMVPSubsystem::OpenOneTrainingChest(
+	const EGameXXKTrainingRewardTier Tier,
+	FGameXXKTrainingChestOpenResult& OutResult)
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingChestRules::OpenOne(Candidate, Tier, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
+	const EGameXXKTrainingRewardTier Tier,
+	FGameXXKTrainingChestOpenResult& OutResult)
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTrainingChestRules::OpenAll(Candidate, Tier, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;

@@ -301,6 +301,24 @@ struct GAMEXXK_API FGameXXKTrainingStageDefinition
 };
 
 USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingChestToken
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKTrainingRewardTier Tier = EGameXXKTrainingRewardTier::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceStageId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SourceItemLevel = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 AcquisitionOrdinal = 0;
+};
+
+USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingProgress
 {
 	GENERATED_BODY()
@@ -385,6 +403,15 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	/** UTC Unix seconds at the last persisted Travel update; zero means no offline baseline yet. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int64 TravelLastUpdatedUnixSeconds = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKTrainingChestToken> OwnedChestTokens;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextChestAcquisitionOrdinal = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 NextChestOpenOrdinal = 0;
 };
 
 /** Pure, deterministic rules for Training.  UI and save code call this API instead of mutating flags ad hoc. */
@@ -393,10 +420,19 @@ class GAMEXXK_API FGameXXKTrainingRules final
 public:
 	static constexpr int32 StagesPerDifficulty = 9;
 	/** Travel chest cooldowns are durable gameplay constants, expressed in logical seconds. */
-	static constexpr int32 TravelNormalChestCooldownSeconds = 4 * 60;
-	static constexpr int32 TravelAdvancedChestCooldownSeconds = 6 * 60;
+	static constexpr int32 TravelNormalChestCooldownSeconds = 2 * 60;
+	static constexpr int32 TravelAdvancedChestCooldownSeconds = 3 * 60;
 	/** Closed-window simulation is intentionally bounded to one day per collect. */
 	static constexpr int32 MaxTravelOfflineSimulationSeconds = 24 * 60 * 60;
+
+	static bool AppendChestToken(
+		FGameXXKTrainingProgress& InOutProgress,
+		EGameXXKTrainingRewardTier Tier,
+		FName SourceStageId,
+		int32 SourceItemLevel,
+		FString* OutError = nullptr);
+	static int32 CountChestTokens(const FGameXXKTrainingProgress& Progress, EGameXXKTrainingRewardTier Tier);
+	static bool ValidateChestTokens(const FGameXXKTrainingProgress& Progress, FString* OutError = nullptr);
 
 	static FName DifficultyId(EGameXXKTrainingDifficulty Difficulty);
 	static FName MakeStageId(EGameXXKTrainingDifficulty Difficulty, int32 StageNumber);

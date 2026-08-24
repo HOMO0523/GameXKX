@@ -215,8 +215,6 @@ namespace GameXXKMVP
 			ItemHealingPowderName,
 			ItemEnhancementStoneName,
 			ItemQingshanRouteSealName,
-			ItemTrainingNormalChestName,
-			ItemTrainingAdvancedChestName,
 			ItemLingzhiPowderName,
 			ItemQingxinTeaName,
 			ItemCraneSachetName,

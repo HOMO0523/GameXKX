@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEquipmentToolRules.h"
+#include "GameXXKTrainingChestRules.h"
 #include "GameXXKMVPRules.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Misc/Optional.h"
@@ -274,6 +275,13 @@ public:
 	bool ExecuteToolBeginReforge(const FGameXXKToolInputRef& Input, int32 AffixIndex, FGameXXKEquipmentTransactionResult& OutResult);
 	bool ExecuteToolResolveReforge(bool bAccept, FGameXXKEquipmentTransactionResult& OutResult);
 	bool ExecuteToolSocket(const FGameXXKSocketGemRequest& Request, FGameXXKEquipmentTransactionResult& OutResult);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	int32 GetTrainingChestCount(EGameXXKTrainingRewardTier Tier) const;
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool OpenOneTrainingChest(EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool OpenAllTrainingChests(EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Per-subsystem deterministic disk-write seam used only by automation rollback tests. */

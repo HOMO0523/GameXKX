@@ -288,6 +288,73 @@ namespace
 	}
 }
 
+bool FGameXXKTrainingRules::AppendChestToken(
+	FGameXXKTrainingProgress& InOutProgress,
+	const EGameXXKTrainingRewardTier Tier,
+	const FName SourceStageId,
+	const int32 SourceItemLevel,
+	FString* OutError)
+{
+	if (OutError) OutError->Reset();
+	FGameXXKTrainingStageDefinition Stage;
+	if ((Tier != EGameXXKTrainingRewardTier::NormalChest && Tier != EGameXXKTrainingRewardTier::AdvancedChest)
+		|| SourceStageId.IsNone()
+		|| !TryGetStageDefinition(SourceStageId, Stage)
+		|| InOutProgress.NextChestAcquisitionOrdinal == MAX_int32)
+	{
+		if (OutError) *OutError = TEXT("Training chest token source is invalid.");
+		return false;
+	}
+	FGameXXKTrainingProgress Candidate = InOutProgress;
+	FGameXXKTrainingChestToken Token;
+	Token.Tier = Tier;
+	Token.SourceStageId = SourceStageId;
+	Token.SourceItemLevel = FMath::Clamp(SourceItemLevel, 1, 100);
+	Token.AcquisitionOrdinal = ++Candidate.NextChestAcquisitionOrdinal;
+	Candidate.OwnedChestTokens.Add(Token);
+	if (!ValidateChestTokens(Candidate, OutError)) return false;
+	InOutProgress = MoveTemp(Candidate);
+	return true;
+}
+
+int32 FGameXXKTrainingRules::CountChestTokens(
+	const FGameXXKTrainingProgress& Progress,
+	const EGameXXKTrainingRewardTier Tier)
+{
+	int32 Count = 0;
+	for (const FGameXXKTrainingChestToken& Token : Progress.OwnedChestTokens)
+	{
+		if (Token.Tier == Tier) ++Count;
+	}
+	return Count;
+}
+
+bool FGameXXKTrainingRules::ValidateChestTokens(const FGameXXKTrainingProgress& Progress, FString* OutError)
+{
+	if (OutError) OutError->Reset();
+	if (Progress.NextChestAcquisitionOrdinal < 0 || Progress.NextChestOpenOrdinal < 0)
+	{
+		if (OutError) *OutError = TEXT("Training chest ordinals cannot be negative.");
+		return false;
+	}
+	int32 PreviousOrdinal = 0;
+	for (const FGameXXKTrainingChestToken& Token : Progress.OwnedChestTokens)
+	{
+		FGameXXKTrainingStageDefinition Stage;
+		if ((Token.Tier != EGameXXKTrainingRewardTier::NormalChest && Token.Tier != EGameXXKTrainingRewardTier::AdvancedChest)
+			|| Token.SourceItemLevel < 1 || Token.SourceItemLevel > 100
+			|| Token.AcquisitionOrdinal <= PreviousOrdinal
+			|| Token.AcquisitionOrdinal > Progress.NextChestAcquisitionOrdinal
+			|| !TryGetStageDefinition(Token.SourceStageId, Stage))
+		{
+			if (OutError) *OutError = TEXT("Training chest token ledger is invalid.");
+			return false;
+		}
+		PreviousOrdinal = Token.AcquisitionOrdinal;
+	}
+	return true;
+}
+
 FName FGameXXKTrainingRules::DifficultyId(const EGameXXKTrainingDifficulty Difficulty)
 {
 	return FName(*FString::Printf(TEXT("Training.Difficulty.%s"), DifficultyLabel(Difficulty)));
