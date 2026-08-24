@@ -669,7 +669,7 @@ bool FGameXXKEquipmentRulesValidationRollbackTest::RunTest(const FString& Parame
 	ExpectInvalid(TEXT("enhancement above ten is rejected"), BadEnhancement);
 
 	FGameXXKEquipmentCollectionState BadLevel = Base;
-	BadLevel.EquipmentInstances[0].ItemLevel = 21;
+	BadLevel.EquipmentInstances[0].ItemLevel = 101;
 	ExpectInvalid(TEXT("item level above twenty is rejected"), BadLevel);
 
 	FGameXXKEquipmentCollectionState BadPending = Base;

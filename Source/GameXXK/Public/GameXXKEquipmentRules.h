@@ -48,7 +48,12 @@ enum class EGameXXKEquipmentTransactionError : uint8
 	NoPendingReforge,
 	PendingReforgeStale,
 	RouteLocked,
-	SaveMigrationFailed
+	SaveMigrationFailed,
+	InputLocked,
+	InputStale,
+	InvalidRecipe,
+	InvalidSocket,
+	InventoryFull
 };
 
 USTRUCT(BlueprintType)
@@ -76,6 +81,12 @@ struct GAMEXXK_API FGameXXKEquipmentTransactionResult
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 RefinementSandDelta = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int64 ToolExperienceDelta = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName OutputEntryId = NAME_None;
 };
 
 /** Complete equipment projection before route/relic/terrain/status modifiers. */
@@ -182,7 +193,7 @@ class GAMEXXK_API FGameXXKEquipmentRules final
 public:
 	static constexpr int32 WarehouseCapacity = 200;
 	static constexpr int32 MaxEnhancementLevel = 10;
-	static constexpr int32 MaxItemLevel = 20;
+	static constexpr int32 MaxItemLevel = 100;
 
 	static FName HeroCharacterId();
 	static FName GetLoadoutSlotInstanceId(

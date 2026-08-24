@@ -31,6 +31,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKEquipmentToolRules.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -3757,6 +3758,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		AddCanvas(RootCanvas, ToolButton, FVector2D(1385.0f + ToolIndex * 52.0f, 84.0f), FVector2D(47.0f, 40.0f));
 		ActionButtons.Add(ToolButton);
 	}
+	if (Subsystem)
+	{
+		const FGameXXKToolProgress& Progress = Subsystem->GetToolProgress();
+		const int64 Next = FGameXXKEquipmentToolRules::GetExperienceForNextLevel(Progress.Level);
+		const FString ProgressText = Progress.Level >= FGameXXKEquipmentToolRules::MaximumLevel
+			? FString::Printf(TEXT("工具 Lv.%d  MAX"), Progress.Level)
+			: FString::Printf(TEXT("工具 Lv.%d  %lld/%lld"), Progress.Level, Progress.Experience, Next);
+		UTextBlock* ProgressLabel = MakeText(WidgetTree, FText::FromString(ProgressText), 15, Ink);
+		AddCanvas(RootCanvas, ProgressLabel, FVector2D(1390.0f, 126.0f), FVector2D(245.0f, 22.0f));
+	}
 	UBorder* GridFrame = MakePanel(WidgetTree, PanelAlt, TEXT("ToolInputGridFrame"));
 	AddCanvas(RootCanvas, GridFrame, FVector2D(1385.0f, 148.0f), FVector2D(260.0f, 360.0f));
 	for (int32 SlotIndex = 0; SlotIndex < ToolSlotCount; ++SlotIndex)
@@ -3812,18 +3823,56 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	AddCanvas(RootCanvas, Confirm, FVector2D(1430.0f, 450.0f), FVector2D(170.0f, 54.0f));
 	ActionButtons.Add(Confirm);
 
+	auto AddToolControl = [&](const TCHAR* Name, const int32 ActionId, const FString& Label, const float X, const float Y, const float Width)
+	{
+		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(), Name);
+		Button->Configure(this, ActionId);
+		Button->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(Width, 34.0f), FMargin(0.08f)));
+		Button->SetBackgroundColor(FLinearColor::White);
+		Button->SetContent(MakeButtonText(WidgetTree, FText::FromString(Label), 13, Ink));
+		AddCanvas(RootCanvas, Button, FVector2D(X, Y), FVector2D(Width, 34.0f));
+		ActionButtons.Add(Button);
+	};
+	if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
+	{
+		AddToolControl(TEXT("ToolCombineKind"), 310,
+			ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment ? TEXT("装备") : TEXT("宝石"), 1388.0f, 510.0f, 72.0f);
+		AddToolControl(TEXT("ToolAutoFill"), 311, TEXT("自动放置"), 1464.0f, 510.0f, 86.0f);
+		const bool bIncludeWarehouse = Subsystem && Subsystem->GetRuntimeState().DesktopInventory.bToolAutoFillIncludesWarehouse;
+		AddToolControl(TEXT("ToolIncludeWarehouse"), 312, bIncludeWarehouse ? TEXT("仓库✓") : TEXT("仓库×"), 1554.0f, 510.0f, 82.0f);
+	}
+	if (Subsystem)
+	{
+		const FGameXXKToolProgress& Progress = Subsystem->GetToolProgress();
+		AddToolControl(TEXT("ToolCraftLevelDown"), 313, TEXT("-"), 1400.0f, 550.0f, 36.0f);
+		UTextBlock* CraftLevel = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("合成等级 %d"), Progress.SelectedCraftingLevel)), 14, Ink);
+		AddCanvas(RootCanvas, CraftLevel, FVector2D(1442.0f, 556.0f), FVector2D(130.0f, 24.0f));
+		AddToolControl(TEXT("ToolCraftLevelUp"), 314, TEXT("+"), 1590.0f, 550.0f, 36.0f);
+		if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge && Subsystem->GetRuntimeState().EquipmentCollection.PendingReforge.bActive)
+		{
+			AddToolControl(TEXT("ToolReforgeAccept"), 315, TEXT("采用新词缀"), 1400.0f, 590.0f, 108.0f);
+			AddToolControl(TEXT("ToolReforgeKeep"), 316, TEXT("保留原词缀"), 1516.0f, 590.0f, 108.0f);
+		}
+		if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
+		{
+			AddToolControl(TEXT("ToolSocketPrevious"), 317, TEXT("孔位-"), 1400.0f, 590.0f, 72.0f);
+			AddToolControl(TEXT("ToolSocketNext"), 318, FString::Printf(TEXT("孔位%d +"), SelectedToolSocketIndex + 1), 1480.0f, 590.0f, 96.0f);
+		}
+	}
+
 	FString Description;
 	switch (ActiveToolMode)
 	{
 	case EGameXXKDesktopToolMode::Dismantle: Description = TEXT("分解：放入 1~9 件装备，确认后获得金币与材料。" ); break;
 	case EGameXXKDesktopToolMode::Enhance: Description = TEXT("强化：仅放入 1 件装备，消耗背包强化石。" ); break;
-	case EGameXXKDesktopToolMode::Reforge: Description = TEXT("洗炼：仅放入 1 件带词条装备，消耗背包洗炼材料。" ); break;
-	case EGameXXKDesktopToolMode::Combine: Description = TEXT("合成配方尚未接入；确认不会消耗任何物品。" ); break;
-	case EGameXXKDesktopToolMode::Socket: Description = TEXT("镶嵌为后续内容；确认不会消耗任何物品。" ); break;
+	case EGameXXKDesktopToolMode::Reforge: Description = TEXT("洗炼：生成付费预览后，明确选择采用或保留。" ); break;
+	case EGameXXKDesktopToolMode::Combine: Description = TEXT("合成：9件同品质装备，或9个同类同品质宝石。" ); break;
+	case EGameXXKDesktopToolMode::Socket: Description = TEXT("镶嵌：格0放装备、格1放宝石；替换会返还原宝石。" ); break;
 	default: break;
 	}
 	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(Description), 16, Ink);
-	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 540.0f), FVector2D(232.0f, 130.0f));
+	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 635.0f), FVector2D(232.0f, 110.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
@@ -4410,6 +4459,37 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnToolSlot(const int32 S
 		}
 		return bCancelled;
 	}
+	const bool bEquipment = CarriedEntry.Payload.Entry.bEquipmentInstance;
+	bool bShapeValid = true;
+	if (ActiveToolMode == EGameXXKDesktopToolMode::Dismantle)
+	{
+		bShapeValid = bEquipment;
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
+	{
+		bShapeValid = ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment
+			? bEquipment : (!bEquipment && SlotIndex == 0);
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Enhance || ActiveToolMode == EGameXXKDesktopToolMode::Reforge)
+	{
+		bShapeValid = bEquipment && SlotIndex == 0;
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
+	{
+		bShapeValid = (SlotIndex == 0 && bEquipment) || (SlotIndex == 1 && !bEquipment);
+	}
+	if (!bShapeValid)
+	{
+		SetNotice(FText::FromString(TEXT("该道具不符合当前工具格要求；仍吸附在鼠标上")));
+		return false;
+	}
+	if ((ActiveToolMode == EGameXXKDesktopToolMode::Dismantle || ActiveToolMode == EGameXXKDesktopToolMode::Combine)
+		&& ResolveMVPSubsystem()
+		&& FGameXXKDesktopInventoryRules::IsEntryLocked(ResolveMVPSubsystem()->GetRuntimeState(), CarriedEntry.Payload.Entry))
+	{
+		SetNotice(FText::FromString(TEXT("锁定道具不能用于分解或合成")));
+		return false;
+	}
 
 	const FDesktopToolEntry DisplacedEntry = ToolSlots[SlotIndex];
 	if (CarriedEntry.bOriginIsTool)
@@ -4766,72 +4846,82 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 			return false;
 		}
 	}
-	TArray<FName> EquipmentInstanceIds;
+	TArray<FGameXXKToolInputRef> Inputs;
 	for (const FDesktopToolEntry& Entry : ToolSlots)
 	{
 		if (!Entry.IsValid())
 		{
 			continue;
 		}
-		if (!Entry.Entry.bEquipmentInstance)
-		{
-			SetNotice(FText::FromString(TEXT("当前工具模式只接受装备实例")));
-			return false;
-		}
-		EquipmentInstanceIds.Add(Entry.Entry.EntryId);
+		FGameXXKToolInputRef& Input = Inputs.AddDefaulted_GetRef();
+		Input.Container = Entry.AuthoritativeContainer;
+		Input.SlotIndex = Entry.AuthoritativeSlotIndex;
+		Input.ExpectedEntry = Entry.Entry;
 	}
-	if (EquipmentInstanceIds.IsEmpty())
+	if (Inputs.IsEmpty())
 	{
 		SetNotice(FText::FromString(TEXT("请先放入道具")));
-		return false;
-	}
-	if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
-	{
-		SetNotice(FText::FromString(TEXT("合成配方尚未接入；未消耗任何道具")));
-		return false;
-	}
-	if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
-	{
-		SetNotice(FText::FromString(TEXT("镶嵌为后续内容；未消耗任何道具")));
 		return false;
 	}
 
 	FGameXXKEquipmentTransactionResult Result;
 	bool bSucceeded = false;
+	bool bKeepReservations = false;
 	if (ActiveToolMode == EGameXXKDesktopToolMode::Dismantle)
 	{
-		bSucceeded = Subsystem->DismantleEquipmentInstances(EquipmentInstanceIds, true, Result);
+		bSucceeded = Subsystem->ExecuteToolDismantle(Inputs, true, Result);
 	}
-	else if (EquipmentInstanceIds.Num() != 1)
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
+	{
+		bSucceeded = Subsystem->ExecuteToolCombine(ActiveToolCombineKind, Inputs, Result);
+	}
+	else if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
+	{
+		if (!ToolSlots.IsValidIndex(0) || !ToolSlots.IsValidIndex(1)
+			|| !ToolSlots[0].IsValid() || !ToolSlots[1].IsValid()
+			|| !ToolSlots[0].Entry.bEquipmentInstance || ToolSlots[1].Entry.bEquipmentInstance)
+		{
+			SetNotice(FText::FromString(TEXT("镶嵌要求格0为装备、格1为宝石")));
+			return false;
+		}
+		FGameXXKSocketGemRequest Request;
+		Request.EquipmentInput = {ToolSlots[0].AuthoritativeContainer, ToolSlots[0].AuthoritativeSlotIndex, ToolSlots[0].Entry};
+		Request.GemInput = {ToolSlots[1].AuthoritativeContainer, ToolSlots[1].AuthoritativeSlotIndex, ToolSlots[1].Entry};
+		Request.SocketIndex = SelectedToolSocketIndex;
+		bSucceeded = Subsystem->ExecuteToolSocket(Request, Result);
+	}
+	else if (Inputs.Num() != 1 || !Inputs[0].ExpectedEntry.bEquipmentInstance)
 	{
 		SetNotice(FText::FromString(TEXT("强化和洗炼一次只能放入一件装备")));
 		return false;
 	}
 	else if (ActiveToolMode == EGameXXKDesktopToolMode::Enhance)
 	{
-		bSucceeded = Subsystem->EnhanceEquipmentInstance(EquipmentInstanceIds[0], Result);
+		bSucceeded = Subsystem->ExecuteToolEnhance(Inputs[0], Result);
 	}
 	else if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge)
 	{
-		bSucceeded = Subsystem->BeginEquipmentReforge(EquipmentInstanceIds[0], 0, Result);
-		if (bSucceeded)
+		if (Subsystem->GetRuntimeState().EquipmentCollection.PendingReforge.bActive)
 		{
-			FGameXXKEquipmentTransactionResult ResolveResult;
-			bSucceeded = Subsystem->ResolveEquipmentReforge(true, ResolveResult);
-			if (!bSucceeded)
-			{
-				Result = ResolveResult;
-			}
+			SetNotice(FText::FromString(TEXT("请选择采用新词缀或保留原词缀")));
+			return false;
 		}
+		bSucceeded = Subsystem->ExecuteToolBeginReforge(Inputs[0], 0, Result);
+		bKeepReservations = bSucceeded;
 	}
 	if (!bSucceeded)
 	{
 		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行失败；未改变输入道具")) : Result.Message);
 		return false;
 	}
-	ReturnAllToolEntries();
+	if (!bKeepReservations)
+	{
+		ReturnAllToolEntries();
+	}
 	Subsystem->NormalizeDesktopInventoryState();
-	SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行完成")) : Result.Message);
+	SetNotice(bKeepReservations
+		? FText::FromString(TEXT("洗炼预览已生成，请选择采用或保留"))
+		: (Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行完成")) : Result.Message));
 	RefreshLayout();
 	return true;
 }
@@ -5158,6 +5248,90 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		{
 			OpenBackpack();
 		}
+		break;
+	case 310:
+		ActiveToolCombineKind = ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment
+			? EGameXXKToolCombineKind::Gem : EGameXXKToolCombineKind::Equipment;
+		ReturnAllToolEntries();
+		RefreshLayout();
+		break;
+	case 311:
+		if (Subsystem)
+		{
+			TArray<FGameXXKToolInputRef> Inputs;
+			FString Error;
+			if (!Subsystem->BuildToolCombineAutoFill(
+				ActiveToolCombineKind,
+				Subsystem->GetRuntimeState().DesktopInventory.bToolAutoFillIncludesWarehouse,
+				Inputs,
+				&Error))
+			{
+				SetNotice(FText::FromString(Error));
+				break;
+			}
+			ReturnAllToolEntries();
+			for (int32 Index = 0; Index < Inputs.Num() && ToolSlots.IsValidIndex(Index); ++Index)
+			{
+				const FGameXXKToolInputRef& Input = Inputs[Index];
+				FDesktopToolEntry& Entry = ToolSlots[Index];
+				Entry.Entry = Input.ExpectedEntry;
+				Entry.AuthoritativeContainer = Input.Container;
+				Entry.AuthoritativeSlotIndex = Input.SlotIndex;
+				Entry.Quantity = Input.ExpectedEntry.bEquipmentInstance ? 1
+					: (Input.Container == EGameXXKDesktopItemContainer::Warehouse
+						? Subsystem->GetRuntimeState().DesktopInventory.WarehouseItems.FindRef(Input.ExpectedEntry.EntryId)
+						: Subsystem->GetRuntimeState().Inventory.FindRef(Input.ExpectedEntry.EntryId));
+				Entry.IconPath = Input.ExpectedEntry.bEquipmentInstance
+					? EquipmentIconTexturePath(Subsystem->GetRuntimeState().EquipmentCollection, Input.ExpectedEntry.EntryId)
+					: InventoryItemIconTexturePath(Input.ExpectedEntry.EntryId);
+			}
+			SetNotice(FText::FromString(TEXT("已按最低可合成品质自动放置")));
+			RefreshLayout();
+		}
+		break;
+	case 312:
+		if (Subsystem)
+		{
+			Subsystem->SetToolAutoFillIncludesWarehouse(!Subsystem->GetRuntimeState().DesktopInventory.bToolAutoFillIncludesWarehouse);
+			RefreshLayout();
+		}
+		break;
+	case 313:
+	case 314:
+		if (Subsystem)
+		{
+			const int32 Delta = ActionId == 313 ? -1 : 1;
+			Subsystem->SetToolSelectedCraftingLevel(Subsystem->GetToolProgress().SelectedCraftingLevel + Delta);
+			RefreshLayout();
+		}
+		break;
+	case 315:
+	case 316:
+		if (Subsystem)
+		{
+			FGameXXKEquipmentTransactionResult Result;
+			if (Subsystem->ExecuteToolResolveReforge(ActionId == 315, Result))
+			{
+				ReturnAllToolEntries();
+				SetNotice(FText::FromString(ActionId == 315 ? TEXT("已采用新词缀") : TEXT("已保留原词缀")));
+				RefreshLayout();
+			}
+			else SetNotice(Result.Message);
+		}
+		break;
+	case 317:
+		SelectedToolSocketIndex = FMath::Max(0, SelectedToolSocketIndex - 1);
+		RefreshLayout();
+		break;
+	case 318:
+		if (Subsystem && ToolSlots.IsValidIndex(0) && ToolSlots[0].Entry.bEquipmentInstance)
+		{
+			const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(
+				Subsystem->GetRuntimeState().EquipmentCollection, ToolSlots[0].Entry.EntryId);
+			const int32 Capacity = Instance ? Instance->SocketedGems.Num() : 1;
+			SelectedToolSocketIndex = FMath::Min(FMath::Max(0, Capacity - 1), SelectedToolSocketIndex + 1);
+		}
+		RefreshLayout();
 		break;
 	case 309:
 		ConfirmToolForTest();

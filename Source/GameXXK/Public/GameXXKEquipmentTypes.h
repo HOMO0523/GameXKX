@@ -343,6 +343,9 @@ struct GAMEXXK_API FGameXXKPendingEquipmentReforge
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 ConsumedReforgeOrdinal = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bToolExperienceAwarded = false;
 };
 
 USTRUCT(BlueprintType)

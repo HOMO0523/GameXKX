@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/Button.h"
 #include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKEquipmentToolRules.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMVPWidgetBase.h"
@@ -643,6 +644,8 @@ private:
 	EGameXXKDesktopTrainingCenterPage ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	EGameXXKDesktopTrainingRightPanel RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	EGameXXKDesktopToolMode ActiveToolMode = EGameXXKDesktopToolMode::Dismantle;
+	EGameXXKToolCombineKind ActiveToolCombineKind = EGameXXKToolCombineKind::Equipment;
+	int32 SelectedToolSocketIndex = 0;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
 	EGameXXKDesktopTrainingCharacterRoster ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	FName SelectedStageId = NAME_None;

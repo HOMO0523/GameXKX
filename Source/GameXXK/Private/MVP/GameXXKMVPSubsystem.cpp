@@ -9,6 +9,7 @@
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKEquipmentToolRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -774,6 +775,28 @@ namespace
 		OutResult = FGameXXKEquipmentTransactionResult();
 		OutResult.Error = Error;
 		OutResult.Message = FGameXXKEquipmentRules::GetTransactionErrorMessage(Error);
+	}
+
+	static bool BuildToolRefForEquipment(
+		const FGameXXKRuntimeState& State,
+		const FName InstanceId,
+		FGameXXKToolInputRef& OutRef)
+	{
+		const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::MakeEquipmentEntry(InstanceId);
+		for (const EGameXXKDesktopItemContainer Container : {
+			EGameXXKDesktopItemContainer::Backpack,
+			EGameXXKDesktopItemContainer::Warehouse})
+		{
+			const int32 Slot = FGameXXKDesktopInventoryRules::FindEntrySlot(State, Container, Entry);
+			if (Slot != INDEX_NONE)
+			{
+				OutRef.Container = Container;
+				OutRef.SlotIndex = Slot;
+				OutRef.ExpectedEntry = Entry;
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static bool IsValidPostReplacementActiveCompanion(
@@ -2865,15 +2888,13 @@ bool UGameXXKMVPSubsystem::EnhanceEquipmentInstance(const FName InstanceId, FGam
 		return false;
 	}
 
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	if (!FGameXXKEquipmentEconomyRules::EnhanceInstance(Candidate, InstanceId, OutResult))
+	FGameXXKToolInputRef Input;
+	if (!BuildToolRefForEquipment(RuntimeState, InstanceId, Input))
 	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::ItemNotInWarehouse);
 		return false;
 	}
-
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+	return ExecuteToolEnhance(Input, OutResult);
 }
 
 bool UGameXXKMVPSubsystem::BeginEquipmentReforge(
@@ -2887,15 +2908,13 @@ bool UGameXXKMVPSubsystem::BeginEquipmentReforge(
 		return false;
 	}
 
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	if (!FGameXXKEquipmentEconomyRules::BeginReforge(Candidate, InstanceId, AffixIndex, OutResult))
+	FGameXXKToolInputRef Input;
+	if (!BuildToolRefForEquipment(RuntimeState, InstanceId, Input))
 	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::ItemNotInWarehouse);
 		return false;
 	}
-
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+	return ExecuteToolBeginReforge(Input, AffixIndex, OutResult);
 }
 
 bool UGameXXKMVPSubsystem::ResolveEquipmentReforge(const bool bAccept, FGameXXKEquipmentTransactionResult& OutResult)
@@ -2906,15 +2925,7 @@ bool UGameXXKMVPSubsystem::ResolveEquipmentReforge(const bool bAccept, FGameXXKE
 		return false;
 	}
 
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	if (!FGameXXKEquipmentEconomyRules::ResolvePendingReforge(Candidate, bAccept, OutResult))
-	{
-		return false;
-	}
-
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+	return ExecuteToolResolveReforge(bAccept, OutResult);
 }
 
 bool UGameXXKMVPSubsystem::DismantleEquipmentInstances(
@@ -2928,12 +2939,144 @@ bool UGameXXKMVPSubsystem::DismantleEquipmentInstances(
 		return false;
 	}
 
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	if (!FGameXXKEquipmentEconomyRules::DismantleBatch(Candidate, InstanceIds, bConfirmedProtected, OutResult))
+	TArray<FGameXXKToolInputRef> Inputs;
+	for (const FName InstanceId : InstanceIds)
+	{
+		FGameXXKToolInputRef Input;
+		if (!BuildToolRefForEquipment(RuntimeState, InstanceId, Input))
+		{
+			SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::ItemNotInWarehouse);
+			return false;
+		}
+		Inputs.Add(Input);
+	}
+	return ExecuteToolDismantle(Inputs, bConfirmedProtected, OutResult);
+}
+
+bool UGameXXKMVPSubsystem::SetToolSelectedCraftingLevel(const int32 Level)
+{
+	if (Level < FGameXXKEquipmentToolRules::MinimumLevel || Level > RuntimeState.ToolProgress.Level)
 	{
 		return false;
 	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.ToolProgress.SelectedCraftingLevel = Level;
+	return true;
+}
 
+bool UGameXXKMVPSubsystem::SetToolAutoFillIncludesWarehouse(const bool bIncludeWarehouse)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = bIncludeWarehouse;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolDismantle(
+	const TArray<FGameXXKToolInputRef>& Inputs,
+	const bool bConfirmed,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::Dismantle(Candidate, Inputs, bConfirmed, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolCombine(
+	const EGameXXKToolCombineKind Kind,
+	const TArray<FGameXXKToolInputRef>& Inputs,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	const bool bSucceeded = Kind == EGameXXKToolCombineKind::Equipment
+		? FGameXXKEquipmentToolRules::CombineEquipment(Candidate, Inputs, OutResult)
+		: (Inputs.Num() == 1 && FGameXXKEquipmentToolRules::CombineGem(Candidate, Inputs[0], OutResult));
+	if (!bSucceeded) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::BuildToolCombineAutoFill(
+	const EGameXXKToolCombineKind Kind,
+	const bool bIncludeWarehouse,
+	TArray<FGameXXKToolInputRef>& OutInputs,
+	FString* OutError) const
+{
+	return FGameXXKEquipmentToolRules::BuildCombineAutoFill(RuntimeState, Kind, bIncludeWarehouse, OutInputs, OutError);
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolEnhance(
+	const FGameXXKToolInputRef& Input,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::Enhance(Candidate, Input, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolBeginReforge(
+	const FGameXXKToolInputRef& Input,
+	const int32 AffixIndex,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::BeginReforge(Candidate, Input, AffixIndex, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolResolveReforge(
+	const bool bAccept,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::ResolveReforge(Candidate, bAccept, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolSocket(
+	const FGameXXKSocketGemRequest& Request,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::SocketGem(Candidate, Request, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;

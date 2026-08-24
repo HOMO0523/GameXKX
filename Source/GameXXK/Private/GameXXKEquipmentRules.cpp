@@ -841,7 +841,8 @@ bool FGameXXKEquipmentRules::ValidateCollectionState(
 			|| Pending.OriginalAffix.Magnitude != 0 || Pending.OriginalAffix.Unit != EGameXXKEquipmentMagnitudeUnit::Invalid
 			|| !Pending.CandidateAffix.AffixId.IsNone() || Pending.CandidateAffix.Tier != EGameXXKAffixTier::Invalid
 			|| Pending.CandidateAffix.Magnitude != 0 || Pending.CandidateAffix.Unit != EGameXXKEquipmentMagnitudeUnit::Invalid
-			|| Pending.PaidRefinementSand != 0 || Pending.ConsumedReforgeOrdinal != INDEX_NONE)
+			|| Pending.PaidRefinementSand != 0 || Pending.ConsumedReforgeOrdinal != INDEX_NONE
+			|| Pending.bToolExperienceAwarded)
 		{
 			SetError(OutError, TEXT("Inactive pending reforge data must be empty."));
 			return false;
@@ -1602,6 +1603,11 @@ FText FGameXXKEquipmentRules::GetTransactionErrorMessage(const EGameXXKEquipment
 	case EGameXXKEquipmentTransactionError::PendingReforgeStale: return NSLOCTEXT("GameXXKEquipment", "PendingReforgeStale", "洗炼结果已失效");
 	case EGameXXKEquipmentTransactionError::RouteLocked: return NSLOCTEXT("GameXXKEquipment", "RouteLocked", "路线进行中无法更换伙伴");
 	case EGameXXKEquipmentTransactionError::SaveMigrationFailed: return NSLOCTEXT("GameXXKEquipment", "SaveMigrationFailed", "存档迁移失败，已保留原存档。");
+	case EGameXXKEquipmentTransactionError::InputLocked: return NSLOCTEXT("GameXXKEquipment", "InputLocked", "锁定物品不能用于该操作");
+	case EGameXXKEquipmentTransactionError::InputStale: return NSLOCTEXT("GameXXKEquipment", "InputStale", "工具输入来源已变化");
+	case EGameXXKEquipmentTransactionError::InvalidRecipe: return NSLOCTEXT("GameXXKEquipment", "InvalidRecipe", "工具配方不满足要求");
+	case EGameXXKEquipmentTransactionError::InvalidSocket: return NSLOCTEXT("GameXXKEquipment", "InvalidSocket", "镶嵌孔或宝石无效");
+	case EGameXXKEquipmentTransactionError::InventoryFull: return NSLOCTEXT("GameXXKEquipment", "InventoryFull", "背包或仓库空间不足");
 	default: return NSLOCTEXT("GameXXKEquipment", "UnknownError", "装备操作失败");
 	}
 }

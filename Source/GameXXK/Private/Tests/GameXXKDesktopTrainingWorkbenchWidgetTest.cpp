@@ -1382,9 +1382,13 @@ bool FGameXXKDesktopTrainingItemCarryStateMachineTest::RunTest(const FString& Pa
 
 	Widget->HandleActionClicked(3);
 	TestTrue(TEXT("only tools are open for right-click routing"), Widget->IsToolsPanelActiveForTest() && !Widget->IsWarehousePanelOpenForTest());
-	TestTrue(TEXT("right click routes backpack item into first empty tool slot"), Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(StoneId)));
-	TestEqual(TEXT("tool reservation does not consume source item"), Subsystem->GetItemCount(StoneId), 10);
-	TestEqual(TEXT("first tool slot records the reserved item"), Widget->GetToolSlotItemIdForTest(0), StoneId);
+	const int32 ToolEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	const FGameXXKDesktopInventoryEntryKey ToolEquipmentEntry = FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(), EGameXXKDesktopItemContainer::Backpack, ToolEquipmentSlot);
+	TestTrue(TEXT("right click routes compatible equipment into first empty tool slot"), Widget->RightClickBackpackSlotForTest(ToolEquipmentSlot));
+	TestEqual(TEXT("tool reservation does not consume the equipment instance"),
+		FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection, ToolEquipmentEntry.EntryId) != nullptr, true);
+	TestEqual(TEXT("first tool slot records the reserved equipment"), Widget->GetToolSlotItemIdForTest(0), ToolEquipmentEntry.EntryId);
 
 	Widget->HandleActionClicked(0);
 	TestTrue(TEXT("warehouse and tools can be visible together"), Widget->IsWarehousePanelOpenForTest() && Widget->IsToolsPanelActiveForTest());
@@ -1396,14 +1400,14 @@ bool FGameXXKDesktopTrainingItemCarryStateMachineTest::RunTest(const FString& Pa
 
 	TestTrue(TEXT("combine mode can be selected"), Widget->SetToolModeForTest(EGameXXKDesktopToolMode::Combine));
 	const int32 StonesBeforeUnavailableConfirm = Subsystem->GetItemCount(StoneId);
-	TestFalse(TEXT("unimplemented combine recipe rejects confirm"), Widget->ConfirmToolForTest());
-	TestEqual(TEXT("unimplemented combine never consumes material"), Subsystem->GetItemCount(StoneId), StonesBeforeUnavailableConfirm);
-	TestEqual(TEXT("failed combine keeps tool input in place"), Widget->GetToolSlotItemIdForTest(0), StoneId);
+	TestFalse(TEXT("incomplete nine-piece combine recipe rejects confirm"), Widget->ConfirmToolForTest());
+	TestEqual(TEXT("incomplete combine never consumes material"), Subsystem->GetItemCount(StoneId), StonesBeforeUnavailableConfirm);
+	TestEqual(TEXT("failed combine keeps tool input in place"), Widget->GetToolSlotItemIdForTest(0), ToolEquipmentEntry.EntryId);
 
 	TestTrue(TEXT("picking the reserved tool item attaches it to cursor"), Widget->PickUpToolSlotForTest(0));
 	TestTrue(TEXT("tool source is now carried"), Widget->IsCarryingItemForTest());
 	TestTrue(TEXT("right-click cancellation returns it to its tool cell"), Widget->CancelCarriedItemForTest());
-	TestEqual(TEXT("cancel restores original tool slot"), Widget->GetToolSlotItemIdForTest(0), StoneId);
+	TestEqual(TEXT("cancel restores original tool slot"), Widget->GetToolSlotItemIdForTest(0), ToolEquipmentEntry.EntryId);
 	return true;
 }
 
@@ -3033,8 +3037,9 @@ bool FGameXXKDesktopTrainingItemCarryBoundaryRollbackTest::RunTest(const FString
 
 	Widget->HandleActionClicked(3);
 	TestTrue(TEXT("tools panel opens independently"), Widget->IsToolsPanelActiveForTest());
+	const int32 BoundaryToolEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
 	TestTrue(TEXT("tool reservation is created"),
-		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(StoneId)));
+		Widget->RightClickBackpackSlotForTest(BoundaryToolEquipmentSlot));
 	TestTrue(TEXT("reserved tool input can be picked up"), Widget->PickUpToolSlotForTest(0));
 	Widget->HandleActionClicked(4);
 	TestFalse(TEXT("switching right-side page cancels cursor payload"), Widget->IsCarryingItemForTest());

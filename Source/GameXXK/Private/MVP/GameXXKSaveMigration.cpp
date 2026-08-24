@@ -9,6 +9,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKEquipmentToolRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -1204,7 +1205,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		FGameXXKSaveState Candidate = Source;
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
-		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError))
+		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1230,7 +1232,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
-		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError))
+		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1408,6 +1411,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
+		|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
@@ -1468,6 +1472,10 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		}
 	}
 	if (!FGameXXKDesktopInventoryRules::Validate(State, &OutError))
+	{
+		return false;
+	}
+	if (!FGameXXKEquipmentToolRules::ValidateProgress(State.ToolProgress, &OutError))
 	{
 		return false;
 	}

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKEquipmentToolRules.h"
 #include "GameXXKMVPRules.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Misc/Optional.h"
@@ -262,6 +263,17 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Equipment")
 	bool DismantleEquipmentInstances(const TArray<FName>& InstanceIds, bool bConfirmedProtected, FGameXXKEquipmentTransactionResult& OutResult);
+
+	const FGameXXKToolProgress& GetToolProgress() const { return RuntimeState.ToolProgress; }
+	bool SetToolSelectedCraftingLevel(int32 Level);
+	bool SetToolAutoFillIncludesWarehouse(bool bIncludeWarehouse);
+	bool ExecuteToolDismantle(const TArray<FGameXXKToolInputRef>& Inputs, bool bConfirmed, FGameXXKEquipmentTransactionResult& OutResult);
+	bool ExecuteToolCombine(EGameXXKToolCombineKind Kind, const TArray<FGameXXKToolInputRef>& Inputs, FGameXXKEquipmentTransactionResult& OutResult);
+	bool BuildToolCombineAutoFill(EGameXXKToolCombineKind Kind, bool bIncludeWarehouse, TArray<FGameXXKToolInputRef>& OutInputs, FString* OutError = nullptr) const;
+	bool ExecuteToolEnhance(const FGameXXKToolInputRef& Input, FGameXXKEquipmentTransactionResult& OutResult);
+	bool ExecuteToolBeginReforge(const FGameXXKToolInputRef& Input, int32 AffixIndex, FGameXXKEquipmentTransactionResult& OutResult);
+	bool ExecuteToolResolveReforge(bool bAccept, FGameXXKEquipmentTransactionResult& OutResult);
+	bool ExecuteToolSocket(const FGameXXKSocketGemRequest& Request, FGameXXKEquipmentTransactionResult& OutResult);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Per-subsystem deterministic disk-write seam used only by automation rollback tests. */

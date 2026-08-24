@@ -418,6 +418,21 @@ struct FGameXXKDesktopInventoryState
 	bool bToolAutoFillIncludesWarehouse = true;
 };
 
+USTRUCT(BlueprintType)
+struct FGameXXKToolProgress
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Level = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int64 Experience = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SelectedCraftingLevel = 1;
+};
+
 /**
  * Save-authoritative snapshot of the generated-route state immediately before
  * the player commits a Battle, Elite, or Boss node. It intentionally excludes
@@ -590,6 +605,9 @@ struct FGameXXKRuntimeState
 	/** v21+ physical backpack/warehouse partition used by the pure-2D desktop shell. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKDesktopInventoryState DesktopInventory;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKToolProgress ToolProgress;
 
 	// Enhancement levels belong to the item definition and are only applied while that item is equipped.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
