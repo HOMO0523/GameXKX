@@ -283,3 +283,60 @@ Keep the pointer over the idle strip and observe at least two cooldown decrement
 - [ ] **Step 4: Leave PIE ready for user acceptance**
 
 Keep PIE running on `L_DesktopTrainingHUD` with Backpack expanded and Attributes visible so the user can directly inspect the live experience bar, chest counts, and hover countdown.
+
+### Task 4: Remove the Blade-Finish automatic-battle deadlock
+
+**Files:**
+- Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
+- Verify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerCoreRuntimeTest.cpp`
+- Verify: `Source/GameXXK/Private/Tests/GameXXKCardBattleBoardWidgetTest.cpp`
+
+- [ ] **Step 1: Reproduce the exact failure with existing tests**
+
+Run the already-authored Lie Feng round-boundary contract and the generic automatic end-turn contract:
+
+```powershell
+python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests "GameXXK.Data.PartnerCards.BladeRuntime.LieFengFinishReturnsNextRoundFirstActive,GameXXK.Integration.CardBattle.BoardAutoPlayEndsTurn"
+```
+
+Expected red result before the fix: Lie Feng cannot end player phase and reports `trigger_round=2` while `phase=Player` and `round=1`. The live PIE debug state must show the same error, zero shared energy, no pending choice, and no presentation queue.
+
+- [ ] **Step 2: Defer future-round state installation until the phase boundary is valid**
+
+In `EndPlayerCardPhase`, retain the effective last-Blade definition and source snapshot locally, but do not call `ArmImplementedPartnerBladeFinish` or `ResolvePoJunAfterSuccessfulBladeFinish` before player-side DoT resolution. After player-side DoT/healer resolution and `NewRuntime.Phase = Enemy`, install the deferred Finish/PoJun state, then reset current-round PoJun progress and run final runtime validation.
+
+Terminal Victory/Defeat skips deferred installation and keeps the existing terminal cleanup. Supplemental Finish damage remains before player-side DoT, so only the future-state write timing changes.
+
+- [ ] **Step 3: Run the focused Blade and automatic-board tests**
+
+```powershell
+python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests "GameXXK.Data.PartnerCards.BladeRuntime.LieFengFinishReturnsNextRoundFirstActive,GameXXK.Integration.CardBattle.BoardAutoPlayEndsTurn,GameXXK.Integration.CardBattle.RouteAutoBattleStall"
+```
+
+Expected: all pass; the Blade Finish is valid in Enemy phase with trigger round `current + 1`, and automatic battle advances rather than repeating a failed end-turn request.
+
+- [ ] **Step 4: Verify the production encounter in PIE**
+
+Restart the canonical 2D PIE, enable automatic battle, and observe a round where a Blade card is last and shared energy reaches zero. Confirm the board enters Enemy and then the next Player round without manual input or a persistent `lastError`.
+
+### Task 5: Align Backpack title and deck-card portraits with battle
+
+**Files:**
+- Modify: `Source/GameXXK/Private/UI/GameXXKInventoryWindowWidget.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKFinalInventoryWidgetTest.cpp`
+
+- [ ] **Step 1: Add the six-profession red test**
+
+Open each permanent companion's Deck page and assert `InventoryHeroDeckPortrait_00` uses the matching `T_CardPortrait_Role_*` resource rather than either hero portrait. Assert the named Backpack title text is exactly `背包`.
+
+- [ ] **Step 2: Use battle-equivalent identity fields and resources**
+
+Resolve profession card art from `FGameXXKCardDefinition::Role` (the same field used by BattleBoard), keep the existing NPC-id mapping, and use `/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero` for hero cards. Name the title control `InventoryWindowTitleText`, render `背包` for free inventory, and retain `商铺` for merchant mode.
+
+- [ ] **Step 3: Verify the full FinalInventory group**
+
+```powershell
+python scripts/ai_production_loop.py --run-automation --automation-tests "GameXXK.MVP.UI.FinalInventory"
+```
+
+Expected: every FinalInventory test passes, including all six profession portraits, title, and embedded unequip presentation.

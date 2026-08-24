@@ -488,6 +488,7 @@ private:
 	void CaptureExpandedSessionState();
 	void PreserveEmbeddedSessionForLocalClose();
 	void UpdateTravelVisuals();
+	void RefreshLivePresentation(bool bForce);
 	void EnsureTravelAtlasSession();
 	void RequestTravelCombatAtlases(FName EnemyDefinitionId);
 	TArray<FName> GetTravelCompanionUnitIds() const;
@@ -535,6 +536,57 @@ private:
 	void PreserveEmbeddedSessionForCharacter(FName CharacterId);
 	void EnsureFormationCandidate();
 
+	struct FLivePresentationSnapshot
+	{
+		int32 PlayerGold = 0;
+		int32 PlayerLevel = 0;
+		int32 PlayerExperience = 0;
+		int32 PlayerHealth = 0;
+		int32 PlayerMana = 0;
+		int32 PendingGold = 0;
+		int32 PendingExperience = 0;
+		int32 PendingNormalChests = 0;
+		int32 PendingAdvancedChests = 0;
+		int32 HeldNormalChests = 0;
+		int32 HeldAdvancedChests = 0;
+		int32 NormalChestCooldown = 0;
+		int32 AdvancedChestCooldown = 0;
+		int32 WarehouseOccupancy = 0;
+		int32 WarehousePageCount = 1;
+		int32 ToolLevel = 1;
+		int64 ToolExperience = 0;
+		int32 ToolCraftingLevel = 1;
+		int32 OccupiedToolSlots = 0;
+
+		bool Equals(const FLivePresentationSnapshot& Other) const
+		{
+			return PlayerGold == Other.PlayerGold
+				&& PlayerLevel == Other.PlayerLevel
+				&& PlayerExperience == Other.PlayerExperience
+				&& PlayerHealth == Other.PlayerHealth
+				&& PlayerMana == Other.PlayerMana
+				&& PendingGold == Other.PendingGold
+				&& PendingExperience == Other.PendingExperience
+				&& PendingNormalChests == Other.PendingNormalChests
+				&& PendingAdvancedChests == Other.PendingAdvancedChests
+				&& HeldNormalChests == Other.HeldNormalChests
+				&& HeldAdvancedChests == Other.HeldAdvancedChests
+				&& NormalChestCooldown == Other.NormalChestCooldown
+				&& AdvancedChestCooldown == Other.AdvancedChestCooldown
+				&& WarehouseOccupancy == Other.WarehouseOccupancy
+				&& WarehousePageCount == Other.WarehousePageCount
+				&& ToolLevel == Other.ToolLevel
+				&& ToolExperience == Other.ToolExperience
+				&& ToolCraftingLevel == Other.ToolCraftingLevel
+				&& OccupiedToolSlots == Other.OccupiedToolSlots;
+		}
+	};
+
+	FLivePresentationSnapshot CaptureLivePresentationSnapshot() const;
+	void UpdateTrainingChestPresentation(bool bAdvanced, int32 Count);
+	void UpdateWarehouseNumericPresentation(const FLivePresentationSnapshot& Snapshot);
+	void UpdateToolNumericPresentation(const FLivePresentationSnapshot& Snapshot);
+
 	struct FDesktopToolEntry
 	{
 		FGameXXKDesktopInventoryEntryKey Entry;
@@ -574,6 +626,45 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> NoticeText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BackpackGoldText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> TrainingNormalChestButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> TrainingAdvancedChestButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingNormalChestCountText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingAdvancedChestCountText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> WarehousePageText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> WarehouseFooterText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> WarehousePreviousButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> WarehouseNextButton;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKDesktopTrainingActionButton>> WarehousePageButtons;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ToolProgressText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ToolCraftLevelText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> ToolConfirmButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> CarriedItemImage;
@@ -659,6 +750,9 @@ private:
 	FName FormationCandidateCharacterId = NAME_None;
 	int32 WarehousePageIndex = 0;
 	float TravelAccumulator = 0.0f;
+	float LivePresentationAccumulator = 0.0f;
+	FLivePresentationSnapshot LastLivePresentationSnapshot;
+	bool bHasLivePresentationSnapshot = false;
 	int32 TravelVisualNativeTickCount = 0;
 	FGameXXKTrainingTravelVisualRuntime TravelVisualRuntime;
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);

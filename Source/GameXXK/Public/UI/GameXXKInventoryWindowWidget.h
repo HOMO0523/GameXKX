@@ -188,6 +188,9 @@ public:
 	int32 GetBackpackQuantityAtSlotForDesktopTraining(int32 SlotIndex) const;
 	FString GetBackpackIconPathAtSlotForDesktopTraining(int32 SlotIndex) const;
 
+	/** Refreshes the current visible page from runtime state without rebuilding WidgetTree. */
+	void RefreshVisibleRuntimeValues();
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
 	bool OpenFreeInventory();
 

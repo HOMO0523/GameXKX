@@ -672,8 +672,14 @@
 		const FString& IconTexturePath,
 		const FVector2D& IconSize,
 		const FText& Label,
-		const int32 LabelSize = 11)
+		const int32 LabelSize = 11,
+		const FName LabelName = NAME_None,
+		UTextBlock** OutLabelText = nullptr)
 	{
+		if (OutLabelText)
+		{
+			*OutLabelText = nullptr;
+		}
 		UOverlay* Overlay = Tree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		if (!IconTexturePath.IsEmpty())
 		{
@@ -694,13 +700,17 @@
 		}
 		if (!Label.IsEmpty())
 		{
-			UTextBlock* LabelText = MakeText(Tree, Label, LabelSize, Ink);
+			UTextBlock* LabelText = MakeText(Tree, Label, LabelSize, Ink, LabelName);
 			LabelText->SetJustification(ETextJustify::Center);
 			if (UOverlaySlot* LabelSlot = Overlay->AddChildToOverlay(LabelText))
 			{
 				LabelSlot->SetHorizontalAlignment(HAlign_Fill);
 				LabelSlot->SetVerticalAlignment(VAlign_Bottom);
 				LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 3.0f));
+			}
+			if (OutLabelText)
+			{
+				*OutLabelText = LabelText;
 			}
 		}
 		return Overlay;
@@ -998,6 +1008,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 	UpdateCarriedItemVisualPosition();
 	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
 	TickCollapsedResourceUnload(InDeltaTime);
+	LivePresentationAccumulator += FMath::Max(0.0f, InDeltaTime);
+	if (LivePresentationAccumulator >= 1.0f)
+	{
+		LivePresentationAccumulator = FMath::Fmod(LivePresentationAccumulator, 1.0f);
+		RefreshLivePresentation(false);
+	}
 	const UGameXXKMVPSubsystem* TravelSubsystem = ResolveMVPSubsystem();
 	if (TravelSubsystem)
 	{
@@ -1097,6 +1113,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	bExitConfirmationOpen = false;
 	TravelAccumulator = 0.0f;
+	LivePresentationAccumulator = 0.0f;
 	TravelVisualRuntime.Reset();
 	RefreshLayout();
 	SetVisibility(ESlateVisibility::Visible);
@@ -2135,6 +2152,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 		Subsystem->ResolveTrainingTravelFailure();
 	}
 	TravelVisualRuntime.Synchronize(Subsystem->GetTrainingTravelRuntimeCopy());
+	RefreshLivePresentation(false);
 	return true;
 }
 
@@ -2293,6 +2311,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	TravelHeroHealth = nullptr;
 	TravelCompanionHealthBars.Reset();
 	EmbeddedInventoryWidget = nullptr;
+	BackpackGoldText = nullptr;
+	TrainingNormalChestButton = nullptr;
+	TrainingAdvancedChestButton = nullptr;
+	TrainingNormalChestCountText = nullptr;
+	TrainingAdvancedChestCountText = nullptr;
+	WarehousePageText = nullptr;
+	WarehouseFooterText = nullptr;
+	WarehousePreviousButton = nullptr;
+	WarehouseNextButton = nullptr;
+	WarehousePageButtons.Reset();
+	ToolProgressText = nullptr;
+	ToolCraftLevelText = nullptr;
+	ToolConfirmButton = nullptr;
+	bHasLivePresentationSnapshot = false;
 	CarriedItemImage = nullptr;
 	TravelHeroAtlasTexture = nullptr;
 	TravelBackgroundTexture = nullptr;
@@ -2764,16 +2796,33 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		ChestButton->Configure(this, Spec.ActionId);
 		ChestButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, FVector2D(58.0f, 58.0f)));
 		ChestButton->SetBackgroundColor(FLinearColor::White);
+		UTextBlock* ChestCountText = nullptr;
+		const bool bAdvancedChest = Spec.ActionId == 601;
 		ChestButton->SetContent(MakeIconLabelContent(
 			WidgetTree,
 			Spec.TexturePath,
 			FVector2D(48.0f, 48.0f),
-			FText::FromString(FString::Printf(TEXT("×%d"), Spec.Count))));
+			FText::FromString(FString::Printf(TEXT("×%d"), Spec.Count)),
+			11,
+			bAdvancedChest
+				? FName(TEXT("TrainingAdvancedChestCountText"))
+				: FName(TEXT("TrainingNormalChestCountText")),
+			&ChestCountText));
 		ChestButton->SetIsEnabled(Spec.Count > 0);
 		ChestButton->SetToolTipText(FText::FromString(FString::Printf(
 			TEXT("%s ×%d\n左键开启1个；右键开启全部"), Spec.Label, Spec.Count)));
 		AddCanvas(RootCanvas, ChestButton, FVector2D(1284.0f, Spec.Y), FVector2D(58.0f, 58.0f));
 		ActionButtons.Add(ChestButton);
+		if (bAdvancedChest)
+		{
+			TrainingAdvancedChestButton = ChestButton;
+			TrainingAdvancedChestCountText = ChestCountText;
+		}
+		else
+		{
+			TrainingNormalChestButton = ChestButton;
+			TrainingNormalChestCountText = ChestCountText;
+		}
 	}
 	UGameXXKDesktopTrainingActionButton* RetryButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
@@ -3055,6 +3104,183 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		TravelHeroHealth->SetPercent(HeroHealth);
 		TravelAppliedHeroHealth = HeroHealth;
 	}
+}
+
+UGameXXKDesktopTrainingWorkbenchWidget::FLivePresentationSnapshot
+UGameXXKDesktopTrainingWorkbenchWidget::CaptureLivePresentationSnapshot() const
+{
+	FLivePresentationSnapshot Snapshot;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return Snapshot;
+	}
+
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+	const FGameXXKTrainingOfflineReward Pending = Subsystem->GetPendingTrainingTravelRewardCopy();
+	const FGameXXKToolProgress& ToolProgress = Subsystem->GetToolProgress();
+	Snapshot.PlayerGold = State.PlayerGold;
+	Snapshot.PlayerLevel = State.PlayerLevel;
+	Snapshot.PlayerExperience = State.PlayerXP;
+	Snapshot.PlayerHealth = State.PlayerHP;
+	Snapshot.PlayerMana = State.PlayerMP;
+	Snapshot.PendingGold = Pending.Gold;
+	Snapshot.PendingExperience = Pending.Experience;
+	Snapshot.PendingNormalChests = Pending.NormalChestCount;
+	Snapshot.PendingAdvancedChests = Pending.AdvancedChestCount;
+	Snapshot.HeldNormalChests = Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::NormalChest);
+	Snapshot.HeldAdvancedChests = Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::AdvancedChest);
+	Snapshot.NormalChestCooldown = Progress.TravelNormalChestCooldownRemainingSeconds;
+	Snapshot.AdvancedChestCooldown = Progress.TravelAdvancedChestCooldownRemainingSeconds;
+	Snapshot.WarehouseOccupancy = GetWarehouseOccupancyForTest();
+	Snapshot.WarehousePageCount = GetWarehousePageCountForTest();
+	Snapshot.ToolLevel = ToolProgress.Level;
+	Snapshot.ToolExperience = ToolProgress.Experience;
+	Snapshot.ToolCraftingLevel = ToolProgress.SelectedCraftingLevel;
+	Snapshot.OccupiedToolSlots = GetOccupiedToolSlotCountForTest();
+	return Snapshot;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTrainingChestPresentation(
+	const bool bAdvanced,
+	const int32 Count)
+{
+	const int32 SafeCount = FMath::Max(0, Count);
+	UTextBlock* CountText = bAdvanced
+		? TrainingAdvancedChestCountText.Get()
+		: TrainingNormalChestCountText.Get();
+	UGameXXKDesktopTrainingActionButton* Button = bAdvanced
+		? TrainingAdvancedChestButton.Get()
+		: TrainingNormalChestButton.Get();
+	if (CountText)
+	{
+		CountText->SetText(FText::FromString(FString::Printf(TEXT("×%d"), SafeCount)));
+	}
+	if (Button)
+	{
+		Button->SetIsEnabled(SafeCount > 0);
+		Button->SetToolTipText(FText::FromString(FString::Printf(
+			TEXT("%s ×%d\n左键开启1个；右键开启全部"),
+			bAdvanced ? TEXT("高级历练宝箱") : TEXT("普通历练宝箱"),
+			SafeCount)));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateWarehouseNumericPresentation(
+	const FLivePresentationSnapshot& Snapshot)
+{
+	const int32 PageCount = FMath::Max(1, Snapshot.WarehousePageCount);
+	const int32 PageIndex = FMath::Clamp(WarehousePageIndex, 0, PageCount - 1);
+	if (WarehousePageText)
+	{
+		WarehousePageText->SetText(FText::FromString(FString::Printf(
+			TEXT("第 %d / %d 页 · 每页 %d 格"),
+			PageIndex + 1,
+			PageCount,
+			WarehousePageSize)));
+	}
+	if (WarehouseFooterText)
+	{
+		WarehouseFooterText->SetText(FText::FromString(FString::Printf(
+			TEXT("仓库物品 %d / %d\n不显示角色身份卡"),
+			Snapshot.WarehouseOccupancy,
+			FGameXXKEquipmentRules::WarehouseCapacity)));
+	}
+	if (WarehousePreviousButton)
+	{
+		WarehousePreviousButton->SetIsEnabled(PageIndex > 0);
+	}
+	if (WarehouseNextButton)
+	{
+		WarehouseNextButton->SetIsEnabled(PageIndex + 1 < PageCount);
+	}
+	for (int32 PageButtonIndex = 0; PageButtonIndex < WarehousePageButtons.Num(); ++PageButtonIndex)
+	{
+		if (UGameXXKDesktopTrainingActionButton* PageButton = WarehousePageButtons[PageButtonIndex])
+		{
+			PageButton->SetIsEnabled(PageButtonIndex == 3 || PageButtonIndex < PageCount);
+		}
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateToolNumericPresentation(
+	const FLivePresentationSnapshot& Snapshot)
+{
+	if (ToolProgressText)
+	{
+		const int64 NextExperience = FGameXXKEquipmentToolRules::GetExperienceForNextLevel(Snapshot.ToolLevel);
+		ToolProgressText->SetText(FText::FromString(
+			Snapshot.ToolLevel >= FGameXXKEquipmentToolRules::MaximumLevel
+				? FString::Printf(TEXT("工具 Lv.%d  MAX"), Snapshot.ToolLevel)
+				: FString::Printf(
+					TEXT("工具 Lv.%d  %lld/%lld"),
+					Snapshot.ToolLevel,
+					Snapshot.ToolExperience,
+					NextExperience)));
+	}
+	if (ToolCraftLevelText)
+	{
+		ToolCraftLevelText->SetText(FText::FromString(FString::Printf(
+			TEXT("合成等级 %d"),
+			Snapshot.ToolCraftingLevel)));
+	}
+	if (ToolConfirmButton)
+	{
+		ToolConfirmButton->SetIsEnabled(Snapshot.OccupiedToolSlots > 0);
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLivePresentation(const bool bForce)
+{
+	if (GetVisibility() == ESlateVisibility::Collapsed
+		|| GetVisibility() == ESlateVisibility::Hidden)
+	{
+		return;
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return;
+	}
+
+	const FLivePresentationSnapshot Snapshot = CaptureLivePresentationSnapshot();
+	const bool bOuterValuesChanged = bForce
+		|| !bHasLivePresentationSnapshot
+		|| !LastLivePresentationSnapshot.Equals(Snapshot);
+	if (bOuterValuesChanged)
+	{
+		if (BackpackGoldText)
+		{
+			BackpackGoldText->SetText(FText::FromString(FString::FromInt(Snapshot.PlayerGold)));
+		}
+		if (TravelVisualViewport)
+		{
+			const auto FormatCooldown = [](const int32 RemainingSeconds)
+			{
+				const int32 SafeSeconds = FMath::Max(0, RemainingSeconds);
+				return FString::Printf(TEXT("%02d:%02d"), SafeSeconds / 60, SafeSeconds % 60);
+			};
+			TravelVisualViewport->SetToolTipText(FText::FromString(FString::Printf(
+				TEXT("待领取：%d 金币 / %d 经验 / 普通箱 %d / 精英箱 %d\n普通箱冷却 %s · 精英箱冷却 %s"),
+				Snapshot.PendingGold,
+				Snapshot.PendingExperience,
+				Snapshot.PendingNormalChests,
+				Snapshot.PendingAdvancedChests,
+				*FormatCooldown(Snapshot.NormalChestCooldown),
+				*FormatCooldown(Snapshot.AdvancedChestCooldown))));
+		}
+		UpdateTrainingChestPresentation(false, Snapshot.HeldNormalChests);
+		UpdateTrainingChestPresentation(true, Snapshot.HeldAdvancedChests);
+		UpdateWarehouseNumericPresentation(Snapshot);
+		UpdateToolNumericPresentation(Snapshot);
+	}
+	if (EmbeddedInventoryWidget)
+	{
+		EmbeddedInventoryWidget->RefreshVisibleRuntimeValues();
+	}
+	LastLivePresentationSnapshot = Snapshot;
+	bHasLivePresentationSnapshot = true;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::EnsureTravelAtlasSession()
@@ -3374,6 +3600,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		PageTab->SetIsEnabled(PageTabIndex == 3 || PageTabIndex < GetWarehousePageCountForTest());
 		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 78.0f, 84.0f), FVector2D(62.0f, 38.0f));
 		ActionButtons.Add(PageTab);
+		WarehousePageButtons.Add(PageTab);
 	}
 	for (int32 SlotIndex = 0; SlotIndex < WarehousePageSize; ++SlotIndex)
 	{
@@ -3440,28 +3667,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		ActionButtons.Add(SlotButton);
 	}
 	const int32 WarehouseCount = GetWarehouseOccupancyForTest();
-	UTextBlock* PageText = MakeText(WidgetTree, FText::FromString(FString::Printf(
+	WarehousePageText = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("第 %d / %d 页 · 每页 %d 格"),
 		GetWarehousePageIndexForTest() + 1,
 		GetWarehousePageCountForTest(),
-		WarehousePageSize)), 15, Ink);
-	AddCanvas(RootCanvas, PageText, FVector2D(30.0f, 806.0f), FVector2D(300.0f, 24.0f));
-	UGameXXKDesktopTrainingActionButton* Previous = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Previous->Configure(this, 40);
-	Previous->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
-	Previous->SetBackgroundColor(FLinearColor::White);
-	Previous->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
-	Previous->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
-	AddCanvas(RootCanvas, Previous, FVector2D(30.0f, 842.0f), FVector2D(94.0f, 40.0f));
-	ActionButtons.Add(Previous);
-	UGameXXKDesktopTrainingActionButton* Next = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Next->Configure(this, 41);
-	Next->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
-	Next->SetBackgroundColor(FLinearColor::White);
-	Next->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
-	Next->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
-	AddCanvas(RootCanvas, Next, FVector2D(132.0f, 842.0f), FVector2D(94.0f, 40.0f));
-	ActionButtons.Add(Next);
+		WarehousePageSize)), 15, Ink, TEXT("WarehousePageSummaryText"));
+	AddCanvas(RootCanvas, WarehousePageText.Get(), FVector2D(30.0f, 806.0f), FVector2D(300.0f, 24.0f));
+	WarehousePreviousButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("WarehousePreviousButton"));
+	WarehousePreviousButton->Configure(this, 40);
+	WarehousePreviousButton->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
+	WarehousePreviousButton->SetBackgroundColor(FLinearColor::White);
+	WarehousePreviousButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
+	WarehousePreviousButton->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
+	AddCanvas(RootCanvas, WarehousePreviousButton.Get(), FVector2D(30.0f, 842.0f), FVector2D(94.0f, 40.0f));
+	ActionButtons.Add(WarehousePreviousButton);
+	WarehouseNextButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("WarehouseNextButton"));
+	WarehouseNextButton->Configure(this, 41);
+	WarehouseNextButton->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
+	WarehouseNextButton->SetBackgroundColor(FLinearColor::White);
+	WarehouseNextButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
+	WarehouseNextButton->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
+	AddCanvas(RootCanvas, WarehouseNextButton.Get(), FVector2D(132.0f, 842.0f), FVector2D(94.0f, 40.0f));
+	ActionButtons.Add(WarehouseNextButton);
 	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
 	Sort->Configure(this, 5);
 	Sort->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(104.0f, 40.0f), FMargin(0.08f)));
@@ -3470,11 +3699,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
 	AddCanvas(RootCanvas, Sort, FVector2D(236.0f, 842.0f), FVector2D(104.0f, 40.0f));
 	ActionButtons.Add(Sort);
-	UTextBlock* Footer = MakeText(WidgetTree, FText::FromString(FString::Printf(
+	WarehouseFooterText = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("仓库物品 %d / %d\n不显示角色身份卡"),
 		WarehouseCount,
-		FGameXXKEquipmentRules::WarehouseCapacity)), 16, Ink);
-	AddCanvas(RootCanvas, Footer, FVector2D(30.0f, 888.0f), FVector2D(310.0f, 32.0f));
+		FGameXXKEquipmentRules::WarehouseCapacity)), 16, Ink, TEXT("WarehouseFooterText"));
+	AddCanvas(RootCanvas, WarehouseFooterText.Get(), FVector2D(30.0f, 888.0f), FVector2D(310.0f, 32.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
@@ -3523,8 +3752,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	GoldIcon->SetBrush(MakeTextureBrush(IngotTexturePath, FVector2D(30.0f, 30.0f)));
 	AddCanvas(RootCanvas, GoldIcon, FVector2D(1098.0f, 263.0f), FVector2D(30.0f, 30.0f));
 	const FString GoldLabel = RuntimeState ? FString::Printf(TEXT("%d"), RuntimeState->PlayerGold) : TEXT("--");
-	UTextBlock* GoldText = MakeText(WidgetTree, FText::FromString(GoldLabel), 18, Ink);
-	AddCanvas(RootCanvas, GoldText, FVector2D(1132.0f, 264.0f), FVector2D(100.0f, 30.0f));
+	BackpackGoldText = MakeText(
+		WidgetTree,
+		FText::FromString(GoldLabel),
+		18,
+		Ink,
+		TEXT("BackpackGoldText"));
+	AddCanvas(RootCanvas, BackpackGoldText.Get(), FVector2D(1132.0f, 264.0f), FVector2D(100.0f, 30.0f));
 
 	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
@@ -3862,16 +4096,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		AddCanvas(RootCanvas, ToolButton, FVector2D(1385.0f + ToolIndex * 52.0f, 84.0f), FVector2D(47.0f, 40.0f));
 		ActionButtons.Add(ToolButton);
 	}
-	if (Subsystem)
-	{
-		const FGameXXKToolProgress& Progress = Subsystem->GetToolProgress();
-		const int64 Next = FGameXXKEquipmentToolRules::GetExperienceForNextLevel(Progress.Level);
-		const FString ProgressText = Progress.Level >= FGameXXKEquipmentToolRules::MaximumLevel
-			? FString::Printf(TEXT("工具 Lv.%d  MAX"), Progress.Level)
-			: FString::Printf(TEXT("工具 Lv.%d  %lld/%lld"), Progress.Level, Progress.Experience, Next);
-		UTextBlock* ProgressLabel = MakeText(WidgetTree, FText::FromString(ProgressText), 15, Ink);
-		AddCanvas(RootCanvas, ProgressLabel, FVector2D(1390.0f, 126.0f), FVector2D(245.0f, 22.0f));
-	}
+	const FGameXXKToolProgress Progress = Subsystem
+		? Subsystem->GetToolProgress()
+		: FGameXXKToolProgress();
+	const int64 NextToolExperience = FGameXXKEquipmentToolRules::GetExperienceForNextLevel(Progress.Level);
+	const FString ProgressLabelText = Progress.Level >= FGameXXKEquipmentToolRules::MaximumLevel
+		? FString::Printf(TEXT("工具 Lv.%d  MAX"), Progress.Level)
+		: FString::Printf(TEXT("工具 Lv.%d  %lld/%lld"), Progress.Level, Progress.Experience, NextToolExperience);
+	ToolProgressText = MakeText(
+		WidgetTree,
+		FText::FromString(ProgressLabelText),
+		15,
+		Ink,
+		TEXT("ToolProgressText"));
+	AddCanvas(RootCanvas, ToolProgressText.Get(), FVector2D(1390.0f, 126.0f), FVector2D(245.0f, 22.0f));
 	UBorder* GridFrame = MakePanel(WidgetTree, PanelAlt, TEXT("ToolInputGridFrame"));
 	AddCanvas(RootCanvas, GridFrame, FVector2D(1385.0f, 148.0f), FVector2D(260.0f, 360.0f));
 	for (int32 SlotIndex = 0; SlotIndex < ToolSlotCount; ++SlotIndex)
@@ -3916,16 +4154,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 			FVector2D(64.0f, 64.0f));
 		ActionButtons.Add(ToolSlotButton);
 	}
-	UGameXXKDesktopTrainingActionButton* Confirm = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+	ToolConfirmButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("ToolConfirmButton"));
-	Confirm->Configure(this, 309);
-	Confirm->SetStyle(MakeTextureButtonStyle(CharacterTabSelectedTexturePath, FVector2D(170.0f, 54.0f), FMargin(0.08f)));
-	Confirm->SetBackgroundColor(FLinearColor::White);
-	Confirm->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("确定")), 20, Ink));
-	Confirm->SetIsEnabled(GetOccupiedToolSlotCountForTest() > 0);
-	AddCanvas(RootCanvas, Confirm, FVector2D(1430.0f, 450.0f), FVector2D(170.0f, 54.0f));
-	ActionButtons.Add(Confirm);
+	ToolConfirmButton->Configure(this, 309);
+	ToolConfirmButton->SetStyle(MakeTextureButtonStyle(CharacterTabSelectedTexturePath, FVector2D(170.0f, 54.0f), FMargin(0.08f)));
+	ToolConfirmButton->SetBackgroundColor(FLinearColor::White);
+	ToolConfirmButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("确定")), 20, Ink));
+	ToolConfirmButton->SetIsEnabled(GetOccupiedToolSlotCountForTest() > 0);
+	AddCanvas(RootCanvas, ToolConfirmButton.Get(), FVector2D(1430.0f, 450.0f), FVector2D(170.0f, 54.0f));
+	ActionButtons.Add(ToolConfirmButton);
 
 	auto AddToolControl = [&](const TCHAR* Name, const int32 ActionId, const FString& Label, const float X, const float Y, const float Width)
 	{
@@ -3948,10 +4186,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	}
 	if (Subsystem)
 	{
-		const FGameXXKToolProgress& Progress = Subsystem->GetToolProgress();
 		AddToolControl(TEXT("ToolCraftLevelDown"), 313, TEXT("-"), 1400.0f, 550.0f, 36.0f);
-		UTextBlock* CraftLevel = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("合成等级 %d"), Progress.SelectedCraftingLevel)), 14, Ink);
-		AddCanvas(RootCanvas, CraftLevel, FVector2D(1442.0f, 556.0f), FVector2D(130.0f, 24.0f));
+		ToolCraftLevelText = MakeText(
+			WidgetTree,
+			FText::FromString(FString::Printf(TEXT("合成等级 %d"), Progress.SelectedCraftingLevel)),
+			14,
+			Ink,
+			TEXT("ToolCraftLevelText"));
+		AddCanvas(RootCanvas, ToolCraftLevelText.Get(), FVector2D(1442.0f, 556.0f), FVector2D(130.0f, 24.0f));
 		AddToolControl(TEXT("ToolCraftLevelUp"), 314, TEXT("+"), 1590.0f, 550.0f, 36.0f);
 		if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge && Subsystem->GetRuntimeState().EquipmentCollection.PendingReforge.bActive)
 		{

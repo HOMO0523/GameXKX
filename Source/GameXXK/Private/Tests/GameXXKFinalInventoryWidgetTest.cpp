@@ -5,6 +5,7 @@
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Image.h"
@@ -146,6 +147,177 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 		TEXT("right-click unequip clears the hero weapon slot"),
 		Inventory->GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot::Weapon).IsNone());
 	TestTrue(TEXT("unequipped replacement returns to the shared warehouse"), State.EquipmentCollection.WarehouseInstanceIds.Contains(ReplacementWeapon));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEmbeddedUnequipReturnsVisibleIconTest,
+	"GameXXK.MVP.UI.FinalInventory.EmbeddedUnequipReturnsVisibleIcon",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEmbeddedUnequipReturnsVisibleIconTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("embedded unequip fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	const FName WeaponId = CreateInventoryWidgetEquipment(
+		*this,
+		State,
+		EGameXXKEquipmentSlot::Weapon);
+	if (!TestTrue(TEXT("embedded unequip fixture normalizes the initial Backpack"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	if (!TestTrue(TEXT("embedded unequip fixture opens the workbench"), Workbench->OpenWorkbench())
+		|| !TestTrue(TEXT("embedded unequip fixture opens the shared Backpack"),
+			Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+	UGameXXKInventoryWindowWidget* Inventory = Workbench->WidgetTree
+		? Cast<UGameXXKInventoryWindowWidget>(
+			Workbench->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+		: nullptr;
+	if (!TestNotNull(TEXT("workbench owns the embedded inventory"), Inventory))
+	{
+		return false;
+	}
+	const int32 InitialSlot = Inventory->FindBackpackEquipmentInstanceSlotForTest(WeaponId);
+	if (!TestTrue(TEXT("weapon begins in a visible embedded Backpack slot"), InitialSlot >= 0)
+		|| !TestTrue(TEXT("right-click equips the visible weapon"),
+			Inventory->HandleConfiguredSlotRightClicked(
+				EGameXXKInventorySlotSource::PlayerBackpack,
+				InitialSlot,
+				NAME_None)))
+	{
+		return false;
+	}
+	Workbench->TickForTest(0.0f);
+	Inventory = Workbench->WidgetTree
+		? Cast<UGameXXKInventoryWindowWidget>(
+			Workbench->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))
+		: nullptr;
+	if (!TestNotNull(TEXT("equip rebuild restores the embedded inventory"), Inventory))
+	{
+		return false;
+	}
+	TestEqual(TEXT("embedded equip fills the weapon slot"),
+		Inventory->GetEquippedInstanceForSlotForTest(EGameXXKEquipmentSlot::Weapon),
+		WeaponId);
+	if (!TestTrue(TEXT("right-click equipment slot unequips to Backpack"),
+		Inventory->HandleConfiguredSlotRightClicked(
+			EGameXXKInventorySlotSource::Equipment,
+			0,
+			FName(TEXT("Weapon")))))
+	{
+		return false;
+	}
+
+	const int32 ReturnedSlot = Inventory->FindBackpackEquipmentInstanceSlotForTest(WeaponId);
+	TestTrue(TEXT("right-click unequip normalizes the desktop Backpack slot"), ReturnedSlot >= 0);
+	TestFalse(TEXT("returned equipment icon is visible immediately"),
+		Inventory->GetBackpackSlotIconResourcePathForTest(ReturnedSlot).IsEmpty());
+	TestTrue(TEXT("desktop Backpack owns the returned instance"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State,
+			EGameXXKDesktopItemContainer::Backpack,
+			FGameXXKDesktopInventoryRules::MakeEquipmentEntry(WeaponId)) >= 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKInventoryTitleAndCompanionPortraitTest,
+	"GameXXK.MVP.UI.FinalInventory.BackpackTitleAndCompanionPortraits",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKInventoryTitleAndCompanionPortraitTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("companion portrait fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+
+	const TArray<FGameXXKPermanentCompanion>& Companions =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions;
+	if (!TestEqual(TEXT("portrait fixture owns all six profession companions"),
+		Companions.Num(), 6))
+	{
+		return false;
+	}
+	for (const FGameXXKPermanentCompanion& Companion : Companions)
+	{
+		UGameXXKInventoryWindowWidget* Inventory = NewObject<UGameXXKInventoryWindowWidget>();
+		Inventory->SetMVPSubsystem(Subsystem);
+		Inventory->ConfigureDesktopTrainingEmbeddedMode(true);
+		Inventory->ConfigureDesktopTrainingCharacter(Companion.InstanceId);
+		Inventory->TakeWidget();
+		if (!TestTrue(
+			*FString::Printf(TEXT("%s inventory opens"), *Companion.InstanceId.ToString()),
+			Inventory->OpenFreeInventoryForTest())
+			|| !TestTrue(
+				*FString::Printf(TEXT("%s deck opens"), *Companion.InstanceId.ToString()),
+				Inventory->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Deck)))
+		{
+			return false;
+		}
+
+		UTextBlock* Title = Inventory->WidgetTree
+			? Cast<UTextBlock>(Inventory->WidgetTree->FindWidget(TEXT("InventoryWindowTitleText")))
+			: nullptr;
+		TestEqual(
+			*FString::Printf(TEXT("%s free inventory is titled Backpack"), *Companion.InstanceId.ToString()),
+			Title ? Title->GetText().ToString() : FString(),
+			FString(TEXT("背包")));
+
+		const TArray<FName> CardIds = Inventory->GetHeroCardBackpackIdsForTest();
+		if (!TestTrue(
+			*FString::Printf(TEXT("%s deck exposes profession cards"), *Companion.InstanceId.ToString()),
+			!CardIds.IsEmpty()))
+		{
+			return false;
+		}
+		UImage* FirstPortrait = Inventory->WidgetTree
+			? Cast<UImage>(Inventory->WidgetTree->FindWidget(TEXT("InventoryHeroDeckPortrait_00")))
+			: nullptr;
+		const UObject* PortraitResource = FirstPortrait
+			? FirstPortrait->GetBrush().GetResourceObject()
+			: nullptr;
+		const FString PortraitPath = PortraitResource ? PortraitResource->GetPathName() : FString();
+		const TCHAR* ExpectedRoleToken = nullptr;
+		switch (Companion.Role)
+		{
+		case EGameXXKCharacterRole::Blade: ExpectedRoleToken = TEXT("Role_Blade"); break;
+		case EGameXXKCharacterRole::Guard: ExpectedRoleToken = TEXT("Role_Guard"); break;
+		case EGameXXKCharacterRole::Healer: ExpectedRoleToken = TEXT("Role_Healer"); break;
+		case EGameXXKCharacterRole::Hunter: ExpectedRoleToken = TEXT("Role_Hunter"); break;
+		case EGameXXKCharacterRole::Sorcerer: ExpectedRoleToken = TEXT("Role_Sorcerer"); break;
+		case EGameXXKCharacterRole::FormationMaster: ExpectedRoleToken = TEXT("Role_FormationMaster"); break;
+		default: break;
+		}
+		TestTrue(
+			*FString::Printf(TEXT("%s uses its battle-card profession portrait"), *Companion.InstanceId.ToString()),
+			ExpectedRoleToken && PortraitPath.Contains(ExpectedRoleToken));
+		TestFalse(
+			*FString::Printf(TEXT("%s never falls back to the hero portrait"), *Companion.InstanceId.ToString()),
+			PortraitPath.Contains(TEXT("Page18CardFinal_07"))
+				|| PortraitPath.Contains(TEXT("CardPortrait_Hero")));
+	}
 	return true;
 }
 

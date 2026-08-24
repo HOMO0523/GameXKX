@@ -141,8 +141,8 @@ namespace
 	const FString CharacterTabSelectedTexturePath(ApprovedTextureRoot + TEXT("004_tab_2.004_tab_2"));
 	const FString HeroCardFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardFrame.T_MasterV2_CardFrame"));
 	const FString HeroLockedCardIconTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon"));
-	// Page 18 hero identity card face (card frame + hero bust).
-	const FString HeroCardPortraitTexturePath(TEXT("/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_07.T_Page18CardFinal_07"));
+	// Same portrait catalog used by the in-battle card face.
+	const FString HeroCardPortraitTexturePath(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero"));
 
 	FString ResolveDeckCardPortraitPath(const FGameXXKCardDefinition& Definition)
 	{
@@ -156,7 +156,7 @@ namespace
 		if (Definition.Owner == EGameXXKCardOwner::Profession)
 		{
 			const TCHAR* RoleToken = nullptr;
-			switch (Definition.LinkedRole)
+			switch (Definition.Role)
 			{
 			case EGameXXKCharacterRole::Blade: RoleToken = TEXT("Blade"); break;
 			case EGameXXKCharacterRole::Guard: RoleToken = TEXT("Guard"); break;
@@ -290,13 +290,18 @@ namespace
 		return Style;
 	}
 
-	UTextBlock* MakeText(UWidgetTree* WidgetTree, const FText& Text, int32 FontSize = 16, const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f))
+	UTextBlock* MakeText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		int32 FontSize = 16,
+		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
+		const FName Name = NAME_None)
 	{
 		if (!WidgetTree)
 		{
 			return nullptr;
 		}
-		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		TextBlock->SetText(Text);
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
 		// Button labels (分解/页签等) must never wrap into vertical stacked glyphs.
@@ -1219,6 +1224,10 @@ bool UGameXXKInventoryWindowWidget::QuickEquipBackpackInstanceForTest(const FNam
 	const bool bSucceeded = CharacterBackpackModel.QuickEquip(InstanceId, Result);
 	if (bSucceeded)
 	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+		{
+			Subsystem->NormalizeDesktopInventoryState();
+		}
 		RefreshProgrammaticLayout();
 	}
 	else if (SelectedDetailTextBlock && !Result.Message.IsEmpty())
@@ -1235,6 +1244,10 @@ bool UGameXXKInventoryWindowWidget::QuickUnequipSlotForTest(const EGameXXKEquipm
 	const bool bSucceeded = CharacterBackpackModel.QuickUnequip(EquipmentSlot, Result);
 	if (bSucceeded)
 	{
+		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+		{
+			Subsystem->NormalizeDesktopInventoryState();
+		}
 		RefreshProgrammaticLayout();
 	}
 	else if (SelectedDetailTextBlock && !Result.Message.IsEmpty())
@@ -1731,7 +1744,12 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryWindowFrameCanvas"));
 	AddCanvasChild(RootCanvas, FrameCanvas, FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f));
 
-	TitleTextBlock = MakeText(WidgetTree, FText::GetEmpty(), 28, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+	TitleTextBlock = MakeText(
+		WidgetTree,
+		FText::GetEmpty(),
+		28,
+		FLinearColor(0.08f, 0.06f, 0.04f, 1.0f),
+		TEXT("InventoryWindowTitleText"));
 	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(383.0f, 230.0f), FVector2D(84.0f, 42.0f));
 
 	// The town HUD already renders the ingot currency strip on this screen;
@@ -2353,7 +2371,7 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 		const bool bMerchantTitle = WindowMode == EGameXXKInventoryWindowMode::MerchantTrade;
 		TitleTextBlock->SetText(bMerchantTitle
 			? NSLOCTEXT("GameXXKInventoryWindow", "TitleTrade", "商铺")
-			: NSLOCTEXT("GameXXKInventoryWindow", "TitleHero", "小侠客"));
+			: NSLOCTEXT("GameXXKInventoryWindow", "TitleBackpack", "背包"));
 		TitleTextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 		if (CloseButton)
 		{
@@ -2418,6 +2436,29 @@ void UGameXXKInventoryWindowWidget::RefreshProgrammaticLayout()
 	}
 	RefreshCharacterTabs();
 	UpdateBackpackScrollbarThumb();
+}
+
+void UGameXXKInventoryWindowWidget::RefreshVisibleRuntimeValues()
+{
+	if (WindowMode == EGameXXKInventoryWindowMode::None
+		|| GetVisibility() == ESlateVisibility::Collapsed
+		|| GetVisibility() == ESlateVisibility::Hidden)
+	{
+		return;
+	}
+
+	RefreshCharacterTabs();
+	if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Equipment)
+	{
+		RefreshBackpackSlots();
+		RefreshEquipmentSlots();
+		RefreshDetailPanel();
+		UpdateBackpackScrollbarThumb();
+	}
+	else if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck)
+	{
+		RefreshHeroDeckCards();
+	}
 }
 
 void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
@@ -2485,8 +2526,11 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 	{
 		CharacterTabBodyPanel->SetVisibility(bShowBody ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
+	const bool bViewingQuestNpc =
+		FGameXXKCompanionCatalog::FindQuestNpcDefinition(ResolveInventoryCharacterId()) != nullptr;
 	const bool bShowExperience = bShowBody
-		&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes;
+		&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes
+		&& !bViewingQuestNpc;
 	if (CharacterExperienceText)
 	{
 		CharacterExperienceText->SetVisibility(bShowExperience

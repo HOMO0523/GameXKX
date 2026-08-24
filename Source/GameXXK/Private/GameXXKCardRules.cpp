@@ -15917,6 +15917,8 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
 	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
+	TOptional<FGameXXKCardDefinition> DeferredBladeFinishDefinition;
+	FGameXXKResolvedCardSnapshot DeferredBladeFinishSource;
 	ExpireUntriggeredNextPlayerRoundModifiers(NewRuntime);
 	ExpirePoJunNextRoundStateAtPlayerPhaseEnd(NewRuntime);
 	NewRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
@@ -15955,17 +15957,13 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 			}
 			NewEndPhaseDamageResults.Append(MoveTemp(FinishResult.DamageResults));
 		}
-		ArmImplementedPartnerBladeFinish(NewRuntime, EffectiveDefinition, NewRuntime.LastActiveCard);
-		if (!ResolvePoJunAfterSuccessfulBladeFinish(
-			NewRuntime,
-			EffectiveDefinition,
-			NewRuntime.LastActiveCard,
-			ValidationError))
-		{
-			return SetFailure(OutError, ValidationError);
-		}
+		// Finish/native-style/PoJun payloads target the next player round. Keep
+		// their source until this transaction has completed player-side DoT and
+		// formally entered Enemy phase; strict runtime validation intentionally
+		// rejects a next-round payload while the phase is still Player.
+		DeferredBladeFinishDefinition = EffectiveDefinition;
+		DeferredBladeFinishSource = NewRuntime.LastActiveCard;
 	}
-	ResetPoJunCurrentRoundProgress(NewRuntime);
 	NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
 	ExpireTemporaryCardsAtPlayerRoundEnd(NewRuntime.Deck, NewRuntime.RoundNumber);
 	const bool bHandDiscarded = NewRuntime.BladeRetainedHandCardInstanceIds.IsEmpty()
@@ -16015,6 +16013,23 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 		}
 		NewRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
 	}
+	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Enemy
+		&& DeferredBladeFinishDefinition.IsSet())
+	{
+		ArmImplementedPartnerBladeFinish(
+			NewRuntime,
+			DeferredBladeFinishDefinition.GetValue(),
+			DeferredBladeFinishSource);
+		if (!ResolvePoJunAfterSuccessfulBladeFinish(
+			NewRuntime,
+			DeferredBladeFinishDefinition.GetValue(),
+			DeferredBladeFinishSource,
+			ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
+	}
+	ResetPoJunCurrentRoundProgress(NewRuntime);
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);

@@ -375,6 +375,14 @@ namespace
 			: nullptr;
 	}
 
+	FString GetNamedText(UWidgetTree* Tree, const FName WidgetName)
+	{
+		const UTextBlock* TextBlock = Tree
+			? Cast<UTextBlock>(Tree->FindWidget(WidgetName))
+			: nullptr;
+		return TextBlock ? TextBlock->GetText().ToString() : FString();
+	}
+
 	UGameXXKInventorySlotButton* FindEmbeddedBackpackButton(
 		UGameXXKDesktopTrainingWorkbenchWidget* Workbench,
 		const int32 SlotIndex)
@@ -5248,6 +5256,144 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	TestTrue(TEXT("NPC category becomes unselected after returning to partners"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
 			Widget, TEXT("CharacterRosterNpcButton"))).Contains(TEXT("003_tab_1")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest,
+	"GameXXK.DesktopTraining.Workbench.LiveNumericRefreshWithoutRebuild",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("live-refresh fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	State.Training.bTravelActive = false;
+	State.Training.OwnedChestTokens.Reset();
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("live-refresh fixture opens the workbench"), Widget->OpenWorkbench())
+		|| !TestTrue(TEXT("live-refresh fixture expands Backpack"), Widget->OpenBackpack()))
+	{
+		return false;
+	}
+	Widget->HandleActionClicked(3);
+	Widget->TickForTest(0.0f);
+	if (!TestTrue(TEXT("live-refresh fixture opens Tools"), Widget->IsToolsPanelActiveForTest()))
+	{
+		return false;
+	}
+	UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
+	if (!TestNotNull(TEXT("live-refresh fixture owns the embedded Backpack"), Embedded)
+		|| !TestTrue(TEXT("live-refresh fixture opens Attributes"),
+			Embedded->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Attributes)))
+	{
+		return false;
+	}
+
+	const int32 BuildCountBeforeRefresh = Widget->GetProgrammaticLayoutBuildCountForTest();
+	UGameXXKInventoryWindowWidget* const EmbeddedBeforeRefresh = Embedded;
+	UWidget* const TravelStripBeforeRefresh = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("TrainingTravelStrip"))
+		: nullptr;
+	if (!TestNotNull(TEXT("live-refresh fixture owns the idle-strip hover surface"),
+		TravelStripBeforeRefresh))
+	{
+		return false;
+	}
+
+	State.PlayerGold = 4321;
+	State.PlayerLevel = 2;
+	State.PlayerXP = 50;
+	State.PlayerHP = FMath::Max(1, State.PlayerMaxHP - 7);
+	State.Training.PendingTravelGold = 111;
+	State.Training.PendingTravelExperience = 222;
+	State.Training.PendingTravelNormalChestCount = 3;
+	State.Training.PendingTravelAdvancedChestCount = 4;
+	State.Training.TravelNormalChestCooldownRemainingSeconds = 119;
+	State.Training.TravelAdvancedChestCooldownRemainingSeconds = 179;
+	State.ToolProgress.Level = 2;
+	State.ToolProgress.Experience = 9;
+	FGameXXKTrainingChestToken NormalToken;
+	NormalToken.Tier = EGameXXKTrainingRewardTier::NormalChest;
+	NormalToken.AcquisitionOrdinal = ++State.Training.NextChestAcquisitionOrdinal;
+	State.Training.OwnedChestTokens.Add(NormalToken);
+
+	Widget->TickForTest(1.0f);
+	TestEqual(TEXT("live refresh never rebuilds the workbench"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforeRefresh);
+	TestTrue(TEXT("live refresh preserves the embedded inventory instance"),
+		FindEmbeddedInventory(Widget) == EmbeddedBeforeRefresh);
+	TestEqual(TEXT("Backpack gold updates in place"),
+		GetNamedText(Widget->WidgetTree, TEXT("BackpackGoldText")), FString(TEXT("4321")));
+	TestEqual(TEXT("normal chest count updates in place"),
+		GetNamedText(Widget->WidgetTree, TEXT("TrainingNormalChestCountText")), FString(TEXT("×1")));
+	UButton* NormalChestButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingNormalChestButton")))
+		: nullptr;
+	TestTrue(TEXT("normal chest button becomes enabled"),
+		NormalChestButton && NormalChestButton->GetIsEnabled());
+	const FString FirstTooltip = TravelStripBeforeRefresh->GetToolTipText().ToString();
+	TestTrue(TEXT("hover text updates pending rewards"),
+		FirstTooltip.Contains(TEXT("111 金币 / 222 经验 / 普通箱 3 / 精英箱 4")));
+	TestTrue(TEXT("hover text updates both cooldowns"),
+		FirstTooltip.Contains(TEXT("01:59")) && FirstTooltip.Contains(TEXT("02:59")));
+	TestTrue(TEXT("visible Attributes page updates XP"),
+		GetNamedText(EmbeddedBeforeRefresh->WidgetTree, TEXT("InventoryCharacterExperienceText"))
+			.Contains(TEXT("50 / 200")));
+	TestTrue(TEXT("visible tool progress updates in place"),
+		GetNamedText(Widget->WidgetTree, TEXT("ToolProgressText")).Contains(TEXT("9/")));
+
+	State.Training.TravelNormalChestCooldownRemainingSeconds = 118;
+	State.Training.TravelAdvancedChestCooldownRemainingSeconds = 178;
+	Widget->TickForTest(1.0f);
+	TestTrue(TEXT("live cooldown refresh preserves the hover surface instance"),
+		Widget->WidgetTree->FindWidget(TEXT("TrainingTravelStrip")) == TravelStripBeforeRefresh);
+	const FString SecondTooltip = TravelStripBeforeRefresh->GetToolTipText().ToString();
+	TestTrue(TEXT("hover cooldown continues updating without leaving the strip"),
+		SecondTooltip.Contains(TEXT("01:58")) && SecondTooltip.Contains(TEXT("02:58")));
+	TestEqual(TEXT("cooldown refresh still does not rebuild the workbench"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforeRefresh);
+
+	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
+	if (!TestTrue(TEXT("live-refresh fixture exposes a task NPC"), !NpcIds.IsEmpty())
+		|| !TestTrue(TEXT("live-refresh fixture selects the task NPC"),
+			Widget->SelectBackpackCharacterForTest(NpcIds[0])))
+	{
+		return false;
+	}
+	Embedded = FindEmbeddedInventory(Widget);
+	if (!TestNotNull(TEXT("task NPC keeps an embedded inventory"), Embedded)
+		|| !TestTrue(TEXT("task NPC opens Attributes"),
+			Embedded->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Attributes)))
+	{
+		return false;
+	}
+	State.PlayerXP = 77;
+	Widget->TickForTest(1.0f);
+	UWidget* NpcExperienceText = Embedded->WidgetTree
+		? Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceText"))
+		: nullptr;
+	UWidget* NpcExperienceBar = Embedded->WidgetTree
+		? Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceBar"))
+		: nullptr;
+	TestEqual(TEXT("task NPC never borrows hero experience text"),
+		NpcExperienceText ? NpcExperienceText->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Collapsed);
+	TestEqual(TEXT("task NPC never borrows hero experience bar"),
+		NpcExperienceBar ? NpcExperienceBar->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Collapsed);
 	return true;
 }
 
