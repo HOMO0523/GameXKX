@@ -16,6 +16,7 @@
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
+#include "Components/ProgressBar.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
@@ -26,6 +27,7 @@
 #include "Engine/Texture2D.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCompanionCatalog.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
@@ -1929,8 +1931,32 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		CharacterTabBodyPanel->SetBrush(Transparent);
 	}
 	CharacterTabBodyPanel->SetPadding(FMargin(24.0f, 20.0f));
+	UVerticalBox* CharacterBodyStack = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(),
+		TEXT("InventoryCharacterTabBodyStack"));
 	CharacterTabBodyText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-	CharacterTabBodyPanel->SetContent(CharacterTabBodyText);
+	if (UVerticalBoxSlot* BodySlot = CharacterBodyStack->AddChildToVerticalBox(CharacterTabBodyText))
+	{
+		BodySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	}
+	CharacterExperienceText = WidgetTree->ConstructWidget<UTextBlock>(
+		UTextBlock::StaticClass(),
+		TEXT("InventoryCharacterExperienceText"));
+	CharacterExperienceText->SetText(FText::GetEmpty());
+	CharacterExperienceText->SetColorAndOpacity(FSlateColor(FLinearColor(0.10f, 0.07f, 0.04f, 1.0f)));
+	CharacterExperienceText->SetAutoWrapText(false);
+	CharacterExperienceText->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 17));
+	if (UVerticalBoxSlot* ExperienceTextSlot = CharacterBodyStack->AddChildToVerticalBox(CharacterExperienceText))
+	{
+		ExperienceTextSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 5.0f));
+	}
+	CharacterExperienceBar = WidgetTree->ConstructWidget<UProgressBar>(
+		UProgressBar::StaticClass(),
+		TEXT("InventoryCharacterExperienceBar"));
+	CharacterExperienceBar->SetPercent(0.0f);
+	CharacterExperienceBar->SetFillColorAndOpacity(FLinearColor(0.78f, 0.46f, 0.12f, 1.0f));
+	CharacterBodyStack->AddChildToVerticalBox(CharacterExperienceBar);
+	CharacterTabBodyPanel->SetContent(CharacterBodyStack);
 	AddCanvasChild(FrameCanvas, CharacterTabBodyPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
 
 	// Deck body occupies the backpack grid area without a paper back.
@@ -2459,6 +2485,20 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 	{
 		CharacterTabBodyPanel->SetVisibility(bShowBody ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
+	const bool bShowExperience = bShowBody
+		&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes;
+	if (CharacterExperienceText)
+	{
+		CharacterExperienceText->SetVisibility(bShowExperience
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+	}
+	if (CharacterExperienceBar)
+	{
+		CharacterExperienceBar->SetVisibility(bShowExperience
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Collapsed);
+	}
 	if (CharacterTabBodyText && bShowBody)
 	{
 		if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes)
@@ -2473,10 +2513,25 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 					const FGameXXKCharacterStats& Stats = Snapshot.AttributesBeforeRoute;
 					const bool bHero = CharacterId == FGameXXKEquipmentRules::HeroCharacterId();
 					const FString CharacterLabel = bHero ? TEXT("主角") : CharacterId.ToString();
+					int32 CharacterLevel = State.PlayerLevel;
+					int32 CharacterExperience = State.PlayerXP;
+					int32 RequiredExperience =
+						UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(CharacterLevel);
+					if (!bHero && !FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+					{
+						FGameXXKPermanentCompanion Companion;
+						if (Subsystem->TryGetPermanentCompanionView(CharacterId, Companion))
+						{
+							CharacterLevel = Companion.Level;
+							CharacterExperience = Companion.Experience;
+							RequiredExperience =
+								FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(CharacterLevel);
+						}
+					}
 					CharacterTabBodyText->SetText(FText::FromString(FString::Printf(
 						TEXT("%s属性\n\n等级  %d\n生命  %d / %d\n内力  %d / %d\n攻击  %d\n防御  %d\n速度  %d"),
 						*CharacterLabel,
-						State.PlayerLevel,
+						CharacterLevel,
 						bHero ? State.PlayerHP : Stats.MaxHealth,
 						Stats.MaxHealth,
 						bHero ? State.PlayerMP : Stats.MaxMana,
@@ -2484,6 +2539,24 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 						Stats.Attack,
 						Stats.Defense,
 						Stats.Speed)));
+					if (CharacterExperienceText)
+					{
+						CharacterExperienceText->SetText(RequiredExperience > 0
+							? FText::FromString(FString::Printf(
+								TEXT("经验  %d / %d"),
+								CharacterExperience,
+								RequiredExperience))
+							: FText::FromString(TEXT("经验  已满级")));
+					}
+					if (CharacterExperienceBar)
+					{
+						CharacterExperienceBar->SetPercent(RequiredExperience > 0
+							? FMath::Clamp(
+								static_cast<float>(CharacterExperience) / static_cast<float>(RequiredExperience),
+								0.0f,
+								1.0f)
+							: 1.0f);
+					}
 				}
 				else
 				{

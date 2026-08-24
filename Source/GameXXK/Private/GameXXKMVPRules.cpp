@@ -1544,6 +1544,20 @@ FName UGameXXKMVPRules::RegionQingshan()
 	return GameXXKMVP::RegionQingshanName;
 }
 
+int32 UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(const int32 CurrentLevel)
+{
+	return CurrentLevel >= 1 && CurrentLevel < FGameXXKCharacterStatRules::MaxCharacterLevel
+		? CurrentLevel * 100
+		: 0;
+}
+
+void UGameXXKMVPRules::ApplyPlayerExperience(
+	FGameXXKRuntimeState& InOutState,
+	const int32 ExperienceAmount)
+{
+	GameXXKMVP::ApplyXP(InOutState, ExperienceAmount);
+}
+
 FName UGameXXKMVPRules::RegionHuangshan()
 {
 	return GameXXKMVP::RegionHuangshanName;

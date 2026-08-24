@@ -11,6 +11,7 @@ class UCanvasPanel;
 class UHorizontalBox;
 class UImage;
 class UOverlay;
+class UProgressBar;
 class UScrollBox;
 class USizeBox;
 class UTextBlock;
@@ -471,6 +472,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> CharacterTabBodyText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CharacterExperienceText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UProgressBar> CharacterExperienceBar;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HeroDeckPanel;

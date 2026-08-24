@@ -5,6 +5,8 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -23,6 +25,8 @@ bool FGameXXKCharacterBackpackTabsTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestTrue(TEXT("character-tab fixture initializes the canonical hero card pool"), Subsystem->PrepareCompanionRosterForTown());
+	Subsystem->GetMutableRuntimeState().PlayerLevel = 2;
+	Subsystem->GetMutableRuntimeState().PlayerXP = 50;
 
 	UGameXXKInventoryWindowWidget* Inventory = NewObject<UGameXXKInventoryWindowWidget>();
 	Inventory->SetMVPSubsystem(Subsystem);
@@ -33,6 +37,17 @@ bool FGameXXKCharacterBackpackTabsTest::RunTest(const FString& Parameters)
 
 	TestTrue(TEXT("the attribute tab can be opened"), Inventory->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Attributes));
 	TestTrue(TEXT("the attribute tab renders the live hero snapshot"), Inventory->GetCharacterTabBodyTextForTest().ToString().Contains(TEXT("攻击")));
+	UProgressBar* ExperienceBar = Inventory->WidgetTree
+		? Cast<UProgressBar>(Inventory->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceBar")))
+		: nullptr;
+	UTextBlock* ExperienceText = Inventory->WidgetTree
+		? Cast<UTextBlock>(Inventory->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceText")))
+		: nullptr;
+	TestNotNull(TEXT("the attribute tab owns a visible experience bar"), ExperienceBar);
+	TestTrue(TEXT("the hero experience bar shows 50 of the level-two 200 threshold"),
+		ExperienceBar && FMath::IsNearlyEqual(ExperienceBar->GetPercent(), 0.25f));
+	TestTrue(TEXT("the attribute tab labels current and required experience"),
+		ExperienceText && ExperienceText->GetText().ToString().Contains(TEXT("50 / 200")));
 
 	TestTrue(TEXT("the card tab replaces the equipment backpack"), Inventory->OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab::Deck));
 	TestEqual(TEXT("the card backpack exposes all thirty-six hero cards"), Inventory->GetHeroCardBackpackIdsForTest().Num(), 36);

@@ -5251,4 +5251,77 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchRepeatCombineTest,
+	"GameXXK.DesktopTraining.Workbench.Tools.RepeatAutoFillAndCombine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchRepeatCombineTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("repeat-combine fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	for (int32 Index = 0; Index < 18; ++Index)
+	{
+		FGameXXKEquipmentCreateRequest Request;
+		Request.Set = EGameXXKEquipmentSet::PoJun;
+		Request.Quality = EGameXXKEquipmentQuality::Common;
+		Request.ItemLevel = 1 + Index % 10;
+		Request.bForceSlot = true;
+		Request.ForcedSlot = EGameXXKEquipmentSlot::Accessory;
+		FName InstanceId;
+		FString Error;
+		if (!TestTrue(TEXT("repeat-combine fixture creates common equipment"),
+			FGameXXKEquipmentRules::CreateRolledInstance(
+				State.EquipmentCollection,
+				Request,
+				InstanceId,
+				&Error)))
+		{
+			AddError(Error);
+			return false;
+		}
+	}
+	if (!TestTrue(TEXT("repeat-combine fixture normalizes desktop storage"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("repeat-combine fixture opens Backpack"), Widget->OpenBackpack()))
+	{
+		return false;
+	}
+	Widget->HandleActionClicked(3);
+	TestTrue(TEXT("repeat-combine fixture opens Tools"), Widget->IsToolsPanelActiveForTest());
+	TestTrue(TEXT("repeat-combine fixture selects Combine"),
+		Widget->SetToolModeForTest(EGameXXKDesktopToolMode::Combine));
+
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		Widget->HandleActionClicked(311);
+		TestEqual(*FString::Printf(TEXT("pass %d auto-fills nine inputs"), Pass + 1),
+			Widget->GetOccupiedToolSlotCountForTest(), 9);
+		TestTrue(*FString::Printf(TEXT("pass %d combines successfully"), Pass + 1),
+			Widget->ConfirmToolForTest());
+		TestEqual(*FString::Printf(TEXT("pass %d clears all tool reservations"), Pass + 1),
+			Widget->GetOccupiedToolSlotCountForTest(), 0);
+	}
+	TestEqual(TEXT("two common-equipment combines award eighteen tool experience"),
+		Subsystem->GetRuntimeState().ToolProgress.Experience,
+		int64(18));
+	return true;
+}
+
 #endif

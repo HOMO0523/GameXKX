@@ -732,6 +732,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKItemDef GetItemDef(FName ItemId, bool& bFound);
 
+	static int32 GetPlayerExperienceRequiredForNextLevel(int32 CurrentLevel);
+	static void ApplyPlayerExperience(FGameXXKRuntimeState& InOutState, int32 ExperienceAmount);
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static TArray<FName> GetKnownItemIds();
 

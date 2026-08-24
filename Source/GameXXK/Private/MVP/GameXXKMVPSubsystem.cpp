@@ -51,7 +51,7 @@ namespace
 	{
 		FGameXXKRuntimeState Candidate = State;
 		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
-		Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + Reward.Experience);
+		UGameXXKMVPRules::ApplyPlayerExperience(Candidate, Reward.Experience);
 		if (!Reward.bChestRolled)
 		{
 			State = MoveTemp(Candidate);
@@ -69,6 +69,22 @@ namespace
 			&Error)) return false;
 		State = MoveTemp(Candidate);
 		return true;
+	}
+
+	static void SynchronizeTrainingTravelHeroProgression(
+		const FGameXXKRuntimeState& State,
+		FGameXXKTrainingTravelRuntime& Runtime)
+	{
+		if (!Runtime.PartyUnits.IsValidIndex(0))
+		{
+			return;
+		}
+		Runtime.PlayerHP = State.PlayerHP;
+		Runtime.PlayerMaxHP = State.PlayerMaxHP;
+		Runtime.PlayerAttack = State.PlayerAttack;
+		Runtime.PartyUnits[0].HP = State.PlayerHP;
+		Runtime.PartyUnits[0].MaxHP = State.PlayerMaxHP;
+		Runtime.PartyUnits[0].Attack = State.PlayerAttack;
 	}
 
 	static bool BuildTrainingTravelParty(
@@ -1622,6 +1638,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 {
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	const int32 PlayerLevelBeforeStep = Candidate.PlayerLevel;
 	if (!FGameXXKTrainingRules::AdvanceTravelRunner(
 		Candidate.Training,
 		CandidateRunner,
@@ -1637,6 +1654,10 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 	if (bOutEncounterCompleted && !ApplyTrainingRewardToRuntime(Candidate, OutReward))
 	{
 		return false;
+	}
+	if (Candidate.PlayerLevel != PlayerLevelBeforeStep)
+	{
+		SynchronizeTrainingTravelHeroProgression(Candidate, CandidateRunner);
 	}
 	Candidate.PlayerHP = CandidateRunner.PlayerHP;
 	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
@@ -1709,7 +1730,7 @@ bool UGameXXKMVPSubsystem::ApplyTrainingOfflineRewardToRuntime(
 
 	FGameXXKRuntimeState Candidate = State;
 	Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
-	Candidate.PlayerXP = FMath::Max(0, Candidate.PlayerXP + Reward.Experience);
+	UGameXXKMVPRules::ApplyPlayerExperience(Candidate, Reward.Experience);
 	if (!AddTrainingChestCount(
 			Candidate,
 			EGameXXKTrainingRewardTier::NormalChest,
@@ -1773,6 +1794,8 @@ bool UGameXXKMVPSubsystem::CollectTrainingTravelRewards(FGameXXKTrainingOfflineR
 {
 	OutReward = FGameXXKTrainingOfflineReward();
 	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	const int32 PlayerLevelBeforeCollect = Candidate.PlayerLevel;
 	if (!FGameXXKTrainingRules::ConsumePendingTravelReward(Candidate.Training, OutReward)
 		|| !ApplyTrainingOfflineRewardToRuntime(Candidate, OutReward))
 	{
@@ -1782,9 +1805,14 @@ bool UGameXXKMVPSubsystem::CollectTrainingTravelRewards(FGameXXKTrainingOfflineR
 	{
 		Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
 	}
+	if (Candidate.PlayerLevel != PlayerLevelBeforeCollect)
+	{
+		SynchronizeTrainingTravelHeroProgression(Candidate, CandidateRunner);
+	}
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateRunner);
 	return true;
 }
 

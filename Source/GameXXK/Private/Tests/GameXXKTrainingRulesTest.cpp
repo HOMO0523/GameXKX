@@ -960,6 +960,8 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 		GuaranteedSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(GuaranteedSeed);
 	}
 	State.Training.ChallengeRewardSeed = GuaranteedSeed;
+	State.PlayerLevel = 1;
+	State.PlayerXP = 95;
 
 	TestTrue(TEXT("travel chest inventory bridge starts a cleared stage"), Subsystem->StartTrainingTravel(StageTwo));
 	const int32 NormalChestBefore = FGameXXKTrainingRules::CountChestTokens(State.Training, EGameXXKTrainingRewardTier::NormalChest);
@@ -977,6 +979,12 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 	}
 	TestFalse(TEXT("guaranteed chest fixture does not defeat the player"), bDefeated);
 	TestTrue(TEXT("travel chest inventory bridge settles an encounter"), bEncounterCompleted);
+	TestTrue(TEXT("online Travel settlement awards character experience"), Reward.Experience > 0);
+	TestTrue(TEXT("online Travel character experience crosses the level-one threshold"),
+		Subsystem->GetRuntimeState().PlayerLevel > 1);
+	TestTrue(TEXT("online Travel leaves canonical residual character experience"),
+		Subsystem->GetRuntimeState().PlayerXP
+			< Subsystem->GetRuntimeState().PlayerLevel * 100);
 	TestTrue(TEXT("travel chest inventory bridge reports the normal chest"), Reward.bChestRolled);
 	TestEqual(TEXT("travel chest inventory bridge reports the canonical item"), Reward.ChestItemId, UGameXXKMVPRules::ItemTrainingNormalChest());
 	TestEqual(TEXT("travel chest bridge appends one normal token"),
@@ -1067,12 +1075,16 @@ bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Pa
 	}
 
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	Subsystem->GetMutableRuntimeState().PlayerLevel = 1;
+	Subsystem->GetMutableRuntimeState().PlayerXP = 95;
 	TestTrue(TEXT("offline travel bridge starts 1-1"), Subsystem->StartTrainingTravel(StageOne));
 	FGameXXKTrainingOfflineReward SimulatedReward;
 	TestTrue(TEXT("offline travel bridge simulates a full-health 1-1 window"),
 		Subsystem->SimulateTrainingTravelOffline(512, SimulatedReward));
 	TestTrue(TEXT("offline travel bridge exposes pending gold"),
 		Subsystem->GetPendingTrainingTravelRewardCopy().Gold > 0);
+	TestTrue(TEXT("offline travel bridge exposes pending experience"),
+		SimulatedReward.Experience > 0);
 
 	const int32 GoldBeforeCollect = Subsystem->GetRuntimeState().PlayerGold;
 	FGameXXKTrainingOfflineReward CollectedReward;
@@ -1082,6 +1094,11 @@ bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Pa
 	TestEqual(TEXT("offline collect writes gold to the runtime inventory"),
 		Subsystem->GetRuntimeState().PlayerGold,
 		GoldBeforeCollect + SimulatedReward.Gold);
+	TestTrue(TEXT("offline collect levels the character"),
+		Subsystem->GetRuntimeState().PlayerLevel > 1);
+	TestTrue(TEXT("offline collect leaves canonical residual character experience"),
+		Subsystem->GetRuntimeState().PlayerXP
+			< Subsystem->GetRuntimeState().PlayerLevel * 100);
 	TestEqual(TEXT("offline collect clears the pending ledger"),
 		Subsystem->GetPendingTrainingTravelRewardCopy().Gold,
 		0);
