@@ -296,4 +296,4 @@ Review only this plan's commits. Fix every Critical/Important issue and re-revie
 
 - [ ] **Step 4: real PIE checkpoint**
 
-On `L_DesktopTrainingHUD`, visibly switch Hero, Guard, and YueBai; move/swap Backpack/Warehouse cells; replace one equipped item; lock/unlock one item; verify Formation remains unchanged. Keep later work packages pending rather than claiming the whole feature complete.
+On `L_DesktopTrainingHUD`, use real Slate/PIE pointer input (not direct delegate broadcast) to click the Hero, Partner, and NPC category buttons and representative member portraits. Verify every target is visible, enabled, hit-testable, and has valid arranged geometry; visibly confirm Hero, Guard, and YueBai switch the center art and six-slot loadout. Then move/swap Backpack/Warehouse cells, replace one equipped item, lock/unlock one item, and verify Formation remains unchanged. Keep later work packages pending rather than claiming the whole feature complete.
