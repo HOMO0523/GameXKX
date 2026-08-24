@@ -266,7 +266,7 @@
 	static constexpr const TCHAR* CharacterTabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
 	static constexpr const TCHAR* SettingsTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/HUD/T_TownPsd_HudSettings.T_TownPsd_HudSettings");
 	static constexpr const TCHAR* InventoryTextureRoot = TEXT("/Game/GameXXK/UI/Inventory/Textures/");
-	static constexpr const TCHAR* RouteNodeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavRoute.T_MasterV2_NavRoute");
+	static constexpr const TCHAR* RouteNodeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscRoute.T_MasterV2_NavDiscRoute");
 	static constexpr const TCHAR* TruthNavWarehouseTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavWarehouse.T_TrainingNavWarehouse");
 	static constexpr const TCHAR* TruthNavFormationTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavFormation.T_TrainingNavFormation");
 	static constexpr const TCHAR* TruthNavTalentsTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTalents.T_TrainingNavTalents");
@@ -531,6 +531,16 @@
 	void AddCanvasRect(UCanvasPanel* Canvas, UWidget* Child, const FVector4& Rect)
 	{
 		AddCanvas(Canvas, Child, FVector2D(Rect.X, Rect.Y), FVector2D(Rect.Z, Rect.W));
+	}
+
+	constexpr float PanelCloseButtonSize = 44.0f;
+	constexpr float PanelCloseInset = 14.0f;
+
+	FVector2D PanelClosePosition(const FVector4& PanelRect)
+	{
+		return FVector2D(
+			PanelRect.X + PanelRect.Z - PanelCloseButtonSize - PanelCloseInset,
+			PanelRect.Y + PanelCloseInset);
 	}
 
 	FText NavText(const EGameXXKDesktopTrainingNav Nav)
@@ -2439,9 +2449,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildPanelCloseButton(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		WidgetName);
 	Button->Configure(this, ActionId);
-	Button->SetStyle(MakeImageButtonStyle(CloseInkTexturePath, FVector2D(44.0f, 44.0f)));
+	Button->SetStyle(MakeImageButtonStyle(
+		CloseInkTexturePath,
+		FVector2D(PanelCloseButtonSize, PanelCloseButtonSize)));
 	Button->SetBackgroundColor(FLinearColor::White);
-	AddCanvas(RootCanvas, Button, Position, FVector2D(44.0f, 44.0f));
+	AddCanvas(
+		RootCanvas,
+		Button,
+		Position,
+		FVector2D(PanelCloseButtonSize, PanelCloseButtonSize));
 	ActionButtons.Add(Button);
 }
 
@@ -3577,7 +3593,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetWarehouseRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("仓库")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 34.0f), FVector2D(323.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 30.0f));
+	BuildPanelCloseButton(
+		TEXT("WarehouseCloseButton"),
+		ActionCloseWarehouse,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetWarehouseRect()));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	for (int32 PageTabIndex = 0; PageTabIndex < 4; ++PageTabIndex)
@@ -3770,7 +3789,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	AddCanvas(RootCanvas, Sort, FVector2D(1212.0f, 710.0f), FVector2D(100.0f, 44.0f));
 	ActionButtons.Add(Sort);
 	BuildCharacterRosterTabs();
-	BuildPanelCloseButton(TEXT("BackpackPanelCloseButton"), 60, FVector2D(1290.0f, 270.0f));
+	BuildPanelCloseButton(
+		TEXT("BackpackPanelCloseButton"),
+		60,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetContentRect()));
 	if (UButton* CloseButton = Cast<UButton>(WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton"))))
 	{
 		const FText CloseDescription = FText::FromString(TEXT("关闭背包与全部子界面"));
@@ -3893,7 +3915,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("编队")), 30, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(421.0f, 258.0f), FVector2D(180.0f, 40.0f));
-	BuildPanelCloseButton(TEXT("FormationCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
+	BuildPanelCloseButton(
+		TEXT("FormationCloseButton"),
+		ActionCloseCentralPage,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetContentRect()));
 	UTextBlock* Hint = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("查看角色不会换队；只有右侧“编入队伍”会写入当前伙伴或任务 NPC。")),
@@ -4038,7 +4063,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("天赋  ·  天赋树 / 称号")), 30, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 260.0f), FVector2D(700.0f, 42.0f));
-	BuildPanelCloseButton(TEXT("TalentsCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
+	BuildPanelCloseButton(
+		TEXT("TalentsCloseButton"),
+		ActionCloseCentralPage,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetContentRect()));
 	UTextBlock* Notice = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("天赋和称号集中在此页；真实节点数据与宝箱掉率加成尚未接入。")),
@@ -4074,7 +4102,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
+	BuildPanelCloseButton(
+		TEXT("ToolsCloseButton"),
+		ActionCloseRightPanel,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetRightShellRect()));
 	const TArray<FText> ToolLabels = {
 		FText::FromString(TEXT("分解")),
 		FText::FromString(TEXT("合成")),
@@ -4226,9 +4257,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"));
 	AddCanvasRect(RootCanvas, Map, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	const FText MapTitle = FText::FromString(TEXT("历练地图"));
-	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 28, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
+	BuildPanelCloseButton(
+		TEXT("TrainingCloseButton"),
+		ActionCloseRightPanel,
+		PanelClosePosition(GameXXKDesktopTrainingLayout::GetRightShellRect()));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKTrainingStageDefinition> Definitions = Subsystem ? Subsystem->GetTrainingStageDefinitions() : TArray<FGameXXKTrainingStageDefinition>();
 	const EGameXXKTrainingDifficulty ActiveDifficulty = FGameXXKTrainingRules::DifficultyFromStageId(SelectedStageId);
@@ -4252,41 +4286,130 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		AddCanvas(RootCanvas, DifficultyTab, FVector2D(1388.0f + DifficultyIndex * 84.0f, 84.0f), FVector2D(78.0f, 36.0f));
 		ActionButtons.Add(DifficultyTab);
 	}
+	TArray<const FGameXXKTrainingStageDefinition*> VisibleStages;
 	for (const FGameXXKTrainingStageDefinition& Definition : Definitions)
 	{
-		if (Definition.Difficulty != ActiveDifficulty)
+		if (Definition.Difficulty == ActiveDifficulty)
 		{
-			continue;
+			VisibleStages.Add(&Definition);
 		}
-		const int32 LocalIndex = Definition.StageNumber - 1;
-		const FVector2D NodePosition(1390.0f + (LocalIndex % 3) * 84.0f, 158.0f + (LocalIndex / 3) * 104.0f);
-		const FVector2D NodeSize(58.0f, 58.0f);
+	}
+	VisibleStages.Sort([](
+		const FGameXXKTrainingStageDefinition& Left,
+		const FGameXXKTrainingStageDefinition& Right)
+	{
+		return Left.StageNumber < Right.StageNumber;
+	});
+	const auto NodePositionForIndex = [](const int32 LocalIndex)
+	{
+		const int32 Row = LocalIndex / 3;
+		const int32 OffsetInRow = LocalIndex % 3;
+		const int32 Column = Row % 2 == 0 ? OffsetInRow : 2 - OffsetInRow;
+		return FVector2D(1391.0f + Column * 82.0f, 166.0f + Row * 160.0f);
+	};
+	const FVector2D NodeSize(58.0f, 58.0f);
+	for (int32 LineIndex = 0; LineIndex + 1 < VisibleStages.Num(); ++LineIndex)
+	{
+		const FVector2D Start = NodePositionForIndex(LineIndex) + NodeSize * 0.5f;
+		const FVector2D End = NodePositionForIndex(LineIndex + 1) + NodeSize * 0.5f;
+		const FVector2D Delta = End - Start;
+		UBorder* Line = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			*FString::Printf(TEXT("TrainingPathLine_%d"), LineIndex));
+		FSlateBrush LineBrush;
+		LineBrush.DrawAs = ESlateBrushDrawType::Box;
+		LineBrush.ImageSize = FVector2D(Delta.Size(), 4.0f);
+		Line->SetBrush(LineBrush);
+		Line->SetBrushColor(FLinearColor(0.22f, 0.15f, 0.08f, 0.72f));
+		Line->SetRenderTransformPivot(FVector2D(0.0f, 0.5f));
+		Line->SetRenderTransformAngle(FMath::RadiansToDegrees(FMath::Atan2(Delta.Y, Delta.X)));
+		Line->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvas(RootCanvas, Line, Start - FVector2D(0.0f, 2.0f), FVector2D(Delta.Size(), 4.0f));
+	}
+	const FGameXXKTrainingProgress Progress = Subsystem
+		? Subsystem->GetTrainingProgressCopy()
+		: FGameXXKTrainingProgress();
+	for (int32 VisibleIndex = 0; VisibleIndex < VisibleStages.Num(); ++VisibleIndex)
+	{
+		const FGameXXKTrainingStageDefinition& Definition = *VisibleStages[VisibleIndex];
+		const FVector2D NodePosition = NodePositionForIndex(VisibleIndex);
 		const FString NodeNameString = FString::Printf(TEXT("TrainingNode_%d"), Definition.StageNumber);
 		const FName NodeName(*NodeNameString);
-		const FText NodeLabel = FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter, ((Definition.StageNumber - 1) % 3) + 1));
-		const FText NodeTooltip = Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty();
+		const bool bCurrentTravel = Progress.CurrentTravelStageId == Definition.StageId;
+		const bool bCleared = Progress.ClearedStageIds.Contains(Definition.StageId);
+		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, Definition.StageId);
+		const bool bCanTravel = FGameXXKTrainingRules::CanTravel(Progress, Definition.StageId);
+		const int32 StageInChapter = ((Definition.StageNumber - 1) % 3) + 1;
+		const TCHAR* TierMark = StageInChapter == 3 ? TEXT("首") : StageInChapter == 2 ? TEXT("精") : TEXT("");
+		const TCHAR* StateMark = bCurrentTravel
+			? TEXT("游历")
+			: bCleared ? TEXT("已通") : bCanChallenge ? TEXT("可战") : TEXT("锁定");
+		const FString StatusLine = FCString::Strlen(TierMark) > 0
+			? FString::Printf(TEXT("%s·%s"), TierMark, StateMark)
+			: FString(StateMark);
+		const FText NodeLabel = FText::FromString(FString::Printf(
+			TEXT("%d-%d\n%s"),
+			Definition.Chapter,
+			StageInChapter,
+			*StatusLine));
+		const FText NodeTooltip = Subsystem
+			? Subsystem->BuildTrainingStageTooltip(Definition.StageId)
+			: FText::GetEmpty();
 		UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(
 			UGameXXKDesktopTrainingStageButton::StaticClass(),
 			NodeName);
 		Node->Configure(this, Definition.StageId);
 		Node->SetStyle(MakeImageButtonStyle(RouteNodeTexturePath, NodeSize));
-		Node->SetBackgroundColor(FLinearColor::White);
+		Node->SetBackgroundColor(
+			bCurrentTravel
+				? FLinearColor(0.72f, 0.92f, 0.76f, 1.0f)
+				: Definition.StageId == SelectedStageId
+					? FLinearColor(1.0f, 0.82f, 0.42f, 1.0f)
+					: (bCanChallenge || bCanTravel || bCleared)
+						? FLinearColor::White
+						: FLinearColor(0.48f, 0.46f, 0.42f, 0.72f));
 		Node->SetToolTipText(NodeTooltip);
+		Node->SetIsEnabled(bCanChallenge || bCanTravel || bCleared || bCurrentTravel);
 		Node->SetContent(MakeButtonText(
 			WidgetTree,
 			NodeLabel,
-			18,
-			Definition.StageId == SelectedStageId ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink));
+			13,
+			Definition.StageId == SelectedStageId
+				? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f)
+				: Ink));
 		AddCanvas(RootCanvas, Node, NodePosition, NodeSize);
 		StageButtons.Add(Node);
 	}
-	TravelStageText = MakeText(WidgetTree, FText::FromString(TEXT("当前游历关卡：未选择")), 20, FLinearColor::White);
-	if (Subsystem)
+	const auto DifficultyLabel = [](const EGameXXKTrainingDifficulty Difficulty)
 	{
-		const FName Current = Subsystem->GetTrainingProgressCopy().CurrentTravelStageId;
-		TravelStageText->SetText(FText::FromString(FString::Printf(TEXT("当前游历关卡：%s"), *Current.ToString())));
+		switch (Difficulty)
+		{
+		case EGameXXKTrainingDifficulty::Hard: return TEXT("困难");
+		case EGameXXKTrainingDifficulty::Hell: return TEXT("地狱");
+		case EGameXXKTrainingDifficulty::Normal:
+		default: return TEXT("普通");
+		}
+	};
+	FString CurrentStageLabel(TEXT("当前游历：未选择"));
+	if (const FGameXXKTrainingStageDefinition* CurrentDefinition = Definitions.FindByPredicate(
+		[&Progress](const FGameXXKTrainingStageDefinition& Candidate)
+		{
+			return Candidate.StageId == Progress.CurrentTravelStageId;
+		}))
+	{
+		CurrentStageLabel = FString::Printf(
+			TEXT("当前游历：%s %d-%d"),
+			DifficultyLabel(CurrentDefinition->Difficulty),
+			CurrentDefinition->Chapter,
+			((CurrentDefinition->StageNumber - 1) % 3) + 1);
 	}
-	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 640.0f), FVector2D(252.0f, 72.0f));
+	TravelStageText = MakeText(
+		WidgetTree,
+		FText::FromString(CurrentStageLabel),
+		17,
+		Ink,
+		TEXT("TrainingCurrentStageText"));
+	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 662.0f), FVector2D(252.0f, 54.0f));
 	UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("TrainingChallengeButton"));
@@ -4296,7 +4419,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	Challenge->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("挑战")), 22));
 	if (Subsystem)
 	{
-		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
 		Challenge->SetIsEnabled(bCanChallenge);
 		if (!bCanChallenge)
