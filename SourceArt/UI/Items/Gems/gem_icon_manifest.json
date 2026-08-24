@@ -1,0 +1,545 @@
+{
+  "icon_count": 30,
+  "records": [
+    {
+      "item_id": "Item.Gem.Attack.Common",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Common.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Common.T_Item_Gem_Attack_Common",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        128,
+        64,
+        383,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "7a2356b65752015668cd9836501329975a08904e6f4c2287c4d3da4417ff77fe"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Rare",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Rare.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Rare.T_Item_Gem_Attack_Rare",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        135,
+        65,
+        377,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "95bb92f98241022460338bb6dfd301e5a426b8e52a4a9e0bfeb39d53c612606b"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Epic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Epic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Epic.T_Item_Gem_Attack_Epic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        133,
+        64,
+        378,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "b1d9b0abe1657f0a19cf0afe2fb64792efd8b118c7514f12878dc0562667e603"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Legendary",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Legendary.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Legendary.T_Item_Gem_Attack_Legendary",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        138,
+        64,
+        374,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "ed545e34a446d12c036c9ef83539a88f1343d481d689dfb56615ecc224657210"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Immortal",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Immortal.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Immortal.T_Item_Gem_Attack_Immortal",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        142,
+        64,
+        370,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "4448c8d553b708f2088d583ced2b483d63741f4da7740f52619a6c9afddbb3a9"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Treasure",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Treasure.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Treasure.T_Item_Gem_Attack_Treasure",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        109,
+        64,
+        403,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "5a24688ca879711f6081e6fab57f871585f659fb812b26c66e477b6175de6b85"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Transcendent",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Transcendent.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Transcendent.T_Item_Gem_Attack_Transcendent",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        110,
+        64,
+        402,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "4128f2079680ba0bf56b2c59c3cab8c0ecec6bcaf070a28d259f5b9e9e85c2e4"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Celestial",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Celestial.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Celestial.T_Item_Gem_Attack_Celestial",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        103,
+        64,
+        408,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "835405eed8702f658454089b683dc0b5507afc5b2d99ae0e13d1930043f5f10d"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Ascendant",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Ascendant.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Ascendant.T_Item_Gem_Attack_Ascendant",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        123,
+        65,
+        388,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "00b210b30aea9c1fe9252fcb316a7411258b6b01db67550a38709f06e066ce81"
+    },
+    {
+      "item_id": "Item.Gem.Attack.Cosmic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Attack_Cosmic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Attack_Cosmic.T_Item_Gem_Attack_Cosmic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        148,
+        64,
+        364,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "1ddec8693f3d22e9685b13fe39e630399056584decfea8e56a3aac3103179d8c"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Common",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Common.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Common.T_Item_Gem_Defense_Common",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        103,
+        64,
+        409,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "b745b8d3fe7bd934fbc02cef1cb32231b87ae87c770e4cf271d18bbdaf138c2b"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Rare",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Rare.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Rare.T_Item_Gem_Defense_Rare",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        111,
+        65,
+        400,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "6a08461bbdf06e4158c8d267702c8adf88dead58b38119e84d22f9e9387bb711"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Epic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Epic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Epic.T_Item_Gem_Defense_Epic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        113,
+        65,
+        398,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "ffd4e5428f5eb0a99da57f2387770b48e74975892c60f32dd90529ace25d08d4"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Legendary",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Legendary.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Legendary.T_Item_Gem_Defense_Legendary",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        108,
+        65,
+        403,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "aafb193446cbd3925bc0a5e9106c527d1b556d9482c66cfd4fd16e9c283bf553"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Immortal",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Immortal.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Immortal.T_Item_Gem_Defense_Immortal",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        115,
+        64,
+        397,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "d2fa6848efa64e9b73da514110e863fb553793db4f2351acb25ad1a53368eb76"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Treasure",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Treasure.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Treasure.T_Item_Gem_Defense_Treasure",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        68,
+        64,
+        443,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "fefcb170170040cbbfa7bb7d639d18369f85ed6a9aa860d4205f4bc3f00aeeb6"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Transcendent",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Transcendent.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Transcendent.T_Item_Gem_Defense_Transcendent",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        64,
+        65,
+        448,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "e69ec2d09a8b44bc10080d994c7f559d4d99a3368a7c1a2cd1354ea45e8bc841"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Celestial",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Celestial.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Celestial.T_Item_Gem_Defense_Celestial",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        66,
+        64,
+        444,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "c4872c7de65d3e6aac3f2b44dca823c079abae3c96e720f1286807b657f72602"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Ascendant",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Ascendant.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Ascendant.T_Item_Gem_Defense_Ascendant",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        94,
+        64,
+        417,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "4d05cb3334cb1b989d631394e7dd40a79fe733a7c79ecb283807c6dfa15a25a6"
+    },
+    {
+      "item_id": "Item.Gem.Defense.Cosmic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_Defense_Cosmic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_Defense_Cosmic.T_Item_Gem_Defense_Cosmic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        124,
+        64,
+        389,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "12b79d84587ee910e53a86f7b9ebc8f73c7fa401c2e45e70863970e7872eb378"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Common",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Common.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Common.T_Item_Gem_MaxHealth_Common",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        120,
+        64,
+        392,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "3a0171ba2f38ccfe722a3a287e342afb43cc13ef6db15e4b9e31ba29e1057a6a"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Rare",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Rare.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Rare.T_Item_Gem_MaxHealth_Rare",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        124,
+        65,
+        386,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "970c2fbc6faa3c921b0daa6e7a7ed9ee14b76200d93310eb316c316a8597b260"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Epic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Epic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Epic.T_Item_Gem_MaxHealth_Epic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        134,
+        64,
+        376,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "e624f4551c74c15a498ff7ed3a3dfa8ebb9a9c32cca2009a0891dd909d8867fc"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Legendary",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Legendary.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Legendary.T_Item_Gem_MaxHealth_Legendary",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        133,
+        64,
+        378,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "3b631d21c75d8605821a43cc10ae95bd27e952c6bda057d5983200222cc77da6"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Immortal",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Immortal.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Immortal.T_Item_Gem_MaxHealth_Immortal",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        139,
+        64,
+        374,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "80dff62de2ac875e6a58e3436af99d8fdb44daa1d327e8e2f5292fbd2a0906a3"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Treasure",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Treasure.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Treasure.T_Item_Gem_MaxHealth_Treasure",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        96,
+        64,
+        416,
+        447
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "1031d0cb8694ea1a90da1fa728070f83e22c6ef58c25199daee1c95d69bf25b3"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Transcendent",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Transcendent.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Transcendent.T_Item_Gem_MaxHealth_Transcendent",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        105,
+        64,
+        406,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "446f5aeb499c719518bb67d8748d12fa9fb774f3cd805f8b02af95d578c3c456"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Celestial",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Celestial.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Celestial.T_Item_Gem_MaxHealth_Celestial",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        90,
+        64,
+        423,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "22412bb1b30107f316fc8c0cbedfcdc14f1a95cfe34bb3fd69c40e715b66e34c"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Ascendant",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Ascendant.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Ascendant.T_Item_Gem_MaxHealth_Ascendant",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        117,
+        65,
+        394,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "6ff27695be2d473e40319bb1579ddd788dfd39d845c5a96c0b0b9b0ed61a967f"
+    },
+    {
+      "item_id": "Item.Gem.MaxHealth.Cosmic",
+      "source_png": "SourceArt/UI/Items/Gems/final/T_Item_Gem_MaxHealth_Cosmic.png",
+      "texture_path": "/Game/GameXXK/UI/Items/Gems/T_Item_Gem_MaxHealth_Cosmic.T_Item_Gem_MaxHealth_Cosmic",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "alpha_bbox": [
+        144,
+        65,
+        368,
+        448
+      ],
+      "transparent_border_ratio": 1.0,
+      "sha256": "a346de87755e4b6161be8b8e230265d5ed8a0bad3bc160393794df158c371296"
+    }
+  ]
+}
