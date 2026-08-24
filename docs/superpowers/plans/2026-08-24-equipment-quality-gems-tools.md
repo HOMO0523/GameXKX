@@ -122,6 +122,8 @@ git commit -m "feat: extend equipment to ten qualities"
 
 ### Task 3: add gem catalog and sockets
 
+Prerequisite: complete `docs/superpowers/plans/2026-08-24-gem-icon-progression.md` so all thirty declared texture paths exist before runtime item mapping is accepted.
+
 **Files:**
 - Create: `Source/GameXXK/Public/GameXXKGemRules.h`
 - Create: `Source/GameXXK/Private/GameXXKGemRules.cpp`
@@ -170,7 +172,7 @@ Append `TArray<FGameXXKSocketedGem> SocketedGems`. `GetSocketCapacity(Quality)` 
 
 - [ ] **Step 4: add stable gem item IDs**
 
-`FGameXXKGemRules` maps `(Type,Quality)` to `Item.Gem.<Type>.<Quality>`, parses IDs, returns Chinese display, stat bonus, next quality, and validates every rank. Register all 30 IDs in `GetKnownItemIds`/`GetItemDef` as Material items.
+`FGameXXKGemRules` maps `(Type,Quality)` to `Item.Gem.<Type>.<Quality>`, parses IDs, returns Chinese display, stat bonus, next quality, exact soft icon texture path, and validates every rank. Register all 30 IDs in `GetKnownItemIds`/`GetItemDef` as Material items. The icon path must be `/Game/GameXXK/UI/Items/Gems/T_Item_Gem_<Type>_<Quality>.T_Item_Gem_<Type>_<Quality>` and must come from the shared Gem Rules mapping rather than UI-side string construction. Automation loads every declared asset and rejects missing or cross-type mappings.
 
 - [ ] **Step 5: project socket bonuses**
 
