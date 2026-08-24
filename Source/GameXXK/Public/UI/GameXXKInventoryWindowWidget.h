@@ -343,9 +343,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FString GetInventoryFilterTexturePathForTest(EGameXXKInventoryFilter Filter) const;
 	int32 GetCharacterTabButtonCountForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	EGameXXKCharacterBackpackTab GetActiveCharacterBackpackTabForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow|Test")
 	bool OpenCharacterBackpackTabForTest(EGameXXKCharacterBackpackTab Tab);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FText GetCharacterTabBodyTextForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	TArray<FName> GetHeroCardBackpackIdsForTest() const;
 	TArray<FName> GetPendingHeroDeckIdsForTest() const;
 	bool ToggleHeroDeckCardForTest(FName CardId);

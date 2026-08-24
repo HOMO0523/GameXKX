@@ -433,6 +433,8 @@ public:
 
 	/** Invokes NativeConstruct from an automation fixture without exposing it to Blueprint. */
 	void ConstructForTest();
+	/** Reproduces the live viewport detach/build/Slate-reattach sequence. */
+	void SimulateViewportReattachForTest();
 
 	/** Number of programmatic WidgetTree builds performed by this instance. */
 	int32 GetProgrammaticLayoutBuildCountForTest() const;

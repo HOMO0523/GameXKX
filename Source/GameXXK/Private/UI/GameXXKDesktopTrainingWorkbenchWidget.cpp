@@ -955,8 +955,8 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 	if (!bInternalLayoutRebuild)
 	{
 		AbortTransientInventoryInteraction(true, false);
+		BuildProgrammaticLayout();
 	}
-	BuildProgrammaticLayout();
 	return Super::RebuildWidget();
 }
 
@@ -2157,6 +2157,15 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HasPendingLayoutRefreshForTest() co
 void UGameXXKDesktopTrainingWorkbenchWidget::ConstructForTest()
 {
 	NativeConstruct();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SimulateViewportReattachForTest()
+{
+	bLayoutRefreshPending = false;
+	TGuardValue<bool> InternalLayoutRebuildGuard(bInternalLayoutRebuild, true);
+	ReleaseSlateResources(true);
+	BuildProgrammaticLayout();
+	TakeWidget();
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetProgrammaticLayoutBuildCountForTest() const

@@ -1795,6 +1795,65 @@ bool FGameXXKDesktopTrainingItemCarryCharacterSubpageBoundaryTest::RunTest(const
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingCharacterSubpageViewportReattachTest,
+	"GameXXK.DesktopTraining.Workbench.CharacterSubpageViewportReattach",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingCharacterSubpageViewportReattachTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("viewport-reattach fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Workbench->SetMVPSubsystem(Subsystem);
+	Workbench->ConstructForTest();
+	if (!TestTrue(TEXT("viewport-reattach fixture opens Backpack"),
+		Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+
+	UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Workbench);
+	UGameXXKCharacterBackpackTabButton* AttributesButton = Embedded && Embedded->WidgetTree
+		? Cast<UGameXXKCharacterBackpackTabButton>(
+			Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterTab_0")))
+		: nullptr;
+	if (!TestNotNull(TEXT("viewport-reattach fixture owns the real Attributes button"),
+		AttributesButton))
+	{
+		return false;
+	}
+	AttributesButton->OnClicked.Broadcast();
+	TestTrue(TEXT("Attributes callback schedules the parent layout refresh"),
+		Workbench->HasPendingLayoutRefreshForTest());
+	TestEqual(TEXT("the clicked embedded widget reaches Attributes before reattach"),
+		Embedded->GetActiveCharacterBackpackTabForTest(),
+		EGameXXKCharacterBackpackTab::Attributes);
+
+	const int32 BuildCountBeforeReattach =
+		Workbench->GetProgrammaticLayoutBuildCountForTest();
+	Workbench->SimulateViewportReattachForTest();
+	Embedded = FindEmbeddedInventory(Workbench);
+	if (!TestNotNull(TEXT("viewport reattach rebuilds one embedded inventory"), Embedded))
+	{
+		return false;
+	}
+	TestEqual(TEXT("viewport reattach builds the layout exactly once"),
+		Workbench->GetProgrammaticLayoutBuildCountForTest(),
+		BuildCountBeforeReattach + 1);
+	TestEqual(TEXT("viewport reattach preserves the clicked Attributes page"),
+		Embedded->GetActiveCharacterBackpackTabForTest(),
+		EGameXXKCharacterBackpackTab::Attributes);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingItemCarryEquipmentTest,
 	"GameXXK.DesktopTraining.Workbench.ItemCarryEquipment",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
