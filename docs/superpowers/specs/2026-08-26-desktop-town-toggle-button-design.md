@@ -28,7 +28,7 @@ Add one large, clearly labeled town-transition button to the shared placement HU
 - With the warehouse open, it moves to the outside-left edge of the warehouse with a `14` logical-pixel gap.
 - Opening the warehouse extends the transparent HUD design bounds to the left by approximately `148` logical pixels. Existing workbench content shifts right inside the native window so the idle-strip screen anchor does not move.
 - At the current 100% baseline, the widest state is approximately `1820` pixels and remains within the 1920-pixel work area. Smaller displays continue to use the existing automatic HUD fit scale.
-- The button contributes a client-input hit region. Transparent pixels around it and between panels retain desktop click-through.
+- The button contributes an elliptical native window region with enough padding to retain every ink stroke. The square corners around the circle and the gaps between panels remain outside the native window region and therefore retain cross-process desktop click-through.
 
 ## Map behavior
 

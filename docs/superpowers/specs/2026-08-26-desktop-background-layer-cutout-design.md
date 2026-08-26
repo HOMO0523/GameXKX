@@ -60,27 +60,29 @@ The overlay `SWindow` requests per-pixel transparency so Slate clears its render
 
 ## Input contract
 
-The native overlay must never intercept the whole rectangular window merely because it is topmost.
+The native overlay must never intercept the whole rectangular window merely because it is topmost. `HTTRANSPARENT` is not used as the cross-process click-through mechanism because Windows only guarantees its forwarding behavior between covered windows on the same thread.
 
-A layout-derived hit-region snapshot is maintained for the current state. Native `WM_NCHITTEST` handling translates the pointer into physical overlay coordinates and applies these rules:
+A layout-derived native window-region snapshot is maintained for the current state. Project code builds an `HRGN` union and applies it with `SetWindowRgn` before the overlay is shown:
 
-- transparent gaps outside active HUD regions return click-through;
-- action buttons and tabs return client input and continue through Slate's normal button routing;
-- the idle strip accepts client input, with non-control portions retaining the current drag behavior;
-- expanded backpack, warehouse, talents, tools, training, settings, confirmation, navigation, and notice surfaces accept client input;
-- transparent gaps between those surfaces remain click-through.
+- the idle strip and notice rail contribute rectangular regions;
+- expanded backpack, warehouse, talents, tools, training, settings, confirmation, navigation, and notice surfaces contribute their visible layout regions;
+- the circular town control contributes an elliptical region with enough padding to preserve its complete ink edge;
+- transparent gaps between those shapes are excluded from the native window region and therefore pass input to any underlying process;
+- action buttons and tabs inside the region continue through Slate's normal input routing;
+- non-control portions of the idle strip retain the current drag behavior.
 
-The hit test is geometry-based rather than read from a GPU alpha buffer, so it adds no frame readback and cannot lag one rendered frame behind the visuals.
+The region is geometry-based rather than read from a GPU alpha buffer, so it adds no frame readback and cannot lag one rendered frame behind the visuals. `WM_NCHITTEST` remains available for normal client/drag behavior inside the accepted region, but it does not claim to provide cross-process click-through.
 
 ## Lifecycle and fallback
 
 1. Preflight DirectComposition, D3D12, and plugin availability before hiding the ordinary game viewport.
 2. Create the tagged overlay without showing it.
 3. Confirm that the composition swap chain and DirectComposition target were attached successfully.
-4. Only then show the overlay and hide the ordinary desktop-map game viewport.
-5. On close, map transition, or EndPlay, restore the game viewport first, then detach and release the composition resources and destroy the overlay window.
+4. Install the native hook and apply the current `SetWindowRgn` union while the overlay remains hidden.
+5. Only after composition and region application both succeed, show the overlay and hide the ordinary desktop-map game viewport.
+6. On close, map transition, or EndPlay, restore the game viewport first, then detach and release the composition resources and destroy the overlay window.
 
-If preflight or attachment fails, the controller does not show a black or partially initialized overlay. It keeps or restores the ordinary UE game viewport and hosts the same background-free workbench through the existing viewport path. No fallback is allowed to reintroduce the deleted full-canvas paper.
+If preflight, attachment, native-hook installation, or region application fails, the controller does not show a black, rectangular-input-blocking, or partially initialized overlay. It keeps or restores the ordinary UE game viewport and hosts the same background-free workbench through the existing viewport path. No fallback is allowed to reintroduce the deleted full-canvas paper.
 
 Only one overlay association may exist at a time. Repeated opening, closing, Tab expansion, and monitor/DPI changes reuse or resize the existing swap chain and release obsolete buffers.
 
@@ -106,7 +108,7 @@ After one warm expanded cycle, 60 additional collapse/expand cycles followed by 
 - The swap-chain provider activates only for the scoped GameXXK overlay.
 - Overlay creation failure leaves the ordinary viewport visible.
 - Window destruction releases the plugin association and restores the viewport.
-- Hit-region tests cover empty click-through, controls, drag surface, expanded panels, modal surfaces, and state changes.
+- Native-region tests cover excluded gaps, controls, drag surface, expanded panels, the circular town control, modal surfaces, and state changes.
 - Tab changes bounds without changing the HUD scale setting.
 
 ### Real Windows tests
