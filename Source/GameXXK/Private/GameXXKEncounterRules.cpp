@@ -1,4 +1,5 @@
 #include "GameXXKEncounterRules.h"
+#include "GameXXKCharacterStatRules.h"
 
 namespace
 {
@@ -84,7 +85,7 @@ int32 FGameXXKEncounterRules::DeriveChapterSeed(const int32 RootSeed, const int3
 
 int32 FGameXXKEncounterRules::GetCombatLevel(const EGameXXKEnemyTier Tier, const int32 RouteCombatLevel)
 {
-	const int32 Snapshot = FMath::Clamp(RouteCombatLevel, 1, 20);
+	const int32 Snapshot = FMath::Clamp(RouteCombatLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 	switch (Tier)
 	{
 	case EGameXXKEnemyTier::Normal:

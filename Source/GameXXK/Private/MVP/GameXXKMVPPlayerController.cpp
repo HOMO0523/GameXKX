@@ -2,10 +2,13 @@
 
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/InputComponent.h"
 #include "Engine/Engine.h"
+#include "Engine/GameEngine.h"
 #include "Engine/GameInstance.h"
+#include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "InputKeyEventArgs.h"
 #include "Interaction/GameXXKInteractionComponent.h"
@@ -16,6 +19,7 @@
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Misc/Parse.h"
+#include "Misc/PackageName.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
@@ -24,6 +28,7 @@
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKDesktopHudSessionSubsystem.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKMetaShopWidget.h"
@@ -37,6 +42,13 @@
 #include "UI/GameXXKTownOverlayWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
 #include "UObject/UObjectGlobals.h"
+#include "Styling/SlateTypes.h"
+#include "Widgets/SNullWidget.h"
+#include "Widgets/SWindow.h"
+
+#if PLATFORM_WINDOWS
+#include "IGameXXKDesktopOverlayModule.h"
+#endif
 
 namespace
 {
@@ -156,6 +168,12 @@ namespace
 			|| Screen == EGameXXKScreen::RouteCamp;
 	}
 
+	bool IsSourceLessRouteEncounterPackageValid(const FString& CurrentPackageName, const EGameXXKScreen Screen)
+	{
+		return GameXXKLevelFlow::MapPackageMatches(CurrentPackageName, GameXXKLevelFlow::MapForScreen(Screen))
+			|| GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(CurrentPackageName);
+	}
+
 	FString ResolveDesktopTrainingPerfProfile()
 	{
 		FString Profile;
@@ -217,17 +235,25 @@ void AGameXXKMVPPlayerController::BeginPlay()
 	}
 	else
 	{
+		// The 3D town presents the same Workbench directly in the game viewport.
+		bEnableDesktopTrainingWorkbench = true;
 		EnsurePlayerFlowWidgets();
 	}
 
 	RefreshPlayerFlowWidgets();
-	if (bIsDesktopTrainingHUDMap && !bPerfEmptyProfile)
+	if ((!bIsDesktopTrainingHUDMap || !bPerfEmptyProfile))
 	{
 		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 			Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town)
 		{
-			OpenDesktopTrainingWorkbench();
-			ApplyDesktopTrainingPerfProfile(DesktopTrainingPerfProfile);
+			if (OpenDesktopTrainingWorkbench())
+			{
+				RestoreDesktopWorkbenchSessionAfterMapTravel();
+			}
+			if (bIsDesktopTrainingHUDMap)
+			{
+				ApplyDesktopTrainingPerfProfile(DesktopTrainingPerfProfile);
+			}
 		}
 	}
 }
@@ -240,12 +266,27 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 		PreLoadMapWithContextDelegateHandle.Reset();
 	}
 	ExitBattleOverlay();
+	SetDesktopWorkbenchTownPanelInputLock(false);
+	if (DesktopTrainingWorkbenchWidget)
+	{
+		DesktopTrainingWorkbenchWidget->CloseWorkbench();
+	}
+	DestroyDesktopTrainingOverlayWindow();
 	Super::EndPlay(EndPlayReason);
 }
 
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	if (DesktopTrainingOverlayWindow.IsValid()
+		&& bDesktopTrainingOverlayCompositionActive
+		&& DesktopTrainingWorkbenchWidget
+		&& DesktopTrainingWorkbenchWidget->IsWorkbenchVisibleForTest())
+	{
+		// The engine can show its primary game window once more after BeginPlay.
+		// Keep that opaque renderer host hidden while the transparent desktop HUD owns presentation.
+		SetDesktopTrainingGameViewportVisible(false);
+	}
 	UpdateBattleTargetingPointerFromMouse();
 }
 
@@ -437,6 +478,19 @@ bool AGameXXKMVPPlayerController::ApplyDesktopTrainingPerfProfileForTest(const F
 {
 	return ApplyDesktopTrainingPerfProfile(Profile);
 }
+
+bool AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapNameForTest(
+	const FString& MapPackageName)
+{
+	return ShouldUseDesktopWindowForMapName(MapPackageName);
+}
+
+bool AGameXXKMVPPlayerController::ShouldBeginDesktopTownMapTravelForTest(
+	const bool bAlreadyPending,
+	const FName TargetMap)
+{
+	return !bAlreadyPending && !TargetMap.IsNone();
+}
 #endif
 
 void AGameXXKMVPPlayerController::SetDesktopTrainingWorkbenchEnabledForTest(const bool bEnabled)
@@ -455,6 +509,26 @@ void AGameXXKMVPPlayerController::SetDesktopTrainingWorkbenchEnabledForTest(cons
 UGameXXKDesktopTrainingWorkbenchWidget* AGameXXKMVPPlayerController::GetDesktopTrainingWorkbenchWidgetForTest() const
 {
 	return DesktopTrainingWorkbenchWidget;
+}
+
+TArray<UGameXXKDesktopTrainingWorkbenchWidget*> AGameXXKMVPPlayerController::GetAllDesktopTrainingWorkbenchWidgetsForTest() const
+{
+	TArray<UGameXXKDesktopTrainingWorkbenchWidget*> Result;
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return Result;
+	}
+	TArray<UUserWidget*> Widgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(World, Widgets, UGameXXKDesktopTrainingWorkbenchWidget::StaticClass(), false);
+	for (UUserWidget* Widget : Widgets)
+	{
+		if (UGameXXKDesktopTrainingWorkbenchWidget* Workbench = Cast<UGameXXKDesktopTrainingWorkbenchWidget>(Widget))
+		{
+			Result.Add(Workbench);
+		}
+	}
+	return Result;
 }
 
 bool AGameXXKMVPPlayerController::EnsurePlayerFlowWidgetsForTest()
@@ -1226,9 +1300,24 @@ bool AGameXXKMVPPlayerController::OpenRouteEncounterPanelInternal(AGameXXKRouteE
 	{
 		return false;
 	}
+	if (!SourceActor && CanAddPlayerWidgetsToViewport())
+	{
+		const UWorld* World = GetWorld();
+		const FString CurrentPackageName = World && World->GetOutermost()
+			? World->GetOutermost()->GetName()
+			: FString();
+		if (!IsSourceLessRouteEncounterPackageValid(CurrentPackageName, Subsystem->GetRuntimeState().Screen))
+		{
+			return false;
+		}
+	}
 	if (IsRouteEncounterPanelOpenForTest())
 	{
-		return ActiveRouteEncounterSourceActor.Get() == SourceActor;
+		if (ActiveRouteEncounterSourceActor.Get() == SourceActor && HasValidRouteEncounterContext())
+		{
+			return true;
+		}
+		ForceCloseRouteEncounterPanelLocal();
 	}
 
 	UGameXXKRouteEncounterPanelWidget* Panel = EnsureRouteEncounterPanelWidget();
@@ -1248,25 +1337,68 @@ bool AGameXXKMVPPlayerController::OpenRouteEncounterPanelInternal(AGameXXKRouteE
 bool AGameXXKMVPPlayerController::CloseRouteEncounterPanel()
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (CanAddPlayerWidgetsToViewport()
-		&& Subsystem
-		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent
-		&& !ActiveRouteEncounterSourceActor.IsValid())
+	if (Subsystem
+		&& IsRouteEncounterPanelOpenForTest()
+		&& HasValidRouteEncounterContext()
+		&& !ActiveRouteEncounterSourceActor.IsValid()
+		&& (Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteEvent
+			|| Subsystem->GetRuntimeState().Screen == EGameXXKScreen::RouteCamp))
 	{
-		// A route-map event/chest cannot be dismissed into an unresolved state:
-		// it has no world actor to reopen it from, and the player must explicitly
-		// select one reward before the route becomes interactive again.
-		return false;
+		return ReturnPendingRouteChoiceToMap();
 	}
 
-	const bool bClosed = RouteEncounterPanelWidget && RouteEncounterPanelWidget->CloseEncounterPanel();
-	ClearRouteEncounterContext();
-	if (bClosed)
+	return ForceCloseRouteEncounterPanelLocal();
+}
+
+void AGameXXKMVPPlayerController::SetDesktopWorkbenchTownPanelInputLock(
+	const bool bLocked)
+{
+	if (bLocked)
+	{
+		if (!bOwnsDesktopWorkbenchTownMoveInputLock)
+		{
+			SetIgnoreMoveInput(true);
+			bOwnsDesktopWorkbenchTownMoveInputLock = true;
+		}
+		if (!bOwnsDesktopWorkbenchTownLookInputLock)
+		{
+			SetIgnoreLookInput(true);
+			bOwnsDesktopWorkbenchTownLookInputLock = true;
+		}
+		return;
+	}
+	if (bOwnsDesktopWorkbenchTownMoveInputLock)
 	{
 		SetIgnoreMoveInput(false);
-		ApplyPlayerFlowInputMode();
+		bOwnsDesktopWorkbenchTownMoveInputLock = false;
 	}
-	return bClosed;
+	if (bOwnsDesktopWorkbenchTownLookInputLock)
+	{
+		SetIgnoreLookInput(false);
+		bOwnsDesktopWorkbenchTownLookInputLock = false;
+	}
+}
+
+bool AGameXXKMVPPlayerController::ReturnPendingRouteChoiceToMap()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || (IsRouteEncounterPanelOpenForTest() && !HasValidRouteEncounterContext()))
+	{
+		ForceCloseRouteEncounterPanelLocal();
+		return false;
+	}
+	if (!Subsystem->ReturnPendingRouteChoiceToMap())
+	{
+		return false;
+	}
+	ForceCloseRouteEncounterPanelLocal();
+	RefreshPlayerFlowWidgets();
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::TriggerRouteEncounterEscapeForTest()
+{
+	return InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::Escape, IE_Pressed, 1.0f));
 }
 
 bool AGameXXKMVPPlayerController::IsRouteEncounterPanelOpenForTest() const
@@ -1286,20 +1418,20 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 	{
 		return false;
 	}
+	if (!HasValidRouteEncounterContext())
+	{
+		ForceCloseRouteEncounterPanelLocal();
+		return false;
+	}
 
 	if (Action == EGameXXKRouteEncounterAction::ClosePanel)
 	{
-		return CloseRouteEncounterPanel();
+		return ReturnPendingRouteChoiceToMap();
 	}
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 	if (!IsGenericRouteEncounterScreen(State.Screen))
 	{
-		return false;
-	}
-	if (!HasValidRouteEncounterContext())
-	{
-		CloseRouteEncounterPanel();
 		return false;
 	}
 	// The panel has one immutable source context.  Preserve it before the route
@@ -1358,7 +1490,7 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 		return false;
 	}
 
-	CloseRouteEncounterPanel();
+	ForceCloseRouteEncounterPanelLocal();
 	if (EncounterActor)
 	{
 		EncounterActor->RecordExplicitChoiceResolved(GetPawn());
@@ -1408,6 +1540,49 @@ void AGameXXKMVPPlayerController::SetTrackedInputModeForTest(const EGameXXKTrack
 bool AGameXXKMVPPlayerController::PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName)
 {
 	return PrepareForRuntimeStateMapTravel(CurrentPackageName);
+}
+
+bool AGameXXKMVPPlayerController::CanAddPlayerWidgetsToViewportForTest() const
+{
+	return CanAddPlayerWidgetsToViewport();
+}
+
+TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWindowForTest(
+	const FVector2D& HostPosition,
+	const FVector2D& HostSize)
+{
+	return BuildDesktopTrainingOverlayWindow(
+		HostPosition,
+		HostSize,
+		SNullWidget::NullWidget,
+		true);
+}
+
+bool AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewportForTest(
+	const bool bEditorMode,
+	const bool bGameCommandLine)
+{
+	return ShouldHideDesktopTrainingGameViewport(bEditorMode, bGameCommandLine);
+}
+
+bool AGameXXKMVPPlayerController::ShouldHideViewportAfterOverlayAttachForTest(
+	const bool bOverlayRequested,
+	const bool bOverlayAttached)
+{
+	return bOverlayRequested && bOverlayAttached;
+}
+
+bool AGameXXKMVPPlayerController::ShouldAttemptDesktopOverlayAfterFailureForTest(
+	const bool bOverlayFailedForSession)
+{
+	return !bOverlayFailedForSession;
+}
+
+bool AGameXXKMVPPlayerController::IsSourceLessRouteEncounterPackageValidForTest(const FString& CurrentPackageName) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem
+		&& IsSourceLessRouteEncounterPackageValid(CurrentPackageName, Subsystem->GetRuntimeState().Screen);
 }
 
 void AGameXXKMVPPlayerController::SetBattleMousePositionOverrideForTest(const FVector2D InMousePosition)
@@ -1638,6 +1813,7 @@ UGameXXKOneGameRouteMapWidget* AGameXXKMVPPlayerController::EnsureRouteMapWidget
 	}
 	if (RouteMapWidget)
 	{
+		RouteMapWidget->SetIsFocusable(true);
 		RouteMapWidget->SetMVPSubsystem(Subsystem);
 		ConfigureRouteMapWidgetViewport(RouteMapWidget);
 		if (bCanAddToViewport && !RouteMapWidget->IsInViewport())
@@ -1873,6 +2049,7 @@ UGameXXKRouteEncounterPanelWidget* AGameXXKMVPPlayerController::EnsureRouteEncou
 	}
 	if (RouteEncounterPanelWidget)
 	{
+		RouteEncounterPanelWidget->SetIsFocusable(true);
 		RouteEncounterPanelWidget->SetMVPSubsystem(Subsystem);
 		if (bCreatedRouteEncounterPanel)
 		{
@@ -2019,6 +2196,253 @@ UGameXXKTownHudWidget* AGameXXKMVPPlayerController::EnsureTownHudWidget()
 	return TownHudWidget;
 }
 
+TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWindow(
+	const FVector2D& WindowPosition,
+	const FVector2D& WindowSize,
+	const TSharedRef<SWidget>& Content,
+	const bool bRequestComposition)
+{
+	TSharedRef<SWindow> Window = SNew(SWindow)
+		.Type(EWindowType::Normal)
+		.Style(&FWindowStyle::GetBorderless())
+		.Title(FText::FromString(TEXT("GameXXKDesktopOverlay")))
+		.AutoCenter(EAutoCenter::None)
+		.ScreenPosition(WindowPosition)
+		.ClientSize(WindowSize)
+		.AdjustInitialSizeAndPositionForDPIScale(false)
+		.SupportsTransparency(
+			bRequestComposition
+				? EWindowTransparency::PerPixel
+				: EWindowTransparency::None)
+		.SizingRule(ESizingRule::FixedSize)
+		.IsPopupWindow(false)
+		.IsTopmostWindow(true)
+		.FocusWhenFirstShown(false)
+		.ActivationPolicy(EWindowActivationPolicy::Always)
+		.UseOSWindowBorder(false)
+		.HasCloseButton(false)
+		.SupportsMaximize(false)
+		.SupportsMinimize(false)
+		.CreateTitleBar(false)
+		.SaneWindowPlacement(false)
+		.LayoutBorder(FMargin(0.0f))
+		.bManualManageDPI(true)
+		[
+			Content
+		];
+	Window->SetAcceptsInput(true);
+	return Window;
+}
+
+bool AGameXXKMVPPlayerController::ShouldUseDesktopTrainingOverlayWindow() const
+{
+#if PLATFORM_WINDOWS
+	const UWorld* World = GetWorld();
+	const FString MapPackageName = World && World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	return CanAddPlayerWidgetsToViewport()
+		&& FSlateApplication::IsInitialized()
+		&& !GIsAutomationTesting
+		&& ShouldAttemptDesktopOverlayAfterFailureForTest(
+			bDesktopTrainingOverlayFailedForSession)
+		&& IGameXXKDesktopOverlayModule::Get().IsRuntimeSupported()
+		&& ShouldUseDesktopWindowForMapName(MapPackageName);
+#else
+	return false;
+#endif
+}
+
+bool AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapName(
+	const FString& MapPackageName)
+{
+	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(MapPackageName);
+}
+
+bool AGameXXKMVPPlayerController::EnsureDesktopTrainingOverlayWindow()
+{
+	if (DesktopTrainingOverlayWindow.IsValid())
+	{
+		return bDesktopTrainingOverlayCompositionActive;
+	}
+	if (!ShouldUseDesktopTrainingOverlayWindow() || !DesktopTrainingWorkbenchWidget)
+	{
+		return false;
+	}
+
+	FDisplayMetrics DisplayMetrics;
+	FSlateApplication::Get().GetInitialDisplayMetrics(DisplayMetrics);
+	FPlatformRect WorkArea = DisplayMetrics.PrimaryDisplayWorkAreaRect;
+	if (WorkArea.Right <= WorkArea.Left || WorkArea.Bottom <= WorkArea.Top)
+	{
+		return false;
+	}
+	const FVector2D HostPosition(
+		static_cast<float>(WorkArea.Left),
+		static_cast<float>(WorkArea.Top));
+	const FVector2D HostSize(
+		static_cast<float>(FMath::Max(1, WorkArea.Right - WorkArea.Left)),
+		static_cast<float>(FMath::Max(1, WorkArea.Bottom - WorkArea.Top)));
+	DesktopTrainingWorkbenchWidget->InitializeDesktopPresentationHostSize(HostSize);
+	const FVector2D WindowPosition =
+		HostPosition + DesktopTrainingWorkbenchWidget->GetDesktopWindowTopLeftForHost();
+	const FVector2D WindowSize = DesktopTrainingWorkbenchWidget->GetDesktopWindowSizeForHost();
+	DesktopTrainingOverlayWindow = BuildDesktopTrainingOverlayWindow(
+		WindowPosition,
+		WindowSize,
+		DesktopTrainingWorkbenchWidget->TakeWidget(),
+		true);
+#if PLATFORM_WINDOWS
+	IGameXXKDesktopOverlayModule& Overlay = IGameXXKDesktopOverlayModule::Get();
+	FSlateApplication::Get().AddWindow(DesktopTrainingOverlayWindow.ToSharedRef(), false);
+	const TSharedPtr<FGenericWindow> NativeWindow =
+		DesktopTrainingOverlayWindow->GetNativeWindow();
+	void* NativeWindowHandle = NativeWindow.IsValid()
+		? NativeWindow->GetOSWindowHandle()
+		: nullptr;
+	const bool bNativeRegionAttached =
+		DesktopTrainingWorkbenchWidget->AttachDesktopNativeWindowForPresentation(
+			NativeWindowHandle);
+	bool bCompositionAttached = false;
+	if (bNativeRegionAttached)
+	{
+		Overlay.BeginOverlayWindowCreation();
+		DesktopTrainingOverlayWindow->ShowWindow();
+		bCompositionAttached = Overlay.EndOverlayWindowCreation(NativeWindowHandle);
+	}
+	bDesktopTrainingOverlayCompositionActive =
+		bCompositionAttached && bNativeRegionAttached;
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("Desktop overlay attach result: composition=%s native_region=%s handle=%p"),
+		bCompositionAttached ? TEXT("true") : TEXT("false"),
+		bNativeRegionAttached ? TEXT("true") : TEXT("false"),
+		NativeWindowHandle);
+	if (!bDesktopTrainingOverlayCompositionActive)
+	{
+		bDesktopTrainingOverlayFailedForSession = true;
+		DesktopTrainingOverlayWindow->HideWindow();
+		DesktopTrainingWorkbenchWidget->DetachDesktopNativeWindowForPresentation();
+		Overlay.ReleaseOverlayWindow(NativeWindowHandle);
+		DesktopTrainingOverlayWindow->SetContent(SNullWidget::NullWidget);
+		FSlateApplication::Get().RequestDestroyWindow(
+			DesktopTrainingOverlayWindow.ToSharedRef());
+		DesktopTrainingOverlayWindow.Reset();
+		return false;
+	}
+	return true;
+#else
+	return false;
+#endif
+}
+
+void AGameXXKMVPPlayerController::SetDesktopTrainingGameViewportVisible(const bool bVisible)
+{
+	const bool bGameCommandLine = FParse::Param(FCommandLine::Get(), TEXT("game"));
+	if (!ShouldHideDesktopTrainingGameViewport(GIsEditor, bGameCommandLine))
+	{
+		return;
+	}
+	TSharedPtr<SWindow> GameViewportWindow = DesktopTrainingGameViewportWindow.Pin();
+	if (GEngine && GEngine->GameViewport && FSlateApplication::IsInitialized())
+	{
+		if (!GameViewportWindow.IsValid())
+		{
+			const TSharedPtr<SViewport> GameViewportWidget =
+				GEngine->GameViewport->GetGameViewportWidget();
+			if (GameViewportWidget.IsValid())
+			{
+				GameViewportWindow = FSlateApplication::Get().FindWidgetWindow(
+					GameViewportWidget.ToSharedRef());
+			}
+		}
+	}
+	if (!GameViewportWindow.IsValid())
+	{
+		const UGameEngine* GameEngine = Cast<UGameEngine>(GEngine);
+		GameViewportWindow = GameEngine ? GameEngine->GameViewportWindow.Pin() : nullptr;
+	}
+	if (!GameViewportWindow.IsValid()
+		|| GameViewportWindow == DesktopTrainingOverlayWindow)
+	{
+		return;
+	}
+	DesktopTrainingGameViewportWindow = GameViewportWindow;
+	if (bVisible)
+	{
+		if (!GameViewportWindow->IsVisible())
+		{
+			GameViewportWindow->ShowWindow();
+		}
+		bDesktopTrainingGameViewportHidden = false;
+	}
+	else
+	{
+		if (GameViewportWindow->IsVisible())
+		{
+			GameViewportWindow->HideWindow();
+		}
+		bDesktopTrainingGameViewportHidden = true;
+	}
+}
+
+bool AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewport(
+	const bool bEditorMode,
+	const bool bGameCommandLine)
+{
+	return !bEditorMode || bGameCommandLine;
+}
+
+void AGameXXKMVPPlayerController::ShowDesktopTrainingOverlayWindow()
+{
+	if (!EnsureDesktopTrainingOverlayWindow())
+	{
+		return;
+	}
+	if (bDesktopTrainingOverlayCompositionActive)
+	{
+		DesktopTrainingOverlayWindow->ShowWindow();
+		SetDesktopTrainingGameViewportVisible(false);
+	}
+}
+
+void AGameXXKMVPPlayerController::HideDesktopTrainingOverlayWindow()
+{
+	if (DesktopTrainingOverlayWindow.IsValid())
+	{
+		DesktopTrainingOverlayWindow->HideWindow();
+	}
+	if (bDesktopTrainingGameViewportHidden)
+	{
+		SetDesktopTrainingGameViewportVisible(true);
+	}
+}
+
+void AGameXXKMVPPlayerController::DestroyDesktopTrainingOverlayWindow()
+{
+	HideDesktopTrainingOverlayWindow();
+	if (DesktopTrainingOverlayWindow.IsValid() && FSlateApplication::IsInitialized())
+	{
+#if PLATFORM_WINDOWS
+		const TSharedPtr<FGenericWindow> NativeWindow =
+			DesktopTrainingOverlayWindow->GetNativeWindow();
+		void* NativeWindowHandle = NativeWindow.IsValid()
+			? NativeWindow->GetOSWindowHandle()
+			: nullptr;
+		if (IGameXXKDesktopOverlayModule::IsAvailable())
+		{
+			IGameXXKDesktopOverlayModule::Get().ReleaseOverlayWindow(NativeWindowHandle);
+		}
+#endif
+		DesktopTrainingOverlayWindow->SetContent(SNullWidget::NullWidget);
+		FSlateApplication::Get().RequestDestroyWindow(DesktopTrainingOverlayWindow.ToSharedRef());
+	}
+	DesktopTrainingOverlayWindow.Reset();
+	DesktopTrainingGameViewportWindow.Reset();
+	bDesktopTrainingOverlayCompositionActive = false;
+}
+
 UGameXXKDesktopTrainingWorkbenchWidget* AGameXXKMVPPlayerController::EnsureDesktopTrainingWorkbenchWidget()
 {
 	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
@@ -2041,14 +2465,105 @@ UGameXXKDesktopTrainingWorkbenchWidget* AGameXXKMVPPlayerController::EnsureDeskt
 	if (DesktopTrainingWorkbenchWidget)
 	{
 		DesktopTrainingWorkbenchWidget->SetMVPSubsystem(Subsystem);
-		ConfigureFullscreenTaskPanelSlot(DesktopTrainingWorkbenchWidget);
-		if (bCanAddToViewport && !DesktopTrainingWorkbenchWidget->IsInViewport())
+		const bool bDesktopWindowPresentation = ResolvePlayerFlowBootProfile()
+			== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
+		DesktopTrainingWorkbenchWidget->SetPresentationMode(
+			bDesktopWindowPresentation
+				? EGameXXKDesktopHudPresentationMode::DesktopWindow
+				: EGameXXKDesktopHudPresentationMode::TownViewport);
+		bool bUsesDesktopOverlay = false;
+		if (ShouldUseDesktopTrainingOverlayWindow())
 		{
-			DesktopTrainingWorkbenchWidget->AddToViewport(200);
+			if (DesktopTrainingWorkbenchWidget->IsInViewport())
+			{
+				DesktopTrainingWorkbenchWidget->RemoveFromParent();
+			}
+			bUsesDesktopOverlay = EnsureDesktopTrainingOverlayWindow();
+		}
+		if (!bUsesDesktopOverlay)
+		{
+			if (DesktopTrainingOverlayWindow.IsValid())
+			{
+				DestroyDesktopTrainingOverlayWindow();
+			}
+			FVector2D ViewportSize = FVector2D::ZeroVector;
+			if (GEngine && GEngine->GameViewport)
+			{
+				GEngine->GameViewport->GetViewportSize(ViewportSize);
+			}
+			if (ViewportSize.X > 1.0f && ViewportSize.Y > 1.0f)
+			{
+				DesktopTrainingWorkbenchWidget->InitializeDesktopPresentationHostSize(ViewportSize);
+			}
 			ConfigureFullscreenTaskPanelSlot(DesktopTrainingWorkbenchWidget);
+			if (bCanAddToViewport && !DesktopTrainingWorkbenchWidget->IsInViewport())
+			{
+				DesktopTrainingWorkbenchWidget->AddToViewport(200);
+				ConfigureFullscreenTaskPanelSlot(DesktopTrainingWorkbenchWidget);
+			}
 		}
 	}
 	return DesktopTrainingWorkbenchWidget;
+}
+
+void AGameXXKMVPPlayerController::RestoreDesktopWorkbenchSessionAfterMapTravel()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKDesktopHudSessionSubsystem* Session = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKDesktopHudSessionSubsystem>()
+		: nullptr;
+	if (!Session || !DesktopTrainingWorkbenchWidget)
+	{
+		return;
+	}
+	FGameXXKDesktopWorkbenchSessionState State;
+	if (Session->ConsumeAfterMapTravel(State))
+	{
+		DesktopTrainingWorkbenchWidget->RestoreSessionStateAfterMapTravel(State);
+	}
+	bDesktopTownMapTravelPending = false;
+}
+
+bool AGameXXKMVPPlayerController::RequestDesktopTownToggleFromWorkbench()
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld() || !DesktopTrainingWorkbenchWidget)
+	{
+		return false;
+	}
+	const FString CurrentPackageName = World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	const FName TargetMap =
+		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName);
+	if (bDesktopTownMapTravelPending || TargetMap.IsNone()
+		|| !FPackageName::DoesPackageExist(TargetMap.ToString()))
+	{
+		return false;
+	}
+
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKDesktopHudSessionSubsystem* Session = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKDesktopHudSessionSubsystem>()
+		: nullptr;
+	if (!Session)
+	{
+		return false;
+	}
+	const FGameXXKDesktopWorkbenchSessionState State =
+		DesktopTrainingWorkbenchWidget->CaptureSessionStateForMapTravel();
+	if (!State.bValid)
+	{
+		return false;
+	}
+
+	Session->StoreForMapTravel(State);
+	bDesktopTownMapTravelPending = true;
+	DesktopTrainingWorkbenchWidget->SetTownMapTravelPending(true);
+	DesktopTrainingWorkbenchWidget->CloseWorkbench();
+	HideDesktopTrainingOverlayWindow();
+	UGameplayStatics::OpenLevel(World, TargetMap);
+	return true;
 }
 
 bool AGameXXKMVPPlayerController::OpenDesktopTrainingWorkbench()
@@ -2071,7 +2586,12 @@ bool AGameXXKMVPPlayerController::OpenDesktopTrainingWorkbench()
 	{
 		TownHudWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
-	return Widget->IsWorkbenchVisibleForTest() || Widget->OpenWorkbench();
+	const bool bOpened = Widget->IsWorkbenchVisibleForTest() || Widget->OpenWorkbench();
+	if (bOpened)
+	{
+		ShowDesktopTrainingOverlayWindow();
+	}
+	return bOpened;
 }
 
 bool AGameXXKMVPPlayerController::CloseDesktopTrainingWorkbench()
@@ -2081,6 +2601,7 @@ bool AGameXXKMVPPlayerController::CloseDesktopTrainingWorkbench()
 		return false;
 	}
 	const bool bClosed = DesktopTrainingWorkbenchWidget->CloseWorkbench();
+	HideDesktopTrainingOverlayWindow();
 	if (TownHudWidget && ResolveMVPSubsystem() && ResolveMVPSubsystem()->GetRuntimeState().Screen == EGameXXKScreen::Town)
 	{
 		TownHudWidget->SetVisibility(ESlateVisibility::Visible);
@@ -2112,8 +2633,6 @@ bool AGameXXKMVPPlayerController::ConfirmPendingQuestNpc(FName TaskId)
 void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const bool bDesktopTrainingOnlyFlow = ResolvePlayerFlowBootProfile()
-		== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
 	if (Subsystem
 		&& ActiveScreen == EGameXXKScreen::Town
@@ -2160,12 +2679,36 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		// The modal belongs only to a pending route encounter. Explicit choices
 		// close it before state changes; this also covers external transitions.
-		CloseRouteEncounterPanel();
+		ForceCloseRouteEncounterPanelLocal();
 	}
 	if (ActiveScreen != EGameXXKScreen::RouteMerchant && bRouteMerchantInputLocked)
 	{
 		SetIgnoreMoveInput(false);
 		bRouteMerchantInputLocked = false;
+	}
+	if (ActiveScreen == EGameXXKScreen::DungeonMap && (!RouteMapWidget))
+	{
+		// The HUD-only desktop boot profile creates only the workbench while it is
+		// in Town. The Challenge route map is the second lazy promotion: it needs
+		// the shared route owner without the BattleBoard yet.
+		EnsureRouteMapWidget();
+	}
+	if (IsGenericRouteEncounterScreen(ActiveScreen)
+		&& (!RouteMapWidget || !RouteEncounterPanelWidget))
+	{
+		// Event and Camp nodes on the generated Challenge map use the same
+		// source-less pure-HUD choice panel as the legacy route. Promote it
+		// lazily on the desktop profile so the node actually opens a panel.
+		EnsureRouteMapWidget();
+		EnsureRouteEncounterPanelWidget();
+	}
+	if (ActiveScreen == EGameXXKScreen::RouteMerchant
+		&& (!RouteMapWidget || !RouteMerchantWidget))
+	{
+		// Merchant nodes are hosted by their own full-screen widget; the desktop
+		// profile must promote it just like the DungeonMap and Battle surfaces.
+		EnsureRouteMapWidget();
+		EnsureRouteMerchantWidget();
 	}
 	if (ActiveScreen == EGameXXKScreen::Battle && (!RouteMapWidget || !BattleBoardWidget))
 	{
@@ -2208,18 +2751,25 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		if (Workbench && ActiveScreen == EGameXXKScreen::Town)
 		{
 			Workbench->SetMVPSubsystem(Subsystem);
-			if (bDesktopTrainingOnlyFlow
-				&& bExitedBattleOverlay
+			// Return-to-Town restores the pure-2D shell only when a non-Town screen
+			// actually closed it. The flag is cleared before opening so a rebuild
+			// that re-enters this refresh can never reopen the workbench again.
+			if (bDesktopWorkbenchClosedForFlow
 				&& !Workbench->IsWorkbenchVisibleForTest())
 			{
+				bDesktopWorkbenchClosedForFlow = false;
 				OpenDesktopTrainingWorkbench();
 			}
 		}
 		else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
 		{
 			// The workbench is a Town-owned shell. Close it before entering route or
-			// battle screens so it cannot retain input or cover gameplay.
+			// battle screens so it cannot retain input or cover gameplay. Record
+			// ownership even when the originating Workbench action already collapsed
+			// itself before notifying us; Town must still restore the idle strip.
+			bDesktopWorkbenchClosedForFlow = true;
 			Workbench->CloseWorkbench();
+			HideDesktopTrainingOverlayWindow();
 		}
 		if (TownHudWidget && Workbench && Workbench->IsWorkbenchVisibleForTest())
 		{
@@ -2233,6 +2783,7 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	else if (DesktopTrainingWorkbenchWidget)
 	{
 		DesktopTrainingWorkbenchWidget->CloseWorkbench();
+		HideDesktopTrainingOverlayWindow();
 	}
 	if (RouteMapWidget)
 	{
@@ -2287,21 +2838,22 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	}
 	if (!Subsystem || !IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
 	{
-		CloseRouteEncounterPanel();
+		ForceCloseRouteEncounterPanelLocal();
 	}
-	else if (!bDesktopTrainingOnlyFlow
-		&& IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen)
+	else if (IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen)
 		&& !IsRouteEncounterPanelOpenForTest())
 	{
-		// Event, chest and camp nodes use this shared pure-HUD choice panel.
+		// Event and camp nodes use this shared pure-HUD choice panel. On the
+		// desktop training map there is no scene actor, so the source-less
+		// variant opens exactly like a route-map event in full flow.
 		// RouteMerchant is deliberately hosted by RouteMerchantWidget instead.
 		OpenRouteEncounterPanelInternal(nullptr);
 	}
-	else if (CanAddPlayerWidgetsToViewport() && IsRouteEncounterPanelOpenForTest() && !HasValidRouteEncounterContext())
+	else if (IsRouteEncounterPanelOpenForTest() && !HasValidRouteEncounterContext())
 	{
 		// A route transition or a destroyed/replaced source actor invalidates the
 		// modal context.  Do not leave a stale panel that could resolve a new node.
-		CloseRouteEncounterPanel();
+		ForceCloseRouteEncounterPanelLocal();
 	}
 
 	const bool bRouteMerchantOpen = ActiveScreen == EGameXXKScreen::RouteMerchant
@@ -2600,6 +3152,11 @@ bool AGameXXKMVPPlayerController::HasValidRouteEncounterContext() const
 	}
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	if (ActiveRouteEncounterScreen != State.Screen
+		|| ActiveRouteEncounterNodeId != State.PendingRouteNodeId)
+	{
+		return false;
+	}
 	if (!ActiveRouteEncounterSourceActor.IsValid())
 	{
 		if (!CanAddPlayerWidgetsToViewport())
@@ -2611,7 +3168,7 @@ bool AGameXXKMVPPlayerController::HasValidRouteEncounterContext() const
 		// only presentation, so the screen-to-map contract is the full context.
 		const UWorld* World = GetWorld();
 		const FString CurrentPackageName = World && World->GetOutermost() ? World->GetOutermost()->GetName() : FString();
-		return GameXXKLevelFlow::MapPackageMatches(CurrentPackageName, GameXXKLevelFlow::MapForScreen(State.Screen));
+		return IsSourceLessRouteEncounterPackageValid(CurrentPackageName, State.Screen);
 	}
 
 	AGameXXKRouteEncounterSceneActor* SourceActor = ActiveRouteEncounterSourceActor.Get();
@@ -2620,6 +3177,21 @@ bool AGameXXKMVPPlayerController::HasValidRouteEncounterContext() const
 		&& SourceActor->MatchesRuntimeScreen(State.Screen)
 		&& ActiveRouteEncounterScreen == State.Screen
 		&& ActiveRouteEncounterNodeId == State.PendingRouteNodeId;
+}
+
+bool AGameXXKMVPPlayerController::ForceCloseRouteEncounterPanelLocal()
+{
+	const bool bOwnedContext = IsRouteEncounterPanelOpenForTest()
+		|| ActiveRouteEncounterSourceActor.IsValid()
+		|| ActiveRouteEncounterNodeId != INDEX_NONE;
+	const bool bClosed = RouteEncounterPanelWidget && RouteEncounterPanelWidget->CloseEncounterPanel();
+	ClearRouteEncounterContext();
+	if (bOwnedContext)
+	{
+		SetIgnoreMoveInput(false);
+		ApplyPlayerFlowInputMode();
+	}
+	return bClosed;
 }
 
 void AGameXXKMVPPlayerController::ClearRouteEncounterContext()

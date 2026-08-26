@@ -277,19 +277,49 @@ bool FGameXXKTrainingTravelVisualRuntime::IsEnemyVisible() const
 
 float FGameXXKTrainingTravelVisualRuntime::GetEnemyHealthFraction() const
 {
+	const auto HealthFraction = [](const int32 HP, const int32 MaxHP)
+	{
+		return MaxHP > 0
+			? FMath::Clamp(static_cast<float>(HP) / static_cast<float>(MaxHP), 0.0f, 1.0f)
+			: 0.0f;
+	};
+	const int32 PresentedSlotIndex = GetPresentedEnemySlotIndex();
 	if (!bHasActiveCombatEvent)
 	{
-		return LatestRuntime.EnemyMaxHP > 0
-			? FMath::Clamp(static_cast<float>(LatestRuntime.EnemyHP) / static_cast<float>(LatestRuntime.EnemyMaxHP), 0.0f, 1.0f)
-			: 0.0f;
+		if (LatestRuntime.Enemies.IsValidIndex(PresentedSlotIndex))
+		{
+			const FGameXXKTrainingTravelEnemyRuntime& Enemy = LatestRuntime.Enemies[PresentedSlotIndex];
+			return HealthFraction(Enemy.HP, Enemy.MaxHP);
+		}
+		return HealthFraction(LatestRuntime.EnemyHP, LatestRuntime.EnemyMaxHP);
 	}
 
-	float Health = static_cast<float>(ActiveCombatEvent.EnemyHealthBefore);
+	const FGameXXKTrainingTravelEnemyRuntime* BeforeEnemy =
+		ActiveCombatEvent.EnemiesBefore.IsValidIndex(PresentedSlotIndex)
+			? &ActiveCombatEvent.EnemiesBefore[PresentedSlotIndex]
+			: nullptr;
+	const FGameXXKTrainingTravelEnemyRuntime* AfterEnemy =
+		ActiveCombatEvent.EnemiesAfter.IsValidIndex(PresentedSlotIndex)
+			? &ActiveCombatEvent.EnemiesAfter[PresentedSlotIndex]
+			: nullptr;
+	const int32 HealthBefore = FMath::Max(
+		0,
+		BeforeEnemy ? BeforeEnemy->HP : ActiveCombatEvent.EnemyHealthBefore);
+	const int32 MaxHealth = FMath::Max(
+		1,
+		BeforeEnemy
+			? BeforeEnemy->MaxHP
+			: (AfterEnemy ? AfterEnemy->MaxHP : ActiveCombatEvent.EnemyMaxHealth));
+	const int32 HealthAfter = FMath::Clamp(
+		AfterEnemy ? AfterEnemy->HP : ActiveCombatEvent.EnemyHealthAfter,
+		0,
+		MaxHealth);
+	float Health = static_cast<float>(HealthBefore);
 	if (VisualPhase == EGameXXKTrainingTravelVisualPhase::EnemyHit)
 	{
 		Health = FMath::Lerp(
-			static_cast<float>(ActiveCombatEvent.EnemyHealthBefore),
-			static_cast<float>(ActiveCombatEvent.EnemyHealthAfter),
+			static_cast<float>(HealthBefore),
+			static_cast<float>(HealthAfter),
 			GetPhaseProgress(EnemyHitSeconds));
 	}
 	else if (VisualPhase == EGameXXKTrainingTravelVisualPhase::EnemyAttack
@@ -297,9 +327,9 @@ float FGameXXKTrainingTravelVisualRuntime::GetEnemyHealthFraction() const
 		|| VisualPhase == EGameXXKTrainingTravelVisualPhase::EnemyDeath
 		|| VisualPhase == EGameXXKTrainingTravelVisualPhase::HeroDeath)
 	{
-		Health = static_cast<float>(ActiveCombatEvent.EnemyHealthAfter);
+		Health = static_cast<float>(HealthAfter);
 	}
-	return FMath::Clamp(Health / static_cast<float>(FMath::Max(1, ActiveCombatEvent.EnemyMaxHealth)), 0.0f, 1.0f);
+	return FMath::Clamp(Health / static_cast<float>(MaxHealth), 0.0f, 1.0f);
 }
 
 float FGameXXKTrainingTravelVisualRuntime::GetHeroHealthFraction() const

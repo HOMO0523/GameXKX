@@ -241,6 +241,8 @@ bool FGameXXKGemV25MigrationTest::RunTest(const FString& Parameters)
 	Instance->SocketedGems.SetNum(1);
 	Instance->SocketedGems[0] = {EGameXXKGemType::Attack, EGameXXKGemQuality::Rare};
 	FGameXXKSaveState Source = UGameXXKMVPRules::MakeSaveState(Runtime);
+	Source.SaveVersion = 25;
+	Source.RuntimeState.Talents = FGameXXKTalentProgress();
 	TestEqual(TEXT("socket migration source stays v25"), Source.SaveVersion, 25);
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;

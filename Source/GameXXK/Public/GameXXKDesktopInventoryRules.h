@@ -20,6 +20,25 @@ struct GAMEXXK_API FGameXXKDesktopInventoryMoveRequest
 	FGameXXKDesktopInventoryEntryKey ExpectedEntry;
 };
 
+/** One deterministic all-entry transfer between Backpack and one Warehouse page. */
+struct GAMEXXK_API FGameXXKDesktopInventoryBatchTransferRequest
+{
+	EGameXXKDesktopItemContainer FromContainer = EGameXXKDesktopItemContainer::Backpack;
+	EGameXXKDesktopItemContainer ToContainer = EGameXXKDesktopItemContainer::Warehouse;
+	int32 WarehousePageIndex = 0;
+	int32 WarehousePageSize = 36;
+	TSet<FGameXXKDesktopInventoryEntryKey> ExcludedEntries;
+};
+
+/** Result counts physical source entries, not quantities inside whole item stacks. */
+struct GAMEXXK_API FGameXXKDesktopInventoryBatchTransferResult
+{
+	bool bSucceeded = false;
+	bool bDestinationFull = false;
+	int32 MovedEntryCount = 0;
+	FString Error;
+};
+
 /** Pure, transactional rules for the desktop backpack/warehouse cell model. */
 class GAMEXXK_API FGameXXKDesktopInventoryRules final
 {
@@ -56,6 +75,14 @@ public:
 		EGameXXKDesktopItemContainer ToContainer,
 		int32 ToSlotIndex,
 		FString* OutError = nullptr);
+
+	static bool CanBatchTransferCurrentWarehousePage(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKDesktopInventoryBatchTransferRequest& Request);
+	static bool BatchTransferCurrentWarehousePage(
+		FGameXXKRuntimeState& InOutState,
+		const FGameXXKDesktopInventoryBatchTransferRequest& Request,
+		FGameXXKDesktopInventoryBatchTransferResult& OutResult);
 
 	static FGameXXKDesktopInventoryEntryKey GetEntryAt(
 		const FGameXXKRuntimeState& State,

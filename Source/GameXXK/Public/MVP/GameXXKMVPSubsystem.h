@@ -54,6 +54,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool StartTrainingChallenge(FName StageId);
 
+	/** True while the Challenge owns a generated route map and the player is choosing the next node. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	bool IsTrainingChallengeRouteMapActive() const;
+
+	/** Selects a reachable Challenge route node and opens its authored training battle. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool SelectTrainingChallengeRouteNode(int32 NodeId);
+
 	/** True while the selected Training challenge is backed by the real card battle runtime. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
 	bool IsTrainingChallengeBattleActive() const;
@@ -62,7 +70,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool CancelTrainingChallengeToWorkbench();
 
-	/** Advances one real card-battle step, then settles the encounter and opens the next one when terminal. */
+	/** Advances one real card-battle step; terminal victory settles the route node and returns to the route map. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool AdvanceTrainingChallengeEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward);
 
@@ -157,6 +165,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool IsRouteExitAcceptanceFixtureActiveForTest() const;
 
+	/** Non-saving real-PIE fixture that opens a reachable node as YueBai Event or Camp on the active route. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyRouteEncounterAcceptanceFixtureForTest(bool bCamp, FString& OutError);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ClearRouteEncounterAcceptanceFixtureForTest(FString& OutError);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartGame();
 
@@ -217,6 +232,16 @@ public:
 
 	/** Ensures save-authoritative desktop backpack/warehouse slots include all current possessions. */
 	bool NormalizeDesktopInventoryState();
+
+	/** Read-only permanent talent graph and derived shared projection. */
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Talents")
+	TArray<FGameXXKTalentNodeView> GetTalentNodeViews() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Talents")
+	FGameXXKTalentProjection GetTalentProjection() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Talents")
+	bool PurchaseTalentNode(FName NodeId, FGameXXKTalentPurchaseResult& OutResult);
 
 	/** Atomic whole-stack/instance move between physical desktop cells. */
 	bool MoveDesktopInventoryEntry(
@@ -381,6 +406,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveRouteEncounterChoice(int32 ChoiceIndex);
 
+	/** Returns an unresolved event/camp overlay to the route map without mutating its pending offer. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool ReturnPendingRouteChoiceToMap();
+
 	/** Accepts the named task NPC offered by the active route event as this route's temporary third party member. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AcceptRouteEventNpcSupport();
@@ -419,7 +448,13 @@ public:
 		FGameXXKRouteSettlementReceipt& OutReceipt,
 		FString* OutError = nullptr) const;
 
-	/** Applies the existing idempotent Abandoned route settlement; UI owns map travel. */
+	/** Atomically settles earned route progress and returns to the same-map pure-2D idle Workbench. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
+	bool SettleAndExitActiveRoute(
+		FGameXXKRouteSettlementReceipt& OutReceipt,
+		FString& OutError);
+
+	/** Compatibility facade for callers that still use the retired abandon verb. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AbandonDungeonToTown();
 
@@ -594,6 +629,9 @@ private:
 	bool BuildTrainingTravelRuntimeForState(
 		const FGameXXKRuntimeState& State,
 		FGameXXKTrainingTravelRuntime& OutRuntime) const;
+	bool PrepareFreshTrainingTravelRuntime(
+		FGameXXKRuntimeState& InOutState,
+		FGameXXKTrainingTravelRuntime& OutRuntime) const;
 	bool RebuildTrainingTravelRuntime();
 	bool ApplyTrainingOfflineRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingOfflineReward& Reward) const;
 	int64 GetCurrentTravelUnixSeconds() const;
@@ -603,6 +641,20 @@ private:
 		int64 NowUnixSeconds) const;
 	void SetSaveMigrationFailure();
 	void SetSaveRollbackFailure();
+	bool FinishTrainingChallengeBossIfNeeded(
+		FGameXXKRuntimeState& InOutState,
+		bool& bOutStageCompleted,
+		FGameXXKTrainingReward& OutReward);
+	bool ApplyTrainingChallengeRewardOption(
+		FGameXXKRuntimeState& InOutState,
+		int32 OptionIndex,
+		const FName ReplacementEntryId,
+		FString* OutError);
+	bool SettleTrainingChallengeBossNode(
+		FGameXXKRuntimeState& InOutState,
+		bool& bOutStageCompleted,
+		FGameXXKTrainingReward& OutReward,
+		FString* OutError);
 
 	/** Never serialized: this only lets visual PIE probes render a safe copied battle state. */
 	TOptional<FGameXXKRuntimeState> BattleHudFixtureView;
@@ -614,6 +666,7 @@ private:
 	TOptional<FGameXXKRuntimeState> TargetOutcomeFixtureBackup;
 
 	TOptional<FGameXXKRuntimeState> RouteExitAcceptanceFixtureBackup;
+	TOptional<FGameXXKRuntimeState> RouteEncounterAcceptanceFixtureBackup;
 
 	UPROPERTY(Transient)
 	FText LastSaveLoadError;

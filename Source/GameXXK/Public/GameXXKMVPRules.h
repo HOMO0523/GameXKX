@@ -4,6 +4,7 @@
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKEquipmentTypes.h"
 #include "GameXXKMetaShopTypes.h"
+#include "GameXXKTalentTypes.h"
 #include "GameXXKTrainingRules.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
@@ -608,6 +609,10 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKToolProgress ToolProgress;
+
+	/** Permanent shared talent ranks; aggregate bonuses are always derived. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKTalentProgress Talents;
 
 	// Enhancement levels belong to the item definition and are only applied while that item is equipped.
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)

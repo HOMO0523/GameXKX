@@ -569,6 +569,8 @@ def _widget_summary(widget):
         "is_dialog_open",
         "is_task_panel_open_for_test",
         "is_showing_task_offers_for_test",
+        "is_workbench_visible_for_test",
+        "is_backpack_expanded_for_test",
     ):
         try:
             result[method_name] = bool(getattr(widget, method_name)())
@@ -625,10 +627,12 @@ def _player_controller_summary(player_controller):
     for key, getter_name in (
         ("main_menu", "get_main_menu_widget_for_test"),
         ("town_overlay", "get_town_overlay_widget_for_test"),
+        ("desktop_workbench", "get_desktop_training_workbench_widget_for_test"),
         ("route_map", "get_route_map_widget_for_test"),
         ("battle_board", "get_battle_board_widget_for_test"),
         ("quest_dialog", "get_quest_dialog_widget_for_test"),
         ("route_encounter", "get_route_encounter_panel_widget_for_test"),
+        ("route_merchant", "get_route_merchant_widget_for_test"),
         ("relic_bar", "get_relic_bar_widget_for_test"),
         ("task_panel", "get_task_panel_widget_for_test"),
     ):

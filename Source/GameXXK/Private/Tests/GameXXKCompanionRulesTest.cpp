@@ -83,9 +83,13 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 		const FGameXXKPermanentCompanion& Companion = Roster.PermanentCompanions[0];
 		TestEqual(TEXT("a recruited companion begins at level one"), Companion.Level, 1);
 		TestEqual(TEXT("a recruited companion begins at one star"), Companion.Star, 1);
-		TestEqual(TEXT("a recruited companion persists exactly six generated birth cards"), Companion.PersonalCardIds.Num(), 6);
+		TestEqual(TEXT("a recruited companion persists the full eighteen-card profession pool"), Companion.PersonalCardIds.Num(), 18);
 		TestEqual(TEXT("a recruited companion begins with six unlocked cards"), Companion.UnlockedPersonalCardIds.Num(), 6);
-		TestEqual(TEXT("all six birth cards are permanently unlocked"), Companion.UnlockedPersonalCardIds, Companion.PersonalCardIds);
+		TArray<FName> BirthPrefix;
+		BirthPrefix.Append(Companion.PersonalCardIds.GetData(), 6);
+		TestEqual(TEXT("all six birth cards are permanently unlocked first"),
+			Companion.UnlockedPersonalCardIds,
+			BirthPrefix);
 		TestEqual(TEXT("a recruited companion begins with a valid five-card route selection"), Companion.SelectedCardIds.Num(), 5);
 		TestTrue(TEXT("the default five-card selection is valid against its unlocked personal pool"), FGameXXKCompanionRules::ValidateSelectedPersonalCards(Companion, Companion.SelectedCardIds, nullptr));
 		TestTrue(TEXT("a freshly recruited companion passes complete immutable-profile validation"), FGameXXKCompanionRules::ValidatePermanentCompanionProfile(Companion, nullptr));
@@ -133,15 +137,15 @@ bool FGameXXKCompanionRulesTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKPermanentCompanion& ProgressingCompanion = Roster.PermanentCompanions[0];
 		const TArray<FName> BirthCardsBeforeProgression = ProgressingCompanion.PersonalCardIds;
-		TestTrue(TEXT("companion experience advances through the published level thresholds"), FGameXXKCompanionRules::AwardExperience(ProgressingCompanion, 180, nullptr));
-		TestEqual(TEXT("one hundred eighty experience advances the companion to level four"), ProgressingCompanion.Level, 4);
+		TestTrue(TEXT("companion experience advances through the published level thresholds"), FGameXXKCompanionRules::AwardExperience(ProgressingCompanion, 600, nullptr));
+		TestEqual(TEXT("six hundred experience advances the companion to level four"), ProgressingCompanion.Level, 4);
 		TestEqual(TEXT("level four does not unlock a seventh personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 6);
-		TestEqual(TEXT("level progression cannot reroll or expand the birth cards"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
+		TestEqual(TEXT("level progression cannot reroll or reorder the full profession pool"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
 		int32 Sigils = 1;
 		TestTrue(TEXT("one sigil promotes a one-star companion to two stars"), FGameXXKCompanionRules::PromoteCompanionStar(ProgressingCompanion, Sigils, nullptr));
 		TestEqual(TEXT("promotion consumes the required one sigil"), Sigils, 0);
 		TestEqual(TEXT("two stars do not unlock an eighth personal card"), ProgressingCompanion.UnlockedPersonalCardIds.Num(), 6);
-		TestEqual(TEXT("star progression cannot reroll or expand the birth cards"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
+		TestEqual(TEXT("star progression cannot reroll or reorder the full profession pool"), ProgressingCompanion.PersonalCardIds, BirthCardsBeforeProgression);
 		TArray<FName> UpdatedPersonalSelection;
 		UpdatedPersonalSelection.Append(ProgressingCompanion.UnlockedPersonalCardIds.GetData() + 1, 5);
 		TestTrue(TEXT("the player can persist a different valid five-card personal selection"), FGameXXKCompanionRules::SetSelectedPersonalCards(ProgressingCompanion, UpdatedPersonalSelection, nullptr));

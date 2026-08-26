@@ -8,7 +8,7 @@
 class GAMEXXK_API FGameXXKCharacterStatRules final
 {
 public:
-	static constexpr int32 MaxCharacterLevel = 20;
+	static constexpr int32 MaxCharacterLevel = 100;
 
 	static FGameXXKCharacterStats GetBareHeroStats(int32 Level);
 	static bool GetBareCompanionStats(

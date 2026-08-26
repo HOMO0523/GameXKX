@@ -2,9 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+Status: completed and verified on 2026-08-22. The checkboxes below preserve the original RED/GREEN execution recipe; final evidence is recorded in the implementation handoff.
+
 **Goal:** Make every pure-2D Travel encounter spawn after five Walking seconds with both party and enemy formations at full health, while keeping enemy bars bound to authoritative per-slot snapshots across repeated waves.
 
-**Architecture:** Keep the existing `Walking -> Combat` runner and presentation queue. Put the five-second duration and full-health materialization in `FGameXXKTrainingRules`, then remove the active enemy bar's dependency on the flattened compatibility mirror in `FGameXXKTrainingTravelVisualRuntime`. The Workbench remains a passive renderer of visual-runtime fractions and keeps its current layout/assets.
+**Architecture:** Keep the existing `Walking -> Combat` runner and presentation queue. Put the five-second duration and full-health materialization in `FGameXXKTrainingRules`, then remove the active enemy bar's dependency on the flattened compatibility mirror in `FGameXXKTrainingTravelVisualRuntime`. The Workbench renders those fractions without changing layout/assets and owns the presentation-only boundary that prevents queued death animation time from consuming the visible Walking interval.
+
+**Acceptance-driven deviation:** Whole-stage PIE verification found that enemy `SProgressBar` fills could remain gray after looping even while authoritative health, visual fractions, and UMG Percent were all `1.0`. The implemented Workbench therefore replaces only the enemy bars with code-native `UBorder` track/fill siblings whose left-anchored `RenderScale.X` is the fraction. This additional change is covered by bar-type, opacity, volatility, respawn, and full-loop screenshot tests.
 
 **Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, UE Automation Tests, project UE MCP scripts, UBT cold build.
 
@@ -18,7 +22,7 @@
 - Modify `Source/GameXXK/Private/UI/GameXXKTrainingTravelVisualRuntime.cpp`: authoritative per-slot enemy health lookup.
 - Modify `Source/GameXXK/Private/Tests/GameXXKTrainingTravelVisualRuntimeTest.cpp`: stale compatibility-mirror regression.
 - Modify `Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp`: five-second hidden-enemy Walking boundary and full-bar spawn contract.
-- Read-only verification of `Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp`: retain the current layout, bar widgets, and update path.
+- Modify `Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp`: retain the current layout/assets, gate the visible Walking boundary, and use deterministic enemy track/fill rendering.
 
 ### Task 1: Five-second spawn delay and full-health encounter materialization
 

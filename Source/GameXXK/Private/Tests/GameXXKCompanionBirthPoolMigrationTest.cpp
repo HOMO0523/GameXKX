@@ -166,7 +166,7 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the fixed six-card companion birth pool was introduced by save version thirteen"),
 		FGameXXKSaveMigration::CompanionBirthPoolIntroducedSaveVersion, 13);
 	TestEqual(TEXT("the current save schema includes persistent inventory locks"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 25);
+		FGameXXKSaveMigration::CurrentSaveVersion, 26);
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult RecruitResult;
@@ -206,6 +206,16 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	TArray<FName> ExpectedFullPool;
+	if (!TestTrue(TEXT("the immutable seed builds the expected eighteen-card destination pool"),
+		FGameXXKCompanionRules::BuildFullProfessionCardPool(
+			LegacyCompanion.Role,
+			LegacyCompanion.CardSeed,
+			ExpectedFullPool,
+			nullptr)))
+	{
+		return false;
+	}
 
 	const TArray<FName> LegacyTwelveCardPool = BuildLegacyTwelveCardPool(LegacyCompanion.Role);
 	const TArray<FName> LegacySelection = BuildLegacySelection(LegacyTwelveCardPool, ExpectedBirthPool);
@@ -241,9 +251,9 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("migration preserves the companion identity"), MigratedCompanion.InstanceId, LegacyInstanceId);
 	TestEqual(TEXT("migration preserves companion level"), MigratedCompanion.Level, LegacyLevel);
 	TestEqual(TEXT("migration preserves companion star"), MigratedCompanion.Star, LegacyStar);
-	TestEqual(TEXT("migration rebuilds exactly the deterministic six-card birth pool"),
-		MigratedCompanion.PersonalCardIds, ExpectedBirthPool);
-	TestEqual(TEXT("all six migrated birth cards are permanently unlocked"),
+	TestEqual(TEXT("migration rebuilds the deterministic eighteen-card profession pool"),
+		MigratedCompanion.PersonalCardIds, ExpectedFullPool);
+	TestEqual(TEXT("all six migrated birth cards are initially unlocked"),
 		MigratedCompanion.UnlockedPersonalCardIds, ExpectedBirthPool);
 	TestEqual(TEXT("migration preserves surviving selections in order and deterministically fills to five"),
 		MigratedCompanion.SelectedCardIds,
@@ -257,7 +267,7 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 		FGameXXKSaveMigration::MigrateToCurrent(Migrated, RoundTrip, RoundTripReport));
 	TestEqual(TEXT("the current-schema roundtrip is byte-semantically stable for the migrated birth pool"),
 		RoundTrip.RuntimeState.CardRun.CompanionRoster.PermanentCompanions[0].PersonalCardIds,
-		ExpectedBirthPool);
+		ExpectedFullPool);
 	return true;
 }
 
@@ -292,6 +302,16 @@ bool FGameXXKPendingCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+	TArray<FName> ExpectedFullPool;
+	if (!TestTrue(TEXT("the pending candidate has a deterministic eighteen-card destination pool"),
+		FGameXXKCompanionRules::BuildFullProfessionCardPool(
+			LegacyCandidate.Role,
+			LegacyCandidate.CardSeed,
+			ExpectedFullPool,
+			nullptr)))
+	{
+		return false;
+	}
 	LegacyCandidate.PersonalCardIds = BuildLegacyTwelveCardPool(LegacyCandidate.Role);
 	LegacyCandidate.UnlockedPersonalCardIds = LegacyCandidate.PersonalCardIds;
 	LegacyCandidate.SelectedCardIds = BuildLegacySelection(LegacyCandidate.PersonalCardIds, ExpectedBirthPool);
@@ -320,10 +340,10 @@ bool FGameXXKPendingCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 	TestEqual(TEXT("migration preserves the pending candidate identity"),
 		MigratedPending.Candidate.InstanceId,
 		LegacyCandidate.InstanceId);
-	TestEqual(TEXT("migration rebuilds the pending candidate's deterministic birth pool"),
+	TestEqual(TEXT("migration rebuilds the pending candidate's full profession pool"),
 		MigratedPending.Candidate.PersonalCardIds,
-		ExpectedBirthPool);
-	TestEqual(TEXT("migration permanently unlocks all six pending-candidate birth cards"),
+		ExpectedFullPool);
+	TestEqual(TEXT("migration initially unlocks all six pending-candidate birth cards"),
 		MigratedPending.Candidate.UnlockedPersonalCardIds,
 		ExpectedBirthPool);
 	TestEqual(TEXT("migration preserves and fills the pending candidate's selected cards"),
@@ -338,6 +358,7 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	TArray<TArray<FName>> ExpectedBirthPools;
+	TArray<TArray<FName>> ExpectedFullPools;
 	TArray<TArray<FName>> ExpectedSelections;
 	TArray<FName> ExpectedInstanceIds;
 	TArray<TArray<FName>> LegacyPools;
@@ -382,6 +403,18 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 			AddError(PoolError);
 			return false;
 		}
+		TArray<FName> ExpectedFullPool;
+		if (!TestTrue(
+			FString::Printf(TEXT("role %d rebuilds its deterministic eighteen-card destination pool"), static_cast<int32>(Fixture.Role)),
+			FGameXXKCompanionRules::BuildFullProfessionCardPool(
+				Fixture.Role,
+				Fixture.CardSeed,
+				ExpectedFullPool,
+				&PoolError)))
+		{
+			AddError(PoolError);
+			return false;
+		}
 
 		const TArray<FName> LegacyTwelveCardPool = BuildLegacyTwelveCardPool(Fixture.Role);
 		const TArray<FName> LegacySelection = BuildLegacySelection(LegacyTwelveCardPool, ExpectedBirthPool);
@@ -399,6 +432,7 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 		}
 
 		ExpectedBirthPools.Add(ExpectedBirthPool);
+		ExpectedFullPools.Add(ExpectedFullPool);
 		ExpectedSelections.Add(BuildExpectedSelection(LegacySelection, ExpectedBirthPool));
 		ExpectedInstanceIds.Add(LegacyCompanion.InstanceId);
 		LegacyPools.Add(LegacyTwelveCardPool);
@@ -438,6 +472,7 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 		const FRoleMigrationFixture& Fixture = Fixtures[FixtureIndex];
 		const FGameXXKPermanentCompanion& Companion = MigratedCompanions[FixtureIndex];
 		const TArray<FName>& ExpectedBirthPool = ExpectedBirthPools[FixtureIndex];
+		const TArray<FName>& ExpectedFullPool = ExpectedFullPools[FixtureIndex];
 		TestEqual(
 			FString::Printf(TEXT("role %d migration preserves companion identity"), static_cast<int32>(Fixture.Role)),
 			Companion.InstanceId,
@@ -447,9 +482,9 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 			Companion.Role,
 			Fixture.Role);
 		TestEqual(
-			FString::Printf(TEXT("role %d migration rebuilds exactly six deterministic birth cards"), static_cast<int32>(Fixture.Role)),
+			FString::Printf(TEXT("role %d migration rebuilds the deterministic eighteen-card profession pool"), static_cast<int32>(Fixture.Role)),
 			Companion.PersonalCardIds,
-			ExpectedBirthPool);
+			ExpectedFullPool);
 		TestEqual(
 			FString::Printf(TEXT("role %d migration permanently unlocks the full birth pool"), static_cast<int32>(Fixture.Role)),
 			Companion.UnlockedPersonalCardIds,
@@ -465,14 +500,18 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 		int32 CoreCardCount = 0;
 		int32 FormationSwitchCount = 0;
 		bool bAllCardsMatchRole = true;
-		for (const FName CardId : Companion.PersonalCardIds)
+		for (int32 CardIndex = 0; CardIndex < Companion.PersonalCardIds.Num(); ++CardIndex)
 		{
+			const FName CardId = Companion.PersonalCardIds[CardIndex];
 			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
 			bAllCardsMatchRole &= Definition
 				&& Definition->Owner == EGameXXKCardOwner::Profession
 				&& Definition->Role == Fixture.Role;
-			CoreCardCount += Definition && Definition->bCoreProfessionCard ? 1 : 0;
-			FormationSwitchCount += FormationSwitchCardIds().Contains(CardId) ? 1 : 0;
+			if (CardIndex < ExpectedBirthPool.Num())
+			{
+				CoreCardCount += Definition && Definition->bCoreProfessionCard ? 1 : 0;
+				FormationSwitchCount += FormationSwitchCardIds().Contains(CardId) ? 1 : 0;
+			}
 		}
 		TestTrue(
 			FString::Printf(TEXT("role %d migration never crosses profession card ownership"), static_cast<int32>(Fixture.Role)),
@@ -480,7 +519,7 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 		if (Fixture.Role == EGameXXKCharacterRole::FormationMaster)
 		{
 			TestEqual(TEXT("formation migration retains exactly two terrain-switch cards"), FormationSwitchCount, 2);
-			TestEqual(TEXT("formation migration retains exactly four terrain-benefit cards"), Companion.PersonalCardIds.Num() - FormationSwitchCount, 4);
+			TestEqual(TEXT("formation migration retains exactly four terrain-benefit birth cards"), ExpectedBirthPool.Num() - FormationSwitchCount, 4);
 		}
 		else
 		{
@@ -490,7 +529,7 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 				2);
 			TestEqual(
 				FString::Printf(TEXT("role %d migration retains exactly four random birth cards"), static_cast<int32>(Fixture.Role)),
-				Companion.PersonalCardIds.Num() - CoreCardCount,
+				ExpectedBirthPool.Num() - CoreCardCount,
 				4);
 		}
 	}
@@ -502,9 +541,9 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 	for (int32 FixtureIndex = 0; FixtureIndex < Fixtures.Num(); ++FixtureIndex)
 	{
 		TestEqual(
-			FString::Printf(TEXT("role %d current-schema roundtrip preserves its six-card pool"), static_cast<int32>(Fixtures[FixtureIndex].Role)),
+			FString::Printf(TEXT("role %d current-schema roundtrip preserves its eighteen-card pool"), static_cast<int32>(Fixtures[FixtureIndex].Role)),
 			RoundTrip.RuntimeState.CardRun.CompanionRoster.PermanentCompanions[FixtureIndex].PersonalCardIds,
-			ExpectedBirthPools[FixtureIndex]);
+			ExpectedFullPools[FixtureIndex]);
 	}
 	return true;
 }

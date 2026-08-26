@@ -126,7 +126,9 @@ namespace
 
 	int32 GetUnlockedPersonalCardCount(const FGameXXKPermanentCompanion& Companion)
 	{
-		(void)Companion;
+		if (Companion.Level >= 15) return 18;
+		if (Companion.Level >= 10) return 14;
+		if (Companion.Level >= 5) return 10;
 		return 6;
 	}
 
@@ -140,11 +142,11 @@ namespace
 			|| Companion.Level < 1 || Companion.Level > FGameXXKCompanionRules::MaxCompanionLevel
 			|| Companion.Star < 1 || Companion.Star > 5)
 		{
-			SetError(OutError, TEXT("A companion must use a permanent role with level 1-20 and star 1-5."));
+			SetError(OutError, TEXT("A companion must use a permanent role with level 1-100 and star 1-5."));
 			return false;
 		}
 		TArray<FName> ExpectedPersonalCardIds;
-		if (!FGameXXKCompanionRules::BuildPersonalCardPool(Companion.Role, Companion.CardSeed, ExpectedPersonalCardIds, OutError))
+		if (!FGameXXKCompanionRules::BuildFullProfessionCardPool(Companion.Role, Companion.CardSeed, ExpectedPersonalCardIds, OutError))
 		{
 			return false;
 		}
@@ -207,6 +209,39 @@ namespace
 	int32 ComputeNpcAttribute(const int32 BaseValue, const float GrowthValue, const int32 HeroLevel)
 	{
 		return FMath::FloorToInt(static_cast<float>(BaseValue) + GrowthValue * static_cast<float>(HeroLevel - 1));
+	}
+
+	void NormalizeQuestNpcProgression(FGameXXKQuestNpcProgression& Progression)
+	{
+		Progression.Level = FMath::Clamp(
+			Progression.Level,
+			1,
+			FGameXXKCharacterStatRules::MaxCharacterLevel);
+		Progression.Experience = FMath::Max(0, Progression.Experience);
+		while (Progression.Level < FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			const int32 RequiredExperience = Progression.Level * 100;
+			if (Progression.Experience < RequiredExperience)
+			{
+				break;
+			}
+			Progression.Experience -= RequiredExperience;
+			++Progression.Level;
+		}
+		if (Progression.Level == FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			Progression.Experience = 0;
+		}
+	}
+
+	bool IsValidQuestNpcProgression(const FGameXXKQuestNpcProgression& Progression)
+	{
+		return Progression.Level >= 1
+			&& Progression.Level <= FGameXXKCharacterStatRules::MaxCharacterLevel
+			&& Progression.Experience >= 0
+			&& (Progression.Level == FGameXXKCharacterStatRules::MaxCharacterLevel
+				? Progression.Experience == 0
+				: Progression.Experience < Progression.Level * 100);
 	}
 }
 
@@ -383,6 +418,37 @@ bool FGameXXKCompanionRules::BuildPersonalCardPool(
 	}
 	OutCardIds.Add(PickAndRemove(FreeCandidates));
 
+	return true;
+}
+
+bool FGameXXKCompanionRules::BuildFullProfessionCardPool(
+	const EGameXXKCharacterRole Role,
+	const int32 CardSeed,
+	TArray<FName>& OutCardIds,
+	FString* OutError)
+{
+	if (!BuildPersonalCardPool(Role, CardSeed, OutCardIds, OutError))
+	{
+		return false;
+	}
+	for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
+	{
+		if (Definition.Owner == EGameXXKCardOwner::Profession
+			&& Definition.Role == Role
+			&& !OutCardIds.Contains(Definition.Id))
+		{
+			OutCardIds.Add(Definition.Id);
+		}
+	}
+	if (OutCardIds.Num() != 18)
+	{
+		SetError(OutError, FString::Printf(
+			TEXT("The %d role must expose exactly eighteen profession cards, but resolved %d."),
+			static_cast<int32>(Role),
+			OutCardIds.Num()));
+		OutCardIds.Reset();
+		return false;
+	}
 	return true;
 }
 
@@ -581,7 +647,7 @@ bool FGameXXKCompanionRules::RecruitPermanentCompanion(
 	Candidate.CardSeed = RecruitSeed;
 	Candidate.bIsActive = false;
 	Candidate.bIsNew = true;
-	if (!BuildPersonalCardPool(Candidate.Role, Candidate.CardSeed, Candidate.PersonalCardIds, OutError)
+	if (!BuildFullProfessionCardPool(Candidate.Role, Candidate.CardSeed, Candidate.PersonalCardIds, OutError)
 		|| !RefreshUnlockedPersonalCards(Candidate, OutError))
 	{
 		return false;
@@ -751,6 +817,9 @@ bool FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
 	for (const FGameXXKQuestNpcDefinition& Definition : FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
 	{
 		ApprovedNpcIds.Add(Definition.NpcId);
+		FGameXXKQuestNpcProgression& Progression =
+			InOutSelection.QuestNpcProgressions.FindOrAdd(Definition.NpcId);
+		NormalizeQuestNpcProgression(Progression);
 		FGameXXKQuestNpcOwnedCardLoadout* Existing = InOutSelection.QuestNpcCardLoadouts.Find(Definition.NpcId);
 		if (Existing && ValidateQuestNpcCardSelection(Definition.NpcId, Existing->SelectedCardIds))
 		{
@@ -775,6 +844,18 @@ bool FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
 	{
 		InOutSelection.QuestNpcCardLoadouts.Remove(StaleNpcId);
 	}
+	StaleNpcIds.Reset();
+	for (const TPair<FName, FGameXXKQuestNpcProgression>& Pair : InOutSelection.QuestNpcProgressions)
+	{
+		if (!ApprovedNpcIds.Contains(Pair.Key))
+		{
+			StaleNpcIds.Add(Pair.Key);
+		}
+	}
+	for (const FName StaleNpcId : StaleNpcIds)
+	{
+		InOutSelection.QuestNpcProgressions.Remove(StaleNpcId);
+	}
 
 	if (!InOutSelection.QuestNpc.NpcId.IsNone())
 	{
@@ -790,7 +871,8 @@ bool FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
 			return false;
 		}
 	}
-	return InOutSelection.QuestNpcCardLoadouts.Num() == ApprovedNpcIds.Num();
+	return InOutSelection.QuestNpcCardLoadouts.Num() == ApprovedNpcIds.Num()
+		&& InOutSelection.QuestNpcProgressions.Num() == ApprovedNpcIds.Num();
 }
 
 bool FGameXXKCompanionRules::SetActivePermanentCompanion(
@@ -965,7 +1047,7 @@ bool FGameXXKCompanionRules::DiscardPendingRecruitment(FGameXXKCompanionRosterSt
 int32 FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(const int32 CurrentLevel)
 {
 	return CurrentLevel >= 1 && CurrentLevel < MaxCompanionLevel
-		? 40 + 20 * (CurrentLevel - 1)
+		? CurrentLevel * 100
 		: 0;
 }
 
@@ -1142,6 +1224,15 @@ bool FGameXXKCompanionRules::ValidatePartySelection(
 		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(Pair.Key)
 			|| !ValidateQuestNpcCardSelection(Pair.Key, Pair.Value.SelectedCardIds, OutError))
 		{
+			return false;
+		}
+	}
+	for (const TPair<FName, FGameXXKQuestNpcProgression>& Pair : Selection.QuestNpcProgressions)
+	{
+		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(Pair.Key)
+			|| !IsValidQuestNpcProgression(Pair.Value))
+		{
+			SetError(OutError, TEXT("The named NPC progression map contains an invalid entry."));
 			return false;
 		}
 	}

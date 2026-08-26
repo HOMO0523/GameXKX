@@ -4,7 +4,10 @@
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCompanionRules.h"
 #include "Blueprint/GameViewportSubsystem.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Button.h"
 #include "Components/InputComponent.h"
+#include "Engine/Engine.h"
 #include "GameFramework/SaveGame.h"
 #include "InputKeyEventArgs.h"
 #include "Kismet/GameplayStatics.h"
@@ -28,6 +31,21 @@
 
 namespace
 {
+	FString MakeRouteSettlementWorkbenchWorldPackageName()
+	{
+		static int32 FixtureSerial = 4100;
+		for (;;)
+		{
+			const FString Candidate = FString::Printf(
+				TEXT("/Game/GameXXK/Maps/UEDPIE_%d_L_DesktopTrainingHUD"),
+				++FixtureSerial);
+			if (!FindPackage(nullptr, *Candidate))
+			{
+				return Candidate;
+			}
+		}
+	}
+
 	struct FScopedSaveSlotBackup
 	{
 		FScopedSaveSlotBackup(const FString& InSlotName, int32 InUserIndex)
@@ -378,16 +396,35 @@ bool FGameXXKDesktopTrainingDirectChallengeBattleSurfaceTest::RunTest(const FStr
 
 	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
-	TestTrue(TEXT("the default cleared stage starts a direct replay"), Subsystem->StartTrainingChallenge(StageId));
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest();
+	if (!TestNotNull(TEXT("direct challenge fixture owns the Training workbench"), Workbench)
+		|| !TestTrue(TEXT("direct challenge fixture opens the Backpack parent"), Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+	Workbench->HandleActionClicked(4);
+	TestTrue(TEXT("the default cleared stage is selected from the Training panel"),
+		Workbench->SelectStageForTest(StageId));
+	TestTrue(TEXT("the Training panel starts the direct replay"), Workbench->ClickChallengeForTest());
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 
 	TestEqual(TEXT("direct replay does not accept the town quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
-	TestNotNull(TEXT("Battle refresh lazily creates the shared route owner"), PlayerController->GetRouteMapWidgetForTest());
+	TestTrue(TEXT("the challenge refresh creates the shared route owner"),
+		PlayerController->EnsurePlayerFlowWidgetsForTest());
+	UGameXXKOneGameRouteMapWidget* RouteMapWidget = PlayerController->GetRouteMapWidgetForTest();
 	UGameXXKBattleBoardWidget* BattleBoard = PlayerController->GetBattleBoardWidgetForTest();
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("the direct challenge opens the Slay-the-Spire route map first"),
+		Subsystem->IsTrainingChallengeRouteMapActive());
+	TestTrue(TEXT("the challenge route map is visible after refresh"),
+		RouteMapWidget
+			&& RouteMapWidget->GetVisibility() != ESlateVisibility::Collapsed
+			&& RouteMapWidget->GetVisibility() != ESlateVisibility::Hidden);
 	TestNotNull(TEXT("Battle refresh lazily creates the shared BattleBoard"), BattleBoard);
-	TestTrue(TEXT("the direct challenge exposes a visible playable BattleBoard"),
+	TestFalse(TEXT("the challenge route map keeps the BattleBoard hidden before a battle"),
 		BattleBoard && BattleBoard->IsBattleBoardVisible());
-	TestTrue(TEXT("direct challenge activates the full-screen battle overlay"),
+	TestFalse(TEXT("the challenge route map does not activate the battle overlay"),
 		PlayerController->IsBattleOverlayActive());
 
 	TestTrue(TEXT("closing the direct challenge returns its state to the workbench"),
@@ -400,10 +437,233 @@ bool FGameXXKDesktopTrainingDirectChallengeBattleSurfaceTest::RunTest(const FStr
 	TestTrue(TEXT("DesktopTrainingOnly automatically restores its workbench after battle"),
 		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
 		&& PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->IsWorkbenchVisibleForTest());
+	TestTrue(TEXT("returning from Challenge restores the Training panel"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
+		&& PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->IsRightPanelOpenForTest());
+	TestEqual(TEXT("returning from Challenge keeps Training selected"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
+			? PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->GetActiveNavForTest()
+			: EGameXXKDesktopTrainingNav::None,
+		EGameXXKDesktopTrainingNav::Training);
 	TestFalse(TEXT("the shared BattleBoard is hidden after returning to the workbench"),
 		BattleBoard && BattleBoard->IsBattleBoardVisible());
 	TestEqual(TEXT("the complete 2D loop never accepts the town quest"),
 		Subsystem->GetRuntimeState().QuestState, QuestBefore);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingChallengeEventAndAbandonTest,
+	"GameXXK.DesktopTraining.PlayerFlow.ChallengeEventAndAbandon",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingChallengeEventAndAbandonTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("challenge event fixture starts in Town"), Subsystem->StartGame());
+	TestTrue(TEXT("challenge event fixture starts with only the HUD workbench"),
+		PlayerController->EnsureDesktopTrainingWidgetsForTest());
+
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("the default cleared stage starts a direct replay"), Subsystem->StartTrainingChallenge(StageId));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	int32 EventNodeId = INDEX_NONE;
+	for (const FGameXXKRouteMapNode& Node : Subsystem->GetRuntimeState().RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Event)
+		{
+			EventNodeId = Node.NodeId;
+			break;
+		}
+	}
+	TestTrue(TEXT("the generated challenge map contains an Event node"), EventNodeId != INDEX_NONE);
+
+	// Make the event node the reachable choice so the pure-HUD challenge can
+	// exercise the same SelectRouteNodeById path the route map button uses.
+	Subsystem->GetMutableRuntimeState().ReachableRouteNodeIds = {EventNodeId};
+	TestTrue(TEXT("the challenge route opens a generated Event node"), Subsystem->SelectRouteNodeById(EventNodeId));
+	TestEqual(TEXT("an Event node opens the route encounter screen"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteEvent);
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestNotNull(TEXT("the desktop profile lazily creates the shared encounter panel"),
+		PlayerController->GetRouteEncounterPanelWidgetForTest());
+	TestTrue(TEXT("the desktop profile opens the encounter panel for the Event node"),
+		PlayerController->IsRouteEncounterPanelOpenForTest());
+
+	TestTrue(TEXT("the player resolves the generated event choice"), Subsystem->ResolveRouteEncounterChoice(0));
+	TestEqual(TEXT("resolving the event returns to the challenge route map"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("the encounter panel closes after the event resolves"),
+		PlayerController->IsRouteEncounterPanelOpenForTest());
+
+	UGameXXKOneGameRouteMapWidget* RouteMapWidget = PlayerController->GetRouteMapWidgetForTest();
+	TestNotNull(TEXT("the challenge route map stays available for the abandon control"), RouteMapWidget);
+	TestTrue(TEXT("closing the challenge opens the abandon confirmation"),
+		RouteMapWidget && RouteMapWidget->OpenRouteAbandonConfirmationForTest());
+	TestTrue(TEXT("the challenge abandon preview enables its confirm button"),
+		RouteMapWidget && RouteMapWidget->IsRouteAbandonConfirmEnabledForTest());
+	TestTrue(TEXT("confirming the abandon returns the desktop challenge to the workbench"),
+		RouteMapWidget && RouteMapWidget->ConfirmRouteAbandonForTest());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestFalse(TEXT("the abandoned challenge is no longer active"),
+		Subsystem->GetRuntimeState().Training.bChallengeActive);
+	TestEqual(TEXT("the abandoned challenge restores the 2D workbench screen state"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestTrue(TEXT("the desktop workbench is visible after abandoning the challenge"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()
+		&& PlayerController->GetDesktopTrainingWorkbenchWidgetForTest()->IsWorkbenchVisibleForTest());
+	TestFalse(TEXT("abandoning the challenge clears the generated route map"),
+		Subsystem->GetRuntimeState().bHasGeneratedRouteMap);
+	TestEqual(TEXT("abandoning the challenge drops the pending route reward"),
+		Subsystem->GetRuntimeState().CardRun.PendingReward.Options.Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteSettlementRestoresIdleWorkbenchTest,
+	"GameXXK.DesktopTraining.PlayerFlow.RouteSettlementRestoresIdleWorkbench",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteSettlementRestoresIdleWorkbenchTest::RunTest(const FString& Parameters)
+{
+	const FString FixturePackageName = MakeRouteSettlementWorkbenchWorldPackageName();
+	UPackage* const WorldPackage = CreatePackage(*FixturePackageName);
+	UWorld* const RuntimeWorld = UWorld::CreateWorld(
+		EWorldType::Game,
+		false,
+		TEXT("L_DesktopTrainingHUD"),
+		WorldPackage);
+	if (!TestNotNull(TEXT("settlement restore fixture creates canonical game world"), RuntimeWorld))
+	{
+		return false;
+	}
+	RuntimeWorld->AddToRoot();
+	FWorldContext& WorldContext = GEngine->CreateNewWorldContext(EWorldType::Game);
+	WorldContext.SetCurrentWorld(RuntimeWorld);
+	RuntimeWorld->InitializeActorsForPlay(FURL());
+
+	UGameInstance* const TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	TestTrue(TEXT("settlement restore fixture starts in Town"), Subsystem->StartGame());
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.ObjectFlags |= RF_Transient;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AGameXXKMVPPlayerController* const PlayerController = RuntimeWorld->SpawnActor<AGameXXKMVPPlayerController>(
+		AGameXXKMVPPlayerController::StaticClass(),
+		FVector::ZeroVector,
+		FRotator::ZeroRotator,
+		SpawnParameters);
+	if (!TestNotNull(TEXT("settlement restore fixture spawns production controller"), PlayerController))
+	{
+		RuntimeWorld->DestroyWorld(false);
+		GEngine->DestroyWorldContext(RuntimeWorld);
+		RuntimeWorld->RemoveFromRoot();
+		return false;
+	}
+	ULocalPlayer* const LocalPlayer = NewObject<ULocalPlayer>(GEngine);
+	PlayerController->SetPlayer(LocalPlayer);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	TestTrue(TEXT("canonical controller can host real viewport widgets"),
+		PlayerController->CanAddPlayerWidgetsToViewportForTest());
+	TestTrue(TEXT("canonical controller creates only the desktop workbench owner"),
+		PlayerController->EnsureDesktopTrainingWidgetsForTest());
+	TestTrue(TEXT("canonical controller opens the workbench before challenge"),
+		PlayerController->OpenDesktopTrainingWorkbench());
+	UGameXXKDesktopTrainingWorkbenchWidget* const Workbench =
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest();
+	TestNotNull(TEXT("controller owns the canonical workbench instance"), Workbench);
+	TestTrue(TEXT("canonical controller remains the workbench UObject owner"),
+		Workbench && Workbench->GetOwningPlayer() == PlayerController);
+	TestTrue(TEXT("pre-challenge workbench is visible"), Workbench && Workbench->IsWorkbenchVisibleForTest());
+
+	const FName TravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("fixture starts independent Travel before challenge"), Subsystem->StartTrainingTravel(TravelStageId));
+	const FGameXXKTrainingTravelRuntime TravelBefore = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("fixture expands backpack before launching challenge"), Workbench && Workbench->OpenBackpack());
+	TestTrue(TEXT("fixture selects the challenge stage through the workbench"),
+		Workbench && Workbench->SelectStageForTest(TravelStageId));
+	TestTrue(TEXT("real workbench challenge action enters route"), Workbench && Workbench->ClickChallengeForTest());
+	TestEqual(TEXT("challenge action enters DungeonMap"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestFalse(TEXT("challenge action collapses its workbench"), Workbench && Workbench->IsWorkbenchVisibleForTest());
+	UGameXXKOneGameRouteMapWidget* const RouteMap = PlayerController->GetRouteMapWidgetForTest();
+	TestNotNull(TEXT("challenge action lazily creates controller-owned route map"), RouteMap);
+	TestTrue(TEXT("controller-owned route map is visible before settlement"),
+		RouteMap && RouteMap->GetVisibility() == ESlateVisibility::Visible);
+
+	const int32 GoldBefore = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 ExpectedGoldAward = Subsystem->GetRuntimeState().CardRun.RouteTravelMoney / 20;
+	TestTrue(TEXT("real route X path opens settlement modal"),
+		RouteMap && RouteMap->OpenRouteAbandonConfirmationForTest());
+	UButton* const ConfirmButton = RouteMap && RouteMap->WidgetTree
+		? Cast<UButton>(RouteMap->WidgetTree->FindWidget(TEXT("RouteAbandonConfirmButton")))
+		: nullptr;
+	TestNotNull(TEXT("settlement restore fixture finds real confirm delegate"), ConfirmButton);
+	TestTrue(TEXT("real settlement confirm delegate is bound"), ConfirmButton && ConfirmButton->OnClicked.IsBound());
+	if (ConfirmButton)
+	{
+		ConfirmButton->OnClicked.Broadcast();
+	}
+
+	const FGameXXKRuntimeState& Settled = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("settlement returns authoritative state to Town"), Settled.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("settlement remains on DesktopTrainingHUD"), Settled.CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("settlement clears dungeon ownership"), Settled.bDungeonActive);
+	TestEqual(TEXT("settlement grants previewed ordinary gold once"), Settled.PlayerGold, GoldBefore + ExpectedGoldAward);
+	TestTrue(TEXT("settlement records an idempotency receipt"), Settled.CardRun.LastAppliedRouteSettlementId.IsValid());
+	TestTrue(TEXT("settlement remains in the same canonical game world"), PlayerController->GetWorld() == RuntimeWorld);
+	TestEqual(TEXT("route map collapses after settlement"),
+		RouteMap ? RouteMap->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Collapsed);
+	TestFalse(TEXT("encounter overlay is closed after settlement"), PlayerController->IsRouteEncounterPanelOpenForTest());
+	TestFalse(TEXT("merchant overlay is closed after settlement"), PlayerController->IsRouteMerchantWidgetOpenForTest());
+	TestTrue(TEXT("controller keeps the exact same workbench UObject"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest() == Workbench);
+	TestTrue(TEXT("settlement restores visible idle workbench instead of black screen"),
+		Workbench && Workbench->IsWorkbenchVisibleForTest());
+	TestFalse(TEXT("settlement restores collapsed idle strip, never old expanded backpack"),
+		Workbench && Workbench->IsBackpackExpandedForTest());
+	const FGameXXKTrainingTravelRuntime TravelAfter = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("settlement preserves independent Travel runtime and party HP bit-identically"),
+		FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+			&TravelAfter,
+			&TravelBefore,
+			PPF_None));
+	TestEqual(TEXT("settlement restores GameAndUI input mode"),
+		PlayerController->GetTrackedInputModeForTest(),
+		EGameXXKTrackedInputMode::GameAndUI);
+	TestFalse(TEXT("settlement releases route modal movement lock"), PlayerController->IsMoveInputIgnored());
+	TestEqual(TEXT("settlement owns exactly one workbench widget"),
+		PlayerController->GetAllDesktopTrainingWorkbenchWidgetsForTest().Num(),
+		1);
+
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	TestTrue(TEXT("subsequent refresh keeps same workbench visible"),
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest() == Workbench
+		&& Workbench->IsWorkbenchVisibleForTest());
+	TestEqual(TEXT("subsequent refresh never creates a duplicate workbench"),
+		PlayerController->GetAllDesktopTrainingWorkbenchWidgetsForTest().Num(),
+		1);
+
+	if (Workbench)
+	{
+		Workbench->RemoveFromParent();
+	}
+	if (RouteMap)
+	{
+		RouteMap->RemoveFromParent();
+	}
+	PlayerController->EndPlay(EEndPlayReason::Destroyed);
+	RuntimeWorld->DestroyWorld(false);
+	GEngine->DestroyWorldContext(RuntimeWorld);
+	RuntimeWorld->RemoveFromRoot();
 	return true;
 }
 

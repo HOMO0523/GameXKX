@@ -11,6 +11,7 @@
 #include "GameXXKRelicRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEncounterCatalog.h"
+#include "GameXXKTalentRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -284,6 +285,18 @@ namespace
 		{
 			return false;
 		}
+		FGameXXKTalentProjection TalentProjection;
+		if (!FGameXXKTalentRules::BuildProjection(InOutState.Talents, TalentProjection, OutError))
+		{
+			return false;
+		}
+		const auto ScaleTalentStat = [](const int32 BaseValue, const int32 Percent)
+		{
+			return static_cast<int32>(FMath::Clamp<int64>(
+				(static_cast<int64>(FMath::Max(0, BaseValue)) * (100 + FMath::Max(0, Percent)) + 50) / 100,
+				0,
+				MAX_int32));
+		};
 
 	TArray<FGameXXKBattleRuntimeUnit> NewParty;
 	FGameXXKBattleRuntimeUnit Hero = MakeHeroProjectionUnit(InOutState);
@@ -296,12 +309,24 @@ namespace
 	const int32 PreviousHeroMaxMP = FMath::Max(0, InOutState.PlayerMaxMP + FMath::Max(0, RouteBonus.MaxMana));
 	const int32 MissingHeroHP = FMath::Max(0, PreviousHeroMaxHP - InOutState.PlayerHP);
 	const int32 MissingHeroMP = FMath::Max(0, PreviousHeroMaxMP - InOutState.PlayerMP);
-	Hero.MaxHP = FMath::Max(1, HeroSnapshot.AttributesBeforeRoute.MaxHealth + FMath::Max(0, RouteBonus.MaxHealth));
+	Hero.MaxHP = FMath::Max(1, ScaleTalentStat(
+		HeroSnapshot.AttributesBeforeRoute.MaxHealth
+			+ FMath::Max(0, RouteBonus.MaxHealth)
+			+ TalentProjection.FlatMaxHP,
+		TalentProjection.RouteMaxHPPercent));
 	Hero.HP = FMath::Clamp(Hero.MaxHP - MissingHeroHP, 1, Hero.MaxHP);
 	Hero.MaxMP = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.MaxMana + FMath::Max(0, RouteBonus.MaxMana));
 	Hero.MP = FMath::Clamp(Hero.MaxMP - MissingHeroMP, 0, Hero.MaxMP);
-	Hero.Attack = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Attack + FMath::Max(0, RouteBonus.Attack));
-	Hero.Defense = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.Defense + FMath::Max(0, RouteBonus.Defense));
+	Hero.Attack = ScaleTalentStat(
+		HeroSnapshot.AttributesBeforeRoute.Attack
+			+ FMath::Max(0, RouteBonus.Attack)
+			+ TalentProjection.FlatAttack,
+		TalentProjection.RouteAttackPercent);
+	Hero.Defense = ScaleTalentStat(
+		HeroSnapshot.AttributesBeforeRoute.Defense
+			+ FMath::Max(0, RouteBonus.Defense)
+			+ TalentProjection.FlatDefense,
+		TalentProjection.RouteDefensePercent);
 	Hero.Speed = FMath::Max(1, HeroSnapshot.AttributesBeforeRoute.Speed + FMath::Max(0, RouteBonus.Speed));
 	Hero.CombatLevel = FMath::Max(1, InOutState.PlayerLevel);
 	NewParty.Add(Hero);
@@ -325,6 +350,15 @@ namespace
 			Attributes.Attack = CompanionSnapshot.AttributesBeforeRoute.Attack;
 			Attributes.Defense = CompanionSnapshot.AttributesBeforeRoute.Defense;
 			Attributes.Speed = CompanionSnapshot.AttributesBeforeRoute.Speed;
+			Attributes.Health = FMath::Max(1, ScaleTalentStat(
+				Attributes.Health + TalentProjection.FlatMaxHP,
+				TalentProjection.RouteMaxHPPercent));
+			Attributes.Attack = ScaleTalentStat(
+				Attributes.Attack + TalentProjection.FlatAttack,
+				TalentProjection.RouteAttackPercent);
+			Attributes.Defense = ScaleTalentStat(
+				Attributes.Defense + TalentProjection.FlatDefense,
+				TalentProjection.RouteDefensePercent);
 			FGameXXKBattleRuntimeUnit CompanionUnit = MakeLegacyProjectionUnit(
 				Companion->InstanceId,
 				FText::FromString(TEXT("伙伴")),
@@ -340,10 +374,15 @@ namespace
 			{
 				return SetFailure(OutError, TEXT("The route-local task NPC provenance does not match the configured NPC cards."));
 			}
+			const FGameXXKQuestNpcProgression* TaskNpcProgression =
+				Run.PartySelection.QuestNpcProgressions.Find(Run.ActiveTemporaryQuestNpcId);
+			const int32 TaskNpcLevel = TaskNpcProgression
+				? FMath::Clamp(TaskNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+				: 1;
 			FGameXXKCompanionAttributes TaskNpcAttributes;
 			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
 				Run.ActiveTemporaryQuestNpcId,
-				InOutState.PlayerLevel,
+				TaskNpcLevel,
 				TaskNpcAttributes,
 				OutError))
 			{
@@ -354,10 +393,20 @@ namespace
 				FText::FromString(TEXT("任务同伴")),
 				TaskNpcAttributes,
 				false);
+			TaskNpc.MaxHP = FMath::Max(1, ScaleTalentStat(
+				TaskNpc.MaxHP + TalentProjection.FlatMaxHP,
+				TalentProjection.RouteMaxHPPercent));
+			TaskNpc.HP = TaskNpc.MaxHP;
+			TaskNpc.Attack = ScaleTalentStat(
+				TaskNpc.Attack + TalentProjection.FlatAttack,
+				TalentProjection.RouteAttackPercent);
+			TaskNpc.Defense = ScaleTalentStat(
+				TaskNpc.Defense + TalentProjection.FlatDefense,
+				TalentProjection.RouteDefensePercent);
 			TaskNpc.BattleSlotNumber = INDEX_NONE;
 			TaskNpc.EnemyDefinitionId = NAME_None;
 			TaskNpc.bDefending = false;
-			TaskNpc.CombatLevel = FMath::Max(1, InOutState.PlayerLevel);
+			TaskNpc.CombatLevel = TaskNpcLevel;
 			NewParty.Add(MoveTemp(TaskNpc));
 		}
 
@@ -2260,6 +2309,14 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	FGameXXKTalentProjection TalentProjection;
+	if (!FGameXXKTalentRules::BuildProjection(NewState.Talents, TalentProjection, OutError))
+	{
+		return false;
+	}
+	NewRuntime.TalentFinalDamagePercent = TalentProjection.RouteFinalDamagePercent;
+	NewRuntime.TalentCriticalChancePercent = TalentProjection.CriticalChancePercent;
+	NewRuntime.TalentCriticalDamagePercent = TalentProjection.CriticalDamagePercent;
 	const bool bOwnsLifeSavingTalisman = Run.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Instance)
 	{
 		return Instance.RelicId == LifeSavingTalismanRelicId;

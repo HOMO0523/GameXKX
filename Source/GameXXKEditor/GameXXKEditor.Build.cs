@@ -22,9 +22,11 @@ public class GameXXKEditor : ModuleRules
 		{
 			"AssetRegistry",
 			"BlueprintGraph",
+			"GameXXK",
 			"Json",
 			"KismetCompiler",
 			"LevelEditor",
+			"RenderCore",
 			"Slate",
 			"SlateCore",
 			"UMG",

@@ -1,6 +1,7 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Brushes/SlateColorBrush.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
 #include "Components/ButtonSlot.h"
@@ -27,6 +28,7 @@
 #include "InputCoreTypes.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/App.h"
+#include "Misc/ConfigCacheIni.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
@@ -34,18 +36,21 @@
 #include "GameXXKEquipmentToolRules.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKTalentRules.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UI/GameXXKTalentTreeWidget.h"
 #include "UObject/StrongObjectPtr.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/SNullWidget.h"
 #include "Widgets/SWindow.h"
 
 #if PLATFORM_WINDOWS
@@ -100,9 +105,218 @@
 			return SButton::OnMouseButtonDown(MyGeometry, MouseEvent);
 		}
 
+		virtual FReply OnMouseWheel(
+			const FGeometry& MyGeometry,
+			const FPointerEvent& MouseEvent) override
+		{
+			if (Owner.IsValid() && Owner->HandleMouseWheel(MouseEvent.GetWheelDelta()))
+			{
+				return FReply::Handled();
+			}
+			return SButton::OnMouseWheel(MyGeometry, MouseEvent);
+		}
+
 	private:
 		TWeakObjectPtr<UGameXXKDesktopTrainingActionButton> Owner;
 	};
+
+#if PLATFORM_WINDOWS
+	struct FGameXXKDesktopWindowHook
+	{
+		WNDPROC PreviousWindowProc = nullptr;
+		TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> Owner;
+	};
+
+	TMap<HWND, FGameXXKDesktopWindowHook>& GetDesktopWindowHooks()
+	{
+		static TMap<HWND, FGameXXKDesktopWindowHook> Hooks;
+		return Hooks;
+	}
+
+	HHOOK& GetDesktopLowLevelMouseHook()
+	{
+		static HHOOK Hook = nullptr;
+		return Hook;
+	}
+
+	LRESULT CALLBACK GameXXKDesktopLowLevelMouseProc(
+		const int32 Code,
+		const WPARAM WParam,
+		const LPARAM LParam)
+	{
+		if (Code >= 0)
+		{
+			using namespace GameXXKDesktopTrainingLayout;
+			EDesktopOverlayMouseSignal Signal = EDesktopOverlayMouseSignal::Other;
+			switch (WParam)
+			{
+			case WM_MOUSEMOVE:
+				Signal = EDesktopOverlayMouseSignal::Move;
+				break;
+			case WM_LBUTTONDOWN:
+			case WM_LBUTTONUP:
+			case WM_LBUTTONDBLCLK:
+			case WM_RBUTTONDOWN:
+			case WM_RBUTTONUP:
+			case WM_RBUTTONDBLCLK:
+			case WM_MBUTTONDOWN:
+			case WM_MBUTTONUP:
+			case WM_MBUTTONDBLCLK:
+			case WM_XBUTTONDOWN:
+			case WM_XBUTTONUP:
+			case WM_XBUTTONDBLCLK:
+				Signal = EDesktopOverlayMouseSignal::Button;
+				break;
+			case WM_MOUSEWHEEL:
+			case WM_MOUSEHWHEEL:
+				Signal = EDesktopOverlayMouseSignal::Wheel;
+				break;
+			default:
+				break;
+			}
+
+			if (ShouldSynchronizeDesktopMousePassthrough(Signal))
+			{
+				for (const TPair<HWND, FGameXXKDesktopWindowHook>& Pair : GetDesktopWindowHooks())
+				{
+					if (Pair.Value.Owner.IsValid())
+					{
+						Pair.Value.Owner->RefreshDesktopNativeMousePassthrough();
+					}
+				}
+			}
+		}
+		return ::CallNextHookEx(GetDesktopLowLevelMouseHook(), Code, WParam, LParam);
+	}
+
+	bool InstallDesktopLowLevelMouseHook()
+	{
+		if (GetDesktopLowLevelMouseHook())
+		{
+			return true;
+		}
+		HMODULE ModuleHandle = nullptr;
+		if (!::GetModuleHandleExW(
+				GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+					| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+				reinterpret_cast<LPCWSTR>(&GameXXKDesktopLowLevelMouseProc),
+				&ModuleHandle))
+		{
+			return false;
+		}
+		GetDesktopLowLevelMouseHook() = ::SetWindowsHookExW(
+			WH_MOUSE_LL,
+			&GameXXKDesktopLowLevelMouseProc,
+			ModuleHandle,
+			0);
+		return GetDesktopLowLevelMouseHook() != nullptr;
+	}
+
+	void ReleaseDesktopLowLevelMouseHookIfUnused()
+	{
+		if (!GetDesktopWindowHooks().IsEmpty())
+		{
+			return;
+		}
+		if (GetDesktopLowLevelMouseHook())
+		{
+			::UnhookWindowsHookEx(GetDesktopLowLevelMouseHook());
+			GetDesktopLowLevelMouseHook() = nullptr;
+		}
+	}
+
+	float GetDesktopMonitorDpiScale(HWND WindowHandle)
+	{
+		if (WindowHandle)
+		{
+			MONITORINFOEXW MonitorInfo = {};
+			MonitorInfo.cbSize = sizeof(MONITORINFOEXW);
+			const HMONITOR Monitor = ::MonitorFromWindow(
+				WindowHandle,
+				MONITOR_DEFAULTTONEAREST);
+			if (::GetMonitorInfoW(Monitor, &MonitorInfo))
+			{
+				DEVMODEW DisplayMode = {};
+				DisplayMode.dmSize = sizeof(DEVMODEW);
+				if (::EnumDisplaySettingsW(
+					MonitorInfo.szDevice,
+					static_cast<DWORD>(-1),
+					&DisplayMode))
+				{
+					const int32 LogicalMonitorWidth = FMath::Max(
+						1,
+						MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left);
+					const float VirtualizationScale = static_cast<float>(DisplayMode.dmPelsWidth)
+						/ static_cast<float>(LogicalMonitorWidth);
+					if (VirtualizationScale > 1.0f + KINDA_SMALL_NUMBER)
+					{
+						return VirtualizationScale;
+					}
+				}
+			}
+		}
+		using FGetDpiForMonitor = HRESULT(WINAPI*)(HMONITOR, int32, UINT*, UINT*);
+		static HMODULE ShcoreModule = ::LoadLibraryW(L"Shcore.dll");
+		static FGetDpiForMonitor GetDpiForMonitorFunction = []()
+		{
+			FGetDpiForMonitor Function = nullptr;
+			if (ShcoreModule)
+			{
+				const FARPROC Address = ::GetProcAddress(ShcoreModule, "GetDpiForMonitor");
+				static_assert(sizeof(Function) == sizeof(Address));
+				FMemory::Memcpy(&Function, &Address, sizeof(Function));
+			}
+			return Function;
+		}();
+		if (WindowHandle && GetDpiForMonitorFunction)
+		{
+			UINT DpiX = 96;
+			UINT DpiY = 96;
+			const HRESULT Result = GetDpiForMonitorFunction(
+				::MonitorFromWindow(WindowHandle, MONITOR_DEFAULTTONEAREST),
+				0,
+				&DpiX,
+				&DpiY);
+			if (Result >= 0 && DpiX > 0)
+			{
+				return FMath::Max(1.0f, static_cast<float>(DpiX) / 96.0f);
+			}
+		}
+		return WindowHandle
+			? FMath::Max(1.0f, static_cast<float>(::GetDpiForWindow(WindowHandle)) / 96.0f)
+			: 1.0f;
+	}
+
+	LRESULT CALLBACK GameXXKDesktopWindowProc(
+		HWND WindowHandle,
+		UINT Message,
+		WPARAM WParam,
+		LPARAM LParam)
+	{
+		FGameXXKDesktopWindowHook* Hook = GetDesktopWindowHooks().Find(WindowHandle);
+		if (Hook && Hook->Owner.IsValid())
+		{
+			if (Message == WM_KEYDOWN
+				&& WParam == VK_TAB
+				&& (static_cast<uint64>(LParam) & (1ull << 30)) == 0)
+			{
+				Hook->Owner->HandleActionClicked(60);
+				return 0;
+			}
+			if (Message == WM_EXITSIZEMOVE)
+			{
+				Hook->Owner->NotifyDesktopNativeMoveCompleted();
+			}
+			else if (Message == WM_DPICHANGED || Message == WM_DISPLAYCHANGE)
+			{
+				Hook->Owner->NotifyDesktopNativeDisplayMetricsChanged();
+			}
+		}
+		return Hook && Hook->PreviousWindowProc
+			? ::CallWindowProc(Hook->PreviousWindowProc, WindowHandle, Message, WParam, LParam)
+			: ::DefWindowProc(WindowHandle, Message, WParam, LParam);
+	}
+#endif
 
 	constexpr int32 WarehouseColumns = 4;
 	constexpr int32 WarehouseRows = 9;
@@ -113,7 +327,179 @@
 	constexpr int32 ActionCloseWarehouse = 62;
 	constexpr int32 ActionCloseCentralPage = 63;
 	constexpr int32 ActionCloseRightPanel = 64;
+	constexpr int32 ActionTrainingDifficultyDropdown = 620;
+	constexpr int32 ActionTrainingDifficultyFirst = 621;
+	constexpr int32 ActionTrainingChapterFirst = 624;
+	constexpr int32 ActionNoticeSurface = 680;
+	constexpr int32 ActionNoticeCollapse = 681;
+	constexpr int32 ActionNoticeExpand = 682;
+	constexpr int32 ActionNoticeSettings = 683;
+	constexpr int32 ActionNoticeCategoryFirst = 684;
+	constexpr int32 ActionHudScale100 = 650;
+	constexpr int32 ActionHudScale50 = 651;
+	constexpr int32 ActionToggleTown = 652;
+	constexpr int32 ActionIdleStripFold = 653;
+	constexpr int32 NoticeHistoryCapacity = 200;
+	constexpr float NoticeLineHeight = 24.0f;
+	constexpr float NoticeRecordsBarHeight = 28.0f;
+	constexpr float IdleSummaryReportWidth = 420.0f;
+	constexpr float IdleSummaryFoldSlotWidth = 113.0f;
+	constexpr float IdleSummaryFoldButtonWidth = 72.0f;
+	constexpr float IdleSummaryFoldButtonX =
+		IdleSummaryReportWidth + (IdleSummaryFoldSlotWidth - IdleSummaryFoldButtonWidth) * 0.5f;
+	constexpr float IdleSummaryProgressX = IdleSummaryReportWidth + IdleSummaryFoldSlotWidth;
+	constexpr float IdleSummaryProgressWidth = 420.0f;
+	constexpr float ExpandedIdleSummaryProgressWidth = 340.0f;
+	constexpr float IdleSummaryTabX = IdleSummaryProgressX + IdleSummaryProgressWidth;
+	constexpr float IdleSummaryTabWidth = 72.0f;
+	constexpr float FoldedChestTextWidth = 96.0f;
+	constexpr float FoldedSummaryWidth =
+		IdleSummaryTabX + IdleSummaryTabWidth + FoldedChestTextWidth * 2.0f;
+	constexpr float WaveTrackX = 84.0f;
+	constexpr float WaveProgressFixedContentWidth = 138.0f;
+
+	float ResolveIdleSummaryProgressWidth(const bool bExpanded)
+	{
+		return bExpanded ? ExpandedIdleSummaryProgressWidth : IdleSummaryProgressWidth;
+	}
+
+	float ResolveIdleSummaryTabX(const bool bExpanded)
+	{
+		return IdleSummaryProgressX + ResolveIdleSummaryProgressWidth(bExpanded);
+	}
+
+	float ResolveWaveTrackWidth(const bool bExpanded)
+	{
+		return ResolveIdleSummaryProgressWidth(bExpanded) - WaveProgressFixedContentWidth;
+	}
+	static constexpr const TCHAR* NoticeSettingsSection =
+		TEXT("/Script/GameXXK.DesktopTrainingNoticeSettings");
+	static constexpr const TCHAR* HudSettingsSection =
+		TEXT("/Script/GameXXK.DesktopHudSettings");
+	static constexpr const TCHAR* HudScaleConfigKey = TEXT("HudScalePercent");
+	static constexpr const TCHAR* DesktopWindowPositionXKey = TEXT("WindowPositionX");
+	static constexpr const TCHAR* DesktopWindowPositionYKey = TEXT("WindowPositionY");
+	constexpr EGameXXKDesktopNoticeCategory NoticeCategories[] = {
+		EGameXXKDesktopNoticeCategory::ChestAcquired,
+		EGameXXKDesktopNoticeCategory::ChestOpenResult,
+		EGameXXKDesktopNoticeCategory::StageCleared,
+		EGameXXKDesktopNoticeCategory::StageFailed,
+		EGameXXKDesktopNoticeCategory::CharacterLevelUp,
+		EGameXXKDesktopNoticeCategory::CharacterDeath,
+		EGameXXKDesktopNoticeCategory::CharacterRevive,
+		EGameXXKDesktopNoticeCategory::EquipmentCombine,
+		EGameXXKDesktopNoticeCategory::EnhanceReforge,
+		EGameXXKDesktopNoticeCategory::Socket,
+		EGameXXKDesktopNoticeCategory::System};
+
+	FString NoticeCategoryLabel(const EGameXXKDesktopNoticeCategory Category)
+	{
+		switch (Category)
+		{
+		case EGameXXKDesktopNoticeCategory::ChestAcquired: return TEXT("获得宝箱");
+		case EGameXXKDesktopNoticeCategory::ChestOpenResult: return TEXT("宝箱开启结果");
+		case EGameXXKDesktopNoticeCategory::StageCleared: return TEXT("关卡通关");
+		case EGameXXKDesktopNoticeCategory::StageFailed: return TEXT("关卡失败");
+		case EGameXXKDesktopNoticeCategory::CharacterLevelUp: return TEXT("角色升级");
+		case EGameXXKDesktopNoticeCategory::CharacterDeath: return TEXT("角色死亡");
+		case EGameXXKDesktopNoticeCategory::CharacterRevive: return TEXT("角色复活");
+		case EGameXXKDesktopNoticeCategory::EquipmentCombine: return TEXT("装备合成结果");
+		case EGameXXKDesktopNoticeCategory::EnhanceReforge: return TEXT("强化与洗炼结果");
+		case EGameXXKDesktopNoticeCategory::Socket: return TEXT("镶嵌结果");
+		case EGameXXKDesktopNoticeCategory::System:
+		default: return TEXT("系统提示");
+		}
+	}
+
+	const TCHAR* NoticeCategoryConfigKey(const EGameXXKDesktopNoticeCategory Category)
+	{
+		switch (Category)
+		{
+		case EGameXXKDesktopNoticeCategory::ChestAcquired: return TEXT("ChestAcquired");
+		case EGameXXKDesktopNoticeCategory::ChestOpenResult: return TEXT("ChestOpenResult");
+		case EGameXXKDesktopNoticeCategory::StageCleared: return TEXT("StageCleared");
+		case EGameXXKDesktopNoticeCategory::StageFailed: return TEXT("StageFailed");
+		case EGameXXKDesktopNoticeCategory::CharacterLevelUp: return TEXT("CharacterLevelUp");
+		case EGameXXKDesktopNoticeCategory::CharacterDeath: return TEXT("CharacterDeath");
+		case EGameXXKDesktopNoticeCategory::CharacterRevive: return TEXT("CharacterRevive");
+		case EGameXXKDesktopNoticeCategory::EquipmentCombine: return TEXT("EquipmentCombine");
+		case EGameXXKDesktopNoticeCategory::EnhanceReforge: return TEXT("EnhanceReforge");
+		case EGameXXKDesktopNoticeCategory::Socket: return TEXT("Socket");
+		case EGameXXKDesktopNoticeCategory::System:
+		default: return TEXT("System");
+		}
+	}
+
+	EGameXXKDesktopNoticeCategory NoticeCategoryForToolMode(
+		const EGameXXKDesktopToolMode Mode)
+	{
+		switch (Mode)
+		{
+		case EGameXXKDesktopToolMode::Combine:
+			return EGameXXKDesktopNoticeCategory::EquipmentCombine;
+		case EGameXXKDesktopToolMode::Enhance:
+		case EGameXXKDesktopToolMode::Reforge:
+			return EGameXXKDesktopNoticeCategory::EnhanceReforge;
+		case EGameXXKDesktopToolMode::Socket:
+			return EGameXXKDesktopNoticeCategory::Socket;
+		case EGameXXKDesktopToolMode::Dismantle:
+		default:
+			return EGameXXKDesktopNoticeCategory::System;
+		}
+	}
+
+	FLinearColor NoticeCategoryColor(const EGameXXKDesktopNoticeCategory Category)
+	{
+		switch (Category)
+		{
+		case EGameXXKDesktopNoticeCategory::ChestAcquired: return FLinearColor(0.38f, 0.86f, 0.96f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::ChestOpenResult: return FLinearColor(0.98f, 0.76f, 0.20f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::StageCleared: return FLinearColor(0.96f, 0.72f, 0.18f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::StageFailed: return FLinearColor(0.88f, 0.34f, 0.26f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::CharacterLevelUp: return FLinearColor(0.38f, 0.96f, 0.48f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::CharacterDeath: return FLinearColor(0.78f, 0.32f, 0.30f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::CharacterRevive: return FLinearColor(0.42f, 0.94f, 0.62f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::EquipmentCombine: return FLinearColor(0.72f, 0.62f, 0.98f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::EnhanceReforge: return FLinearColor(0.94f, 0.58f, 0.22f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::Socket: return FLinearColor(0.36f, 0.82f, 0.98f, 1.0f);
+		case EGameXXKDesktopNoticeCategory::System:
+		default: return FLinearColor(0.94f, 0.90f, 0.78f, 1.0f);
+		}
+	}
+	EGameXXKTrainingDifficulty TrainingDifficultyFromIndex(const int32 Index)
+	{
+		switch (Index)
+		{
+		case 1: return EGameXXKTrainingDifficulty::Hard;
+		case 2: return EGameXXKTrainingDifficulty::Hell;
+		case 0:
+		default: return EGameXXKTrainingDifficulty::Normal;
+		}
+	}
+
+	FString TrainingStageShortLabel(const FName StageId)
+	{
+		FGameXXKTrainingStageDefinition Definition;
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
+		{
+			return TEXT("未游历");
+		}
+		const TCHAR* DifficultyLabel = TEXT("普通");
+		switch (Definition.Difficulty)
+		{
+		case EGameXXKTrainingDifficulty::Hard: DifficultyLabel = TEXT("困难"); break;
+		case EGameXXKTrainingDifficulty::Hell: DifficultyLabel = TEXT("地狱"); break;
+		case EGameXXKTrainingDifficulty::Normal:
+		default: break;
+		}
+		return FString::Printf(
+			TEXT("%s %d-%d"),
+			DifficultyLabel,
+			Definition.Chapter,
+			((Definition.StageNumber - 1) % 3) + 1);
+	}
 	const FVector2D TravelVisualSize(953.0f, 202.0f);
+	const FVector2D IdleGroupLogicalSize(1038.0f, 202.0f);
 	const FVector2D TravelBackgroundImageSize(FGameXXKTrainingTravelVisualRuntime::LaneTileWidth, 300.0f);
 	const FVector2D TravelCombatVisualSize(150.0f, 150.0f);
 	const FVector2D TravelHeroWalkVisualSize(112.0f, 112.0f);
@@ -266,7 +652,9 @@
 	static constexpr const TCHAR* CharacterTabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
 	static constexpr const TCHAR* SettingsTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/HUD/T_TownPsd_HudSettings.T_TownPsd_HudSettings");
 	static constexpr const TCHAR* InventoryTextureRoot = TEXT("/Game/GameXXK/UI/Inventory/Textures/");
-	static constexpr const TCHAR* RouteNodeTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavRoute.T_MasterV2_NavRoute");
+	static constexpr const TCHAR* TrainingNodePassedTexturePath = TEXT("/Game/GameXXK/UI/Training/MapNodes/T_TrainingNode_Passed.T_TrainingNode_Passed");
+	static constexpr const TCHAR* TrainingNodeChallengeTexturePath = TEXT("/Game/GameXXK/UI/Training/MapNodes/T_TrainingNode_Challenge.T_TrainingNode_Challenge");
+	static constexpr const TCHAR* TrainingNodeLockedTexturePath = TEXT("/Game/GameXXK/UI/Training/MapNodes/T_TrainingNode_Locked.T_TrainingNode_Locked");
 	static constexpr const TCHAR* TruthNavWarehouseTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavWarehouse.T_TrainingNavWarehouse");
 	static constexpr const TCHAR* TruthNavFormationTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavFormation.T_TrainingNavFormation");
 	static constexpr const TCHAR* TruthNavTalentsTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTalents.T_TrainingNavTalents");
@@ -278,6 +666,14 @@
 	static constexpr const TCHAR* TravelBackgroundTexturePath = TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background");
 	static constexpr const TCHAR* TrainingNormalChestTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingNormalChest.T_Item_TrainingNormalChest");
 	static constexpr const TCHAR* TrainingAdvancedChestTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingAdvancedChest.T_Item_TrainingAdvancedChest");
+	static constexpr const TCHAR* TrainingRetryButtonBaseTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryButtonBase.T_TrainingRetryButtonBase");
+	static constexpr const TCHAR* TrainingRetryIconEnabledTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryIconEnabled.T_TrainingRetryIconEnabled");
+	static constexpr const TCHAR* TrainingRetryIconDisabledTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryIconDisabled.T_TrainingRetryIconDisabled");
+	static constexpr const TCHAR* TrainingWaveMarkerNormalTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerNormal.T_TrainingWaveMarkerNormal");
+	static constexpr const TCHAR* TrainingWaveMarkerEliteTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerElite.T_TrainingWaveMarkerElite");
+	static constexpr const TCHAR* TrainingWaveMarkerBossTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerBoss.T_TrainingWaveMarkerBoss");
+	static constexpr const TCHAR* DesktopTownEnterButtonTexturePath = TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownEnterButton.T_DesktopTownEnterButton");
+	static constexpr const TCHAR* DesktopTownExitButtonTexturePath = TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownExitButton.T_DesktopTownExitButton");
 	static constexpr const TCHAR* TravelBackgroundFallbackTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Map.T_TownPsd_Background_Map");
 	static constexpr const TCHAR* TravelHeroFallbackTexturePaths[] = {
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
@@ -402,6 +798,48 @@
 		Style.SetHovered(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(1.06f, 1.06f, 1.06f, 1.0f)));
 		Style.SetPressed(MakeTextureBrush(Path, ImageSize, Tint * FLinearColor(0.86f, 0.86f, 0.86f, 1.0f)));
 		Style.SetDisabled(MakeTextureBrush(Path, ImageSize, FLinearColor(0.55f, 0.55f, 0.55f, 0.72f)));
+		return Style;
+	}
+
+	FSlateBrush MakeCircularBrush(
+		const FVector2D& ImageSize,
+		const FLinearColor& Fill,
+		const FLinearColor& Outline,
+		const float OutlineWidth)
+	{
+		FSlateBrush Brush;
+		Brush.DrawAs = ESlateBrushDrawType::RoundedBox;
+		Brush.ImageSize = ImageSize;
+		Brush.TintColor = FSlateColor(Fill);
+		Brush.OutlineSettings = FSlateBrushOutlineSettings(
+			FMath::Min(ImageSize.X, ImageSize.Y) * 0.5f,
+			FSlateColor(Outline),
+			OutlineWidth);
+		return Brush;
+	}
+
+	FButtonStyle MakeCircularButtonStyle(
+		const FVector2D& ImageSize,
+		const FLinearColor& Fill,
+		const FLinearColor& Outline)
+	{
+		FButtonStyle Style;
+		Style.SetNormal(MakeCircularBrush(ImageSize, Fill, Outline, 3.0f));
+		Style.SetHovered(MakeCircularBrush(
+			ImageSize,
+			Fill * FLinearColor(1.05f, 1.05f, 1.05f, 1.0f),
+			Outline,
+			4.0f));
+		Style.SetPressed(MakeCircularBrush(
+			ImageSize,
+			Fill * FLinearColor(0.84f, 0.84f, 0.84f, 1.0f),
+			Outline,
+			4.0f));
+		Style.SetDisabled(MakeCircularBrush(
+			ImageSize,
+			FLinearColor(0.50f, 0.48f, 0.44f, 0.70f),
+			FLinearColor(0.25f, 0.24f, 0.22f, 0.75f),
+			3.0f));
 		return Style;
 	}
 
@@ -674,7 +1112,9 @@
 		const FText& Label,
 		const int32 LabelSize = 11,
 		const FName LabelName = NAME_None,
-		UTextBlock** OutLabelText = nullptr)
+		UTextBlock** OutLabelText = nullptr,
+		const FName IconName = NAME_None,
+		const bool bQuantityLabel = false)
 	{
 		if (OutLabelText)
 		{
@@ -688,7 +1128,7 @@
 				USizeBox* IconBox = Tree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
 				IconBox->SetWidthOverride(IconSize.X);
 				IconBox->SetHeightOverride(IconSize.Y);
-				UImage* Icon = Tree->ConstructWidget<UImage>(UImage::StaticClass());
+				UImage* Icon = Tree->ConstructWidget<UImage>(UImage::StaticClass(), IconName);
 				Icon->SetBrush(MakeTextureBrush(*IconTexturePath, IconSize));
 				IconBox->AddChild(Icon);
 				if (UOverlaySlot* IconSlot = Overlay->AddChildToOverlay(IconBox))
@@ -700,13 +1140,27 @@
 		}
 		if (!Label.IsEmpty())
 		{
-			UTextBlock* LabelText = MakeText(Tree, Label, LabelSize, Ink, LabelName);
-			LabelText->SetJustification(ETextJustify::Center);
+			UTextBlock* LabelText = MakeText(
+				Tree,
+				Label,
+				LabelSize,
+				bQuantityLabel ? FLinearColor::White : Ink,
+				LabelName);
+			LabelText->SetJustification(bQuantityLabel ? ETextJustify::Right : ETextJustify::Center);
+			if (bQuantityLabel)
+			{
+				FSlateFontInfo QuantityFont = FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 14);
+				QuantityFont.OutlineSettings.OutlineSize = 2;
+				QuantityFont.OutlineSettings.OutlineColor = FLinearColor::Black;
+				LabelText->SetFont(QuantityFont);
+			}
 			if (UOverlaySlot* LabelSlot = Overlay->AddChildToOverlay(LabelText))
 			{
-				LabelSlot->SetHorizontalAlignment(HAlign_Fill);
+				LabelSlot->SetHorizontalAlignment(bQuantityLabel ? HAlign_Right : HAlign_Fill);
 				LabelSlot->SetVerticalAlignment(VAlign_Bottom);
-				LabelSlot->SetPadding(FMargin(2.0f, 0.0f, 2.0f, 3.0f));
+				LabelSlot->SetPadding(bQuantityLabel
+					? FMargin(0.0f, 0.0f, 2.0f, 1.0f)
+					: FMargin(2.0f, 0.0f, 2.0f, 3.0f));
 			}
 			if (OutLabelText)
 			{
@@ -849,6 +1303,12 @@
 		{
 			Portrait->SetBrushFromTexture(Texture, true);
 			Portrait->SetColorAndOpacity(FLinearColor::White);
+			Portrait->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			Portrait->SetBrush(FSlateBrush());
+			Portrait->SetVisibility(ESlateVisibility::Collapsed);
 		}
 		PortraitScale->SetContent(Portrait);
 		PortraitBox->SetContent(PortraitScale);
@@ -875,7 +1335,10 @@ void UGameXXKDesktopTrainingStageButton::Configure(UGameXXKDesktopTrainingWorkbe
 {
 	Owner = InOwner;
 	StageId = InStageId;
-	SetStyle(MakeImageButtonStyle(RouteNodeTexturePath, FVector2D(58.0f, 58.0f)));
+	SetStyle(MakeCircularButtonStyle(
+		FVector2D(82.0f, 82.0f),
+		FLinearColor(0.94f, 0.87f, 0.70f, 0.96f),
+		Ink));
 	SetBackgroundColor(FLinearColor::White);
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingStageButton::HandleClicked);
@@ -898,6 +1361,14 @@ void UGameXXKDesktopTrainingActionButton::Configure(UGameXXKDesktopTrainingWorkb
 	SetBackgroundColor(FLinearColor::White);
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleClicked);
+	OnHovered.Clear();
+	OnHovered.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleHovered);
+	OnUnhovered.Clear();
+	OnUnhovered.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleUnhovered);
+	OnPressed.Clear();
+	OnPressed.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandlePressed);
+	OnReleased.Clear();
+	OnReleased.AddDynamic(this, &UGameXXKDesktopTrainingActionButton::HandleReleased);
 }
 
 void UGameXXKDesktopTrainingActionButton::HandleClicked()
@@ -973,6 +1444,7 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
+	LoadHudScaleSetting();
 	TravelVisualRuntime.Reset();
 	if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
 	{
@@ -1008,17 +1480,53 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 	UpdateCarriedItemVisualPosition();
 	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
 	TickCollapsedResourceUnload(InDeltaTime);
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		TickDesktopNativeWindow();
+	}
+	else
+	{
+		const FVector2D ViewportHostSize = MyGeometry.GetLocalSize();
+		if (ViewportHostSize.X > 1.0f
+			&& ViewportHostSize.Y > 1.0f
+			&& (!bDesktopResolvedMetricsValid
+				|| !DesktopResolvedMetrics.PhysicalWorkAreaSize.Equals(
+					ViewportHostSize,
+					0.5f)))
+		{
+			DesktopWindowPositionNormalized =
+				GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
+					false,
+					DesktopWindowPositionNormalized);
+			InitializeDesktopPresentationHostSize(ViewportHostSize);
+		}
+	}
+	if (NoticeHoveredWidgetCount <= 0 && NoticeHoverHideRemainingSeconds > 0.0f)
+	{
+		NoticeHoverHideRemainingSeconds = FMath::Max(
+			0.0f,
+			NoticeHoverHideRemainingSeconds - FMath::Max(0.0f, InDeltaTime));
+		if (NoticeHoverHideRemainingSeconds <= 0.0f)
+		{
+			RefreshNoticeControlVisibility();
+		}
+	}
 	LivePresentationAccumulator += FMath::Max(0.0f, InDeltaTime);
+	int32 RealElapsedSeconds = 0;
 	if (LivePresentationAccumulator >= 1.0f)
 	{
+		RealElapsedSeconds = FMath::FloorToInt(LivePresentationAccumulator);
 		LivePresentationAccumulator = FMath::Fmod(LivePresentationAccumulator, 1.0f);
 		RefreshLivePresentation(false);
 	}
 	const UGameXXKMVPSubsystem* TravelSubsystem = ResolveMVPSubsystem();
+	FGameXXKTrainingTravelRuntime AuthoritativeTravelRuntime;
 	if (TravelSubsystem)
 	{
-		TravelVisualRuntime.Synchronize(TravelSubsystem->GetTrainingTravelRuntimeCopy());
+		AuthoritativeTravelRuntime = TravelSubsystem->GetTrainingTravelRuntimeCopy();
+		TravelVisualRuntime.Synchronize(AuthoritativeTravelRuntime);
 	}
+	const bool bVisualWasWalkingAtFrameStart = TravelVisualRuntime.IsWalking();
 	TravelVisualRuntime.Tick(InDeltaTime);
 	if (TravelAtlasCache)
 	{
@@ -1029,12 +1537,54 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 	{
 		return;
 	}
+	if (AuthoritativeTravelRuntime.Phase == EGameXXKTrainingTravelPhase::Walking
+		&& !bVisualWasWalkingAtFrameStart)
+	{
+		// Finish every queued hit/death presentation before starting the next
+		// encounter's five-second walkloop. Discarding the partial accumulator
+		// here prevents old combat presentation time from consuming spawn delay.
+		TravelAccumulator = 0.0f;
+		UpdateTravelVisuals();
+		return;
+	}
 
-	// Logical travel advances on a one-second cadence, but the mutation is
-	// captured at the end of this frame. Never retroactively consume the
-	// frame's DeltaTime from the newly-created attack/hit/death presentation.
+	// Combat keeps its one-second logical cadence. Walking divides the authored
+	// five logical steps across the movement talent's real-time duration, while
+	// chest cooldowns continue consuming actual wall-clock seconds.
 	TravelAccumulator += InDeltaTime;
-	if (TravelAccumulator >= 1.0f)
+	if (AuthoritativeTravelRuntime.Phase == EGameXXKTrainingTravelPhase::Walking)
+	{
+		FGameXXKTalentProjection TalentProjection;
+		const float WalkSeconds = TravelSubsystem
+			&& FGameXXKTalentRules::BuildProjection(
+				TravelSubsystem->GetRuntimeState().Talents,
+				TalentProjection)
+			? TalentProjection.GetTravelWalkSeconds()
+			: static_cast<float>(FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds);
+		const float LogicalCadence = FMath::Max(
+			0.05f,
+			WalkSeconds / static_cast<float>(FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds));
+		const int32 LogicalSteps = FMath::Clamp(
+			FMath::FloorToInt(TravelAccumulator / LogicalCadence),
+			0,
+			FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds);
+		if (LogicalSteps > 0)
+		{
+			TravelAccumulator -= static_cast<float>(LogicalSteps) * LogicalCadence;
+			for (int32 StepIndex = 0; StepIndex < LogicalSteps; ++StepIndex)
+			{
+				const int32 CooldownSeconds = StepIndex == 0 ? RealElapsedSeconds : 0;
+				if (!AdvanceTravelForTest(CooldownSeconds)
+					|| TravelSubsystem->GetTrainingTravelRuntimeCopy().Phase
+						!= EGameXXKTrainingTravelPhase::Walking)
+				{
+					TravelAccumulator = 0.0f;
+					break;
+				}
+			}
+		}
+	}
+	else if (TravelAccumulator >= 1.0f)
 	{
 		const int32 ElapsedSeconds = FMath::Max(1, FMath::FloorToInt(TravelAccumulator));
 		TravelAccumulator -= static_cast<float>(ElapsedSeconds);
@@ -1052,12 +1602,112 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 	{
 		return FReply::Handled();
 	}
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
+		&& InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		const FVector2D HostPoint =
+			InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition())
+			* FMath::Max(0.01f, DesktopInputDpiScale);
+		const FVector2D StripLocalTopLeft =
+			DesktopOverlayPlacement.StripTopLeft - DesktopOverlayPlacement.HudTopLeft;
+		const FVector2D StripPoint = HostPoint - StripLocalTopLeft;
+		const bool bInsideStrip = StripPoint.X >= 0.0f
+			&& StripPoint.Y >= 0.0f
+			&& StripPoint.X <= DesktopOverlayPlacement.StripSize.X
+			&& StripPoint.Y <= DesktopOverlayPlacement.StripSize.Y;
+		if (bInsideStrip)
+		{
+			const FVector2D IdlePoint = bIdleStripFolded
+				? StripPoint / FMath::Max(0.01f, DesktopOverlayPlacement.Scale)
+				: FVector2D(
+					StripPoint.X * GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize().X
+						/ FMath::Max(1.0f, DesktopOverlayPlacement.StripSize.X),
+					StripPoint.Y * GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize().Y
+						/ FMath::Max(1.0f, DesktopOverlayPlacement.StripSize.Y));
+			const float ChestControlLocalX = bBackpackExpanded
+				? GameXXKDesktopTrainingLayout::GetIdleStripRect().Z - 72.0f
+				: 953.0f;
+			const FVector4 ExpandedControls[] = {
+				FVector4(ChestControlLocalX - 60.0f, 18.0f, 52.0f, 52.0f),
+				FVector4(ChestControlLocalX, 8.0f, 72.0f, 72.0f),
+				FVector4(ChestControlLocalX, 84.0f, 72.0f, 72.0f)};
+			const FVector4 FoldedControls[] = {
+				FVector4(IdleSummaryFoldButtonX, 0.0f, IdleSummaryFoldButtonWidth, NoticeLineHeight),
+				FVector4(
+					ResolveIdleSummaryTabX(bBackpackExpanded),
+					0.0f,
+					IdleSummaryTabWidth,
+					NoticeLineHeight)};
+			bool bIdleControl = false;
+			const FVector4* Controls = bIdleStripFolded ? FoldedControls : ExpandedControls;
+			const int32 ControlCount = bIdleStripFolded
+				? UE_ARRAY_COUNT(FoldedControls)
+				: UE_ARRAY_COUNT(ExpandedControls);
+			for (int32 ControlIndex = 0; ControlIndex < ControlCount; ++ControlIndex)
+			{
+				const FVector4& Control = Controls[ControlIndex];
+				bIdleControl = bIdleControl
+					|| (IdlePoint.X >= Control.X
+						&& IdlePoint.X <= Control.X + Control.Z
+						&& IdlePoint.Y >= Control.Y
+						&& IdlePoint.Y <= Control.Y + Control.W);
+			}
+			if (!bIdleControl)
+			{
+				bDesktopHudDragging = true;
+				DesktopHudDragPointerOffset = StripPoint;
+				return FReply::Handled().CaptureMouse(TakeWidget());
+			}
+		}
+	}
 	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonUp(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (bDesktopHudDragging && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		UpdateDesktopOverlayAnchorFromPointer(InGeometry, InMouseEvent.GetScreenSpacePosition());
+		bDesktopHudDragging = false;
+		SaveDesktopNativeWindowPosition();
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+}
+
+FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseMove(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (bDesktopHudDragging)
+	{
+		UpdateDesktopOverlayAnchorFromPointer(InGeometry, InMouseEvent.GetScreenSpacePosition());
+		return FReply::Handled();
+	}
+	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseCaptureLost(
+	const FCaptureLostEvent& CaptureLostEvent)
+{
+	if (bDesktopHudDragging)
+	{
+		bDesktopHudDragging = false;
+		SaveDesktopNativeWindowPosition();
+	}
+	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeOnFocusLost(const FFocusEvent& InFocusEvent)
 {
 	Super::NativeOnFocusLost(InFocusEvent);
+	if (bDesktopHudDragging)
+	{
+		bDesktopHudDragging = false;
+		SaveDesktopNativeWindowPosition();
+	}
 	AbortTransientInventoryInteraction(false, true);
 }
 
@@ -1078,6 +1728,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeDestruct()
 		}
 		ApplicationActivationHandle.Reset();
 		ReleaseTravelAtlasSession();
+		if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
+		{
+			PlayerController->SetDesktopWorkbenchTownPanelInputLock(false);
+		}
+		ReleaseDesktopNativeWindow();
 	}
 	Super::NativeDestruct();
 }
@@ -1100,6 +1755,16 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	ToolSlots.SetNum(ToolSlotCount);
 	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 	SelectedStageId = Progress.SelectedStageId.IsNone() ? Progress.CurrentTravelStageId : Progress.SelectedStageId;
+	SynchronizeTrainingPageFromStage(SelectedStageId);
+	const FGuid CurrentSettlementReceipt =
+		Subsystem->GetRuntimeState().CardRun.LastAppliedRouteSettlementId;
+	const bool bCompletedSettlementSinceChallenge = bRestoreTrainingPanelAfterChallenge
+		&& CurrentSettlementReceipt.IsValid()
+		&& CurrentSettlementReceipt != RouteSettlementReceiptAtChallengeStart;
+	const bool bRestoreTrainingPanel = bRestoreTrainingPanelAfterChallenge
+		&& !bCompletedSettlementSinceChallenge;
+	bRestoreTrainingPanelAfterChallenge = false;
+	RouteSettlementReceiptAtChallengeStart = CurrentSettlementReceipt;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
 	{
@@ -1108,30 +1773,45 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 			: FGameXXKEquipmentRules::HeroCharacterId();
 	}
 	bSettingsPanelOpen = false;
-	bBackpackExpanded = false;
+	bBackpackExpanded = bRestoreTrainingPanel;
+	bIdleStripFolded = false;
 	bWarehousePanelOpen = false;
-	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	RightPanel = bRestoreTrainingPanel
+		? EGameXXKDesktopTrainingRightPanel::TrainingMap
+		: EGameXXKDesktopTrainingRightPanel::None;
+	ActiveNav = bRestoreTrainingPanel
+		? EGameXXKDesktopTrainingNav::Training
+		: EGameXXKDesktopTrainingNav::None;
+	bTrainingDifficultyDropdownOpen = false;
 	bExitConfirmationOpen = false;
 	TravelAccumulator = 0.0f;
 	LivePresentationAccumulator = 0.0f;
 	TravelVisualRuntime.Reset();
+	bDesktopNativeLayoutDirty = true;
 	RefreshLayout();
 	SetVisibility(ESlateVisibility::Visible);
+	UpdateTownPresentationInputLock();
 	return true;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 {
-	const bool bWasVisible = IsInViewport() && GetVisibility() != ESlateVisibility::Collapsed;
+	const bool bWasVisible = GetVisibility() != ESlateVisibility::Collapsed
+		&& GetVisibility() != ESlateVisibility::Hidden;
 	CancelCollapsedResourceUnload();
 	bHasSavedEmbeddedInventorySession = false;
 	AbortTransientInventoryInteraction(true, false);
 	bSettingsPanelOpen = false;
 	bBackpackExpanded = false;
+	bIdleStripFolded = false;
 	bWarehousePanelOpen = false;
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	bTrainingDifficultyDropdownOpen = false;
 	bExitConfirmationOpen = false;
 	SetVisibility(ESlateVisibility::Collapsed);
+	UpdateTownPresentationInputLock();
+	bDesktopNativeLayoutDirty = true;
+	ReleaseDesktopNativeWindow();
 	return bWasVisible;
 }
 
@@ -1143,8 +1823,10 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	bSettingsPanelOpen = false;
+	UpdateExpansionDirectionFromNativeWindow();
 	bBackpackExpanded = true;
 	bExitConfirmationOpen = false;
+	UpdateTownPresentationInputLock();
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
 	if (ActiveBackpackCharacterId.IsNone() || !CharacterIds.Contains(ActiveBackpackCharacterId))
 	{
@@ -1265,6 +1947,14 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HasDesktopCarriedEntry() const
 FText UGameXXKDesktopTrainingWorkbenchWidget::GetLastDesktopInventoryNoticeForTest() const
 {
 	return LastNotice;
+}
+
+EGameXXKDesktopNoticeCategory
+UGameXXKDesktopTrainingWorkbenchWidget::GetLastNoticeCategoryForTest() const
+{
+	return NoticeHistory.IsEmpty()
+		? EGameXXKDesktopNoticeCategory::System
+		: NoticeHistory.Last().Category;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::PickUpBackpackSlotForTest(const int32 SlotIndex)
@@ -1631,7 +2321,9 @@ TArray<FString> UGameXXKDesktopTrainingWorkbenchWidget::GetMasterV2ResourcePaths
 		IngotTexturePath,
 		CharacterTabNormalTexturePath,
 		CharacterTabSelectedTexturePath,
-		RouteNodeTexturePath};
+		TrainingNodePassedTexturePath,
+		TrainingNodeChallengeTexturePath,
+		TrainingNodeLockedTexturePath};
 	TArray<FString> LoadedPaths;
 	for (const TCHAR* Path : RequiredPaths)
 	{
@@ -1708,11 +2400,12 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CollectTravelRewardsForTest()
 		return false;
 	}
 	SetNotice(FText::FromString(FString::Printf(
-		TEXT("收菜完成：+%d 金币 / +%d 经验 · 普通箱 %d · 精英箱 %d"),
+		TEXT("收菜完成：+%d金币 / +%d经验 · 普通箱%d · 高级箱%d"),
 		CollectedReward.Gold,
 		CollectedReward.Experience,
 		CollectedReward.NormalChestCount,
-		CollectedReward.AdvancedChestCount)));
+		CollectedReward.AdvancedChestCount)),
+		EGameXXKDesktopNoticeCategory::ChestAcquired);
 	RefreshLayout();
 	return true;
 }
@@ -1730,12 +2423,9 @@ int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehouseOccupancyForTest() con
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageCountForTest() const
 {
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const int32 LastOccupiedSlot = Subsystem
-		? FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
-			Subsystem->GetRuntimeState(),
-			EGameXXKDesktopItemContainer::Warehouse)
-		: INDEX_NONE;
-	return FMath::Max(1, FMath::DivideAndRoundUp(LastOccupiedSlot + 1, WarehousePageSize));
+	return Subsystem
+		? FGameXXKTalentRules::GetUnlockedWarehousePageCount(Subsystem->GetRuntimeState())
+		: 1;
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::GetWarehousePageIndexForTest() const
@@ -1922,7 +2612,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HasTravelVisualStripForTest() const
 		&& TravelBackgroundImages.Num() == 3
 		&& TravelEnemyImages.Num() == 3
 		&& TravelHeroImage != nullptr
-		&& TravelEnemyHealthBars.Num() == 3
+		&& TravelEnemyHealthTracks.Num() == 3
+		&& TravelEnemyHealthFills.Num() == 3
 		&& TravelCompanionHealthBars.Num() == 2
 		&& TravelHeroHealth != nullptr;
 }
@@ -2077,6 +2768,106 @@ float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualPartyHealthFraction
 	return TravelVisualRuntime.GetPartyHealthFraction(PartyIndex);
 }
 
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelHeroHealthBarPercentForTest() const
+{
+	return TravelHeroHealth ? TravelHeroHealth->GetPercent() : -1.0f;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetTravelHeroHealthBarPercentForTest(const float InPercent)
+{
+	if (TravelHeroHealth)
+	{
+		TravelHeroHealth->SetPercent(FMath::Clamp(InPercent, 0.0f, 1.0f));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetTravelHeroHealthBarFillColorForTest(const FLinearColor InColor)
+{
+	if (TravelHeroHealth)
+	{
+		TravelHeroHealth->SetFillColorAndOpacity(InColor);
+	}
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::GetProgrammaticLayoutBuildCountForTestBlueprint() const
+{
+	return ProgrammaticLayoutBuildCount;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HasPendingLayoutRefreshForTestBlueprint() const
+{
+	return bLayoutRefreshPending;
+}
+
+FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetTravelHeroHealthBarSlateSizeForTest() const
+{
+	if (!TravelHeroHealth)
+	{
+		return FVector2D::ZeroVector;
+	}
+	const FGeometry& Geometry = TravelHeroHealth->GetCachedGeometry();
+	return Geometry.GetLocalSize();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsTravelHeroHealthBarSlateValidForTest() const
+{
+	return TravelHeroHealth && TravelHeroHealth->GetCachedWidget().IsValid();
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelCompanionHealthBarPercentForTest(const int32 CompanionIndex) const
+{
+	return TravelCompanionHealthBars.IsValidIndex(CompanionIndex)
+		&& TravelCompanionHealthBars[CompanionIndex]
+		? TravelCompanionHealthBars[CompanionIndex]->GetPercent()
+		: -1.0f;
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelEnemyHealthBarPercentForTest(const int32 EnemySlotIndex) const
+{
+	return TravelEnemyHealthFills.IsValidIndex(EnemySlotIndex)
+		&& TravelEnemyHealthFills[EnemySlotIndex]
+		? FMath::Clamp(TravelEnemyHealthFills[EnemySlotIndex]->GetRenderTransform().Scale.X, 0.0f, 1.0f)
+		: -1.0f;
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelHeroHealthBarRectForTest() const
+{
+	if (!TravelHeroHealth)
+	{
+		return FVector4::Zero();
+	}
+	const FGeometry& Geometry = TravelHeroHealth->GetCachedGeometry();
+	const FVector2D Position = Geometry.GetAbsolutePosition();
+	const FVector2D Size = Geometry.GetAbsoluteSize();
+	return FVector4(Position.X, Position.Y, Size.X, Size.Y);
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelCompanionHealthBarRectForTest(const int32 CompanionIndex) const
+{
+	if (!TravelCompanionHealthBars.IsValidIndex(CompanionIndex)
+		|| !TravelCompanionHealthBars[CompanionIndex])
+	{
+		return FVector4::Zero();
+	}
+	const FGeometry& Geometry = TravelCompanionHealthBars[CompanionIndex]->GetCachedGeometry();
+	const FVector2D Position = Geometry.GetAbsolutePosition();
+	const FVector2D Size = Geometry.GetAbsoluteSize();
+	return FVector4(Position.X, Position.Y, Size.X, Size.Y);
+}
+
+FVector4 UGameXXKDesktopTrainingWorkbenchWidget::GetTravelEnemyHealthBarRectForTest(const int32 EnemySlotIndex) const
+{
+	if (!TravelEnemyHealthTracks.IsValidIndex(EnemySlotIndex)
+		|| !TravelEnemyHealthTracks[EnemySlotIndex])
+	{
+		return FVector4::Zero();
+	}
+	const FGeometry& Geometry = TravelEnemyHealthTracks[EnemySlotIndex]->GetCachedGeometry();
+	const FVector2D Position = Geometry.GetAbsolutePosition();
+	const FVector2D Size = Geometry.GetAbsoluteSize();
+	return FVector4(Position.X, Position.Y, Size.X, Size.Y);
+}
+
 float UGameXXKDesktopTrainingWorkbenchWidget::GetTravelVisualScrollVelocityForTest() const
 {
 	return TravelVisualRuntime.GetScrollVelocity();
@@ -2101,6 +2892,120 @@ FText UGameXXKDesktopTrainingWorkbenchWidget::GetStageTooltipForTest(const FName
 	return Subsystem ? Subsystem->BuildTrainingStageTooltip(StageId) : FText::GetEmpty();
 }
 
+bool UGameXXKDesktopTrainingActionButton::HandleMouseWheel(const float WheelDelta)
+{
+	return Owner && Owner->HandleActionMouseWheel(ActionId, WheelDelta);
+}
+
+void UGameXXKDesktopTrainingActionButton::HandleHovered()
+{
+	if (Owner)
+	{
+		Owner->HandleActionHoverChanged(ActionId, true);
+	}
+}
+
+void UGameXXKDesktopTrainingActionButton::HandleUnhovered()
+{
+	if (Owner)
+	{
+		Owner->HandleActionHoverChanged(ActionId, false);
+	}
+}
+
+void UGameXXKDesktopTrainingActionButton::HandlePressed()
+{
+	if (bScaleOnPress)
+	{
+		SetRenderScale(FVector2D(0.96f, 0.96f));
+	}
+}
+
+void UGameXXKDesktopTrainingActionButton::HandleReleased()
+{
+	if (bScaleOnPress)
+	{
+		SetRenderScale(FVector2D(1.0f, 1.0f));
+	}
+}
+
+FName UGameXXKDesktopTrainingWorkbenchWidget::ResolvePreferredTrainingStageForPage(
+	const EGameXXKTrainingDifficulty Difficulty,
+	const int32 Chapter) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const int32 SafeChapter = FMath::Clamp(Chapter, 1, 3);
+	const int32 FirstStageNumber = (SafeChapter - 1) * 3 + 1;
+	if (!Subsystem)
+	{
+		return FGameXXKTrainingRules::MakeStageId(Difficulty, FirstStageNumber);
+	}
+
+	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+	FGameXXKTrainingStageDefinition CurrentTravelDefinition;
+	if (FGameXXKTrainingRules::TryGetStageDefinition(
+			Progress.CurrentTravelStageId,
+			CurrentTravelDefinition)
+		&& CurrentTravelDefinition.Difficulty == Difficulty
+		&& CurrentTravelDefinition.Chapter == SafeChapter)
+	{
+		return Progress.CurrentTravelStageId;
+	}
+
+	for (int32 LocalStage = 2; LocalStage >= 0; --LocalStage)
+	{
+		const FName Candidate = FGameXXKTrainingRules::MakeStageId(
+			Difficulty,
+			FirstStageNumber + LocalStage);
+		if (FGameXXKTrainingRules::CanTravel(Progress, Candidate)
+			|| FGameXXKTrainingRules::CanChallenge(Progress, Candidate))
+		{
+			return Candidate;
+		}
+	}
+	return FGameXXKTrainingRules::MakeStageId(Difficulty, FirstStageNumber);
+}
+
+int32 UGameXXKDesktopTrainingWorkbenchWidget::ResolvePreferredTrainingChapter(
+	const EGameXXKTrainingDifficulty Difficulty) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return 1;
+	}
+	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+	FGameXXKTrainingStageDefinition CurrentTravelDefinition;
+	if (FGameXXKTrainingRules::TryGetStageDefinition(
+			Progress.CurrentTravelStageId,
+			CurrentTravelDefinition)
+		&& CurrentTravelDefinition.Difficulty == Difficulty)
+	{
+		return FMath::Clamp(CurrentTravelDefinition.Chapter, 1, 3);
+	}
+	for (int32 StageNumber = 9; StageNumber >= 1; --StageNumber)
+	{
+		const FName Candidate = FGameXXKTrainingRules::MakeStageId(Difficulty, StageNumber);
+		if (FGameXXKTrainingRules::CanTravel(Progress, Candidate)
+			|| FGameXXKTrainingRules::CanChallenge(Progress, Candidate))
+		{
+			return ((StageNumber - 1) / 3) + 1;
+		}
+	}
+	return 1;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SynchronizeTrainingPageFromStage(const FName StageId)
+{
+	FGameXXKTrainingStageDefinition Definition;
+	if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
+	{
+		return;
+	}
+	ActiveTrainingDifficultyIndex = FMath::Clamp(static_cast<int32>(Definition.Difficulty), 0, 2);
+	ActiveTrainingChapter = FMath::Clamp(Definition.Chapter, 1, 3);
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::SelectStageForTest(const FName StageId)
 {
 	CancelCarryForStructuralChange();
@@ -2112,6 +3017,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectStageForTest(const FName Stag
 		return false;
 	}
 	SelectedStageId = StageId;
+	SynchronizeTrainingPageFromStage(StageId);
+	bTrainingDifficultyDropdownOpen = false;
 	return Subsystem->SelectTrainingStage(StageId);
 }
 
@@ -2119,7 +3026,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ClickChallengeForTest()
 {
 	ApplyAction(6);
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	return Subsystem && Subsystem->IsTrainingChallengeBattleActive();
+	return Subsystem
+		&& (Subsystem->IsTrainingChallengeRouteMapActive()
+			|| Subsystem->IsTrainingChallengeBattleActive());
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::ClickTravelForTest()
@@ -2141,14 +3050,37 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 	bool bCompleted = false;
 	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	if (!Subsystem->AdvanceTrainingTravelStep(bEncounterCompleted, bCompleted, bDefeated, Reward, FMath::Max(1, ElapsedSeconds)))
+	if (!Subsystem->AdvanceTrainingTravelStep(bEncounterCompleted, bCompleted, bDefeated, Reward, FMath::Max(0, ElapsedSeconds)))
 	{
 		return false;
 	}
 	const FGameXXKTrainingTravelRuntime AfterStep = Subsystem->GetTrainingTravelRuntimeCopy();
 	TravelVisualRuntime.NotifyTravelStep(Before, AfterStep, bEncounterCompleted, bCompleted, bDefeated);
+	if (bEncounterCompleted && Reward.bChestRolled)
+	{
+		SetNotice(
+			FText::FromString(FString::Printf(
+				TEXT("获得了%s"),
+				Reward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest
+					? TEXT("高级宝箱")
+					: TEXT("普通宝箱"))),
+			EGameXXKDesktopNoticeCategory::ChestAcquired);
+	}
+	if (bCompleted)
+	{
+		SetNotice(
+			FText::FromString(FString::Printf(
+				TEXT("通关了关卡 %s"),
+				*Before.StageId.ToString())),
+			EGameXXKDesktopNoticeCategory::StageCleared);
+	}
 	if (bDefeated)
 	{
+		SetNotice(
+			FText::FromString(FString::Printf(
+				TEXT("关卡 %s 游历失败"),
+				*Before.StageId.ToString())),
+			EGameXXKDesktopNoticeCategory::StageFailed);
 		Subsystem->ResolveTrainingTravelFailure();
 	}
 	TravelVisualRuntime.Synchronize(Subsystem->GetTrainingTravelRuntimeCopy());
@@ -2241,6 +3173,139 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleActionClicked(const int32 Act
 	ApplyAction(ActionId);
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsNoticeAction(const int32 ActionId) const
+{
+	return ActionId >= ActionNoticeSurface
+		&& ActionId < ActionNoticeCategoryFirst + UE_ARRAY_COUNT(NoticeCategories);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleActionHoverChanged(
+	const int32 ActionId,
+	const bool bHovered)
+{
+	if (!IsNoticeAction(ActionId) || bBackpackExpanded)
+	{
+		return;
+	}
+	if (bHovered)
+	{
+		++NoticeHoveredWidgetCount;
+		NoticeHoverHideRemainingSeconds = 0.0f;
+	}
+	else
+	{
+		NoticeHoveredWidgetCount = FMath::Max(0, NoticeHoveredWidgetCount - 1);
+		if (NoticeHoveredWidgetCount == 0)
+		{
+			NoticeHoverHideRemainingSeconds = 0.2f;
+		}
+	}
+	RefreshNoticeControlVisibility();
+}
+
+float UGameXXKDesktopTrainingWorkbenchWidget::GetNoticePanelLogicalHeight() const
+{
+	const EDesktopNoticeDisplayMode EffectiveMode = bBackpackExpanded || bIdleStripFolded
+		? EDesktopNoticeDisplayMode::Single
+		: NoticeDisplayMode;
+	const int32 LineCount = EffectiveMode == EDesktopNoticeDisplayMode::Long
+		? 18
+		: (EffectiveMode == EDesktopNoticeDisplayMode::Medium ? 5 : 1);
+	const bool bShowSettings = !bBackpackExpanded && !bIdleStripFolded && bNoticeSettingsOpen;
+	const float ContentHeight = bShowSettings
+		? 34.0f + UE_ARRAY_COUNT(NoticeCategories) * 29.0f
+		: LineCount * NoticeLineHeight;
+	return ContentHeight + NoticeRecordsBarHeight;
+}
+
+FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetCurrentDesignCanvasSize() const
+{
+	if (bBackpackExpanded)
+	{
+		return GameXXKDesktopTrainingLayout::GetReferenceCanvasSize()
+			+ FVector2D(
+				GameXXKDesktopTrainingLayout::GetExpandedLeftExtension(
+					bWarehousePanelOpen),
+				0.0f);
+	}
+	if (bIdleStripFolded)
+	{
+		return FVector2D(FoldedSummaryWidth, GetNoticePanelLogicalHeight());
+	}
+	const FVector2D StripSize = GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize();
+	return FVector2D(StripSize.X, StripSize.Y + GetNoticePanelLogicalHeight());
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
+{
+	if (!RootCanvas)
+	{
+		return;
+	}
+	constexpr float CenterColumnMinX = 386.0f;
+	constexpr float RightPanelMinX = 1369.0f;
+	constexpr float TransformStartY = 210.0f;
+	constexpr float UpwardContentShift = 210.0f;
+	for (int32 ChildIndex = 0; ChildIndex < RootCanvas->GetChildrenCount(); ++ChildIndex)
+	{
+		UWidget* Child = RootCanvas->GetChildAt(ChildIndex);
+		if (!Child
+			|| Child->GetFName() == TEXT("TrainingTravelStrip")
+			|| Child->GetFName() == TEXT("DesktopInventoryNoticePanel")
+			|| Child->GetFName() == TEXT("IdleStripFoldButton")
+			|| Child->GetFName() == TEXT("TrainingWaveProgressPanel")
+			|| Child->GetFName() == TEXT("BackpackTabToggleButton")
+			|| Child->GetFName() == TEXT("TrainingFoldedNormalChestText")
+			|| Child->GetFName() == TEXT("TrainingFoldedAdvancedChestText")
+			|| Child->GetFName() == TEXT("TrainingNormalChestButton")
+			|| Child->GetFName() == TEXT("TrainingAdvancedChestButton")
+			|| Child->GetFName() == TEXT("TravelRetryButton"))
+		{
+			continue;
+		}
+		const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Child->Slot);
+		if (!CanvasSlot)
+		{
+			continue;
+		}
+		const FVector2D Position = CanvasSlot->GetPosition();
+		if (Position.X >= CenterColumnMinX
+			&& Position.X < RightPanelMinX
+			&& Position.Y >= TransformStartY)
+		{
+			Child->SetRenderTranslation(FVector2D(0.0f, -UpwardContentShift));
+		}
+	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionMouseWheel(
+	const int32 ActionId,
+	const float WheelDelta)
+{
+	if (!IsNoticeAction(ActionId)
+		|| bBackpackExpanded
+		|| bNoticeSettingsOpen
+		|| NoticeDisplayMode == EDesktopNoticeDisplayMode::Single
+		|| FMath::IsNearlyZero(WheelDelta))
+	{
+		return false;
+	}
+
+	int32 EnabledEntryCount = 0;
+	for (const FDesktopNoticeEntry& Entry : NoticeHistory)
+	{
+		EnabledEntryCount += NoticeCategoryEnabled.FindRef(Entry.Category) ? 1 : 0;
+	}
+	const int32 VisibleCapacity = NoticeDisplayMode == EDesktopNoticeDisplayMode::Long ? 18 : 5;
+	const int32 MaximumOffset = FMath::Max(0, EnabledEntryCount - VisibleCapacity);
+	NoticeScrollOffset = FMath::Clamp(
+		NoticeScrollOffset + (WheelDelta > 0.0f ? 1 : -1),
+		0,
+		MaximumOffset);
+	RefreshNoticePresentation();
+	return true;
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionAltClicked(const int32 ActionId)
 {
 	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
@@ -2261,6 +3326,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionAltClicked(const int32 
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 {
+	LoadHudScaleSetting();
 	if (!WidgetTree)
 	{
 		WidgetTree = NewObject<UWidgetTree>(this, TEXT("DesktopTrainingWorkbenchWidgetTree"));
@@ -2268,6 +3334,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	if (!WidgetTree)
 	{
 		return;
+	}
+	if (!DesktopOverlayRootCanvas)
+	{
+		DesktopOverlayRootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+			UCanvasPanel::StaticClass(),
+			TEXT("DesktopTrainingOverlayRoot"));
 	}
 	if (!RootScaleBox)
 	{
@@ -2281,45 +3353,102 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	{
 		RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("DesktopTrainingReferenceCanvas"));
 	}
-	if (!RootScaleBox || !ReferenceCanvasBox || !RootCanvas)
+	if (!HudDesignCanvas)
+	{
+		HudDesignCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+			UCanvasPanel::StaticClass(),
+			TEXT("DesktopTrainingDesignCanvas"));
+	}
+	if (!DesktopOverlayRootCanvas || !RootScaleBox || !ReferenceCanvasBox
+		|| !HudDesignCanvas || !RootCanvas)
 	{
 		return;
 	}
 	RootScaleBox->SetStretch(EStretch::ScaleToFit);
 	RootScaleBox->SetStretchDirection(EStretchDirection::Both);
-	const FVector2D ReferenceCanvasSize = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize();
-	ReferenceCanvasBox->SetWidthOverride(ReferenceCanvasSize.X);
-	ReferenceCanvasBox->SetHeightOverride(ReferenceCanvasSize.Y);
-	if (ReferenceCanvasBox->GetContent() != RootCanvas)
+	HudDesignCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	const FVector2D DesignCanvasSize = GetCurrentDesignCanvasSize();
+	ReferenceCanvasBox->SetWidthOverride(DesignCanvasSize.X);
+	ReferenceCanvasBox->SetHeightOverride(DesignCanvasSize.Y);
+	if (ReferenceCanvasBox->GetContent() != HudDesignCanvas)
 	{
-		ReferenceCanvasBox->SetContent(RootCanvas);
+		ReferenceCanvasBox->SetContent(HudDesignCanvas);
 	}
 	if (RootScaleBox->GetContent() != ReferenceCanvasBox)
 	{
 		RootScaleBox->SetContent(ReferenceCanvasBox);
 	}
+	if (RootScaleBox->GetParent() != DesktopOverlayRootCanvas)
+	{
+		RootScaleBox->RemoveFromParent();
+		DesktopHudCanvasSlot = DesktopOverlayRootCanvas->AddChildToCanvas(RootScaleBox);
+	}
+	else
+	{
+		DesktopHudCanvasSlot = Cast<UCanvasPanelSlot>(RootScaleBox->Slot);
+	}
+	if (DesktopHudCanvasSlot)
+	{
+		DesktopHudCanvasSlot->SetAnchors(FAnchors(0.0f, 0.0f));
+		DesktopHudCanvasSlot->SetAlignment(FVector2D::ZeroVector);
+		DesktopHudCanvasSlot->SetAutoSize(false);
+	}
 	++ProgrammaticLayoutBuildCount;
-	WidgetTree->RootWidget = RootScaleBox;
+	WidgetTree->RootWidget = DesktopOverlayRootCanvas;
+	UpdateDesktopOverlayPlacement(DesktopOverlayHostSize);
+	HudDesignCanvas->ClearChildren();
+	RootCanvas->RemoveFromParent();
+	RootCanvasDesignSlot = HudDesignCanvas->AddChildToCanvas(RootCanvas);
+	if (RootCanvasDesignSlot)
+	{
+		RootCanvasDesignSlot->SetAnchors(FAnchors(0.0f, 0.0f));
+		RootCanvasDesignSlot->SetAlignment(FVector2D::ZeroVector);
+		RootCanvasDesignSlot->SetAutoSize(false);
+		RootCanvasDesignSlot->SetZOrder(1);
+		RootCanvasDesignSlot->SetPosition(DesktopOverlayPlacement.ContentOffset);
+		RootCanvasDesignSlot->SetSize(
+			bBackpackExpanded
+				? GameXXKDesktopTrainingLayout::GetReferenceCanvasSize()
+				: DesignCanvasSize);
+	}
 	TravelVisualViewport = nullptr;
+	IdleGroupCanvas = nullptr;
 	TravelBackgroundImageA = nullptr;
 	TravelBackgroundImageB = nullptr;
 	TravelBackgroundImages.Reset();
 	TravelEnemyImages.Reset();
 	TravelHeroImage = nullptr;
 	TravelCompanionImages.Reset();
-	TravelEnemyHealthBars.Reset();
+	TravelEnemyHealthTracks.Reset();
+	TravelEnemyHealthFills.Reset();
 	TravelHeroHealth = nullptr;
 	TravelCompanionHealthBars.Reset();
 	EmbeddedInventoryWidget = nullptr;
+	TownToggleButton = nullptr;
 	BackpackGoldText = nullptr;
 	TrainingNormalChestButton = nullptr;
 	TrainingAdvancedChestButton = nullptr;
 	TrainingNormalChestCountText = nullptr;
 	TrainingAdvancedChestCountText = nullptr;
+	TrainingWaveProgressFill = nullptr;
+	TrainingWaveStageText = nullptr;
+	TrainingWaveIndexText = nullptr;
+	TrainingWaveMarkerImages.Reset();
+	TrainingFoldedNormalChestText = nullptr;
+	TrainingFoldedAdvancedChestText = nullptr;
+	NoticePanel = nullptr;
+	NoticeText = nullptr;
+	NoticeSurfaceButton = nullptr;
+	NoticeRecordsBar = nullptr;
+	NoticeSettingsPanel = nullptr;
+	NoticeLineTexts.Reset();
+	NoticeHoveredWidgetCount = 0;
+	NoticeHoverHideRemainingSeconds = 0.0f;
 	WarehousePageText = nullptr;
 	WarehouseFooterText = nullptr;
-	WarehousePreviousButton = nullptr;
-	WarehouseNextButton = nullptr;
+	WarehouseBatchToBackpackButton = nullptr;
+	BackpackBatchToWarehouseButton = nullptr;
 	WarehousePageButtons.Reset();
 	ToolProgressText = nullptr;
 	ToolCraftLevelText = nullptr;
@@ -2342,19 +3471,23 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	StageButtons.Reset();
 	ActionButtons.Reset();
 	BuildWorkbenchShell();
+	UpdateTownPresentationInputLock();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 {
-	AddCanvas(RootCanvas, MakeTransparentPanel(WidgetTree, TEXT("WorkbenchBackground")), FVector2D::ZeroVector, GameXXKDesktopTrainingLayout::GetReferenceCanvasSize());
-	AddCanvasRect(
-		RootCanvas,
-		MakeTransparentPanel(WidgetTree, TEXT("CenterWorkbenchFrame")),
-		GameXXKDesktopTrainingLayout::GetCenterShellRect());
+	if (bBackpackExpanded)
+	{
+		AddCanvasRect(
+			RootCanvas,
+			MakeTransparentPanel(WidgetTree, TEXT("CenterWorkbenchFrame")),
+			GameXXKDesktopTrainingLayout::GetCenterShellRect());
+	}
 	BuildTopIdleStrip();
 	BuildBackpackTabToggle();
 	if (bBackpackExpanded)
 	{
+		BuildTownToggleButton();
 		if (bWarehousePanelOpen)
 		{
 			BuildWarehousePanel();
@@ -2379,7 +3512,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 		{
 			BuildTrainingMapPanel();
 		}
+		BuildSharedGoldIndicator();
 		BuildTopToolbar();
+		if (bSettingsPanelOpen)
+		{
+			BuildHudSettingsPanel();
+		}
 		BuildBottomNavigation();
 	}
 	if (bExitConfirmationOpen)
@@ -2390,20 +3528,45 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 	{
 		BuildCarriedItemVisual();
 	}
-	NoticePanel = MakePanel(
-		WidgetTree,
-		FLinearColor(0.08f, 0.05f, 0.03f, 0.96f),
-		TEXT("DesktopInventoryNoticePanel"));
-	NoticeText = MakeText(
-		WidgetTree,
-		LastNotice,
-		16,
-		Gold,
-		TEXT("DesktopInventoryNoticeText"));
-	NoticePanel->SetContent(NoticeText);
-	NoticePanel->SetVisibility(
-		LastNotice.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
-	AddCanvas(RootCanvas, NoticePanel.Get(), FVector2D(397.0f, 226.0f), FVector2D(420.0f, 28.0f));
+	BuildNoticeRail();
+	if (bBackpackExpanded && bExpandUpward)
+	{
+		ApplyUpwardExpansionTransforms();
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
+{
+	if (!HudDesignCanvas || !bBackpackExpanded)
+	{
+		return;
+	}
+	TownToggleButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("TownToggleButton"));
+	TownToggleButton->Configure(this, ActionToggleTown);
+	const TCHAR* TexturePath =
+		PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport
+			? DesktopTownExitButtonTexturePath
+			: DesktopTownEnterButtonTexturePath;
+	TownToggleButton->SetStyle(MakeImageButtonStyle(
+		TexturePath,
+		GameXXKDesktopTrainingLayout::GetTownToggleButtonSize()));
+	TownToggleButton->SetBackgroundColor(FLinearColor::White);
+	TownToggleButton->SetContent(nullptr);
+	TownToggleButton->SetScaleOnPress(true);
+	TownToggleButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	TownToggleButton->SetIsEnabled(!bTownMapTravelPending);
+	AddCanvasRect(
+		HudDesignCanvas,
+		TownToggleButton.Get(),
+		DesktopOverlayPlacement.TownToggleRect);
+	if (UCanvasPanelSlot* TownCanvasSlot =
+		Cast<UCanvasPanelSlot>(TownToggleButton->Slot))
+	{
+		TownCanvasSlot->SetZOrder(0);
+	}
+	ActionButtons.Add(TownToggleButton);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
@@ -2414,20 +3577,472 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
 	Toggle->Configure(this, 60);
 	Toggle->SetStyle(MakeTextureButtonStyle(
 		bBackpackExpanded ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-		FVector2D(68.0f, 44.0f),
+		FVector2D(IdleSummaryTabWidth, NoticeLineHeight),
 		FMargin(0.08f)));
 	Toggle->SetBackgroundColor(FLinearColor::White);
 	Toggle->SetContent(MakeButtonText(
 		WidgetTree,
 		FText::FromString(bBackpackExpanded ? TEXT("▲") : TEXT("▼")),
-		24,
+		16,
 		Ink));
 	Toggle->SetToolTipText(FText::FromString(
 		bBackpackExpanded
 			? TEXT("关闭背包与全部子界面；历练挂机继续运行")
 			: TEXT("菜单 [Tab]：展开角色背包")));
-	AddCanvas(RootCanvas, Toggle, FVector2D(1225.0f, 30.0f), FVector2D(68.0f, 44.0f));
+	AddCanvas(
+		RootCanvas.Get(),
+		Toggle,
+		GetNoticeRailLogicalPosition() + FVector2D(
+			ResolveIdleSummaryTabX(bBackpackExpanded),
+			0.0f),
+		FVector2D(IdleSummaryTabWidth, NoticeLineHeight));
 	ActionButtons.Add(Toggle);
+}
+
+FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetNoticeRailLogicalPosition() const
+{
+	FVector2D Position(397.0f, 210.0f);
+	if (!bBackpackExpanded)
+	{
+		return FVector2D(
+			0.0f,
+			bIdleStripFolded
+				? 0.0f
+				: GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize().Y);
+	}
+	if (bIdleStripFolded)
+	{
+		FVector4 StripRect = GameXXKDesktopTrainingLayout::GetIdleStripRect();
+		if (bExpandUpward)
+		{
+			StripRect.Y = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().Y
+				- StripRect.W
+				- 18.0f;
+		}
+		return FVector2D(StripRect.X, StripRect.Y);
+	}
+	if (bExpandUpward)
+	{
+		const FVector4 AuthoredStripRect = GameXXKDesktopTrainingLayout::GetIdleStripRect();
+		const float UpwardStripY = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().Y
+			- AuthoredStripRect.W
+			- 18.0f;
+		Position.Y = UpwardStripY - GetNoticePanelLogicalHeight();
+	}
+	return Position;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildIdleSummaryControls(
+	const FVector2D& RowOrigin)
+{
+	const float ProgressWidth = ResolveIdleSummaryProgressWidth(bBackpackExpanded);
+	const float TrackWidth = ResolveWaveTrackWidth(bBackpackExpanded);
+	const float TabX = ResolveIdleSummaryTabX(bBackpackExpanded);
+	UGameXXKDesktopTrainingActionButton* FoldButton =
+		WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("IdleStripFoldButton"));
+	FoldButton->Configure(this, ActionIdleStripFold);
+	FoldButton->SetStyle(MakeTextureButtonStyle(
+		bIdleStripFolded ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+		FVector2D(IdleSummaryFoldButtonWidth, NoticeLineHeight),
+		FMargin(0.08f)));
+	FoldButton->SetBackgroundColor(FLinearColor::White);
+	FoldButton->SetContent(MakeButtonText(
+		WidgetTree,
+		FText::FromString(bIdleStripFolded ? TEXT("▼") : TEXT("▲")),
+		16,
+		Ink));
+	FoldButton->SetToolTipText(FText::FromString(
+		bIdleStripFolded ? TEXT("向下展开挂机栏") : TEXT("向上折叠挂机栏")));
+	FoldButton->SetVisibility(ESlateVisibility::Visible);
+	AddCanvas(
+		RootCanvas.Get(),
+		FoldButton,
+		RowOrigin + FVector2D(IdleSummaryFoldButtonX, 0.0f),
+		FVector2D(IdleSummaryFoldButtonWidth, NoticeLineHeight));
+	ActionButtons.Add(FoldButton);
+
+	UBorder* ProgressPanel = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("TrainingWaveProgressPanel"));
+	ProgressPanel->SetBrush(MakeBoxTextureBrush(
+		CharacterTabNormalTexturePath,
+		FVector2D(ProgressWidth, NoticeLineHeight),
+		FMargin(0.08f),
+		FLinearColor(0.28f, 0.25f, 0.21f, 0.96f)));
+	ProgressPanel->SetBrushColor(FLinearColor::White);
+	UCanvasPanel* ProgressCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("TrainingWaveProgressCanvas"));
+	ProgressPanel->SetContent(ProgressCanvas);
+	AddCanvas(
+		RootCanvas.Get(),
+		ProgressPanel,
+		RowOrigin + FVector2D(IdleSummaryProgressX, 0.0f),
+		FVector2D(ProgressWidth, NoticeLineHeight));
+
+	TrainingWaveStageText = MakeText(
+		WidgetTree,
+		FText::GetEmpty(),
+		11,
+		FLinearColor(0.92f, 0.82f, 0.61f, 1.0f),
+		TEXT("TrainingWaveStageText"));
+	TrainingWaveStageText->SetAutoWrapText(false);
+	AddCanvas(
+		ProgressCanvas,
+		TrainingWaveStageText.Get(),
+		FVector2D(5.0f, 3.0f),
+		FVector2D(75.0f, 19.0f));
+
+	FSlateBrush SolidBrush;
+	SolidBrush.DrawAs = ESlateBrushDrawType::Box;
+	SolidBrush.ImageSize = FVector2D(TrackWidth, 4.0f);
+	UBorder* Track = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("TrainingWaveProgressTrack"));
+	Track->SetBrush(SolidBrush);
+	Track->SetBrushColor(FLinearColor(0.10f, 0.085f, 0.07f, 0.92f));
+	Track->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AddCanvas(
+		ProgressCanvas,
+		Track,
+		FVector2D(WaveTrackX, 10.0f),
+		FVector2D(TrackWidth, 4.0f));
+
+	TrainingWaveProgressFill = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("TrainingWaveProgressFill"));
+	TrainingWaveProgressFill->SetBrush(SolidBrush);
+	TrainingWaveProgressFill->SetBrushColor(FLinearColor(0.50f, 0.70f, 0.47f, 0.96f));
+	TrainingWaveProgressFill->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AddCanvas(
+		ProgressCanvas,
+		TrainingWaveProgressFill.Get(),
+		FVector2D(WaveTrackX + TrackWidth - 2.0f, 10.0f),
+		FVector2D(2.0f, 4.0f));
+
+	static constexpr const TCHAR* MarkerPaths[] = {
+		TrainingWaveMarkerBossTexturePath,
+		TrainingWaveMarkerNormalTexturePath,
+		TrainingWaveMarkerEliteTexturePath,
+		TrainingWaveMarkerNormalTexturePath,
+		TrainingWaveMarkerEliteTexturePath,
+		TrainingWaveMarkerNormalTexturePath,
+		TrainingWaveMarkerNormalTexturePath};
+	TrainingWaveMarkerImages.Reset();
+	for (int32 MarkerIndex = 0; MarkerIndex < UE_ARRAY_COUNT(MarkerPaths); ++MarkerIndex)
+	{
+		UImage* Marker = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(TEXT("TrainingWaveMarker_%d"), MarkerIndex));
+		Marker->SetBrush(MakeTextureBrush(MarkerPaths[MarkerIndex], FVector2D(18.0f, 18.0f)));
+		Marker->SetVisibility(ESlateVisibility::HitTestInvisible);
+		Marker->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+		const float CenterX = WaveTrackX
+			+ TrackWidth * static_cast<float>(MarkerIndex) / 6.0f;
+		AddCanvas(
+			ProgressCanvas,
+			Marker,
+			FVector2D(CenterX - 9.0f, 3.0f),
+			FVector2D(18.0f, 18.0f));
+		TrainingWaveMarkerImages.Add(Marker);
+	}
+
+	TrainingWaveIndexText = MakeText(
+		WidgetTree,
+		FText::GetEmpty(),
+		11,
+		FLinearColor(0.94f, 0.90f, 0.78f, 1.0f),
+		TEXT("TrainingWaveIndexText"));
+	TrainingWaveIndexText->SetAutoWrapText(false);
+	TrainingWaveIndexText->SetJustification(ETextJustify::Center);
+	AddCanvas(
+		ProgressCanvas,
+		TrainingWaveIndexText.Get(),
+		FVector2D(ProgressWidth - 48.0f, 3.0f),
+		FVector2D(44.0f, 19.0f));
+
+	if (bIdleStripFolded)
+	{
+		TrainingFoldedNormalChestText = MakeText(
+			WidgetTree,
+			FText::GetEmpty(),
+			12,
+			FLinearColor(0.50f, 0.82f, 0.90f, 1.0f),
+			TEXT("TrainingFoldedNormalChestText"));
+		TrainingFoldedAdvancedChestText = MakeText(
+			WidgetTree,
+			FText::GetEmpty(),
+			12,
+			FLinearColor(0.93f, 0.72f, 0.27f, 1.0f),
+			TEXT("TrainingFoldedAdvancedChestText"));
+		AddCanvas(
+			RootCanvas.Get(),
+			TrainingFoldedNormalChestText.Get(),
+			RowOrigin + FVector2D(TabX + IdleSummaryTabWidth, 0.0f),
+			FVector2D(FoldedChestTextWidth, NoticeLineHeight));
+		AddCanvas(
+			RootCanvas.Get(),
+			TrainingFoldedAdvancedChestText.Get(),
+			RowOrigin + FVector2D(
+				TabX + IdleSummaryTabWidth + FoldedChestTextWidth,
+				0.0f),
+			FVector2D(FoldedChestTextWidth, NoticeLineHeight));
+	}
+
+	UpdateWaveProgressPresentation(CaptureLivePresentationSnapshot());
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildNoticeRail()
+{
+	LoadNoticeCategorySettings();
+
+	const EDesktopNoticeDisplayMode EffectiveMode = bBackpackExpanded || bIdleStripFolded
+		? EDesktopNoticeDisplayMode::Single
+		: NoticeDisplayMode;
+	const int32 LineCount = EffectiveMode == EDesktopNoticeDisplayMode::Long
+		? 18
+		: (EffectiveMode == EDesktopNoticeDisplayMode::Medium ? 5 : 1);
+	const bool bShowSettings = !bBackpackExpanded && !bIdleStripFolded && bNoticeSettingsOpen;
+	const float SettingsHeight = 34.0f + UE_ARRAY_COUNT(NoticeCategories) * 29.0f;
+	const float ContentHeight = bShowSettings
+		? SettingsHeight
+		: LineCount * NoticeLineHeight;
+	const FVector2D NoticeSize(420.0f, ContentHeight + NoticeRecordsBarHeight);
+
+	NoticePanel = MakeTransparentPanel(WidgetTree, TEXT("DesktopInventoryNoticePanel"));
+	NoticePanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UCanvasPanel* NoticeCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("DesktopNoticeCanvas"));
+	NoticePanel->SetContent(NoticeCanvas);
+	const FVector2D NoticePosition = GetNoticeRailLogicalPosition();
+	AddCanvas(RootCanvas, NoticePanel.Get(), NoticePosition, NoticeSize);
+	if (UCanvasPanelSlot* NoticeSlot = Cast<UCanvasPanelSlot>(NoticePanel->Slot))
+	{
+		NoticeSlot->SetZOrder(90);
+	}
+
+	NoticeSurfaceButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("DesktopNoticeSurfaceButton"));
+	NoticeSurfaceButton->Configure(this, ActionNoticeSurface);
+	NoticeSurfaceButton->SetStyle(MakeInvisibleButtonStyle());
+	NoticeSurfaceButton->SetBackgroundColor(FLinearColor::Transparent);
+	NoticeSurfaceButton->SetVisibility(bShowSettings
+		? ESlateVisibility::Collapsed
+		: (bBackpackExpanded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Visible));
+
+	UCanvasPanel* LinesCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("DesktopNoticeLinesCanvas"));
+	LinesCanvas->SetClipping(EWidgetClipping::ClipToBounds);
+	for (int32 LineIndex = 0; LineIndex < LineCount; ++LineIndex)
+	{
+		UBorder* Row = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			*FString::Printf(TEXT("DesktopNoticeLine_%d"), LineIndex));
+		Row->SetBrush(MakeBoxTextureBrush(
+			CharacterTabNormalTexturePath,
+			FVector2D(420.0f, NoticeLineHeight - 1.0f),
+			FMargin(0.08f),
+			FLinearColor(0.33f, 0.29f, 0.24f, 0.97f)));
+		Row->SetBrushColor(FLinearColor::White);
+		Row->SetPadding(FMargin(8.0f, 2.0f, 8.0f, 1.0f));
+		UTextBlock* LineText = MakeText(
+			WidgetTree,
+			FText::GetEmpty(),
+			13,
+			FLinearColor(0.94f, 0.90f, 0.78f, 1.0f),
+			LineIndex == LineCount - 1
+				? FName(TEXT("DesktopInventoryNoticeText"))
+				: NAME_None);
+		LineText->SetAutoWrapText(false);
+		Row->SetContent(LineText);
+		AddCanvas(
+			LinesCanvas,
+			Row,
+			FVector2D(0.0f, LineIndex * NoticeLineHeight),
+			FVector2D(420.0f, NoticeLineHeight - 1.0f));
+		NoticeLineTexts.Add(LineText);
+	}
+	NoticeText = NoticeLineTexts.IsEmpty() ? nullptr : NoticeLineTexts.Last();
+	NoticeSurfaceButton->SetContent(LinesCanvas);
+	AddCanvas(
+		NoticeCanvas,
+		NoticeSurfaceButton.Get(),
+		FVector2D::ZeroVector,
+		FVector2D(420.0f, LineCount * NoticeLineHeight));
+	ActionButtons.Add(NoticeSurfaceButton);
+
+	if (bShowSettings)
+	{
+		NoticeSettingsPanel = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("DesktopNoticeSettingsPanel"));
+		NoticeSettingsPanel->SetBrush(MakeBoxTextureBrush(
+			PanelLargeTexturePath,
+			FVector2D(420.0f, SettingsHeight),
+			FMargin(0.08f),
+			FLinearColor(0.20f, 0.18f, 0.16f, 0.98f)));
+		NoticeSettingsPanel->SetBrushColor(FLinearColor::White);
+		UCanvasPanel* SettingsCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+			UCanvasPanel::StaticClass(),
+			TEXT("DesktopNoticeSettingsCanvas"));
+		NoticeSettingsPanel->SetContent(SettingsCanvas);
+		UTextBlock* SettingsTitle = MakeButtonText(
+			WidgetTree,
+			FText::FromString(TEXT("消息设置")),
+			15,
+			Gold);
+		AddCanvas(SettingsCanvas, SettingsTitle, FVector2D(12.0f, 5.0f), FVector2D(396.0f, 25.0f));
+		for (int32 CategoryIndex = 0; CategoryIndex < UE_ARRAY_COUNT(NoticeCategories); ++CategoryIndex)
+		{
+			const EGameXXKDesktopNoticeCategory Category = NoticeCategories[CategoryIndex];
+			const bool bEnabled = NoticeCategoryEnabled.FindRef(Category);
+			UGameXXKDesktopTrainingActionButton* CategoryButton =
+				WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+					UGameXXKDesktopTrainingActionButton::StaticClass(),
+					*FString::Printf(TEXT("DesktopNoticeCategoryButton_%d"), CategoryIndex));
+			CategoryButton->Configure(this, ActionNoticeCategoryFirst + CategoryIndex);
+			CategoryButton->SetStyle(MakeTextureButtonStyle(
+				CharacterTabNormalTexturePath,
+				FVector2D(396.0f, 27.0f),
+				FMargin(0.08f),
+				FLinearColor(0.31f, 0.28f, 0.24f, 0.98f)));
+			CategoryButton->SetBackgroundColor(FLinearColor::White);
+			CategoryButton->SetContent(MakeButtonText(
+				WidgetTree,
+				FText::FromString(FString::Printf(
+					TEXT("%s  %s"),
+					bEnabled ? TEXT("✓") : TEXT("□"),
+					*NoticeCategoryLabel(Category))),
+				13,
+				bEnabled ? NoticeCategoryColor(Category) : FLinearColor(0.52f, 0.50f, 0.47f, 0.86f)));
+			AddCanvas(
+				SettingsCanvas,
+				CategoryButton,
+				FVector2D(12.0f, 33.0f + CategoryIndex * 29.0f),
+				FVector2D(396.0f, 27.0f));
+			ActionButtons.Add(CategoryButton);
+		}
+		AddCanvas(
+			NoticeCanvas,
+			NoticeSettingsPanel.Get(),
+			FVector2D::ZeroVector,
+			FVector2D(420.0f, SettingsHeight));
+	}
+
+	NoticeRecordsBar = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("DesktopNoticeRecordsBar"));
+	UGameXXKDesktopTrainingActionButton* RecordsHoverSurface =
+		WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("DesktopNoticeRecordsHoverSurface"));
+	RecordsHoverSurface->Configure(this, ActionNoticeSurface);
+	RecordsHoverSurface->SetStyle(MakeTextureButtonStyle(
+		CharacterTabSelectedTexturePath,
+		FVector2D(420.0f, NoticeRecordsBarHeight),
+		FMargin(0.08f),
+		FLinearColor(0.34f, 0.11f, 0.08f, 0.98f)));
+	RecordsHoverSurface->SetBackgroundColor(FLinearColor::White);
+	AddCanvas(NoticeRecordsBar.Get(), RecordsHoverSurface, FVector2D::ZeroVector, FVector2D(420.0f, NoticeRecordsBarHeight));
+	ActionButtons.Add(RecordsHoverSurface);
+	UTextBlock* RecordsLabel = MakeButtonText(
+		WidgetTree,
+		FText::FromString(TEXT("RECORDS")),
+		12,
+		Gold);
+	RecordsLabel->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AddCanvas(NoticeRecordsBar.Get(), RecordsLabel, FVector2D(100.0f, 3.0f), FVector2D(220.0f, 22.0f));
+
+	const auto AddRecordsButton = [this](
+		const FName Name,
+		const int32 ActionId,
+		const TCHAR* Label,
+		const float X)
+	{
+		UGameXXKDesktopTrainingActionButton* Button =
+			WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+				UGameXXKDesktopTrainingActionButton::StaticClass(),
+				Name);
+		Button->Configure(this, ActionId);
+		Button->SetStyle(MakeTextureButtonStyle(
+			CharacterTabNormalTexturePath,
+			FVector2D(36.0f, 24.0f),
+			FMargin(0.08f),
+			FLinearColor(0.42f, 0.35f, 0.28f, 1.0f)));
+		Button->SetBackgroundColor(FLinearColor::White);
+		Button->SetContent(MakeButtonText(WidgetTree, FText::FromString(Label), 12, Gold));
+		AddCanvas(NoticeRecordsBar.Get(), Button, FVector2D(X, 2.0f), FVector2D(36.0f, 24.0f));
+		ActionButtons.Add(Button);
+	};
+	if (EffectiveMode != EDesktopNoticeDisplayMode::Single)
+	{
+		AddRecordsButton(TEXT("DesktopNoticeCollapseButton"), ActionNoticeCollapse, TEXT("折"), 4.0f);
+	}
+	if (EffectiveMode != EDesktopNoticeDisplayMode::Long)
+	{
+		AddRecordsButton(
+			TEXT("DesktopNoticeExpandButton"),
+			ActionNoticeExpand,
+			TEXT("展"),
+			EffectiveMode == EDesktopNoticeDisplayMode::Medium ? 43.0f : 4.0f);
+	}
+	AddRecordsButton(
+		TEXT("DesktopNoticeSettingsButton"),
+		ActionNoticeSettings,
+		bShowSettings ? TEXT("×") : TEXT("设"),
+		380.0f);
+	AddCanvas(
+		NoticeCanvas,
+		NoticeRecordsBar.Get(),
+		FVector2D(0.0f, ContentHeight),
+		FVector2D(420.0f, NoticeRecordsBarHeight));
+	BuildIdleSummaryControls(NoticePosition);
+
+	RefreshNoticePresentation();
+	RefreshNoticeControlVisibility();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::LoadNoticeCategorySettings()
+{
+	if (bNoticeSettingsLoaded)
+	{
+		return;
+	}
+	NoticeCategoryEnabled.Reset();
+	for (const EGameXXKDesktopNoticeCategory Category : NoticeCategories)
+	{
+		bool bEnabled = true;
+		if (GConfig)
+		{
+			GConfig->GetBool(
+				NoticeSettingsSection,
+				NoticeCategoryConfigKey(Category),
+				bEnabled,
+				GGameUserSettingsIni);
+		}
+		NoticeCategoryEnabled.Add(Category, bEnabled);
+	}
+	bNoticeSettingsLoaded = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SaveNoticeCategorySetting(
+	const EGameXXKDesktopNoticeCategory Category) const
+{
+	if (!GConfig)
+	{
+		return;
+	}
+	GConfig->SetBool(
+		NoticeSettingsSection,
+		NoticeCategoryConfigKey(Category),
+		NoticeCategoryEnabled.FindRef(Category),
+		GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildPanelCloseButton(
@@ -2458,7 +4073,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopToolbar()
 		{14, TEXT("TopToolbarAlwaysOnTop"), bAlwaysOnTop ? TEXT("置") : TEXT("顶"), TEXT("窗口始终置于桌面最顶层")},
 		{17, TEXT("TopToolbarMute"), bMuted ? TEXT("静") : TEXT("声"), TEXT("静音 / 恢复声音")},
 		{18, TEXT("TopToolbarMail"), TEXT("信"), TEXT("邮件")},
-		{19, TEXT("TopToolbarShop"), TEXT("店"), TEXT("商店")},
+		{19, TEXT("TopToolbarSettings"), TEXT("设"), TEXT("HUD设置")},
 		{15, TEXT("TopToolbarExit"), TEXT("退"), TEXT("退出游戏（需要再次确认）")}};
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Specs); ++Index)
 	{
@@ -2484,14 +4099,95 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopToolbar()
 			PinScale->SetContent(PinIcon);
 			Button->SetContent(PinScale);
 		}
+		else if (Specs[Index].ActionId == 19)
+		{
+			UImage* SettingsIcon = WidgetTree->ConstructWidget<UImage>(
+				UImage::StaticClass(),
+				TEXT("TopToolbarSettingsIcon"));
+			SettingsIcon->SetBrush(MakeTextureBrush(
+				SettingsTexturePath,
+				FVector2D(30.0f, 30.0f)));
+			SettingsIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+			Button->SetContent(SettingsIcon);
+		}
 		else
 		{
 			Button->SetContent(MakeButtonText(WidgetTree, FText::FromString(Specs[Index].Label), 15, Ink));
 		}
 		Button->SetToolTipText(FText::FromString(Specs[Index].Tooltip));
-		AddCanvas(RootCanvas, Button, FVector2D(1092.0f + Index * 47.0f, 226.0f), FVector2D(42.0f, 36.0f));
+		AddCanvas(RootCanvas, Button, FVector2D(1028.0f + Index * 47.0f, 252.0f), FVector2D(42.0f, 36.0f));
 		ActionButtons.Add(Button);
 	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
+{
+	UBorder* SettingsPanel = MakePanel(
+		WidgetTree,
+		PanelAlt,
+		TEXT("DesktopHudSettingsPanel"));
+	SettingsPanel->SetPadding(FMargin(12.0f));
+	AddCanvas(RootCanvas, SettingsPanel, FVector2D(1115.0f, 270.0f), FVector2D(220.0f, 142.0f));
+	if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(SettingsPanel->Slot))
+	{
+		PanelSlot->SetZOrder(85);
+	}
+
+	UCanvasPanel* SettingsCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("DesktopHudSettingsCanvas"));
+	SettingsPanel->SetContent(SettingsCanvas);
+	UTextBlock* Title = MakeButtonText(
+		WidgetTree,
+		FText::FromString(TEXT("设置")),
+		17,
+		Gold);
+	AddCanvas(SettingsCanvas, Title, FVector2D(0.0f, 0.0f), FVector2D(196.0f, 26.0f));
+	UTextBlock* ScaleLabel = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("HUD缩放")),
+		14,
+		Ink,
+		TEXT("HudScaleSettingLabel"));
+	AddCanvas(SettingsCanvas, ScaleLabel, FVector2D(4.0f, 38.0f), FVector2D(84.0f, 28.0f));
+
+	const struct FScaleOption
+	{
+		int32 Percent;
+		int32 ActionId;
+		const TCHAR* Name;
+		float X;
+	} Options[] = {
+		{100, ActionHudScale100, TEXT("HudScale100Button"), 88.0f},
+		{50, ActionHudScale50, TEXT("HudScale50Button"), 143.0f}};
+	for (const FScaleOption& Option : Options)
+	{
+		const bool bSelected = HudScalePercent == Option.Percent;
+		UGameXXKDesktopTrainingActionButton* Button =
+			WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+				UGameXXKDesktopTrainingActionButton::StaticClass(),
+				Option.Name);
+		Button->Configure(this, Option.ActionId);
+		Button->SetStyle(MakeTextureButtonStyle(
+			bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+			FVector2D(50.0f, 34.0f),
+			FMargin(0.08f)));
+		Button->SetBackgroundColor(FLinearColor::White);
+		Button->SetContent(MakeButtonText(
+			WidgetTree,
+			FText::FromString(FString::Printf(TEXT("%d%%"), Option.Percent)),
+			12,
+			bSelected ? Gold : Ink));
+		AddCanvas(SettingsCanvas, Button, FVector2D(Option.X, 34.0f), FVector2D(50.0f, 34.0f));
+		ActionButtons.Add(Button);
+	}
+	UTextBlock* Hint = MakeText(
+		WidgetTree,
+		FText::FromString(TEXT("按当前显示器工作区自动适配")),
+		11,
+		FLinearColor(0.18f, 0.13f, 0.09f, 0.9f),
+		TEXT("HudScaleSettingHint"));
+	AddCanvas(SettingsCanvas, Hint, FVector2D(4.0f, 82.0f), FVector2D(192.0f, 38.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildExitConfirmation()
@@ -2558,12 +4254,44 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 {
 	UBorder* Strip = MakeTransparentPanel(WidgetTree, TEXT("TrainingTravelStrip"));
 	TravelVisualViewport = Strip;
-	AddCanvasRect(RootCanvas, Strip, GameXXKDesktopTrainingLayout::GetIdleStripRect());
+	FVector4 StripRect = GameXXKDesktopTrainingLayout::GetIdleStripRect();
+	if (!bBackpackExpanded)
+	{
+		const FVector2D CollapsedSize = GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize();
+		StripRect = FVector4(0.0f, 0.0f, CollapsedSize.X, CollapsedSize.Y);
+	}
+	else if (bExpandUpward)
+	{
+		const FVector2D ReferenceSize = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize();
+		StripRect.Y = ReferenceSize.Y - StripRect.W - 18.0f;
+	}
+	AddCanvasRect(RootCanvas, Strip, StripRect);
+	if (bIdleStripFolded)
+	{
+		Strip->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	UScaleBox* IdleGroupScale = WidgetTree->ConstructWidget<UScaleBox>(
+		UScaleBox::StaticClass(),
+		TEXT("TrainingIdleGroupScale"));
+	IdleGroupScale->SetStretch(EStretch::ScaleToFit);
+	IdleGroupScale->SetStretchDirection(EStretchDirection::Both);
+	USizeBox* IdleGroupReference = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(),
+		TEXT("TrainingIdleGroupReference"));
+	IdleGroupReference->SetWidthOverride(IdleGroupLogicalSize.X);
+	IdleGroupReference->SetHeightOverride(IdleGroupLogicalSize.Y);
+	IdleGroupCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("TrainingIdleGroupCanvas"));
+	IdleGroupReference->SetContent(IdleGroupCanvas.Get());
+	IdleGroupScale->SetContent(IdleGroupReference);
+	Strip->SetContent(IdleGroupScale);
 	UCanvasPanel* TravelCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("TravelVisualCanvas"));
 	if (TravelCanvas)
 	{
 		TravelCanvas->SetClipping(EWidgetClipping::ClipToBounds);
-		Strip->SetContent(TravelCanvas);
+		AddCanvas(IdleGroupCanvas.Get(), TravelCanvas, FVector2D::ZeroVector, TravelVisualSize);
 		TravelBackgroundTexture = LoadTexture(TravelBackgroundTexturePath);
 		if (!TravelBackgroundTexture)
 		{
@@ -2682,29 +4410,54 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 
 		for (int32 EnemySlotIndex = 0; EnemySlotIndex < 3; ++EnemySlotIndex)
 		{
-			UProgressBar* EnemyHealth = WidgetTree->ConstructWidget<UProgressBar>(
-				UProgressBar::StaticClass(),
+			const FVector2D HealthPosition(33.0f + EnemySlotIndex * 125.0f, 174.0f);
+			FSlateBrush SolidBarBrush;
+			SolidBarBrush.DrawAs = ESlateBrushDrawType::Box;
+			SolidBarBrush.ImageSize = TravelHealthBarSize;
+
+			UBorder* EnemyHealthTrack = WidgetTree->ConstructWidget<UBorder>(
+				UBorder::StaticClass(),
+				*FString::Printf(TEXT("TravelEnemyHealthTrack_%d"), EnemySlotIndex));
+			UBorder* EnemyHealthFill = WidgetTree->ConstructWidget<UBorder>(
+				UBorder::StaticClass(),
 				*FString::Printf(TEXT("TravelEnemyHealth_%d"), EnemySlotIndex));
-			if (!EnemyHealth)
+			if (!EnemyHealthTrack || !EnemyHealthFill)
 			{
 				continue;
 			}
-			EnemyHealth->SetFillColorAndOpacity(FLinearColor(0.78f, 0.08f, 0.045f, 1.0f));
-			EnemyHealth->SetPercent(1.0f);
-			EnemyHealth->SetVisibility(ESlateVisibility::Collapsed);
-			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyHealth));
-			if (HealthSlot)
+
+			EnemyHealthTrack->SetBrush(SolidBarBrush);
+			EnemyHealthTrack->SetBrushColor(FLinearColor(0.48f, 0.48f, 0.48f, 1.0f));
+			EnemyHealthTrack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			EnemyHealthTrack->SetRenderOpacity(0.0f);
+			if (UCanvasPanelSlot* TrackSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyHealthTrack)))
 			{
-				HealthSlot->SetPosition(FVector2D(33.0f + EnemySlotIndex * 125.0f, 174.0f));
-				HealthSlot->SetSize(TravelHealthBarSize);
-				HealthSlot->SetZOrder(3);
+				TrackSlot->SetPosition(HealthPosition);
+				TrackSlot->SetSize(TravelHealthBarSize);
+				TrackSlot->SetZOrder(3);
 			}
-			TravelEnemyHealthBars.Add(EnemyHealth);
+
+			EnemyHealthFill->SetBrush(SolidBarBrush);
+			EnemyHealthFill->SetBrushColor(FLinearColor(0.46f, 0.047f, 0.026f, 1.0f));
+			EnemyHealthFill->SetRenderTransformPivot(FVector2D(0.0f, 0.5f));
+			EnemyHealthFill->SetRenderScale(FVector2D(0.0f, 1.0f));
+			EnemyHealthFill->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			EnemyHealthFill->SetRenderOpacity(0.0f);
+			EnemyHealthFill->ForceVolatile(true);
+			if (UCanvasPanelSlot* FillSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyHealthFill)))
+			{
+				FillSlot->SetPosition(HealthPosition);
+				FillSlot->SetSize(TravelHealthBarSize);
+				FillSlot->SetZOrder(4);
+			}
+			TravelEnemyHealthTracks.Add(EnemyHealthTrack);
+			TravelEnemyHealthFills.Add(EnemyHealthFill);
 		}
 
 		TravelHeroHealth = WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(), TEXT("TravelHeroHealth"));
 		if (TravelHeroHealth)
 		{
+			TravelHeroHealth->ForceVolatile(true);
 			TravelHeroHealth->SetFillColorAndOpacity(FLinearColor(0.12f, 0.72f, 0.22f, 1.0f));
 			TravelHeroHealth->SetPercent(1.0f);
 			TravelHeroHealth->SetVisibility(ESlateVisibility::Collapsed);
@@ -2726,6 +4479,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			{
 				continue;
 			}
+			CompanionHealth->ForceVolatile(true);
 			CompanionHealth->SetFillColorAndOpacity(FLinearColor(0.12f, 0.72f, 0.22f, 1.0f));
 			CompanionHealth->SetPercent(1.0f);
 			CompanionHealth->SetVisibility(ESlateVisibility::Collapsed);
@@ -2767,7 +4521,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		return FString::Printf(TEXT("%02d:%02d"), SafeSeconds / 60, SafeSeconds % 60);
 	};
 	const FString RewardTooltip = FString::Printf(
-		TEXT("待领取：%d 金币 / %d 经验 / 普通箱 %d / 精英箱 %d\n普通箱冷却 %s · 精英箱冷却 %s"),
+		TEXT("待领取：%d金币 / %d经验 / 普通箱%d / 高级箱%d\n普通箱冷却 %s · 高级箱冷却 %s"),
 		PendingReward.Gold,
 		PendingReward.Experience,
 		PendingReward.NormalChestCount,
@@ -2777,6 +4531,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	Strip->SetToolTipText(FText::FromString(RewardTooltip));
 	const int32 NormalChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::NormalChest) : 0;
 	const int32 AdvancedChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::AdvancedChest) : 0;
+	const float ChestControlX = bBackpackExpanded
+		? StripRect.X + StripRect.Z - 72.0f
+		: 953.0f;
+	const float ChestControlY = bBackpackExpanded ? StripRect.Y : 0.0f;
 	const struct FChestButtonSpec
 	{
 		const TCHAR* Name;
@@ -2786,32 +4544,40 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		const TCHAR* Label;
 		float Y;
 	} ChestButtons[] = {
-		{TEXT("TrainingNormalChestButton"), TrainingNormalChestTexturePath, 600, NormalChestCount, TEXT("普通历练宝箱"), 49.0f},
-		{TEXT("TrainingAdvancedChestButton"), TrainingAdvancedChestTexturePath, 601, AdvancedChestCount, TEXT("高级历练宝箱"), 116.0f},
+		{TEXT("TrainingNormalChestButton"), TrainingNormalChestTexturePath, 600, NormalChestCount, TEXT("普通历练宝箱"), 8.0f},
+		{TEXT("TrainingAdvancedChestButton"), TrainingAdvancedChestTexturePath, 601, AdvancedChestCount, TEXT("高级历练宝箱"), 84.0f},
 	};
 	for (const FChestButtonSpec& Spec : ChestButtons)
 	{
 		UGameXXKDesktopTrainingActionButton* ChestButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 			UGameXXKDesktopTrainingActionButton::StaticClass(), Spec.Name);
 		ChestButton->Configure(this, Spec.ActionId);
-		ChestButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, FVector2D(58.0f, 58.0f)));
+		ChestButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, FVector2D(72.0f, 72.0f)));
 		ChestButton->SetBackgroundColor(FLinearColor::White);
 		UTextBlock* ChestCountText = nullptr;
 		const bool bAdvancedChest = Spec.ActionId == 601;
 		ChestButton->SetContent(MakeIconLabelContent(
 			WidgetTree,
 			Spec.TexturePath,
-			FVector2D(48.0f, 48.0f),
-			FText::FromString(FString::Printf(TEXT("×%d"), Spec.Count)),
-			11,
+			FVector2D(66.0f, 66.0f),
+			FText::FromString(FString::FromInt(Spec.Count)),
+			13,
 			bAdvancedChest
 				? FName(TEXT("TrainingAdvancedChestCountText"))
 				: FName(TEXT("TrainingNormalChestCountText")),
-			&ChestCountText));
+			&ChestCountText,
+			bAdvancedChest
+				? FName(TEXT("TrainingAdvancedChestIcon"))
+				: FName(TEXT("TrainingNormalChestIcon")),
+			true));
 		ChestButton->SetIsEnabled(Spec.Count > 0);
 		ChestButton->SetToolTipText(FText::FromString(FString::Printf(
 			TEXT("%s ×%d\n左键开启1个；右键开启全部"), Spec.Label, Spec.Count)));
-		AddCanvas(RootCanvas, ChestButton, FVector2D(1284.0f, Spec.Y), FVector2D(58.0f, 58.0f));
+		AddCanvas(
+			RootCanvas.Get(),
+			ChestButton,
+			FVector2D(ChestControlX, ChestControlY + Spec.Y),
+			FVector2D(72.0f, 72.0f));
 		ActionButtons.Add(ChestButton);
 		if (bAdvancedChest)
 		{
@@ -2828,11 +4594,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("TravelRetryButton"));
 	RetryButton->Configure(this, 10);
-	RetryButton->SetStyle(MakeTextureButtonStyle(CharacterTabSelectedTexturePath, FVector2D(104.0f, 45.0f), FMargin(0.08f)));
+	const bool bRetryEnabled = Progress.bRetryOnFailure;
+	RetryButton->SetStyle(MakeImageButtonStyle(
+		TrainingRetryButtonBaseTexturePath,
+		FVector2D(52.0f, 52.0f)));
 	RetryButton->SetBackgroundColor(FLinearColor::White);
-	RetryButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("失败重试")), 18));
-	RetryButton->SetToolTipText(FText::FromString(TEXT("关闭时阵亡会回退到前一关；1-1 失败仍重试 1-1。")));
-	AddCanvas(RootCanvas, RetryButton, FVector2D(1168.0f, 150.0f), FVector2D(104.0f, 45.0f));
+	UImage* RetryIcon = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(),
+		TEXT("TravelRetryIcon"));
+	RetryIcon->SetBrush(MakeTextureBrush(
+		bRetryEnabled
+			? TrainingRetryIconEnabledTexturePath
+			: TrainingRetryIconDisabledTexturePath,
+		FVector2D(36.0f, 36.0f)));
+	RetryIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+	RetryButton->SetContent(RetryIcon);
+	RetryButton->SetToolTipText(FText::FromString(
+		bRetryEnabled
+			? TEXT("失败自动重试：已开启\n点击关闭；关闭后阵亡会回退到前一关。")
+			: TEXT("失败自动重试：已关闭\n点击开启；1-1失败仍重试1-1。")));
+	AddCanvas(
+		RootCanvas.Get(),
+		RetryButton,
+		FVector2D(ChestControlX - 60.0f, ChestControlY + 18.0f),
+		FVector2D(52.0f, 52.0f));
 	ActionButtons.Add(RetryButton);
 	UpdateTravelVisuals();
 }
@@ -2941,8 +4726,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 	for (int32 EnemySlotIndex = 0; EnemySlotIndex < TravelEnemyImages.Num(); ++EnemySlotIndex)
 	{
 		UImage* EnemyImage = TravelEnemyImages[EnemySlotIndex];
-		UProgressBar* EnemyHealthBar = TravelEnemyHealthBars.IsValidIndex(EnemySlotIndex)
-			? TravelEnemyHealthBars[EnemySlotIndex]
+		UBorder* EnemyHealthTrack = TravelEnemyHealthTracks.IsValidIndex(EnemySlotIndex)
+			? TravelEnemyHealthTracks[EnemySlotIndex]
+			: nullptr;
+		UBorder* EnemyHealthFill = TravelEnemyHealthFills.IsValidIndex(EnemySlotIndex)
+			? TravelEnemyHealthFills[EnemySlotIndex]
 			: nullptr;
 		const bool bShowEnemy = TravelVisualRuntime.IsEnemySlotVisible(EnemySlotIndex);
 		bEnemyVisible |= bShowEnemy;
@@ -2950,9 +4738,24 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		{
 			EnemyImage->SetVisibility(bShowEnemy ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		}
-		if (EnemyHealthBar)
+		if (EnemyHealthTrack)
 		{
-			EnemyHealthBar->SetVisibility(bShowEnemy ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+			EnemyHealthTrack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			EnemyHealthTrack->SetRenderOpacity(bShowEnemy ? 1.0f : 0.0f);
+		}
+		if (EnemyHealthFill)
+		{
+			EnemyHealthFill->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+			EnemyHealthFill->SetRenderOpacity(bShowEnemy ? 1.0f : 0.0f);
+			EnemyHealthFill->ForceVolatile(true);
+			if (!bShowEnemy)
+			{
+				EnemyHealthFill->SetRenderScale(FVector2D(0.0f, 1.0f));
+				if (TravelAppliedEnemyHealth.IsValidIndex(EnemySlotIndex))
+				{
+					TravelAppliedEnemyHealth[EnemySlotIndex] = -1.0f;
+				}
+			}
 		}
 		if (!bShowEnemy
 			|| !EnemyImage
@@ -2998,9 +4801,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		EnemyImage->SetRenderScale(FVector2D(EnemyContentScale, EnemyContentScale));
 
 		const float EnemyHealth = TravelVisualRuntime.GetEnemyHealthFractionForSlot(EnemySlotIndex);
-		if (EnemyHealthBar && !FMath::IsNearlyEqual(EnemyHealth, TravelAppliedEnemyHealth[EnemySlotIndex]))
+		if (EnemyHealthFill && !FMath::IsNearlyEqual(EnemyHealth, TravelAppliedEnemyHealth[EnemySlotIndex]))
 		{
-			EnemyHealthBar->SetPercent(EnemyHealth);
+			EnemyHealthFill->SetRenderScale(FVector2D(EnemyHealth, 1.0f));
+			EnemyHealthFill->InvalidateLayoutAndVolatility();
 			TravelAppliedEnemyHealth[EnemySlotIndex] = EnemyHealth;
 		}
 	}
@@ -3029,6 +4833,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 				&& !FMath::IsNearlyEqual(TravelAppliedCompanionHealth[CompanionIndex], CompanionHealth))
 			{
 				CompanionHealthBar->SetPercent(CompanionHealth);
+				CompanionHealthBar->InvalidateLayoutAndVolatility();
 				TravelAppliedCompanionHealth[CompanionIndex] = CompanionHealth;
 			}
 		}
@@ -3102,6 +4907,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 	if (!FMath::IsNearlyEqual(HeroHealth, TravelAppliedHeroHealth))
 	{
 		TravelHeroHealth->SetPercent(HeroHealth);
+		TravelHeroHealth->InvalidateLayoutAndVolatility();
 		TravelAppliedHeroHealth = HeroHealth;
 	}
 }
@@ -3118,8 +4924,15 @@ UGameXXKDesktopTrainingWorkbenchWidget::CaptureLivePresentationSnapshot() const
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 	const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
+	const FGameXXKTrainingTravelRuntime TravelRuntime = Subsystem->GetTrainingTravelRuntimeCopy();
 	const FGameXXKTrainingOfflineReward Pending = Subsystem->GetPendingTrainingTravelRewardCopy();
 	const FGameXXKToolProgress& ToolProgress = Subsystem->GetToolProgress();
+	Snapshot.TravelStageId = TravelRuntime.StageId.IsNone()
+		? Progress.CurrentTravelStageId
+		: TravelRuntime.StageId;
+	Snapshot.TravelEncounterIndex = TravelRuntime.EncounterIndex == INDEX_NONE
+		? FMath::Max(0, Progress.ActiveTravelEncounterIndex)
+		: TravelRuntime.EncounterIndex;
 	Snapshot.PlayerGold = State.PlayerGold;
 	Snapshot.PlayerLevel = State.PlayerLevel;
 	Snapshot.PlayerExperience = State.PlayerXP;
@@ -3142,6 +4955,76 @@ UGameXXKDesktopTrainingWorkbenchWidget::CaptureLivePresentationSnapshot() const
 	return Snapshot;
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateWaveProgressPresentation(
+	const FLivePresentationSnapshot& Snapshot)
+{
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(Snapshot.TravelStageId, true);
+	const int32 EncounterCount = FMath::Max(1, Encounters.Num());
+	const int32 CurrentEncounter = FMath::Clamp(
+		Snapshot.TravelEncounterIndex,
+		0,
+		EncounterCount - 1);
+	if (TrainingWaveStageText)
+	{
+		TrainingWaveStageText->SetText(FText::FromString(
+			TrainingStageShortLabel(Snapshot.TravelStageId)));
+	}
+	if (TrainingWaveIndexText)
+	{
+		TrainingWaveIndexText->SetText(FText::FromString(FString::Printf(
+			TEXT("%d/%d"),
+			CurrentEncounter + 1,
+			EncounterCount)));
+	}
+	if (TrainingWaveProgressFill)
+	{
+		const float TrackWidth = ResolveWaveTrackWidth(bBackpackExpanded);
+		const float Fraction = EncounterCount > 1
+			? static_cast<float>(CurrentEncounter) / static_cast<float>(EncounterCount - 1)
+			: 1.0f;
+		const float FillWidth = FMath::Max(2.0f, TrackWidth * Fraction);
+		if (UCanvasPanelSlot* FillSlot = Cast<UCanvasPanelSlot>(TrainingWaveProgressFill->Slot))
+		{
+			FillSlot->SetPosition(FVector2D(
+				WaveTrackX + TrackWidth - FillWidth,
+				10.0f));
+			FillSlot->SetSize(FVector2D(FillWidth, 4.0f));
+		}
+	}
+	for (int32 VisualIndex = 0; VisualIndex < TrainingWaveMarkerImages.Num(); ++VisualIndex)
+	{
+		UImage* Marker = TrainingWaveMarkerImages[VisualIndex];
+		if (!Marker)
+		{
+			continue;
+		}
+		const int32 EncounterIndex = TrainingWaveMarkerImages.Num() - 1 - VisualIndex;
+		const bool bCurrent = EncounterIndex == CurrentEncounter;
+		const bool bCompleted = EncounterIndex < CurrentEncounter;
+		Marker->SetColorAndOpacity(bCurrent
+			? FLinearColor::White
+			: (bCompleted
+				? FLinearColor(0.78f, 0.78f, 0.78f, 0.78f)
+				: FLinearColor(0.44f, 0.44f, 0.44f, 0.32f)));
+		Marker->SetRenderScale(bCurrent
+			? FVector2D(1.16f, 1.16f)
+			: FVector2D(1.0f, 1.0f));
+	}
+	if (TrainingFoldedNormalChestText)
+	{
+		TrainingFoldedNormalChestText->SetText(FText::FromString(FString::Printf(
+			TEXT("[普通]：%d"),
+			FMath::Max(0, Snapshot.HeldNormalChests))));
+	}
+	if (TrainingFoldedAdvancedChestText)
+	{
+		TrainingFoldedAdvancedChestText->SetText(FText::FromString(FString::Printf(
+			TEXT("[高级]：%d"),
+			FMath::Max(0, Snapshot.HeldAdvancedChests))));
+	}
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTrainingChestPresentation(
 	const bool bAdvanced,
 	const int32 Count)
@@ -3155,7 +5038,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTrainingChestPresentation(
 		: TrainingNormalChestButton.Get();
 	if (CountText)
 	{
-		CountText->SetText(FText::FromString(FString::Printf(TEXT("×%d"), SafeCount)));
+		CountText->SetText(FText::FromString(FString::FromInt(SafeCount)));
 	}
 	if (Button)
 	{
@@ -3164,6 +5047,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTrainingChestPresentation(
 			TEXT("%s ×%d\n左键开启1个；右键开启全部"),
 			bAdvanced ? TEXT("高级历练宝箱") : TEXT("普通历练宝箱"),
 			SafeCount)));
+	}
+	UTextBlock* FoldedText = bAdvanced
+		? TrainingFoldedAdvancedChestText.Get()
+		: TrainingFoldedNormalChestText.Get();
+	if (FoldedText)
+	{
+		FoldedText->SetText(FText::FromString(bAdvanced
+			? FString::Printf(TEXT("[高级]：%d"), SafeCount)
+			: FString::Printf(TEXT("[普通]：%d"), SafeCount)));
 	}
 }
 
@@ -3182,24 +5074,48 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateWarehouseNumericPresentation(
 	}
 	if (WarehouseFooterText)
 	{
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		const int32 Capacity = Subsystem
+			? FGameXXKTalentRules::GetUnlockedWarehouseCapacity(Subsystem->GetRuntimeState())
+			: WarehousePageSize;
 		WarehouseFooterText->SetText(FText::FromString(FString::Printf(
 			TEXT("仓库物品 %d / %d\n不显示角色身份卡"),
 			Snapshot.WarehouseOccupancy,
-			FGameXXKEquipmentRules::WarehouseCapacity)));
+			Capacity)));
 	}
-	if (WarehousePreviousButton)
+	if (const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
 	{
-		WarehousePreviousButton->SetIsEnabled(PageIndex > 0);
-	}
-	if (WarehouseNextButton)
-	{
-		WarehouseNextButton->SetIsEnabled(PageIndex + 1 < PageCount);
+		const TSet<FGameXXKDesktopInventoryEntryKey> Exclusions = BuildBatchTransferExclusions();
+		FGameXXKDesktopInventoryBatchTransferRequest ToBackpack;
+		ToBackpack.FromContainer = EGameXXKDesktopItemContainer::Warehouse;
+		ToBackpack.ToContainer = EGameXXKDesktopItemContainer::Backpack;
+		ToBackpack.WarehousePageIndex = PageIndex;
+		ToBackpack.WarehousePageSize = WarehousePageSize;
+		ToBackpack.ExcludedEntries = Exclusions;
+		FGameXXKDesktopInventoryBatchTransferRequest ToWarehouse;
+		ToWarehouse.FromContainer = EGameXXKDesktopItemContainer::Backpack;
+		ToWarehouse.ToContainer = EGameXXKDesktopItemContainer::Warehouse;
+		ToWarehouse.WarehousePageIndex = PageIndex;
+		ToWarehouse.WarehousePageSize = WarehousePageSize;
+		ToWarehouse.ExcludedEntries = Exclusions;
+		if (WarehouseBatchToBackpackButton)
+		{
+			WarehouseBatchToBackpackButton->SetIsEnabled(
+				FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
+					Subsystem->GetRuntimeState(), ToBackpack));
+		}
+		if (BackpackBatchToWarehouseButton)
+		{
+			BackpackBatchToWarehouseButton->SetIsEnabled(
+				FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
+					Subsystem->GetRuntimeState(), ToWarehouse));
+		}
 	}
 	for (int32 PageButtonIndex = 0; PageButtonIndex < WarehousePageButtons.Num(); ++PageButtonIndex)
 	{
 		if (UGameXXKDesktopTrainingActionButton* PageButton = WarehousePageButtons[PageButtonIndex])
 		{
-			PageButton->SetIsEnabled(PageButtonIndex == 3 || PageButtonIndex < PageCount);
+			PageButton->SetIsEnabled(PageButtonIndex < PageCount);
 		}
 	}
 }
@@ -3250,6 +5166,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLivePresentation(const bool 
 		|| !LastLivePresentationSnapshot.Equals(Snapshot);
 	if (bOuterValuesChanged)
 	{
+		if (bHasLivePresentationSnapshot
+			&& Snapshot.PlayerLevel > LastLivePresentationSnapshot.PlayerLevel)
+		{
+			SetNotice(
+				FText::FromString(FString::Printf(
+					TEXT("主角升级至 Lv.%d"),
+					Snapshot.PlayerLevel)),
+				EGameXXKDesktopNoticeCategory::CharacterLevelUp);
+		}
 		if (BackpackGoldText)
 		{
 			BackpackGoldText->SetText(FText::FromString(FString::FromInt(Snapshot.PlayerGold)));
@@ -3262,7 +5187,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLivePresentation(const bool 
 				return FString::Printf(TEXT("%02d:%02d"), SafeSeconds / 60, SafeSeconds % 60);
 			};
 			TravelVisualViewport->SetToolTipText(FText::FromString(FString::Printf(
-				TEXT("待领取：%d 金币 / %d 经验 / 普通箱 %d / 精英箱 %d\n普通箱冷却 %s · 精英箱冷却 %s"),
+				TEXT("待领取：%d金币 / %d经验 / 普通箱%d / 高级箱%d\n普通箱冷却 %s · 高级箱冷却 %s"),
 				Snapshot.PendingGold,
 				Snapshot.PendingExperience,
 				Snapshot.PendingNormalChests,
@@ -3272,6 +5197,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshLivePresentation(const bool 
 		}
 		UpdateTrainingChestPresentation(false, Snapshot.HeldNormalChests);
 		UpdateTrainingChestPresentation(true, Snapshot.HeldAdvancedChests);
+		UpdateWaveProgressPresentation(Snapshot);
 		UpdateWarehouseNumericPresentation(Snapshot);
 		UpdateToolNumericPresentation(Snapshot);
 	}
@@ -3580,31 +5506,40 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 30.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	for (int32 PageTabIndex = 0; PageTabIndex < 4; ++PageTabIndex)
+	const int32 WarehousePageCount = GetWarehousePageCountForTest();
+	const int32 WarehouseCapacity = RuntimeState
+		? FGameXXKTalentRules::GetUnlockedWarehouseCapacity(*RuntimeState)
+		: WarehousePageSize;
+	for (int32 PageTabIndex = 0; PageTabIndex < 6; ++PageTabIndex)
 	{
 		UGameXXKDesktopTrainingActionButton* PageTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 			UGameXXKDesktopTrainingActionButton::StaticClass(),
 			*FString::Printf(TEXT("WarehousePageTab_%d"), PageTabIndex));
 		PageTab->Configure(this, 70 + PageTabIndex);
-		const bool bSelectedPage = PageTabIndex < 3 && PageTabIndex == GetWarehousePageIndexForTest();
+		const bool bSelectedPage = PageTabIndex == GetWarehousePageIndexForTest();
 		PageTab->SetStyle(MakeTextureButtonStyle(
 			bSelectedPage ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-			FVector2D(62.0f, 38.0f),
+			FVector2D(44.0f, 38.0f),
 			FMargin(0.08f)));
 		PageTab->SetBackgroundColor(FLinearColor::White);
 		PageTab->SetContent(MakeButtonText(
 			WidgetTree,
-			FText::FromString(PageTabIndex < 3 ? FString::FromInt(PageTabIndex + 1) : TEXT("+")),
+			FText::FromString(FString::FromInt(PageTabIndex + 1)),
 			17,
 			Ink));
-		PageTab->SetIsEnabled(PageTabIndex == 3 || PageTabIndex < GetWarehousePageCountForTest());
-		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 78.0f, 84.0f), FVector2D(62.0f, 38.0f));
+		PageTab->SetIsEnabled(PageTabIndex < WarehousePageCount);
+		PageTab->SetToolTipText(FText::FromString(
+			PageTabIndex < WarehousePageCount
+				? FString::Printf(TEXT("仓库第 %d 页"), PageTabIndex + 1)
+				: TEXT("需要容量分支的仓库页天赋")));
+		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 50.0f, 84.0f), FVector2D(44.0f, 38.0f));
 		ActionButtons.Add(PageTab);
 		WarehousePageButtons.Add(PageTab);
 	}
 	for (int32 SlotIndex = 0; SlotIndex < WarehousePageSize; ++SlotIndex)
 	{
 		const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + SlotIndex;
+		const bool bSlotUnlocked = PhysicalSlotIndex < WarehouseCapacity;
 		FGameXXKDesktopInventoryEntryKey Entry = RuntimeState
 			? FGameXXKDesktopInventoryRules::GetEntryAt(
 				*RuntimeState,
@@ -3625,7 +5560,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 			CellName);
 		SlotButton->Configure(this, 100 + SlotIndex);
 		SlotButton->SetBackgroundColor(FLinearColor::White);
-		if (Entry.IsValid())
+		if (bSlotUnlocked && Entry.IsValid())
 		{
 			const FString EntryDisplayLabel = Entry.bEquipmentInstance && RuntimeState
 				? EquipmentDisplayName(RuntimeState->EquipmentCollection, Entry.EntryId)
@@ -3661,7 +5596,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		{
 			SlotButton->SetStyle(MakeImageButtonStyle(ItemSlotTexturePath, CellSize));
 			SlotButton->SetContent(nullptr);
-			SlotButton->SetIsEnabled(CarriedEntry.IsValid());
+			SlotButton->SetIsEnabled(bSlotUnlocked && CarriedEntry.IsValid());
+			if (!bSlotUnlocked)
+			{
+				SlotButton->SetBackgroundColor(FLinearColor(0.30f, 0.30f, 0.28f, 0.72f));
+				SlotButton->SetToolTipText(FText::FromString(TEXT("该仓库格尚未由永久天赋解锁")));
+			}
 		}
 		AddCanvas(RootCanvas, SlotButton, CellPosition, CellSize);
 		ActionButtons.Add(SlotButton);
@@ -3673,36 +5613,55 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		GetWarehousePageCountForTest(),
 		WarehousePageSize)), 15, Ink, TEXT("WarehousePageSummaryText"));
 	AddCanvas(RootCanvas, WarehousePageText.Get(), FVector2D(30.0f, 806.0f), FVector2D(300.0f, 24.0f));
-	WarehousePreviousButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
-		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("WarehousePreviousButton"));
-	WarehousePreviousButton->Configure(this, 40);
-	WarehousePreviousButton->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
-	WarehousePreviousButton->SetBackgroundColor(FLinearColor::White);
-	WarehousePreviousButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("上一页")), 15));
-	WarehousePreviousButton->SetIsEnabled(GetWarehousePageIndexForTest() > 0);
-	AddCanvas(RootCanvas, WarehousePreviousButton.Get(), FVector2D(30.0f, 842.0f), FVector2D(94.0f, 40.0f));
-	ActionButtons.Add(WarehousePreviousButton);
-	WarehouseNextButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
-		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("WarehouseNextButton"));
-	WarehouseNextButton->Configure(this, 41);
-	WarehouseNextButton->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(94.0f, 40.0f), FMargin(0.08f)));
-	WarehouseNextButton->SetBackgroundColor(FLinearColor::White);
-	WarehouseNextButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("下一页")), 15));
-	WarehouseNextButton->SetIsEnabled(GetWarehousePageIndexForTest() + 1 < GetWarehousePageCountForTest());
-	AddCanvas(RootCanvas, WarehouseNextButton.Get(), FVector2D(132.0f, 842.0f), FVector2D(94.0f, 40.0f));
-	ActionButtons.Add(WarehouseNextButton);
-	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass());
-	Sort->Configure(this, 5);
-	Sort->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(104.0f, 40.0f), FMargin(0.08f)));
-	Sort->SetBackgroundColor(FLinearColor::White);
-	Sort->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("排序")), 15));
-	Sort->SetToolTipText(FText::FromString(TEXT("按槽位、品质和等级排序仓库")));
-	AddCanvas(RootCanvas, Sort, FVector2D(236.0f, 842.0f), FVector2D(104.0f, 40.0f));
-	ActionButtons.Add(Sort);
+	const TSet<FGameXXKDesktopInventoryEntryKey> BatchExclusions = BuildBatchTransferExclusions();
+	FGameXXKDesktopInventoryBatchTransferRequest ToBackpackRequest;
+	ToBackpackRequest.FromContainer = EGameXXKDesktopItemContainer::Warehouse;
+	ToBackpackRequest.ToContainer = EGameXXKDesktopItemContainer::Backpack;
+	ToBackpackRequest.WarehousePageIndex = GetWarehousePageIndexForTest();
+	ToBackpackRequest.WarehousePageSize = WarehousePageSize;
+	ToBackpackRequest.ExcludedEntries = BatchExclusions;
+	FGameXXKDesktopInventoryBatchTransferRequest ToWarehouseRequest;
+	ToWarehouseRequest.FromContainer = EGameXXKDesktopItemContainer::Backpack;
+	ToWarehouseRequest.ToContainer = EGameXXKDesktopItemContainer::Warehouse;
+	ToWarehouseRequest.WarehousePageIndex = GetWarehousePageIndexForTest();
+	ToWarehouseRequest.WarehousePageSize = WarehousePageSize;
+	ToWarehouseRequest.ExcludedEntries = BatchExclusions;
+
+	WarehouseBatchToBackpackButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("WarehouseBatchToBackpackButton"));
+	WarehouseBatchToBackpackButton->Configure(this, 40);
+	WarehouseBatchToBackpackButton->SetStyle(MakeTextureButtonStyle(
+		CharacterTabNormalTexturePath, FVector2D(145.0f, 42.0f), FMargin(0.08f)));
+	WarehouseBatchToBackpackButton->SetBackgroundColor(FLinearColor::White);
+	WarehouseBatchToBackpackButton->SetContent(MakeButtonText(
+		WidgetTree, FText::FromString(TEXT("仓库 → 背包")), 14, Ink));
+	WarehouseBatchToBackpackButton->SetToolTipText(FText::FromString(
+		TEXT("将当前仓库页的全部装备和道具转入背包；锁定状态保留")));
+	WarehouseBatchToBackpackButton->SetIsEnabled(RuntimeState
+		&& FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
+			*RuntimeState, ToBackpackRequest));
+	AddCanvas(RootCanvas, WarehouseBatchToBackpackButton.Get(), FVector2D(30.0f, 842.0f), FVector2D(145.0f, 42.0f));
+	ActionButtons.Add(WarehouseBatchToBackpackButton);
+
+	BackpackBatchToWarehouseButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(), TEXT("BackpackBatchToWarehouseButton"));
+	BackpackBatchToWarehouseButton->Configure(this, 41);
+	BackpackBatchToWarehouseButton->SetStyle(MakeTextureButtonStyle(
+		CharacterTabNormalTexturePath, FVector2D(145.0f, 42.0f), FMargin(0.08f)));
+	BackpackBatchToWarehouseButton->SetBackgroundColor(FLinearColor::White);
+	BackpackBatchToWarehouseButton->SetContent(MakeButtonText(
+		WidgetTree, FText::FromString(TEXT("背包 → 仓库")), 14, Ink));
+	BackpackBatchToWarehouseButton->SetToolTipText(FText::FromString(
+		TEXT("将背包内全部装备和道具转入当前仓库页；锁定状态保留")));
+	BackpackBatchToWarehouseButton->SetIsEnabled(RuntimeState
+		&& FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
+			*RuntimeState, ToWarehouseRequest));
+	AddCanvas(RootCanvas, BackpackBatchToWarehouseButton.Get(), FVector2D(195.0f, 842.0f), FVector2D(145.0f, 42.0f));
+	ActionButtons.Add(BackpackBatchToWarehouseButton);
 	WarehouseFooterText = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("仓库物品 %d / %d\n不显示角色身份卡"),
 		WarehouseCount,
-		FGameXXKEquipmentRules::WarehouseCapacity)), 16, Ink, TEXT("WarehouseFooterText"));
+		WarehouseCapacity)), 16, Ink, TEXT("WarehouseFooterText"));
 	AddCanvas(RootCanvas, WarehouseFooterText.Get(), FVector2D(30.0f, 888.0f), FVector2D(310.0f, 32.0f));
 }
 
@@ -3746,20 +5705,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	EmbeddedScale->SetContent(ApprovedPaperReference);
 	PanelBorder->SetContent(EmbeddedScale);
 
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	UImage* GoldIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("BackpackGoldIcon"));
-	GoldIcon->SetBrush(MakeTextureBrush(IngotTexturePath, FVector2D(30.0f, 30.0f)));
-	AddCanvas(RootCanvas, GoldIcon, FVector2D(1098.0f, 263.0f), FVector2D(30.0f, 30.0f));
-	const FString GoldLabel = RuntimeState ? FString::Printf(TEXT("%d"), RuntimeState->PlayerGold) : TEXT("--");
-	BackpackGoldText = MakeText(
-		WidgetTree,
-		FText::FromString(GoldLabel),
-		18,
-		Ink,
-		TEXT("BackpackGoldText"));
-	AddCanvas(RootCanvas, BackpackGoldText.Get(), FVector2D(1132.0f, 264.0f), FVector2D(100.0f, 30.0f));
-
 	UGameXXKDesktopTrainingActionButton* Sort = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("BackpackSortButton"));
@@ -3770,7 +5715,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	AddCanvas(RootCanvas, Sort, FVector2D(1212.0f, 710.0f), FVector2D(100.0f, 44.0f));
 	ActionButtons.Add(Sort);
 	BuildCharacterRosterTabs();
-	BuildPanelCloseButton(TEXT("BackpackPanelCloseButton"), 60, FVector2D(1290.0f, 270.0f));
+	BuildPanelCloseButton(TEXT("BackpackPanelCloseButton"), 60, FVector2D(1272.0f, 252.0f));
 	if (UButton* CloseButton = Cast<UButton>(WidgetTree->FindWidget(TEXT("BackpackPanelCloseButton"))))
 	{
 		const FText CloseDescription = FText::FromString(TEXT("关闭背包与全部子界面"));
@@ -3779,6 +5724,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		AccessibleLabel->SetRenderOpacity(0.0f);
 		CloseButton->SetContent(AccessibleLabel);
 	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildSharedGoldIndicator()
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	UImage* GoldIcon = WidgetTree->ConstructWidget<UImage>(
+		UImage::StaticClass(),
+		TEXT("BackpackGoldIcon"));
+	GoldIcon->SetBrush(MakeTextureBrush(IngotTexturePath, FVector2D(30.0f, 30.0f)));
+	AddCanvas(RootCanvas, GoldIcon, FVector2D(1034.0f, 291.0f), FVector2D(30.0f, 30.0f));
+	const FString GoldLabel = RuntimeState
+		? FString::FromInt(RuntimeState->PlayerGold)
+		: TEXT("--");
+	BackpackGoldText = MakeText(
+		WidgetTree,
+		FText::FromString(GoldLabel),
+		18,
+		Ink,
+		TEXT("BackpackGoldText"));
+	AddCanvas(
+		RootCanvas,
+		BackpackGoldText.Get(),
+		FVector2D(1068.0f, 292.0f),
+		FVector2D(100.0f, 30.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
@@ -4036,34 +6006,25 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 {
 	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("TalentsPanel"));
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("天赋  ·  天赋树 / 称号")), 30, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 260.0f), FVector2D(700.0f, 42.0f));
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("永久天赋  ·  全队共享")), 25, Gold);
+	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 254.0f), FVector2D(700.0f, 36.0f));
 	BuildPanelCloseButton(TEXT("TalentsCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Notice = MakeText(
 		WidgetTree,
-		FText::FromString(TEXT("天赋和称号集中在此页；真实节点数据与宝箱掉率加成尚未接入。")),
-		18,
+		FText::FromString(TEXT("从中心向四个 45° 分区展开 · 滚轮纵向浏览，Shift+滚轮横向浏览 · 每个普通节点可点 5 次")),
+		12,
 		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
-	AddCanvas(RootCanvas, Notice, FVector2D(420.0f, 312.0f), FVector2D(860.0f, 42.0f));
-	for (int32 NodeIndex = 0; NodeIndex < 12; ++NodeIndex)
+	AddCanvas(RootCanvas, Notice, FVector2D(420.0f, 292.0f), FVector2D(850.0f, 24.0f));
+	UGameXXKTalentTreeWidget* TalentTree =
+		WidgetTree->ConstructWidget<UGameXXKTalentTreeWidget>(
+			UGameXXKTalentTreeWidget::StaticClass(),
+			TEXT("PermanentTalentTreeWidget"));
+	TalentTree->SetMVPSubsystem(ResolveMVPSubsystem());
+	TalentTree->OnPurchaseCommitted().AddWeakLambda(this, [this]()
 	{
-		UBorder* Node = MakePanel(WidgetTree, NodeIndex == 0 ? Accent : Panel);
-		AddCanvas(
-			RootCanvas,
-			Node,
-			FVector2D(420.0f + (NodeIndex % 4) * 225.0f, 370.0f + (NodeIndex / 4) * 118.0f),
-			FVector2D(190.0f, 88.0f));
-		UTextBlock* NodeText = MakeText(
-			WidgetTree,
-			FText::FromString(NodeIndex == 0 ? TEXT("基础天赋\n待配置") : FString::Printf(TEXT("节点 %02d\n锁定"), NodeIndex + 1)),
-			16,
-			FLinearColor::White);
-		AddCanvas(
-			RootCanvas,
-			NodeText,
-			FVector2D(436.0f + (NodeIndex % 4) * 225.0f, 388.0f + (NodeIndex / 4) * 118.0f),
-			FVector2D(158.0f, 50.0f));
-	}
+		HandleTalentPurchaseCommitted();
+	});
+	AddCanvas(RootCanvas, TalentTree, FVector2D(409.0f, 318.0f), FVector2D(920.0f, 444.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
@@ -4075,6 +6036,37 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
+	FGameXXKTalentProjection ToolTalentProjection;
+	const bool bToolsUnlocked = Subsystem
+		&& FGameXXKTalentRules::BuildProjection(
+			Subsystem->GetRuntimeState().Talents,
+			ToolTalentProjection)
+		&& ToolTalentProjection.bToolsUnlocked;
+	if (!bToolsUnlocked)
+	{
+		UBorder* LockedPanel = MakePanel(WidgetTree, PanelAlt, TEXT("ToolsTalentLockedPanel"));
+		const FSlateColorBrush LockedPaperBrush(FLinearColor(0.91f, 0.84f, 0.69f, 1.0f));
+		LockedPanel->SetBrush(LockedPaperBrush);
+		LockedPanel->SetClipping(EWidgetClipping::ClipToBounds);
+		LockedPanel->SetPadding(FMargin(16.0f, 58.0f, 16.0f, 20.0f));
+		UTextBlock* LockedText = MakeText(
+			WidgetTree,
+			FText::FromString(TEXT("工具功能尚未解锁\n\n在永久天赋中点亮：\n行旅根基 → 百工开物\n\n一次开放：\n分解 / 合成 / 强化\n洗炼 / 镶嵌\n\n工具经验与金币加成也在该分支继续提升。")),
+			15,
+			Ink);
+		LockedText->SetJustification(ETextJustify::Center);
+		LockedText->SetWrapTextAt(210.0f);
+		LockedPanel->SetContent(LockedText);
+		AddCanvas(
+			RootCanvas,
+			LockedPanel,
+			FVector2D(1386.0f, 76.0f),
+			FVector2D(258.0f, 810.0f));
+		if (UCanvasPanelSlot* LockedSlot = Cast<UCanvasPanelSlot>(LockedPanel->Slot))
+		{
+			LockedSlot->SetZOrder(100);
+		}
+	}
 	const TArray<FText> ToolLabels = {
 		FText::FromString(TEXT("分解")),
 		FText::FromString(TEXT("合成")),
@@ -4225,68 +6217,262 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 {
 	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"));
 	AddCanvasRect(RootCanvas, Map, GameXXKDesktopTrainingLayout::GetRightShellRect());
-	const FText MapTitle = FText::FromString(TEXT("历练地图"));
-	UTextBlock* Title = MakeText(WidgetTree, MapTitle, 28, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("历练地图")), 28, Gold);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	const TArray<FGameXXKTrainingStageDefinition> Definitions = Subsystem ? Subsystem->GetTrainingStageDefinitions() : TArray<FGameXXKTrainingStageDefinition>();
-	const EGameXXKTrainingDifficulty ActiveDifficulty = FGameXXKTrainingRules::DifficultyFromStageId(SelectedStageId);
-	const TArray<EGameXXKTrainingDifficulty> Difficulties = {
-		EGameXXKTrainingDifficulty::Normal,
-		EGameXXKTrainingDifficulty::Hard,
-		EGameXXKTrainingDifficulty::Hell};
-	for (int32 DifficultyIndex = 0; DifficultyIndex < Difficulties.Num(); ++DifficultyIndex)
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKTrainingProgress Progress = Subsystem
+		? Subsystem->GetTrainingProgressCopy()
+		: FGameXXKTrainingProgress();
+	ActiveTrainingDifficultyIndex = FMath::Clamp(ActiveTrainingDifficultyIndex, 0, 2);
+	ActiveTrainingChapter = FMath::Clamp(ActiveTrainingChapter, 1, 3);
+	EGameXXKTrainingDifficulty ActiveDifficulty =
+		TrainingDifficultyFromIndex(ActiveTrainingDifficultyIndex);
+
+	auto DifficultyLabel = [](const EGameXXKTrainingDifficulty Difficulty) -> FString
 	{
-		const TCHAR* Label = DifficultyIndex == 0 ? TEXT("普通") : DifficultyIndex == 1 ? TEXT("困难") : TEXT("地狱");
-		UGameXXKDesktopTrainingActionButton* DifficultyTab = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
-			UGameXXKDesktopTrainingActionButton::StaticClass(),
-			*FString::Printf(TEXT("TrainingDifficultyTab_%d"), DifficultyIndex));
-		DifficultyTab->Configure(this, 11 + DifficultyIndex);
-		DifficultyTab->SetStyle(MakeTextureButtonStyle(
-			Difficulties[DifficultyIndex] == ActiveDifficulty ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-			FVector2D(78.0f, 36.0f),
-			FMargin(0.08f)));
-		DifficultyTab->SetBackgroundColor(FLinearColor::White);
-		DifficultyTab->SetContent(MakeButtonText(WidgetTree, FText::FromString(Label), 18));
-		AddCanvas(RootCanvas, DifficultyTab, FVector2D(1388.0f + DifficultyIndex * 84.0f, 84.0f), FVector2D(78.0f, 36.0f));
-		ActionButtons.Add(DifficultyTab);
+		switch (Difficulty)
+		{
+		case EGameXXKTrainingDifficulty::Hard: return TEXT("困难");
+		case EGameXXKTrainingDifficulty::Hell: return TEXT("地狱");
+		case EGameXXKTrainingDifficulty::Normal:
+		default: return TEXT("普通");
+		}
+	};
+	auto StageShortLabel = [&DifficultyLabel](const FName StageId) -> FString
+	{
+		FGameXXKTrainingStageDefinition Definition;
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
+		{
+			return TEXT("未选择");
+		}
+		return FString::Printf(
+			TEXT("%s %d-%d"),
+			*DifficultyLabel(Definition.Difficulty),
+			Definition.Chapter,
+			((Definition.StageNumber - 1) % 3) + 1);
+	};
+
+	FGameXXKTrainingStageDefinition SelectedDefinition;
+	if (!FGameXXKTrainingRules::TryGetStageDefinition(SelectedStageId, SelectedDefinition)
+		|| SelectedDefinition.Difficulty != ActiveDifficulty
+		|| SelectedDefinition.Chapter != ActiveTrainingChapter)
+	{
+		SelectedStageId = ResolvePreferredTrainingStageForPage(
+			ActiveDifficulty,
+			ActiveTrainingChapter);
+		if (Subsystem)
+		{
+			Subsystem->SelectTrainingStage(SelectedStageId);
+		}
 	}
-	for (const FGameXXKTrainingStageDefinition& Definition : Definitions)
+
+	// One compact difficulty selector replaces the old three-button row.
+	UGameXXKDesktopTrainingActionButton* DifficultyDropdown =
+		WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("TrainingDifficultyDropdownButton"));
+	DifficultyDropdown->Configure(this, ActionTrainingDifficultyDropdown);
+	DifficultyDropdown->SetStyle(MakeTextureButtonStyle(
+		CharacterTabNormalTexturePath,
+		FVector2D(238.0f, 42.0f),
+		FMargin(0.08f)));
+	DifficultyDropdown->SetBackgroundColor(FLinearColor::White);
+	DifficultyDropdown->SetContent(MakeButtonText(
+		WidgetTree,
+		FText::FromString(FString::Printf(TEXT("难度：%s  ▼"), *DifficultyLabel(ActiveDifficulty))),
+		18,
+		Ink));
+	AddCanvas(RootCanvas, DifficultyDropdown, FVector2D(1388.0f, 82.0f), FVector2D(238.0f, 42.0f));
+	ActionButtons.Add(DifficultyDropdown);
+
+	// Chapters are viewing filters.  They remain visible even when every node in
+	// a future chapter is still locked.
+	for (int32 ChapterIndex = 0; ChapterIndex < 3; ++ChapterIndex)
 	{
-		if (Definition.Difficulty != ActiveDifficulty)
+		const int32 Chapter = ChapterIndex + 1;
+		const bool bSelectedChapter = Chapter == ActiveTrainingChapter;
+		UGameXXKDesktopTrainingActionButton* ChapterTab =
+			WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+				UGameXXKDesktopTrainingActionButton::StaticClass(),
+				*FString::Printf(TEXT("TrainingChapterTab_%d"), ChapterIndex));
+		ChapterTab->Configure(this, ActionTrainingChapterFirst + ChapterIndex);
+		ChapterTab->SetStyle(MakeTextureButtonStyle(
+			bSelectedChapter ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+			FVector2D(76.0f, 36.0f),
+			FMargin(0.08f)));
+		ChapterTab->SetBackgroundColor(FLinearColor::White);
+		ChapterTab->SetContent(MakeButtonText(
+			WidgetTree,
+			FText::FromString(FString::Printf(TEXT("第%d章"), Chapter)),
+			15,
+			bSelectedChapter ? Accent : Ink));
+		AddCanvas(
+			RootCanvas,
+			ChapterTab,
+			FVector2D(1388.0f + ChapterIndex * 81.0f, 136.0f),
+			FVector2D(76.0f, 36.0f));
+		ActionButtons.Add(ChapterTab);
+	}
+
+	// Draw two short dashed ink connectors behind the three circular nodes.
+	const FVector2D NodeSize(82.0f, 82.0f);
+	const float NodeX = 1473.0f;
+	const float NodeY[3] = {194.0f, 354.0f, 514.0f};
+	for (int32 ConnectorIndex = 0; ConnectorIndex < 2; ++ConnectorIndex)
+	{
+		const float StartY = NodeY[ConnectorIndex] + NodeSize.Y + 9.0f;
+		for (int32 DashIndex = 0; DashIndex < 5; ++DashIndex)
+		{
+			UBorder* Dash = WidgetTree->ConstructWidget<UBorder>(
+				UBorder::StaticClass(),
+				*FString::Printf(TEXT("TrainingRouteConnector_%d_%d"), ConnectorIndex, DashIndex));
+			FSlateBrush DashBrush;
+			DashBrush.DrawAs = ESlateBrushDrawType::Box;
+			DashBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.78f));
+			Dash->SetBrush(DashBrush);
+			Dash->SetBrushColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.78f));
+			Dash->SetVisibility(ESlateVisibility::HitTestInvisible);
+			AddCanvas(
+				RootCanvas,
+				Dash,
+				FVector2D(NodeX + NodeSize.X * 0.5f - 2.0f, StartY + DashIndex * 13.0f),
+				FVector2D(4.0f, 8.0f));
+		}
+	}
+
+	const int32 FirstStageNumber = (ActiveTrainingChapter - 1) * 3 + 1;
+	for (int32 LocalIndex = 0; LocalIndex < 3; ++LocalIndex)
+	{
+		const int32 StageNumber = FirstStageNumber + LocalIndex;
+		const FName StageId = FGameXXKTrainingRules::MakeStageId(ActiveDifficulty, StageNumber);
+		FGameXXKTrainingStageDefinition Definition;
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Definition))
 		{
 			continue;
 		}
-		const int32 LocalIndex = Definition.StageNumber - 1;
-		const FVector2D NodePosition(1390.0f + (LocalIndex % 3) * 84.0f, 158.0f + (LocalIndex / 3) * 104.0f);
-		const FVector2D NodeSize(58.0f, 58.0f);
-		const FString NodeNameString = FString::Printf(TEXT("TrainingNode_%d"), Definition.StageNumber);
-		const FName NodeName(*NodeNameString);
-		const FText NodeLabel = FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter, ((Definition.StageNumber - 1) % 3) + 1));
-		const FText NodeTooltip = Subsystem ? Subsystem->BuildTrainingStageTooltip(Definition.StageId) : FText::GetEmpty();
-		UGameXXKDesktopTrainingStageButton* Node = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(
-			UGameXXKDesktopTrainingStageButton::StaticClass(),
-			NodeName);
-		Node->Configure(this, Definition.StageId);
-		Node->SetStyle(MakeImageButtonStyle(RouteNodeTexturePath, NodeSize));
+		const bool bCurrentTravel = Progress.CurrentTravelStageId == StageId;
+		const bool bCleared = FGameXXKTrainingRules::IsStageCleared(Progress, StageId);
+		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, StageId);
+		const bool bSelected = SelectedStageId == StageId;
+		const bool bLocked = !bCleared && !bCanChallenge;
+		const TCHAR* StatusIconPath = bLocked
+			? TrainingNodeLockedTexturePath
+			: bCleared
+				? TrainingNodePassedTexturePath
+				: TrainingNodeChallengeTexturePath;
+		const FLinearColor NodeTint = bCurrentTravel
+			? FLinearColor(0.75f, 1.0f, 0.72f, 1.0f)
+			: bCleared
+				? FLinearColor(0.88f, 1.0f, 0.84f, 1.0f)
+				: bCanChallenge
+					? FLinearColor(1.0f, 0.88f, 0.78f, 1.0f)
+					: FLinearColor(0.58f, 0.58f, 0.56f, 0.78f);
+		const FLinearColor StateColor = bLocked
+			? FLinearColor(0.28f, 0.28f, 0.28f, 1.0f)
+			: bCleared
+				? FLinearColor(0.10f, 0.38f, 0.13f, 1.0f)
+				: FLinearColor(0.55f, 0.08f, 0.04f, 1.0f);
+		const FString StateText = bCurrentTravel
+			? TEXT("游历中")
+			: bCleared
+				? TEXT("通关")
+				: bCanChallenge ? TEXT("挑战") : TEXT("锁定");
+
+		if (bSelected)
+		{
+			UImage* SelectionHalo = WidgetTree->ConstructWidget<UImage>(
+				UImage::StaticClass(),
+				*FString::Printf(TEXT("TrainingNodeSelection_%d"), StageNumber));
+			SelectionHalo->SetBrush(MakeCircularBrush(
+				FVector2D(94.0f, 94.0f),
+				FLinearColor::Transparent,
+				Accent,
+				4.0f));
+			SelectionHalo->SetColorAndOpacity(FLinearColor::White);
+			SelectionHalo->SetVisibility(ESlateVisibility::HitTestInvisible);
+			AddCanvas(
+				RootCanvas,
+				SelectionHalo,
+				FVector2D(NodeX - 6.0f, NodeY[LocalIndex] - 6.0f),
+				FVector2D(94.0f, 94.0f));
+		}
+
+		UGameXXKDesktopTrainingStageButton* Node =
+			WidgetTree->ConstructWidget<UGameXXKDesktopTrainingStageButton>(
+				UGameXXKDesktopTrainingStageButton::StaticClass(),
+				*FString::Printf(TEXT("TrainingNode_%d"), StageNumber));
+		Node->Configure(this, StageId);
+		Node->SetStyle(MakeCircularButtonStyle(
+			NodeSize,
+			FLinearColor(0.94f, 0.87f, 0.70f, 0.96f),
+			NodeTint));
 		Node->SetBackgroundColor(FLinearColor::White);
-		Node->SetToolTipText(NodeTooltip);
-		Node->SetContent(MakeButtonText(
+		Node->SetToolTipText(Subsystem ? Subsystem->BuildTrainingStageTooltip(StageId) : FText::GetEmpty());
+
+		UOverlay* NodeFace = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
+		USizeBox* StatusIconSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		StatusIconSize->SetWidthOverride(46.0f);
+		StatusIconSize->SetHeightOverride(46.0f);
+		UImage* StatusIcon = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(TEXT("TrainingNodeStatusIcon_%d"), StageNumber));
+		StatusIcon->SetBrush(MakeTextureBrush(StatusIconPath, FVector2D(46.0f, 46.0f)));
+		StatusIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		StatusIconSize->AddChild(StatusIcon);
+		if (UOverlaySlot* IconSlot = NodeFace->AddChildToOverlay(StatusIconSize))
+		{
+			IconSlot->SetHorizontalAlignment(HAlign_Center);
+			IconSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		UTextBlock* StageLabel = MakeButtonText(
 			WidgetTree,
-			NodeLabel,
-			18,
-			Definition.StageId == SelectedStageId ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink));
-		AddCanvas(RootCanvas, Node, NodePosition, NodeSize);
+			FText::FromString(FString::Printf(
+				TEXT("%d-%d"),
+				Definition.Chapter,
+				((Definition.StageNumber - 1) % 3) + 1)),
+			15,
+			Ink);
+		StageLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 15));
+		if (UOverlaySlot* LabelSlot = NodeFace->AddChildToOverlay(StageLabel))
+		{
+			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
+			LabelSlot->SetVerticalAlignment(VAlign_Top);
+			LabelSlot->SetPadding(FMargin(4.0f, 3.0f, 4.0f, 0.0f));
+		}
+		UTextBlock* StatusLabel = MakeButtonText(
+			WidgetTree,
+			FText::FromString(StateText),
+			12,
+			StateColor);
+		if (UOverlaySlot* StatusSlot = NodeFace->AddChildToOverlay(StatusLabel))
+		{
+			StatusSlot->SetHorizontalAlignment(HAlign_Fill);
+			StatusSlot->SetVerticalAlignment(VAlign_Bottom);
+			StatusSlot->SetPadding(FMargin(3.0f, 0.0f, 3.0f, 4.0f));
+		}
+		Node->SetContent(NodeFace);
+		AddCanvas(RootCanvas, Node, FVector2D(NodeX, NodeY[LocalIndex]), NodeSize);
 		StageButtons.Add(Node);
 	}
-	TravelStageText = MakeText(WidgetTree, FText::FromString(TEXT("当前游历关卡：未选择")), 20, FLinearColor::White);
-	if (Subsystem)
-	{
-		const FName Current = Subsystem->GetTrainingProgressCopy().CurrentTravelStageId;
-		TravelStageText->SetText(FText::FromString(FString::Printf(TEXT("当前游历关卡：%s"), *Current.ToString())));
-	}
-	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 640.0f), FVector2D(252.0f, 72.0f));
+
+	UTextBlock* SelectedStageText = MakeText(
+		WidgetTree,
+		FText::FromString(FString::Printf(TEXT("已选择：%s"), *StageShortLabel(SelectedStageId))),
+		16,
+		Ink,
+		TEXT("TrainingSelectedStageText"));
+	AddCanvas(RootCanvas, SelectedStageText, FVector2D(1388.0f, 690.0f), FVector2D(242.0f, 26.0f));
+	TravelStageText = MakeText(
+		WidgetTree,
+		FText::FromString(FString::Printf(
+			TEXT("当前游历：%s"),
+			*StageShortLabel(Progress.CurrentTravelStageId))),
+		17,
+		FLinearColor(0.10f, 0.07f, 0.04f, 1.0f),
+		TEXT("TrainingCurrentTravelStageText"));
+	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 724.0f), FVector2D(242.0f, 56.0f));
+
 	UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("TrainingChallengeButton"));
@@ -4296,7 +6482,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	Challenge->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("挑战")), 22));
 	if (Subsystem)
 	{
-		const FGameXXKTrainingProgress Progress = Subsystem->GetTrainingProgressCopy();
 		const bool bCanChallenge = FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
 		Challenge->SetIsEnabled(bCanChallenge);
 		if (!bCanChallenge)
@@ -4323,6 +6508,61 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	}
 	AddCanvas(RootCanvas, Travel, FVector2D(1517.0f, 828.0f), FVector2D(116.0f, 58.0f));
 	ActionButtons.Add(Travel);
+
+	// Dropdown options are appended last so the expanded list overlays chapter
+	// tabs and route nodes without shifting the fixed right-panel layout.
+	if (bTrainingDifficultyDropdownOpen)
+	{
+		UBorder* DropdownPaper = MakeSlotPanel(
+			WidgetTree,
+			ItemSlotTexturePath,
+			PanelAlt,
+			FVector2D(246.0f, 132.0f),
+			TEXT("TrainingDifficultyDropdownPaper"));
+		AddCanvas(RootCanvas, DropdownPaper, FVector2D(1384.0f, 124.0f), FVector2D(246.0f, 132.0f));
+		if (UCanvasPanelSlot* PaperSlot = Cast<UCanvasPanelSlot>(DropdownPaper->Slot))
+		{
+			PaperSlot->SetZOrder(49);
+		}
+		for (int32 DifficultyIndex = 0; DifficultyIndex < 3; ++DifficultyIndex)
+		{
+			const EGameXXKTrainingDifficulty Difficulty =
+				TrainingDifficultyFromIndex(DifficultyIndex);
+			const bool bUnlocked = !Subsystem
+				|| FGameXXKTrainingRules::IsDifficultyUnlocked(Progress, Difficulty);
+			const bool bSelectedDifficulty = DifficultyIndex == ActiveTrainingDifficultyIndex;
+			UGameXXKDesktopTrainingActionButton* Option =
+				WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+					UGameXXKDesktopTrainingActionButton::StaticClass(),
+					*FString::Printf(TEXT("TrainingDifficultyOption_%d"), DifficultyIndex));
+			Option->Configure(this, ActionTrainingDifficultyFirst + DifficultyIndex);
+			Option->SetStyle(MakeTextureButtonStyle(
+				bSelectedDifficulty ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
+				FVector2D(230.0f, 38.0f),
+				FMargin(0.08f)));
+			Option->SetBackgroundColor(FLinearColor::White);
+			Option->SetContent(MakeButtonText(
+				WidgetTree,
+				FText::FromString(bUnlocked
+					? DifficultyLabel(Difficulty)
+					: FString::Printf(TEXT("%s · 未解锁"), *DifficultyLabel(Difficulty))),
+				16,
+				bUnlocked ? (bSelectedDifficulty ? Accent : Ink) : FLinearColor(0.35f, 0.35f, 0.35f, 0.72f)));
+			// Locked difficulties remain viewable.  Their node/action permissions
+			// are still driven by CanChallenge/CanTravel below.
+			Option->SetIsEnabled(true);
+			AddCanvas(
+				RootCanvas,
+				Option,
+				FVector2D(1392.0f, 128.0f + DifficultyIndex * 41.0f),
+				FVector2D(230.0f, 38.0f));
+			if (UCanvasPanelSlot* OptionSlot = Cast<UCanvasPanelSlot>(Option->Slot))
+			{
+				OptionSlot->SetZOrder(50);
+			}
+			ActionButtons.Add(Option);
+		}
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBottomNavigation()
@@ -4391,12 +6631,27 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
 	TGuardValue<bool> InternalLayoutRebuildGuard(bInternalLayoutRebuild, true);
 	const bool bWasInViewport = IsInViewport();
 	const ESlateVisibility PreviousVisibility = GetVisibility();
-	if (bWasInViewport)
+	TSharedPtr<SWindow> ExternalHostWindow;
+	if (!bWasInViewport && FSlateApplication::IsInitialized())
+	{
+		const TSharedPtr<SWidget> CachedSlateWidget = GetCachedWidget();
+		ExternalHostWindow = CachedSlateWidget.IsValid()
+			? FSlateApplication::Get().FindWidgetWindow(CachedSlateWidget.ToSharedRef())
+			: nullptr;
+	}
+	if (bWasInViewport || ExternalHostWindow.IsValid())
 	{
 		// WidgetTree children are rebuilt for workbench navigation changes. A live
 		// UUserWidget otherwise keeps the old Slate tree, so detach and release the
 		// cached Slate resource before attaching the new tree.
-		RemoveFromParent();
+		if (bWasInViewport)
+		{
+			RemoveFromParent();
+		}
+		else
+		{
+			ExternalHostWindow->SetContent(SNullWidget::NullWidget);
+		}
 		ReleaseSlateResources(true);
 	}
 	BuildProgrammaticLayout();
@@ -4410,6 +6665,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
 		{
 			PlayerController->RefreshPlayerFlowWidgetsFromState();
 		}
+	}
+	else if (ExternalHostWindow.IsValid())
+	{
+		ExternalHostWindow->SetContent(TakeWidget());
+		SetVisibility(PreviousVisibility);
 	}
 }
 
@@ -4851,7 +7111,26 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnToolSlot(const int32 S
 	ToolSlots[SlotIndex] = CarriedEntry.Payload;
 	CarriedEntry.Reset();
 	RefreshLayout();
+	bDesktopNativeLayoutDirty = true;
 	return true;
+}
+
+TSet<FGameXXKDesktopInventoryEntryKey>
+UGameXXKDesktopTrainingWorkbenchWidget::BuildBatchTransferExclusions() const
+{
+	TSet<FGameXXKDesktopInventoryEntryKey> Result;
+	if (CarriedEntry.IsValid())
+	{
+		Result.Add(CarriedEntry.Payload.Entry);
+	}
+	for (const FDesktopToolEntry& ToolEntry : ToolSlots)
+	{
+		if (ToolEntry.IsValid())
+		{
+			Result.Add(ToolEntry.Entry);
+		}
+	}
+	return Result;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::RouteBackpackRightClick(const int32 SlotIndex)
@@ -4980,6 +7259,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CloseRightPanelToParent()
 	CancelCarryForStructuralChange();
 	ReturnAllToolEntries();
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
+	bTrainingDifficultyDropdownOpen = false;
 	if (ActiveNav == EGameXXKDesktopTrainingNav::Tools
 		|| ActiveNav == EGameXXKDesktopTrainingNav::Training)
 	{
@@ -4999,6 +7279,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClos
 	ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	ActiveNav = EGameXXKDesktopTrainingNav::None;
+	bTrainingDifficultyDropdownOpen = false;
 	bHasSavedEmbeddedInventorySession = false;
 }
 
@@ -5043,41 +7324,822 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandlePersistenceBoundary()
 	AbortTransientInventoryInteraction(true, true);
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleTalentPurchaseCommitted()
+{
+	RefreshLivePresentation(true);
+	if (EmbeddedInventoryWidget)
+	{
+		EmbeddedInventoryWidget->RefreshTalentCapacityPresentation();
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	FGameXXKTalentProjection Projection;
+	const bool bToolsUnlocked = Subsystem
+		&& FGameXXKTalentRules::BuildProjection(
+			Subsystem->GetRuntimeState().Talents,
+			Projection)
+		&& Projection.bToolsUnlocked;
+	if (bToolsUnlocked && WidgetTree)
+	{
+		if (UWidget* LockedPanel = WidgetTree->FindWidget(TEXT("ToolsTalentLockedPanel")))
+		{
+			LockedPanel->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateCarriedItemVisualPosition()
 {
-	if (!CarriedEntry.IsValid() || !CarriedItemImage || !GEngine || !GEngine->GameViewport)
+	if (!CarriedEntry.IsValid() || !CarriedItemImage)
 	{
 		return;
 	}
-	APlayerController* PlayerController = GetOwningPlayer();
-	float MouseX = 0.0f;
-	float MouseY = 0.0f;
-	FVector2D ViewportSize;
-	GEngine->GameViewport->GetViewportSize(ViewportSize);
-	if (!PlayerController || !PlayerController->GetMousePosition(MouseX, MouseY) || ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+	FVector2D ReferencePosition;
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
 	{
+	#if PLATFORM_WINDOWS
+		HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+		POINT CursorPoint = {};
+		if (!WindowHandle
+			|| !::IsWindow(WindowHandle)
+			|| !::GetCursorPos(&CursorPoint)
+			|| !::ScreenToClient(WindowHandle, &CursorPoint))
+		{
+			return;
+		}
+		ReferencePosition = GameXXKDesktopTrainingLayout::DesktopClientPointToReference(
+			FVector2D(
+				static_cast<double>(CursorPoint.x),
+				static_cast<double>(CursorPoint.y)),
+			DesktopOverlayPlacement.Scale,
+			FVector2D(28.0f, 28.0f));
+	#else
 		return;
+	#endif
 	}
-	const GameXXKDesktopTrainingLayout::FFitTransform Fit = GameXXKDesktopTrainingLayout::MakeFitTransform(ViewportSize);
-	if (Fit.Scale <= KINDA_SMALL_NUMBER)
+	else
 	{
-		return;
+		if (!GEngine || !GEngine->GameViewport)
+		{
+			return;
+		}
+		APlayerController* PlayerController = GetOwningPlayer();
+		float MouseX = 0.0f;
+		float MouseY = 0.0f;
+		FVector2D ViewportSize;
+		GEngine->GameViewport->GetViewportSize(ViewportSize);
+		if (!PlayerController
+			|| !PlayerController->GetMousePosition(MouseX, MouseY)
+			|| ViewportSize.X <= 0.0f
+			|| ViewportSize.Y <= 0.0f)
+		{
+			return;
+		}
+		const GameXXKDesktopTrainingLayout::FFitTransform Fit =
+			GameXXKDesktopTrainingLayout::MakeFitTransform(ViewportSize);
+		if (Fit.Scale <= KINDA_SMALL_NUMBER)
+		{
+			return;
+		}
+		ReferencePosition = (FVector2D(MouseX, MouseY) - Fit.Offset) / Fit.Scale
+			- FVector2D(28.0f, 28.0f);
 	}
-	const FVector2D ReferencePosition = (FVector2D(MouseX, MouseY) - Fit.Offset) / Fit.Scale - FVector2D(28.0f, 28.0f);
 	if (UCanvasPanelSlot* CarriedCanvasSlot = Cast<UCanvasPanelSlot>(CarriedItemImage->Slot))
 	{
 		CarriedCanvasSlot->SetPosition(ReferencePosition);
 	}
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::NotifyDesktopNativeMoveCompleted()
+{
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	bDesktopNativeMoveSavePending = true;
+	bDesktopNativeLayoutDirty = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::NotifyDesktopNativeDisplayMetricsChanged()
+{
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	bDesktopResolvedMetricsValid = false;
+	bDesktopNativeMoveSavePending = true;
+	bDesktopNativeLayoutDirty = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::InitializeDesktopPresentationHostSize(
+	const FVector2D& PhysicalWorkAreaSize)
+{
+	if (PhysicalWorkAreaSize.X <= 1.0f || PhysicalWorkAreaSize.Y <= 1.0f)
+	{
+		return;
+	}
+	LoadHudScaleSetting();
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport)
+	{
+		DesktopInputDpiScale = 1.0f;
+		DesktopWindowPositionNormalized =
+			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
+				false,
+				DesktopWindowPositionNormalized);
+	}
+	DesktopResolvedMetrics = GameXXKDesktopTrainingLayout::ResolveDesktopHudMetrics(
+		PhysicalWorkAreaSize,
+		HudScalePercent);
+	bDesktopResolvedMetricsValid = true;
+	DesktopOverlayHostSize = DesktopResolvedMetrics.PhysicalWorkAreaSize;
+	UpdateDesktopOverlayPlacement(DesktopOverlayHostSize);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetPresentationMode(
+	const EGameXXKDesktopHudPresentationMode InMode)
+{
+	if (PresentationMode == InMode)
+	{
+		UpdateTownPresentationInputLock();
+		return;
+	}
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		ReleaseDesktopNativeWindow();
+	}
+	PresentationMode = InMode;
+	bDesktopHudDragging = false;
+	bDesktopResolvedMetricsValid = false;
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport)
+	{
+		DesktopInputDpiScale = 1.0f;
+		DesktopWindowPositionNormalized =
+			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
+				false,
+				DesktopWindowPositionNormalized);
+	}
+	else
+	{
+		bDesktopWindowPositionLoaded = false;
+		LoadDesktopNativeWindowPosition();
+	}
+	UpdateDesktopOverlayPlacement(DesktopOverlayHostSize);
+	UpdateTownPresentationInputLock();
+}
+
+FGameXXKDesktopWorkbenchSessionState
+UGameXXKDesktopTrainingWorkbenchWidget::CaptureSessionStateForMapTravel()
+{
+	FGameXXKDesktopWorkbenchSessionState Result;
+	if (EmbeddedInventoryWidget)
+	{
+		Result.EmbeddedInventory = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+	}
+	else if (bHasSavedEmbeddedInventorySession)
+	{
+		Result.EmbeddedInventory = SavedEmbeddedInventorySession;
+	}
+
+	AbortTransientInventoryInteraction(true, false);
+	bTrainingDifficultyDropdownOpen = false;
+	bNoticeSettingsOpen = false;
+	bExitConfirmationOpen = false;
+	bDesktopHudDragging = false;
+
+	Result.bValid = ResolveMVPSubsystem() != nullptr;
+	Result.bBackpackExpanded = bBackpackExpanded;
+	Result.bWarehousePanelOpen = bWarehousePanelOpen;
+	Result.WarehousePageIndex = GetWarehousePageIndexForTest();
+	Result.ActiveNav = ActiveNav;
+	Result.ActiveCenterPage = ActiveCenterPage;
+	Result.RightPanel = RightPanel;
+	Result.ActiveToolMode = ActiveToolMode;
+	Result.ActiveToolCombineKind = ActiveToolCombineKind;
+	Result.SelectedToolSocketIndex = SelectedToolSocketIndex;
+	Result.ActiveCharacterRoster = ActiveCharacterRoster;
+	Result.ActiveFormationRoster = ActiveFormationRoster;
+	Result.SelectedStageId = SelectedStageId;
+	Result.ActiveTrainingDifficultyIndex = ActiveTrainingDifficultyIndex;
+	Result.ActiveTrainingChapter = ActiveTrainingChapter;
+	Result.ActiveBackpackCharacterId = ActiveBackpackCharacterId;
+	Result.LastCompanionBackpackCharacterId = LastCompanionBackpackCharacterId;
+	Result.LastNpcBackpackCharacterId = LastNpcBackpackCharacterId;
+	Result.FormationCandidateCharacterId = FormationCandidateCharacterId;
+	Result.bCharacterRosterMembersExpanded = bCharacterRosterMembersExpanded;
+	Result.bSettingsPanelOpen = bSettingsPanelOpen;
+	return Result;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RestoreSessionStateAfterMapTravel(
+	const FGameXXKDesktopWorkbenchSessionState& State)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!State.bValid || !Subsystem)
+	{
+		return;
+	}
+	AbortTransientInventoryInteraction(true, false);
+	bTownMapTravelPending = false;
+	bBackpackExpanded = State.bBackpackExpanded;
+	bWarehousePanelOpen = bBackpackExpanded && State.bWarehousePanelOpen;
+	WarehousePageIndex = FMath::Clamp(
+		State.WarehousePageIndex,
+		0,
+		FMath::Max(0, GetWarehousePageCountForTest() - 1));
+	ActiveNav = bBackpackExpanded ? State.ActiveNav : EGameXXKDesktopTrainingNav::None;
+	ActiveCenterPage = State.ActiveCenterPage;
+	RightPanel = bBackpackExpanded
+		? State.RightPanel
+		: EGameXXKDesktopTrainingRightPanel::None;
+	ActiveToolMode = State.ActiveToolMode;
+	ActiveToolCombineKind = State.ActiveToolCombineKind;
+	SelectedToolSocketIndex = FMath::Clamp(State.SelectedToolSocketIndex, 0, 5);
+	ActiveCharacterRoster = State.ActiveCharacterRoster;
+	ActiveFormationRoster = State.ActiveFormationRoster;
+	bCharacterRosterMembersExpanded = State.bCharacterRosterMembersExpanded;
+	bSettingsPanelOpen = bBackpackExpanded && State.bSettingsPanelOpen;
+
+	const TArray<FName> BackpackCharacters = GetBackpackCharacterIdsForTest();
+	ActiveBackpackCharacterId = BackpackCharacters.Contains(State.ActiveBackpackCharacterId)
+		? State.ActiveBackpackCharacterId
+		: (BackpackCharacters.IsEmpty()
+			? FGameXXKEquipmentRules::HeroCharacterId()
+			: BackpackCharacters[0]);
+	const TArray<FName> CompanionCharacters = GetCompanionCharacterIdsForTest();
+	LastCompanionBackpackCharacterId =
+		CompanionCharacters.Contains(State.LastCompanionBackpackCharacterId)
+			? State.LastCompanionBackpackCharacterId
+			: (CompanionCharacters.IsEmpty() ? NAME_None : CompanionCharacters[0]);
+	const TArray<FName> NpcCharacters = GetNpcCharacterIdsForTest();
+	LastNpcBackpackCharacterId = NpcCharacters.Contains(State.LastNpcBackpackCharacterId)
+		? State.LastNpcBackpackCharacterId
+		: (NpcCharacters.IsEmpty() ? NAME_None : NpcCharacters[0]);
+	FormationCandidateCharacterId =
+		(CompanionCharacters.Contains(State.FormationCandidateCharacterId)
+			|| NpcCharacters.Contains(State.FormationCandidateCharacterId))
+			? State.FormationCandidateCharacterId
+			: NAME_None;
+	EnsureFormationCandidate();
+
+	FGameXXKTrainingStageDefinition StageDefinition;
+	if (FGameXXKTrainingRules::TryGetStageDefinition(
+			State.SelectedStageId,
+			StageDefinition))
+	{
+		SelectedStageId = State.SelectedStageId;
+		Subsystem->SelectTrainingStage(SelectedStageId);
+		SynchronizeTrainingPageFromStage(SelectedStageId);
+	}
+	else
+	{
+		ActiveTrainingDifficultyIndex = FMath::Clamp(
+			State.ActiveTrainingDifficultyIndex,
+			0,
+			2);
+		ActiveTrainingChapter = FMath::Clamp(State.ActiveTrainingChapter, 1, 3);
+		SelectedStageId = ResolvePreferredTrainingStageForPage(
+			TrainingDifficultyFromIndex(ActiveTrainingDifficultyIndex),
+			ActiveTrainingChapter);
+		Subsystem->SelectTrainingStage(SelectedStageId);
+	}
+
+	SavedEmbeddedInventorySession = State.EmbeddedInventory;
+	SavedEmbeddedInventorySession.CharacterId = ActiveBackpackCharacterId;
+	bHasSavedEmbeddedInventorySession = true;
+	bTrainingDifficultyDropdownOpen = false;
+	bNoticeSettingsOpen = false;
+	bExitConfirmationOpen = false;
+	bDesktopHudDragging = false;
+	bDesktopResolvedMetricsValid = false;
+	bDesktopNativeLayoutDirty = true;
+	RefreshLayout();
+	UpdateTownPresentationInputLock();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetTownMapTravelPending(
+	const bool bPending)
+{
+	bTownMapTravelPending = bPending;
+	if (TownToggleButton)
+	{
+		TownToggleButton->SetIsEnabled(!bPending);
+	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RequestTownToggle()
+{
+	if (bTownMapTravelPending)
+	{
+		return false;
+	}
+	AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController();
+	return PlayerController
+		&& PlayerController->RequestDesktopTownToggleFromWorkbench();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTownPresentationInputLock()
+{
+	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
+	{
+		PlayerController->SetDesktopWorkbenchTownPanelInputLock(
+			PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport
+			&& bBackpackExpanded
+			&& GetVisibility() != ESlateVisibility::Collapsed
+			&& GetVisibility() != ESlateVisibility::Hidden);
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::LoadDesktopNativeWindowPosition()
+{
+	if (bDesktopWindowPositionLoaded)
+	{
+		return;
+	}
+	float PositionX = 0.5f;
+	float PositionY = 0.08f;
+	if (GConfig)
+	{
+		GConfig->GetFloat(
+			HudSettingsSection,
+			DesktopWindowPositionXKey,
+			PositionX,
+			GGameUserSettingsIni);
+		GConfig->GetFloat(
+			HudSettingsSection,
+			DesktopWindowPositionYKey,
+			PositionY,
+			GGameUserSettingsIni);
+	}
+	DesktopWindowPositionNormalized = FVector2D(
+		FMath::Clamp(PositionX, 0.0f, 1.0f),
+		FMath::Clamp(PositionY, 0.0f, 1.0f));
+	bDesktopWindowPositionLoaded = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SaveDesktopNativeWindowPosition()
+{
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	if (GConfig)
+	{
+		GConfig->SetFloat(
+			HudSettingsSection,
+			DesktopWindowPositionXKey,
+			DesktopWindowPositionNormalized.X,
+			GGameUserSettingsIni);
+		GConfig->SetFloat(
+			HudSettingsSection,
+			DesktopWindowPositionYKey,
+			DesktopWindowPositionNormalized.Y,
+			GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
+	const FVector2D& HostSize)
+{
+	if (HostSize.X <= 1.0f || HostSize.Y <= 1.0f)
+	{
+		return;
+	}
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		LoadDesktopNativeWindowPosition();
+	}
+	else
+	{
+		DesktopWindowPositionNormalized =
+			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
+				false,
+				DesktopWindowPositionNormalized);
+	}
+	const FVector2D PreviousHudSize = DesktopOverlayPlacement.HudSize;
+	DesktopOverlayHostSize = HostSize;
+	const GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics Metrics =
+		bDesktopResolvedMetricsValid
+			? DesktopResolvedMetrics
+			: GameXXKDesktopTrainingLayout::ResolveDesktopHudMetrics(
+				DesktopOverlayHostSize,
+				HudScalePercent);
+	DesktopOverlayPlacement = GameXXKDesktopTrainingLayout::ComputeDesktopOverlayPlacementAtScale(
+		Metrics,
+		DesktopWindowPositionNormalized,
+		bBackpackExpanded,
+		bExpandUpward,
+		GetNoticePanelLogicalHeight(),
+		bWarehousePanelOpen);
+	if (!bBackpackExpanded && bIdleStripFolded)
+	{
+		const FVector2D FoldedLogicalSize = GetCurrentDesignCanvasSize();
+		DesktopOverlayPlacement.HudSize = FoldedLogicalSize * DesktopOverlayPlacement.Scale;
+		const FVector2D MaximumHudTopLeft(
+			FMath::Max(0.0f, DesktopOverlayPlacement.HostSize.X - DesktopOverlayPlacement.HudSize.X),
+			FMath::Max(0.0f, DesktopOverlayPlacement.HostSize.Y - DesktopOverlayPlacement.HudSize.Y));
+		DesktopOverlayPlacement.HudTopLeft = FVector2D(
+			FMath::Clamp(DesktopOverlayPlacement.HudTopLeft.X, 0.0f, MaximumHudTopLeft.X),
+			FMath::Clamp(DesktopOverlayPlacement.HudTopLeft.Y, 0.0f, MaximumHudTopLeft.Y));
+		DesktopOverlayPlacement.StripTopLeft = DesktopOverlayPlacement.HudTopLeft;
+		DesktopOverlayPlacement.StripSize = FVector2D(
+			IdleSummaryTabX + IdleSummaryTabWidth,
+			NoticeLineHeight) * DesktopOverlayPlacement.Scale;
+	}
+	if (!DesktopOverlayPlacement.HudSize.Equals(PreviousHudSize, 0.5f))
+	{
+		bDesktopNativeLayoutDirty = true;
+	}
+	if (DesktopHudCanvasSlot)
+	{
+		const bool bDesktopWindow =
+			PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow;
+		const float InputDpiScale = bDesktopWindow ? DesktopInputDpiScale : 1.0f;
+		DesktopHudCanvasSlot->SetPosition(bDesktopWindow
+			? FVector2D::ZeroVector
+			: DesktopOverlayPlacement.HudTopLeft);
+		DesktopHudCanvasSlot->SetSize(
+			GameXXKDesktopTrainingLayout::PhysicalPixelsToSlateHost(
+				DesktopOverlayPlacement.HudSize,
+				InputDpiScale));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPointer(
+	const FGeometry& HostGeometry,
+	const FVector2D& ScreenSpacePointerPosition)
+{
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	const FVector2D HostSize = DesktopOverlayHostSize;
+	if (HostSize.X <= 1.0f || HostSize.Y <= 1.0f)
+	{
+		return;
+	}
+	const FVector2D HostPoint = HostGeometry.AbsoluteToLocal(ScreenSpacePointerPosition)
+		* FMath::Max(0.01f, DesktopInputDpiScale);
+	FVector2D PointerInWorkArea = HostPoint + DesktopOverlayPlacement.HudTopLeft;
+#if PLATFORM_WINDOWS
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	RECT WindowRect = {};
+	if (WindowHandle && ::IsWindow(WindowHandle) && ::GetWindowRect(WindowHandle, &WindowRect))
+	{
+		PointerInWorkArea = FVector2D(
+			static_cast<float>(WindowRect.left - DesktopWorkAreaOrigin.X),
+			static_cast<float>(WindowRect.top - DesktopWorkAreaOrigin.Y)) + HostPoint;
+	}
+#endif
+	const FVector2D DesiredStripTopLeft = PointerInWorkArea - DesktopHudDragPointerOffset;
+	const float Scale = bDesktopResolvedMetricsValid
+		? DesktopResolvedMetrics.Scale
+		: GameXXKDesktopTrainingLayout::ComputeEffectiveHudScale(
+			HostSize,
+			HudScalePercent);
+	const FVector2D CollapsedStripSize =
+		GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize() * Scale;
+	const FVector2D AvailableAnchorTravel(
+		FMath::Max(1.0f, HostSize.X - CollapsedStripSize.X),
+		FMath::Max(1.0f, HostSize.Y - CollapsedStripSize.Y));
+	DesktopWindowPositionNormalized = FVector2D(
+		FMath::Clamp(DesiredStripTopLeft.X / AvailableAnchorTravel.X, 0.0f, 1.0f),
+		FMath::Clamp(DesiredStripTopLeft.Y / AvailableAnchorTravel.Y, 0.0f, 1.0f));
+	UpdateDesktopOverlayPlacement(HostSize);
+	bDesktopNativeLayoutDirty = true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateExpansionDirectionFromNativeWindow()
+{
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		LoadDesktopNativeWindowPosition();
+	}
+	else
+	{
+		DesktopWindowPositionNormalized =
+			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
+				false,
+				DesktopWindowPositionNormalized);
+	}
+	const FVector2D HostSize(
+		FMath::Max(1.0f, DesktopOverlayHostSize.X),
+		FMath::Max(1.0f, DesktopOverlayHostSize.Y));
+	const GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics Metrics =
+		bDesktopResolvedMetricsValid
+			? DesktopResolvedMetrics
+			: GameXXKDesktopTrainingLayout::ResolveDesktopHudMetrics(
+				HostSize,
+				HudScalePercent);
+	const GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement CollapsedPlacement =
+		GameXXKDesktopTrainingLayout::ComputeDesktopOverlayPlacementAtScale(
+			Metrics,
+			DesktopWindowPositionNormalized,
+			false,
+			false,
+			GetNoticePanelLogicalHeight());
+	const FVector4 WorkArea(0.0f, 0.0f, HostSize.X, HostSize.Y);
+	const FVector4 StripRect(
+		CollapsedPlacement.StripTopLeft.X,
+		CollapsedPlacement.StripTopLeft.Y,
+		CollapsedPlacement.StripSize.X,
+		CollapsedPlacement.StripSize.Y);
+	bExpandUpward = GameXXKDesktopTrainingLayout::ChooseVerticalExpansionDirection(
+		WorkArea,
+		StripRect,
+		GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().Y * CollapsedPlacement.Scale)
+		== GameXXKDesktopTrainingLayout::EGameXXKDesktopVerticalExpansionDirection::Up;
+	UpdateDesktopOverlayPlacement(HostSize);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresentation(
+	void* NativeWindowHandle)
+{
+#if PLATFORM_WINDOWS
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return false;
+	}
+	HWND WindowHandle = static_cast<HWND>(NativeWindowHandle);
+	if (!WindowHandle || !::IsWindow(WindowHandle))
+	{
+		return false;
+	}
+	if (bDesktopNativeHookInstalled)
+	{
+		return DesktopNativeWindowHandle == NativeWindowHandle;
+	}
+	WNDPROC PreviousWindowProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(
+		WindowHandle,
+		GWLP_WNDPROC,
+		reinterpret_cast<LONG_PTR>(&GameXXKDesktopWindowProc)));
+	if (!PreviousWindowProc)
+	{
+		return false;
+	}
+	FGameXXKDesktopWindowHook Hook;
+	Hook.PreviousWindowProc = PreviousWindowProc;
+	Hook.Owner = this;
+	GetDesktopWindowHooks().Add(WindowHandle, Hook);
+	if (!InstallDesktopLowLevelMouseHook())
+	{
+		GetDesktopWindowHooks().Remove(WindowHandle);
+		::SetWindowLongPtr(
+			WindowHandle,
+			GWLP_WNDPROC,
+			reinterpret_cast<LONG_PTR>(PreviousWindowProc));
+		return false;
+	}
+	DesktopNativeWindowHandle = WindowHandle;
+	DesktopPreviousWindowProc = reinterpret_cast<void*>(PreviousWindowProc);
+	bDesktopNativeHookInstalled = true;
+	bDesktopNativeLayoutDirty = true;
+	bDesktopNativeLastExpanded = bBackpackExpanded;
+	DesktopNativeLastHudScalePercent = INDEX_NONE;
+	ApplyDesktopNativeWindowLayout(true);
+	RefreshDesktopNativeMousePassthrough();
+	return true;
+#else
+	(void)NativeWindowHandle;
+	return false;
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::DetachDesktopNativeWindowForPresentation()
+{
+	ReleaseDesktopNativeWindow();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetDesktopNativeMousePassthrough(
+	const bool bEnabled)
+{
+#if PLATFORM_WINDOWS
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	if (!WindowHandle || !::IsWindow(WindowHandle))
+	{
+		return;
+	}
+	const LONG_PTR CurrentStyle = ::GetWindowLongPtrW(WindowHandle, GWL_EXSTYLE);
+	const bool bCurrentlyEnabled =
+		(CurrentStyle & static_cast<LONG_PTR>(WS_EX_TRANSPARENT)) != 0;
+	if (bCurrentlyEnabled == bEnabled)
+	{
+		bDesktopNativeMousePassthrough = bEnabled;
+		return;
+	}
+	const LONG_PTR DesiredStyle = bEnabled
+		? CurrentStyle | static_cast<LONG_PTR>(WS_EX_TRANSPARENT)
+		: CurrentStyle & ~static_cast<LONG_PTR>(WS_EX_TRANSPARENT);
+	::SetLastError(0);
+	const LONG_PTR PreviousStyle = ::SetWindowLongPtrW(
+		WindowHandle,
+		GWL_EXSTYLE,
+		DesiredStyle);
+	if (PreviousStyle == 0 && ::GetLastError() != 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Failed to toggle desktop mouse passthrough: enabled=%s error=%lu"),
+			bEnabled ? TEXT("true") : TEXT("false"),
+			static_cast<uint32>(::GetLastError()));
+		return;
+	}
+	::SetWindowPos(
+		WindowHandle,
+		nullptr,
+		0,
+		0,
+		0,
+		0,
+		SWP_FRAMECHANGED
+			| SWP_NOACTIVATE
+			| SWP_NOMOVE
+			| SWP_NOSIZE
+			| SWP_NOZORDER);
+	bDesktopNativeMousePassthrough = bEnabled;
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthrough()
+{
+#if PLATFORM_WINDOWS
+	if (!bDesktopNativeHookInstalled
+		|| PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	GameXXKDesktopTrainingLayout::FDesktopOverlayMouseState MouseState;
+	MouseState.bCarryingItem = CarriedEntry.IsValid();
+	MouseState.bHudDragging = bDesktopHudDragging;
+	if (FSlateApplication::IsInitialized())
+	{
+		MouseState.bMouseCaptured = FSlateApplication::Get().HasAnyMouseCaptor();
+		MouseState.bDragDropActive = FSlateApplication::Get().IsDragDropping();
+	}
+
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	POINT CursorPoint = {};
+	RECT ClientRect = {};
+	if (WindowHandle
+		&& ::IsWindow(WindowHandle)
+		&& ::GetCursorPos(&CursorPoint)
+		&& ::ScreenToClient(WindowHandle, &CursorPoint)
+		&& ::GetClientRect(WindowHandle, &ClientRect)
+		&& CursorPoint.x >= ClientRect.left
+		&& CursorPoint.y >= ClientRect.top
+		&& CursorPoint.x < ClientRect.right
+		&& CursorPoint.y < ClientRect.bottom)
+	{
+		GameXXKDesktopTrainingLayout::FDesktopNativeRegionState SurfaceState;
+		SurfaceState.bExpanded = bBackpackExpanded;
+		SurfaceState.bIdleStripFolded = bIdleStripFolded;
+		SurfaceState.bExpandUpward = bExpandUpward;
+		SurfaceState.bWarehouseOpen = bWarehousePanelOpen;
+		SurfaceState.bRightPanelOpen =
+			RightPanel != EGameXXKDesktopTrainingRightPanel::None;
+		SurfaceState.bExitConfirmationOpen = bExitConfirmationOpen;
+		SurfaceState.NoticeHeight = GetNoticePanelLogicalHeight();
+		SurfaceState.Scale = DesktopOverlayPlacement.Scale;
+		SurfaceState.ContentOffset = DesktopOverlayPlacement.ContentOffset;
+		SurfaceState.bTownToggleVisible =
+			bBackpackExpanded && DesktopOverlayPlacement.TownToggleRect.Z > 0.0f;
+		SurfaceState.TownToggleRect = DesktopOverlayPlacement.TownToggleRect;
+		const TArray<GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape> Surfaces =
+			GameXXKDesktopTrainingLayout::BuildDesktopNativeRegionShapes(SurfaceState);
+		MouseState.bPointerOverInteractiveSurface =
+			GameXXKDesktopTrainingLayout::IsPointInsideDesktopNativeRegionShapes(
+				Surfaces,
+				FVector2D(
+					static_cast<double>(CursorPoint.x),
+					static_cast<double>(CursorPoint.y)));
+	}
+
+	const bool bShouldPassMouseThrough =
+		GameXXKDesktopTrainingLayout::ShouldDesktopOverlayPassMouseThrough(MouseState);
+	SetDesktopNativeMousePassthrough(bShouldPassMouseThrough);
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeWindowLayout(const bool bForce)
+{
+#if PLATFORM_WINDOWS
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	if (!WindowHandle || !::IsWindow(WindowHandle))
+	{
+		return;
+	}
+	if (!bForce && !bDesktopNativeLayoutDirty)
+	{
+		return;
+	}
+	MONITORINFO MonitorInfo = {};
+	MonitorInfo.cbSize = sizeof(MONITORINFO);
+	if (!::GetMonitorInfo(
+			::MonitorFromWindow(WindowHandle, MONITOR_DEFAULTTONEAREST),
+			&MonitorInfo))
+	{
+		return;
+	}
+	const int32 DesiredWidth = FMath::Max(1, MonitorInfo.rcWork.right - MonitorInfo.rcWork.left);
+	const int32 DesiredHeight = FMath::Max(1, MonitorInfo.rcWork.bottom - MonitorInfo.rcWork.top);
+	DesktopWorkAreaOrigin = FIntPoint(MonitorInfo.rcWork.left, MonitorInfo.rcWork.top);
+	DesktopInputDpiScale = FMath::Max(1.0f, GetDesktopMonitorDpiScale(WindowHandle));
+	const FVector2D PhysicalWorkAreaSize(
+		static_cast<float>(DesiredWidth),
+		static_cast<float>(DesiredHeight));
+	if (!bDesktopResolvedMetricsValid
+		|| !DesktopResolvedMetrics.PhysicalWorkAreaSize.Equals(PhysicalWorkAreaSize, 0.5f)
+		|| DesktopNativeLastHudScalePercent != HudScalePercent)
+	{
+		InitializeDesktopPresentationHostSize(PhysicalWorkAreaSize);
+	}
+	else
+	{
+		UpdateDesktopOverlayPlacement(PhysicalWorkAreaSize);
+	}
+	::SetWindowPos(
+		WindowHandle,
+		bAlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST,
+		MonitorInfo.rcWork.left + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.X),
+		MonitorInfo.rcWork.top + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.Y),
+		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.X)),
+		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.Y)),
+		SWP_NOACTIVATE | SWP_FRAMECHANGED);
+	bDesktopNativeLastExpanded = bBackpackExpanded;
+	DesktopNativeLastHudScalePercent = HudScalePercent;
+	bDesktopNativeLayoutDirty = false;
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::TickDesktopNativeWindow()
+{
+#if PLATFORM_WINDOWS
+	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow
+		|| GetVisibility() == ESlateVisibility::Collapsed
+		|| GetVisibility() == ESlateVisibility::Hidden
+		|| !FSlateApplication::IsInitialized())
+	{
+		return;
+	}
+	if (!bDesktopNativeHookInstalled)
+	{
+		return;
+	}
+	if (bDesktopNativeMoveSavePending)
+	{
+		bDesktopNativeMoveSavePending = false;
+		SaveDesktopNativeWindowPosition();
+	}
+	ApplyDesktopNativeWindowLayout(false);
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
+{
+#if PLATFORM_WINDOWS
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	if (WindowHandle && ::IsWindow(WindowHandle))
+	{
+		SetDesktopNativeMousePassthrough(false);
+		if (FGameXXKDesktopWindowHook* Hook = GetDesktopWindowHooks().Find(WindowHandle))
+		{
+			if (Hook->PreviousWindowProc)
+			{
+				::SetWindowLongPtr(
+					WindowHandle,
+					GWLP_WNDPROC,
+					reinterpret_cast<LONG_PTR>(Hook->PreviousWindowProc));
+			}
+			GetDesktopWindowHooks().Remove(WindowHandle);
+			ReleaseDesktopLowLevelMouseHookIfUnused();
+		}
+	}
+	DesktopNativeWindowHandle = nullptr;
+	DesktopPreviousWindowProc = nullptr;
+	bDesktopNativeHookInstalled = false;
+	bDesktopNativeMousePassthrough = false;
+	DesktopInputDpiScale = 1.0f;
+	bDesktopNativeLayoutDirty = true;
+	DesktopNativeLastHudScalePercent = INDEX_NONE;
+#endif
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::ToggleAlwaysOnTop()
 {
 	bAlwaysOnTop = !bAlwaysOnTop;
+	bDesktopNativeLayoutDirty = true;
 #if PLATFORM_WINDOWS
-	if (!GIsEditor && FSlateApplication::IsInitialized())
+	if (FSlateApplication::IsInitialized())
 	{
-		const TSharedPtr<SWindow> Window = FSlateApplication::Get().FindWidgetWindow(TakeWidget());
-		const TSharedPtr<FGenericWindow> NativeWindow = Window.IsValid() ? Window->GetNativeWindow() : nullptr;
+		const TSharedPtr<SWidget> CachedSlateWidget = GetCachedWidget();
+		const TSharedPtr<SWindow> Window = CachedSlateWidget.IsValid()
+			? FSlateApplication::Get().FindWidgetWindow(CachedSlateWidget.ToSharedRef())
+			: nullptr;
+		const TSharedPtr<FGenericWindow> NativeWindow =
+			Window.IsValid() && Window->GetTitle().ToString() == TEXT("GameXXKDesktopOverlay")
+				? Window->GetNativeWindow()
+				: nullptr;
 		HWND WindowHandle = NativeWindow.IsValid()
 			? static_cast<HWND>(NativeWindow->GetOSWindowHandle())
 			: nullptr;
@@ -5117,6 +8179,51 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ToggleMuted()
 	return true;
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::LoadHudScaleSetting()
+{
+	if (bHudScaleSettingLoaded)
+	{
+		return;
+	}
+	int32 SavedPercent = 100;
+	if (GConfig)
+	{
+		GConfig->GetInt(
+			HudSettingsSection,
+			HudScaleConfigKey,
+			SavedPercent,
+			GGameUserSettingsIni);
+	}
+	HudScalePercent = SavedPercent <= 50 ? 50 : 100;
+	bHudScaleSettingLoaded = true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::SetHudScalePercent(const int32 InPercent)
+{
+	const int32 NewPercent = InPercent <= 50 ? 50 : 100;
+	if (HudScalePercent == NewPercent)
+	{
+		return false;
+	}
+	HudScalePercent = NewPercent;
+	bDesktopResolvedMetricsValid = false;
+	bDesktopNativeLayoutDirty = true;
+	if (GConfig)
+	{
+		GConfig->SetInt(
+			HudSettingsSection,
+			HudScaleConfigKey,
+			HudScalePercent,
+			GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
+	SetNotice(FText::FromString(FString::Printf(
+		TEXT("HUD缩放已切换为 %d%%"),
+		HudScalePercent)));
+	RefreshLayout();
+	return true;
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::RequestExit()
 {
 	AbortTransientInventoryInteraction(true, false);
@@ -5150,6 +8257,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	{
 		return false;
 	}
+	const EGameXXKDesktopNoticeCategory ToolNoticeCategory =
+		NoticeCategoryForToolMode(ActiveToolMode);
 	const FGameXXKRuntimeState& RuntimeState = Subsystem->GetRuntimeState();
 	for (const FDesktopToolEntry& ReservedEntry : ToolSlots)
 	{
@@ -5189,7 +8298,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 		}
 		if (!bExactAuthority)
 		{
-			SetNotice(FText::FromString(TEXT("工具输入来源已变化；未执行操作且未消耗任何道具")));
+			SetNotice(
+				FText::FromString(TEXT("工具输入来源已变化；未执行操作且未消耗任何道具")),
+				ToolNoticeCategory);
 			return false;
 		}
 	}
@@ -5207,7 +8318,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	}
 	if (Inputs.IsEmpty())
 	{
-		SetNotice(FText::FromString(TEXT("请先放入道具")));
+		SetNotice(FText::FromString(TEXT("请先放入道具")), ToolNoticeCategory);
 		return false;
 	}
 
@@ -5228,7 +8339,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 			|| !ToolSlots[0].IsValid() || !ToolSlots[1].IsValid()
 			|| !ToolSlots[0].Entry.bEquipmentInstance || ToolSlots[1].Entry.bEquipmentInstance)
 		{
-			SetNotice(FText::FromString(TEXT("镶嵌要求格0为装备、格1为宝石")));
+			SetNotice(
+				FText::FromString(TEXT("镶嵌要求格0为装备、格1为宝石")),
+				ToolNoticeCategory);
 			return false;
 		}
 		FGameXXKSocketGemRequest Request;
@@ -5239,7 +8352,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	}
 	else if (Inputs.Num() != 1 || !Inputs[0].ExpectedEntry.bEquipmentInstance)
 	{
-		SetNotice(FText::FromString(TEXT("强化和洗炼一次只能放入一件装备")));
+		SetNotice(
+			FText::FromString(TEXT("强化和洗炼一次只能放入一件装备")),
+			ToolNoticeCategory);
 		return false;
 	}
 	else if (ActiveToolMode == EGameXXKDesktopToolMode::Enhance)
@@ -5250,7 +8365,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	{
 		if (Subsystem->GetRuntimeState().EquipmentCollection.PendingReforge.bActive)
 		{
-			SetNotice(FText::FromString(TEXT("请选择采用新词缀或保留原词缀")));
+			SetNotice(
+				FText::FromString(TEXT("请选择采用新词缀或保留原词缀")),
+				ToolNoticeCategory);
 			return false;
 		}
 		bSucceeded = Subsystem->ExecuteToolBeginReforge(Inputs[0], 0, Result);
@@ -5258,7 +8375,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	}
 	if (!bSucceeded)
 	{
-		SetNotice(Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行失败；未改变输入道具")) : Result.Message);
+		SetNotice(
+			Result.Message.IsEmpty()
+				? FText::FromString(TEXT("工具执行失败；未改变输入道具"))
+				: Result.Message,
+			ToolNoticeCategory);
 		return false;
 	}
 	if (!bKeepReservations)
@@ -5268,7 +8389,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 	Subsystem->NormalizeDesktopInventoryState();
 	SetNotice(bKeepReservations
 		? FText::FromString(TEXT("洗炼预览已生成，请选择采用或保留"))
-		: (Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行完成")) : Result.Message));
+		: (Result.Message.IsEmpty() ? FText::FromString(TEXT("工具执行完成")) : Result.Message),
+		ToolNoticeCategory);
 	RefreshLayout();
 	return true;
 }
@@ -5282,6 +8404,70 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (bExitConfirmationOpen && ActionId != 53 && ActionId != 54)
 	{
+		return;
+	}
+	if (ActionId == ActionToggleTown)
+	{
+		RequestTownToggle();
+		return;
+	}
+	if (ActionId == ActionIdleStripFold)
+	{
+		bIdleStripFolded = !bIdleStripFolded;
+		bNoticeSettingsOpen = false;
+		NoticeDisplayMode = EDesktopNoticeDisplayMode::Single;
+		NoticeScrollOffset = 0;
+		bDesktopNativeLayoutDirty = true;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId == ActionNoticeSurface)
+	{
+		return;
+	}
+	if (ActionId == ActionNoticeCollapse)
+	{
+		bNoticeSettingsOpen = false;
+		NoticeDisplayMode = NoticeDisplayMode == EDesktopNoticeDisplayMode::Long
+			? EDesktopNoticeDisplayMode::Medium
+			: EDesktopNoticeDisplayMode::Single;
+		NoticeScrollOffset = 0;
+		bDesktopNativeLayoutDirty = true;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId == ActionNoticeExpand)
+	{
+		bNoticeSettingsOpen = false;
+		NoticeDisplayMode = NoticeDisplayMode == EDesktopNoticeDisplayMode::Single
+			? EDesktopNoticeDisplayMode::Medium
+			: EDesktopNoticeDisplayMode::Long;
+		NoticeScrollOffset = 0;
+		bDesktopNativeLayoutDirty = true;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId == ActionNoticeSettings)
+	{
+		bNoticeSettingsOpen = !bNoticeSettingsOpen;
+		bDesktopNativeLayoutDirty = true;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId >= ActionNoticeCategoryFirst
+		&& ActionId < ActionNoticeCategoryFirst + UE_ARRAY_COUNT(NoticeCategories))
+	{
+		const EGameXXKDesktopNoticeCategory Category =
+			NoticeCategories[ActionId - ActionNoticeCategoryFirst];
+		NoticeCategoryEnabled.FindOrAdd(Category, true) = !NoticeCategoryEnabled.FindRef(Category);
+		SaveNoticeCategorySetting(Category);
+		NoticeScrollOffset = 0;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId == ActionHudScale100 || ActionId == ActionHudScale50)
+	{
+		SetHudScalePercent(ActionId == ActionHudScale50 ? 50 : 100);
 		return;
 	}
 	if (ActionId == ActionCloseWarehouse)
@@ -5340,7 +8526,43 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			}
 			ActiveNav = EGameXXKDesktopTrainingNav::Training;
 			RightPanel = EGameXXKDesktopTrainingRightPanel::TrainingMap;
+			bTrainingDifficultyDropdownOpen = false;
 		}
+		RefreshLayout();
+		return;
+	}
+	if (ActionId == ActionTrainingDifficultyDropdown)
+	{
+		CancelCarryForStructuralChange();
+		bTrainingDifficultyDropdownOpen = !bTrainingDifficultyDropdownOpen;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId >= ActionTrainingDifficultyFirst
+		&& ActionId < ActionTrainingDifficultyFirst + 3)
+	{
+		CancelCarryForStructuralChange();
+		const int32 DifficultyIndex = ActionId - ActionTrainingDifficultyFirst;
+		const EGameXXKTrainingDifficulty Difficulty =
+			TrainingDifficultyFromIndex(DifficultyIndex);
+		ActiveTrainingDifficultyIndex = DifficultyIndex;
+		ActiveTrainingChapter = ResolvePreferredTrainingChapter(Difficulty);
+		SelectedStageId = ResolvePreferredTrainingStageForPage(Difficulty, ActiveTrainingChapter);
+		Subsystem->SelectTrainingStage(SelectedStageId);
+		bTrainingDifficultyDropdownOpen = false;
+		RefreshLayout();
+		return;
+	}
+	if (ActionId >= ActionTrainingChapterFirst
+		&& ActionId < ActionTrainingChapterFirst + 3)
+	{
+		CancelCarryForStructuralChange();
+		ActiveTrainingChapter = ActionId - ActionTrainingChapterFirst + 1;
+		const EGameXXKTrainingDifficulty Difficulty =
+			TrainingDifficultyFromIndex(ActiveTrainingDifficultyIndex);
+		SelectedStageId = ResolvePreferredTrainingStageForPage(Difficulty, ActiveTrainingChapter);
+		Subsystem->SelectTrainingStage(SelectedStageId);
+		bTrainingDifficultyDropdownOpen = false;
 		RefreshLayout();
 		return;
 	}
@@ -5424,19 +8646,34 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		}
 		return;
 	}
-	if (ActionId == 40)
+	if (ActionId == 40 || ActionId == 41)
 	{
-		CancelCarryForStructuralChange();
-		PreviousWarehousePageForTest();
+		FGameXXKDesktopInventoryBatchTransferRequest Request;
+		Request.FromContainer = ActionId == 40
+			? EGameXXKDesktopItemContainer::Warehouse
+			: EGameXXKDesktopItemContainer::Backpack;
+		Request.ToContainer = ActionId == 40
+			? EGameXXKDesktopItemContainer::Backpack
+			: EGameXXKDesktopItemContainer::Warehouse;
+		Request.WarehousePageIndex = GetWarehousePageIndexForTest();
+		Request.WarehousePageSize = WarehousePageSize;
+		Request.ExcludedEntries = BuildBatchTransferExclusions();
+		FGameXXKDesktopInventoryBatchTransferResult Result;
+		if (!FGameXXKDesktopInventoryRules::BatchTransferCurrentWarehousePage(
+			Subsystem->GetMutableRuntimeState(), Request, Result))
+		{
+			SetNotice(FText::FromString(
+				Result.Error.IsEmpty() ? TEXT("当前物品无法批量转移") : Result.Error));
+			RefreshLayout();
+			return;
+		}
+		SetNotice(FText::FromString(Result.bDestinationFull
+			? FString::Printf(TEXT("已移动 %d 件，目标空间不足"), Result.MovedEntryCount)
+			: FString::Printf(TEXT("已移动 %d 件"), Result.MovedEntryCount)));
+		RefreshLayout();
 		return;
 	}
-	if (ActionId == 41)
-	{
-		CancelCarryForStructuralChange();
-		NextWarehousePageForTest();
-		return;
-	}
-	if (ActionId >= 70 && ActionId <= 72)
+	if (ActionId >= 70 && ActionId <= 75)
 	{
 		CancelCarryForStructuralChange();
 		const int32 RequestedPage = ActionId - 70;
@@ -5445,11 +8682,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			WarehousePageIndex = RequestedPage;
 			RefreshLayout();
 		}
-		return;
-	}
-	if (ActionId == 73)
-	{
-		SetNotice(FText::FromString(TEXT("仓库扩展页将在容量扩展后启用")));
 		return;
 	}
 	if (ActionId >= 100 && ActionId < 100 + WarehousePageSize)
@@ -5506,6 +8738,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		{
 			bSettingsPanelOpen = false;
 			bExitConfirmationOpen = false;
+			RouteSettlementReceiptAtChallengeStart =
+				Subsystem->GetRuntimeState().CardRun.LastAppliedRouteSettlementId;
+			bRestoreTrainingPanelAfterChallenge = true;
 			CloseWorkbench();
 			NotifyPlayerFlowStateChanged();
 		}
@@ -5529,6 +8764,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	case 10:
 		Subsystem->SetTrainingRetryOnFailure(!Subsystem->GetTrainingProgressCopy().bRetryOnFailure);
 		SetNotice(FText::FromString(TEXT("已切换游历失败重试策略")));
+		RefreshLayout();
 		break;
 	case 16:
 		CollectTravelRewardsForTest();
@@ -5584,7 +8820,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		SetNotice(FText::FromString(TEXT("邮件功能尚未开放")));
 		break;
 	case 19:
-		SetNotice(FText::FromString(TEXT("商店功能尚未开放")));
+		bSettingsPanelOpen = !bSettingsPanelOpen;
+		RefreshLayout();
 		break;
 	case 53:
 		CancelExitForTest();
@@ -5593,11 +8830,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		ConfirmExit(true);
 		break;
 	case 60:
+		bNoticeSettingsOpen = false;
 		if (bBackpackExpanded)
 		{
 			ResetWorkbenchChildrenForGlobalClose();
 			bBackpackExpanded = false;
 			bExitConfirmationOpen = false;
+			bDesktopNativeLayoutDirty = true;
+			UpdateTownPresentationInputLock();
 			RefreshLayout();
 			// Do not unload collapsed resources: reopening must stay safe and
 			// fast. Only hide the expanded UI; keep textures/atlases alive.
@@ -5616,10 +8856,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 				? EGameXXKTrainingRewardTier::NormalChest : EGameXXKTrainingRewardTier::AdvancedChest;
 			if (Subsystem->OpenOneTrainingChest(Tier, Result))
 			{
-				SetNotice(FText::FromString(FString::Printf(TEXT("已开启 1 个宝箱：装备 %d 件，道具 %d 类"), Result.EquipmentInstanceIds.Num(), Result.ItemDeltas.Num())));
+				SetNotice(
+					FText::FromString(FString::Printf(
+						TEXT("已开启 1 个宝箱：装备 %d 件，道具 %d 类"),
+						Result.EquipmentInstanceIds.Num(),
+						Result.ItemDeltas.Num())),
+					EGameXXKDesktopNoticeCategory::ChestOpenResult);
 				RefreshLayout();
 			}
-			else SetNotice(Result.Message);
+			else SetNotice(Result.Message, EGameXXKDesktopNoticeCategory::ChestOpenResult);
 		}
 		break;
 	case 310:
@@ -5686,10 +8931,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			if (Subsystem->ExecuteToolResolveReforge(ActionId == 315, Result))
 			{
 				ReturnAllToolEntries();
-				SetNotice(FText::FromString(ActionId == 315 ? TEXT("已采用新词缀") : TEXT("已保留原词缀")));
+				SetNotice(
+					FText::FromString(ActionId == 315 ? TEXT("已采用新词缀") : TEXT("已保留原词缀")),
+					EGameXXKDesktopNoticeCategory::EnhanceReforge);
 				RefreshLayout();
 			}
-			else SetNotice(Result.Message);
+			else SetNotice(
+				Result.Message.IsEmpty()
+					? FText::FromString(TEXT("当前没有待处理的洗炼结果"))
+					: Result.Message,
+				EGameXXKDesktopNoticeCategory::EnhanceReforge);
 		}
 		break;
 	case 317:
@@ -5742,7 +8993,8 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionRightClicked(const int3
 				Result.EquipmentInstanceIds.Num(),
 				Result.ItemDeltas.Num(),
 				Result.Error == EGameXXKTrainingChestOpenError::BackpackFull ? TEXT("；背包已满，剩余宝箱保留") : TEXT("")))
-			: Result.Message);
+			: Result.Message,
+			EGameXXKDesktopNoticeCategory::ChestOpenResult);
 		if (bSucceeded) RefreshLayout();
 		return bSucceeded;
 	}
@@ -5783,16 +9035,105 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionRightClicked(const int3
 	return false;
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::SetNotice(const FText& Notice)
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshNoticePresentation()
 {
-	LastNotice = Notice;
-	if (NoticeText)
+	if (NoticeLineTexts.IsEmpty())
 	{
-		NoticeText->SetText(Notice);
+		return;
 	}
-	if (NoticePanel)
+
+	TArray<const FDesktopNoticeEntry*> EnabledEntries;
+	EnabledEntries.Reserve(NoticeHistory.Num());
+	for (const FDesktopNoticeEntry& Entry : NoticeHistory)
 	{
-		NoticePanel->SetVisibility(
-			Notice.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		if (NoticeCategoryEnabled.FindRef(Entry.Category))
+		{
+			EnabledEntries.Add(&Entry);
+		}
+	}
+
+	const int32 VisibleCapacity = NoticeLineTexts.Num();
+	const int32 MaximumOffset = FMath::Max(0, EnabledEntries.Num() - VisibleCapacity);
+	NoticeScrollOffset = FMath::Clamp(NoticeScrollOffset, 0, MaximumOffset);
+	const int32 StartIndex = FMath::Max(
+		0,
+		EnabledEntries.Num() - VisibleCapacity - NoticeScrollOffset);
+	const int32 EndIndex = FMath::Min(
+		EnabledEntries.Num(),
+		StartIndex + VisibleCapacity);
+	const int32 DisplayedCount = EndIndex - StartIndex;
+
+	for (int32 LineIndex = 0; LineIndex < NoticeLineTexts.Num(); ++LineIndex)
+	{
+		UTextBlock* LineText = NoticeLineTexts[LineIndex];
+		if (!LineText)
+		{
+			continue;
+		}
+		if (LineIndex < DisplayedCount)
+		{
+			const FDesktopNoticeEntry& Entry = *EnabledEntries[StartIndex + LineIndex];
+			LineText->SetText(Entry.Message);
+			LineText->SetColorAndOpacity(NoticeCategoryColor(Entry.Category));
+			if (UPanelWidget* Parent = LineText->GetParent())
+			{
+				Parent->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+		}
+		else if (EnabledEntries.IsEmpty() && LineIndex == 0)
+		{
+			LineText->SetText(FText::FromString(TEXT("暂无记录")));
+			LineText->SetColorAndOpacity(FLinearColor(0.68f, 0.65f, 0.60f, 0.92f));
+			if (UPanelWidget* Parent = LineText->GetParent())
+			{
+				Parent->SetVisibility(ESlateVisibility::HitTestInvisible);
+			}
+		}
+		else if (UPanelWidget* Parent = LineText->GetParent())
+		{
+			Parent->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshNoticeControlVisibility()
+{
+	if (!NoticeRecordsBar)
+	{
+		return;
+	}
+	const bool bShowControls = !bBackpackExpanded
+		&& (bNoticeSettingsOpen
+			|| NoticeHoveredWidgetCount > 0
+			|| NoticeHoverHideRemainingSeconds > 0.0f);
+	NoticeRecordsBar->SetVisibility(
+		bShowControls ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::SetNotice(
+	const FText& Notice,
+	const EGameXXKDesktopNoticeCategory Category)
+{
+	const bool bHistoryWasEmpty = NoticeHistory.IsEmpty();
+	LastNotice = Notice;
+	if (!Notice.IsEmpty())
+	{
+		FDesktopNoticeEntry& Entry = NoticeHistory.AddDefaulted_GetRef();
+		Entry.Category = Category;
+		Entry.Message = Notice;
+		Entry.Ordinal = NextNoticeOrdinal++;
+		if (NoticeHistory.Num() > NoticeHistoryCapacity)
+		{
+			NoticeHistory.RemoveAt(
+				0,
+				NoticeHistory.Num() - NoticeHistoryCapacity,
+				EAllowShrinking::No);
+		}
+		NoticeScrollOffset = 0;
+	}
+	RefreshNoticePresentation();
+	if (bHistoryWasEmpty && !Notice.IsEmpty() && NoticePanel)
+	{
+		NoticePanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
 }

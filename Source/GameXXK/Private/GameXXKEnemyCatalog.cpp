@@ -1,4 +1,5 @@
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKCharacterStatRules.h"
 
 namespace
 {
@@ -551,7 +552,7 @@ FGameXXKEnemyComputedStats FGameXXKEnemyCatalog::ComputeStats(const FName Defini
 	{
 		return Stats;
 	}
-	const int32 ClampedLevel = FMath::Clamp(CombatLevel, 1, 20);
+	const int32 ClampedLevel = FMath::Clamp(CombatLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 	const float GrowthSteps = static_cast<float>(ClampedLevel - 1);
 	Stats.MaxHP = FMath::Max(1, Definition->BaseHP + RoundHalfAwayFromZero(Definition->HPPerLevel * GrowthSteps));
 	Stats.Attack = FMath::Max(1, Definition->BaseAttack + RoundHalfAwayFromZero(Definition->AttackPerLevel * GrowthSteps));

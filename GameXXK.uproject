@@ -77,6 +77,13 @@
 			"Enabled": true
 		},
 		{
+			"Name": "GameXXKDesktopOverlay",
+			"Enabled": true,
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
 			"Name": "EditorScriptingUtilities",
 			"Enabled": true,
 			"TargetAllowList": [

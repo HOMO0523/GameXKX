@@ -272,18 +272,6 @@
       "status": "approved_pending_import"
     },
     {
-      "name": "T_MasterV2_SelectionInk",
-      "file": "RuntimeApproved/T_MasterV2_SelectionInk.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Content/category_selected_ink.png",
-      "width": 104,
-      "height": 54,
-      "hasAlpha": true,
-      "sha256": "1d4e7aa9f3aa2d3019c6dbf117130dafa00527a462333e040a2ae7507e95efc2",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SelectionInk",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
       "name": "T_MasterV2_ButtonPurchase",
       "file": "RuntimeApproved/T_MasterV2_ButtonPurchase.png",
       "source": "SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Components/tab_02_equipment_selected.png",
@@ -296,62 +284,14 @@
       "status": "approved_pending_import"
     },
     {
-      "name": "T_MasterV2_TabNormal",
-      "file": "RuntimeApproved/T_MasterV2_TabNormal.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_tab_normal.png",
-      "width": 160,
-      "height": 58,
+      "name": "T_MasterV2_SquareSelected",
+      "file": "RuntimeApproved/T_MasterV2_SquareSelected.png",
+      "source": "T_MasterV2_ButtonPurchase deterministic square 9-slice approved by user",
+      "width": 104,
+      "height": 104,
       "hasAlpha": true,
-      "sha256": "c9eb20d73d94799a63aacfb1465fdcbdd7f5208e1ac92bdc704acd59b396d8da",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabNormal",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_TabSelected",
-      "file": "RuntimeApproved/T_MasterV2_TabSelected.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_tab_selected.png",
-      "width": 160,
-      "height": 58,
-      "hasAlpha": true,
-      "sha256": "b51881f115a6bd33474a28d426aa499c7e4b0982aa742ba9349e80cc3be9e480",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabSelected",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_ButtonNeutral",
-      "file": "RuntimeApproved/T_MasterV2_ButtonNeutral.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_button_normal.png",
-      "width": 220,
-      "height": 72,
-      "hasAlpha": true,
-      "sha256": "f16bb9aaaac5980bb34c642fce5b6635e602fc3d49d2b660eb94b81162cbf860",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonNeutral",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_ButtonPrimary",
-      "file": "RuntimeApproved/T_MasterV2_ButtonPrimary.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_button_primary.png",
-      "width": 220,
-      "height": 72,
-      "hasAlpha": true,
-      "sha256": "9d074d531615562f7cac287d981396669b998aba9414ee144e473be29b29438b",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPrimary",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_ButtonDanger",
-      "file": "RuntimeApproved/T_MasterV2_ButtonDanger.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_button_danger.png",
-      "width": 220,
-      "height": 72,
-      "hasAlpha": true,
-      "sha256": "8e11a38ff8054ff68858618e5aa204ff8794383bb6e4e892bcbbd0c5159f4505",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonDanger",
+      "sha256": "2b16718f4b98a5e654e07ae5e58e3faa2c70ec763bb2e920df45f2bf2d7f6e51",
+      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SquareSelected",
       "textBaked": false,
       "status": "approved_pending_import"
     },
@@ -388,18 +328,6 @@
       "hasAlpha": true,
       "sha256": "1eaf509fb4415c1c13e7d1e274603e77484d7d05512a9d65c9d463e16f66ba75",
       "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_TooltipPaper",
-      "file": "RuntimeApproved/T_MasterV2_TooltipPaper.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeAssets/UIV4_tooltip_panel.png",
-      "width": 520,
-      "height": 240,
-      "hasAlpha": true,
-      "sha256": "16b860433b1cfc89653e06c7585f0a0242b67c5bf44e7bc5a675af0e8b8edbef",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper",
       "textBaked": false,
       "status": "approved_pending_import"
     },

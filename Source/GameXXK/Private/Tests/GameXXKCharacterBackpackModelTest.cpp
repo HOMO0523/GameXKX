@@ -27,7 +27,7 @@ namespace
 		FGameXXKEquipmentCreateRequest Request;
 		Request.Set = EGameXXKEquipmentSet::ShanHe;
 		Request.Quality = EGameXXKEquipmentQuality::Rare;
-		Request.ItemLevel = 6;
+		Request.ItemLevel = 1;
 		Request.bForceSlot = true;
 		Request.ForcedSlot = Slot;
 

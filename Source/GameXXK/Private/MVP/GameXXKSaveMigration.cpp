@@ -17,6 +17,7 @@
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
+#include "GameXXKTalentRules.h"
 #include "GameXXKTrainingRules.h"
 #include "Misc/Crc.h"
 
@@ -315,9 +316,11 @@ namespace
 		const FGameXXKPermanentCompanion& Companion,
 		FString& OutError)
 	{
-		if (Companion.PersonalCardIds.Num() != 6 && Companion.PersonalCardIds.Num() != 12)
+		if (Companion.PersonalCardIds.Num() != 6
+			&& Companion.PersonalCardIds.Num() != 12
+			&& Companion.PersonalCardIds.Num() != 18)
 		{
-			OutError = TEXT("A pre-v13 companion must retain either its six-card transitional pool or legacy twelve-card pool.");
+			OutError = TEXT("A companion migration source must retain six, twelve, or eighteen profession cards.");
 			return false;
 		}
 
@@ -382,25 +385,40 @@ namespace
 			return false;
 		}
 
-		TArray<FName> NewBirthPool;
-		if (!FGameXXKCompanionRules::BuildPersonalCardPool(
+		TArray<FName> NewFullPool;
+		if (!FGameXXKCompanionRules::BuildFullProfessionCardPool(
 			InOutCompanion.Role,
 			InOutCompanion.CardSeed,
-			NewBirthPool,
+			NewFullPool,
 			&OutError))
 		{
 			return false;
 		}
 
-		TArray<FName> NewSelection;
-		for (const FName CardId : InOutCompanion.SelectedCardIds)
+		const TArray<FName> PreviousPersonalCards = InOutCompanion.PersonalCardIds;
+		const TArray<FName> PreviousUnlockedCards = InOutCompanion.UnlockedPersonalCardIds;
+		const TArray<FName> PreviousSelection = InOutCompanion.SelectedCardIds;
+		InOutCompanion.PersonalCardIds = NewFullPool;
+		if (!FGameXXKCompanionRules::RefreshUnlockedPersonalCards(InOutCompanion, &OutError))
 		{
-			if (NewBirthPool.Contains(CardId) && !NewSelection.Contains(CardId))
+			return false;
+		}
+
+		// Old twelve-card saves may have selected profession cards that now sit
+		// beyond the level-gated frontier. Preserve every still-unlocked choice in
+		// player order, then fill only from the current unlocked prefix. Current
+		// valid saves therefore remain byte-stable while legacy saves cannot retain
+		// a selected card that the UI correctly presents as locked.
+		TArray<FName> NewSelection;
+		for (const FName CardId : PreviousSelection)
+		{
+			if (InOutCompanion.UnlockedPersonalCardIds.Contains(CardId)
+				&& !NewSelection.Contains(CardId))
 			{
 				NewSelection.Add(CardId);
 			}
 		}
-		for (const FName CardId : NewBirthPool)
+		for (const FName CardId : InOutCompanion.UnlockedPersonalCardIds)
 		{
 			if (NewSelection.Num() >= 5)
 			{
@@ -411,13 +429,10 @@ namespace
 				NewSelection.Add(CardId);
 			}
 		}
-
-		const bool bChanged = InOutCompanion.PersonalCardIds != NewBirthPool
-			|| InOutCompanion.UnlockedPersonalCardIds != NewBirthPool
-			|| InOutCompanion.SelectedCardIds != NewSelection;
-		InOutCompanion.PersonalCardIds = NewBirthPool;
-		InOutCompanion.UnlockedPersonalCardIds = NewBirthPool;
 		InOutCompanion.SelectedCardIds = MoveTemp(NewSelection);
+		const bool bChanged = PreviousPersonalCards != InOutCompanion.PersonalCardIds
+			|| PreviousUnlockedCards != InOutCompanion.UnlockedPersonalCardIds
+			|| PreviousSelection != InOutCompanion.SelectedCardIds;
 		if (!FGameXXKCompanionRules::ValidatePermanentCompanionProfile(InOutCompanion, &OutError))
 		{
 			return false;
@@ -425,7 +440,7 @@ namespace
 		if (bChanged)
 		{
 			Report.Warnings.Add(FString::Printf(
-				TEXT("Companion %s was migrated to its deterministic six-card birth pool."),
+				TEXT("Companion %s was migrated to its deterministic eighteen-card profession pool."),
 				*InOutCompanion.InstanceId.ToString()));
 		}
 		return true;
@@ -778,7 +793,7 @@ namespace
 			NormalizeRouteSeedForMigration(FGameXXKEncounterRules::DeriveChapterSeed(RouteProgress.RootSeed, 2)),
 			NormalizeRouteSeedForMigration(FGameXXKEncounterRules::DeriveChapterSeed(RouteProgress.RootSeed, 3))};
 		RouteProgress.CurrentChapter = 1;
-		RouteProgress.RouteCombatLevel = FMath::Clamp(State.PlayerLevel, 1, 20);
+		RouteProgress.RouteCombatLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 	}
 
 	void MigrateLegacyEnemyDamageIntents(FGameXXKRuntimeState& State)
@@ -1214,6 +1229,31 @@ namespace
 		OutError = TEXT("Legacy ordered-party repair could not provide three legal party entities.");
 		return false;
 	}
+
+	void MigrateLegacyTalentProgress(
+		FGameXXKRuntimeState& State,
+		FGameXXKSaveMigrationReport& Report)
+	{
+		State.Talents.NodeRanks.Reset();
+		const int32 LastBackpackSlot = FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
+			State,
+			EGameXXKDesktopItemContainer::Backpack);
+		const int32 LastWarehouseSlot = FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
+			State,
+			EGameXXKDesktopItemContainer::Warehouse);
+		State.Talents.MinimumBackpackCapacity = FMath::Clamp(
+			FMath::Max(20, LastBackpackSlot + 1),
+			20,
+			FGameXXKDesktopInventoryRules::BackpackCapacity);
+		State.Talents.MinimumWarehousePages = FMath::Clamp(
+			FMath::Max(1, FMath::DivideAndRoundUp(LastWarehouseSlot + 1, 36)),
+			1,
+			6);
+		Report.Warnings.Add(FString::Printf(
+			TEXT("Legacy talent migration preserved capacity floors at Backpack %d and Warehouse %d page(s)."),
+			State.Talents.MinimumBackpackCapacity,
+			State.Talents.MinimumWarehousePages));
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1235,7 +1275,15 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		FGameXXKSaveState Candidate = Source;
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
-		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
+			? Candidate.RuntimeState.CardRun.RouteRandomSeed
+			: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+		if (!MigrateCompanionBirthPools(Candidate.RuntimeState, OutReport, ValidationError)
+			|| !FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+				Candidate.RuntimeState.CardRun.PartySelection,
+				QuestNpcProgressionSeed,
+				&ValidationError)
+			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
 		{
@@ -1261,9 +1309,18 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Reset();
 		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
+		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
-		if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
+			? Candidate.RuntimeState.CardRun.RouteRandomSeed
+			: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+		if (!MigrateCompanionBirthPools(Candidate.RuntimeState, OutReport, ValidationError)
+			|| !FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+				Candidate.RuntimeState.CardRun.PartySelection,
+				QuestNpcProgressionSeed,
+				&ValidationError)
+			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
 		{
@@ -1295,8 +1352,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
-	if (Source.SaveVersion < CompanionBirthPoolIntroducedSaveVersion
-		&& !MigrateCompanionBirthPools(Candidate.RuntimeState, OutReport, MigrationError))
+	if (!MigrateCompanionBirthPools(Candidate.RuntimeState, OutReport, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
 		return false;
@@ -1376,6 +1432,20 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// v21 splits the visual left warehouse from the character backpack.
 		// Existing unequipped equipment and item stacks remain in the backpack;
 		// storage begins empty and deterministic physical cells are generated.
+		int32 RequiredLegacyBackpackSlots =
+			Candidate.RuntimeState.EquipmentCollection.WarehouseInstanceIds.Num();
+		for (const TPair<FName, int32>& Pair : Candidate.RuntimeState.Inventory)
+		{
+			if (!Pair.Key.IsNone() && Pair.Value > 0
+				&& !FGameXXKEquipmentCatalog::FindDefinition(Pair.Key))
+			{
+				++RequiredLegacyBackpackSlots;
+			}
+		}
+		Candidate.RuntimeState.Talents.MinimumBackpackCapacity = FMath::Clamp(
+			FMath::Max(20, RequiredLegacyBackpackSlots),
+			20,
+			FGameXXKDesktopInventoryRules::BackpackCapacity);
 		Candidate.RuntimeState.DesktopInventory = FGameXXKDesktopInventoryState();
 		if (!FGameXXKDesktopInventoryRules::Normalize(Candidate.RuntimeState, &MigrationError))
 		{
@@ -1441,8 +1511,19 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 	}
+	if (Source.SaveVersion < PermanentTalentGraphIntroducedSaveVersion)
+	{
+		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
-	if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
+	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
+		? Candidate.RuntimeState.CardRun.RouteRandomSeed
+		: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
+	if (!FGameXXKCompanionRules::NormalizeOwnedQuestNpcCardLoadouts(
+			Candidate.RuntimeState.CardRun.PartySelection,
+			QuestNpcProgressionSeed,
+			&MigrationError)
+		|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
 		|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 		|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, MigrationError)
 		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
@@ -1506,6 +1587,22 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	}
 	if (!FGameXXKDesktopInventoryRules::Validate(State, &OutError))
 	{
+		return false;
+	}
+	if (!FGameXXKTalentRules::ValidateProgress(State.Talents, &OutError))
+	{
+		return false;
+	}
+	const int32 LastBackpackSlot = FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
+		State,
+		EGameXXKDesktopItemContainer::Backpack);
+	const int32 LastWarehouseSlot = FGameXXKDesktopInventoryRules::GetLastOccupiedSlotIndex(
+		State,
+		EGameXXKDesktopItemContainer::Warehouse);
+	if (LastBackpackSlot >= FGameXXKTalentRules::GetUnlockedBackpackCapacity(State)
+		|| LastWarehouseSlot >= FGameXXKTalentRules::GetUnlockedWarehouseCapacity(State))
+	{
+		OutError = TEXT("Saved physical inventory exceeds unlocked talent capacity.");
 		return false;
 	}
 	if (!FGameXXKEquipmentToolRules::ValidateProgress(State.ToolProgress, &OutError))
@@ -1670,7 +1767,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		|| RouteProgress.CurrentChapter < 1
 		|| RouteProgress.CurrentChapter > 3
 		|| RouteProgress.RouteCombatLevel < 1
-		|| RouteProgress.RouteCombatLevel > 20)
+		|| RouteProgress.RouteCombatLevel > FGameXXKCharacterStatRules::MaxCharacterLevel)
 	{
 		OutError = TEXT("Saved active three-chapter route progress is incomplete.");
 		return false;

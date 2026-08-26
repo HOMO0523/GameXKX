@@ -1,17 +1,21 @@
 # Desktop Training Wave Health Reset Design
 
 Date: 2026-08-22  
-Status: user-approved behavior, pending written-spec review  
+Status: implemented and verified
 Scope: pure-2D Travel strip on `/Game/GameXXK/Maps/L_DesktopTrainingHUD`
 
 ## Problem and evidence
 
 After Travel runs through several waves, party health no longer matches the intended encounter semantics and an enemy health bar can appear stale at a later wave boundary.
 
-The ProgressBar paint path is not the root cause. A live PIE probe showed the party visual fractions and UMG bar percentages changing together with zero mismatch, and a forced percentage change repainted. The data lifecycle has two relevant problems:
+The first live PIE probe showed the party visual fractions and UMG percentages changing together, which exposed two data-lifecycle problems. A later whole-stage-loop probe then isolated a separate Slate paint-cache failure: after returning to encounter zero, the enemy `UProgressBar` objects still reported `Percent == 1.0`, the correct fill color, and valid attachment to the game window, but their fills remained gray on screen. Therefore the final correction addresses both authoritative data and the repeatedly stale enemy-bar paint path.
+
+The relevant failures were:
 
 1. `AdvanceTravelRunner` copies `InOutRuntime.PartyUnits` into the next encounter, intentionally preserving each member's remaining HP. This contradicts the confirmed rule that every encounter begins with both sides at full health.
 2. The presented enemy slot sometimes reads the flattened `EnemyHP` compatibility mirror while the other slots read the authoritative `Enemies` array. During repeated encounter and presentation-boundary changes, those two sources can describe different snapshots.
+3. The logical `Walking` countdown can begin while the previous wave's queued hit/death presentation is still visible, allowing presentation time to consume part of the intended visible five-second interval.
+4. Repeated whole-stage transitions can leave the enemy `SProgressBar` fill layer visually stale even though the authoritative fraction and `UProgressBar::Percent` are correct.
 
 The current spawn approach also lasts only two one-second logical steps. The confirmed pacing is five logical seconds.
 
@@ -42,7 +46,15 @@ The active slot interpolation uses the active event's matching slot before/after
 
 ### Hidden interval
 
-While `Walking`, all enemy bars are collapsed and their presentation cache is normalized so the next visible encounter must apply its full-health value. Party bars remain hidden with the existing strip behavior; their cached values are refreshed from the newly full party snapshot before combat becomes visible.
+While `Walking`, enemy tracks and fills stay attached to the Slate tree but use zero render opacity; the fill scale is also reset to zero. Party bars remain hidden with the existing strip behavior and are refreshed from the newly full party snapshot before combat becomes visible. Keeping the enemy nodes attached avoids a detach/reattach lifecycle while still guaranteeing that no bar is visible during walkloop.
+
+### Visible five-second boundary
+
+When the authoritative runner enters `Walking` while the visual runtime is still presenting the previous combat event, the Workbench resets its travel accumulator and defers runner advancement for that frame. The five one-second logical steps therefore begin only after the old combat presentation has left the strip, so the user receives a full visible Walking interval.
+
+### Enemy bar paint path
+
+Enemy health uses two code-native `UBorder` siblings at the existing coordinates: a gray track and a red fill. The fill has a left-side render-transform pivot and maps the authoritative health fraction to `RenderScale.X`. Both nodes are volatile and remain in the Slate tree across walking/combat transitions. This preserves the established layout while bypassing the stale internal multi-layer cache observed in `SProgressBar`. Friendly `UProgressBar` widgets remain unchanged in shape and are marked volatile because their existing paint path did not reproduce the whole-loop failure.
 
 ## Tests
 
@@ -53,6 +65,7 @@ Add failing tests before production changes:
 3. A multi-encounter runner test damages the party and enemies, settles several waves, and verifies every new encounter starts with full party and enemy arrays.
 4. A visual-runtime test deliberately makes the flattened enemy compatibility mirror stale and verifies every displayed enemy fraction still follows the authoritative per-slot array.
 5. A workbench test verifies the enemy bars remain hidden during all five Walking seconds and reappear at 100 percent for the next encounter.
+6. Workbench tests verify the old presentation cannot consume the visible Walking delay and that enemy bar track/fill nodes remain attached, volatile, hidden by opacity during Walking, and full-width after spawn.
 
 ## Verification
 
@@ -65,4 +78,4 @@ Add failing tests before production changes:
 
 - UI-only forced full bars: hides incorrect gameplay data and fails after the first damage event.
 - A new serialized `InterWave` state: clearer in isolation but unnecessary for this correction because existing `Walking` already owns the desired walkloop, hidden-enemy, and timing behavior.
-- Repeated manual invalidation of every ProgressBar: the live evidence shows paint invalidation is functioning and does not correct the stale encounter data source.
+- Repeated manual invalidation of every ProgressBar: it can temporarily repaint a mid-stage sample, but the whole-stage loop still reproduced a gray enemy fill with correct data and `Percent == 1.0`; it is not a durable correction.

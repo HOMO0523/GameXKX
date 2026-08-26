@@ -13,6 +13,7 @@
 #include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/SizeBox.h"
+#include "Components/TextBlock.h"
 #include "Components/Widget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/Texture2D.h"
@@ -472,6 +473,23 @@ bool FGameXXKRouteMapAbandonFixedGeometryTest::RunTest(const FString& Parameters
 	TestNotNull(TEXT("route map exposes its fixed RootOverlay"), RootOverlay);
 	TestNotNull(TEXT("route map owns a fixed Close Challenge container"), CloseContainer);
 	TestNotNull(TEXT("route map owns a Close Challenge button"), CloseButton);
+	const UObject* CloseNormalResource = CloseButton ? CloseButton->GetStyle().Normal.GetResourceObject() : nullptr;
+	TestEqual(
+		TEXT("route map close uses the exact approved CloseInk texture"),
+		CloseNormalResource ? CloseNormalResource->GetPathName() : FString(),
+		FString(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk")));
+	TestNull(TEXT("route map close is an image-only button with no legacy text content"),
+		CloseButton ? CloseButton->GetContent() : nullptr);
+	TestNull(TEXT("route map widget tree no longer owns the legacy Close Challenge label"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("RouteCloseChallengeLabel")) : nullptr);
+	TestTrue(TEXT("route map close hover tint remains visibly distinct"),
+		CloseButton
+		&& CloseButton->GetStyle().Hovered.TintColor.GetSpecifiedColor()
+			!= CloseButton->GetStyle().Normal.TintColor.GetSpecifiedColor());
+	TestTrue(TEXT("route map close pressed tint remains visibly distinct"),
+		CloseButton
+		&& CloseButton->GetStyle().Pressed.TintColor.GetSpecifiedColor()
+			!= CloseButton->GetStyle().Normal.TintColor.GetSpecifiedColor());
 	TestTrue(TEXT("Close Challenge container is a direct RootOverlay child"), CloseContainer && CloseContainer->GetParent() == RootOverlay);
 	TestNotNull(TEXT("Close Challenge uses an Overlay slot rather than the scroll canvas"), CloseContainer ? Cast<UOverlaySlot>(CloseContainer->Slot) : nullptr);
 	TestTrue(TEXT("Close Challenge is layered after the route scroll box"),
@@ -498,13 +516,36 @@ bool FGameXXKRouteMapAbandonFixedGeometryTest::RunTest(const FString& Parameters
 		TestFalse(TEXT("fixed Close Challenge leaves a scrollbar safety gap"), RectanglesOverlap(Rect, ScrollBarRect));
 	}
 	const FBox2D FullHdRect = Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f));
-	TestTrue(TEXT("full-HD Close Challenge x matches Luna evidence"), FMath::IsNearlyEqual(FullHdRect.Min.X, 1656.0, 0.01));
+	TestTrue(TEXT("full-HD CloseInk x keeps the approved 72px right safety margin"), FMath::IsNearlyEqual(FullHdRect.Min.X, 1774.0, 0.01));
 	TestTrue(TEXT("full-HD Close Challenge y matches Luna evidence"), FMath::IsNearlyEqual(FullHdRect.Min.Y, 48.0, 0.01));
-	TestTrue(TEXT("full-HD Close Challenge size matches Luna evidence"), FullHdRect.GetSize().Equals(FVector2D(192.0f, 64.0f), 0.01f));
+	TestTrue(TEXT("full-HD CloseInk uses the same square size as route events"), FullHdRect.GetSize().Equals(FVector2D(74.0f, 74.0f), 0.01f));
 	const FBox2D BeforeScrollRect = Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f));
 	Widget->ApplyRouteMapDragDeltaForTest(160.0f);
 	TestTrue(TEXT("scrolling route content never moves fixed Close Challenge"),
 		Widget->ResolveRouteCloseChallengeRectForTest(FVector2D(1920.0f, 1080.0f)).Min.Equals(BeforeScrollRect.Min, 0.01f));
+	if (CloseButton)
+	{
+		CloseButton->OnClicked.Broadcast();
+	}
+	TestTrue(TEXT("the production CloseInk click opens the settlement modal"),
+		Widget->IsRouteAbandonConfirmationOpenForTest());
+	TestTrue(TEXT("the settlement modal opened by CloseInk can return to the route"),
+		Widget->CancelRouteAbandonConfirmationForTest());
+	Widget->ApplyMissingRouteCloseInkResourceForTest();
+	UTextBlock* FallbackLabel = CloseButton ? Cast<UTextBlock>(CloseButton->GetContent()) : nullptr;
+	TestEqual(TEXT("missing CloseInk resource exposes a clear text fallback"),
+		FallbackLabel ? FallbackLabel->GetText().ToString() : FString(),
+		FString(TEXT("X")));
+	TestTrue(TEXT("missing CloseInk fallback remains enabled and clickable"),
+		CloseButton && CloseButton->GetIsEnabled());
+	if (CloseButton)
+	{
+		CloseButton->OnClicked.Broadcast();
+	}
+	TestTrue(TEXT("fallback X keeps the same production settlement click path"),
+		Widget->IsRouteAbandonConfirmationOpenForTest());
+	TestTrue(TEXT("fallback X settlement modal can still return to route"),
+		Widget->CancelRouteAbandonConfirmationForTest());
 	return true;
 }
 
@@ -531,9 +572,41 @@ bool FGameXXKRouteMapAbandonPreviewCancelTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("Close Challenge opens settlement confirmation"), Widget->OpenRouteAbandonConfirmationForTest());
 	TestTrue(TEXT("route abandon confirmation is visible"), Widget->IsRouteAbandonConfirmationOpenForTest());
 	TestTrue(TEXT("valid route enables settlement confirmation"), Widget->IsRouteAbandonConfirmEnabledForTest());
-	TestEqual(TEXT("settlement preview displays exact conversion"),
-		Widget->GetRouteAbandonPreviewTextForTest().ToString(),
-		FString(TEXT("永久金币 +4 / 强化石 +2")));
+	UButton* ModalConfirmButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("RouteAbandonConfirmButton")))
+		: nullptr;
+	TestTrue(TEXT("square CloseInk does not shrink the existing modal action brush"),
+		ModalConfirmButton
+		&& ModalConfirmButton->GetStyle().Normal.ImageSize.Equals(FVector2D(192.0f, 64.0f), 0.01f));
+	UTextBlock* ModalTitle = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("RouteAbandonModalTitle")))
+		: nullptr;
+	UTextBlock* ModalDescription = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("RouteAbandonModalDescription")))
+		: nullptr;
+	UTextBlock* ConfirmLabel = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("RouteAbandonConfirmLabel")))
+		: nullptr;
+	UTextBlock* CancelLabel = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("RouteAbandonCancelLabel")))
+		: nullptr;
+	TestEqual(TEXT("modal uses the approved settlement title"),
+		ModalTitle ? ModalTitle->GetText().ToString() : FString(),
+		FString(TEXT("本次路线结算")));
+	TestEqual(TEXT("modal confirm returns to idle workbench"),
+		ConfirmLabel ? ConfirmLabel->GetText().ToString() : FString(),
+		FString(TEXT("确认结算并返回挂机")));
+	TestEqual(TEXT("modal cancel keeps the route active"),
+		CancelLabel ? CancelLabel->GetText().ToString() : FString(),
+		FString(TEXT("继续路线")));
+	const FString PreviewCopy = Widget->GetRouteAbandonPreviewTextForTest().ToString();
+	TestTrue(TEXT("settlement preview identifies already-earned rewards"), PreviewCopy.Contains(TEXT("已获奖励")));
+	TestTrue(TEXT("settlement preview lists ordinary-gold conversion"), PreviewCopy.Contains(TEXT("普通金币 +4")));
+	TestTrue(TEXT("settlement preview lists earned item rewards"), PreviewCopy.Contains(TEXT("强化石 +2")));
+	TestTrue(TEXT("settlement preview lists completed progress"), PreviewCopy.Contains(TEXT("已完成进度")));
+	TestTrue(TEXT("settlement preview warns unresolved progress is forfeited"), PreviewCopy.Contains(TEXT("未解决")));
+	TestTrue(TEXT("settlement description explains only earned content is settled"),
+		ModalDescription && ModalDescription->GetText().ToString().Contains(TEXT("已获")));
 	TestTrue(TEXT("opening preview has no runtime side effects"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
 	TestFalse(TEXT("modal disables route scrolling"), Widget->GetRouteScrollBoxForTest() && Widget->GetRouteScrollBoxForTest()->GetIsEnabled());
 	TestFalse(TEXT("modal blocks drag scroll"), Widget->ApplyRouteMapDragDeltaForTest(160.0f));
@@ -541,7 +614,7 @@ bool FGameXXKRouteMapAbandonPreviewCancelTest::RunTest(const FString& Parameters
 	TestFalse(TEXT("modal blocks route node execution"), Widget->ExecuteRouteNodeById(ReachableNodeId));
 	TestTrue(TEXT("blocked route input preserves runtime"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
 
-	TestTrue(TEXT("Continue Challenge cancels settlement confirmation"), Widget->CancelRouteAbandonConfirmationForTest());
+	TestTrue(TEXT("Continue Route cancels settlement confirmation"), Widget->CancelRouteAbandonConfirmationForTest());
 	TestFalse(TEXT("cancel hides route abandon confirmation"), Widget->IsRouteAbandonConfirmationOpenForTest());
 	TestTrue(TEXT("cancel preserves runtime exactly"), RouteRuntimeStatesEqual(Subsystem->GetRuntimeState(), BeforeModal));
 	TestTrue(TEXT("cancel restores route scrolling"), Widget->GetRouteScrollBoxForTest() && Widget->GetRouteScrollBoxForTest()->GetIsEnabled());
@@ -570,13 +643,69 @@ bool FGameXXKRouteMapAbandonConfirmAndFailureTest::RunTest(const FString& Parame
 	TestTrue(TEXT("confirm fixture opens modal"), Widget->OpenRouteAbandonConfirmationForTest());
 	TestTrue(TEXT("confirm applies abandoned settlement"), Widget->ConfirmRouteAbandonForTest());
 	TestEqual(TEXT("confirm returns to town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("confirm returns to canonical DesktopTrainingHUD"),
+		Subsystem->GetRuntimeState().CurrentMapId,
+		FName(TEXT("DesktopTrainingHUD")));
 	TestFalse(TEXT("confirm ends active route"), Subsystem->GetRuntimeState().bDungeonActive);
+	TestFalse(TEXT("confirm clears generated route topology"), Subsystem->GetRuntimeState().bHasGeneratedRouteMap);
 	TestEqual(TEXT("confirm awards previewed gold once"), Subsystem->GetRuntimeState().PlayerGold, GoldBefore + 4);
 	TestEqual(TEXT("confirm awards previewed stones once"),
 		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemEnhancementStone()),
 		StonesBefore + 2);
 	TestFalse(TEXT("a second confirmation is rejected"), Widget->ConfirmRouteAbandonForTest());
 	TestEqual(TEXT("a second confirmation cannot duplicate gold"), Subsystem->GetRuntimeState().PlayerGold, GoldBefore + 4);
+
+	UGameXXKMVPSubsystem* RetrySubsystem = nullptr;
+	UGameXXKOneGameRouteMapWidget* RetryWidget = nullptr;
+	if (!TestTrue(TEXT("valid-preview failure fixture builds"), BuildRouteAbandonWidgetFixture(RetrySubsystem, RetryWidget)))
+	{
+		return false;
+	}
+	RetrySubsystem->GetMutableRuntimeState().CardRun.RouteTravelMoney = 99;
+	RetrySubsystem->GetMutableRuntimeState().CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	const int32 RetryGoldBefore = RetrySubsystem->GetRuntimeState().PlayerGold;
+	TestTrue(TEXT("valid-preview failure fixture opens an enabled modal"),
+		RetryWidget->OpenRouteAbandonConfirmationForTest());
+	RetrySubsystem->GetMutableRuntimeState().PlayerGold = MAX_int32;
+	const FGameXXKRuntimeState RetryFailureBefore = RetrySubsystem->GetRuntimeState();
+	UButton* RetryConfirmButton = RetryWidget->WidgetTree
+		? Cast<UButton>(RetryWidget->WidgetTree->FindWidget(TEXT("RouteAbandonConfirmButton")))
+		: nullptr;
+	if (RetryConfirmButton)
+	{
+		RetryConfirmButton->OnClicked.Broadcast();
+	}
+	TestTrue(TEXT("real confirm broadcast keeps modal open after transaction failure"),
+		RetryWidget->IsRouteAbandonConfirmationOpenForTest());
+	TestTrue(TEXT("failed confirm rolls back every authoritative runtime property"),
+		RouteRuntimeStatesEqual(RetrySubsystem->GetRuntimeState(), RetryFailureBefore));
+	TestTrue(TEXT("failed confirm exposes a Chinese settlement error"),
+		RetryWidget->GetRouteAbandonErrorForTest().Contains(TEXT("结算失败")));
+	UTextBlock* RetryErrorText = RetryWidget->WidgetTree
+		? Cast<UTextBlock>(RetryWidget->WidgetTree->FindWidget(TEXT("RouteAbandonModalError")))
+		: nullptr;
+	TestTrue(TEXT("failed confirm keeps its concrete error visible"),
+		RetryErrorText
+		&& RetryErrorText->GetVisibility() == ESlateVisibility::HitTestInvisible
+		&& RetryErrorText->GetText().ToString().Contains(TEXT("结算失败")));
+	TestTrue(TEXT("failed confirm resets in-progress and re-enables retry"),
+		RetryWidget->IsRouteAbandonConfirmEnabledForTest());
+	RetrySubsystem->GetMutableRuntimeState().PlayerGold = RetryGoldBefore;
+	if (RetryConfirmButton)
+	{
+		RetryConfirmButton->OnClicked.Broadcast();
+	}
+	TestFalse(TEXT("same valid modal closes after retry succeeds"),
+		RetryWidget->IsRouteAbandonConfirmationOpenForTest());
+	TestEqual(TEXT("retry returns to Town"), RetrySubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("retry awards previewed gold exactly once"),
+		RetrySubsystem->GetRuntimeState().PlayerGold,
+		RetryGoldBefore + 4);
+	const int32 RetryGoldAfter = RetrySubsystem->GetRuntimeState().PlayerGold;
+	TestFalse(TEXT("post-success retry is rejected"), RetryWidget->ConfirmRouteAbandonForTest());
+	TestEqual(TEXT("post-success retry cannot duplicate gold"),
+		RetrySubsystem->GetRuntimeState().PlayerGold,
+		RetryGoldAfter);
 
 	UGameXXKMVPSubsystem* InvalidSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	TestTrue(TEXT("invalid preview fixture starts"), InvalidSubsystem->StartGame());

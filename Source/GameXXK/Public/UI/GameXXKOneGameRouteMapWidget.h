@@ -254,6 +254,7 @@ public:
 	bool IsRouteAbandonConfirmEnabledForTest() const;
 	FText GetRouteAbandonPreviewTextForTest() const;
 	FString GetRouteAbandonErrorForTest() const;
+	void ApplyMissingRouteCloseInkResourceForTest();
 #endif
 
 	UFUNCTION(BlueprintImplementableEvent, Category = "GameXXK|RouteMap")
@@ -560,6 +561,7 @@ private:
 
 	bool bRouteAbandonConfirmationOpen = false;
 	bool bRouteAbandonPreviewValid = false;
+	bool bRouteSettlementInProgress = false;
 	FGameXXKRouteSettlementReceipt RouteAbandonPreview;
 	FString RouteAbandonError;
 

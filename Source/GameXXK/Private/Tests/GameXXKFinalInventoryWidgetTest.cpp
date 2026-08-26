@@ -8,6 +8,7 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "Blueprint/WidgetTree.h"
+#include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
@@ -26,7 +27,7 @@ namespace
 		FGameXXKEquipmentCreateRequest Request;
 		Request.Set = EGameXXKEquipmentSet::XuanJia;
 		Request.Quality = EGameXXKEquipmentQuality::Rare;
-		Request.ItemLevel = 4;
+		Request.ItemLevel = 1;
 		Request.bForceSlot = true;
 		Request.ForcedSlot = Slot;
 
@@ -110,8 +111,8 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 		TEXT("final hero inventory uses the approved right scrollbar"),
 		Inventory->GetScrollbarResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight")));
 	TestTrue(
-		TEXT("final hero inventory reuses the approved shared selection ink"),
-		Inventory->GetSelectionInkResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SelectionInk")));
+		TEXT("rejected shared selection ink is no longer bound"),
+		Inventory->GetSelectionInkResourcePathForTest().IsEmpty());
 	TestTrue(
 		TEXT("final hero inventory composes tooltips from the approved item-slot paper"),
 		Inventory->GetTooltipResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot")));
@@ -124,7 +125,7 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 	Inventory->HandleConfiguredSlotClicked(EGameXXKInventorySlotSource::PlayerBackpack, FirstWeaponSlot, NAME_None);
 	TestTrue(
 		TEXT("clicking an instance equipment cell exposes its composed tooltip detail"),
-		Inventory->GetSelectedDetailTextForTest().ToString().Contains(TEXT("装备等级 4")));
+		Inventory->GetSelectedDetailTextForTest().ToString().Contains(TEXT("装备等级 1")));
 
 	TestTrue(
 		TEXT("right-clicking a warehouse equipment cell equips it"),
@@ -370,11 +371,57 @@ bool FGameXXKFinalInventoryLockOverlayTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	UWidget* PaperFrame = Inventory->WidgetTree
+		? Inventory->WidgetTree->FindWidget(TEXT("InventoryWindowFrame"))
+		: nullptr;
+	const UCanvasPanelSlot* PaperSlot = PaperFrame
+		? Cast<UCanvasPanelSlot>(PaperFrame->Slot)
+		: nullptr;
+	TestTrue(TEXT("only the Backpack paper expands five percent around its center"),
+		PaperSlot
+		&& PaperSlot->GetPosition().Equals(FVector2D(274.75f, 151.775f), 0.01f)
+		&& PaperSlot->GetSize().Equals(FVector2D(1522.5f, 891.45f), 0.01f));
+	UWidget* TitleText = Inventory->WidgetTree
+		? Inventory->WidgetTree->FindWidget(TEXT("InventoryWindowTitleText"))
+		: nullptr;
+	const UCanvasPanelSlot* TitleSlot = TitleText
+		? Cast<UCanvasPanelSlot>(TitleText->Slot)
+		: nullptr;
+	TestTrue(TEXT("paper-only expansion leaves Backpack controls at their authored coordinates"),
+		TitleSlot
+		&& TitleSlot->GetPosition().Equals(FVector2D(383.0f, 230.0f), 0.01f));
 	const int32 StoneDisplaySlot = Inventory->FindBackpackItemSlotForTest(StoneId);
 	if (!TestTrue(TEXT("locked stack has a visible Backpack cell"),
 		StoneDisplaySlot != INDEX_NONE))
 	{
 		return false;
+	}
+	UTextBlock* StoneCountText = Inventory->WidgetTree
+		? Cast<UTextBlock>(Inventory->WidgetTree->FindWidget(
+			*FString::Printf(TEXT("InventoryBackpackStackCount_%02d"), StoneDisplaySlot)))
+		: nullptr;
+	if (TestNotNull(TEXT("enhancement-stone stack owns a count label"), StoneCountText))
+	{
+		TestEqual(TEXT("enhancement-stone stack shows only the raw quantity"),
+			StoneCountText->GetText().ToString(),
+			FString::FromInt(State.Inventory.FindRef(StoneId)));
+		const FSlateFontInfo CountFont = StoneCountText->GetFont();
+		TestEqual(TEXT("enhancement-stone count uses a two-pixel outline"),
+			CountFont.OutlineSettings.OutlineSize,
+			2);
+		TestEqual(TEXT("enhancement-stone count outline is black"),
+			CountFont.OutlineSettings.OutlineColor,
+			FLinearColor::Black);
+		TestEqual(TEXT("enhancement-stone count is white"),
+			StoneCountText->GetColorAndOpacity().GetSpecifiedColor(),
+			FLinearColor::White);
+		const UOverlaySlot* CountSlot = Cast<UOverlaySlot>(StoneCountText->Slot);
+		TestTrue(TEXT("enhancement-stone count is pinned to the lower-right corner"),
+			CountSlot
+			&& CountSlot->GetHorizontalAlignment() == HAlign_Right
+			&& CountSlot->GetVerticalAlignment() == VAlign_Bottom
+			&& CountSlot->GetPadding().Right <= 3.0f
+			&& CountSlot->GetPadding().Bottom <= 2.0f);
 	}
 	UImage* BackpackLockedIcon = Inventory->WidgetTree
 		? Cast<UImage>(Inventory->WidgetTree->FindWidget(
@@ -398,8 +445,13 @@ bool FGameXXKFinalInventoryLockOverlayTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("locked Backpack cell owns a real button"), BackpackButton))
 	{
 		BackpackButton->OnClicked.Broadcast();
+		Inventory->RefreshVisibleRuntimeValues();
 		TestTrue(TEXT("ordinary locked-cell OnClicked keeps select/detail behavior"),
 			Inventory->GetSelectedBackpackSlotIndexForTest() != INDEX_NONE);
+		const UObject* SelectedResource = BackpackButton->GetStyle().Normal.GetResourceObject();
+		TestTrue(TEXT("selected Backpack cell uses the approved square base"),
+			SelectedResource
+			&& SelectedResource->GetPathName().Contains(TEXT("T_MasterV2_SquareSelected")));
 	}
 	UGameXXKInventorySlotButton* EquipmentButton = Inventory->WidgetTree
 		? Cast<UGameXXKInventorySlotButton>(Inventory->WidgetTree->FindWidget(
@@ -408,8 +460,13 @@ bool FGameXXKFinalInventoryLockOverlayTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("locked Equipment cell owns a real button"), EquipmentButton))
 	{
 		EquipmentButton->OnClicked.Broadcast();
+		Inventory->RefreshVisibleRuntimeValues();
 		TestFalse(TEXT("ordinary equipped-cell OnClicked exposes detail"),
 			Inventory->GetSelectedDetailTextForTest().IsEmpty());
+		const UObject* SelectedResource = EquipmentButton->GetStyle().Normal.GetResourceObject();
+		TestTrue(TEXT("selected Equipment cell uses the approved square base"),
+			SelectedResource
+			&& SelectedResource->GetPathName().Contains(TEXT("T_MasterV2_SquareSelected")));
 	}
 
 	TestTrue(TEXT("explicit Backpack Alt seam unlocks the whole item stack"),

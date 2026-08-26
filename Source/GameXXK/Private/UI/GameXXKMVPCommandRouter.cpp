@@ -494,8 +494,10 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 	}
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-	const bool bRouteEventOverlay = State.Screen == EGameXXKScreen::RouteEvent;
-	if ((State.Screen != EGameXXKScreen::DungeonMap && !bRouteEventOverlay) || !State.bDungeonActive)
+	const bool bRouteOverlay = State.Screen == EGameXXKScreen::RouteEvent
+		|| State.Screen == EGameXXKScreen::RouteCamp
+		|| State.Screen == EGameXXKScreen::RouteMerchant;
+	if ((State.Screen != EGameXXKScreen::DungeonMap && !bRouteOverlay) || !State.bDungeonActive)
 	{
 		return Nodes;
 	}
@@ -509,7 +511,7 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 				FText::FromString(LabelForNode(RouteNode.NodeKind)),
 				RouteNode.NodeKind,
 				RouteNode.NodeId,
-				!bRouteEventOverlay && State.ReachableRouteNodeIds.Contains(RouteNode.NodeId),
+				!bRouteOverlay && State.ReachableRouteNodeIds.Contains(RouteNode.NodeId),
 				RouteNode.NormalizedPosition,
 				RouteNode.OutgoingNodeIds);
 		}
@@ -528,7 +530,7 @@ TArray<FGameXXKMVPRouteNodeDescriptor> GameXXKMVPCommandRouter::BuildRouteMapNod
 			FText::FromString(LabelForNode(NodeKind)),
 			NodeKind,
 			NodeIndex,
-			!bRouteEventOverlay && NodeIndex == State.DungeonNodeIndex,
+			!bRouteOverlay && NodeIndex == State.DungeonNodeIndex,
 			FVector2D(X, Y));
 	}
 

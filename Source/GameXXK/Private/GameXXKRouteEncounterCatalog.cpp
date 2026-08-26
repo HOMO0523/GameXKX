@@ -44,7 +44,10 @@ namespace
 		Definition.Speaker = FText::FromString(Speaker);
 		Definition.Body = FText::FromString(Body);
 		Definition.EventNpcId = FName(EventNpcId);
-		Definition.Choices = {MoveTemp(A), MoveTemp(B)};
+		Definition.Choices = {
+			MoveTemp(A),
+			MoveTemp(B),
+			AttributeChoice(TEXT("稳住根基：最大气血+5"), EGameXXKRouteAttributeKind::MaxHealth, 5)};
 		return Definition;
 	}
 

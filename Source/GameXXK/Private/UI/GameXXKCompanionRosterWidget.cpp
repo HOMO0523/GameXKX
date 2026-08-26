@@ -141,11 +141,11 @@ namespace
 	static constexpr const TCHAR* ApprovedTextureRoot = TEXT("/Game/GameXXK/UI/MasterV2/Approved/");
 	static constexpr const TCHAR* WindowFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
 	static constexpr const TCHAR* PanelFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
-	// Page 18 avatar-slot base uses the approved tab paper (PSD 005_tab_3; only 003_tab_1 is exported).
+	// Page 18 avatar slots reuse the single user-approved clean ink button paper.
 	static constexpr const TCHAR* RosterSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1.003_tab_1");
 	static constexpr const TCHAR* RosterPageLeftTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CompanionPageLeft.T_MasterV2_CompanionPageLeft");
 	static constexpr const TCHAR* RosterPageRightTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CompanionPageRight.T_MasterV2_CompanionPageRight");
-	static constexpr const TCHAR* ActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
+	static constexpr const TCHAR* ActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame.T_MasterV2_CardFrame");
 	static constexpr const TCHAR* LockedCardIconTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon");
 	static constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
@@ -159,7 +159,9 @@ namespace
 	// Page 03/18 scrollbar and selection ink.
 	static constexpr const TCHAR* ScrollbarTrackTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight.T_MasterV2_BackpackScrollbarRight");
 	static constexpr const TCHAR* ScrollbarThumbTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button.inventory_scrollbar_Button");
-	static constexpr const TCHAR* SelectionInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SelectionInk.T_MasterV2_SelectionInk");
+	static constexpr const TCHAR* SelectionInkTexturePath = nullptr;
+	static constexpr const TCHAR* SquareSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SquareSelected.T_MasterV2_SquareSelected");
+	static constexpr const TCHAR* RectangularSelectionTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	// Page 18 dismiss action reuses the approved decompose paper (01_DecomposeButton).
 	static constexpr const TCHAR* DismissButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/01_DecomposeButton.01_DecomposeButton");
 	static constexpr const TCHAR* HeroCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero");
@@ -1754,7 +1756,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	UCanvasPanel* PersonalDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("CompanionRosterPersonalDeckCanvas"));
 	PersonalDeckPanel->AddChild(PersonalDeckCanvas);
 
-	DeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（6 张，编入 5 张）"), 17, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f), TEXT("CompanionRosterDeckCaption"));
+	DeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（18 张，编入 5 张）"), 17, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f), TEXT("CompanionRosterDeckCaption"));
 	AddCanvasChild(PersonalDeckCanvas, DeckCaptionText, FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
 
 	PersonalCardScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("CompanionRosterPersonalCardScroll"));
@@ -1792,7 +1794,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 
 		// Selection ink sits at the card top so the selected card name stays visible.
 		UImage* SelectedInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardInk_%02d"), CardIndex));
-		SelectedInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, CompanionSelectionInkSize));
+		SelectedInk->SetBrush(MakeBoxTextureBrush(RectangularSelectionTexturePath, CompanionSelectionInkSize));
 		SelectedInk->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* InkSlot = CardOverlay->AddChildToOverlay(SelectedInk))
 		{
@@ -2069,6 +2071,11 @@ void UGameXXKCompanionRosterWidget::RefreshRosterSlots()
 		});
 		if (UGameXXKCompanionRosterSlotButton* SlotButton = RosterSlotButtons[SlotIndex])
 		{
+			const bool bSelected = Companion && Companion->InstanceId == SelectedCompanionId;
+			SlotButton->SetStyle(MakeBoxTextureButtonStyle(
+				bSelected ? SquareSelectedTexturePath : RosterSlotTexturePath,
+				CompanionRosterSlotSize,
+				SlotFrameMargin));
 			SlotButton->SetIsEnabled(Companion != nullptr);
 			// Page 18 avatar tooltip carries the partner's random display name.
 			SlotButton->SetToolTipText(Companion ? ResolveCompanionDisplayName(Companion->Role, Companion->NameSeed) : FText::GetEmpty());
@@ -2096,7 +2103,7 @@ void UGameXXKCompanionRosterWidget::RefreshRosterSlots()
 		}
 		if (UBorder* SelectionBorder = RosterSlotSelectionBorders.IsValidIndex(SlotIndex) ? RosterSlotSelectionBorders[SlotIndex].Get() : nullptr)
 		{
-			SelectionBorder->SetVisibility(Companion && Companion->InstanceId == SelectedCompanionId ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			SelectionBorder->SetVisibility(ESlateVisibility::Collapsed);
 		}
 	}
 	if (RosterCountText)
@@ -2485,6 +2492,12 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 
 		if (UGameXXKCompanionEquipmentSlotButton* SlotButton = EquipmentWarehouseSlotButtons[WarehouseIndex])
 		{
+			SlotButton->SetStyle(MakeBoxTextureButtonStyle(
+				SelectedWarehouseSlotIndex == WarehouseIndex
+					? SquareSelectedTexturePath
+					: ItemSlotTexturePath,
+				CompanionWarehouseSlotSize,
+				FMargin(0.08f)));
 			SlotButton->SetIsEnabled(bHasItem && !SelectedCompanionId.IsNone() && !bLoadoutReadOnly);
 		}
 		if (UBorder* Tooltip = BackpackTooltipFrames.IsValidIndex(WarehouseIndex) ? BackpackTooltipFrames[WarehouseIndex].Get() : nullptr)
@@ -2590,6 +2603,12 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 			: nullptr;
 		if (SlotButton)
 		{
+			SlotButton->SetStyle(MakeBoxTextureButtonStyle(
+				SelectedEquippedSlotIndex == SlotIndex
+					? SquareSelectedTexturePath
+					: EquipmentSlotTexturePath,
+				CompanionEquipmentSlotSize,
+				FMargin(0.08f)));
 			SlotButton->SetIsEnabled(SlotView != nullptr && !SelectedCompanionId.IsNone());
 		}
 		if (UBorder* Tooltip = CompanionEquipmentTooltipFrames.IsValidIndex(SlotIndex) ? CompanionEquipmentTooltipFrames[SlotIndex].Get() : nullptr)
@@ -2621,35 +2640,14 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 		}
 	}
 
-	// Selection inks follow the last clicked slot (page 03 convention).
+	// Square selected states are applied as slot bases so item art remains visible.
 	if (BackpackSelectionInk)
 	{
-		const bool bBackpackSelection = SelectedWarehouseSlotIndex >= 0 && SelectedWarehouseSlotIndex < EquipmentBackpackViewportSlotCount;
-		BackpackSelectionInk->SetVisibility(bBackpackSelection ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (bBackpackSelection)
-		{
-			const int32 Column = SelectedWarehouseSlotIndex % EquipmentBackpackColumnCount;
-			const int32 Row = SelectedWarehouseSlotIndex / EquipmentBackpackColumnCount;
-			const FVector2D InkPosition = CompanionSelectionInkPos
-				+ FVector2D(Column * CompanionBackpackSlotPitch.X, Row * CompanionBackpackSlotPitch.Y);
-			if (UCanvasPanelSlot* InkSlot = Cast<UCanvasPanelSlot>(BackpackSelectionInk->Slot))
-			{
-				InkSlot->SetPosition(InkPosition);
-			}
-		}
+		BackpackSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (EquipmentSelectionInk)
 	{
-		const bool bEquipmentSelection = SelectedEquippedSlotIndex >= 0 && SelectedEquippedSlotIndex < CompanionEquipmentSlotButtons.Num();
-		EquipmentSelectionInk->SetVisibility(bEquipmentSelection ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		if (bEquipmentSelection)
-		{
-			if (UCanvasPanelSlot* InkSlot = Cast<UCanvasPanelSlot>(EquipmentSelectionInk->Slot))
-			{
-				// Same small bracket offset as the hero backpack's equipped-slot ink.
-				InkSlot->SetPosition(CompanionEquipmentFramePositions[SelectedEquippedSlotIndex] + FVector2D(-7.0f, -16.0f));
-			}
-		}
+		EquipmentSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	UpdateEquipmentScrollbarThumb();
 }
@@ -2706,11 +2704,11 @@ void UGameXXKCompanionRosterWidget::RefreshBackpackTabVisibility()
 	// restores their per-selection visibility when the tab becomes active again.
 	if (BackpackSelectionInk)
 	{
-		BackpackSelectionInk->SetVisibility(bEquipmentTab ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		BackpackSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (EquipmentSelectionInk)
 	{
-		EquipmentSelectionInk->SetVisibility(bEquipmentTab ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		EquipmentSelectionInk->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	// 天赋/称号 render the approved "尚未开放" body text like the hero backpack.
@@ -2725,7 +2723,7 @@ void UGameXXKCompanionRosterWidget::RefreshBackpackTabVisibility()
 		ProfileDetailText->SetText(NSLOCTEXT("GameXXKCompanionRoster", "NotOpenYet", "尚未开放"));
 	}
 
-	// Tab selected texture (004_tab_2) vs normal (003_tab_1).
+	// Selection is conveyed by content color until a new approved square state is connected.
 	auto ApplyTabStyle = [this](UButton* TabButton, const bool bSelected)
 	{
 		if (TabButton)
@@ -2915,7 +2913,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckEditorControls()
 	{
 		DeckCaptionText->SetText(bEditingHeroDeck
 			? NSLOCTEXT("GameXXKCompanionRoster", "HeroDeckCaption", "主角牌组（36 张，编入 8 张）")
-			: NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（6 张，编入 5 张）"));
+			: NSLOCTEXT("GameXXKCompanionRoster", "PersonalDeckCaption", "个人牌组（18 张，编入 5 张）"));
 	}
 	if (HeroDeckToggleButtonText)
 	{

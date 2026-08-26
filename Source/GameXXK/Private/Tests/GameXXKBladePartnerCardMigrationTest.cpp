@@ -144,13 +144,13 @@ namespace GameXXKBladePartnerCardMigrationTest
 			{
 				return false;
 			}
-			if (!RecruitResult.Companion.PersonalCardIds.Contains(RequiredCardId))
+			if (!RecruitResult.Companion.UnlockedPersonalCardIds.Contains(RequiredCardId))
 			{
 				continue;
 			}
 
 			TArray<FName> Selection = { RequiredCardId };
-			for (const FName CardId : RecruitResult.Companion.PersonalCardIds)
+			for (const FName CardId : RecruitResult.Companion.UnlockedPersonalCardIds)
 			{
 				if (Selection.Num() >= 5)
 				{
@@ -205,7 +205,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		TEXT("the replacement Blade partner cards introduce save version fourteen"),
 		FGameXXKSaveMigration::BladePartnerCardsIntroducedSaveVersion,
 		14);
-	TestEqual(TEXT("the current save version includes persistent inventory locks"), FGameXXKSaveMigration::CurrentSaveVersion, 25);
+	TestEqual(TEXT("the current save version includes permanent talents"), FGameXXKSaveMigration::CurrentSaveVersion, 26);
 	FString Error;
 	for (int32 Seed = 1; Seed <= 256; ++Seed)
 	{

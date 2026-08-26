@@ -297,6 +297,19 @@ bool FGameXXKRouteEncounterChoiceNpcFormationTest::RunTest(const FString& Parame
 			&NoLegalSlot,
 			&NoLegalSlotBefore,
 			PPF_None));
+
+	FGameXXKRuntimeState StaleNpcSlot = BeforeChoice;
+	const int32 StaleNpcSlotIndex = FindLastPermanentCompanionSlot(StaleNpcSlot.CardRun.OrderedFormation);
+	StaleNpcSlot.CardRun.OrderedFormation.Members[StaleNpcSlotIndex].Kind = EGameXXKPartyMemberKind::QuestNpc;
+	StaleNpcSlot.CardRun.OrderedFormation.Members[StaleNpcSlotIndex].MemberId = TEXT("Npc.TusiChief");
+	const FGameXXKRuntimeState StaleNpcSlotBefore = StaleNpcSlot;
+	TestFalse(TEXT("temporary-support choice rejects a stale pre-existing NPC slot with cleared mirrors"),
+		UGameXXKMVPRules::ResolveRouteEncounterChoice(StaleNpcSlot, SupportChoiceIndex));
+	TestTrue(TEXT("stale NPC source rejection leaves the complete runtime bit-identical"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&StaleNpcSlot,
+			&StaleNpcSlotBefore,
+			PPF_None));
 	return true;
 }
 

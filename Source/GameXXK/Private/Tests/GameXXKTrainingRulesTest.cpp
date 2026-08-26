@@ -45,9 +45,31 @@ bool FGameXXKTrainingDifficultyUnlockTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("challenge starts"), FGameXXKTrainingRules::StartChallenge(Progress, StageId));
 		TestTrue(TEXT("challenge completes"), FGameXXKTrainingRules::CompleteChallenge(Progress, StageId));
 	}
-	TestTrue(TEXT("hard unlocks after nine normal clears"), FGameXXKTrainingRules::IsDifficultyUnlocked(Progress, EGameXXKTrainingDifficulty::Hard));
+	TestEqual(TEXT("all three difficulty bands expose nine stages"),
+		FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
+	TestTrue(TEXT("Hard unlocks after Normal 3-3"),
+		FGameXXKTrainingRules::IsDifficultyUnlocked(Progress, EGameXXKTrainingDifficulty::Hard));
 	const FName HardOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Hard, 1);
-	TestTrue(TEXT("hard 1-1 is challengeable after normal completion"), FGameXXKTrainingRules::CanChallenge(Progress, HardOne));
+	FGameXXKTrainingStageDefinition HardDefinition;
+	TestTrue(TEXT("Hard 1-1 has its own difficulty-stage definition"),
+		FGameXXKTrainingRules::TryGetStageDefinition(HardOne, HardDefinition));
+	TestTrue(TEXT("Hard 1-1 is challengeable after Normal 3-3"),
+		FGameXXKTrainingRules::CanChallenge(Progress, HardOne));
+	for (int32 StageNumber = 1; StageNumber <= 9; ++StageNumber)
+	{
+		const FName StageId = FGameXXKTrainingRules::MakeStageId(
+			EGameXXKTrainingDifficulty::Hard,
+			StageNumber);
+		TestTrue(TEXT("next Hard stage is challengeable"),
+			FGameXXKTrainingRules::CanChallenge(Progress, StageId));
+		TestTrue(TEXT("Hard challenge starts"), FGameXXKTrainingRules::StartChallenge(Progress, StageId));
+		TestTrue(TEXT("Hard challenge completes"), FGameXXKTrainingRules::CompleteChallenge(Progress, StageId));
+	}
+	TestTrue(TEXT("Hell unlocks after Hard 3-3"),
+		FGameXXKTrainingRules::IsDifficultyUnlocked(Progress, EGameXXKTrainingDifficulty::Hell));
+	const FName HellOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Hell, 1);
+	TestTrue(TEXT("Hell 1-1 is challengeable after Hard 3-3"),
+		FGameXXKTrainingRules::CanChallenge(Progress, HellOne));
 	return true;
 }
 
@@ -96,6 +118,23 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, false);
 	const TArray<FGameXXKTrainingEncounterDefinition> TravelEncounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, true);
 	TestEqual(TEXT("one stage keeps four normal waves, two elite waves and one boss wave"), Encounters.Num(), 7);
+	const EGameXXKTrainingEncounterKind ExpectedWaveKinds[] = {
+		EGameXXKTrainingEncounterKind::Normal,
+		EGameXXKTrainingEncounterKind::Normal,
+		EGameXXKTrainingEncounterKind::Elite,
+		EGameXXKTrainingEncounterKind::Normal,
+		EGameXXKTrainingEncounterKind::Elite,
+		EGameXXKTrainingEncounterKind::Normal,
+		EGameXXKTrainingEncounterKind::Boss};
+	for (int32 WaveIndex = 0; WaveIndex < UE_ARRAY_COUNT(ExpectedWaveKinds); ++WaveIndex)
+	{
+		TestEqual(
+			*FString::Printf(TEXT("wave %d follows the approved normal/elite cadence"), WaveIndex + 1),
+			Encounters.IsValidIndex(WaveIndex)
+				? Encounters[WaveIndex].Kind
+				: EGameXXKTrainingEncounterKind::Boss,
+			ExpectedWaveKinds[WaveIndex]);
+	}
 	int32 EliteCount = 0;
 	for (const FGameXXKTrainingEncounterDefinition& Encounter : Encounters)
 	{
@@ -423,8 +462,10 @@ bool FGameXXKTrainingMutuallyExclusiveModesTest::RunTest(const FString& Paramete
 	TestFalse(TEXT("challenge start pauses travel"), Progress.bTravelActive);
 	TestFalse(TEXT("travel cannot start while challenge is active"), FGameXXKTrainingRules::StartTravel(Progress, StageTwo));
 	TestTrue(TEXT("challenge completion closes the challenge mode"), FGameXXKTrainingRules::CompleteChallenge(Progress, StageTwo));
-	TestTrue(TEXT("travel can start after challenge closes"), FGameXXKTrainingRules::StartTravel(Progress, StageTwo));
-	TestTrue(TEXT("travel becomes active"), Progress.bTravelActive);
+	TestTrue(TEXT("challenge victory immediately resumes travel"), Progress.bTravelActive);
+	TestEqual(TEXT("challenge victory travels the newly cleared stage"), Progress.CurrentTravelStageId, StageTwo);
+	TestEqual(TEXT("challenge victory selects the newly cleared stage"), Progress.SelectedStageId, StageTwo);
+	TestTrue(TEXT("the current travel stage can deliberately be restarted"), FGameXXKTrainingRules::StartTravel(Progress, StageTwo));
 	return true;
 }
 
@@ -441,6 +482,64 @@ bool FGameXXKTrainingFailurePausesWhenRetryDisabledTest::RunTest(const FString& 
 	TestTrue(TEXT("failure resolves at 1-1"), FGameXXKTrainingRules::ResolveTravelFailure(Progress));
 	TestFalse(TEXT("retry-off failure pauses travel"), Progress.bTravelActive);
 	TestEqual(TEXT("retry-off 1-1 stays at 1-1"), Progress.CurrentTravelStageId, FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelEncounterSpawnResetTest,
+	"GameXXK.Training.TravelEncounterSpawnReset",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelEncounterSpawnResetTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingProgress Progress;
+	FGameXXKTrainingRules::InitializeNewGame(Progress);
+	const TArray<FGameXXKTrainingTravelPartyUnitRuntime> DamagedParty = {
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Hero"), 40, 100, 100000),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Companion.Blade.Test"), 30, 90, 100000),
+		FGameXXKTrainingTravelPartyUnitRuntime(TEXT("Npc.TusiChief"), 20, 80, 100000)};
+	FGameXXKTrainingTravelRuntime Runner;
+	TestTrue(TEXT("damaged party fixture initializes"),
+		FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, DamagedParty));
+	TestEqual(TEXT("spawn delay is five logical seconds"),
+		Runner.WalkStepsRequired, FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds);
+	for (const FGameXXKTrainingTravelPartyUnitRuntime& Unit : Runner.PartyUnits)
+	{
+		TestEqual(TEXT("encounter materialization fully heals every party unit"), Unit.HP, Unit.MaxHP);
+	}
+
+	bool bEncounterCompleted = false;
+	bool bStageCompleted = false;
+	bool bDefeated = false;
+	FGameXXKTrainingReward Reward;
+	for (int32 Second = 1; Second < FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds; ++Second)
+	{
+		TestTrue(TEXT("walking second advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+		TestEqual(TEXT("first four seconds remain Walking"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
+	}
+	TestTrue(TEXT("fifth walking second advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	TestEqual(TEXT("fifth second enters Combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+
+	for (FGameXXKTrainingTravelPartyUnitRuntime& Unit : Runner.PartyUnits)
+	{
+		Unit.HP = 1;
+	}
+	for (int32 Guard = 0; Guard < 8 && !bEncounterCompleted; ++Guard)
+	{
+		TestTrue(TEXT("high-attack party settles the current encounter"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+	}
+	TestTrue(TEXT("the current encounter settles within the bounded guard"), bEncounterCompleted);
+	for (const FGameXXKTrainingTravelPartyUnitRuntime& Unit : Runner.PartyUnits)
+	{
+		TestEqual(TEXT("next encounter fully heals every party unit"), Unit.HP, Unit.MaxHP);
+	}
+	for (const FGameXXKTrainingTravelEnemyRuntime& Enemy : Runner.Enemies)
+	{
+		TestEqual(TEXT("next encounter materializes every enemy at full health"), Enemy.HP, Enemy.MaxHP);
+	}
 	return true;
 }
 
@@ -464,13 +563,16 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	bool bStageCompleted = false;
 	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	TestTrue(TEXT("first walk step advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+	for (int32 Second = 1; Second < FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds; ++Second)
+	{
+		TestTrue(TEXT("walking step advances"), FGameXXKTrainingRules::AdvanceTravelRunner(
+			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
+		TestFalse(TEXT("walking does not complete an encounter"), bEncounterCompleted);
+		TestEqual(TEXT("first four walk steps remain walking"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
+	}
+	TestTrue(TEXT("fifth walk step reaches the encounter"), FGameXXKTrainingRules::AdvanceTravelRunner(
 		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
-	TestFalse(TEXT("first walk step does not complete an encounter"), bEncounterCompleted);
-	TestEqual(TEXT("first walk step remains walking"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
-	TestTrue(TEXT("second walk step reaches the encounter"), FGameXXKTrainingRules::AdvanceTravelRunner(
-		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
-	TestEqual(TEXT("second walk step enters combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
+	TestEqual(TEXT("fifth walk step enters combat"), Runner.Phase, EGameXXKTrainingTravelPhase::Combat);
 	TestTrue(TEXT("first combat hit advances the ordinary wave"), FGameXXKTrainingRules::AdvanceTravelRunner(
 		Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
 	TestFalse(TEXT("killing only the first enemy does not settle the wave"), bEncounterCompleted);
@@ -508,6 +610,23 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("travel reward grants gold"), Reward.Gold > 0);
 	TestTrue(TEXT("travel runner continues walking after settlement"), Runner.Phase == EGameXXKTrainingTravelPhase::Walking);
 	TestEqual(TEXT("runner remains on the selected stage"), Runner.StageId, StageOne);
+	TestEqual(TEXT("completed stage runtime loops to encounter zero"), Runner.EncounterIndex, 0);
+	TestEqual(TEXT("completed stage rematerializes the first two-enemy formation"), Runner.Enemies.Num(), 2);
+	if (Runner.Enemies.Num() == 2)
+	{
+		TestEqual(TEXT("looped first formation starts with rooster"),
+			Runner.Enemies[0].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Rooster")));
+		TestEqual(TEXT("looped first formation continues with civet"),
+			Runner.Enemies[1].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Civet")));
+	}
+	for (const FGameXXKTrainingTravelPartyUnitRuntime& PartyUnit : Runner.PartyUnits)
+	{
+		TestEqual(TEXT("looped first encounter fully heals every party unit"), PartyUnit.HP, PartyUnit.MaxHP);
+	}
+	for (const FGameXXKTrainingTravelEnemyRuntime& Enemy : Runner.Enemies)
+	{
+		TestEqual(TEXT("looped first encounter fully heals every enemy"), Enemy.HP, Enemy.MaxHP);
+	}
 	return true;
 }
 
@@ -530,7 +649,10 @@ bool FGameXXKTrainingTravelRunnerFailureTest::RunTest(const FString& Parameters)
 	bool bStageCompleted = false;
 	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	for (int32 Guard = 0; Guard < 3 && Runner.Phase != EGameXXKTrainingTravelPhase::Combat; ++Guard)
+	for (int32 Guard = 0;
+		Guard <= FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds
+			&& Runner.Phase != EGameXXKTrainingTravelPhase::Combat;
+		++Guard)
 	{
 		TestTrue(TEXT("failure fixture reaches combat"), FGameXXKTrainingRules::AdvanceTravelRunner(
 			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
@@ -576,7 +698,10 @@ bool FGameXXKTrainingTravelThreeUnitPartyRuntimeTest::RunTest(const FString& Par
 	bool bStageCompleted = false;
 	bool bDefeated = false;
 	FGameXXKTrainingReward Reward;
-	for (int32 WalkGuard = 0; WalkGuard < 2; ++WalkGuard)
+	for (int32 WalkGuard = 0;
+		WalkGuard <= FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds
+			&& Runner.Phase != EGameXXKTrainingTravelPhase::Combat;
+		++WalkGuard)
 	{
 		TestTrue(TEXT("party fixture reaches combat"), FGameXXKTrainingRules::AdvanceTravelRunner(
 			Progress, Runner, bEncounterCompleted, bStageCompleted, bDefeated, Reward));
@@ -770,15 +895,48 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 	{
 		return false;
 	}
+	TestTrue(TEXT("challenge opens its route map instead of skipping to battle"),
+		Subsystem->IsTrainingChallengeRouteMapActive());
+	TestEqual(TEXT("challenge route map enters the DungeonMap screen"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("challenge route map uses the generated multi-node map"),
+		Subsystem->GetRuntimeState().RouteMapNodes.Num() > 1);
+	TestTrue(TEXT("the generated Start node is reachable first"),
+		Subsystem->GetRuntimeState().ReachableRouteNodeIds.Contains(0));
+	TestTrue(TEXT("selecting the generated Start node advances the map"),
+		Subsystem->SelectRouteNodeById(0));
+	const FGameXXKRuntimeState& MapState = Subsystem->GetRuntimeState();
+	int32 BattleNodeId = INDEX_NONE;
+	for (const int32 ReachableNodeId : MapState.ReachableRouteNodeIds)
+	{
+		const FGameXXKRouteMapNode* Node = MapState.RouteMapNodes.FindByPredicate(
+			[ReachableNodeId](const FGameXXKRouteMapNode& Candidate)
+			{
+				return Candidate.NodeId == ReachableNodeId;
+			});
+		if (Node && (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite))
+		{
+			BattleNodeId = Node->NodeId;
+			break;
+		}
+	}
+	TestTrue(TEXT("the generated map exposes a reachable battle node"), BattleNodeId != INDEX_NONE);
+	TestTrue(TEXT("selecting the reachable battle node opens the authored battle"),
+		Subsystem->SelectRouteNodeById(BattleNodeId));
 	TestTrue(TEXT("training challenge owns a real card battle"), Subsystem->IsTrainingChallengeBattleActive());
 	TestEqual(TEXT("training battle enters the real Battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	const int32 EncounterIndex = Subsystem->GetRuntimeState().Training.ActiveChallengeEncounterIndex;
+	const TArray<FGameXXKTrainingEncounterDefinition> EncounterSequence =
+		FGameXXKTrainingRules::BuildEncounterSequence(StageTwo, false);
+	TestTrue(TEXT("the battle node maps to an authored encounter"),
+		EncounterSequence.IsValidIndex(EncounterIndex));
 	const int32 EnemyCount = Subsystem->GetRuntimeState().ActiveBattleEnemies.Num();
-	TestEqual(TEXT("the first ordinary challenge wave contains two enemies"), EnemyCount, 2);
+	TestEqual(TEXT("the first authored challenge wave contains two enemies"), EnemyCount, 2);
 	if (EnemyCount != 2)
 	{
 		return false;
 	}
-	const TArray<FName> ExpectedFormation = FGameXXKTrainingRules::BuildEncounterSequence(StageTwo)[0].EnemyDefinitionIds;
+	const TArray<FName> ExpectedFormation = EncounterSequence[EncounterIndex].EnemyDefinitionIds;
 	TestEqual(TEXT("training battle uses the authored left enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].EnemyDefinitionId, ExpectedFormation[0]);
 	TestEqual(TEXT("training battle uses the authored right enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[1].EnemyDefinitionId, ExpectedFormation[1]);
 
@@ -810,26 +968,122 @@ bool FGameXXKTrainingDirectBattleLoopSettlementTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+	TestTrue(TEXT("starting a challenge opens the route map"),
+		Subsystem->IsTrainingChallengeRouteMapActive());
+	TestTrue(TEXT("the player selects the generated Start node"),
+		Subsystem->SelectRouteNodeById(0));
+
+	const auto FindReachableNode = [&](const EGameXXKNodeKind Kind, int32& OutNodeId)
+	{
+		OutNodeId = INDEX_NONE;
+		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+		for (const int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = State.RouteMapNodes.FindByPredicate(
+				[NodeId](const FGameXXKRouteMapNode& Candidate)
+				{
+					return Candidate.NodeId == NodeId;
+				});
+			if (Node && Node->NodeKind == Kind)
+			{
+				OutNodeId = NodeId;
+				return true;
+			}
+		}
+		return false;
+	};
+	const auto FindFirstBattleNode = [&](int32& OutNodeId)
+	{
+		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+		for (const int32 NodeId : State.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = State.RouteMapNodes.FindByPredicate(
+				[NodeId](const FGameXXKRouteMapNode& Candidate)
+				{
+					return Candidate.NodeId == NodeId;
+				});
+			if (Node && (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite))
+			{
+				OutNodeId = NodeId;
+				return true;
+			}
+		}
+		return false;
+	};
+
+	int32 FirstBattleNodeId = INDEX_NONE;
+	if (!TestTrue(TEXT("the generated map exposes a reachable battle node"),
+		FindFirstBattleNode(FirstBattleNodeId))
+		|| !TestTrue(TEXT("the player selects the first reachable battle node"),
+			Subsystem->SelectRouteNodeById(FirstBattleNodeId)))
+	{
+		return false;
+	}
 
 	bool bStageCompleted = false;
 	FGameXXKTrainingReward Reward;
+	FString RewardError;
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("first terminal victory settles through Training"),
+	TestTrue(TEXT("first terminal victory opens the standard tiered reward offer"),
 		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
-	TestFalse(TEXT("first encounter does not complete the stage"), bStageCompleted);
-	TestEqual(TEXT("first victory advances to the next authored encounter"),
-		Subsystem->GetRuntimeState().Training.ActiveChallengeEncounterIndex, 1);
-	TestEqual(TEXT("non-final victory remains on the existing Battle surface"),
-		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("non-final victory creates the next live CardBattle"),
+	TestEqual(TEXT("the first victory opens three standard reward choices"),
+		Subsystem->GetRuntimeState().CardRun.PendingReward.Options.Num(), 3);
+	TestFalse(TEXT("the reward offer does not yet complete the battle node"),
+		bStageCompleted);
+	TestTrue(TEXT("choosing the first standard reward settles the node"),
+		Subsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestEqual(TEXT("first victory returns to the route map instead of chaining the next battle"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("first victory leaves the challenge route map active"),
+		Subsystem->IsTrainingChallengeRouteMapActive());
+	TestFalse(TEXT("first victory does not auto-create the next CardBattle"),
 		Subsystem->IsTrainingChallengeBattleActive());
+	TestTrue(TEXT("first victory marks the selected route node as visited"),
+		Subsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(FirstBattleNodeId));
+	TestTrue(TEXT("first victory advances the generated map cursor"),
+		Subsystem->GetRuntimeState().CurrentRouteNodeId != INDEX_NONE);
 
-	FGameXXKRuntimeState& FinalState = Subsystem->GetMutableRuntimeState();
-	FinalState.Training.ActiveChallengeEncounterIndex = Encounters.Num() - 1;
-	FinalState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("final terminal victory settles through Training"),
+	// The player picks another authored battle node and the standard reward
+	// flow settles it as well.
+	int32 SecondBattleNodeId = INDEX_NONE;
+	if (!TestTrue(TEXT("a second battle node is reachable"), FindFirstBattleNode(SecondBattleNodeId))
+		|| !TestTrue(TEXT("the player selects the second reachable battle node"),
+			Subsystem->SelectRouteNodeById(SecondBattleNodeId)))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("second victory opens its standard reward offer"),
 		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
-	TestTrue(TEXT("final encounter completes the selected stage"), bStageCompleted);
+	TestTrue(TEXT("the second reward choice settles the second node"),
+		Subsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestEqual(TEXT("the second victory also returns to the route map"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+
+	// Boss terminal victory completes the stage and returns to the workbench.
+	int32 BossNodeId = INDEX_NONE;
+	for (const FGameXXKRouteMapNode& Node : Subsystem->GetRuntimeState().RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Boss)
+		{
+			BossNodeId = Node.NodeId;
+			break;
+		}
+	}
+	TestTrue(TEXT("the generated map contains a Boss node"), BossNodeId != INDEX_NONE);
+	FGameXXKRuntimeState& BossState = Subsystem->GetMutableRuntimeState();
+	BossState.ReachableRouteNodeIds = {BossNodeId};
+	TestTrue(TEXT("the player selects the Boss node"),
+		Subsystem->SelectRouteNodeById(BossNodeId));
+	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	TestTrue(TEXT("Boss victory opens the standard Boss reward offer"),
+		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
+	TestTrue(TEXT("choosing the Boss reward finishes the challenge"),
+		Subsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestFalse(TEXT("Boss victory closes the challenge state"),
+		Subsystem->GetRuntimeState().Training.bChallengeActive);
+	TestTrue(TEXT("Boss victory clears the selected stage"),
+		FGameXXKTrainingRules::IsStageCleared(Subsystem->GetRuntimeState().Training, StageId));
 	TestEqual(TEXT("completed challenge returns to the workbench screen state"),
 		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("completed challenge targets the desktop workbench projection"),
@@ -838,6 +1092,8 @@ bool FGameXXKTrainingDirectBattleLoopSettlementTest::RunTest(const FString& Para
 		Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle);
 	TestFalse(TEXT("completed challenge closes Training challenge state"),
 		Subsystem->GetRuntimeState().Training.bChallengeActive);
+	TestFalse(TEXT("completed challenge discards the generated route map"),
+		Subsystem->GetRuntimeState().bHasGeneratedRouteMap);
 	return true;
 }
 
@@ -871,8 +1127,23 @@ bool FGameXXKTrainingChallengeCancelToWorkbenchTest::RunTest(const FString& Para
 	TestFalse(TEXT("cancel clears the live CardBattle"), Cancelled.CardRun.bHasActiveCardBattle);
 	TestFalse(TEXT("cancel clears legacy battle projection"), Cancelled.bHasActiveBattle);
 	TestFalse(TEXT("cancel closes Training challenge state"), Cancelled.Training.bChallengeActive);
+	TestFalse(TEXT("cancel discards the generated challenge route map"), Cancelled.bHasGeneratedRouteMap);
+	TestEqual(TEXT("cancel clears challenge route node tracking"),
+		Cancelled.Training.ActiveChallengeRouteNodeId, INDEX_NONE);
+	TestTrue(TEXT("cancel empties the challenge route node list"), Cancelled.RouteMapNodes.IsEmpty());
 	TestFalse(TEXT("cancel does not award a stage clear"),
 		FGameXXKTrainingRules::IsStageCleared(Cancelled.Training, StageId));
+	TestTrue(TEXT("cancel resumes the previous Travel loop"), Cancelled.Training.bTravelActive);
+	TestEqual(TEXT("cancel keeps the previous Travel target"),
+		Cancelled.Training.CurrentTravelStageId,
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1));
+	const FGameXXKTrainingTravelRuntime CancelledTravel = Subsystem->GetTrainingTravelRuntimeCopy();
+	TestEqual(TEXT("cancel rebuilds the previous Travel runtime"),
+		CancelledTravel.StageId,
+		Cancelled.Training.CurrentTravelStageId);
+	TestEqual(TEXT("cancel restarts at the walking delay"),
+		CancelledTravel.Phase,
+		EGameXXKTrainingTravelPhase::Walking);
 	TestEqual(TEXT("cancel never changes the town quest"), Cancelled.QuestState, QuestBefore);
 	TestFalse(TEXT("an already-cancelled challenge cannot be cancelled twice"),
 		Subsystem->CancelTrainingChallengeToWorkbench());
@@ -896,6 +1167,26 @@ bool FGameXXKTrainingChallengePendingChoiceAutoBattleTest::RunTest(const FString
 
 	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	TestTrue(TEXT("pending-choice challenge fixture starts an unlocked stage"), Subsystem->StartTrainingChallenge(StageTwo));
+	TestTrue(TEXT("pending-choice fixture selects the generated Start node"),
+		Subsystem->SelectRouteNodeById(0));
+	const FGameXXKRuntimeState& MapState = Subsystem->GetRuntimeState();
+	int32 BattleNodeId = INDEX_NONE;
+	for (const int32 NodeId : MapState.ReachableRouteNodeIds)
+	{
+		const FGameXXKRouteMapNode* Node = MapState.RouteMapNodes.FindByPredicate(
+			[NodeId](const FGameXXKRouteMapNode& Candidate)
+			{
+				return Candidate.NodeId == NodeId;
+			});
+		if (Node && (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite))
+		{
+			BattleNodeId = Node->NodeId;
+			break;
+		}
+	}
+	TestTrue(TEXT("pending-choice fixture finds a reachable battle node"), BattleNodeId != INDEX_NONE);
+	TestTrue(TEXT("pending-choice challenge fixture enters the first battle node"),
+		Subsystem->SelectRouteNodeById(BattleNodeId));
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	FGameXXKBattleDeckState& Deck = State.CardRun.ActiveBattle.Deck;
 	if (!TestTrue(TEXT("pending-choice challenge fixture has a hand to discard from"), !Deck.Hand.IsEmpty()))
@@ -1112,9 +1403,19 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKTrainingSaveValidationTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("save-validation fixture starts a complete current game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
 	FString Error;
-	TestTrue(TEXT("new-game Training state validates"), FGameXXKSaveMigration::ValidateRuntimeState(State, Error));
+	const bool bValidCurrentState = FGameXXKSaveMigration::ValidateRuntimeState(State, Error);
+	TestTrue(
+		FString::Printf(TEXT("new-game Training state validates: %s"), *Error),
+		bValidCurrentState);
 
 	State.Training.ActiveTravelEncounterIndex = 999;
 	TestFalse(TEXT("invalid travel encounter index is rejected"), FGameXXKSaveMigration::ValidateRuntimeState(State, Error));

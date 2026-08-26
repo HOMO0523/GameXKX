@@ -428,8 +428,21 @@ bool FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
 			QuestNpcSlot = SlotIndex;
 		}
 	}
-	if (QuestNpcSlot == INDEX_NONE)
+	if (QuestNpcSlot != INDEX_NONE)
 	{
+		const FGameXXKPartyMemberRef& ExistingQuestNpc = Candidate.Members[QuestNpcSlot];
+		if (ExistingQuestNpc.MemberId != QuestNpcId || !ResolveMember(State, ExistingQuestNpc))
+		{
+			SetError(OutError, TEXT("Existing task-NPC slot is stale or unrelated to the synchronized current NPC."));
+			return false;
+		}
+	}
+	else
+	{
+		if (!Validate(State, Candidate, OutError))
+		{
+			return false;
+		}
 		for (int32 SlotIndex = Candidate.Members.Num() - 1; SlotIndex >= 0; --SlotIndex)
 		{
 			if (Candidate.Members[SlotIndex].Kind == EGameXXKPartyMemberKind::PermanentCompanion)

@@ -25,6 +25,8 @@ class UGameXXKWorldMapWidget;
 class UGameXXKDesktopTrainingWorkbenchWidget;
 class UWidget;
 class AGameXXKRouteEncounterSceneActor;
+class SWidget;
+class SWindow;
 struct FWorldContext;
 
 enum class EGameXXKPlayerFlowBootProfile : uint8
@@ -216,9 +218,14 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
 	bool CloseDesktopTrainingWorkbench();
+	bool RequestDesktopTownToggleFromWorkbench();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	UGameXXKDesktopTrainingWorkbenchWidget* GetDesktopTrainingWorkbenchWidgetForTest() const;
+	void SetDesktopWorkbenchTownPanelInputLock(bool bLocked);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	TArray<UGameXXKDesktopTrainingWorkbenchWidget*> GetAllDesktopTrainingWorkbenchWidgetsForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	void SetDesktopTrainingWorkbenchEnabledForTest(bool bEnabled);
@@ -256,6 +263,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool CloseRouteEncounterPanel();
 
+	/** Returns to the route map without resolving the current event or camp. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
+	bool ReturnPendingRouteChoiceToMap();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Development", meta = (DevelopmentOnly))
+	bool TriggerRouteEncounterEscapeForTest();
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	bool IsRouteEncounterPanelOpenForTest() const;
 
@@ -284,6 +298,29 @@ public:
 	bool EnsureDesktopTrainingWidgetsForTest();
 	bool ApplyDesktopTrainingPerfProfileForTest(const FString& Profile);
 	bool PrepareForRuntimeStateMapTravelForTest(const FString& CurrentPackageName);
+	bool CanAddPlayerWidgetsToViewportForTest() const;
+	static TSharedRef<SWindow> BuildDesktopTrainingOverlayWindowForTest(
+		const FVector2D& HostPosition,
+		const FVector2D& HostSize);
+	static bool ShouldHideDesktopTrainingGameViewportForTest(
+		bool bEditorMode,
+		bool bGameCommandLine);
+	static bool ShouldHideViewportAfterOverlayAttachForTest(
+		bool bOverlayRequested,
+		bool bOverlayAttached);
+	static bool ShouldAttemptDesktopOverlayAfterFailureForTest(
+		bool bOverlayFailedForSession);
+	static bool ShouldUseDesktopWindowForMapNameForTest(const FString& MapPackageName);
+	static bool ShouldBeginDesktopTownMapTravelForTest(
+		bool bAlreadyPending,
+		FName TargetMap);
+	bool IsSourceLessRouteEncounterPackageValidForTest(const FString& CurrentPackageName) const;
+	bool OpenSourceLessRouteEncounterPanelForTest() { return OpenRouteEncounterPanelInternal(nullptr); }
+	bool HasValidRouteEncounterContextForTest() const { return HasValidRouteEncounterContext(); }
+	bool HasActiveRouteEncounterContextForTest() const
+	{
+		return ActiveRouteEncounterSourceActor.IsValid() || ActiveRouteEncounterNodeId != INDEX_NONE;
+	}
 	/** Supplies already-resolved BattleBoard-local pointer coordinates to the real PlayerTick path in headless automation. */
 	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
 	void ClearBattleMousePositionOverrideForTest();
@@ -294,6 +331,7 @@ private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
 	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
 	bool EnsureDesktopTrainingWidgets();
+	void RestoreDesktopWorkbenchSessionAfterMapTravel();
 	bool ApplyDesktopTrainingPerfProfile(const FString& Profile);
 	bool EnsurePlayerFlowWidgets();
 	UGameXXKOneGameRouteMapWidget* EnsureRouteMapWidget();
@@ -308,6 +346,21 @@ private:
 	UGameXXKTaskPanelWidget* EnsureTaskPanelWidget();
 	UGameXXKTownHudWidget* EnsureTownHudWidget();
 	UGameXXKDesktopTrainingWorkbenchWidget* EnsureDesktopTrainingWorkbenchWidget();
+	bool ShouldUseDesktopTrainingOverlayWindow() const;
+	bool EnsureDesktopTrainingOverlayWindow();
+	void ShowDesktopTrainingOverlayWindow();
+	void HideDesktopTrainingOverlayWindow();
+	void DestroyDesktopTrainingOverlayWindow();
+	void SetDesktopTrainingGameViewportVisible(bool bVisible);
+	static bool ShouldHideDesktopTrainingGameViewport(
+		bool bEditorMode,
+		bool bGameCommandLine);
+	static bool ShouldUseDesktopWindowForMapName(const FString& MapPackageName);
+	static TSharedRef<SWindow> BuildDesktopTrainingOverlayWindow(
+		const FVector2D& HostPosition,
+		const FVector2D& HostSize,
+		const TSharedRef<SWidget>& Content,
+		bool bRequestComposition);
 	UGameXXKWorldMapWidget* EnsureWorldMapWidget();
 	bool ConfirmPendingQuestNpc(FName TaskId);
 	void RefreshPlayerFlowWidgets();
@@ -321,6 +374,7 @@ private:
 	AGameXXKRouteEncounterSceneActor* GetFocusedRouteEncounterActor() const;
 	bool OpenRouteEncounterPanelInternal(AGameXXKRouteEncounterSceneActor* SourceActor);
 	bool HasValidRouteEncounterContext() const;
+	bool ForceCloseRouteEncounterPanelLocal();
 	void ClearRouteEncounterContext();
 	bool UpdateBattleTargetingPointer(FVector2D CursorScreenPosition);
 	bool UpdateBattleTargetingPointerFromMouse();
@@ -377,6 +431,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|DesktopTraining")
 	bool bEnableDesktopTrainingWorkbench = false;
 
+	/** Set when a non-Town screen closes the workbench; cleared once Town reopens it. */
+	UPROPERTY(Transient)
+	bool bDesktopWorkbenchClosedForFlow = false;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMainMenuWidget> MainMenuWidget;
 
@@ -424,6 +482,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> DesktopTrainingWorkbenchWidget;
+
+	TSharedPtr<SWindow> DesktopTrainingOverlayWindow;
+	TWeakPtr<SWindow> DesktopTrainingGameViewportWindow;
+	bool bDesktopTrainingGameViewportHidden = false;
+	bool bDesktopTrainingOverlayCompositionActive = false;
+	bool bDesktopTrainingOverlayFailedForSession = false;
+	bool bDesktopTownMapTravelPending = false;
+	bool bOwnsDesktopWorkbenchTownMoveInputLock = false;
+	bool bOwnsDesktopWorkbenchTownLookInputLock = false;
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> PendingQuestNpc;

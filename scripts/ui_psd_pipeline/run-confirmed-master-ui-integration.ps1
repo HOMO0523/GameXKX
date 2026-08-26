@@ -2,7 +2,7 @@ param(
     [string]$Psd = 'outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.psd',
     [string]$CompactCurrencyStrip = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/Generated/town-hud/components/currency_strip_320.png',
     [string]$IngotIcon = 'SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Content/resource_gold.png',
-    [string]$SelectedSlot = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/Assets/UIV4_item_slot_selected.png',
+    [string]$SelectedSlot = '',
     [string]$Backup = 'outputs/UI_PSD/Candidates/Backups/GameXXK_UI_Master_V1.before-confirmed-ui-integration.psd',
     [string]$Report = 'outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.confirmed-ui-integration.report.json',
     [string]$Validation = 'outputs/UI_PSD/Candidates/GameXXK_UI_Master_V1.confirmed-ui-integration.validation.json',
@@ -45,6 +45,9 @@ $projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $psdPath = Resolve-InputFile $Psd 'master PSD'
 $stripPath = Resolve-InputFile $CompactCurrencyStrip 'compact currency strip'
 $ingotPath = Resolve-InputFile $IngotIcon 'ingot icon'
+if ([string]::IsNullOrWhiteSpace($SelectedSlot)) {
+    throw 'The rejected selected-slot asset was removed. Supply a newly user-approved square asset explicitly.'
+}
 $selectedSlotPath = Resolve-InputFile $SelectedSlot 'selected slot asset'
 $builderPath = Resolve-InputFile (Join-Path $PSScriptRoot 'build-confirmed-master-ui-integration-jsx.js') 'integration JSX builder'
 $backupPath = Resolve-Destination $Backup

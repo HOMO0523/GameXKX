@@ -1231,12 +1231,21 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 
 void UGameXXKBattleBoardWidget::QueuePresentation(const FGameXXKBattlePresentationEvent& Event)
 {
-	QueuePresentationInternal(Event, true);
+	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	const FGameXXKCardBattleRuntime& BattleRuntime = Subsystem
+		&& Subsystem->GetRuntimeState().CardRun.bHasActiveCardBattle
+			? Subsystem->GetRuntimeState().CardRun.ActiveBattle
+			: FGameXXKCardBattleRuntime();
+	QueuePresentationInternal(
+		Event,
+		true,
+		BuildBattleSettlementLine(Event, NAME_None, BattleRuntime));
 }
 
 void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 	const FGameXXKBattlePresentationEvent& Event,
-	const bool bRefreshBaseline)
+	const bool bRefreshBaseline,
+	const FString& SettlementLine)
 {
 	if (Event.TargetUnitId.IsNone())
 	{
@@ -1247,6 +1256,7 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 	FBattlePresentationQueueEntry Entry;
 	Entry.Event = Event;
 	Entry.Kind = EBattlePresentationKind::AttackHit;
+	Entry.SettlementLine = SettlementLine;
 	Entry.Rhythm = FGameXXKBattleAnimationPresentation::ResolveCombatRhythm(Event);
 	Entry.QueueSerial = NextBattlePresentationQueueSerial++;
 	if (NextBattlePresentationQueueSerial == 0)
@@ -1375,7 +1385,10 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 		FGameXXKBattleAnimationPresentation::BuildStatusPresentationEvents(Before, After);
 	for (const FGameXXKBattlePresentationEvent& Event : DamageEvents)
 	{
-		QueuePresentationInternal(Event, false);
+		QueuePresentationInternal(
+			Event,
+			false,
+			BuildBattleSettlementLine(Event, PlayedCardInstanceId, Before));
 	}
 	for (const FGameXXKBattleStatusPresentationEvent& Event : StatusEvents)
 	{
@@ -1410,6 +1423,122 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 		++ExecutedBattlePresentationContinuationCount;
 	}
 	return ExecuteBattlePresentationContinuation(ImmediateContinuation);
+}
+
+FString UGameXXKBattleBoardWidget::BuildBattleSettlementLine(
+	const FGameXXKBattlePresentationEvent& Event,
+	const FName PlayedCardInstanceId,
+	const FGameXXKCardBattleRuntime& BeforeRuntime) const
+{
+	const FString AttackerName = ResolveProjectedUnitHudDisplayName(Event.AttackerUnitId).ToString();
+	const FString TargetName = ResolveProjectedUnitHudDisplayName(Event.TargetUnitId).ToString();
+
+	FString CardName;
+	if (!PlayedCardInstanceId.IsNone())
+	{
+		const FGameXXKCardInstance* PlayedCard = BeforeRuntime.Deck.Hand.FindByPredicate(
+			[PlayedCardInstanceId](const FGameXXKCardInstance& Card)
+			{
+				return Card.InstanceId == PlayedCardInstanceId;
+			});
+		if (!PlayedCard)
+		{
+			PlayedCard = BeforeRuntime.Deck.DrawPile.FindByPredicate(
+				[PlayedCardInstanceId](const FGameXXKCardInstance& Card)
+				{
+					return Card.InstanceId == PlayedCardInstanceId;
+				});
+		}
+		if (!PlayedCard)
+		{
+			PlayedCard = BeforeRuntime.Deck.DiscardPile.FindByPredicate(
+				[PlayedCardInstanceId](const FGameXXKCardInstance& Card)
+				{
+					return Card.InstanceId == PlayedCardInstanceId;
+				});
+		}
+		if (PlayedCard)
+		{
+			if (const FGameXXKCardDefinition* Definition =
+				FGameXXKCardCatalog::FindCardDefinition(PlayedCard->CardId))
+			{
+				CardName = Definition->DisplayName.ToString();
+			}
+		}
+	}
+	if (CardName.IsEmpty())
+	{
+		CardName = TEXT("攻击");
+	}
+
+	if (Event.bAvoided)
+	{
+		return FString::Printf(
+			TEXT("%s用【%s】攻击%s，被闪避"),
+			*AttackerName,
+			*CardName,
+			*TargetName);
+	}
+
+	const int32 TotalDamage = Event.ArmorAbsorbed + Event.HealthDamage;
+	FString Line = FString::Printf(
+		TEXT("%s用【%s】对%s造成了%d伤害"),
+		*AttackerName,
+		*CardName,
+		*TargetName,
+		TotalDamage);
+	if (Event.bTargetDefeated)
+	{
+		Line += TEXT("，击倒");
+	}
+	return Line;
+}
+
+void UGameXXKBattleBoardWidget::AppendBattleSettlementLine(const FString& Line)
+{
+	if (Line.IsEmpty())
+	{
+		return;
+	}
+	BattleSettlementLines.Add(Line);
+	if (BattleSettlementLines.Num() > MaximumBattleSettlementLines)
+	{
+		BattleSettlementLines.RemoveAt(0, BattleSettlementLines.Num() - MaximumBattleSettlementLines, EAllowShrinking::No);
+	}
+	RefreshBattleSettlementLog();
+}
+
+void UGameXXKBattleBoardWidget::RefreshBattleSettlementLog()
+{
+	if (!BattleSettlementLogText)
+	{
+		return;
+	}
+	BattleSettlementLogText->SetText(
+		FText::FromString(FString::Join(BattleSettlementLines, TEXT("\n"))));
+	if (BattleSettlementLogPanel)
+	{
+		BattleSettlementLogPanel->SetVisibility(
+			BattleSettlementLines.IsEmpty()
+				? ESlateVisibility::Collapsed
+				: ESlateVisibility::SelfHitTestInvisible);
+	}
+}
+
+FString UGameXXKBattleBoardWidget::GetBattleSettlementLogForTest() const
+{
+	return FString::Join(BattleSettlementLines, TEXT("\n"));
+}
+
+int32 UGameXXKBattleBoardWidget::GetBattleSettlementLineCountForTest() const
+{
+	return BattleSettlementLines.Num();
+}
+
+void UGameXXKBattleBoardWidget::ClearBattleSettlementLogForTest()
+{
+	BattleSettlementLines.Reset();
+	RefreshBattleSettlementLog();
 }
 
 bool UGameXXKBattleBoardWidget::BeginPlayedCardCommit(const FName PlayedCardInstanceId)
@@ -2108,6 +2237,12 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 	}
 	Entry.bImpactFired = true;
 	++BattlePresentationImpactCount;
+	// One settlement line per impact, in queue order; the damage overlay below
+	// animates the same packet's HP change immediately afterwards.
+	if (!Entry.SettlementLine.IsEmpty())
+	{
+		AppendBattleSettlementLine(Entry.SettlementLine);
+	}
 	ApplyDisplayedDamagePacket(Entry.Event);
 
 	if (BattleCinematicReadout)
@@ -2281,6 +2416,8 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	BattlePresentationHudShakeCount = 0;
 	ExecutedBattlePresentationContinuationCount = 0;
 	PlayedCardCommitCompletionCount = 0;
+	BattleSettlementLines.Reset();
+	RefreshBattleSettlementLog();
 	ResetBattlePresentationFeedback();
 	RestoreFormationAfterPresentation();
 	if (BattleCinematicImpact)
@@ -2593,6 +2730,8 @@ bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionTok
 	}
 
 	ActiveBattleVisualSessionToken = SessionToken;
+	BattleSettlementLines.Reset();
+	RefreshBattleSettlementLog();
 	RefreshUnitVisuals();
 	for (const FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
 	{
@@ -6446,6 +6585,38 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		ActionSlot->SetAnchors(FAnchors(0.68f, 0.52f, 0.98f, 0.96f));
 		ActionSlot->SetOffsets(FMargin(0.0f, 0.0f, 0.0f, 0.0f));
 		ActionSlot->SetAlignment(FVector2D(0.0f, 0.0f));
+	}
+
+	// Sequential settlement readout. It is input-transparent and appends one
+	// line per landed combat packet, keeping the newest six lines visible.
+	BattleSettlementLogPanel = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(),
+		TEXT("BattleSettlementLogPanel"));
+	if (BattleSettlementLogPanel)
+	{
+		BattleSettlementLogPanel->SetBrushColor(FLinearColor(0.05f, 0.03f, 0.02f, 0.72f));
+		BattleSettlementLogPanel->SetPadding(FMargin(12.0f, 8.0f, 12.0f, 8.0f));
+		BattleSettlementLogPanel->SetVisibility(ESlateVisibility::Collapsed);
+		BattleSettlementLogText = WidgetTree->ConstructWidget<UTextBlock>(
+			UTextBlock::StaticClass(),
+			TEXT("BattleSettlementLogText"));
+		if (BattleSettlementLogText)
+		{
+			BattleSettlementLogText->SetAutoWrapText(true);
+			BattleSettlementLogText->SetJustification(ETextJustify::Left);
+			BattleSettlementLogText->SetColorAndOpacity(FSlateColor(FLinearColor(0.96f, 0.90f, 0.78f, 1.0f)));
+			FSlateFontInfo SettlementFont = BattleSettlementLogText->GetFont();
+			SettlementFont.Size = 15;
+			BattleSettlementLogText->SetFont(SettlementFont);
+			BattleSettlementLogPanel->SetContent(BattleSettlementLogText);
+		}
+		if (UCanvasPanelSlot* const LogSlot = RootCanvas->AddChildToCanvas(BattleSettlementLogPanel))
+		{
+			LogSlot->SetAnchors(FAnchors(0.0f, 0.0f, 0.0f, 0.0f));
+			LogSlot->SetAlignment(FVector2D::ZeroVector);
+			LogSlot->SetOffsets(FMargin(24.0f, 104.0f, 700.0f, 176.0f));
+			LogSlot->SetZOrder(55);
+		}
 	}
 
 	HandCardBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("BattleHandCardBox"));

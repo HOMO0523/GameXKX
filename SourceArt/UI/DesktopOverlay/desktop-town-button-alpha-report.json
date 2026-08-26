@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "assets": {
+    "enter": {
+      "source": "SourceArt\\UI\\DesktopOverlay\\Raw\\T_DesktopTownEnterButton_checker.png",
+      "output": "SourceArt\\UI\\DesktopOverlay\\T_DesktopTownEnterButton.png",
+      "sha256": "cb3c40ddf3b3ea5e2bddc1b30726ec4258cce3f0dc9ff735bf2b6be075123042",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "alpha_bbox": [
+        77,
+        45,
+        433,
+        450
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visible_ratio": 0.3917694091796875,
+      "soft_alpha_ratio": 0.02117156982421875
+    },
+    "exit": {
+      "source": "SourceArt\\UI\\DesktopOverlay\\Raw\\T_DesktopTownExitButton_checker.png",
+      "output": "SourceArt\\UI\\DesktopOverlay\\T_DesktopTownExitButton.png",
+      "sha256": "e291a0e07953b7a66375ad99bd20e66f93f7664c547f036c288990669027244c",
+      "size": [
+        512,
+        512
+      ],
+      "alpha_extrema": [
+        0,
+        255
+      ],
+      "alpha_bbox": [
+        54,
+        56,
+        461,
+        444
+      ],
+      "corner_alpha": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "visible_ratio": 0.45549774169921875,
+      "soft_alpha_ratio": 0.02579498291015625
+    }
+  }
+}

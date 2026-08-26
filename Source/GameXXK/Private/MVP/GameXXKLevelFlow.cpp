@@ -111,6 +111,20 @@ bool GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(const FString& CurrentPack
 	return MapPackageMatches(CurrentPackageName, DesktopTrainingHUDMap);
 }
 
+FName GameXXKLevelFlow::TownToggleTargetForMapPackage(
+	const FString& CurrentPackageName)
+{
+	if (IsDesktopTrainingHUDMapPackage(CurrentPackageName))
+	{
+		return QingshanTownMap;
+	}
+	if (IsTownGameplayMapPackage(CurrentPackageName))
+	{
+		return DesktopTrainingHUDMap;
+	}
+	return NAME_None;
+}
+
 float GameXXKLevelFlow::FrameRateLimitForMapPackage(const FString& CurrentPackageName)
 {
 	return IsDesktopTrainingHUDMapPackage(CurrentPackageName) ? 30.0f : 0.0f;

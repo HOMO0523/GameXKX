@@ -2,8 +2,12 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "IGameXXKDesktopOverlayModule.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKDesktopHudSessionSubsystem.h"
+#include "UI/GameXXKDesktopWorkbenchSessionState.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
@@ -23,15 +27,37 @@
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
 #include "HAL/PlatformTime.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Misc/PackageName.h"
+#include "Misc/ScopeExit.h"
 #include "UObject/StrongObjectPtr.h"
+#include "UObject/UnrealType.h"
 #include "Widgets/SNullWidget.h"
+#include "Widgets/SWindow.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	void UnlockToolsTalent(FGameXXKRuntimeState& State)
+	{
+		State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+		State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
+	}
+
+	void UnlockOfflineTalent(FGameXXKRuntimeState& State)
+	{
+		State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+		State.Talents.NodeRanks.Add(TEXT("Talent.Entry.IdleOffline"), 1);
+	}
+
+	void PreserveLegacyWorkbenchCapacity(FGameXXKRuntimeState& State)
+	{
+		State.Talents.MinimumBackpackCapacity = 200;
+	}
+
 	FString GetButtonNormalResourcePath(const UButton* Button)
 	{
 		const UObject* Resource = Button ? Button->GetStyle().Normal.GetResourceObject() : nullptr;
@@ -347,7 +373,7 @@ namespace
 		FGameXXKEquipmentCreateRequest Request;
 		Request.Set = EGameXXKEquipmentSet::XuanJia;
 		Request.Quality = EGameXXKEquipmentQuality::Rare;
-		Request.ItemLevel = 4;
+		Request.ItemLevel = 1;
 		Request.bForceSlot = true;
 		Request.ForcedSlot = Slot;
 
@@ -520,13 +546,24 @@ bool FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest::RunTest(const FStri
 	const TSharedRef<SWidget> SlateWidget = Widget->TakeWidget();
 	TestNotNull(TEXT("workbench creates a WidgetTree root before Slate paints"), Widget->WidgetTree ? Widget->WidgetTree->RootWidget.Get() : nullptr);
 	TestTrue(TEXT("workbench TakeWidget is not the null Slate placeholder"), SlateWidget != SNullWidget::NullWidget);
-	UScaleBox* ScaleRoot = Widget->WidgetTree ? Cast<UScaleBox>(Widget->WidgetTree->RootWidget) : nullptr;
-	TestNotNull(TEXT("workbench root is a uniform ScaleBox"), ScaleRoot);
+	UCanvasPanel* OverlayRoot = Widget->WidgetTree
+		? Cast<UCanvasPanel>(Widget->WidgetTree->RootWidget)
+		: nullptr;
+	TestNotNull(TEXT("workbench root is the full-host transparent overlay canvas"), OverlayRoot);
+	TestEqual(TEXT("transparent overlay root has the stable approved name"),
+		OverlayRoot ? OverlayRoot->GetFName() : NAME_None,
+		FName(TEXT("DesktopTrainingOverlayRoot")));
+	UScaleBox* ScaleRoot = Widget->WidgetTree
+		? Cast<UScaleBox>(Widget->WidgetTree->FindWidget(TEXT("DesktopTrainingScaleRoot")))
+		: nullptr;
+	TestNotNull(TEXT("full-host canvas owns the movable uniform HUD ScaleBox"), ScaleRoot);
+	TestNotNull(TEXT("movable HUD ScaleBox uses a canvas slot"),
+		ScaleRoot ? Cast<UCanvasPanelSlot>(ScaleRoot->Slot) : nullptr);
 	TestTrue(TEXT("workbench root uses ScaleToFit"), ScaleRoot && ScaleRoot->GetStretch() == EStretch::ScaleToFit);
 	USizeBox* ReferenceBox = ScaleRoot ? Cast<USizeBox>(ScaleRoot->GetContent()) : nullptr;
 	TestNotNull(TEXT("ScaleBox owns the fixed reference SizeBox"), ReferenceBox);
-	TestTrue(TEXT("reference width is 1672"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetWidthOverride(), 1672.0f));
-	TestTrue(TEXT("reference height is 941"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetHeightOverride(), 941.0f));
+	TestTrue(TEXT("collapsed reference width is 1038"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetWidthOverride(), 1038.0f));
+	TestTrue(TEXT("collapsed reference reserves one passive notice row"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetHeightOverride(), 254.0f));
 	return true;
 }
 
@@ -576,8 +613,8 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	bool bHasIngot = false;
 	bool bHasRejectedStarButton = false;
 	bool bHasRejectedGenericTab = false;
-	bool bHasCharacterTabNormal = false;
-	bool bHasCharacterTabSelected = false;
+	bool bHasApprovedNormalTab = false;
+	bool bHasApprovedSelectedTab = false;
 	int32 NavDiscCount = 0;
 	for (const FString& Path : ResourcePaths)
 	{
@@ -595,8 +632,8 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 				|| Path.Contains(TEXT("T_MasterV2_ButtonDanger"));
 			bHasRejectedGenericTab |= Path.Contains(TEXT("T_MasterV2_TabNormal"))
 				|| Path.Contains(TEXT("T_MasterV2_TabSelected"));
-			bHasCharacterTabNormal |= Path.Contains(TEXT("003_tab_1"));
-			bHasCharacterTabSelected |= Path.Contains(TEXT("004_tab_2"));
+			bHasApprovedNormalTab |= Path.Contains(TEXT("003_tab_1"));
+			bHasApprovedSelectedTab |= Path.Contains(TEXT("004_tab_2"));
 			NavDiscCount += Path.Contains(TEXT("T_MasterV2_NavDisc")) ? 1 : 0;
 		}
 	}
@@ -609,9 +646,31 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	TestTrue(TEXT("workbench reuses the approved PSD ingot"), bHasIngot);
 	TestFalse(TEXT("workbench never advertises the user-rejected star button base"), bHasRejectedStarButton);
 	TestFalse(TEXT("workbench never substitutes the rejected generic star tabs"), bHasRejectedGenericTab);
-	TestTrue(TEXT("workbench reuses the approved normal character tab"), bHasCharacterTabNormal);
-	TestTrue(TEXT("workbench reuses the approved selected character tab"), bHasCharacterTabSelected);
+	TestTrue(TEXT("workbench advertises the approved normal tab state"), bHasApprovedNormalTab);
+	TestTrue(TEXT("workbench advertises the approved selected tab state"), bHasApprovedSelectedTab);
+	TestTrue(TEXT("approved normal tab package exists"),
+		FPackageName::DoesPackageExist(TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1")));
+	TestTrue(TEXT("approved selected tab package exists"),
+		FPackageName::DoesPackageExist(TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2")));
+	TestTrue(TEXT("approved square selected-state package exists"),
+		FPackageName::DoesPackageExist(
+			TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SquareSelected")));
 	TestEqual(TEXT("workbench no longer advertises legacy MasterV2 navigation discs"), NavDiscCount, 0);
+	const TCHAR* RemovedButtonPackages[] = {
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabNormal"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TabSelected"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonNeutral"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPrimary"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonDanger"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SelectionInk"),
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_TooltipPaper"),
+		TEXT("/Game/GameXXK/UI/Talents/Flat/T_TalentItemSlotSelected")};
+	for (const TCHAR* PackagePath : RemovedButtonPackages)
+	{
+		TestFalse(
+			*FString::Printf(TEXT("rejected button package is deleted: %s"), PackagePath),
+			FPackageName::DoesPackageExist(PackagePath));
+	}
 	return true;
 }
 
@@ -708,10 +767,26 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedControlBindingTest::RunTest(const F
 		? Widget->WidgetTree->FindWidget(TEXT("TravelCollectButton"))
 		: nullptr;
 	TestNull(TEXT("travel strip has no harvest/collect button"), CollectButton);
-	TestApprovedButton(TEXT("TravelRetryButton"), TEXT("004_tab_2"), false);
-	TestApprovedButton(TEXT("TrainingDifficultyTab_0"), TEXT("004_tab_2"), false);
-	TestApprovedButton(TEXT("TrainingDifficultyTab_1"), TEXT("003_tab_1"), false);
-	TestApprovedButton(TEXT("TrainingNode_1"), TEXT("T_MasterV2_NavRoute"), true);
+	TestApprovedButton(TEXT("TravelRetryButton"), TEXT("T_TrainingRetryButtonBase"), false);
+	TestApprovedButton(TEXT("TrainingDifficultyDropdownButton"), TEXT("003_tab_1"), false);
+	TestApprovedButton(TEXT("TrainingChapterTab_0"), TEXT("004_tab_2"), false);
+	UButton* TrainingNode = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingNode_1")))
+		: nullptr;
+	if (TestNotNull(TEXT("TrainingNode_1 exists"), TrainingNode))
+	{
+		TestEqual(TEXT("TrainingNode_1 uses a code-native circular brush"),
+			TrainingNode->GetStyle().Normal.DrawAs,
+			ESlateBrushDrawType::RoundedBox);
+		TestNull(TEXT("TrainingNode_1 no longer binds the rejected legacy navigation disc"),
+			TrainingNode->GetStyle().Normal.GetResourceObject());
+	}
+	UImage* TrainingNodeStatus = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TrainingNodeStatusIcon_1")))
+		: nullptr;
+	TestTrue(TEXT("TrainingNode_1 binds one generated Training status icon"),
+		TrainingNodeStatus
+			&& GetImageResourcePath(TrainingNodeStatus).Contains(TEXT("/UI/Training/MapNodes/T_TrainingNode_")));
 	TestApprovedButton(TEXT("TrainingChallengeButton"), TEXT("004_tab_2"), false);
 	TestApprovedButton(TEXT("TrainingTravelButton"), TEXT("004_tab_2"), false);
 	return true;
@@ -731,6 +806,7 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedSecondaryControlBindingTest::RunTes
 	{
 		return false;
 	}
+	UnlockToolsTalent(Subsystem->GetMutableRuntimeState());
 
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	TestNotNull(TEXT("secondary-control workbench exists"), Widget);
@@ -784,10 +860,10 @@ bool FGameXXKDesktopTrainingChallengeDelegatesToExistingRouteTest::RunTest(const
 	TestTrue(TEXT("route-delegation fixture selects the first unlocked challenge stage"), Widget->SelectStageForTest(StageId));
 
 	TestTrue(TEXT("Challenge starts directly without the town quest"), Widget->ClickChallengeForTest());
-	TestEqual(TEXT("Challenge enters the playable battle screen directly"),
+	TestEqual(TEXT("Challenge opens the Slay-the-Spire route map first"),
 		Subsystem->GetRuntimeState().Screen,
-		EGameXXKScreen::Battle);
-	TestTrue(TEXT("direct Challenge owns a live training battle"), Subsystem->IsTrainingChallengeBattleActive());
+		EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("direct Challenge owns a generated route map"), Subsystem->IsTrainingChallengeRouteMapActive());
 	TestFalse(TEXT("the workbench closes before the battle surface opens"), Widget->IsWorkbenchVisibleForTest());
 	TestNull(TEXT("the workbench never constructs an embedded BattleBoard"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("ChallengeBattleBoard")) : nullptr);
@@ -816,7 +892,7 @@ bool FGameXXKDesktopTrainingChallengePreservesPrerequisitesTest::RunTest(const F
 	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
 	const FGameXXKCompanionPartySelection PartyBefore = Subsystem->GetRuntimeState().CardRun.PartySelection;
 	TestTrue(TEXT("Challenge ignores missing town-route prerequisites"), Widget->ClickChallengeForTest());
-	TestEqual(TEXT("direct Challenge enters Battle"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
+	TestEqual(TEXT("direct Challenge opens the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("direct Challenge does not silently accept the quest"), Subsystem->GetRuntimeState().QuestState, QuestBefore);
 	TestTrue(TEXT("direct Challenge does not alter party selection"),
 		FGameXXKCompanionPartySelection::StaticStruct()->CompareScriptStruct(
@@ -894,8 +970,8 @@ bool FGameXXKDesktopTrainingClearedStageReplayTest::RunTest(const FString& Param
 	}
 	TestTrue(TEXT("a cleared unlocked stage remains directly challengeable"), Challenge->GetIsEnabled());
 	TestTrue(TEXT("clicking the cleared stage starts a replay battle"), Widget->ClickChallengeForTest());
-	TestEqual(TEXT("the replay enters Battle directly"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
-	TestTrue(TEXT("the replay owns a live training battle"), Subsystem->IsTrainingChallengeBattleActive());
+	TestEqual(TEXT("the replay opens the challenge route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("the replay owns a generated challenge route"), Subsystem->IsTrainingChallengeRouteMapActive());
 	return true;
 }
 
@@ -911,7 +987,7 @@ bool FGameXXKDesktopTrainingReferenceGeometryTest::RunTest(const FString& Parame
 	TestEqual(TEXT("warehouse matches the selected layout"), GetWarehouseRect(), FVector4(10.0f, 17.0f, 363.0f, 908.0f));
 	TestEqual(TEXT("center shell matches the selected layout"), GetCenterShellRect(), FVector4(386.0f, 17.0f, 970.0f, 908.0f));
 	TestEqual(TEXT("right shell matches the selected layout"), GetRightShellRect(), FVector4(1369.0f, 17.0f, 291.0f, 908.0f));
-	TestEqual(TEXT("idle strip matches the selected layout"), GetIdleStripRect(), FVector4(394.0f, 21.0f, 953.0f, 202.0f));
+	TestEqual(TEXT("scaled idle strip aligns with the Backpack content width"), GetIdleStripRect(), FVector4(397.0f, 17.0f, 945.0f, 184.0f));
 	TestEqual(TEXT("backpack surface matches the selected layout"), GetContentRect(), FVector4(397.0f, 244.0f, 945.0f, 533.0f));
 	TestEqual(TEXT("navigation matches the selected layout"), GetNavigationRect(), FVector4(397.0f, 788.0f, 945.0f, 137.0f));
 
@@ -1035,7 +1111,11 @@ bool FGameXXKDesktopTrainingWorkbenchTransparentDesktopPlacementTest::RunTest(co
 			GetBorderResourcePath(Surface).Contains(TEXT("T_MasterV2_PanelLarge")));
 	};
 
-	TestTransparentSurface(TEXT("WorkbenchBackground"));
+	TestNull(
+		TEXT("the erroneous full-canvas workbench paper is not constructed"),
+		Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(TEXT("WorkbenchBackground"))
+			: nullptr);
 	TestTransparentSurface(TEXT("CenterWorkbenchFrame"));
 	TestTransparentSurface(TEXT("BottomNavigationPanel"));
 	TestFunctionalSurface(TEXT("WarehousePanel"));
@@ -1090,8 +1170,8 @@ bool FGameXXKDesktopTrainingWorkbenchInnerGeometryTest::RunTest(const FString& P
 
 	TestNamedRect(TEXT("WarehouseSlot_0"), FVector4(30.0f, 142.0f, 68.0f, 68.0f));
 	TestNamedRect(TEXT("EmbeddedApprovedBackpack"), FVector4(-311.0f, -173.0f, 1920.0f, 1080.0f));
-	TestNamedRect(TEXT("BackpackGoldIcon"), FVector4(1098.0f, 263.0f, 30.0f, 30.0f));
-	TestNamedRect(TEXT("TrainingNode_1"), FVector4(1390.0f, 158.0f, 58.0f, 58.0f));
+	TestNamedRect(TEXT("BackpackGoldIcon"), FVector4(1034.0f, 291.0f, 30.0f, 30.0f));
+	TestNamedRect(TEXT("TrainingNode_1"), FVector4(1473.0f, 194.0f, 82.0f, 82.0f));
 	TestNamedRect(TEXT("BottomNavigationButton_0"), FVector4(421.0f, 800.0f, 151.0f, 112.0f));
 
 	UButton* NavigationButton = Widget->WidgetTree
@@ -1162,6 +1242,9 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 		return false;
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	UnlockToolsTalent(State);
+	UnlockOfflineTalent(State);
+	PreserveLegacyWorkbenchCapacity(State);
 	State.PlayerGold = 4242;
 	State.Inventory.Empty();
 	State.Inventory.Add(UGameXXKMVPRules::ItemHealingPowder(), 3);
@@ -1223,7 +1306,7 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestFalse(TEXT("training navigation is not the tools panel"), Widget->IsToolsPanelActiveForTest());
 	Widget->HandleActionClicked(0);
 	TestTrue(TEXT("warehouse navigation independently opens the left panel"), Widget->IsWarehousePanelOpenForTest());
-	TestEqual(TEXT("new warehouse partition starts on one empty page"), Widget->GetWarehousePageCountForTest(), 1);
+	TestEqual(TEXT("root talent opens the approved second warehouse page"), Widget->GetWarehousePageCountForTest(), 2);
 	TestEqual(TEXT("warehouse starts on its first page"), Widget->GetWarehousePageIndexForTest(), 0);
 	TestEqual(TEXT("new warehouse partition has no duplicated backpack equipment"), Widget->GetVisibleWarehouseInstanceIdsForTest().Num(), 0);
 	TestEqual(TEXT("workbench reads the authoritative runtime gold"), Widget->GetRuntimeGoldForTest(), 4242);
@@ -1250,8 +1333,9 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	TestTrue(TEXT("workbench backpack read model includes a travel chest"), VisibleItems.Contains(UGameXXKMVPRules::ItemTrainingNormalChest()));
 	TestEqual(TEXT("three difficulty bands each expose nine stage definitions"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
 	TestEqual(TEXT("normal 1-1 id remains stable"), FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1), FName(TEXT("Training.Normal.1-1")));
+	TestTrue(TEXT("desktop HUD defaults to topmost z-order"), Widget->IsAlwaysOnTopForTest());
 	Widget->HandleActionClicked(14);
-	TestTrue(TEXT("topmost toolbar action toggles its state"), Widget->IsAlwaysOnTopForTest());
+	TestFalse(TEXT("topmost toolbar action can explicitly disable its state"), Widget->IsAlwaysOnTopForTest());
 	Widget->HandleActionClicked(17);
 	TestTrue(TEXT("mute toolbar action toggles its state"), Widget->IsMutedForTest());
 	Widget->HandleActionClicked(15);
@@ -1351,6 +1435,1279 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 		TalentsReopen->GetActiveCenterPageForTest(), EGameXXKDesktopTrainingCenterPage::Backpack);
 	TestEqual(TEXT("global close clears stale center navigation"),
 		TalentsReopen->GetActiveNavForTest(), EGameXXKDesktopTrainingNav::None);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingAdaptiveWindowScaleTest,
+	"GameXXK.DesktopTraining.Workbench.AdaptiveWindowScaleAndDirection",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingAdaptiveWindowScaleTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	TestTrue(TEXT("1920x1020 logical work area keeps the authored 100 percent scale"),
+		FMath::IsNearlyEqual(ComputeAutomaticHudScale(FVector2D(1920.0f, 1020.0f)), 1.0f));
+	TestTrue(TEXT("1366x728 logical work area scales down proportionally"),
+		FMath::IsNearlyEqual(
+			ComputeAutomaticHudScale(FVector2D(1366.0f, 728.0f)),
+			1366.0f / 1920.0f,
+			0.001f));
+	TestTrue(TEXT("2560x1400 logical work area respects the 125 percent ceiling"),
+		FMath::IsNearlyEqual(ComputeAutomaticHudScale(FVector2D(2560.0f, 1400.0f)), 1.25f));
+	TestTrue(TEXT("the player's 50 percent option halves the automatic scale"),
+		FMath::IsNearlyEqual(
+			ComputeEffectiveHudScale(FVector2D(1920.0f, 1020.0f), 50),
+			0.5f));
+	TestEqual(TEXT("collapsed HUD authored size is 1038x202"),
+		GetCollapsedHudLogicalSize(),
+		FVector2D(1038.0f, 202.0f));
+	TestEqual(TEXT("50 percent collapsed HUD resolves to 519x101"),
+		GetCollapsedHudLogicalSize() * ComputeEffectiveHudScale(FVector2D(1920.0f, 1020.0f), 50),
+		FVector2D(519.0f, 101.0f));
+
+	const FVector4 WorkArea(0.0f, 0.0f, 1920.0f, 1020.0f);
+	TestEqual(TEXT("a bottom-docked strip expands upward"),
+		ChooseVerticalExpansionDirection(
+			WorkArea,
+			FVector4(450.0f, 800.0f, 1038.0f, 202.0f),
+			941.0f),
+		EGameXXKDesktopVerticalExpansionDirection::Up);
+	TestEqual(TEXT("a top-docked strip expands downward"),
+		ChooseVerticalExpansionDirection(
+			WorkArea,
+			FVector4(450.0f, 0.0f, 1038.0f, 202.0f),
+			941.0f),
+		EGameXXKDesktopVerticalExpansionDirection::Down);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingStablePresentationScaleTest,
+	"GameXXK.DesktopTraining.Workbench.StablePresentationScale",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	const FVector2D PhysicalWorkArea(1920.0f, 1020.0f);
+	const FDesktopHudResolvedMetrics Metrics = ResolveDesktopHudMetrics(PhysicalWorkArea, 100);
+	TestEqual(TEXT("resolved metrics preserve physical work-area pixels"),
+		Metrics.PhysicalWorkAreaSize,
+		PhysicalWorkArea);
+	TestTrue(TEXT("1920 work area resolves authored 100-percent scale"),
+		FMath::IsNearlyEqual(Metrics.Scale, 1.0f));
+
+	const FDesktopOverlayPlacement Collapsed = ComputeDesktopOverlayPlacementAtScale(
+		Metrics,
+		FVector2D(0.35f, 0.45f),
+		false,
+		false,
+		52.0f);
+	const FDesktopOverlayPlacement Expanded = ComputeDesktopOverlayPlacementAtScale(
+		Metrics,
+		FVector2D(0.35f, 0.45f),
+		true,
+		false,
+		52.0f);
+	TestTrue(TEXT("collapsed and expanded layouts share one session scale"),
+		FMath::IsNearlyEqual(Collapsed.Scale, Expanded.Scale));
+	TestEqual(TEXT("Tab never changes the collapsed strip's resolved physical size"),
+		Collapsed.StripSize,
+		FVector2D(1038.0f, 202.0f));
+	TestEqual(TEXT("desktop presentation keeps the persisted dragged anchor"),
+		ResolvePresentationAnchor(true, FVector2D(0.35f, 0.45f)),
+		FVector2D(0.35f, 0.45f));
+	TestEqual(TEXT("3D-town presentation always resets the default anchor"),
+		ResolvePresentationAnchor(false, FVector2D(0.35f, 0.45f)),
+		FVector2D(0.5f, 0.08f));
+	TestEqual(TEXT("125-percent Windows DPI converts physical HUD pixels to Slate host units"),
+		PhysicalPixelsToSlateHost(FVector2D(1000.0f, 500.0f), 1.25f),
+		FVector2D(800.0f, 400.0f));
+
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("stable-scale fixture starts a new game"),
+		Subsystem && Subsystem->StartGame())
+		|| !TestNotNull(TEXT("stable-scale fixture creates the workbench"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("stable-scale fixture opens collapsed"), Widget->OpenWorkbench());
+	Widget->InitializeDesktopPresentationHostSize(PhysicalWorkArea);
+	const float RuntimeCollapsedScale = Widget->GetDesktopPresentationScaleForTest();
+	Widget->HandleActionClicked(60);
+	Widget->TickForTest(0.0f);
+	TestTrue(TEXT("runtime Tab expansion reuses the resolved session scale"),
+		FMath::IsNearlyEqual(
+			Widget->GetDesktopPresentationScaleForTest(),
+			RuntimeCollapsedScale));
+	TestTrue(TEXT("canonical 2D map selects the layered desktop presentation"),
+		AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapNameForTest(
+			TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+	TestTrue(TEXT("PIE-prefixed canonical map remains a desktop presentation"),
+		AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapNameForTest(
+			TEXT("UEDPIE_0_L_DesktopTrainingHUD")));
+	TestFalse(TEXT("the Qingshan 3D town uses the viewport presentation"),
+		AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapNameForTest(
+			TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+	Widget->SetPresentationMode(EGameXXKDesktopHudPresentationMode::TownViewport);
+	TestFalse(TEXT("the shared HUD cannot be dragged while presented in 3D town"),
+		Widget->CanDragDesktopHudForTest());
+	AGameXXKMVPPlayerController* InputOwner =
+		NewObject<AGameXXKMVPPlayerController>();
+	if (TestNotNull(TEXT("town input-lock fixture creates its controller"), InputOwner))
+	{
+		InputOwner->SetIgnoreMoveInput(true);
+		InputOwner->SetIgnoreLookInput(true);
+		InputOwner->SetDesktopWorkbenchTownPanelInputLock(true);
+		InputOwner->SetDesktopWorkbenchTownPanelInputLock(true);
+		InputOwner->SetDesktopWorkbenchTownPanelInputLock(false);
+		TestTrue(TEXT("releasing the HUD lock preserves another movement owner"),
+			InputOwner->IsMoveInputIgnored());
+		TestTrue(TEXT("releasing the HUD lock preserves another look owner"),
+			InputOwner->IsLookInputIgnored());
+		InputOwner->SetIgnoreMoveInput(false);
+		InputOwner->SetIgnoreLookInput(false);
+		TestFalse(TEXT("all movement locks can then clear normally"),
+			InputOwner->IsMoveInputIgnored());
+		TestFalse(TEXT("all look locks can then clear normally"),
+			InputOwner->IsLookInputIgnored());
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTransparentOverlayHostTest,
+	"GameXXK.DesktopTraining.Workbench.TransparentOverlayHost",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTransparentOverlayHostTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	const FVector2D HostSize(1920.0f, 1020.0f);
+	const FDesktopOverlayPlacement CollapsedPlacement = ComputeDesktopOverlayPlacement(
+		HostSize,
+		FVector2D(0.5f, 0.08f),
+		100,
+		false,
+		false,
+		52.0f);
+	TestEqual(TEXT("overlay host keeps the complete monitor work area"),
+		CollapsedPlacement.HostSize,
+		HostSize);
+	TestEqual(TEXT("collapsed visible strip remains 1038x202 at 100 percent"),
+		CollapsedPlacement.StripSize,
+		FVector2D(1038.0f, 202.0f));
+	TestEqual(TEXT("collapsed notice reservation stays inside the movable HUD group"),
+		CollapsedPlacement.HudSize,
+		FVector2D(1038.0f, 254.0f));
+	TestTrue(TEXT("normalized anchor resolves inside the fixed host"),
+		CollapsedPlacement.HudTopLeft.Equals(FVector2D(441.0f, 65.44f), 0.01f));
+
+	const FDesktopOverlayPlacement HalfPlacement = ComputeDesktopOverlayPlacement(
+		HostSize,
+		FVector2D(0.5f, 0.08f),
+		50,
+		false,
+		false,
+		52.0f);
+	TestEqual(TEXT("50 percent visible strip is exactly 519x101"),
+		HalfPlacement.StripSize,
+		FVector2D(519.0f, 101.0f));
+	TestEqual(TEXT("HUD scale never changes the native host size"),
+		HalfPlacement.HostSize,
+		HostSize);
+
+	const FDesktopOverlayPlacement BottomExpandedPlacement = ComputeDesktopOverlayPlacement(
+		HostSize,
+		FVector2D(1.0f, 1.0f),
+		100,
+		true,
+		true,
+		52.0f);
+	TestEqual(TEXT("expansion keeps the full-screen transparent host fixed"),
+		BottomExpandedPlacement.HostSize,
+		HostSize);
+	TestTrue(TEXT("expanded HUD is clamped inside the host"),
+		BottomExpandedPlacement.HudTopLeft.X >= 0.0f
+			&& BottomExpandedPlacement.HudTopLeft.Y >= 0.0f
+			&& BottomExpandedPlacement.HudTopLeft.X + BottomExpandedPlacement.HudSize.X <= HostSize.X + KINDA_SMALL_NUMBER
+			&& BottomExpandedPlacement.HudTopLeft.Y + BottomExpandedPlacement.HudSize.Y <= HostSize.Y + KINDA_SMALL_NUMBER);
+
+	TestEqual(TEXT("town button is 144 square"),
+		GetTownToggleButtonSize(),
+		FVector2D(144.0f, 144.0f));
+	TestTrue(TEXT("closed-warehouse town button sits immediately left of the center shell"),
+		FMath::IsNearlyEqual(
+			GetTownToggleRect(false).X + GetTownToggleRect(false).Z + 14.0f,
+			GetCenterShellRect().X));
+	TestEqual(TEXT("open warehouse adds the exact left extension"),
+		GetExpandedLeftExtension(true),
+		148.0f);
+	const FVector4 OpenTownRect = GetTownToggleRect(true);
+	const FVector4 ShiftedWarehouseRect = GetWarehouseRect()
+		+ FVector4(GetExpandedLeftExtension(true), 0.0f, 0.0f, 0.0f);
+	TestTrue(TEXT("open-warehouse town button sits immediately left of the shifted warehouse"),
+		FMath::IsNearlyEqual(
+			OpenTownRect.X + OpenTownRect.Z + 14.0f,
+			ShiftedWarehouseRect.X));
+	const FDesktopOverlayPlacement ClosedWarehousePlacement = ComputeDesktopOverlayPlacement(
+		HostSize,
+		FVector2D(0.8f, 0.08f),
+		100,
+		true,
+		false,
+		52.0f,
+		false);
+	const FDesktopOverlayPlacement OpenWarehousePlacement = ComputeDesktopOverlayPlacement(
+		HostSize,
+		FVector2D(0.8f, 0.08f),
+		100,
+		true,
+		false,
+		52.0f,
+		true);
+	TestEqual(TEXT("closed warehouse keeps the authored expanded width"),
+		ClosedWarehousePlacement.HudSize.X,
+		1672.0);
+	TestEqual(TEXT("open warehouse reserves the town-button extension"),
+		OpenWarehousePlacement.HudSize.X,
+		1820.0);
+	TestTrue(TEXT("a fitting anchor keeps the strip stable while the extension opens"),
+		ClosedWarehousePlacement.StripTopLeft.Equals(
+			OpenWarehousePlacement.StripTopLeft,
+			0.01f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTownTogglePresentationTest,
+	"GameXXK.DesktopTraining.Workbench.TownTogglePresentation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTownTogglePresentationTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("town-toggle subsystem exists"), Subsystem) || !Subsystem->StartGame())
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestNotNull(TEXT("town-toggle workbench exists"), Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("town-toggle fixture opens collapsed"), Widget->OpenWorkbench());
+	Widget->TakeWidget();
+	TestNull(TEXT("town button is absent while the backpack is collapsed"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TownToggleButton")) : nullptr);
+
+	TestTrue(TEXT("town-toggle fixture expands the backpack"), Widget->OpenBackpack());
+	Widget->TakeWidget();
+	UGameXXKDesktopTrainingActionButton* EnterButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("TownToggleButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("expanded desktop shows the town button"), EnterButton))
+	{
+		return false;
+	}
+	TestEqual(TEXT("desktop uses the approved enter-town texture"),
+		GetButtonNormalResourcePath(EnterButton),
+		FString(TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownEnterButton.T_DesktopTownEnterButton")));
+	TestEqual(TEXT("town button owns the dedicated action"),
+		EnterButton->GetConfiguredActionIdForTest(),
+		652);
+	if (const UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(EnterButton->Slot))
+	{
+		const FVector4 Expected = GameXXKDesktopTrainingLayout::GetTownToggleRect(false);
+		TestEqual(TEXT("closed-warehouse town button position"),
+			Slot->GetPosition(), FVector2D(Expected.X, Expected.Y));
+		TestEqual(TEXT("closed-warehouse town button size"),
+			Slot->GetSize(), FVector2D(Expected.Z, Expected.W));
+	}
+	else
+	{
+		AddError(TEXT("town button has no canvas slot"));
+	}
+
+	Widget->HandleActionClicked(0);
+	UGameXXKDesktopTrainingActionButton* ShiftedButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("TownToggleButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("warehouse-open layout keeps the town button"), ShiftedButton))
+	{
+		const UCanvasPanelSlot* Slot = Cast<UCanvasPanelSlot>(ShiftedButton->Slot);
+		const FVector4 Expected = GameXXKDesktopTrainingLayout::GetTownToggleRect(true);
+		TestNotNull(TEXT("shifted town button has a canvas slot"), Slot);
+		if (Slot)
+		{
+			TestEqual(TEXT("warehouse-open town button moves to the outer-left edge"),
+				Slot->GetPosition(), FVector2D(Expected.X, Expected.Y));
+		}
+	}
+
+	Widget->SetPresentationMode(EGameXXKDesktopHudPresentationMode::TownViewport);
+	Widget->OpenBackpack();
+	UGameXXKDesktopTrainingActionButton* ExitButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("TownToggleButton")))
+		: nullptr;
+	if (TestNotNull(TEXT("town viewport keeps the same control"), ExitButton))
+	{
+		TestEqual(TEXT("town viewport uses the approved exit-town texture"),
+			GetButtonNormalResourcePath(ExitButton),
+			FString(TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownExitButton.T_DesktopTownExitButton")));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTownSessionSubsystemTest,
+	"GameXXK.DesktopTraining.Workbench.TownSessionOneShot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTownSessionSubsystemTest::RunTest(const FString& Parameters)
+{
+	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
+	UGameXXKDesktopHudSessionSubsystem* Session =
+		NewObject<UGameXXKDesktopHudSessionSubsystem>(TestGameInstance);
+	if (!TestNotNull(TEXT("town session subsystem exists"), Session))
+	{
+		return false;
+	}
+	FGameXXKDesktopWorkbenchSessionState Expected;
+	Expected.bValid = true;
+	Expected.bBackpackExpanded = true;
+	Expected.bWarehousePanelOpen = true;
+	Expected.WarehousePageIndex = 2;
+	Expected.ActiveNav = EGameXXKDesktopTrainingNav::Talents;
+	Expected.ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Talents;
+	Expected.RightPanel = EGameXXKDesktopTrainingRightPanel::Tools;
+	Expected.ActiveToolMode = EGameXXKDesktopToolMode::Socket;
+	Expected.ActiveToolCombineKind = EGameXXKToolCombineKind::Gem;
+	Expected.SelectedToolSocketIndex = 3;
+	Expected.ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Npcs;
+	Expected.ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
+	Expected.SelectedStageId = TEXT("Training.Hard.2-3");
+	Expected.ActiveTrainingDifficultyIndex = 1;
+	Expected.ActiveTrainingChapter = 2;
+	Expected.ActiveBackpackCharacterId = TEXT("Npc.YueBai");
+	Expected.LastCompanionBackpackCharacterId = TEXT("Companion_Blade_Test");
+	Expected.LastNpcBackpackCharacterId = TEXT("Npc.YueBai");
+	Expected.FormationCandidateCharacterId = TEXT("Companion_Blade_Test");
+	Expected.bCharacterRosterMembersExpanded = true;
+	Expected.bSettingsPanelOpen = true;
+	Expected.EmbeddedInventory.CharacterId = TEXT("Npc.YueBai");
+	Expected.EmbeddedInventory.ActiveCharacterTab = EGameXXKCharacterBackpackTab::Deck;
+	Expected.EmbeddedInventory.PendingDeckIds = {TEXT("Card.A"), TEXT("Card.B")};
+
+	Session->StoreForMapTravel(Expected);
+	FGameXXKDesktopWorkbenchSessionState Actual;
+	TestTrue(TEXT("pending town state is consumed once"),
+		Session->ConsumeAfterMapTravel(Actual));
+	TestTrue(TEXT("stable workbench state round-trips"), Actual == Expected);
+	TestFalse(TEXT("consumed state cannot leak into another map"),
+		Session->ConsumeAfterMapTravel(Actual));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingMousePassthroughPolicyTest,
+	"GameXXK.DesktopTraining.Workbench.MousePassthroughPolicy",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingMousePassthroughPolicyTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	FDesktopOverlayMouseState State;
+	TestTrue(TEXT("transparent background passes the mouse through"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+
+	State.bPointerOverInteractiveSurface = true;
+	TestFalse(TEXT("paper and controls keep native mouse input"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+	State.bPointerOverInteractiveSurface = false;
+
+	State.bCarryingItem = true;
+	TestFalse(TEXT("a carried item keeps the complete HUD interactive"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+	State.bCarryingItem = false;
+
+	State.bMouseCaptured = true;
+	TestFalse(TEXT("Slate mouse capture keeps the complete HUD interactive"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+	State.bMouseCaptured = false;
+
+	State.bDragDropActive = true;
+	TestFalse(TEXT("drag-drop keeps the complete HUD interactive"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+	State.bDragDropActive = false;
+
+	State.bHudDragging = true;
+	TestFalse(TEXT("HUD dragging keeps native input until release"),
+		ShouldDesktopOverlayPassMouseThrough(State));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingMousePassthroughSynchronizationTest,
+	"GameXXK.DesktopTraining.Workbench.MousePassthroughSynchronization",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingMousePassthroughSynchronizationTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	TestTrue(TEXT("pointer movement refreshes hit testing before dispatch"),
+		ShouldSynchronizeDesktopMousePassthrough(EDesktopOverlayMouseSignal::Move));
+	TestTrue(TEXT("button presses refresh hit testing before dispatch"),
+		ShouldSynchronizeDesktopMousePassthrough(EDesktopOverlayMouseSignal::Button));
+	TestTrue(TEXT("wheel input refreshes hit testing before dispatch"),
+		ShouldSynchronizeDesktopMousePassthrough(EDesktopOverlayMouseSignal::Wheel));
+	TestFalse(TEXT("unrelated native messages do not poll the overlay"),
+		ShouldSynchronizeDesktopMousePassthrough(EDesktopOverlayMouseSignal::Other));
+	TestEqual(TEXT("desktop carried icons use native client coordinates and HUD scale"),
+		DesktopClientPointToReference(
+			FVector2D(400.0f, 300.0f),
+			0.5f,
+			FVector2D(28.0f, 28.0f)),
+		FVector2D(772.0f, 572.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingNativeWindowRegionTest,
+	"GameXXK.DesktopTraining.Workbench.NativeWindowRegion",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingNativeWindowRegionTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	FDesktopNativeRegionState Collapsed;
+	Collapsed.NoticeHeight = 52.0f;
+	const TArray<FDesktopNativeRegionShape> CollapsedShapes =
+		BuildDesktopNativeRegionShapes(Collapsed);
+	TestTrue(TEXT("collapsed idle strip belongs to the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 100.0f)));
+	TestTrue(TEXT("collapsed notice rail belongs to the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 225.0f)));
+	TestFalse(TEXT("a point below the collapsed HUD is outside the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 260.0f)));
+
+	FDesktopNativeRegionState Expanded;
+	Expanded.bExpanded = true;
+	const TArray<FDesktopNativeRegionShape> CenterOnlyShapes =
+		BuildDesktopNativeRegionShapes(Expanded);
+	TestTrue(TEXT("expanded center shell belongs to the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(700.0f, 400.0f)));
+	TestFalse(TEXT("closed warehouse leaves its area outside the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(100.0f, 400.0f)));
+	TestFalse(TEXT("closed right panel leaves its area outside the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(1500.0f, 400.0f)));
+
+	Expanded.bWarehouseOpen = true;
+	Expanded.bRightPanelOpen = true;
+	const TArray<FDesktopNativeRegionShape> AllPanelsShapes =
+		BuildDesktopNativeRegionShapes(Expanded);
+	TestTrue(TEXT("open warehouse joins the native window region"),
+		IsPointInsideDesktopNativeRegionShapes(AllPanelsShapes, FVector2D(100.0f, 400.0f)));
+	TestTrue(TEXT("open right panel joins the native window region"),
+		IsPointInsideDesktopNativeRegionShapes(AllPanelsShapes, FVector2D(1500.0f, 400.0f)));
+
+	Expanded.bWarehouseOpen = false;
+	Expanded.bRightPanelOpen = false;
+	Expanded.bExitConfirmationOpen = true;
+	const TArray<FDesktopNativeRegionShape> ModalShapes =
+		BuildDesktopNativeRegionShapes(Expanded);
+	TestTrue(TEXT("exit confirmation intentionally owns the complete HUD bounds"),
+		IsPointInsideDesktopNativeRegionShapes(ModalShapes, FVector2D(100.0f, 400.0f)));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingOverlayProviderRoutingTest,
+	"GameXXK.DesktopTraining.Workbench.DesktopOverlayProviderRouting",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingOverlayProviderRoutingTest::RunTest(const FString& Parameters)
+{
+	IGameXXKDesktopOverlayModule& Overlay = IGameXXKDesktopOverlayModule::Get();
+	const FIntRect GlassMargins = Overlay.GetCompositionGlassMarginsForTest();
+	TestEqual(TEXT("desktop composition extends glass across the complete client area"),
+		GlassMargins,
+		FIntRect(-1, -1, -1, -1));
+	TestTrue(TEXT("only the armed D3D12 overlay title is intercepted"),
+		Overlay.ShouldInterceptForTest(
+			IGameXXKDesktopOverlayModule::OverlayWindowTitle,
+			true,
+			ERHIInterfaceType::D3D12));
+	TestFalse(TEXT("an unarmed window is delegated"),
+		Overlay.ShouldInterceptForTest(
+			IGameXXKDesktopOverlayModule::OverlayWindowTitle,
+			false,
+			ERHIInterfaceType::D3D12));
+	TestFalse(TEXT("an unrelated Slate window is delegated"),
+		Overlay.ShouldInterceptForTest(
+			TEXT("GameXXK"),
+			true,
+			ERHIInterfaceType::D3D12));
+	TestFalse(TEXT("a non-D3D12 RHI is delegated"),
+		Overlay.ShouldInterceptForTest(
+			IGameXXKDesktopOverlayModule::OverlayWindowTitle,
+			true,
+			ERHIInterfaceType::Vulkan));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTransparentSlateWindowContractTest,
+	"GameXXK.DesktopTraining.Workbench.TransparentSlateWindowContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTransparentSlateWindowContractTest::RunTest(const FString& Parameters)
+{
+	const FVector2D WindowPosition(240.0f, 80.0f);
+	const FVector2D WindowSize(1038.0f, 254.0f);
+	const TSharedRef<SWindow> Window =
+		AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWindowForTest(
+			WindowPosition,
+			WindowSize);
+	TestEqual(TEXT("desktop HUD requests per-pixel Slate output"),
+		Window->GetTransparencySupport(),
+		EWindowTransparency::PerPixel);
+	TestEqual(TEXT("desktop overlay uses its unique provider tag"),
+		Window->GetTitle().ToString(),
+		FString(TEXT("GameXXKDesktopOverlay")));
+	TestFalse(TEXT("desktop host has no operating-system border"), Window->HasOSWindowBorder());
+	TestFalse(TEXT("desktop host has no close box"), Window->HasCloseBox());
+	TestFalse(TEXT("desktop host has no minimize box"), Window->HasMinimizeBox());
+	TestFalse(TEXT("desktop host has no maximize box"), Window->HasMaximizeBox());
+	TestTrue(TEXT("desktop host has no Slate title bar"),
+		Window->GetTitleBarSize().IsSet()
+			&& FMath::IsNearlyZero(Window->GetTitleBarSize().Get()));
+	TestTrue(TEXT("desktop host still accepts Tab and button input"), Window->AcceptsInput());
+	TestTrue(TEXT("desktop HUD starts topmost"),
+		Window->IsTopmostWindow());
+	TestTrue(TEXT("desktop window occupies only the requested HUD rectangle"),
+		FVector2D(Window->GetInitialDesiredSizeInScreen()).Equals(WindowSize, 0.01f));
+	TestFalse(TEXT("ordinary editor PIE keeps the editor viewport visible"),
+		AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewportForTest(true, false));
+	TestTrue(TEXT("UnrealEditor -game hides the redundant opaque game viewport"),
+		AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewportForTest(true, true));
+	TestTrue(TEXT("packaged game hides the redundant opaque game viewport"),
+		AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewportForTest(false, false));
+	TestFalse(TEXT("a requested but unattached overlay never hides the viewport"),
+		AGameXXKMVPPlayerController::ShouldHideViewportAfterOverlayAttachForTest(true, false));
+	TestTrue(TEXT("an attached requested overlay may hide the viewport"),
+		AGameXXKMVPPlayerController::ShouldHideViewportAfterOverlayAttachForTest(true, true));
+	TestFalse(TEXT("an unrequested overlay never hides the viewport"),
+		AGameXXKMVPPlayerController::ShouldHideViewportAfterOverlayAttachForTest(false, true));
+	TestTrue(TEXT("overlay is attempted before a session failure"),
+		AGameXXKMVPPlayerController::ShouldAttemptDesktopOverlayAfterFailureForTest(false));
+	TestFalse(TEXT("overlay failure is latched instead of retried on every button rebuild"),
+		AGameXXKMVPPlayerController::ShouldAttemptDesktopOverlayAfterFailureForTest(true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingRendererStencilAlphaContractTest,
+	"GameXXK.DesktopTraining.Workbench.RendererStencilAlphaContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingRendererStencilAlphaContractTest::RunTest(const FString& Parameters)
+{
+	const IConsoleVariable* CustomDepth =
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.CustomDepth"));
+	const IConsoleVariable* PropagateAlpha =
+		IConsoleManager::Get().FindConsoleVariable(TEXT("r.PostProcessing.PropagateAlpha"));
+	TestNotNull(TEXT("renderer exposes the custom depth-stencil setting"), CustomDepth);
+	TestNotNull(TEXT("renderer exposes the alpha-output setting"), PropagateAlpha);
+	TestEqual(TEXT("custom depth-stencil pass is enabled with stencil"),
+		CustomDepth ? CustomDepth->GetInt() : INDEX_NONE,
+		3);
+	TestFalse(TEXT("safe single-window HUD does not request scene-alpha propagation"),
+		PropagateAlpha && PropagateAlpha->GetBool());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingHudScaleSettingsTest,
+	"GameXXK.DesktopTraining.Workbench.HudScaleSettings",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Parameters)
+{
+	static const TCHAR* SettingsSection = TEXT("/Script/GameXXK.DesktopHudSettings");
+	static const TCHAR* ScaleKey = TEXT("HudScalePercent");
+	int32 PreviousScale = 100;
+	const bool bHadPreviousScale = GConfig
+		&& GConfig->GetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+	ON_SCOPE_EXIT
+	{
+		if (GConfig)
+		{
+			if (bHadPreviousScale)
+			{
+				GConfig->SetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+			}
+			else
+			{
+				GConfig->RemoveKey(SettingsSection, ScaleKey, GGameUserSettingsIni);
+			}
+			GConfig->Flush(false, GGameUserSettingsIni);
+		}
+	};
+	if (!GConfig)
+	{
+		AddError(TEXT("HUD scale settings require GConfig"));
+		return false;
+	}
+	GConfig->SetInt(SettingsSection, ScaleKey, 100, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("HUD scale fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("HUD scale fixture opens Backpack"),
+		Widget->OpenWorkbench() && Widget->OpenBackpack()))
+	{
+		return false;
+	}
+	TestEqual(TEXT("HUD scale defaults to 100 percent"), Widget->GetHudScalePercentForTest(), 100);
+	TestNull(TEXT("the unimplemented Shop toolbar button is removed"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TopToolbarShop")) : nullptr);
+	UGameXXKDesktopTrainingActionButton* SettingsButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("TopToolbarSettings")))
+		: nullptr;
+	if (!TestNotNull(TEXT("Settings replaces Shop immediately left of Exit"), SettingsButton))
+	{
+		return false;
+	}
+	UImage* SettingsIcon = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TopToolbarSettingsIcon")))
+		: nullptr;
+	TestTrue(TEXT("Settings uses the existing project gear icon"),
+		SettingsIcon
+		&& GetImageResourcePath(SettingsIcon).Contains(TEXT("T_TownPsd_HudSettings")));
+	SettingsButton->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	TestNotNull(TEXT("Settings opens a HUD settings panel"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("DesktopHudSettingsPanel")) : nullptr);
+	UGameXXKDesktopTrainingActionButton* HalfScaleButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("HudScale50Button")))
+		: nullptr;
+	if (!TestNotNull(TEXT("HUD settings exposes the approved 50 percent option"), HalfScaleButton))
+	{
+		return false;
+	}
+	HalfScaleButton->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("50 percent selection updates the live preference"),
+		Widget->GetHudScalePercentForTest(),
+		50);
+	int32 PersistedScale = 0;
+	TestTrue(TEXT("HUD scale preference is written to config"),
+		GConfig->GetInt(SettingsSection, ScaleKey, PersistedScale, GGameUserSettingsIni));
+	TestEqual(TEXT("HUD scale config persists 50 percent"), PersistedScale, 50);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingIdleStripControlRailTest,
+	"GameXXK.DesktopTraining.Workbench.IdleStripControlRailAndRetryStates",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("idle-strip control fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("idle-strip control fixture opens the collapsed workbench"),
+		Widget->OpenWorkbench()))
+	{
+		return false;
+	}
+
+	USizeBox* GroupReference = Widget->WidgetTree
+		? Cast<USizeBox>(Widget->WidgetTree->FindWidget(TEXT("TrainingIdleGroupReference")))
+		: nullptr;
+	TestNotNull(TEXT("idle strip owns a logical unscaled group reference"), GroupReference);
+	TestTrue(TEXT("idle group reference is 1038x202 before uniform scaling"),
+		GroupReference
+		&& FMath::IsNearlyEqual(GroupReference->GetWidthOverride(), 1038.0f)
+		&& FMath::IsNearlyEqual(GroupReference->GetHeightOverride(), 202.0f));
+	UWidget* NoticePanel = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("DesktopInventoryNoticePanel"))
+		: nullptr;
+	UTextBlock* EmptyNoticeText = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("DesktopInventoryNoticeText")))
+		: nullptr;
+	TestTrue(TEXT("the one-line battle report remains visible before the first event"),
+		NoticePanel
+		&& NoticePanel->GetVisibility() != ESlateVisibility::Collapsed
+		&& NoticePanel->GetVisibility() != ESlateVisibility::Hidden);
+	TestTrue(TEXT("an empty battle report uses a stable placeholder instead of disappearing"),
+		EmptyNoticeText && EmptyNoticeText->GetText().ToString().Contains(TEXT("暂无记录")));
+
+	const auto TestLocalRect = [this, Widget](
+		const FName WidgetName,
+		const FVector2D Position,
+		const FVector2D Size)
+	{
+		UWidget* Child = Widget->WidgetTree
+			? Widget->WidgetTree->FindWidget(WidgetName)
+			: nullptr;
+		const UCanvasPanelSlot* Slot = Child ? Cast<UCanvasPanelSlot>(Child->Slot) : nullptr;
+		if (TestNotNull(*FString::Printf(TEXT("%s owns a local canvas slot"), *WidgetName.ToString()), Slot))
+		{
+			TestEqual(*FString::Printf(TEXT("%s local position"), *WidgetName.ToString()), Slot->GetPosition(), Position);
+			TestEqual(*FString::Printf(TEXT("%s local size"), *WidgetName.ToString()), Slot->GetSize(), Size);
+		}
+	};
+	TestLocalRect(TEXT("TrainingNormalChestButton"), FVector2D(953.0f, 8.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TrainingAdvancedChestButton"), FVector2D(953.0f, 84.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TravelRetryButton"), FVector2D(893.0f, 18.0f), FVector2D(52.0f, 52.0f));
+	TestLocalRect(TEXT("IdleStripFoldButton"), FVector2D(440.5f, 202.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingWaveProgressPanel"), FVector2D(533.0f, 202.0f), FVector2D(420.0f, 24.0f));
+	TestLocalRect(TEXT("BackpackTabToggleButton"), FVector2D(953.0f, 202.0f), FVector2D(72.0f, 24.0f));
+
+	UImage* NormalChestIcon = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TrainingNormalChestIcon")))
+		: nullptr;
+	UImage* AdvancedChestIcon = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TrainingAdvancedChestIcon")))
+		: nullptr;
+	TestTrue(TEXT("normal chest icon fills the approved 66px footprint inside its 72px button"),
+		NormalChestIcon && NormalChestIcon->GetBrush().ImageSize == FVector2D(66.0f, 66.0f));
+	TestTrue(TEXT("advanced chest icon fills the approved 66px footprint inside its 72px button"),
+		AdvancedChestIcon && AdvancedChestIcon->GetBrush().ImageSize == FVector2D(66.0f, 66.0f));
+
+	const TCHAR* ExpectedWaveMarkerAssets[] = {
+		TEXT("T_TrainingWaveMarkerBoss"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerElite"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerElite"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerNormal")};
+	for (int32 MarkerIndex = 0; MarkerIndex < UE_ARRAY_COUNT(ExpectedWaveMarkerAssets); ++MarkerIndex)
+	{
+		UImage* Marker = Widget->WidgetTree
+			? Cast<UImage>(Widget->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("TrainingWaveMarker_%d"), MarkerIndex)))
+			: nullptr;
+		TestTrue(
+			*FString::Printf(TEXT("wave marker %d follows the approved right-to-left sequence"), MarkerIndex),
+			Marker && GetImageResourcePath(Marker).Contains(ExpectedWaveMarkerAssets[MarkerIndex]));
+	}
+	UTextBlock* StageLabel = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TrainingWaveStageText")))
+		: nullptr;
+	UTextBlock* WaveLabel = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TrainingWaveIndexText")))
+		: nullptr;
+	TestTrue(TEXT("wave progress names the current normal stage"),
+		StageLabel && StageLabel->GetText().ToString().Contains(TEXT("普通")));
+	TestEqual(TEXT("wave progress starts at the rightmost first wave"),
+		WaveLabel ? WaveLabel->GetText().ToString() : FString(),
+		FString(TEXT("1/7")));
+
+	TestTrue(TEXT("retry circular base package exists"), FPackageName::DoesPackageExist(
+		TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryButtonBase")));
+	TestTrue(TEXT("retry enabled icon package exists"), FPackageName::DoesPackageExist(
+		TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryIconEnabled")));
+	TestTrue(TEXT("retry disabled icon package exists"), FPackageName::DoesPackageExist(
+		TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingRetryIconDisabled")));
+
+	UButton* RetryButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TravelRetryButton")))
+		: nullptr;
+	UImage* RetryIcon = RetryButton ? Cast<UImage>(RetryButton->GetContent()) : nullptr;
+	TestTrue(TEXT("enabled retry button uses the circular paper base"),
+		GetButtonNormalResourcePath(RetryButton).Contains(TEXT("T_TrainingRetryButtonBase")));
+	TestTrue(TEXT("enabled retry state uses the jade double-arrow icon"),
+		GetImageResourcePath(RetryIcon).Contains(TEXT("T_TrainingRetryIconEnabled")));
+	TestTrue(TEXT("enabled retry tooltip names the active auto-retry state"),
+		RetryButton && RetryButton->GetToolTipText().ToString().Contains(TEXT("已开启")));
+
+	Widget->HandleActionClicked(10);
+	Widget->TickForTest(0.0f);
+	RetryButton = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TravelRetryButton")))
+		: nullptr;
+	RetryIcon = RetryButton ? Cast<UImage>(RetryButton->GetContent()) : nullptr;
+	TestTrue(TEXT("disabled retry state keeps the same circular paper base"),
+		GetButtonNormalResourcePath(RetryButton).Contains(TEXT("T_TrainingRetryButtonBase")));
+	TestTrue(TEXT("disabled retry state uses the grey double-arrow icon"),
+		GetImageResourcePath(RetryIcon).Contains(TEXT("T_TrainingRetryIconDisabled")));
+	TestTrue(TEXT("disabled retry tooltip names the inactive auto-retry state"),
+		RetryButton && RetryButton->GetToolTipText().ToString().Contains(TEXT("已关闭")));
+
+	UGameXXKDesktopTrainingActionButton* FoldButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("IdleStripFoldButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("single-line summary owns the 72x24 strip fold button"), FoldButton))
+	{
+		return false;
+	}
+	FoldButton->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	UWidget* TravelStrip = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("TrainingTravelStrip"))
+		: nullptr;
+	TestTrue(TEXT("folding hides the complete animated travel strip"),
+		!TravelStrip || TravelStrip->GetVisibility() == ESlateVisibility::Collapsed);
+	TestLocalRect(TEXT("IdleStripFoldButton"), FVector2D(440.5f, 0.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingWaveProgressPanel"), FVector2D(533.0f, 0.0f), FVector2D(420.0f, 24.0f));
+	TestLocalRect(TEXT("BackpackTabToggleButton"), FVector2D(953.0f, 0.0f), FVector2D(72.0f, 24.0f));
+	UTextBlock* FoldedNormalChestText = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TrainingFoldedNormalChestText")))
+		: nullptr;
+	UTextBlock* FoldedAdvancedChestText = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TrainingFoldedAdvancedChestText")))
+		: nullptr;
+	TestTrue(TEXT("folded summary appends the normal chest count after Tab"),
+		FoldedNormalChestText
+		&& FoldedNormalChestText->GetText().ToString().Contains(TEXT("普通")));
+	TestTrue(TEXT("folded summary appends the advanced chest count after Tab"),
+		FoldedAdvancedChestText
+		&& FoldedAdvancedChestText->GetText().ToString().Contains(TEXT("高级")));
+	FoldButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("IdleStripFoldButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("folded summary keeps the down-expand control available"), FoldButton))
+	{
+		return false;
+	}
+	FoldButton->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	UGameXXKDesktopTrainingActionButton* FoldedTabButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("folded summary keeps the Tab entry available"), FoldedTabButton))
+	{
+		return false;
+	}
+	FoldedTabButton->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	TestNotNull(TEXT("expanded Backpack keeps the compact fold control"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("IdleStripFoldButton")) : nullptr);
+	TestNotNull(TEXT("expanded Backpack keeps a shortened wave progress rail"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TrainingWaveProgressPanel")) : nullptr);
+	TestLocalRect(TEXT("IdleStripFoldButton"), FVector2D(837.5f, 210.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingWaveProgressPanel"), FVector2D(930.0f, 210.0f), FVector2D(340.0f, 24.0f));
+	TestLocalRect(TEXT("BackpackTabToggleButton"), FVector2D(1270.0f, 210.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingNormalChestButton"), FVector2D(1270.0f, 25.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TrainingAdvancedChestButton"), FVector2D(1270.0f, 101.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TravelRetryButton"), FVector2D(1210.0f, 35.0f), FVector2D(52.0f, 52.0f));
+	TestLocalRect(TEXT("TopToolbarAlwaysOnTop"), FVector2D(1028.0f, 252.0f), FVector2D(42.0f, 36.0f));
+	TestLocalRect(TEXT("TopToolbarExit"), FVector2D(1216.0f, 252.0f), FVector2D(42.0f, 36.0f));
+	TestLocalRect(TEXT("BackpackGoldIcon"), FVector2D(1034.0f, 291.0f), FVector2D(30.0f, 30.0f));
+	TestLocalRect(TEXT("BackpackGoldText"), FVector2D(1068.0f, 292.0f), FVector2D(100.0f, 30.0f));
+	TestLocalRect(TEXT("BackpackPanelCloseButton"), FVector2D(1272.0f, 252.0f), FVector2D(44.0f, 44.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingNoticeRailStateMachineTest,
+	"GameXXK.DesktopTraining.Workbench.NoticeRailStateMachine",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingNoticeRailStateMachineTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("notice-rail fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("notice-rail fixture opens collapsed"), Widget->OpenWorkbench()))
+	{
+		return false;
+	}
+
+	// Existing workbench notices feed the new session history without requiring
+	// a private test-only append path.
+	for (int32 Index = 0; Index < 24; ++Index)
+	{
+		Widget->HandleActionClicked(18);
+	}
+
+	auto FindActionButton = [Widget](const FName Name)
+	{
+		return Widget->WidgetTree
+			? Cast<UGameXXKDesktopTrainingActionButton>(Widget->WidgetTree->FindWidget(Name))
+			: nullptr;
+	};
+	auto IsVisible = [](const UWidget* Candidate)
+	{
+		return Candidate
+			&& Candidate->GetVisibility() != ESlateVisibility::Collapsed
+			&& Candidate->GetVisibility() != ESlateVisibility::Hidden;
+	};
+	auto CountNoticeLines = [Widget]()
+	{
+		int32 Count = 0;
+		while (Widget->WidgetTree
+			&& Widget->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("DesktopNoticeLine_%d"), Count)))
+		{
+			++Count;
+		}
+		return Count;
+	};
+
+	UGameXXKDesktopTrainingActionButton* Surface = FindActionButton(TEXT("DesktopNoticeSurfaceButton"));
+	UWidget* RecordsBar = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeRecordsBar"))
+		: nullptr;
+	TestNotNull(TEXT("single-line notice owns an interactive hover surface"), Surface);
+	TestEqual(TEXT("notice defaults to exactly one rendered line"), CountNoticeLines(), 1);
+	TestFalse(TEXT("RECORDS bar is hidden before hover"), IsVisible(RecordsBar));
+	if (!Surface)
+	{
+		return false;
+	}
+	Surface->OnHovered.Broadcast();
+	TestTrue(TEXT("hover reveals the complete RECORDS operation bar"), IsVisible(RecordsBar));
+
+	UGameXXKDesktopTrainingActionButton* Expand = FindActionButton(TEXT("DesktopNoticeExpandButton"));
+	if (!TestNotNull(TEXT("single-line RECORDS bar exposes Expand"), Expand))
+	{
+		return false;
+	}
+	Expand->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("first expand enters the five-line medium state"), CountNoticeLines(), 5);
+	TestNotNull(TEXT("medium state exposes Collapse"), FindActionButton(TEXT("DesktopNoticeCollapseButton")));
+	Expand = FindActionButton(TEXT("DesktopNoticeExpandButton"));
+	if (!TestNotNull(TEXT("medium state still exposes Expand"), Expand))
+	{
+		return false;
+	}
+	Expand->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("second expand enters the eighteen-line long state"), CountNoticeLines(), 18);
+	TestNull(TEXT("long state has no further Expand button"), FindActionButton(TEXT("DesktopNoticeExpandButton")));
+	TestNotNull(TEXT("long state keeps Collapse"), FindActionButton(TEXT("DesktopNoticeCollapseButton")));
+
+	// Tab-open is a passive one-line projection. It must ignore hover and keep
+	// the prior long state available for the same session after Tab closes.
+	Widget->HandleActionClicked(60);
+	Widget->TickForTest(0.0f);
+	Surface = FindActionButton(TEXT("DesktopNoticeSurfaceButton"));
+	RecordsBar = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeRecordsBar"))
+		: nullptr;
+	TestEqual(TEXT("Tab-open forces a passive one-line projection"), CountNoticeLines(), 1);
+	TestTrue(TEXT("Tab-open notice surface is input transparent"),
+		Surface && Surface->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	if (Surface)
+	{
+		Surface->OnHovered.Broadcast();
+	}
+	TestFalse(TEXT("Tab-open hover cannot reveal RECORDS"), IsVisible(RecordsBar));
+
+	Widget->HandleActionClicked(60);
+	Widget->TickForTest(0.0f);
+	TestEqual(TEXT("closing Tab restores the prior session long state"), CountNoticeLines(), 18);
+	Surface = FindActionButton(TEXT("DesktopNoticeSurfaceButton"));
+	if (Surface)
+	{
+		Surface->OnHovered.Broadcast();
+	}
+	UGameXXKDesktopTrainingActionButton* Settings =
+		FindActionButton(TEXT("DesktopNoticeSettingsButton"));
+	if (!TestNotNull(TEXT("RECORDS bar exposes Settings"), Settings))
+	{
+		return false;
+	}
+	Settings->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	UWidget* SettingsPanel = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeSettingsPanel"))
+		: nullptr;
+	TestTrue(TEXT("Settings opens the category panel"), IsVisible(SettingsPanel));
+	TArray<UWidget*> AllWidgets;
+	Widget->WidgetTree->GetAllWidgets(AllWidgets);
+	FString SettingsText;
+	for (const UWidget* Candidate : AllWidgets)
+	{
+		if (const UTextBlock* Text = Cast<UTextBlock>(Candidate))
+		{
+			SettingsText += Text->GetText().ToString();
+			SettingsText += TEXT("\n");
+		}
+	}
+	TestFalse(TEXT("deferred battle information is absent from Settings"),
+		SettingsText.Contains(TEXT("战斗信息")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingNoticeCategoryPersistenceTest,
+	"GameXXK.DesktopTraining.Workbench.NoticeCategoryPersistence",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingNoticeCategoryPersistenceTest::RunTest(
+	const FString& Parameters)
+{
+	static const TCHAR* SettingsSection =
+		TEXT("/Script/GameXXK.DesktopTrainingNoticeSettings");
+	static const TCHAR* SystemKey = TEXT("System");
+	bool PreviousSystemValue = true;
+	const bool bHadPreviousSystemValue = GConfig
+		&& GConfig->GetBool(SettingsSection, SystemKey, PreviousSystemValue, GGameUserSettingsIni);
+	ON_SCOPE_EXIT
+	{
+		if (GConfig)
+		{
+			if (bHadPreviousSystemValue)
+			{
+				GConfig->SetBool(SettingsSection, SystemKey, PreviousSystemValue, GGameUserSettingsIni);
+			}
+			else
+			{
+				GConfig->RemoveKey(SettingsSection, SystemKey, GGameUserSettingsIni);
+			}
+			GConfig->Flush(false, GGameUserSettingsIni);
+		}
+	};
+	if (!GConfig)
+	{
+		AddError(TEXT("notice-category persistence requires GConfig"));
+		return false;
+	}
+	GConfig->SetBool(SettingsSection, SystemKey, true, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+
+	auto BuildWidget = [this]() -> UGameXXKDesktopTrainingWorkbenchWidget*
+	{
+		UGameXXKMVPSubsystem* Subsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+			NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+		if (!Subsystem || !Subsystem->StartGame() || !Widget)
+		{
+			return nullptr;
+		}
+		Widget->SetMVPSubsystem(Subsystem);
+		Widget->ConstructForTest();
+		return Widget->OpenWorkbench() ? Widget : nullptr;
+	};
+	auto HoverAndOpenSettings = [](UGameXXKDesktopTrainingWorkbenchWidget* Widget)
+	{
+		UGameXXKDesktopTrainingActionButton* Surface = Widget && Widget->WidgetTree
+			? Cast<UGameXXKDesktopTrainingActionButton>(
+				Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeSurfaceButton")))
+			: nullptr;
+		if (Surface)
+		{
+			Surface->OnHovered.Broadcast();
+		}
+		UGameXXKDesktopTrainingActionButton* Settings = Widget && Widget->WidgetTree
+			? Cast<UGameXXKDesktopTrainingActionButton>(
+				Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeSettingsButton")))
+			: nullptr;
+		if (Settings)
+		{
+			Settings->OnClicked.Broadcast();
+			Widget->TickForTest(0.0f);
+		}
+		return Settings != nullptr;
+	};
+
+	UGameXXKDesktopTrainingWorkbenchWidget* First = BuildWidget();
+	if (!TestNotNull(TEXT("first persistence widget opens"), First)
+		|| !TestTrue(TEXT("first persistence widget opens Settings"), HoverAndOpenSettings(First)))
+	{
+		return false;
+	}
+	UGameXXKDesktopTrainingActionButton* FirstSystemToggle = First->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			First->WidgetTree->FindWidget(TEXT("DesktopNoticeCategoryButton_10")))
+		: nullptr;
+	if (!TestNotNull(TEXT("Settings exposes System category"), FirstSystemToggle))
+	{
+		return false;
+	}
+	FirstSystemToggle->OnClicked.Broadcast();
+	First->TickForTest(0.0f);
+	bool StoredSystemValue = true;
+	TestTrue(TEXT("System category writes a persistent config value"),
+		GConfig->GetBool(SettingsSection, SystemKey, StoredSystemValue, GGameUserSettingsIni));
+	TestFalse(TEXT("disabled System category persists as false"), StoredSystemValue);
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Second = BuildWidget();
+	if (!TestNotNull(TEXT("second persistence widget opens"), Second))
+	{
+		return false;
+	}
+	Second->HandleActionClicked(18);
+	TestEqual(TEXT("a filtered System notice remains in history but not in the visible line"),
+		GetNamedText(Second->WidgetTree, TEXT("DesktopInventoryNoticeText")),
+		FString(TEXT("暂无记录")));
+	TestEqual(TEXT("a new widget still starts in the one-line state"),
+		Second->WidgetTree && Second->WidgetTree->FindWidget(TEXT("DesktopNoticeLine_0")) ? 1 : 0,
+		1);
+	TestNull(TEXT("display size is session-only and does not reopen medium/long"),
+		Second->WidgetTree ? Second->WidgetTree->FindWidget(TEXT("DesktopNoticeLine_1")) : nullptr);
+
+	// Restore System through the same production Settings control before the
+	// scope guard restores the user's original pre-test value.
+	if (HoverAndOpenSettings(Second))
+	{
+		if (UGameXXKDesktopTrainingActionButton* SecondSystemToggle = Second->WidgetTree
+			? Cast<UGameXXKDesktopTrainingActionButton>(
+				Second->WidgetTree->FindWidget(TEXT("DesktopNoticeCategoryButton_10")))
+			: nullptr)
+		{
+			SecondSystemToggle->OnClicked.Broadcast();
+			Second->TickForTest(0.0f);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingNoticeWheelTest,
+	"GameXXK.DesktopTraining.Workbench.NoticeWheelHistory",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingNoticeWheelTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("notice-wheel fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("notice-wheel fixture opens"), Widget->OpenWorkbench()))
+	{
+		return false;
+	}
+	for (int32 Index = 0; Index < 12; ++Index)
+	{
+		Widget->HandleActionClicked(Index % 2 == 0 ? 18 : 19);
+	}
+	UGameXXKDesktopTrainingActionButton* Surface = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeSurfaceButton")))
+		: nullptr;
+	if (!TestNotNull(TEXT("notice-wheel surface exists"), Surface))
+	{
+		return false;
+	}
+	TestFalse(TEXT("single-line state ignores the mouse wheel"), Surface->HandleMouseWheel(1.0f));
+	Surface->OnHovered.Broadcast();
+	UGameXXKDesktopTrainingActionButton* Expand = Cast<UGameXXKDesktopTrainingActionButton>(
+		Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeExpandButton")));
+	if (!TestNotNull(TEXT("notice-wheel fixture exposes Expand"), Expand))
+	{
+		return false;
+	}
+	Expand->OnClicked.Broadcast();
+	Widget->TickForTest(0.0f);
+	Surface = Cast<UGameXXKDesktopTrainingActionButton>(
+		Widget->WidgetTree->FindWidget(TEXT("DesktopNoticeSurfaceButton")));
+	TestTrue(TEXT("medium state consumes upward wheel input"),
+		Surface && Surface->HandleMouseWheel(1.0f));
+	TestEqual(TEXT("upward wheel moves one message page step into older history"),
+		Widget->GetNoticeScrollOffsetForTest(),
+		1);
+	TestTrue(TEXT("medium state consumes downward wheel input"),
+		Surface && Surface->HandleMouseWheel(-1.0f));
+	TestEqual(TEXT("downward wheel returns to the newest history"),
+		Widget->GetNoticeScrollOffsetForTest(),
+		0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingNoticeCategoryRoutingTest,
+	"GameXXK.DesktopTraining.Workbench.NoticeCategoryRouting",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingNoticeCategoryRoutingTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("notice-category routing fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("notice-category routing fixture opens"), Widget->OpenWorkbench()))
+	{
+		return false;
+	}
+	Widget->TickForTest(1.0f);
+	Subsystem->GetMutableRuntimeState().PlayerLevel += 1;
+	Widget->TickForTest(1.0f);
+	TestEqual(TEXT("live level changes route to CharacterLevelUp"),
+		Widget->GetLastNoticeCategoryForTest(),
+		EGameXXKDesktopNoticeCategory::CharacterLevelUp);
+
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	FGameXXKTrainingChestToken Token;
+	Token.Tier = EGameXXKTrainingRewardTier::NormalChest;
+	Token.AcquisitionOrdinal = ++State.Training.NextChestAcquisitionOrdinal;
+	State.Training.OwnedChestTokens.Add(Token);
+	Widget->HandleActionClicked(600);
+	TestEqual(TEXT("opening a chest routes to ChestOpenResult"),
+		Widget->GetLastNoticeCategoryForTest(),
+		EGameXXKDesktopNoticeCategory::ChestOpenResult);
+
+	Widget->HandleActionClicked(315);
+	TestEqual(TEXT("reforge resolution routes to EnhanceReforge even when rejected"),
+		Widget->GetLastNoticeCategoryForTest(),
+		EGameXXKDesktopNoticeCategory::EnhanceReforge);
 	return true;
 }
 
@@ -2069,6 +3426,7 @@ bool FGameXXKDesktopTrainingItemCarryToolAndLockTest::RunTest(const FString& Par
 		return false;
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	UnlockToolsTalent(State);
 	State.Screen = EGameXXKScreen::Town;
 	if (!TestTrue(TEXT("tool-carry fixture normalizes"),
 		Subsystem->NormalizeDesktopInventoryState()))
@@ -2304,6 +3662,7 @@ bool FGameXXKDesktopTrainingToolReservationAuthorityTest::RunTest(const FString&
 			return false;
 		}
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		UnlockToolsTalent(State);
 		State.Screen = EGameXXKScreen::Town;
 		if (!TestTrue(TEXT("hidden-backing fixture normalizes"),
 			Subsystem->NormalizeDesktopInventoryState()))
@@ -2409,6 +3768,7 @@ bool FGameXXKDesktopTrainingToolReservationAuthorityTest::RunTest(const FString&
 			return false;
 		}
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		UnlockToolsTalent(State);
 		State.Screen = EGameXXKScreen::Town;
 		if (!TestTrue(TEXT("stale-confirm fixture normalizes"),
 			Subsystem->NormalizeDesktopInventoryState()))
@@ -2654,6 +4014,22 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+	FGameXXKRuntimeState& CloseStackState = Subsystem->GetMutableRuntimeState();
+	const FName ToolInputEquipment = CreateCarryTestEquipment(
+		*this,
+		CloseStackState,
+		EGameXXKEquipmentSlot::Weapon,
+		TEXT("close-stack fixture creates a deterministic tool input"));
+	const FName CarryEquipment = CreateCarryTestEquipment(
+		*this,
+		CloseStackState,
+		EGameXXKEquipmentSlot::Armor,
+		TEXT("close-stack fixture creates a deterministic carried item"));
+	if (!TestTrue(TEXT("close-stack fixture normalizes its physical Backpack cells"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
 
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	if (!TestNotNull(TEXT("close-stack fixture widget exists"), Widget))
@@ -2739,7 +4115,7 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 				TEXT("TopToolbarAlwaysOnTop"),
 				TEXT("TopToolbarMute"),
 				TEXT("TopToolbarMail"),
-				TEXT("TopToolbarShop"),
+				TEXT("TopToolbarSettings"),
 				TEXT("TopToolbarExit")};
 			for (const FName ToolbarName : TopToolbarNames)
 			{
@@ -2772,10 +4148,16 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	TestEqual(TEXT("Backpack page creates exactly one paper close button"), BackpackPanelCloseCount, 1);
 
 	Widget->HandleActionClicked(3); // Exercise the expanded Tab against real transient state.
-	const FName TabCloseStoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	const int32 TabCloseToolSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(ToolInputEquipment));
 	TestTrue(TEXT("expanded Tab fixture reserves a real tool input"),
-		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(TabCloseStoneId)));
-	const int32 TabCloseEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+		TabCloseToolSlot != INDEX_NONE && Widget->RightClickBackpackSlotForTest(TabCloseToolSlot));
+	const int32 TabCloseEquipmentSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(CarryEquipment));
 	TestTrue(TEXT("expanded Tab fixture carries a real Backpack item"),
 		TabCloseEquipmentSlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(TabCloseEquipmentSlot));
 	ExpandedBackpackTab = Widget->WidgetTree
@@ -2851,9 +4233,12 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	TestFalse(TEXT("right close also closes training"), Widget->IsRightPanelOpenForTest());
 
 	Widget->HandleActionClicked(3); // Tools, then reserve one real backpack entry.
-	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
+	const int32 ToolInputSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(ToolInputEquipment));
 	TestTrue(TEXT("tool reservation is created before global close"),
-		Widget->RightClickBackpackSlotForTest(Widget->FindBackpackItemSlotForTest(StoneId)));
+		ToolInputSlot != INDEX_NONE && Widget->RightClickBackpackSlotForTest(ToolInputSlot));
 	TestEqual(TEXT("one tool reservation exists before global close"), Widget->GetOccupiedToolSlotCountForTest(), 1);
 	Widget->HandleActionClicked(0);
 	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
@@ -2866,7 +4251,10 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	TestEqual(TEXT("the selected permanent companion owns Backpack before global close"),
 		Widget->GetActiveBackpackCharacterIdForTest(), CompanionIds[0]);
 	Widget->HandleActionClicked(1);
-	const int32 EquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	const int32 EquipmentSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(CarryEquipment));
 	TestTrue(TEXT("an item is carried before global close"),
 		EquipmentSlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(EquipmentSlot));
 	Widget->HandleActionClicked(63); // Return to Backpack so its paper X is visible.
@@ -2906,8 +4294,8 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	{
 		const UObject* HeroTabTexture = HeroRosterButton->GetStyle().Normal.GetResourceObject();
 		const UObject* CompanionTabTexture = CompanionRosterButton->GetStyle().Normal.GetResourceObject();
-		TestTrue(TEXT("reopen selects the default hero roster"),
-			HeroTabTexture && HeroTabTexture->GetPathName().Contains(TEXT("004_tab_2")));
+		TestTrue(TEXT("reopen keeps the folded hero roster tab unselected until its member row is expanded"),
+			HeroTabTexture && HeroTabTexture->GetPathName().Contains(TEXT("003_tab_1")));
 		TestTrue(TEXT("reopen does not retain the companion roster selection"),
 			CompanionTabTexture && CompanionTabTexture->GetPathName().Contains(TEXT("003_tab_1")));
 	}
@@ -3978,14 +5366,23 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	UImage* QuestCompanionImage = Widget->WidgetTree
 		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("TravelCompanionAnimatedUnit_1")))
 		: nullptr;
-	UProgressBar* EnemyHealth = Widget->WidgetTree
-		? Cast<UProgressBar>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_0")))
+	UBorder* EnemyHealth = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_0")))
 		: nullptr;
-	UProgressBar* SecondEnemyHealth = Widget->WidgetTree
-		? Cast<UProgressBar>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_1")))
+	UBorder* SecondEnemyHealth = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_1")))
 		: nullptr;
-	UProgressBar* ThirdEnemyHealth = Widget->WidgetTree
-		? Cast<UProgressBar>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_2")))
+	UBorder* ThirdEnemyHealth = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealth_2")))
+		: nullptr;
+	UBorder* EnemyHealthTrack = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealthTrack_0")))
+		: nullptr;
+	UBorder* SecondEnemyHealthTrack = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealthTrack_1")))
+		: nullptr;
+	UBorder* ThirdEnemyHealthTrack = Widget->WidgetTree
+		? Cast<UBorder>(Widget->WidgetTree->FindWidget(TEXT("TravelEnemyHealthTrack_2")))
 		: nullptr;
 	UProgressBar* HeroHealth = Widget->WidgetTree
 		? Cast<UProgressBar>(Widget->WidgetTree->FindWidget(TEXT("TravelHeroHealth")))
@@ -4005,9 +5402,32 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	TestNotNull(TEXT("top strip owns the enemy HP bar"), EnemyHealth);
 	TestNotNull(TEXT("top strip owns the second enemy HP bar"), SecondEnemyHealth);
 	TestNotNull(TEXT("top strip owns the third enemy HP bar"), ThirdEnemyHealth);
+	TestNotNull(TEXT("top strip owns the first enemy HP track"), EnemyHealthTrack);
+	TestNotNull(TEXT("top strip owns the second enemy HP track"), SecondEnemyHealthTrack);
+	TestNotNull(TEXT("top strip owns the third enemy HP track"), ThirdEnemyHealthTrack);
 	TestNotNull(TEXT("top strip owns the hero HP bar"), HeroHealth);
 	TestNotNull(TEXT("top strip owns the permanent companion HP bar"), PermanentCompanionHealth);
 	TestNotNull(TEXT("top strip owns the quest companion HP bar"), QuestCompanionHealth);
+	const auto TestDynamicBarVolatile = [this](const TCHAR* Label, UWidget* Bar)
+	{
+		if (!TestNotNull(Label, Bar))
+		{
+			return;
+		}
+		const FBoolProperty* VolatileProperty = CastField<FBoolProperty>(
+			UWidget::StaticClass()->FindPropertyByName(TEXT("bIsVolatile")));
+		if (TestNotNull(TEXT("UWidget exposes its volatility flag"), VolatileProperty))
+		{
+			TestTrue(*FString::Printf(TEXT("%s is volatile for per-frame HP paint"), Label),
+				VolatileProperty->GetPropertyValue_InContainer(Bar));
+		}
+	};
+	TestDynamicBarVolatile(TEXT("first enemy HP bar"), EnemyHealth);
+	TestDynamicBarVolatile(TEXT("second enemy HP bar"), SecondEnemyHealth);
+	TestDynamicBarVolatile(TEXT("third enemy HP bar"), ThirdEnemyHealth);
+	TestDynamicBarVolatile(TEXT("hero HP bar"), HeroHealth);
+	TestDynamicBarVolatile(TEXT("permanent companion HP bar"), PermanentCompanionHealth);
+	TestDynamicBarVolatile(TEXT("quest companion HP bar"), QuestCompanionHealth);
 	TestNull(TEXT("travel strip has no harvest/collect button"), Widget->WidgetTree
 		? Widget->WidgetTree->FindWidget(TEXT("TravelCollectButton"))
 		: nullptr);
@@ -4050,7 +5470,35 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			ESlateVisibility::Collapsed);
 	}
 
-	Widget->TickForTest(1.0f);
+	for (int32 WalkingSecond = 1;
+		WalkingSecond < FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds;
+		++WalkingSecond)
+	{
+		Widget->TickForTest(1.0f);
+		TestEqual(
+			TEXT("the first four seconds keep the travel presentation walking"),
+			Widget->GetTravelVisualPhaseForTest(),
+			EGameXXKTrainingTravelVisualPhase::Walking);
+		if (EnemyImage && SecondEnemyImage && ThirdEnemyImage
+			&& EnemyHealth && SecondEnemyHealth && ThirdEnemyHealth)
+		{
+			TestEqual(TEXT("walking hides the first enemy slot"), EnemyImage->GetVisibility(), ESlateVisibility::Collapsed);
+			TestEqual(TEXT("walking hides the second enemy slot"), SecondEnemyImage->GetVisibility(), ESlateVisibility::Collapsed);
+			TestEqual(TEXT("walking hides the third enemy slot"), ThirdEnemyImage->GetVisibility(), ESlateVisibility::Collapsed);
+			TestEqual(TEXT("walking keeps the first enemy HP bar in the Slate tree"), EnemyHealth->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+			TestEqual(TEXT("walking keeps the second enemy HP bar in the Slate tree"), SecondEnemyHealth->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+			TestEqual(TEXT("walking keeps the third enemy HP bar in the Slate tree"), ThirdEnemyHealth->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+			TestTrue(TEXT("walking visually hides the first enemy HP bar"), FMath::IsNearlyZero(EnemyHealth->GetRenderOpacity()));
+			TestTrue(TEXT("walking visually hides the second enemy HP bar"), FMath::IsNearlyZero(SecondEnemyHealth->GetRenderOpacity()));
+			TestTrue(TEXT("walking visually hides the third enemy HP bar"), FMath::IsNearlyZero(ThirdEnemyHealth->GetRenderOpacity()));
+			TestTrue(TEXT("walking clears the first enemy HP bar before reuse"),
+				FMath::IsNearlyZero(Widget->GetTravelEnemyHealthBarPercentForTest(0)));
+			TestTrue(TEXT("walking clears the second enemy HP bar before reuse"),
+				FMath::IsNearlyZero(Widget->GetTravelEnemyHealthBarPercentForTest(1)));
+			TestTrue(TEXT("walking clears the third enemy HP bar before reuse"),
+				FMath::IsNearlyZero(Widget->GetTravelEnemyHealthBarPercentForTest(2)));
+		}
+	}
 	Widget->TickForTest(1.0f);
 	TestEqual(
 		TEXT("standing at an encounter switches to idle presentation"),
@@ -4063,6 +5511,12 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 		TestEqual(TEXT("ordinary encounter shows its second enemy slot"), SecondEnemyImage->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 		TestEqual(TEXT("ordinary encounter leaves its third enemy slot empty"), ThirdEnemyImage->GetVisibility(), ESlateVisibility::Collapsed);
 	}
+	if (EnemyHealth && SecondEnemyHealth && ThirdEnemyHealth)
+	{
+		TestTrue(TEXT("the first enemy HP bar becomes visible at spawn"), FMath::IsNearlyEqual(EnemyHealth->GetRenderOpacity(), 1.0f));
+		TestTrue(TEXT("the second enemy HP bar becomes visible at spawn"), FMath::IsNearlyEqual(SecondEnemyHealth->GetRenderOpacity(), 1.0f));
+		TestTrue(TEXT("the unused third enemy HP bar remains visually hidden"), FMath::IsNearlyZero(ThirdEnemyHealth->GetRenderOpacity()));
+	}
 	TestEqual(TEXT("encounter idle retains the first authored enemy"), Widget->GetTravelVisualEnemyDefinitionIdForTest(), FirstEnemyId);
 	TestEqual(TEXT("standing hero uses the battle idle action"), Widget->GetTravelVisualHeroActionForTest(), EGameXXKBattleAnimationAction::Idle);
 	TestEqual(TEXT("PIE probe exposes the visual idle phase by name"), Widget->GetTravelVisualPhaseNameForTest(), FString(TEXT("EncounterIdle")));
@@ -4074,6 +5528,38 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	TestEqual(TEXT("PIE probe exposes the enemy idle action by name"), Widget->GetTravelVisualEnemyActionNameForTest(), FString(TEXT("Idle")));
 	TestTrue(TEXT("PIE probe exposes a normalized hero HP fraction"), Widget->GetTravelVisualHeroHealthFractionForTest() > 0.0f);
 	TestTrue(TEXT("PIE probe exposes a normalized enemy HP fraction"), Widget->GetTravelVisualEnemyHealthFractionForTest() > 0.0f);
+	TestTrue(TEXT("the first enemy bar starts the encounter full"),
+		FMath::IsNearlyEqual(Widget->GetTravelEnemyHealthBarPercentForTest(0), 1.0f, 0.001f));
+	TestTrue(TEXT("the hero bar starts the encounter full"),
+		FMath::IsNearlyEqual(Widget->GetTravelHeroHealthBarPercentForTest(), 1.0f, 0.001f));
+	TestTrue(TEXT("the permanent companion bar starts the encounter full"),
+		FMath::IsNearlyEqual(Widget->GetTravelCompanionHealthBarPercentForTest(0), 1.0f, 0.001f));
+	TestTrue(TEXT("the quest companion bar starts the encounter full"),
+		FMath::IsNearlyEqual(Widget->GetTravelCompanionHealthBarPercentForTest(1), 1.0f, 0.001f));
+	TestTrue(
+		TEXT("the visible hero HP bar receives the visual HP fraction"),
+		FMath::IsNearlyEqual(
+			Widget->GetTravelHeroHealthBarPercentForTest(),
+			Widget->GetTravelVisualHeroHealthFractionForTest(),
+			0.001f));
+	TestTrue(
+		TEXT("the visible permanent-companion HP bar receives its visual HP fraction"),
+		FMath::IsNearlyEqual(
+			Widget->GetTravelCompanionHealthBarPercentForTest(0),
+			Widget->GetTravelVisualPartyHealthFractionForTest(1),
+			0.001f));
+	TestTrue(
+		TEXT("the visible quest-companion HP bar receives its visual HP fraction"),
+		FMath::IsNearlyEqual(
+			Widget->GetTravelCompanionHealthBarPercentForTest(1),
+			Widget->GetTravelVisualPartyHealthFractionForTest(2),
+			0.001f));
+	TestTrue(
+		TEXT("the visible enemy HP bar receives its visual HP fraction"),
+		FMath::IsNearlyEqual(
+			Widget->GetTravelEnemyHealthBarPercentForTest(0),
+			Widget->GetTravelVisualEnemyHealthFractionForTest(),
+			0.001f));
 	if (HeroImage)
 	{
 		const FVector2D IdleScale = HeroImage->GetRenderTransform().Scale;
@@ -4164,7 +5650,132 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 		TestTrue(
 			TEXT("enemy hit compensates its tighter transparent bounds instead of shrinking"),
 			EnemyHitScale.Y > EnemyIdleScale);
+
+		for (int32 SettlementGuard = 0;
+			SettlementGuard < 128
+				&& Subsystem->GetTrainingTravelRuntimeCopy().Phase != EGameXXKTrainingTravelPhase::Walking;
+			++SettlementGuard)
+		{
+			TestTrue(TEXT("the fixture advances to the next encounter boundary"),
+				Widget->AdvanceTravelForTest(1));
+		}
+		if (!TestEqual(
+			TEXT("the completed formation owns the next logical Walking interval"),
+			Subsystem->GetTrainingTravelRuntimeCopy().Phase,
+			EGameXXKTrainingTravelPhase::Walking))
+		{
+			return false;
+		}
+		for (int32 PresentationGuard = 0;
+			PresentationGuard < 256
+				&& Widget->GetTravelVisualPhaseForTest() != EGameXXKTrainingTravelVisualPhase::Walking;
+			++PresentationGuard)
+		{
+			Widget->TickForTest(0.05f);
+			if (!TestEqual(
+				TEXT("queued combat presentation never consumes the next spawn delay"),
+				Subsystem->GetTrainingTravelRuntimeCopy().WalkStep,
+				0))
+			{
+				return false;
+			}
+		}
+		TestEqual(
+			TEXT("the defeated formation finishes before the next walkloop starts"),
+			Widget->GetTravelVisualPhaseForTest(),
+			EGameXXKTrainingTravelVisualPhase::Walking);
+
+		Widget->TickForTest(0.25f);
+		TestEqual(
+			TEXT("death presentation time never consumes the next spawn delay"),
+			Subsystem->GetTrainingTravelRuntimeCopy().WalkStep,
+			0);
+		for (int32 VisibleWalkingSecond = 1;
+			VisibleWalkingSecond < FGameXXKTrainingRules::TravelEncounterSpawnDelaySeconds;
+			++VisibleWalkingSecond)
+		{
+			Widget->TickForTest(1.0f);
+			TestEqual(
+				TEXT("four complete visible walkloop seconds keep enemies hidden"),
+				Widget->GetTravelVisualPhaseForTest(),
+				EGameXXKTrainingTravelVisualPhase::Walking);
+		}
+		Widget->TickForTest(0.74f);
+		TestEqual(
+			TEXT("the next formation remains hidden immediately before five visible seconds"),
+			Widget->GetTravelVisualPhaseForTest(),
+			EGameXXKTrainingTravelVisualPhase::Walking);
+		Widget->TickForTest(0.02f);
+		TestEqual(
+			TEXT("the next formation appears only after five visible walkloop seconds"),
+			Widget->GetTravelVisualPhaseForTest(),
+			EGameXXKTrainingTravelVisualPhase::EncounterIdle);
+		TestTrue(TEXT("the next wave hero bar respawns full"),
+			FMath::IsNearlyEqual(Widget->GetTravelHeroHealthBarPercentForTest(), 1.0f, 0.001f));
+		TestTrue(TEXT("the next wave enemy bar respawns full"),
+			FMath::IsNearlyEqual(Widget->GetTravelEnemyHealthBarPercentForTest(0), 1.0f, 0.001f));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest,
+	"GameXXK.DesktopTraining.Workbench.FormationNpcPortraitEmptyAndLoaded",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("formation NPC portrait fixture starts"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Screen = EGameXXKScreen::Town;
+	State.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
+
+	UGameXXKDesktopTrainingWorkbenchWidget* EmptyWidget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	EmptyWidget->SetMVPSubsystem(Subsystem);
+	EmptyWidget->ConstructForTest();
+	if (!TestTrue(TEXT("empty NPC fixture opens workbench"), EmptyWidget->OpenWorkbench())
+		|| !TestTrue(TEXT("empty NPC fixture opens Backpack"), EmptyWidget->OpenBackpack()))
+	{
+		return false;
+	}
+	EmptyWidget->HandleActionClicked(1);
+	UImage* EmptyNpcPortrait = EmptyWidget->WidgetTree
+		? Cast<UImage>(EmptyWidget->WidgetTree->FindWidget(TEXT("FormationCurrentPortrait_2")))
+		: nullptr;
+	TestNotNull(TEXT("empty NPC slot still owns a named portrait widget"), EmptyNpcPortrait);
+	TestEqual(TEXT("empty NPC portrait is collapsed instead of drawing a white quad"),
+		EmptyNpcPortrait ? EmptyNpcPortrait->GetVisibility() : ESlateVisibility::Visible,
+		ESlateVisibility::Collapsed);
+	TestTrue(TEXT("empty NPC portrait owns no texture resource"),
+		GetImageResourcePath(EmptyNpcPortrait).IsEmpty());
+
+	State.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
+	UGameXXKDesktopTrainingWorkbenchWidget* LoadedWidget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	LoadedWidget->SetMVPSubsystem(Subsystem);
+	LoadedWidget->ConstructForTest();
+	if (!TestTrue(TEXT("loaded NPC fixture opens workbench"), LoadedWidget->OpenWorkbench())
+		|| !TestTrue(TEXT("loaded NPC fixture opens Backpack"), LoadedWidget->OpenBackpack()))
+	{
+		return false;
+	}
+	LoadedWidget->HandleActionClicked(1);
+	UImage* LoadedNpcPortrait = LoadedWidget->WidgetTree
+		? Cast<UImage>(LoadedWidget->WidgetTree->FindWidget(TEXT("FormationCurrentPortrait_2")))
+		: nullptr;
+	TestEqual(TEXT("loaded NPC portrait is input-transparent and visible"),
+		LoadedNpcPortrait ? LoadedNpcPortrait->GetVisibility() : ESlateVisibility::Collapsed,
+		ESlateVisibility::HitTestInvisible);
+	TestTrue(TEXT("loaded NPC portrait resolves the named NPC card art"),
+		GetImageResourcePath(LoadedNpcPortrait).Contains(TEXT("T_CardPortrait_Npc_TusiChief")));
 	return true;
 }
 
@@ -5275,6 +6886,7 @@ bool FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest::RunTest(
 		return false;
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	UnlockToolsTalent(State);
 	State.Screen = EGameXXKScreen::Town;
 	State.Training.bTravelActive = false;
 	State.Training.OwnedChestTokens.Reset();
@@ -5338,7 +6950,30 @@ bool FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest::RunTest(
 	TestEqual(TEXT("Backpack gold updates in place"),
 		GetNamedText(Widget->WidgetTree, TEXT("BackpackGoldText")), FString(TEXT("4321")));
 	TestEqual(TEXT("normal chest count updates in place"),
-		GetNamedText(Widget->WidgetTree, TEXT("TrainingNormalChestCountText")), FString(TEXT("×1")));
+		GetNamedText(Widget->WidgetTree, TEXT("TrainingNormalChestCountText")), FString(TEXT("1")));
+	UTextBlock* NormalChestCountText = Widget->WidgetTree
+		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TrainingNormalChestCountText")))
+		: nullptr;
+	if (TestNotNull(TEXT("normal chest owns a rendered count label"), NormalChestCountText))
+	{
+		const FSlateFontInfo CountFont = NormalChestCountText->GetFont();
+		TestEqual(TEXT("normal chest count uses a two-pixel black outline"),
+			CountFont.OutlineSettings.OutlineSize,
+			2);
+		TestEqual(TEXT("normal chest count outline is black"),
+			CountFont.OutlineSettings.OutlineColor,
+			FLinearColor::Black);
+		TestEqual(TEXT("normal chest count is white"),
+			NormalChestCountText->GetColorAndOpacity().GetSpecifiedColor(),
+			FLinearColor::White);
+		const UOverlaySlot* CountSlot = Cast<UOverlaySlot>(NormalChestCountText->Slot);
+		TestTrue(TEXT("normal chest count is pinned to the lower-right corner"),
+			CountSlot
+			&& CountSlot->GetHorizontalAlignment() == HAlign_Right
+			&& CountSlot->GetVerticalAlignment() == VAlign_Bottom
+			&& CountSlot->GetPadding().Right <= 3.0f
+			&& CountSlot->GetPadding().Bottom <= 2.0f);
+	}
 	UButton* NormalChestButton = Widget->WidgetTree
 		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TrainingNormalChestButton")))
 		: nullptr;
@@ -5346,7 +6981,7 @@ bool FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest::RunTest(
 		NormalChestButton && NormalChestButton->GetIsEnabled());
 	const FString FirstTooltip = TravelStripBeforeRefresh->GetToolTipText().ToString();
 	TestTrue(TEXT("hover text updates pending rewards"),
-		FirstTooltip.Contains(TEXT("111 金币 / 222 经验 / 普通箱 3 / 精英箱 4")));
+		FirstTooltip.Contains(TEXT("111金币 / 222经验 / 普通箱3 / 高级箱4")));
 	TestTrue(TEXT("hover text updates both cooldowns"),
 		FirstTooltip.Contains(TEXT("01:59")) && FirstTooltip.Contains(TEXT("02:59")));
 	TestTrue(TEXT("visible Attributes page updates XP"),
@@ -5380,20 +7015,29 @@ bool FGameXXKDesktopTrainingWorkbenchLiveNumericRefreshTest::RunTest(
 	{
 		return false;
 	}
+	FGameXXKQuestNpcProgression* NpcProgression =
+		State.CardRun.PartySelection.QuestNpcProgressions.Find(NpcIds[0]);
+	if (!TestNotNull(TEXT("task NPC owns independent progression"), NpcProgression))
+	{
+		return false;
+	}
 	State.PlayerXP = 77;
+	NpcProgression->Experience = 35;
 	Widget->TickForTest(1.0f);
-	UWidget* NpcExperienceText = Embedded->WidgetTree
-		? Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceText"))
+	UTextBlock* NpcExperienceText = Embedded->WidgetTree
+		? Cast<UTextBlock>(Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceText")))
 		: nullptr;
-	UWidget* NpcExperienceBar = Embedded->WidgetTree
-		? Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceBar"))
+	UProgressBar* NpcExperienceBar = Embedded->WidgetTree
+		? Cast<UProgressBar>(Embedded->WidgetTree->FindWidget(TEXT("InventoryCharacterExperienceBar")))
 		: nullptr;
-	TestEqual(TEXT("task NPC never borrows hero experience text"),
-		NpcExperienceText ? NpcExperienceText->GetVisibility() : ESlateVisibility::Visible,
-		ESlateVisibility::Collapsed);
-	TestEqual(TEXT("task NPC never borrows hero experience bar"),
-		NpcExperienceBar ? NpcExperienceBar->GetVisibility() : ESlateVisibility::Visible,
-		ESlateVisibility::Collapsed);
+	TestTrue(TEXT("task NPC experience text stays visible"),
+		NpcExperienceText && NpcExperienceText->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	TestTrue(TEXT("task NPC experience bar stays visible"),
+		NpcExperienceBar && NpcExperienceBar->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	TestTrue(TEXT("task NPC displays its own experience instead of hero experience"),
+		NpcExperienceText && NpcExperienceText->GetText().ToString().Contains(TEXT("35 / 100")));
+	TestTrue(TEXT("task NPC experience bar displays its own progress"),
+		NpcExperienceBar && FMath::IsNearlyEqual(NpcExperienceBar->GetPercent(), 0.35f));
 	return true;
 }
 
@@ -5413,6 +7057,8 @@ bool FGameXXKDesktopTrainingWorkbenchRepeatCombineTest::RunTest(
 		return false;
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	UnlockToolsTalent(State);
+	PreserveLegacyWorkbenchCapacity(State);
 	State.Screen = EGameXXKScreen::Town;
 	for (int32 Index = 0; Index < 18; ++Index)
 	{
@@ -5467,6 +7113,227 @@ bool FGameXXKDesktopTrainingWorkbenchRepeatCombineTest::RunTest(
 	TestEqual(TEXT("two common-equipment combines award eighteen tool experience"),
 		Subsystem->GetRuntimeState().ToolProgress.Experience,
 		int64(18));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWarehouseBatchControlsTest,
+	"GameXXK.DesktopTraining.Workbench.WarehouseBatchTransferControls",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWarehouseBatchControlsTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("warehouse-control fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	if (!TestTrue(TEXT("warehouse-control fixture unlocks page two"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("warehouse-control fixture opens Backpack"), Widget->OpenBackpack()))
+	{
+		return false;
+	}
+	Widget->HandleActionClicked(0);
+	TestTrue(TEXT("warehouse-control fixture opens Warehouse"), Widget->IsWarehousePanelOpenForTest());
+	TestNull(TEXT("Warehouse has no previous-page button"),
+		Widget->WidgetTree->FindWidget(TEXT("WarehousePreviousButton")));
+	TestNull(TEXT("Warehouse has no next-page button"),
+		Widget->WidgetTree->FindWidget(TEXT("WarehouseNextButton")));
+	TestNull(TEXT("Warehouse has no sort button"),
+		Widget->WidgetTree->FindWidget(TEXT("WarehouseSortButton")));
+	TestNotNull(TEXT("Warehouse-to-Backpack batch button exists"),
+		Widget->WidgetTree->FindWidget(TEXT("WarehouseBatchToBackpackButton")));
+	TestNotNull(TEXT("Backpack-to-Warehouse batch button exists"),
+		Widget->WidgetTree->FindWidget(TEXT("BackpackBatchToWarehouseButton")));
+	for (int32 Page = 0; Page < 6; ++Page)
+	{
+		TestNotNull(
+			*FString::Printf(TEXT("Warehouse page tab %d exists"), Page + 1),
+			Widget->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("WarehousePageTab_%d"), Page)));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWarehouseBatchTransferTest,
+	"GameXXK.DesktopTraining.Workbench.WarehouseBatchTransfer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWarehouseBatchTransferTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("warehouse-batch fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
+	const FName LockedItemId(TEXT("Item.Test.WorkbenchBatch.Locked"));
+	const FName CarryItemId(TEXT("Item.Test.WorkbenchBatch.Carried"));
+	const FName OtherPageItemId(TEXT("Item.Test.WorkbenchBatch.OtherPage"));
+	State.Inventory.Add(LockedItemId, 9);
+	State.Inventory.Add(CarryItemId, 4);
+	State.Inventory.Add(OtherPageItemId, 2);
+	if (!TestTrue(TEXT("warehouse-batch fixture normalizes"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey LockedItem =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(LockedItemId);
+	const FGameXXKDesktopInventoryEntryKey CarryItem =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(CarryItemId);
+	const FGameXXKDesktopInventoryEntryKey OtherPageItem =
+		FGameXXKDesktopInventoryRules::MakeItemEntry(OtherPageItemId);
+	FString Error;
+	TestTrue(TEXT("warehouse-batch fixture locks one movable item"),
+		FGameXXKDesktopInventoryRules::SetEntryLocked(State, LockedItem, true, &Error));
+	const int32 OtherPageSource = FGameXXKDesktopInventoryRules::FindEntrySlot(
+		State, EGameXXKDesktopItemContainer::Backpack, OtherPageItem);
+	TestTrue(TEXT("warehouse-batch fixture places an entry on page two"),
+		FGameXXKDesktopInventoryRules::MoveEntry(
+			State,
+			EGameXXKDesktopItemContainer::Backpack,
+			OtherPageSource,
+			EGameXXKDesktopItemContainer::Warehouse,
+			40,
+			&Error));
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("warehouse-batch fixture opens Backpack"), Widget->OpenBackpack()))
+	{
+		return false;
+	}
+	Widget->HandleActionClicked(3);
+	const int32 ReservedEquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
+	if (!TestTrue(TEXT("warehouse-batch fixture picks one equipment reservation"),
+		ReservedEquipmentSlot != INDEX_NONE
+		&& Widget->PickUpBackpackSlotForTest(ReservedEquipmentSlot)))
+	{
+		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey ReservedEquipment =
+		FGameXXKDesktopInventoryRules::GetEntryAt(
+			State, EGameXXKDesktopItemContainer::Backpack, ReservedEquipmentSlot);
+	Widget->HandleActionClicked(300);
+	TestEqual(TEXT("one Tool reservation is held outside authoritative slots"),
+		Widget->GetOccupiedToolSlotCountForTest(), 1);
+	Widget->HandleActionClicked(0);
+	const int32 CarrySlot = Widget->FindBackpackItemSlotForTest(CarryItemId);
+	TestTrue(TEXT("warehouse-batch fixture carries one excluded item"),
+		CarrySlot != INDEX_NONE && Widget->PickUpBackpackSlotForTest(CarrySlot));
+	TestEqual(TEXT("batch starts on Warehouse page one"), Widget->GetWarehousePageIndexForTest(), 0);
+
+	Widget->HandleActionClicked(41);
+	TestTrue(TEXT("locked item moves Backpack to current Warehouse page"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Warehouse, LockedItem) >= 0
+		&& FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Warehouse, LockedItem) < 36);
+	TestTrue(TEXT("moved locked item remains locked"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, LockedItem));
+	TestTrue(TEXT("carried item remains in Backpack and on cursor"),
+		Widget->IsCarryingItemForTest()
+		&& FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Backpack, CarryItem) != INDEX_NONE);
+	TestTrue(TEXT("Tool reservation remains in Backpack"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Backpack, ReservedEquipment) != INDEX_NONE);
+	TestEqual(TEXT("batch transfer keeps current Warehouse page unchanged"),
+		Widget->GetWarehousePageIndexForTest(), 0);
+	TestTrue(TEXT("batch transfer reports one movement notice"),
+		Widget->GetLastDesktopInventoryNoticeForTest().ToString().StartsWith(TEXT("已移动 ")));
+
+	UButton* ToWarehouseButton = Cast<UButton>(
+		Widget->WidgetTree->FindWidget(TEXT("BackpackBatchToWarehouseButton")));
+	UButton* ToBackpackButton = Cast<UButton>(
+		Widget->WidgetTree->FindWidget(TEXT("WarehouseBatchToBackpackButton")));
+	TestTrue(TEXT("exhausted Backpack direction disables live without closing Warehouse"),
+		ToWarehouseButton && !ToWarehouseButton->GetIsEnabled());
+	TestTrue(TEXT("reverse Warehouse direction enables live"),
+		ToBackpackButton && ToBackpackButton->GetIsEnabled());
+
+	TestTrue(TEXT("carried exclusion can be cancelled before reverse batch"),
+		Widget->CancelCarriedItemForTest());
+	Widget->HandleActionClicked(40);
+	TestTrue(TEXT("locked item moves back to Backpack"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Backpack, LockedItem) != INDEX_NONE);
+	TestTrue(TEXT("lock remains after reverse batch"),
+		FGameXXKDesktopInventoryRules::IsEntryLocked(State, LockedItem));
+	TestEqual(TEXT("other Warehouse page entry remains untouched"),
+		FGameXXKDesktopInventoryRules::FindEntrySlot(
+			State, EGameXXKDesktopItemContainer::Warehouse, OtherPageItem), 40);
+	TestEqual(TEXT("reverse batch also keeps current Warehouse page unchanged"),
+		Widget->GetWarehousePageIndexForTest(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWarehouseBatchPartialTest,
+	"GameXXK.DesktopTraining.Workbench.WarehouseBatchTransferPartialNotice",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWarehouseBatchPartialTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("partial-batch fixture starts a new game"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	State.DesktopInventory.WarehouseSlots.SetNum(
+		FGameXXKDesktopInventoryRules::WarehouseCapacity);
+	for (int32 Index = 0; Index < 35; ++Index)
+	{
+		const FName ItemId(*FString::Printf(TEXT("Item.Test.WorkbenchBatch.Full.%02d"), Index));
+		State.DesktopInventory.WarehouseItems.Add(ItemId, 1);
+		State.DesktopInventory.WarehouseSlots[Index] =
+			FGameXXKDesktopInventoryRules::MakeItemEntry(ItemId);
+	}
+	if (!TestTrue(TEXT("partial-batch fixture normalizes one free page slot"),
+		Subsystem->NormalizeDesktopInventoryState()))
+	{
+		return false;
+	}
+
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	TestTrue(TEXT("partial-batch fixture opens Backpack"), Widget->OpenBackpack());
+	Widget->HandleActionClicked(0);
+	Widget->HandleActionClicked(41);
+	const FString Notice = Widget->GetLastDesktopInventoryNoticeForTest().ToString();
+	TestTrue(TEXT("partial batch notice reports one moved entry"),
+		Notice.Contains(TEXT("已移动 1 件")));
+	TestTrue(TEXT("partial batch notice reports insufficient destination space"),
+		Notice.Contains(TEXT("目标空间不足")));
+	TestEqual(TEXT("partial batch fills only the selected Warehouse page"),
+		FGameXXKDesktopInventoryRules::GetOccupiedSlotCount(
+			State, EGameXXKDesktopItemContainer::Warehouse), 36);
 	return true;
 }
 

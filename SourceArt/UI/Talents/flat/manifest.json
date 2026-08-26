@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "canvas": [
+    512,
+    512
+  ],
+  "source_sheet": "T_TalentFlat_SourceSheet_v1.png",
+  "icons": [
+    {
+      "name": "Attack",
+      "file": "T_TalentFlat_Attack.png",
+      "source_cell": [
+        0,
+        0
+      ],
+      "source_bounds": [
+        35,
+        51,
+        303,
+        365
+      ],
+      "output_bounds": [
+        98,
+        71,
+        412,
+        439
+      ]
+    },
+    {
+      "name": "Health",
+      "file": "T_TalentFlat_Health.png",
+      "source_cell": [
+        1,
+        0
+      ],
+      "source_bounds": [
+        426,
+        114,
+        655,
+        332
+      ],
+      "output_bounds": [
+        71,
+        80,
+        439,
+        430
+      ]
+    },
+    {
+      "name": "Defense",
+      "file": "T_TalentFlat_Defense.png",
+      "source_cell": [
+        2,
+        0
+      ],
+      "source_bounds": [
+        764,
+        89,
+        990,
+        355
+      ],
+      "output_bounds": [
+        99,
+        71,
+        412,
+        439
+      ]
+    },
+    {
+      "name": "Critical",
+      "file": "T_TalentFlat_Critical.png",
+      "source_cell": [
+        3,
+        0
+      ],
+      "source_bounds": [
+        1092,
+        68,
+        1358,
+        359
+      ],
+      "output_bounds": [
+        87,
+        71,
+        423,
+        439
+      ]
+    },
+    {
+      "name": "Movement",
+      "file": "T_TalentFlat_Movement.png",
+      "source_cell": [
+        0,
+        1
+      ],
+      "source_bounds": [
+        33,
+        470,
+        307,
+        684
+      ],
+      "output_bounds": [
+        71,
+        112,
+        439,
+        399
+      ]
+    },
+    {
+      "name": "Backpack",
+      "file": "T_TalentFlat_Backpack.png",
+      "source_cell": [
+        1,
+        1
+      ],
+      "source_bounds": [
+        431,
+        428,
+        670,
+        690
+      ],
+      "output_bounds": [
+        87,
+        71,
+        423,
+        439
+      ]
+    },
+    {
+      "name": "Gold",
+      "file": "T_TalentFlat_Gold.png",
+      "source_cell": [
+        2,
+        1
+      ],
+      "source_bounds": [
+        760,
+        450,
+        1010,
+        700
+      ],
+      "output_bounds": [
+        71,
+        71,
+        439,
+        439
+      ]
+    },
+    {
+      "name": "Experience",
+      "file": "T_TalentFlat_Experience.png",
+      "source_cell": [
+        3,
+        1
+      ],
+      "source_bounds": [
+        1103,
+        434,
+        1354,
+        700
+      ],
+      "output_bounds": [
+        82,
+        71,
+        429,
+        439
+      ]
+    },
+    {
+      "name": "Offline",
+      "file": "T_TalentFlat_Offline.png",
+      "source_cell": [
+        0,
+        2
+      ],
+      "source_bounds": [
+        64,
+        792,
+        284,
+        1054
+      ],
+      "output_bounds": [
+        101,
+        71,
+        410,
+        439
+      ]
+    },
+    {
+      "name": "Time",
+      "file": "T_TalentFlat_Time.png",
+      "source_cell": [
+        1,
+        2
+      ],
+      "source_bounds": [
+        446,
+        786,
+        629,
+        1054
+      ],
+      "output_bounds": [
+        130,
+        71,
+        381,
+        439
+      ]
+    },
+    {
+      "name": "Chest",
+      "file": "T_TalentFlat_Chest.png",
+      "source_cell": [
+        2,
+        2
+      ],
+      "source_bounds": [
+        741,
+        803,
+        1033,
+        1060
+      ],
+      "output_bounds": [
+        71,
+        93,
+        439,
+        417
+      ]
+    }
+  ]
+}

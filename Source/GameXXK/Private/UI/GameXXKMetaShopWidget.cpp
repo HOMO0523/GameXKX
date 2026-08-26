@@ -27,7 +27,7 @@ namespace
 	constexpr const TCHAR* CloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot");
-	constexpr const TCHAR* SelectionInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SelectionInk.T_MasterV2_SelectionInk");
+	constexpr const TCHAR* SelectionInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	constexpr const TCHAR* PurchaseButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	const FVector2D CloseButtonSize(74.0f, 74.0f);
 	const FVector2D ProductCardSize(170.0f, 170.0f);
@@ -39,8 +39,9 @@ namespace
 	FSlateBrush MakeTextureBrush(const TCHAR* Path, const FVector2D& ImageSize)
 	{
 		FSlateBrush Brush;
-		Brush.SetResourceObject(LoadObject<UTexture2D>(nullptr, Path));
-		Brush.DrawAs = ESlateBrushDrawType::Image;
+		UTexture2D* Texture = Path ? LoadObject<UTexture2D>(nullptr, Path) : nullptr;
+		Brush.SetResourceObject(Texture);
+		Brush.DrawAs = Texture ? ESlateBrushDrawType::Image : ESlateBrushDrawType::NoDrawType;
 		Brush.ImageSize = ImageSize;
 		Brush.TintColor = FSlateColor(FLinearColor::White);
 		return Brush;

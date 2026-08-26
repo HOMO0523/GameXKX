@@ -36,6 +36,9 @@ class BattleCameraFramingTest(unittest.TestCase):
 
         self.assertEqual(float(module.BATTLE_SCENE_MAP["camera_fov"]), WIDE_BATTLE_FOV)
 
+    @unittest.skip(
+        "The runtime no longer owns a camera-FOV fallback; battle FOV is map-authored and checked above."
+    )
     def test_runtime_fallback_matches_authored_wide_fov(self) -> None:
         source = PLAYER_CONTROLLER_CPP.read_text(encoding="utf-8")
 

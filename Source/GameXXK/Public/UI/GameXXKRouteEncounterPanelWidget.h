@@ -36,6 +36,30 @@ enum class EGameXXKRouteEncounterAction : uint8
 
 class UGameXXKRouteEncounterPanelWidget;
 
+struct FGameXXKRouteChoicePresentationIdentity
+{
+	EGameXXKScreen Screen = EGameXXKScreen::MainMenu;
+	int32 PendingNodeId = INDEX_NONE;
+	int32 EventSourceNodeId = INDEX_NONE;
+	int32 EventChoiceSeed = 0;
+	FName EncounterId = NAME_None;
+	int32 RelicSourceNodeId = INDEX_NONE;
+	int32 RelicChoiceSeed = 0;
+	TArray<FName> RelicIds;
+
+	bool operator==(const FGameXXKRouteChoicePresentationIdentity& Other) const
+	{
+		return Screen == Other.Screen
+			&& PendingNodeId == Other.PendingNodeId
+			&& EventSourceNodeId == Other.EventSourceNodeId
+			&& EventChoiceSeed == Other.EventChoiceSeed
+			&& EncounterId == Other.EncounterId
+			&& RelicSourceNodeId == Other.RelicSourceNodeId
+			&& RelicChoiceSeed == Other.RelicChoiceSeed
+			&& RelicIds == Other.RelicIds;
+	}
+};
+
 /** A configured button keeps the visual widget independent from route-rule execution. */
 UCLASS()
 class GAMEXXK_API UGameXXKRouteEncounterActionButton : public UButton
@@ -44,6 +68,7 @@ class GAMEXXK_API UGameXXKRouteEncounterActionButton : public UButton
 
 public:
 	void Configure(UGameXXKRouteEncounterPanelWidget* InOwner, EGameXXKRouteEncounterAction InAction);
+	void ConfigureChoice(UGameXXKRouteEncounterPanelWidget* InOwner, int32 InChoiceIndex);
 
 private:
 	UFUNCTION()
@@ -53,6 +78,7 @@ private:
 	TObjectPtr<UGameXXKRouteEncounterPanelWidget> Owner;
 
 	EGameXXKRouteEncounterAction Action = EGameXXKRouteEncounterAction::None;
+	int32 ChoiceIndex = INDEX_NONE;
 };
 
 /**
@@ -116,16 +142,31 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter|Test")
 	bool TriggerTertiaryActionForTest();
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter|Test")
+	bool SelectChoiceForTest(int32 ChoiceIndex);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter|Test")
+	bool ConfirmSelectedChoiceForTest();
+	int32 GetSelectedChoiceIndexForTest() const { return SelectedChoiceIndex; }
+
+	int32 GetRenderedChoiceCardCountForTest() const;
+
 private:
 	friend class UGameXXKRouteEncounterActionButton;
 
 	void BuildProgrammaticLayout();
 	bool BuildPresentation();
 	bool ExecuteAction(EGameXXKRouteEncounterAction InAction);
+	bool SelectChoice(int32 ChoiceIndex);
+	bool ConfirmSelectedChoice();
+	void RefreshChoiceCardStates();
 	void ApplyActionButton(UGameXXKRouteEncounterActionButton* Button, UTextBlock* Label, EGameXXKRouteEncounterAction InAction, const FText& Text, bool bEnabled);
 
 	UFUNCTION()
 	void HandleCloseClicked();
+
+	UFUNCTION()
+	void HandleConfirmClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
@@ -164,6 +205,30 @@ private:
 	TObjectPtr<UGameXXKRouteEncounterActionButton> CloseButton;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKRouteEncounterActionButton>> ChoiceCardButtons;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> ChoiceArtImages;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ChoiceNameTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ChoiceDescriptionTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> ChoiceDisabledReasonTexts;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> ChoiceSelectionInks;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> ConfirmButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ConfirmTextBlock;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> PrimaryActionTextBlock;
 
 	UPROPERTY(Transient)
@@ -178,4 +243,7 @@ private:
 	EGameXXKRouteEncounterAction PrimaryAction = EGameXXKRouteEncounterAction::None;
 	EGameXXKRouteEncounterAction SecondaryAction = EGameXXKRouteEncounterAction::None;
 	EGameXXKRouteEncounterAction TertiaryAction = EGameXXKRouteEncounterAction::None;
+	int32 SelectedChoiceIndex = INDEX_NONE;
+	TArray<EGameXXKRouteEncounterAction> ChoiceActions;
+	TOptional<FGameXXKRouteChoicePresentationIdentity> ChoicePresentationIdentity;
 };

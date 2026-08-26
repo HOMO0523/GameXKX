@@ -216,45 +216,14 @@ def build_component_assets(output_root: Path) -> dict[str, dict]:
             "textBaked": False,
         }
 
-    for state in ("normal", "hover", "pressed", "primary", "danger", "disabled"):
-        write(f"button_{state}", make_ink_button((220, 72), state))
-    for state in ("normal", "hover", "pressed", "selected", "disabled"):
-        write(f"tab_{state}", make_ink_tab((160, 58), state))
-    for state in ("normal", "hover", "selected", "reminder", "locked"):
-        write(f"nav_{state}", make_nav_disc(112, state))
-    for kind in ("backpack", "companion", "codex", "task", "route"):
-        write(f"nav_{kind}", make_nav_icon(72, kind))
-    for state in ("empty", "hover", "selected", "locked"):
-        write(f"item_slot_{state}", make_slot((104, 104), "item", state))
-    for state in ("empty", "hover", "selected"):
-        write(
-            f"equipment_slot_{state}",
-            make_slot((124, 130), "equipment", state),
-        )
-    card_tints = {
-        "role": (222, 205, 170),
-        "monster": (210, 197, 178),
-        "general": (218, 211, 185),
-        "terrain": (196, 207, 184),
-        "rare": (204, 194, 210),
-        "boss": (213, 186, 167),
-    }
-    for family, tint in card_tints.items():
-        write(
-            f"card_frame_{family}",
-            make_slot((300, 420), f"card_{family}", "empty", tint),
-        )
-    write("panel_large", make_torn_paper((1440, 780), 240811, 9))
-    write("panel_medium", make_torn_paper((760, 520), 240812, 7))
-    write("panel_small", make_torn_paper((420, 260), 240813, 5))
-    write("progress_track", make_ink_button((420, 24), "normal"))
-    fill = Image.new("RGBA", (280, 10), (0, 0, 0, 0))
-    ImageDraw.Draw(fill).rounded_rectangle(
-        (0, 0, 279, 9), 5, fill=(91, 126, 96, 255)
+    project_root = Path(__file__).resolve().parents[1]
+    approved_button_path = (
+        project_root
+        / "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeApproved"
+        / "T_MasterV2_ButtonPurchase.png"
     )
-    write("progress_fill", fill)
-    write("resource_strip", make_torn_paper((680, 92), 240814, 4))
-    write("tooltip_panel", make_torn_paper((520, 240), 240815, 5))
+    with Image.open(approved_button_path) as approved_button_source:
+        write("button_purchase", approved_button_source.convert("RGBA"))
     (output_root / "component-assets.json").write_text(
         json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8"
     )

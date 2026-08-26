@@ -1569,6 +1569,10 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName ResolvedTargetUnitId = NAME_None;
 
+	/** True only when the permanent talent critical roll amplified this direct party hit. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bTalentCriticalHit = false;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 RequestedDamage = 0;
 
@@ -2233,6 +2237,16 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** Independent deterministic stream for combat rolls such as Agility. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 CombatRandomState = 0;
+
+	/** Permanent talent snapshot captured once at battle start. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TalentFinalDamagePercent = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TalentCriticalChancePercent = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TalentCriticalDamagePercent = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKBattleDeckState Deck;

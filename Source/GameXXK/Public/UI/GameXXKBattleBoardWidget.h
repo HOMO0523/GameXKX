@@ -276,6 +276,9 @@ public:
 	FString GetBattlePresentationReadoutForTest() const;
 	FVector2D GetBattlePresentationReadoutScaleForTest() const;
 	float GetBattlePresentationReadoutOpacityForTest() const;
+	FString GetBattleSettlementLogForTest() const;
+	int32 GetBattleSettlementLineCountForTest() const;
+	void ClearBattleSettlementLogForTest();
 
 #if WITH_DEV_AUTOMATION_TESTS
 	void SetAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
@@ -630,6 +633,7 @@ private:
 		FGameXXKBattlePresentationEvent Event;
 		FGameXXKBattleStatusPresentationEvent StatusEvent;
 		EBattlePresentationKind Kind = EBattlePresentationKind::AttackHit;
+		FString SettlementLine;
 		uint64 QueueSerial = 0;
 		double StartSeconds = 0.0;
 		bool bStarted = false;
@@ -652,7 +656,8 @@ private:
 	void BuildProgrammaticLayout();
 	void QueuePresentationInternal(
 		const FGameXXKBattlePresentationEvent& Event,
-		bool bRefreshBaseline);
+		bool bRefreshBaseline,
+		const FString& SettlementLine = FString());
 	void QueueStatusPresentation(const FGameXXKBattleStatusPresentationEvent& Event);
 	bool QueueMutationPresentation(
 		const FGameXXKCardBattleRuntime& Before,
@@ -696,6 +701,12 @@ private:
 	void SetDisplayedHealthOverlay(FName UnitId, int32 Health, int32 Armor = INDEX_NONE);
 	void ApplyDisplayedDamagePacket(const FGameXXKBattlePresentationEvent& Event);
 	void ClearDisplayedHealthOverlay(FName UnitId);
+	FString BuildBattleSettlementLine(
+		const FGameXXKBattlePresentationEvent& Event,
+		FName PlayedCardInstanceId,
+		const FGameXXKCardBattleRuntime& BeforeRuntime) const;
+	void AppendBattleSettlementLine(const FString& Line);
+	void RefreshBattleSettlementLog();
 	bool IsUnitRetainedByPresentation(FName UnitId) const;
 	void UpdateBattlePresentationShake(double AbsoluteSeconds);
 	void UpdateBattlePresentationReadout(double AbsoluteSeconds);
@@ -1015,6 +1026,9 @@ private:
 	TArray<FBattlePresentationQueueEntry> BattlePresentationQueue;
 	TMap<FName, int32> DisplayedHealthOverrides;
 	TMap<FName, FGameXXKBattleUnitHudView> DisplayedUnitHudOverrides;
+	/** One line per settled combat packet, newest last, rendered sequentially as impacts land. */
+	TArray<FString> BattleSettlementLines;
+	static constexpr int32 MaximumBattleSettlementLines = 6;
 	/** Pre-mutation party Qi retained until the complete immutable presentation batch drains or is cancelled. */
 	TOptional<int32> DisplayedSharedEnergyOverride;
 	TSet<FName> DefeatedUnitVisualsPendingRemoval;
@@ -1075,6 +1089,13 @@ private:
 	/** Shared PSD paper tooltip for every playable Battle Board card. It never intercepts card input. */
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HandCardDetailPanel;
+
+	/** Sequential settlement readout: newest combat packet is appended one line at a time. */
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> BattleSettlementLogPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BattleSettlementLogText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HandCardDetailTitle;

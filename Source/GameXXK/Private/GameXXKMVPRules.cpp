@@ -1144,7 +1144,7 @@ namespace GameXXKMVP
 			NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 2)),
 			NormalizeRouteSeed(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed, 3))};
 	Progress.CurrentChapter = 1;
-	Progress.RouteCombatLevel = FMath::Clamp(State.PlayerLevel, 1, 20);
+		Progress.RouteCombatLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 	Progress.ActualRouteCardAcquisitionCount = 0;
 	State.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
 }
@@ -1160,7 +1160,7 @@ namespace GameXXKMVP
 			|| Progress.CurrentChapter < 1
 			|| Progress.CurrentChapter > 3
 			|| Progress.RouteCombatLevel < 1
-			|| Progress.RouteCombatLevel > 20)
+			|| Progress.RouteCombatLevel > FGameXXKCharacterStatRules::MaxCharacterLevel)
 		{
 			return false;
 		}
@@ -1249,9 +1249,9 @@ namespace GameXXKMVP
 	static int32 GetRouteEncounterCombatLevel(const FGameXXKRuntimeState& State)
 	{
 		const FGameXXKRouteProgress& Progress = State.CardRun.RouteProgress;
-		return Progress.SchemaVersion == 1 && Progress.RouteCombatLevel >= 1 && Progress.RouteCombatLevel <= 20
+		return Progress.SchemaVersion == 1 && Progress.RouteCombatLevel >= 1 && Progress.RouteCombatLevel <= FGameXXKCharacterStatRules::MaxCharacterLevel
 			? Progress.RouteCombatLevel
-			: FMath::Clamp(State.PlayerLevel, 1, 20);
+			: FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 	}
 
 	static int32 GetRouteEncounterChapterSeed(const FGameXXKRuntimeState& State, const int32 Chapter)
@@ -2015,13 +2015,36 @@ bool UGameXXKMVPRules::AdvanceDungeonNode(FGameXXKRuntimeState& State, EGameXXKN
 
 bool UGameXXKMVPRules::SelectRouteNodeById(FGameXXKRuntimeState& State, int32 NodeId)
 {
-	if (!State.bDungeonActive || !State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::DungeonMap || !State.ReachableRouteNodeIds.Contains(NodeId))
+	if (!State.bDungeonActive || !State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::DungeonMap)
 	{
 		return false;
 	}
 
 	const FGameXXKRouteMapNode* Node = GameXXKMVP::FindRouteNode(State, NodeId);
 	if (!Node)
+	{
+		return false;
+	}
+	if (State.PendingRouteNodeId != INDEX_NONE)
+	{
+		if (State.PendingRouteNodeId != NodeId)
+		{
+			return false;
+		}
+		if ((Node->NodeKind == EGameXXKNodeKind::Event || Node->NodeKind == EGameXXKNodeKind::Chest)
+			&& State.CardRun.PendingEvent.SourceNodeId == NodeId)
+		{
+			State.Screen = EGameXXKScreen::RouteEvent;
+			return true;
+		}
+		if (Node->NodeKind == EGameXXKNodeKind::Camp)
+		{
+			State.Screen = EGameXXKScreen::RouteCamp;
+			return true;
+		}
+		return false;
+	}
+	if (!State.ReachableRouteNodeIds.Contains(NodeId))
 	{
 		return false;
 	}
@@ -2635,6 +2658,11 @@ bool UGameXXKMVPRules::ResolveRouteEncounterChoice(FGameXXKRuntimeState& State, 
 		FGameXXKOrderedPartyFormation UpdatedFormation;
 		if (!Candidate.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
 			|| Choice.QuestNpcId.IsNone()
+			|| !FGameXXKPartyFormationRules::Validate(
+				Candidate,
+				Candidate.CardRun.OrderedFormation,
+				&FormationError)
+			|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError)
 			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, Choice.QuestNpcId, {})
 			|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
 				Candidate,
@@ -2774,7 +2802,12 @@ bool UGameXXKMVPRules::AcceptRouteEventNpcSupport(FGameXXKRuntimeState& State)
 	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
 	FString FormationError;
 	FGameXXKOrderedPartyFormation UpdatedFormation;
-	if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {})
+	if (!FGameXXKPartyFormationRules::Validate(
+			Candidate,
+			Candidate.CardRun.OrderedFormation,
+			&FormationError)
+		|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError)
+		|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {})
 		|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
 			Candidate,
 			UpdatedFormation,

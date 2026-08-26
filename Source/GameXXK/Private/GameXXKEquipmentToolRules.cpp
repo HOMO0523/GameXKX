@@ -2,6 +2,7 @@
 
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKGemRules.h"
+#include "GameXXKTalentRules.h"
 #include "Math/RandomStream.h"
 #include "Misc/Crc.h"
 
@@ -93,14 +94,41 @@ namespace
 		return true;
 	}
 
+	bool RequireToolsUnlocked(
+		const FGameXXKRuntimeState& State,
+		FGameXXKEquipmentTransactionResult& Out)
+	{
+		FGameXXKTalentProjection Projection;
+		if (!FGameXXKTalentRules::BuildProjection(State.Talents, Projection))
+		{
+			Fail(Out, EGameXXKEquipmentTransactionError::CollectionInvalid, TEXT("天赋数据无效"));
+			return false;
+		}
+		if (!Projection.bToolsUnlocked)
+		{
+			Fail(Out, EGameXXKEquipmentTransactionError::InvalidRequest, TEXT("需要先在永久天赋中解锁工具功能"));
+			return false;
+		}
+		return true;
+	}
+
 	bool AddAward(FGameXXKRuntimeState& Candidate, const int64 Award, FGameXXKEquipmentTransactionResult& Out)
 	{
-		if (!FGameXXKEquipmentToolRules::AddRawExperience(Candidate.ToolProgress, Award))
+		FGameXXKTalentProjection Projection;
+		if (!FGameXXKTalentRules::BuildProjection(Candidate.Talents, Projection))
+		{
+			Fail(Out, EGameXXKEquipmentTransactionError::CollectionInvalid, TEXT("天赋数据无效"));
+			return false;
+		}
+		const int64 BoostedAward = FMath::RoundToInt64(
+			static_cast<double>(Award) * Projection.GetToolExperienceMultiplier());
+		if (BoostedAward < 0
+			|| !FGameXXKEquipmentToolRules::AddRawExperience(Candidate.ToolProgress, BoostedAward))
 		{
 			Fail(Out, EGameXXKEquipmentTransactionError::InvalidRequest, TEXT("工具经验溢出"));
 			return false;
 		}
-		Out.ToolExperienceDelta = Award;
+		Out.ToolExperienceDelta = BoostedAward;
 		return true;
 	}
 }
@@ -188,6 +216,10 @@ bool FGameXXKEquipmentToolRules::Dismantle(
 	const bool bConfirmed,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (Inputs.Num() < 1 || Inputs.Num() > 9)
 	{
 		Fail(OutResult, EGameXXKEquipmentTransactionError::InvalidRecipe, TEXT("分解需要 1 到 9 件装备"));
@@ -208,8 +240,27 @@ bool FGameXXKEquipmentToolRules::Dismantle(
 		Ids.Add(Ref.ExpectedEntry.EntryId);
 	}
 	FGameXXKRuntimeState Candidate = InOutState;
-	if (!FGameXXKEquipmentEconomyRules::DismantleBatch(Candidate, Ids, bConfirmed, OutResult)
-		|| !AddAward(Candidate, Award, OutResult)
+	if (!FGameXXKEquipmentEconomyRules::DismantleBatch(Candidate, Ids, bConfirmed, OutResult))
+	{
+		return false;
+	}
+	FGameXXKTalentProjection TalentProjection;
+	if (!FGameXXKTalentRules::BuildProjection(Candidate.Talents, TalentProjection))
+	{
+		Fail(OutResult, EGameXXKEquipmentTransactionError::CollectionInvalid, TEXT("天赋数据无效"));
+		return false;
+	}
+	const int64 BaseGoldAward = static_cast<int64>(Candidate.PlayerGold) - InOutState.PlayerGold;
+	const int64 BoostedGoldAward = FMath::RoundToInt64(
+		static_cast<double>(BaseGoldAward) * TalentProjection.GetToolGoldMultiplier());
+	const int64 BoostedGoldTotal = static_cast<int64>(InOutState.PlayerGold) + BoostedGoldAward;
+	if (BoostedGoldAward < BaseGoldAward || BoostedGoldTotal > MAX_int32)
+	{
+		Fail(OutResult, EGameXXKEquipmentTransactionError::InvalidRequest, TEXT("工具金币奖励溢出"));
+		return false;
+	}
+	Candidate.PlayerGold = static_cast<int32>(BoostedGoldTotal);
+	if (!AddAward(Candidate, Award, OutResult)
 		|| !Finish(Candidate, OutResult)) return false;
 	OutResult.bSucceeded = true;
 	InOutState = MoveTemp(Candidate);
@@ -221,6 +272,10 @@ bool FGameXXKEquipmentToolRules::CombineEquipment(
 	const TArray<FGameXXKToolInputRef>& Inputs,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (Inputs.Num() != 9)
 	{
 		Fail(OutResult, EGameXXKEquipmentTransactionError::InvalidRecipe, TEXT("装备合成必须放入 9 件装备"));
@@ -304,6 +359,10 @@ bool FGameXXKEquipmentToolRules::CombineGem(
 	const FGameXXKToolInputRef& Input,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (!ResolveExact(InOutState, Input, true, OutResult) || Input.ExpectedEntry.bEquipmentInstance)
 	{
 		if (OutResult.Error == EGameXXKEquipmentTransactionError::None)
@@ -352,6 +411,10 @@ bool FGameXXKEquipmentToolRules::Enhance(
 	const FGameXXKToolInputRef& Input,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (!ResolveExact(InOutState, Input, false, OutResult) || !Input.ExpectedEntry.bEquipmentInstance) return false;
 	const FGameXXKEquipmentInstance* Before = FGameXXKEquipmentRules::FindInstance(InOutState.EquipmentCollection, Input.ExpectedEntry.EntryId);
 	const int32 Rank = FGameXXKEquipmentQualityRules::GetRank(Before->Quality);
@@ -370,6 +433,10 @@ bool FGameXXKEquipmentToolRules::BeginReforge(
 	const int32 AffixIndex,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (!ResolveExact(InOutState, Input, false, OutResult) || !Input.ExpectedEntry.bEquipmentInstance) return false;
 	const FGameXXKEquipmentInstance* Before = FGameXXKEquipmentRules::FindInstance(InOutState.EquipmentCollection, Input.ExpectedEntry.EntryId);
 	const int32 Rank = FGameXXKEquipmentQualityRules::GetRank(Before->Quality);
@@ -404,6 +471,10 @@ bool FGameXXKEquipmentToolRules::SocketGem(
 	const FGameXXKSocketGemRequest& Request,
 	FGameXXKEquipmentTransactionResult& OutResult)
 {
+	if (!RequireToolsUnlocked(InOutState, OutResult))
+	{
+		return false;
+	}
 	if (!ResolveExact(InOutState, Request.EquipmentInput, false, OutResult)
 		|| !ResolveExact(InOutState, Request.GemInput, false, OutResult)
 		|| !Request.EquipmentInput.ExpectedEntry.bEquipmentInstance
@@ -466,6 +537,13 @@ bool FGameXXKEquipmentToolRules::BuildCombineAutoFill(
 {
 	OutInputs.Reset();
 	SetError(OutError, FString());
+	FGameXXKTalentProjection TalentProjection;
+	if (!FGameXXKTalentRules::BuildProjection(State.Talents, TalentProjection)
+		|| !TalentProjection.bToolsUnlocked)
+	{
+		SetError(OutError, TEXT("需要先在永久天赋中解锁工具功能"));
+		return false;
+	}
 	struct FCandidate
 	{
 		FGameXXKToolInputRef Ref;

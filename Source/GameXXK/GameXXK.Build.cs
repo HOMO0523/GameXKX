@@ -12,6 +12,10 @@ public class GameXXK : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "EngineSettings", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore", "Paper2D" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
+		if (Target.Platform == UnrealTargetPlatform.Win64)
+		{
+			PrivateDependencyModuleNames.Add("GameXXKDesktopOverlay");
+		}
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

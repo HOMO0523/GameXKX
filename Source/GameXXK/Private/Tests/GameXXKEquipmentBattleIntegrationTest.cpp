@@ -7,6 +7,7 @@
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
@@ -48,7 +49,7 @@ namespace
 			FGameXXKEquipmentCreateRequest Request;
 			Request.Set = Set;
 			Request.Quality = EGameXXKEquipmentQuality::Rare;
-			Request.ItemLevel = 6;
+			Request.ItemLevel = 1;
 			Request.bForceSlot = true;
 			Request.ForcedSlot = Slot;
 			FName InstanceId;
@@ -111,7 +112,23 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 		AddError(Error);
 		return false;
 	}
-
+	FGameXXKCompanionRecruitResult FormationSupportRecruit;
+	if (!TestTrue(TEXT("fixture recruits the second permanent companion required by current saves"),
+		FGameXXKCompanionRules::CreateAndResolveNextRecruitment(
+			State.CardRun.CompanionRoster,
+			FormationSupportRecruit,
+			&Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	if (!TestTrue(TEXT("fixture materializes the current exact-three ordered formation"),
+		FGameXXKPartyFormationRules::Normalize(State, &Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(State);
 	if (!AddAndEquipFullSet(*this, State, FGameXXKEquipmentRules::HeroCharacterId(), EGameXXKEquipmentSet::ShanHe)
 		|| !AddAndEquipFullSet(*this, State, RecruitResult.Companion.InstanceId, EGameXXKEquipmentSet::ShanHe))
 	{
@@ -148,8 +165,15 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKCompanionAttributes TaskNpcAttributes;
+	const FGameXXKQuestNpcProgression* TaskNpcProgression =
+		State.CardRun.PartySelection.QuestNpcProgressions.Find(TEXT("Npc.TusiChief"));
 	if (!TestTrue(TEXT("resolves the task NPC from its non-equipment snapshot"),
-		FGameXXKCompanionRules::GetQuestNpcAttributes(TEXT("Npc.TusiChief"), State.PlayerLevel, TaskNpcAttributes, &Error)))
+		TaskNpcProgression
+			&& FGameXXKCompanionRules::GetQuestNpcAttributes(
+				TEXT("Npc.TusiChief"),
+				TaskNpcProgression->Level,
+				TaskNpcAttributes,
+				&Error)))
 	{
 		AddError(Error);
 		return false;
@@ -248,11 +272,29 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	UGameplayStatics::DeleteGameInSlot(SaveSlot, SaveUserIndex);
 	UGameXXKMVPSubsystem* SavingSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	SavingSubsystem->GetMutableRuntimeState() = State;
-	TestTrue(TEXT("equipment-enriched active battle saves through the project save path"),
-		SavingSubsystem->SaveCurrentGame(SaveSlot, SaveUserIndex));
+	TestTrue(TEXT("equipment-enriched save fixture reconciles its low-level-created physical inventory"),
+		SavingSubsystem->NormalizeDesktopInventoryState());
+	const bool bSaved = SavingSubsystem->SaveCurrentGame(SaveSlot, SaveUserIndex);
+	if (!TestTrue(
+		FString::Printf(
+			TEXT("equipment-enriched active battle saves through the project save path: %s"),
+			*SavingSubsystem->GetLastSaveLoadError().ToString()),
+		bSaved))
+	{
+		UGameplayStatics::DeleteGameInSlot(SaveSlot, SaveUserIndex);
+		return false;
+	}
 	UGameXXKMVPSubsystem* LoadedSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-	TestTrue(TEXT("equipment-enriched active battle reloads through the project save path"),
-		LoadedSubsystem->LoadGameFromSlot(SaveSlot, SaveUserIndex));
+	const bool bLoaded = LoadedSubsystem->LoadGameFromSlot(SaveSlot, SaveUserIndex);
+	if (!TestTrue(
+		FString::Printf(
+			TEXT("equipment-enriched active battle reloads through the project save path: %s"),
+			*LoadedSubsystem->GetLastSaveLoadError().ToString()),
+		bLoaded))
+	{
+		UGameplayStatics::DeleteGameInSlot(SaveSlot, SaveUserIndex);
+		return false;
+	}
 	const FGameXXKCardBattleRuntime& ReloadedBattle = LoadedSubsystem->GetRuntimeState().CardRun.ActiveBattle;
 	TestEqual(TEXT("save reload preserves equipment battle-effect count"),
 		ReloadedBattle.EquipmentEffects.Num(), State.CardRun.ActiveBattle.EquipmentEffects.Num());

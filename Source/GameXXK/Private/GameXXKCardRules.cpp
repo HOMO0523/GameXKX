@@ -1,6 +1,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCharacterStatRules.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEquipmentRules.h"
 
@@ -2701,7 +2702,7 @@ namespace
 					OutError = TEXT("Enemy combat units must use unique explicit 1P, 2P, or 3P presentation slots when a slot is saved.");
 					return false;
 				}
-				if (Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel < 1 || Unit.CombatLevel > 20)
+				if (Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel < 1 || Unit.CombatLevel > FGameXXKCharacterStatRules::MaxCharacterLevel)
 				{
 					OutError = TEXT("An explicitly slotted enemy combat unit requires a catalog identity and a valid route combat level.");
 					return false;
@@ -2712,7 +2713,7 @@ namespace
 				&& (Unit.BattleSlotNumber != INDEX_NONE
 					|| !Unit.EnemyDefinitionId.IsNone()
 					|| Unit.CombatLevel < 0
-					|| Unit.CombatLevel > 20))
+					|| Unit.CombatLevel > FGameXXKCharacterStatRules::MaxCharacterLevel))
 			{
 				OutError = TEXT("Party combat units may persist a valid character level, but never an enemy definition or presentation slot.");
 				return false;
@@ -3543,14 +3544,41 @@ namespace
 		const FGameXXKCardCombatUnit* SourceUnit = bDirectAttack
 			? FindCombatUnitById(NewUnits, Context.SourceUnitId)
 			: nullptr;
+		int32 TalentScaledDamage = RequestedDamage;
+		if (bDirectAttack
+			&& SourceUnit
+			&& SourceUnit->Side == EGameXXKCardTargetSide::Party
+			&& BattleProjection)
+		{
+			TalentScaledDamage = static_cast<int32>(FMath::Clamp<int64>(
+				(static_cast<int64>(TalentScaledDamage)
+					* (100 + FMath::Clamp(BattleProjection->TalentFinalDamagePercent, 0, 100)) + 50) / 100,
+				1,
+				MAX_int32));
+			const int32 CriticalChance = FMath::Clamp(
+				BattleProjection->TalentCriticalChancePercent,
+				0,
+				20);
+			if (CriticalChance > 0
+				&& AdvanceCombatRandomRoll(*BattleProjection) < CriticalChance)
+			{
+				NewResult.bTalentCriticalHit = true;
+				const int32 CriticalMultiplier = 150
+					+ FMath::Clamp(BattleProjection->TalentCriticalDamagePercent, 0, 50);
+				TalentScaledDamage = static_cast<int32>(FMath::Clamp<int64>(
+					(static_cast<int64>(TalentScaledDamage) * CriticalMultiplier + 50) / 100,
+					1,
+					MAX_int32));
+			}
+		}
 		const int32 MomentumStacks = Context.MomentumStacksOverride != INDEX_NONE
 			? Context.MomentumStacksOverride
 			: (SourceUnit ? GetCombatStatusStacksInternal(*SourceUnit, EGameXXKCardStatus::Momentum) : 0);
 		const int32 DamageWithMomentum = bDirectAttack
 			? static_cast<int32>(FMath::Min<int64>(
 				MAX_int32,
-				static_cast<int64>(RequestedDamage) + MomentumStacks))
-			: RequestedDamage;
+				static_cast<int64>(TalentScaledDamage) + MomentumStacks))
+			: TalentScaledDamage;
 		const int32 DamageAfterWeak = SourceUnit
 			&& GetCombatStatusStacksInternal(*SourceUnit, EGameXXKCardStatus::Weak) > 0
 			? FMath::Max(1, DamageWithMomentum / 2)
@@ -4849,6 +4877,9 @@ namespace
 			|| Runtime.PendingPreservedPartyReactionUses < 0 || Runtime.PendingPreservedPartyReactionUses > 1
 			|| Runtime.PendingNextRoundEnergyBonus < 0 || Runtime.PendingNextRoundEnergyBonus > MaxCardBattleEnergy
 			|| Runtime.PendingNextPlayerHandEnergySurcharge < 0 || Runtime.PendingNextPlayerHandEnergySurcharge > 1
+			|| Runtime.TalentFinalDamagePercent < 0 || Runtime.TalentFinalDamagePercent > 100
+			|| Runtime.TalentCriticalChancePercent < 0 || Runtime.TalentCriticalChancePercent > 20
+			|| Runtime.TalentCriticalDamagePercent < 0 || Runtime.TalentCriticalDamagePercent > 50
 			|| (Runtime.PendingNextPlayerHandEnergySurcharge == 0) != Runtime.PendingNextPlayerHandEnergySurchargeSourceUnitId.IsNone()
 			|| (Runtime.bLifeSavingTalismanArmed && Runtime.bLifeSavingTalismanConsumptionPending)
 			|| (bLifeSavingProjectionActive
@@ -12549,8 +12580,12 @@ namespace
 		if (Rule != EGameXXKBladeFinishRule::ReturnFirstActiveNextRound
 			&& Rule != EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding)
 		{
-			OutError = TEXT("A pending partner Blade Finish reached an unsupported runtime rule.");
-			return false;
+			// Passive Finish windows (mark/counter prep, preserved Bleed triggers,
+			// Bleed draws/heals, free dodges and volley rules) are consumed by
+			// their own trigger handlers later in the round. Playing another
+			// active card inside such a window is legal and must not block or
+			// report an unsupported rule.
+			return true;
 		}
 		const int32 DiscardIndex = InOutRuntime.Deck.DiscardPile.IndexOfByPredicate([&PlayedInstance](const FGameXXKCardInstance& Card)
 		{
@@ -12831,6 +12866,27 @@ namespace
 				return false;
 			}
 			InOutRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, InOutRuntime.Deck.SharedEnergy + Definition.Magnitude);
+			return true;
+		case EGameXXKCardEffectType::AddArmor:
+			if (Definition.Magnitude <= 0 || RecipientUnitIds.IsEmpty())
+			{
+				OutError = TEXT("A triggered armor grant requires a positive magnitude and a recipient.");
+				return false;
+			}
+			for (const FName RecipientUnitId : RecipientUnitIds)
+			{
+				FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
+				if (!Recipient || !Recipient->bLiving)
+				{
+					continue;
+				}
+				if (!InOutResult)
+				{
+					OutError = TEXT("A triggered armor grant requires a result recorder.");
+					return false;
+				}
+				ApplyAndRecordArmor(*InOutResult, Modifier.SourceUnitId, *Recipient, Definition.Magnitude);
+			}
 			return true;
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase:
 			return QueueAutomaticCardReplay(InOutRuntime, PlayedSnapshot, OutError);

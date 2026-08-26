@@ -118,6 +118,32 @@ bool FGameXXKTrainingTravelVisualRuntimeNonLethalExchangeTest::RunTest(const FSt
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingTravelVisualRuntimeAuthoritativeEnemyHealthTest,
+	"GameXXK.DesktopTraining.TravelVisualRuntime.AuthoritativeEnemyHealth",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingTravelVisualRuntimeAuthoritativeEnemyHealthTest::RunTest(const FString& Parameters)
+{
+	FGameXXKTrainingTravelRuntime Snapshot = MakeTravelRuntime(
+		EGameXXKTrainingTravelPhase::Combat,
+		TEXT("Enemy.Ch1.Rooster"),
+		90,
+		100);
+	Snapshot.Enemies[0].HP = 25;
+	Snapshot.Enemies[0].MaxHP = 100;
+	Snapshot.EnemyHP = 90;
+	Snapshot.EnemyMaxHP = 100;
+
+	FGameXXKTrainingTravelVisualRuntime Visual;
+	Visual.Synchronize(Snapshot);
+	TestTrue(TEXT("active enemy bar reads the authoritative slot array"),
+		FMath::IsNearlyEqual(Visual.GetEnemyHealthFractionForSlot(0), 0.25f));
+	TestTrue(TEXT("compatibility getter delegates to the authoritative active slot"),
+		FMath::IsNearlyEqual(Visual.GetEnemyHealthFraction(), 0.25f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTrainingTravelVisualRuntimeFormationAdvanceTest,
 	"GameXXK.DesktopTraining.TravelVisualRuntime.FormationAdvance",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

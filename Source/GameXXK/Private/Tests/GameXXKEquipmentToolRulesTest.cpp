@@ -16,7 +16,10 @@ namespace
 	{
 		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 		Test.TestTrue(TEXT("tool fixture starts"), Subsystem && Subsystem->StartGame());
-		return Subsystem ? Subsystem->GetRuntimeStateCopy() : FGameXXKRuntimeState();
+		FGameXXKRuntimeState State = Subsystem ? Subsystem->GetRuntimeStateCopy() : FGameXXKRuntimeState();
+		State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+		State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
+		return State;
 	}
 
 	FName CreateEquipment(
@@ -57,6 +60,58 @@ namespace
 		}
 		return Result;
 	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKToolTalentGateAndRewardTest,
+	"GameXXK.Talents.Tools.UnlockAndRewardBoosts",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKToolTalentGateAndRewardTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("locked tool fixture starts"), Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+	TArray<FGameXXKToolInputRef> Inputs;
+	for (int32 Index = 0; Index < 2; ++Index)
+	{
+		const FName Id = CreateEquipment(*this, State, EGameXXKEquipmentQuality::Common);
+		Inputs.Add(RefFor(State, FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Id)));
+	}
+	const int32 LockedGold = State.PlayerGold;
+	const int32 LockedEquipmentCount = State.EquipmentCollection.EquipmentInstances.Num();
+	FGameXXKEquipmentTransactionResult Result;
+	TestFalse(TEXT("tools reject operations before the tools entry is purchased"),
+		FGameXXKEquipmentToolRules::Dismantle(State, Inputs, true, Result));
+	TestEqual(TEXT("locked tool attempt preserves gold"), State.PlayerGold, LockedGold);
+	TestEqual(TEXT("locked tool attempt preserves inputs"),
+		State.EquipmentCollection.EquipmentInstances.Num(),
+		LockedEquipmentCount);
+
+	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
+	for (int32 Index = 1; Index <= 10; ++Index)
+	{
+		State.Talents.NodeRanks.Add(
+			FName(*FString::Printf(TEXT("Talent.Tools.Experience.%02d"), Index)),
+			5);
+		State.Talents.NodeRanks.Add(
+			FName(*FString::Printf(TEXT("Talent.Tools.Gold.%02d"), Index)),
+			5);
+	}
+	TestTrue(TEXT("tools entry enables dismantle"),
+		FGameXXKEquipmentToolRules::Dismantle(State, Inputs, true, Result));
+	TestEqual(TEXT("plus two hundred fifty percent turns two tool XP into seven"),
+		Result.ToolExperienceDelta,
+		int64(7));
+	TestEqual(TEXT("plus two hundred fifty percent turns twenty gold into seventy"),
+		State.PlayerGold,
+		LockedGold + 70);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "source": "D:\\CodexData\\generated_images\\01a027e1-6872-70b0-80a6-680063f7feb3\\exec-06e59a44-95b4-451a-ad3f-2aa21a401c46.png",
+  "sourceSha256": "35ad3afd534c69672c6db3608566ac99e987e3e6e31c81631cc916a1d28d0666",
+  "assets": [
+    {
+      "asset": "T_TrainingWaveMarkerNormal",
+      "file": "T_TrainingWaveMarkerNormal.png",
+      "width": 256,
+      "height": 256,
+      "alphaCoverage": 0.406509,
+      "sha256": "e31b0d0a51c9b5a4ffefbeefa4f1d1fc26964919ba1a71c014e9251a93062df6"
+    },
+    {
+      "asset": "T_TrainingWaveMarkerElite",
+      "file": "T_TrainingWaveMarkerElite.png",
+      "width": 256,
+      "height": 256,
+      "alphaCoverage": 0.451752,
+      "sha256": "6ae9d06bc1d7cbff9a4cca5f3ac231e3bd7819fca2d3d7c204f639fc63f42f99"
+    },
+    {
+      "asset": "T_TrainingWaveMarkerBoss",
+      "file": "T_TrainingWaveMarkerBoss.png",
+      "width": 256,
+      "height": 256,
+      "alphaCoverage": 0.51976,
+      "sha256": "750f50b47898e452c550f1c0c0983ab9dee596b3a1b1f265c209a8e4028f9bda"
+    }
+  ]
+}

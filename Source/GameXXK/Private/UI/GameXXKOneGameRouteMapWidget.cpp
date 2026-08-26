@@ -50,10 +50,12 @@ namespace
 	static const TCHAR* OneGameEventDisabledTexturePath = TEXT("/Game/1Game/Texture/问号灰色.问号灰色");
 	static const TCHAR* OneGameRouteBackgroundTexturePath = TEXT("/Game/1Game/Texture/图层_1.图层_1");
 	static const TCHAR* RouteActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
+	static const TCHAR* RouteCloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	static const TCHAR* RouteModalPaperTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	const FVector2D RouteViewportDesignSize(1920.0f, 1080.0f);
-	const FVector2D RouteCloseChallengePosition(1656.0f, 48.0f);
-	const FVector2D RouteCloseChallengeSize(192.0f, 64.0f);
+	const FVector2D RouteCloseChallengePosition(1774.0f, 48.0f);
+	const FVector2D RouteCloseChallengeSize(74.0f, 74.0f);
+	const FVector2D RouteActionButtonBrushSize(192.0f, 64.0f);
 	const FVector2D RouteAbandonModalSize(640.0f, 360.0f);
 	const FVector2D MinimumRouteContentSize(640.0f, 1040.0f);
 	const float RouteHorizontalPadding = 96.0f;
@@ -92,13 +94,69 @@ namespace
 		}
 		const FLinearColor NormalTint(0.18f, 0.29f, 0.24f, 0.94f);
 		FButtonStyle Style;
-		Style.SetNormal(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, NormalTint));
-		Style.SetHovered(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.24f, 0.38f, 0.31f, 1.0f)));
-		Style.SetPressed(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.13f, 0.22f, 0.18f, 1.0f)));
-		Style.SetDisabled(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.34f, 0.36f, 0.34f, 0.52f)));
+		Style.SetNormal(BuildRouteTextureBrush(Texture, RouteActionButtonBrushSize, NormalTint));
+		Style.SetHovered(BuildRouteTextureBrush(Texture, RouteActionButtonBrushSize, FLinearColor(0.24f, 0.38f, 0.31f, 1.0f)));
+		Style.SetPressed(BuildRouteTextureBrush(Texture, RouteActionButtonBrushSize, FLinearColor(0.13f, 0.22f, 0.18f, 1.0f)));
+		Style.SetDisabled(BuildRouteTextureBrush(Texture, RouteActionButtonBrushSize, FLinearColor(0.34f, 0.36f, 0.34f, 0.52f)));
 		Style.NormalPadding = FMargin(18.0f, 10.0f);
 		Style.PressedPadding = FMargin(18.0f, 12.0f, 18.0f, 8.0f);
 		Button->SetStyle(Style);
+	}
+
+	void StyleRouteCloseInkButton(UButton* Button, UTexture2D* Texture)
+	{
+		if (!Button || !Texture)
+		{
+			return;
+		}
+		FButtonStyle Style;
+		Style.SetNormal(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor::White));
+		Style.SetHovered(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(1.0f, 0.91f, 0.76f, 1.0f)));
+		Style.SetPressed(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.72f, 0.62f, 0.52f, 1.0f)));
+		Style.SetDisabled(BuildRouteTextureBrush(Texture, RouteCloseChallengeSize, FLinearColor(0.42f, 0.42f, 0.42f, 0.48f)));
+		Style.NormalPadding = FMargin(0.0f);
+		Style.PressedPadding = FMargin(1.0f, 2.0f, 0.0f, 0.0f);
+		Button->SetStyle(Style);
+	}
+
+	void ConfigureRouteCloseChallengeButton(
+		UButton* Button,
+		UTexture2D* CloseInkTexture,
+		UTexture2D* FallbackTexture,
+		UWidgetTree* WidgetTree)
+	{
+		if (!Button)
+		{
+			return;
+		}
+		Button->ClearChildren();
+		if (CloseInkTexture)
+		{
+			StyleRouteCloseInkButton(Button, CloseInkTexture);
+			return;
+		}
+
+		if (FallbackTexture)
+		{
+			StyleRouteActionButton(Button, FallbackTexture);
+		}
+		UTextBlock* FallbackLabel = WidgetTree
+			? WidgetTree->ConstructWidget<UTextBlock>(
+				UTextBlock::StaticClass(),
+				TEXT("RouteCloseChallengeFallbackLabel"))
+			: NewObject<UTextBlock>(Button);
+		if (!FallbackLabel)
+		{
+			return;
+		}
+		FallbackLabel->SetText(FText::FromString(TEXT("X")));
+		FallbackLabel->SetJustification(ETextJustify::Center);
+		FallbackLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		FSlateFontInfo Font = FallbackLabel->GetFont();
+		Font.Size = 34;
+		Font.TypefaceFontName = TEXT("Bold");
+		FallbackLabel->SetFont(Font);
+		Button->SetContent(FallbackLabel);
 	}
 
 	uint32 CalculateRouteTopologyHash(const FGameXXKRuntimeState& State)
@@ -361,6 +419,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 	}
 	const EGameXXKScreen ActiveScreen = State ? State->Screen : EGameXXKScreen::MainMenu;
 	const bool bKeepRouteVisibleUnderEncounter = ActiveScreen == EGameXXKScreen::RouteEvent
+		|| ActiveScreen == EGameXXKScreen::RouteCamp
 		|| ActiveScreen == EGameXXKScreen::RouteMerchant;
 	SetVisibility(Subsystem && (ActiveScreen == EGameXXKScreen::DungeonMap || bKeepRouteVisibleUnderEncounter)
 		? ESlateVisibility::Visible
@@ -395,7 +454,7 @@ bool UGameXXKOneGameRouteMapWidget::CanConfirmRouteAbandon(FString* OutReason) c
 		OutReason->Reset();
 	}
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
-	if (!bRouteAbandonConfirmationOpen || !Subsystem)
+	if (!bRouteAbandonConfirmationOpen || bRouteSettlementInProgress || !Subsystem)
 	{
 		if (OutReason) *OutReason = TEXT("当前没有可结算的路线挑战。");
 		return false;
@@ -440,12 +499,20 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteAbandonConfirmation()
 
 	if (RouteAbandonPreviewText)
 	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		const int32 CompletedNodeCount = State ? State->VisitedRouteNodeIds.Num() : 0;
+		const int32 TotalNodeCount = State ? State->RouteMapNodes.Num() : 0;
+		const int32 ForfeitedNodeCount = FMath::Max(0, TotalNodeCount - CompletedNodeCount);
 		RouteAbandonPreviewText->SetText(bRouteAbandonPreviewValid
 			? FText::FromString(FString::Printf(
-				TEXT("永久金币 +%d / 强化石 +%d"),
+				TEXT("已获奖励：普通金币 +%d，强化石 +%d\n已完成进度：%d / %d\n未解决或未访问节点：%d，提前结束将失去其中内容"),
 				RouteAbandonPreview.PermanentGoldAward,
-				RouteAbandonPreview.EnhancementStoneAward))
-			: FText::FromString(TEXT("永久金币 -- / 强化石 --")));
+				RouteAbandonPreview.EnhancementStoneAward,
+				CompletedNodeCount,
+				TotalNodeCount,
+				ForfeitedNodeCount))
+			: FText::FromString(TEXT("已获奖励：普通金币 --，强化石 --\n已完成进度：--\n未解决内容不会被结算")));
 	}
 	FString GateReason;
 	const bool bCanConfirm = CanConfirmRouteAbandon(&GateReason);
@@ -480,6 +547,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshFixedControls()
 	{
 		bRouteAbandonConfirmationOpen = false;
 		bRouteAbandonPreviewValid = false;
+		bRouteSettlementInProgress = false;
 		RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
 		RouteAbandonError.Reset();
 	}
@@ -521,6 +589,7 @@ bool UGameXXKOneGameRouteMapWidget::OpenRouteAbandonConfirmation()
 	}
 	bRouteAbandonConfirmationOpen = true;
 	bRouteAbandonPreviewValid = false;
+	bRouteSettlementInProgress = false;
 	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
 	RouteAbandonError.Reset();
 	FString PreviewError;
@@ -545,6 +614,7 @@ bool UGameXXKOneGameRouteMapWidget::CancelRouteAbandonConfirmation()
 	}
 	bRouteAbandonConfirmationOpen = false;
 	bRouteAbandonPreviewValid = false;
+	bRouteSettlementInProgress = false;
 	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
 	RouteAbandonError.Reset();
 	RefreshFromState();
@@ -553,7 +623,7 @@ bool UGameXXKOneGameRouteMapWidget::CancelRouteAbandonConfirmation()
 
 bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
 {
-	if (!bRouteAbandonConfirmationOpen)
+	if (!bRouteAbandonConfirmationOpen || bRouteSettlementInProgress)
 	{
 		return false;
 	}
@@ -564,12 +634,20 @@ bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
 		return false;
 	}
 	UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
-	if (!Subsystem || !Subsystem->AbandonDungeonToTown())
+	bRouteSettlementInProgress = true;
+	RefreshRouteAbandonConfirmation();
+	FGameXXKRouteSettlementReceipt AppliedReceipt;
+	FString SettlementError;
+	if (!Subsystem || !Subsystem->SettleAndExitActiveRoute(AppliedReceipt, SettlementError))
 	{
-		RouteAbandonError = TEXT("结算失败，路线进度与奖励均未改变。");
+		bRouteSettlementInProgress = false;
+		RouteAbandonError = SettlementError.IsEmpty()
+			? TEXT("结算失败，路线进度与奖励均未改变。")
+			: FString::Printf(TEXT("结算失败：%s"), *SettlementError);
 		RefreshRouteAbandonConfirmation();
 		return false;
 	}
+	bRouteSettlementInProgress = false;
 	bRouteAbandonConfirmationOpen = false;
 	bRouteAbandonPreviewValid = false;
 	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
@@ -998,6 +1076,15 @@ FString UGameXXKOneGameRouteMapWidget::GetRouteAbandonErrorForTest() const
 	CanConfirmRouteAbandon(&GateReason);
 	return GateReason;
 }
+
+void UGameXXKOneGameRouteMapWidget::ApplyMissingRouteCloseInkResourceForTest()
+{
+	ConfigureRouteCloseChallengeButton(
+		RouteCloseChallengeButton,
+		nullptr,
+		LoadObject<UTexture2D>(nullptr, RouteActionButtonTexturePath),
+		WidgetTree);
+}
 #endif
 
 void UGameXXKOneGameRouteMapWidget::HandleNodeButton0Clicked()
@@ -1122,6 +1209,7 @@ void UGameXXKOneGameRouteMapWidget::HandleNodeButton23Clicked()
 
 void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 {
+	SetIsFocusable(true);
 	if (!WidgetTree)
 	{
 		WidgetTree = NewObject<UWidgetTree>(this, TEXT("OneGameRouteMapWidgetTree"));
@@ -1202,6 +1290,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	if (RootOverlay && !RouteCloseChallengeContainer)
 	{
 		UTexture2D* ActionTexture = LoadObject<UTexture2D>(nullptr, RouteActionButtonTexturePath);
+		UTexture2D* CloseInkTexture = LoadObject<UTexture2D>(nullptr, RouteCloseInkTexturePath);
 		RouteCloseChallengeContainer = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
 			TEXT("RouteCloseChallengeContainer"));
@@ -1210,18 +1299,13 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		RouteCloseChallengeButton = WidgetTree->ConstructWidget<UButton>(
 			UButton::StaticClass(),
 			TEXT("RouteCloseChallengeButton"));
-		StyleRouteActionButton(RouteCloseChallengeButton, ActionTexture);
-		UTextBlock* CloseChallengeLabel = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			TEXT("RouteCloseChallengeLabel"));
-		CloseChallengeLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "CloseChallenge", "关闭挑战"));
-		CloseChallengeLabel->SetJustification(ETextJustify::Center);
-		CloseChallengeLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
-		FSlateFontInfo CloseChallengeFont = CloseChallengeLabel->GetFont();
-		CloseChallengeFont.Size = 22;
-		CloseChallengeFont.TypefaceFontName = TEXT("Bold");
-		CloseChallengeLabel->SetFont(CloseChallengeFont);
-		RouteCloseChallengeButton->AddChild(CloseChallengeLabel);
+		ConfigureRouteCloseChallengeButton(
+			RouteCloseChallengeButton,
+			CloseInkTexture,
+			ActionTexture,
+			WidgetTree);
+		RouteCloseChallengeButton->SetToolTipText(
+			NSLOCTEXT("GameXXKRouteMap", "OpenSettlement", "结算本次路线并返回挂机"));
 		RouteCloseChallengeButton->OnClicked.AddDynamic(
 			this,
 			&UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked);
@@ -1298,14 +1382,14 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		};
 		AddModalText(
 			TEXT("RouteAbandonModalTitle"),
-			NSLOCTEXT("GameXXKRouteMap", "AbandonTitle", "结束本次挑战？"),
+			NSLOCTEXT("GameXXKRouteMap", "SettlementTitle", "本次路线结算"),
 			28,
 			FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
 			14.0f,
 			true);
 		AddModalText(
 			TEXT("RouteAbandonModalDescription"),
-			NSLOCTEXT("GameXXKRouteMap", "AbandonDescription", "将按已完成的路线进度结算，未完成节点不计入。"),
+			NSLOCTEXT("GameXXKRouteMap", "SettlementDescription", "仅结算当前已获得的奖励；未解决与未访问节点不会计入。"),
 			18,
 			FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
 			12.0f,
@@ -1335,7 +1419,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		UTextBlock* ConfirmLabel = WidgetTree->ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(),
 			TEXT("RouteAbandonConfirmLabel"));
-		ConfirmLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "AbandonConfirm", "结算并退出"));
+		ConfirmLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "SettlementConfirm", "确认结算并返回挂机"));
 		ConfirmLabel->SetJustification(ETextJustify::Center);
 		ConfirmLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 		RouteAbandonConfirmButton->AddChild(ConfirmLabel);
@@ -1343,7 +1427,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 			this,
 			&UGameXXKOneGameRouteMapWidget::HandleRouteAbandonConfirmClicked);
 		USizeBox* ConfirmSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RouteAbandonConfirmSize"));
-		ConfirmSize->SetWidthOverride(210.0f);
+		ConfirmSize->SetWidthOverride(260.0f);
 		ConfirmSize->SetHeightOverride(58.0f);
 		ConfirmSize->AddChild(RouteAbandonConfirmButton);
 		if (UHorizontalBoxSlot* ConfirmSlot = ModalButtons->AddChildToHorizontalBox(ConfirmSize))
@@ -1358,7 +1442,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		UTextBlock* CancelLabel = WidgetTree->ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(),
 			TEXT("RouteAbandonCancelLabel"));
-		CancelLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "AbandonCancel", "继续挑战"));
+		CancelLabel->SetText(NSLOCTEXT("GameXXKRouteMap", "SettlementCancel", "继续路线"));
 		CancelLabel->SetJustification(ETextJustify::Center);
 		CancelLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 		RouteAbandonCancelButton->AddChild(CancelLabel);

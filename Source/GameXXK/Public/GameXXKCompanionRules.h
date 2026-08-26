@@ -19,6 +19,13 @@ public:
 		FString* OutError = nullptr,
 		FName* OutPrimaryArchetypeId = nullptr);
 
+	/** Birth-six prefix followed by every remaining same-role card in stable catalog order. */
+	static bool BuildFullProfessionCardPool(
+		EGameXXKCharacterRole Role,
+		int32 CardSeed,
+		TArray<FName>& OutCardIds,
+		FString* OutError = nullptr);
+
 	/** Validates immutable identity, deterministic pool, unlock frontier, and selected five-card configuration. */
 	static bool ValidatePermanentCompanionProfile(
 		const FGameXXKPermanentCompanion& Companion,

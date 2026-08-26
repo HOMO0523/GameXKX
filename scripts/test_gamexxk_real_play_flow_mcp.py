@@ -265,7 +265,7 @@ class SlateScreenshotFallbackTest(unittest.TestCase):
                     "tooltip_above_target": True,
                     "background_resource": (
                         "/Game/GameXXK/UI/MasterV2/Approved/"
-                        "T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper"
+                        "T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"
                     ),
                 }
         return {

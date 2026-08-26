@@ -19,6 +19,12 @@
 - Existing overlapping source files are already dirty. Never revert them, and never commit unrelated pre-existing hunks. New isolated files may be committed independently; overlapping files remain uncommitted unless an index-only patch can safely isolate the new hunks.
 - The visual source is the approved text-only design in `docs/superpowers/specs/2026-08-26-desktop-town-toggle-button-design.md`; do not reintroduce any deleted speckled rectangular button family.
 
+### Final user-approved overrides
+
+- Do not use `SetWindowRgn` or any other native window cropping. The complete DirectComposition window remains intact; transparent-background input is handled by project-side interactive-surface policy and synchronous mouse-state updates.
+- The final town control uses two complete approved RGBA assets, not one shared textless icon: `T_DesktopTownEnterButton` and `T_DesktopTownExitButton`. Their Chinese brush text and circular rice-paper backing are baked into the approved images.
+- Any older task step below that mentions a single `T_DesktopTownToggleInk`, runtime-added Chinese text, or rectangular/elliptical native cropping is superseded by these overrides.
+
 ## File structure
 
 ### New project plugin

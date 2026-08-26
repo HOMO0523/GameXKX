@@ -275,6 +275,19 @@ struct GAMEXXK_API FGameXXKQuestNpcOwnedCardLoadout
 	TArray<FName> SelectedCardIds;
 };
 
+/** Save-compatible independent progression for one always-owned named task NPC. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKQuestNpcProgression
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Level = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Experience = 0;
+};
+
 /** Route-ready party selection; the fixed hero is implicit, so this can never encode a fourth combat member. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCompanionPartySelection
@@ -290,4 +303,8 @@ struct GAMEXXK_API FGameXXKCompanionPartySelection
 	/** Owned NPC deck editor state: every named NPC persists exactly three of its four fixed cards. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TMap<FName, FGameXXKQuestNpcOwnedCardLoadout> QuestNpcCardLoadouts;
+
+	/** Independent level/experience state for every approved named NPC. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, FGameXXKQuestNpcProgression> QuestNpcProgressions;
 };

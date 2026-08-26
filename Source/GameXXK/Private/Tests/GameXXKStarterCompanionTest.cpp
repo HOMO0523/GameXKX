@@ -74,7 +74,8 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 		TEXT("party selection points at the active starter companion"),
 		StartedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
 		StarterCompanion.InstanceId);
-	TestEqual(TEXT("the starter companion owns six birth cards"), StarterCompanion.PersonalCardIds.Num(), 6);
+	TestEqual(TEXT("the starter companion owns the full eighteen-card profession pool"), StarterCompanion.PersonalCardIds.Num(), 18);
+	TestEqual(TEXT("the starter companion initially unlocks six birth cards"), StarterCompanion.UnlockedPersonalCardIds.Num(), 6);
 	TestEqual(TEXT("the starter companion equips five selected cards"), StarterCompanion.SelectedCardIds.Num(), 5);
 	TestEqual(TEXT("the default NPC party slot is Tusi Chief"),
 		StartedState.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));

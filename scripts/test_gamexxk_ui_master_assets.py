@@ -12,50 +12,7 @@ class GameXXKUiMasterAssetTests(unittest.TestCase):
     def test_builds_required_text_free_component_states(self):
         with tempfile.TemporaryDirectory() as td:
             manifest = build_component_assets(Path(td))
-            required = {
-                "button_normal",
-                "button_hover",
-                "button_pressed",
-                "button_primary",
-                "button_danger",
-                "button_disabled",
-                "tab_normal",
-                "tab_hover",
-                "tab_pressed",
-                "tab_selected",
-                "tab_disabled",
-                "nav_normal",
-                "nav_hover",
-                "nav_selected",
-                "nav_reminder",
-                "nav_locked",
-                "nav_backpack",
-                "nav_companion",
-                "nav_codex",
-                "nav_task",
-                "nav_route",
-                "item_slot_empty",
-                "item_slot_hover",
-                "item_slot_selected",
-                "item_slot_locked",
-                "equipment_slot_empty",
-                "equipment_slot_hover",
-                "equipment_slot_selected",
-                "card_frame_role",
-                "card_frame_monster",
-                "card_frame_general",
-                "card_frame_terrain",
-                "card_frame_rare",
-                "card_frame_boss",
-                "panel_large",
-                "panel_medium",
-                "panel_small",
-                "progress_track",
-                "progress_fill",
-                "resource_strip",
-                "tooltip_panel",
-            }
-            self.assertTrue(required.issubset(manifest))
+            self.assertEqual({"button_purchase"}, set(manifest))
             for record in manifest.values():
                 with Image.open(Path(td) / record["file"]) as source:
                     image = source.convert("RGBA")
@@ -66,13 +23,7 @@ class GameXXKUiMasterAssetTests(unittest.TestCase):
     def test_buttons_do_not_use_large_red_blue_or_green_fills(self):
         with tempfile.TemporaryDirectory() as td:
             manifest = build_component_assets(Path(td))
-            keys = (
-                "button_normal",
-                "button_hover",
-                "button_pressed",
-                "button_primary",
-                "button_danger",
-            )
+            keys = ("button_purchase",)
             for key in keys:
                 with Image.open(Path(td) / manifest[key]["file"]) as source:
                     image = source.convert("RGBA")

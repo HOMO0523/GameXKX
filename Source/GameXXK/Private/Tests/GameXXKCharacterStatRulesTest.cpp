@@ -16,7 +16,11 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("the shared permanent character level cap is twenty"), FGameXXKCharacterStatRules::MaxCharacterLevel, 20);
+	TestEqual(TEXT("the shared permanent character level cap is one hundred"), FGameXXKCharacterStatRules::MaxCharacterLevel, 100);
+	TestEqual(TEXT("hero level-ten experience threshold is level times one hundred"),
+		UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(10), 1000);
+	TestEqual(TEXT("companion level-ten experience threshold matches the hero"),
+		FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(10), 1000);
 
 	const FGameXXKCharacterStats LevelOneHero = FGameXXKCharacterStatRules::GetBareHeroStats(1);
 	TestEqual(TEXT("level-one hero max health matches the former formula"), LevelOneHero.MaxHealth, 100);
@@ -31,7 +35,13 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("level-twenty hero attack matches the former formula"), LevelTwentyHero.Attack, 72);
 	TestEqual(TEXT("level-twenty hero defense matches the former formula"), LevelTwentyHero.Defense, 46);
 	TestEqual(TEXT("level-twenty hero speed matches the former formula"), LevelTwentyHero.Speed, 29);
-	TestEqual(TEXT("hero naked stats clamp levels above the permanent cap"), FGameXXKCharacterStatRules::GetBareHeroStats(21).MaxHealth, LevelTwentyHero.MaxHealth);
+	const FGameXXKCharacterStats LevelHundredHero = FGameXXKCharacterStatRules::GetBareHeroStats(100);
+	TestEqual(TEXT("level-one-hundred hero max health keeps the linear formula"), LevelHundredHero.MaxHealth, 1585);
+	TestEqual(TEXT("level-one-hundred hero max mana keeps the linear formula"), LevelHundredHero.MaxMana, 525);
+	TestEqual(TEXT("level-one-hundred hero attack keeps the linear formula"), LevelHundredHero.Attack, 312);
+	TestEqual(TEXT("level-one-hundred hero defense keeps the linear formula"), LevelHundredHero.Defense, 206);
+	TestEqual(TEXT("level-one-hundred hero speed keeps the linear formula"), LevelHundredHero.Speed, 109);
+	TestEqual(TEXT("hero naked stats clamp levels above the permanent cap"), FGameXXKCharacterStatRules::GetBareHeroStats(101).MaxHealth, LevelHundredHero.MaxHealth);
 	TestEqual(TEXT("hero naked stats clamp non-positive levels to one"), FGameXXKCharacterStatRules::GetBareHeroStats(0).MaxHealth, LevelOneHero.MaxHealth);
 
 	struct FRoleExpectation
@@ -66,10 +76,10 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a level-six two-star blade has shared progressed stats"), FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 6, 2, ProgressedBlade, nullptr));
 	TestEqual(TEXT("companion speed gains one point at level six before star scaling"), ProgressedBlade.Speed, 12);
 	FGameXXKCharacterStats ClampedBlade;
-	TestTrue(TEXT("permanent companion naked stats clamp levels above twenty"), FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 21, 1, ClampedBlade, nullptr));
-	FGameXXKCharacterStats LevelTwentyBlade;
-	TestTrue(TEXT("level-twenty blade naked stats resolve"), FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 20, 1, LevelTwentyBlade, nullptr));
-	TestEqual(TEXT("clamped companion stats equal level twenty"), ClampedBlade.MaxHealth, LevelTwentyBlade.MaxHealth);
+	TestTrue(TEXT("permanent companion naked stats clamp levels above one hundred"), FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 101, 1, ClampedBlade, nullptr));
+	FGameXXKCharacterStats LevelHundredBlade;
+	TestTrue(TEXT("level-one-hundred blade naked stats resolve"), FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 100, 1, LevelHundredBlade, nullptr));
+	TestEqual(TEXT("clamped companion stats equal level one hundred"), ClampedBlade.MaxHealth, LevelHundredBlade.MaxHealth);
 
 	FGameXXKCompanionAttributes EquipmentBonus;
 	EquipmentBonus.Health = 3;
@@ -91,19 +101,19 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a real companion profile can be recruited for cap verification"), FGameXXKCompanionRules::RecruitPermanentCompanion(Roster, TEXT("Companion.Blade.01"), 4201, RecruitResult, nullptr));
 	if (Roster.PermanentCompanions.Num() == 1)
 	{
-		Roster.PermanentCompanions[0].Level = 20;
+		Roster.PermanentCompanions[0].Level = 100;
 		Roster.PermanentCompanions[0].Experience = 0;
 		TestTrue(TEXT("awarding XP at companion cap remains a valid no-op"), FGameXXKCompanionRules::AwardExperience(Roster.PermanentCompanions[0], MAX_int32, nullptr));
-		TestEqual(TEXT("permanent companion cannot pass level twenty"), Roster.PermanentCompanions[0].Level, 20);
-		TestEqual(TEXT("permanent companion XP is zero at level twenty"), Roster.PermanentCompanions[0].Experience, 0);
+		TestEqual(TEXT("permanent companion cannot pass level one hundred"), Roster.PermanentCompanions[0].Level, 100);
+		TestEqual(TEXT("permanent companion XP is zero at level one hundred"), Roster.PermanentCompanions[0].Experience, 0);
 	}
 
 	FGameXXKRuntimeState HeroCapState = UGameXXKMVPRules::CreateNewGame();
 	TestTrue(TEXT("the fixed-route cap fixture opens the world map"), UGameXXKMVPRules::OpenWorldMap(HeroCapState));
 	TestTrue(TEXT("the fixed-route cap fixture enters Qingshan"), UGameXXKMVPRules::EnterWorldRegion(HeroCapState, UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("the fixed-route cap fixture accepts the town quest"), UGameXXKMVPRules::AcceptTownQuest(HeroCapState));
-	HeroCapState.PlayerLevel = 20;
-	HeroCapState.PlayerXP = 1999;
+	HeroCapState.PlayerLevel = 100;
+	HeroCapState.PlayerXP = 9999;
 	UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(HeroCapState);
 	TestTrue(TEXT("the fixed-route cap fixture enters a real route"), UGameXXKMVPRules::EnterDungeon(HeroCapState));
 	HeroCapState.bHasGeneratedRouteMap = false;
@@ -129,8 +139,8 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(HeroCapState, &HeroCapRewardError));
 	TestTrue(TEXT("a fixed-route battle can award XP at the hero cap after its reward gate"),
 		UGameXXKMVPRules::ResolveBattleVictory(HeroCapState, false));
-	TestEqual(TEXT("hero cannot pass level twenty"), HeroCapState.PlayerLevel, 20);
-	TestEqual(TEXT("hero XP is zero at level twenty"), HeroCapState.PlayerXP, 0);
+	TestEqual(TEXT("hero cannot pass level one hundred"), HeroCapState.PlayerLevel, 100);
+	TestEqual(TEXT("hero XP is zero at level one hundred"), HeroCapState.PlayerXP, 0);
 
 	FGameXXKRuntimeState LegacyRuntimeState = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult LoadedRecruitResult;
@@ -156,10 +166,12 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	LegacyRuntimeState.Inventory.Add(LegacyWeaponId, 1);
 	LegacyRuntimeState.EquippedWeapon = LegacyWeaponId;
 	LegacyRuntimeState.ItemEnhancementLevels.Add(LegacyWeaponId, 2);
+	FName LegacyCompanionInstanceId = NAME_None;
 	if (LegacyRuntimeState.CardRun.CompanionRoster.PermanentCompanions.Num() == 1)
 	{
 		FGameXXKPermanentCompanion& LegacyCompanion =
 			LegacyRuntimeState.CardRun.CompanionRoster.PermanentCompanions[0];
+		LegacyCompanionInstanceId = LegacyCompanion.InstanceId;
 		LegacyCompanion.Level = 20;
 		LegacyCompanion.Experience = 0;
 		TestTrue(
@@ -180,27 +192,33 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	TestTrue(
 		FString::Printf(TEXT("the realistic version-three fixture migrates successfully: %s"), *LegacyMigrationReport.Error),
 		bLegacyMigrationSucceeded);
-	const FGameXXKCharacterStats ExpectedLevelTwentyHero = FGameXXKCharacterStatRules::GetBareHeroStats(20);
-	TestEqual(TEXT("loading a version-three runtime clamps the hero to level twenty"), RestoredLegacyState.PlayerLevel, 20);
-	TestEqual(TEXT("loading a capped hero clears stored XP"), RestoredLegacyState.PlayerXP, 0);
-	TestEqual(TEXT("loaded hero max health uses the level-twenty formula"), RestoredLegacyState.PlayerMaxHP, ExpectedLevelTwentyHero.MaxHealth);
-	TestEqual(TEXT("loaded hero max mana uses the level-twenty formula"), RestoredLegacyState.PlayerMaxMP, ExpectedLevelTwentyHero.MaxMana);
-	TestEqual(TEXT("loaded hero attack retains the legacy weapon and enhancement bonuses"), RestoredLegacyState.PlayerAttack, ExpectedLevelTwentyHero.Attack + 10);
-	TestEqual(TEXT("loaded hero defense uses the level-twenty formula"), RestoredLegacyState.PlayerDefense, ExpectedLevelTwentyHero.Defense);
-	TestEqual(TEXT("loaded hero speed uses the level-twenty formula"), RestoredLegacyState.PlayerSpeed, ExpectedLevelTwentyHero.Speed);
+	const FGameXXKCharacterStats ExpectedLevelTwentyOneHero = FGameXXKCharacterStatRules::GetBareHeroStats(21);
+	TestEqual(TEXT("loading a version-three runtime preserves valid hero level twenty-one"), RestoredLegacyState.PlayerLevel, 21);
+	TestEqual(TEXT("loading a non-capped hero preserves stored XP"), RestoredLegacyState.PlayerXP, 777);
+	TestEqual(TEXT("loaded hero max health uses the level-twenty-one formula"), RestoredLegacyState.PlayerMaxHP, ExpectedLevelTwentyOneHero.MaxHealth);
+	TestEqual(TEXT("loaded hero max mana uses the level-twenty-one formula"), RestoredLegacyState.PlayerMaxMP, ExpectedLevelTwentyOneHero.MaxMana);
+	TestEqual(TEXT("loaded hero attack retains the legacy weapon and enhancement bonuses"), RestoredLegacyState.PlayerAttack, ExpectedLevelTwentyOneHero.Attack + 10);
+	TestEqual(TEXT("loaded hero defense uses the level-twenty-one formula"), RestoredLegacyState.PlayerDefense, ExpectedLevelTwentyOneHero.Defense);
+	TestEqual(TEXT("loaded hero speed uses the level-twenty-one formula"), RestoredLegacyState.PlayerSpeed, ExpectedLevelTwentyOneHero.Speed);
 	TestEqual(TEXT("loading preserves the legacy equipped weapon mirror"), RestoredLegacyState.EquippedWeapon, LegacyWeaponId);
 	TestTrue(TEXT("loaded hero health remains within its normalized maximum"), RestoredLegacyState.PlayerHP >= 0 && RestoredLegacyState.PlayerHP <= RestoredLegacyState.PlayerMaxHP);
 	TestTrue(TEXT("loaded hero mana remains within its normalized maximum"), RestoredLegacyState.PlayerMP >= 0 && RestoredLegacyState.PlayerMP <= RestoredLegacyState.PlayerMaxMP);
-	if (RestoredLegacyState.CardRun.CompanionRoster.PermanentCompanions.Num() == 1)
+	const FGameXXKPermanentCompanion* RestoredLegacyCompanion =
+		RestoredLegacyState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[LegacyCompanionInstanceId](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.InstanceId == LegacyCompanionInstanceId;
+			});
+	if (RestoredLegacyCompanion)
 	{
 		TestEqual(
-			TEXT("loading a version-three runtime clamps permanent companions to level twenty"),
-			RestoredLegacyState.CardRun.CompanionRoster.PermanentCompanions[0].Level,
-			20);
+			TEXT("loading a version-three runtime preserves companion level twenty-one"),
+			RestoredLegacyCompanion->Level,
+			21);
 		TestEqual(
-			TEXT("loading a capped permanent companion clears stored XP"),
-			RestoredLegacyState.CardRun.CompanionRoster.PermanentCompanions[0].Experience,
-			0);
+			TEXT("loading a non-capped permanent companion preserves stored XP"),
+			RestoredLegacyCompanion->Experience,
+			888);
 	}
 	else
 	{
@@ -212,7 +230,7 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 		FGameXXKCharacterStatRules::MaxCharacterLevel);
 
 	FGameXXKCompanionAttributes HighLevelNpcAttributes;
-	TestTrue(TEXT("the standalone task NPC helper remains valid for level twenty-one"), FGameXXKCompanionRules::GetQuestNpcAttributes(TEXT("Npc.TusiChief"), 21, HighLevelNpcAttributes, nullptr));
+	TestTrue(TEXT("the standalone task NPC helper remains valid for level one hundred"), FGameXXKCompanionRules::GetQuestNpcAttributes(TEXT("Npc.TusiChief"), 100, HighLevelNpcAttributes, nullptr));
 	return true;
 }
 

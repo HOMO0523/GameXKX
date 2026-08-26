@@ -1,5 +1,6 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
+#include "Components/Image.h"
 #include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
@@ -209,6 +210,24 @@ bool FGameXXKCompanionRosterWidgetLayoutTest::RunTest(const FString& Parameters)
 		Widget->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge")));
 	TestTrue(TEXT("the avatar slots use the approved page-18 tab paper base"),
 		Widget->GetRosterSlotResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1")));
+	UButton* UnselectedAttributesTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterTab_0")))
+		: nullptr;
+	UButton* SelectedEquipmentTab = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterTab_1")))
+		: nullptr;
+	const UObject* UnselectedAttributesResource = UnselectedAttributesTab
+		? UnselectedAttributesTab->GetStyle().Normal.GetResourceObject()
+		: nullptr;
+	const UObject* SelectedEquipmentResource = SelectedEquipmentTab
+		? SelectedEquipmentTab->GetStyle().Normal.GetResourceObject()
+		: nullptr;
+	TestTrue(TEXT("unselected companion Attributes tab uses the approved normal state"),
+		UnselectedAttributesResource
+		&& UnselectedAttributesResource->GetPathName().Contains(TEXT("003_tab_1")));
+	TestTrue(TEXT("selected companion Equipment tab uses the approved selected state"),
+		SelectedEquipmentResource
+		&& SelectedEquipmentResource->GetPathName().Contains(TEXT("004_tab_2")));
 	TestTrue(TEXT("personal cards use the approved final card frame"),
 		Widget->GetPersonalCardFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame")));
 	TestTrue(TEXT("the card list exposes a scroll-box reservation for the PSD scroll bar"),
@@ -218,6 +237,30 @@ bool FGameXXKCompanionRosterWidgetLayoutTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the card list shares the page-03 PSD scrollbar thumb"),
 		Widget->GetPersonalCardScrollThumbResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button")));
 	TestEqual(TEXT("the first recruited companion is selected for its profile"), Widget->GetSelectedCompanionIdForTest(), Companion.InstanceId);
+	UButton* SelectedRosterSlot = Widget->WidgetTree
+		? Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterSlot_00")))
+		: nullptr;
+	const UObject* SelectedRosterResource = SelectedRosterSlot
+		? SelectedRosterSlot->GetStyle().Normal.GetResourceObject()
+		: nullptr;
+	TestTrue(TEXT("selected companion portrait uses the approved square selected-state base"),
+		SelectedRosterResource
+		&& SelectedRosterResource->GetPathName().Contains(TEXT("T_MasterV2_SquareSelected")));
+	const TArray<FName>& VisiblePersonalCards = Widget->GetVisiblePersonalCardIds();
+	const TArray<FName>& PendingPersonalCards = Widget->GetPendingPersonalCardIds();
+	const int32 SelectedPersonalCardIndex = PendingPersonalCards.IsEmpty()
+		? INDEX_NONE
+		: VisiblePersonalCards.IndexOfByKey(PendingPersonalCards[0]);
+	UImage* SelectedPersonalCardInk = Widget->WidgetTree && SelectedPersonalCardIndex != INDEX_NONE
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(
+			*FString::Printf(TEXT("CompanionRosterPersonalCardInk_%02d"), SelectedPersonalCardIndex)))
+		: nullptr;
+	const UObject* SelectedPersonalCardInkResource = SelectedPersonalCardInk
+		? SelectedPersonalCardInk->GetBrush().GetResourceObject()
+		: nullptr;
+	TestTrue(TEXT("selected companion card uses the approved rectangular ButtonPurchase marker"),
+		SelectedPersonalCardInkResource
+		&& SelectedPersonalCardInkResource->GetPathName().Contains(TEXT("T_MasterV2_ButtonPurchase")));
 	UUniformGridPanel* PersonalCardGrid = Widget->WidgetTree ? Cast<UUniformGridPanel>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterPersonalCardGrid"))) : nullptr;
 	USizeBox* FirstPersonalCardSize = PersonalCardGrid ? Cast<USizeBox>(PersonalCardGrid->GetChildAt(0)) : nullptr;
 	UGameXXKCompanionRosterCardButton* FirstPersonalCard = FirstPersonalCardSize ? Cast<UGameXXKCompanionRosterCardButton>(FirstPersonalCardSize->GetChildAt(0)) : nullptr;
@@ -289,14 +332,14 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	}
 
 	UGameXXKCompanionRosterWidget* Widget = BuildWidget(Subsystem);
-	TestEqual(TEXT("the selected companion exposes its deterministic six-card birth pool"), Widget->GetVisiblePersonalCardIds().Num(), 6);
+	TestEqual(TEXT("the selected companion exposes its full eighteen-card profession pool"), Widget->GetVisiblePersonalCardIds().Num(), 18);
 	UTextBlock* PersonalDeckCaption = Widget->WidgetTree
 		? Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("CompanionRosterDeckCaption")))
 		: nullptr;
 	TestNotNull(TEXT("the personal deck keeps its existing caption control"), PersonalDeckCaption);
-	TestEqual(TEXT("the personal deck caption describes six birth cards and five configured cards"),
+	TestEqual(TEXT("the personal deck caption describes eighteen profession cards and five configured cards"),
 		PersonalDeckCaption ? PersonalDeckCaption->GetText().ToString() : FString(),
-		FString(TEXT("个人牌组（6 张，编入 5 张）")));
+		FString(TEXT("个人牌组（18 张，编入 5 张）")));
 	TArray<FName> PendingCards = Widget->GetPendingPersonalCardIds();
 	TestEqual(TEXT("the saved permanent companion begins with five staged loadout cards"), PendingCards.Num(), 5);
 	if (PendingCards.Num() != 5)
@@ -310,7 +353,7 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	{
 		return !PendingCards.Contains(CardId) && Companion.UnlockedPersonalCardIds.Contains(CardId);
 	});
-	TestNotNull(TEXT("the six-card birth pool contains its one unselected replacement card"), ReplacementCardId);
+	TestNotNull(TEXT("the unlocked birth-card frontier contains an unselected replacement card"), ReplacementCardId);
 	if (!ReplacementCardId)
 	{
 		return false;

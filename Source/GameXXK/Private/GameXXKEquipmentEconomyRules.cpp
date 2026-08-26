@@ -2,6 +2,7 @@
 
 #include "GameXXKAffixCatalog.h"
 #include "GameXXKCharacterStatRules.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "Math/RandomStream.h"
@@ -42,6 +43,38 @@ namespace
 		Result.EnhancementStoneDelta = EnhancementStoneDelta;
 		Result.RefinementSandDelta = RefinementSandDelta;
 		return Result;
+	}
+
+	bool ResolveTargetCharacterLevel(
+		const FGameXXKRuntimeState& State,
+		const FName CharacterId,
+		int32& OutLevel)
+	{
+		OutLevel = 0;
+		if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+		{
+			OutLevel = State.PlayerLevel;
+			return true;
+		}
+		if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+		{
+			const FGameXXKQuestNpcProgression* Progression =
+				State.CardRun.PartySelection.QuestNpcProgressions.Find(CharacterId);
+			OutLevel = Progression ? Progression->Level : 1;
+			return true;
+		}
+		const FGameXXKPermanentCompanion* Companion =
+			State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[CharacterId](const FGameXXKPermanentCompanion& Candidate)
+				{
+					return Candidate.InstanceId == CharacterId;
+				});
+		if (!Companion)
+		{
+			return false;
+		}
+		OutLevel = Companion->Level;
+		return true;
 	}
 
 	FName* GetSlotPtr(FGameXXKEquipmentLoadout& Loadout, const EGameXXKEquipmentSlot Slot)
@@ -561,6 +594,19 @@ bool FGameXXKEquipmentEconomyRules::Equip(
 	if (!ValidateInputCollection(InOutState))
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::CollectionInvalid);
+		return false;
+	}
+	const FGameXXKEquipmentInstance* Instance =
+		FGameXXKEquipmentRules::FindInstance(InOutState.EquipmentCollection, InstanceId);
+	int32 TargetLevel = 0;
+	if (Instance
+		&& ResolveTargetCharacterLevel(InOutState, CharacterId, TargetLevel)
+		&& Instance->ItemLevel > TargetLevel)
+	{
+		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InvalidRequest, {InstanceId});
+		OutResult.Message = FText::FromString(FString::Printf(
+			TEXT("需要角色达到 %d 级"),
+			Instance->ItemLevel));
 		return false;
 	}
 	FGameXXKRuntimeState Candidate = InOutState;

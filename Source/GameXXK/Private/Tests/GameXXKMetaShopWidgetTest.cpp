@@ -74,6 +74,14 @@ bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 	}
 
 	TestTrue(TEXT("player can select PoJun pack"), Widget->SelectProductForTest(EGameXXKMetaShopProductId::PoJunPack));
+	UImage* ProductSelection = Cast<UImage>(
+		Widget->WidgetTree->FindWidget(TEXT("MetaShopProductSelectionInk")));
+	const UObject* ProductSelectionResource = ProductSelection
+		? ProductSelection->GetBrush().GetResourceObject()
+		: nullptr;
+	TestTrue(TEXT("shop rectangular selection uses approved ButtonPurchase"),
+		ProductSelectionResource
+		&& ProductSelectionResource->GetPathName().Contains(TEXT("T_MasterV2_ButtonPurchase")));
 	TestTrue(TEXT("selected affordable product has no disabled reason"), Widget->GetDisabledReasonForTest().IsEmpty());
 	const FGameXXKRuntimeState BeforeCancel = State;
 	TestTrue(TEXT("purchase request opens confirmation"), Widget->RequestPurchaseForTest());

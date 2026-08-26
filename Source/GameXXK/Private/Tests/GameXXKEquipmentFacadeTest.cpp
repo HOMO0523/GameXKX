@@ -40,7 +40,7 @@ namespace
 		const EGameXXKEquipmentSlot Slot,
 		const EGameXXKEquipmentSet Set = EGameXXKEquipmentSet::ShanHe,
 		const EGameXXKEquipmentQuality Quality = EGameXXKEquipmentQuality::Rare,
-		const int32 ItemLevel = 6)
+		const int32 ItemLevel = 1)
 	{
 		FGameXXKEquipmentCreateRequest Request;
 		Request.Set = Set;
@@ -252,8 +252,15 @@ bool FGameXXKEquipmentFacadeMutationTest::RunTest(const FString& Parameters)
 		Subsystem->EquipEquipmentInstance(
 			FGameXXKEquipmentRules::HeroCharacterId(), EGameXXKEquipmentSlot::Weapon, WeaponId, Result));
 	TestTrue(TEXT("facade equip reports a typed success result"), Result.bSucceeded && Result.Error == EGameXXKEquipmentTransactionError::None);
+	TestTrue(TEXT("facade fixture reconciles its low-level-created physical item cell"),
+		Subsystem->NormalizeDesktopInventoryState());
+	TestTrue(TEXT("facade unequips the item before warehouse tool operations"),
+		Subsystem->UnequipEquipmentSlot(
+			FGameXXKEquipmentRules::HeroCharacterId(), EGameXXKEquipmentSlot::Weapon, Result));
+	TestTrue(TEXT("facade fixture reconciles the returned warehouse item cell"),
+		Subsystem->NormalizeDesktopInventoryState());
 
-	TestTrue(TEXT("facade enhances an equipped item through the complete runtime transaction"),
+	TestTrue(TEXT("facade enhances a stored item through the complete runtime transaction"),
 		Subsystem->EnhanceEquipmentInstance(WeaponId, Result));
 	TestEqual(TEXT("facade enhancement returns the authoritative stone delta"), Result.EnhancementStoneDelta, -1);
 
@@ -265,8 +272,6 @@ bool FGameXXKEquipmentFacadeMutationTest::RunTest(const FString& Parameters)
 		Subsystem->ResolveEquipmentReforge(false, Result));
 	TestFalse(TEXT("facade resolution clears the pending reforge"), State.EquipmentCollection.PendingReforge.bActive);
 
-	TestTrue(TEXT("facade unequips through the complete runtime transaction"),
-		Subsystem->UnequipEquipmentSlot(FGameXXKEquipmentRules::HeroCharacterId(), EGameXXKEquipmentSlot::Weapon, Result));
 	TestTrue(TEXT("facade dismantles warehouse instances through the complete runtime transaction"),
 		Subsystem->DismantleEquipmentInstances({WeaponId}, true, Result));
 	TestNull(TEXT("facade dismantle removes the authoritative equipment instance"),

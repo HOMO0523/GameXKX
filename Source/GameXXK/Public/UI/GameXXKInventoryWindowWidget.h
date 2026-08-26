@@ -173,6 +173,8 @@ public:
 
 	/** Routes embedded slot clicks through the desktop carry/warehouse/tool state machine. */
 	void ConfigureDesktopTrainingHost(UGameXXKDesktopTrainingWorkbenchWidget* InHost);
+	/** Refreshes logical backpack lock cells after a permanent-capacity purchase. */
+	void RefreshTalentCapacityPresentation();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	bool IsDesktopTrainingEmbeddedModeForTest() const;

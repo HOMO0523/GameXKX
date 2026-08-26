@@ -196,6 +196,10 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("task-NPC snapshot fixture configures the route NPC"),
 		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(QuestNpcSnapshotState, TEXT("Npc.TusiChief"), {}, &Error));
 	QuestNpcSnapshotState.PlayerLevel = 20;
+	FGameXXKQuestNpcProgression& TusiProgression =
+		QuestNpcSnapshotState.CardRun.PartySelection.QuestNpcProgressions.FindOrAdd(TEXT("Npc.TusiChief"));
+	TusiProgression.Level = 7;
+	TusiProgression.Experience = 0;
 	QuestNpcSnapshotState.CardRun.RouteProgress.SchemaVersion = 1;
 	QuestNpcSnapshotState.CardRun.RouteProgress.RootSeed = 713;
 	QuestNpcSnapshotState.CardRun.RouteProgress.ChapterSeeds = {713, 917, 1223};
@@ -223,10 +227,10 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("task NPC snapshot resolves the canonical level-scaled NPC template"),
 			FGameXXKCompanionRules::GetQuestNpcAttributes(
 				TEXT("Npc.TusiChief"),
-				QuestNpcSnapshotState.PlayerLevel,
+				TusiProgression.Level,
 				ExpectedNpcAttributes,
 				&Error));
-		TestEqual(TEXT("task NPC level follows the current route level"), SnapshotNpc->CombatLevel, QuestNpcSnapshotState.PlayerLevel);
+		TestEqual(TEXT("task NPC level follows its independent saved progression"), SnapshotNpc->CombatLevel, TusiProgression.Level);
 		TestEqual(TEXT("task NPC health comes from its own NPC template"), SnapshotNpc->MaxHP, ExpectedNpcAttributes.Health);
 		TestEqual(TEXT("task NPC mana comes from its own NPC template"), SnapshotNpc->MaxMana, ExpectedNpcAttributes.Mana);
 		TestEqual(TEXT("task NPC attack comes from its own NPC template"), SnapshotNpc->Attack, ExpectedNpcAttributes.Attack);

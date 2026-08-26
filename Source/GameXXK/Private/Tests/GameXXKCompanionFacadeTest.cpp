@@ -306,11 +306,11 @@ bool FGameXXKCompanionFacadeLoadoutProgressionTest::RunTest(const FString& Param
 		Subsystem->GetQuestNpcCardLoadout().SelectedCardIds, EditedNpcLoadout);
 
 	Subsystem->GetMutableRuntimeState().CardRun.CompanionRoster.SigilCount = 1;
-	TestTrue(TEXT("the facade awards persistent companion experience through the canonical progression rule"), Subsystem->AwardPermanentCompanionExperience(Recruit.InstanceId, 40));
+	TestTrue(TEXT("the facade awards persistent companion experience through the canonical progression rule"), Subsystem->AwardPermanentCompanionExperience(Recruit.InstanceId, 100));
 	TestTrue(TEXT("the facade promotes a companion star through the canonical sigil rule"), Subsystem->PromotePermanentCompanionStar(Recruit.InstanceId));
 	FGameXXKPermanentCompanion Progressed;
 	TestTrue(TEXT("the progressed companion remains readable"), Subsystem->TryGetPermanentCompanionView(Recruit.InstanceId, Progressed));
-	TestEqual(TEXT("forty experience advances the companion one level"), Progressed.Level, 2);
+	TestEqual(TEXT("one hundred experience advances the companion one level"), Progressed.Level, 2);
 	TestEqual(TEXT("one sigil advances the companion one star"), Progressed.Star, 2);
 	return true;
 }

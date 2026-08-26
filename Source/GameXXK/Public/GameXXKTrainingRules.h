@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameXXKTrainingRules.generated.h"
 
+struct FGameXXKRuntimeState;
+
 /** The three deliberately linear difficulty bands used by the desktop Training map. */
 UENUM(BlueprintType)
 enum class EGameXXKTrainingDifficulty : uint8
@@ -350,6 +352,14 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 ActiveChallengeEncounterIndex = INDEX_NONE;
 
+	/** Route-map node the active Challenge battle came from; drives victory settlement back to the map. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ActiveChallengeRouteNodeId = INDEX_NONE;
+
+	/** Challenge route-map node id -> authored encounter index (BuildEncounterSequence). */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<int32, int32> ChallengeRouteNodeEncounterIndices;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bChallengeAutoBattle = false;
 
@@ -419,6 +429,8 @@ class GAMEXXK_API FGameXXKTrainingRules final
 {
 public:
 	static constexpr int32 StagesPerDifficulty = 9;
+	/** Logical seconds spent in the walkloop before each Travel encounter spawns. */
+	static constexpr int32 TravelEncounterSpawnDelaySeconds = 5;
 	/** Travel chest cooldowns are durable gameplay constants, expressed in logical seconds. */
 	static constexpr int32 TravelNormalChestCooldownSeconds = 2 * 60;
 	static constexpr int32 TravelAdvancedChestCooldownSeconds = 3 * 60;
@@ -450,6 +462,8 @@ public:
 	static bool CanTravel(const FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool StartChallenge(FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool CompleteChallenge(FGameXXKTrainingProgress& Progress, FName StageId);
+	/** Builds the deterministic Challenge route map (normal/elite branch choices + boss) over the authored encounter sequence. */
+	static void GenerateChallengeRouteMap(FGameXXKRuntimeState& State, FName StageId, int32 Seed);
 	static bool StartTravel(FGameXXKTrainingProgress& Progress, FName StageId);
 	static bool InitializeTravelRunner(
 		const FGameXXKTrainingProgress& Progress,
@@ -522,6 +536,7 @@ public:
 	static int32 NextChallengeRewardSeed(int32 RewardSeed);
 	static int32 AdvanceTravelChestCooldown(int32 RemainingSeconds, int32 ElapsedSeconds);
 	static int32 TravelChestCooldownSeconds(EGameXXKTrainingRewardTier ChestTier);
+	static float ResolveRelativeChestChance(float BaseChance, float RelativeTalentBonus);
 	static FName ChestItemIdForTier(EGameXXKTrainingRewardTier ChestTier);
 	static FText BuildStageTooltip(const FGameXXKTrainingProgress& Progress, FName StageId);
 };

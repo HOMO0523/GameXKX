@@ -37,11 +37,13 @@ class DesktopTrainingRouteOwnershipTest(unittest.TestCase):
     def test_challenge_action_delegates_without_choosing_route_or_party(self) -> None:
         source = WORKBENCH_CPP.read_text(encoding="utf-8")
         action = source[source.index("case 6:") : source.index("case 7:")]
-        self.assertIn("OpenDungeonFromTownExit", action)
-        self.assertIn("OpenMapForRuntimeState", action)
+        # The desktop Challenge opens its own generated route map and lets the
+        # player pick every battle node. It must never bypass into a fixed
+        # battle, accept the town quest, or auto-select a route/party entry.
+        self.assertIn("StartTrainingChallenge", action)
+        self.assertIn("NotifyPlayerFlowStateChanged", action)
         for forbidden in (
             "AcceptQuest",
-            "StartTrainingChallenge",
             "SelectDungeonNode",
             "SelectRouteNodeById",
             "SelectTownQuestNpcForParty",

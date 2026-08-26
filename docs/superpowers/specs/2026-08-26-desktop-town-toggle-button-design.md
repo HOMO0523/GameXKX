@@ -10,14 +10,13 @@ Add one large, clearly labeled town-transition button to the shared placement HU
 
 ## Visual contract
 
-- The button is a `144 x 144` transparent square containing one circular ink mark.
+- The button is a `144 x 144` transparent square containing one circular ink-and-paper mark.
 - The circle is hand-brushed rather than geometrically perfect: its stroke varies in thickness, contains visible brush-tip taper, and may include a few controlled dry-ink gaps.
-- A minimal roofline, gate, and two or three building silhouettes grow from the circle's upper arc. They remain part of the same ink drawing and do not receive a separate icon tile.
-- The normal state uses deep neutral ink with a very small warm-brown accent; it has no rectangular paper backing.
-- Runtime Chinese text is centered inside the circle in two lines:
-  - desktop map: `进入` / `城镇`;
-  - 3D town map: `退出` / `城镇`.
-- Text is not baked into the texture. This keeps the Chinese crisp at 100% and 50% HUD scale and lets both states share one clean icon asset.
+- The approved enter image places the minimal gate/roof silhouette on the upper arc; the approved exit image places it on the lower arc.
+- Both images use the approved circular rice-paper backing. There is no rectangular backing.
+- Chinese text is part of each final approved image so its brush lettering, spacing and color remain exact:
+  - desktop map: muted green `进入`, charcoal `城镇`;
+  - 3D town map: muted red `退出`, charcoal `城镇`.
 - Hover darkens the ink slightly. Pressed state scales the complete button to approximately 96%. No extra arrow, glow, badge, or decorative frame is added.
 
 ## Display and placement
@@ -28,7 +27,7 @@ Add one large, clearly labeled town-transition button to the shared placement HU
 - With the warehouse open, it moves to the outside-left edge of the warehouse with a `14` logical-pixel gap.
 - Opening the warehouse extends the transparent HUD design bounds to the left by approximately `148` logical pixels. Existing workbench content shifts right inside the native window so the idle-strip screen anchor does not move.
 - At the current 100% baseline, the widest state is approximately `1820` pixels and remains within the 1920-pixel work area. Smaller displays continue to use the existing automatic HUD fit scale.
-- The button contributes an elliptical native window region with enough padding to retain every ink stroke. The square corners around the circle and the gaps between panels remain outside the native window region and therefore retain cross-process desktop click-through.
+- The button contributes an elliptical interactive surface to the desktop mouse-passthrough policy. The native window is never cropped; transparent gaps remain visually intact and pass input through whenever no carry/capture interaction is active.
 
 ## Map behavior
 
@@ -75,11 +74,15 @@ The destination applies the snapshot only after the widget has a valid MVP subsy
 
 ## Asset ownership
 
-- Source PNG: `SourceArt/UI/DesktopOverlay/T_DesktopTownToggleInk.png`
-- Runtime texture: `/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownToggleInk`
+- Source PNGs:
+  - `SourceArt/UI/DesktopOverlay/T_DesktopTownEnterButton.png`
+  - `SourceArt/UI/DesktopOverlay/T_DesktopTownExitButton.png`
+- Runtime textures:
+  - `/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownEnterButton`
+  - `/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownExitButton`
 - Deterministic import script: `Content/Python/gamexxk_import_desktop_town_toggle.py`
 
-The source and runtime asset must be square, RGBA, transparent outside the ink, and must not contain baked Chinese text. The imported texture uses UI texture settings, preserves alpha, and must not stretch the circular drawing.
+Both source and runtime assets must be square RGBA images, transparent outside the circular paper/ink silhouette, and retain their baked approved Chinese lettering. Imported textures use UI settings, preserve alpha, and are rendered without stretching.
 
 ## Failure behavior
 
@@ -97,7 +100,7 @@ The source and runtime asset must be square, RGBA, transparent outside the ink, 
 - The button is absent while collapsed and present while expanded.
 - Closed-warehouse placement is immediately left of the center shell.
 - Open-warehouse placement is immediately left of the warehouse and extends the HUD bounds without moving the strip anchor.
-- The button asset has a loadable runtime path and no baked-text dependency.
+- Both state assets have loadable runtime paths and deterministic source hashes.
 - A session snapshot round-trip preserves every stable field listed above.
 - Transient carry, tool reservations, dropdown, pointer, and modal state do not survive the round-trip.
 - Town presentation restores the default fixed anchor and cannot drag; desktop presentation remains draggable.
@@ -106,7 +109,7 @@ The source and runtime asset must be square, RGBA, transparent outside the ink, 
 ### Visual and real-flow verification
 
 - Review the generated clean PNG before runtime import.
-- Verify the 2 x 2 Chinese text layout at 100% and 50% HUD scale.
+- Verify both baked Chinese lettering layouts at 100% and 50% HUD scale.
 - Verify normal, hover, and pressed presentation against the current ink-and-paper UI.
 - Open and close the warehouse and confirm that the button moves to the correct outer-left edge without shifting the idle strip.
 - Enter Qingshan with several different page/tab states, then exit and confirm identical stable presentation state on both sides.

@@ -19,12 +19,21 @@ namespace
 {
 	const FVector2D EncounterPanelSize(900.0f, 520.0f);
 	const FVector2D EncounterActionSize(226.0f, 56.0f);
+	const FVector2D EncounterChoiceCardSize(226.0f, 250.0f);
+	const FVector2D EncounterSelectionInkSize(54.0f, 54.0f);
+	const FVector2D EncounterSelectionInkPosition(164.0f, 8.0f);
+	const FVector2D EncounterCloseSize(74.0f, 74.0f);
 	const FMargin WindowFrameMargin(0.065f);
 	const FMargin ActionFrameMargin(5.0f / 73.0f, 5.0f / 31.0f, 5.0f / 73.0f, 5.0f / 31.0f);
 	const FString BackpackTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/"));
 	const FString WindowFrameTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame"));
 	const FString HeaderTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_Header.T_TownBackpack_Header"));
 	const FString ActionTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_ActionBlank.T_TownBackpack_ActionBlank"));
+	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
+	const FString CardFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardFrame.T_MasterV2_CardFrame"));
+	const FString CloseInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
+	const FString SelectionInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_SquareSelected.T_MasterV2_SquareSelected"));
+	const FString RewardIconTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon"));
 
 	struct FRouteEncounterPresentation
 	{
@@ -79,6 +88,16 @@ namespace
 		return Style;
 	}
 
+	FButtonStyle MakeImageButtonStyle(const FString& TexturePath, const FVector2D& ImageSize)
+	{
+		FButtonStyle Style;
+		Style.SetNormal(MakeTextureBrush(TexturePath, ImageSize));
+		Style.SetHovered(MakeTextureBrush(TexturePath, ImageSize));
+		Style.SetPressed(MakeTextureBrush(TexturePath, ImageSize));
+		Style.SetDisabled(MakeTextureBrush(TexturePath, ImageSize));
+		return Style;
+	}
+
 	void AddCanvasChild(
 		UCanvasPanel* Canvas,
 		UWidget* Child,
@@ -100,13 +119,18 @@ namespace
 		}
 	}
 
-	UTextBlock* MakeInkText(UWidgetTree* WidgetTree, const FText& Text, const int32 FontSize, const FLinearColor& Ink = FLinearColor(0.10f, 0.075f, 0.045f, 1.0f))
+	UTextBlock* MakeInkText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		const int32 FontSize,
+		const FLinearColor& Ink = FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
+		const FName WidgetName = NAME_None)
 	{
 		if (!WidgetTree)
 		{
 			return nullptr;
 		}
-		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
+		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), WidgetName);
 		TextBlock->SetText(Text);
 		TextBlock->SetColorAndOpacity(FSlateColor(Ink));
 		TextBlock->SetAutoWrapText(true);
@@ -141,12 +165,43 @@ namespace
 			|| Screen == EGameXXKScreen::RouteCamp
 			|| Screen == EGameXXKScreen::RouteMerchant;
 	}
+
+	bool IsThreeCardChoiceAction(const EGameXXKRouteEncounterAction Action)
+	{
+		return Action == EGameXXKRouteEncounterAction::SelectChoice0
+			|| Action == EGameXXKRouteEncounterAction::SelectChoice1
+			|| Action == EGameXXKRouteEncounterAction::SelectChoice2;
+	}
+
+	FGameXXKRouteChoicePresentationIdentity BuildChoicePresentationIdentity(const FGameXXKRuntimeState& State)
+	{
+		FGameXXKRouteChoicePresentationIdentity Identity;
+		Identity.Screen = State.Screen;
+		Identity.PendingNodeId = State.PendingRouteNodeId;
+		Identity.EventSourceNodeId = State.CardRun.PendingEvent.SourceNodeId;
+		Identity.EventChoiceSeed = State.CardRun.PendingEvent.ChoiceSeed;
+		Identity.EncounterId = State.CardRun.PendingEvent.EncounterId;
+		Identity.RelicSourceNodeId = State.CardRun.PendingRelicOffer.SourceNodeId;
+		Identity.RelicChoiceSeed = State.CardRun.PendingRelicOffer.ChoiceSeed;
+		Identity.RelicIds = State.CardRun.PendingRelicOffer.RelicIds;
+		return Identity;
+	}
 }
 
 void UGameXXKRouteEncounterActionButton::Configure(UGameXXKRouteEncounterPanelWidget* InOwner, const EGameXXKRouteEncounterAction InAction)
 {
 	Owner = InOwner;
 	Action = InAction;
+	ChoiceIndex = INDEX_NONE;
+	OnClicked.Clear();
+	OnClicked.AddDynamic(this, &UGameXXKRouteEncounterActionButton::HandleClicked);
+}
+
+void UGameXXKRouteEncounterActionButton::ConfigureChoice(UGameXXKRouteEncounterPanelWidget* InOwner, const int32 InChoiceIndex)
+{
+	Owner = InOwner;
+	Action = EGameXXKRouteEncounterAction::None;
+	ChoiceIndex = InChoiceIndex;
 	OnClicked.Clear();
 	OnClicked.AddDynamic(this, &UGameXXKRouteEncounterActionButton::HandleClicked);
 }
@@ -155,7 +210,14 @@ void UGameXXKRouteEncounterActionButton::HandleClicked()
 {
 	if (Owner)
 	{
-		Owner->ExecuteAction(Action);
+		if (ChoiceIndex != INDEX_NONE)
+		{
+			Owner->SelectChoice(ChoiceIndex);
+		}
+		else
+		{
+			Owner->ExecuteAction(Action);
+		}
 	}
 }
 
@@ -202,6 +264,9 @@ bool UGameXXKRouteEncounterPanelWidget::OpenEncounterPanel()
 bool UGameXXKRouteEncounterPanelWidget::CloseEncounterPanel()
 {
 	const bool bWasOpen = IsEncounterPanelOpenForTest();
+	SelectedChoiceIndex = INDEX_NONE;
+	ChoicePresentationIdentity.Reset();
+	RefreshChoiceCardStates();
 	SetVisibility(ESlateVisibility::Collapsed);
 	return bWasOpen;
 }
@@ -258,21 +323,53 @@ EGameXXKRouteEncounterAction UGameXXKRouteEncounterPanelWidget::GetSecondaryActi
 
 bool UGameXXKRouteEncounterPanelWidget::TriggerPrimaryActionForTest()
 {
-	return PrimaryActionButton && PrimaryActionButton->GetIsEnabled() && ExecuteAction(PrimaryAction);
+	return IsThreeCardChoiceAction(PrimaryAction)
+		? SelectChoice(0)
+		: PrimaryActionButton && PrimaryActionButton->GetIsEnabled() && ExecuteAction(PrimaryAction);
 }
 
 bool UGameXXKRouteEncounterPanelWidget::TriggerSecondaryActionForTest()
 {
-	return SecondaryActionButton && SecondaryActionButton->GetIsEnabled() && ExecuteAction(SecondaryAction);
+	return IsThreeCardChoiceAction(SecondaryAction)
+		? SelectChoice(1)
+		: SecondaryActionButton && SecondaryActionButton->GetIsEnabled() && ExecuteAction(SecondaryAction);
 }
 
 bool UGameXXKRouteEncounterPanelWidget::TriggerTertiaryActionForTest()
 {
-	return TertiaryActionButton && TertiaryActionButton->GetIsEnabled() && ExecuteAction(TertiaryAction);
+	return IsThreeCardChoiceAction(TertiaryAction)
+		? SelectChoice(2)
+		: TertiaryActionButton && TertiaryActionButton->GetIsEnabled() && ExecuteAction(TertiaryAction);
+}
+
+bool UGameXXKRouteEncounterPanelWidget::SelectChoiceForTest(const int32 ChoiceIndex)
+{
+	return SelectChoice(ChoiceIndex);
+}
+
+bool UGameXXKRouteEncounterPanelWidget::ConfirmSelectedChoiceForTest()
+{
+	return ConfirmSelectedChoice();
+}
+
+int32 UGameXXKRouteEncounterPanelWidget::GetRenderedChoiceCardCountForTest() const
+{
+	int32 Count = 0;
+	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceCardButtons.Num(); ++ChoiceIndex)
+	{
+		const UGameXXKRouteEncounterActionButton* Button = ChoiceCardButtons[ChoiceIndex];
+		if (Button && Button->GetVisibility() != ESlateVisibility::Collapsed && ChoiceActions.IsValidIndex(ChoiceIndex)
+			&& ChoiceActions[ChoiceIndex] != EGameXXKRouteEncounterAction::None)
+		{
+			++Count;
+		}
+	}
+	return Count;
 }
 
 void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 {
+	SetIsFocusable(true);
 	if (!WidgetTree)
 	{
 		WidgetTree = NewObject<UWidgetTree>(this, TEXT("RouteEncounterPanelWidgetTree"));
@@ -315,6 +412,89 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 	BodyTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.20f, 0.15f, 0.10f, 1.0f));
 	AddCanvasChild(FrameCanvas, BodyTextBlock, FVector2D(12.0f, 132.0f), FVector2D(800.0f, 162.0f));
 
+	ChoiceCardButtons.Reserve(3);
+	ChoiceArtImages.Reserve(3);
+	ChoiceNameTexts.Reserve(3);
+	ChoiceDescriptionTexts.Reserve(3);
+	ChoiceDisabledReasonTexts.Reserve(3);
+	ChoiceSelectionInks.Reserve(3);
+	for (int32 ChoiceIndex = 0; ChoiceIndex < 3; ++ChoiceIndex)
+	{
+		UGameXXKRouteEncounterActionButton* ChoiceButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(
+			UGameXXKRouteEncounterActionButton::StaticClass(),
+			*FString::Printf(TEXT("RouteEncounterChoiceCard%d"), ChoiceIndex));
+		ChoiceButton->SetStyle(MakeImageButtonStyle(CardFrameTexturePath, EncounterChoiceCardSize));
+		ChoiceButton->ConfigureChoice(this, ChoiceIndex);
+		ChoiceButton->SetVisibility(ESlateVisibility::Collapsed);
+
+		UCanvasPanel* Face = WidgetTree->ConstructWidget<UCanvasPanel>(
+			UCanvasPanel::StaticClass(),
+			*FString::Printf(TEXT("RouteEncounterChoiceFace%d"), ChoiceIndex));
+		ChoiceButton->SetContent(Face);
+
+		UImage* Art = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(TEXT("RouteEncounterChoiceArt%d"), ChoiceIndex));
+		Art->SetBrush(MakeTextureBrush(RewardIconTexturePath, FVector2D(104.0f, 82.0f)));
+		Art->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvasChild(Face, Art, FVector2D(61.0f, 27.0f), FVector2D(104.0f, 82.0f));
+
+		UTextBlock* Name = MakeInkText(
+			WidgetTree,
+			FText::GetEmpty(),
+			17,
+			FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
+			*FString::Printf(TEXT("RouteEncounterChoiceName%d"), ChoiceIndex));
+		Name->SetJustification(ETextJustify::Center);
+		AddCanvasChild(Face, Name, FVector2D(20.0f, 118.0f), FVector2D(186.0f, 32.0f));
+
+		UTextBlock* Description = MakeInkText(
+			WidgetTree,
+			FText::GetEmpty(),
+			13,
+			FLinearColor(0.20f, 0.15f, 0.10f, 1.0f),
+			*FString::Printf(TEXT("RouteEncounterChoiceDescription%d"), ChoiceIndex));
+		Description->SetJustification(ETextJustify::Center);
+		AddCanvasChild(Face, Description, FVector2D(17.0f, 153.0f), FVector2D(192.0f, 54.0f));
+
+		UTextBlock* DisabledReason = MakeInkText(
+			WidgetTree,
+			FText::GetEmpty(),
+			12,
+			FLinearColor(0.48f, 0.12f, 0.08f, 1.0f),
+			*FString::Printf(TEXT("RouteEncounterChoiceDisabledReason%d"), ChoiceIndex));
+		DisabledReason->SetJustification(ETextJustify::Center);
+		DisabledReason->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(Face, DisabledReason, FVector2D(17.0f, 211.0f), FVector2D(192.0f, 28.0f));
+
+		UImage* SelectionInk = WidgetTree->ConstructWidget<UImage>(
+			UImage::StaticClass(),
+			*FString::Printf(TEXT("RouteEncounterChoiceSelectionInk%d"), ChoiceIndex));
+		SelectionInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, EncounterSelectionInkSize));
+		SelectionInk->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(Face, SelectionInk, EncounterSelectionInkPosition, EncounterSelectionInkSize);
+
+		ChoiceCardButtons.Add(ChoiceButton);
+		ChoiceArtImages.Add(Art);
+		ChoiceNameTexts.Add(Name);
+		ChoiceDescriptionTexts.Add(Description);
+		ChoiceDisabledReasonTexts.Add(DisabledReason);
+		ChoiceSelectionInks.Add(SelectionInk);
+		AddCanvasChild(FrameCanvas, ChoiceButton, FVector2D(58.0f + 260.0f * ChoiceIndex, 145.0f), EncounterChoiceCardSize);
+	}
+
+	ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("RouteEncounterConfirmAction"));
+	ConfirmButton->SetStyle(MakeActionButtonStyle());
+	ConfirmButton->OnClicked.AddDynamic(this, &UGameXXKRouteEncounterPanelWidget::HandleConfirmClicked);
+	ConfirmTextBlock = MakeInkText(WidgetTree, NSLOCTEXT("GameXXKRouteEncounter", "ConfirmChoice", "确认选择"), 18);
+	if (ConfirmTextBlock)
+	{
+		ConfirmTextBlock->SetJustification(ETextJustify::Center);
+		ConfirmButton->SetContent(ConfirmTextBlock);
+	}
+	ConfirmButton->SetVisibility(ESlateVisibility::Collapsed);
+	AddCanvasChild(FrameCanvas, ConfirmButton, FVector2D(318.0f, 405.0f), EncounterActionSize);
+
 	PrimaryActionButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterPrimaryAction"));
 	PrimaryActionButton->SetStyle(MakeActionButtonStyle());
 	PrimaryActionTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 18);
@@ -346,14 +526,10 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 	AddCanvasChild(FrameCanvas, TertiaryActionButton, FVector2D(578.0f, 358.0f), EncounterActionSize);
 
 	CloseButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterCloseAction"));
-	CloseButton->SetStyle(MakeActionButtonStyle());
-	CloseTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.25f, 0.20f, 0.14f, 1.0f));
-	if (CloseTextBlock)
-	{
-		CloseTextBlock->SetJustification(ETextJustify::Center);
-		CloseButton->SetContent(CloseTextBlock);
-	}
-	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(318.0f, 430.0f), EncounterActionSize);
+	CloseButton->SetStyle(MakeImageButtonStyle(CloseInkTexturePath, EncounterCloseSize));
+	CloseButton->Configure(this, EGameXXKRouteEncounterAction::ClosePanel);
+	CloseButton->SetToolTipText(NSLOCTEXT("GameXXKRouteEncounter", "ReturnToRouteMap", "返回路线图（本节点不会结算）"));
+	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(738.0f, -8.0f), EncounterCloseSize);
 
 	SetVisibility(ESlateVisibility::Collapsed);
 }
@@ -550,9 +726,141 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 	if (PrimaryActionButton) PrimaryActionButton->SetToolTipText(Presentation.PrimaryTooltip);
 	if (SecondaryActionButton) SecondaryActionButton->SetToolTipText(Presentation.SecondaryTooltip);
 	if (TertiaryActionButton) TertiaryActionButton->SetToolTipText(Presentation.TertiaryTooltip);
-	const bool bRouteHudChoiceMustResolve = State.Screen == EGameXXKScreen::RouteEvent;
-	ApplyActionButton(CloseButton, CloseTextBlock, EGameXXKRouteEncounterAction::ClosePanel, Presentation.CloseLabel, !bRouteHudChoiceMustResolve);
+
+	ChoiceActions = {Presentation.PrimaryAction, Presentation.SecondaryAction, Presentation.TertiaryAction};
+	const bool bThreeCardMode = IsThreeCardChoiceAction(Presentation.PrimaryAction)
+		&& IsThreeCardChoiceAction(Presentation.SecondaryAction)
+		&& IsThreeCardChoiceAction(Presentation.TertiaryAction);
+	if (bThreeCardMode)
+	{
+		const FGameXXKRouteChoicePresentationIdentity NewIdentity = BuildChoicePresentationIdentity(State);
+		if (!ChoicePresentationIdentity.IsSet() || !(ChoicePresentationIdentity.GetValue() == NewIdentity))
+		{
+			SelectedChoiceIndex = INDEX_NONE;
+		}
+		ChoicePresentationIdentity = NewIdentity;
+	}
+	else
+	{
+		SelectedChoiceIndex = INDEX_NONE;
+		ChoicePresentationIdentity.Reset();
+	}
+	const FText ChoiceLabels[] = {Presentation.PrimaryLabel, Presentation.SecondaryLabel, Presentation.TertiaryLabel};
+	const FText ChoiceDescriptions[] = {Presentation.PrimaryTooltip, Presentation.SecondaryTooltip, Presentation.TertiaryTooltip};
+	const bool ChoiceEnabled[] = {Presentation.bPrimaryEnabled, Presentation.bSecondaryEnabled, Presentation.bTertiaryEnabled};
+	if (UCanvasPanelSlot* BodySlot = BodyTextBlock ? Cast<UCanvasPanelSlot>(BodyTextBlock->Slot) : nullptr)
+	{
+		BodySlot->SetPosition(bThreeCardMode ? FVector2D(12.0f, 100.0f) : FVector2D(12.0f, 132.0f));
+		BodySlot->SetSize(bThreeCardMode ? FVector2D(800.0f, 44.0f) : FVector2D(800.0f, 162.0f));
+	}
+	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceCardButtons.Num(); ++ChoiceIndex)
+	{
+		UGameXXKRouteEncounterActionButton* ChoiceButton = ChoiceCardButtons[ChoiceIndex];
+		const bool bVisibleChoice = bThreeCardMode && ChoiceActions.IsValidIndex(ChoiceIndex)
+			&& IsThreeCardChoiceAction(ChoiceActions[ChoiceIndex]);
+		if (ChoiceButton)
+		{
+			ChoiceButton->ConfigureChoice(this, ChoiceIndex);
+			ChoiceButton->SetVisibility(bVisibleChoice ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			ChoiceButton->SetIsEnabled(bVisibleChoice && ChoiceEnabled[ChoiceIndex]);
+			ChoiceButton->SetToolTipText(ChoiceDescriptions[ChoiceIndex]);
+		}
+		if (ChoiceNameTexts.IsValidIndex(ChoiceIndex) && ChoiceNameTexts[ChoiceIndex])
+		{
+			ChoiceNameTexts[ChoiceIndex]->SetText(ChoiceLabels[ChoiceIndex]);
+		}
+		if (ChoiceDescriptionTexts.IsValidIndex(ChoiceIndex) && ChoiceDescriptionTexts[ChoiceIndex])
+		{
+			ChoiceDescriptionTexts[ChoiceIndex]->SetText(ChoiceEnabled[ChoiceIndex]
+				? ChoiceDescriptions[ChoiceIndex]
+				: ChoiceLabels[ChoiceIndex]);
+		}
+		if (ChoiceDisabledReasonTexts.IsValidIndex(ChoiceIndex) && ChoiceDisabledReasonTexts[ChoiceIndex])
+		{
+			ChoiceDisabledReasonTexts[ChoiceIndex]->SetText(ChoiceEnabled[ChoiceIndex] ? FText::GetEmpty() : ChoiceDescriptions[ChoiceIndex]);
+			ChoiceDisabledReasonTexts[ChoiceIndex]->SetVisibility(
+				bVisibleChoice && !ChoiceEnabled[ChoiceIndex] ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (ChoiceArtImages.IsValidIndex(ChoiceIndex) && ChoiceArtImages[ChoiceIndex])
+		{
+			FString ArtPath = RewardIconTexturePath;
+			if (State.CardRun.PendingRelicOffer.RelicIds.IsValidIndex(ChoiceIndex))
+			{
+				if (const FGameXXKRelicDefinition* Relic = FGameXXKRelicCatalog::FindDefinition(State.CardRun.PendingRelicOffer.RelicIds[ChoiceIndex]))
+				{
+					if (Relic->IconTexturePath.IsValid())
+					{
+						ArtPath = Relic->IconTexturePath.ToString();
+					}
+				}
+			}
+			ChoiceArtImages[ChoiceIndex]->SetBrush(MakeTextureBrush(ArtPath, FVector2D(104.0f, 82.0f)));
+		}
+	}
+	if (PrimaryActionButton) PrimaryActionButton->SetVisibility(bThreeCardMode ? ESlateVisibility::Collapsed : PrimaryActionButton->GetVisibility());
+	if (SecondaryActionButton) SecondaryActionButton->SetVisibility(bThreeCardMode ? ESlateVisibility::Collapsed : SecondaryActionButton->GetVisibility());
+	if (TertiaryActionButton) TertiaryActionButton->SetVisibility(bThreeCardMode ? ESlateVisibility::Collapsed : TertiaryActionButton->GetVisibility());
+	if (ConfirmButton)
+	{
+		ConfirmButton->SetVisibility(bThreeCardMode ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+	RefreshChoiceCardStates();
+
+	const bool bCanReturnUnresolved = State.Screen == EGameXXKScreen::RouteEvent || State.Screen == EGameXXKScreen::RouteCamp;
+	ApplyActionButton(
+		CloseButton,
+		CloseTextBlock,
+		EGameXXKRouteEncounterAction::ClosePanel,
+		Presentation.CloseLabel,
+		bCanReturnUnresolved);
 	return true;
+}
+
+bool UGameXXKRouteEncounterPanelWidget::SelectChoice(const int32 ChoiceIndex)
+{
+	if (!ChoiceActions.IsValidIndex(ChoiceIndex)
+		|| !IsThreeCardChoiceAction(ChoiceActions[ChoiceIndex])
+		|| !ChoiceCardButtons.IsValidIndex(ChoiceIndex)
+		|| !ChoiceCardButtons[ChoiceIndex]
+		|| ChoiceCardButtons[ChoiceIndex]->GetVisibility() == ESlateVisibility::Collapsed
+		|| !ChoiceCardButtons[ChoiceIndex]->GetIsEnabled())
+	{
+		return false;
+	}
+	SelectedChoiceIndex = ChoiceIndex;
+	RefreshChoiceCardStates();
+	return true;
+}
+
+bool UGameXXKRouteEncounterPanelWidget::ConfirmSelectedChoice()
+{
+	if (!ChoiceActions.IsValidIndex(SelectedChoiceIndex)
+		|| !IsThreeCardChoiceAction(ChoiceActions[SelectedChoiceIndex]))
+	{
+		return false;
+	}
+	return ExecuteAction(ChoiceActions[SelectedChoiceIndex]);
+}
+
+void UGameXXKRouteEncounterPanelWidget::RefreshChoiceCardStates()
+{
+	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceSelectionInks.Num(); ++ChoiceIndex)
+	{
+		if (ChoiceSelectionInks[ChoiceIndex])
+		{
+			ChoiceSelectionInks[ChoiceIndex]->SetVisibility(
+				ChoiceIndex == SelectedChoiceIndex ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+	}
+	if (ConfirmButton)
+	{
+		const bool bCanConfirm = ChoiceActions.IsValidIndex(SelectedChoiceIndex)
+			&& IsThreeCardChoiceAction(ChoiceActions[SelectedChoiceIndex])
+			&& ChoiceCardButtons.IsValidIndex(SelectedChoiceIndex)
+			&& ChoiceCardButtons[SelectedChoiceIndex]
+			&& ChoiceCardButtons[SelectedChoiceIndex]->GetIsEnabled();
+		ConfirmButton->SetIsEnabled(bCanConfirm);
+	}
 }
 
 bool UGameXXKRouteEncounterPanelWidget::ExecuteAction(const EGameXXKRouteEncounterAction InAction)
@@ -591,4 +899,9 @@ void UGameXXKRouteEncounterPanelWidget::ApplyActionButton(
 void UGameXXKRouteEncounterPanelWidget::HandleCloseClicked()
 {
 	ExecuteAction(EGameXXKRouteEncounterAction::ClosePanel);
+}
+
+void UGameXXKRouteEncounterPanelWidget::HandleConfirmClicked()
+{
+	ConfirmSelectedChoice();
 }

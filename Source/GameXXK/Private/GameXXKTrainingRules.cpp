@@ -1,6 +1,10 @@
 #include "GameXXKTrainingRules.h"
 
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKMVPRules.h"
+#include "GameXXKRelicRules.h"
+#include "GameXXKRouteEconomyRules.h"
 
 namespace
 {
@@ -528,6 +532,8 @@ bool FGameXXKTrainingRules::StartChallenge(FGameXXKTrainingProgress& Progress, c
 	Progress.ActiveTravelEncounterIndex = INDEX_NONE;
 	Progress.ActiveChallengeStageId = StageId;
 	Progress.ActiveChallengeEncounterIndex = 0;
+	Progress.ActiveChallengeRouteNodeId = INDEX_NONE;
+	Progress.ChallengeRouteNodeEncounterIndices.Reset();
 	Progress.bChallengeAutoBattle = false;
 	Progress.SelectedStageId = StageId;
 	return true;
@@ -544,21 +550,108 @@ bool FGameXXKTrainingRules::CompleteChallenge(FGameXXKTrainingProgress& Progress
 	Progress.bChallengeActive = false;
 	Progress.ActiveChallengeStageId = NAME_None;
 	Progress.ActiveChallengeEncounterIndex = INDEX_NONE;
-	if (Stage.StageNumber < StagesPerDifficulty)
-	{
-		Progress.SelectedStageId = MakeStageId(Stage.Difficulty, Stage.StageNumber + 1);
-	}
-	else if (Stage.Difficulty != EGameXXKTrainingDifficulty::Hell)
+	Progress.ActiveChallengeRouteNodeId = INDEX_NONE;
+	Progress.ChallengeRouteNodeEncounterIndices.Reset();
+	if (Stage.StageNumber == StagesPerDifficulty
+		&& Stage.Difficulty != EGameXXKTrainingDifficulty::Hell)
 	{
 		const EGameXXKTrainingDifficulty Next = DifficultyFromIndex(DifficultyIndex(Stage.Difficulty) + 1);
 		Progress.UnlockedDifficultyIds.Add(DifficultyId(Next));
-		Progress.SelectedStageId = MakeStageId(Next, 1);
 	}
-	else
-	{
-		Progress.SelectedStageId = StageId;
-	}
+	// A successful Challenge immediately becomes the new desktop Travel target.
+	// This is deliberately the same restart contract as pressing Travel again:
+	// encounter zero, a fresh walking delay, and a newly initialized full-health
+	// party runtime owned by the subsystem.
+	Progress.SelectedStageId = StageId;
+	Progress.CurrentTravelStageId = StageId;
+	Progress.bTravelActive = true;
+	Progress.ActiveTravelEncounterIndex = 0;
+	Progress.bTravelPausedAtDefeat = false;
 	return true;
+}
+
+void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& State, const FName StageId, const int32 Seed)
+{
+	State.bHasGeneratedRouteMap = false;
+	State.RouteMapNodes.Reset();
+	State.RouteMapEdges.Reset();
+	State.VisitedRouteNodeIds.Reset();
+	State.ReachableRouteNodeIds.Reset();
+	State.CurrentRouteNodeId = INDEX_NONE;
+	State.PendingRouteNodeId = INDEX_NONE;
+	State.DungeonNodeIndex = 0;
+	State.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
+	State.Training.ChallengeRouteNodeEncounterIndices.Reset();
+	State.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
+
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(StageId, false);
+	if (Encounters.Num() < 7)
+	{
+		return;
+	}
+
+	FString Error;
+	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error))
+	{
+		return;
+	}
+	// Clear route-local progress without touching the desktop party selection
+	// (Challenge never accepts or alters the town quest/party).
+	State.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	State.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
+	FGameXXKRelicRules::ClearRouteRelics(State);
+	FGameXXKCardBattleAdapter::ClearActiveCardBattle(State);
+	FGameXXKRouteEconomyRules::ClearRouteEconomy(State.CardRun);
+	State.CardRun.RouteProgress.CurrentChapter = 1;
+	State.CardRun.bLoadoutLockedForRoute = true;
+	State.bDungeonActive = true;
+	State.Screen = EGameXXKScreen::DungeonMap;
+	State.CurrentMapId = TEXT("DesktopTrainingHUD");
+	State.TownPanelMode = EGameXXKTownPanelMode::None;
+
+	// The Challenge map is the canonical generated route map: Start node, mixed
+	// Battle / Elite / Event / Camp / Chest / Merchant layers, and a final Boss.
+	// Players keep the full route economy, one-time node rewards and tiered
+	// battle-reward offers; only battle-entry enemies are authored by Training.
+	UGameXXKMVPRules::GenerateRouteMapForSeed(State, Seed);
+	State.CardRun.RouteRandomSeed = State.RouteSeed;
+	if (!FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60, &Error))
+	{
+		State.bHasGeneratedRouteMap = false;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.ReachableRouteNodeIds.Reset();
+		return;
+	}
+
+	// Authored challenge sequence is [0 N, 1 N, 2 E0, 3 N, 4 E1, 5 N, 6 B].
+	// Generated battle-kind nodes consume those encounters in map order and
+	// cycle when the generated map offers more nodes than the authored pool.
+	const int32 NormalEncounterIndices[4] = {0, 1, 3, 5};
+	const int32 EliteEncounterIndices[2] = {2, 4};
+	int32 NormalCursor = 0;
+	int32 EliteCursor = 0;
+	for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Battle)
+		{
+			State.Training.ChallengeRouteNodeEncounterIndices.Add(
+				Node.NodeId,
+				NormalEncounterIndices[NormalCursor % 4]);
+			++NormalCursor;
+		}
+		else if (Node.NodeKind == EGameXXKNodeKind::Elite)
+		{
+			State.Training.ChallengeRouteNodeEncounterIndices.Add(
+				Node.NodeId,
+				EliteEncounterIndices[EliteCursor % 2]);
+			++EliteCursor;
+		}
+		else if (Node.NodeKind == EGameXXKNodeKind::Boss)
+		{
+			State.Training.ChallengeRouteNodeEncounterIndices.Add(Node.NodeId, 6);
+		}
+	}
 }
 
 bool FGameXXKTrainingRules::StartTravel(FGameXXKTrainingProgress& Progress, const FName StageId)
@@ -617,7 +710,7 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	OutRuntime.EncounterKind = Encounter.Kind;
 	OutRuntime.Phase = EGameXXKTrainingTravelPhase::Walking;
 	OutRuntime.WalkStep = 0;
-	OutRuntime.WalkStepsRequired = 2;
+	OutRuntime.WalkStepsRequired = TravelEncounterSpawnDelaySeconds;
 	TSet<FName> SeenPartyUnitIds;
 	for (const FGameXXKTrainingTravelPartyUnitRuntime& SourceUnit : PartyUnits)
 	{
@@ -631,7 +724,7 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 		}
 		FGameXXKTrainingTravelPartyUnitRuntime& Unit = OutRuntime.PartyUnits.Add_GetRef(SourceUnit);
 		Unit.MaxHP = FMath::Max(1, Unit.MaxHP);
-		Unit.HP = FMath::Clamp(Unit.HP, 0, Unit.MaxHP);
+		Unit.HP = Unit.MaxHP;
 		Unit.Attack = FMath::Max(1, Unit.Attack);
 		SeenPartyUnitIds.Add(Unit.UnitId);
 	}
@@ -814,7 +907,8 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 			++Progress.ActiveTravelEncounterIndex;
 		}
 
-		// Keep every party member's remaining HP and deterministic turn cursors.
+		// Keep party identities/stats and deterministic turn cursors; the next
+		// encounter initializer intentionally restores every member to MaxHP.
 		const TArray<FGameXXKTrainingTravelPartyUnitRuntime> PreservedParty = InOutRuntime.PartyUnits;
 		const int32 PreservedNextAttacker = InOutRuntime.ActivePartyIndex;
 		const int32 PreservedNextEnemyTarget = InOutRuntime.NextEnemyTargetPartyIndex;
@@ -1104,7 +1198,7 @@ FGameXXKTrainingReward FGameXXKTrainingRules::BuildChallengeReward(
 	// This legacy entry point intentionally preserves the old forced-roll
 	// contract for compatibility fixtures. Production settlement uses the
 	// seeded ResolveChallengeReward/ResolveTravelReward APIs below.
-	const float EffectiveChance = FMath::Clamp(Chance + TalentChestDropBonus, 0.0f, 1.0f);
+	const float EffectiveChance = ResolveRelativeChestChance(Chance, TalentChestDropBonus);
 	Reward.ChestTier = EffectiveChance > 0.0f
 		? ChestTierForEncounter(EncounterKind)
 		: EGameXXKTrainingRewardTier::None;
@@ -1128,7 +1222,9 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveChallengeReward(
 	Reward.Experience = FMath::Max(1, Stage.TravelExperience * 2);
 	Reward.ChestTier = EGameXXKTrainingRewardTier::None;
 	Reward.bChestRolled = false;
-	const float Chance = FMath::Clamp(ChestChanceForEncounter(Stage, EncounterKind) + TalentChestDropBonus, 0.0f, 1.0f);
+	const float Chance = ResolveRelativeChestChance(
+		ChestChanceForEncounter(Stage, EncounterKind),
+		TalentChestDropBonus);
 	if (Chance <= 0.0f)
 	{
 		return Reward;
@@ -1165,7 +1261,9 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
 	const int32 CooldownRemaining = Tier == EGameXXKTrainingRewardTier::AdvancedChest
 		? FMath::Max(0, AdvancedChestCooldownRemainingSeconds)
 		: FMath::Max(0, NormalChestCooldownRemainingSeconds);
-	const float Chance = FMath::Clamp(ChestChanceForEncounter(Stage, EncounterKind) + TalentChestDropBonus, 0.0f, 1.0f);
+	const float Chance = ResolveRelativeChestChance(
+		ChestChanceForEncounter(Stage, EncounterKind),
+		TalentChestDropBonus);
 	if (CooldownRemaining > 0 || Chance <= 0.0f)
 	{
 		return Reward;
@@ -1211,6 +1309,17 @@ int32 FGameXXKTrainingRules::TravelChestCooldownSeconds(const EGameXXKTrainingRe
 	default:
 		return 0;
 	}
+}
+
+float FGameXXKTrainingRules::ResolveRelativeChestChance(
+	const float BaseChance,
+	const float RelativeTalentBonus)
+{
+	return FMath::Clamp(
+		FMath::Clamp(BaseChance, 0.0f, 1.0f)
+			* (1.0f + FMath::Max(0.0f, RelativeTalentBonus)),
+		0.0f,
+		1.0f);
 }
 
 FName FGameXXKTrainingRules::ChestItemIdForTier(const EGameXXKTrainingRewardTier ChestTier)

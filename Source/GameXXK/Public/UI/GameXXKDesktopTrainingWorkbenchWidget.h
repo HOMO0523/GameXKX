@@ -4,7 +4,10 @@
 #include "Components/Button.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentToolRules.h"
+#include "GameXXKTrainingRules.h"
 #include "UI/GameXXKBattleAtlasCache.h"
+#include "UI/GameXXKDesktopWorkbenchSessionState.h"
+#include "UI/GameXXKDesktopTrainingLayout.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "UI/GameXXKTrainingTravelVisualRuntime.h"
@@ -13,58 +16,16 @@
 class UBorder;
 class UButton;
 class UCanvasPanel;
+class UCanvasPanelSlot;
 class UImage;
+class UOverlay;
 class UProgressBar;
 class UScaleBox;
 class USizeBox;
 class UTextBlock;
 class UTexture2D;
+class UVerticalBox;
 class UGameXXKInventoryWindowWidget;
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopTrainingNav : uint8
-{
-	None,
-	Warehouse,
-	Formation,
-	Talents,
-	Tools,
-	Training
-};
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopTrainingCenterPage : uint8
-{
-	Backpack,
-	Formation,
-	Talents
-};
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopTrainingRightPanel : uint8
-{
-	None,
-	TrainingMap,
-	Tools
-};
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopTrainingCharacterRoster : uint8
-{
-	Hero,
-	Companions,
-	Npcs
-};
-
-UENUM(BlueprintType)
-enum class EGameXXKDesktopToolMode : uint8
-{
-	Dismantle,
-	Combine,
-	Enhance,
-	Reforge,
-	Socket
-};
 
 UCLASS()
 class GAMEXXK_API UGameXXKDesktopTrainingStageButton : public UButton
@@ -94,7 +55,22 @@ public:
 	UFUNCTION()
 	void HandleClicked();
 
+	UFUNCTION()
+	void HandleHovered();
+
+	UFUNCTION()
+	void HandleUnhovered();
+
 	bool HandleRightMouseButtonDown();
+	bool HandleMouseWheel(float WheelDelta);
+	void SetScaleOnPress(bool bEnabled) { bScaleOnPress = bEnabled; }
+	int32 GetConfiguredActionIdForTest() const { return ActionId; }
+
+	UFUNCTION()
+	void HandlePressed();
+
+	UFUNCTION()
+	void HandleReleased();
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -103,6 +79,7 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<class UGameXXKDesktopTrainingWorkbenchWidget> Owner;
 	int32 ActionId = INDEX_NONE;
+	bool bScaleOnPress = false;
 };
 
 UCLASS(Blueprintable)
@@ -146,6 +123,7 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsExitConfirmationOpenForTest() const;
+	int32 GetHudScalePercentForTest() const { return HudScalePercent; }
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool CancelExitForTest();
@@ -175,6 +153,7 @@ public:
 	bool HasDesktopCarriedEntry() const;
 
 	FText GetLastDesktopInventoryNoticeForTest() const;
+	EGameXXKDesktopNoticeCategory GetLastNoticeCategoryForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool PickUpBackpackSlotForTest(int32 SlotIndex);
@@ -399,6 +378,42 @@ public:
 	float GetTravelVisualPartyHealthFractionForTest(int32 PartyIndex) const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	float GetTravelHeroHealthBarPercentForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	void SetTravelHeroHealthBarPercentForTest(float InPercent);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	void SetTravelHeroHealthBarFillColorForTest(FLinearColor InColor);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	int32 GetProgrammaticLayoutBuildCountForTestBlueprint() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool HasPendingLayoutRefreshForTestBlueprint() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector2D GetTravelHeroHealthBarSlateSizeForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool IsTravelHeroHealthBarSlateValidForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	float GetTravelCompanionHealthBarPercentForTest(int32 CompanionIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	float GetTravelEnemyHealthBarPercentForTest(int32 EnemySlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetTravelHeroHealthBarRectForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetTravelCompanionHealthBarRectForTest(int32 CompanionIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector4 GetTravelEnemyHealthBarRectForTest(int32 EnemySlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	float GetTravelVisualScrollVelocityForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
@@ -450,6 +465,41 @@ public:
 	void HandleActionClicked(int32 ActionId);
 	bool HandleActionAltClicked(int32 ActionId);
 	bool HandleActionRightClicked(int32 ActionId);
+	void HandleActionHoverChanged(int32 ActionId, bool bHovered);
+	bool HandleActionMouseWheel(int32 ActionId, float WheelDelta);
+	int32 GetNoticeScrollOffsetForTest() const { return NoticeScrollOffset; }
+	void NotifyDesktopNativeMoveCompleted();
+	void NotifyDesktopNativeDisplayMetricsChanged();
+	bool AttachDesktopNativeWindowForPresentation(void* NativeWindowHandle);
+	void DetachDesktopNativeWindowForPresentation();
+	void RefreshDesktopNativeMousePassthrough();
+	void InitializeDesktopPresentationHostSize(const FVector2D& PhysicalWorkAreaSize);
+	void SetPresentationMode(EGameXXKDesktopHudPresentationMode InMode);
+	FGameXXKDesktopWorkbenchSessionState CaptureSessionStateForMapTravel();
+	void RestoreSessionStateAfterMapTravel(
+		const FGameXXKDesktopWorkbenchSessionState& State);
+	void SetTownMapTravelPending(bool bPending);
+	EGameXXKDesktopHudPresentationMode GetPresentationModeForTest() const
+	{
+		return PresentationMode;
+	}
+	bool CanDragDesktopHudForTest() const
+	{
+		return PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow;
+	}
+	FVector2D GetDesktopWindowTopLeftForHost() const
+	{
+		return DesktopOverlayPlacement.HudTopLeft;
+	}
+	FVector2D GetDesktopWindowSizeForHost() const
+	{
+		return DesktopOverlayPlacement.HudSize;
+	}
+	float GetDesktopPresentationScaleForTest() const
+	{
+		return DesktopOverlayPlacement.Scale;
+	}
+	bool IsTownMapTravelPendingForTest() const { return bTownMapTravelPending; }
 
 	/** Set while a real Slate button callback is executing so layout rebuilds are deferred to the next tick. */
 	bool bInActionCallback = false;
@@ -459,19 +509,41 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 	virtual void NativeOnFocusLost(const FFocusEvent& InFocusEvent) override;
 	virtual void NativeDestruct() override;
 
 private:
 	void BuildProgrammaticLayout();
+	FVector2D GetCurrentDesignCanvasSize() const;
+	float GetNoticePanelLogicalHeight() const;
+	void ApplyUpwardExpansionTransforms();
+	void TickDesktopNativeWindow();
+	void UpdateTownPresentationInputLock();
+	bool RequestTownToggle();
+	void ReleaseDesktopNativeWindow();
+	void ApplyDesktopNativeWindowLayout(bool bForce);
+	void SetDesktopNativeMousePassthrough(bool bEnabled);
+	void UpdateExpansionDirectionFromNativeWindow();
+	void LoadDesktopNativeWindowPosition();
+	void SaveDesktopNativeWindowPosition();
+	void UpdateDesktopOverlayPlacement(const FVector2D& HostSize);
+	void UpdateDesktopOverlayAnchorFromPointer(
+		const FGeometry& HostGeometry,
+		const FVector2D& ScreenSpacePointerPosition);
 	void RebuildLayoutNow();
 	void BuildWorkbenchShell();
+	void BuildTownToggleButton();
 	void BuildBackpackTabToggle();
 	void BuildTopToolbar();
+	void BuildHudSettingsPanel();
 	void BuildExitConfirmation();
 	void BuildCarriedItemVisual();
 	void BuildWarehousePanel();
 	void BuildBackpackPanel();
+	void BuildSharedGoldIndicator();
 	void BuildCharacterRosterTabs();
 	void BuildFormationPanel();
 	void BuildTalentsPanel();
@@ -479,7 +551,15 @@ private:
 	void BuildToolsPanel();
 	void BuildPanelCloseButton(FName WidgetName, int32 ActionId, FVector2D Position);
 	void BuildTopIdleStrip();
+	void BuildIdleSummaryControls(const FVector2D& RowOrigin);
+	void BuildNoticeRail();
 	void BuildBottomNavigation();
+	FVector2D GetNoticeRailLogicalPosition() const;
+	FName ResolvePreferredTrainingStageForPage(
+		EGameXXKTrainingDifficulty Difficulty,
+		int32 Chapter) const;
+	int32 ResolvePreferredTrainingChapter(EGameXXKTrainingDifficulty Difficulty) const;
+	void SynchronizeTrainingPageFromStage(FName StageId);
 	void RefreshLayout();
 	void ScheduleCollapsedResourceUnload();
 	void CancelCollapsedResourceUnload();
@@ -512,6 +592,7 @@ private:
 	bool PickUpToolEntry(int32 SlotIndex);
 	bool DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer Container, int32 SlotIndex);
 	bool DropCarriedOnToolSlot(int32 SlotIndex);
+	TSet<FGameXXKDesktopInventoryEntryKey> BuildBatchTransferExclusions() const;
 	bool ToggleDesktopEntryLock(const FGameXXKDesktopInventoryEntryKey& Entry);
 	bool RouteBackpackRightClick(int32 SlotIndex);
 	bool CancelCarriedItem();
@@ -525,12 +606,22 @@ private:
 	void HandleApplicationActivationChanged(bool bIsActive);
 	bool HandleWorkbenchRightMouseCancel();
 	void HandlePersistenceBoundary();
+	void HandleTalentPurchaseCommitted();
 	void UpdateCarriedItemVisualPosition();
 	bool ToggleAlwaysOnTop();
 	bool ToggleMuted();
+	void LoadHudScaleSetting();
+	bool SetHudScalePercent(int32 InPercent);
 	bool RequestExit();
 	bool ConfirmExit(bool bExecutePlatformQuit);
-	void SetNotice(const FText& Notice);
+	void SetNotice(
+		const FText& Notice,
+		EGameXXKDesktopNoticeCategory Category = EGameXXKDesktopNoticeCategory::System);
+	void RefreshNoticePresentation();
+	void RefreshNoticeControlVisibility();
+	bool IsNoticeAction(int32 ActionId) const;
+	void LoadNoticeCategorySettings();
+	void SaveNoticeCategorySetting(EGameXXKDesktopNoticeCategory Category) const;
 	FName ResolveRosterRepresentativeCharacterId(EGameXXKDesktopTrainingCharacterRoster Roster) const;
 	FName ResolveRememberedBackpackCharacterId(EGameXXKDesktopTrainingCharacterRoster Roster) const;
 	void PreserveEmbeddedSessionForCharacter(FName CharacterId);
@@ -538,6 +629,8 @@ private:
 
 	struct FLivePresentationSnapshot
 	{
+		FName TravelStageId = NAME_None;
+		int32 TravelEncounterIndex = INDEX_NONE;
 		int32 PlayerGold = 0;
 		int32 PlayerLevel = 0;
 		int32 PlayerExperience = 0;
@@ -560,7 +653,9 @@ private:
 
 		bool Equals(const FLivePresentationSnapshot& Other) const
 		{
-			return PlayerGold == Other.PlayerGold
+			return TravelStageId == Other.TravelStageId
+				&& TravelEncounterIndex == Other.TravelEncounterIndex
+				&& PlayerGold == Other.PlayerGold
 				&& PlayerLevel == Other.PlayerLevel
 				&& PlayerExperience == Other.PlayerExperience
 				&& PlayerHealth == Other.PlayerHealth
@@ -583,6 +678,7 @@ private:
 	};
 
 	FLivePresentationSnapshot CaptureLivePresentationSnapshot() const;
+	void UpdateWaveProgressPresentation(const FLivePresentationSnapshot& Snapshot);
 	void UpdateTrainingChestPresentation(bool bAdvanced, int32 Count);
 	void UpdateWarehouseNumericPresentation(const FLivePresentationSnapshot& Snapshot);
 	void UpdateToolNumericPresentation(const FLivePresentationSnapshot& Snapshot);
@@ -608,6 +704,32 @@ private:
 		void Reset() { *this = FDesktopCarriedEntry(); }
 	};
 
+	enum class EDesktopNoticeDisplayMode : uint8
+	{
+		Single,
+		Medium,
+		Long
+	};
+
+	struct FDesktopNoticeEntry
+	{
+		EGameXXKDesktopNoticeCategory Category = EGameXXKDesktopNoticeCategory::System;
+		FText Message;
+		uint64 Ordinal = 0;
+	};
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> DesktopOverlayRootCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> HudDesignCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> RootCanvasDesignSlot;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> DesktopHudCanvasSlot;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UScaleBox> RootScaleBox;
 
@@ -616,6 +738,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> TownToggleButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> IdleGroupCanvas;
 
 	/** Approved page-03 backpack reused inside the center crop host. */
 	UPROPERTY(Transient)
@@ -626,6 +754,18 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> NoticeText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> NoticeSurfaceButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> NoticeRecordsBar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> NoticeSettingsPanel;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> NoticeLineTexts;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> BackpackGoldText;
@@ -643,16 +783,34 @@ private:
 	TObjectPtr<UTextBlock> TrainingAdvancedChestCountText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TrainingWaveProgressFill;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingWaveStageText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingWaveIndexText;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> TrainingWaveMarkerImages;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingFoldedNormalChestText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingFoldedAdvancedChestText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> WarehousePageText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> WarehouseFooterText;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKDesktopTrainingActionButton> WarehousePreviousButton;
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> WarehouseBatchToBackpackButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKDesktopTrainingActionButton> WarehouseNextButton;
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> BackpackBatchToWarehouseButton;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UGameXXKDesktopTrainingActionButton>> WarehousePageButtons;
@@ -703,7 +861,10 @@ private:
 	TArray<TObjectPtr<UImage>> TravelCompanionImages;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UProgressBar>> TravelEnemyHealthBars;
+	TArray<TObjectPtr<UBorder>> TravelEnemyHealthTracks;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UBorder>> TravelEnemyHealthFills;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UProgressBar> TravelHeroHealth;
@@ -739,11 +900,15 @@ private:
 	EGameXXKDesktopTrainingCenterPage ActiveCenterPage = EGameXXKDesktopTrainingCenterPage::Backpack;
 	EGameXXKDesktopTrainingRightPanel RightPanel = EGameXXKDesktopTrainingRightPanel::None;
 	EGameXXKDesktopToolMode ActiveToolMode = EGameXXKDesktopToolMode::Dismantle;
+	EGameXXKDesktopHudPresentationMode PresentationMode =
+		EGameXXKDesktopHudPresentationMode::DesktopWindow;
 	EGameXXKToolCombineKind ActiveToolCombineKind = EGameXXKToolCombineKind::Equipment;
 	int32 SelectedToolSocketIndex = 0;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
 	EGameXXKDesktopTrainingCharacterRoster ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	FName SelectedStageId = NAME_None;
+	int32 ActiveTrainingDifficultyIndex = 0;
+	int32 ActiveTrainingChapter = 1;
 	FName ActiveBackpackCharacterId = NAME_None;
 	FName LastCompanionBackpackCharacterId = NAME_None;
 	FName LastNpcBackpackCharacterId = NAME_None;
@@ -758,10 +923,36 @@ private:
 	FVector2D BackpackAspectRatio = FVector2D(1.76f, 1.0f);
 	bool bSettingsPanelOpen = false;
 	bool bBackpackExpanded = false;
+	bool bIdleStripFolded = false;
+	bool bExpandUpward = false;
 	bool bWarehousePanelOpen = false;
+	bool bTrainingDifficultyDropdownOpen = false;
+	bool bRestoreTrainingPanelAfterChallenge = false;
+	FGuid RouteSettlementReceiptAtChallengeStart;
 	bool bCharacterRosterMembersExpanded = false;
-	bool bAlwaysOnTop = false;
+	bool bAlwaysOnTop = true;
 	bool bMuted = false;
+	int32 HudScalePercent = 100;
+	bool bHudScaleSettingLoaded = false;
+	void* DesktopNativeWindowHandle = nullptr;
+	void* DesktopPreviousWindowProc = nullptr;
+	FVector2D DesktopWindowPositionNormalized = FVector2D(0.5f, 0.08f);
+	FVector2D DesktopOverlayHostSize = FVector2D(1920.0f, 1020.0f);
+	FVector2D DesktopHudDragPointerOffset = FVector2D::ZeroVector;
+	FIntPoint DesktopWorkAreaOrigin = FIntPoint::ZeroValue;
+	GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement DesktopOverlayPlacement;
+	GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics DesktopResolvedMetrics;
+	bool bDesktopWindowPositionLoaded = false;
+	bool bDesktopResolvedMetricsValid = false;
+	bool bDesktopNativeHookInstalled = false;
+	bool bDesktopNativeMousePassthrough = false;
+	bool bDesktopNativeLayoutDirty = true;
+	bool bDesktopNativeMoveSavePending = false;
+	bool bDesktopHudDragging = false;
+	bool bTownMapTravelPending = false;
+	bool bDesktopNativeLastExpanded = false;
+	int32 DesktopNativeLastHudScalePercent = INDEX_NONE;
+	float DesktopInputDpiScale = 1.0f;
 	float UnmutedVolumeMultiplier = 1.0f;
 	bool bExitConfirmationOpen = false;
 	bool bNativeTickActive = false;
@@ -780,6 +971,15 @@ private:
 	TArray<FDesktopToolEntry> ToolSlots;
 	FDesktopCarriedEntry CarriedEntry;
 	FText LastNotice;
+	TArray<FDesktopNoticeEntry> NoticeHistory;
+	TMap<EGameXXKDesktopNoticeCategory, bool> NoticeCategoryEnabled;
+	EDesktopNoticeDisplayMode NoticeDisplayMode = EDesktopNoticeDisplayMode::Single;
+	int32 NoticeScrollOffset = 0;
+	int32 NoticeHoveredWidgetCount = 0;
+	uint64 NextNoticeOrdinal = 1;
+	float NoticeHoverHideRemainingSeconds = 0.0f;
+	bool bNoticeSettingsOpen = false;
+	bool bNoticeSettingsLoaded = false;
 	FDelegateHandle ApplicationActivationHandle;
 	FDelegateHandle PersistenceBoundaryHandle;
 };

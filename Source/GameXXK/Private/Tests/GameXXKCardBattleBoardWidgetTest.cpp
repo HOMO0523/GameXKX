@@ -1012,23 +1012,62 @@ bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FStri
 	{
 		return false;
 	}
+	TestTrue(TEXT("Training terminal fixture selects the generated Start node"),
+		TerminalSubsystem->SelectRouteNodeById(0));
+	{
+		const FGameXXKRuntimeState& MapState = TerminalSubsystem->GetRuntimeState();
+		int32 FirstBattleNodeId = INDEX_NONE;
+		for (const int32 NodeId : MapState.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = MapState.RouteMapNodes.FindByPredicate(
+				[NodeId](const FGameXXKRouteMapNode& Candidate) { return Candidate.NodeId == NodeId; });
+			if (Node && (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite))
+			{
+				FirstBattleNodeId = Node->NodeId;
+				break;
+			}
+		}
+		TestTrue(TEXT("Training terminal fixture finds a reachable battle node"), FirstBattleNodeId != INDEX_NONE);
+		TestTrue(TEXT("Training terminal fixture opens the first route battle"),
+			TerminalSubsystem->SelectRouteNodeById(FirstBattleNodeId));
+	}
 	UGameXXKBattleBoardWidget* TerminalBoard = NewObject<UGameXXKBattleBoardWidget>();
 	TerminalBoard->SetMVPSubsystem(TerminalSubsystem);
 	TerminalSubsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
 	TestTrue(TEXT("BattleBoard sends Training victory to the Training settlement"),
 		TerminalBoard->ResolveCardBattleTerminalStateForTest());
-	TestEqual(TEXT("BattleBoard Training victory advances the encounter instead of opening a route reward"),
-		TerminalSubsystem->GetRuntimeState().Training.ActiveChallengeEncounterIndex, 1);
-	TestTrue(TEXT("non-final Training victory stays in Battle"),
+	TestEqual(TEXT("the standard victory reward offer opens"),
+		TerminalSubsystem->GetRuntimeState().CardRun.PendingReward.Options.Num(), 3);
+	FString RewardError;
+	TestTrue(TEXT("choosing the standard reward returns to the challenge route map"),
+		TerminalSubsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestEqual(TEXT("BattleBoard Training victory returns to the challenge route map"),
+		TerminalSubsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestTrue(TEXT("non-final Training victory stops in the route map for the next player choice"),
+		TerminalSubsystem->IsTrainingChallengeRouteMapActive());
+	TestFalse(TEXT("non-final Training victory does not auto-open the next battle"),
 		TerminalSubsystem->IsTrainingChallengeBattleActive());
-	TestTrue(TEXT("Training victory never creates a route reward"),
-		TerminalSubsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
 
+	int32 BossNodeId = INDEX_NONE;
+	for (const FGameXXKRouteMapNode& Node : TerminalSubsystem->GetRuntimeState().RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Boss)
+		{
+			BossNodeId = Node.NodeId;
+			break;
+		}
+	}
+	TestTrue(TEXT("the generated map contains the boss node"), BossNodeId != INDEX_NONE);
 	FGameXXKRuntimeState& FinalState = TerminalSubsystem->GetMutableRuntimeState();
-	FinalState.Training.ActiveChallengeEncounterIndex = Encounters.Num() - 1;
+	FinalState.ReachableRouteNodeIds = {BossNodeId};
+	TestTrue(TEXT("Training fixture enters the boss node"),
+		TerminalSubsystem->SelectRouteNodeById(BossNodeId));
+	FinalState = TerminalSubsystem->GetMutableRuntimeState();
 	FinalState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
 	TestTrue(TEXT("BattleBoard settles the final Training victory"),
 		TerminalBoard->ResolveCardBattleTerminalStateForTest());
+	TestTrue(TEXT("choosing the boss reward finishes the challenge"),
+		TerminalSubsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
 	TestEqual(TEXT("final Training victory returns to the workbench screen state"),
 		TerminalSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("final Training victory returns to the desktop projection"),
@@ -1042,6 +1081,24 @@ bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FStri
 		CloseSubsystem->StartTrainingChallenge(StageId)))
 	{
 		return false;
+	}
+	TestTrue(TEXT("Training close fixture selects the generated Start node"),
+		CloseSubsystem->SelectRouteNodeById(0));
+	{
+		const FGameXXKRuntimeState& MapState = CloseSubsystem->GetRuntimeState();
+		int32 CloseBattleNodeId = INDEX_NONE;
+		for (const int32 NodeId : MapState.ReachableRouteNodeIds)
+		{
+			const FGameXXKRouteMapNode* Node = MapState.RouteMapNodes.FindByPredicate(
+				[NodeId](const FGameXXKRouteMapNode& Candidate) { return Candidate.NodeId == NodeId; });
+			if (Node && (Node->NodeKind == EGameXXKNodeKind::Battle || Node->NodeKind == EGameXXKNodeKind::Elite))
+			{
+				CloseBattleNodeId = Node->NodeId;
+				break;
+			}
+		}
+		TestTrue(TEXT("Training close fixture enters its battle"),
+			CloseSubsystem->SelectRouteNodeById(CloseBattleNodeId));
 	}
 	UGameXXKBattleBoardWidget* CloseBoard = NewObject<UGameXXKBattleBoardWidget>();
 	CloseBoard->SetMVPSubsystem(CloseSubsystem);
@@ -2201,6 +2258,17 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		OrderedPartyQiWidget ? OrderedPartyQiWidget->GetSharedQiForTest() : INDEX_NONE,
 		OrderedQiAfterCommit);
 	TestEqual(TEXT("the card finalization continuation executes exactly once"), FGateApi::Continuations(OrderedBoard), 1);
+
+	// The ordered settlement log must expose the exact same packet sequence:
+	// one line per landed packet, in order, with the played card and targets.
+	TestEqual(TEXT("the settlement log keeps one line per landed packet"),
+		OrderedBoard->GetBattleSettlementLineCountForTest(), 3);
+	const FString SettlementLog = OrderedBoard->GetBattleSettlementLogForTest();
+	TestTrue(TEXT("the settlement log names the played card"),
+		SettlementLog.Contains(TEXT("【")) && SettlementLog.Contains(TEXT("】")));
+	TestFalse(TEXT("every settlement line resolves a real attacker/target display name"),
+		SettlementLog.Contains(TEXT("None")));
+	TestTrue(TEXT("every settlement line records its damage amount"), SettlementLog.Contains(TEXT("造成了")) && SettlementLog.Contains(TEXT("伤害")));
 
 	// A leftover HP snapshot on an idle board is a stale presentation artifact:
 	// the next visual tick must discard it and re-sync the HUD to live runtime.

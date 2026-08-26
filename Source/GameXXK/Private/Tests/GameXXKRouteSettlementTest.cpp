@@ -1,6 +1,10 @@
 #include "GameXXKRouteSettlementRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteMerchantRules.h"
+#include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKDesktopInventoryRules.h"
+#include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Engine/GameInstance.h"
@@ -315,6 +319,267 @@ bool FGameXXKRouteSettlementAbandonSubsystemFacadeTest::RunTest(const FString& P
 	TestFalse(
 		TEXT("inactive route has no abandoned settlement preview"),
 		Subsystem->PreviewAbandonedRouteSettlement(InvalidPreview, &Error));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteSettlementExitToDesktopTransactionTest,
+	"GameXXK.MVP.RouteSettlement.SettleAndExitActiveRoute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteSettlementExitToDesktopTransactionTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState ActiveRoute;
+	if (!TestTrue(TEXT("settlement-exit fixture enters an active generated route"), StartAcceptedThreeChapterRoute(ActiveRoute)))
+	{
+		return false;
+	}
+
+	ActiveRoute.CardRun.RouteTravelMoney = 99;
+	ActiveRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
+	ActiveRoute.Training.bTravelActive = true;
+	ActiveRoute.Training.CurrentTravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	ActiveRoute.Training.ActiveTravelEncounterIndex = 3;
+	ActiveRoute.Training.TravelNormalChestCooldownRemainingSeconds = 71;
+	ActiveRoute.Training.TravelAdvancedChestCooldownRemainingSeconds = 119;
+	ActiveRoute.Training.PendingTravelGold = 321;
+	ActiveRoute.Training.PendingTravelExperience = 654;
+	ActiveRoute.Training.TravelLastUpdatedUnixSeconds = 123456789;
+	ActiveRoute.Training.bChallengeActive = true;
+	ActiveRoute.Training.ActiveChallengeStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	ActiveRoute.Training.ActiveChallengeEncounterIndex = 4;
+	ActiveRoute.Training.ActiveChallengeRouteNodeId = 1234;
+	ActiveRoute.Training.ChallengeRouteNodeEncounterIndices.Add(1234, 4);
+	ActiveRoute.Training.bChallengeAutoBattle = true;
+	const int32 PendingNodeId = ActiveRoute.ReachableRouteNodeIds.IsEmpty()
+		? ActiveRoute.RouteMapNodes.Last().NodeId
+		: ActiveRoute.ReachableRouteNodeIds[0];
+	ActiveRoute.PendingRouteNodeId = PendingNodeId;
+	ActiveRoute.CardRun.PendingEvent.SourceNodeId = PendingNodeId;
+	ActiveRoute.CardRun.PendingEvent.ChoiceSeed = 77;
+	ActiveRoute.CardRun.PendingRelicOffer.SourceNodeId = PendingNodeId;
+	ActiveRoute.CardRun.PendingRelicOffer.ChoiceSeed = 88;
+	ActiveRoute.CardRun.RouteMerchant.SourceNodeId = PendingNodeId;
+	ActiveRoute.CardRun.RouteMerchant.OfferSeed = 99;
+	ActiveRoute.CardRun.PendingReward.SourceNodeId = PendingNodeId;
+	ActiveRoute.CardRun.PendingReward.ChoiceSeed = 111;
+	ActiveRoute.bHasActiveBattle = true;
+	ActiveRoute.ActiveBattleNodeId = PendingNodeId;
+	ActiveRoute.ActiveBattleEnemies.Add(FGameXXKBattleRuntimeUnit());
+	ActiveRoute.ActiveBattleParty.Add(FGameXXKBattleRuntimeUnit());
+	ActiveRoute.BattleEntryCheckpoint.bValid = true;
+	ActiveRoute.BattleEntryCheckpoint.SourceNodeId = PendingNodeId;
+	FGameXXKTrainingProgress ExpectedTrainingAfter = ActiveRoute.Training;
+	ExpectedTrainingAfter.bChallengeActive = false;
+	ExpectedTrainingAfter.ActiveChallengeStageId = NAME_None;
+	ExpectedTrainingAfter.ActiveChallengeEncounterIndex = INDEX_NONE;
+	ExpectedTrainingAfter.ActiveChallengeRouteNodeId = INDEX_NONE;
+	ExpectedTrainingAfter.ChallengeRouteNodeEncounterIndices.Reset();
+	ExpectedTrainingAfter.bChallengeAutoBattle = false;
+	const int32 GoldBefore = ActiveRoute.PlayerGold;
+	const int32 StonesBefore = UGameXXKMVPRules::GetItemCount(ActiveRoute, UGameXXKMVPRules::ItemEnhancementStone());
+	Subsystem->GetMutableRuntimeState() = ActiveRoute;
+
+	FGameXXKRouteSettlementReceipt Receipt;
+	FString Error;
+	TestTrue(
+		FString::Printf(TEXT("authoritative route settlement-exit transaction succeeds: %s"), *Error),
+		Subsystem->SettleAndExitActiveRoute(Receipt, Error));
+	const FGameXXKRuntimeState& Settled = Subsystem->GetRuntimeState();
+	TestTrue(TEXT("successful transaction returns a valid receipt"), Receipt.SettlementId.IsValid());
+	TestEqual(TEXT("receipt settles only earned route money"), Receipt.SourceTravelMoney, 99);
+	TestEqual(TEXT("receipt settles only earned route-card progress"), Receipt.SourceCardAcquisitionCount, 29);
+	TestEqual(TEXT("receipt converts earned route money at abandoned rate"), Receipt.PermanentGoldAward, 4);
+	TestEqual(TEXT("receipt converts earned route cards at abandoned rate"), Receipt.EnhancementStoneAward, 2);
+	TestEqual(TEXT("transaction grants ordinary gold exactly once"), Settled.PlayerGold, GoldBefore + 4);
+	TestEqual(
+		TEXT("transaction grants earned item reward exactly once"),
+		UGameXXKMVPRules::GetItemCount(Settled, UGameXXKMVPRules::ItemEnhancementStone()),
+		StonesBefore + 2);
+	TestEqual(TEXT("settlement returns to Town workbench screen"), Settled.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("settlement stays on the canonical pure-2D map"), Settled.CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("settlement clears active route"), Settled.bDungeonActive);
+	TestFalse(TEXT("settlement clears generated route flag"), Settled.bHasGeneratedRouteMap);
+	TestTrue(TEXT("settlement clears route nodes"), Settled.RouteMapNodes.IsEmpty());
+	TestTrue(TEXT("settlement clears route edges"), Settled.RouteMapEdges.IsEmpty());
+	TestTrue(TEXT("settlement clears visited route progress"), Settled.VisitedRouteNodeIds.IsEmpty());
+	TestTrue(TEXT("settlement clears reachable route progress"), Settled.ReachableRouteNodeIds.IsEmpty());
+	TestEqual(TEXT("settlement clears current route node"), Settled.CurrentRouteNodeId, INDEX_NONE);
+	TestEqual(TEXT("settlement clears pending route node"), Settled.PendingRouteNodeId, INDEX_NONE);
+	TestEqual(TEXT("settlement clears pending event"), Settled.CardRun.PendingEvent.SourceNodeId, INDEX_NONE);
+	TestEqual(TEXT("settlement clears pending relic offer"), Settled.CardRun.PendingRelicOffer.SourceNodeId, INDEX_NONE);
+	TestEqual(TEXT("settlement clears pending merchant"), Settled.CardRun.RouteMerchant.SourceNodeId, INDEX_NONE);
+	TestEqual(TEXT("settlement clears pending battle reward"), Settled.CardRun.PendingReward.SourceNodeId, INDEX_NONE);
+	TestFalse(TEXT("settlement clears legacy battle projection"), Settled.bHasActiveBattle);
+	TestFalse(TEXT("settlement clears card battle runtime"), Settled.CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("settlement clears battle rollback checkpoint"), Settled.BattleEntryCheckpoint.bValid);
+	TestTrue(
+		TEXT("settlement preserves the complete Training Travel runtime bit-identically"),
+		FGameXXKTrainingProgress::StaticStruct()->CompareScriptStruct(&Settled.Training, &ExpectedTrainingAfter, PPF_None));
+	TestEqual(TEXT("settlement records the returned idempotency key"), Settled.CardRun.LastAppliedRouteSettlementId, Receipt.SettlementId);
+
+	const int32 GoldAfterFirstApply = Settled.PlayerGold;
+	const int32 StonesAfterFirstApply = UGameXXKMVPRules::GetItemCount(Settled, UGameXXKMVPRules::ItemEnhancementStone());
+	FGameXXKRouteSettlementReceipt DuplicateReceipt;
+	Error.Reset();
+	TestFalse(TEXT("repeating settlement on the cleared route is rejected"),
+		Subsystem->SettleAndExitActiveRoute(DuplicateReceipt, Error));
+	TestFalse(TEXT("failed duplicate call returns no receipt"), DuplicateReceipt.SettlementId.IsValid());
+	TestFalse(TEXT("failed duplicate call reports a concrete error"), Error.IsEmpty());
+	TestEqual(TEXT("duplicate call cannot grant gold twice"), Subsystem->GetRuntimeState().PlayerGold, GoldAfterFirstApply);
+	TestEqual(
+		TEXT("duplicate call cannot grant item rewards twice"),
+		UGameXXKMVPRules::GetItemCount(Subsystem->GetRuntimeState(), UGameXXKMVPRules::ItemEnhancementStone()),
+		StonesAfterFirstApply);
+
+	UGameXXKMVPSubsystem* OverflowSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState OverflowRoute;
+	TestTrue(TEXT("overflow rollback fixture enters an active route"), StartAcceptedThreeChapterRoute(OverflowRoute));
+	OverflowRoute.PlayerGold = MAX_int32;
+	OverflowRoute.CardRun.RouteTravelMoney = 20;
+	OverflowRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 10;
+	OverflowSubsystem->GetMutableRuntimeState() = OverflowRoute;
+	const FGameXXKRuntimeState OverflowBefore = OverflowSubsystem->GetRuntimeState();
+	FGameXXKRouteSettlementReceipt OverflowReceipt;
+	OverflowReceipt.SettlementId = FGuid::NewGuid();
+	Error.Reset();
+	TestFalse(TEXT("ungrantable settlement is rejected"),
+		OverflowSubsystem->SettleAndExitActiveRoute(OverflowReceipt, Error));
+	TestFalse(TEXT("failed transaction returns no partial receipt"), OverflowReceipt.SettlementId.IsValid());
+	TestFalse(TEXT("failed transaction reports a concrete error"), Error.IsEmpty());
+	TestTrue(
+		TEXT("failed transaction rolls back every runtime property"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&OverflowSubsystem->GetRuntimeState(),
+			&OverflowBefore,
+			PPF_None));
+
+	UGameXXKMVPSubsystem* InvalidSaveSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState InvalidSaveRoute;
+	TestTrue(TEXT("post-clean validation rollback fixture enters an active route"),
+		StartAcceptedThreeChapterRoute(InvalidSaveRoute));
+	InvalidSaveRoute.PlayerXP = -1;
+	InvalidSaveRoute.CardRun.RouteTravelMoney = 20;
+	InvalidSaveRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 10;
+	InvalidSaveSubsystem->GetMutableRuntimeState() = InvalidSaveRoute;
+	const FGameXXKRuntimeState InvalidSaveBefore = InvalidSaveSubsystem->GetRuntimeState();
+	FGameXXKRouteSettlementReceipt InvalidSaveReceipt;
+	InvalidSaveReceipt.SettlementId = FGuid::NewGuid();
+	Error.Reset();
+	TestFalse(TEXT("post-clean invalid save state rejects the entire transaction"),
+		InvalidSaveSubsystem->SettleAndExitActiveRoute(InvalidSaveReceipt, Error));
+	TestFalse(TEXT("post-clean validation failure returns no receipt"), InvalidSaveReceipt.SettlementId.IsValid());
+	TestTrue(TEXT("post-clean validation failure returns a concrete save error"),
+		Error.Contains(TEXT("无法安全保存")));
+	TestTrue(TEXT("post-clean validation failure rolls back every runtime property"),
+		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(
+			&InvalidSaveSubsystem->GetRuntimeState(),
+			&InvalidSaveBefore,
+			PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteSettlementWorkbenchValidityTest,
+	"GameXXK.MVP.RouteSettlement.WorkbenchHealthRegionAndSaveValidity",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteSettlementWorkbenchValidityTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* RouteSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FGameXXKRuntimeState HuangshanRoute;
+	if (!TestTrue(TEXT("health-validity fixture enters a generated route"), StartAcceptedThreeChapterRoute(HuangshanRoute)))
+	{
+		return false;
+	}
+	HuangshanRoute.CurrentRegion = UGameXXKMVPRules::RegionHuangshan();
+	FGameXXKEquipmentCollectionState LegalEquipment;
+	LegalEquipment.CollectionSeed = 0xB412;
+	LegalEquipment.RefinementSand = HuangshanRoute.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand());
+	FGameXXKEquipmentInstance ManaAccessory;
+	ManaAccessory.InstanceId = TEXT("EquipmentInstance.RouteSettlement.ManaAccessory");
+	ManaAccessory.BaseEquipmentId = TEXT("Equipment.PoJun.Accessory");
+	ManaAccessory.ItemLevel = 7;
+	ManaAccessory.Quality = EGameXXKEquipmentQuality::Common;
+	ManaAccessory.ScalingRule = EGameXXKEquipmentScalingRule::ModernPercentBase;
+	ManaAccessory.OwnerKind = EGameXXKEquipmentOwnerKind::Hero;
+	ManaAccessory.OwnerCharacterId = FGameXXKEquipmentRules::HeroCharacterId();
+	FGameXXKEquipmentAffixRoll AttackAffix;
+	AttackAffix.AffixId = TEXT("Affix.Universal.Attack");
+	AttackAffix.Tier = EGameXXKAffixTier::Common;
+	AttackAffix.Magnitude = 300;
+	AttackAffix.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+	ManaAccessory.RolledAffixes.Add(AttackAffix);
+	LegalEquipment.EquipmentInstances.Add(ManaAccessory);
+	LegalEquipment.CharacterLoadouts.FindOrAdd(FGameXXKEquipmentRules::HeroCharacterId()).AccessoryInstanceId =
+		ManaAccessory.InstanceId;
+	HuangshanRoute.EquipmentCollection = MoveTemp(LegalEquipment);
+	TestTrue(TEXT("legal fixture synchronizes its authoritative equipment mirrors"),
+		FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(HuangshanRoute));
+	TestTrue(TEXT("legal fixture normalizes its physical desktop inventory"),
+		FGameXXKDesktopInventoryRules::Normalize(HuangshanRoute));
+	TestEqual(TEXT("legal fixture has the requested base max health"), HuangshanRoute.PlayerMaxHP, 100);
+	TestEqual(TEXT("legal fixture has the requested equipped max mana"), HuangshanRoute.PlayerMaxMP, 40);
+	HuangshanRoute.CardRun.RouteAttributeBonuses.MaxHealth = 10;
+	HuangshanRoute.CardRun.RouteAttributeBonuses.MaxMana = 5;
+	HuangshanRoute.PlayerHP = 110;
+	HuangshanRoute.PlayerMP = 45;
+	HuangshanRoute.CardRun.RouteTravelMoney = 20;
+	HuangshanRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 10;
+	FString ValidationError;
+	TestTrue(
+		FString::Printf(TEXT("route bonus fixture is legal before settlement: %s"), *ValidationError),
+		FGameXXKSaveMigration::ValidateRuntimeState(HuangshanRoute, ValidationError));
+	RouteSubsystem->GetMutableRuntimeState() = HuangshanRoute;
+
+	FGameXXKRouteSettlementReceipt RouteReceipt;
+	FString Error;
+	TestTrue(TEXT("generated Huangshan route settles to workbench"),
+		RouteSubsystem->SettleAndExitActiveRoute(RouteReceipt, Error));
+	const FGameXXKRuntimeState& SettledRoute = RouteSubsystem->GetRuntimeState();
+	TestEqual(TEXT("route-local max-health removal restores full base health"), SettledRoute.PlayerHP, 100);
+	TestEqual(TEXT("route-local max-mana removal restores full base mana"), SettledRoute.PlayerMP, 40);
+	TestEqual(TEXT("generated Huangshan route returns to Qingshan workbench region"),
+		SettledRoute.CurrentRegion,
+		UGameXXKMVPRules::RegionQingshan());
+	ValidationError.Reset();
+	TestTrue(
+		FString::Printf(TEXT("settled generated route is immediately save-valid: %s"), *ValidationError),
+		FGameXXKSaveMigration::ValidateRuntimeState(SettledRoute, ValidationError));
+
+	UGameXXKMVPSubsystem* TrainingSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("training-region fixture starts the desktop workbench"), TrainingSubsystem->StartGame());
+	const FName TravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("training-region fixture starts the independent Travel loop"),
+		TrainingSubsystem->StartTrainingTravel(TravelStageId));
+	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
+	TestTrue(TEXT("training-region fixture starts a real generated challenge route"),
+		TrainingSubsystem->StartTrainingChallenge(StageId));
+	const FGameXXKTrainingTravelRuntime TravelRuntimeBefore = TrainingSubsystem->GetTrainingTravelRuntimeCopy();
+	TrainingSubsystem->GetMutableRuntimeState().CurrentRegion = UGameXXKMVPRules::RegionHuangshan();
+	FGameXXKRouteSettlementReceipt TrainingReceipt;
+	Error.Reset();
+	TestTrue(TEXT("training challenge route settles to workbench"),
+		TrainingSubsystem->SettleAndExitActiveRoute(TrainingReceipt, Error));
+	const FGameXXKRuntimeState& SettledTraining = TrainingSubsystem->GetRuntimeState();
+	TestEqual(TEXT("training challenge returns to Qingshan workbench region"),
+		SettledTraining.CurrentRegion,
+		UGameXXKMVPRules::RegionQingshan());
+	TestEqual(TEXT("training challenge returns to Town"), SettledTraining.Screen, EGameXXKScreen::Town);
+	TestEqual(TEXT("training challenge stays on DesktopTrainingHUD"),
+		SettledTraining.CurrentMapId,
+		FName(TEXT("DesktopTrainingHUD")));
+	const FGameXXKTrainingTravelRuntime TravelRuntimeAfter = TrainingSubsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("challenge settlement preserves the independent Travel party HP/runtime bit-identically"),
+		FGameXXKTrainingTravelRuntime::StaticStruct()->CompareScriptStruct(
+			&TravelRuntimeAfter,
+			&TravelRuntimeBefore,
+			PPF_None));
+	ValidationError.Reset();
+	TestTrue(
+		FString::Printf(TEXT("settled training challenge is immediately save-valid: %s"), *ValidationError),
+		FGameXXKSaveMigration::ValidateRuntimeState(SettledTraining, ValidationError));
 	return true;
 }
 

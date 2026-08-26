@@ -1,5 +1,5 @@
-// Generates a Photoshop JSX that exports page-03 backpack tab + scrollbar
-// thumb crops from the Master V1 PSD without modifying it.
+// Generates a Photoshop JSX that exports only the approved backpack scrollbar
+// thumb. The rejected legacy tab backgrounds are intentionally not exported.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -30,8 +30,6 @@ fs.mkdirSync(args['export-dir'], { recursive: true });
 // Page 03 origin inside the master PSD: x 6120, y 0.
 const PAGE_ORIGIN = [6120, 0];
 const exports = [
-  { name: 'T_MasterV2_TabNormal', path: '20_Tabs/003_tab_1' },
-  { name: 'T_MasterV2_TabSelected', path: '20_Tabs/004_tab_2' },
   { name: 'T_MasterV2_BackpackScrollbarThumb', path: '42_InventoryScrollbar/inventory_scrollbar_Button' },
 ].map((record) => ({ ...record, out: path.join(args['export-dir'], `${record.name}.png`).replace(/\\/g, '/') }));
 

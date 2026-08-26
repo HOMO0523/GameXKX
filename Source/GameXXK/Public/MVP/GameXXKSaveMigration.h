@@ -49,7 +49,9 @@ public:
 	static constexpr int32 OrderedPartyFormationIntroducedSaveVersion = 24;
 	/** v25 begins the equipment-tools/chest-wallet schema with persistent entry locks and the Tool Auto Fill preference. */
 	static constexpr int32 EquipmentToolsAndChestWalletIntroducedSaveVersion = 25;
-	static constexpr int32 CurrentSaveVersion = 25;
+	/** v26 adds permanent shared talent ranks and compatibility capacity floors. */
+	static constexpr int32 PermanentTalentGraphIntroducedSaveVersion = 26;
+	static constexpr int32 CurrentSaveVersion = 26;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

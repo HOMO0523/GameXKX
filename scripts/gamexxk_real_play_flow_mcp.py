@@ -84,7 +84,7 @@ TARGET_OUTCOME_SCENARIOS = (
 
 TARGET_OUTCOME_TOOLTIP_PAPER = (
     "/Game/GameXXK/UI/MasterV2/Approved/"
-    "T_MasterV2_TooltipPaper.T_MasterV2_TooltipPaper"
+    "T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"
 )
 TARGET_OUTCOME_STAGE_SIZE = (1920.0, 1080.0)
 TARGET_OUTCOME_SINGLE_OFFSETS = {

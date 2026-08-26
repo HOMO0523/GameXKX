@@ -13,7 +13,10 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKRelicRules.h"
+#include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteSettlementRules.h"
+#include "GameXXKTalentRules.h"
 #include "GameXXKTrainingChestRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -47,11 +50,105 @@ namespace
 		}
 	}
 
+	static FName ResolveDeployedQuestNpcId(const FGameXXKRuntimeState& State)
+	{
+		if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
+		{
+			return State.CardRun.ActiveTemporaryQuestNpcId;
+		}
+		if (!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
+		{
+			return State.CardRun.PartySelection.QuestNpc.NpcId;
+		}
+		return TEXT("Npc.TusiChief");
+	}
+
+	static void AwardUnifiedNpcExperience(
+		FGameXXKQuestNpcProgression& Progression,
+		const int32 ExperienceAmount)
+	{
+		Progression.Level = FMath::Clamp(
+			Progression.Level,
+			1,
+			FGameXXKCharacterStatRules::MaxCharacterLevel);
+		if (Progression.Level == FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			Progression.Experience = 0;
+			return;
+		}
+		const int64 Awarded = static_cast<int64>(FMath::Max(0, ExperienceAmount));
+		Progression.Experience = static_cast<int32>(FMath::Min<int64>(
+			MAX_int32,
+			static_cast<int64>(FMath::Max(0, Progression.Experience)) + Awarded));
+		while (Progression.Level < FGameXXKCharacterStatRules::MaxCharacterLevel
+			&& Progression.Experience >= Progression.Level * 100)
+		{
+			Progression.Experience -= Progression.Level * 100;
+			++Progression.Level;
+		}
+		if (Progression.Level == FGameXXKCharacterStatRules::MaxCharacterLevel)
+		{
+			Progression.Experience = 0;
+		}
+	}
+
+	static bool ApplyTrainingExperienceToDeployedParty(
+		FGameXXKRuntimeState& State,
+		const int32 ExperienceAmount)
+	{
+		UGameXXKMVPRules::ApplyPlayerExperience(State, ExperienceAmount);
+		if (ExperienceAmount <= 0)
+		{
+			return true;
+		}
+
+		const FName ActiveCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+		FGameXXKPermanentCompanion* ActiveCompanion =
+			State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[ActiveCompanionId](const FGameXXKPermanentCompanion& Companion)
+				{
+					return !ActiveCompanionId.IsNone()
+						&& Companion.InstanceId == ActiveCompanionId
+						&& Companion.bIsActive;
+				});
+		FString Error;
+		if (ActiveCompanion
+			&& !FGameXXKCompanionRules::AwardExperience(*ActiveCompanion, ExperienceAmount, &Error))
+		{
+			return false;
+		}
+
+		const FName ActiveNpcId = ResolveDeployedQuestNpcId(State);
+		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(ActiveNpcId))
+		{
+			return false;
+		}
+		FGameXXKQuestNpcProgression& ActiveNpc =
+			State.CardRun.PartySelection.QuestNpcProgressions.FindOrAdd(ActiveNpcId);
+		AwardUnifiedNpcExperience(ActiveNpc, ExperienceAmount);
+		return true;
+	}
+
 	static bool ApplyTrainingRewardToRuntime(FGameXXKRuntimeState& State, const FGameXXKTrainingReward& Reward)
 	{
 		FGameXXKRuntimeState Candidate = State;
-		Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
-		UGameXXKMVPRules::ApplyPlayerExperience(Candidate, Reward.Experience);
+		FGameXXKTalentProjection TalentProjection;
+		FGameXXKTalentRules::BuildProjection(Candidate.Talents, TalentProjection);
+		const bool bOnlineIdleReward = !Candidate.Training.bChallengeActive;
+		const int32 AppliedGold = bOnlineIdleReward
+			? FMath::Max(0, FMath::RoundToInt(Reward.Gold * TalentProjection.GetOnlineGoldMultiplier()))
+			: Reward.Gold;
+		const int32 AppliedExperience = bOnlineIdleReward
+			? FMath::Max(0, FMath::RoundToInt(Reward.Experience * TalentProjection.GetOnlineExperienceMultiplier()))
+			: Reward.Experience;
+		Candidate.PlayerGold = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(Candidate.PlayerGold) + AppliedGold,
+			0,
+			MAX_int32));
+		if (!ApplyTrainingExperienceToDeployedParty(Candidate, AppliedExperience))
+		{
+			return false;
+		}
 		if (!Reward.bChestRolled)
 		{
 			State = MoveTemp(Candidate);
@@ -71,20 +168,199 @@ namespace
 		return true;
 	}
 
-	static void SynchronizeTrainingTravelHeroProgression(
-		const FGameXXKRuntimeState& State,
-		FGameXXKTrainingTravelRuntime& Runtime)
+	static float ChestTalentBonusForEncounter(
+		const FGameXXKTalentProjection& Projection,
+		const EGameXXKTrainingEncounterKind EncounterKind)
 	{
-		if (!Runtime.PartyUnits.IsValidIndex(0))
+		return EncounterKind == EGameXXKTrainingEncounterKind::Normal
+			? Projection.NormalChestDropPercent / 100.0f
+			: Projection.AdvancedChestDropPercent / 100.0f;
+	}
+
+	static float ChestTalentBonusForState(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKTrainingEncounterKind EncounterKind)
+	{
+		FGameXXKTalentProjection Projection;
+		return FGameXXKTalentRules::BuildProjection(State.Talents, Projection)
+			? ChestTalentBonusForEncounter(Projection, EncounterKind)
+			: 0.0f;
+	}
+
+	static bool OverrideTravelChestWithTalents(
+		const FGameXXKTrainingProgress& ProgressBefore,
+		const FGameXXKTrainingTravelRuntime& RuntimeBefore,
+		const int32 ElapsedSeconds,
+		const bool bOffline,
+		const FGameXXKTalentProjection& Projection,
+		FGameXXKTrainingProgress& InOutProgress,
+		FGameXXKTrainingReward& InOutReward)
+	{
+		const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+			FGameXXKTrainingRules::BuildEncounterSequence(ProgressBefore.CurrentTravelStageId, true);
+		if (!Encounters.IsValidIndex(RuntimeBefore.EncounterIndex))
 		{
-			return;
+			return false;
 		}
-		Runtime.PlayerHP = State.PlayerHP;
-		Runtime.PlayerMaxHP = State.PlayerMaxHP;
-		Runtime.PlayerAttack = State.PlayerAttack;
-		Runtime.PartyUnits[0].HP = State.PlayerHP;
-		Runtime.PartyUnits[0].MaxHP = State.PlayerMaxHP;
-		Runtime.PartyUnits[0].Attack = State.PlayerAttack;
+		const EGameXXKTrainingEncounterKind Kind = Encounters[RuntimeBefore.EncounterIndex].Kind;
+		const int32 NormalAfter = FGameXXKTrainingRules::AdvanceTravelChestCooldown(
+			ProgressBefore.TravelNormalChestCooldownRemainingSeconds,
+			ElapsedSeconds);
+		const int32 AdvancedAfter = FGameXXKTrainingRules::AdvanceTravelChestCooldown(
+			ProgressBefore.TravelAdvancedChestCooldownRemainingSeconds,
+			ElapsedSeconds);
+		const FGameXXKTrainingReward ChestReward = FGameXXKTrainingRules::ResolveTravelReward(
+			ProgressBefore.CurrentTravelStageId,
+			Kind,
+			ProgressBefore.ChallengeRewardSeed,
+			NormalAfter,
+			AdvancedAfter,
+			ChestTalentBonusForEncounter(Projection, Kind),
+			false);
+		InOutReward.bChestRolled = ChestReward.bChestRolled;
+		InOutReward.ChestTier = ChestReward.ChestTier;
+		InOutReward.ChestItemId = ChestReward.ChestItemId;
+		InOutProgress.TravelNormalChestCooldownRemainingSeconds = NormalAfter;
+		InOutProgress.TravelAdvancedChestCooldownRemainingSeconds = AdvancedAfter;
+		if (ChestReward.bChestRolled)
+		{
+			if (ChestReward.ChestTier == EGameXXKTrainingRewardTier::NormalChest)
+			{
+				InOutProgress.TravelNormalChestCooldownRemainingSeconds = bOffline ? 4 * 60 : 2 * 60;
+			}
+			else if (ChestReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
+			{
+				InOutProgress.TravelAdvancedChestCooldownRemainingSeconds = bOffline ? 6 * 60 : 3 * 60;
+			}
+		}
+		return true;
+	}
+
+	static bool AdvanceTravelOfflineWithTalents(
+		FGameXXKTrainingProgress& Progress,
+		FGameXXKTrainingTravelRuntime& InOutRuntime,
+		const int32 ElapsedSeconds,
+		const FGameXXKTalentProjection& Projection,
+		FGameXXKTrainingOfflineReward& OutReward)
+	{
+		OutReward = FGameXXKTrainingOfflineReward();
+		if (!Progress.bTravelActive || Progress.bChallengeActive || ElapsedSeconds <= 0)
+		{
+			return false;
+		}
+		const int32 GoldCap = Projection.GetOfflineGoldCapSeconds();
+		const int32 ExperienceCap = Projection.GetOfflineExperienceCapSeconds();
+		const int32 ChestCap = Projection.GetOfflineChestCapSeconds();
+		const int32 SimulationSeconds = FMath::Clamp(
+			ElapsedSeconds,
+			1,
+			FMath::Max3(GoldCap, ExperienceCap, ChestCap));
+
+		// Convert online remaining time to the longer offline qualification window
+		// while preserving already accumulated progress.
+		if (Progress.TravelNormalChestCooldownRemainingSeconds > 0)
+		{
+			Progress.TravelNormalChestCooldownRemainingSeconds += 2 * 60;
+		}
+		if (Progress.TravelAdvancedChestCooldownRemainingSeconds > 0)
+		{
+			Progress.TravelAdvancedChestCooldownRemainingSeconds += 3 * 60;
+		}
+
+		for (int32 Second = 0; Second < SimulationSeconds; ++Second)
+		{
+			const FGameXXKTrainingProgress ProgressBefore = Progress;
+			const FGameXXKTrainingTravelRuntime RuntimeBefore = InOutRuntime;
+			bool bEncounterCompleted = false;
+			bool bStageCompleted = false;
+			bool bDefeated = false;
+			FGameXXKTrainingReward Reward;
+			if (!FGameXXKTrainingRules::AdvanceTravelRunner(
+				Progress,
+				InOutRuntime,
+				bEncounterCompleted,
+				bStageCompleted,
+				bDefeated,
+				Reward,
+				1))
+			{
+				return false;
+			}
+			++OutReward.SimulatedSeconds;
+			if (bEncounterCompleted)
+			{
+				if (!OverrideTravelChestWithTalents(
+					ProgressBefore,
+					RuntimeBefore,
+					1,
+					true,
+					Projection,
+					Progress,
+					Reward))
+				{
+					return false;
+				}
+				++OutReward.CompletedEncounters;
+				if (Second < GoldCap)
+				{
+					OutReward.Gold = FMath::Max(0, OutReward.Gold + Reward.Gold);
+				}
+				if (Second < ExperienceCap)
+				{
+					OutReward.Experience = FMath::Max(0, OutReward.Experience + Reward.Experience);
+				}
+				if (Second < ChestCap && Reward.bChestRolled)
+				{
+					if (Reward.ChestTier == EGameXXKTrainingRewardTier::NormalChest)
+					{
+						++OutReward.NormalChestCount;
+					}
+					else if (Reward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
+					{
+						++OutReward.AdvancedChestCount;
+					}
+				}
+			}
+			if (bStageCompleted)
+			{
+				++OutReward.CompletedStages;
+			}
+			if (bDefeated)
+			{
+				OutReward.bStoppedAtDefeat = true;
+				break;
+			}
+		}
+
+		// Convert remaining offline windows back to their online equivalents.
+		if (Progress.TravelNormalChestCooldownRemainingSeconds > 0)
+		{
+			Progress.TravelNormalChestCooldownRemainingSeconds = FMath::Max(
+				0,
+				Progress.TravelNormalChestCooldownRemainingSeconds - 2 * 60);
+		}
+		if (Progress.TravelAdvancedChestCooldownRemainingSeconds > 0)
+		{
+			Progress.TravelAdvancedChestCooldownRemainingSeconds = FMath::Max(
+				0,
+				Progress.TravelAdvancedChestCooldownRemainingSeconds - 3 * 60);
+		}
+		OutReward.Gold = FMath::Max(0, FMath::RoundToInt(
+			OutReward.Gold * Projection.GetOfflineGoldMultiplier()));
+		OutReward.Experience = FMath::Max(0, FMath::RoundToInt(
+			OutReward.Experience * Projection.GetOfflineExperienceMultiplier()));
+		return OutReward.SimulatedSeconds > 0;
+	}
+
+	static int32 ResolveQuestNpcProgressionLevel(
+		const FGameXXKRuntimeState& State,
+		const FName NpcId)
+	{
+		const FGameXXKQuestNpcProgression* Progression =
+			State.CardRun.PartySelection.QuestNpcProgressions.Find(NpcId);
+		return Progression
+			? FMath::Clamp(Progression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+			: 1;
 	}
 
 	static bool BuildTrainingTravelParty(
@@ -92,12 +368,37 @@ namespace
 		TArray<FGameXXKTrainingTravelPartyUnitRuntime>& OutParty,
 		FString* OutError = nullptr)
 	{
+		FGameXXKTalentProjection TalentProjection;
+		if (!FGameXXKTalentRules::BuildProjection(State.Talents, TalentProjection, OutError))
+		{
+			return false;
+		}
+		const auto ScaleTalentStat = [](const int32 BaseValue, const int32 Percent)
+		{
+			return static_cast<int32>(FMath::Clamp<int64>(
+				(static_cast<int64>(FMath::Max(0, BaseValue)) * (100 + Percent) + 50) / 100,
+				0,
+				MAX_int32));
+		};
+		const auto TalentHealth = [&TalentProjection, &ScaleTalentStat](const int32 BaseValue)
+		{
+			return FMath::Max(1, ScaleTalentStat(
+				BaseValue + TalentProjection.FlatMaxHP,
+				TalentProjection.RouteMaxHPPercent));
+		};
+		const auto TalentAttack = [&TalentProjection, &ScaleTalentStat](const int32 BaseValue)
+		{
+			return FMath::Max(0, ScaleTalentStat(
+				BaseValue + TalentProjection.FlatAttack,
+				TalentProjection.RouteAttackPercent));
+		};
+
 		OutParty.Reset();
 		OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
 			FGameXXKEquipmentRules::HeroCharacterId(),
-			State.PlayerHP,
-			State.PlayerMaxHP,
-			State.PlayerAttack));
+			TalentHealth(State.PlayerMaxHP),
+			TalentHealth(State.PlayerMaxHP),
+			TalentAttack(State.PlayerAttack)));
 
 		const FName ActiveCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
 		const FGameXXKPermanentCompanion* Companion =
@@ -129,9 +430,9 @@ namespace
 			}
 			OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
 				Companion->InstanceId,
-				Snapshot.AttributesBeforeRoute.MaxHealth,
-				Snapshot.AttributesBeforeRoute.MaxHealth,
-				Snapshot.AttributesBeforeRoute.Attack));
+				TalentHealth(Snapshot.AttributesBeforeRoute.MaxHealth),
+				TalentHealth(Snapshot.AttributesBeforeRoute.MaxHealth),
+				TalentAttack(Snapshot.AttributesBeforeRoute.Attack)));
 		}
 
 		const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
@@ -140,7 +441,7 @@ namespace
 		FGameXXKCompanionAttributes NpcAttributes;
 		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
 				ActiveNpcId,
-				State.PlayerLevel,
+				ResolveQuestNpcProgressionLevel(State, ActiveNpcId),
 				NpcAttributes,
 				OutError))
 		{
@@ -164,10 +465,44 @@ namespace
 		}
 		OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
 			ActiveNpcId,
-			NpcSnapshot.AttributesBeforeRoute.MaxHealth,
-			NpcSnapshot.AttributesBeforeRoute.MaxHealth,
-			NpcSnapshot.AttributesBeforeRoute.Attack));
+			TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
+			TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
+			TalentAttack(NpcSnapshot.AttributesBeforeRoute.Attack)));
 		return OutParty.Num() == 3;
+	}
+
+	static bool SynchronizeTrainingTravelPartyProgression(
+		const FGameXXKRuntimeState& State,
+		FGameXXKTrainingTravelRuntime& Runtime)
+	{
+		TArray<FGameXXKTrainingTravelPartyUnitRuntime> FreshParty;
+		if (!BuildTrainingTravelParty(State, FreshParty))
+		{
+			return false;
+		}
+		for (FGameXXKTrainingTravelPartyUnitRuntime& RuntimeUnit : Runtime.PartyUnits)
+		{
+			const FGameXXKTrainingTravelPartyUnitRuntime* FreshUnit = FreshParty.FindByPredicate(
+				[&RuntimeUnit](const FGameXXKTrainingTravelPartyUnitRuntime& Candidate)
+				{
+					return Candidate.UnitId == RuntimeUnit.UnitId;
+				});
+			if (!FreshUnit)
+			{
+				return false;
+			}
+			const int32 MissingHealth = FMath::Max(0, RuntimeUnit.MaxHP - RuntimeUnit.HP);
+			RuntimeUnit.MaxHP = FreshUnit->MaxHP;
+			RuntimeUnit.HP = FMath::Clamp(RuntimeUnit.MaxHP - MissingHealth, 0, RuntimeUnit.MaxHP);
+			RuntimeUnit.Attack = FreshUnit->Attack;
+		}
+		if (Runtime.PartyUnits.IsValidIndex(0))
+		{
+			Runtime.PlayerHP = Runtime.PartyUnits[0].HP;
+			Runtime.PlayerMaxHP = Runtime.PartyUnits[0].MaxHP;
+			Runtime.PlayerAttack = Runtime.PartyUnits[0].Attack;
+		}
+		return true;
 	}
 
 	static bool AddTrainingChestCount(
@@ -340,6 +675,7 @@ namespace
 		InOutState.PendingRouteNodeId = INDEX_NONE;
 		InOutState.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
 		InOutState.Screen = EGameXXKScreen::Town;
+		InOutState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 		InOutState.CurrentMapId = DesktopTrainingWorkbenchMapId;
 		InOutState.TownPanelMode = EGameXXKTownPanelMode::None;
 	}
@@ -650,7 +986,7 @@ namespace
 			FGameXXKCompanionAttributes Attributes;
 			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
 				CharacterId,
-				RuntimeState.PlayerLevel,
+				ResolveQuestNpcProgressionLevel(RuntimeState, CharacterId),
 				Attributes))
 			{
 				return false;
@@ -1310,6 +1646,22 @@ bool UGameXXKMVPSubsystem::BuildTrainingTravelRuntimeForState(
 		Party);
 }
 
+bool UGameXXKMVPSubsystem::PrepareFreshTrainingTravelRuntime(
+	FGameXXKRuntimeState& InOutState,
+	FGameXXKTrainingTravelRuntime& OutRuntime) const
+{
+	if (!InOutState.Training.bTravelActive
+		|| InOutState.Training.bChallengeActive
+		|| InOutState.Training.CurrentTravelStageId.IsNone())
+	{
+		return false;
+	}
+	InOutState.PlayerHP = InOutState.PlayerMaxHP;
+	InOutState.PlayerMP = InOutState.PlayerMaxMP;
+	InOutState.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	return BuildTrainingTravelRuntimeForState(InOutState, OutRuntime);
+}
+
 int64 UGameXXKMVPSubsystem::GetCurrentTravelUnixSeconds() const
 {
 	return FDateTime::UtcNow().ToUnixTimestamp();
@@ -1434,12 +1786,91 @@ bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
 		return false;
 	}
 
-	FString Error;
-	if (!BeginTrainingEncounterBattle(Candidate, StageId, Candidate.Training.ActiveChallengeEncounterIndex, &Error))
+	// The desktop Challenge opens the Slay-the-Spire style route map first.
+	// The player picks the next battle node; victory always returns to the map.
+	// Travel remains the only fully automatic progression loop.
+	const int32 ChallengeRouteSeed = FMath::Max(
+		1,
+		Candidate.RouteSeed
+			^ static_cast<int32>(GetTypeHash(StageId))
+			^ Candidate.Training.ChallengeRewardSeed);
+	FGameXXKTrainingRules::GenerateChallengeRouteMap(Candidate, StageId, ChallengeRouteSeed);
+	if (!Candidate.bHasGeneratedRouteMap
+		|| Candidate.RouteMapNodes.IsEmpty()
+		|| Candidate.ReachableRouteNodeIds.IsEmpty())
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Training] BeginTrainingEncounterBattle failed for %s: %s"), *StageId.ToString(), *Error);
 		return false;
 	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::IsTrainingChallengeRouteMapActive() const
+{
+	return RuntimeState.Training.bChallengeActive
+		&& RuntimeState.bHasGeneratedRouteMap
+		&& RuntimeState.bDungeonActive
+		&& RuntimeState.Screen == EGameXXKScreen::DungeonMap
+		&& !RuntimeState.CardRun.bHasActiveCardBattle;
+}
+
+bool UGameXXKMVPSubsystem::SelectTrainingChallengeRouteNode(const int32 NodeId)
+{
+	const FGameXXKRuntimeState& State = RuntimeState;
+	if (!State.Training.bChallengeActive
+		|| !State.bDungeonActive
+		|| !State.bHasGeneratedRouteMap
+		|| State.Screen != EGameXXKScreen::DungeonMap
+		|| State.CardRun.bHasActiveCardBattle
+		|| !State.ReachableRouteNodeIds.Contains(NodeId))
+	{
+		return false;
+	}
+
+	const FGameXXKRouteMapNode* const RouteNode = State.RouteMapNodes.FindByPredicate(
+		[NodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == NodeId;
+		});
+	if (!RouteNode)
+	{
+		return false;
+	}
+
+	// Non-battle route nodes (Start, Event, Camp, Chest, Merchant) keep the
+	// canonical generated-map behavior and rewards.
+	if (RouteNode->NodeKind != EGameXXKNodeKind::Battle
+		&& RouteNode->NodeKind != EGameXXKNodeKind::Elite
+		&& RouteNode->NodeKind != EGameXXKNodeKind::Boss)
+	{
+		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+		return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
+	}
+
+	const int32* const EncounterIndex = State.Training.ChallengeRouteNodeEncounterIndices.Find(NodeId);
+	if (!EncounterIndex)
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = State;
+	Candidate.CurrentRouteNodeId = NodeId;
+	Candidate.PendingRouteNodeId = NodeId;
+	Candidate.Training.ActiveChallengeRouteNodeId = NodeId;
+	Candidate.Training.ActiveChallengeEncounterIndex = *EncounterIndex;
+	FString Error;
+	if (!BeginTrainingEncounterBattle(Candidate, Candidate.Training.ActiveChallengeStageId, *EncounterIndex, &Error))
+	{
+		return false;
+	}
+	// Keep the generated route context alive through the battle so the standard
+	// tiered battle-reward offer and node settlement resolve the same node.
+	Candidate.bDungeonActive = true;
+	Candidate.CardRun.bLoadoutLockedForRoute = true;
+	Candidate.PendingRouteNodeId = NodeId;
+	Candidate.CardRun.ActiveBattleSourceNodeId = NodeId;
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
@@ -1465,11 +1896,42 @@ bool UGameXXKMVPSubsystem::CancelTrainingChallengeToWorkbench()
 	Candidate.Training.bChallengeActive = false;
 	Candidate.Training.ActiveChallengeStageId = NAME_None;
 	Candidate.Training.ActiveChallengeEncounterIndex = INDEX_NONE;
+	Candidate.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
+	Candidate.Training.ChallengeRouteNodeEncounterIndices.Reset();
 	Candidate.Training.bChallengeAutoBattle = false;
+	Candidate.bHasGeneratedRouteMap = false;
+	Candidate.RouteMapNodes.Reset();
+	Candidate.RouteMapEdges.Reset();
+	Candidate.VisitedRouteNodeIds.Reset();
+	Candidate.ReachableRouteNodeIds.Reset();
+	Candidate.CurrentRouteNodeId = INDEX_NONE;
+	Candidate.PendingRouteNodeId = INDEX_NONE;
+	// Drop every route-local offer/stock/balance so an abandoned challenge can
+	// never leak a stale reward choice into the next run. Party selection and
+	// permanent inventory/relics stay untouched, matching GenerateChallengeRouteMap.
+	Candidate.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+	Candidate.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
+	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	Candidate.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
+	Candidate.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
+	FGameXXKRelicRules::ClearRouteRelics(Candidate);
+	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
+	const FName PreviousTravelStageId = Candidate.Training.CurrentTravelStageId;
+	if (PreviousTravelStageId.IsNone()
+		|| !FGameXXKTrainingRules::StartTravel(Candidate.Training, PreviousTravelStageId))
+	{
+		return false;
+	}
 	ReturnTrainingToWorkbench(Candidate);
+	FGameXXKTrainingTravelRuntime RestartedTravelRuntime;
+	if (!PrepareFreshTrainingTravelRuntime(Candidate, RestartedTravelRuntime))
+	{
+		return false;
+	}
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(RestartedTravelRuntime);
 	return true;
 }
 
@@ -1502,52 +1964,59 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		const FName StageId = ActiveProgress.ActiveChallengeStageId;
 		const int32 EncounterIndex = ActiveProgress.ActiveChallengeEncounterIndex;
 		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
-		if (!Encounters.IsValidIndex(EncounterIndex))
+		const int32 RouteNodeId = ActiveProgress.ActiveChallengeRouteNodeId;
+		const int32* const RouteEncounterIndex =
+			ActiveProgress.ChallengeRouteNodeEncounterIndices.Find(RouteNodeId);
+		const int32 ResolvedEncounterIndex = RouteEncounterIndex ? *RouteEncounterIndex : EncounterIndex;
+		if (!Encounters.IsValidIndex(ResolvedEncounterIndex))
 		{
 			return false;
 		}
+		const FGameXXKRouteMapNode* RouteNode = Candidate.RouteMapNodes.FindByPredicate(
+			[RouteNodeId](const FGameXXKRouteMapNode& Node)
+			{
+				return Node.NodeId == RouteNodeId;
+			});
+		if (!RouteNode
+			|| (RouteNode->NodeKind != EGameXXKNodeKind::Battle
+				&& RouteNode->NodeKind != EGameXXKNodeKind::Elite
+				&& RouteNode->NodeKind != EGameXXKNodeKind::Boss))
+		{
+			return false;
+		}
+		const bool bBossNode = RouteNode->NodeKind == EGameXXKNodeKind::Boss;
 
 		if (Candidate.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Defeat)
 		{
-			// Challenge failure is a local retry: it does not alter the cleared-stage graph
-			// and it never falls through the town failure settlement used by route runs.
+			// Challenge failure is a local retry on the same route node: it does not
+			// alter the cleared-stage graph or the player's route choice.
 			ClearTrainingBattleProjection(Candidate);
 			Candidate.PlayerHP = Candidate.PlayerMaxHP;
 			Candidate.PlayerMP = Candidate.PlayerMaxMP;
-			if (!BeginTrainingEncounterBattle(Candidate, StageId, EncounterIndex, &Error))
+			if (!BeginTrainingEncounterBattle(Candidate, StageId, ResolvedEncounterIndex, &Error))
 			{
 				return false;
 			}
+			Candidate.bDungeonActive = true;
+			Candidate.CardRun.bLoadoutLockedForRoute = true;
+			Candidate.PendingRouteNodeId = RouteNodeId;
+			Candidate.CardRun.ActiveBattleSourceNodeId = RouteNodeId;
 			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 			RuntimeState = MoveTemp(Candidate);
 			return true;
 		}
 
-		OutReward = FGameXXKTrainingRules::ResolveChallengeReward(
-			StageId,
-			Encounters[EncounterIndex].Kind,
-			Candidate.Training.ChallengeRewardSeed,
-			0.0f);
-		Candidate.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
-			Candidate.Training.ChallengeRewardSeed);
-		if (!ApplyTrainingRewardToRuntime(Candidate, OutReward))
+		// Victory reuses the canonical generated-route settlement: the first call
+		// creates the tiered battle-reward offer, the post-choice call settles the
+		// node and returns to the route map. It never auto-starts another battle.
+		if (!UGameXXKMVPRules::ResolveBattleVictory(Candidate, bBossNode))
 		{
 			return false;
 		}
-		ClearTrainingBattleProjection(Candidate);
-		const bool bLastEncounter = EncounterIndex == Encounters.Num() - 1;
-		if (bLastEncounter)
+
+		if (!FinishTrainingChallengeBossIfNeeded(Candidate, bOutStageCompleted, OutReward))
 		{
-			bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(Candidate.Training, StageId);
-			ReturnTrainingToWorkbench(Candidate);
-		}
-		else
-		{
-			++Candidate.Training.ActiveChallengeEncounterIndex;
-			if (!BeginTrainingEncounterBattle(Candidate, StageId, Candidate.Training.ActiveChallengeEncounterIndex, &Error))
-			{
-				return false;
-			}
+			return false;
 		}
 
 		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
@@ -1570,7 +2039,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		Progress.ActiveChallengeStageId,
 		EncounterKind,
 		RuntimeState.Training.ChallengeRewardSeed,
-		0.0f);
+		ChestTalentBonusForState(RuntimeState, EncounterKind));
 	RuntimeState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
 		RuntimeState.Training.ChallengeRewardSeed);
 	if (!ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
@@ -1581,9 +2050,232 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 	{
 		bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(RuntimeState.Training, Progress.ActiveChallengeStageId);
 		ReturnTrainingToWorkbench(RuntimeState);
+		FGameXXKTrainingTravelRuntime RestartedTravelRuntime;
+		if (!bOutStageCompleted
+			|| !PrepareFreshTrainingTravelRuntime(RuntimeState, RestartedTravelRuntime))
+		{
+			return false;
+		}
+		TrainingTravelRuntime = MoveTemp(RestartedTravelRuntime);
 		return bOutStageCompleted;
 	}
 	++RuntimeState.Training.ActiveChallengeEncounterIndex;
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::FinishTrainingChallengeBossIfNeeded(
+	FGameXXKRuntimeState& InOutState,
+	bool& bOutStageCompleted,
+	FGameXXKTrainingReward& OutReward)
+{
+	bOutStageCompleted = false;
+	if (!InOutState.Training.bChallengeActive
+		|| InOutState.Screen == EGameXXKScreen::Battle)
+	{
+		return true;
+	}
+
+	const int32 RouteNodeId = InOutState.Training.ActiveChallengeRouteNodeId;
+	const FGameXXKRouteMapNode* RouteNode = InOutState.RouteMapNodes.FindByPredicate(
+		[RouteNodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == RouteNodeId;
+		});
+	if (!RouteNode || RouteNode->NodeKind != EGameXXKNodeKind::Boss)
+	{
+		return true;
+	}
+
+	const FName StageId = InOutState.Training.ActiveChallengeStageId;
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+	const int32 EncounterIndex = InOutState.Training.ActiveChallengeEncounterIndex;
+	if (!Encounters.IsValidIndex(EncounterIndex))
+	{
+		return false;
+	}
+
+	// Route rules granted the standard boss rewards. Grant the authored Training
+	// boss reward, complete the challenge, and restore the workbench shell.
+	OutReward = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageId,
+		Encounters[EncounterIndex].Kind,
+		InOutState.Training.ChallengeRewardSeed,
+		ChestTalentBonusForState(InOutState, Encounters[EncounterIndex].Kind));
+	InOutState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
+		InOutState.Training.ChallengeRewardSeed);
+	if (!ApplyTrainingRewardToRuntime(InOutState, OutReward))
+	{
+		return false;
+	}
+	bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(InOutState.Training, StageId);
+	ClearTrainingBattleProjection(InOutState);
+	InOutState.bHasGeneratedRouteMap = false;
+	InOutState.RouteMapNodes.Reset();
+	InOutState.RouteMapEdges.Reset();
+	InOutState.VisitedRouteNodeIds.Reset();
+	InOutState.ReachableRouteNodeIds.Reset();
+	InOutState.CurrentRouteNodeId = INDEX_NONE;
+	InOutState.PendingRouteNodeId = INDEX_NONE;
+	ReturnTrainingToWorkbench(InOutState);
+	FGameXXKTrainingTravelRuntime RestartedTravelRuntime;
+	if (!bOutStageCompleted
+		|| !PrepareFreshTrainingTravelRuntime(InOutState, RestartedTravelRuntime))
+	{
+		return false;
+	}
+	TrainingTravelRuntime = MoveTemp(RestartedTravelRuntime);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ApplyTrainingChallengeRewardOption(
+	FGameXXKRuntimeState& InOutState,
+	const int32 OptionIndex,
+	const FName ReplacementEntryId,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	const TArray<FGameXXKBattleRewardOption>& Options = InOutState.CardRun.PendingReward.Options;
+	if (!Options.IsValidIndex(OptionIndex))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("The chosen challenge reward option is not part of the saved offer.");
+		}
+		return false;
+	}
+	const FGameXXKBattleRewardOption Option = Options[OptionIndex];
+	switch (Option.Kind)
+	{
+	case EGameXXKBattleRewardKind::DeckCardUpgrade:
+	{
+		const EGameXXKCardQuality CurrentQuality =
+			FGameXXKCardBattleAdapter::GetConfiguredCardQuality(InOutState.CardRun, Option.CardId);
+		if (CurrentQuality >= EGameXXKCardQuality::Epic)
+		{
+			if (OutError)
+			{
+				*OutError = TEXT("The chosen deck card is already at maximum quality.");
+			}
+			return false;
+		}
+		InOutState.CardRun.UpgradedCardQualities.Add(
+			Option.CardId,
+			FGameXXKCardBattleAdapter::GetNextCardQuality(CurrentQuality));
+		return true;
+	}
+	case EGameXXKBattleRewardKind::BossCard:
+		return FGameXXKCardBattleAdapter::CommitBossCardReward(
+			InOutState,
+			Option.CardId,
+			OutError);
+	case EGameXXKBattleRewardKind::Relic:
+		return FGameXXKRelicRules::AcquireRelic(InOutState, Option.RelicId, OutError);
+	case EGameXXKBattleRewardKind::EnergyCapBonus:
+		++InOutState.CardRun.BonusSharedEnergyCap;
+		return true;
+	case EGameXXKBattleRewardKind::DrawBonus:
+		++InOutState.CardRun.BonusRoundDrawCount;
+		return true;
+	default:
+		if (OutError)
+		{
+			*OutError = TEXT("The chosen challenge reward option has an unknown kind.");
+		}
+		return false;
+	}
+}
+
+bool UGameXXKMVPSubsystem::SettleTrainingChallengeBossNode(
+	FGameXXKRuntimeState& InOutState,
+	bool& bOutStageCompleted,
+	FGameXXKTrainingReward& OutReward,
+	FString* OutError)
+{
+	bOutStageCompleted = false;
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	const int32 RouteNodeId = InOutState.Training.ActiveChallengeRouteNodeId;
+	const FGameXXKRouteMapNode* RouteNode = InOutState.RouteMapNodes.FindByPredicate(
+		[RouteNodeId](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeId == RouteNodeId;
+		});
+	if (!RouteNode || RouteNode->NodeKind != EGameXXKNodeKind::Boss)
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("The challenge reward finish has no resolvable Boss node.");
+		}
+		return false;
+	}
+
+	const FName StageId = InOutState.Training.ActiveChallengeStageId;
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
+	const int32 EncounterIndex = InOutState.Training.ActiveChallengeEncounterIndex;
+	if (!Encounters.IsValidIndex(EncounterIndex))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("The challenge Boss reward has an invalid authored encounter.");
+		}
+		return false;
+	}
+
+	bool bAwarded = false;
+	if (!FGameXXKRouteEconomyRules::AwardNodeOnce(
+		InOutState.CardRun,
+		1,
+		RouteNodeId,
+		50,
+		bAwarded,
+		OutError))
+	{
+		return false;
+	}
+	InOutState.VisitedRouteNodeIds.AddUnique(RouteNodeId);
+	InOutState.CurrentRouteNodeId = RouteNodeId;
+	InOutState.PendingRouteNodeId = INDEX_NONE;
+	InOutState.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
+
+	OutReward = FGameXXKTrainingRules::ResolveChallengeReward(
+		StageId,
+		Encounters[EncounterIndex].Kind,
+		InOutState.Training.ChallengeRewardSeed,
+		ChestTalentBonusForState(InOutState, Encounters[EncounterIndex].Kind));
+	InOutState.Training.ChallengeRewardSeed = FGameXXKTrainingRules::NextChallengeRewardSeed(
+		InOutState.Training.ChallengeRewardSeed);
+	if (!ApplyTrainingRewardToRuntime(InOutState, OutReward))
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("The challenge Boss reward could not be applied to runtime.");
+		}
+		return false;
+	}
+	bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(InOutState.Training, StageId);
+	ClearTrainingBattleProjection(InOutState);
+	InOutState.bHasGeneratedRouteMap = false;
+	InOutState.RouteMapNodes.Reset();
+	InOutState.RouteMapEdges.Reset();
+	InOutState.VisitedRouteNodeIds.Reset();
+	InOutState.ReachableRouteNodeIds.Reset();
+	InOutState.CurrentRouteNodeId = INDEX_NONE;
+	InOutState.PendingRouteNodeId = INDEX_NONE;
+	ReturnTrainingToWorkbench(InOutState);
+	FGameXXKTrainingTravelRuntime RestartedTravelRuntime;
+	if (!bOutStageCompleted
+		|| !PrepareFreshTrainingTravelRuntime(InOutState, RestartedTravelRuntime))
+	{
+		return false;
+	}
+	TrainingTravelRuntime = MoveTemp(RestartedTravelRuntime);
 	return true;
 }
 
@@ -1605,6 +2297,11 @@ bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
 	{
 		return false;
 	}
+	// Starting or deliberately restarting Travel is a fresh encounter loop.
+	// Keep the durable player snapshot in sync with the full-health party runner
+	// immediately instead of waiting for the first combat tick.
+	Candidate.PlayerHP = Candidate.PlayerMaxHP;
+	Candidate.PlayerMP = Candidate.PlayerMaxMP;
 
 	FGameXXKTrainingTravelRuntime CandidateRunner;
 	TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
@@ -1638,6 +2335,8 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 {
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
+	const FGameXXKTrainingProgress ProgressBeforeStep = Candidate.Training;
+	const FGameXXKTrainingTravelRuntime RunnerBeforeStep = CandidateRunner;
 	const int32 PlayerLevelBeforeStep = Candidate.PlayerLevel;
 	if (!FGameXXKTrainingRules::AdvanceTravelRunner(
 		Candidate.Training,
@@ -1655,9 +2354,33 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 	{
 		return false;
 	}
+	if (bOutEncounterCompleted)
+	{
+		FGameXXKTalentProjection Projection;
+		if (!FGameXXKTalentRules::BuildProjection(Candidate.Talents, Projection)
+			|| !OverrideTravelChestWithTalents(
+				ProgressBeforeStep,
+				RunnerBeforeStep,
+				ElapsedSeconds,
+				false,
+				Projection,
+				Candidate.Training,
+				OutReward))
+		{
+			return false;
+		}
+	}
+	if (bOutEncounterCompleted
+		&& OutReward.Experience > 0
+		&& !SynchronizeTrainingTravelPartyProgression(Candidate, CandidateRunner))
+	{
+		return false;
+	}
 	if (Candidate.PlayerLevel != PlayerLevelBeforeStep)
 	{
-		SynchronizeTrainingTravelHeroProgression(Candidate, CandidateRunner);
+		// Player durable HP/MP are recalculated by ApplyPlayerExperience.  The
+		// full party projection above already refreshed every unit's combat stats.
+		Candidate.PlayerHP = CandidateRunner.PlayerHP;
 	}
 	Candidate.PlayerHP = CandidateRunner.PlayerHP;
 	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
@@ -1669,8 +2392,28 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingTravelStep(
 
 bool UGameXXKMVPSubsystem::AdvanceTrainingTravelEncounter(bool& bOutStageCompleted, FGameXXKTrainingReward& OutReward)
 {
+	const FGameXXKTrainingProgress ProgressBefore = RuntimeState.Training;
+	FGameXXKTrainingTravelRuntime RuntimeBefore;
+	RuntimeBefore.StageId = ProgressBefore.CurrentTravelStageId;
+	RuntimeBefore.EncounterIndex = ProgressBefore.ActiveTravelEncounterIndex;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	const bool bAdvanced = FGameXXKTrainingRules::AdvanceTravelEncounter(RuntimeState.Training, bOutStageCompleted, OutReward);
+	if (bAdvanced)
+	{
+		FGameXXKTalentProjection Projection;
+		if (!FGameXXKTalentRules::BuildProjection(RuntimeState.Talents, Projection)
+			|| !OverrideTravelChestWithTalents(
+				ProgressBefore,
+				RuntimeBefore,
+				1,
+				false,
+				Projection,
+				RuntimeState.Training,
+				OutReward))
+		{
+			return false;
+		}
+	}
 	if (bAdvanced && !ApplyTrainingRewardToRuntime(RuntimeState, OutReward))
 	{
 		return false;
@@ -1730,7 +2473,10 @@ bool UGameXXKMVPSubsystem::ApplyTrainingOfflineRewardToRuntime(
 
 	FGameXXKRuntimeState Candidate = State;
 	Candidate.PlayerGold = FMath::Max(0, Candidate.PlayerGold + Reward.Gold);
-	UGameXXKMVPRules::ApplyPlayerExperience(Candidate, Reward.Experience);
+	if (!ApplyTrainingExperienceToDeployedParty(Candidate, Reward.Experience))
+	{
+		return false;
+	}
 	if (!AddTrainingChestCount(
 			Candidate,
 			EGameXXKTrainingRewardTier::NormalChest,
@@ -1755,13 +2501,20 @@ bool UGameXXKMVPSubsystem::SimulateTrainingTravelOffline(
 	{
 		return false;
 	}
+	FGameXXKTalentProjection TalentProjection;
+	if (!FGameXXKTalentRules::BuildProjection(RuntimeState.Talents, TalentProjection)
+		|| !TalentProjection.bOfflineRewardsUnlocked)
+	{
+		return false;
+	}
 
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
-	if (!FGameXXKTrainingRules::AdvanceTravelOffline(
+	if (!AdvanceTravelOfflineWithTalents(
 		Candidate.Training,
 		CandidateRunner,
 		ElapsedSeconds,
+		TalentProjection,
 		OutReward)
 		|| !FGameXXKTrainingRules::AccumulatePendingTravelReward(Candidate.Training, OutReward))
 	{
@@ -1795,7 +2548,6 @@ bool UGameXXKMVPSubsystem::CollectTrainingTravelRewards(FGameXXKTrainingOfflineR
 	OutReward = FGameXXKTrainingOfflineReward();
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
-	const int32 PlayerLevelBeforeCollect = Candidate.PlayerLevel;
 	if (!FGameXXKTrainingRules::ConsumePendingTravelReward(Candidate.Training, OutReward)
 		|| !ApplyTrainingOfflineRewardToRuntime(Candidate, OutReward))
 	{
@@ -1805,9 +2557,10 @@ bool UGameXXKMVPSubsystem::CollectTrainingTravelRewards(FGameXXKTrainingOfflineR
 	{
 		Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
 	}
-	if (Candidate.PlayerLevel != PlayerLevelBeforeCollect)
+	if (OutReward.Experience > 0
+		&& !SynchronizeTrainingTravelPartyProgression(Candidate, CandidateRunner))
 	{
-		SynchronizeTrainingTravelHeroProgression(Candidate, CandidateRunner);
+		return false;
 	}
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
@@ -2300,6 +3053,83 @@ bool UGameXXKMVPSubsystem::IsRouteExitAcceptanceFixtureActiveForTest() const
 	return RouteExitAcceptanceFixtureBackup.IsSet();
 }
 
+bool UGameXXKMVPSubsystem::ApplyRouteEncounterAcceptanceFixtureForTest(const bool bCamp, FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	OutError.Reset();
+	if (RouteEncounterAcceptanceFixtureBackup.IsSet())
+	{
+		OutError = TEXT("A route-encounter acceptance fixture is already active.");
+		return false;
+	}
+	if (RuntimeState.Screen != EGameXXKScreen::DungeonMap
+		|| !RuntimeState.bDungeonActive
+		|| !RuntimeState.bHasGeneratedRouteMap
+		|| RuntimeState.PendingRouteNodeId != INDEX_NONE)
+	{
+		OutError = TEXT("Route-encounter acceptance fixture requires an idle generated route map.");
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKRouteMapNode* ReachableNode = Candidate.RouteMapNodes.FindByPredicate([&Candidate](const FGameXXKRouteMapNode& Node)
+	{
+		return Candidate.ReachableRouteNodeIds.Contains(Node.NodeId)
+			&& !Candidate.VisitedRouteNodeIds.Contains(Node.NodeId);
+	});
+	if (!ReachableNode)
+	{
+		OutError = TEXT("Route-encounter acceptance fixture found no unresolved reachable node.");
+		return false;
+	}
+	const int32 SourceNodeId = ReachableNode->NodeId;
+	ReachableNode->NodeKind = bCamp ? EGameXXKNodeKind::Camp : EGameXXKNodeKind::Event;
+	if (bCamp)
+	{
+		Candidate.PlayerHP = FMath::Min(33, FMath::Max(1, Candidate.PlayerMaxHP - 1));
+	}
+	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	Candidate.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
+	if (!UGameXXKMVPRules::SelectRouteNodeById(Candidate, SourceNodeId))
+	{
+		OutError = TEXT("Route-encounter acceptance fixture could not enter the converted node.");
+		return false;
+	}
+	if (!bCamp)
+	{
+		Candidate.CardRun.PendingEvent.SourceNodeId = SourceNodeId;
+		Candidate.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
+		Candidate.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.YueBai");
+	}
+
+	RouteEncounterAcceptanceFixtureBackup.Emplace(RuntimeState);
+	RuntimeState = MoveTemp(Candidate);
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PlayerController->RefreshPlayerFlowWidgetsForTest();
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ClearRouteEncounterAcceptanceFixtureForTest(FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	OutError.Reset();
+	if (!RouteEncounterAcceptanceFixtureBackup.IsSet())
+	{
+		return true;
+	}
+	RuntimeState = MoveTemp(RouteEncounterAcceptanceFixtureBackup.GetValue());
+	RouteEncounterAcceptanceFixtureBackup.Reset();
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PlayerController->RefreshPlayerFlowWidgetsForTest();
+	}
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::StartGame()
 {
 	return StartNewGame();
@@ -2771,6 +3601,49 @@ bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
 		return false;
 	}
 
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+TArray<FGameXXKTalentNodeView> UGameXXKMVPSubsystem::GetTalentNodeViews() const
+{
+	return FGameXXKTalentRules::BuildNodeViews(RuntimeState);
+}
+
+FGameXXKTalentProjection UGameXXKMVPSubsystem::GetTalentProjection() const
+{
+	FGameXXKTalentProjection Projection;
+	FGameXXKTalentRules::BuildProjection(RuntimeState.Talents, Projection);
+	return Projection;
+}
+
+bool UGameXXKMVPSubsystem::PurchaseTalentNode(
+	const FName NodeId,
+	FGameXXKTalentPurchaseResult& OutResult)
+{
+	OutResult = FGameXXKTalentPurchaseResult();
+	if (RuntimeState.Screen != EGameXXKScreen::Town
+		|| RuntimeState.bDungeonActive
+		|| RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		OutResult.NodeId = NodeId;
+		OutResult.Message = FText::FromString(TEXT("只能在桌面挂机界面升级永久天赋"));
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKTalentRules::Purchase(Candidate, NodeId, OutResult))
+	{
+		return false;
+	}
+	FString Error;
+	if (!FGameXXKDesktopInventoryRules::Normalize(Candidate, &Error)
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
+	{
+		OutResult.bPurchased = false;
+		OutResult.Message = FText::FromString(Error.IsEmpty() ? TEXT("天赋升级后的状态无效") : Error);
+		return false;
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	return true;
@@ -3310,6 +4183,10 @@ bool UGameXXKMVPSubsystem::SelectDungeonNode(EGameXXKNodeKind ExpectedNode)
 
 bool UGameXXKMVPSubsystem::SelectRouteNodeById(int32 NodeId)
 {
+	if (RuntimeState.Training.bChallengeActive)
+	{
+		return SelectTrainingChallengeRouteNode(NodeId);
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::SelectRouteNodeById(RuntimeState, NodeId);
 }
@@ -3333,6 +4210,12 @@ bool UGameXXKMVPSubsystem::SetBattleAutoPlayEnabled(const bool bEnabled)
 
 bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 {
+	if (RuntimeState.Training.bChallengeActive)
+	{
+		bool bStageCompleted = false;
+		FGameXXKTrainingReward Reward;
+		return AdvanceTrainingChallengeEncounter(bStageCompleted, Reward);
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
 }
@@ -3342,6 +4225,54 @@ bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
 	const FName ReplacementEntryId,
 	FString* OutError)
 {
+	if (RuntimeState.Training.bChallengeActive)
+	{
+		const FGameXXKRuntimeState& ChallengeState = RuntimeState;
+		const FGameXXKRouteMapNode* BossNode = ChallengeState.RouteMapNodes.FindByPredicate(
+			[&ChallengeState](const FGameXXKRouteMapNode& Node)
+			{
+				return Node.NodeId == ChallengeState.Training.ActiveChallengeRouteNodeId
+					&& Node.NodeKind == EGameXXKNodeKind::Boss;
+			});
+		if (BossNode)
+		{
+			FGameXXKRuntimeState Candidate = RuntimeState;
+			if (!ApplyTrainingChallengeRewardOption(Candidate, OptionIndex, ReplacementEntryId, OutError))
+			{
+				return false;
+			}
+			Candidate.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+			Candidate.CardRun.bActiveBattleRewardResolved = true;
+			bool bStageCompleted = false;
+			FGameXXKTrainingReward Reward;
+			if (!SettleTrainingChallengeBossNode(Candidate, bStageCompleted, Reward, OutError))
+			{
+				return false;
+			}
+			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+			RuntimeState = MoveTemp(Candidate);
+			return true;
+		}
+
+		FGameXXKRuntimeState Candidate = RuntimeState;
+		if (!UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
+			Candidate,
+			OptionIndex,
+			ReplacementEntryId,
+			OutError))
+		{
+			return false;
+		}
+		bool bStageCompleted = false;
+		FGameXXKTrainingReward Reward;
+		if (!FinishTrainingChallengeBossIfNeeded(Candidate, bStageCompleted, Reward))
+		{
+			return false;
+		}
+		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+		RuntimeState = MoveTemp(Candidate);
+		return true;
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(
 		RuntimeState,
@@ -3352,6 +4283,46 @@ bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(
 
 bool UGameXXKMVPSubsystem::SkipPendingRouteRewardAndFinish(FString* OutError)
 {
+	if (RuntimeState.Training.bChallengeActive)
+	{
+		const FGameXXKRuntimeState& ChallengeState = RuntimeState;
+		const FGameXXKRouteMapNode* BossNode = ChallengeState.RouteMapNodes.FindByPredicate(
+			[&ChallengeState](const FGameXXKRouteMapNode& Node)
+			{
+				return Node.NodeId == ChallengeState.Training.ActiveChallengeRouteNodeId
+					&& Node.NodeKind == EGameXXKNodeKind::Boss;
+			});
+		if (BossNode)
+		{
+			FGameXXKRuntimeState Candidate = RuntimeState;
+			Candidate.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+			Candidate.CardRun.bActiveBattleRewardResolved = true;
+			bool bStageCompleted = false;
+			FGameXXKTrainingReward Reward;
+			if (!SettleTrainingChallengeBossNode(Candidate, bStageCompleted, Reward, OutError))
+			{
+				return false;
+			}
+			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+			RuntimeState = MoveTemp(Candidate);
+			return true;
+		}
+
+		FGameXXKRuntimeState Candidate = RuntimeState;
+		if (!UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(Candidate, OutError))
+		{
+			return false;
+		}
+		bool bStageCompleted = false;
+		FGameXXKTrainingReward Reward;
+		if (!FinishTrainingChallengeBossIfNeeded(Candidate, bStageCompleted, Reward))
+		{
+			return false;
+		}
+		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+		RuntimeState = MoveTemp(Candidate);
+		return true;
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(RuntimeState, OutError);
 }
@@ -3396,6 +4367,30 @@ bool UGameXXKMVPSubsystem::ResolveRouteEncounterChoice(const int32 ChoiceIndex)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveRouteEncounterChoice(RuntimeState, ChoiceIndex);
+}
+
+bool UGameXXKMVPSubsystem::ReturnPendingRouteChoiceToMap()
+{
+	const bool bEvent = RuntimeState.Screen == EGameXXKScreen::RouteEvent;
+	const bool bCamp = RuntimeState.Screen == EGameXXKScreen::RouteCamp;
+	if ((!bEvent && !bCamp) || !RuntimeState.bDungeonActive || RuntimeState.PendingRouteNodeId == INDEX_NONE)
+	{
+		return false;
+	}
+	const FGameXXKRouteMapNode* PendingNode = RuntimeState.RouteMapNodes.FindByPredicate([this](const FGameXXKRouteMapNode& Node)
+	{
+		return Node.NodeId == RuntimeState.PendingRouteNodeId;
+	});
+	if (!PendingNode
+		|| (bEvent && PendingNode->NodeKind != EGameXXKNodeKind::Event && PendingNode->NodeKind != EGameXXKNodeKind::Chest)
+		|| (bCamp && PendingNode->NodeKind != EGameXXKNodeKind::Camp)
+		|| (bEvent && RuntimeState.CardRun.PendingEvent.SourceNodeId != RuntimeState.PendingRouteNodeId))
+	{
+		return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState.Screen = EGameXXKScreen::DungeonMap;
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
@@ -3486,10 +4481,76 @@ bool UGameXXKMVPSubsystem::PreviewAbandonedRouteSettlement(
 		OutError);
 }
 
+bool UGameXXKMVPSubsystem::SettleAndExitActiveRoute(
+	FGameXXKRouteSettlementReceipt& OutReceipt,
+	FString& OutError)
+{
+	OutReceipt = FGameXXKRouteSettlementReceipt();
+	OutError.Reset();
+	if (RuntimeState.Screen != EGameXXKScreen::DungeonMap
+		|| !RuntimeState.bDungeonActive
+		|| !RuntimeState.bHasGeneratedRouteMap)
+	{
+		OutError = TEXT("当前没有可结算并返回挂机的活动路线。");
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKRouteSettlementReceipt Receipt;
+	if (!FGameXXKRouteSettlementRules::Preview(
+		Candidate,
+		EGameXXKRouteTerminalOutcome::Abandoned,
+		Receipt,
+		&OutError))
+	{
+		return false;
+	}
+	Candidate.CardRun.PendingSettlement = Receipt;
+	if (!FGameXXKRouteSettlementRules::Apply(Candidate, Receipt, &OutError))
+	{
+		return false;
+	}
+	Candidate.PlayerHP = Candidate.PlayerMaxHP;
+	Candidate.PlayerMP = Candidate.PlayerMaxMP;
+
+	ClearTrainingBattleProjection(Candidate);
+	Candidate.Training.bChallengeActive = false;
+	Candidate.Training.ActiveChallengeStageId = NAME_None;
+	Candidate.Training.ActiveChallengeEncounterIndex = INDEX_NONE;
+	Candidate.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
+	Candidate.Training.ChallengeRouteNodeEncounterIndices.Reset();
+	Candidate.Training.bChallengeAutoBattle = false;
+	Candidate.bHasGeneratedRouteMap = false;
+	Candidate.RouteSeed = 0;
+	Candidate.RouteMapNodes.Reset();
+	Candidate.RouteMapEdges.Reset();
+	Candidate.VisitedRouteNodeIds.Reset();
+	Candidate.ReachableRouteNodeIds.Reset();
+	Candidate.CurrentRouteNodeId = INDEX_NONE;
+	Candidate.PendingRouteNodeId = INDEX_NONE;
+	Candidate.DungeonNodeIndex = 0;
+	Candidate.BattleEntryCheckpoint = FGameXXKBattleEntryCheckpoint{};
+	ReturnTrainingToWorkbench(Candidate);
+	FString ValidationError;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
+	{
+		OutError = FString::Printf(
+			TEXT("路线结算后的挂机状态无法安全保存：%s"),
+			*ValidationError);
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	OutReceipt = Receipt;
+	return true;
+}
+
 bool UGameXXKMVPSubsystem::AbandonDungeonToTown()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return UGameXXKMVPRules::AbandonDungeonToTown(RuntimeState);
+	FGameXXKRouteSettlementReceipt Receipt;
+	FString Error;
+	return SettleAndExitActiveRoute(Receipt, Error);
 }
 
 bool UGameXXKMVPSubsystem::BuyItem(FName ItemId, int32 Quantity)

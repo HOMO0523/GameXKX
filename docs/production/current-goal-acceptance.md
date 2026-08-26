@@ -1,10 +1,16 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-21T13:09:02+08:00
+updated_at: 2026-08-26T22:37:36+08:00
 source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
-working_tree: clean for the canonical 2D/HUD/BlockShield scope after documentation follow-up; unrelated user files remain untracked
+working_tree: challenge route-map / sequential settlement log fixes implemented and cold-UBT green; acceptance updated before commit
 ---
+
+> **2026-08-26 挂机摘要栏与波次刻度（当前工作区）**：桌面挂机条新增始终可见的单行战报、`72×24` 折叠/展开按钮、从右向左推进的波次进度与 `72×24` Tab。Tab 关闭时进度宽 420，Tab 打开时缩为 340，整行分别对齐 953/945 的现有挂机区域；折叠后隐藏角色场景并在 Tab 后显示普通/高级宝箱实时数量。两个宝箱按钮移出内部 ScaleBox，逻辑尺寸固定为 `72×72`；五个顶部按钮、金币和背包 X 已收进纸框。三枚 GPT 位图刻度已拆成 256² 真 Alpha PNG 并导入；实际遭遇顺序保持原有 `普通→普通→精英→普通→精英→普通→首领`，视觉从左到右镜像为 `首领→普通→精英→普通→精英→普通→普通`。冷 UBT GREEN，Workbench 66/66；Training 35/38，剩余 3 条为本轮之前已有的离线经验/奖励 blocker（`DeployedTrioExperience`、`RewardResolver`、`TravelOfflineSubsystemBridge`），没有隐藏或冒充全绿。
+
+> **2026-08-26 透明桌面 HUD 与城镇往返（当前工作区）**：Win64 项目插件使用 D3D12 DirectComposition 逐像素呈现，完整原生窗口不做区域裁切；全客户区玻璃透明消除了黑色矩形，透明空处与纸面控件使用同步鼠标命中策略，携带道具改用独立窗口客户区坐标。展开工作台时显示最终批准的圆形“进入城镇”图，仓库打开时按钮移动到仓库外侧；3D 青山镇显示配套“退出城镇”图。两向真实点击已完成 `L_DesktopTrainingHUD → L_Qingshan_AsianVillage_Demo → L_DesktopTrainingHUD`，3D 内 HUD 固定、桌面 HUD 可拖动，背包展开状态经一次性 GameInstance 快照恢复。冷 UBT GREEN；城镇按钮资源测试 1/1、Workbench 66/66、LevelFlow 1/1 通过。正式打包与长时内存采样仍需另行执行，本文不把它们冒充已完成。
+
+> **2026-08-21 挑战路线图与逐条结算修正（本轮实施）**：点击“挑战”不再直接开战，而是生成挑战专属路线图（1 个入口普通战 → 普通/精英分支 ×2 → 普通 → 首领，共 7 节点，复用现有爬塔路线图 UI）；玩家点击可达节点进入该节点的真实卡牌战斗，胜利后结算节点并返回路线图继续选路，首领胜利才通关回工作台；自动战斗开关只影响单场战斗内自动出牌，不再驱动下一场连打。战斗板新增“逐条结算日志”，每个伤害包在命中瞬间按队列顺序追加一行（“XX用【卡牌】对YY造成了N伤害”），随后同包伤害/血量覆盖立即同步，保留最近 6 条。桌面 2D 懒加载补上 `DungeonMap` → 共享路线图 Widget 的提升路径；Town 返回工作台改用“离开 Town 时确实关闭过”标志，消除 Collapsed 重建递归死循环。回归：Training 23/23、DesktopTraining 31/31、CardBattle 38/38；冷 UBT `-NoHotReload` GREEN。真实 PIE 证据：挑战点击 → `DUNGEON_MAP`、`route_map_active=true`、7 节点、可达 [0]；点节点 0 → `BATTLE`、`battle_active=true`；取消回工作台后游历 `Walking` 全自动推进，挑战关闭；识图 skill 复核截图确认“路线图可见”、路线进度 0/7、无背包/战斗板遮挡（`Saved/Codex/challenge_route_map_pie_v2.png`、`Saved/HarnessReports/deepseek-vision-challenge-route-map-pie-v2.json`）。局外历练挂机全自动推进保持不变。
 # GameXXK 当前目标(滚动指针)
 
 > 本文件是"当前做到哪了"的**唯一滚动指针**。`AGENTS.md` 不再硬编码验收状态,改指向这里。每次目标收尾后更新本文件。
@@ -63,6 +69,10 @@ working_tree: clean for the canonical 2D/HUD/BlockShield scope after documentati
 - 项目自身优化:`docs/production/2026-08-16-full-project-optimization-proposal.md` Phase 0 正在执行；Phase 1/2/3/4 仍未实施，旧 `optimization-plan.md` 仅作历史索引。
 
 ## 下一步待办
+
+### 后续目标与计划（2026-08-21）
+
+- 2026-08-21 纯 2D 默认入口与 BlockShield 验收之后的完整后续路线图已合并为唯一权威计划 `docs/production/2026-08-21-next-goals-and-plan.md`(目标 G0–G8 / 分层 P0–P5、工作包 WP0–WP8、WP-A Task 6 收尾、WP-B 启动器、各包验收口径、执行顺序、验证命令、待用户拍板清单与保护边界);原并发草案 `docs/production/2026-08-21-next-goals-roadmap.md` 已标 `superseded` 保留为历史记录。此后新增目标优先按合并版执行;本文继续作为"当前做到哪了"的滚动指针。
 
 ### 本轮视觉工作流纠偏（2026-08-18）
 

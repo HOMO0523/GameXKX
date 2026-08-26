@@ -35,7 +35,7 @@ $reportData=[IO.File]::ReadAllText($reportPath,[Text.Encoding]::UTF8)|ConvertFro
 if($reportData.status-ne'PASS'){throw 'Unexpected backpack export report'}
 
 Add-Type -AssemblyName System.Drawing
-$expected=@{'T_MasterV2_TabNormal'=@(105,62);'T_MasterV2_TabSelected'=@(105,62);'T_MasterV2_BackpackScrollbarThumb'=@(30,126)}
+$expected=@{'T_MasterV2_BackpackScrollbarThumb'=@(30,126)}
 $exports=@()
 foreach($record in @($reportData.exports)){$exportPath=[string]$record.path;if(-not(Test-Path -LiteralPath $exportPath -PathType Leaf)){throw "Missing backpack export: $exportPath"};$size=Get-PngSize $exportPath;$want=$expected[[string]$record.name];if($want-and($size[0]-ne$want[0]-or$size[1]-ne$want[1])){throw "Unexpected backpack export dimensions for $($record.name): $size (want $want)"};$exports+=[ordered]@{name=[string]$record.name;path=$exportPath;width=$size[0];height=$size[1];sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $exportPath).Hash.ToLowerInvariant()}}
 

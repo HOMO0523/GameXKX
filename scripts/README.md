@@ -1,6 +1,6 @@
 # scripts/ 自动化脚本索引
 
-本目录是 GameXXK 的 Python 自动化层(根目录 175 个 `.py`，2026-08-18 实测)。入口优先级:先看"核心脚本",其余按命名约定分组发现。
+本目录是 GameXXK 的 Python 自动化层(scripts 目录 186 个 `.py`，2026-08-21 实测)。入口优先级:先看"核心脚本",其余按命名约定分组发现。
 
 ## 核心脚本(手动维护的流程入口)
 
@@ -17,6 +17,70 @@
 | `run_training_visual_pie_probe.py` | 直接加载纯 HUD 验收地图并以两次 MCP 调用验证历练条 NativeTick、无缝滚动与 walk atlas；等待发生在 UE 进程外 |
 | `measure_desktop_training_hud_memory.ps1` | 隔离启动 empty / Travel / 现有全屏 BattleBoard / 3D town 四档进程，在 20/50 秒记录 CPU、GPU 与内存并写 JSON 证据；不执行构建或打包 |
 | `gamexxk_ui_image_truth_check.py` | 只读校验用户确认图片真源库：manifest 覆盖、SHA256、尺寸、透明通道和确认依据必须一致 |
+| `gamexxk_vision.py` | DeepSeek 图像理解客户端 + CLI（deepseek-v4-flash-vision-exp）：看图、OCR、Files API 上传；纯 stdlib |
+| `gamexxk_vision_pie.py` | PIE 实时判图：经 UE MCP 截取当前 PIE Slate 窗口 → DeepSeek 视觉模型 → HarnessReports 证据报告 |
+
+## 图像理解（DeepSeek Vision）
+
+`deepseek-v4-flash-vision-exp` 已接入 Python 自动化层。客户端为纯 stdlib（不依赖 `openai` / `requests`），API Key 默认只从环境变量 `DEEPSEEK_API_KEY` 读取，也可用 `--api-key` 显式覆盖；不要提交 Key 或把 Key 写进脚本。图片格式按文件实际内容判断（JPEG / PNG / GIF / WebP），与文件名无关。
+
+### 通用看图 / OCR（`gamexxk_vision.py`）
+
+```powershell
+$env:DEEPSEEK_API_KEY = "sk-..."
+
+# 描述本地图片；detail 只对 image_url 生效（low / high / original / auto）
+python scripts/gamexxk_vision.py describe Saved\Codex\shot.png --detail low
+
+# OCR 截图文字
+python scripts/gamexxk_vision.py ocr shot.png --json
+
+# 混合三种传图方式：本地 base64、外部 URL、Files API file_id
+python scripts/gamexxk_vision.py analyze --image a.png --url https://example.com/b.png --file-id file-api-xxx --prompt "比较两张图"
+
+# Files API 上传一次、多处复用（输出 file_id）
+python scripts/gamexxk_vision.py upload big.png --json
+
+# 无 Key 协议自检：完整校验输入并打印将要发送的请求体，不发网络请求
+python scripts/gamexxk_vision.py describe shot.png --dry-run
+```
+
+客户端在发送前强制校验：URL ≤ 8192 字符、请求体 ≤ 48 MiB、单图内联 ≤ 32 MiB、无 file_id 请求内联总大小 ≤ 64 MiB、单请求 ≤ 600 张、单边 ≤ 8192 像素（≥ 15 张时 ≤ 4096 像素）。超过 32 MiB 的图走 `upload` 生成 `file_id` 后引用。Python 调用入口：
+
+```python
+from gamexxk_vision import DeepSeekVisionClient
+
+client = DeepSeekVisionClient()  # 读 $env:DEEPSEEK_API_KEY
+result = client.analyze("这张图片里有什么？", images=["shot.png"], detail="low")
+print(result.content, result.usage)
+```
+
+### PIE 实时判图（`gamexxk_vision_pie.py`）
+
+通过 UE 5.8 MCP 的 `SlateInspectorToolset` 截取**当前 PIE Preview 窗口**（不需要可见标题栏），保存到 `Saved/Codex/vision_pie_*.png`，调用视觉模型后把含图片路径、尺寸、prompt、usage、分析结论的证据报告写入 `Saved/HarnessReports/gamexxk_vision_pie_*.json`。脚本只观察、不改玩法状态：不启动也不关闭 PIE（`--start-pie` 可选），并遵循 `L_DesktopTrainingHUD` 纯 2D 默认面。
+
+```powershell
+# PIE 已运行时：截图 → 视觉验收检查
+python scripts/gamexxk_vision_pie.py --json
+
+# OCR 当前 PIE 画面文字；detail low 更快
+python scripts/gamexxk_vision_pie.py --ocr --detail low --json
+
+# 自定义问题 / 只取证不调模型
+python scripts/gamexxk_vision_pie.py --prompt "检查历练条是否被遮挡" --json
+python scripts/gamexxk_vision_pie.py --capture-only
+
+# PIE 未运行时：先拉起 PIE 再判图（不会停止 PIE）
+python scripts/gamexxk_vision_pie.py --start-pie --warmup 3 --json
+```
+
+### 自测
+
+```powershell
+python -m unittest scripts.test_gamexxk_vision scripts.test_gamexxk_vision_pie -v
+```
+
+`test_gamexxk_vision.py` 全部走 mock HTTP，覆盖三种传图块结构、`detail` 语义、格式嗅探、尺寸解析、请求/图片限制、重试与 Files API multipart 上传，不消耗真实 API 调用。
 
 ## 交互编辑器启动
 
@@ -39,7 +103,7 @@ pwsh -File scripts/measure_desktop_training_hud_memory.ps1 -Profile challenge
 
 ## 命名约定分组
 
-- **`test_*.py`**(91 个):脚本单元测试,`python -m unittest` 风格;核心子集见 `ai_production_loop.py` 默认列表。
+- **`test_*.py`**(96 个):脚本单元测试,`python -m unittest` 风格;核心子集见 `ai_production_loop.py` 默认列表。
 - **`gamexxk_*_check.py` / `gamexxk_*_apply.py`**(成对):资产流水线,check 只读校验、apply 构建/导入/装配(经 MCP `run_project_python_file` 调 `Content/Python/gamexxk_validate_*` / `assemble_*`)。
   - `gamexxk_battle_ui_assets_check.py` / `gamexxk_battle_ui_assets_apply.py`:校验/应用**已导入 UE** 的战斗 UI 纹理(MCP);
   - `gamexxk_battle_target_art_check.py`:本地 PIL 校验**源图**(目标箭头/墨点图集,无需 UE)。

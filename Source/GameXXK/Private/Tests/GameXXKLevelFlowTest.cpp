@@ -2,6 +2,7 @@
 
 #include "GameXXKMVPRules.h"
 #include "Misc/AutomationTest.h"
+#include "MVP/GameXXKMVPPlayerController.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -93,6 +94,33 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("route map package does not match battle target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_BattleTown"))));
+	TestEqual(
+		TEXT("desktop town button enters the playable Qingshan map"),
+		GameXXKLevelFlow::TownToggleTargetForMapPackage(
+			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")),
+		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+	TestEqual(
+		TEXT("playable Qingshan town exits to the desktop HUD"),
+		GameXXKLevelFlow::TownToggleTargetForMapPackage(
+			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo")),
+		FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+	TestEqual(
+		TEXT("legacy Qingshan town exits to the desktop HUD"),
+		GameXXKLevelFlow::TownToggleTargetForMapPackage(
+			TEXT("/Game/GameXXK/Maps/L_QingshanInn")),
+		FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
+	TestTrue(TEXT("first town request is accepted"),
+		AGameXXKMVPPlayerController::ShouldBeginDesktopTownMapTravelForTest(
+			false,
+			FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD"))));
+	TestFalse(TEXT("a pending town request blocks a double click"),
+		AGameXXKMVPPlayerController::ShouldBeginDesktopTownMapTravelForTest(
+			true,
+			FName(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD"))));
+	TestFalse(TEXT("an unresolved town target cannot start travel"),
+		AGameXXKMVPPlayerController::ShouldBeginDesktopTownMapTravelForTest(
+			false,
+			NAME_None));
 
 	return true;
 }
