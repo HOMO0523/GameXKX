@@ -453,6 +453,125 @@ bool FGameXXKDesktopTrainingDirectChallengeBattleSurfaceTest::RunTest(const FStr
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingIncompleteBattleReturnTest,
+	"GameXXK.DesktopTraining.PlayerFlow.IncompleteBattleReturnRestoresLiveTravel",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingIncompleteBattleReturnTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	AGameXXKMVPPlayerController* PlayerController =
+		NewObject<AGameXXKMVPPlayerController>();
+	PlayerController->SetMVPSubsystemForTest(Subsystem);
+	PlayerController->SetDesktopTrainingBootProfileForTest(true);
+	if (!TestTrue(TEXT("1-1 retreat fixture starts in Town"), Subsystem->StartGame())
+		|| !TestTrue(TEXT("1-1 retreat fixture creates the desktop workbench"),
+			PlayerController->EnsureDesktopTrainingWidgetsForTest()))
+	{
+		return false;
+	}
+
+	const FName StageId =
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("1-1 retreat fixture starts the independent Travel loop"),
+		Subsystem->StartTrainingTravel(StageId));
+	Subsystem->GetMutableRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds;
+	Subsystem->GetMutableRuntimeState().Training.TravelAdvancedChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds;
+	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
+		PlayerController->GetDesktopTrainingWorkbenchWidgetForTest();
+	if (!TestNotNull(TEXT("1-1 retreat fixture owns the desktop workbench"), Workbench)
+		|| !TestTrue(TEXT("1-1 retreat fixture expands the workbench"), Workbench->OpenBackpack()))
+	{
+		return false;
+	}
+	Workbench->HandleActionClicked(4);
+	TestTrue(TEXT("1-1 is selected before challenge"), Workbench->SelectStageForTest(StageId));
+	TestTrue(TEXT("1-1 challenge enters its generated route"), Workbench->ClickChallengeForTest());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	int32 BattleNodeId = INDEX_NONE;
+	for (const FGameXXKRouteMapNode& Node : Subsystem->GetRuntimeState().RouteMapNodes)
+	{
+		if (Node.NodeKind == EGameXXKNodeKind::Battle
+			|| Node.NodeKind == EGameXXKNodeKind::Elite
+			|| Node.NodeKind == EGameXXKNodeKind::Boss)
+		{
+			BattleNodeId = Node.NodeId;
+			break;
+		}
+	}
+	if (!TestTrue(TEXT("the generated 1-1 route contains a battle node"), BattleNodeId != INDEX_NONE))
+	{
+		return false;
+	}
+	Subsystem->GetMutableRuntimeState().ReachableRouteNodeIds = {BattleNodeId};
+	TestTrue(TEXT("the 1-1 route enters a real unfinished battle"),
+		Subsystem->SelectRouteNodeById(BattleNodeId));
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+	UGameXXKBattleBoardWidget* BattleBoard = PlayerController->GetBattleBoardWidgetForTest();
+	if (!TestNotNull(TEXT("the controller owns the 1-1 battle board"), BattleBoard))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the unfinished 1-1 battle opens its retreat confirmation"),
+		BattleBoard->OpenBattleRetreatConfirmationForTest());
+	TestTrue(TEXT("confirming retreat exits the unfinished 1-1 battle"),
+		BattleBoard->ConfirmBattleRetreatForTest());
+	PlayerController->RefreshPlayerFlowWidgetsForTest();
+
+	TestEqual(TEXT("unfinished 1-1 retreat returns to the workbench screen"),
+		Subsystem->GetRuntimeState().Screen,
+		EGameXXKScreen::Town);
+	TestTrue(TEXT("unfinished 1-1 retreat resumes Travel"),
+		Subsystem->GetRuntimeState().Training.bTravelActive);
+	TestEqual(TEXT("unfinished 1-1 retreat restarts the Walking interval"),
+		Subsystem->GetTrainingTravelRuntimeCopy().Phase,
+		EGameXXKTrainingTravelPhase::Walking);
+	TestTrue(TEXT("unfinished 1-1 retreat restores the same workbench"),
+		Workbench->IsWorkbenchVisibleForTest());
+	TestTrue(TEXT("unfinished 1-1 retreat restores the Training panel"),
+		Workbench->IsRightPanelOpenForTest());
+	TestEqual(TEXT("unfinished 1-1 retreat keeps Training selected"),
+		Workbench->GetActiveNavForTest(),
+		EGameXXKDesktopTrainingNav::Training);
+
+	const int32 TickBefore = Workbench->GetTravelVisualNativeTickCountForTest();
+	const int32 NormalChestCooldownBefore =
+		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds;
+	const int32 AdvancedChestCooldownBefore =
+		Subsystem->GetRuntimeState().Training.TravelAdvancedChestCooldownRemainingSeconds;
+	for (int32 TickIndex = 0; TickIndex < 24; ++TickIndex)
+	{
+		Workbench->TickForTest(0.25f);
+	}
+	TestTrue(TEXT("the restored 1-1 idle strip resumes its visual tick"),
+		Workbench->GetTravelVisualNativeTickCountForTest() > TickBefore);
+	TestTrue(TEXT("the restored 1-1 idle strip owns positive walking velocity"),
+		Workbench->GetTravelVisualScrollVelocityForTest() > 0.0f);
+	const FGameXXKTrainingTravelRuntime TravelAfterWalk =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	TestEqual(TEXT("the restored idle loop still targets Training.Normal.1-1"),
+		TravelAfterWalk.StageId,
+		StageId);
+	TestEqual(TEXT("the restored idle loop meets the first 1-1 enemy after the five-second walk"),
+		TravelAfterWalk.Phase,
+		EGameXXKTrainingTravelPhase::Combat);
+	TestTrue(TEXT("the restored 1-1 encounter owns its live enemy formation"),
+		!TravelAfterWalk.Enemies.IsEmpty()
+			&& TravelAfterWalk.ActiveEnemyIndex != INDEX_NONE);
+	TestTrue(TEXT("the normal-chest online cooldown keeps accumulating after retreat"),
+		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds
+			< NormalChestCooldownBefore);
+	TestTrue(TEXT("the advanced-chest online cooldown keeps accumulating after retreat"),
+		Subsystem->GetRuntimeState().Training.TravelAdvancedChestCooldownRemainingSeconds
+			< AdvancedChestCooldownBefore);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingChallengeEventAndAbandonTest,
 	"GameXXK.DesktopTraining.PlayerFlow.ChallengeEventAndAbandon",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -586,6 +705,10 @@ bool FGameXXKRouteSettlementRestoresIdleWorkbenchTest::RunTest(const FString& Pa
 
 	const FName TravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("fixture starts independent Travel before challenge"), Subsystem->StartTrainingTravel(TravelStageId));
+	Subsystem->GetMutableRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds;
+	Subsystem->GetMutableRuntimeState().Training.TravelAdvancedChestCooldownRemainingSeconds =
+		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds;
 	const FGameXXKTrainingTravelRuntime TravelBefore = Subsystem->GetTrainingTravelRuntimeCopy();
 	TestTrue(TEXT("fixture expands backpack before launching challenge"), Workbench && Workbench->OpenBackpack());
 	TestTrue(TEXT("fixture selects the challenge stage through the workbench"),
@@ -618,6 +741,14 @@ bool FGameXXKRouteSettlementRestoresIdleWorkbenchTest::RunTest(const FString& Pa
 	TestFalse(TEXT("settlement clears dungeon ownership"), Settled.bDungeonActive);
 	TestEqual(TEXT("settlement grants previewed ordinary gold once"), Settled.PlayerGold, GoldBefore + ExpectedGoldAward);
 	TestTrue(TEXT("settlement records an idempotency receipt"), Settled.CardRun.LastAppliedRouteSettlementId.IsValid());
+	TestTrue(TEXT("mid-route settlement reactivates the independent Travel loop"),
+		Settled.Training.bTravelActive);
+	TestEqual(TEXT("mid-route settlement restores the original Travel stage"),
+		Settled.Training.CurrentTravelStageId,
+		TravelStageId);
+	TestEqual(TEXT("mid-route settlement restores the retained encounter cursor"),
+		Settled.Training.ActiveTravelEncounterIndex,
+		TravelBefore.EncounterIndex);
 	TestTrue(TEXT("settlement remains in the same canonical game world"), PlayerController->GetWorld() == RuntimeWorld);
 	TestEqual(TEXT("route map collapses after settlement"),
 		RouteMap ? RouteMap->GetVisibility() : ESlateVisibility::Visible,
@@ -636,6 +767,31 @@ bool FGameXXKRouteSettlementRestoresIdleWorkbenchTest::RunTest(const FString& Pa
 			&TravelAfter,
 			&TravelBefore,
 			PPF_None));
+	const int32 TravelVisualTickBefore = Workbench
+		? Workbench->GetTravelVisualNativeTickCountForTest()
+		: 0;
+	const int32 NormalCooldownBeforeResume =
+		Settled.Training.TravelNormalChestCooldownRemainingSeconds;
+	const int32 AdvancedCooldownBeforeResume =
+		Settled.Training.TravelAdvancedChestCooldownRemainingSeconds;
+	for (int32 TickIndex = 0; Workbench && TickIndex < 5; ++TickIndex)
+	{
+		Workbench->TickForTest(0.25f);
+	}
+	const FGameXXKTrainingTravelRuntime TravelAfterResumeTick =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	TestTrue(TEXT("restored Workbench resumes its visual/runtime tick"),
+		Workbench
+		&& Workbench->GetTravelVisualNativeTickCountForTest() > TravelVisualTickBefore);
+	TestTrue(TEXT("restored Workbench advances the retained Travel encounter"),
+		TravelAfterResumeTick.Phase != TravelBefore.Phase
+		|| TravelAfterResumeTick.WalkStep > TravelBefore.WalkStep);
+	TestTrue(TEXT("restored Workbench resumes the normal chest cooldown"),
+		Subsystem->GetRuntimeState().Training.TravelNormalChestCooldownRemainingSeconds
+			< NormalCooldownBeforeResume);
+	TestTrue(TEXT("restored Workbench resumes the advanced chest cooldown"),
+		Subsystem->GetRuntimeState().Training.TravelAdvancedChestCooldownRemainingSeconds
+			< AdvancedCooldownBeforeResume);
 	TestEqual(TEXT("settlement restores GameAndUI input mode"),
 		PlayerController->GetTrackedInputModeForTest(),
 		EGameXXKTrackedInputMode::GameAndUI);

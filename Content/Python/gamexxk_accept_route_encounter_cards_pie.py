@@ -37,11 +37,22 @@ def _runtime(subsystem):
     state = subsystem.get_runtime_state_copy()
     run = _get(state, "card_run", "CardRun")
     bonuses = _get(run, "route_attribute_bonuses", "RouteAttributeBonuses")
+    relic_ids = [
+        str(_get(relic, "relic_id", "RelicId") or "")
+        for relic in list(_get(run, "relics", "Relics") or [])
+    ]
     return {
         "screen": _enum(_get(state, "screen", "Screen")),
         "pending_route_node_id": int(_get(state, "pending_route_node_id", "PendingRouteNodeId") or -1),
         "player_hp": int(_get(state, "player_hp", "PlayerHP") or 0),
         "player_max_hp": int(_get(state, "player_max_hp", "PlayerMaxHP") or 0),
+        "healing_powder_count": int(
+            unreal.GameXXKMVPRules.get_item_count(
+                state,
+                unreal.Name("Item.HealingPowder"),
+            )
+        ),
+        "relic_ids": relic_ids,
         "max_health_bonus": int(_get(bonuses, "max_health", "MaxHealth") or 0),
         "max_mana_bonus": int(_get(bonuses, "max_mana", "MaxMana") or 0),
         "defense_bonus": int(_get(bonuses, "defense", "Defense") or 0),
@@ -199,7 +210,9 @@ def resolve_camp():
     result["ok"] = (
         triggered
         and after["screen"].endswith("DUNGEON_MAP")
-        and after["player_hp"] > before["player_hp"]
+        and after["player_hp"] == before["player_hp"]
+        and after["healing_powder_count"] == before["healing_powder_count"]
+        and "Relic.LifeSavingTalisman" in after["relic_ids"]
         and clear_ok
     )
     return result
@@ -284,7 +297,9 @@ def close_camp_resume_and_resolve():
         and resolved
         and after_action["screen"].endswith("DUNGEON_MAP")
         and after_action["pending_route_node_id"] == -1
-        and after_action["player_hp"] > before["player_hp"]
+        and after_action["player_hp"] == before["player_hp"]
+        and after_action["healing_powder_count"] == before["healing_powder_count"]
+        and "Relic.LifeSavingTalisman" in after_action["relic_ids"]
         and clear_ok
     )
     return result
@@ -321,7 +336,9 @@ def resume_camp_after_external_close():
         and resolved
         and after_action["screen"].endswith("DUNGEON_MAP")
         and after_action["pending_route_node_id"] == -1
-        and after_action["player_hp"] > resumed_state["player_hp"]
+        and after_action["player_hp"] == resumed_state["player_hp"]
+        and after_action["healing_powder_count"] == resumed_state["healing_powder_count"]
+        and "Relic.LifeSavingTalisman" in after_action["relic_ids"]
         and clear_ok
     )
     return result
@@ -362,7 +379,9 @@ def escape_camp_resume_and_resolve():
         and resolved
         and after_action["screen"].endswith("DUNGEON_MAP")
         and after_action["pending_route_node_id"] == -1
-        and after_action["player_hp"] > resumed_state["player_hp"]
+        and after_action["player_hp"] == resumed_state["player_hp"]
+        and after_action["healing_powder_count"] == resumed_state["healing_powder_count"]
+        and "Relic.LifeSavingTalisman" in after_action["relic_ids"]
         and clear_ok
     )
     return result

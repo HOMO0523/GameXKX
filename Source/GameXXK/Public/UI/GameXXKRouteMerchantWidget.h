@@ -81,7 +81,7 @@ public:
 	int32 GetRenderedCardOfferCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
-	int32 GetRenderedRelicOfferCountForTest() const { return 0; }
+	int32 GetRenderedRelicOfferCountForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMerchant|Test")
 	bool HasTopRightCloseButtonForTest() const { return false; }
@@ -149,6 +149,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHorizontalBox> CardOfferRow;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> RelicOfferRow;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> OrdinaryGoldText;

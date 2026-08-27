@@ -119,6 +119,58 @@ bool FGameXXKCampRewardBlueprintPinCompatibilityTest::RunTest(const FString& Par
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTrainingChallengeStartsAtCampTest,
+	"GameXXK.MVP.RouteEncounter.Camp.TrainingChallengeStartsAtCamp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTrainingChallengeStartsAtCampTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("camp-start fixture starts in Town"), Subsystem->StartGame()))
+	{
+		return false;
+	}
+	const FName StageId =
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	const int32 PowderBefore = UGameXXKMVPRules::GetItemCount(
+		Subsystem->GetRuntimeState(),
+		UGameXXKMVPRules::ItemHealingPowder());
+	if (!TestTrue(TEXT("camp-start fixture starts the 1-1 challenge"),
+		Subsystem->StartTrainingChallenge(StageId)))
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	const FGameXXKRouteMapNode* StartNode = State.RouteMapNodes.FindByPredicate(
+		[](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeKind == EGameXXKNodeKind::Start;
+		});
+	if (!TestNotNull(TEXT("the challenge route keeps a visible current-camp marker"), StartNode))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the current-camp marker is already visited when the route opens"),
+		State.VisitedRouteNodeIds.Contains(StartNode->NodeId));
+	TestFalse(TEXT("the current-camp marker is never a clickable reachable node"),
+		State.ReachableRouteNodeIds.Contains(StartNode->NodeId));
+	for (const int32 OutgoingNodeId : StartNode->OutgoingNodeIds)
+	{
+		TestTrue(TEXT("opening the route immediately unlocks every first branch"),
+			State.ReachableRouteNodeIds.Contains(OutgoingNodeId));
+	}
+	TestFalse(TEXT("clicking the already occupied camp marker is rejected"),
+		Subsystem->SelectRouteNodeById(StartNode->NodeId));
+	TestEqual(TEXT("automatic camp placement grants no retired medicine"),
+		UGameXXKMVPRules::GetItemCount(
+			Subsystem->GetRuntimeState(),
+			UGameXXKMVPRules::ItemHealingPowder()),
+		PowderBefore);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCampRewardCommandSurfaceTest,
 	"GameXXK.MVP.RouteEncounter.Camp.CommandSurfaceHasCharmAndRouteMoneyOnly",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

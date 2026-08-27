@@ -1012,8 +1012,8 @@ bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FStri
 	{
 		return false;
 	}
-	TestTrue(TEXT("Training terminal fixture selects the generated Start node"),
-		TerminalSubsystem->SelectRouteNodeById(0));
+	TestTrue(TEXT("Training terminal fixture starts with the camp marker already visited"),
+		TerminalSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(0));
 	{
 		const FGameXXKRuntimeState& MapState = TerminalSubsystem->GetRuntimeState();
 		int32 FirstBattleNodeId = INDEX_NONE;
@@ -1064,14 +1064,25 @@ bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FStri
 		TerminalSubsystem->SelectRouteNodeById(BossNodeId));
 	FinalState = TerminalSubsystem->GetMutableRuntimeState();
 	FinalState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+	const int32 PermanentGoldBeforeBossSettlement = FinalState.PlayerGold;
 	TestTrue(TEXT("BattleBoard settles the final Training victory"),
 		TerminalBoard->ResolveCardBattleTerminalStateForTest());
-	TestTrue(TEXT("choosing the boss reward finishes the challenge"),
-		TerminalSubsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestTrue(TEXT("the boss skips the ordinary three-choice reward"),
+		TerminalSubsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
 	TestEqual(TEXT("final Training victory returns to the workbench screen state"),
 		TerminalSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("final Training victory returns to the desktop projection"),
 		TerminalSubsystem->GetRuntimeState().CurrentMapId, FName(TEXT("DesktopTrainingHUD")));
+	TestFalse(TEXT("final Training victory closes the challenge"),
+		TerminalSubsystem->GetRuntimeState().Training.bChallengeActive);
+	TestTrue(TEXT("final Training victory clears the challenged stage"),
+		FGameXXKTrainingRules::IsStageCleared(
+			TerminalSubsystem->GetRuntimeState().Training,
+			StageId));
+	TestTrue(TEXT("final Training victory applies one cleared-route settlement receipt"),
+		TerminalSubsystem->GetRuntimeState().CardRun.LastAppliedRouteSettlementId.IsValid());
+	TestTrue(TEXT("the cleared-route settlement converts run money into permanent gold"),
+		TerminalSubsystem->GetRuntimeState().PlayerGold > PermanentGoldBeforeBossSettlement);
 
 	UGameXXKMVPSubsystem* CloseSubsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
@@ -1082,8 +1093,8 @@ bool FGameXXKDesktopTrainingBattleBoardTerminalAndCloseTest::RunTest(const FStri
 	{
 		return false;
 	}
-	TestTrue(TEXT("Training close fixture selects the generated Start node"),
-		CloseSubsystem->SelectRouteNodeById(0));
+	TestTrue(TEXT("Training close fixture starts with the camp marker already visited"),
+		CloseSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(0));
 	{
 		const FGameXXKRuntimeState& MapState = CloseSubsystem->GetRuntimeState();
 		int32 CloseBattleNodeId = INDEX_NONE;

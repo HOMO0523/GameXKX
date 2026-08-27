@@ -111,7 +111,7 @@ struct GAMEXXK_API FGameXXKRouteMerchantState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RefreshCount = 0;
 
-	/** Exactly four carried-card upgrade slots for a nonempty snapshot. */
+	/** Exactly four carried-card upgrade slots followed by four relic slots. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKRouteMerchantOffer> Offers;
 

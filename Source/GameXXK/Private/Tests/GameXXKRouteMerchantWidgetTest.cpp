@@ -7,6 +7,7 @@
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
 #include "Components/SafeZone.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKCardCatalog.h"
@@ -181,7 +182,7 @@ namespace GameXXKRouteMerchantWidgetTest
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteMerchantWidgetStructureTest,
-	"GameXXK.MVP.RouteMerchant.Widget.FourCarriedCardLayoutNoCloseOrReplacement",
+	"GameXXK.MVP.RouteMerchant.Widget.TwoCompactRowsOfEightOffers",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters)
@@ -202,14 +203,23 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("programmatic root contains a safe-area widget"), FindWidget<USafeZone>(Widget, TEXT("RouteMerchantSafeArea")) != nullptr);
 
 	UHorizontalBox* CardRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantCardRow"));
-	TestNotNull(TEXT("single card row exists"), CardRow);
+	UHorizontalBox* RelicRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantRelicRow"));
+	TestNotNull(TEXT("top card row exists"), CardRow);
 	TestEqual(TEXT("card row renders exactly four portrait cells"), CardRow ? CardRow->GetChildrenCount() : 0, 4);
-	TestNull(TEXT("relic row is not rendered"), FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantRelicRow")));
+	TestNotNull(TEXT("bottom relic row exists"), RelicRow);
+	TestEqual(TEXT("relic row renders exactly four compact cells"), RelicRow ? RelicRow->GetChildrenCount() : 0, 4);
 	TestEqual(TEXT("read model renders exactly four card offers"), Widget->GetRenderedCardOfferCountForTest(), 4);
-	TestEqual(TEXT("read model renders zero relic offers"), Widget->GetRenderedRelicOfferCountForTest(), 0);
+	TestEqual(TEXT("read model renders exactly four relic offers"), Widget->GetRenderedRelicOfferCountForTest(), 4);
 	TestTrue(TEXT("card offer frames are portrait-shaped"), Widget->GetCardFrameSizeForTest().Y > Widget->GetCardFrameSizeForTest().X);
+	TestTrue(TEXT("card offer frames are reduced for the two-row page"),
+		Widget->GetCardFrameSizeForTest().X <= 200.0f && Widget->GetCardFrameSizeForTest().Y <= 280.0f);
+	USizeBox* RelicVisual = FindWidget<USizeBox>(Widget, TEXT("RouteMerchantOfferVisualSize4"));
+	TestTrue(TEXT("relic offer uses a compact square visual"),
+		RelicVisual
+		&& FMath::IsNearlyEqual(RelicVisual->GetWidthOverride(), RelicVisual->GetHeightOverride())
+		&& RelicVisual->GetWidthOverride() <= 200.0f);
 	TestTrue(TEXT("card row reuses the approved PSD057 frame"), Widget->GetCardFrameResourcePathForTest().Contains(TEXT("T_CardFrame_PSD057")));
-	TestEqual(TEXT("all four offer bodies expose tooltips"), Widget->GetOfferTooltipCountForTest(), 4);
+	TestEqual(TEXT("all eight offer bodies expose tooltips"), Widget->GetOfferTooltipCountForTest(), 8);
 	TestTrue(TEXT("only buttons remain hit-testable in the merchant tree"), Widget->HasOnlyButtonHitTargetsForTest());
 
 	TestNull(TEXT("merchant has no top-right close button"), Widget->WidgetTree->FindWidget(TEXT("RouteMerchantCloseButton")));
@@ -245,6 +255,21 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 		TestTrue(*FString::Printf(TEXT("slot %d price is ordinary gold"), Index), Price.Contains(TEXT("金币")) && !Price.Contains(TEXT("行旅钱")));
 		UImage* Art = FindWidget<UImage>(Widget, *FString::Printf(TEXT("RouteMerchantOfferArt%d"), Index));
 		TestTrue(*FString::Printf(TEXT("slot %d displays card art"), Index), Art && Art->GetVisibility() != ESlateVisibility::Collapsed);
+	}
+	for (int32 Index = 4; Index < 8; ++Index)
+	{
+		const FString Owner = ReadText(Widget, *FString::Printf(TEXT("RouteMerchantOfferOwner%d"), Index));
+		const FString Name = ReadText(Widget, *FString::Printf(TEXT("RouteMerchantOfferName%d"), Index));
+		const FString Quality = ReadText(Widget, *FString::Printf(TEXT("RouteMerchantOfferQuality%d"), Index));
+		const FString Effect = ReadText(Widget, *FString::Printf(TEXT("RouteMerchantOfferEffect%d"), Index));
+		const FString Price = ReadText(Widget, *FString::Printf(TEXT("RouteMerchantOfferPrice%d"), Index));
+		TestTrue(*FString::Printf(TEXT("relic slot %d uses a simple relic label"), Index), Owner.Contains(TEXT("遗物")));
+		TestFalse(*FString::Printf(TEXT("relic slot %d displays its name"), Index), Name.IsEmpty());
+		TestFalse(*FString::Printf(TEXT("relic slot %d displays its quality"), Index), Quality.IsEmpty());
+		TestFalse(*FString::Printf(TEXT("relic slot %d displays its concise effect"), Index), Effect.IsEmpty());
+		TestTrue(*FString::Printf(TEXT("relic slot %d price is ordinary gold"), Index), Price.Contains(TEXT("金币")) && !Price.Contains(TEXT("行旅钱")));
+		UImage* Art = FindWidget<UImage>(Widget, *FString::Printf(TEXT("RouteMerchantOfferArt%d"), Index));
+		TestTrue(*FString::Printf(TEXT("relic slot %d displays catalog icon art"), Index), Art && Art->GetVisibility() != ESlateVisibility::Collapsed);
 	}
 	return true;
 }
@@ -462,10 +487,13 @@ bool FGameXXKRouteMerchantWidgetRebuildIdempotencyTest::RunTest(const FString& P
 	Widget->RefreshFromState();
 
 	UHorizontalBox* CardRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantCardRow"));
+	UHorizontalBox* RelicRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantRelicRow"));
 	TestEqual(TEXT("repeated build and reopen keep exactly four card cells"),
 		CardRow ? CardRow->GetChildrenCount() : 0, 4);
-	TestEqual(TEXT("repeated build and reopen keep exactly four tooltips"),
-		Widget->GetOfferTooltipCountForTest(), 4);
+	TestEqual(TEXT("repeated build and reopen keep exactly four relic cells"),
+		RelicRow ? RelicRow->GetChildrenCount() : 0, 4);
+	TestEqual(TEXT("repeated build and reopen keep exactly eight tooltips"),
+		Widget->GetOfferTooltipCountForTest(), 8);
 	TestEqual(TEXT("reopen restores the merchant HUD"),
 		Widget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 
@@ -531,8 +559,17 @@ bool FGameXXKRouteMerchantWidgetDisabledReasonsTest::RunTest(const FString& Para
 		}
 	}
 	UButton* ExhaustedRefresh = FindWidget<UButton>(ExhaustedWidget, TEXT("RouteMerchantRefreshButton"));
-	TestTrue(TEXT("refresh disables when no unsold upgrade target remains"), ExhaustedRefresh && !ExhaustedRefresh->GetIsEnabled());
-	TestFalse(TEXT("exhausted refresh exposes a reason"), ExhaustedRefresh ? ExhaustedRefresh->GetToolTipText().IsEmpty() : true);
+	TestTrue(TEXT("refresh remains enabled while the relic row still has unsold targets"),
+		ExhaustedRefresh && ExhaustedRefresh->GetIsEnabled());
+	for (FGameXXKRouteMerchantOffer& Offer : ExhaustedSubsystem->GetMutableRuntimeState().CardRun.RouteMerchant.Offers)
+	{
+		Offer.bSold = !Offer.bUnavailable;
+	}
+	ExhaustedWidget->RefreshFromState();
+	TestTrue(TEXT("refresh disables only after both rows have no unsold targets"),
+		ExhaustedRefresh && !ExhaustedRefresh->GetIsEnabled());
+	TestFalse(TEXT("fully exhausted refresh exposes a reason"),
+		ExhaustedRefresh ? ExhaustedRefresh->GetToolTipText().IsEmpty() : true);
 
 	UGameInstance* PoorGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* PoorSubsystem = NewObject<UGameXXKMVPSubsystem>(PoorGameInstance);
@@ -655,6 +692,7 @@ bool FGameXXKRouteMerchantWidgetLegacyNormalizationTest::RunTest(const FString& 
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	Subsystem->GetMutableRuntimeState() = MakeMerchantFixture();
 	TestTrue(TEXT("legacy fixture first opens current merchant"), Subsystem->SelectRouteNodeById(10));
+	Subsystem->GetMutableRuntimeState().CardRun.RouteMerchant.Offers.SetNum(4);
 	for (FGameXXKRouteMerchantOffer& Offer : Subsystem->GetMutableRuntimeState().CardRun.RouteMerchant.Offers)
 	{
 		Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
@@ -668,12 +706,17 @@ bool FGameXXKRouteMerchantWidgetLegacyNormalizationTest::RunTest(const FString& 
 
 	UGameXXKRouteMerchantWidget* Widget = MakeWidget(Subsystem);
 	TestEqual(TEXT("first widget refresh presents four normalized cards"), Widget->GetRenderedCardOfferCountForTest(), 4);
-	TestEqual(TEXT("first widget refresh presents no legacy relics"), Widget->GetRenderedRelicOfferCountForTest(), 0);
+	TestEqual(TEXT("first widget refresh presents four normalized relics"), Widget->GetRenderedRelicOfferCountForTest(), 4);
 	UHorizontalBox* CardRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantCardRow"));
 	TestEqual(TEXT("normalized legacy view renders all four card cells"), CardRow ? CardRow->GetChildrenCount() : 0, 4);
-	for (const FGameXXKRouteMerchantOffer& Offer : Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers)
+	for (int32 Index = 0; Index < Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers.Num(); ++Index)
 	{
-		TestEqual(TEXT("mutable first view persists normalized card kind"), Offer.Kind, EGameXXKRouteMerchantOfferKind::Card);
+		const EGameXXKRouteMerchantOfferKind ExpectedKind = Index < 4
+			? EGameXXKRouteMerchantOfferKind::Card
+			: EGameXXKRouteMerchantOfferKind::Relic;
+		TestEqual(TEXT("mutable first view persists normalized row kind"),
+			Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers[Index].Kind,
+			ExpectedKind);
 	}
 	TestFalse(TEXT("first widget refresh discards the legacy pending transaction"),
 		Subsystem->GetRuntimeState().CardRun.RouteMerchant.PendingPurchase.bActive);

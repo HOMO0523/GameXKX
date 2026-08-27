@@ -1022,6 +1022,10 @@ bool FGameXXKDesktopTrainingWorkbenchStructuralGeometryTest::RunTest(const FStri
 		return false;
 	}
 	Widget->SetMVPSubsystem(Subsystem);
+	// Reference geometry is the downward-expanding authored canvas. Do not let a
+	// player's persisted desktop drag position switch this deterministic fixture
+	// to the equally valid upward layout.
+	Widget->SetPresentationMode(EGameXXKDesktopHudPresentationMode::TownViewport);
 	TestTrue(TEXT("structural geometry expands the backpack"), Widget->OpenBackpack());
 	Widget->HandleActionClicked(0);
 	Widget->HandleActionClicked(4);
@@ -1036,6 +1040,14 @@ bool FGameXXKDesktopTrainingWorkbenchStructuralGeometryTest::RunTest(const FStri
 		TestNotNull(*FString::Printf(TEXT("%s is placed on the reference canvas"), *Name), Slot);
 		if (Slot)
 		{
+			if (!Slot->GetPosition().Equals(FVector2D(Expected.X, Expected.Y), KINDA_SMALL_NUMBER))
+			{
+				AddInfo(FString::Printf(
+					TEXT("%s actual position %s, expected %s"),
+					*Name,
+					*Slot->GetPosition().ToString(),
+					*FVector2D(Expected.X, Expected.Y).ToString()));
+			}
 			TestEqual(*FString::Printf(TEXT("%s position"), *Name), Slot->GetPosition(), FVector2D(Expected.X, Expected.Y));
 			TestEqual(*FString::Printf(TEXT("%s size"), *Name), Slot->GetSize(), FVector2D(Expected.Z, Expected.W));
 		}
@@ -2019,6 +2031,36 @@ bool FGameXXKDesktopTrainingTransparentSlateWindowContractTest::RunTest(const FS
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingOverlayReuseAttachmentTest,
+	"GameXXK.DesktopTraining.Workbench.DesktopOverlayReuseRequiresNativeReattach",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingOverlayReuseAttachmentTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("a composed existing overlay must restore the workbench native attachment after challenge return"),
+		AGameXXKMVPPlayerController::ShouldRefreshExistingDesktopOverlayAttachmentForTest(
+			true,
+			true,
+			true));
+	TestFalse(TEXT("a missing overlay window cannot restore an attachment"),
+		AGameXXKMVPPlayerController::ShouldRefreshExistingDesktopOverlayAttachmentForTest(
+			false,
+			true,
+			true));
+	TestFalse(TEXT("a failed composition cannot reuse the overlay"),
+		AGameXXKMVPPlayerController::ShouldRefreshExistingDesktopOverlayAttachmentForTest(
+			true,
+			false,
+			true));
+	TestFalse(TEXT("a missing workbench cannot restore an attachment"),
+		AGameXXKMVPPlayerController::ShouldRefreshExistingDesktopOverlayAttachmentForTest(
+			true,
+			true,
+			false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingRendererStencilAlphaContractTest,
 	"GameXXK.DesktopTraining.Workbench.RendererStencilAlphaContract",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -2149,6 +2191,9 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 		return false;
 	}
 	Widget->SetMVPSubsystem(Subsystem);
+	// This test verifies local reference coordinates, not the persisted choice
+	// to expand upward when the real desktop HUD was dragged near the taskbar.
+	Widget->SetPresentationMode(EGameXXKDesktopHudPresentationMode::TownViewport);
 	Widget->ConstructForTest();
 	if (!TestTrue(TEXT("idle-strip control fixture opens the collapsed workbench"),
 		Widget->OpenWorkbench()))
@@ -2188,6 +2233,14 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 		const UCanvasPanelSlot* Slot = Child ? Cast<UCanvasPanelSlot>(Child->Slot) : nullptr;
 		if (TestNotNull(*FString::Printf(TEXT("%s owns a local canvas slot"), *WidgetName.ToString()), Slot))
 		{
+			if (!Slot->GetPosition().Equals(Position, KINDA_SMALL_NUMBER))
+			{
+				AddInfo(FString::Printf(
+					TEXT("%s actual local position %s, expected %s"),
+					*WidgetName.ToString(),
+					*Slot->GetPosition().ToString(),
+					*Position.ToString()));
+			}
 			TestEqual(*FString::Printf(TEXT("%s local position"), *WidgetName.ToString()), Slot->GetPosition(), Position);
 			TestEqual(*FString::Printf(TEXT("%s local size"), *WidgetName.ToString()), Slot->GetSize(), Size);
 		}

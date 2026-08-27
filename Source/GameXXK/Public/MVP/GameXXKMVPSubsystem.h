@@ -169,6 +169,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ApplyRouteEncounterAcceptanceFixtureForTest(bool bCamp, FString& OutError);
 
+	/** Non-saving real-PIE fixture that opens one reachable node as the route merchant. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
+	bool ApplyRouteMerchantAcceptanceFixtureForTest(bool bOpenMerchant, FString& OutError);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP|Development", meta = (DevelopmentOnly))
 	bool ClearRouteEncounterAcceptanceFixtureForTest(FString& OutError);
 

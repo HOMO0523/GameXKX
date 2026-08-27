@@ -4,6 +4,8 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKRelicCatalog.h"
+#include "GameXXKRelicRules.h"
 
 namespace
 {
@@ -20,6 +22,11 @@ namespace
 		return Quality == EGameXXKCardQuality::Common
 			|| Quality == EGameXXKCardQuality::Rare
 			|| Quality == EGameXXKCardQuality::Epic;
+	}
+
+	bool NameLess(const FName Left, const FName Right)
+	{
+		return Left.ToString() < Right.ToString();
 	}
 
 	uint32 Mix32(uint32 Value)
@@ -56,13 +63,20 @@ namespace
 		return State;
 	}
 
-	FName MakeOfferId(const int32 RootSeed, const int32 SourceNodeId, const int32 RefreshCount, const int32 SlotIndex)
+	FName MakeOfferId(
+		const int32 RootSeed,
+		const int32 SourceNodeId,
+		const int32 RefreshCount,
+		const EGameXXKRouteMerchantOfferKind Kind,
+		const int32 SlotIndex)
 	{
+		const TCHAR KindCode = Kind == EGameXXKRouteMerchantOfferKind::Card ? TEXT('C') : TEXT('R');
 		return FName(*FString::Printf(
-			TEXT("Merchant.%08X.%08X.%08X.C.%d"),
+			TEXT("Merchant.%08X.%08X.%08X.%c.%d"),
 			static_cast<uint32>(RootSeed),
 			static_cast<uint32>(SourceNodeId),
 			static_cast<uint32>(RefreshCount),
+			KindCode,
 			SlotIndex));
 	}
 
@@ -80,13 +94,30 @@ namespace
 			&& IsPendingPurchaseEmpty(Merchant.PendingPurchase);
 	}
 
-	bool IsLegacyRelicSnapshot(const FGameXXKRouteMerchantState& Merchant)
+	bool IsFourOfferSnapshotOfKind(
+		const FGameXXKRouteMerchantState& Merchant,
+		const EGameXXKRouteMerchantOfferKind Kind)
 	{
 		return Merchant.Offers.Num() == 4
-			&& !Merchant.Offers.ContainsByPredicate([](const FGameXXKRouteMerchantOffer& Offer)
+			&& !Merchant.Offers.ContainsByPredicate([Kind](const FGameXXKRouteMerchantOffer& Offer)
 			{
-				return Offer.Kind != EGameXXKRouteMerchantOfferKind::Relic;
+				return Offer.Kind != Kind;
 			});
+	}
+
+	bool IsLegacyRelicSnapshot(const FGameXXKRouteMerchantState& Merchant)
+	{
+		return IsFourOfferSnapshotOfKind(Merchant, EGameXXKRouteMerchantOfferKind::Relic);
+	}
+
+	bool IsLegacyCardOnlySnapshot(const FGameXXKRouteMerchantState& Merchant)
+	{
+		return IsFourOfferSnapshotOfKind(Merchant, EGameXXKRouteMerchantOfferKind::Card);
+	}
+
+	bool IsLegacySnapshot(const FGameXXKRouteMerchantState& Merchant)
+	{
+		return IsLegacyRelicSnapshot(Merchant) || IsLegacyCardOnlySnapshot(Merchant);
 	}
 
 	bool ValidateRouteContext(
@@ -125,13 +156,57 @@ namespace
 		const int32 RootSeed,
 		const int32 SourceNodeId,
 		const int32 RefreshCount,
+		const EGameXXKRouteMerchantOfferKind Kind,
 		const int32 SlotIndex)
 	{
 		FGameXXKRouteMerchantOffer Offer;
-		Offer.OfferId = MakeOfferId(RootSeed, SourceNodeId, RefreshCount, SlotIndex);
-		Offer.Kind = EGameXXKRouteMerchantOfferKind::Card;
+		Offer.OfferId = MakeOfferId(RootSeed, SourceNodeId, RefreshCount, Kind, SlotIndex);
+		Offer.Kind = Kind;
 		Offer.bUnavailable = true;
 		return Offer;
+	}
+
+	bool BuildRelicOffer(
+		const int32 RootSeed,
+		const int32 SourceNodeId,
+		const int32 RefreshCount,
+		const int32 SlotIndex,
+		const FName RelicId,
+		FGameXXKRouteMerchantOffer& OutOffer,
+		FString* OutError)
+	{
+		if (RelicId.IsNone())
+		{
+			OutOffer = MakeUnavailableOffer(
+				RootSeed,
+				SourceNodeId,
+				RefreshCount,
+				EGameXXKRouteMerchantOfferKind::Relic,
+				SlotIndex);
+			return true;
+		}
+		const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(RelicId);
+		if (!Definition || !Definition->bOfferEligible || !IsConcreteQuality(Definition->BaseQuality))
+		{
+			return SetError(OutError, TEXT("Merchant relic generation resolved an invalid catalog definition."));
+		}
+		const int32 Price = FGameXXKCardQualityRules::GetRelicPrice(Definition->BaseQuality);
+		if (Price <= 0)
+		{
+			return SetError(OutError, TEXT("Merchant relic generation resolved an invalid quality price."));
+		}
+		OutOffer = FGameXXKRouteMerchantOffer();
+		OutOffer.OfferId = MakeOfferId(
+			RootSeed,
+			SourceNodeId,
+			RefreshCount,
+			EGameXXKRouteMerchantOfferKind::Relic,
+			SlotIndex);
+		OutOffer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
+		OutOffer.ContentId = Definition->Id;
+		OutOffer.Quality = Definition->BaseQuality;
+		OutOffer.Price = Price;
+		return true;
 	}
 
 	bool FindDeployedMemberCards(
@@ -208,29 +283,108 @@ namespace
 		return true;
 	}
 
+	bool ValidateLiveRelicOffer(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKRouteMerchantOffer& Offer,
+		EGameXXKRouteMerchantPurchaseFailure& OutFailure,
+		FString& OutReason)
+	{
+		OutFailure = EGameXXKRouteMerchantPurchaseFailure::None;
+		OutReason.Reset();
+		const FGameXXKRelicDefinition* Definition =
+			FGameXXKRelicCatalog::FindDefinition(Offer.ContentId);
+		if (!Definition
+			|| !Definition->bOfferEligible
+			|| Definition->BaseQuality != Offer.Quality
+			|| !Offer.OwnerMemberId.IsNone()
+			|| Offer.NextQuality != EGameXXKCardQuality::Invalid
+			|| FGameXXKCardQualityRules::GetRelicPrice(Offer.Quality) != Offer.Price)
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+			OutReason = TEXT("The merchant relic no longer matches the approved catalog.");
+			return false;
+		}
+		const FGameXXKRelicInstance* Existing = State.CardRun.Relics.FindByPredicate(
+			[&Offer](const FGameXXKRelicInstance& Instance)
+			{
+				return Instance.RelicId == Offer.ContentId;
+			});
+		if (Existing && !Definition->bStackable)
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::DuplicateRelic;
+			OutReason = TEXT("This unique relic is already owned.");
+			return false;
+		}
+		if (State.CardRun.NextRelicAcquisitionOrdinal == MAX_int32)
+		{
+			OutFailure = EGameXXKRouteMerchantPurchaseFailure::ArithmeticOverflow;
+			OutReason = TEXT("The next relic acquisition ordinal cannot be safely incremented.");
+			return false;
+		}
+		return true;
+	}
+
+	void BuildEligibleRelicPool(
+		const FGameXXKRuntimeState& State,
+		TArray<FName>& OutPool)
+	{
+		OutPool.Reset();
+		for (const FGameXXKRelicDefinition& Definition : FGameXXKRelicCatalog::GetAllDefinitions())
+		{
+			const FGameXXKRelicInstance* Existing = State.CardRun.Relics.FindByPredicate(
+				[&Definition](const FGameXXKRelicInstance& Instance)
+				{
+					return Instance.RelicId == Definition.Id;
+				});
+			if (!Definition.Id.IsNone()
+				&& Definition.bOfferEligible
+				&& (!Existing || Definition.bStackable)
+				&& IsConcreteQuality(Definition.BaseQuality)
+				&& FGameXXKCardQualityRules::GetRelicPrice(Definition.BaseQuality) > 0)
+			{
+				OutPool.Add(Definition.Id);
+			}
+		}
+		OutPool.Sort(NameLess);
+	}
+
 	bool CanRefreshStock(
 		const FGameXXKRuntimeState& State,
 		const FGameXXKRouteMerchantState& Merchant,
 		FString* OutError)
 	{
-		int32 UnsoldSlotCount = 0;
+		int32 UnsoldCardSlotCount = 0;
+		int32 UnsoldRelicSlotCount = 0;
 		TSet<FName> PreservedSoldCardIds;
+		TSet<FName> PreservedSoldRelicIds;
 		for (const FGameXXKRouteMerchantOffer& Offer : Merchant.Offers)
 		{
 			if (Offer.bSold)
 			{
 				if (!Offer.bUnavailable && !Offer.ContentId.IsNone())
 				{
-					PreservedSoldCardIds.Add(Offer.ContentId);
+					(Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+						? PreservedSoldCardIds
+						: PreservedSoldRelicIds).Add(Offer.ContentId);
 				}
 				continue;
 			}
-			++UnsoldSlotCount;
+			if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
+			{
+				++UnsoldCardSlotCount;
+			}
+			else if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Relic)
+			{
+				++UnsoldRelicSlotCount;
+			}
 			if (!Offer.bUnavailable)
 			{
 				EGameXXKRouteMerchantPurchaseFailure Failure;
 				FString Reason;
-				if (!ValidateLiveCardOffer(State, Offer, Failure, Reason))
+				const bool bLiveValid = Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+					? ValidateLiveCardOffer(State, Offer, Failure, Reason)
+					: ValidateLiveRelicOffer(State, Offer, Failure, Reason);
+				if (!bLiveValid)
 				{
 					return SetError(OutError, FString::Printf(
 						TEXT("Merchant refresh rejected stale unsold offer %s: %s"),
@@ -239,7 +393,7 @@ namespace
 				}
 			}
 		}
-		if (UnsoldSlotCount <= 0)
+		if (UnsoldCardSlotCount <= 0 && UnsoldRelicSlotCount <= 0)
 		{
 			return SetError(OutError, TEXT("No unsold merchant slot is available to refresh."));
 		}
@@ -256,9 +410,17 @@ namespace
 		{
 			return PreservedSoldCardIds.Contains(Candidate.CardId);
 		});
-		if (Pool.IsEmpty())
+		TArray<FName> RelicPool;
+		BuildEligibleRelicPool(State, RelicPool);
+		RelicPool.RemoveAll([&PreservedSoldRelicIds](const FName RelicId)
 		{
-			return SetError(OutError, TEXT("No unsold carried-card upgrade target is available to refresh."));
+			return PreservedSoldRelicIds.Contains(RelicId);
+		});
+		const bool bCanRefreshCard = UnsoldCardSlotCount > 0 && !Pool.IsEmpty();
+		const bool bCanRefreshRelic = UnsoldRelicSlotCount > 0 && !RelicPool.IsEmpty();
+		if (!bCanRefreshCard && !bCanRefreshRelic)
+		{
+			return SetError(OutError, TEXT("No unsold card or relic target is available to refresh."));
 		}
 		return true;
 	}
@@ -276,42 +438,65 @@ namespace
 		{
 			return SetError(OutError, TEXT("Merchant stock requires a valid source node and non-negative refresh count."));
 		}
-		TArray<FGameXXKRouteMerchantRules::FDeployedCardCandidate> Pool;
-		if (!FGameXXKRouteMerchantRules::BuildEffectiveDeployedCardPool(State, Pool, OutError))
+		TArray<FGameXXKRouteMerchantRules::FDeployedCardCandidate> CardPool;
+		if (!FGameXXKRouteMerchantRules::BuildEffectiveDeployedCardPool(State, CardPool, OutError))
 		{
 			return false;
 		}
-		Pool.Sort([](const auto& Left, const auto& Right)
+		CardPool.Sort([](const auto& Left, const auto& Right)
 		{
 			return Left.CardId == Right.CardId
 				? Left.OwnerMemberId.ToString() < Right.OwnerMemberId.ToString()
 				: Left.CardId.ToString() < Right.CardId.ToString();
 		});
+		TArray<FName> RelicPool;
+		BuildEligibleRelicPool(State, RelicPool);
 
 		TSet<FName> PreservedSoldCardIds;
-		int32 UnsoldSlotCount = FGameXXKRouteMerchantRules::CardSlotCount;
+		TSet<FName> PreservedSoldRelicIds;
+		int32 UnsoldCardSlotCount = FGameXXKRouteMerchantRules::CardSlotCount;
+		int32 UnsoldRelicSlotCount = FGameXXKRouteMerchantRules::RelicSlotCount;
 		if (PreviousStock)
 		{
-			UnsoldSlotCount = 0;
-			for (const FGameXXKRouteMerchantOffer& Offer : PreviousStock->Offers)
+			UnsoldCardSlotCount = 0;
+			UnsoldRelicSlotCount = 0;
+			for (int32 Index = 0; Index < PreviousStock->Offers.Num(); ++Index)
 			{
+				const FGameXXKRouteMerchantOffer& Offer = PreviousStock->Offers[Index];
 				if (Offer.bSold && !Offer.bUnavailable && !Offer.ContentId.IsNone())
 				{
-					PreservedSoldCardIds.Add(Offer.ContentId);
+					if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
+					{
+						PreservedSoldCardIds.Add(Offer.ContentId);
+					}
+					else if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Relic)
+					{
+						PreservedSoldRelicIds.Add(Offer.ContentId);
+					}
 				}
-				else
+				else if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
 				{
-					++UnsoldSlotCount;
+					++UnsoldCardSlotCount;
+				}
+				else if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Relic)
+				{
+					++UnsoldRelicSlotCount;
 				}
 			}
-			Pool.RemoveAll([&PreservedSoldCardIds](const auto& Candidate)
+			CardPool.RemoveAll([&PreservedSoldCardIds](const auto& Candidate)
 			{
 				return PreservedSoldCardIds.Contains(Candidate.CardId);
 			});
+			RelicPool.RemoveAll([&PreservedSoldRelicIds](const FName RelicId)
+			{
+				return PreservedSoldRelicIds.Contains(RelicId);
+			});
 		}
-		if (bRequireRerollCandidate && (UnsoldSlotCount <= 0 || Pool.IsEmpty()))
+		const bool bCanRerollCard = UnsoldCardSlotCount > 0 && !CardPool.IsEmpty();
+		const bool bCanRerollRelic = UnsoldRelicSlotCount > 0 && !RelicPool.IsEmpty();
+		if (bRequireRerollCandidate && !bCanRerollCard && !bCanRerollRelic)
 		{
-			return SetError(OutError, TEXT("No unsold carried-card upgrade target is available to refresh."));
+			return SetError(OutError, TEXT("No unsold card or relic target is available to refresh."));
 		}
 
 		const int32 RootSeed = State.CardRun.RouteProgress.RootSeed;
@@ -320,25 +505,27 @@ namespace
 		Candidate.SourceNodeId = SourceNodeId;
 		Candidate.OfferSeed = DerivePersistedStockSeed(RootSeed, SourceNodeId, RefreshCount);
 		Candidate.RefreshCount = RefreshCount;
-		Candidate.Offers.Reserve(FGameXXKRouteMerchantRules::CardSlotCount);
+		Candidate.Offers.Reserve(FGameXXKRouteMerchantRules::TotalSlotCount);
 		for (int32 SlotIndex = 0; SlotIndex < FGameXXKRouteMerchantRules::CardSlotCount; ++SlotIndex)
 		{
 			if (PreviousStock && PreviousStock->Offers.IsValidIndex(SlotIndex)
+				&& PreviousStock->Offers[SlotIndex].Kind == EGameXXKRouteMerchantOfferKind::Card
 				&& PreviousStock->Offers[SlotIndex].bSold)
 			{
 				FGameXXKRouteMerchantOffer Sold = PreviousStock->Offers[SlotIndex];
-				Sold.OfferId = MakeOfferId(RootSeed, SourceNodeId, RefreshCount, SlotIndex);
+				Sold.OfferId = MakeOfferId(
+					RootSeed, SourceNodeId, RefreshCount, EGameXXKRouteMerchantOfferKind::Card, SlotIndex);
 				Candidate.Offers.Add(MoveTemp(Sold));
 				continue;
 			}
 			FGameXXKRouteMerchantOffer Offer = MakeUnavailableOffer(
-				RootSeed, SourceNodeId, RefreshCount, SlotIndex);
-			if (!Pool.IsEmpty())
+				RootSeed, SourceNodeId, RefreshCount, EGameXXKRouteMerchantOfferKind::Card, SlotIndex);
+			if (!CardPool.IsEmpty())
 			{
 				const int32 PickIndex = static_cast<int32>(
-					NextRandom(RandomState) % static_cast<uint32>(Pool.Num()));
-				const FGameXXKRouteMerchantRules::FDeployedCardCandidate Picked = Pool[PickIndex];
-				Pool.RemoveAt(PickIndex);
+					NextRandom(RandomState) % static_cast<uint32>(CardPool.Num()));
+				const FGameXXKRouteMerchantRules::FDeployedCardCandidate Picked = CardPool[PickIndex];
+				CardPool.RemoveAt(PickIndex);
 				Offer.bUnavailable = false;
 				Offer.ContentId = Picked.CardId;
 				Offer.OwnerMemberId = Picked.OwnerMemberId;
@@ -348,9 +535,47 @@ namespace
 			}
 			Candidate.Offers.Add(MoveTemp(Offer));
 		}
-		if (Candidate.Offers.Num() != FGameXXKRouteMerchantRules::CardSlotCount)
+		TSet<FName> SelectedRelicIds;
+		for (int32 RelicIndex = 0; RelicIndex < FGameXXKRouteMerchantRules::RelicSlotCount; ++RelicIndex)
 		{
-			return SetError(OutError, TEXT("Merchant stock generation did not produce all four card slots."));
+			const int32 GlobalIndex = FGameXXKRouteMerchantRules::CardSlotCount + RelicIndex;
+			if (PreviousStock && PreviousStock->Offers.IsValidIndex(GlobalIndex)
+				&& PreviousStock->Offers[GlobalIndex].Kind == EGameXXKRouteMerchantOfferKind::Relic
+				&& PreviousStock->Offers[GlobalIndex].bSold)
+			{
+				FGameXXKRouteMerchantOffer Sold = PreviousStock->Offers[GlobalIndex];
+				Sold.OfferId = MakeOfferId(
+					RootSeed, SourceNodeId, RefreshCount, EGameXXKRouteMerchantOfferKind::Relic, RelicIndex);
+				Candidate.Offers.Add(MoveTemp(Sold));
+				continue;
+			}
+			FName RelicId = NAME_None;
+			if (!RelicPool.IsEmpty())
+			{
+				TArray<FName> LegalRelics = RelicPool.FilterByPredicate(
+					[&SelectedRelicIds](const FName CandidateId)
+					{
+						return !SelectedRelicIds.Contains(CandidateId);
+					});
+				if (!LegalRelics.IsEmpty())
+				{
+					const int32 PickIndex = static_cast<int32>(
+						NextRandom(RandomState) % static_cast<uint32>(LegalRelics.Num()));
+					RelicId = LegalRelics[PickIndex];
+					SelectedRelicIds.Add(RelicId);
+				}
+			}
+			FGameXXKRouteMerchantOffer Offer;
+			if (!BuildRelicOffer(
+					RootSeed, SourceNodeId, RefreshCount, RelicIndex, RelicId, Offer, OutError))
+			{
+				return false;
+			}
+			Candidate.Offers.Add(MoveTemp(Offer));
+		}
+		if (Candidate.Offers.Num() != FGameXXKRouteMerchantRules::TotalSlotCount)
+		{
+			return SetError(OutError, TEXT("Merchant stock generation did not produce four cards and four relics."));
 		}
 		OutMerchant = MoveTemp(Candidate);
 		return true;
@@ -365,11 +590,9 @@ namespace
 		{
 			return true;
 		}
-		if (IsLegacyRelicSnapshot(Merchant))
+		if (IsLegacySnapshot(Merchant))
 		{
-			// Pre-four-card saves could persist an in-progress replacement picker. It was
-			// transient UI state, so validate only the durable legacy stock identity here;
-			// EnsureStock regenerates the card snapshot and clears the pending payload.
+			// Four-offer card-only and relic-only snapshots are migrated on open.
 			if (Merchant.SourceNodeId < 0
 				|| Merchant.RefreshCount < 0
 				|| Merchant.OfferSeed != DerivePersistedStockSeed(
@@ -377,25 +600,37 @@ namespace
 					Merchant.SourceNodeId,
 					Merchant.RefreshCount))
 			{
-				return SetError(OutError, TEXT("The legacy relic merchant snapshot has invalid persisted metadata."));
+				return SetError(OutError, TEXT("The legacy four-offer merchant snapshot has invalid persisted metadata."));
 			}
 			return true;
 		}
 		if (Merchant.SourceNodeId < 0 || Merchant.RefreshCount < 0
 			|| Merchant.OfferSeed != DerivePersistedStockSeed(
 				State.CardRun.RouteProgress.RootSeed, Merchant.SourceNodeId, Merchant.RefreshCount)
-			|| Merchant.Offers.Num() != FGameXXKRouteMerchantRules::CardSlotCount)
+			|| Merchant.Offers.Num() != FGameXXKRouteMerchantRules::TotalSlotCount)
 		{
 			return SetError(OutError, TEXT("The saved merchant stock metadata is incomplete or does not match its derived identity."));
 		}
 		TSet<FName> SeenOfferIds;
 		TSet<FName> SeenCardIds;
+		TSet<FName> SeenRelicIds;
 		for (int32 Index = 0; Index < Merchant.Offers.Num(); ++Index)
 		{
 			const FGameXXKRouteMerchantOffer& Offer = Merchant.Offers[Index];
-			if (Offer.Kind != EGameXXKRouteMerchantOfferKind::Card
+			const bool bCardSlot = Index < FGameXXKRouteMerchantRules::CardSlotCount;
+			const EGameXXKRouteMerchantOfferKind ExpectedKind = bCardSlot
+				? EGameXXKRouteMerchantOfferKind::Card
+				: EGameXXKRouteMerchantOfferKind::Relic;
+			const int32 LocalIndex = bCardSlot
+				? Index
+				: Index - FGameXXKRouteMerchantRules::CardSlotCount;
+			if (Offer.Kind != ExpectedKind
 				|| Offer.OfferId != MakeOfferId(
-					State.CardRun.RouteProgress.RootSeed, Merchant.SourceNodeId, Merchant.RefreshCount, Index)
+					State.CardRun.RouteProgress.RootSeed,
+					Merchant.SourceNodeId,
+					Merchant.RefreshCount,
+					ExpectedKind,
+					LocalIndex)
 				|| Offer.OfferId.IsNone() || SeenOfferIds.Contains(Offer.OfferId))
 			{
 				return SetError(OutError, TEXT("The saved merchant stock contains an invalid or duplicate slot identity."));
@@ -412,20 +647,37 @@ namespace
 				}
 				continue;
 			}
-			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Offer.ContentId);
-			if (Offer.ContentId.IsNone() || Offer.OwnerMemberId.IsNone() || !Definition
-				|| !IsConcreteQuality(Offer.Quality) || Offer.Quality >= EGameXXKCardQuality::Epic
-				|| Offer.NextQuality != FGameXXKCardBattleAdapter::GetNextCardQuality(Offer.Quality)
-				|| FGameXXKCardQualityRules::GetCardPrice(Offer.NextQuality) != Offer.Price
-				|| SeenCardIds.Contains(Offer.ContentId))
+			if (bCardSlot)
 			{
-				return SetError(OutError, TEXT("A saved merchant card offer violates definition, owner, quality, price, or uniqueness rules."));
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Offer.ContentId);
+				if (Offer.ContentId.IsNone() || Offer.OwnerMemberId.IsNone() || !Definition
+					|| !IsConcreteQuality(Offer.Quality) || Offer.Quality >= EGameXXKCardQuality::Epic
+					|| Offer.NextQuality != FGameXXKCardBattleAdapter::GetNextCardQuality(Offer.Quality)
+					|| FGameXXKCardQualityRules::GetCardPrice(Offer.NextQuality) != Offer.Price
+					|| SeenCardIds.Contains(Offer.ContentId))
+				{
+					return SetError(OutError, TEXT("A saved merchant card offer violates definition, owner, quality, price, or uniqueness rules."));
+				}
+				SeenCardIds.Add(Offer.ContentId);
 			}
-			SeenCardIds.Add(Offer.ContentId);
+			else
+			{
+				const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(Offer.ContentId);
+				if (Offer.ContentId.IsNone() || !Offer.OwnerMemberId.IsNone() || !Definition
+					|| !Definition->bOfferEligible
+					|| Definition->BaseQuality != Offer.Quality
+					|| Offer.NextQuality != EGameXXKCardQuality::Invalid
+					|| FGameXXKCardQualityRules::GetRelicPrice(Offer.Quality) != Offer.Price
+					|| SeenRelicIds.Contains(Offer.ContentId))
+				{
+					return SetError(OutError, TEXT("A saved merchant relic offer violates definition, quality, price, or uniqueness rules."));
+				}
+				SeenRelicIds.Add(Offer.ContentId);
+			}
 		}
 		if (!IsPendingPurchaseEmpty(Merchant.PendingPurchase))
 		{
-			return SetError(OutError, TEXT("Carried-card upgrades never persist a replacement transaction."));
+			return SetError(OutError, TEXT("Merchant purchases never persist a replacement transaction."));
 		}
 		return true;
 	}
@@ -471,7 +723,7 @@ namespace
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InvalidRouteContext, ValidationError, OutError);
 		}
 		if (!ValidateStoredStock(State, State.CardRun.RouteMerchant, &ValidationError)
-			|| IsLegacyRelicSnapshot(State.CardRun.RouteMerchant))
+			|| IsLegacySnapshot(State.CardRun.RouteMerchant))
 		{
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock,
 				ValidationError.IsEmpty() ? TEXT("Legacy merchant stock must normalize before purchase.") : ValidationError, OutError);
@@ -490,36 +742,46 @@ namespace
 		if (Offer->bUnavailable)
 		{
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::OfferUnavailable,
-				TEXT("No upgradable carried card is available for this slot."), OutError);
+				Offer->Kind == EGameXXKRouteMerchantOfferKind::Card
+					? TEXT("No upgradable carried card is available for this slot.")
+					: TEXT("No purchasable relic is available for this slot."), OutError);
 		}
 		if (Offer->bSold)
 		{
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::OfferAlreadySold,
 				TEXT("This merchant offer was already sold."), OutError);
 		}
-		if (Offer->Kind != EGameXXKRouteMerchantOfferKind::Card)
-		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock,
-				TEXT("Route merchants only stock carried-card upgrades."), OutError);
-		}
 		if (!ReplacementEntryId.IsNone())
 		{
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InvalidReplacementEntryId,
-				TEXT("Carried-card upgrades never accept a replacement EntryId."), OutError);
+				TEXT("Merchant card and relic purchases never accept a replacement EntryId."), OutError);
 		}
 		if (State.PlayerGold < Offer->Price)
 		{
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold,
 				FString::Printf(TEXT("Ordinary gold is short by %d."), Offer->Price - State.PlayerGold), OutError);
 		}
-		EGameXXKRouteMerchantPurchaseFailure LiveFailure;
-		FString LiveReason;
-		if (!ValidateLiveCardOffer(State, *Offer, LiveFailure, LiveReason))
+		EGameXXKRouteMerchantPurchaseFailure LiveFailure =
+			EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+		FString LiveReason(TEXT("The merchant offer has an unknown kind."));
+		const bool bLiveValid = Offer->Kind == EGameXXKRouteMerchantOfferKind::Card
+			? ValidateLiveCardOffer(State, *Offer, LiveFailure, LiveReason)
+			: Offer->Kind == EGameXXKRouteMerchantOfferKind::Relic
+				? ValidateLiveRelicOffer(State, *Offer, LiveFailure, LiveReason)
+				: false;
+		if (!bLiveValid)
 		{
+			if (Offer->Kind != EGameXXKRouteMerchantOfferKind::Card
+				&& Offer->Kind != EGameXXKRouteMerchantOfferKind::Relic)
+			{
+				LiveFailure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+			}
 			return SetPurchaseFailure(OutPreview, LiveFailure, LiveReason, OutError);
 		}
 		OutPreview.BalanceAfter = State.PlayerGold - Offer->Price;
-		OutPreview.FinalQuality = Offer->NextQuality;
+		OutPreview.FinalQuality = Offer->Kind == EGameXXKRouteMerchantOfferKind::Card
+			? Offer->NextQuality
+			: Offer->Quality;
 		OutPreview.bCanPurchase = true;
 		return true;
 	}
@@ -533,7 +795,9 @@ namespace
 		OutResult.bRequiresReplacement = false;
 		OutResult.Offer = Preview.Offer;
 		OutResult.OfferId = Preview.Offer.OfferId;
-		OutResult.CardId = Preview.Offer.ContentId;
+		OutResult.CardId = Preview.Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+			? Preview.Offer.ContentId
+			: NAME_None;
 		OutResult.BalanceBefore = Preview.BalanceBefore;
 		OutResult.BalanceAfter = Preview.BalanceAfter;
 		OutResult.Price = Preview.Price;
@@ -621,12 +885,12 @@ bool FGameXXKRouteMerchantRules::EnsureStock(FGameXXKRuntimeState& InOutState, F
 	const FGameXXKRouteMapNode* MerchantNode = nullptr;
 	if (!ValidateRouteContext(InOutState, MerchantNode, OutError)) { return false; }
 	const FGameXXKRouteMerchantState& Existing = InOutState.CardRun.RouteMerchant;
-	if (IsLegacyRelicSnapshot(Existing)
+	if (IsLegacySnapshot(Existing)
 		&& !ValidateSavedStockCore(InOutState, Existing, OutError))
 	{
 		return false;
 	}
-	if (Existing.SourceNodeId == MerchantNode->NodeId && !IsLegacyRelicSnapshot(Existing))
+	if (Existing.SourceNodeId == MerchantNode->NodeId && !IsLegacySnapshot(Existing))
 	{
 		return ValidateStoredStock(InOutState, Existing, OutError);
 	}
@@ -634,14 +898,18 @@ bool FGameXXKRouteMerchantRules::EnsureStock(FGameXXKRuntimeState& InOutState, F
 	{
 		return SetError(OutError, TEXT("The empty merchant snapshot contains partial persisted metadata."));
 	}
-	if (Existing.PendingPurchase.bActive && !IsLegacyRelicSnapshot(Existing))
+	if (Existing.PendingPurchase.bActive && !IsLegacySnapshot(Existing))
 	{
 		return SetError(OutError, TEXT("A pending merchant purchase prevents opening a different merchant node."));
 	}
 	const int32 RefreshCount = Existing.SourceNodeId == MerchantNode->NodeId
 		? FMath::Max(0, Existing.RefreshCount) : 0;
+	const FGameXXKRouteMerchantState* LegacyCardStock =
+		Existing.SourceNodeId == MerchantNode->NodeId && IsLegacyCardOnlySnapshot(Existing)
+			? &Existing
+			: nullptr;
 	FGameXXKRouteMerchantState Generated;
-	if (!GenerateStock(InOutState, MerchantNode->NodeId, RefreshCount, nullptr, false, Generated, OutError))
+	if (!GenerateStock(InOutState, MerchantNode->NodeId, RefreshCount, LegacyCardStock, false, Generated, OutError))
 	{
 		return false;
 	}
@@ -674,7 +942,7 @@ bool FGameXXKRouteMerchantRules::GetView(
 	const FGameXXKRouteMapNode* MerchantNode = nullptr;
 	if (!ValidateRouteContext(State, MerchantNode, OutError)
 		|| !ValidateStoredStock(State, State.CardRun.RouteMerchant, OutError)
-		|| IsLegacyRelicSnapshot(State.CardRun.RouteMerchant))
+		|| IsLegacySnapshot(State.CardRun.RouteMerchant))
 	{
 		return false;
 	}
@@ -700,7 +968,7 @@ bool FGameXXKRouteMerchantRules::GetView(
 	else if (!bRefreshEligible)
 	{
 		OutView.RefreshDisabledReason = RefreshEligibilityError.IsEmpty()
-			? TEXT("没有可刷新的卡牌")
+			? TEXT("没有可刷新的商品")
 			: RefreshEligibilityError;
 	}
 	else if (!OutView.bRefreshAffordable)
@@ -720,10 +988,17 @@ bool FGameXXKRouteMerchantRules::GetView(
 		if (!Offer.bUnavailable && !Offer.bSold)
 		{
 			EGameXXKRouteMerchantPurchaseFailure LiveFailure;
-			bLiveValid = ValidateLiveCardOffer(State, Offer, LiveFailure, LiveDisabledReason);
+			bLiveValid = Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+				? ValidateLiveCardOffer(State, Offer, LiveFailure, LiveDisabledReason)
+				: ValidateLiveRelicOffer(State, Offer, LiveFailure, LiveDisabledReason);
 		}
 		OfferView.bPurchaseEnabled = OfferView.bAffordable && !Offer.bSold && bLiveValid;
-		if (Offer.bUnavailable) { OfferView.DisabledReason = TEXT("没有可强化卡牌"); }
+		if (Offer.bUnavailable)
+		{
+			OfferView.DisabledReason = Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+				? TEXT("没有可强化卡牌")
+				: TEXT("没有可购买遗物");
+		}
 		else if (Offer.bSold) { OfferView.DisabledReason = TEXT("已售"); }
 		else if (!bLiveValid) { OfferView.DisabledReason = MoveTemp(LiveDisabledReason); }
 		else if (!OfferView.bAffordable)
@@ -731,7 +1006,14 @@ bool FGameXXKRouteMerchantRules::GetView(
 			OfferView.DisabledReason = FString::Printf(
 				TEXT("金币不足，还差%d"), FMath::Max(0, Offer.Price - State.PlayerGold));
 		}
-		OutView.CardOffers.Add(MoveTemp(OfferView));
+		if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
+		{
+			OutView.CardOffers.Add(MoveTemp(OfferView));
+		}
+		else
+		{
+			OutView.RelicOffers.Add(MoveTemp(OfferView));
+		}
 	}
 	return OutView.CardOffers.Num() == CardSlotCount && OutView.RelicOffers.Num() == RelicSlotCount;
 }
@@ -822,13 +1104,36 @@ bool FGameXXKRouteMerchantRules::Purchase(
 		OutResult.FailureReason = TEXT("The candidate merchant offer changed before commit.");
 		return false;
 	}
+	if (CandidateOffer->Kind == EGameXXKRouteMerchantOfferKind::Card)
+	{
+		Candidate.CardRun.UpgradedCardQualities.Add(
+			CandidateOffer->ContentId,
+			CandidateOffer->NextQuality);
+	}
+	else if (CandidateOffer->Kind == EGameXXKRouteMerchantOfferKind::Relic)
+	{
+		FString RelicError;
+		if (!FGameXXKRelicRules::AcquireRelic(Candidate, CandidateOffer->ContentId, &RelicError))
+		{
+			OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::RelicAcquisitionRejected;
+			OutResult.FailureReason = RelicError.IsEmpty()
+				? TEXT("The relic acquisition was rejected.")
+				: RelicError;
+			return false;
+		}
+	}
+	else
+	{
+		OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+		OutResult.FailureReason = TEXT("The merchant offer has an unknown kind.");
+		return false;
+	}
 	Candidate.PlayerGold -= CandidateOffer->Price;
-	Candidate.CardRun.UpgradedCardQualities.Add(CandidateOffer->ContentId, CandidateOffer->NextQuality);
 	CandidateOffer->bSold = true;
 	Candidate.CardRun.RouteMerchant.PendingPurchase = FGameXXKPendingRouteMerchantPurchase();
 	OutResult.bPurchased = true;
 	OutResult.BalanceAfter = Candidate.PlayerGold;
-	OutResult.FinalQuality = CandidateOffer->NextQuality;
+	OutResult.FinalQuality = CommitPreview.FinalQuality;
 	OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::None;
 	OutResult.FailureReason.Reset();
 	InOutState = MoveTemp(Candidate);

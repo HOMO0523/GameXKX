@@ -6,6 +6,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRouteMerchantTypes.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -71,13 +72,15 @@ bool FGameXXKRouteMerchantFacadeEntryAndTransactionTest::RunTest(const FString& 
 	TestTrue(TEXT("selecting a reachable merchant enters atomically"), UGameXXKMVPRules::SelectRouteNodeById(State, 10));
 	TestEqual(TEXT("merchant selection opens the dedicated screen"), State.Screen, EGameXXKScreen::RouteMerchant);
 	TestEqual(TEXT("merchant selection records the pending node"), State.PendingRouteNodeId, 10);
-	TestEqual(TEXT("merchant selection materializes all four stable slots"), State.CardRun.RouteMerchant.Offers.Num(), 4);
+	TestEqual(TEXT("merchant selection materializes all eight stable slots"),
+		State.CardRun.RouteMerchant.Offers.Num(),
+		FGameXXKRouteMerchantRules::TotalSlotCount);
 
 	FGameXXKRouteMerchantView View;
 	FString Error;
 	TestTrue(TEXT("rules facade exposes the persisted merchant view"), UGameXXKMVPRules::GetRouteMerchantView(State, View, &Error));
 	TestEqual(TEXT("view exposes four card slots"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("view exposes zero relic slots"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("view exposes four relic slots"), View.RelicOffers.Num(), 4);
 	TestEqual(TEXT("view exposes ordinary gold"), View.PlayerGold, PermanentGoldBefore);
 	TestEqual(TEXT("first refresh costs twenty"), View.RefreshCost, 20);
 
@@ -163,7 +166,7 @@ bool FGameXXKRouteMerchantSubsystemFacadeTest::RunTest(const FString& Parameters
 	FString Error;
 	TestTrue(TEXT("subsystem exposes merchant view"), Subsystem->GetRouteMerchantView(View, &Error));
 	TestEqual(TEXT("subsystem view has four card offers"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("subsystem view has zero relic offers"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("subsystem view has four relic offers"), View.RelicOffers.Num(), 4);
 	TestTrue(TEXT("subsystem refresh wrapper succeeds"), Subsystem->RefreshRouteMerchant(&Error));
 	TestEqual(TEXT("subsystem refresh is visible on next view"), Subsystem->GetRuntimeState().CardRun.RouteMerchant.RefreshCount, 1);
 	return true;
@@ -179,6 +182,7 @@ bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FStrin
 	using namespace GameXXKRouteMerchantFacadeTest;
 	FGameXXKRuntimeState Legacy = MakeRouteMapMerchantFixture();
 	TestTrue(TEXT("legacy first-view fixture enters merchant"), UGameXXKMVPRules::SelectRouteNodeById(Legacy, 10));
+	Legacy.CardRun.RouteMerchant.Offers.SetNum(4);
 	for (FGameXXKRouteMerchantOffer& Offer : Legacy.CardRun.RouteMerchant.Offers)
 	{
 		Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
@@ -199,8 +203,9 @@ bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FStrin
 	TestTrue(TEXT("first subsystem view normalizes legacy stock without an explicit Ensure call"),
 		Subsystem->GetRouteMerchantView(View, &Error));
 	TestTrue(TEXT("first subsystem view reports no normalization error"), Error.IsEmpty());
-	TestEqual(TEXT("normalized runtime has exactly four offers"),
-		Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers.Num(), 4);
+	TestEqual(TEXT("normalized runtime has exactly eight offers"),
+		Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers.Num(),
+		FGameXXKRouteMerchantRules::TotalSlotCount);
 	int32 NormalizedCardCount = 0;
 	for (const FGameXXKRouteMerchantOffer& Offer : Subsystem->GetRuntimeState().CardRun.RouteMerchant.Offers)
 	{
@@ -209,7 +214,7 @@ bool FGameXXKRouteMerchantLegacyFirstViewNormalizationTest::RunTest(const FStrin
 	TestEqual(TEXT("normalized runtime has exactly four card offers"),
 		NormalizedCardCount, 4);
 	TestEqual(TEXT("normalized first view has four card offers"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("normalized first view has no relic offers"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("normalized first view has four relic offers"), View.RelicOffers.Num(), 4);
 	TestFalse(TEXT("first facade view discards the legacy active pending flag"),
 		Subsystem->GetRuntimeState().CardRun.RouteMerchant.PendingPurchase.bActive);
 	TestTrue(TEXT("normalized facade stock can refresh"), Subsystem->RefreshRouteMerchant(&Error));

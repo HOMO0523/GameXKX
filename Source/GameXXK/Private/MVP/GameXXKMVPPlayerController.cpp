@@ -2259,10 +2259,42 @@ bool AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapName(
 	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(MapPackageName);
 }
 
+bool AGameXXKMVPPlayerController::ShouldRefreshExistingDesktopOverlayAttachment(
+	const bool bOverlayWindowValid,
+	const bool bCompositionActive,
+	const bool bWorkbenchValid)
+{
+	return bOverlayWindowValid && bCompositionActive && bWorkbenchValid;
+}
+
 bool AGameXXKMVPPlayerController::EnsureDesktopTrainingOverlayWindow()
 {
 	if (DesktopTrainingOverlayWindow.IsValid())
 	{
+		if (!ShouldRefreshExistingDesktopOverlayAttachment(
+			true,
+			bDesktopTrainingOverlayCompositionActive,
+			DesktopTrainingWorkbenchWidget != nullptr))
+		{
+			return false;
+		}
+#if PLATFORM_WINDOWS
+		const TSharedPtr<FGenericWindow> NativeWindow =
+			DesktopTrainingOverlayWindow->GetNativeWindow();
+		void* NativeWindowHandle = NativeWindow.IsValid()
+			? NativeWindow->GetOSWindowHandle()
+			: nullptr;
+		if (!DesktopTrainingWorkbenchWidget->AttachDesktopNativeWindowForPresentation(
+				NativeWindowHandle))
+		{
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("Desktop overlay reuse failed to restore native workbench attachment: handle=%p"),
+				NativeWindowHandle);
+			return false;
+		}
+#endif
 		return bDesktopTrainingOverlayCompositionActive;
 	}
 	if (!ShouldUseDesktopTrainingOverlayWindow() || !DesktopTrainingWorkbenchWidget)

@@ -100,6 +100,9 @@ def _travel_runtime_snapshot(widget):
                 }
             )
         return {
+            "phase": str(getattr(runtime, "phase", "")),
+            "walk_step": int(getattr(runtime, "walk_step", -1)),
+            "walk_steps_required": int(getattr(runtime, "walk_steps_required", -1)),
             "encounter_index": int(getattr(runtime, "encounter_index", -1)),
             "active_enemy_index": int(getattr(runtime, "active_enemy_index", -1)),
             "enemies": enemies,
@@ -122,13 +125,39 @@ def _snapshot(phase, *, extra=None):
 
     subsystem = _call(widget, "get_mvp_subsystem")
     runtime_state = _call(subsystem, "get_runtime_state_copy")
+    training = getattr(runtime_state, "training", None)
     payload = {
         "ok": True,
         "phase": phase,
         "world": str(_call(world, "get_name") or ""),
         "controller": str(_call(controller, "get_name") or ""),
         "runtime_screen": str(getattr(runtime_state, "screen", "")),
+        "pending_route_node_id": int(
+            getattr(runtime_state, "pending_route_node_id", -1)
+        ),
         "runtime_quest_state": str(getattr(runtime_state, "quest_state", "")),
+        "travel_active": bool(getattr(training, "travel_active", False)),
+        "travel_paused_at_defeat": bool(
+            getattr(training, "travel_paused_at_defeat", False)
+        ),
+        "active_travel_encounter_index": int(
+            getattr(training, "active_travel_encounter_index", -1)
+        ),
+        "normal_chest_cooldown": int(
+            getattr(training, "travel_normal_chest_cooldown_remaining_seconds", -1)
+        ),
+        "advanced_chest_cooldown": int(
+            getattr(training, "travel_advanced_chest_cooldown_remaining_seconds", -1)
+        ),
+        "pending_normal_chests": int(
+            getattr(training, "pending_travel_normal_chest_count", -1)
+        ),
+        "pending_advanced_chests": int(
+            getattr(training, "pending_travel_advanced_chest_count", -1)
+        ),
+        "travel_last_updated_unix_seconds": int(
+            getattr(training, "travel_last_updated_unix_seconds", -1)
+        ),
         "training_challenge_battle_active": bool(
             _call(subsystem, "is_training_challenge_battle_active")
         ),

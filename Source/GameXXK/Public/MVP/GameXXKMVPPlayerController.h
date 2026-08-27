@@ -310,6 +310,16 @@ public:
 		bool bOverlayAttached);
 	static bool ShouldAttemptDesktopOverlayAfterFailureForTest(
 		bool bOverlayFailedForSession);
+	static bool ShouldRefreshExistingDesktopOverlayAttachmentForTest(
+		bool bOverlayWindowValid,
+		bool bCompositionActive,
+		bool bWorkbenchValid)
+	{
+		return ShouldRefreshExistingDesktopOverlayAttachment(
+			bOverlayWindowValid,
+			bCompositionActive,
+			bWorkbenchValid);
+	}
 	static bool ShouldUseDesktopWindowForMapNameForTest(const FString& MapPackageName);
 	static bool ShouldBeginDesktopTownMapTravelForTest(
 		bool bAlreadyPending,
@@ -356,6 +366,10 @@ private:
 		bool bEditorMode,
 		bool bGameCommandLine);
 	static bool ShouldUseDesktopWindowForMapName(const FString& MapPackageName);
+	static bool ShouldRefreshExistingDesktopOverlayAttachment(
+		bool bOverlayWindowValid,
+		bool bCompositionActive,
+		bool bWorkbenchValid);
 	static TSharedRef<SWindow> BuildDesktopTrainingOverlayWindow(
 		const FVector2D& HostPosition,
 		const FVector2D& HostSize,

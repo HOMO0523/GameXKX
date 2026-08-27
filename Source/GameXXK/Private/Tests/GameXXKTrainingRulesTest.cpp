@@ -901,9 +901,11 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("challenge route map uses the generated multi-node map"),
 		Subsystem->GetRuntimeState().RouteMapNodes.Num() > 1);
-	TestTrue(TEXT("the generated Start node is reachable first"),
+	TestTrue(TEXT("the generated Start camp is already visited"),
+		Subsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(0));
+	TestFalse(TEXT("the generated Start camp is not clickable"),
 		Subsystem->GetRuntimeState().ReachableRouteNodeIds.Contains(0));
-	TestTrue(TEXT("selecting the generated Start node advances the map"),
+	TestFalse(TEXT("selecting the occupied Start camp is rejected"),
 		Subsystem->SelectRouteNodeById(0));
 	const FGameXXKRuntimeState& MapState = Subsystem->GetRuntimeState();
 	int32 BattleNodeId = INDEX_NONE;
@@ -970,8 +972,8 @@ bool FGameXXKTrainingDirectBattleLoopSettlementTest::RunTest(const FString& Para
 	}
 	TestTrue(TEXT("starting a challenge opens the route map"),
 		Subsystem->IsTrainingChallengeRouteMapActive());
-	TestTrue(TEXT("the player selects the generated Start node"),
-		Subsystem->SelectRouteNodeById(0));
+	TestTrue(TEXT("the generated Start camp is already visited"),
+		Subsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(0));
 
 	const auto FindReachableNode = [&](const EGameXXKNodeKind Kind, int32& OutNodeId)
 	{
@@ -1076,10 +1078,12 @@ bool FGameXXKTrainingDirectBattleLoopSettlementTest::RunTest(const FString& Para
 	TestTrue(TEXT("the player selects the Boss node"),
 		Subsystem->SelectRouteNodeById(BossNodeId));
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
-	TestTrue(TEXT("Boss victory opens the standard Boss reward offer"),
+	TestTrue(TEXT("Boss victory applies the terminal cleared-route settlement"),
 		Subsystem->AdvanceTrainingChallengeEncounter(bStageCompleted, Reward));
-	TestTrue(TEXT("choosing the Boss reward finishes the challenge"),
-		Subsystem->ResolvePendingBattleRewardChoiceAndFinish(0, NAME_None, &RewardError));
+	TestTrue(TEXT("Boss victory skips the ordinary three-choice reward"),
+		Subsystem->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
+	TestTrue(TEXT("Boss victory completes the stage in the terminal mutation"),
+		bStageCompleted);
 	TestFalse(TEXT("Boss victory closes the challenge state"),
 		Subsystem->GetRuntimeState().Training.bChallengeActive);
 	TestTrue(TEXT("Boss victory clears the selected stage"),
@@ -1167,8 +1171,8 @@ bool FGameXXKTrainingChallengePendingChoiceAutoBattleTest::RunTest(const FString
 
 	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	TestTrue(TEXT("pending-choice challenge fixture starts an unlocked stage"), Subsystem->StartTrainingChallenge(StageTwo));
-	TestTrue(TEXT("pending-choice fixture selects the generated Start node"),
-		Subsystem->SelectRouteNodeById(0));
+	TestTrue(TEXT("pending-choice fixture starts after the occupied camp marker"),
+		Subsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(0));
 	const FGameXXKRuntimeState& MapState = Subsystem->GetRuntimeState();
 	int32 BattleNodeId = INDEX_NONE;
 	for (const int32 NodeId : MapState.ReachableRouteNodeIds)

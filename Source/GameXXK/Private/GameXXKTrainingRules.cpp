@@ -624,6 +624,34 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 		return;
 	}
 
+	// The bottom campfire is the player's current camp, not a selectable reward
+	// room.  Training challenges therefore begin with Start already visited and
+	// expose its outgoing rooms immediately.  The marker remains in the graph so
+	// the route map can render the point of origin, but it can never dispatch.
+	const FGameXXKRouteMapNode* StartNode = State.RouteMapNodes.FindByPredicate(
+		[](const FGameXXKRouteMapNode& Node)
+		{
+			return Node.NodeKind == EGameXXKNodeKind::Start;
+		});
+	if (!StartNode || StartNode->OutgoingNodeIds.IsEmpty())
+	{
+		State.bHasGeneratedRouteMap = false;
+		State.RouteMapNodes.Reset();
+		State.RouteMapEdges.Reset();
+		State.VisitedRouteNodeIds.Reset();
+		State.ReachableRouteNodeIds.Reset();
+		return;
+	}
+	State.VisitedRouteNodeIds = {StartNode->NodeId};
+	State.ReachableRouteNodeIds.Reset();
+	for (const int32 OutgoingNodeId : StartNode->OutgoingNodeIds)
+	{
+		State.ReachableRouteNodeIds.AddUnique(OutgoingNodeId);
+	}
+	State.CurrentRouteNodeId = State.ReachableRouteNodeIds[0];
+	State.PendingRouteNodeId = INDEX_NONE;
+	State.DungeonNodeIndex = State.VisitedRouteNodeIds.Num();
+
 	// Authored challenge sequence is [0 N, 1 N, 2 E0, 3 N, 4 E1, 5 N, 6 B].
 	// Generated battle-kind nodes consume those encounters in map order and
 	// cycle when the generated map offers more nodes than the authored pool.

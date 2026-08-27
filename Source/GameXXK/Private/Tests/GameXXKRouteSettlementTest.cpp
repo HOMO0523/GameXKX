@@ -330,6 +330,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKRouteSettlementExitToDesktopTransactionTest::RunTest(const FString& Parameters)
 {
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	TestTrue(TEXT("settlement-exit fixture initializes the independent Travel runner"),
+		Subsystem->StartGame());
 	FGameXXKRuntimeState ActiveRoute;
 	if (!TestTrue(TEXT("settlement-exit fixture enters an active generated route"), StartAcceptedThreeChapterRoute(ActiveRoute)))
 	{
@@ -340,7 +342,9 @@ bool FGameXXKRouteSettlementExitToDesktopTransactionTest::RunTest(const FString&
 	ActiveRoute.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 29;
 	ActiveRoute.Training.bTravelActive = true;
 	ActiveRoute.Training.CurrentTravelStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
-	ActiveRoute.Training.ActiveTravelEncounterIndex = 3;
+	const FGameXXKTrainingTravelRuntime RetainedTravelRuntime =
+		Subsystem->GetTrainingTravelRuntimeCopy();
+	ActiveRoute.Training.ActiveTravelEncounterIndex = RetainedTravelRuntime.EncounterIndex;
 	ActiveRoute.Training.TravelNormalChestCooldownRemainingSeconds = 71;
 	ActiveRoute.Training.TravelAdvancedChestCooldownRemainingSeconds = 119;
 	ActiveRoute.Training.PendingTravelGold = 321;
@@ -370,13 +374,6 @@ bool FGameXXKRouteSettlementExitToDesktopTransactionTest::RunTest(const FString&
 	ActiveRoute.ActiveBattleParty.Add(FGameXXKBattleRuntimeUnit());
 	ActiveRoute.BattleEntryCheckpoint.bValid = true;
 	ActiveRoute.BattleEntryCheckpoint.SourceNodeId = PendingNodeId;
-	FGameXXKTrainingProgress ExpectedTrainingAfter = ActiveRoute.Training;
-	ExpectedTrainingAfter.bChallengeActive = false;
-	ExpectedTrainingAfter.ActiveChallengeStageId = NAME_None;
-	ExpectedTrainingAfter.ActiveChallengeEncounterIndex = INDEX_NONE;
-	ExpectedTrainingAfter.ActiveChallengeRouteNodeId = INDEX_NONE;
-	ExpectedTrainingAfter.ChallengeRouteNodeEncounterIndices.Reset();
-	ExpectedTrainingAfter.bChallengeAutoBattle = false;
 	const int32 GoldBefore = ActiveRoute.PlayerGold;
 	const int32 StonesBefore = UGameXXKMVPRules::GetItemCount(ActiveRoute, UGameXXKMVPRules::ItemEnhancementStone());
 	Subsystem->GetMutableRuntimeState() = ActiveRoute;
@@ -414,9 +411,28 @@ bool FGameXXKRouteSettlementExitToDesktopTransactionTest::RunTest(const FString&
 	TestFalse(TEXT("settlement clears legacy battle projection"), Settled.bHasActiveBattle);
 	TestFalse(TEXT("settlement clears card battle runtime"), Settled.CardRun.bHasActiveCardBattle);
 	TestFalse(TEXT("settlement clears battle rollback checkpoint"), Settled.BattleEntryCheckpoint.bValid);
-	TestTrue(
-		TEXT("settlement preserves the complete Training Travel runtime bit-identically"),
-		FGameXXKTrainingProgress::StaticStruct()->CompareScriptStruct(&Settled.Training, &ExpectedTrainingAfter, PPF_None));
+	TestTrue(TEXT("settlement reactivates the independent Training Travel loop"),
+		Settled.Training.bTravelActive);
+	TestEqual(TEXT("settlement restores the retained Training encounter cursor"),
+		Settled.Training.ActiveTravelEncounterIndex,
+		RetainedTravelRuntime.EncounterIndex);
+	TestEqual(TEXT("settlement preserves the Training Travel stage"),
+		Settled.Training.CurrentTravelStageId,
+		ActiveRoute.Training.CurrentTravelStageId);
+	TestEqual(TEXT("settlement preserves normal chest cooldown"),
+		Settled.Training.TravelNormalChestCooldownRemainingSeconds,
+		71);
+	TestEqual(TEXT("settlement preserves advanced chest cooldown"),
+		Settled.Training.TravelAdvancedChestCooldownRemainingSeconds,
+		119);
+	TestEqual(TEXT("settlement preserves pending Travel gold"),
+		Settled.Training.PendingTravelGold,
+		321);
+	TestEqual(TEXT("settlement preserves pending Travel experience"),
+		Settled.Training.PendingTravelExperience,
+		654);
+	TestTrue(TEXT("settlement resets the Travel wall-clock baseline after the foreground challenge"),
+		Settled.Training.TravelLastUpdatedUnixSeconds > 123456789);
 	TestEqual(TEXT("settlement records the returned idempotency key"), Settled.CardRun.LastAppliedRouteSettlementId, Receipt.SettlementId);
 
 	const int32 GoldAfterFirstApply = Settled.PlayerGold;

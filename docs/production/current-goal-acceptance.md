@@ -6,6 +6,8 @@ source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
 working_tree: challenge route-map / sequential settlement log fixes implemented and cold-UBT green; acceptance updated before commit
 ---
 
+> **2026-08-27 中途返回恢复与 8 格局内商店（当前工作区）**：修复挑战/路线结算返回后仅保留 `TrainingTravelRuntime`、却未恢复 `bTravelActive` 与遭遇游标造成的挂机停止；窗口复用时重新挂载原生布局，1-1 中途退出后游历、遇敌与双宝箱时钟继续。挑战路线起点现为自动占据的营地标记，不可点击且无奖励；Boss 胜利跳过普通三选一，直接应用 `Cleared` 路线结算并恢复挂机。局内商店改为单页两排 8 格：上排 4 张携带卡强化、下排 4 个可购买遗物，统一消耗普通金币，刷新仅替换未购商品并保留已售格；卡片缩小、详情移入 Tooltip、按钮单行高对比。冷 UBT GREEN；Route Merchant 12/12、Route Merchant Widget 7/7、Workbench 67/67、PlayerFlow 4/4、RouteSettlement 2/2；Training 仍为 35/38，剩余 `DeployedTrioExperience`、`RewardResolver`、`TravelOfflineSubsystemBridge` 是本轮前已有问题。
+
 > **2026-08-26 挂机摘要栏与波次刻度（当前工作区）**：桌面挂机条新增始终可见的单行战报、`72×24` 折叠/展开按钮、从右向左推进的波次进度与 `72×24` Tab。Tab 关闭时进度宽 420，Tab 打开时缩为 340，整行分别对齐 953/945 的现有挂机区域；折叠后隐藏角色场景并在 Tab 后显示普通/高级宝箱实时数量。两个宝箱按钮移出内部 ScaleBox，逻辑尺寸固定为 `72×72`；五个顶部按钮、金币和背包 X 已收进纸框。三枚 GPT 位图刻度已拆成 256² 真 Alpha PNG 并导入；实际遭遇顺序保持原有 `普通→普通→精英→普通→精英→普通→首领`，视觉从左到右镜像为 `首领→普通→精英→普通→精英→普通→普通`。冷 UBT GREEN，Workbench 66/66；Training 35/38，剩余 3 条为本轮之前已有的离线经验/奖励 blocker（`DeployedTrioExperience`、`RewardResolver`、`TravelOfflineSubsystemBridge`），没有隐藏或冒充全绿。
 
 > **2026-08-26 透明桌面 HUD 与城镇往返（当前工作区）**：Win64 项目插件使用 D3D12 DirectComposition 逐像素呈现，完整原生窗口不做区域裁切；全客户区玻璃透明消除了黑色矩形，透明空处与纸面控件使用同步鼠标命中策略，携带道具改用独立窗口客户区坐标。展开工作台时显示最终批准的圆形“进入城镇”图，仓库打开时按钮移动到仓库外侧；3D 青山镇显示配套“退出城镇”图。两向真实点击已完成 `L_DesktopTrainingHUD → L_Qingshan_AsianVillage_Demo → L_DesktopTrainingHUD`，3D 内 HUD 固定、桌面 HUD 可拖动，背包展开状态经一次性 GameInstance 快照恢复。冷 UBT GREEN；城镇按钮资源测试 1/1、Workbench 66/66、LevelFlow 1/1 通过。正式打包与长时内存采样仍需另行执行，本文不把它们冒充已完成。

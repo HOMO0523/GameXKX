@@ -15,6 +15,7 @@
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRouteSettlementRules.h"
 #include "GameXXKTalentRules.h"
 #include "GameXXKTrainingChestRules.h"
@@ -2006,8 +2007,26 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 			return true;
 		}
 
-		// Victory reuses the canonical generated-route settlement: the first call
-		// creates the tiered battle-reward offer, the post-choice call settles the
+		// The Boss is the route terminal. It skips the ordinary three-choice battle
+		// reward and atomically applies the cleared-route settlement before the
+		// workbench resumes. Normal and Elite victories keep the existing offer.
+		if (bBossNode)
+		{
+			if (!SettleTrainingChallengeBossNode(
+					Candidate,
+					bOutStageCompleted,
+					OutReward,
+					&Error))
+			{
+				return false;
+			}
+			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+			RuntimeState = MoveTemp(Candidate);
+			return true;
+		}
+
+		// Normal and Elite victory reuses the canonical generated-route reward:
+		// the first call creates the tiered offer, the post-choice call settles the
 		// node and returns to the route map. It never auto-starts another battle.
 		if (!UGameXXKMVPRules::ResolveBattleVictory(Candidate, bBossNode))
 		{
@@ -2095,8 +2114,8 @@ bool UGameXXKMVPSubsystem::FinishTrainingChallengeBossIfNeeded(
 		return false;
 	}
 
-	// Route rules granted the standard boss rewards. Grant the authored Training
-	// boss reward, complete the challenge, and restore the workbench shell.
+	// Compatibility for an old saved Boss reward that has already left Battle.
+	// New Boss victories settle directly in AdvanceTrainingChallengeEncounter.
 	OutReward = FGameXXKTrainingRules::ResolveChallengeReward(
 		StageId,
 		Encounters[EncounterIndex].Kind,
@@ -2257,6 +2276,27 @@ bool UGameXXKMVPSubsystem::SettleTrainingChallengeBossNode(
 		{
 			*OutError = TEXT("The challenge Boss reward could not be applied to runtime.");
 		}
+		return false;
+	}
+
+	// Convert the complete run's route money/card acquisitions with the Cleared
+	// formula before route-local state is discarded.  This is the run settlement
+	// the Boss owns; no ordinary battle-choice reward is created.
+	FGameXXKRouteSettlementReceipt SettlementReceipt;
+	if (!FGameXXKRouteSettlementRules::Preview(
+			InOutState,
+			EGameXXKRouteTerminalOutcome::Cleared,
+			SettlementReceipt,
+			OutError))
+	{
+		return false;
+	}
+	InOutState.CardRun.PendingSettlement = SettlementReceipt;
+	if (!FGameXXKRouteSettlementRules::Apply(
+			InOutState,
+			SettlementReceipt,
+			OutError))
+	{
 		return false;
 	}
 	bOutStageCompleted = FGameXXKTrainingRules::CompleteChallenge(InOutState.Training, StageId);
@@ -3100,6 +3140,70 @@ bool UGameXXKMVPSubsystem::ApplyRouteEncounterAcceptanceFixtureForTest(const boo
 		Candidate.CardRun.PendingEvent.SourceNodeId = SourceNodeId;
 		Candidate.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
 		Candidate.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.YueBai");
+	}
+
+	RouteEncounterAcceptanceFixtureBackup.Emplace(RuntimeState);
+	RuntimeState = MoveTemp(Candidate);
+	if (AGameXXKMVPPlayerController* const PlayerController =
+		Cast<AGameXXKMVPPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
+	{
+		PlayerController->RefreshPlayerFlowWidgetsForTest();
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ApplyRouteMerchantAcceptanceFixtureForTest(
+	const bool bOpenMerchant,
+	FString& OutError)
+{
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	OutError.Reset();
+	if (!bOpenMerchant)
+	{
+		OutError = TEXT("Route-merchant acceptance fixture requires explicit opt-in.");
+		return false;
+	}
+	if (RouteEncounterAcceptanceFixtureBackup.IsSet())
+	{
+		OutError = TEXT("A route-encounter acceptance fixture is already active.");
+		return false;
+	}
+	if (RuntimeState.Screen != EGameXXKScreen::DungeonMap
+		|| !RuntimeState.bDungeonActive
+		|| !RuntimeState.bHasGeneratedRouteMap
+		|| RuntimeState.PendingRouteNodeId != INDEX_NONE)
+	{
+		OutError = TEXT("Route-merchant acceptance fixture requires an idle generated route map.");
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKRouteMapNode* ReachableNode = Candidate.RouteMapNodes.FindByPredicate([&Candidate](const FGameXXKRouteMapNode& Node)
+	{
+		return Candidate.ReachableRouteNodeIds.Contains(Node.NodeId)
+			&& !Candidate.VisitedRouteNodeIds.Contains(Node.NodeId);
+	});
+	if (!ReachableNode)
+	{
+		OutError = TEXT("Route-merchant acceptance fixture found no unresolved reachable node.");
+		return false;
+	}
+	const int32 SourceNodeId = ReachableNode->NodeId;
+	ReachableNode->NodeKind = EGameXXKNodeKind::Merchant;
+	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
+	Candidate.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
+	Candidate.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
+	Candidate.CurrentRouteNodeId = SourceNodeId;
+	Candidate.PendingRouteNodeId = SourceNodeId;
+	Candidate.Screen = EGameXXKScreen::RouteMerchant;
+	Candidate.CurrentMapId = TEXT("RouteMerchant");
+	FString MerchantError;
+	if (!FGameXXKRouteMerchantRules::EnsureStock(Candidate, &MerchantError))
+	{
+		OutError = MerchantError.IsEmpty()
+			? TEXT("Route-merchant acceptance fixture could not initialize stock.")
+			: MerchantError;
+		return false;
 	}
 
 	RouteEncounterAcceptanceFixtureBackup.Emplace(RuntimeState);
@@ -4496,6 +4600,7 @@ bool UGameXXKMVPSubsystem::SettleAndExitActiveRoute(
 	}
 
 	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKTrainingTravelRuntime CandidateTravelRuntime = TrainingTravelRuntime;
 	FGameXXKRouteSettlementReceipt Receipt;
 	if (!FGameXXKRouteSettlementRules::Preview(
 		Candidate,
@@ -4520,6 +4625,34 @@ bool UGameXXKMVPSubsystem::SettleAndExitActiveRoute(
 	Candidate.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
 	Candidate.Training.ChallengeRouteNodeEncounterIndices.Reset();
 	Candidate.Training.bChallengeAutoBattle = false;
+
+	// Challenge owns the foreground route only; the desktop Travel runner is a
+	// separate loop. StartChallenge pauses its durable flags but intentionally
+	// leaves the live runner snapshot intact. Restore those flags from that
+	// retained authoritative cursor before the Workbench resumes ticking.
+	const FName TravelStageId = Candidate.Training.CurrentTravelStageId;
+	const TArray<FGameXXKTrainingEncounterDefinition> TravelEncounters =
+		FGameXXKTrainingRules::BuildEncounterSequence(TravelStageId, true);
+	const bool bCanResumeRetainedTravel = !TravelStageId.IsNone()
+		&& CandidateTravelRuntime.StageId == TravelStageId
+		&& TravelEncounters.IsValidIndex(CandidateTravelRuntime.EncounterIndex);
+	if (bCanResumeRetainedTravel)
+	{
+		Candidate.Training.bTravelActive = true;
+		Candidate.Training.ActiveTravelEncounterIndex = CandidateTravelRuntime.EncounterIndex;
+		Candidate.Training.bTravelPausedAtDefeat =
+			CandidateTravelRuntime.Phase == EGameXXKTrainingTravelPhase::Defeated;
+		Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	}
+	else if (!TravelStageId.IsNone())
+	{
+		if (!FGameXXKTrainingRules::StartTravel(Candidate.Training, TravelStageId)
+			|| !PrepareFreshTrainingTravelRuntime(Candidate, CandidateTravelRuntime))
+		{
+			OutError = TEXT("路线结算后无法恢复挂机游历运行时。");
+			return false;
+		}
+	}
 	Candidate.bHasGeneratedRouteMap = false;
 	Candidate.RouteSeed = 0;
 	Candidate.RouteMapNodes.Reset();
@@ -4542,6 +4675,7 @@ bool UGameXXKMVPSubsystem::SettleAndExitActiveRoute(
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(CandidateTravelRuntime);
 	OutReceipt = Receipt;
 	return true;
 }

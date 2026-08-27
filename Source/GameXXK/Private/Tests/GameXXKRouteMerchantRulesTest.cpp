@@ -4,9 +4,13 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEncounterRules.h"
+#include "GameXXKRelicCatalog.h"
+#include "GameXXKRelicRules.h"
 #include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRouteMerchantTypes.h"
+#include "Engine/GameInstance.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -89,6 +93,7 @@ namespace
 	void ConvertCurrentStockToLegacyRelicsWithPending(FGameXXKRuntimeState& State)
 	{
 		FGameXXKRouteMerchantState& Merchant = State.CardRun.RouteMerchant;
+		Merchant.Offers.SetNum(4);
 		for (FGameXXKRouteMerchantOffer& Offer : Merchant.Offers)
 		{
 			Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
@@ -173,11 +178,15 @@ namespace
 
 	bool StartAcceptedGeneratedRoute(FGameXXKRuntimeState& OutState)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		UGameXXKMVPSubsystem* BootstrapSubsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!BootstrapSubsystem || !BootstrapSubsystem->StartGame())
+		{
+			return false;
+		}
+		OutState = BootstrapSubsystem->GetRuntimeState();
 		OutState.RouteSeed = 0x6137;
-		return UGameXXKMVPRules::OpenWorldMap(OutState)
-			&& UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
-			&& UGameXXKMVPRules::AcceptTownQuest(OutState)
+		return UGameXXKMVPRules::AcceptTownQuest(OutState)
 			&& UGameXXKMVPRules::EnterDungeon(OutState);
 	}
 
@@ -334,25 +343,42 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("merchant snapshot records pending node"), FirstStock.SourceNodeId, 10);
 	TestTrue(TEXT("merchant snapshot has a stable non-zero seed"), FirstStock.OfferSeed != 0);
 	TestEqual(TEXT("first snapshot starts before refreshes"), FirstStock.RefreshCount, 0);
-	TestEqual(TEXT("snapshot always has four offers"), FirstStock.Offers.Num(), FGameXXKRouteMerchantRules::TotalSlotCount);
+	TestEqual(TEXT("snapshot always has two rows of eight offers"), FirstStock.Offers.Num(), FGameXXKRouteMerchantRules::TotalSlotCount);
 	TestEqual(TEXT("snapshot has exactly four card slots"), CountOffersOfKind(FirstStock, EGameXXKRouteMerchantOfferKind::Card), FGameXXKRouteMerchantRules::CardSlotCount);
-	TestEqual(TEXT("snapshot has no relic slots"), CountOffersOfKind(FirstStock, EGameXXKRouteMerchantOfferKind::Relic), 0);
+	TestEqual(TEXT("snapshot has exactly four relic slots"), CountOffersOfKind(FirstStock, EGameXXKRouteMerchantOfferKind::Relic), FGameXXKRouteMerchantRules::RelicSlotCount);
 	TSet<FName> SeenCardIds;
+	TSet<FName> SeenRelicIds;
 	for (int32 Index = 0; Index < FirstStock.Offers.Num(); ++Index)
 	{
 		const FGameXXKRouteMerchantOffer& Offer = FirstStock.Offers[Index];
 		TestFalse(*FString::Printf(TEXT("offer %d has a stable id"), Index), Offer.OfferId.IsNone());
 		TestFalse(*FString::Printf(TEXT("offer %d is available in the full-catalog fixture"), Index), Offer.bUnavailable);
 		TestFalse(*FString::Printf(TEXT("offer %d starts unsold"), Index), Offer.bSold);
-		TestEqual(*FString::Printf(TEXT("slot %d is a card"), Index), Offer.Kind, EGameXXKRouteMerchantOfferKind::Card);
-		TestFalse(*FString::Printf(TEXT("card slot %d has owner provenance"), Index), Offer.OwnerMemberId.IsNone());
-		TestNotNull(*FString::Printf(TEXT("card slot %d resolves catalog content"), Index), FGameXXKCardCatalog::FindCardDefinition(Offer.ContentId));
-		TestEqual(*FString::Printf(TEXT("card slot %d persists next quality"), Index), Offer.NextQuality,
-			FGameXXKCardBattleAdapter::GetNextCardQuality(Offer.Quality));
-		TestEqual(*FString::Printf(TEXT("card slot %d uses next-quality price"), Index), Offer.Price,
-			FGameXXKCardQualityRules::GetCardPrice(Offer.NextQuality));
-		TestFalse(*FString::Printf(TEXT("card slot %d is unique in its batch"), Index), SeenCardIds.Contains(Offer.ContentId));
-		SeenCardIds.Add(Offer.ContentId);
+		if (Index < FGameXXKRouteMerchantRules::CardSlotCount)
+		{
+			TestEqual(*FString::Printf(TEXT("top-row slot %d is a card"), Index), Offer.Kind, EGameXXKRouteMerchantOfferKind::Card);
+			TestFalse(*FString::Printf(TEXT("card slot %d has owner provenance"), Index), Offer.OwnerMemberId.IsNone());
+			TestNotNull(*FString::Printf(TEXT("card slot %d resolves catalog content"), Index), FGameXXKCardCatalog::FindCardDefinition(Offer.ContentId));
+			TestEqual(*FString::Printf(TEXT("card slot %d persists next quality"), Index), Offer.NextQuality,
+				FGameXXKCardBattleAdapter::GetNextCardQuality(Offer.Quality));
+			TestEqual(*FString::Printf(TEXT("card slot %d uses next-quality price"), Index), Offer.Price,
+				FGameXXKCardQualityRules::GetCardPrice(Offer.NextQuality));
+			TestFalse(*FString::Printf(TEXT("card slot %d is unique in its batch"), Index), SeenCardIds.Contains(Offer.ContentId));
+			SeenCardIds.Add(Offer.ContentId);
+		}
+		else
+		{
+			TestEqual(*FString::Printf(TEXT("bottom-row slot %d is a relic"), Index), Offer.Kind, EGameXXKRouteMerchantOfferKind::Relic);
+			TestTrue(*FString::Printf(TEXT("relic slot %d has no card owner"), Index), Offer.OwnerMemberId.IsNone());
+			TestEqual(*FString::Printf(TEXT("relic slot %d has no next card quality"), Index), Offer.NextQuality, EGameXXKCardQuality::Invalid);
+			const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(Offer.ContentId);
+			TestNotNull(*FString::Printf(TEXT("relic slot %d resolves catalog content"), Index), Definition);
+			TestTrue(*FString::Printf(TEXT("relic slot %d is offer eligible"), Index), Definition && Definition->bOfferEligible);
+			TestEqual(*FString::Printf(TEXT("relic slot %d uses base-quality price"), Index), Offer.Price,
+				FGameXXKCardQualityRules::GetRelicPrice(Offer.Quality));
+			TestFalse(*FString::Printf(TEXT("relic slot %d is unique in its batch"), Index), SeenRelicIds.Contains(Offer.ContentId));
+			SeenRelicIds.Add(Offer.ContentId);
+		}
 	}
 
 	FGameXXKRuntimeState IndependentTwin = MakeMerchantState();
@@ -365,12 +391,30 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("save-like struct copy reopens"), FGameXXKRouteMerchantRules::EnsureStock(SaveLikeCopy, &Error));
 	TestTrue(TEXT("save-like struct copy preserves array order and every offer byte"), MerchantStatesMatch(SaveLikeCopy.CardRun.RouteMerchant, FirstStock));
 
+	FGameXXKRuntimeState LegacyCardOnly = State;
+	const FName LegacySoldContent = LegacyCardOnly.CardRun.RouteMerchant.Offers[0].ContentId;
+	LegacyCardOnly.CardRun.RouteMerchant.Offers[0].bSold = true;
+	LegacyCardOnly.CardRun.RouteMerchant.Offers.SetNum(FGameXXKRouteMerchantRules::CardSlotCount);
+	TestTrue(TEXT("legacy four-card stock normalizes on reopen"),
+		FGameXXKRouteMerchantRules::EnsureStock(LegacyCardOnly, &Error));
+	TestEqual(TEXT("legacy four-card stock grows to the canonical eight slots"),
+		LegacyCardOnly.CardRun.RouteMerchant.Offers.Num(),
+		FGameXXKRouteMerchantRules::TotalSlotCount);
+	TestTrue(TEXT("legacy sold card slot remains sold after normalization"),
+		LegacyCardOnly.CardRun.RouteMerchant.Offers[0].bSold);
+	TestEqual(TEXT("legacy sold card keeps its original content"),
+		LegacyCardOnly.CardRun.RouteMerchant.Offers[0].ContentId,
+		LegacySoldContent);
+	TestEqual(TEXT("legacy card-only stock gains the complete relic row"),
+		CountOffersOfKind(LegacyCardOnly.CardRun.RouteMerchant, EGameXXKRouteMerchantOfferKind::Relic),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
+
 	const FGameXXKRuntimeState BeforeView = State;
 	FGameXXKRouteMerchantView View;
 	TestTrue(TEXT("view can be read from saved stock"), FGameXXKRouteMerchantRules::GetView(State, View, &Error));
 	TestTrue(TEXT("view read is pure"), RuntimeStatesMatch(State, BeforeView));
 	TestEqual(TEXT("view exposes four card slots"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("view exposes zero relic slots"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("view exposes four relic slots"), View.RelicOffers.Num(), 4);
 	TestEqual(TEXT("view exposes ordinary gold"), View.PlayerGold, State.PlayerGold);
 	TestEqual(TEXT("legacy view balance alias mirrors ordinary gold"), View.RouteTravelMoney, State.PlayerGold);
 	TestEqual(TEXT("view exposes first refresh cost"), View.RefreshCost, 20);
@@ -388,11 +432,11 @@ bool FGameXXKRouteMerchantStockFallbackTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState ExhaustedState = MakeMerchantState();
 	ExhaustedState.CardRun.HeroSelectedCardIds.SetNum(1);
 	FString Error;
-	TestTrue(TEXT("short card pools still generate all four persistent slots"), FGameXXKRouteMerchantRules::EnsureStock(ExhaustedState, &Error));
-	TestEqual(TEXT("exhausted snapshot still has four slots"), ExhaustedState.CardRun.RouteMerchant.Offers.Num(), FGameXXKRouteMerchantRules::TotalSlotCount);
+	TestTrue(TEXT("short card pools still generate all eight persistent slots"), FGameXXKRouteMerchantRules::EnsureStock(ExhaustedState, &Error));
+	TestEqual(TEXT("exhausted snapshot still has eight slots"), ExhaustedState.CardRun.RouteMerchant.Offers.Num(), FGameXXKRouteMerchantRules::TotalSlotCount);
 	int32 AvailableCards = 0;
 	int32 UnavailableCards = 0;
-	for (int32 Index = 0; Index < ExhaustedState.CardRun.RouteMerchant.Offers.Num(); ++Index)
+	for (int32 Index = 0; Index < FGameXXKRouteMerchantRules::CardSlotCount; ++Index)
 	{
 		const FGameXXKRouteMerchantOffer& Offer = ExhaustedState.CardRun.RouteMerchant.Offers[Index];
 		TestEqual(*FString::Printf(TEXT("exhausted slot %d keeps its kind"), Index), Offer.Kind, EGameXXKRouteMerchantOfferKind::Card);
@@ -413,6 +457,9 @@ bool FGameXXKRouteMerchantStockFallbackTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("one carried card remains available"), AvailableCards, 1);
 	TestEqual(TEXT("card shortage produces three explicit unavailable slots"), UnavailableCards, 3);
+	TestEqual(TEXT("card shortage never removes the four relic offers"),
+		CountOffersOfKind(ExhaustedState.CardRun.RouteMerchant, EGameXXKRouteMerchantOfferKind::Relic),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 	return true;
 }
 
@@ -603,6 +650,54 @@ bool FGameXXKRouteMerchantPurchaseCardQualityTest::RunTest(const FString& Parame
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRouteMerchantPurchaseRelicTest,
+	"GameXXK.Route.Merchant.Rules.Purchase.RelicOrdinaryGoldAtomicCommit",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRouteMerchantPurchaseRelicTest::RunTest(const FString& Parameters)
+{
+	FString Error;
+	FGameXXKRuntimeState State = MakeMerchantState();
+	TestTrue(TEXT("relic fixture generates mixed stock"), FGameXXKRouteMerchantRules::EnsureStock(State, &Error));
+	FGameXXKRouteMerchantOffer* Offer = FindAvailableOffer(State, EGameXXKRouteMerchantOfferKind::Relic);
+	if (!TestNotNull(TEXT("mixed stock contains an available relic"), Offer))
+	{
+		return false;
+	}
+	const FGameXXKRouteMerchantOffer SavedOffer = *Offer;
+	const int32 GoldBefore = State.PlayerGold;
+	const int32 RouteMoneyBefore = State.CardRun.RouteTravelMoney;
+	const int32 RelicStacksBefore = State.CardRun.Relics.ContainsByPredicate([&SavedOffer](const FGameXXKRelicInstance& Instance)
+	{
+		return Instance.RelicId == SavedOffer.ContentId;
+	}) ? 1 : 0;
+	FGameXXKRouteMerchantPurchasePreview Preview;
+	const FGameXXKRuntimeState BeforePreview = State;
+	TestTrue(TEXT("relic preview succeeds without replacement"),
+		FGameXXKRouteMerchantRules::PreviewPurchase(State, SavedOffer.OfferId, NAME_None, Preview, &Error));
+	TestTrue(TEXT("relic preview is purchasable"), Preview.bCanPurchase);
+	TestFalse(TEXT("relic preview requires no replacement"), Preview.bRequiresReplacement);
+	TestTrue(TEXT("relic preview is pure"), RuntimeStatesMatch(State, BeforePreview));
+	FGameXXKRouteMerchantPurchaseResult Result;
+	TestTrue(TEXT("relic purchase commits"),
+		FGameXXKRouteMerchantRules::Purchase(State, SavedOffer.OfferId, NAME_None, Result));
+	TestEqual(TEXT("relic purchase debits ordinary gold"), State.PlayerGold, GoldBefore - SavedOffer.Price);
+	TestEqual(TEXT("relic purchase preserves route travel money"), State.CardRun.RouteTravelMoney, RouteMoneyBefore);
+	const FGameXXKRelicInstance* Acquired = State.CardRun.Relics.FindByPredicate([&SavedOffer](const FGameXXKRelicInstance& Instance)
+	{
+		return Instance.RelicId == SavedOffer.ContentId;
+	});
+	TestTrue(TEXT("relic purchase acquires or stacks the offered relic"),
+		Acquired && Acquired->Stacks > RelicStacksBefore);
+	const FGameXXKRouteMerchantOffer* Sold = State.CardRun.RouteMerchant.Offers.FindByPredicate([&SavedOffer](const FGameXXKRouteMerchantOffer& Candidate)
+	{
+		return Candidate.OfferId == SavedOffer.OfferId;
+	});
+	TestTrue(TEXT("relic purchase keeps the slot visible as sold"), Sold && Sold->bSold);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteMerchantSavedStockValidationTest,
 	"GameXXK.Route.Merchant.SaveState.CanonicalValidation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -696,6 +791,12 @@ bool FGameXXKRouteMerchantV10SaveMigrationTest::RunTest(const FString& Parameter
 		return false;
 	}
 	const FGameXXKRouteMerchantState CurrentMerchant = CurrentState.CardRun.RouteMerchant;
+	FString CurrentValidationError;
+	const bool bCurrentRuntimeValid =
+		FGameXXKSaveMigration::ValidateRuntimeState(CurrentState, CurrentValidationError);
+	TestTrue(
+		FString::Printf(TEXT("current mixed merchant runtime is save-valid before round trip: %s"), *CurrentValidationError),
+		bCurrentRuntimeValid);
 	FGameXXKSaveState CurrentSave = UGameXXKMVPRules::MakeSaveState(CurrentState);
 	FGameXXKSaveState CurrentRoundTrip;
 	FGameXXKSaveMigrationReport CurrentReport;
