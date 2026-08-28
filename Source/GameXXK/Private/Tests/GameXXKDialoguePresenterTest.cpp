@@ -1,7 +1,10 @@
 #include "Misc/AutomationTest.h"
 
 #include "Dialogue/GameXXKDialogueTypes.h"
+#include "Components/SceneComponent.h"
+#include "GameFramework/Actor.h"
 #include "UI/GameXXKDialoguePanelWidget.h"
+#include "UI/GameXXKSpeechBubbleWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -64,6 +67,53 @@ bool FGameXXKDialoguePanelViewModelTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("line shows continue indicator"), Widget->IsContinueIndicatorVisibleForTest());
 	Widget->RequestAdvanceForTest();
 	TestEqual(TEXT("line advance dispatches once"), AdvanceCount, 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKSpeechBubbleAnchorAndClampTest,
+	"GameXXK.Dialogue.Presenter.SpeechBubbleAnchorAndClamp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKSpeechBubbleAnchorAndClampTest::RunTest(const FString& Parameters)
+{
+	UGameXXKSpeechBubbleWidget* Bubble = NewObject<UGameXXKSpeechBubbleWidget>();
+	Bubble->TakeWidget();
+	FGameXXKDialoguePresentationView View;
+	View.NodeId = TEXT("bubble.one");
+	View.Text = FText::FromString(TEXT("你是谁？"));
+	TestFalse(TEXT("missing anchor rejects presentation"), Bubble->PresentBubble(View, nullptr));
+	TestFalse(TEXT("missing anchor leaves no bubble at origin"), Bubble->IsBubbleVisibleForTest());
+
+	AActor* Actor = NewObject<AActor>();
+	USceneComponent* Anchor = NewObject<USceneComponent>(Actor);
+	Actor->SetRootComponent(Anchor);
+	Anchor->SetRelativeLocation(FVector(120.0, 30.0, 180.0));
+	TestTrue(TEXT("live component anchors bubble"), Bubble->PresentBubble(View, Anchor));
+	TestTrue(TEXT("bubble becomes visible"), Bubble->IsBubbleVisibleForTest());
+	TestTrue(TEXT("bubble is non-intercepting"), Bubble->IsBubbleHitTestInvisibleForTest());
+	TestEqual(TEXT("bubble presenter owns one reusable bubble"), Bubble->GetBubbleCountForTest(), 1);
+	TestEqual(TEXT("bubble renders body only"), Bubble->GetBodyTextForTest(), View.Text);
+	TestEqual(TEXT("bubble layout is capped at two lines"), Bubble->GetMaximumLineCountForTest(), 2);
+
+	View.NodeId = TEXT("bubble.two");
+	View.Text = FText::FromString(TEXT("本座问你话。你是何人？"));
+	TestTrue(TEXT("second line reuses bubble"), Bubble->PresentBubble(View, Anchor));
+	TestEqual(TEXT("still exactly one bubble"), Bubble->GetBubbleCountForTest(), 1);
+	TestEqual(TEXT("second line replaces body"), Bubble->GetBodyTextForTest(), View.Text);
+
+	const FVector2D ClampedMinimum = UGameXXKSpeechBubbleWidget::ClampToViewportForTest(
+		FVector2D(-50.0f, -20.0f), FVector2D(800.0f, 600.0f), FVector2D(320.0f, 100.0f));
+	TestEqual(TEXT("left clamp keeps padding"), ClampedMinimum.X, 12.0);
+	TestEqual(TEXT("top clamp keeps padding"), ClampedMinimum.Y, 12.0);
+	const FVector2D ClampedMaximum = UGameXXKSpeechBubbleWidget::ClampToViewportForTest(
+		FVector2D(790.0f, 590.0f), FVector2D(800.0f, 600.0f), FVector2D(320.0f, 100.0f));
+	TestEqual(TEXT("right clamp accounts for bubble width"), ClampedMaximum.X, 468.0);
+	TestEqual(TEXT("bottom clamp accounts for bubble height"), ClampedMaximum.Y, 488.0);
+
+	TestFalse(TEXT("missing projection controller reports failure"), Bubble->UpdateAnchor(nullptr));
+	Bubble->ClearBubble();
+	TestFalse(TEXT("clear removes bubble"), Bubble->IsBubbleVisibleForTest());
 	return true;
 }
 
