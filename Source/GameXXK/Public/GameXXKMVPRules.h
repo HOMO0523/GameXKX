@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Dialogue/GameXXKDialogueTypes.h"
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKEquipmentTypes.h"
 #include "GameXXKMetaShopTypes.h"
@@ -37,6 +38,28 @@ enum class EGameXXKQuestState : uint8
 	NotAccepted,
 	Accepted,
 	Completed
+};
+
+/** Independent onboarding quest state. It must never alias the legacy Qingshan main quest. */
+UENUM(BlueprintType)
+enum class EGameXXKTutorialQuestState : uint8
+{
+	NotStarted,
+	Active,
+	Completed
+};
+
+USTRUCT(BlueprintType)
+struct FGameXXKTutorialQuestProgress
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKTutorialQuestState State = EGameXXKTutorialQuestState::NotStarted;
+
+	/** Stable step ID; the first implemented sequence begins at Tutorial.EnterTown. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName CurrentStepId = NAME_None;
 };
 
 UENUM(BlueprintType)
@@ -483,6 +506,14 @@ struct FGameXXKRuntimeState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName TrackedTaskId = NAME_None;
+
+	/** v27+ tutorial flow, deliberately separate from QuestState/TrackedTaskId. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKTutorialQuestProgress TutorialQuest;
+
+	/** v28+ save-resumable blocking dialogue state. World Actor pointers never enter this structure. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKDialogueSessionState DialogueSession;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName CurrentRegion;

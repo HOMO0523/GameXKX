@@ -51,7 +51,11 @@ public:
 	static constexpr int32 EquipmentToolsAndChestWalletIntroducedSaveVersion = 25;
 	/** v26 adds permanent shared talent ranks and compatibility capacity floors. */
 	static constexpr int32 PermanentTalentGraphIntroducedSaveVersion = 26;
-	static constexpr int32 CurrentSaveVersion = 26;
+	/** v27 adds the independent new-player story/tutorial quest state. */
+	static constexpr int32 TutorialQuestIntroducedSaveVersion = 27;
+	/** v28 adds node-boundary dialogue session persistence. */
+	static constexpr int32 DialogueRuntimeIntroducedSaveVersion = 28;
+	static constexpr int32 CurrentSaveVersion = 28;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

@@ -1515,6 +1515,16 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	{
 		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
 	}
+	if (Source.SaveVersion < TutorialQuestIntroducedSaveVersion)
+	{
+		// Old saves have no onboarding quest. Do not infer it from the legacy
+		// Qingshan main quest or reset any existing task/party state.
+		Candidate.RuntimeState.TutorialQuest = FGameXXKTutorialQuestProgress();
+	}
+	if (Source.SaveVersion < DialogueRuntimeIntroducedSaveVersion)
+	{
+		Candidate.RuntimeState.DialogueSession = FGameXXKDialogueSessionState();
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
@@ -1555,6 +1565,43 @@ bool FGameXXKSaveMigration::TryRestoreRuntimeState(
 bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& State, FString& OutError)
 {
 	OutError.Reset();
+	if ((State.TutorialQuest.State == EGameXXKTutorialQuestState::NotStarted
+			&& !State.TutorialQuest.CurrentStepId.IsNone())
+		|| (State.TutorialQuest.State == EGameXXKTutorialQuestState::Active
+			&& State.TutorialQuest.CurrentStepId.IsNone()))
+	{
+		OutError = TEXT("Saved tutorial quest progress is invalid.");
+		return false;
+	}
+	const FGameXXKDialogueSessionState& Dialogue = State.DialogueSession;
+	const bool bHasDialogueContext = !Dialogue.StoryId.IsNone()
+		|| Dialogue.StoryVersion != 0
+		|| !Dialogue.TaskId.IsNone()
+		|| !Dialogue.StepId.IsNone()
+		|| !Dialogue.SequenceId.IsNone()
+		|| !Dialogue.StageContractId.IsNone()
+		|| !Dialogue.DialogueId.IsNone()
+		|| Dialogue.DialogueVersion != 0
+		|| !Dialogue.CurrentNodeId.IsNone()
+		|| !Dialogue.PauseReason.IsEmpty();
+	if ((!Dialogue.bActive && bHasDialogueContext)
+		|| (Dialogue.bActive
+			&& (Dialogue.StoryId.IsNone()
+				|| Dialogue.StoryVersion <= 0
+				|| Dialogue.TaskId.IsNone()
+				|| Dialogue.StepId.IsNone()
+				|| Dialogue.SequenceId.IsNone()
+				|| Dialogue.StageContractId.IsNone()
+				|| Dialogue.DialogueId.IsNone()
+				|| Dialogue.DialogueVersion <= 0
+				|| Dialogue.CurrentNodeId.IsNone()))
+		|| Dialogue.History.Num() > 100
+		|| Dialogue.SelectedOptionIds.Contains(NAME_None)
+		|| Dialogue.SeenNodeIds.Contains(NAME_None))
+	{
+		OutError = TEXT("Saved dialogue session is invalid.");
+		return false;
+	}
 	// Accepted-without-follower is a legal current save: the guide NPC stays in
 	// town until the player recruits it through the dialog's 入队 action. Legacy
 	// saves are still upgraded to a joined follower by the version migration path.

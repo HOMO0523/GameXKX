@@ -472,7 +472,7 @@ bool FGameXXKInventoryLocksSaveGameRoundTripTest::RunTest(const FString& Paramet
 
 	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
 	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(State);
-	TestEqual(TEXT("lock round-trip writes the v26 schema"), SaveObject->SaveState.SaveVersion, 26);
+	TestEqual(TEXT("lock round-trip writes the v28 schema"), SaveObject->SaveState.SaveVersion, 28);
 	TArray<uint8> SaveBytes;
 	TestTrue(TEXT("v25 lock state serializes through SaveGame"),
 		UGameplayStatics::SaveGameToMemory(SaveObject, SaveBytes));

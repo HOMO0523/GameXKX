@@ -27,8 +27,8 @@ static_assert(
 	FGameXXKSaveMigration::DesktopInventoryStorageIntroducedSaveVersion == 21,
 	"Persistent desktop inventory storage advances the current save version to twenty-one.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 26,
-	"Persistent inventory locks are part of the current save version.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 28,
+	"Dialogue sessions are part of the current save version.");
 
 namespace
 {
@@ -144,7 +144,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version includes permanent talents"), FGameXXKSaveMigration::CurrentSaveVersion, 26);
+	TestEqual(TEXT("current save version includes dialogue sessions"), FGameXXKSaveMigration::CurrentSaveVersion, 28);
 	return true;
 }
 

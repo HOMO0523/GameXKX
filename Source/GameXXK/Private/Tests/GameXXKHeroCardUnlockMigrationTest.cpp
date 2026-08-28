@@ -333,7 +333,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardUnlockMigrationTest;
 
 	TestEqual(TEXT("the protagonist pool is introduced by save version twelve"), THeroCardPoolVersion<FGameXXKSaveMigration>::Value, 12);
-	TestEqual(TEXT("the current save version includes permanent talents"), FGameXXKSaveMigration::CurrentSaveVersion, 26);
+	TestEqual(TEXT("the current save version includes dialogue sessions"), FGameXXKSaveMigration::CurrentSaveVersion, 28);
 	TestTrue(TEXT("the catalog exposes the deterministic hero unlock query"), THasHeroUnlockQuery<FGameXXKCardCatalog>::value);
 	for (const int32 Level : {1, 5, 10, 15, 20})
 	{
