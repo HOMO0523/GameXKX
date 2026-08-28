@@ -6,7 +6,7 @@
 
 **Architecture:** Existing MetaShop remains the single town/permanent shop and keeps its seven-card layout. Product generation, chest quality and combine quality use integer-weight deterministic rules and candidate RuntimeState transactions. Serialized companion product IDs remain reserved for compatibility but can no longer be listed or purchased.
 
-**Tech Stack:** UE 5.8 C++, GameXXK MetaShop/Equipment/Gem/Training/Tool rules, UMG, save migration v30, Automation Tests, deterministic asset generation/import.
+**Tech Stack:** UE 5.8 C++, GameXXK MetaShop/Equipment/Gem/Training/Tool rules, UMG, save migration v31, Automation Tests, deterministic asset generation/import.
 
 ---
 
@@ -17,9 +17,9 @@
 - Modify `Source/GameXXK/Public/UI/GameXXKMetaShopWidget.h` and private `.cpp` — remove companion branches and show gem results.
 - Modify `Source/GameXXK/Public/UI/GameXXKDesktopTrainingLayout.h` and private `.cpp` — six-button toolbar geometry.
 - Modify `Source/GameXXK/Public/UI/GameXXKDesktopTrainingWorkbenchWidget.h` and private `.cpp` — shop action after pin.
-- Modify `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h` and private `.cpp` — open/close shared MetaShop from desktop and dialogue command.
+- Modify `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h` and private `.cpp` — open/close shared MetaShop from desktop and NarrativeSequence command.
 - Modify `Source/GameXXK/Public/GameXXKMVPRules.h` — `NextCombineOrdinal`.
-- Modify `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h` and private `.cpp` — v30 shop/combine migration and obsolete order refund.
+- Modify `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h` and private `.cpp` — v31 shop/combine migration and obsolete order refund.
 - Modify `Source/GameXXK/Public/GameXXKTrainingChestRules.h` and private `.cpp` — exact PPM quality tables.
 - Modify `Source/GameXXK/Public/GameXXKEquipmentToolRules.h` and private `.cpp` — deterministic probabilistic combine quality.
 - Create `SourceArt/UI/MetaShop/T_MetaShop_GemPack.png` — approved gem-pack source art.
@@ -144,7 +144,7 @@ Generate one 512×512 transparent-background simplified ink-cartoon pouch contai
 
 Import as `/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_GemPack`. Remove all companion result/replacement branches. Gem result uses `FGameXXKGemRules::GetIconTexturePathForItemId` and displays exact type/quality.
 
-Add `ActionOpenMetaShop` immediately after the pin button. Both toolbar and dialogue `openShop` call the same PlayerController `OpenMetaShop`; close restores the previous workbench/dialogue modal owner.
+Add `ActionOpenMetaShop` immediately after the pin button. Both toolbar and NarrativeSequence command `openShop` call the same PlayerController `OpenMetaShop`; close restores the previous workbench/narrative modal owner.
 
 - [ ] **Step 4: Run visual/unit tests and commit**
 
@@ -161,13 +161,13 @@ git commit -m "feat: restore permanent shop toolbar entry"
 - Modify: `Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp`
 - Modify: save migration tests.
 
-- [ ] **Step 1: Write failing v29→v30 tests**
+- [ ] **Step 1: Write failing v30→v31 tests**
 
 Expect `NextCombineOrdinal = 0`. Preserve owned companions. If a paid unresolved companion recruitment/order exists, clear both pending structures and refund exactly 500 gold once; already resolved/no-pending saves receive no refund. Re-running migration must not refund again.
 
 - [ ] **Step 2: Implement migration**
 
-Add `MetaShopGemAndCombineProbabilityIntroducedSaveVersion = 30`, advance CurrentSaveVersion, and add:
+Add `MetaShopGemAndCombineProbabilityIntroducedSaveVersion = 31`, advance CurrentSaveVersion, and add:
 
 ```cpp
 UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

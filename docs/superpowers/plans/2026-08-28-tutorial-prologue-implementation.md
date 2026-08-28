@@ -4,7 +4,7 @@
 
 **Goal:** Deliver the playable carriage-to-river prologue in the existing town, including post-carriage naming, the scroll choice, YueBai dialogue, one-time rewards and safe resume/exit.
 
-**Architecture:** A tutorial coordinator snapshots the ordinary town and binds stable narrative markers/actor aliases. Typed dialogue executors drive PaperZD/flipbook actors, camera, VFX, naming and gameplay mutations. The full story lives in `Dialogue.Tutorial.001.dialogue.json`; the coordinator restores the town on completion, pause or required-command failure.
+**Architecture:** A tutorial coordinator snapshots the ordinary town, resolves character roles through CharacterCatalog, and resolves semantic Stage slots through SceneRegistry/Profile. Dialogue JSON owns lines/branches; a separate NarrativeSequence owns carriage/actor/camera commands without map coordinates. Typed executors drive PaperZD/flipbook actors, camera, VFX, naming and gameplay mutations; the coordinator restores the town on completion, pause or required-command failure.
 
 **Tech Stack:** UE 5.8 C++, Paper2D/PaperZD, GameXXK Dialogue core, UMG, project UE MCP scripts, JSON importer, Automation and real PIE harnesses.
 
@@ -14,22 +14,22 @@
 
 - Create `Content/Python/gamexxk_import_prologue_animation_flipbooks.py` — deterministic prologue flipbooks from approved atlases.
 - Create `/Game/GameXXK/Cinematics/Prologue/Flipbooks/*` and sprite assets — generated UE assets, not hand-edited.
-- Create `Source/GameXXK/Public/Narrative/GameXXKNarrativeMarker.h` and private `.cpp` — stable marker actor.
 - Create `Source/GameXXK/Public/Narrative/GameXXKTutorialPrologueCoordinator.h` and private `.cpp` — snapshot/binding/restore.
-- Create `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueTownExecutor.h` and private `.cpp`.
-- Create `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueCameraExecutor.h` and private `.cpp`.
-- Create `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialoguePresentationExecutor.h` and private `.cpp`.
-- Create `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueGameplayExecutor.h` and private `.cpp`.
+- Create `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeTownExecutor.h` and private `.cpp`.
+- Create `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeCameraExecutor.h` and private `.cpp`.
+- Create `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativePresentationExecutor.h` and private `.cpp`.
+- Create `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeGameplayExecutor.h` and private `.cpp`.
 - Create `Source/GameXXK/Public/UI/GameXXKHeroNamingWidget.h` and private `.cpp`.
 - Modify `Source/GameXXK/Public/GameXXKMVPRules.h` — persistent player display name and river-map item.
-- Modify `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h` and private `.cpp` — v29 player identity migration.
+- Modify `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h` and private `.cpp` — v30 player identity migration.
 - Modify `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h` and private `.cpp` — idempotent tutorial reward/objective transaction.
 - Modify `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h` and private `.cpp` — story entry/resume and coordinator ownership.
 - Create `SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.001.dialogue.json` — full approved prologue.
-- Create `Content/Python/gamexxk_install_tutorial_river_markers.py` — targeted marker/actor placement in the existing town.
+- Create `SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.CarriageArrival.sequence.json` — scene-independent command sequence.
+- Create `Content/Python/gamexxk_author_qingshan_river_scene_profile.py` — current-town StageContract/Profile asset and one scene-root binding.
 - Create `Content/Python/gamexxk_probe_tutorial_prologue.py` — live state/action probe.
 - Create `scripts/run_tutorial_prologue_pie.py` — complete real-flow harness.
-- Create `Source/GameXXK/Private/Tests/GameXXKDialogueCommandExecutorTest.cpp`.
+- Create `Source/GameXXK/Private/Tests/GameXXKNarrativeCommandExecutorTest.cpp`.
 - Create `Source/GameXXK/Private/Tests/GameXXKHeroNamingWidgetTest.cpp`.
 - Create `Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp`.
 
@@ -80,24 +80,22 @@ git add -- Content/Python/gamexxk_import_prologue_animation_flipbooks.py scripts
 git commit -m "feat: assemble prologue animation flipbooks"
 ```
 
-### Task 2: Add narrative markers and the town snapshot coordinator
+### Task 2: Bind the town snapshot coordinator through SceneProfile
 
 **Files:**
-- Create: `Source/GameXXK/Public/Narrative/GameXXKNarrativeMarker.h`
-- Create: `Source/GameXXK/Private/Narrative/GameXXKNarrativeMarker.cpp`
 - Create: `Source/GameXXK/Public/Narrative/GameXXKTutorialPrologueCoordinator.h`
 - Create: `Source/GameXXK/Private/Narrative/GameXXKTutorialPrologueCoordinator.cpp`
 - Create: `Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp`
 
 - [ ] **Step 1: Write failing binding/snapshot tests**
 
-Build a transient world with unique markers and assert alias binding, duplicate rejection, snapshot and restore:
+Build a transient world with a complete test SceneProfile and assert character-role binding, semantic-slot resolution, profile mismatch rejection, snapshot and restore:
 
 ```cpp
-TestTrue(TEXT("all required markers bind"), Coordinator->BindScene(World, Error));
+TestTrue(TEXT("active profile binds"), Coordinator->BindScene(World, TEXT("Stage.Tutorial.River"), Error));
 TestEqual(TEXT("hero spawn equals carriage stop"),
-    Coordinator->ResolveMarker(TEXT("Tutorial.River.CarriageStop")),
-    Coordinator->ResolveMarker(TEXT("Tutorial.River.HeroSpawn")));
+    Coordinator->ResolveSlot(TEXT("Tutorial.River.CarriageStop")),
+    Coordinator->ResolveSlot(TEXT("Tutorial.River.HeroSpawn")));
 Coordinator->CaptureTownState();
 Coordinator->HideOrdinaryTown();
 Coordinator->RestoreTownState();
@@ -106,11 +104,11 @@ TestFalse(TEXT("input restored"), Coordinator->IsInputLockedForTest());
 
 - [ ] **Step 2: Run RED**
 
-Expected missing marker/coordinator types.
+Expected missing SceneProfile binding/coordinator types.
 
-- [ ] **Step 3: Implement exact marker contract**
+- [ ] **Step 3: Implement exact StageContract use**
 
-Require unique IDs:
+Resolve these unique SlotIds from the active profile implementing `Stage.Tutorial.River`:
 
 ```text
 Tutorial.River.CarriageEntry
@@ -120,36 +118,38 @@ Tutorial.River.CarriageExit
 Tutorial.River.ScrollSpawn
 Tutorial.River.YueBaiSpawn
 Tutorial.River.YueBaiAdvance
+Tutorial.River.CameraOverview
+Tutorial.River.EncounterTrigger
 Tutorial.River.TownRelease
 ```
 
-`HeroSpawn` and `CarriageStop` may occupy the same transform but remain separate IDs. Snapshot player transform, camera/view target, HUD visibility, hidden state of ordinary NPCs and input mode. Restore is idempotent and callable after partial startup.
+`HeroSpawn` and `CarriageStop` may occupy the same transform but remain separate IDs. No Story/Task/Dialogue/Sequence asset may access the profile map path or numeric transforms. Snapshot player transform, camera/view target, HUD visibility, hidden state of ordinary NPCs and input mode. Restore is idempotent and callable after partial startup.
 
 - [ ] **Step 4: Run GREEN and commit**
 
 ```powershell
-git add -- Source/GameXXK/Public/Narrative Source/GameXXK/Private/Narrative Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp
+git add -- Source/GameXXK/Public/Narrative/GameXXKTutorialPrologueCoordinator.h Source/GameXXK/Private/Narrative/GameXXKTutorialPrologueCoordinator.cpp Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp
 git commit -m "feat: coordinate tutorial river scene state"
 ```
 
-### Task 3: Implement typed town, camera and presentation executors
+### Task 3: Implement typed Sequence town, camera and presentation executors
 
 **Files:**
-- Create: `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueTownExecutor.h`
-- Create: `Source/GameXXK/Private/Dialogue/Executors/GameXXKDialogueTownExecutor.cpp`
-- Create: `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueCameraExecutor.h`
-- Create: `Source/GameXXK/Private/Dialogue/Executors/GameXXKDialogueCameraExecutor.cpp`
-- Create: `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialoguePresentationExecutor.h`
-- Create: `Source/GameXXK/Private/Dialogue/Executors/GameXXKDialoguePresentationExecutor.cpp`
-- Create: `Source/GameXXK/Private/Tests/GameXXKDialogueCommandExecutorTest.cpp`
+- Create: `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeTownExecutor.h`
+- Create: `Source/GameXXK/Private/Narrative/Executors/GameXXKNarrativeTownExecutor.cpp`
+- Create: `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeCameraExecutor.h`
+- Create: `Source/GameXXK/Private/Narrative/Executors/GameXXKNarrativeCameraExecutor.cpp`
+- Create: `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativePresentationExecutor.h`
+- Create: `Source/GameXXK/Private/Narrative/Executors/GameXXKNarrativePresentationExecutor.cpp`
+- Create: `Source/GameXXK/Private/Tests/GameXXKNarrativeCommandExecutorTest.cpp`
 
 - [ ] **Step 1: Write failing command tests**
 
-Cover `spawnActor`, `showActor`, `hideActor`, `setFacing`, `moveToMarker`, `moveRelativeUnits`, `playAction`, `restoreIdle`, `cameraLock`, `cameraFocus`, `cameraRestore`, `screenFlash`, `playVfx`, `playSfx`, `showToast`. Assert unknown aliases/markers fail required commands and optional SFX failures complete with diagnostics.
+Cover `spawnActor`, `showActor`, `hideActor`, `setFacing`, `moveToSlot`, `moveRelativeUnits`, `playAction`, `restoreIdle`, `cameraLock`, `cameraFocus`, `cameraRestore`, `screenFlash`, `playVfx`, `playSfx`, `showToast`. Assert unknown roles/SlotIds fail required commands and optional SFX failures complete with diagnostics.
 
 - [ ] **Step 2: Implement asynchronous completion**
 
-Movement and one-shot actions return `Pending` and complete through delegates/timers. A second command cannot overwrite a pending required command. `CancelPending` stops optional work and asks the coordinator to restore the captured town.
+Movement and one-shot actions return `Pending` and complete through delegates/timers. A second command cannot overwrite a pending required command. `CancelPending` stops optional work and asks NarrativeCoordinator to restore the captured town.
 
 - [ ] **Step 3: Bind approved actions**
 
@@ -158,8 +158,8 @@ Use `AGameXXKHeroCharacter::PlayTownAction` for hero states, Prologue flipbooks 
 - [ ] **Step 4: Run GREEN and commit**
 
 ```powershell
-git add -- Source/GameXXK/Public/Dialogue/Executors Source/GameXXK/Private/Dialogue/Executors Source/GameXXK/Private/Tests/GameXXKDialogueCommandExecutorTest.cpp
-git commit -m "feat: execute dialogue world presentation commands"
+git add -- Source/GameXXK/Public/Narrative/Executors Source/GameXXK/Private/Narrative/Executors Source/GameXXK/Private/Tests/GameXXKNarrativeCommandExecutorTest.cpp
+git commit -m "feat: execute narrative world presentation commands"
 ```
 
 ### Task 4: Add naming and persistent player identity
@@ -174,15 +174,15 @@ git commit -m "feat: execute dialogue world presentation commands"
 
 - [ ] **Step 1: Write failing name validation/migration tests**
 
-Test default “小侠客”, edge trimming, 1–12 displayed Unicode characters, rejection of blank/control/newline input, one pending request, confirm/cancel behavior and v28→v29 default migration.
+Test default “小侠客”, edge trimming, 1–12 displayed Unicode characters, rejection of blank/control/newline input, one pending request, confirm/cancel behavior and v29→v30 default migration.
 
-- [ ] **Step 2: Add persistent field and v29 migration**
+- [ ] **Step 2: Add persistent field and v30 migration**
 
-Add `FString PlayerDisplayName = TEXT("小侠客")` to RuntimeState and `PlayerIdentityIntroducedSaveVersion = 29`. Normalize old/invalid names to the default without changing any visual asset.
+Add `FString PlayerDisplayName = TEXT("小侠客")` to RuntimeState and `PlayerIdentityIntroducedSaveVersion = 30`. Normalize old/invalid names to the default without changing any visual asset.
 
 - [ ] **Step 3: Build naming Widget/executor**
 
-The naming Widget contains only title, editable text, validation message and confirm button. `openNaming` stays `Pending` until valid confirmation, commits `PlayerDisplayName` atomically, saves immediately, then resumes the dialogue. There are no appearance controls.
+The naming Widget contains only title, editable text, validation message and confirm button. Sequence command `openNaming` stays `Pending` until valid confirmation, commits `PlayerDisplayName` atomically, saves immediately, then resumes the Sequence. There are no appearance controls.
 
 - [ ] **Step 4: Run GREEN and commit**
 
@@ -194,8 +194,8 @@ git commit -m "feat: save player name during tutorial"
 ### Task 5: Add gameplay executor and one-time tutorial outcome
 
 **Files:**
-- Create: `Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueGameplayExecutor.h`
-- Create: `Source/GameXXK/Private/Dialogue/Executors/GameXXKDialogueGameplayExecutor.cpp`
+- Create: `Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeGameplayExecutor.h`
+- Create: `Source/GameXXK/Private/Narrative/Executors/GameXXKNarrativeGameplayExecutor.cpp`
 - Modify: `Source/GameXXK/Public/GameXXKMVPRules.h`
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
@@ -203,35 +203,38 @@ git commit -m "feat: save player name during tutorial"
 
 - [ ] **Step 1: Write failing atomic/idempotent outcome tests**
 
-Expect `grantItem(Item.Tutorial.RiverMap)`, `unlockQuestNpc(Npc.YueBai)` and `setTutorialStep(Tutorial.Main.Tiantai)` to commit once, survive reload and skip when command IDs are already recorded.
+Expect `grantItem(Item.Tutorial.RiverMap)`, `unlockQuestNpc(Npc.YueBai)` and `advanceTask(Task.Main.XuXiake.Prologue, Step.Main.XuXiake.CombatTutorial)` to commit once, survive reload and skip when the full namespaced command keys are already recorded.
 
 - [ ] **Step 2: Implement registered gameplay commands**
 
-Add `UGameXXKMVPRules::ItemTutorialRiverMap()` and display name “河中旧图”. Add subsystem transaction `CommitTutorialDialogueCommand(Command, CommandId, OutError)` which clones RuntimeState, applies the typed mutation, normalizes inventory/owned NPC state, validates save state, records the command ID and commits once.
+Add `UGameXXKMVPRules::ItemTutorialRiverMap()` and display name “河中旧图”. Implement `ApplyNarrativeGameplayCommand(Command, InOutCandidateState, OutError)` so it mutates only the candidate supplied by NarrativeCoordinator. The coordinator then advances the candidate SequenceSession, records `StoryId/TaskId/StepId/CommandId`, validates and commits mutation + key + next step in one transaction.
 
 - [ ] **Step 3: Preserve old quest separation**
 
-The completion command updates only `TutorialQuest` and the tutorial main objective. It must not mutate `QuestState`, `TrackedTaskId` to `Task.QingshanMain`, or `bFollowerJoined`.
+The completion command advances only `Task.Main.XuXiake.Prologue`; legacy `TutorialQuest` is a compatibility projection, not the authored source. It must not mutate `QuestState`, `Task.QingshanMain`, `TrackedTaskId` without an explicit `trackTask` command, or `bFollowerJoined`.
 
 - [ ] **Step 4: Run GREEN and commit**
 
 ```powershell
-git add -- Source/GameXXK/Public/Dialogue/Executors/GameXXKDialogueGameplayExecutor.h Source/GameXXK/Private/Dialogue/Executors/GameXXKDialogueGameplayExecutor.cpp Source/GameXXK/Public/GameXXKMVPRules.h Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp
-git commit -m "feat: commit tutorial dialogue rewards once"
+git add -- Source/GameXXK/Public/Narrative/Executors/GameXXKNarrativeGameplayExecutor.h Source/GameXXK/Private/Narrative/Executors/GameXXKNarrativeGameplayExecutor.cpp Source/GameXXK/Public/GameXXKMVPRules.h Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp
+git commit -m "feat: commit tutorial narrative rewards once"
 ```
 
 ### Task 6: Author/import the complete prologue and place the town scene
 
 **Files:**
 - Create: `SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.001.dialogue.json`
-- Create: `Content/Python/gamexxk_install_tutorial_river_markers.py`
-- Modify: `Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap` through targeted UE MCP only.
+- Create: `SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.CarriageArrival.sequence.json`
+- Create: `Content/Python/gamexxk_author_qingshan_river_scene_profile.py`
+- Create: `/Game/GameXXK/Narrative/Stages/DA_StageContract_Tutorial_River` through the authoring script.
+- Create: `/Game/GameXXK/Narrative/Scenes/DA_SceneProfile_Qingshan_River` through the authoring script.
+- Modify: `Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap` only to add/update the owned StageRoot actor.
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h`
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
 
 - [ ] **Step 1: Write the complete JSON from the approved story**
 
-Encode every line from `docs/design/2026-08-27-tutorial-prologue-story.md`, including the salvage choice, YueBai reveal, all movement/action annotations, two toasts and final reward/objective commands. Opening command order must be exactly:
+Encode every line/choice from `docs/design/2026-08-27-tutorial-prologue-story.md` in Dialogue JSON. Encode movement/action/camera/wait/toast/reward commands in the separate Sequence JSON. Both reference CharacterIds/roles and `Stage.Tutorial.River` SlotIds only. Opening command order must be exactly:
 
 ```text
 captureTown → lockInput → hideTownUiAndNpcs
@@ -243,22 +246,26 @@ captureTown → lockInput → hideTownUiAndNpcs
 → begin river notice/scroll mainline
 ```
 
-- [ ] **Step 2: Validate/import JSON before map mutation**
+- [ ] **Step 2: Author and validate the map-independent StageContract**
 
-Run pure validator; expected 0 errors. Import through `gamexxk_import_dialogue_json.py`; expected asset `/Game/GameXXK/Narrative/Dialogues/DA_Dialogue_Tutorial_001` and an import report with every referenced resource resolved.
+Run `gamexxk_author_qingshan_river_scene_profile.py --contract-only` through `UnrealMCPClient.run_project_python_file`. Create/update `DA_StageContract_Tutorial_River` with exactly the ten SlotIds frozen in Task 2; save only the contract package and reject duplicate/empty IDs.
 
-- [ ] **Step 3: Install markers with exact ownership checks**
+- [ ] **Step 3: Validate/import Dialogue and Sequence before profile/map mutation**
 
-The UE Python script loads only `L_Qingshan_AsianVillage_Demo`, creates/updates actors labelled `GameXXK_TutorialRiver_<Id>`, refuses duplicate unowned labels, never moves unrelated actors, and saves only that map after reporting before/after transforms. Inspect the map visually before accepting the save.
+Run Dialogue and Sequence validators; expected 0 errors. Import expected assets `/Game/GameXXK/Narrative/Dialogues/DA_Dialogue_Tutorial_001` and `/Game/GameXXK/Narrative/Sequences/DA_Sequence_Main_XuXiake_CarriageArrival`; import reports must resolve every CharacterId, action, StageContract and SlotId.
 
-- [ ] **Step 4: Route the desktop story entry**
+- [ ] **Step 4: Author the current Qingshan SceneProfile with exact ownership checks**
 
-`RequestDesktopTutorialQuestFromWorkbench` enters the town, asks the coordinator to resume an active tutorial session or start `Dialogue.Tutorial.001`, and never opens the old QuestDialog.
+The UE Python script loads only `L_Qingshan_AsianVillage_Demo`, creates/updates one owned actor labelled `GameXXK_StageRoot_TutorialRiver`, and writes all relative Slot bindings plus NPC/trigger/safe-slot data into `DA_SceneProfile_Qingshan_River`. It refuses duplicate unowned roots, never moves unrelated actors, and saves only the profile plus that map after reporting before/after state. Validate a second transient test profile against the same StageContract to prove replacement works.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Route the desktop story entry**
+
+`RequestDesktopTutorialQuestFromWorkbench` enters the town, asks NarrativeCoordinator to resume the active tutorial Sequence or start `Sequence.Main.XuXiake.CarriageArrival`, and never opens the old QuestDialog. Dialogue is started only when the Sequence reaches its `dialogue` step.
+
+- [ ] **Step 6: Commit**
 
 ```powershell
-git add -- SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.001.dialogue.json Content/Python/gamexxk_install_tutorial_river_markers.py Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp Content/GameXXK/Narrative/Dialogues
+git add -- SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.001.dialogue.json SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.CarriageArrival.sequence.json Content/Python/gamexxk_author_qingshan_river_scene_profile.py Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap Content/GameXXK/Narrative/Stages Content/GameXXK/Narrative/Scenes Content/GameXXK/Narrative/Sequences Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp Content/GameXXK/Narrative/Dialogues
 git commit -m "feat: author river scroll tutorial prologue"
 ```
 
@@ -271,7 +278,7 @@ git commit -m "feat: author river scroll tutorial prologue"
 
 - [ ] **Step 1: Implement phase-based live probe**
 
-Expose read-only state plus bounded actions: click story entry, submit name, advance, choose, pause, exit, resume. Report map, node, actor aliases/actions/transforms, input lock, UI visibility, reward IDs and tutorial step.
+Expose read-only state plus bounded actions: click story entry, submit name, advance, choose, pause, exit, resume. Report map, Sequence step, Dialogue node, character roles/actions/transforms, input lock, UI visibility, reward IDs and tutorial step.
 
 - [ ] **Step 2: Implement full real-flow runner**
 
@@ -306,4 +313,3 @@ Restore `/Game/GameXXK/Maps/L_DesktopTrainingHUD`, start PIE, verify the map nam
 git add -- Content/Python/gamexxk_probe_tutorial_prologue.py scripts/run_tutorial_prologue_pie.py Source/GameXXK/Private/Tests/GameXXKTutorialPrologueTest.cpp
 git commit -m "test: verify tutorial prologue real flow"
 ```
-

@@ -4,7 +4,7 @@
 
 **Goal:** Build the JSON-authored, compiled, deterministic and save-resumable dialogue core without any presentation or world-actor dependencies.
 
-**Architecture:** JSON source files are validated outside UE and imported into `UGameXXKDialogueAsset`. `FGameXXKDialogueRules` advances a pure `FGameXXKDialogueSessionState`, emits typed presentation/command requests, and records choices, reads and idempotency keys in the existing runtime save. No task, shop, actor or Widget code is called from the rules layer.
+**Architecture:** JSON source files are validated outside UE and imported into `UGameXXKDialogueAsset`. `FGameXXKDialogueRules` advances a pure `FGameXXKDialogueSessionState`, emits presentation views, and returns stable OutcomeIds to its caller. It records only dialogue choices, reads and history; NarrativeSequence owns commands, waits and command idempotency in the following implementation plan. No task, shop, actor or Widget code is called from the rules layer.
 
 **Tech Stack:** Unreal Engine 5.8 C++, UPrimaryDataAsset, UE JSON/Python editor import, GameXXK RuntimeState/save migration, Automation Tests, Python unittest.
 
@@ -20,7 +20,7 @@
 - Modify `Source/GameXXK/Public/GameXXKMVPRules.h` — add dialogue state to `FGameXXKRuntimeState`.
 - Modify `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h` — add save v28 constant.
 - Modify `Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp` — initialize and validate dialogue state.
-- Create `Source/GameXXK/Private/Tests/GameXXKDialogueRulesTest.cpp` — rules, branch and idempotency coverage.
+- Create `Source/GameXXK/Private/Tests/GameXXKDialogueRulesTest.cpp` — rules, branch, condition and outcome coverage.
 - Create `Source/GameXXK/Private/Tests/GameXXKDialogueSaveMigrationTest.cpp` — v27→v28 migration coverage.
 - Create `SourceAssets/Narrative/dialogue.schema.json` — source contract.
 - Create `scripts/validate_dialogue_json.py` — pure JSON validation and canonical output.
@@ -69,23 +69,10 @@ Define these enums and structures in `GameXXKDialogueTypes.h`:
 
 ```cpp
 UENUM(BlueprintType)
-enum class EGameXXKDialogueNodeType : uint8 { Line, Choice, Command, Wait, End };
+enum class EGameXXKDialogueNodeType : uint8 { Line, Choice, End };
 
 UENUM(BlueprintType)
 enum class EGameXXKDialoguePresentation : uint8 { Bubble, DialoguePanel, None };
-
-UENUM(BlueprintType)
-enum class EGameXXKDialogueCommandStatus : uint8 { Completed, Pending, Failed };
-
-USTRUCT(BlueprintType)
-struct FGameXXKDialogueCommandDefinition
-{
-    GENERATED_BODY()
-    UPROPERTY(EditAnywhere) FName CommandId;
-    UPROPERTY(EditAnywhere) FName Type;
-    UPROPERTY(EditAnywhere) TMap<FName, FString> Arguments;
-    UPROPERTY(EditAnywhere) bool bOptional = false;
-};
 
 USTRUCT(BlueprintType)
 struct FGameXXKDialogueOptionDefinition
@@ -94,8 +81,8 @@ struct FGameXXKDialogueOptionDefinition
     UPROPERTY(EditAnywhere) FName OptionId;
     UPROPERTY(EditAnywhere) FName TextId;
     UPROPERTY(EditAnywhere) FText Text;
+    UPROPERTY(EditAnywhere) FName OutcomeId;
     UPROPERTY(EditAnywhere) FName NextNodeId;
-    UPROPERTY(EditAnywhere) TArray<FGameXXKDialogueCommandDefinition> Commands;
     UPROPERTY(EditAnywhere) TMap<FName, FString> Conditions;
     UPROPERTY(EditAnywhere) FText DisabledReason;
 };
@@ -110,9 +97,9 @@ struct FGameXXKDialogueNodeDefinition
     UPROPERTY(EditAnywhere) FName SpeakerId;
     UPROPERTY(EditAnywhere) FName TextId;
     UPROPERTY(EditAnywhere) FText Text;
+    UPROPERTY(EditAnywhere) FName EndOutcomeId;
     UPROPERTY(EditAnywhere) FName NextNodeId;
     UPROPERTY(EditAnywhere) TArray<FGameXXKDialogueOptionDefinition> Options;
-    UPROPERTY(EditAnywhere) TArray<FGameXXKDialogueCommandDefinition> Commands;
     UPROPERTY(EditAnywhere) TMap<FName, FString> Conditions;
 };
 ```
@@ -151,7 +138,13 @@ Define a branching fixture `start -> choice -> left/right -> end`. Expect:
 ```cpp
 FGameXXKDialogueSessionState Session;
 FGameXXKDialogueOutput Output;
-TestTrue(TEXT("start succeeds"), FGameXXKDialogueRules::Start(*Asset, Session, Output));
+FGameXXKDialogueStartContext StartContext;
+StartContext.StoryId = TEXT("Story.Test");
+StartContext.TaskId = TEXT("Task.Test");
+StartContext.StepId = TEXT("Step.Test");
+StartContext.SequenceId = TEXT("Sequence.Test");
+StartContext.StageContractId = TEXT("Stage.Test");
+TestTrue(TEXT("start succeeds"), FGameXXKDialogueRules::Start(*Asset, StartContext, Session, Output));
 TestEqual(TEXT("start node shown"), Output.NodeId, FName(TEXT("start")));
 TestTrue(TEXT("line completes"), FGameXXKDialogueRules::CompletePresentedNode(*Asset, Session, Output));
 TestEqual(TEXT("choice reached"), Session.CurrentNodeId, FName(TEXT("choice")));
@@ -185,11 +178,16 @@ struct FGameXXKDialogueSessionState
 {
     GENERATED_BODY()
     UPROPERTY(SaveGame) bool bActive = false;
+    UPROPERTY(SaveGame) FName StoryId;
+    UPROPERTY(SaveGame) int32 StoryVersion = 0;
+    UPROPERTY(SaveGame) FName TaskId;
+    UPROPERTY(SaveGame) FName StepId;
+    UPROPERTY(SaveGame) FName SequenceId;
+    UPROPERTY(SaveGame) FName StageContractId;
     UPROPERTY(SaveGame) FName DialogueId;
     UPROPERTY(SaveGame) int32 DialogueVersion = 0;
     UPROPERTY(SaveGame) FName CurrentNodeId;
     UPROPERTY(SaveGame) TSet<FName> SeenNodeIds;
-    UPROPERTY(SaveGame) TSet<FName> ExecutedCommandIds;
     UPROPERTY(SaveGame) TArray<FName> SelectedOptionIds;
     UPROPERTY(SaveGame) TArray<FGameXXKDialogueHistoryEntry> History;
     UPROPERTY(SaveGame) FString PauseReason;
@@ -215,8 +213,7 @@ struct FGameXXKDialogueOutput
     UPROPERTY(BlueprintReadOnly) FName TextId;
     UPROPERTY(BlueprintReadOnly) FText Text;
     UPROPERTY(BlueprintReadOnly) TArray<FGameXXKDialogueVisibleOption> Options;
-    UPROPERTY(BlueprintReadOnly) FGameXXKDialogueCommandDefinition PendingCommand;
-    UPROPERTY(BlueprintReadOnly) bool bHasPendingCommand = false;
+    UPROPERTY(BlueprintReadOnly) FName OutcomeId;
     UPROPERTY(BlueprintReadOnly) bool bEnded = false;
 };
 ```
@@ -224,14 +221,23 @@ struct FGameXXKDialogueOutput
 Expose pure APIs:
 
 ```cpp
-static bool Start(const UGameXXKDialogueAsset&, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
+struct FGameXXKDialogueStartContext
+{
+    FName StoryId;
+    int32 StoryVersion = 1;
+    FName TaskId;
+    FName StepId;
+    FName SequenceId;
+    FName StageContractId;
+};
+
+static bool Start(const UGameXXKDialogueAsset&, const FGameXXKDialogueStartContext&, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
 static bool CompletePresentedNode(const UGameXXKDialogueAsset&, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
 static bool Choose(const UGameXXKDialogueAsset&, FName OptionId, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
-static bool CompleteCommand(const UGameXXKDialogueAsset&, FName CommandId, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
 static bool Resume(const UGameXXKDialogueAsset&, FGameXXKDialogueSessionState&, FGameXXKDialogueOutput&, FString* OutError=nullptr);
 ```
 
-Bound internal advancement to 256 immediate nodes per call. Append history only for displayed lines/selections and trim oldest entries above 100.
+Bound internal advancement to 256 immediate nodes per call. A selected option records its OutcomeId before entering `NextNodeId`; an End node returns `EndOutcomeId` and clears `bActive`. Append history only for displayed lines/selections and trim oldest entries above 100.
 
 - [ ] **Step 4: Run GREEN**
 
@@ -244,24 +250,25 @@ git add -- Source/GameXXK/Public/Dialogue Source/GameXXK/Private/Dialogue Source
 git commit -m "feat: add deterministic dialogue runner"
 ```
 
-### Task 3: Add condition evaluation and command idempotency
+### Task 3: Add condition evaluation and stable outcomes
 
 **Files:**
 - Modify: `Source/GameXXK/Public/Dialogue/GameXXKDialogueRules.h`
 - Modify: `Source/GameXXK/Private/Dialogue/GameXXKDialogueRules.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKDialogueRulesTest.cpp`
 
-- [ ] **Step 1: Write failing condition/idempotency tests**
+- [ ] **Step 1: Write failing condition/outcome tests**
 
-Create `FGameXXKDialogueConditionContext` with flags, item counts, gold, unlocked companions, selected options and seen nodes. Test a hidden option, a disabled option with reason, and a repeated `grant_item` command:
+Create `FGameXXKDialogueConditionContext` with flags, item counts, gold, unlocked companions, selected options and seen nodes. Test a hidden option, a disabled option with reason, a selected option OutcomeId and a terminal End OutcomeId:
 
 ```cpp
 Context.Gold = 4999;
 TestFalse(TEXT("5000-gold option unavailable"),
     FGameXXKDialogueRules::EvaluateConditions(Option.Conditions, Context));
-Session.ExecutedCommandIds.Add(TEXT("grant_once"));
-TestTrue(TEXT("executed command is skipped idempotently"),
-    FGameXXKDialogueRules::IsCommandAlreadyCommitted(Session, TEXT("grant_once")));
+TestTrue(TEXT("visible choice succeeds"),
+    FGameXXKDialogueRules::Choose(*Asset, TEXT("salvage_scroll"), Session, Output));
+TestEqual(TEXT("choice outcome returned"), Output.OutcomeId,
+    FName(TEXT("Outcome.Tutorial.SalvageRiverMap")));
 ```
 
 - [ ] **Step 2: Run RED**
@@ -286,13 +293,13 @@ struct FGameXXKDialogueConditionContext
 };
 ```
 
-Support exactly: `flag`, `tutorialState`, `taskState`, `itemAtLeast`, `goldAtLeast`, `companionUnlocked`, `optionSelected`, `nodeSeen`. Unknown conditions fail closed and return an error. An already executed command emits a completed/skipped request and never dispatches again.
+Support exactly: `flag`, `tutorialState`, `taskState`, `itemAtLeast`, `goldAtLeast`, `companionUnlocked`, `optionSelected`, `nodeSeen`. Unknown conditions fail closed and return an error. Reject empty/duplicate OutcomeIds and require every Choice option and End node to return a non-empty stable OutcomeId.
 
 - [ ] **Step 4: Run GREEN and commit**
 
 ```powershell
 git add -- Source/GameXXK/Public/Dialogue Source/GameXXK/Private/Dialogue Source/GameXXK/Private/Tests/GameXXKDialogueRulesTest.cpp
-git commit -m "feat: validate dialogue conditions and command idempotency"
+git commit -m "feat: validate dialogue conditions and outcomes"
 ```
 
 ### Task 4: Persist and migrate dialogue sessions
@@ -327,10 +334,10 @@ Expected compile/test failure because v28/session field do not exist.
 
 Add `DialogueRuntimeIntroducedSaveVersion = 28`, advance `CurrentSaveVersion`, add `DialogueSession` to `FGameXXKRuntimeState`, initialize it for older saves, and reject these invalid combinations:
 
-- inactive with non-empty dialogue/current node;
-- active with empty dialogue/current node or non-positive version;
+- inactive with non-empty Story/Task/Step/Sequence/Stage/Dialogue/current-node context;
+- active with empty Story/Task/Step/Sequence/Stage/Dialogue/current-node context or non-positive Story/Dialogue version;
 - more than 100 history entries;
-- empty command/option IDs in committed sets.
+- empty option IDs in committed selections.
 
 - [ ] **Step 4: Run save tests and commit**
 
@@ -350,7 +357,7 @@ git commit -m "feat: persist dialogue sessions in save v28"
 
 - [ ] **Step 1: Write failing Python tests**
 
-Cover duplicate IDs, dangling `next`, unreachable nodes, unregistered command/condition, choice count 5, exitless cycle, missing resource IDs and canonical success. The success fixture must compile to a canonical dict sorted by stable IDs.
+Cover duplicate IDs, dangling `next`, unreachable nodes, unregistered condition, empty/duplicate OutcomeIds, choice count 5, exitless cycle, missing speaker/role IDs and canonical success. The success fixture must compile to a canonical dict sorted by stable IDs.
 
 - [ ] **Step 2: Run RED**
 
@@ -368,11 +375,8 @@ Expose:
 @dataclass(frozen=True)
 class CatalogSnapshot:
     speakers: frozenset[str]
-    markers: frozenset[str]
-    items: frozenset[str]
-    actions: frozenset[str]
-    effects: frozenset[str]
-    sounds: frozenset[str]
+    roles: frozenset[str]
+    outcomes: frozenset[str]
 
 def validate_dialogue(payload: dict, catalogs: CatalogSnapshot) -> list[str]:
     errors: list[str] = []
@@ -382,8 +386,7 @@ def validate_dialogue(payload: dict, catalogs: CatalogSnapshot) -> list[str]:
     entry = payload.get("entryNode")
     if entry not in nodes:
         errors.append(f"entry node does not exist: {entry!r}")
-    allowed_nodes = {"line", "choice", "command", "wait", "end"}
-    allowed_commands = REGISTERED_COMMAND_TYPES
+    allowed_nodes = {"line", "choice", "end"}
     allowed_conditions = REGISTERED_CONDITION_TYPES
     adjacency: dict[str, set[str]] = {node_id: set() for node_id in nodes}
     for node_id, node in nodes.items():
@@ -395,7 +398,7 @@ def validate_dialogue(payload: dict, catalogs: CatalogSnapshot) -> list[str]:
             if target not in nodes:
                 errors.append(f"{node_id}: missing target {target}")
         errors.extend(_resource_errors(node_id, node, catalogs))
-        errors.extend(_registered_type_errors(node_id, node, allowed_commands, allowed_conditions))
+        errors.extend(_registered_condition_and_outcome_errors(node_id, node, allowed_conditions, catalogs.outcomes))
     if entry in nodes:
         unreachable = set(nodes) - _reachable_nodes(entry, adjacency)
         errors.extend(f"unreachable node: {node_id}" for node_id in sorted(unreachable))
@@ -413,7 +416,7 @@ def validate_file(path: Path, catalogs: CatalogSnapshot) -> dict:
     return canonicalize_dialogue(payload)
 ```
 
-Register only the node, condition and command names frozen in the design. Validate all graph edges with DFS and Tarjan SCC; an SCC is valid only when it contains an explicit conditional exit.
+Register only the node and condition names frozen in the design. Validate speaker/role and Outcome references, all graph edges with DFS and Tarjan SCC; an SCC is valid only when it contains an explicit conditional exit.
 
 - [ ] **Step 4: Run GREEN and commit**
 

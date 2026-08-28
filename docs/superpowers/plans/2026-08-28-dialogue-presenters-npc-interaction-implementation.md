@@ -4,7 +4,7 @@
 
 **Goal:** Present dialogue through a bottom paper panel or actor-following bubble, coordinate input/auto/skip/history/pause, and replace NPC `F` routing with deterministic forward-cone targeting.
 
-**Architecture:** `UGameXXKDialogueCoordinator` owns one active blocking presentation and consumes outputs from the pure Runner. Presenter Widgets expose typed view-model APIs only. The hero interaction component queries `UGameXXKInteractableComponent` candidates, selects one deterministically, and asks the coordinator to start the configured dialogue; task/shop actions remain typed dialogue commands.
+**Architecture:** `UGameXXKDialogueCoordinator` owns one active blocking presentation, consumes outputs from the pure DialogueRunner and returns one OutcomeId to its calling NarrativeCoordinator. Presenter Widgets expose typed view-model APIs only. The hero interaction component queries `UGameXXKInteractableComponent` candidates, selects one deterministically, and starts the configured NarrativeSequence; task/shop actions are Sequence commands, never Dialogue nodes.
 
 **Tech Stack:** UE 5.8 UMG/Slate C++, existing GameXXK paper textures, PlayerController input routing, world-to-widget projection, Automation Tests.
 
@@ -12,10 +12,9 @@
 
 ## File map
 
-- Create `Source/GameXXK/Public/Dialogue/GameXXKDialogueCoordinator.h` — session/presenter/input coordinator.
-- Create `Source/GameXXK/Private/Dialogue/GameXXKDialogueCoordinator.cpp` — Runner integration and modal ownership.
-- Create `Source/GameXXK/Public/Dialogue/GameXXKDialogueCommandExecutor.h` — typed executor interface/registry.
-- Modify `Source/GameXXK/Public/Dialogue/GameXXKDialogueTypes.h` — presenter view and command result types.
+- Create `Source/GameXXK/Public/Dialogue/GameXXKDialogueCoordinator.h` — session/presenter/outcome coordinator.
+- Create `Source/GameXXK/Private/Dialogue/GameXXKDialogueCoordinator.cpp` — DialogueRunner integration and modal presentation ownership.
+- Modify `Source/GameXXK/Public/Dialogue/GameXXKDialogueTypes.h` — presenter view types.
 - Create `Source/GameXXK/Public/UI/GameXXKDialoguePanelWidget.h` and private `.cpp` — formal bottom panel.
 - Create `Source/GameXXK/Public/UI/GameXXKSpeechBubbleWidget.h` and private `.cpp` — actor-following bubble.
 - Create `Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h` and private `.cpp` — read-only 100-entry history.
@@ -121,12 +120,11 @@ git add -- Source/GameXXK/Public/UI/GameXXKSpeechBubbleWidget.h Source/GameXXK/P
 git commit -m "feat: add actor speech bubbles"
 ```
 
-### Task 3: Coordinate advance, auto, skip, history and pause
+### Task 3: Coordinate advance, auto, skip, history, pause and outcome return
 
 **Files:**
 - Create: `Source/GameXXK/Public/Dialogue/GameXXKDialogueCoordinator.h`
 - Create: `Source/GameXXK/Private/Dialogue/GameXXKDialogueCoordinator.cpp`
-- Create: `Source/GameXXK/Public/Dialogue/GameXXKDialogueCommandExecutor.h`
 - Create: `Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h`
 - Create: `Source/GameXXK/Private/UI/GameXXKDialogueHistoryWidget.cpp`
 - Create: `Source/GameXXK/Private/Tests/GameXXKDialogueCoordinatorTest.cpp`
@@ -142,41 +140,31 @@ Cover:
 - Ctrl skip working only for `SeenNodeIds`;
 - history trimming to 100;
 - one blocking session at a time;
-- `openShop` suspending the panel until completion;
-- required command failure restoring modal input.
+- Choice/End OutcomeId returned exactly once to the NarrativeCoordinator;
+- pause/exit keeping the dialogue session at a replayable node boundary.
 
-- [ ] **Step 2: Implement executor contract**
+- [ ] **Step 2: Implement the outcome callback contract**
 
 ```cpp
-struct FGameXXKDialogueCommandResult
-{
-    EGameXXKDialogueCommandStatus Status = EGameXXKDialogueCommandStatus::Failed;
-    FString Error;
-    float ExpectedDurationSeconds = 0.0f;
-};
+DECLARE_DELEGATE_TwoParams(FGameXXKDialogueFinished, FName /*DialogueId*/, FName /*OutcomeId*/);
 
-class IGameXXKDialogueCommandExecutor
-{
-public:
-    virtual ~IGameXXKDialogueCommandExecutor() = default;
-    virtual bool Supports(FName CommandType) const = 0;
-    virtual EGameXXKDialogueCommandStatus Execute(
-        const FGameXXKDialogueCommandDefinition& Command,
-        FGameXXKDialogueCommandResult& OutResult) = 0;
-    virtual void CancelPending() = 0;
-};
+bool StartDialogue(
+    const UGameXXKDialogueAsset& Asset,
+    const FGameXXKDialogueStartContext& Context,
+    FGameXXKDialogueFinished OnFinished,
+    FString* OutError = nullptr);
 ```
 
-Coordinator registers executors by command type, rejects duplicate registration, and never invokes an unregistered type.
+The coordinator rejects a second blocking session, never fires `OnFinished` while paused, and fires it once only after an End node. Choice outcomes remain available to the DialogueRunner for in-dialogue branching; the final End outcome is returned to NarrativeSequence.
 
 - [ ] **Step 3: Implement modal behavior**
 
-Coordinator owns presenter visibility, player input-lock token and pause state. `Esc` shows continue/exit. Exit cancels only optional pending visual work, restores input/UI, leaves `DialogueSession` active at the current node, and releases presenter resources.
+Coordinator owns presenter visibility and pause state, while the calling NarrativeCoordinator owns the single world-input lock token. `Esc` shows continue/exit. Exit hides the presenter, leaves `DialogueSession` active at the current node, releases presenter resources and asks NarrativeCoordinator to release its token; it does not cancel or complete Sequence commands.
 
 - [ ] **Step 4: Run GREEN and commit**
 
 ```powershell
-git add -- Source/GameXXK/Public/Dialogue/GameXXKDialogueTypes.h Source/GameXXK/Public/Dialogue/GameXXKDialogueCoordinator.h Source/GameXXK/Private/Dialogue/GameXXKDialogueCoordinator.cpp Source/GameXXK/Public/Dialogue/GameXXKDialogueCommandExecutor.h Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h Source/GameXXK/Private/UI/GameXXKDialogueHistoryWidget.cpp Source/GameXXK/Private/Tests/GameXXKDialogueCoordinatorTest.cpp
+git add -- Source/GameXXK/Public/Dialogue/GameXXKDialogueTypes.h Source/GameXXK/Public/Dialogue/GameXXKDialogueCoordinator.h Source/GameXXK/Private/Dialogue/GameXXKDialogueCoordinator.cpp Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h Source/GameXXK/Private/UI/GameXXKDialogueHistoryWidget.cpp Source/GameXXK/Private/Tests/GameXXKDialogueCoordinatorTest.cpp
 git commit -m "feat: coordinate dialogue presentation and input"
 ```
 
@@ -226,7 +214,7 @@ public:
 };
 ```
 
-`UGameXXKInteractableComponent` stores `InteractionId`, display name, `DialogueId`, priority, enabled state and prompt anchor. The hero component scans overlaps, filters the cone, computes candidates, and emits only a target-changed delegate. It performs no UI opening during target selection.
+`UGameXXKInteractableComponent` stores `InteractionId`, display name, `NarrativeSequenceId`, priority, enabled state and prompt anchor. The hero component scans overlaps, filters the cone, computes candidates, and emits only a target-changed delegate. It performs no UI opening during target selection. A talk-only NPC still uses a one-Dialogue Sequence so all F interactions share the same resume/command boundary.
 
 - [ ] **Step 3: Run GREEN and commit**
 
@@ -248,11 +236,11 @@ git commit -m "feat: select npc interactions in a forward cone"
 
 - [ ] **Step 1: Add failing integration tests**
 
-Expect `F` on a selected NPC to start its DialogueId, no target to do nothing, and an open dialogue/backpack/shop to disable targeting. Assert no Widget or PlayerController function exposes `RecruitPendingTownNpc` through the new interaction path.
+Expect `F` on a selected NPC to start its NarrativeSequenceId, no target to do nothing, and an active narrative/backpack/shop to disable targeting. Assert a Sequence may branch from a Dialogue Outcome to talk/task/shop commands, and no Widget or PlayerController function exposes `RecruitPendingTownNpc` through the new interaction path.
 
 - [ ] **Step 2: Integrate coordinator ownership**
 
-PlayerController creates one coordinator and presenters, forwards mouse/Space/Enter/1–4/Ctrl/Esc, and uses one tokenized input lock. `TownNpcCharacter` configures its interactable component instead of opening `QuestDialog` directly.
+PlayerController owns the NarrativeCoordinator and its DialogueCoordinator/presenters, forwards mouse/Space/Enter/1–4/Ctrl/Esc, and lets NarrativeCoordinator own one tokenized input lock. `TownNpcCharacter` configures its interactable SequenceId instead of opening `QuestDialog` directly.
 
 - [ ] **Step 3: Retire QuestDialog hardcoding**
 
