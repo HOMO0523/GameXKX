@@ -60,6 +60,7 @@ DEFAULT_CATALOGS = GuideCatalogSnapshot(
             "Event.Route.EventChoiceResolved",
             "Event.Route.CampHealResolved",
             "Event.Route.CampGoldResolved",
+            "Event.Route.CampResolved",
             "Event.Route.ChestRewardResolved",
             "Event.Boss.Completed",
             "Event.Settlement.Confirmed",

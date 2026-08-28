@@ -62,6 +62,7 @@ namespace GameXXKGuideTargetRegistryPrivate
 			TEXT("Event.Route.EventChoiceResolved"),
 			TEXT("Event.Route.CampHealResolved"),
 			TEXT("Event.Route.CampGoldResolved"),
+			TEXT("Event.Route.CampResolved"),
 			TEXT("Event.Route.ChestRewardResolved"),
 			TEXT("Event.Boss.Completed"),
 			TEXT("Event.Settlement.Confirmed"),

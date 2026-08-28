@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Settlement.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Settlement.Basic.Confirm",
+  "steps": {
+    "Guide.Settlement.Basic.Confirm": {
+      "triggerEvent": "Event.Settlement.Opened",
+      "target": "Route.Settlement.Confirm",
+      "inputPolicy": "forced",
+      "text": "确认本次引导路线的结算奖励。",
+      "allowedActions": ["Action.Route.SettlementConfirm"],
+      "completionEvent": "Event.Settlement.Confirmed"
+    }
+  }
+}

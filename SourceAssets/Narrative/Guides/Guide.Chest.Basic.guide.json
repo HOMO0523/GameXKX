@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Chest.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Chest.Basic.Open",
+  "steps": {
+    "Guide.Chest.Basic.Open": {
+      "triggerEvent": "Event.Route.ChestOpened",
+      "target": "Route.Chest.Open",
+      "inputPolicy": "forced",
+      "text": "打开本节点的宝箱并收取奖励。",
+      "allowedActions": ["Action.Route.ChestOpen"],
+      "completionEvent": "Event.Route.ChestRewardResolved"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.RouteMap.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.RouteMap.Basic.SelectNext",
+  "steps": {
+    "Guide.RouteMap.Basic.SelectNext": {
+      "triggerEvent": "Event.RouteMap.Opened",
+      "target": "Route.Tutorial.NextNode",
+      "inputPolicy": "forced",
+      "text": "选择当前唯一可前往的节点。",
+      "allowedActions": ["Action.Route.SelectNext"],
+      "completionEvent": "Event.Route.NextNodeSelected"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Merchant.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Merchant.Basic.CardRow",
+  "steps": {
+    "Guide.Merchant.Basic.CardRow": {
+      "triggerEvent": "Event.Merchant.Opened",
+      "target": "Route.Merchant.CardRow",
+      "inputPolicy": "soft",
+      "text": "行旅钱足够时，可以强化角色携带的卡牌。",
+      "allowedActions": [
+        "Action.Merchant.PurchaseCard",
+        "Action.Merchant.Leave"
+      ],
+      "completionEvent": "Event.Merchant.CardPurchased",
+      "next": "Guide.Merchant.Basic.Leave"
+    },
+    "Guide.Merchant.Basic.Leave": {
+      "triggerEvent": "Event.Merchant.Opened",
+      "target": "Route.Merchant.Leave",
+      "inputPolicy": "soft",
+      "text": "强化完成后离开商店。",
+      "allowedActions": ["Action.Merchant.Leave"],
+      "completionEvent": "Event.Merchant.Left"
+    }
+  }
+}

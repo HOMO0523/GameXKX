@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Boss.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Boss.Basic.Observe",
+  "steps": {
+    "Guide.Boss.Basic.Observe": {
+      "triggerEvent": "Event.Boss.Opened",
+      "target": "Battle.Hud.PartyQi",
+      "inputPolicy": "soft",
+      "text": "首领战不会限制操作，按已学会的方式完成战斗。",
+      "allowedActions": [],
+      "completionEvent": "Event.Boss.Completed"
+    }
+  }
+}

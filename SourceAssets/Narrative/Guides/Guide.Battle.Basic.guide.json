@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Battle.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Battle.Basic.SelectCard",
+  "steps": {
+    "Guide.Battle.Basic.SelectCard": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Hand.FirstPlayableTargetedCard",
+      "inputPolicy": "forced",
+      "text": "选择一张当前可打出的指向型卡牌。",
+      "allowedActions": ["Action.Battle.SelectTargetedCard"],
+      "completionEvent": "Event.Battle.TargetedCardSelected",
+      "next": "Guide.Battle.Basic.SelectTarget"
+    },
+    "Guide.Battle.Basic.SelectTarget": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Enemy.FirstLegalTarget",
+      "inputPolicy": "forced",
+      "text": "选择一个合法敌人并打出卡牌。",
+      "allowedActions": [
+        "Action.Battle.SelectLegalTarget",
+        "Action.Battle.CommitCard"
+      ],
+      "completionEvent": "Event.Battle.CardResolved",
+      "next": "Guide.Battle.Basic.EndTurn"
+    },
+    "Guide.Battle.Basic.EndTurn": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.EndTurn",
+      "inputPolicy": "forced",
+      "text": "没有合适的牌时，结束本回合。",
+      "allowedActions": ["Action.Battle.EndTurn"],
+      "completionEvent": "Event.Battle.EndTurnResolved"
+    }
+  }
+}

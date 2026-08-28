@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Event.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Event.Basic.Choose",
+  "steps": {
+    "Guide.Event.Basic.Choose": {
+      "triggerEvent": "Event.Route.EventOpened",
+      "target": "Route.Event.ValidChoiceGroup",
+      "inputPolicy": "forced",
+      "text": "查看结果后，选择一个当前可用的事件选项。",
+      "allowedActions": ["Action.Route.EventChoose"],
+      "completionEvent": "Event.Route.EventChoiceResolved"
+    }
+  }
+}

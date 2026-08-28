@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Camp.Basic",
+  "guideVersion": 1,
+  "entryStep": "Guide.Camp.Basic.Choose",
+  "steps": {
+    "Guide.Camp.Basic.Choose": {
+      "triggerEvent": "Event.Route.CampOpened",
+      "target": "Route.Camp.Heal",
+      "inputPolicy": "soft",
+      "text": "休息可使全队恢复30%最大气血，也可获得100行旅钱。",
+      "allowedActions": [
+        "Action.Route.CampHeal",
+        "Action.Route.CampGold"
+      ],
+      "completionEvent": "Event.Route.CampResolved"
+    }
+  }
+}

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from scripts.validate_guide_json import (
+    DEFAULT_CATALOGS,
     GuideCatalogSnapshot,
     canonicalize_guide,
     validate_file,
@@ -165,6 +166,55 @@ class GuideJsonValidationTests(unittest.TestCase):
         self.assertLess(source.index("validate_file"), source.index("create_asset"))
         self.assertIn("does_asset_exist", source)
         self.assertLess(source.index("does_asset_exist"), source.index("load_asset"))
+
+    def test_fixed_tutorial_sources_cover_route_without_widget_coordinates(self) -> None:
+        source_dir = PROJECT_ROOT / "SourceAssets" / "Narrative" / "Guides"
+        expected_files = {
+            "Guide.RouteMap.Basic.guide.json",
+            "Guide.Battle.Basic.guide.json",
+            "Guide.Merchant.Basic.guide.json",
+            "Guide.Event.Basic.guide.json",
+            "Guide.Camp.Basic.guide.json",
+            "Guide.Chest.Basic.guide.json",
+            "Guide.Boss.Basic.guide.json",
+            "Guide.Settlement.Basic.guide.json",
+        }
+        actual_files = {path.name for path in source_dir.glob("*.guide.json")}
+        self.assertEqual(expected_files, actual_files)
+
+        payloads = {
+            path.name: validate_file(path, DEFAULT_CATALOGS)
+            for path in sorted(source_dir.glob("*.guide.json"))
+        }
+        self.assertEqual(
+            {name.removesuffix(".guide.json") for name in expected_files},
+            {payload["guideId"] for payload in payloads.values()},
+        )
+        battle_targets = {
+            step["target"] for step in payloads["Guide.Battle.Basic.guide.json"]["steps"].values()
+        }
+        self.assertIn("Battle.Hand.FirstPlayableTargetedCard", battle_targets)
+        self.assertIn("Battle.Enemy.FirstLegalTarget", battle_targets)
+        self.assertTrue(
+            all(
+                step["inputPolicy"] == "soft"
+                for step in payloads["Guide.Boss.Basic.guide.json"]["steps"].values()
+            )
+        )
+
+        forbidden_keys = {"x", "y", "z", "coordinates", "widgetName", "widgetPath"}
+
+        def visit(value: object) -> None:
+            if isinstance(value, dict):
+                self.assertTrue(forbidden_keys.isdisjoint(value))
+                for child in value.values():
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+
+        for payload in payloads.values():
+            visit(payload)
 
 
 if __name__ == "__main__":
