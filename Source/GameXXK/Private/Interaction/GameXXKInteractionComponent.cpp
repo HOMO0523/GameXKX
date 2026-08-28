@@ -1,7 +1,8 @@
 #include "Interaction/GameXXKInteractionComponent.h"
 
 #include "Interaction/GameXXKInteractable.h"
-#include "EngineUtils.h"
+#include "Interaction/GameXXKInteractableComponent.h"
+#include "Interaction/GameXXKInteractionRules.h"
 #include "GameFramework/Pawn.h"
 #include "Town/GameXXKTownExitActor.h"
 #include "Town/GameXXKTownNpcActor.h"
@@ -11,8 +12,14 @@ namespace
 {
 	bool IsAvailableInteractionTarget(const AActor* Actor)
 	{
-		if (!Actor || Actor->IsPendingKillPending()
-			|| !Actor->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
+		if (!Actor || Actor->IsPendingKillPending())
+		{
+			return false;
+		}
+		const UGameXXKInteractableComponent* Metadata =
+			Actor->FindComponentByClass<UGameXXKInteractableComponent>();
+		if ((!Metadata || !Metadata->IsInteractionEnabled())
+			&& !Actor->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
 		{
 			return false;
 		}
@@ -28,6 +35,53 @@ namespace
 		}
 
 		return true;
+	}
+
+	bool BuildCandidate(
+		const APawn& OwnerPawn,
+		AActor& Actor,
+		FGameXXKInteractionCandidate& OutCandidate)
+	{
+		if (!IsAvailableInteractionTarget(&Actor))
+		{
+			return false;
+		}
+		const FVector2D OwnerLocation(OwnerPawn.GetActorLocation());
+		const FVector2D TargetLocation(Actor.GetActorLocation());
+		const FVector2D ToTarget = TargetLocation - OwnerLocation;
+		const float Distance = static_cast<float>(ToTarget.Size());
+		const UGameXXKInteractableComponent* Metadata =
+			Actor.FindComponentByClass<UGameXXKInteractableComponent>();
+		OutCandidate.InteractionId = Metadata && !Metadata->GetInteractionId().IsNone()
+			? Metadata->GetInteractionId()
+			: FName(*Actor.GetPathName());
+		OutCandidate.Priority = Metadata ? Metadata->GetPriority() : 0;
+		OutCandidate.Distance = Distance;
+		return true;
+	}
+
+	AActor* ChooseActor(
+		const APawn& OwnerPawn,
+		const TArray<AActor*>& Actors)
+	{
+		TArray<FGameXXKInteractionCandidate> Candidates;
+		TMap<FName, AActor*> ActorById;
+		for (AActor* Actor : Actors)
+		{
+			if (!Actor || Actor == &OwnerPawn)
+			{
+				continue;
+			}
+			FGameXXKInteractionCandidate Candidate;
+			if (BuildCandidate(OwnerPawn, *Actor, Candidate))
+			{
+				Candidates.Add(Candidate);
+				ActorById.FindOrAdd(Candidate.InteractionId, Actor);
+			}
+		}
+		const TOptional<FGameXXKInteractionCandidate> Chosen =
+			FGameXXKInteractionRules::Choose(Candidates);
+		return Chosen.IsSet() ? ActorById.FindRef(Chosen->InteractionId) : nullptr;
 	}
 }
 
@@ -49,17 +103,26 @@ FKey UGameXXKInteractionComponent::GetInteractionKey() const
 
 void UGameXXKInteractionComponent::Interact()
 {
+	RefreshFocusedActorFromStack();
 	AActor* Actor = FocusedActor.Get();
 	if (!IsAvailableInteractionTarget(Actor))
 	{
-		Actor = FindNearbyInteractableActor();
-		if (!Actor)
-		{
-			return;
-		}
+		return;
 	}
 
 	APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (UGameXXKInteractableComponent* Metadata =
+		Actor->FindComponentByClass<UGameXXKInteractableComponent>())
+	{
+		if (Metadata->IsInteractionEnabled() && InteractionRequestedDelegate.IsBound())
+		{
+			InteractionRequestedDelegate.Broadcast(
+				Actor,
+				Metadata->GetInteractionId(),
+				Metadata->GetNarrativeSequenceId());
+			return;
+		}
+	}
 	if (Actor->GetClass()->ImplementsInterface(UGameXXKInteractable::StaticClass()))
 	{
 		if (Actor->GetClass() == AGameXXKTownNpcActor::StaticClass())
@@ -86,49 +149,19 @@ void UGameXXKInteractionComponent::Interact()
 	}
 }
 
-AActor* UGameXXKInteractionComponent::FindNearbyInteractableActor() const
+void UGameXXKInteractionComponent::RefreshFocusedActor()
 {
-	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	UWorld* World = OwnerPawn ? OwnerPawn->GetWorld() : GetWorld();
-	if (!OwnerPawn || !World || ProximityInteractionRadius <= 0.0f)
-	{
-		return nullptr;
-	}
-
-	const FVector OwnerLocation = OwnerPawn->GetActorLocation();
-	const float MaxDistanceSquared = FMath::Square(ProximityInteractionRadius);
-	float BestDistanceSquared = MaxDistanceSquared;
-	AActor* BestActor = nullptr;
-	for (TActorIterator<AActor> It(World); It; ++It)
-	{
-		AActor* Candidate = *It;
-		if (!Candidate || Candidate == OwnerPawn || Candidate->IsPendingKillPending())
-		{
-			continue;
-		}
-		if (!IsAvailableInteractionTarget(Candidate))
-		{
-			continue;
-		}
-
-		const float DistanceSquared = FVector::DistSquared2D(OwnerLocation, Candidate->GetActorLocation());
-		if (DistanceSquared <= BestDistanceSquared)
-		{
-			BestDistanceSquared = DistanceSquared;
-			BestActor = Candidate;
-		}
-	}
-	return BestActor;
+	RefreshFocusedActorFromStack();
 }
 
 void UGameXXKInteractionComponent::SetFocusedActor(AActor* Actor)
 {
 	FocusStack.Reset();
-	FocusedActor = Actor;
 	if (Actor)
 	{
 		FocusStack.Add(Actor);
 	}
+	SetFocusedActorInternal(Actor);
 }
 
 void UGameXXKInteractionComponent::AddFocusedActor(AActor* Actor)
@@ -143,7 +176,7 @@ void UGameXXKInteractionComponent::AddFocusedActor(AActor* Actor)
 		return !Candidate.IsValid() || Candidate.Get() == Actor;
 	});
 	FocusStack.Add(Actor);
-	FocusedActor = Actor;
+	RefreshFocusedActorFromStack();
 }
 
 void UGameXXKInteractionComponent::RemoveFocusedActor(AActor* Actor)
@@ -170,15 +203,42 @@ void UGameXXKInteractionComponent::SetFocusedActorForTest(AActor* Actor)
 
 void UGameXXKInteractionComponent::RefreshFocusedActorFromStack()
 {
-	FocusedActor = nullptr;
-	while (FocusStack.Num() > 0)
+	FocusStack.RemoveAll([](const TWeakObjectPtr<AActor>& Candidate)
 	{
-		TWeakObjectPtr<AActor> Candidate = FocusStack.Last();
+		return !Candidate.IsValid();
+	});
+	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
+	if (!OwnerPawn)
+	{
+		SetFocusedActorInternal(nullptr);
+		return;
+	}
+	TArray<AActor*> Actors;
+	for (const TWeakObjectPtr<AActor>& Candidate : FocusStack)
+	{
 		if (Candidate.IsValid())
 		{
-			FocusedActor = Candidate.Get();
-			return;
+			Actors.Add(Candidate.Get());
 		}
-		FocusStack.Pop(EAllowShrinking::No);
 	}
+	SetFocusedActorInternal(ChooseActor(
+		*OwnerPawn,
+		Actors));
+}
+
+void UGameXXKInteractionComponent::SetFocusedActorInternal(AActor* Actor)
+{
+	AActor* Previous = FocusedActor.Get();
+	if (Previous == Actor)
+	{
+		return;
+	}
+	FocusedActor = Actor;
+	FName InteractionId = NAME_None;
+	if (const UGameXXKInteractableComponent* Metadata =
+		Actor ? Actor->FindComponentByClass<UGameXXKInteractableComponent>() : nullptr)
+	{
+		InteractionId = Metadata->GetInteractionId();
+	}
+	TargetChangedDelegate.Broadcast(Actor, InteractionId);
 }

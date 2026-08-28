@@ -19,7 +19,7 @@
 - Create `Source/GameXXK/Public/UI/GameXXKSpeechBubbleWidget.h` and private `.cpp` — actor-following bubble.
 - Create `Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h` and private `.cpp` — read-only 100-entry history.
 - Create `Source/GameXXK/Public/Interaction/GameXXKInteractableComponent.h` and private `.cpp` — stable NPC interaction metadata.
-- Create `Source/GameXXK/Public/Interaction/GameXXKInteractionRules.h` and private `.cpp` — pure radial filtering/sorting.
+- Create `Source/GameXXK/Public/Interaction/GameXXKInteractionRules.h` and private `.cpp` — pure registered-candidate validation/sorting; collision Overlap owns range filtering.
 - Modify `Source/GameXXK/Public/Interaction/GameXXKInteractionComponent.h` and private `.cpp` — overlap-candidate selection without world scans.
 - Modify `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h` and private `.cpp` — coordinator ownership and input routing.
 - Modify `Source/GameXXK/Public/Town/GameXXKTownNpcCharacter.h` and private `.cpp` — configure interactable/dialogue IDs.
@@ -189,7 +189,7 @@ FGameXXKInteractionCandidate B{TEXT("Npc.B"), 2, 100.0f};
 TestEqual(TEXT("priority wins"), FGameXXKInteractionRules::Choose({A, B}).InteractionId, FName(TEXT("Npc.B")));
 ```
 
-Test full-circle radius 300, priority descending, distance ascending and ID ascending. Facing direction must not affect selection.
+Test that overlap-registered candidates are not range-filtered again, then test priority descending, distance ascending and ID ascending. Facing direction must not affect selection.
 
 - [ ] **Step 2: Implement candidate registration and query**
 
@@ -207,12 +207,11 @@ class FGameXXKInteractionRules final
 {
 public:
     static TOptional<FGameXXKInteractionCandidate> Choose(
-        const TArray<FGameXXKInteractionCandidate>& Candidates,
-        float MaxDistance = 300.0f);
+        const TArray<FGameXXKInteractionCandidate>& Candidates);
 };
 ```
 
-`UGameXXKInteractableComponent` stores `InteractionId`, display name, `NarrativeSequenceId`, priority, enabled state and prompt anchor. Each NPC uses its existing `InteractionArea` as a query-only Pawn-overlap sphere with radius 300. Begin/end overlap registers or unregisters the NPC with the hero component. The hero computes candidates only from that overlap set, applies no facing-direction filter, performs no world scan on `F`, and emits only a target-changed delegate. It performs no UI opening during target selection. A talk-only NPC still uses a one-Dialogue Sequence so all F interactions share the same resume/command boundary.
+`UGameXXKInteractableComponent` stores `InteractionId`, display name, `NarrativeSequenceId`, priority, enabled state and prompt anchor. Each NPC uses its existing `InteractionArea` as a query-only Pawn-overlap sphere with radius 300. Begin/end overlap registers or unregisters the NPC with the hero component. The overlap set is authoritative, so the hero does not apply a second center-distance filter. It applies no facing-direction filter, performs no world scan on `F`, and emits only a target-changed delegate. It performs no UI opening during target selection. A talk-only NPC still uses a one-Dialogue Sequence so all F interactions share the same resume/command boundary.
 
 - [ ] **Step 3: Run GREEN and commit**
 

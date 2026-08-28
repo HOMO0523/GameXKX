@@ -25,7 +25,7 @@ AGameXXKTownNpcActor::AGameXXKTownNpcActor()
 
 	InteractionArea = CreateDefaultSubobject<USphereComponent>(TEXT("InteractionArea"));
 	InteractionArea->SetupAttachment(SceneRoot);
-	InteractionArea->SetSphereRadius(128.0f);
+	InteractionArea->SetSphereRadius(300.0f);
 	InteractionArea->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	InteractionArea->SetCollisionObjectType(ECC_WorldDynamic);
 	InteractionArea->SetCollisionResponseToAllChannels(ECR_Ignore);

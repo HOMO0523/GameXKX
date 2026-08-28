@@ -610,12 +610,15 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("quest NPC opens quest interaction"), QuestNpc->CanOfferQuest());
 	TestFalse(TEXT("quest NPC is not merchant"), QuestNpc->CanTrade());
 	TestNotNull(TEXT("quest NPC has interaction area"), QuestNpc->GetInteractionArea());
+	TestEqual(TEXT("quest NPC interaction radius is 300"), QuestNpc->GetInteractionArea()->GetUnscaledSphereRadius(), 300.0f);
 	TestEqual(TEXT("quest NPC area is query-only overlap"), QuestNpc->GetInteractionArea()->GetCollisionEnabled(), ECollisionEnabled::QueryOnly);
 	TestEqual(TEXT("quest NPC area overlaps Pawn channel"), QuestNpc->GetInteractionArea()->GetCollisionResponseToChannel(ECC_Pawn), ECollisionResponse::ECR_Overlap);
 	TestTrue(TEXT("quest NPC area generates overlap events"), QuestNpc->GetInteractionArea()->GetGenerateOverlapEvents());
 
 	AGameXXKTownNpcActor* MerchantNpc = NewObject<AGameXXKTownNpcActor>();
 	MerchantNpc->SetNpcRole(EGameXXKTownNpcRole::Merchant);
+	QuestNpc->SetActorLocation(FVector(200.0f, 0.0f, 0.0f));
+	MerchantNpc->SetActorLocation(FVector(100.0f, 0.0f, 0.0f));
 	TestTrue(TEXT("merchant NPC can trade"), MerchantNpc->CanTrade());
 	TestFalse(TEXT("merchant NPC does not offer quest"), MerchantNpc->CanOfferQuest());
 	UClass* MerchantVisualClass = LoadClass<AGameXXKHeroCharacter>(nullptr, TEXT("/Game/GameXXK/Characters/Merchant/BP_MerchantCharacter.BP_MerchantCharacter_C"), nullptr, LOAD_NoWarn);
@@ -660,7 +663,7 @@ bool FGameXXKTownShellTest::RunTest(const FString& Parameters)
 	QuestNpc->NotifyActorBeginOverlap(Player);
 	TestTrue(TEXT("quest NPC overlap focuses player interaction"), Player->GetInteractionComponent()->GetFocusedActor() == QuestNpc);
 	MerchantNpc->NotifyActorBeginOverlap(Player);
-	TestTrue(TEXT("later merchant overlap becomes focused"), Player->GetInteractionComponent()->GetFocusedActor() == MerchantNpc);
+	TestTrue(TEXT("nearer merchant overlap becomes focused"), Player->GetInteractionComponent()->GetFocusedActor() == MerchantNpc);
 	MerchantNpc->NotifyActorEndOverlap(Player);
 	TestTrue(TEXT("ending merchant overlap restores quest focus"), Player->GetInteractionComponent()->GetFocusedActor() == QuestNpc);
 	Player->Interact();

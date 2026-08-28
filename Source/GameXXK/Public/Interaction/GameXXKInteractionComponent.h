@@ -5,6 +5,9 @@
 #include "InputCoreTypes.h"
 #include "GameXXKInteractionComponent.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FGameXXKInteractionTargetChanged, AActor*, FName);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FGameXXKInteractionRequested, AActor*, FName, FName);
+
 UCLASS(ClassGroup = (GameXXK), meta = (BlueprintSpawnableComponent))
 class GAMEXXK_API UGameXXKInteractionComponent : public UActorComponent
 {
@@ -23,6 +26,9 @@ public:
 	void Interact();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
+	void RefreshFocusedActor();
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
 	void SetFocusedActor(AActor* Actor);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Interaction")
@@ -32,10 +38,12 @@ public:
 	void RemoveFocusedActor(AActor* Actor);
 
 	void SetFocusedActorForTest(AActor* Actor);
+	FGameXXKInteractionTargetChanged& OnInteractionTargetChanged() { return TargetChangedDelegate; }
+	FGameXXKInteractionRequested& OnInteractionRequested() { return InteractionRequestedDelegate; }
 
 private:
-	AActor* FindNearbyInteractableActor() const;
 	void RefreshFocusedActorFromStack();
+	void SetFocusedActorInternal(AActor* Actor);
 
 	UPROPERTY()
 	TObjectPtr<AActor> FocusedActor;
@@ -46,6 +54,6 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Interaction")
 	FKey InteractionKey;
 
-	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Interaction", meta = (ClampMin = "0.0"))
-	float ProximityInteractionRadius = 360.0f;
+	FGameXXKInteractionTargetChanged TargetChangedDelegate;
+	FGameXXKInteractionRequested InteractionRequestedDelegate;
 };
