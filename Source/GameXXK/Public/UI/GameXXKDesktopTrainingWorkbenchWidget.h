@@ -26,6 +26,11 @@ class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
 class UGameXXKInventoryWindowWidget;
+class UGameXXKGuideCoordinator;
+class UGameXXKGuideOverlayWidget;
+class UGameXXKGuidePreferenceWidget;
+enum class EGameXXKGuidePreference : uint8;
+struct FGameXXKGuideProgress;
 
 UCLASS()
 class GAMEXXK_API UGameXXKDesktopTrainingStageButton : public UButton
@@ -237,6 +242,15 @@ public:
 	/** Whether the independent settings surface is open above the backpack. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsSettingsPanelOpenForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool HasResetCombatGuideButtonForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	bool IsGuidePreferencePromptVisibleForTest() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool ResetCombatGuideForTest();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetWarehouseColumnCountForTest() const;
@@ -539,6 +553,12 @@ private:
 	void BuildBackpackTabToggle();
 	void BuildTopToolbar();
 	void BuildHudSettingsPanel();
+	void EnsureGuideSurfaces();
+	void RefreshGuideSurfaces();
+	void HandleGuidePreferenceChosen(EGameXXKGuidePreference Preference);
+	void HandleGuideEvent(FName EventId);
+	bool PersistGuideProgressCandidate(const FGameXXKGuideProgress& Candidate);
+	bool HandleResetCombatGuide();
 	void BuildExitConfirmation();
 	void BuildCarriedItemVisual();
 	void BuildWarehousePanel();
@@ -741,6 +761,18 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDesktopTrainingActionButton> TownToggleButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> ResetCombatGuideButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuideOverlayWidget> GuideOverlayWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuidePreferenceWidget> GuidePreferenceWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuideCoordinator> GuideCoordinator;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> IdleGroupCanvas;
@@ -982,4 +1014,5 @@ private:
 	bool bNoticeSettingsLoaded = false;
 	FDelegateHandle ApplicationActivationHandle;
 	FDelegateHandle PersistenceBoundaryHandle;
+	FDelegateHandle GuideEventHandle;
 };

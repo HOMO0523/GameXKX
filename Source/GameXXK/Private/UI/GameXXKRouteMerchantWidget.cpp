@@ -22,7 +22,10 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKRelicCatalog.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
+#include "Framework/Application/SlateApplication.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKCardTooltipWidget.h"
 
 namespace
 {
@@ -309,6 +312,7 @@ void UGameXXKRouteMerchantOfferButton::HandleClicked()
 TSharedRef<SWidget> UGameXXKRouteMerchantWidget::RebuildWidget()
 {
 	BuildProgrammaticLayout();
+	RegisterGuideTargets();
 	return Super::RebuildWidget();
 }
 
@@ -319,12 +323,36 @@ void UGameXXKRouteMerchantWidget::NativeConstruct()
 	RefreshFromState();
 }
 
+void UGameXXKRouteMerchantWidget::NativeDestruct()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	Registry.UnregisterTarget(TEXT("Route.Merchant.CardRow"), CardOfferRow);
+	Registry.UnregisterTarget(TEXT("Route.Merchant.RelicRow"), RelicOfferRow);
+	Registry.UnregisterTarget(TEXT("Route.Merchant.Leave"), LeaveButton);
+	Super::NativeDestruct();
+}
+
+void UGameXXKRouteMerchantWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	bCardTooltipShiftExpanded = bShiftExpanded;
+	for (UGameXXKCardTooltipWidget* Tooltip : OfferCardTooltipWidgets)
+	{
+		if (Tooltip)
+		{
+			Tooltip->SetExpandedFromOwner(bShiftExpanded);
+		}
+	}
+}
+
 void UGameXXKRouteMerchantWidget::RefreshFromState()
 {
 	BuildProgrammaticLayout();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::RouteMerchant)
 	{
+		bGuideMerchantOpenedEmitted = false;
 		SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
@@ -341,10 +369,24 @@ void UGameXXKRouteMerchantWidget::RefreshFromState()
 		ApplyView(View);
 	}
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	RegisterGuideTargets();
+	if (!bGuideMerchantOpenedEmitted)
+	{
+		bGuideMerchantOpenedEmitted = true;
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Merchant.Opened"));
+	}
 }
 
 bool UGameXXKRouteMerchantWidget::PurchaseOffer(const FName OfferId)
 {
+	const int32 OfferIndex = RenderedOfferIds.IndexOfByKey(OfferId);
+	const FName GuideActionId = OfferIndex >= 0 && OfferIndex < MerchantCardSlotCount
+		? FName(TEXT("Action.Merchant.PurchaseCard"))
+		: FName(TEXT("Action.Merchant.PurchaseRelic"));
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(GuideActionId))
+	{
+		return false;
+	}
 	LastActionError.Reset();
 	LastPurchaseResult = FGameXXKRouteMerchantPurchaseResult();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -359,6 +401,13 @@ bool UGameXXKRouteMerchantWidget::PurchaseOffer(const FName OfferId)
 	if (!bPurchased)
 	{
 		LastActionError = LocalizePurchaseFailure(LastPurchaseResult);
+	}
+	else
+	{
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(
+			OfferIndex >= 0 && OfferIndex < MerchantCardSlotCount
+				? TEXT("Event.Merchant.CardPurchased")
+				: TEXT("Event.Merchant.RelicPurchased"));
 	}
 	RefreshFromState();
 	NotifyPlayerFlowStateChanged();
@@ -385,6 +434,10 @@ bool UGameXXKRouteMerchantWidget::RefreshStock()
 
 bool UGameXXKRouteMerchantWidget::LeaveMerchant()
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Merchant.Leave")))
+	{
+		return false;
+	}
 	LastActionError.Reset();
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->ResolveMerchantRouteNode())
@@ -394,9 +447,27 @@ bool UGameXXKRouteMerchantWidget::LeaveMerchant()
 		return false;
 	}
 	ClearTransientInteractionState();
+	FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Merchant.Left"));
 	RefreshFromState();
 	NotifyPlayerFlowStateChanged();
 	return true;
+}
+
+void UGameXXKRouteMerchantWidget::RegisterGuideTargets()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	if (CardOfferRow)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Merchant.CardRow"), CardOfferRow);
+	}
+	if (RelicOfferRow)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Merchant.RelicRow"), RelicOfferRow);
+	}
+	if (LeaveButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Merchant.Leave"), LeaveButton);
+	}
 }
 
 void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
@@ -788,6 +859,14 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	}
 	OfferPurchaseButtons.Add(PurchaseButton);
 	OfferPurchaseTexts.Add(PurchaseText);
+	if (OfferCardTooltipWidgets.Num() < MerchantOfferSlotCount)
+	{
+		OfferCardTooltipWidgets.SetNum(MerchantOfferSlotCount);
+	}
+	UGameXXKCardTooltipWidget* CardTooltip = WidgetTree->ConstructWidget<UGameXXKCardTooltipWidget>(
+		UGameXXKCardTooltipWidget::StaticClass(),
+		*FString::Printf(TEXT("RouteMerchantCardTooltip%d"), GlobalOfferIndex));
+	OfferCardTooltipWidgets[GlobalOfferIndex] = CardTooltip;
 	return Cell;
 }
 
@@ -1021,9 +1100,35 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	}
 
 	const FText Tooltip = BuildOfferTooltip(OfferView, ExpectedKind, DisabledReason);
-	OfferTooltips[GlobalOfferIndex] = Tooltip;
-	DisplayButton->SetToolTipText(Tooltip);
-	PurchaseButton->SetToolTipText(Tooltip);
+	UGameXXKCardTooltipWidget* CardTooltip = OfferCardTooltipWidgets.IsValidIndex(GlobalOfferIndex)
+		? OfferCardTooltipWidgets[GlobalOfferIndex].Get()
+		: nullptr;
+	if (!bUnavailable && bCard && CardDefinition && CardTooltip && Offer)
+	{
+		FGameXXKCardTooltipContext Context;
+		Context.InteractionResult = FString::Printf(
+			TEXT("强化：%s → %s · %d金币"),
+			*FGameXXKCardQualityRules::GetDisplayName(Offer->Quality).ToString(),
+			*FGameXXKCardQualityRules::GetDisplayName(Offer->NextQuality).ToString(),
+			Offer->Price);
+		Context.UnavailableReason = DisabledReason;
+		CardTooltip->ConfigureCard(
+			*CardDefinition,
+			Offer->NextQuality,
+			nullptr,
+			Context);
+		DisplayButton->SetToolTipText(FText::GetEmpty());
+		PurchaseButton->SetToolTipText(FText::GetEmpty());
+		DisplayButton->SetToolTip(CardTooltip);
+		PurchaseButton->SetToolTip(CardTooltip);
+		OfferTooltips[GlobalOfferIndex] = FText::FromString(CardTooltip->GetDisplayedTextForTest());
+	}
+	else
+	{
+		OfferTooltips[GlobalOfferIndex] = Tooltip;
+		DisplayButton->SetToolTipText(Tooltip);
+		PurchaseButton->SetToolTipText(Tooltip);
+	}
 }
 
 FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(

@@ -37,11 +37,15 @@
 #include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKTalentRules.h"
+#include "Guide/GameXXKGuideCoordinator.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKCharacterBackpackModel.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKGuideOverlayWidget.h"
+#include "UI/GameXXKGuidePreferenceWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKTalentTreeWidget.h"
 #include "UObject/StrongObjectPtr.h"
@@ -339,6 +343,7 @@
 	constexpr int32 ActionHudScale50 = 651;
 	constexpr int32 ActionToggleTown = 652;
 	constexpr int32 ActionIdleStripFold = 653;
+	constexpr int32 ActionResetCombatGuide = 655;
 	constexpr int32 NoticeHistoryCapacity = 200;
 	constexpr float NoticeLineHeight = 24.0f;
 	constexpr float NoticeRecordsBarHeight = 28.0f;
@@ -1472,6 +1477,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (GuideCoordinator)
+	{
+		GuideCoordinator->RefreshTarget();
+	}
 	if (bLayoutRefreshPending && !bLayoutRebuildScheduled && !bInActionCallback)
 	{
 		RebuildLayoutNow();
@@ -1715,6 +1724,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeDestruct()
 {
 	if (!bInternalLayoutRebuild)
 	{
+		if (GuideCoordinator)
+		{
+			GuideCoordinator->NotifyOverlayDestroyed();
+		}
+		FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+		if (GuideEventHandle.IsValid())
+		{
+			GuideRegistry.OnGuideEvent().Remove(GuideEventHandle);
+			GuideEventHandle.Reset();
+		}
+		GuideRegistry.ClearActionGate(this);
+		if (ResetCombatGuideButton)
+		{
+			GuideRegistry.UnregisterTarget(TEXT("Desktop.Settings.ResetCombatGuide"), ResetCombatGuideButton);
+		}
 		AbortTransientInventoryInteraction(true, false);
 		if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 			Subsystem && PersistenceBoundaryHandle.IsValid())
@@ -2892,6 +2916,21 @@ FText UGameXXKDesktopTrainingWorkbenchWidget::GetStageTooltipForTest(const FName
 	return Subsystem ? Subsystem->BuildTrainingStageTooltip(StageId) : FText::GetEmpty();
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::HasResetCombatGuideButtonForTest() const
+{
+	return ResetCombatGuideButton != nullptr;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsGuidePreferencePromptVisibleForTest() const
+{
+	return GuidePreferenceWidget && GuidePreferenceWidget->IsPromptVisibleForTest();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ResetCombatGuideForTest()
+{
+	return HandleResetCombatGuide();
+}
+
 bool UGameXXKDesktopTrainingActionButton::HandleMouseWheel(const float WheelDelta)
 {
 	return Owner && Owner->HandleActionMouseWheel(ActionId, WheelDelta);
@@ -3426,6 +3465,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	TravelCompanionHealthBars.Reset();
 	EmbeddedInventoryWidget = nullptr;
 	TownToggleButton = nullptr;
+	if (ResetCombatGuideButton)
+	{
+		FGameXXKGuideTargetRegistry::Get().UnregisterTarget(
+			TEXT("Desktop.Settings.ResetCombatGuide"),
+			ResetCombatGuideButton);
+	}
+	ResetCombatGuideButton = nullptr;
 	BackpackGoldText = nullptr;
 	TrainingNormalChestButton = nullptr;
 	TrainingAdvancedChestButton = nullptr;
@@ -3533,6 +3579,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 	{
 		ApplyUpwardExpansionTransforms();
 	}
+	EnsureGuideSurfaces();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
@@ -4127,7 +4174,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		PanelAlt,
 		TEXT("DesktopHudSettingsPanel"));
 	SettingsPanel->SetPadding(FMargin(12.0f));
-	AddCanvas(RootCanvas, SettingsPanel, FVector2D(1115.0f, 270.0f), FVector2D(220.0f, 142.0f));
+	AddCanvas(RootCanvas, SettingsPanel, FVector2D(1115.0f, 270.0f), FVector2D(220.0f, 184.0f));
 	if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(SettingsPanel->Slot))
 	{
 		PanelSlot->SetZOrder(85);
@@ -4188,6 +4235,265 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		FLinearColor(0.18f, 0.13f, 0.09f, 0.9f),
 		TEXT("HudScaleSettingHint"));
 	AddCanvas(SettingsCanvas, Hint, FVector2D(4.0f, 82.0f), FVector2D(192.0f, 38.0f));
+
+	ResetCombatGuideButton =
+		WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+			UGameXXKDesktopTrainingActionButton::StaticClass(),
+			TEXT("ResetCombatGuideButton"));
+	ResetCombatGuideButton->Configure(this, ActionResetCombatGuide);
+	ResetCombatGuideButton->SetStyle(MakeTextureButtonStyle(
+		CharacterTabNormalTexturePath,
+		FVector2D(192.0f, 38.0f),
+		FMargin(0.08f)));
+	ResetCombatGuideButton->SetBackgroundColor(FLinearColor::White);
+	ResetCombatGuideButton->SetContent(MakeButtonText(
+		WidgetTree,
+		FText::FromString(TEXT("重置战斗引导")),
+		14,
+		Ink));
+	AddCanvas(
+		SettingsCanvas,
+		ResetCombatGuideButton.Get(),
+		FVector2D(2.0f, 116.0f),
+		FVector2D(192.0f, 38.0f));
+	ActionButtons.Add(ResetCombatGuideButton);
+	FGameXXKGuideTargetRegistry::Get().RegisterWidgetTarget(
+		TEXT("Desktop.Settings.ResetCombatGuide"),
+		ResetCombatGuideButton);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::EnsureGuideSurfaces()
+{
+	if (!WidgetTree || !DesktopOverlayRootCanvas)
+	{
+		return;
+	}
+	const auto AttachFullscreen = [this](UWidget* Widget, const int32 ZOrder)
+	{
+		if (!Widget || Widget->GetParent() == DesktopOverlayRootCanvas)
+		{
+			return;
+		}
+		Widget->RemoveFromParent();
+		if (UCanvasPanelSlot* CanvasSlot = DesktopOverlayRootCanvas->AddChildToCanvas(Widget))
+		{
+			CanvasSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			CanvasSlot->SetOffsets(FMargin(0.0f));
+			CanvasSlot->SetAlignment(FVector2D::ZeroVector);
+			CanvasSlot->SetAutoSize(false);
+			CanvasSlot->SetZOrder(ZOrder);
+		}
+	};
+	if (!GuideOverlayWidget)
+	{
+		GuideOverlayWidget = WidgetTree->ConstructWidget<UGameXXKGuideOverlayWidget>(
+			UGameXXKGuideOverlayWidget::StaticClass(),
+			TEXT("DesktopGuideOverlay"));
+	}
+	if (!GuidePreferenceWidget)
+	{
+		GuidePreferenceWidget = WidgetTree->ConstructWidget<UGameXXKGuidePreferenceWidget>(
+			UGameXXKGuidePreferenceWidget::StaticClass(),
+			TEXT("DesktopGuidePreference"));
+		GuidePreferenceWidget->SetPreferenceChosenDelegate(
+			FGameXXKGuidePreferenceChosen::CreateUObject(
+				this,
+				&UGameXXKDesktopTrainingWorkbenchWidget::HandleGuidePreferenceChosen));
+	}
+	AttachFullscreen(GuideOverlayWidget, 900);
+	AttachFullscreen(GuidePreferenceWidget, 910);
+	if (!GuideCoordinator)
+	{
+		GuideCoordinator = NewObject<UGameXXKGuideCoordinator>(this);
+	}
+	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+	if (!GuideEventHandle.IsValid())
+	{
+		GuideEventHandle = GuideRegistry.OnGuideEvent().AddUObject(
+			this,
+			&UGameXXKDesktopTrainingWorkbenchWidget::HandleGuideEvent);
+	}
+	const TWeakObjectPtr<UGameXXKGuideCoordinator> WeakCoordinator(GuideCoordinator);
+	GuideRegistry.SetActionGate(this, [WeakCoordinator](const FName ActionId)
+	{
+		const UGameXXKGuideCoordinator* Coordinator = WeakCoordinator.Get();
+		return !Coordinator || Coordinator->CanExecuteAction(ActionId);
+	});
+	RefreshGuideSurfaces();
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshGuideSurfaces()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !GuideCoordinator || !GuideOverlayWidget || !GuidePreferenceWidget)
+	{
+		return;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	GuideCoordinator->Bind(
+		State.GuideProgress,
+		FGameXXKGuideTargetRegistry::Get(),
+		GuideOverlayWidget);
+	GuideCoordinator->SetPersistenceDelegate(
+		FGameXXKGuidePersistenceDelegate::CreateUObject(
+			this,
+			&UGameXXKDesktopTrainingWorkbenchWidget::PersistGuideProgressCandidate));
+
+	GuidePreferenceWidget->RefreshFromProgress(State.GuideProgress);
+	const bool bTutorialStarted =
+		State.TutorialQuest.State != EGameXXKTutorialQuestState::NotStarted
+		|| State.NarrativeProgress.TaskProgressById.Contains(TEXT("Task.Main.XuXiake.Prologue"));
+	if (!bTutorialStarted)
+	{
+		GuidePreferenceWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+
+	if (!State.GuideProgress.ActiveGuideId.IsNone())
+	{
+		FString AssetName = State.GuideProgress.ActiveGuideId.ToString();
+		AssetName.ReplaceInline(TEXT("."), TEXT("_"));
+		AssetName = TEXT("DA_") + AssetName;
+		const FString ObjectPath = FString::Printf(
+			TEXT("/Game/GameXXK/Narrative/Guides/%s.%s"),
+			*AssetName,
+			*AssetName);
+		if (UGameXXKGuideAsset* Asset = LoadObject<UGameXXKGuideAsset>(nullptr, *ObjectPath))
+		{
+			const FGameXXKGuideStepDefinition* ActiveStep =
+				Asset->FindStep(State.GuideProgress.ActiveGuideStepId);
+			if (ActiveStep
+				&& FGameXXKGuideTargetRegistry::Get().IsTargetRegistered(ActiveStep->TargetId))
+			{
+				GuideCoordinator->ResumeGuide(*Asset);
+			}
+			else
+			{
+				GuideOverlayWidget->DismissGuide();
+			}
+		}
+	}
+	else
+	{
+		GuideOverlayWidget->DismissGuide();
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleGuidePreferenceChosen(
+	const EGameXXKGuidePreference Preference)
+{
+	if (!GuideCoordinator)
+	{
+		return;
+	}
+	FString Error;
+	if (GuideCoordinator->ApplyPreference(Preference, &Error))
+	{
+		SetNotice(FText::FromString(
+			Preference == EGameXXKGuidePreference::NewPlayer
+				? TEXT("已开启战斗引导")
+				: TEXT("已跳过战斗引导")));
+		RefreshGuideSurfaces();
+	}
+	else
+	{
+		SetNotice(FText::FromString(Error.IsEmpty() ? TEXT("战斗引导设置未保存") : Error));
+	}
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::HandleGuideEvent(const FName EventId)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !GuideCoordinator)
+	{
+		return;
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	FString Error;
+	if (!State.GuideProgress.ActiveGuideId.IsNone())
+	{
+		FString AssetName = State.GuideProgress.ActiveGuideId.ToString();
+		AssetName.ReplaceInline(TEXT("."), TEXT("_"));
+		AssetName = TEXT("DA_") + AssetName;
+		const FString ObjectPath = FString::Printf(
+			TEXT("/Game/GameXXK/Narrative/Guides/%s.%s"),
+			*AssetName,
+			*AssetName);
+		if (UGameXXKGuideAsset* Asset = LoadObject<UGameXXKGuideAsset>(nullptr, *ObjectPath))
+		{
+			GuideCoordinator->ResumeGuide(*Asset, &Error);
+			GuideCoordinator->HandleEvent(EventId, &Error);
+		}
+		return;
+	}
+	if (State.GuideProgress.Preference != EGameXXKGuidePreference::NewPlayer)
+	{
+		return;
+	}
+
+	FName GuideId;
+	if (EventId == TEXT("Event.RouteMap.Opened")) GuideId = TEXT("Guide.RouteMap.Basic");
+	else if (EventId == TEXT("Event.Battle.Opened")) GuideId = TEXT("Guide.Battle.Basic");
+	else if (EventId == TEXT("Event.Merchant.Opened")) GuideId = TEXT("Guide.Merchant.Basic");
+	else if (EventId == TEXT("Event.Route.EventOpened")) GuideId = TEXT("Guide.Event.Basic");
+	else if (EventId == TEXT("Event.Route.CampOpened")) GuideId = TEXT("Guide.Camp.Basic");
+	else if (EventId == TEXT("Event.Route.ChestOpened")) GuideId = TEXT("Guide.Chest.Basic");
+	else if (EventId == TEXT("Event.Boss.Opened")) GuideId = TEXT("Guide.Boss.Basic");
+	else if (EventId == TEXT("Event.Settlement.Opened")) GuideId = TEXT("Guide.Settlement.Basic");
+	if (GuideId.IsNone())
+	{
+		return;
+	}
+
+	const FGameXXKTaskProgress* TrackedTask =
+		State.NarrativeProgress.TaskProgressById.Find(State.NarrativeProgress.TrackedTaskId);
+	if (!TrackedTask
+		|| TrackedTask->State != EGameXXKTaskState::Active
+		|| TrackedTask->CurrentStepId != TEXT("Step.Main.XuXiake.CombatTutorial"))
+	{
+		return;
+	}
+	FString AssetName = GuideId.ToString();
+	AssetName.ReplaceInline(TEXT("."), TEXT("_"));
+	AssetName = TEXT("DA_") + AssetName;
+	const FString ObjectPath = FString::Printf(
+		TEXT("/Game/GameXXK/Narrative/Guides/%s.%s"),
+		*AssetName,
+		*AssetName);
+	if (UGameXXKGuideAsset* Asset = LoadObject<UGameXXKGuideAsset>(nullptr, *ObjectPath))
+	{
+		GuideCoordinator->StartGuide(*Asset, EventId, &Error);
+	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::PersistGuideProgressCandidate(
+	const FGameXXKGuideProgress& Candidate)
+{
+	if (UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem())
+	{
+		return Subsystem->CommitGuideProgress(Candidate);
+	}
+	return false;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::HandleResetCombatGuide()
+{
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Desktop.ResetCombatGuide")))
+	{
+		return false;
+	}
+	if (!GuideCoordinator)
+	{
+		EnsureGuideSurfaces();
+	}
+	FString Error;
+	if (!GuideCoordinator || !GuideCoordinator->ResetCombatGuide(&Error))
+	{
+		SetNotice(FText::FromString(Error.IsEmpty() ? TEXT("战斗引导重置失败") : Error));
+		return false;
+	}
+	SetNotice(FText::FromString(TEXT("战斗引导已重置，下次进入引导时会重新询问")));
+	RefreshGuideSurfaces();
+	return true;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildExitConfirmation()
@@ -8409,6 +8715,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	if (ActionId == ActionToggleTown)
 	{
 		RequestTownToggle();
+		return;
+	}
+	if (ActionId == ActionResetCombatGuide)
+	{
+		HandleResetCombatGuide();
 		return;
 	}
 	if (ActionId == ActionIdleStripFold)

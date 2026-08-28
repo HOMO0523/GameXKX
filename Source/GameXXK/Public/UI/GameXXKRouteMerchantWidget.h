@@ -15,6 +15,7 @@ class UScaleBox;
 class USizeBox;
 class UTextBlock;
 class UVerticalBox;
+class UGameXXKCardTooltipWidget;
 class UGameXXKRouteMerchantWidget;
 
 /** Carries one stable offer identity from a programmatic UMG button to the merchant widget. */
@@ -49,6 +50,8 @@ class GAMEXXK_API UGameXXKRouteMerchantWidget : public UGameXXKMVPWidgetBase
 public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMerchant")
 	void RefreshFromState();
@@ -128,6 +131,7 @@ private:
 	FText ResolveOwnerLabel(FName OwnerMemberId) const;
 	FString ResolveDisabledReason(const FGameXXKRouteMerchantOfferView* OfferView) const;
 	void ClearTransientInteractionState();
+	void RegisterGuideTargets();
 
 	UFUNCTION()
 	void HandleRefreshClicked();
@@ -178,6 +182,9 @@ private:
 	TArray<TObjectPtr<UGameXXKRouteMerchantOfferButton>> OfferPurchaseButtons;
 
 	UPROPERTY(Transient)
+	TArray<TObjectPtr<UGameXXKCardTooltipWidget>> OfferCardTooltipWidgets;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> OfferArtImages;
 
 	UPROPERTY(Transient)
@@ -214,4 +221,6 @@ private:
 	TArray<FText> OfferTooltips;
 	TArray<FString> OfferDisabledReasons;
 	FString LastActionError;
+	bool bCardTooltipShiftExpanded = false;
+	bool bGuideMerchantOpenedEmitted = false;
 };

@@ -32,6 +32,7 @@
 #include "GameXXKEnemyText.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Engine/Texture2D.h"
 #include "HAL/PlatformTime.h"
 #include "Input/Events.h"
@@ -1149,6 +1150,7 @@ void UGameXXKBattleUnitTargetProxyButton::HandleClicked()
 TSharedRef<SWidget> UGameXXKBattleBoardWidget::RebuildWidget()
 {
 	BuildProgrammaticLayout();
+	RefreshGuideTargets();
 	return Super::RebuildWidget();
 }
 
@@ -1163,6 +1165,17 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
+	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+	GuideRegistry.UnregisterTarget(TEXT("Battle.Hud.PartyQi"), PartyQiWidget);
+	GuideRegistry.UnregisterTarget(TEXT("Battle.EndTurn"), EndTurnButton);
+	for (UButton* Button : HandCardButtons)
+	{
+		GuideRegistry.UnregisterTarget(TEXT("Battle.Hand.FirstPlayableTargetedCard"), Button);
+	}
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>>& Pair : UnitTargetProxies)
+	{
+		GuideRegistry.UnregisterTarget(TEXT("Battle.Enemy.FirstLegalTarget"), Pair.Value);
+	}
 	ClearCardOutcomePreview();
 	--GAliveBattleBoardInstances;
 	UE_LOG(LogTemp, Verbose, TEXT("[Board] destructed name=%s alive=%d"), *GetName(), GAliveBattleBoardInstances);
@@ -3910,6 +3923,10 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
 
 bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Battle.SelectTargetedCard")))
+	{
+		return false;
+	}
 	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
@@ -3965,13 +3982,24 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 	}
 	if (Preview.TargetRequest.bRequiresManualSelection)
 	{
-		return BeginCardTargeting(Preview);
+		const bool bStartedTargeting = BeginCardTargeting(Preview);
+		if (bStartedTargeting)
+		{
+			FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Battle.TargetedCardSelected"));
+		}
+		return bStartedTargeting;
 	}
 	return ResolveAutomaticCardPlay(CardInstanceId);
 }
 
 bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 {
+	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+	if (!GuideRegistry.IsActionAllowed(TEXT("Action.Battle.SelectLegalTarget"))
+		|| !GuideRegistry.IsActionAllowed(TEXT("Action.Battle.CommitCard")))
+	{
+		return false;
+	}
 	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
@@ -4017,6 +4045,8 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 
 	ClearCardTargetingState();
 	LastCardInteractionError.Reset();
+	GuideRegistry.EmitEvent(TEXT("Event.Battle.LegalTargetSelected"));
+	GuideRegistry.EmitEvent(TEXT("Event.Battle.CardResolved"));
 	return QueueMutationPresentation(
 		Before,
 		Result.DamageResults,
@@ -4026,6 +4056,10 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 
 bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Battle.EndTurn")))
+	{
+		return false;
+	}
 	if (RejectBattleHudFixtureMutation())
 	{
 		return false;
@@ -4060,6 +4094,7 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 		return false;
 	}
 	LastCardInteractionError.Reset();
+	FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Battle.EndTurnResolved"));
 	const EBattlePresentationContinuation Continuation =
 		MutableState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy
 			? EBattlePresentationContinuation::BeginEnemyIntentAfterPlayerPhase
@@ -7433,6 +7468,27 @@ void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 	{
 		ApplyBattleRetreatInteractionLock();
 	}
+	RefreshGuideTargets();
+	if (bInCardBattle && !bGuideBattleOpenedEmitted)
+	{
+		bGuideBattleOpenedEmitted = true;
+		bool bBossBattle = false;
+		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+		if (const FGameXXKRouteMapNode* PendingNode = State.RouteMapNodes.FindByPredicate(
+			[&State](const FGameXXKRouteMapNode& Node)
+			{
+				return Node.NodeId == State.PendingRouteNodeId;
+			}))
+		{
+			bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
+		}
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(
+			bBossBattle ? TEXT("Event.Boss.Opened") : TEXT("Event.Battle.Opened"));
+	}
+	else if (!bInCardBattle)
+	{
+		bGuideBattleOpenedEmitted = false;
+	}
 }
 
 void UGameXXKBattleBoardWidget::RefreshActionButtons()
@@ -7592,6 +7648,68 @@ void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
 		? RootCanvas->GetCachedGeometry().GetLocalSize()
 		: FVector2D::ZeroVector;
 	RefreshPartyQiWidgetForCanvasSize(CanvasSize);
+}
+
+void UGameXXKBattleBoardWidget::RefreshGuideTargets()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	if (PartyQiWidget)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Battle.Hud.PartyQi"), PartyQiWidget);
+	}
+	if (EndTurnButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Battle.EndTurn"), EndTurnButton);
+	}
+	for (UButton* Button : HandCardButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Hand.FirstPlayableTargetedCard"), Button);
+	}
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>>& Pair : UnitTargetProxies)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Enemy.FirstLegalTarget"), Pair.Value);
+	}
+
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || State->Screen != EGameXXKScreen::Battle || !State->CardRun.bHasActiveCardBattle)
+	{
+		return;
+	}
+	for (int32 SlotIndex = 0; SlotIndex < HandCardInstanceIds.Num() && SlotIndex < HandCardButtons.Num(); ++SlotIndex)
+	{
+		FGameXXKCardPlayPreview Preview;
+		FString Error;
+		if (HandCardButtons[SlotIndex]
+			&& FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+				*State,
+				HandCardInstanceIds[SlotIndex],
+				Preview,
+				&Error)
+			&& Preview.bCanPlay
+			&& Preview.TargetRequest.bRequiresManualSelection)
+		{
+			Registry.RegisterWidgetTarget(
+				TEXT("Battle.Hand.FirstPlayableTargetedCard"),
+				HandCardButtons[SlotIndex]);
+			break;
+		}
+	}
+	if (IsCardTargetingActive())
+	{
+		for (const FGameXXKCardTargetCandidateView& Candidate : PendingCardPreview.TargetRequest.CandidateViews)
+		{
+			if (!Candidate.bCanSelect)
+			{
+				continue;
+			}
+			if (const TObjectPtr<UGameXXKBattleUnitTargetProxyButton>* Proxy = UnitTargetProxies.Find(Candidate.UnitId))
+			{
+				Registry.RegisterWidgetTarget(TEXT("Battle.Enemy.FirstLegalTarget"), Proxy->Get());
+				break;
+			}
+		}
+	}
 }
 
 void UGameXXKBattleBoardWidget::RefreshPartyQiWidgetForCanvasSize(const FVector2D CanvasSize)

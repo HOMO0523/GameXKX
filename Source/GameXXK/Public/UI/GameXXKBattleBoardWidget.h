@@ -724,6 +724,7 @@ private:
 	void RefreshActionButtons();
 	void RefreshHandCards();
 	void RefreshPartyQiWidget();
+	void RefreshGuideTargets();
 	void RefreshPartyQiWidgetForCanvasSize(FVector2D CanvasSize);
 	FText ResolveProjectedUnitHudDisplayName(FName UnitId) const;
 	FBox2D ResolveExpandedHandRect(FVector2D CanvasSize) const;
@@ -1348,5 +1349,6 @@ private:
 	FVector2D TargetingPointerPosition = FVector2D::ZeroVector;
 
 	FVector2D LastPartyQiCanvasSize = FVector2D::ZeroVector;
+	bool bGuideBattleOpenedEmitted = false;
 
 };
