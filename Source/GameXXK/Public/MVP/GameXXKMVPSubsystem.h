@@ -54,6 +54,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool StartTrainingChallenge(FName StageId);
 
+	/** Starts a semantic story encounter through the existing full-screen card-battle runtime. */
+	bool StartNarrativeEncounter(FName EncounterId, FString* OutError = nullptr);
+
 	/** True while the Challenge owns a generated route map and the player is choosing the next node. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
 	bool IsTrainingChallengeRouteMapActive() const;

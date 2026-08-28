@@ -22,6 +22,7 @@
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPPlayerController.h"
+#include "Narrative/GameXXKNarrativeEncounterCatalog.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -1799,6 +1800,84 @@ bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
 	if (!Candidate.bHasGeneratedRouteMap
 		|| Candidate.RouteMapNodes.IsEmpty()
 		|| Candidate.ReachableRouteNodeIds.IsEmpty())
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::StartNarrativeEncounter(const FName EncounterId, FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (RuntimeState.CardRun.bHasActiveCardBattle)
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("Narrative encounter cannot replace an active card battle.");
+		}
+		return false;
+	}
+
+	const FGameXXKNarrativeEncounterDefinition* Encounter =
+		FGameXXKNarrativeEncounterCatalog::Find(EncounterId);
+	if (!Encounter)
+	{
+		if (OutError)
+		{
+			*OutError = FString::Printf(
+				TEXT("Narrative encounter does not exist: %s."),
+				*EncounterId.ToString());
+		}
+		return false;
+	}
+	if (!FGameXXKNarrativeEncounterCatalog::Validate(*Encounter, OutError))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	TArray<FGameXXKBattleRuntimeUnit> ProjectedEnemies;
+	ProjectedEnemies.Reserve(Encounter->EnemyIds.Num());
+	for (int32 FormationSlotIndex = 0; FormationSlotIndex < Encounter->EnemyIds.Num(); ++FormationSlotIndex)
+	{
+		FGameXXKBattleRuntimeUnit Enemy;
+		if (!BuildTrainingEnemyProjection(
+			Encounter->EnemyIds[FormationSlotIndex],
+			Candidate.PlayerLevel,
+			FormationSlotIndex,
+			Enemy,
+			OutError))
+		{
+			return false;
+		}
+		ProjectedEnemies.Add(MoveTemp(Enemy));
+	}
+
+	Candidate.bHasActiveBattle = true;
+	Candidate.ActiveBattleNodeId = -200000 - static_cast<int32>(GetTypeHash(EncounterId) & 0x0000ffffu);
+	Candidate.ActiveBattleEnemies = MoveTemp(ProjectedEnemies);
+	Candidate.ActiveBattleParty.Reset();
+	Candidate.PendingRouteNodeId = INDEX_NONE;
+	Candidate.bDungeonActive = false;
+	Candidate.Screen = EGameXXKScreen::Battle;
+	Candidate.CurrentMapId = TEXT("NarrativeBattle");
+	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
+
+	const int32 BattleSeed = FGameXXKCardBattleAdapter::MixBattleSeed(
+		Candidate.RouteSeed != 0 ? Candidate.RouteSeed : 0x13579BDF,
+		Candidate.ActiveBattleNodeId);
+	if (!FGameXXKCardBattleAdapter::BeginCardBattle(
+		Candidate,
+		EGameXXKNodeKind::Battle,
+		EGameXXKCardTerrain::Plain,
+		BattleSeed,
+		OutError))
 	{
 		return false;
 	}
