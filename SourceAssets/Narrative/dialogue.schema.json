@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamexxk.local/schema/dialogue.schema.json",
+  "title": "GameXXK Dialogue Source",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "dialogueId", "dialogueVersion", "entryNode", "nodes"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "dialogueId": {"$ref": "#/$defs/stableId"},
+    "dialogueVersion": {"type": "integer", "minimum": 1},
+    "entryNode": {"$ref": "#/$defs/stableId"},
+    "nodes": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/node"}
+    }
+  },
+  "$defs": {
+    "stableId": {"type": "string", "minLength": 1},
+    "presentation": {"enum": ["bubble", "dialogue"]},
+    "conditions": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "flag",
+          "tutorialState",
+          "taskState",
+          "itemAtLeast",
+          "goldAtLeast",
+          "companionUnlocked",
+          "optionSelected",
+          "nodeSeen"
+        ]
+      },
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["optionId", "textId", "text", "outcomeId", "next"],
+      "properties": {
+        "optionId": {"$ref": "#/$defs/stableId"},
+        "textId": {"$ref": "#/$defs/stableId"},
+        "text": {"type": "string", "minLength": 1},
+        "outcomeId": {"$ref": "#/$defs/stableId"},
+        "next": {"$ref": "#/$defs/stableId"},
+        "conditions": {"$ref": "#/$defs/conditions"},
+        "disabledReason": {"type": "string", "minLength": 1}
+      }
+    },
+    "lineNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "presentation", "speaker", "textId", "text", "next"],
+      "properties": {
+        "type": {"const": "line"},
+        "presentation": {"$ref": "#/$defs/presentation"},
+        "speaker": {"$ref": "#/$defs/stableId"},
+        "textId": {"$ref": "#/$defs/stableId"},
+        "text": {"type": "string", "minLength": 1},
+        "next": {"$ref": "#/$defs/stableId"},
+        "conditions": {"$ref": "#/$defs/conditions"}
+      }
+    },
+    "choiceNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "presentation", "options"],
+      "properties": {
+        "type": {"const": "choice"},
+        "presentation": {"$ref": "#/$defs/presentation"},
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/option"}
+        },
+        "conditions": {"$ref": "#/$defs/conditions"}
+      }
+    },
+    "endNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "outcomeId"],
+      "properties": {
+        "type": {"const": "end"},
+        "outcomeId": {"$ref": "#/$defs/stableId"},
+        "conditions": {"$ref": "#/$defs/conditions"}
+      }
+    },
+    "node": {
+      "oneOf": [
+        {"$ref": "#/$defs/lineNode"},
+        {"$ref": "#/$defs/choiceNode"},
+        {"$ref": "#/$defs/endNode"}
+      ]
+    }
+  }
+}
