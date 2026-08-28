@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamexxk.local/schema/guide.schema.json",
+  "title": "GameXXK Semantic Guide Source",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "guideId", "guideVersion", "entryStep", "steps"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "guideId": {"$ref": "#/$defs/stableId"},
+    "guideVersion": {"type": "integer", "minimum": 1},
+    "entryStep": {"$ref": "#/$defs/stableId"},
+    "steps": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/step"}
+    }
+  },
+  "$defs": {
+    "stableId": {"type": "string", "minLength": 1},
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "triggerEvent",
+        "target",
+        "inputPolicy",
+        "text",
+        "allowedActions",
+        "completionEvent"
+      ],
+      "properties": {
+        "triggerEvent": {"$ref": "#/$defs/stableId"},
+        "target": {"type": "string"},
+        "inputPolicy": {"enum": ["soft", "forced"]},
+        "text": {"type": "string", "minLength": 1},
+        "allowedActions": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/stableId"}
+        },
+        "completionEvent": {"$ref": "#/$defs/stableId"},
+        "next": {"$ref": "#/$defs/stableId"}
+      }
+    }
+  }
+}
