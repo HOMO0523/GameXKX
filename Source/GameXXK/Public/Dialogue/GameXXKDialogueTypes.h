@@ -177,6 +177,28 @@ struct GAMEXXK_API FGameXXKDialogueVisibleOption
 	FText DisabledReason;
 };
 
+/** Presenter-only view model. It contains semantic IDs and authored assets, never Widget names. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKDialoguePresentationView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FName NodeId;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText SpeakerDisplayName;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FText Text;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	FSoftObjectPath PortraitPath;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Dialogue")
+	TArray<FGameXXKDialogueVisibleOption> Options;
+};
+
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKDialogueOutput
 {
