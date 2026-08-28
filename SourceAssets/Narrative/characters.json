@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "characters": [
+    {
+      "characterId": "Character.Hero",
+      "displayName": "主角",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_idle_atlas.T_character_00_hero_idle_atlas",
+      "actions": ["Town.Idle", "Town.WalkStart", "Town.WalkLoop", "Town.WalkStop", "Narrative.StepBack", "Battle.Attack"]
+    },
+    {
+      "characterId": "Character.Horse",
+      "displayName": "马",
+      "animationLibraryPath": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_horse_idle_2k_atlas.T_cinematic_horse_idle_2k_atlas",
+      "actions": ["Narrative.Idle", "Narrative.Run", "Narrative.Stop"]
+    },
+    {
+      "characterId": "Character.Carriage",
+      "displayName": "马车",
+      "animationLibraryPath": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_carriage_post_stop_idle_2k_atlas.T_cinematic_carriage_post_stop_idle_2k_atlas",
+      "actions": ["Narrative.Idle", "Narrative.Run", "Narrative.Stop"]
+    },
+    {
+      "characterId": "Npc.TusiChief",
+      "displayName": "土司首领",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_07_tusi_chief_idle_atlas.T_character_07_tusi_chief_idle_atlas",
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.TusiChief.Default"
+    },
+    {
+      "characterId": "Npc.SongJinBao",
+      "displayName": "宋金宝",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao.T_CardPortrait_Npc_SongJinBao",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_08_song_jin_bao_idle_atlas.T_character_08_song_jin_bao_idle_atlas",
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.SongJinBao.Default"
+    },
+    {
+      "characterId": "Npc.YueBai",
+      "displayName": "月白",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_09_yue_bai_idle_atlas.T_character_09_yue_bai_idle_atlas",
+      "actions": ["Narrative.Idle", "Narrative.Appear", "Narrative.Advance", "Narrative.Exit", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.YueBai.Default"
+    },
+    {
+      "characterId": "Npc.ZhouGuangZu",
+      "displayName": "周光祖",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_ZhouGuangZu.T_CardPortrait_Npc_ZhouGuangZu",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_10_zhou_guang_zu_idle_atlas.T_character_10_zhou_guang_zu_idle_atlas",
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.ZhouGuangZu.Default"
+    },
+    {
+      "characterId": "Npc.JinGui",
+      "displayName": "金贵",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_JinGui.T_CardPortrait_Npc_JinGui",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_11_jin_gui_idle_atlas.T_character_11_jin_gui_idle_atlas",
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.JinGui.Default"
+    },
+    {
+      "characterId": "Npc.QiongMeiEr",
+      "displayName": "琼梅儿",
+      "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_QiongMeiEr.T_CardPortrait_Npc_QiongMeiEr",
+      "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_12_qiong_mei_er_idle_atlas.T_character_12_qiong_mei_er_idle_atlas",
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
+      "defaultInteractionSequenceId": "Sequence.Npc.QiongMeiEr.Default"
+    }
+  ]
+}

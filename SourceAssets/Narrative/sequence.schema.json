@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gamexxk.local/schema/sequence.schema.json",
+  "title": "GameXXK Narrative Sequence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "sequenceId", "sequenceVersion", "stageContractId", "entryStep", "roles", "steps"],
+  "properties": {
+    "schemaVersion": {"const": 1},
+    "sequenceId": {"$ref": "#/$defs/id"},
+    "sequenceVersion": {"type": "integer", "minimum": 1},
+    "stageContractId": {"$ref": "#/$defs/id"},
+    "entryStep": {"$ref": "#/$defs/id"},
+    "roles": {"type": "object", "additionalProperties": {"$ref": "#/$defs/id"}},
+    "steps": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/step"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1},
+    "arguments": {"type": "object", "additionalProperties": {"type": "string"}},
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "commandId", "commandType", "next"],
+      "properties": {
+        "type": {"const": "command"},
+        "commandId": {"$ref": "#/$defs/id"},
+        "commandType": {"$ref": "#/$defs/id"},
+        "arguments": {"$ref": "#/$defs/arguments"},
+        "optional": {"type": "boolean"},
+        "next": {"$ref": "#/$defs/id"}
+      }
+    },
+    "wait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "waitType", "next"],
+      "properties": {
+        "type": {"const": "wait"},
+        "waitType": {"$ref": "#/$defs/id"},
+        "arguments": {"$ref": "#/$defs/arguments"},
+        "next": {"$ref": "#/$defs/id"}
+      }
+    },
+    "dialogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "dialogueId", "next"],
+      "properties": {
+        "type": {"const": "dialogue"},
+        "dialogueId": {"$ref": "#/$defs/id"},
+        "next": {"$ref": "#/$defs/id"}
+      }
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "outcomes"],
+      "properties": {
+        "type": {"const": "branchOnOutcome"},
+        "outcomes": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "end": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {"type": {"const": "end"}}
+    },
+    "step": {
+      "oneOf": [
+        {"$ref": "#/$defs/command"},
+        {"$ref": "#/$defs/wait"},
+        {"$ref": "#/$defs/dialogue"},
+        {"$ref": "#/$defs/branch"},
+        {"$ref": "#/$defs/end"}
+      ]
+    }
+  }
+}
