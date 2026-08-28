@@ -1,5 +1,7 @@
 #include "Misc/AutomationTest.h"
+#if WITH_EDITOR
 #include "Misc/DataValidation.h"
+#endif
 
 #include "Dialogue/GameXXKDialogueAsset.h"
 #include "Dialogue/GameXXKDialogueRules.h"
@@ -34,12 +36,14 @@ bool FGameXXKDialogueAssetContractTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("entry resolves"), Asset->FindNode(TEXT("start")));
 	TestNull(TEXT("missing node rejects"), Asset->FindNode(TEXT("missing")));
 
+#if WITH_EDITOR
 	FDataValidationContext ValidContext;
 	TestEqual(TEXT("unique node ids validate"), Asset->IsDataValid(ValidContext), EDataValidationResult::Valid);
 
 	Asset->Nodes.Add(Start);
 	FDataValidationContext DuplicateContext;
 	TestEqual(TEXT("duplicate node ids reject"), Asset->IsDataValid(DuplicateContext), EDataValidationResult::Invalid);
+#endif
 	return true;
 }
 
@@ -260,8 +264,10 @@ bool FGameXXKDialogueConditionsAndOutcomesTest::RunTest(const FString& Parameter
 		Asset->Nodes.Add(End);
 	}
 
+#if WITH_EDITOR
 	FDataValidationContext ValidContext;
 	TestEqual(TEXT("unique outcomes validate"), Asset->IsDataValid(ValidContext), EDataValidationResult::Valid);
+#endif
 
 	FGameXXKDialogueStartContext StartContext;
 	StartContext.StoryId = TEXT("Story.Test");
@@ -294,10 +300,12 @@ bool FGameXXKDialogueConditionsAndOutcomesTest::RunTest(const FString& Parameter
 		FGameXXKDialogueRules::Choose(*Asset, TEXT("available"), Session, Output, &Error, &Context));
 	TestEqual(TEXT("choice outcome returned"), Output.OutcomeId, FName(TEXT("Outcome.Test.Available")));
 
+#if WITH_EDITOR
 	Asset->Nodes[1].Options[1].OutcomeId = Asset->Nodes[1].Options[0].OutcomeId;
 	FDataValidationContext DuplicateOutcomeContext;
 	TestEqual(TEXT("duplicate outcomes reject"),
 		Asset->IsDataValid(DuplicateOutcomeContext), EDataValidationResult::Invalid);
+#endif
 	return true;
 }
 

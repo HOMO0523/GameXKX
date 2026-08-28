@@ -241,6 +241,31 @@ class DialogueJsonValidationTests(unittest.TestCase):
             canonical = validate_file(path, self.catalogs)
             self.assertEqual("Dialogue.Test.Branching", canonical["dialogueId"])
 
+    def test_unreal_importer_has_validate_before_mutate_contract(self) -> None:
+        importer_path = (
+            Path(__file__).resolve().parents[1]
+            / "Content"
+            / "Python"
+            / "gamexxk_import_dialogue_json.py"
+        )
+        self.assertTrue(importer_path.is_file(), f"missing importer: {importer_path}")
+        source = importer_path.read_text(encoding="utf-8")
+        compile(source, str(importer_path), "exec")
+        for required in (
+            "validate_file",
+            "AssetToolsHelpers.get_asset_tools",
+            "EditorAssetLibrary.load_asset",
+            "create_asset",
+            "GameXXKDialogueAsset",
+            "set_editor_property",
+            "save_loaded_asset",
+            "dialogue-import-report.json",
+        ):
+            self.assertIn(required, source)
+        self.assertLess(source.index("validate_file"), source.index("create_asset"))
+        self.assertIn("does_asset_exist", source)
+        self.assertLess(source.index("does_asset_exist"), source.index("load_asset"))
+
 
 if __name__ == "__main__":
     unittest.main()
