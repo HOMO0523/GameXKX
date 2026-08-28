@@ -365,14 +365,15 @@ Sequence 命令 `openShop` 会隐藏仍可见的正式对话框并把模态输�
 - 交互优先级。
 - 提示锚点。
 
-默认目标筛选参数：距离 300 Unreal Units，主角前方左右各 60 度。候选按以下顺序确定唯一目标：
+每个可交互 NPC 还拥有一个以自身为中心、半径 300 Unreal Units 的圆形交互触发区。触发区只进行查询并仅响应玩家 Pawn 的 Overlap，不阻挡角色、NPC、镜头、攻击或其他碰撞。玩家进入时把该 NPC 登记到角色交互组件的候选集合，离开时立即移除；按 `F` 时只从当前 Overlap 候选中选择，不扫描全场，也不检查主角朝向。
+
+候选按以下顺序确定唯一目标：
 
 1. 交互优先级降序。
-2. 朝向夹角升序。
-3. 距离升序。
-4. `InteractionId` 字典序。
+2. 距离升序。
+3. `InteractionId` 字典序。
 
-当前目标显示 `F 交谈 · NPC名称`。目标改变只更新提示，不自动打开 UI。对话、商店、背包或演出打开时暂停目标检测。
+当前目标显示 `F 交谈 · NPC名称`。目标改变只更新提示，不自动打开 UI。对话、商店、背包或演出打开时禁用提示和 `F` 路由；关闭后根据仍与玩家重叠的触发区恢复候选，不保留已经离开范围的失效目标。
 
 NPC 的 Dialogue 可以按条件提供：继续交谈、接取任务、提交任务、打开商店、暂且离开；选项只返回 Outcome，随后由交互 Sequence 执行任务或商店命令。NPC 对话永远不提供入队或招募；伙伴和任务 NPC 是否出战只在编队界面决定。
 
@@ -584,7 +585,9 @@ Tutorial.Start（自动占据）
 
 ### 16.4 NPC 交互
 
-- 前方扇形边界、优先级、夹角、距离和稳定 ID 排序。
+- NPC 圆形触发区半径为 300 Unreal Units，边界包含在内，且不会阻挡移动或其他碰撞。
+- 只有进入圆形触发区的 NPC 才能被 `F` 选择；玩家朝向不影响结果，按键时不扫描全场。
+- 候选按优先级、距离和稳定 ID 排序。
 - 多 NPC 重叠时始终只有一个目标。
 - 打开 UI 后提示与 `F` 路由暂停。
 - NPC 对话中不存在入队或招募入口。
@@ -637,7 +640,7 @@ Tutorial.Start（自动占据）
 2. 纯 DialogueRunner、对话会话存档和 v28 迁移。
 3. CharacterCatalog、NarrativeSequence Runner/Dispatcher、Story/Task Catalog、StageContract、SceneRegistry/Profile、Encounter/BattleProfile、Guide 状态和 v29 迁移。
 4. 气泡、正式纸框、选择、自动、已读跳过、回看与暂停层。
-5. NPC 前方扇形 `F` 交互与旧 QuestDialog 解耦。
+5. NPC 圆形 Overlap `F` 交互与旧 QuestDialog 解耦。
 6. 角色、镜头、表现、玩法和 UI 命令适配器。
 7. 可替换河边 SceneProfile、马车开场、命名、`Dialogue.Tutorial.001` 和 v30 玩家身份迁移。
 8. 固定单线教程路线、GuideAsset、首次新手/老玩家弹窗与设置重置。

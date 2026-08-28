@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Present dialogue through a bottom paper panel or actor-following bubble, coordinate input/auto/skip/history/pause, and replace NPC `F` routing with deterministic forward-cone targeting.
+**Goal:** Present dialogue through a bottom paper panel or actor-following bubble, coordinate input/auto/skip/history/pause, and replace NPC `F` routing with deterministic circular-range targeting.
 
-**Architecture:** `UGameXXKDialogueCoordinator` owns one active blocking presentation, consumes outputs from the pure DialogueRunner and returns one OutcomeId to its calling NarrativeCoordinator. Presenter Widgets expose typed view-model APIs only. The hero interaction component queries `UGameXXKInteractableComponent` candidates, selects one deterministically, and starts the configured NarrativeSequence; task/shop actions are Sequence commands, never Dialogue nodes.
+**Architecture:** `UGameXXKDialogueCoordinator` owns one active blocking presentation, consumes outputs from the pure DialogueRunner and returns one OutcomeId to its calling NarrativeCoordinator. Presenter Widgets expose typed view-model APIs only. Each NPC owns a query-only 300-unit circular overlap trigger and registers/unregisters itself with the hero interaction component; the hero selects one registered candidate deterministically and starts the configured NarrativeSequence. Task/shop actions are Sequence commands, never Dialogue nodes.
 
 **Tech Stack:** UE 5.8 UMG/Slate C++, existing GameXXK paper textures, PlayerController input routing, world-to-widget projection, Automation Tests.
 
@@ -19,8 +19,8 @@
 - Create `Source/GameXXK/Public/UI/GameXXKSpeechBubbleWidget.h` and private `.cpp` — actor-following bubble.
 - Create `Source/GameXXK/Public/UI/GameXXKDialogueHistoryWidget.h` and private `.cpp` — read-only 100-entry history.
 - Create `Source/GameXXK/Public/Interaction/GameXXKInteractableComponent.h` and private `.cpp` — stable NPC interaction metadata.
-- Create `Source/GameXXK/Public/Interaction/GameXXKInteractionRules.h` and private `.cpp` — pure cone filtering/sorting.
-- Modify `Source/GameXXK/Public/Interaction/GameXXKInteractionComponent.h` and private `.cpp` — forward-cone selection.
+- Create `Source/GameXXK/Public/Interaction/GameXXKInteractionRules.h` and private `.cpp` — pure radial filtering/sorting.
+- Modify `Source/GameXXK/Public/Interaction/GameXXKInteractionComponent.h` and private `.cpp` — overlap-candidate selection without world scans.
 - Modify `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h` and private `.cpp` — coordinator ownership and input routing.
 - Modify `Source/GameXXK/Public/Town/GameXXKTownNpcCharacter.h` and private `.cpp` — configure interactable/dialogue IDs.
 - Modify `Source/GameXXK/Public/UI/GameXXKQuestDialogWidget.h` and private `.cpp` — remove recruit/primary hardcoding after consumers migrate.
@@ -168,7 +168,7 @@ git add -- Source/GameXXK/Public/Dialogue/GameXXKDialogueTypes.h Source/GameXXK/
 git commit -m "feat: coordinate dialogue presentation and input"
 ```
 
-### Task 4: Implement deterministic forward-cone interaction
+### Task 4: Implement deterministic circular interaction
 
 **Files:**
 - Create: `Source/GameXXK/Public/Interaction/GameXXKInteractableComponent.h`
@@ -181,15 +181,15 @@ git commit -m "feat: coordinate dialogue presentation and input"
 
 - [ ] **Step 1: Write failing pure selection tests**
 
-Create candidates at cone boundaries and assert sorting:
+Create candidates at radius boundaries and assert sorting:
 
 ```cpp
-FGameXXKInteractionCandidate A{TEXT("Npc.A"), 1, 10.0f, 200.0f};
-FGameXXKInteractionCandidate B{TEXT("Npc.B"), 2, 50.0f, 100.0f};
+FGameXXKInteractionCandidate A{TEXT("Npc.A"), 1, 200.0f};
+FGameXXKInteractionCandidate B{TEXT("Npc.B"), 2, 100.0f};
 TestEqual(TEXT("priority wins"), FGameXXKInteractionRules::Choose({A, B}).InteractionId, FName(TEXT("Npc.B")));
 ```
 
-Test radius 300, half-angle 60 degrees, priority descending, angle ascending, distance ascending and ID ascending.
+Test full-circle radius 300, priority descending, distance ascending and ID ascending. Facing direction must not affect selection.
 
 - [ ] **Step 2: Implement candidate registration and query**
 
@@ -200,7 +200,6 @@ struct FGameXXKInteractionCandidate
 {
     FName InteractionId;
     int32 Priority = 0;
-    float AngleDegrees = 0.0f;
     float Distance = 0.0f;
 };
 
@@ -209,18 +208,17 @@ class FGameXXKInteractionRules final
 public:
     static TOptional<FGameXXKInteractionCandidate> Choose(
         const TArray<FGameXXKInteractionCandidate>& Candidates,
-        float MaxDistance = 300.0f,
-        float HalfAngleDegrees = 60.0f);
+        float MaxDistance = 300.0f);
 };
 ```
 
-`UGameXXKInteractableComponent` stores `InteractionId`, display name, `NarrativeSequenceId`, priority, enabled state and prompt anchor. The hero component scans overlaps, filters the cone, computes candidates, and emits only a target-changed delegate. It performs no UI opening during target selection. A talk-only NPC still uses a one-Dialogue Sequence so all F interactions share the same resume/command boundary.
+`UGameXXKInteractableComponent` stores `InteractionId`, display name, `NarrativeSequenceId`, priority, enabled state and prompt anchor. Each NPC uses its existing `InteractionArea` as a query-only Pawn-overlap sphere with radius 300. Begin/end overlap registers or unregisters the NPC with the hero component. The hero computes candidates only from that overlap set, applies no facing-direction filter, performs no world scan on `F`, and emits only a target-changed delegate. It performs no UI opening during target selection. A talk-only NPC still uses a one-Dialogue Sequence so all F interactions share the same resume/command boundary.
 
 - [ ] **Step 3: Run GREEN and commit**
 
 ```powershell
 git add -- Source/GameXXK/Public/Interaction/GameXXKInteractableComponent.h Source/GameXXK/Private/Interaction/GameXXKInteractableComponent.cpp Source/GameXXK/Public/Interaction/GameXXKInteractionRules.h Source/GameXXK/Private/Interaction/GameXXKInteractionRules.cpp Source/GameXXK/Public/Interaction/GameXXKInteractionComponent.h Source/GameXXK/Private/Interaction/GameXXKInteractionComponent.cpp Source/GameXXK/Private/Tests/GameXXKInteractionRouterTest.cpp
-git commit -m "feat: select npc interactions in a forward cone"
+git commit -m "feat: select npc interactions in a circular range"
 ```
 
 ### Task 5: Route PlayerController and NPCs through the coordinator
