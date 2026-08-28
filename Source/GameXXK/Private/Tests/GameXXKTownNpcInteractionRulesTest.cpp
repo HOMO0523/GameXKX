@@ -77,6 +77,14 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	TestTrue(TEXT("town-NPC fixture starts a new game in Qingshan town"), Subsystem->StartGame());
+	YueBai->SetMVPSubsystemForTest(Subsystem);
+	const FName PartyNpcBeforeWorldInteraction =
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId;
+	TestFalse(TEXT("world NPC interaction cannot configure the party slot"), YueBai->ApplyDefaultInteraction(nullptr));
+	TestEqual(
+		TEXT("world NPC interaction leaves the party NPC unchanged"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		PartyNpcBeforeWorldInteraction);
 	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
 	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
 	// 入队 recruit (controller RecruitPendingTownNpc) so the route-support selection path

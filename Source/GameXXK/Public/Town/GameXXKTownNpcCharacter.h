@@ -7,6 +7,7 @@
 #include "GameXXKTownNpcCharacter.generated.h"
 
 class UGameXXKMVPSubsystem;
+class UGameXXKInteractableComponent;
 class USphereComponent;
 
 UCLASS(Blueprintable)
@@ -112,6 +113,7 @@ protected:
 	float FollowSpeed = 240.0f;
 
 private:
+	void RefreshNarrativeInteractionMetadata();
 	void ConfigureStaticIdleVisual();
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
 	void RecordQuestNpcMovedLocation(UGameXXKMVPSubsystem* Subsystem, const FVector& Location);
@@ -124,4 +126,7 @@ private:
 
 	UPROPERTY(Transient)
 	bool bLastInteractionSuccessful = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "GameXXK|Interaction")
+	TObjectPtr<UGameXXKInteractableComponent> NarrativeInteraction;
 };

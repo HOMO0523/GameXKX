@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "dialogueId": "Dialogue.Npc.YueBai.Default",
+  "dialogueVersion": 1,
+  "entryNode": "line",
+  "nodes": {
+    "line": {
+      "type": "line",
+      "presentation": "bubble",
+      "speaker": "Npc.YueBai",
+      "textId": "Text.Npc.YueBai.Default",
+      "text": "前方路远，当心脚下。",
+      "next": "end"
+    },
+    "end": {
+      "type": "end",
+      "outcomeId": "Outcome.Leave"
+    }
+  }
+}

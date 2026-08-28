@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "dialogueId": "Dialogue.Npc.SongJinBao.Default",
+  "dialogueVersion": 1,
+  "entryNode": "line",
+  "nodes": {
+    "line": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.SongJinBao",
+      "textId": "Text.Npc.SongJinBao.Default",
+      "text": "想看看什么？",
+      "next": "choice"
+    },
+    "choice": {
+      "type": "choice",
+      "presentation": "dialogue",
+      "options": [
+        {
+          "optionId": "Option.Shop",
+          "textId": "Text.Option.Shop",
+          "text": "商店",
+          "outcomeId": "Outcome.OptionShop",
+          "next": "end_shop"
+        },
+        {
+          "optionId": "Option.Leave",
+          "textId": "Text.Option.Leave",
+          "text": "暂且离开",
+          "outcomeId": "Outcome.OptionLeave",
+          "next": "end_leave"
+        }
+      ]
+    },
+    "end_shop": {
+      "type": "end",
+      "outcomeId": "Outcome.Shop"
+    },
+    "end_leave": {
+      "type": "end",
+      "outcomeId": "Outcome.Leave"
+    }
+  }
+}

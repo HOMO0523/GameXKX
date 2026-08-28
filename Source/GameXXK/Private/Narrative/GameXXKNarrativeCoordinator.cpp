@@ -108,6 +108,29 @@ bool UGameXXKNarrativeCoordinator::Resume(FString* OutError)
 	return DispatchRequest(Request, OutError);
 }
 
+bool UGameXXKNarrativeCoordinator::ResumeSequence(
+	UGameXXKNarrativeSequenceAsset& Asset,
+	FString* OutError)
+{
+	using namespace GameXXKNarrativeCoordinatorPrivate;
+	if (!RuntimeState || !SessionState || !SessionState->bActive)
+	{
+		return SetError(OutError, TEXT("No narrative sequence can be restored."));
+	}
+	if (SessionState->SequenceId != Asset.SequenceId
+		|| SessionState->SequenceVersion != Asset.SequenceVersion)
+	{
+		return SetError(OutError, TEXT("Narrative restore asset does not match the saved session."));
+	}
+	if (ActiveAsset && ActiveAsset != &Asset)
+	{
+		CancelPendingExecutor();
+	}
+	ActiveAsset = &Asset;
+	bInputTokenHeld = true;
+	return Resume(OutError);
+}
+
 bool UGameXXKNarrativeCoordinator::DispatchRequest(
 	const FGameXXKNarrativeRequest& Request,
 	FString* OutError)

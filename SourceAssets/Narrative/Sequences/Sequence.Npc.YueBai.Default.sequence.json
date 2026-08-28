@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "sequenceId": "Sequence.Npc.YueBai.Default",
+  "sequenceVersion": 1,
+  "stageContractId": "Stage.Town.NpcInteraction",
+  "entryStep": "dialogue",
+  "roles": {"Npc": "Npc.YueBai"},
+  "steps": {
+    "dialogue": {
+      "type": "dialogue",
+      "dialogueId": "Dialogue.Npc.YueBai.Default",
+      "next": "end"
+    },
+    "end": {"type": "end"}
+  }
+}

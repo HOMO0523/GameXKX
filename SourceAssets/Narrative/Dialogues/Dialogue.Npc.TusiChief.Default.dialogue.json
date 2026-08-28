@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "dialogueId": "Dialogue.Npc.TusiChief.Default",
+  "dialogueVersion": 1,
+  "entryNode": "line",
+  "nodes": {
+    "line": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.TusiChief",
+      "textId": "Text.Npc.TusiChief.Default",
+      "text": "少侠，山道上近来有妖物出没。可愿随我前去查探？",
+      "next": "choice"
+    },
+    "choice": {
+      "type": "choice",
+      "presentation": "dialogue",
+      "options": [
+        {
+          "optionId": "Option.Task",
+          "textId": "Text.Option.Task",
+          "text": "查看任务",
+          "outcomeId": "Outcome.OptionTask",
+          "next": "end_task"
+        },
+        {
+          "optionId": "Option.Leave",
+          "textId": "Text.Option.Leave",
+          "text": "暂且离开",
+          "outcomeId": "Outcome.OptionLeave",
+          "next": "end_leave"
+        }
+      ]
+    },
+    "end_task": {
+      "type": "end",
+      "outcomeId": "Outcome.Task"
+    },
+    "end_leave": {
+      "type": "end",
+      "outcomeId": "Outcome.Leave"
+    }
+  }
+}

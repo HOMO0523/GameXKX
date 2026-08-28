@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "sequenceId": "Sequence.Npc.SongJinBao.Default",
+  "sequenceVersion": 1,
+  "stageContractId": "Stage.Town.NpcInteraction",
+  "entryStep": "dialogue",
+  "roles": {"Npc": "Npc.SongJinBao"},
+  "steps": {
+    "dialogue": {
+      "type": "dialogue",
+      "dialogueId": "Dialogue.Npc.SongJinBao.Default",
+      "next": "branch"
+    },
+    "branch": {
+      "type": "branchOnOutcome",
+      "outcomes": {
+        "Outcome.Shop": "shop",
+        "Outcome.Leave": "end"
+      }
+    },
+    "shop": {
+      "type": "command",
+      "commandId": "open_shop",
+      "commandType": "openShop",
+      "next": "end"
+    },
+    "end": {"type": "end"}
+  }
+}

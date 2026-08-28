@@ -8,6 +8,7 @@
 class UPaperFlipbookComponent;
 class USphereComponent;
 class UGameXXKMVPSubsystem;
+class UGameXXKInteractableComponent;
 class AGameXXKHeroCharacter;
 
 UENUM(BlueprintType)
@@ -143,6 +144,7 @@ protected:
 	TObjectPtr<AGameXXKHeroCharacter> VisualCharacter;
 
 private:
+	void RefreshNarrativeInteractionMetadata();
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
 	void SpawnOrRefreshVisualCharacter();
 	void DestroyVisualCharacter();
@@ -153,4 +155,7 @@ private:
 
 	UPROPERTY(Transient)
 	bool bLastInteractionSuccessful = false;
+
+	UPROPERTY(VisibleAnywhere, Category = "GameXXK|Interaction")
+	TObjectPtr<UGameXXKInteractableComponent> NarrativeInteraction;
 };

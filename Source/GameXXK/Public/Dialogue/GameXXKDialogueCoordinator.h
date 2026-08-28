@@ -36,6 +36,10 @@ public:
 		FGameXXKDialogueFinished OnFinished,
 		FString* OutError = nullptr);
 	bool ResumeDialogue(const UGameXXKDialogueAsset& Asset, FString* OutError = nullptr);
+	bool ResumeDialogue(
+		const UGameXXKDialogueAsset& Asset,
+		FGameXXKDialogueFinished OnFinished,
+		FString* OutError = nullptr);
 	bool Advance(FString* OutError = nullptr);
 	bool ChooseOption(FName OptionId, FString* OutError = nullptr);
 	bool SkipSeenCurrentNode(FString* OutError = nullptr);

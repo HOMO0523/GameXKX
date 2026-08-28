@@ -5,12 +5,15 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Components/InputComponent.h"
+#include "Dialogue/GameXXKDialogueAsset.h"
+#include "Dialogue/GameXXKDialogueCoordinator.h"
 #include "Engine/Engine.h"
 #include "Engine/GameEngine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
 #include "InputKeyEventArgs.h"
+#include "Interaction/GameXXKInteractableComponent.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameXXKCompanionCatalog.h"
@@ -18,6 +21,8 @@
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Narrative/GameXXKNarrativeCoordinator.h"
+#include "Narrative/GameXXKNarrativeSequenceAsset.h"
 #include "Misc/Parse.h"
 #include "Misc/PackageName.h"
 #include "Town/GameXXKHeroCharacter.h"
@@ -29,6 +34,8 @@
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKDesktopHudSessionSubsystem.h"
+#include "UI/GameXXKDialogueHistoryWidget.h"
+#include "UI/GameXXKDialoguePanelWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKMetaShopWidget.h"
@@ -37,6 +44,7 @@
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "UI/GameXXKRouteMerchantWidget.h"
 #include "UI/GameXXKRelicBarWidget.h"
+#include "UI/GameXXKSpeechBubbleWidget.h"
 #include "UI/GameXXKTaskPanelWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
@@ -54,51 +62,60 @@ namespace
 {
 	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
 
-	FName ResolveTownNpcId(const AActor* TownNpc)
+	class FGameXXKNarrativeUiCommandExecutor final : public IGameXXKNarrativeCommandExecutor
 	{
-		if (const AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
+	public:
+		FGameXXKNarrativeUiCommandExecutor(
+			const FName InCommandType,
+			TFunction<bool()> InOpenAction,
+			TFunction<void()> InCancelAction)
+			: CommandType(InCommandType)
+			, OpenAction(MoveTemp(InOpenAction))
+			, CancelAction(MoveTemp(InCancelAction))
 		{
-			if (!CharacterNpc->GetNpcId().IsNone())
-			{
-				return CharacterNpc->GetNpcId();
-			}
-			if (CharacterNpc->CanOfferQuest()) return TEXT("Npc.TusiChief");
-			if (CharacterNpc->CanTrade()) return TEXT("Npc.SongJinBao");
 		}
-		if (const AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
-		{
-			if (!ActorNpc->GetNpcId().IsNone())
-			{
-				return ActorNpc->GetNpcId();
-			}
-			if (ActorNpc->CanOfferQuest()) return TEXT("Npc.TusiChief");
-			if (ActorNpc->CanTrade()) return TEXT("Npc.SongJinBao");
-		}
-		return NAME_None;
-	}
 
-	EGameXXKTownNpcRole ResolveTownNpcRole(const AActor* TownNpc)
-	{
-		if (const AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
+		virtual bool Supports(const FName InCommandType) const override
 		{
-			return CharacterNpc->GetNpcRole();
+			return InCommandType == CommandType;
 		}
-		if (const AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
-		{
-			return ActorNpc->GetNpcRole();
-		}
-		return EGameXXKTownNpcRole::Generic;
-	}
 
-	FText TownNpcDisplayName(const FName NpcId)
+		virtual FGameXXKNarrativeCommandResult Execute(
+			const FGameXXKNarrativeCommandDefinition& Command,
+			FGameXXKRuntimeState& InOutCandidateState) override
+		{
+			(void)Command;
+			(void)InOutCandidateState;
+			FGameXXKNarrativeCommandResult Result;
+			Result.Status = OpenAction && OpenAction()
+				? EGameXXKNarrativeCommandStatus::Pending
+				: EGameXXKNarrativeCommandStatus::Failed;
+			if (Result.Status == EGameXXKNarrativeCommandStatus::Failed)
+			{
+				Result.Error = FString::Printf(TEXT("Failed to open narrative UI command: %s"), *CommandType.ToString());
+			}
+			return Result;
+		}
+
+		virtual void CancelPending() override
+		{
+			if (CancelAction) CancelAction();
+		}
+
+	private:
+		FName CommandType;
+		TFunction<bool()> OpenAction;
+		TFunction<void()> CancelAction;
+	};
+
+	FString NarrativeAssetStem(const FName StableId)
 	{
-		if (NpcId == TEXT("Npc.TusiChief")) return NSLOCTEXT("GameXXKTownNpc", "TusiChief", "土司首领");
-		if (NpcId == TEXT("Npc.SongJinBao")) return NSLOCTEXT("GameXXKTownNpc", "SongJinBao", "宋金宝");
-		if (NpcId == TEXT("Npc.YueBai")) return NSLOCTEXT("GameXXKTownNpc", "YueBai", "月白");
-		if (NpcId == TEXT("Npc.ZhouGuangZu")) return NSLOCTEXT("GameXXKTownNpc", "ZhouGuangZu", "周光祖");
-		if (NpcId == TEXT("Npc.JinGui")) return NSLOCTEXT("GameXXKTownNpc", "JinGui", "金贵");
-		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKTownNpc", "QiongMeiEr", "琼么儿");
-		return NSLOCTEXT("GameXXKTownNpc", "Unknown", "旅人");
+		FString Stem(TEXT("DA_"));
+		for (const TCHAR Character : StableId.ToString())
+		{
+			Stem.AppendChar(FChar::IsAlnum(Character) ? Character : TEXT('_'));
+		}
+		return Stem;
 	}
 
 	FVector2D ResolveRouteMapViewportSize(const APlayerController* PlayerController)
@@ -207,6 +224,7 @@ AGameXXKMVPPlayerController::AGameXXKMVPPlayerController()
 void AGameXXKMVPPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
+	BindInteractionRequests(GetPawn());
 	if (!PreLoadMapWithContextDelegateHandle.IsValid())
 	{
 		PreLoadMapWithContextDelegateHandle = FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(
@@ -260,6 +278,16 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	UnbindInteractionRequests();
+	if (DialogueCoordinator)
+	{
+		DialogueCoordinator->PauseAndExit();
+	}
+	if (NarrativeCoordinator)
+	{
+		NarrativeCoordinator->PauseAndRelease();
+	}
+	SetNarrativeInputLocked(false);
 	if (PreLoadMapWithContextDelegateHandle.IsValid())
 	{
 		FCoreUObjectDelegates::PreLoadMapWithContext.Remove(PreLoadMapWithContextDelegateHandle);
@@ -275,9 +303,30 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 	Super::EndPlay(EndPlayReason);
 }
 
+void AGameXXKMVPPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	BindInteractionRequests(InPawn);
+}
+
+void AGameXXKMVPPlayerController::OnUnPossess()
+{
+	UnbindInteractionRequests();
+	Super::OnUnPossess();
+}
+
 void AGameXXKMVPPlayerController::PlayerTick(float DeltaTime)
 {
 	Super::PlayerTick(DeltaTime);
+	if (DialogueCoordinator && DialogueCoordinator->IsBlockingPresentation())
+	{
+		DialogueCoordinator->TickAuto(DeltaTime, nullptr);
+		if (DialogueBubbleWidget)
+		{
+			DialogueBubbleWidget->UpdateAnchor(this);
+		}
+		RefreshNarrativeInputLock();
+	}
 	if (DesktopTrainingOverlayWindow.IsValid()
 		&& bDesktopTrainingOverlayCompositionActive
 		&& DesktopTrainingWorkbenchWidget
@@ -300,6 +349,10 @@ void AGameXXKMVPPlayerController::SetupInputComponent()
 
 bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
+	if (HandleNarrativeInput(Params))
+	{
+		return true;
+	}
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
 		if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
@@ -860,6 +913,7 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn*
 {
 	// Do not replace the active task-offer modal or overwrite its pending NPC.
 	if (!QuestNpc || !InstigatorPawn
+		|| (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
 		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
 	{
@@ -883,111 +937,78 @@ bool AGameXXKMVPPlayerController::OpenQuestDialogForNpc(AActor* QuestNpc, APawn*
 
 bool AGameXXKMVPPlayerController::OpenTownNpcInteractionForNpc(AActor* TownNpc, APawn* InstigatorPawn)
 {
-	if (!TownNpc || !InstigatorPawn
-		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
-		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
+	if (!TownNpc || !InstigatorPawn)
 	{
 		return false;
 	}
-
-	const FName NpcId = ResolveTownNpcId(TownNpc);
-	if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId))
+	const UGameXXKInteractableComponent* Metadata =
+		TownNpc->FindComponentByClass<UGameXXKInteractableComponent>();
+	if (!Metadata || !Metadata->IsInteractionEnabled())
 	{
 		return false;
 	}
-
-	UGameXXKQuestDialogWidget* Dialog = EnsureQuestDialogWidget();
-	if (!Dialog)
-	{
-		return false;
-	}
-
-	CloseMetaShopWindow();
-	CloseInventoryWindow();
-	CloseCompanionRoster();
-	PendingQuestNpc = TownNpc;
-	PendingQuestInstigator = InstigatorPawn;
-
-	FText PrimaryActionLabel;
-	switch (ResolveTownNpcRole(TownNpc))
-	{
-	case EGameXXKTownNpcRole::Quest:
-		PrimaryActionLabel = NSLOCTEXT("GameXXKTownNpc", "StoryAction", "剧情");
-		break;
-	case EGameXXKTownNpcRole::Merchant:
-		PrimaryActionLabel = NSLOCTEXT("GameXXKTownNpc", "ShopAction", "商店");
-		break;
-	default:
-		break;
-	}
-
-	Dialog->ConfigureTownNpcInteraction(NpcId, TownNpcDisplayName(NpcId), PrimaryActionLabel);
-	Dialog->OpenDialog();
-	FlushPressedKeys();
-	SetIgnoreMoveInput(true);
-	ApplyPlayerFlowInputMode();
-	return true;
-}
-
-bool AGameXXKMVPPlayerController::ExecutePendingTownNpcPrimaryAction()
-{
-	AActor* TownNpc = PendingQuestNpc.Get();
-	APawn* InstigatorPawn = PendingQuestInstigator.Get();
-	if (!TownNpc || !InstigatorPawn || !QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
-	{
-		return false;
-	}
-
-	const EGameXXKTownNpcRole TownNpcRole = ResolveTownNpcRole(TownNpc);
-	CloseQuestDialog();
-	if (TownNpcRole == EGameXXKTownNpcRole::Quest)
-	{
-		return OpenTaskOfferPanelForNpc(TownNpc, InstigatorPawn);
-	}
-	if (TownNpcRole == EGameXXKTownNpcRole::Merchant)
-	{
-		return OpenMetaShopWindow();
-	}
-	return false;
-}
-
-bool AGameXXKMVPPlayerController::RecruitPendingTownNpc()
-{
-	AActor* TownNpc = PendingQuestNpc.Get();
-	const FName NpcId = ResolveTownNpcId(TownNpc);
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	if (!TownNpc || !Subsystem || !QuestDialogWidget || !QuestDialogWidget->IsDialogOpen()
-		|| !Subsystem->SelectTownQuestNpcForParty(NpcId))
+	if (!Subsystem)
 	{
 		return false;
 	}
-
-	// Recruiting the quest guide makes it the narrative follower: it leaves its
-	// town spot and accompanies the hero instead of waiting for a dialog click.
-	if (ResolveTownNpcRole(TownNpc) == EGameXXKTownNpcRole::Quest)
+	UGameXXKNarrativeSequenceAsset* Sequence =
+		ResolveNarrativeSequenceAsset(Metadata->GetNarrativeSequenceId());
+	if (!Sequence)
 	{
-		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-		State.bFollowerJoined = true;
-		State.bHasQuestNpcLocation = false;
-		State.QuestNpcLocation = FVector::ZeroVector;
-
-		APawn* InstigatorPawn = PendingQuestInstigator.Get();
-		if (InstigatorPawn)
-		{
-			if (AGameXXKTownNpcCharacter* CharacterNpc = Cast<AGameXXKTownNpcCharacter>(TownNpc))
-			{
-				CharacterNpc->ActivateFollower(InstigatorPawn, CharacterNpc->GetFollowDistance());
-			}
-			else if (AGameXXKTownNpcActor* ActorNpc = Cast<AGameXXKTownNpcActor>(TownNpc))
-			{
-				ActorNpc->ActivateFollower(InstigatorPawn, ActorNpc->GetFollowDistance());
-			}
-		}
+		return false;
 	}
-
-	CloseQuestDialog();
-	RefreshPlayerFlowWidgets();
-	return true;
+	const FGameXXKNarrativeSequenceSessionState& ExistingSession =
+		Subsystem->GetRuntimeState().NarrativeSequenceSession;
+	if (ExistingSession.bActive)
+	{
+		if (!CanStartNpcNarrativeInteraction(true)
+			|| ExistingSession.SequenceId != Sequence->SequenceId
+			|| (ActiveNarrativeInteractionActor.IsValid()
+				&& ActiveNarrativeInteractionActor.Get() != TownNpc)
+			|| (DialogueCoordinator && DialogueCoordinator->IsBlockingPresentation())
+			|| !EnsureNarrativeInteractionRuntime())
+		{
+			return false;
+		}
+		if (NarrativeCoordinator->IsInputTokenHeld())
+		{
+			return false;
+		}
+		ActiveNarrativeInteractionActor = TownNpc;
+		const bool bResumed = NarrativeCoordinator->ResumeSequence(*Sequence, nullptr);
+		if (bResumed)
+		{
+			FlushPressedKeys();
+			RefreshNarrativeInputLock();
+			ApplyPlayerFlowInputMode();
+		}
+		return bResumed;
+	}
+	if (!CanStartNpcNarrativeInteraction() || !EnsureNarrativeInteractionRuntime())
+	{
+		return false;
+	}
+	FGameXXKNarrativeStartContext Context;
+	Context.StoryId = TEXT("Story.NpcInteraction");
+	Context.TaskId = Metadata->GetInteractionId();
+	Context.StepId = TEXT("Step.Interact");
+	Context.StageContractId = Sequence->StageContractId;
+	Context.CharacterIdByRole.Add(TEXT("Npc"), Metadata->GetInteractionId());
+	ActiveNarrativeInteractionActor = TownNpc;
+	FString Error;
+	const bool bStarted = NarrativeCoordinator->StartSequence(*Sequence, Context, &Error);
+	if (bStarted)
+	{
+		FlushPressedKeys();
+		RefreshNarrativeInputLock();
+		ApplyPlayerFlowInputMode();
+	}
+	else
+	{
+		ActiveNarrativeInteractionActor.Reset();
+	}
+	return bStarted;
 }
 
 bool AGameXXKMVPPlayerController::OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn)
@@ -995,6 +1016,7 @@ bool AGameXXKMVPPlayerController::OpenTaskOfferPanelForNpc(AActor* QuestNpc, APa
 	// A second modal request is rejected before it can replace the original
 	// pending NPC/instigator pair.
 	if (!QuestNpc || !InstigatorPawn
+		|| (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
 		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
 	{
@@ -1081,6 +1103,10 @@ bool AGameXXKMVPPlayerController::CloseQuestDialog()
 
 bool AGameXXKMVPPlayerController::OpenFreeInventoryWindow()
 {
+	if (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
+	{
+		return false;
+	}
 	CloseMetaShopWindow();
 	CloseCompanionRoster();
 	CloseTaskPanel();
@@ -1108,6 +1134,10 @@ bool AGameXXKMVPPlayerController::OpenMetaShopWindow()
 	if (IsMetaShopOpenForTest())
 	{
 		return CloseMetaShopWindow();
+	}
+	if (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
+	{
+		return false;
 	}
 	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
@@ -1161,6 +1191,11 @@ void AGameXXKMVPPlayerController::HandleMetaShopClosed()
 		SetIgnoreMoveInput(false);
 		bMetaShopInputLocked = false;
 	}
+	if (!bCancellingNarrativeUiCommand && NarrativeCoordinator)
+	{
+		NarrativeCoordinator->CompletePendingCommand(EGameXXKNarrativeCommandStatus::Completed, nullptr);
+		RefreshNarrativeInputLock();
+	}
 	ApplyPlayerFlowInputMode();
 }
 
@@ -1193,6 +1228,10 @@ bool AGameXXKMVPPlayerController::OpenCompanionRoster()
 {
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::Town)
+	{
+		return false;
+	}
+	if (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
 	{
 		return false;
 	}
@@ -1236,6 +1275,10 @@ bool AGameXXKMVPPlayerController::CloseCompanionRoster()
 
 bool AGameXXKMVPPlayerController::OpenTaskPanel()
 {
+	if (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
+	{
+		return false;
+	}
 	if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
 	{
 		return false;
@@ -1265,6 +1308,11 @@ bool AGameXXKMVPPlayerController::CloseTaskPanel()
 		PendingQuestNpc.Reset();
 		PendingQuestInstigator.Reset();
 		SetIgnoreMoveInput(false);
+		if (!bCancellingNarrativeUiCommand && NarrativeCoordinator)
+		{
+			NarrativeCoordinator->CompletePendingCommand(EGameXXKNarrativeCommandStatus::Completed, nullptr);
+			RefreshNarrativeInputLock();
+		}
 		ApplyPlayerFlowInputMode();
 	}
 	return bClosed;
@@ -1612,6 +1660,352 @@ UGameXXKMVPSubsystem* AGameXXKMVPPlayerController::ResolveMVPSubsystem() const
 
 	UGameInstance* GameInstance = GetGameInstance();
 	return GameInstance ? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>() : nullptr;
+}
+
+bool AGameXXKMVPPlayerController::EnsureNarrativeInteractionRuntime()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem)
+	{
+		return false;
+	}
+	if (!NarrativeCoordinator)
+	{
+		NarrativeCoordinator = NewObject<UGameXXKNarrativeCoordinator>(this, TEXT("NarrativeCoordinator"));
+		const TWeakObjectPtr<AGameXXKMVPPlayerController> WeakController(this);
+		NarrativeCoordinator->RegisterExecutor(
+			TEXT("openShop"),
+			MakeShared<FGameXXKNarrativeUiCommandExecutor>(
+				TEXT("openShop"),
+				[WeakController]()
+				{
+					AGameXXKMVPPlayerController* Controller = WeakController.Get();
+					if (!Controller) return false;
+					Controller->bOpeningNarrativeUiCommand = true;
+					const bool bOpened = Controller->OpenMetaShopWindow();
+					Controller->bOpeningNarrativeUiCommand = false;
+					return bOpened;
+				},
+				[WeakController]()
+				{
+					if (AGameXXKMVPPlayerController* Controller = WeakController.Get())
+					{
+						Controller->bCancellingNarrativeUiCommand = true;
+						Controller->CloseMetaShopWindow();
+						Controller->bCancellingNarrativeUiCommand = false;
+					}
+				}));
+		NarrativeCoordinator->RegisterExecutor(
+			TEXT("openTaskOffer"),
+			MakeShared<FGameXXKNarrativeUiCommandExecutor>(
+				TEXT("openTaskOffer"),
+				[WeakController]()
+				{
+					AGameXXKMVPPlayerController* Controller = WeakController.Get();
+					if (!Controller) return false;
+					Controller->bOpeningNarrativeUiCommand = true;
+					const bool bOpened = Controller->OpenTaskOfferPanelForNpc(
+						Controller->ActiveNarrativeInteractionActor.Get(),
+						Controller->GetPawn());
+					Controller->bOpeningNarrativeUiCommand = false;
+					return bOpened;
+				},
+				[WeakController]()
+				{
+					if (AGameXXKMVPPlayerController* Controller = WeakController.Get())
+					{
+						Controller->bCancellingNarrativeUiCommand = true;
+						Controller->CloseTaskPanel();
+						Controller->bCancellingNarrativeUiCommand = false;
+					}
+				}));
+	}
+	if (!DialoguePanelWidget)
+	{
+		DialoguePanelWidget = CanAddPlayerWidgetsToViewport()
+			? CreateWidget<UGameXXKDialoguePanelWidget>(this, UGameXXKDialoguePanelWidget::StaticClass())
+			: NewObject<UGameXXKDialoguePanelWidget>(this, TEXT("DialoguePanelWidget"));
+		if (DialoguePanelWidget && CanAddPlayerWidgetsToViewport()) DialoguePanelWidget->AddToViewport(220);
+	}
+	if (!DialogueBubbleWidget)
+	{
+		DialogueBubbleWidget = CanAddPlayerWidgetsToViewport()
+			? CreateWidget<UGameXXKSpeechBubbleWidget>(this, UGameXXKSpeechBubbleWidget::StaticClass())
+			: NewObject<UGameXXKSpeechBubbleWidget>(this, TEXT("DialogueBubbleWidget"));
+		if (DialogueBubbleWidget && CanAddPlayerWidgetsToViewport()) DialogueBubbleWidget->AddToViewport(219);
+	}
+	if (!DialogueHistoryWidget)
+	{
+		DialogueHistoryWidget = CanAddPlayerWidgetsToViewport()
+			? CreateWidget<UGameXXKDialogueHistoryWidget>(this, UGameXXKDialogueHistoryWidget::StaticClass())
+			: NewObject<UGameXXKDialogueHistoryWidget>(this, TEXT("DialogueHistoryWidget"));
+		if (DialogueHistoryWidget && CanAddPlayerWidgetsToViewport()) DialogueHistoryWidget->AddToViewport(221);
+	}
+	if (!DialogueCoordinator)
+	{
+		DialogueCoordinator = NewObject<UGameXXKDialogueCoordinator>(this, TEXT("DialogueCoordinator"));
+	}
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	NarrativeCoordinator->BindState(State, State.NarrativeSequenceSession);
+	NarrativeCoordinator->SetDialogueStartDelegate(
+		FGameXXKNarrativeDialogueStartRequest::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::HandleNarrativeDialogueStart));
+	DialogueCoordinator->Bind(
+		State.DialogueSession,
+		DialoguePanelWidget,
+		DialogueBubbleWidget,
+		DialogueHistoryWidget);
+	DialogueCoordinator->SetBubbleAnchorResolver(
+		FGameXXKDialogueBubbleAnchorResolver::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::ResolveDialogueBubbleAnchor));
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::CanStartNpcNarrativeInteraction(
+	const bool bAllowPausedSession) const
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem
+		&& Subsystem->GetRuntimeState().Screen == EGameXXKScreen::Town
+		&& (bAllowPausedSession
+			|| (!Subsystem->GetRuntimeState().NarrativeSequenceSession.bActive
+				&& !Subsystem->GetRuntimeState().DialogueSession.bActive))
+		&& (!QuestDialogWidget || !QuestDialogWidget->IsDialogOpen())
+		&& (!TaskPanelWidget || !TaskPanelWidget->IsTaskPanelOpenForTest())
+		&& (!InventoryWindowWidget || !InventoryWindowWidget->IsWindowVisibleForTest())
+		&& !IsMetaShopOpenForTest()
+		&& !IsCompanionRosterOpenForTest()
+		&& !IsBattleOverlayActive()
+		&& !IsRouteEncounterPanelOpenForTest()
+		&& !IsRouteMerchantWidgetOpenForTest();
+}
+
+UGameXXKNarrativeSequenceAsset* AGameXXKMVPPlayerController::ResolveNarrativeSequenceAsset(
+	const FName SequenceId) const
+{
+	if (SequenceId.IsNone())
+	{
+		return nullptr;
+	}
+	const FString AssetName = NarrativeAssetStem(SequenceId);
+	const FString ObjectPath = FString::Printf(
+		TEXT("/Game/GameXXK/Narrative/Sequences/%s.%s"),
+		*AssetName,
+		*AssetName);
+	UGameXXKNarrativeSequenceAsset* Asset =
+		LoadObject<UGameXXKNarrativeSequenceAsset>(nullptr, *ObjectPath);
+	return Asset && Asset->SequenceId == SequenceId ? Asset : nullptr;
+}
+
+UGameXXKDialogueAsset* AGameXXKMVPPlayerController::ResolveDialogueAsset(const FName DialogueId) const
+{
+	if (DialogueId.IsNone())
+	{
+		return nullptr;
+	}
+	const FString AssetName = NarrativeAssetStem(DialogueId);
+	const FString ObjectPath = FString::Printf(
+		TEXT("/Game/GameXXK/Narrative/Dialogues/%s.%s"),
+		*AssetName,
+		*AssetName);
+	UGameXXKDialogueAsset* Asset = LoadObject<UGameXXKDialogueAsset>(nullptr, *ObjectPath);
+	return Asset && Asset->DialogueId == DialogueId ? Asset : nullptr;
+}
+
+void AGameXXKMVPPlayerController::BindInteractionRequests(APawn* InPawn)
+{
+	UGameXXKInteractionComponent* Interaction =
+		InPawn ? InPawn->FindComponentByClass<UGameXXKInteractionComponent>() : nullptr;
+	if (BoundInteractionComponent.Get() == Interaction && InteractionRequestedHandle.IsValid())
+	{
+		return;
+	}
+	UnbindInteractionRequests();
+	if (!Interaction)
+	{
+		return;
+	}
+	BoundInteractionComponent = Interaction;
+	InteractionRequestedHandle = Interaction->OnInteractionRequested().AddUObject(
+		this,
+		&AGameXXKMVPPlayerController::HandleInteractionRequested);
+}
+
+void AGameXXKMVPPlayerController::UnbindInteractionRequests()
+{
+	if (UGameXXKInteractionComponent* Interaction = BoundInteractionComponent.Get();
+		Interaction && InteractionRequestedHandle.IsValid())
+	{
+		Interaction->OnInteractionRequested().Remove(InteractionRequestedHandle);
+	}
+	BoundInteractionComponent.Reset();
+	InteractionRequestedHandle.Reset();
+}
+
+void AGameXXKMVPPlayerController::HandleInteractionRequested(
+	AActor* Actor,
+	const FName InteractionId,
+	const FName SequenceId)
+{
+	const UGameXXKInteractableComponent* Metadata =
+		Actor ? Actor->FindComponentByClass<UGameXXKInteractableComponent>() : nullptr;
+	if (!Metadata
+		|| Metadata->GetInteractionId() != InteractionId
+		|| Metadata->GetNarrativeSequenceId() != SequenceId)
+	{
+		return;
+	}
+	OpenTownNpcInteractionForNpc(Actor, GetPawn());
+}
+
+void AGameXXKMVPPlayerController::HandleNarrativeDialogueStart(
+	const FName DialogueId,
+	FGameXXKNarrativeDialogueCompleted Completion)
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	UGameXXKDialogueAsset* Asset = ResolveDialogueAsset(DialogueId);
+	if (!Subsystem || !DialogueCoordinator || !Asset)
+	{
+		if (Completion.IsBound()) Completion.Execute(TEXT("Outcome.DialogueUnavailable"));
+		RefreshNarrativeInputLock();
+		return;
+	}
+	const FGameXXKNarrativeSequenceSessionState& SequenceSession =
+		Subsystem->GetRuntimeState().NarrativeSequenceSession;
+	FGameXXKDialogueStartContext Context;
+	Context.StoryId = SequenceSession.StoryId;
+	Context.StoryVersion = SequenceSession.StoryVersion;
+	Context.TaskId = SequenceSession.TaskId;
+	Context.StepId = SequenceSession.StepId;
+	Context.SequenceId = SequenceSession.SequenceId;
+	Context.StageContractId = SequenceSession.StageContractId;
+	const FGameXXKNarrativeDialogueCompleted CompletionCopy = Completion;
+	FGameXXKDialogueFinished Finished = FGameXXKDialogueFinished::CreateLambda(
+		[this, CompletionCopy](const FName CompletedDialogueId, const FName OutcomeId) mutable
+		{
+			(void)CompletedDialogueId;
+			if (CompletionCopy.IsBound()) CompletionCopy.Execute(OutcomeId);
+			RefreshNarrativeInputLock();
+		});
+	FString Error;
+	const bool bStarted = Subsystem->GetRuntimeState().DialogueSession.bActive
+		? DialogueCoordinator->ResumeDialogue(*Asset, MoveTemp(Finished), &Error)
+		: DialogueCoordinator->StartDialogue(
+			*Asset,
+			Context,
+			MoveTemp(Finished),
+			&Error);
+	if (!bStarted && Completion.IsBound())
+	{
+		Completion.Execute(TEXT("Outcome.DialogueUnavailable"));
+	}
+	RefreshNarrativeInputLock();
+}
+
+USceneComponent* AGameXXKMVPPlayerController::ResolveDialogueBubbleAnchor(const FName SpeakerId) const
+{
+	AActor* Actor = ActiveNarrativeInteractionActor.Get();
+	const UGameXXKInteractableComponent* Metadata =
+		Actor ? Actor->FindComponentByClass<UGameXXKInteractableComponent>() : nullptr;
+	return Metadata && Metadata->GetInteractionId() == SpeakerId
+		? Metadata->GetPromptAnchor()
+		: nullptr;
+}
+
+bool AGameXXKMVPPlayerController::HandleNarrativeInput(const FInputKeyEventArgs& Params)
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const bool bNarrativeActive = Subsystem
+		&& (Subsystem->GetRuntimeState().NarrativeSequenceSession.bActive
+			|| Subsystem->GetRuntimeState().DialogueSession.bActive);
+	if (!bNarrativeActive)
+	{
+		return false;
+	}
+	if (Params.Event != IE_Pressed)
+	{
+		return Params.Key == EKeys::F || Params.Key == EKeys::I || Params.Key == EKeys::Q;
+	}
+	if (Params.Key == EKeys::Escape)
+	{
+		if (DialogueCoordinator) DialogueCoordinator->PauseAndExit();
+		if (NarrativeCoordinator) NarrativeCoordinator->PauseAndRelease();
+		SetNarrativeInputLocked(false);
+		ApplyPlayerFlowInputMode();
+		return true;
+	}
+	if (!DialogueCoordinator || !DialogueCoordinator->IsBlockingPresentation())
+	{
+		return Params.Key == EKeys::F || Params.Key == EKeys::I || Params.Key == EKeys::Q || Params.Key == EKeys::Tab;
+	}
+	bool bHandled = false;
+	if (Params.Key == EKeys::SpaceBar || Params.Key == EKeys::Enter || Params.Key == EKeys::LeftMouseButton)
+	{
+		bHandled = DialogueCoordinator->Advance(nullptr);
+	}
+	else if (Params.Key == EKeys::LeftControl || Params.Key == EKeys::RightControl)
+	{
+		bHandled = DialogueCoordinator->SkipSeenCurrentNode(nullptr);
+	}
+	else
+	{
+		int32 OptionIndex = INDEX_NONE;
+		if (Params.Key == EKeys::One) OptionIndex = 0;
+		else if (Params.Key == EKeys::Two) OptionIndex = 1;
+		else if (Params.Key == EKeys::Three) OptionIndex = 2;
+		else if (Params.Key == EKeys::Four) OptionIndex = 3;
+		const FGameXXKDialogueOutput& Output = DialogueCoordinator->GetCurrentOutputForTest();
+		if (Output.Options.IsValidIndex(OptionIndex))
+		{
+			bHandled = DialogueCoordinator->ChooseOption(Output.Options[OptionIndex].OptionId, nullptr);
+		}
+	}
+	RefreshNarrativeInputLock();
+	ApplyPlayerFlowInputMode();
+	return bHandled || Params.Key == EKeys::F || Params.Key == EKeys::I || Params.Key == EKeys::Q || Params.Key == EKeys::Tab;
+}
+
+void AGameXXKMVPPlayerController::RefreshNarrativeInputLock()
+{
+	const bool bLocked = (NarrativeCoordinator && NarrativeCoordinator->IsInputTokenHeld())
+		|| (DialogueCoordinator && DialogueCoordinator->IsBlockingPresentation());
+	SetNarrativeInputLocked(bLocked);
+	if (!bLocked)
+	{
+		ActiveNarrativeInteractionActor.Reset();
+	}
+}
+
+void AGameXXKMVPPlayerController::SetNarrativeInputLocked(const bool bLocked)
+{
+	if (bLocked && !bNarrativeMoveInputLocked)
+	{
+		SetIgnoreMoveInput(true);
+		bNarrativeMoveInputLocked = true;
+	}
+	else if (!bLocked && bNarrativeMoveInputLocked)
+	{
+		SetIgnoreMoveInput(false);
+		bNarrativeMoveInputLocked = false;
+	}
+	if (bLocked && !bNarrativeLookInputLocked)
+	{
+		SetIgnoreLookInput(true);
+		bNarrativeLookInputLocked = true;
+	}
+	else if (!bLocked && bNarrativeLookInputLocked)
+	{
+		SetIgnoreLookInput(false);
+		bNarrativeLookInputLocked = false;
+	}
+}
+
+bool AGameXXKMVPPlayerController::IsNarrativeGameplayUiBlocked() const
+{
+	return (NarrativeCoordinator && NarrativeCoordinator->IsInputTokenHeld())
+		|| (DialogueCoordinator && DialogueCoordinator->IsBlockingPresentation());
 }
 
 EGameXXKPlayerFlowBootProfile AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfile() const

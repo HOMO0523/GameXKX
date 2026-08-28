@@ -111,6 +111,7 @@ bool FGameXXKDialogueCoordinatorManualAndOutcomeTest::RunTest(const FString& Par
 		Coordinator->StartDialogue(*Asset, Context(), Finished, &Error));
 	TestTrue(TEXT("dialogue blocks while visible"), Coordinator->IsBlockingPresentation());
 	TestEqual(TEXT("entry line presented"), Coordinator->GetCurrentNodeIdForTest(), FName(TEXT("line.first")));
+	TestEqual(TEXT("speaker id resolves through the character catalog"), Panel->GetSpeakerTextForTest(), FText::FromString(TEXT("月白")));
 	TestFalse(TEXT("second blocking session rejects"),
 		Coordinator->StartDialogue(*Asset, Context(), Finished, &Error));
 

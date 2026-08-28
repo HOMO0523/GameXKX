@@ -33,6 +33,9 @@ public:
 		FString* OutError = nullptr);
 
 	bool Resume(FString* OutError = nullptr);
+	bool ResumeSequence(
+		UGameXXKNarrativeSequenceAsset& Asset,
+		FString* OutError = nullptr);
 	bool CompletePendingCommand(
 		EGameXXKNarrativeCommandStatus Status,
 		FString* OutError = nullptr);

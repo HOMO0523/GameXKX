@@ -1,12 +1,16 @@
 #include "Dialogue/GameXXKDialogueCoordinator.h"
 
 #include "Dialogue/GameXXKDialogueAsset.h"
+#include "Narrative/GameXXKCharacterCatalog.h"
 #include "UI/GameXXKDialogueHistoryWidget.h"
 #include "UI/GameXXKDialoguePanelWidget.h"
 #include "UI/GameXXKSpeechBubbleWidget.h"
 
 namespace GameXXKDialogueCoordinatorPrivate
 {
+	const TCHAR* CharacterCatalogObjectPath =
+		TEXT("/Game/GameXXK/Narrative/Characters/DA_CharacterCatalog.DA_CharacterCatalog");
+
 	bool SetError(FString* OutError, const FString& Error)
 	{
 		if (OutError)
@@ -92,6 +96,15 @@ bool UGameXXKDialogueCoordinator::ResumeDialogue(
 	const UGameXXKDialogueAsset& Asset,
 	FString* OutError)
 {
+	FGameXXKDialogueFinished ExistingFinished = FinishedDelegate;
+	return ResumeDialogue(Asset, MoveTemp(ExistingFinished), OutError);
+}
+
+bool UGameXXKDialogueCoordinator::ResumeDialogue(
+	const UGameXXKDialogueAsset& Asset,
+	FGameXXKDialogueFinished OnFinished,
+	FString* OutError)
+{
 	using namespace GameXXKDialogueCoordinatorPrivate;
 	ClearError(OutError);
 	if (!Session || !Session->bActive)
@@ -108,6 +121,8 @@ bool UGameXXKDialogueCoordinator::ResumeDialogue(
 	*Session = MoveTemp(Candidate);
 	ActiveAsset = &Asset;
 	ActiveDialogueId = Asset.DialogueId;
+	FinishedDelegate = MoveTemp(OnFinished);
+	bFinishDispatched = false;
 	bPaused = false;
 	return PresentOutput(Output, OutError);
 }
@@ -306,6 +321,15 @@ FGameXXKDialoguePresentationView UGameXXKDialogueCoordinator::BuildPresentationV
 	FGameXXKDialoguePresentationView View;
 	View.NodeId = Output.NodeId;
 	View.SpeakerDisplayName = FText::FromName(Output.SpeakerId);
+	if (const UGameXXKCharacterCatalog* Catalog =
+		LoadObject<UGameXXKCharacterCatalog>(nullptr, GameXXKDialogueCoordinatorPrivate::CharacterCatalogObjectPath))
+	{
+		if (const FGameXXKCharacterDefinition* Character = Catalog->FindCharacter(Output.SpeakerId))
+		{
+			View.SpeakerDisplayName = Character->DisplayName;
+			View.PortraitPath = Character->PortraitPath;
+		}
+	}
 	View.Text = Output.Text;
 	View.Options = Output.Options;
 	return View;

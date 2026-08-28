@@ -7,6 +7,7 @@
 #include "Engine/GameInstance.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
+#include "Interaction/GameXXKInteractableComponent.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -41,6 +42,7 @@ AGameXXKTownNpcCharacter::AGameXXKTownNpcCharacter()
 	InteractionArea->SetCollisionResponseToAllChannels(ECR_Ignore);
 	InteractionArea->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	InteractionArea->SetGenerateOverlapEvents(true);
+	NarrativeInteraction = CreateDefaultSubobject<UGameXXKInteractableComponent>(TEXT("NarrativeInteraction"));
 
 	ConfigureGroundedPlaneConstraint();
 }
@@ -50,12 +52,14 @@ void AGameXXKTownNpcCharacter::BeginPlay()
 	ConfigureGroundedPlaneConstraint();
 	ConfigureStaticIdleVisual();
 	Super::BeginPlay();
+	RefreshNarrativeInteractionMetadata();
 	RaiseRootToGroundedHeightIfNeeded();
 }
 
 void AGameXXKTownNpcCharacter::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
+	RefreshNarrativeInteractionMetadata();
 	ConfigureGroundedPlaneConstraint();
 	RaiseRootToGroundedHeightIfNeeded();
 }
@@ -138,14 +142,22 @@ void AGameXXKTownNpcCharacter::SetNpcRole(EGameXXKTownNpcRole NewRole)
 	if (NpcId == TEXT("Npc.TusiChief"))
 	{
 		NpcRole = EGameXXKTownNpcRole::Quest;
+		RefreshNarrativeInteractionMetadata();
 		return;
 	}
 	if (NpcId == TEXT("Npc.SongJinBao"))
 	{
 		NpcRole = EGameXXKTownNpcRole::Merchant;
+		RefreshNarrativeInteractionMetadata();
 		return;
 	}
 	NpcRole = NewRole;
+	if (NpcId.IsNone())
+	{
+		if (NpcRole == EGameXXKTownNpcRole::Quest) NpcId = TEXT("Npc.TusiChief");
+		else if (NpcRole == EGameXXKTownNpcRole::Merchant) NpcId = TEXT("Npc.SongJinBao");
+	}
+	RefreshNarrativeInteractionMetadata();
 }
 
 void AGameXXKTownNpcCharacter::SetNpcId(const FName NewNpcId)
@@ -156,7 +168,16 @@ void AGameXXKTownNpcCharacter::SetNpcId(const FName NewNpcId)
 		: NpcId == TEXT("Npc.SongJinBao")
 			? EGameXXKTownNpcRole::Merchant
 			: EGameXXKTownNpcRole::Generic;
+	RefreshNarrativeInteractionMetadata();
 	ConfigureStaticIdleVisual();
+}
+
+void AGameXXKTownNpcCharacter::RefreshNarrativeInteractionMetadata()
+{
+	if (NarrativeInteraction)
+	{
+		NarrativeInteraction->ConfigureForCharacterId(NpcId, InteractionArea);
+	}
 }
 
 void AGameXXKTownNpcCharacter::ConfigureStaticIdleVisual()
@@ -338,17 +359,12 @@ bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 		const bool bAccepted = Subsystem->AcceptQuest();
 		if (bAccepted)
 		{
-			// Accepting the quest keeps the guide NPC at its town spot. Following
-			// activates only through the dialog's 入队 recruit action.
+			// Accepting the quest keeps the guide NPC at its town spot. Any later
+			// story-follow behavior is narrative-owned, never an F-interaction party edit.
 			Subsystem->RecordQuestNpcLocation(GetActorLocation());
 		}
 		bLastInteractionSuccessful = bAccepted;
 		return bAccepted;
-	}
-	if (!HasPrimaryInteractionAction() && CanJoinParty())
-	{
-		bLastInteractionSuccessful = Subsystem->SelectTownQuestNpcForParty(NpcId);
-		return bLastInteractionSuccessful;
 	}
 	if (CanTrade())
 	{

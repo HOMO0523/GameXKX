@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "Narrative/GameXXKNarrativeCommandExecutor.h"
 #include "UI/GameXXKBattleOverlayCoordinator.h"
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "GameXXKMVPPlayerController.generated.h"
@@ -13,6 +14,15 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKMainMenuWidget;
 class UGameXXKMetaShopWidget;
 class UGameXXKMVPSubsystem;
+class UGameXXKDialogueAsset;
+class UGameXXKDialogueCoordinator;
+class UGameXXKDialogueHistoryWidget;
+class UGameXXKDialoguePanelWidget;
+class UGameXXKInteractionComponent;
+class UGameXXKNarrativeCoordinator;
+class UGameXXKNarrativeSequenceAsset;
+class UGameXXKSpeechBubbleWidget;
+class USceneComponent;
 class UGameXXKOneGameRouteMapWidget;
 class UGameXXKQuestDialogWidget;
 class UGameXXKRouteEncounterPanelWidget;
@@ -45,6 +55,8 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 	virtual void PlayerTick(float DeltaTime) override;
 	virtual void SetupInputComponent() override;
 	virtual bool InputKey(const FInputKeyEventArgs& Params) override;
@@ -168,15 +180,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenQuestDialogForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
 
-	/** Opens the contextual town NPC menu. Every named NPC offers Join; Tusi/Song also offer Story/Shop. */
+	/** Starts the selected NPC's configured NarrativeSequence. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenTownNpcInteractionForNpc(AActor* TownNpc, APawn* InstigatorPawn);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
-	bool ExecutePendingTownNpcPrimaryAction();
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
-	bool RecruitPendingTownNpc();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
@@ -339,6 +345,19 @@ public:
 
 private:
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem() const;
+	bool EnsureNarrativeInteractionRuntime();
+	bool CanStartNpcNarrativeInteraction(bool bAllowPausedSession = false) const;
+	UGameXXKNarrativeSequenceAsset* ResolveNarrativeSequenceAsset(FName SequenceId) const;
+	UGameXXKDialogueAsset* ResolveDialogueAsset(FName DialogueId) const;
+	void BindInteractionRequests(APawn* InPawn);
+	void UnbindInteractionRequests();
+	void HandleInteractionRequested(AActor* Actor, FName InteractionId, FName SequenceId);
+	void HandleNarrativeDialogueStart(FName DialogueId, FGameXXKNarrativeDialogueCompleted Completion);
+	USceneComponent* ResolveDialogueBubbleAnchor(FName SpeakerId) const;
+	bool HandleNarrativeInput(const FInputKeyEventArgs& Params);
+	void RefreshNarrativeInputLock();
+	void SetNarrativeInputLocked(bool bLocked);
+	bool IsNarrativeGameplayUiBlocked() const;
 	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
 	bool EnsureDesktopTrainingWidgets();
 	void RestoreDesktopWorkbenchSessionAfterMapTravel();
@@ -529,6 +548,33 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> OverrideSubsystem;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKNarrativeCoordinator> NarrativeCoordinator;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDialogueCoordinator> DialogueCoordinator;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDialoguePanelWidget> DialoguePanelWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKSpeechBubbleWidget> DialogueBubbleWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDialogueHistoryWidget> DialogueHistoryWidget;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> ActiveNarrativeInteractionActor;
+
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UGameXXKInteractionComponent> BoundInteractionComponent;
+
+	FDelegateHandle InteractionRequestedHandle;
+	bool bNarrativeMoveInputLocked = false;
+	bool bNarrativeLookInputLocked = false;
+	bool bCancellingNarrativeUiCommand = false;
+	bool bOpeningNarrativeUiCommand = false;
 
 	EGameXXKTrackedInputMode TrackedInputMode = EGameXXKTrackedInputMode::GameAndUI;
 	bool bBattleOverlayAcquiredFullTickWhenPaused = false;

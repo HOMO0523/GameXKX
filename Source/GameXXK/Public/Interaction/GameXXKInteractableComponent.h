@@ -21,6 +21,10 @@ public:
 		FName InNarrativeSequenceId,
 		int32 InPriority,
 		USceneComponent* InPromptAnchor);
+	void ConfigureForCharacterId(
+		FName CharacterId,
+		USceneComponent* InPromptAnchor,
+		int32 InPriority = 0);
 
 	FName GetInteractionId() const;
 	FText GetDisplayName() const;
@@ -44,7 +48,7 @@ private:
 	int32 Priority = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Interaction")
-	bool bInteractionEnabled = true;
+	bool bInteractionEnabled = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<USceneComponent> PromptAnchor;

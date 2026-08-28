@@ -227,23 +227,28 @@ git commit -m "feat: select npc interactions in a circular range"
 - Modify: `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
 - Modify: `Source/GameXXK/Public/Town/GameXXKTownNpcCharacter.h`
 - Modify: `Source/GameXXK/Private/Town/GameXXKTownNpcCharacter.cpp`
+- Modify: `Source/GameXXK/Public/Town/GameXXKTownNpcActor.h`
+- Modify: `Source/GameXXK/Private/Town/GameXXKTownNpcActor.cpp`
 - Modify: `Source/GameXXK/Public/UI/GameXXKQuestDialogWidget.h`
 - Modify: `Source/GameXXK/Private/UI/GameXXKQuestDialogWidget.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKInteractionRouterTest.cpp`
+- Create: `SourceAssets/Narrative/Dialogues/Dialogue.Npc.*.Default.dialogue.json`
+- Create: `SourceAssets/Narrative/Sequences/Sequence.Npc.*.Default.sequence.json`
+- Create: `Content/Python/gamexxk_import_default_npc_narratives.py`
 
-- [ ] **Step 1: Add failing integration tests**
+- [x] **Step 1: Add failing integration tests**
 
 Expect `F` on a selected NPC to start its NarrativeSequenceId, no target to do nothing, and an active narrative/backpack/shop to disable targeting. Assert a Sequence may branch from a Dialogue Outcome to talk/task/shop commands, and no Widget or PlayerController function exposes `RecruitPendingTownNpc` through the new interaction path.
 
-- [ ] **Step 2: Integrate coordinator ownership**
+- [x] **Step 2: Integrate coordinator ownership**
 
 PlayerController owns the NarrativeCoordinator and its DialogueCoordinator/presenters, forwards mouse/Space/Enter/1–4/Ctrl/Esc, and lets NarrativeCoordinator own one tokenized input lock. `TownNpcCharacter` configures its interactable SequenceId instead of opening `QuestDialog` directly.
 
-- [ ] **Step 3: Retire QuestDialog hardcoding**
+- [x] **Step 3: Retire QuestDialog hardcoding**
 
 After every call site uses DialogueCoordinator, remove the recruit/primary-action dual-button mode and `ConfigureTownNpcInteraction`. Keep approved textures available to the new formal presenter; do not delete asset packages.
 
-- [ ] **Step 4: Run integration gate and commit**
+- [x] **Step 4: Run integration gate and commit**
 
 Run:
 

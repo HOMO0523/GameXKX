@@ -21,9 +21,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Quest")
 	void OpenDialog();
 
-	/** Reuses the approved paper dialog components for contextual NPC choices. */
-	void ConfigureTownNpcInteraction(FName NpcId, const FText& DisplayName, const FText& PrimaryActionLabel);
-
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Quest")
 	bool CloseDialog();
 
@@ -40,13 +37,7 @@ public:
 	FString GetLeaveButtonResourcePathForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Quest|Test")
-	bool IsTownNpcInteractionModeForTest() const { return bTownNpcInteractionMode; }
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|Quest|Test")
 	FText GetPrimaryActionLabelForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|Quest|Test")
-	FText GetRecruitActionLabelForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Quest")
 	bool AcceptQuest();
@@ -88,8 +79,5 @@ private:
 	TObjectPtr<UTextBlock> PrimaryActionTextBlock;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> RecruitActionTextBlock;
-
-	bool bTownNpcInteractionMode = false;
-	FName TownNpcId = NAME_None;
+	TObjectPtr<UTextBlock> LeaveActionTextBlock;
 };
