@@ -182,6 +182,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartGame();
 
+	/** Starts the independent new-player story once; repeated entry never resets its current step. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Tutorial")
+	bool BeginTutorialQuest();
+
+	/** Atomically validates and immediately saves semantic combat-guide progress. */
+	bool CommitGuideProgress(const FGameXXKGuideProgress& GuideProgress, FString* OutError = nullptr);
+
+	/** Resets only combat-guide preference/session/completions, preserving tasks and route rewards. */
+	bool ResetCombatGuideProgress(FString* OutError = nullptr);
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool StartNewGame();
 

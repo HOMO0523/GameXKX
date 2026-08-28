@@ -172,7 +172,7 @@ bool FGameXXKTrainingChallengeStartsAtCampTest::RunTest(const FString& Parameter
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCampRewardCommandSurfaceTest,
-	"GameXXK.MVP.RouteEncounter.Camp.CommandSurfaceHasCharmAndRouteMoneyOnly",
+	"GameXXK.MVP.RouteEncounter.Camp.CommandSurfaceHasHealAndRouteMoneyOnly",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKCampRewardCommandSurfaceTest::RunTest(const FString& Parameters)
@@ -192,47 +192,44 @@ bool FGameXXKCampRewardCommandSurfaceTest::RunTest(const FString& Parameters)
 	{
 		Subsystem->GetMutableRuntimeState() = Case.State;
 		const TArray<FGameXXKMVPCommandDescriptor> Commands = GameXXKMVPCommandRouter::BuildVisibleCommands(Subsystem);
-		const FGameXXKMVPCommandDescriptor* Charm = Commands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
+		const FGameXXKMVPCommandDescriptor* Heal = Commands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
 		{
-			return Command.CommandName == TEXT("ResolveCampCharm");
+			return Command.CommandName == TEXT("ResolveCampHeal");
 		});
 		const FGameXXKMVPCommandDescriptor* Money = Commands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
 		{
 			return Command.CommandName == TEXT("ResolveCampRouteMoney");
 		});
-		TestNotNull(FString::Printf(TEXT("%s exposes the charm command"), Case.Label), Charm);
+		TestNotNull(FString::Printf(TEXT("%s exposes the heal command"), Case.Label), Heal);
 		TestNotNull(FString::Printf(TEXT("%s exposes the route-money command"), Case.Label), Money);
-		TestEqual(FString::Printf(TEXT("%s charm command uses the approved label"), Case.Label),
-			Charm ? Charm->Label.ToString() : FString(), FString(TEXT("获得保命护符")));
+		TestEqual(FString::Printf(TEXT("%s heal command uses the approved label"), Case.Label),
+			Heal ? Heal->Label.ToString() : FString(), FString(TEXT("全队恢复30%气血")));
 		TestEqual(FString::Printf(TEXT("%s money command uses the approved label"), Case.Label),
 			Money ? Money->Label.ToString() : FString(), FString(TEXT("获得100局内金币")));
-		TestTrue(FString::Printf(TEXT("%s enables the unowned charm"), Case.Label), Charm && Charm->bEnabled);
+		TestTrue(FString::Printf(TEXT("%s enables healing"), Case.Label), Heal && Heal->bEnabled);
 		TestTrue(FString::Printf(TEXT("%s enables route money"), Case.Label), Money && Money->bEnabled);
-		TestFalse(FString::Printf(TEXT("%s exposes no legacy heal command"), Case.Label),
+		TestFalse(FString::Printf(TEXT("%s exposes no retired charm command"), Case.Label),
 			Commands.ContainsByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
 			{
-				return Command.CommandName == TEXT("ResolveCampHeal") || Command.Label.ToString().Contains(TEXT("Heal"));
+				return Command.CommandName == TEXT("ResolveCampCharm") || Command.Label.ToString().Contains(TEXT("护符"));
 			}));
 	}
 
 	FGameXXKRuntimeState OwnedState = BuildGeneratedCampState(EGameXXKScreen::RouteCamp);
-	TestTrue(TEXT("owned command-surface fixture acquires the charm"),
+	TestTrue(TEXT("owned command-surface fixture may already own a charm"),
 		FGameXXKRelicRules::AcquireRelic(OwnedState, FGameXXKRelicRules::LifeSavingTalismanId()));
 	Subsystem->GetMutableRuntimeState() = OwnedState;
 	const TArray<FGameXXKMVPCommandDescriptor> OwnedCommands = GameXXKMVPCommandRouter::BuildVisibleCommands(Subsystem);
-	const FGameXXKMVPCommandDescriptor* OwnedCharm = OwnedCommands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
+	const FGameXXKMVPCommandDescriptor* OwnedHeal = OwnedCommands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
 	{
-		return Command.CommandName == TEXT("ResolveCampCharm");
+		return Command.CommandName == TEXT("ResolveCampHeal");
 	});
 	const FGameXXKMVPCommandDescriptor* OwnedMoney = OwnedCommands.FindByPredicate([](const FGameXXKMVPCommandDescriptor& Command)
 	{
 		return Command.CommandName == TEXT("ResolveCampRouteMoney");
 	});
-	TestTrue(TEXT("owned charm command stays visible but disabled"), OwnedCharm && !OwnedCharm->bEnabled);
-	TestEqual(TEXT("owned charm command exposes the exact disabled reason"),
-		OwnedCharm ? OwnedCharm->DisabledReason.ToString() : FString(),
-		FString(TEXT("已持有保命护符，不能重复获得。")));
-	TestTrue(TEXT("route money stays enabled after charm ownership"), OwnedMoney && OwnedMoney->bEnabled);
+	TestTrue(TEXT("healing remains enabled regardless of relic ownership"), OwnedHeal && OwnedHeal->bEnabled);
+	TestTrue(TEXT("route money remains enabled regardless of relic ownership"), OwnedMoney && OwnedMoney->bEnabled);
 	return true;
 }
 
@@ -255,11 +252,11 @@ bool FGameXXKCampRewardPresentationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestTrue(TEXT("camp presentation opens before either choice is made"), Controller->OpenRouteEncounterPanel());
-	TestEqual(TEXT("camp primary label is exactly the life-saving talisman reward"),
-		Panel->GetPrimaryActionTextForTest().ToString(), FString(TEXT("获得保命护符")));
+	TestEqual(TEXT("camp primary label is exactly the party-healing reward"),
+		Panel->GetPrimaryActionTextForTest().ToString(), FString(TEXT("全队恢复30%气血")));
 	TestEqual(TEXT("camp secondary label is exactly one hundred run-local gold"),
 		Panel->GetSecondaryActionTextForTest().ToString(), FString(TEXT("获得100局内金币")));
-	TestTrue(TEXT("the explicit charm action is appended after the compatibility actions"),
+	TestTrue(TEXT("the explicit heal action is appended after the compatibility actions"),
 		static_cast<uint8>(Panel->GetPrimaryActionForTest()) > static_cast<uint8>(EGameXXKRouteEncounterAction::ClosePanel));
 	TestTrue(TEXT("the explicit money action is appended after the compatibility actions"),
 		static_cast<uint8>(Panel->GetSecondaryActionForTest()) > static_cast<uint8>(EGameXXKRouteEncounterAction::ClosePanel));
@@ -273,7 +270,7 @@ bool FGameXXKCampRewardPresentationTest::RunTest(const FString& Parameters)
 	UButton* PrimaryButton = Cast<UButton>(Panel->WidgetTree->FindWidget(TEXT("RouteEncounterPrimaryAction")));
 	UButton* SecondaryButton = Cast<UButton>(Panel->WidgetTree->FindWidget(TEXT("RouteEncounterSecondaryAction")));
 	UButton* TertiaryButton = Cast<UButton>(Panel->WidgetTree->FindWidget(TEXT("RouteEncounterTertiaryAction")));
-	TestTrue(TEXT("camp charm choice is visible and enabled"),
+	TestTrue(TEXT("camp heal choice is visible and enabled"),
 		PrimaryButton && PrimaryButton->GetVisibility() == ESlateVisibility::Visible && PrimaryButton->GetIsEnabled());
 	TestTrue(TEXT("camp money choice is visible and enabled"),
 		SecondaryButton && SecondaryButton->GetVisibility() == ESlateVisibility::Visible && SecondaryButton->GetIsEnabled());
@@ -284,40 +281,40 @@ bool FGameXXKCampRewardPresentationTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("camp copy contains no healing-powder item name"), CampCopy.Contains(TEXT("疗伤散")));
 	TestFalse(TEXT("camp copy contains no legacy medicine name"), CampCopy.Contains(TEXT("金疮药")));
 	TestFalse(TEXT("camp copy contains no full-health restoration promise"), CampCopy.Contains(TEXT("恢复至满血")));
-	TestFalse(TEXT("camp copy offers no direct restoration"), CampCopy.Contains(TEXT("恢复")));
+	TestTrue(TEXT("camp copy states the exact restoration percentage"), CampCopy.Contains(TEXT("恢复30%")));
 
 	FGameXXKRuntimeState& LiveState = Subsystem->GetMutableRuntimeState();
-	TestTrue(TEXT("external acquisition succeeds while the unowned panel is open"),
+	TestTrue(TEXT("external charm ownership is irrelevant to camp healing"),
 		FGameXXKRelicRules::AcquireRelic(LiveState, FGameXXKRelicRules::LifeSavingTalismanId()));
 	Panel->RefreshFromState();
 	PrimaryButton = Cast<UButton>(Panel->WidgetTree->FindWidget(TEXT("RouteEncounterPrimaryAction")));
-	TestTrue(TEXT("refresh keeps the externally acquired charm choice visible"),
+	TestTrue(TEXT("refresh keeps the healing choice visible"),
 		PrimaryButton && PrimaryButton->GetVisibility() == ESlateVisibility::Visible);
-	TestFalse(TEXT("refresh disables the stale charm button after external acquisition"),
+	TestTrue(TEXT("refresh keeps healing enabled after external relic acquisition"),
 		PrimaryButton && PrimaryButton->GetIsEnabled());
-	TestEqual(TEXT("refresh installs the exact stale-button disabled reason"),
+	TestEqual(TEXT("refresh keeps the healing explanation"),
 		PrimaryButton ? PrimaryButton->GetToolTipText().ToString() : FString(),
-		FString(TEXT("已持有保命护符，不能重复获得。")));
-	TestFalse(TEXT("stale-enabled charm action cannot resolve after refresh"), Panel->TriggerPrimaryActionForTest());
-	TestEqual(TEXT("stale-enabled refresh writes no node receipt"), LiveState.CardRun.RewardedTravelMoneyNodes.Num(), 0);
-	TestEqual(TEXT("stale-enabled refresh keeps the Camp unresolved"), LiveState.Screen, EGameXXKScreen::RouteCamp);
+		FString(TEXT("每名当前队员恢复其最大气血的30%，不超过上限。")));
+	TestTrue(TEXT("healing action resolves after refresh"), Panel->TriggerPrimaryActionForTest());
+	TestEqual(TEXT("healing writes one node receipt"), LiveState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
+	TestEqual(TEXT("healing settles the Camp"), LiveState.Screen, EGameXXKScreen::DungeonMap);
 
 	Controller->CloseRouteEncounterPanel();
 	FGameXXKRuntimeState OwnedState = BuildGeneratedCampState(EGameXXKScreen::RouteCamp);
-	TestTrue(TEXT("duplicate-choice fixture owns the life-saving talisman"),
+	TestTrue(TEXT("owned-relic fixture owns the life-saving talisman"),
 		FGameXXKRelicRules::AcquireRelic(OwnedState, FGameXXKRelicRules::LifeSavingTalismanId()));
 	Subsystem->GetMutableRuntimeState() = OwnedState;
-	TestTrue(TEXT("an owned charm does not hide the camp panel"), Controller->OpenRouteEncounterPanel());
+	TestTrue(TEXT("an owned relic does not hide the camp panel"), Controller->OpenRouteEncounterPanel());
 	PrimaryButton = Cast<UButton>(Panel->WidgetTree->FindWidget(TEXT("RouteEncounterPrimaryAction")));
-	TestTrue(TEXT("an owned charm choice stays visible"),
+	TestTrue(TEXT("healing stays visible with an owned relic"),
 		PrimaryButton && PrimaryButton->GetVisibility() == ESlateVisibility::Visible);
-	TestFalse(TEXT("an owned charm choice is disabled"), PrimaryButton && PrimaryButton->GetIsEnabled());
-	TestEqual(TEXT("the disabled charm choice clearly explains uniqueness"),
+	TestTrue(TEXT("healing stays enabled with an owned relic"), PrimaryButton && PrimaryButton->GetIsEnabled());
+	TestEqual(TEXT("healing tooltip remains independent from relic ownership"),
 		PrimaryButton ? PrimaryButton->GetToolTipText().ToString() : FString(),
-		FString(TEXT("已持有保命护符，不能重复获得。")));
-	TestFalse(TEXT("the disabled charm choice cannot dispatch"), Panel->TriggerPrimaryActionForTest());
-	TestEqual(TEXT("disabled presentation leaves the camp unresolved"),
-		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteCamp);
+		FString(TEXT("每名当前队员恢复其最大气血的30%，不超过上限。")));
+	TestTrue(TEXT("owned relic does not block healing"), Panel->TriggerPrimaryActionForTest());
+	TestEqual(TEXT("healing settles the owned-relic camp"),
+		Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 
 	Controller->CloseRouteEncounterPanel();
 	FGameXXKRuntimeState MoneyState = BuildGeneratedCampState(EGameXXKScreen::RouteCamp);
@@ -345,15 +342,15 @@ bool FGameXXKCampRewardTransactionTest::RunTest(const FString& Parameters)
 	const int32 CharmGoldBefore = CharmState.PlayerGold;
 	const int32 CharmMoneyBefore = CharmState.CardRun.RouteTravelMoney;
 	const int32 CharmPowderBefore = UGameXXKMVPRules::GetItemCount(CharmState, UGameXXKMVPRules::ItemHealingPowder());
-	TestTrue(TEXT("generated camp charm choice resolves"), UGameXXKMVPRules::ResolveCampReward(CharmState, true));
-	TestTrue(TEXT("generated camp charm choice acquires the exact catalog relic"), OwnsLifeSavingTalisman(CharmState));
-	TestEqual(TEXT("generated camp charm choice grants one relic"), CharmState.CardRun.Relics.Num(), 1);
-	TestEqual(TEXT("generated camp charm choice never heals directly"), CharmState.PlayerHP, 17);
-	TestEqual(TEXT("generated camp charm choice never changes permanent gold"), CharmState.PlayerGold, CharmGoldBefore);
-	TestEqual(TEXT("generated camp charm choice adds no route money"), CharmState.CardRun.RouteTravelMoney, CharmMoneyBefore);
-	TestEqual(TEXT("generated camp charm choice adds no healing powder"),
+	TestTrue(TEXT("generated camp heal choice resolves"), UGameXXKMVPRules::ResolveCampReward(CharmState, true));
+	TestFalse(TEXT("generated camp heal choice acquires no relic"), OwnsLifeSavingTalisman(CharmState));
+	TestEqual(TEXT("generated camp heal choice grants no relic"), CharmState.CardRun.Relics.Num(), 0);
+	TestEqual(TEXT("generated camp heal choice restores exactly thirty percent max health"), CharmState.PlayerHP, 47);
+	TestEqual(TEXT("generated camp heal choice never changes permanent gold"), CharmState.PlayerGold, CharmGoldBefore);
+	TestEqual(TEXT("generated camp heal choice adds no route money"), CharmState.CardRun.RouteTravelMoney, CharmMoneyBefore);
+	TestEqual(TEXT("generated camp heal choice adds no healing powder"),
 		UGameXXKMVPRules::GetItemCount(CharmState, UGameXXKMVPRules::ItemHealingPowder()), CharmPowderBefore);
-	TestEqual(TEXT("generated camp charm choice writes one settlement receipt"),
+	TestEqual(TEXT("generated camp heal choice writes one settlement receipt"),
 		CharmState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
 	const FGameXXKRouteTravelMoneyReceipt* CharmReceipt = FindReceipt(CharmState, 1, 1);
 	TestNotNull(TEXT("generated camp charm receipt uses the pending node key"), CharmReceipt);
@@ -394,21 +391,23 @@ bool FGameXXKCampRewardTransactionTest::RunTest(const FString& Parameters)
 	const int32 DuplicateOrdinalBefore = DuplicateState.CardRun.NextRelicAcquisitionOrdinal;
 	const TArray<int32> DuplicateVisitedBefore = DuplicateState.VisitedRouteNodeIds;
 	const TArray<int32> DuplicateReachableBefore = DuplicateState.ReachableRouteNodeIds;
-	TestFalse(TEXT("direct Camp charm resolution rejects an already-owned unique charm"),
+	DuplicateState.PlayerHP = 10;
+	TestTrue(TEXT("Camp healing ignores already-owned relics"),
 		UGameXXKMVPRules::ResolveCampReward(DuplicateState, true));
-	TestEqual(TEXT("duplicate charm rollback keeps one relic"), DuplicateState.CardRun.Relics.Num(), 1);
-	TestEqual(TEXT("duplicate charm rollback keeps one stack"), DuplicateState.CardRun.Relics[0].Stacks, 1);
-	TestEqual(TEXT("duplicate charm rollback keeps the relic acquisition ordinal"),
+	TestEqual(TEXT("healing keeps the existing relic"), DuplicateState.CardRun.Relics.Num(), 1);
+	TestEqual(TEXT("healing keeps one relic stack"), DuplicateState.CardRun.Relics[0].Stacks, 1);
+	TestEqual(TEXT("healing keeps the relic acquisition ordinal"),
 		DuplicateState.CardRun.NextRelicAcquisitionOrdinal, DuplicateOrdinalBefore);
-	TestEqual(TEXT("duplicate charm rollback writes no settlement receipt"),
-		DuplicateState.CardRun.RewardedTravelMoneyNodes.Num(), 0);
-	TestEqual(TEXT("duplicate charm rollback keeps route money"),
+	TestEqual(TEXT("healing writes one settlement receipt"),
+		DuplicateState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
+	TestEqual(TEXT("healing keeps route money"),
 		DuplicateState.CardRun.RouteTravelMoney, DuplicateMoneyBefore);
-	TestEqual(TEXT("duplicate charm rollback keeps permanent gold"), DuplicateState.PlayerGold, DuplicateGoldBefore);
-	TestEqual(TEXT("duplicate charm rollback keeps the Camp screen"), DuplicateState.Screen, EGameXXKScreen::RouteCamp);
-	TestEqual(TEXT("duplicate charm rollback keeps the pending node"), DuplicateState.PendingRouteNodeId, 1);
-	TestTrue(TEXT("duplicate charm rollback keeps visited route structure"), DuplicateState.VisitedRouteNodeIds == DuplicateVisitedBefore);
-	TestTrue(TEXT("duplicate charm rollback keeps reachable route structure"), DuplicateState.ReachableRouteNodeIds == DuplicateReachableBefore);
+	TestEqual(TEXT("healing keeps permanent gold"), DuplicateState.PlayerGold, DuplicateGoldBefore);
+	TestEqual(TEXT("healing restores thirty health"), DuplicateState.PlayerHP, 40);
+	TestEqual(TEXT("healing settles the Camp"), DuplicateState.Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("healing clears the pending node"), DuplicateState.PendingRouteNodeId, INDEX_NONE);
+	TestFalse(TEXT("healing advances visited route structure"), DuplicateState.VisitedRouteNodeIds == DuplicateVisitedBefore);
+	TestFalse(TEXT("healing advances reachable route structure"), DuplicateState.ReachableRouteNodeIds == DuplicateReachableBefore);
 	return true;
 }
 
@@ -500,24 +499,24 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCampRewardCompatibilityAndReplayTest::RunTest(const FString& Parameters)
 {
-	for (const bool bTakeCharm : {true, false})
+	for (const bool bHeal : {true, false})
 	{
 		FGameXXKRuntimeState CompatibilityState = BuildGeneratedCampState(EGameXXKScreen::DungeonMap);
 		const int32 MoneyBefore = CompatibilityState.CardRun.RouteTravelMoney;
 		const int32 GoldBefore = CompatibilityState.PlayerGold;
 		TestTrue(TEXT("DungeonMap compatibility Camp choice resolves through the shared transaction"),
-			UGameXXKMVPRules::ResolveCampReward(CompatibilityState, bTakeCharm));
-		TestEqual(TEXT("DungeonMap compatibility charm ownership matches the chosen reward"),
-			OwnsLifeSavingTalisman(CompatibilityState), bTakeCharm);
+			UGameXXKMVPRules::ResolveCampReward(CompatibilityState, bHeal));
+		TestFalse(TEXT("DungeonMap compatibility choice grants no relic"),
+			OwnsLifeSavingTalisman(CompatibilityState));
 		TestEqual(TEXT("DungeonMap compatibility money delta matches the chosen reward"),
-			CompatibilityState.CardRun.RouteTravelMoney - MoneyBefore, bTakeCharm ? 0 : 100);
+			CompatibilityState.CardRun.RouteTravelMoney - MoneyBefore, bHeal ? 0 : 100);
 		TestEqual(TEXT("DungeonMap compatibility choice never changes permanent gold"), CompatibilityState.PlayerGold, GoldBefore);
 		TestEqual(TEXT("DungeonMap compatibility choice records exactly one receipt"),
 			CompatibilityState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
 		TestTrue(TEXT("DungeonMap compatibility choice visits the Camp node"), CompatibilityState.VisitedRouteNodeIds.Contains(1));
 	}
 
-	for (const bool bTakeCharm : {true, false})
+	for (const bool bHeal : {true, false})
 	{
 		FGameXXKRuntimeState FixedState = BuildFixedCampState();
 		FixedState.PlayerHP = 23;
@@ -525,13 +524,13 @@ bool FGameXXKCampRewardCompatibilityAndReplayTest::RunTest(const FString& Parame
 		const int32 GoldBefore = FixedState.PlayerGold;
 		const int32 PowderBefore = UGameXXKMVPRules::GetItemCount(FixedState, UGameXXKMVPRules::ItemHealingPowder());
 		TestTrue(TEXT("fixed-route Camp choice resolves through the shared transaction"),
-			UGameXXKMVPRules::ResolveCampReward(FixedState, bTakeCharm));
-		TestEqual(TEXT("fixed-route charm ownership matches the chosen reward"),
-			OwnsLifeSavingTalisman(FixedState), bTakeCharm);
+			UGameXXKMVPRules::ResolveCampReward(FixedState, bHeal));
+		TestFalse(TEXT("fixed-route choice grants no relic"),
+			OwnsLifeSavingTalisman(FixedState));
 		TestEqual(TEXT("fixed-route money delta matches the chosen reward"),
-			FixedState.CardRun.RouteTravelMoney - MoneyBefore, bTakeCharm ? 0 : 100);
+			FixedState.CardRun.RouteTravelMoney - MoneyBefore, bHeal ? 0 : 100);
 		TestEqual(TEXT("fixed-route choice never changes permanent gold"), FixedState.PlayerGold, GoldBefore);
-		TestEqual(TEXT("fixed-route choice never heals directly"), FixedState.PlayerHP, 23);
+		TestEqual(TEXT("fixed-route healing matches the chosen reward"), FixedState.PlayerHP, bHeal ? 53 : 23);
 		TestEqual(TEXT("fixed-route choice never adds healing powder"),
 			UGameXXKMVPRules::GetItemCount(FixedState, UGameXXKMVPRules::ItemHealingPowder()), PowderBefore);
 		TestEqual(TEXT("fixed-route choice records exactly one receipt"), FixedState.CardRun.RewardedTravelMoneyNodes.Num(), 1);

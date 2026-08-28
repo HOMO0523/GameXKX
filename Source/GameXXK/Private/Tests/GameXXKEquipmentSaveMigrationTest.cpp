@@ -461,7 +461,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("dialogue sessions own the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 28);
+	TestEqual(TEXT("narrative stage and guides own the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 29);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -540,7 +540,7 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
 	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(Runtime);
 	const FGameXXKSaveState Source = SaveObject->SaveState;
-	TestEqual(TEXT("source SaveGame writes v28"), Source.SaveVersion, 28);
+	TestEqual(TEXT("source SaveGame writes v29"), Source.SaveVersion, 29);
 	TArray<FGameXXKEquipmentInstance> ExpectedInstances;
 	for (const FName InstanceId : CreatedInstanceIds)
 	{
@@ -568,7 +568,7 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 		return false;
 	}
 	const FGameXXKSaveState& Reloaded = ReloadedObject->SaveState;
-	TestEqual(TEXT("memory round-trip preserves save version 28"), Reloaded.SaveVersion, 28);
+	TestEqual(TEXT("memory round-trip preserves save version 29"), Reloaded.SaveVersion, 29);
 	TestEqual(TEXT("memory round-trip preserves unrelated player gold"), Reloaded.RuntimeState.PlayerGold, Source.RuntimeState.PlayerGold);
 	TestEqual(TEXT("memory round-trip preserves collection seed"), Reloaded.RuntimeState.EquipmentCollection.CollectionSeed, Source.RuntimeState.EquipmentCollection.CollectionSeed);
 	TestEqual(TEXT("memory round-trip preserves next instance ordinal"), Reloaded.RuntimeState.EquipmentCollection.NextInstanceOrdinal, Source.RuntimeState.EquipmentCollection.NextInstanceOrdinal);
@@ -613,7 +613,7 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
-	TestEqual(TEXT("validated memory round-trip remains v28"), Migrated.SaveVersion, 28);
+	TestEqual(TEXT("validated memory round-trip remains v29"), Migrated.SaveVersion, 29);
 	TestTrue(TEXT("v25 validation introduces no drift after true memory serialization"),
 		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Migrated, &Reloaded, PPF_None));
 
@@ -645,8 +645,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("dialogue sessions advance the current save schema to v28"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 28);
+	TestEqual(TEXT("narrative stage and guides advance the current save schema to v29"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 29);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -742,7 +742,7 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 		AddError(Report.Error);
 		return false;
 	}
-	TestEqual(TEXT("v24 migration writes v28"), Migrated.SaveVersion, 28);
+	TestEqual(TEXT("v24 migration writes v29"), Migrated.SaveVersion, 29);
 	TestEqual(TEXT("v24 migration initializes an empty equipment lock set"),
 		Migrated.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Num(), 0);
 	TestEqual(TEXT("v24 migration initializes an empty item lock set"),
@@ -821,7 +821,7 @@ bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FSt
 		TestEqual(TEXT("v24 collection-only repair preserves its compatibility mirror"),
 			MigratedCollectionOnly.RuntimeState.EquipmentCollection.RefinementSand, 7);
 		TestEqual(TEXT("v24 collection-only repair writes v28"),
-			MigratedCollectionOnly.SaveVersion, 28);
+			MigratedCollectionOnly.SaveVersion, 29);
 	}
 
 	FGameXXKSaveState Mismatched = VersionTwentyFour;
@@ -848,7 +848,7 @@ bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FSt
 		TestEqual(TEXT("v24 stale collection mirror follows the backpack stack"),
 			MigratedMismatch.RuntimeState.EquipmentCollection.RefinementSand, 3);
 		TestEqual(TEXT("v24 mismatched-sand repair writes v28"),
-			MigratedMismatch.SaveVersion, 28);
+			MigratedMismatch.SaveVersion, 29);
 	}
 	return true;
 }
@@ -862,7 +862,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes dialogue sessions"), FGameXXKSaveMigration::CurrentSaveVersion, 28);
+	TestEqual(TEXT("current save schema includes narrative stage and guides"), FGameXXKSaveMigration::CurrentSaveVersion, 29);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());

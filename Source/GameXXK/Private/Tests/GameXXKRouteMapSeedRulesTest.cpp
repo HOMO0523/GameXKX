@@ -401,8 +401,8 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("pending camp reward resolves from camp scene"), UGameXXKMVPRules::ResolveCampReward(CampState, true));
 	TestEqual(TEXT("camp reward returns to route map"), CampState.Screen, EGameXXKScreen::DungeonMap);
 	TestTrue(TEXT("camp reward marks node visited"), CampState.VisitedRouteNodeIds.Contains(1));
-	TestEqual(TEXT("camp reward never heals player directly"), CampState.PlayerHP, 1);
-	TestTrue(TEXT("camp reward grants the life-saving talisman"), FGameXXKRelicRules::OwnsLifeSavingTalisman(CampState));
+	TestEqual(TEXT("camp reward heals thirty percent of maximum health"), CampState.PlayerHP, 31);
+	TestFalse(TEXT("camp reward grants no life-saving talisman"), FGameXXKRelicRules::OwnsLifeSavingTalisman(CampState));
 
 	FGameXXKRuntimeState MerchantState = BuildPendingRoomRouteState(EGameXXKNodeKind::Merchant);
 	TestTrue(TEXT("merchant route node selection succeeds"), UGameXXKMVPRules::SelectRouteNodeById(MerchantState, 1));

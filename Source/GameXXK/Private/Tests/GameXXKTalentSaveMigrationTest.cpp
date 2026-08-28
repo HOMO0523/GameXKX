@@ -19,7 +19,7 @@ bool FGameXXKTalentSaveRoundTripTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("permanent talents own save version twenty-six"),
 		FGameXXKSaveMigration::PermanentTalentGraphIntroducedSaveVersion, 26);
 	TestEqual(TEXT("dialogue sessions advance the current save schema to twenty-eight"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 28);
+		FGameXXKSaveMigration::CurrentSaveVersion, 29);
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
@@ -33,7 +33,7 @@ bool FGameXXKTalentSaveRoundTripTest::RunTest(const FString& Parameters)
 	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Combat"), 1);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Combat.FlatAttack.01"), 3);
 	const FGameXXKSaveState Save = UGameXXKMVPRules::MakeSaveState(State);
-	TestEqual(TEXT("new save writes v28"), Save.SaveVersion, 28);
+	TestEqual(TEXT("new save writes v29"), Save.SaveVersion, 29);
 	FGameXXKRuntimeState Restored;
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(FString::Printf(TEXT("v28 talent save restores: %s"), *Report.Error),

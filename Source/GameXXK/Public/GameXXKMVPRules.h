@@ -2,11 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "Dialogue/GameXXKDialogueTypes.h"
+#include "Guide/GameXXKGuideAsset.h"
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKEquipmentTypes.h"
 #include "GameXXKMetaShopTypes.h"
 #include "GameXXKTalentTypes.h"
 #include "GameXXKTrainingRules.h"
+#include "Narrative/GameXXKNarrativeSequenceTypes.h"
+#include "Narrative/GameXXKNarrativeTypes.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameXXKMVPRules.generated.h"
 
@@ -514,6 +517,18 @@ struct FGameXXKRuntimeState
 	/** v28+ save-resumable blocking dialogue state. World Actor pointers never enter this structure. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKDialogueSessionState DialogueSession;
+
+	/** v29+ one active replaceable-scene narrative sequence. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKNarrativeSequenceSessionState NarrativeSequenceSession;
+
+	/** v29+ concurrent Story/Task progress and the independently tracked task. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKNarrativeProgress NarrativeProgress;
+
+	/** v29+ first-entry preference and resumable combat-guide progress. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKGuideProgress GuideProgress;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName CurrentRegion;

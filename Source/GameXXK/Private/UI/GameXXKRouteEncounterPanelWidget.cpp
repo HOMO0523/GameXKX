@@ -12,6 +12,7 @@
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -224,6 +225,7 @@ void UGameXXKRouteEncounterActionButton::HandleClicked()
 TSharedRef<SWidget> UGameXXKRouteEncounterPanelWidget::RebuildWidget()
 {
 	BuildProgrammaticLayout();
+	RegisterGuideTargets();
 	return Super::RebuildWidget();
 }
 
@@ -232,6 +234,19 @@ void UGameXXKRouteEncounterPanelWidget::NativeConstruct()
 	Super::NativeConstruct();
 	BuildProgrammaticLayout();
 	CloseEncounterPanel();
+}
+
+void UGameXXKRouteEncounterPanelWidget::NativeDestruct()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	Registry.UnregisterTarget(TEXT("Route.Event.ValidChoiceGroup"), FrameCanvas);
+	Registry.UnregisterTarget(TEXT("Route.Camp.Heal"), PrimaryActionButton);
+	Registry.UnregisterTarget(TEXT("Route.Camp.Gold"), SecondaryActionButton);
+	for (UGameXXKRouteEncounterActionButton* Button : ChoiceCardButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Route.Chest.Open"), Button);
+	}
+	Super::NativeDestruct();
 }
 
 void UGameXXKRouteEncounterPanelWidget::RefreshFromState()
@@ -258,6 +273,23 @@ bool UGameXXKRouteEncounterPanelWidget::OpenEncounterPanel()
 		return false;
 	}
 	SetVisibility(ESlateVisibility::Visible);
+	RegisterGuideTargets();
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	FName OpenEventId;
+	if (State.Screen == EGameXXKScreen::RouteCamp)
+	{
+		OpenEventId = TEXT("Event.Route.CampOpened");
+	}
+	else
+	{
+		const FGameXXKRouteMapNode* PendingNode = State.RouteMapNodes.FindByPredicate(
+			[&State](const FGameXXKRouteMapNode& Node) { return Node.NodeId == State.PendingRouteNodeId; });
+		OpenEventId = PendingNode && PendingNode->NodeKind == EGameXXKNodeKind::Chest
+			? FName(TEXT("Event.Route.ChestOpened"))
+			: FName(TEXT("Event.Route.EventOpened"));
+	}
+	FGameXXKGuideTargetRegistry::Get().EmitEvent(OpenEventId);
+	bGuideEncounterOpenedEmitted = true;
 	return true;
 }
 
@@ -268,6 +300,7 @@ bool UGameXXKRouteEncounterPanelWidget::CloseEncounterPanel()
 	ChoicePresentationIdentity.Reset();
 	RefreshChoiceCardStates();
 	SetVisibility(ESlateVisibility::Collapsed);
+	bGuideEncounterOpenedEmitted = false;
 	return bWasOpen;
 }
 
@@ -679,19 +712,16 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 
 	case EGameXXKScreen::RouteCamp:
 	{
-		const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
 		Presentation.Title = NSLOCTEXT("GameXXKRouteEncounter", "CampTitle", "营火抉择");
 		Presentation.Speaker = NSLOCTEXT("GameXXKRouteEncounter", "CampSpeaker", "山间营火");
-		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampBody", "营火尚温。选择带走一份护身之物，或领取本局行旅钱。 ");
-		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampCharm", "获得保命护符");
+		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampBody", "营火尚温。选择让全队休整，或领取本局行旅钱。");
+		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampHeal", "全队恢复30%气血");
 		Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoney", "获得100局内金币");
-		Presentation.PrimaryTooltip = bOwnsLifeSavingTalisman
-			? NSLOCTEXT("GameXXKRouteEncounter", "CampCharmOwned", "已持有保命护符，不能重复获得。")
-			: NSLOCTEXT("GameXXKRouteEncounter", "CampCharmTooltip", "获得唯一遗物保命护符。");
+		Presentation.PrimaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampHealTooltip", "每名当前队员恢复其最大气血的30%，不超过上限。");
 		Presentation.SecondaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoneyTooltip", "本局行旅钱增加100。");
 		Presentation.PrimaryAction = EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman;
 		Presentation.SecondaryAction = EGameXXKRouteEncounterAction::CampTakeRouteMoney;
-		Presentation.bPrimaryEnabled = !bOwnsLifeSavingTalisman;
+		Presentation.bPrimaryEnabled = true;
 		Presentation.bSecondaryEnabled = true;
 		break;
 	}
@@ -869,11 +899,117 @@ bool UGameXXKRouteEncounterPanelWidget::ExecuteAction(const EGameXXKRouteEncount
 	{
 		return false;
 	}
+	const FName GuideActionId = ResolveGuideActionId(InAction);
+	if (!GuideActionId.IsNone()
+		&& !FGameXXKGuideTargetRegistry::Get().IsActionAllowed(GuideActionId))
+	{
+		return false;
+	}
 	if (AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController())
 	{
-		return PlayerController->ResolveRouteEncounterAction(InAction);
+		const bool bResolved = PlayerController->ResolveRouteEncounterAction(InAction);
+		if (bResolved)
+		{
+			if (InAction == EGameXXKRouteEncounterAction::CampRest
+				|| InAction == EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman)
+			{
+				FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Route.CampHealResolved"));
+			}
+			else if (InAction == EGameXXKRouteEncounterAction::CampTakeRouteMoney)
+			{
+				FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Route.CampGoldResolved"));
+			}
+			const FName CompletionEventId = ResolveGuideCompletionEventId(InAction);
+			if (!CompletionEventId.IsNone())
+			{
+				FGameXXKGuideTargetRegistry::Get().EmitEvent(CompletionEventId);
+			}
+		}
+		return bResolved;
 	}
 	return InAction == EGameXXKRouteEncounterAction::ClosePanel && CloseEncounterPanel();
+}
+
+void UGameXXKRouteEncounterPanelWidget::RegisterGuideTargets()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	if (FrameCanvas)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Event.ValidChoiceGroup"), FrameCanvas);
+	}
+	if (PrimaryActionButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Camp.Heal"), PrimaryActionButton);
+	}
+	if (SecondaryActionButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Camp.Gold"), SecondaryActionButton);
+	}
+	if (!ChoiceCardButtons.IsEmpty() && ChoiceCardButtons[0])
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Chest.Open"), ChoiceCardButtons[0]);
+	}
+}
+
+FName UGameXXKRouteEncounterPanelWidget::ResolveGuideActionId(
+	const EGameXXKRouteEncounterAction InAction) const
+{
+	switch (InAction)
+	{
+	case EGameXXKRouteEncounterAction::CampRest:
+	case EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman:
+		return TEXT("Action.Route.CampHeal");
+	case EGameXXKRouteEncounterAction::CampTakeRouteMoney:
+		return TEXT("Action.Route.CampGold");
+	case EGameXXKRouteEncounterAction::SelectChoice0:
+	case EGameXXKRouteEncounterAction::SelectChoice1:
+	case EGameXXKRouteEncounterAction::SelectChoice2:
+	{
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		const FGameXXKRouteMapNode* PendingNode = State
+			? State->RouteMapNodes.FindByPredicate(
+				[State](const FGameXXKRouteMapNode& Node) { return Node.NodeId == State->PendingRouteNodeId; })
+			: nullptr;
+		return PendingNode && PendingNode->NodeKind == EGameXXKNodeKind::Chest
+			? FName(TEXT("Action.Route.ChestOpen"))
+			: FName(TEXT("Action.Route.EventChoose"));
+	}
+	default:
+		return NAME_None;
+	}
+}
+
+FName UGameXXKRouteEncounterPanelWidget::ResolveGuideCompletionEventId(
+	const EGameXXKRouteEncounterAction InAction) const
+{
+	switch (InAction)
+	{
+	case EGameXXKRouteEncounterAction::CampRest:
+	case EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman:
+		return TEXT("Event.Route.CampResolved");
+	case EGameXXKRouteEncounterAction::CampTakeRouteMoney:
+		return TEXT("Event.Route.CampResolved");
+	case EGameXXKRouteEncounterAction::SelectChoice0:
+	case EGameXXKRouteEncounterAction::SelectChoice1:
+	case EGameXXKRouteEncounterAction::SelectChoice2:
+	{
+		const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		if (State)
+		{
+			const FGameXXKRouteMapNode* PendingNode = State->RouteMapNodes.FindByPredicate(
+				[State](const FGameXXKRouteMapNode& Node) { return Node.NodeId == State->PendingRouteNodeId; });
+			if (PendingNode && PendingNode->NodeKind == EGameXXKNodeKind::Chest)
+			{
+				return TEXT("Event.Route.ChestRewardResolved");
+			}
+		}
+		return TEXT("Event.Route.EventChoiceResolved");
+	}
+	default:
+		return NAME_None;
+	}
 }
 
 void UGameXXKRouteEncounterPanelWidget::ApplyActionButton(

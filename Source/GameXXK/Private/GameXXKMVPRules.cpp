@@ -2834,19 +2834,43 @@ bool UGameXXKMVPRules::ResolveCampReward(
 	FGameXXKRuntimeState& State,
 	const bool bHealNow)
 {
-	// bHealNow is a serialized Blueprint pin name. Its compatibility mapping is
-	// intentionally true=life-saving talisman and false=100 route-local money.
-	const bool bTakeLifeSavingTalisman = bHealNow;
+	// bHealNow is a serialized Blueprint pin name and keeps its literal meaning:
+	// true heals every represented active party member by ceil(30% MaxHP), while
+	// false grants 100 route-local money. No item or relic is created here.
 	constexpr int32 CampRouteMoneyReward = 100;
-	const auto StageRewardUnlessAlreadyReceipted = [bTakeLifeSavingTalisman](
+	const auto StageRewardUnlessAlreadyReceipted = [bHealNow](
 		FGameXXKRuntimeState& Candidate,
 		const bool bReceiptAlreadyApplied)
 	{
-		return bReceiptAlreadyApplied
-			|| !bTakeLifeSavingTalisman
-			|| FGameXXKRelicRules::AcquireRelic(Candidate, FGameXXKRelicRules::LifeSavingTalismanId());
+		if (bReceiptAlreadyApplied || !bHealNow)
+		{
+			return true;
+		}
+		const int32 EffectiveHeroMaxHealth = FMath::Max(
+			1,
+			Candidate.PlayerMaxHP
+				+ FMath::Max(0, Candidate.CardRun.RouteAttributeBonuses.MaxHealth));
+		const int32 HeroHealing = FMath::DivideAndRoundUp(EffectiveHeroMaxHealth * 30, 100);
+		Candidate.PlayerHP = FMath::Min(
+			EffectiveHeroMaxHealth,
+			Candidate.PlayerHP + HeroHealing);
+		for (FGameXXKBattleRuntimeUnit& Unit : Candidate.ActiveBattleParty)
+		{
+			if (Unit.bEnemy || Unit.MaxHP <= 0)
+			{
+				continue;
+			}
+			const int32 Healing = FMath::DivideAndRoundUp(Unit.MaxHP * 30, 100);
+			Unit.HP = FMath::Min(Unit.MaxHP, Unit.HP + Healing);
+			if (Unit.Id == TEXT("Player"))
+			{
+				Unit.HP = Candidate.PlayerHP;
+				Unit.MaxHP = EffectiveHeroMaxHealth;
+			}
+		}
+		return true;
 	};
-	const int32 RouteMoneyReward = bTakeLifeSavingTalisman ? 0 : CampRouteMoneyReward;
+	const int32 RouteMoneyReward = bHealNow ? 0 : CampRouteMoneyReward;
 
 	if (State.bHasGeneratedRouteMap && State.Screen == EGameXXKScreen::RouteCamp)
 	{

@@ -21,6 +21,7 @@
 #include "Engine/Texture2D.h"
 #include "Input/Reply.h"
 #include "InputCoreTypes.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Styling/SlateBrush.h"
@@ -273,6 +274,7 @@ UGameXXKOneGameRouteMapWidget::UGameXXKOneGameRouteMapWidget()
 TSharedRef<SWidget> UGameXXKOneGameRouteMapWidget::RebuildWidget()
 {
 	BuildProgrammaticLayout();
+	RegisterGuideTargets();
 	return Super::RebuildWidget();
 }
 
@@ -281,6 +283,18 @@ void UGameXXKOneGameRouteMapWidget::NativeConstruct()
 	Super::NativeConstruct();
 	BuildProgrammaticLayout();
 	RefreshFromState();
+}
+
+void UGameXXKOneGameRouteMapWidget::NativeDestruct()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	for (UButton* Button : NodeButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Route.Tutorial.NextNode"), Button);
+	}
+	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteAbandonConfirmButton);
+	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteCloseChallengeButton);
+	Super::NativeDestruct();
 }
 
 FReply UGameXXKOneGameRouteMapWidget::NativeOnKeyDown(
@@ -425,6 +439,17 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 		? ESlateVisibility::Visible
 		: ESlateVisibility::Collapsed);
 	RefreshFixedControls();
+	RegisterGuideTargets();
+	const bool bGuideRouteVisible = Subsystem && ActiveScreen == EGameXXKScreen::DungeonMap;
+	if (bGuideRouteVisible && !bGuideRouteOpenedEmitted)
+	{
+		bGuideRouteOpenedEmitted = true;
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.RouteMap.Opened"));
+	}
+	else if (!bGuideRouteVisible)
+	{
+		bGuideRouteOpenedEmitted = false;
+	}
 	if (!bHasAppliedInitialScrollOffset && RouteScrollBox && GetRenderedRouteNodeCount(Nodes) > 0)
 	{
 		ApplyInitialScrollOffset(Nodes);
@@ -588,6 +613,7 @@ bool UGameXXKOneGameRouteMapWidget::OpenRouteAbandonConfirmation()
 		return false;
 	}
 	bRouteAbandonConfirmationOpen = true;
+	FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Settlement.Opened"));
 	bRouteAbandonPreviewValid = false;
 	bRouteSettlementInProgress = false;
 	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
@@ -623,6 +649,10 @@ bool UGameXXKOneGameRouteMapWidget::CancelRouteAbandonConfirmation()
 
 bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Route.SettlementConfirm")))
+	{
+		return false;
+	}
 	if (!bRouteAbandonConfirmationOpen || bRouteSettlementInProgress)
 	{
 		return false;
@@ -652,6 +682,7 @@ bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
 	bRouteAbandonPreviewValid = false;
 	RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
 	RouteAbandonError.Reset();
+	FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Settlement.Confirmed"));
 	GameXXKLevelFlow::OpenMapForRuntimeState(Subsystem);
 	NotifyPlayerFlowStateChanged();
 	return true;
@@ -793,6 +824,10 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 
 bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Route.SelectNext")))
+	{
+		return false;
+	}
 	if (bRouteAbandonConfirmationOpen)
 	{
 		return false;
@@ -817,6 +852,7 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 	const bool bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, Node.CommandName);
 	if (bExecuted)
 	{
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Route.NextNodeSelected"));
 		OnRouteNodeExecuted(Node);
 		if (!NotifyPlayerFlowStateChanged())
 		{
@@ -824,6 +860,42 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 		}
 	}
 	return bExecuted;
+}
+
+void UGameXXKOneGameRouteMapWidget::RegisterGuideTargets()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	for (UButton* Button : NodeButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Route.Tutorial.NextNode"), Button);
+	}
+	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteAbandonConfirmButton);
+	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteCloseChallengeButton);
+	UButton* NextButton = nullptr;
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	for (int32 Index = 0; Index < NodeButtons.Num(); ++Index)
+	{
+		if (Nodes.IsValidIndex(Index) && Nodes[Index].bEnabled && NodeButtons[Index])
+		{
+			NextButton = NodeButtons[Index];
+			break;
+		}
+	}
+	if (!NextButton && !NodeButtons.IsEmpty())
+	{
+		NextButton = NodeButtons[0];
+	}
+	if (NextButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Tutorial.NextNode"), NextButton);
+	}
+	UButton* SettlementButton = RouteAbandonConfirmButton
+		? RouteAbandonConfirmButton.Get()
+		: RouteCloseChallengeButton.Get();
+	if (SettlementButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Route.Settlement.Confirm"), SettlementButton);
+	}
 }
 
 TArray<FGameXXKOneGameRouteNodeVisualState> UGameXXKOneGameRouteMapWidget::GetRouteNodeVisualStatesForTest() const

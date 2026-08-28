@@ -11,8 +11,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 28,
-	"The dialogue runtime advances the current save version to twenty-eight.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 29,
+	"Narrative stage and guide persistence advances the current save version to twenty-nine.");
 
 namespace
 {

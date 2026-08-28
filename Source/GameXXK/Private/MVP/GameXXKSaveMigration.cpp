@@ -19,7 +19,9 @@
 #include "GameXXKRouteMerchantRules.h"
 #include "GameXXKTalentRules.h"
 #include "GameXXKTrainingRules.h"
+#include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Misc/Crc.h"
+#include "Narrative/GameXXKStoryCatalog.h"
 
 namespace
 {
@@ -1254,6 +1256,260 @@ namespace
 			State.Talents.MinimumBackpackCapacity,
 			State.Talents.MinimumWarehousePages));
 	}
+
+	const FGameXXKTaskStepDefinition* FindNarrativeTaskStep(
+		const FGameXXKTaskDefinition& Task,
+		const FName StepId)
+	{
+		return Task.Steps.FindByPredicate([StepId](const FGameXXKTaskStepDefinition& Step)
+		{
+			return Step.StepId == StepId;
+		});
+	}
+
+	void MigrateLegacyTutorialNarrative(
+		FGameXXKRuntimeState& State,
+		FGameXXKSaveMigrationReport& Report)
+	{
+		State.NarrativeSequenceSession = FGameXXKNarrativeSequenceSessionState();
+		State.NarrativeProgress = FGameXXKNarrativeProgress();
+		State.GuideProgress = FGameXXKGuideProgress();
+		if (State.TutorialQuest.State == EGameXXKTutorialQuestState::NotStarted)
+		{
+			return;
+		}
+
+		const FName StoryId(TEXT("Story.Main.XuXiakeTreasure"));
+		const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
+		const FName RiverStepId(TEXT("Step.Main.XuXiake.RiverScroll"));
+		const FName CombatStepId(TEXT("Step.Main.XuXiake.CombatTutorial"));
+		FGameXXKStoryProgress Story;
+		Story.Version = 1;
+		FGameXXKTaskProgress Task;
+		if (State.TutorialQuest.State == EGameXXKTutorialQuestState::Completed)
+		{
+			Story.State = EGameXXKStoryState::Completed;
+			Story.CompletedTaskIds.Add(TaskId);
+			Task.State = EGameXXKTaskState::Rewarded;
+			Task.CurrentStepId = CombatStepId;
+			Task.bRewardCommitted = true;
+		}
+		else
+		{
+			Story.State = EGameXXKStoryState::Active;
+			Story.ActiveTaskIds.Add(TaskId);
+			Task.State = EGameXXKTaskState::Active;
+			Task.CurrentStepId = State.TutorialQuest.CurrentStepId == TEXT("Tutorial.CombatTutorial")
+				? CombatStepId
+				: RiverStepId;
+			State.NarrativeProgress.TrackedTaskId = TaskId;
+		}
+		State.NarrativeProgress.StoryProgressById.Add(StoryId, MoveTemp(Story));
+		State.NarrativeProgress.TaskProgressById.Add(TaskId, MoveTemp(Task));
+		Report.Warnings.Add(TEXT("Legacy tutorial progress migrated to Story.Main.XuXiakeTreasure."));
+	}
+
+	bool ValidateNarrativeStageGuideState(const FGameXXKRuntimeState& State, FString& OutError)
+	{
+		const FGameXXKNarrativeProgress& Narrative = State.NarrativeProgress;
+		for (const TPair<FName, FGameXXKStoryProgress>& Pair : Narrative.StoryProgressById)
+		{
+			const FGameXXKStoryDefinition* Definition = FGameXXKStoryCatalog::FindStory(Pair.Key);
+			const FGameXXKStoryProgress& Progress = Pair.Value;
+			if (!Definition
+				|| Progress.Version != Definition->Version
+				|| Progress.ActiveTaskIds.Contains(NAME_None)
+				|| Progress.CompletedTaskIds.Contains(NAME_None))
+			{
+				OutError = TEXT("Saved narrative story progress is invalid.");
+				return false;
+			}
+			for (const FName ActiveTaskId : Progress.ActiveTaskIds)
+			{
+				const FGameXXKTaskDefinition* Task = FGameXXKStoryCatalog::FindTask(ActiveTaskId);
+				if (!Task || Task->StoryId != Pair.Key || Progress.CompletedTaskIds.Contains(ActiveTaskId))
+				{
+					OutError = TEXT("Saved story has invalid active-task membership.");
+					return false;
+				}
+			}
+			for (const FName CompletedTaskId : Progress.CompletedTaskIds)
+			{
+				const FGameXXKTaskDefinition* Task = FGameXXKStoryCatalog::FindTask(CompletedTaskId);
+				if (!Task || Task->StoryId != Pair.Key)
+				{
+					OutError = TEXT("Saved story has invalid completed-task membership.");
+					return false;
+				}
+			}
+			if ((Progress.State == EGameXXKStoryState::Inactive
+					&& (!Progress.ActiveTaskIds.IsEmpty() || !Progress.CompletedTaskIds.IsEmpty()))
+				|| (Progress.State == EGameXXKStoryState::Completed && !Progress.ActiveTaskIds.IsEmpty()))
+			{
+				OutError = TEXT("Saved story state disagrees with its task membership.");
+				return false;
+			}
+		}
+
+		for (const TPair<FName, FGameXXKTaskProgress>& Pair : Narrative.TaskProgressById)
+		{
+			const FGameXXKTaskDefinition* Definition = FGameXXKStoryCatalog::FindTask(Pair.Key);
+			const FGameXXKTaskProgress& Progress = Pair.Value;
+			const FGameXXKStoryProgress* Story = Definition
+				? Narrative.StoryProgressById.Find(Definition->StoryId)
+				: nullptr;
+			const FGameXXKTaskStepDefinition* Step = Definition
+				? FindNarrativeTaskStep(*Definition, Progress.CurrentStepId)
+				: nullptr;
+			if (!Definition || !Story)
+			{
+				OutError = TEXT("Saved narrative task has no catalog story.");
+				return false;
+			}
+			if (Progress.ObjectiveCounts.Contains(NAME_None))
+			{
+				OutError = TEXT("Saved narrative task has an empty objective ID.");
+				return false;
+			}
+			for (const TPair<FName, int32>& Objective : Progress.ObjectiveCounts)
+			{
+				if (Objective.Value < 0)
+				{
+					OutError = TEXT("Saved narrative task has a negative objective count.");
+					return false;
+				}
+			}
+			const bool bStarted = Progress.State == EGameXXKTaskState::Active
+				|| Progress.State == EGameXXKTaskState::Completed
+				|| Progress.State == EGameXXKTaskState::Rewarded;
+			if ((bStarted && !Step)
+				|| (!bStarted && !Progress.CurrentStepId.IsNone())
+				|| (Progress.State == EGameXXKTaskState::Rewarded && !Progress.bRewardCommitted)
+				|| (Progress.bRewardCommitted && Progress.State != EGameXXKTaskState::Rewarded))
+			{
+				OutError = TEXT("Saved narrative task state or step is invalid.");
+				return false;
+			}
+			if (Progress.State == EGameXXKTaskState::Active
+				&& (!Story->ActiveTaskIds.Contains(Pair.Key) || Story->State != EGameXXKStoryState::Active))
+			{
+				OutError = TEXT("Saved active narrative task is detached from its story.");
+				return false;
+			}
+			if ((Progress.State == EGameXXKTaskState::Completed || Progress.State == EGameXXKTaskState::Rewarded)
+				&& !Story->CompletedTaskIds.Contains(Pair.Key))
+			{
+				OutError = TEXT("Saved completed narrative task is detached from its story receipt.");
+				return false;
+			}
+		}
+
+		if (!Narrative.TrackedTaskId.IsNone())
+		{
+			const FGameXXKTaskProgress* Tracked = Narrative.TaskProgressById.Find(Narrative.TrackedTaskId);
+			if (!Tracked
+				|| (Tracked->State != EGameXXKTaskState::Active
+					&& Tracked->State != EGameXXKTaskState::Completed))
+			{
+				OutError = TEXT("Saved tracked narrative task is invalid.");
+				return false;
+			}
+		}
+
+		const FGameXXKNarrativeSequenceSessionState& Sequence = State.NarrativeSequenceSession;
+		const bool bHasSequenceContext = !Sequence.StoryId.IsNone()
+			|| Sequence.StoryVersion != 0
+			|| !Sequence.TaskId.IsNone()
+			|| !Sequence.StepId.IsNone()
+			|| !Sequence.SequenceId.IsNone()
+			|| Sequence.SequenceVersion != 0
+			|| !Sequence.StageContractId.IsNone()
+			|| !Sequence.CurrentSequenceStepId.IsNone()
+			|| !Sequence.AwaitedDialogueId.IsNone()
+			|| !Sequence.LastOutcomeId.IsNone()
+			|| !Sequence.CharacterIdByRole.IsEmpty()
+			|| !Sequence.PauseReason.IsEmpty();
+		if (!Sequence.bActive && bHasSequenceContext)
+		{
+			OutError = TEXT("Saved inactive narrative sequence retains active context.");
+			return false;
+		}
+		if (Sequence.bActive)
+		{
+			const FGameXXKStoryDefinition* StoryDefinition = FGameXXKStoryCatalog::FindStory(Sequence.StoryId);
+			const FGameXXKTaskDefinition* TaskDefinition = FGameXXKStoryCatalog::FindTask(Sequence.TaskId);
+			const FGameXXKTaskStepDefinition* StepDefinition = TaskDefinition
+				? FindNarrativeTaskStep(*TaskDefinition, Sequence.StepId)
+				: nullptr;
+			const FGameXXKTaskProgress* TaskProgress = Narrative.TaskProgressById.Find(Sequence.TaskId);
+			if (!StoryDefinition
+				|| StoryDefinition->Version != Sequence.StoryVersion
+				|| !TaskDefinition
+				|| TaskDefinition->StoryId != Sequence.StoryId
+				|| !StepDefinition
+				|| StepDefinition->SequenceId != Sequence.SequenceId
+				|| StepDefinition->StageContractId != Sequence.StageContractId
+				|| Sequence.SequenceVersion <= 0
+				|| Sequence.CurrentSequenceStepId.IsNone()
+				|| !TaskProgress
+				|| TaskProgress->State != EGameXXKTaskState::Active
+				|| TaskProgress->CurrentStepId != Sequence.StepId)
+			{
+				OutError = TEXT("Saved active narrative sequence is detached from its task or catalog contract.");
+				return false;
+			}
+			for (const TPair<FName, FName>& Role : Sequence.CharacterIdByRole)
+			{
+				if (Role.Key.IsNone() || Role.Value.IsNone())
+				{
+					OutError = TEXT("Saved narrative sequence has an invalid role binding.");
+					return false;
+				}
+			}
+		}
+		for (const FName CommandKey : Sequence.ExecutedCommandKeys)
+		{
+			TArray<FString> Parts;
+			CommandKey.ToString().ParseIntoArray(Parts, TEXT("/"), false);
+			if (CommandKey.IsNone()
+				|| Parts.Num() != 4
+				|| Parts.ContainsByPredicate([](const FString& Part) { return Part.IsEmpty(); }))
+			{
+				OutError = TEXT("Saved narrative sequence has an invalid executed-command key.");
+				return false;
+			}
+		}
+
+		const FGameXXKGuideProgress& Guide = State.GuideProgress;
+		const bool bHasActiveGuide = !Guide.ActiveGuideId.IsNone() || !Guide.ActiveGuideStepId.IsNone();
+		if (Guide.CompletedGuideStepIds.Contains(NAME_None)
+			|| (Guide.ActiveGuideId.IsNone() != Guide.ActiveGuideStepId.IsNone()))
+		{
+			OutError = TEXT("Saved guide progress has invalid active or completed IDs.");
+			return false;
+		}
+		if (bHasActiveGuide)
+		{
+			const FGameXXKTaskProgress* Tracked = Narrative.TaskProgressById.Find(Narrative.TrackedTaskId);
+			const FGameXXKTaskDefinition* Task = FGameXXKStoryCatalog::FindTask(Narrative.TrackedTaskId);
+			const FGameXXKTaskStepDefinition* Step = Task && Tracked
+				? FindNarrativeTaskStep(*Task, Tracked->CurrentStepId)
+				: nullptr;
+			const FString ExpectedStepPrefix = Guide.ActiveGuideId.ToString() + TEXT(".");
+			if (Guide.Preference != EGameXXKGuidePreference::NewPlayer
+				|| !FGameXXKGuideTargetRegistry::IsKnownGuideId(Guide.ActiveGuideId)
+				|| !Tracked
+				|| Tracked->State != EGameXXKTaskState::Active
+				|| !Step
+				|| Step->RouteId.IsNone()
+				|| !Guide.ActiveGuideStepId.ToString().StartsWith(ExpectedStepPrefix))
+			{
+				OutError = TEXT("Saved active guide is detached from an active narrative route task.");
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1310,6 +1566,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
+		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
@@ -1525,6 +1782,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	{
 		Candidate.RuntimeState.DialogueSession = FGameXXKDialogueSessionState();
 	}
+	if (Source.SaveVersion < NarrativeStageGuideIntroducedSaveVersion)
+	{
+		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
@@ -1565,6 +1826,10 @@ bool FGameXXKSaveMigration::TryRestoreRuntimeState(
 bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& State, FString& OutError)
 {
 	OutError.Reset();
+	if (!ValidateNarrativeStageGuideState(State, OutError))
+	{
+		return false;
+	}
 	if ((State.TutorialQuest.State == EGameXXKTutorialQuestState::NotStarted
 			&& !State.TutorialQuest.CurrentStepId.IsNone())
 		|| (State.TutorialQuest.State == EGameXXKTutorialQuestState::Active

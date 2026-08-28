@@ -33,6 +33,20 @@ namespace GameXXKGuideTargetRegistryPrivate
 		return Values;
 	}
 
+	const TSet<FName>& Guides()
+	{
+		static const TSet<FName> Values = {
+			TEXT("Guide.RouteMap.Basic"),
+			TEXT("Guide.Battle.Basic"),
+			TEXT("Guide.Merchant.Basic"),
+			TEXT("Guide.Event.Basic"),
+			TEXT("Guide.Camp.Basic"),
+			TEXT("Guide.Chest.Basic"),
+			TEXT("Guide.Boss.Basic"),
+			TEXT("Guide.Settlement.Basic")};
+		return Values;
+	}
+
 	const TSet<FName>& Triggers()
 	{
 		static const TSet<FName> Values = {
@@ -133,6 +147,38 @@ bool FGameXXKGuideTargetRegistry::RegisterTarget(
 	return true;
 }
 
+bool FGameXXKGuideTargetRegistry::RegisterWidgetTarget(
+	const FName TargetId,
+	UWidget* Widget,
+	FString* OutError)
+{
+	const TWeakObjectPtr<UWidget> WeakWidget(Widget);
+	return RegisterTarget(
+		TargetId,
+		Widget,
+		[WeakWidget](FSlateRect& OutRect)
+		{
+			const UWidget* LiveWidget = WeakWidget.Get();
+			if (!LiveWidget
+				|| LiveWidget->GetVisibility() == ESlateVisibility::Collapsed
+				|| LiveWidget->GetVisibility() == ESlateVisibility::Hidden)
+			{
+				return false;
+			}
+			const FGeometry& Geometry = LiveWidget->GetCachedGeometry();
+			const FVector2D LocalSize = Geometry.GetLocalSize();
+			if (LocalSize.X <= 0.0f || LocalSize.Y <= 0.0f)
+			{
+				return false;
+			}
+			const FVector2D Minimum = Geometry.LocalToAbsolute(FVector2D::ZeroVector);
+			const FVector2D Maximum = Geometry.LocalToAbsolute(LocalSize);
+			OutRect = FSlateRect(Minimum.X, Minimum.Y, Maximum.X, Maximum.Y);
+			return true;
+		},
+		OutError);
+}
+
 void FGameXXKGuideTargetRegistry::UnregisterTarget(const FName TargetId, const UWidget* Widget)
 {
 	if (const FEntry* Existing = Entries.Find(TargetId))
@@ -189,9 +235,60 @@ void FGameXXKGuideTargetRegistry::Reset()
 	Entries.Reset();
 }
 
+bool FGameXXKGuideTargetRegistry::EmitEvent(const FName EventId, FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (!IsKnownTriggerEventId(EventId) && !IsKnownCompletionEventId(EventId))
+	{
+		return GameXXKGuideTargetRegistryPrivate::SetError(
+			OutError,
+			FString::Printf(TEXT("Unknown guide event ID: %s"), *EventId.ToString()));
+	}
+	GuideEventDelegate.Broadcast(EventId);
+	return true;
+}
+
+FGameXXKGuideEventDelegate& FGameXXKGuideTargetRegistry::OnGuideEvent()
+{
+	return GuideEventDelegate;
+}
+
+void FGameXXKGuideTargetRegistry::SetActionGate(
+	UObject* Owner,
+	TFunction<bool(FName)> InGate)
+{
+	if (IsValid(Owner) && InGate)
+	{
+		ActionGateOwner = Owner;
+		ActionGate = MoveTemp(InGate);
+	}
+}
+
+void FGameXXKGuideTargetRegistry::ClearActionGate(const UObject* Owner)
+{
+	if (ActionGateOwner.Get() == Owner)
+	{
+		ActionGateOwner.Reset();
+		ActionGate = nullptr;
+	}
+}
+
+bool FGameXXKGuideTargetRegistry::IsActionAllowed(const FName ActionId) const
+{
+	return !ActionGateOwner.IsValid() || !ActionGate || ActionGate(ActionId);
+}
+
 bool FGameXXKGuideTargetRegistry::IsKnownTargetId(const FName TargetId)
 {
 	return KnownTargetIds().Contains(TargetId);
+}
+
+bool FGameXXKGuideTargetRegistry::IsKnownGuideId(const FName GuideId)
+{
+	return KnownGuideIds().Contains(GuideId);
 }
 
 bool FGameXXKGuideTargetRegistry::IsKnownTriggerEventId(const FName EventId)
@@ -212,6 +309,11 @@ bool FGameXXKGuideTargetRegistry::IsKnownActionId(const FName ActionId)
 const TSet<FName>& FGameXXKGuideTargetRegistry::KnownTargetIds()
 {
 	return GameXXKGuideTargetRegistryPrivate::Targets();
+}
+
+const TSet<FName>& FGameXXKGuideTargetRegistry::KnownGuideIds()
+{
+	return GameXXKGuideTargetRegistryPrivate::Guides();
 }
 
 const TSet<FName>& FGameXXKGuideTargetRegistry::KnownTriggerEventIds()

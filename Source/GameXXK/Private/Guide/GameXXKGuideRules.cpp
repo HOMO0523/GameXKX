@@ -147,7 +147,7 @@ bool FGameXXKGuideRules::TryStart(
 {
 	using namespace GameXXKGuideRulesPrivate;
 	ClearError(OutError);
-	if (InOutProgress.Preference == EGameXXKGuidePreference::ExperiencedPlayer)
+	if (InOutProgress.Preference != EGameXXKGuidePreference::NewPlayer)
 	{
 		return false;
 	}

@@ -93,6 +93,7 @@ class GAMEXXK_API UGameXXKRouteEncounterPanelWidget : public UGameXXKMVPWidgetBa
 public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteEncounter")
 	void RefreshFromState();
@@ -160,6 +161,9 @@ private:
 	bool SelectChoice(int32 ChoiceIndex);
 	bool ConfirmSelectedChoice();
 	void RefreshChoiceCardStates();
+	void RegisterGuideTargets();
+	FName ResolveGuideActionId(EGameXXKRouteEncounterAction InAction) const;
+	FName ResolveGuideCompletionEventId(EGameXXKRouteEncounterAction InAction) const;
 	void ApplyActionButton(UGameXXKRouteEncounterActionButton* Button, UTextBlock* Label, EGameXXKRouteEncounterAction InAction, const FText& Text, bool bEnabled);
 
 	UFUNCTION()
@@ -246,4 +250,5 @@ private:
 	int32 SelectedChoiceIndex = INDEX_NONE;
 	TArray<EGameXXKRouteEncounterAction> ChoiceActions;
 	TOptional<FGameXXKRouteChoicePresentationIdentity> ChoicePresentationIdentity;
+	bool bGuideEncounterOpenedEmitted = false;
 };

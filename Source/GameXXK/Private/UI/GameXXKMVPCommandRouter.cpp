@@ -30,7 +30,8 @@ namespace
 	static const FName ResolveRouteChoice0(TEXT("ResolveRouteChoice0"));
 	static const FName ResolveRouteChoice1(TEXT("ResolveRouteChoice1"));
 	static const FName ResolveRouteChoice2(TEXT("ResolveRouteChoice2"));
-	static const FName ResolveCampCharm(TEXT("ResolveCampCharm"));
+	static const FName ResolveCampHeal(TEXT("ResolveCampHeal"));
+	static const FName ResolveCampCharmLegacy(TEXT("ResolveCampCharm"));
 	static const FName ResolveCampRouteMoney(TEXT("ResolveCampRouteMoney"));
 	static const FName CompleteMerchantNode(TEXT("CompleteMerchantNode"));
 	static const FName SelectBoss(TEXT("SelectBoss"));
@@ -128,15 +129,11 @@ namespace
 		TArray<FGameXXKMVPCommandDescriptor>& Commands,
 		const FGameXXKRuntimeState& State)
 	{
-		const bool bOwnsLifeSavingTalisman = FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
 		AddCommand(
 			Commands,
-			ResolveCampCharm,
-			TEXT("获得保命护符"),
-			!bOwnsLifeSavingTalisman,
-			bOwnsLifeSavingTalisman
-				? NSLOCTEXT("GameXXKMVPCommandRouter", "CampCharmOwned", "已持有保命护符，不能重复获得。")
-				: FText::GetEmpty());
+			ResolveCampHeal,
+			TEXT("全队恢复30%气血"),
+			true);
 		AddCommand(Commands, ResolveCampRouteMoney, TEXT("获得100局内金币"), true);
 	}
 
@@ -219,7 +216,7 @@ namespace
 		case EGameXXKNodeKind::Merchant:
 			return ResolveEventGold;
 		case EGameXXKNodeKind::Camp:
-			return FGameXXKRelicRules::OwnsLifeSavingTalisman(State) ? ResolveCampRouteMoney : ResolveCampCharm;
+			return ResolveCampHeal;
 		case EGameXXKNodeKind::Boss:
 			return SelectBoss;
 		default:
@@ -654,7 +651,7 @@ bool GameXXKMVPCommandRouter::ExecuteVisibleCommand(UGameXXKMVPSubsystem* Subsys
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveEventReward(true));
 	}
-	if (CommandName == ResolveCampCharm)
+	if (CommandName == ResolveCampHeal || CommandName == ResolveCampCharmLegacy)
 	{
 		return FinishCommandAndTravel(Subsystem, Subsystem->ResolveCampReward(true));
 	}

@@ -50,9 +50,9 @@ bool FGameXXKDialogueSaveMigrationV28Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("dialogue runtime owns save version 28"),
 		FGameXXKSaveMigration::DialogueRuntimeIntroducedSaveVersion,
 		28);
-	TestEqual(TEXT("dialogue runtime is current save version"),
+	TestEqual(TEXT("narrative-stage-guide supersedes dialogue as current save version"),
 		FGameXXKSaveMigration::CurrentSaveVersion,
-		28);
+		29);
 
 	const FGameXXKSaveState Source = MakeVersionTwentySevenSave();
 	FGameXXKSaveState Migrated;
@@ -62,7 +62,7 @@ bool FGameXXKDialogueSaveMigrationV28Test::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("save reaches v28"), Migrated.SaveVersion, 28);
+	TestEqual(TEXT("save reaches current v29"), Migrated.SaveVersion, 29);
 	TestFalse(TEXT("dialogue defaults inactive"), Migrated.RuntimeState.DialogueSession.bActive);
 	TestTrue(TEXT("dialogue identity defaults empty"), Migrated.RuntimeState.DialogueSession.DialogueId.IsNone());
 	TestEqual(TEXT("tutorial state preserved"),

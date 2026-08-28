@@ -55,7 +55,9 @@ public:
 	static constexpr int32 TutorialQuestIntroducedSaveVersion = 27;
 	/** v28 adds node-boundary dialogue session persistence. */
 	static constexpr int32 DialogueRuntimeIntroducedSaveVersion = 28;
-	static constexpr int32 CurrentSaveVersion = 28;
+	/** v29 adds multi-story/task, sequence-session and semantic combat-guide persistence. */
+	static constexpr int32 NarrativeStageGuideIntroducedSaveVersion = 29;
+	static constexpr int32 CurrentSaveVersion = 29;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

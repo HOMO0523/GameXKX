@@ -155,6 +155,7 @@ public:
 
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
@@ -365,6 +366,7 @@ private:
 	FGameXXKRouteMapSummaryView BuildRouteSummaryView() const;
 	void UpdateRouteSummary();
 	void ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node);
+	void RegisterGuideTargets();
 	void ConfigureLineVisual(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	void ExecuteNodeButtonAtIndex(int32 ButtonIndex);
 	bool TryExecuteRouteNodeAtScreenPosition(const FVector2D& ScreenPosition);
@@ -562,6 +564,7 @@ private:
 	bool bRouteAbandonConfirmationOpen = false;
 	bool bRouteAbandonPreviewValid = false;
 	bool bRouteSettlementInProgress = false;
+	bool bGuideRouteOpenedEmitted = false;
 	FGameXXKRouteSettlementReceipt RouteAbandonPreview;
 	FString RouteAbandonError;
 

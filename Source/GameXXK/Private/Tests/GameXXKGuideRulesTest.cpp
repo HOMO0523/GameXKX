@@ -194,6 +194,25 @@ bool FGameXXKGuideTargetRegistryLifecycleTest::RunTest(const FString& Parameters
 		FGameXXKGuideTargetRegistry::IsKnownTargetId(TEXT("Route.Tutorial.NextNode")));
 	TestFalse(TEXT("unknown semantic target rejects"),
 		FGameXXKGuideTargetRegistry::IsKnownTargetId(TEXT("Unknown.Widget.Name")));
+	int32 EventCount = 0;
+	Registry.OnGuideEvent().AddLambda([&EventCount](const FName EventId)
+	{
+		++EventCount;
+	});
+	TestTrue(TEXT("known guide event emits"), Registry.EmitEvent(TEXT("Event.Route.Opened"), &Error));
+	TestEqual(TEXT("known guide event reaches listener once"), EventCount, 1);
+	TestFalse(TEXT("unknown guide event rejects"), Registry.EmitEvent(TEXT("Event.Unknown"), &Error));
+	TestEqual(TEXT("unknown event never broadcasts"), EventCount, 1);
+	Registry.SetActionGate(First, [](const FName ActionId)
+	{
+		return ActionId == TEXT("Action.Route.SelectNext");
+	});
+	TestTrue(TEXT("semantic gate permits allowed action"), Registry.IsActionAllowed(TEXT("Action.Route.SelectNext")));
+	TestFalse(TEXT("semantic gate rejects unrelated action"), Registry.IsActionAllowed(TEXT("Action.Unrelated")));
+	Registry.ClearActionGate(Second);
+	TestFalse(TEXT("wrong owner cannot clear semantic gate"), Registry.IsActionAllowed(TEXT("Action.Unrelated")));
+	Registry.ClearActionGate(First);
+	TestTrue(TEXT("owner clears semantic gate"), Registry.IsActionAllowed(TEXT("Action.Unrelated")));
 	return true;
 }
 

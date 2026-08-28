@@ -22,7 +22,10 @@
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPPlayerController.h"
+#include "Guide/GameXXKGuideRules.h"
 #include "Narrative/GameXXKNarrativeEncounterCatalog.h"
+#include "Narrative/GameXXKStoryCatalog.h"
+#include "Narrative/GameXXKStoryRules.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -3316,6 +3319,103 @@ bool UGameXXKMVPSubsystem::ClearRouteEncounterAcceptanceFixtureForTest(FString& 
 bool UGameXXKMVPSubsystem::StartGame()
 {
 	return StartNewGame();
+}
+
+bool UGameXXKMVPSubsystem::BeginTutorialQuest()
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FGameXXKTutorialQuestProgress& Tutorial = Candidate.TutorialQuest;
+	if (Tutorial.State == EGameXXKTutorialQuestState::Completed)
+	{
+		return true;
+	}
+	if (Tutorial.State == EGameXXKTutorialQuestState::NotStarted)
+	{
+		Tutorial.State = EGameXXKTutorialQuestState::Active;
+		Tutorial.CurrentStepId = TEXT("Tutorial.EnterTown");
+	}
+
+	const FName StoryId(TEXT("Story.Main.XuXiakeTreasure"));
+	const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
+	const FGameXXKStoryDefinition* Story = FGameXXKStoryCatalog::FindStory(StoryId);
+	const FGameXXKTaskDefinition* Task = FGameXXKStoryCatalog::FindTask(TaskId);
+	FString Error;
+	if (!Story || !Task)
+	{
+		return false;
+	}
+	if (!Candidate.NarrativeProgress.StoryProgressById.Contains(StoryId)
+		&& !FGameXXKStoryRules::StartStory(*Story, Candidate.NarrativeProgress, &Error))
+	{
+		return false;
+	}
+	if (!Candidate.NarrativeProgress.TaskProgressById.Contains(TaskId)
+		&& !FGameXXKStoryRules::StartTask(*Task, Candidate.NarrativeProgress, &Error))
+	{
+		return false;
+	}
+	const FGameXXKTaskProgress* TaskProgress =
+		Candidate.NarrativeProgress.TaskProgressById.Find(TaskId);
+	if (!TaskProgress
+		|| TaskProgress->State != EGameXXKTaskState::Active
+		|| (!Candidate.NarrativeProgress.TrackedTaskId.IsNone()
+			&& Candidate.NarrativeProgress.TrackedTaskId != TaskId)
+		|| (Candidate.NarrativeProgress.TrackedTaskId.IsNone()
+			&& !FGameXXKStoryRules::TrackTask(TaskId, Candidate.NarrativeProgress, &Error))
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
+	{
+		return false;
+	}
+
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::CommitGuideProgress(
+	const FGameXXKGuideProgress& GuideProgress,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	Candidate.GuideProgress = GuideProgress;
+	FString ValidationError;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
+	{
+		if (OutError)
+		{
+			*OutError = ValidationError;
+		}
+		return false;
+	}
+
+	const FGameXXKRuntimeState Previous = RuntimeState;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	if (!SaveCurrentGame())
+	{
+		RuntimeState = Previous;
+		if (OutError)
+		{
+			*OutError = GetLastSaveLoadError().ToString();
+			if (OutError->IsEmpty())
+			{
+				*OutError = TEXT("Combat-guide progress could not be saved.");
+			}
+		}
+		return false;
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ResetCombatGuideProgress(FString* OutError)
+{
+	FGameXXKGuideProgress Candidate = RuntimeState.GuideProgress;
+	FGameXXKGuideRules::ResetCombatGuide(Candidate);
+	return CommitGuideProgress(Candidate, OutError);
 }
 
 bool UGameXXKMVPSubsystem::StartNewGame()
