@@ -33,6 +33,45 @@ namespace GameXXKDialogueRulesPrivate
 			&& !Context.StageContractId.IsNone();
 	}
 
+	bool ParseNonNegativeInteger(const FString& Value, int32& OutValue)
+	{
+		return LexTryParseString(OutValue, *Value) && OutValue >= 0;
+	}
+
+	bool ParseIdAndCount(const FString& Value, FName& OutId, int32& OutCount)
+	{
+		FString IdString;
+		FString CountString;
+		if (!Value.Split(TEXT(":"), &IdString, &CountString, ESearchCase::CaseSensitive, ESearchDir::FromEnd)
+			|| IdString.IsEmpty()
+			|| !ParseNonNegativeInteger(CountString, OutCount))
+		{
+			return false;
+		}
+		OutId = FName(*IdString);
+		return !OutId.IsNone();
+	}
+
+	bool ParseTutorialState(const FString& Value, EGameXXKTutorialQuestState& OutState)
+	{
+		if (Value == TEXT("NotStarted"))
+		{
+			OutState = EGameXXKTutorialQuestState::NotStarted;
+			return true;
+		}
+		if (Value == TEXT("Active"))
+		{
+			OutState = EGameXXKTutorialQuestState::Active;
+			return true;
+		}
+		if (Value == TEXT("Completed"))
+		{
+			OutState = EGameXXKTutorialQuestState::Completed;
+			return true;
+		}
+		return false;
+	}
+
 	bool SessionMatchesAsset(
 		const UGameXXKDialogueAsset& Asset,
 		const FGameXXKDialogueSessionState& Session,
@@ -82,7 +121,8 @@ namespace GameXXKDialogueRulesPrivate
 		const UGameXXKDialogueAsset& Asset,
 		FGameXXKDialogueSessionState& Session,
 		FGameXXKDialogueOutput& OutOutput,
-		FString* OutError)
+		FString* OutError,
+		const FGameXXKDialogueConditionContext* ConditionContext)
 	{
 		const FGameXXKDialogueNodeDefinition* Node = Asset.FindNode(Session.CurrentNodeId);
 		if (!Node)
@@ -107,10 +147,27 @@ namespace GameXXKDialogueRulesPrivate
 		case EGameXXKDialogueNodeType::Choice:
 			for (const FGameXXKDialogueOptionDefinition& Option : Node->Options)
 			{
+				bool bConditionsMet = Option.Conditions.IsEmpty();
+				if (!Option.Conditions.IsEmpty() && ConditionContext)
+				{
+					FString ConditionError;
+					bConditionsMet = FGameXXKDialogueRules::EvaluateConditions(
+						Option.Conditions,
+						*ConditionContext,
+						&ConditionError);
+					if (!ConditionError.IsEmpty())
+					{
+						return SetError(OutError, ConditionError);
+					}
+				}
+				if (!bConditionsMet && Option.DisabledReason.IsEmpty())
+				{
+					continue;
+				}
 				FGameXXKDialogueVisibleOption& Visible = CandidateOutput.Options.AddDefaulted_GetRef();
 				Visible.OptionId = Option.OptionId;
 				Visible.Text = Option.Text;
-				Visible.bEnabled = true;
+				Visible.bEnabled = bConditionsMet;
 				Visible.DisabledReason = Option.DisabledReason;
 			}
 			break;
@@ -143,7 +200,8 @@ bool FGameXXKDialogueRules::Start(
 	const FGameXXKDialogueStartContext& Context,
 	FGameXXKDialogueSessionState& InOutSession,
 	FGameXXKDialogueOutput& OutOutput,
-	FString* OutError)
+	FString* OutError,
+	const FGameXXKDialogueConditionContext* ConditionContext)
 {
 	using namespace GameXXKDialogueRulesPrivate;
 	if (InOutSession.bActive)
@@ -172,7 +230,7 @@ bool FGameXXKDialogueRules::Start(
 	Candidate.CurrentNodeId = Asset.EntryNodeId;
 
 	FGameXXKDialogueOutput CandidateOutput;
-	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError))
+	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError, ConditionContext))
 	{
 		return false;
 	}
@@ -186,7 +244,8 @@ bool FGameXXKDialogueRules::CompletePresentedNode(
 	const UGameXXKDialogueAsset& Asset,
 	FGameXXKDialogueSessionState& InOutSession,
 	FGameXXKDialogueOutput& OutOutput,
-	FString* OutError)
+	FString* OutError,
+	const FGameXXKDialogueConditionContext* ConditionContext)
 {
 	using namespace GameXXKDialogueRulesPrivate;
 	if (!SessionMatchesAsset(Asset, InOutSession, OutError))
@@ -213,7 +272,7 @@ bool FGameXXKDialogueRules::CompletePresentedNode(
 	Candidate.CurrentNodeId = Node->NextNodeId;
 
 	FGameXXKDialogueOutput CandidateOutput;
-	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError))
+	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError, ConditionContext))
 	{
 		return false;
 	}
@@ -227,7 +286,8 @@ bool FGameXXKDialogueRules::Choose(
 	const FName OptionId,
 	FGameXXKDialogueSessionState& InOutSession,
 	FGameXXKDialogueOutput& OutOutput,
-	FString* OutError)
+	FString* OutError,
+	const FGameXXKDialogueConditionContext* ConditionContext)
 {
 	using namespace GameXXKDialogueRulesPrivate;
 	if (!SessionMatchesAsset(Asset, InOutSession, OutError))
@@ -252,6 +312,20 @@ bool FGameXXKDialogueRules::Choose(
 	{
 		return SetError(OutError, TEXT("Dialogue option has no next node."));
 	}
+	if (!Option->Conditions.IsEmpty())
+	{
+		if (!ConditionContext)
+		{
+			return SetError(OutError, TEXT("Dialogue option conditions cannot be evaluated without context."));
+		}
+		FString ConditionError;
+		if (!EvaluateConditions(Option->Conditions, *ConditionContext, &ConditionError))
+		{
+			return SetError(
+				OutError,
+				ConditionError.IsEmpty() ? TEXT("Dialogue option is unavailable.") : ConditionError);
+		}
+	}
 
 	FGameXXKDialogueSessionState Candidate = InOutSession;
 	FGameXXKDialogueHistoryEntry HistoryEntry;
@@ -264,7 +338,7 @@ bool FGameXXKDialogueRules::Choose(
 	Candidate.CurrentNodeId = Option->NextNodeId;
 
 	FGameXXKDialogueOutput CandidateOutput;
-	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError))
+	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError, ConditionContext))
 	{
 		return false;
 	}
@@ -281,7 +355,8 @@ bool FGameXXKDialogueRules::Resume(
 	const UGameXXKDialogueAsset& Asset,
 	FGameXXKDialogueSessionState& InOutSession,
 	FGameXXKDialogueOutput& OutOutput,
-	FString* OutError)
+	FString* OutError,
+	const FGameXXKDialogueConditionContext* ConditionContext)
 {
 	using namespace GameXXKDialogueRulesPrivate;
 	if (!SessionMatchesAsset(Asset, InOutSession, OutError))
@@ -291,11 +366,127 @@ bool FGameXXKDialogueRules::Resume(
 
 	FGameXXKDialogueSessionState Candidate = InOutSession;
 	FGameXXKDialogueOutput CandidateOutput;
-	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError))
+	if (!BuildCurrentOutput(Asset, Candidate, CandidateOutput, OutError, ConditionContext))
 	{
 		return false;
 	}
 	InOutSession = MoveTemp(Candidate);
 	OutOutput = MoveTemp(CandidateOutput);
+	return true;
+}
+
+bool FGameXXKDialogueRules::EvaluateConditions(
+	const TMap<FName, FString>& Conditions,
+	const FGameXXKDialogueConditionContext& Context,
+	FString* OutError)
+{
+	using namespace GameXXKDialogueRulesPrivate;
+	ClearError(OutError);
+	for (const TPair<FName, FString>& Pair : Conditions)
+	{
+		const FName Type = Pair.Key;
+		const FString& Value = Pair.Value;
+		if (Type == TEXT("flag"))
+		{
+			if (Value.IsEmpty())
+			{
+				return SetError(OutError, TEXT("flag condition requires an ID."));
+			}
+			if (!Context.Flags.Contains(FName(*Value)))
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("tutorialState"))
+		{
+			EGameXXKTutorialQuestState RequiredState;
+			if (!ParseTutorialState(Value, RequiredState))
+			{
+				return SetError(OutError, TEXT("tutorialState condition has an invalid value."));
+			}
+			if (Context.TutorialState != RequiredState)
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("taskState"))
+		{
+			FName TaskId;
+			int32 RequiredState = 0;
+			if (!ParseIdAndCount(Value, TaskId, RequiredState))
+			{
+				return SetError(OutError, TEXT("taskState condition must be TaskId:nonnegative-state."));
+			}
+			const int32* ActualState = Context.TaskStateValues.Find(TaskId);
+			if (!ActualState || *ActualState != RequiredState)
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("itemAtLeast"))
+		{
+			FName ItemId;
+			int32 RequiredCount = 0;
+			if (!ParseIdAndCount(Value, ItemId, RequiredCount))
+			{
+				return SetError(OutError, TEXT("itemAtLeast condition must be ItemId:nonnegative-count."));
+			}
+			if (Context.ItemCounts.FindRef(ItemId) < RequiredCount)
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("goldAtLeast"))
+		{
+			int32 RequiredGold = 0;
+			if (!ParseNonNegativeInteger(Value, RequiredGold))
+			{
+				return SetError(OutError, TEXT("goldAtLeast condition requires a nonnegative integer."));
+			}
+			if (Context.Gold < RequiredGold)
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("companionUnlocked"))
+		{
+			if (Value.IsEmpty())
+			{
+				return SetError(OutError, TEXT("companionUnlocked condition requires an ID."));
+			}
+			if (!Context.UnlockedCompanionIds.Contains(FName(*Value)))
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("optionSelected"))
+		{
+			if (Value.IsEmpty())
+			{
+				return SetError(OutError, TEXT("optionSelected condition requires an ID."));
+			}
+			if (!Context.SelectedOptionIds.Contains(FName(*Value)))
+			{
+				return false;
+			}
+		}
+		else if (Type == TEXT("nodeSeen"))
+		{
+			if (Value.IsEmpty())
+			{
+				return SetError(OutError, TEXT("nodeSeen condition requires an ID."));
+			}
+			if (!Context.SeenNodeIds.Contains(FName(*Value)))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			return SetError(OutError, FString::Printf(
+				TEXT("Unknown dialogue condition: %s"),
+				*Type.ToString()));
+		}
+	}
 	return true;
 }

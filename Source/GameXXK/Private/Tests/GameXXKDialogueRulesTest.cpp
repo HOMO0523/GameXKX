@@ -163,4 +163,142 @@ bool FGameXXKDialogueRunnerBranchingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDialogueConditionsAndOutcomesTest,
+	"GameXXK.Dialogue.Core.ConditionsAndOutcomes",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDialogueConditionsAndOutcomesTest::RunTest(const FString& Parameters)
+{
+	FGameXXKDialogueConditionContext Context;
+	Context.Flags.Add(TEXT("Flag.IntroSeen"));
+	Context.ItemCounts.Add(TEXT("Item.Test.Map"), 1);
+	Context.Gold = 5000;
+	Context.UnlockedCompanionIds.Add(TEXT("Companion.Blade"));
+	Context.SelectedOptionIds.Add(TEXT("prior_choice"));
+	Context.SeenNodeIds.Add(TEXT("prior_node"));
+	Context.TutorialState = EGameXXKTutorialQuestState::Active;
+	Context.TaskStateValues.Add(TEXT("Task.Test"), 2);
+
+	TMap<FName, FString> AllConditions;
+	AllConditions.Add(TEXT("flag"), TEXT("Flag.IntroSeen"));
+	AllConditions.Add(TEXT("tutorialState"), TEXT("Active"));
+	AllConditions.Add(TEXT("taskState"), TEXT("Task.Test:2"));
+	AllConditions.Add(TEXT("itemAtLeast"), TEXT("Item.Test.Map:1"));
+	AllConditions.Add(TEXT("goldAtLeast"), TEXT("5000"));
+	AllConditions.Add(TEXT("companionUnlocked"), TEXT("Companion.Blade"));
+	AllConditions.Add(TEXT("optionSelected"), TEXT("prior_choice"));
+	AllConditions.Add(TEXT("nodeSeen"), TEXT("prior_node"));
+
+	FString Error;
+	TestTrue(FString::Printf(TEXT("all registered conditions pass: %s"), *Error),
+		FGameXXKDialogueRules::EvaluateConditions(AllConditions, Context, &Error));
+	TestTrue(TEXT("successful evaluation clears error"), Error.IsEmpty());
+
+	Context.Gold = 4999;
+	TestFalse(TEXT("5000-gold condition is unmet"),
+		FGameXXKDialogueRules::EvaluateConditions(AllConditions, Context, &Error));
+	TestTrue(TEXT("unmet valid condition is not a schema error"), Error.IsEmpty());
+
+	TMap<FName, FString> UnknownCondition;
+	UnknownCondition.Add(TEXT("unknownCondition"), TEXT("anything"));
+	TestFalse(TEXT("unknown condition fails closed"),
+		FGameXXKDialogueRules::EvaluateConditions(UnknownCondition, Context, &Error));
+	TestTrue(TEXT("unknown condition reports an error"), Error.Contains(TEXT("unknownCondition")));
+
+	UGameXXKDialogueAsset* Asset = NewObject<UGameXXKDialogueAsset>();
+	Asset->DialogueId = TEXT("Dialogue.Test.Conditions");
+	Asset->DialogueVersion = 1;
+	Asset->EntryNodeId = TEXT("start");
+
+	FGameXXKDialogueNodeDefinition Start;
+	Start.NodeId = TEXT("start");
+	Start.Type = EGameXXKDialogueNodeType::Line;
+	Start.NextNodeId = TEXT("choice");
+	Asset->Nodes.Add(Start);
+
+	FGameXXKDialogueNodeDefinition Choice;
+	Choice.NodeId = TEXT("choice");
+	Choice.Type = EGameXXKDialogueNodeType::Choice;
+
+	FGameXXKDialogueOptionDefinition Available;
+	Available.OptionId = TEXT("available");
+	Available.Text = FText::FromString(TEXT("可选"));
+	Available.OutcomeId = TEXT("Outcome.Test.Available");
+	Available.NextNodeId = TEXT("available.line");
+	Choice.Options.Add(Available);
+
+	FGameXXKDialogueOptionDefinition Hidden;
+	Hidden.OptionId = TEXT("hidden");
+	Hidden.Text = FText::FromString(TEXT("隐藏"));
+	Hidden.OutcomeId = TEXT("Outcome.Test.Hidden");
+	Hidden.NextNodeId = TEXT("hidden.line");
+	Hidden.Conditions.Add(TEXT("goldAtLeast"), TEXT("5000"));
+	Choice.Options.Add(Hidden);
+
+	FGameXXKDialogueOptionDefinition Disabled = Hidden;
+	Disabled.OptionId = TEXT("disabled");
+	Disabled.Text = FText::FromString(TEXT("置灰"));
+	Disabled.OutcomeId = TEXT("Outcome.Test.Disabled");
+	Disabled.NextNodeId = TEXT("disabled.line");
+	Disabled.DisabledReason = FText::FromString(TEXT("金币不足"));
+	Choice.Options.Add(Disabled);
+	Asset->Nodes.Add(Choice);
+
+	for (const FName LineId : {FName(TEXT("available.line")), FName(TEXT("hidden.line")), FName(TEXT("disabled.line"))})
+	{
+		FGameXXKDialogueNodeDefinition Line;
+		Line.NodeId = LineId;
+		Line.Type = EGameXXKDialogueNodeType::Line;
+		Line.NextNodeId = FName(*(LineId.ToString() + TEXT(".end")));
+		Asset->Nodes.Add(Line);
+
+		FGameXXKDialogueNodeDefinition End;
+		End.NodeId = Line.NextNodeId;
+		End.Type = EGameXXKDialogueNodeType::End;
+		End.EndOutcomeId = FName(*(FString(TEXT("Outcome.Test.Done.")) + LineId.ToString()));
+		Asset->Nodes.Add(End);
+	}
+
+	FDataValidationContext ValidContext;
+	TestEqual(TEXT("unique outcomes validate"), Asset->IsDataValid(ValidContext), EDataValidationResult::Valid);
+
+	FGameXXKDialogueStartContext StartContext;
+	StartContext.StoryId = TEXT("Story.Test");
+	StartContext.TaskId = TEXT("Task.Test");
+	StartContext.StepId = TEXT("Step.Test");
+	StartContext.SequenceId = TEXT("Sequence.Test");
+	StartContext.StageContractId = TEXT("Stage.Test");
+
+	FGameXXKDialogueSessionState Session;
+	FGameXXKDialogueOutput Output;
+	Context.Gold = 4999;
+	TestTrue(TEXT("conditional dialogue starts"),
+		FGameXXKDialogueRules::Start(*Asset, StartContext, Session, Output, &Error, &Context));
+	TestTrue(TEXT("conditional choice reached"),
+		FGameXXKDialogueRules::CompletePresentedNode(*Asset, Session, Output, &Error, &Context));
+	TestEqual(TEXT("hidden option omitted and disabled retained"), Output.Options.Num(), 2);
+	const FGameXXKDialogueVisibleOption* DisabledView = Output.Options.FindByPredicate(
+		[](const FGameXXKDialogueVisibleOption& Option)
+		{
+			return Option.OptionId == TEXT("disabled");
+		});
+	TestTrue(TEXT("disabled option is visible but disabled"),
+		DisabledView && !DisabledView->bEnabled && DisabledView->DisabledReason.ToString() == TEXT("金币不足"));
+
+	TestFalse(TEXT("disabled option cannot be chosen"),
+		FGameXXKDialogueRules::Choose(*Asset, TEXT("disabled"), Session, Output, &Error, &Context));
+	TestEqual(TEXT("failed choice leaves node"), Session.CurrentNodeId, FName(TEXT("choice")));
+
+	TestTrue(TEXT("available choice succeeds"),
+		FGameXXKDialogueRules::Choose(*Asset, TEXT("available"), Session, Output, &Error, &Context));
+	TestEqual(TEXT("choice outcome returned"), Output.OutcomeId, FName(TEXT("Outcome.Test.Available")));
+
+	Asset->Nodes[1].Options[1].OutcomeId = Asset->Nodes[1].Options[0].OutcomeId;
+	FDataValidationContext DuplicateOutcomeContext;
+	TestEqual(TEXT("duplicate outcomes reject"),
+		Asset->IsDataValid(DuplicateOutcomeContext), EDataValidationResult::Invalid);
+	return true;
+}
+
 #endif
