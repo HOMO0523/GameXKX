@@ -8,6 +8,7 @@
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopNarrativeLayerWidget.h"
+#include "UI/GameXXKDesktopNarrativeStagePresenterWidget.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKDialogueHistoryWidget.h"
 #include "UI/GameXXKDialoguePanelWidget.h"
@@ -137,6 +138,55 @@ bool FGameXXKDesktopNarrativeStandaloneLayerTest::RunTest(const FString& Paramet
 	}
 	TestNull(TEXT("unknown semantic slot does not alias a real container"),
 		Layer->FindNarrativeSlot(TEXT("Missing")));
+	for (const EGameXXKDesktopNarrativeSlot Slot : {
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeSlot::Center,
+		EGameXXKDesktopNarrativeSlot::Right,
+		EGameXXKDesktopNarrativeSlot::Prop,
+		EGameXXKDesktopNarrativeSlot::Vfx})
+	{
+		UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+			Layer->GetStagePresenter(Slot);
+		TestNotNull(TEXT("semantic slot owns a production stage presenter"), Presenter);
+		TestTrue(TEXT("semantic stage presenter owns ready child content"),
+			Presenter && Presenter->IsPresentationReady());
+	}
+	UGameXXKDesktopNarrativeStagePresenterWidget* const LeftStage =
+		Layer->GetStagePresenter(EGameXXKDesktopNarrativeSlot::Left);
+	Layer->ApplyStageRolePresentation(
+		TEXT("Hero"),
+		TEXT("Character.Hero"),
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeFacing::Right,
+		EGameXXKDesktopNarrativeRoleActionState::Idle,
+		NAME_None,
+		true);
+	TestEqual(TEXT("visible role occupies its real target presenter"),
+		LeftStage ? LeftStage->GetPresentedRoleId() : NAME_None,
+		FName(TEXT("Hero")));
+	Layer->ApplyStageRolePresentation(
+		TEXT("Guide"),
+		TEXT("Character.Guide"),
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeFacing::Right,
+		EGameXXKDesktopNarrativeRoleActionState::Idle,
+		NAME_None,
+		false);
+	TestEqual(TEXT("invisible role update cannot clear an unrelated target occupant"),
+		LeftStage ? LeftStage->GetPresentedRoleId() : NAME_None,
+		FName(TEXT("Hero")));
+	Layer->ApplyStageRolePresentation(
+		TEXT("Guide"),
+		TEXT("Character.Guide"),
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeFacing::Right,
+		EGameXXKDesktopNarrativeRoleActionState::Idle,
+		NAME_None,
+		true);
+	TestEqual(TEXT("visible same-slot role explicitly replaces the occupant"),
+		LeftStage ? LeftStage->GetPresentedRoleId() : NAME_None,
+		FName(TEXT("Guide")));
+	Layer->ResetStagePresentation();
 
 	for (const FVector2D HostSize : {
 		FVector2D(1280.0f, 720.0f),

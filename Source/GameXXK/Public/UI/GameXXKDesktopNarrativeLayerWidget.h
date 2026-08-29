@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "UI/GameXXKDesktopNarrativeStagePresenterWidget.h"
 #include "GameXXKDesktopNarrativeLayerWidget.generated.h"
 
 class UButton;
@@ -64,6 +65,21 @@ public:
 	UGameXXKDialoguePanelWidget* GetDialoguePanel() const { return DialoguePanel; }
 	UGameXXKDialogueHistoryWidget* GetDialogueHistory() const { return DialogueHistory; }
 	bool IsPresentationReady() const;
+	UGameXXKDesktopNarrativeStagePresenterWidget* GetStagePresenter(
+		EGameXXKDesktopNarrativeSlot SemanticSlot) const;
+	void ResetStagePresentation();
+	void ApplyStageRolePresentation(
+		FName RoleId,
+		FName ResourceId,
+		EGameXXKDesktopNarrativeSlot SemanticSlot,
+		EGameXXKDesktopNarrativeFacing Facing,
+		EGameXXKDesktopNarrativeRoleActionState ActionState,
+		FName ActionId,
+		bool bVisible);
+	void ApplyStagePropPresentation(FName ResourceId);
+	void ApplyStageVfxPresentation(FName ResourceId);
+	void ApplyStageFlashPresentation(FName ResourceId);
+	void ApplyStageToastPresentation(FName ResourceId);
 
 	void ConstructForTest();
 	UWidget* GetNamedWidgetForTest(FName WidgetName) const;
@@ -104,6 +120,9 @@ private:
 
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UCanvasPanel>> NarrativeSlots;
+
+	UPROPERTY(Transient)
+	TMap<FName, TObjectPtr<UGameXXKDesktopNarrativeStagePresenterWidget>> StagePresenters;
 
 	FGameXXKDesktopNarrativeLayout ResolvedLayout;
 	FGameXXKDesktopNarrativePauseRequestedDelegate PauseRequestedDelegate;

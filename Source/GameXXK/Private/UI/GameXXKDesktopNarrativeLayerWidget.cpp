@@ -1,5 +1,6 @@
 #include "UI/GameXXKDesktopNarrativeLayerWidget.h"
 
+#include "Algo/AllOf.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -45,6 +46,25 @@ namespace
 			Slot->SetPosition(FVector2D(Rect.X, Rect.Y));
 			Slot->SetSize(FVector2D(Rect.Z, Rect.W));
 			Slot->SetZOrder(ZOrder);
+		}
+	}
+
+	FName NarrativeSlotName(const EGameXXKDesktopNarrativeSlot Slot)
+	{
+		switch (Slot)
+		{
+		case EGameXXKDesktopNarrativeSlot::Left:
+			return TEXT("Left");
+		case EGameXXKDesktopNarrativeSlot::Center:
+			return TEXT("Center");
+		case EGameXXKDesktopNarrativeSlot::Right:
+			return TEXT("Right");
+		case EGameXXKDesktopNarrativeSlot::Prop:
+			return TEXT("Prop");
+		case EGameXXKDesktopNarrativeSlot::Vfx:
+			return TEXT("Vfx");
+		default:
+			return NAME_None;
 		}
 	}
 }
@@ -151,15 +171,35 @@ void UGameXXKDesktopNarrativeLayerWidget::BuildProgrammaticLayout()
 	StageCanvas->AddChildToCanvas(StageBacking);
 
 	NarrativeSlots.Reset();
-	for (const FName SlotName : {
-		FName(TEXT("Vfx")), FName(TEXT("Left")), FName(TEXT("Center")),
-		FName(TEXT("Right")), FName(TEXT("Prop"))})
+	StagePresenters.Reset();
+	for (const EGameXXKDesktopNarrativeSlot SemanticSlot : {
+		EGameXXKDesktopNarrativeSlot::Vfx,
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeSlot::Center,
+		EGameXXKDesktopNarrativeSlot::Right,
+		EGameXXKDesktopNarrativeSlot::Prop})
 	{
+		const FName SlotName = NarrativeSlotName(SemanticSlot);
 		UCanvasPanel* const SlotPanel = WidgetTree->ConstructWidget<UCanvasPanel>(
 			UCanvasPanel::StaticClass(), *FString::Printf(TEXT("DesktopNarrative%sSlot"), *SlotName.ToString()));
 		SlotPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		StageCanvas->AddChildToCanvas(SlotPanel);
 		NarrativeSlots.Add(SlotName, SlotPanel);
+		UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+			WidgetTree->ConstructWidget<UGameXXKDesktopNarrativeStagePresenterWidget>(
+				UGameXXKDesktopNarrativeStagePresenterWidget::StaticClass(),
+				*FString::Printf(TEXT("DesktopNarrative%sPresenter"), *SlotName.ToString()));
+		if (Presenter)
+		{
+			Presenter->ConfigureSlot(SemanticSlot);
+			Presenter->ResetPresentation();
+			if (UCanvasPanelSlot* const PresenterSlot = SlotPanel->AddChildToCanvas(Presenter))
+			{
+				PresenterSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+				PresenterSlot->SetOffsets(FMargin(0.0f));
+			}
+			StagePresenters.Add(SlotName, Presenter);
+		}
 	}
 
 	USafeZone* const DialogueSafeArea = WidgetTree->ConstructWidget<USafeZone>(
@@ -199,7 +239,6 @@ void UGameXXKDesktopNarrativeLayerWidget::BuildProgrammaticLayout()
 	DialogueReferenceBox->SetHeightOverride(ReferenceHeight);
 	DialoguePanel = WidgetTree->ConstructWidget<UGameXXKDialoguePanelWidget>(
 		UGameXXKDialoguePanelWidget::StaticClass(), TEXT("DesktopNarrativeDialoguePanel"));
-	DialoguePanel->ClearPresentation();
 	DialogueReferenceBox->SetContent(DialoguePanel);
 	DialoguePresenterHost->SetContent(DialogueReferenceBox);
 	NarrativeRoot->AddChildToCanvas(DialoguePresenterHost);
@@ -284,14 +323,6 @@ void UGameXXKDesktopNarrativeLayerWidget::ShowLayer()
 
 void UGameXXKDesktopNarrativeLayerWidget::HideLayer()
 {
-	if (DialoguePanel)
-	{
-		DialoguePanel->ClearPresentation();
-	}
-	if (DialogueHistory)
-	{
-		DialogueHistory->HideHistory();
-	}
 	if (GetVisibility() != ESlateVisibility::Collapsed)
 	{
 		SetVisibility(ESlateVisibility::Collapsed);
@@ -312,13 +343,21 @@ bool UGameXXKDesktopNarrativeLayerWidget::IsPresentationReady() const
 		&& StageBacking
 		&& DialoguePanel
 		&& DialogueHistory
+		&& StagePresenters.Num() == 5
 		&& DialoguePanel->GetParent()
 		&& DialogueHistory->GetParent()
 		&& Cast<UCanvasPanelSlot>(StageCanvas->Slot)
 		&& Cast<UCanvasPanelSlot>(DialogueSafeArea ? DialogueSafeArea->Slot : nullptr)
 		&& Cast<UCanvasPanelSlot>(PauseSafeArea ? PauseSafeArea->Slot : nullptr)
 		&& Cast<UCanvasPanelSlot>(DialoguePresenterHost ? DialoguePresenterHost->Slot : nullptr)
-		&& Cast<UCanvasPanelSlot>(HistoryPresenterHost ? HistoryPresenterHost->Slot : nullptr);
+		&& Cast<UCanvasPanelSlot>(HistoryPresenterHost ? HistoryPresenterHost->Slot : nullptr)
+		&& Algo::AllOf(StagePresenters, [](const TPair<FName,
+			TObjectPtr<UGameXXKDesktopNarrativeStagePresenterWidget>>& Pair)
+			{
+				return Pair.Value
+					&& Pair.Value->GetParent()
+					&& Pair.Value->IsPresentationReady();
+			});
 }
 
 bool UGameXXKDesktopNarrativeLayerWidget::IsLayerVisible() const
@@ -338,6 +377,112 @@ UCanvasPanel* UGameXXKDesktopNarrativeLayerWidget::FindNarrativeSlot(
 {
 	const TObjectPtr<UCanvasPanel>* const FoundSlot = NarrativeSlots.Find(SlotName);
 	return FoundSlot ? FoundSlot->Get() : nullptr;
+}
+
+UGameXXKDesktopNarrativeStagePresenterWidget*
+UGameXXKDesktopNarrativeLayerWidget::GetStagePresenter(
+	const EGameXXKDesktopNarrativeSlot SemanticSlot) const
+{
+	const TObjectPtr<UGameXXKDesktopNarrativeStagePresenterWidget>* const Found =
+		StagePresenters.Find(NarrativeSlotName(SemanticSlot));
+	return Found ? Found->Get() : nullptr;
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ResetStagePresentation()
+{
+	for (const TPair<FName, TObjectPtr<UGameXXKDesktopNarrativeStagePresenterWidget>>& Pair :
+		StagePresenters)
+	{
+		if (Pair.Value)
+		{
+			Pair.Value->ResetPresentation();
+		}
+	}
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ApplyStageRolePresentation(
+	const FName RoleId,
+	const FName ResourceId,
+	const EGameXXKDesktopNarrativeSlot SemanticSlot,
+	const EGameXXKDesktopNarrativeFacing Facing,
+	const EGameXXKDesktopNarrativeRoleActionState ActionState,
+	const FName ActionId,
+	const bool bVisible)
+{
+	if (!bVisible)
+	{
+		for (const EGameXXKDesktopNarrativeSlot RoleSlot : {
+			EGameXXKDesktopNarrativeSlot::Left,
+			EGameXXKDesktopNarrativeSlot::Center,
+			EGameXXKDesktopNarrativeSlot::Right})
+		{
+			if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+				GetStagePresenter(RoleSlot);
+				Presenter && Presenter->GetPresentedRoleId() == RoleId)
+			{
+				Presenter->ClearRole();
+			}
+		}
+		return;
+	}
+	for (const EGameXXKDesktopNarrativeSlot RoleSlot : {
+		EGameXXKDesktopNarrativeSlot::Left,
+		EGameXXKDesktopNarrativeSlot::Center,
+		EGameXXKDesktopNarrativeSlot::Right})
+	{
+		if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+			GetStagePresenter(RoleSlot);
+			Presenter
+				&& (Presenter->GetPresentedRoleId() == RoleId || RoleSlot == SemanticSlot))
+		{
+			Presenter->ClearRole();
+		}
+	}
+	if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+		GetStagePresenter(SemanticSlot))
+	{
+		Presenter->PresentRole(RoleId, ResourceId, Facing, ActionState, ActionId);
+	}
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ApplyStagePropPresentation(
+	const FName ResourceId)
+{
+	if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+		GetStagePresenter(EGameXXKDesktopNarrativeSlot::Prop))
+	{
+		Presenter->PresentProp(ResourceId);
+	}
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ApplyStageVfxPresentation(
+	const FName ResourceId)
+{
+	if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+		GetStagePresenter(EGameXXKDesktopNarrativeSlot::Vfx))
+	{
+		Presenter->PresentVfx(ResourceId);
+	}
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ApplyStageFlashPresentation(
+	const FName ResourceId)
+{
+	if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+		GetStagePresenter(EGameXXKDesktopNarrativeSlot::Vfx))
+	{
+		Presenter->PresentFlash(ResourceId);
+	}
+}
+
+void UGameXXKDesktopNarrativeLayerWidget::ApplyStageToastPresentation(
+	const FName ResourceId)
+{
+	if (UGameXXKDesktopNarrativeStagePresenterWidget* const Presenter =
+		GetStagePresenter(EGameXXKDesktopNarrativeSlot::Vfx))
+	{
+		Presenter->PresentToast(ResourceId);
+	}
 }
 
 UWidget* UGameXXKDesktopNarrativeLayerWidget::GetNamedWidgetForTest(
