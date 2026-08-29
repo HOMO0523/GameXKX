@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the 3D-town-dependent story entry and legacy `I/Q/C` windows with a Workbench task drawer and a screen-level 2D Narrative Layer that can always pause safely, replay from the authored segment entry, and claim material rewards later.
+**Goal:** Replace the 3D-town-dependent story entry and legacy `I/Q/C` windows with a Workbench task drawer and a screen-level 2D Narrative Layer, then deliver the connected MVP line `河中旧图 → 图中试炼 → 天台初行` into the existing Normal 1-1 idle loop.
 
 **Architecture:** The existing Desktop Overlay remains the only desktop native window. Workbench, StoryTaskDrawer, and NarrativeLayer become sibling presentation layers; pure StoryTask rules build actionable/claimable views and atomically separate story completion from material reward claiming. PlayerController owns semantic input routing and the fail-safe abort path, while Dialogue/Narrative coordinators remain map- and widget-geometry-independent.
 
@@ -99,7 +99,7 @@ GameXXK.DesktopTraining.Workbench.WindowPresentationLifecycle
 GameXXK.DesktopTraining.Workbench.WindowPresentationDisabledWorkbenchRoute
 ```
 
-Expected: 4 discovered, 4 succeeded, zero warning/error. If the fourth test has never been observed RED, temporarily restore the unconditional fallback line, run it once to capture actual `ViewportFallback`, then reapply the production-used `ResolveWindowPresentation(..., false, false)` fix.
+Expected: 4 discovered, 4 succeeded, zero warning/error. If the fourth test has never been observed RED, temporarily restore the unconditional fallback line, run it once to capture actual `ViewportFallback`, then reapply the production-used `ResolveWindowPresentation(bDesktopMap, ActiveScreen, false, false)` fix.
 
 - [ ] **Step 3: Cold-build GREEN**
 
@@ -153,6 +153,8 @@ TestTrue(TEXT("normal story completion commits plot results atomically"),
 TestTrue(TEXT("YueBai meeting is a story flag"), Story.Flags.Contains(TEXT("StoryFlag.Met.YueBai")));
 TestEqual(TEXT("story completion waits for reward claim"), Task.State, EGameXXKTaskState::Completed);
 TestFalse(TEXT("story completion does not commit material reward"), Task.bRewardCommitted);
+TestTrue(TEXT("combat basics opens before prologue reward claim"),
+    Subsystem->IsNarrativeTaskAvailable(TEXT("Task.Main.XuXiake.CombatBasics")));
 TestEqual(TEXT("NPC configuration is unchanged"),
     ExportRoster(State.CardRun.CompanionRoster),
     BeforeRosterText);
@@ -190,8 +192,12 @@ FText Title;
 FText Summary;
 FText Description;
 int32 AuthoredOrder = 0;
+FName RewardId;
 FGameXXKNarrativeTaskRewardDefinition MaterialReward;
 TSet<FName> CompletionStoryFlags;
+
+// FGameXXKTaskStepDefinition
+FName ObjectiveId;
 
 // FGameXXKStoryProgress
 TSet<FName> Flags;
@@ -200,7 +206,15 @@ TSet<FName> Flags;
 int64 CompletedAtUtcTicks = 0;
 ```
 
-Do not add NPC unlock/ownership fields.
+Do not add NPC unlock/ownership fields. Define exactly three tasks in `Story.Main.XuXiakeTreasure`:
+
+```text
+Task.Main.XuXiake.Prologue       / Reward.Main.XuXiake.Prologue
+Task.Main.XuXiake.CombatBasics   / Reward.Main.XuXiake.CombatBasics
+Task.Main.XuXiake.FirstJourney   / Reward.Main.XuXiake.FirstJourney
+```
+
+Task prerequisites use story completion/availability, not material reward receipt. Prologue completion opens CombatBasics; CombatBasics completion opens FirstJourney even when earlier tasks remain Completed and unclaimed.
 
 - [ ] **Step 4: Implement atomic state transitions**
 
@@ -260,12 +274,34 @@ Define:
 
 ```cpp
 enum class EGameXXKStoryTaskDrawerTab : uint8 { Actionable, Claimable };
-struct FGameXXKStoryTaskDrawerEntryView { FName TaskId; FText Title; FText Summary; FText Description; FText ActionLabel; ... };
+enum class EGameXXKStoryTaskContinuation : uint8 { NarrativeReplay, RouteResume, ObjectiveResume };
+struct FGameXXKStoryTaskDrawerEntryView
+{
+    FName TaskId;
+    EGameXXKTaskState State = EGameXXKTaskState::Locked;
+    FText Title;
+    FText Summary;
+    FText Description;
+    FText ActionLabel;
+    EGameXXKStoryTaskContinuation Continuation = EGameXXKStoryTaskContinuation::NarrativeReplay;
+    FGameXXKNarrativeTaskRewardDefinition MaterialReward;
+    int32 AuthoredOrder = 0;
+    int64 CompletedAtUtcTicks = 0;
+};
 struct FGameXXKStoryTaskDrawerUiState { EGameXXKStoryTaskDrawerTab ActiveTab; FName SelectedActionableTaskId; FName SelectedClaimableTaskId; float ActionableScrollOffset; float ClaimableScrollOffset; };
-struct FGameXXKStoryTaskDrawerSnapshot { TArray<...> Actionable; TArray<...> Claimable; bool bHasClaimableRedDot; ... };
+struct FGameXXKStoryTaskDrawerSnapshot
+{
+    TArray<FGameXXKStoryTaskDrawerEntryView> Actionable;
+    TArray<FGameXXKStoryTaskDrawerEntryView> Claimable;
+    FName SelectedActionableTaskId;
+    FName SelectedClaimableTaskId;
+    bool bHasClaimableRedDot = false;
+};
 ```
 
 Sorting must exactly follow the spec and never mutate RuntimeState.
+
+For Active entries derive `Continuation` from the current authored Task Step and runtime session: paused/incomplete Sequence → NarrativeReplay; active tutorial route → RouteResume; FirstJourney objective/Guide/Travel → ObjectiveResume. The visible label remains“继续剧情”.
 
 - [ ] **Step 4: Run GREEN and commit the isolated rules/test files**
 
@@ -558,7 +594,7 @@ Run abort recovery, Dialogue, Narrative, save migration and Workbench tests. Exp
 
 ---
 
-### Task 10: Route the real story button, extend window ownership and verify the complete player flow
+### Task 10: Route the real three-task story line, extend window ownership and verify the complete player flow
 
 **Files:**
 - Modify: `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h`
@@ -568,22 +604,32 @@ Run abort recovery, Dialogue, Narrative, save migration and Workbench tests. Exp
 - Modify: `SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.001.dialogue.json`
 - Modify: `SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.CarriageArrival.sequence.json`
 - Modify: `SourceAssets/Narrative/runtime-catalog.json`
+- Create: `SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.CombatBriefing.sequence.json`
+- Create: `SourceAssets/Narrative/Sequences/Sequence.Main.XuXiake.FirstJourneyBriefing.sequence.json`
+- Create: `SourceAssets/Narrative/Guides/Guide.Desktop.FirstJourney.guide.json`
 - Create: `Content/Python/gamexxk_probe_desktop_story_flow.py`
 - Create: `scripts/run_desktop_story_flow_mcp.py`
 
 - [ ] **Step 1: Write failing end-to-end Automation contracts**
 
-Require real button routing:
+Require the complete three-task routing:
 
 ```text
 expand Tab → click story button → StoryTasks open in warehouse region
-→ accept task → Workbench layer hidden → Narrative layer active
-→ Space/choices complete story → plot flags/next step committed
-→ folded Workbench returns → claim red dot visible
-→ reopen StoryTasks/Claimable → claim reward once
+→ accept Prologue → Workbench layer hidden → Narrative layer active
+→ Space/choices complete Prologue → Met.YueBai + CombatBasics available
+→ Prologue claim red dot visible without blocking CombatBasics
+→ accept CombatBasics → 2D briefing → fixed tutorial route
+→ settlement → CombatBasicsCompleted + FirstJourney available
+→ accept FirstJourney → 2D briefing → guided Tab/Training/Normal1-1/Travel
+→ first real Normal1-1 encounter completes and returns Walking
+→ FirstJourneyStarted + claim red dot while Travel keeps running
+→ claim each material reward exactly once
 ```
 
 Assert no map travel, no 3D SceneProfile requirement, no NPC unlock mutation, and no viewport Dialogue presenter.
+
+Add continuation assertions: paused Prologue restarts its Sequence entry; active CombatBasics restores the exact tutorial route checkpoint; active FirstJourney opens the Training page and resumes its saved Guide/objective without replaying either briefing or resetting Travel.
 
 - [ ] **Step 2: Extend the window resolver RED/GREEN**
 
@@ -598,9 +644,11 @@ Desktop map + Workbench hidden + Narrative inactive
 
 PlayerTick reassert conditions use Overlay ownership (`Workbench visible || Narrative active`), not only Workbench visibility.
 
-- [ ] **Step 3: Author/import the first desktop story**
+- [ ] **Step 3: Author/import the complete MVP task line**
 
-Encode the approved prologue text in `Dialogue.Tutorial.001`. Convert its Sequence from world/SceneProfile commands to typed desktop stage slots. Completion writes `StoryFlag.Met.YueBai`, advances the authored main step and marks the task Completed; it never unlocks an NPC or auto-grants material reward.
+Encode the approved prologue text in `Dialogue.Tutorial.001` and convert its Sequence from world/SceneProfile commands to typed desktop stage slots. Add short 2D briefings for CombatBasics and FirstJourney. Completion writes only the corresponding story flags, authored task availability and Completed state; it never unlocks an NPC or auto-grants material reward.
+
+Wire the existing fixed route to `Task.Main.XuXiake.CombatBasics`. Create `Guide.Desktop.FirstJourney` with exact semantic targets for Tab, Training, Normal difficulty, Stage.Normal.1-1 and Travel. NewPlayer uses Forced clicks for those four entry steps and Soft encounter explanation; ExperiencedPlayer uses Soft-only guidance. Complete `Objective.Main.XuXiake.FirstJourney.Encounter` only on a real Normal 1-1 `EncounterCompleted` transition back to Walking, and leave Travel running.
 
 Run validators before import. Pure art/flipbook work does not use TDD; verify dimensions, frame counts, alpha edges, hashes and contact sheets deterministically.
 
@@ -620,7 +668,7 @@ Actions are bounded: expand, open tasks, select, primary action, advance, option
 
 - [ ] **Step 5: Verify pause/restart and shutdown**
 
-Pause at three boundaries, verify folded desktop, then click Continue and require replay from segment entry. Close/restart during active narrative and require no auto-entry. Complete without claim, restart and require only the claim red dot.
+Pause Prologue at three boundaries, verify folded desktop, then click Continue and require replay from segment entry. Close/restart during active narrative and require no auto-entry. Complete each task without claim and verify the next task is already actionable while every unclaimed task remains under the red-dot tab. Restart with Completed tasks and require only claim indicators, never automatic Narrative or route entry.
 
 - [ ] **Step 6: Verify window and visual presentation**
 

@@ -108,7 +108,15 @@ enum class EGameXXKDesktopTrainingLeftPanel : uint8
 | `Locked` | 不显示 | 无 |
 | `Rewarded` | 不显示 | 无 |
 
-“继续剧情”表示继续该任务，但按本规格从当前剧情段入口重新播放，不从暂停节点恢复。
+“继续剧情”表示继续该任务的权威当前活动；只有被暂停的 Narrative 段从该段入口重新播放，不从暂停节点恢复。
+
+Active 任务的固定按钮文案始终为“继续剧情”，实际路由由权威 Task Step 决定：
+
+- Narrative Step 被暂停：从当前剧情段入口重播。
+- Tutorial Route 已进入：恢复当前固定路线进度，不重播 2D briefing。
+- FirstJourney Objective 已进入：打开 Workbench 历练页并恢复未完成 Guide/目标监听，不重播 2D briefing。
+
+路线节点、战斗、游历和目标计数不因“继续剧情”回滚；只有尚未正常完成的 Narrative 段重置到入口。
 
 ### 4.2 排序与恢复
 
@@ -313,3 +321,106 @@ Desktop map + NarrativeLayerActive + Overlay attached
 - 显式 Legacy 3D 城镇仍可进入和退出，但不再拥有默认剧情任务入口。
 - 冷 Editor/Game UBT、聚焦 Automation、真实 `-game` 输入/窗口取证和 luna 视觉检查通过。
 
+## 12. 当前 MVP 主线任务线
+
+本轮主线做到“序章剧情 → 固定战斗教学路线 → 普通 1-1 第一次游历遭遇”，完成后玩家正式进入现有挂机/挑战循环。任务线拆成三个独立 Task，分别进入待领取；前一任务未领取物质报酬不阻塞后一任务开放。
+
+```text
+Story.Main.XuXiakeTreasure
+├─ Task.Main.XuXiake.Prologue       河中旧图
+├─ Task.Main.XuXiake.CombatBasics   图中试炼
+└─ Task.Main.XuXiake.FirstJourney   天台初行
+```
+
+### 12.1 河中旧图
+
+稳定入口：
+
+```text
+Task.Main.XuXiake.Prologue
+Step.Main.XuXiake.RiverScroll
+Sequence.Main.XuXiake.CarriageArrival
+Dialogue.Tutorial.001
+```
+
+流程：
+
+1. 玩家在任务抽屉点击“接取任务”。
+2. 进入屏幕级 2D Narrative Layer，播放马车、河中旧图、月白登场与正式对话。
+3. 首次正式台词提示一次“空格/点击继续”；首次选择高亮有效选项；暂停按钮始终可用。
+4. 正常播完后写入 `StoryFlag.Met.YueBai`，开放`Task.Main.XuXiake.CombatBasics`，当前任务进入 Completed。
+5. NPC、伙伴和编队状态均不改变。
+6. `Reward.Main.XuXiake.Prologue`在任务抽屉手动领取；剧情中的河图表现与背包中的物质报酬分离。
+
+暂停后从本段开头重播；已读提示不重复弹出，剧情本身仍完整重播。
+
+### 12.2 图中试炼
+
+稳定入口：
+
+```text
+Task.Main.XuXiake.CombatBasics
+Step.Main.XuXiake.CombatBriefing
+Sequence.Main.XuXiake.CombatBriefing
+Route.Tutorial.CombatBasics
+```
+
+流程：
+
+1. 玩家接取任务后先播放一段 2D 说明。
+2. 首次进入路线时询问一次“我是新手，继续 / 我是老玩家，跳过引导”。
+3. 无论选择哪项，都完整游玩固定单线路线：
+
+```text
+Tutorial.Start
+→ Tutorial.Battle.0-1
+→ Tutorial.Merchant.0-1
+→ Tutorial.Event.0-1
+→ Tutorial.Camp.0-1
+→ Tutorial.Chest.0-1
+→ Tutorial.Boss.0-1
+→ Tutorial.Settlement
+```
+
+4. 新手启用现有 GuideAsset 的 Forced/Soft 引导；老玩家只关闭遮罩、箭头和输入限制，不跳过节点、战斗或奖励。
+5. 结算确认后写入 `StoryFlag.CombatBasicsCompleted`，开放`Task.Main.XuXiake.FirstJourney`，当前任务进入 Completed。
+6. `Reward.Main.XuXiake.CombatBasics`在任务抽屉手动领取。
+
+任何 Guide 目标缺失时立即解除输入限制、记录诊断并允许继续，禁止软锁。
+
+### 12.3 天台初行
+
+稳定入口与目标：
+
+```text
+Task.Main.XuXiake.FirstJourney
+Step.Main.XuXiake.FirstJourneyBriefing
+Sequence.Main.XuXiake.FirstJourneyBriefing
+Guide.Desktop.FirstJourney
+Objective.Main.XuXiake.FirstJourney.Encounter
+Stage.Normal.1-1
+```
+
+流程：
+
+1. 玩家接取任务后播放一小段 2D 说明。
+2. Narrative Layer 正常结束，折叠挂机条恢复。
+3. 引导依次定位：Tab → 历练入口 → 普通难度 → 1-1 → 游历。
+4. 玩家开始普通 1-1 Travel。
+5. 目标显示：`在普通 1-1 游历中完成第一次遭遇 0/1`。
+6. 只认 Normal 1-1 的真实 `EncounterCompleted`，并且 Travel 已返回 Walking；其他关卡、挑战战斗和测试夹具不得误完成。
+7. 完成后写入 `StoryFlag.FirstJourneyStarted`，任务进入 Completed；Travel 不停止，继续现有挂机循环。
+8. `Reward.Main.XuXiake.FirstJourney`在任务抽屉手动领取；任务菜单不自动打开，只显示待领取红点。
+
+### 12.4 引导偏好与恢复
+
+图中试炼首次选择的 GuidePreference 同时作用于天台初行：
+
+- NewPlayer：Tab、历练、1-1、游历四步使用 Forced 点击；遭遇过程使用 Soft 说明。
+- ExperiencedPlayer：只显示 Soft 提示，不锁其他 Workbench 操作。
+
+重启不自动打开任务、Workbench 或 Narrative。Active 任务与 Guide 步骤保存在存档中；玩家主动打开 Workbench 后恢复未完成引导。如果 Travel 已经启动，目标监听继续工作，不要求重新点击已经完成的入口步骤。
+
+任务抽屉的“继续剧情”按当前活动类型恢复：Prologue 的暂停 Narrative 从段首重播；CombatBasics 返回当前教程路线检查点；FirstJourney 打开历练页并恢复 Guide/Encounter 目标。它不会把已进入的路线或已启动的 Travel 重置为 briefing。
+
+三个 Task 的物质报酬使用稳定 RewardId 并由 TaskCatalog 数据承载。本规格冻结领取时机、原子性和唯一性，不冻结经济数值；数值平衡可以独立调整而不改变任务图、剧情结果或验收事件。
