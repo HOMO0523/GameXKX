@@ -27,6 +27,21 @@ FORBIDDEN_TOKENS = (
     "NarrativeProgress",
     "GuideProgress",
 )
+PROBE_FILE = "Content/Python/gamexxk_probe_prologue_carriage_preview.py"
+PROBE_FORBIDDEN_TOKENS = (
+    "click",
+    "sendinput",
+    "send_input",
+    "key_down",
+    "key_up",
+    "open_level",
+    "load_level",
+    "save_dirty_packages",
+    "save_current_level",
+    "set_actor_location",
+    "set_actor_transform",
+    "interact()",
+)
 
 
 class PrologueCarriagePolicyTests(unittest.TestCase):
@@ -45,6 +60,13 @@ class PrologueCarriagePolicyTests(unittest.TestCase):
             if (PROJECT_ROOT / relative).is_file()
         )
         leaked = [token for token in FORBIDDEN_TOKENS if token in combined]
+        self.assertEqual(leaked, [])
+
+    def test_probe_is_present_and_read_only(self) -> None:
+        path = PROJECT_ROOT / PROBE_FILE
+        self.assertTrue(path.is_file(), PROBE_FILE)
+        source = path.read_text(encoding="utf-8").lower()
+        leaked = [token for token in PROBE_FORBIDDEN_TOKENS if token in source]
         self.assertEqual(leaked, [])
 
 

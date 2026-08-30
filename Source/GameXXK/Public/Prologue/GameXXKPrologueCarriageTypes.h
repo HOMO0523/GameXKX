@@ -25,6 +25,15 @@ enum class EGameXXKPrologueCarriageAtlas : uint8
 	PostStopIdle,
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKPrologueCarriageFailure : uint8
+{
+	MissingArrivalTexture,
+	MissingIdleTexture,
+	MissingHero,
+	PlaybackTimeout,
+};
+
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKPrologueCarriageConfig
 {

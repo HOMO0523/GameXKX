@@ -31,8 +31,13 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	bool CancelPresentation();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
 	bool IsPresentationActive() const { return bPresentationActive; }
+
 	bool TogglePauseFromController();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
 	bool IsSequencePaused() const { return TimelineState.bPaused; }
 	FGameXXKPrologueCarriageFinished& OnFinished() { return FinishedDelegate; }
 
@@ -51,10 +56,20 @@ public:
 	bool AdvanceTimelineForTest(float DeltaSeconds);
 	bool SetSequencePausedForTest(bool bPaused);
 	void SetPresentationActiveForTest(bool bActive) { bPresentationActive = bActive; }
-	const FGameXXKPrologueCarriageState& GetTimelineStateForTest() const
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
+	FGameXXKPrologueCarriageState GetTimelineStateForTest() const
 	{
 		return TimelineState;
 	}
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
+	int32 GetPresentedFrameForTest() const { return LastPresentedFrameIndex; }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
+	bool IsPauseOverlayVisibleForTest() const { return PauseWidget != nullptr; }
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Prologue|Carriage|Automation")
+	void ForceFailureForTest(EGameXXKPrologueCarriageFailure Failure);
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GameXXK|Prologue|Carriage")
@@ -139,7 +154,11 @@ private:
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AGameXXKMVPPlayerController> Controller;
 
+	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "GameXXK|Prologue|Carriage", meta = (AllowPrivateAccess = "true"))
 	FGameXXKPrologueCarriageState TimelineState;
+
+	UPROPERTY(Transient, VisibleInstanceOnly, BlueprintReadOnly, Category = "GameXXK|Prologue|Carriage", meta = (AllowPrivateAccess = "true"))
+	int32 LastPresentedFrameIndex = INDEX_NONE;
 	FTransform HeroOriginalTransform;
 	TEnumAsByte<ECollisionEnabled::Type> HeroOriginalCollision = ECollisionEnabled::QueryAndPhysics;
 	uint8 HeroOriginalMovementMode = 0;

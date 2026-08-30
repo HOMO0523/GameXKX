@@ -236,6 +236,30 @@ bool AGameXXKPrologueCarriageRig::SetSequencePausedForTest(
 	return TimelineState.bPaused == bPaused;
 }
 
+void AGameXXKPrologueCarriageRig::ForceFailureForTest(
+	const EGameXXKPrologueCarriageFailure Failure)
+{
+	const TCHAR* Reason = TEXT("forced unknown failure");
+	switch (Failure)
+	{
+	case EGameXXKPrologueCarriageFailure::MissingArrivalTexture:
+		Reason = TEXT("forced missing arrival texture");
+		break;
+	case EGameXXKPrologueCarriageFailure::MissingIdleTexture:
+		Reason = TEXT("forced missing idle texture");
+		break;
+	case EGameXXKPrologueCarriageFailure::MissingHero:
+		Reason = TEXT("forced missing hero");
+		break;
+	case EGameXXKPrologueCarriageFailure::PlaybackTimeout:
+		Reason = TEXT("forced playback timeout");
+		break;
+	default:
+		break;
+	}
+	FailOpen(Reason);
+}
+
 void AGameXXKPrologueCarriageRig::TryStartPresentation()
 {
 	if (bPresentationActive)
@@ -276,6 +300,7 @@ void AGameXXKPrologueCarriageRig::TryStartPresentation()
 	CarriageDisplay->SetWorldLocation(CarriageStart->GetComponentLocation());
 	CarriageDisplay->SetVisibility(true);
 	CarriageWidget->SetAtlasFrame(LoadedRunStopTexture, 0);
+	LastPresentedFrameIndex = 0;
 	SetActorTickEnabled(true);
 }
 
@@ -363,6 +388,10 @@ void AGameXXKPrologueCarriageRig::ApplyStep(
 	{
 		FailOpen(TEXT("carriage frame application failed"));
 		return;
+	}
+	if (Step.Atlas != EGameXXKPrologueCarriageAtlas::None)
+	{
+		LastPresentedFrameIndex = Step.AtlasFrameIndex;
 	}
 	if (Step.bRevealHero)
 	{

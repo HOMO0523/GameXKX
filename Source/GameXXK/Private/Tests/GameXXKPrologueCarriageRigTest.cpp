@@ -1,9 +1,12 @@
 #include "Town/GameXXKPrologueCarriageRig.h"
 
 #include "Components/WidgetComponent.h"
+#include "Engine/GameInstance.h"
+#include "GameXXKMVPRules.h"
 #include "InputCoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPPlayerController.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "Prologue/GameXXKPrologueCarriageTypes.h"
 #include "UI/GameXXKPrologueCarriageWidget.h"
 #include "UI/GameXXKProloguePauseWidget.h"
@@ -236,6 +239,87 @@ bool FGameXXKPrologueCarriageRigTest::RunTest(const FString& Parameters)
 		EGameXXKTrackedInputMode::GameOnly);
 	InputRig->SetPresentationActiveForTest(false);
 	InputController->EndPrologueCarriagePresentation(InputRig);
+
+	UGameInstance* GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	if (!TestTrue(TEXT("failure invariant runtime starts"),
+		Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState RuntimeBefore = Subsystem->GetRuntimeState();
+	AGameXXKMVPPlayerController* FailureController =
+		NewObject<AGameXXKMVPPlayerController>();
+	AGameXXKPrologueCarriageRig* FailureRig =
+		NewObject<AGameXXKPrologueCarriageRig>();
+	if (!TestTrue(TEXT("failure recovery fixtures exist"),
+		FailureController && FailureRig))
+	{
+		return false;
+	}
+	TestTrue(TEXT("failure Rig timeline starts"), FailureRig->StartTimelineForTest());
+	FailureRig->SetPresentationActiveForTest(true);
+	TestTrue(TEXT("failure Rig acquires input"),
+		FailureController->BeginPrologueCarriagePresentation(FailureRig));
+	AddExpectedError(
+		TEXT("Prologue carriage preview failed open: forced missing arrival texture"),
+		EAutomationExpectedErrorFlags::Contains,
+		1);
+	FailureRig->ForceFailureForTest(
+		EGameXXKPrologueCarriageFailure::MissingArrivalTexture);
+	TestFalse(TEXT("failure ends presentation"),
+		FailureRig->IsPresentationActive());
+	TestFalse(TEXT("failure releases controller ownership"),
+		FailureController->HasActivePrologueCarriageForTest());
+	TestFalse(TEXT("failure releases owned move ignore"),
+		FailureController->IsMoveInputIgnored());
+	TestFalse(TEXT("failure releases owned look ignore"),
+		FailureController->IsLookInputIgnored());
+	TestFalse(TEXT("repeated cancellation remains harmless"),
+		FailureRig->CancelPresentation());
+
+	const FGameXXKRuntimeState& RuntimeAfter = Subsystem->GetRuntimeState();
+	TestEqual(TEXT("failure preserves player gold"),
+		RuntimeAfter.PlayerGold, RuntimeBefore.PlayerGold);
+	TestEqual(TEXT("failure preserves player experience"),
+		RuntimeAfter.PlayerXP, RuntimeBefore.PlayerXP);
+	TestEqual(TEXT("failure preserves inventory entry count"),
+		RuntimeAfter.Inventory.Num(), RuntimeBefore.Inventory.Num());
+	bool bInventoryMatches = true;
+	for (const TPair<FName, int32>& Pair : RuntimeBefore.Inventory)
+	{
+		bInventoryMatches = bInventoryMatches
+			&& RuntimeAfter.Inventory.FindRef(Pair.Key) == Pair.Value;
+	}
+	TestTrue(TEXT("failure preserves every inventory quantity"),
+		bInventoryMatches);
+	TestEqual(TEXT("failure preserves ordered formation"),
+		RuntimeAfter.CardRun.OrderedFormation.Members,
+		RuntimeBefore.CardRun.OrderedFormation.Members);
+	TestEqual(TEXT("failure preserves Travel active state"),
+		RuntimeAfter.Training.bTravelActive,
+		RuntimeBefore.Training.bTravelActive);
+	TestEqual(TEXT("failure preserves Travel encounter"),
+		RuntimeAfter.Training.ActiveTravelEncounterIndex,
+		RuntimeBefore.Training.ActiveTravelEncounterIndex);
+	TestEqual(TEXT("failure preserves pending Travel gold"),
+		RuntimeAfter.Training.PendingTravelGold,
+		RuntimeBefore.Training.PendingTravelGold);
+	TestEqual(TEXT("failure preserves pending Travel experience"),
+		RuntimeAfter.Training.PendingTravelExperience,
+		RuntimeBefore.Training.PendingTravelExperience);
+	TestEqual(TEXT("failure preserves story records"),
+		RuntimeAfter.NarrativeProgress.StoryProgressById.Num(),
+		RuntimeBefore.NarrativeProgress.StoryProgressById.Num());
+	TestEqual(TEXT("failure preserves task records"),
+		RuntimeAfter.NarrativeProgress.TaskProgressById.Num(),
+		RuntimeBefore.NarrativeProgress.TaskProgressById.Num());
+	TestEqual(TEXT("failure preserves Guide identity"),
+		RuntimeAfter.GuideProgress.ActiveGuideId,
+		RuntimeBefore.GuideProgress.ActiveGuideId);
+	TestEqual(TEXT("failure preserves Guide step"),
+		RuntimeAfter.GuideProgress.ActiveGuideStepId,
+		RuntimeBefore.GuideProgress.ActiveGuideStepId);
 
 	return true;
 }

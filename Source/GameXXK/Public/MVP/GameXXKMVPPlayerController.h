@@ -85,6 +85,7 @@ public:
 		bool bPaused,
 		UWidget* FocusWidget);
 	bool RequestDesktopReturnFromPrologue();
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
 	bool HasActivePrologueCarriageForTest() const
 	{
 		return ActivePrologueCarriageRig.IsValid();
