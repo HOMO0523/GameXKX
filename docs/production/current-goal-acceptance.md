@@ -1,10 +1,18 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-26T22:37:36+08:00
-source_commit: 91786825ee8040cbb4683fbf7798998e1f26210f
-working_tree: challenge route-map / sequential settlement log fixes implemented and cold-UBT green; acceptance updated before commit
+updated_at: 2026-08-30T21:03:52+08:00
+source_commit: 8ae6d6441895dc89ec085243ed65c2d4e508cc0b
+working_tree: permanent NPC formation / route-event retirement implemented through fixture migration; probe and this acceptance entry pending docs commit
 ---
+
+> **2026-08-30 固定 NPC 编队与 NPC 路线事件退役（实现完成，手工月白链待玩家验收）**：`OrderedFormation` 现固定为“主角 + 一名永久伙伴 + 六名固定 NPC 之一”，`ActiveTemporaryQuestNpcId` 在当前运行时必须为空；挂机、路线/战斗、装备/卡组投影和经验归属读取同一 NPC。七个 NPC 路线事件与可达临时支援操作已删除，仅保留山泉和四类宝箱；旧枚举/action 序号作为隐藏墓碑保留。存档升至 v30，按“有效有序 NPC → 旧选择 → v29 临时字段 → 土司首领”恢复，并把待处理旧 NPC 事件原地改为山泉，不发奖励、不结算节点。实现提交依次为 `71eba5d`、`0b2dfe0`、`cca9bbb`、`1ba56d4`、`b1422cf`、`2231252`、`8ae6d64`。
+>
+> 最终冷 UBT：`GameXXKEditor Win64 Development -NoHotReload` GREEN（2026-08-30 21:01）。编辑器 Automation 精确门禁 14/14、0 failed：永久 NPC authority、挂机换人不重置、三人经验、NPC 事件目录/兼容 facade 退役、v30 迁移、CardRoute lifecycle、三条 settlement formation、Workbench 固定 NPC 肖像/六候选/地图会话、Town NPC 图鉴。可复查的分组报告包括 `Saved/Automation/PermanentNpcFormation-Task7-PartyFormation-Green-1/index.json`（6/6）、`PermanentNpcFormation-Task7-Companion-Affected-2`（11/11）、`PermanentNpcFormation-Task7-CardRoute-Broad-4`（19/19）、`PermanentNpcFormation-Task7-EnemyIntent-Affected-2`（39/39）、`PermanentNpcFormation-Task7-RouteMap-Broad`（6/6）、`PermanentNpcFormation-Task7-CardAdapter-Affected-2`（5/5）、`PermanentNpcFormation-Task7-RouteMerchant-Affected-1` 与 `PermanentNpcFormation-Task7-MVPRouteMerchant-Affected-5`（各 12/12）、`PermanentNpcFormation-Task5-SaveGame-Green-Final`（18/18）、`PermanentNpcFormation-Task5-EquipmentSave-Green-Final`（9/9）。静态 policy 2/2 通过；生产引用只剩字段声明、必须为空校验与 v30 迁移读取/清空，`TemporaryNpcSupport` 只剩隐藏枚举墓碑。
+>
+> 广泛回归没有伪装为全绿：一次编辑器内 `StartsWith:GameXXK` 完整跑完 916 项，794 通过、122 失败；其后修复了所有已识别的空编队夹具并逐组转绿。后续整套重跑在既有 `CompanionRoster.PersonalDeck` → `SplitStatusSegments` tooltip 路径触发无关 `EXCEPTION_ACCESS_VIOLATION`，所以没有最终完整计数。仍明确存在的非本任务基线包括战斗/挂机动画 atlas 与时序断言、Workbench `InnerGeometry`/图集库存、营地“护符 vs 30% 治疗”旧语义、Simulation 旧指标、CompanionRoster 旧布局/卡组交互与 tooltip 崩溃；不在本任务中削弱断言或改保护资产追求假绿。
+>
+> 只读 PIE（`/Game/GameXXK/Maps/L_DesktopTrainingHUD`）证据：探针 `observe` 返回有序成员 `Player / CompanionInstance.Companion_Blade_01.00002621 / Npc.TusiChief`，挂机 `travel_party_ids` 完全相同，`selected_quest_npc_id=Npc.TusiChief`，`active_temporary_quest_npc_id=None`，Travel 正在 Combat；随后正常停止 PIE。该验收未运行鼠标脚本、自动点击、选人、路线、保存或输入驱动，也未请求截图。月白的真实“编入队伍 → 城镇往返 → 路线结束 → 正常关闭/重启加载 → 再换 NPC”手工链尚未由玩家执行，因此本文不声称这些可见/重启检查已完成；其状态生命周期目前只有上述 C++ 门禁证据。未执行 package build，也未宣称视觉 PASS。
 
 > **2026-08-27 中途返回恢复与 8 格局内商店（当前工作区）**：修复挑战/路线结算返回后仅保留 `TrainingTravelRuntime`、却未恢复 `bTravelActive` 与遭遇游标造成的挂机停止；窗口复用时重新挂载原生布局，1-1 中途退出后游历、遇敌与双宝箱时钟继续。挑战路线起点现为自动占据的营地标记，不可点击且无奖励；Boss 胜利跳过普通三选一，直接应用 `Cleared` 路线结算并恢复挂机。局内商店改为单页两排 8 格：上排 4 张携带卡强化、下排 4 个可购买遗物，统一消耗普通金币，刷新仅替换未购商品并保留已售格；卡片缩小、详情移入 Tooltip、按钮单行高对比。冷 UBT GREEN；Route Merchant 12/12、Route Merchant Widget 7/7、Workbench 67/67、PlayerFlow 4/4、RouteSettlement 2/2；Training 仍为 35/38，剩余 `DeployedTrioExperience`、`RewardResolver`、`TravelOfflineSubsystemBridge` 是本轮前已有问题。
 

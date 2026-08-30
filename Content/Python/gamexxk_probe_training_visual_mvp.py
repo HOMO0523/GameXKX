@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
 import unreal
 
@@ -70,6 +71,20 @@ def _party_snapshot(world, widget):
                 }
             )
         quest_selection = getattr(selection, "quest_npc", None)
+        ordered_formation = getattr(card_run, "ordered_formation", None)
+        ordered_members = []
+        for member in list(getattr(ordered_formation, "members", []) or []):
+            ordered_members.append(
+                {
+                    "kind": str(getattr(member, "kind", "")),
+                    "member_id": str(getattr(member, "member_id", "")),
+                }
+            )
+        travel_runtime = _call(subsystem, "get_training_travel_runtime_copy")
+        travel_party_ids = [
+            str(getattr(unit, "unit_id", ""))
+            for unit in list(getattr(travel_runtime, "party_units", []) or [])
+        ]
         return {
             "active_permanent_instance_id": str(
                 getattr(selection, "active_permanent_companion_instance_id", "")
@@ -79,6 +94,8 @@ def _party_snapshot(world, widget):
             ),
             "selected_quest_npc_id": str(getattr(quest_selection, "npc_id", "")),
             "permanent_companions": companions,
+            "ordered_members": ordered_members,
+            "travel_party_ids": travel_party_ids,
         }
     except Exception as exc:  # pragma: no cover - executed inside UE Python
         return {"error": str(exc)}
@@ -269,8 +286,17 @@ def _observe(capture):
     payload = _snapshot(PHASE_OBSERVE)
     world = _world()
     if capture and payload.get("ok") and world:
-        unreal.SystemLibrary.execute_console_command(world, "HighResShot 1600x900")
+        capture_path = (
+            Path(unreal.Paths.project_saved_dir())
+            / "Screenshots/WindowsEditor/permanent-npc-yuebai-workbench.png"
+        ).resolve()
+        capture_path.parent.mkdir(parents=True, exist_ok=True)
+        unreal.SystemLibrary.execute_console_command(
+            world,
+            f'HighResShot filename="{capture_path.as_posix()}" 1600x900',
+        )
         payload["capture_requested"] = True
+        payload["capture_path"] = str(capture_path)
     return _emit(payload)
 
 
