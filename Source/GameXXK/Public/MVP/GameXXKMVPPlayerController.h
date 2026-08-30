@@ -225,6 +225,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
 	bool CloseDesktopTrainingWorkbench();
 	bool RequestDesktopTownToggleFromWorkbench();
+	bool RequestDesktopStoryCarriageFromWorkbench();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	UGameXXKDesktopTrainingWorkbenchWidget* GetDesktopTrainingWorkbenchWidgetForTest() const;
@@ -361,6 +362,9 @@ private:
 	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
 	bool EnsureDesktopTrainingWidgets();
 	void RestoreDesktopWorkbenchSessionAfterMapTravel();
+	bool BeginDesktopTownMapTravelFromWorkbench(
+		FName TargetMap,
+		const FString& Options);
 	bool ApplyDesktopTrainingPerfProfile(const FString& Profile);
 	bool EnsurePlayerFlowWidgets();
 	UGameXXKOneGameRouteMapWidget* EnsureRouteMapWidget();

@@ -1800,6 +1800,139 @@ bool FGameXXKDesktopTrainingTownTogglePresentationTest::RunTest(const FString& P
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingStoryQuestCarriageRequestTest,
+	"GameXXK.DesktopTraining.Workbench.StoryQuestCarriageRequest",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingStoryQuestCarriageRequestTest::RunTest(
+	const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	UGameInstance* GameInstance = NewObject<UGameInstance>();
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	if (!TestTrue(TEXT("placeholder fixture starts"),
+		Subsystem && Subsystem->StartGame() && Widget))
+	{
+		return false;
+	}
+	Widget->SetMVPSubsystem(Subsystem);
+	TestTrue(TEXT("placeholder fixture opens collapsed"), Widget->OpenWorkbench());
+	Widget->TakeWidget();
+	TestNull(TEXT("collapsed workbench has no story button"),
+		Widget->WidgetTree->FindWidget(TEXT("StoryQuestButton")));
+
+	TestTrue(TEXT("placeholder fixture expands"), Widget->OpenBackpack());
+	Widget->TakeWidget();
+	UGameXXKDesktopTrainingActionButton* Button =
+		Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("StoryQuestButton")));
+	if (!TestNotNull(TEXT("expanded workbench has the story button"), Button))
+	{
+		return false;
+	}
+	TestEqual(TEXT("story button owns inert action 654"),
+		Button->GetConfiguredActionIdForTest(), 654);
+	TestEqual(TEXT("story button uses approved texture"),
+		GetButtonNormalResourcePath(Button),
+		FString(TEXT("/Game/GameXXK/UI/DesktopOverlay/"
+			"T_DesktopStoryQuestButton.T_DesktopStoryQuestButton")));
+	const UCanvasPanelSlot* ClosedSlot = Cast<UCanvasPanelSlot>(Button->Slot);
+	const FVector4 ClosedRect = GetStoryQuestRect(false);
+	TestTrue(TEXT("closed-left-drawer story button uses authored rect"),
+		ClosedSlot
+		&& ClosedSlot->GetPosition() == FVector2D(ClosedRect.X, ClosedRect.Y)
+		&& ClosedSlot->GetSize() == FVector2D(ClosedRect.Z, ClosedRect.W));
+
+	const bool ExpandedBefore = Widget->IsBackpackExpandedForTest();
+	const bool WarehouseBefore = Widget->IsWarehousePanelOpenForTest();
+	const EGameXXKDesktopTrainingNav NavBefore = Widget->GetActiveNavForTest();
+	const EGameXXKDesktopTrainingCenterPage CenterBefore =
+		Widget->GetActiveCenterPageForTest();
+	const bool RightPanelBefore = Widget->IsRightPanelOpenForTest();
+	const bool CarryBefore = Widget->IsCarryingItemForTest();
+	const int32 ToolCountBefore = Widget->GetOccupiedToolSlotCountForTest();
+	const int32 WarehousePageBefore = Widget->GetWarehousePageIndexForTest();
+	const bool TownPendingBefore = Widget->IsTownMapTravelPendingForTest();
+	const FText NoticeBefore = Widget->GetLastDesktopInventoryNoticeForTest();
+	const int32 BuildCountBefore = Widget->GetProgrammaticLayoutBuildCountForTest();
+	const int32 StoryCountBefore =
+		Subsystem->GetRuntimeState().NarrativeProgress.StoryProgressById.Num();
+	const int32 TaskCountBefore =
+		Subsystem->GetRuntimeState().NarrativeProgress.TaskProgressById.Num();
+	const FName TrackedTaskBefore =
+		Subsystem->GetRuntimeState().NarrativeProgress.TrackedTaskId;
+	const TArray<FGameXXKPartyMemberRef> OrderedFormationBefore =
+		Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members;
+	int32 RequestCount = 0;
+	Widget->SetStoryCarriageRequestedForTest(
+		FGameXXKStoryCarriageRequested::CreateLambda([&RequestCount]()
+		{
+			++RequestCount;
+			return true;
+		}));
+
+	Button->HandleClicked();
+	TestEqual(TEXT("one click emits one carriage request"), RequestCount, 1);
+	TestEqual(TEXT("carriage request preserves expansion"),
+		Widget->IsBackpackExpandedForTest(), ExpandedBefore);
+	TestEqual(TEXT("carriage request preserves Warehouse"),
+		Widget->IsWarehousePanelOpenForTest(), WarehouseBefore);
+	TestEqual(TEXT("carriage request preserves navigation"),
+		Widget->GetActiveNavForTest(), NavBefore);
+	TestEqual(TEXT("carriage request preserves center page"),
+		Widget->GetActiveCenterPageForTest(), CenterBefore);
+	TestEqual(TEXT("carriage request preserves right panel"),
+		Widget->IsRightPanelOpenForTest(), RightPanelBefore);
+	TestEqual(TEXT("carriage request preserves carry state"),
+		Widget->IsCarryingItemForTest(), CarryBefore);
+	TestEqual(TEXT("carriage request preserves tool reservations"),
+		Widget->GetOccupiedToolSlotCountForTest(), ToolCountBefore);
+	TestEqual(TEXT("carriage request preserves Warehouse page"),
+		Widget->GetWarehousePageIndexForTest(), WarehousePageBefore);
+	TestEqual(TEXT("semantic request does not own town pending state"),
+		Widget->IsTownMapTravelPendingForTest(), TownPendingBefore);
+	TestEqual(TEXT("carriage request preserves notice"),
+		Widget->GetLastDesktopInventoryNoticeForTest(), NoticeBefore);
+	TestEqual(TEXT("carriage request does not rebuild layout"),
+		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBefore);
+	TestEqual(TEXT("carriage request preserves story records"),
+		Subsystem->GetRuntimeState().NarrativeProgress.StoryProgressById.Num(),
+		StoryCountBefore);
+	TestEqual(TEXT("carriage request preserves task records"),
+		Subsystem->GetRuntimeState().NarrativeProgress.TaskProgressById.Num(),
+		TaskCountBefore);
+	TestEqual(TEXT("carriage request preserves tracked task"),
+		Subsystem->GetRuntimeState().NarrativeProgress.TrackedTaskId,
+		TrackedTaskBefore);
+	TestEqual(TEXT("carriage request preserves ordered formation"),
+		Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members,
+		OrderedFormationBefore);
+
+	Widget->HandleActionClicked(0);
+	Button = Cast<UGameXXKDesktopTrainingActionButton>(
+		Widget->WidgetTree->FindWidget(TEXT("StoryQuestButton")));
+	const UCanvasPanelSlot* OpenSlot = Button ? Cast<UCanvasPanelSlot>(Button->Slot) : nullptr;
+	const FVector4 OpenRect = GetStoryQuestRect(true);
+	TestTrue(TEXT("Warehouse-open story button shifts with town button"),
+		OpenSlot && OpenSlot->GetPosition() == FVector2D(OpenRect.X, OpenRect.Y));
+
+	FDesktopNativeRegionState RegionState;
+	RegionState.bExpanded = true;
+	RegionState.bStoryQuestVisible = true;
+	RegionState.StoryQuestRect = ClosedRect;
+	const TArray<FDesktopNativeRegionShape> Shapes =
+		BuildDesktopNativeRegionShapes(RegionState);
+	TestTrue(TEXT("story button center is a native interactive surface"),
+		IsPointInsideDesktopNativeRegionShapes(
+			Shapes,
+			FVector2D(ClosedRect.X + ClosedRect.Z * 0.5f,
+				ClosedRect.Y + ClosedRect.W * 0.5f)));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingTownSessionSubsystemTest,
 	"GameXXK.DesktopTraining.Workbench.TownSessionOneShot",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

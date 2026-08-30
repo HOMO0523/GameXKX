@@ -100,6 +100,21 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")),
 		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(
+		TEXT("carriage preview target is the playable Qingshan map"),
+		GameXXKLevelFlow::QingshanTownGameplayMap(),
+		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
+	TestEqual(
+		TEXT("carriage preview option is stable"),
+		GameXXKLevelFlow::CarriagePreviewTravelOptions(),
+		FString(TEXT("GameXXKIntro=CarriagePreview")));
+	TestTrue(
+		TEXT("carriage option parses from a travelled URL"),
+		GameXXKLevelFlow::HasCarriagePreviewTravelOption(
+			TEXT("?GameXXKIntro=CarriagePreview")));
+	TestFalse(
+		TEXT("ordinary town travel is not a carriage preview"),
+		GameXXKLevelFlow::HasCarriagePreviewTravelOption(TEXT("")));
+	TestEqual(
 		TEXT("playable Qingshan town exits to the desktop HUD"),
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(
 			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo")),

@@ -344,6 +344,7 @@
 	constexpr int32 ActionHudScale50 = 651;
 	constexpr int32 ActionToggleTown = 652;
 	constexpr int32 ActionIdleStripFold = 653;
+	constexpr int32 ActionStoryQuest = 654;
 	constexpr int32 ActionResetCombatGuide = 655;
 	constexpr int32 NoticeHistoryCapacity = 200;
 	constexpr float NoticeLineHeight = 24.0f;
@@ -680,6 +681,9 @@
 	static constexpr const TCHAR* TrainingWaveMarkerBossTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerBoss.T_TrainingWaveMarkerBoss");
 	static constexpr const TCHAR* DesktopTownEnterButtonTexturePath = TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownEnterButton.T_DesktopTownEnterButton");
 	static constexpr const TCHAR* DesktopTownExitButtonTexturePath = TEXT("/Game/GameXXK/UI/DesktopOverlay/T_DesktopTownExitButton.T_DesktopTownExitButton");
+	static constexpr const TCHAR* DesktopStoryQuestButtonTexturePath =
+		TEXT("/Game/GameXXK/UI/DesktopOverlay/"
+			"T_DesktopStoryQuestButton.T_DesktopStoryQuestButton");
 	static constexpr const TCHAR* TravelBackgroundFallbackTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Backgrounds/T_TownPsd_Background_Map.T_TownPsd_Background_Map");
 	static constexpr const TCHAR* TravelHeroFallbackTexturePaths[] = {
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody"),
@@ -3479,6 +3483,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	TravelCompanionHealthBars.Reset();
 	EmbeddedInventoryWidget = nullptr;
 	TownToggleButton = nullptr;
+	StoryQuestButton = nullptr;
 	if (ResetCombatGuideButton)
 	{
 		FGameXXKGuideTargetRegistry::Get().UnregisterTarget(
@@ -3548,6 +3553,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 	if (bBackpackExpanded)
 	{
 		BuildTownToggleButton();
+		BuildStoryQuestButton();
 		if (bWarehousePanelOpen)
 		{
 			BuildWarehousePanel();
@@ -3628,6 +3634,36 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
 		TownCanvasSlot->SetZOrder(0);
 	}
 	ActionButtons.Add(TownToggleButton);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
+{
+	if (!HudDesignCanvas || !bBackpackExpanded)
+	{
+		return;
+	}
+	StoryQuestButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
+		UGameXXKDesktopTrainingActionButton::StaticClass(),
+		TEXT("StoryQuestButton"));
+	StoryQuestButton->Configure(this, ActionStoryQuest);
+	StoryQuestButton->SetStyle(MakeImageButtonStyle(
+		DesktopStoryQuestButtonTexturePath,
+		GameXXKDesktopTrainingLayout::GetStoryQuestButtonSize()));
+	StoryQuestButton->SetBackgroundColor(FLinearColor::White);
+	StoryQuestButton->SetContent(nullptr);
+	StoryQuestButton->SetScaleOnPress(true);
+	StoryQuestButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	StoryQuestButton->SetIsEnabled(!bTownMapTravelPending);
+	AddCanvasRect(
+		HudDesignCanvas,
+		StoryQuestButton.Get(),
+		DesktopOverlayPlacement.StoryQuestRect);
+	if (UCanvasPanelSlot* StoryCanvasSlot =
+		Cast<UCanvasPanelSlot>(StoryQuestButton->Slot))
+	{
+		StoryCanvasSlot->SetZOrder(0);
+	}
+	ActionButtons.Add(StoryQuestButton);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
@@ -7941,6 +7977,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::SetTownMapTravelPending(
 	{
 		TownToggleButton->SetIsEnabled(!bPending);
 	}
+	if (StoryQuestButton)
+	{
+		StoryQuestButton->SetIsEnabled(!bPending);
+	}
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::RequestTownToggle()
@@ -7952,6 +7992,21 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::RequestTownToggle()
 	AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController();
 	return PlayerController
 		&& PlayerController->RequestDesktopTownToggleFromWorkbench();
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RequestStoryCarriage()
+{
+	if (bTownMapTravelPending)
+	{
+		return false;
+	}
+	if (StoryCarriageRequested.IsBound())
+	{
+		return StoryCarriageRequested.Execute();
+	}
+	AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController();
+	return PlayerController
+		&& PlayerController->RequestDesktopStoryCarriageFromWorkbench();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTownPresentationInputLock()
@@ -8322,6 +8377,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthroug
 		SurfaceState.bTownToggleVisible =
 			bBackpackExpanded && DesktopOverlayPlacement.TownToggleRect.Z > 0.0f;
 		SurfaceState.TownToggleRect = DesktopOverlayPlacement.TownToggleRect;
+		SurfaceState.bStoryQuestVisible =
+			bBackpackExpanded && DesktopOverlayPlacement.StoryQuestRect.Z > 0.0f;
+		SurfaceState.StoryQuestRect = DesktopOverlayPlacement.StoryQuestRect;
 		const TArray<GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape> Surfaces =
 			GameXXKDesktopTrainingLayout::BuildDesktopNativeRegionShapes(SurfaceState);
 		MouseState.bPointerOverInteractiveSurface =
@@ -8714,6 +8772,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmToolForTest()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 {
+	if (ActionId == ActionStoryQuest)
+	{
+		RequestStoryCarriage();
+		return;
+	}
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
 	{

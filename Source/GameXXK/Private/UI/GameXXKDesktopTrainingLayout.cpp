@@ -15,6 +15,7 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector2D FoldedHudInteractiveSize(1025.0f, 24.0f);
 		const FVector2D TownToggleButtonSize(144.0f, 144.0f);
 		constexpr float TownToggleGap = 14.0f;
+		constexpr float StoryQuestVerticalGap = 14.0f;
 		constexpr float OpenWarehouseLeftExtension = 148.0f;
 		const FVector2D BaselineLogicalWorkAreaSize(1920.0f, 1020.0f);
 		constexpr float MaximumAutomaticHudScale = 1.25f;
@@ -83,6 +84,11 @@ namespace GameXXKDesktopTrainingLayout
 		return TownToggleButtonSize;
 	}
 
+	FVector2D GetStoryQuestButtonSize()
+	{
+		return TownToggleButtonSize;
+	}
+
 	float GetExpandedLeftExtension(const bool bWarehouseOpen)
 	{
 		return bWarehouseOpen ? OpenWarehouseLeftExtension : 0.0f;
@@ -95,6 +101,16 @@ namespace GameXXKDesktopTrainingLayout
 			: CenterShellRect.X - TownToggleGap - TownToggleButtonSize.X;
 		const float Y = ContentRect.Y + (ContentRect.W - TownToggleButtonSize.Y) * 0.5f;
 		return FVector4(X, Y, TownToggleButtonSize.X, TownToggleButtonSize.Y);
+	}
+
+	FVector4 GetStoryQuestRect(const bool bWarehouseOpen)
+	{
+		const FVector4 TownRect = GetTownToggleRect(bWarehouseOpen);
+		return FVector4(
+			TownRect.X,
+			TownRect.Y - TownToggleButtonSize.Y - StoryQuestVerticalGap,
+			TownToggleButtonSize.X,
+			TownToggleButtonSize.Y);
 	}
 
 	float ComputeAutomaticHudScale(const FVector2D& LogicalWorkAreaSize)
@@ -190,6 +206,7 @@ namespace GameXXKDesktopTrainingLayout
 			StripRect.X += LeftExtension;
 			Result.ContentOffset = FVector2D(LeftExtension, 0.0f);
 			Result.TownToggleRect = GetTownToggleRect(bWarehouseOpen);
+			Result.StoryQuestRect = GetStoryQuestRect(bWarehouseOpen);
 			if (bExpandUpward)
 			{
 				StripRect.Y = ReferenceCanvasSize.Y - StripRect.W - 18.0f;
@@ -346,6 +363,13 @@ namespace GameXXKDesktopTrainingLayout
 		{
 			AddLogicalRect(
 				State.TownToggleRect,
+				FVector2D::ZeroVector,
+				EDesktopNativeRegionShapeType::Ellipse);
+		}
+		if (State.bStoryQuestVisible)
+		{
+			AddLogicalRect(
+				State.StoryQuestRect,
 				FVector2D::ZeroVector,
 				EDesktopNativeRegionShapeType::Ellipse);
 		}

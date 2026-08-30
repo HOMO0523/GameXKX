@@ -111,6 +111,22 @@ bool GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(const FString& CurrentPack
 	return MapPackageMatches(CurrentPackageName, DesktopTrainingHUDMap);
 }
 
+FName GameXXKLevelFlow::QingshanTownGameplayMap()
+{
+	return QingshanTownMap;
+}
+
+FString GameXXKLevelFlow::CarriagePreviewTravelOptions()
+{
+	return TEXT("GameXXKIntro=CarriagePreview");
+}
+
+bool GameXXKLevelFlow::HasCarriagePreviewTravelOption(const FString& Options)
+{
+	return UGameplayStatics::ParseOption(Options, TEXT("GameXXKIntro"))
+		== TEXT("CarriagePreview");
+}
+
 FName GameXXKLevelFlow::TownToggleTargetForMapPackage(
 	const FString& CurrentPackageName)
 {

@@ -30,6 +30,7 @@ namespace GameXXKDesktopTrainingLayout
 		FVector2D StripSize = FVector2D::ZeroVector;
 		FVector2D ContentOffset = FVector2D::ZeroVector;
 		FVector4 TownToggleRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
+		FVector4 StoryQuestRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 		float Scale = 1.0f;
 	};
 
@@ -61,10 +62,12 @@ namespace GameXXKDesktopTrainingLayout
 		bool bRightPanelOpen = false;
 		bool bExitConfirmationOpen = false;
 		bool bTownToggleVisible = false;
+		bool bStoryQuestVisible = false;
 		float NoticeHeight = 0.0f;
 		float Scale = 1.0f;
 		FVector2D ContentOffset = FVector2D::ZeroVector;
 		FVector4 TownToggleRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
+		FVector4 StoryQuestRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 	};
 
 	struct GAMEXXK_API FDesktopOverlayMouseState
@@ -93,8 +96,10 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector4 GetNavigationRect();
 	GAMEXXK_API FVector2D GetCollapsedHudLogicalSize();
 	GAMEXXK_API FVector2D GetTownToggleButtonSize();
+	GAMEXXK_API FVector2D GetStoryQuestButtonSize();
 	GAMEXXK_API float GetExpandedLeftExtension(bool bWarehouseOpen);
 	GAMEXXK_API FVector4 GetTownToggleRect(bool bWarehouseOpen);
+	GAMEXXK_API FVector4 GetStoryQuestRect(bool bWarehouseOpen);
 	GAMEXXK_API float ComputeAutomaticHudScale(const FVector2D& LogicalWorkAreaSize);
 	GAMEXXK_API float ComputeEffectiveHudScale(
 		const FVector2D& LogicalWorkAreaSize,

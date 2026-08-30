@@ -2956,7 +2956,35 @@ bool AGameXXKMVPPlayerController::RequestDesktopTownToggleFromWorkbench()
 		: FString();
 	const FName TargetMap =
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName);
-	if (bDesktopTownMapTravelPending || TargetMap.IsNone()
+	return BeginDesktopTownMapTravelFromWorkbench(TargetMap, FString());
+}
+
+bool AGameXXKMVPPlayerController::RequestDesktopStoryCarriageFromWorkbench()
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return false;
+	}
+	const FString CurrentPackageName = World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	if (!GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(CurrentPackageName))
+	{
+		return false;
+	}
+	return BeginDesktopTownMapTravelFromWorkbench(
+		GameXXKLevelFlow::QingshanTownGameplayMap(),
+		GameXXKLevelFlow::CarriagePreviewTravelOptions());
+}
+
+bool AGameXXKMVPPlayerController::BeginDesktopTownMapTravelFromWorkbench(
+	const FName TargetMap,
+	const FString& Options)
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld() || !DesktopTrainingWorkbenchWidget
+		|| bDesktopTownMapTravelPending || TargetMap.IsNone()
 		|| !FPackageName::DoesPackageExist(TargetMap.ToString()))
 	{
 		return false;
@@ -2982,7 +3010,7 @@ bool AGameXXKMVPPlayerController::RequestDesktopTownToggleFromWorkbench()
 	DesktopTrainingWorkbenchWidget->SetTownMapTravelPending(true);
 	DesktopTrainingWorkbenchWidget->CloseWorkbench();
 	HideDesktopTrainingOverlayWindow();
-	UGameplayStatics::OpenLevel(World, TargetMap);
+	UGameplayStatics::OpenLevel(World, TargetMap, true, Options);
 	return true;
 }
 

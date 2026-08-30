@@ -32,6 +32,8 @@ class UGameXXKGuidePreferenceWidget;
 enum class EGameXXKGuidePreference : uint8;
 struct FGameXXKGuideProgress;
 
+DECLARE_DELEGATE_RetVal(bool, FGameXXKStoryCarriageRequested);
+
 UCLASS()
 class GAMEXXK_API UGameXXKDesktopTrainingStageButton : public UButton
 {
@@ -493,6 +495,10 @@ public:
 	void RestoreSessionStateAfterMapTravel(
 		const FGameXXKDesktopWorkbenchSessionState& State);
 	void SetTownMapTravelPending(bool bPending);
+	void SetStoryCarriageRequestedForTest(FGameXXKStoryCarriageRequested InRequest)
+	{
+		StoryCarriageRequested = MoveTemp(InRequest);
+	}
 	EGameXXKDesktopHudPresentationMode GetPresentationModeForTest() const
 	{
 		return PresentationMode;
@@ -537,6 +543,7 @@ private:
 	void TickDesktopNativeWindow();
 	void UpdateTownPresentationInputLock();
 	bool RequestTownToggle();
+	bool RequestStoryCarriage();
 	void ReleaseDesktopNativeWindow();
 	void ApplyDesktopNativeWindowLayout(bool bForce);
 	void SetDesktopNativeMousePassthrough(bool bEnabled);
@@ -550,6 +557,7 @@ private:
 	void RebuildLayoutNow();
 	void BuildWorkbenchShell();
 	void BuildTownToggleButton();
+	void BuildStoryQuestButton();
 	void BuildBackpackTabToggle();
 	void BuildTopToolbar();
 	void BuildHudSettingsPanel();
@@ -761,6 +769,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDesktopTrainingActionButton> TownToggleButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> StoryQuestButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDesktopTrainingActionButton> ResetCombatGuideButton;
@@ -982,6 +993,7 @@ private:
 	bool bDesktopNativeMoveSavePending = false;
 	bool bDesktopHudDragging = false;
 	bool bTownMapTravelPending = false;
+	FGameXXKStoryCarriageRequested StoryCarriageRequested;
 	bool bDesktopNativeLastExpanded = false;
 	int32 DesktopNativeLastHudScalePercent = INDEX_NONE;
 	float DesktopInputDpiScale = 1.0f;
