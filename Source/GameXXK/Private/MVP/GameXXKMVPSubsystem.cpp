@@ -4724,8 +4724,7 @@ bool UGameXXKMVPSubsystem::ReturnPendingRouteChoiceToMap()
 
 bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
 {
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return UGameXXKMVPRules::AcceptRouteEventNpcSupport(RuntimeState);
+	return false;
 }
 
 bool UGameXXKMVPSubsystem::ResolveCampReward(const bool bHealNow)

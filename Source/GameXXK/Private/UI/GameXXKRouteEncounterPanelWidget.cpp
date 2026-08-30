@@ -8,7 +8,6 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
-#include "GameXXKCompanionCatalog.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
@@ -147,17 +146,6 @@ namespace
 		{
 			return Candidate.NodeId == State.PendingRouteNodeId;
 		});
-	}
-
-	FText TaskNpcDisplayName(const FName NpcId)
-	{
-		if (NpcId == TEXT("Npc.TusiChief")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcTusiChief", "土司首领");
-		if (NpcId == TEXT("Npc.SongJinBao")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcSongJinBao", "宋金宝");
-		if (NpcId == TEXT("Npc.YueBai")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcYueBai", "月白");
-		if (NpcId == TEXT("Npc.ZhouGuangZu")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcZhouGuangZu", "周光祖");
-		if (NpcId == TEXT("Npc.JinGui")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcJinGui", "金贵");
-		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKRouteEncounter", "NpcQiongMeiEr", "琼么儿");
-		return FText::FromName(NpcId);
 	}
 
 	bool IsRouteEncounterScreen(const EGameXXKScreen Screen)
@@ -605,15 +593,7 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 			*Labels[ChoiceIndex] = Choice.Label;
 			if (CatalogEncounter->Kind == EGameXXKRouteEncounterKind::Event)
 			{
-				if (Choice.RewardKind == EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport && !State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
-				{
-					*Enabled[ChoiceIndex] = false;
-					*Tooltips[ChoiceIndex] = NSLOCTEXT("GameXXKRouteEncounter", "SupportOccupiedTooltip", "本次路线已有任务支援，不能替换。请选择属性祝福。");
-				}
-				else
-				{
-					*Tooltips[ChoiceIndex] = Choice.Label;
-				}
+				*Tooltips[ChoiceIndex] = Choice.Label;
 			}
 			else if (State.CardRun.PendingRelicOffer.RelicIds.IsValidIndex(ChoiceIndex))
 			{
@@ -665,36 +645,6 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 					*Tooltips[ChoiceIndex] = FText::FromName(RelicId);
 				}
 			}
-		}
-		else if (const FGameXXKQuestNpcDefinition* QuestNpc = FGameXXKCompanionCatalog::FindQuestNpcDefinition(State.CardRun.PendingEvent.EventNpcId))
-		{
-			const FText NpcName = TaskNpcDisplayName(QuestNpc->NpcId);
-			const bool bSupportSlotAvailable = State.CardRun.PartySelection.QuestNpc.NpcId.IsNone();
-			Presentation.Title = FText::Format(NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcTitle", "奇遇 · {0}"), NpcName);
-			Presentation.Speaker = NpcName;
-			Presentation.Body = bSupportSlotAvailable
-				? FText::Format(NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcBody", "{0}愿以自己的固定技艺协助本次冒险。同行后会占用唯一的任务支援位，并在路线结束后离队。"), NpcName)
-				: NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcOccupiedBody", "本次冒险已有任务支援。不能替换现有支援，但仍可选择领取替代奖励。 ");
-			Presentation.PrimaryLabel = bSupportSlotAvailable
-				? FText::Format(NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcAccept", "邀请{0}支援"), NpcName)
-				: NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcOccupiedAction", "已有任务支援");
-			Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "TaskNpcAlternative", "婉拒，领取疗伤散");
-			Presentation.PrimaryAction = EGameXXKRouteEncounterAction::AcceptTaskNpcSupport;
-			Presentation.SecondaryAction = EGameXXKRouteEncounterAction::TakeHealingPowder;
-			Presentation.bPrimaryEnabled = bSupportSlotAvailable;
-			Presentation.bSecondaryEnabled = true;
-		}
-		else if (State.CardRun.PendingEvent.EventNpcId == TEXT("Npc.Event.NiuHuan"))
-		{
-			Presentation.Title = NSLOCTEXT("GameXXKRouteEncounter", "NiuHuanTitle", "山路偶遇");
-			Presentation.Speaker = NSLOCTEXT("GameXXKRouteEncounter", "NiuHuanSpeaker", "牛欢");
-			Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "NiuHuanBody", "牛欢拦下你，递来两份不同的谢礼。选择一份后才会继续前行。 ");
-			Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "NiuHuanGold", "收下 12 金");
-			Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "NiuHuanSupply", "领取疗伤散");
-			Presentation.PrimaryAction = EGameXXKRouteEncounterAction::TakeGold;
-			Presentation.SecondaryAction = EGameXXKRouteEncounterAction::TakeHealingPowder;
-			Presentation.bPrimaryEnabled = true;
-			Presentation.bSecondaryEnabled = true;
 		}
 		else
 		{

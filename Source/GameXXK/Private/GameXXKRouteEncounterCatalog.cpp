@@ -12,15 +12,6 @@ namespace
 		return Choice;
 	}
 
-	FGameXXKRouteEncounterChoiceDefinition NpcSupportChoice(const TCHAR* Label, const TCHAR* QuestNpcId)
-	{
-		FGameXXKRouteEncounterChoiceDefinition Choice;
-		Choice.Label = FText::FromString(Label);
-		Choice.RewardKind = EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport;
-		Choice.QuestNpcId = FName(QuestNpcId);
-		return Choice;
-	}
-
 	FGameXXKRouteEncounterChoiceDefinition RelicChoice(const TCHAR* Label)
 	{
 		FGameXXKRouteEncounterChoiceDefinition Choice;
@@ -67,13 +58,6 @@ namespace
 	{
 		using A = EGameXXKRouteAttributeKind;
 		return {
-			Event(TEXT("Encounter.Event.TusiChief"), TEXT("土司首领"), TEXT("土司首领以山地行军之法指点你稳住根基。"), TEXT("Npc.TusiChief"), AttributeChoice(TEXT("调息稳脉：最大气血+8"), A::MaxHealth, 8), AttributeChoice(TEXT("演练守势：防御+2"), A::Defense, 2)),
-			Event(TEXT("Encounter.Event.SongJinBao"), TEXT("宋金宝"), TEXT("宋金宝辨出一条捷径，并传授借势赶路的诀窍。"), TEXT("Npc.SongJinBao"), AttributeChoice(TEXT("疾行练步：速度+2"), A::Speed, 2), AttributeChoice(TEXT("沿途运气：最大内力+4"), A::MaxMana, 4)),
-			Event(TEXT("Encounter.Event.YueBai"), TEXT("月白"), TEXT("月白以清心法门相赠，让你选择一种修行。"), TEXT("Npc.YueBai"), AttributeChoice(TEXT("清心纳气：最大内力+5"), A::MaxMana, 5), NpcSupportChoice(TEXT("邀请月白同行"), TEXT("Npc.YueBai"))),
-			Event(TEXT("Encounter.Event.ZhouGuangZu"), TEXT("周光祖"), TEXT("周光祖演示一套发力诀窍，邀你反复练习。"), TEXT("Npc.ZhouGuangZu"), AttributeChoice(TEXT("凝劲发力：攻击+2"), A::Attack, 2), AttributeChoice(TEXT("扎稳马步：最大气血+10"), A::MaxHealth, 10)),
-			Event(TEXT("Encounter.Event.JinGui"), TEXT("金贵"), TEXT("金贵整理好护具，教你如何卸力与移步。"), TEXT("Npc.JinGui"), AttributeChoice(TEXT("借甲卸力：防御+2"), A::Defense, 2), AttributeChoice(TEXT("轻装移步：速度+2"), A::Speed, 2)),
-			Event(TEXT("Encounter.Event.QiongMeiEr"), TEXT("琼么儿"), TEXT("琼么儿带来高原草药与轻身诀窍。"), TEXT("Npc.QiongMeiEr"), AttributeChoice(TEXT("习得轻身：速度+2"), A::Speed, 2), AttributeChoice(TEXT("服下草药：最大气血+8"), A::MaxHealth, 8)),
-			Event(TEXT("Encounter.Event.NiuHuan"), TEXT("牛欢"), TEXT("牛欢与你切磋片刻，让你从两种修行方向中择一。"), TEXT("Npc.Event.NiuHuan"), AttributeChoice(TEXT("练力：攻击+3"), A::Attack, 3), AttributeChoice(TEXT("练步：速度+3"), A::Speed, 3)),
 			Event(TEXT("Encounter.Event.MountainSpring"), TEXT("无名山泉"), TEXT("清冽山泉可洗脉养气，但一次只能选择一种调息方式。"), TEXT("Event.Attribute.MountainSpring"), AttributeChoice(TEXT("养血：最大气血+12"), A::MaxHealth, 12), AttributeChoice(TEXT("养气：最大内力+6"), A::MaxMana, 6)),
 			Chest(TEXT("Encounter.Chest.Bamboo"), TEXT("竹编秘匣"), TEXT("匣中三件旧物各有灵性，选择一件带入本次路线。")),
 			Chest(TEXT("Encounter.Chest.Bronze"), TEXT("铜锁宝箱"), TEXT("铜锁自行脱落，三件遗物只能带走其一。")),
@@ -92,6 +76,19 @@ const TArray<FGameXXKRouteEncounterDefinition>& FGameXXKRouteEncounterCatalog::G
 const FGameXXKRouteEncounterDefinition* FGameXXKRouteEncounterCatalog::FindDefinition(const FName EncounterId)
 {
 	return GetAllDefinitions().FindByPredicate([EncounterId](const FGameXXKRouteEncounterDefinition& Definition){ return Definition.Id == EncounterId; });
+}
+
+bool FGameXXKRouteEncounterCatalog::IsRetiredNpcEncounterId(const FName EncounterId)
+{
+	static const TSet<FName> RetiredIds = {
+		TEXT("Encounter.Event.TusiChief"),
+		TEXT("Encounter.Event.SongJinBao"),
+		TEXT("Encounter.Event.YueBai"),
+		TEXT("Encounter.Event.ZhouGuangZu"),
+		TEXT("Encounter.Event.JinGui"),
+		TEXT("Encounter.Event.QiongMeiEr"),
+		TEXT("Encounter.Event.NiuHuan")};
+	return RetiredIds.Contains(EncounterId);
 }
 
 TArray<const FGameXXKRouteEncounterDefinition*> FGameXXKRouteEncounterCatalog::GetDefinitionsOfKind(EGameXXKRouteEncounterKind Kind)

@@ -94,11 +94,11 @@ namespace
 		return Bonuses.MaxHealth + Bonuses.MaxMana + Bonuses.Attack + Bonuses.Defense + Bonuses.Speed;
 	}
 
-	void ConfigureNiuHuanEncounter(FGameXXKRuntimeState& State)
+	void ConfigureMountainSpringEncounter(FGameXXKRuntimeState& State)
 	{
 		State.CardRun.PendingEvent.SourceNodeId = 1;
-		State.CardRun.PendingEvent.EventNpcId = TEXT("Npc.Event.NiuHuan");
-		State.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.NiuHuan");
+		State.CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+		State.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
 	}
 
 	void ConfigureChestRelicEncounter(FGameXXKRuntimeState& State)
@@ -621,8 +621,8 @@ bool FGameXXKRouteEncounterDesktopTrainingContextTest::RunTest(const FString& Pa
 	UGameXXKMVPSubsystem* const Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
 	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.SourceNodeId = 1;
-	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.YueBai");
+	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
 
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.ObjectFlags |= RF_Transient;
@@ -1223,8 +1223,8 @@ bool FGameXXKRouteEncounterPanelEventTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
 	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.SourceNodeId = 1;
-	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.YueBai");
+	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+	Subsystem->GetMutableRuntimeState().CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
 
 	AGameXXKMVPPlayerController* PlayerController = NewObject<AGameXXKMVPPlayerController>();
 	PlayerController->SetMVPSubsystemForTest(Subsystem);
@@ -1244,26 +1244,26 @@ bool FGameXXKRouteEncounterPanelEventTest::RunTest(const FString& Parameters)
 		Panel && Panel->GetHeaderResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_Header")));
 	TestTrue(TEXT("route encounter panel uses the approved backpack action blank"),
 		Panel && Panel->GetActionResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_ActionBlank")));
-	TestEqual(TEXT("task-NPC event shows the pending YueBai identity"), Panel ? Panel->GetSpeakerTextForTest().ToString() : FString(), FString(TEXT("月白")));
+	TestEqual(TEXT("environment event shows the Mountain Spring identity"), Panel ? Panel->GetSpeakerTextForTest().ToString() : FString(), FString(TEXT("无名山泉")));
 	TestEqual(TEXT("event primary choice selects its first route attribute"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice0);
 	TestEqual(TEXT("event alternative selects its second route attribute"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice1);
 	TestEqual(TEXT("event renders three complete selectable cards"), Panel ? Panel->GetRenderedChoiceCardCountForTest() : 0, 3);
-	TestTrue(TEXT("event primary button names its concrete attribute gain"), Panel && Panel->GetPrimaryActionTextForTest().ToString().Contains(TEXT("最大内力")));
+	TestTrue(TEXT("event primary button names its concrete attribute gain"), Panel && Panel->GetPrimaryActionTextForTest().ToString().Contains(TEXT("最大气血")));
 
-	const int32 RouteMaxManaBefore = Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxMana;
+	const int32 RouteMaxHealthBefore = Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxHealth;
 	TestTrue(TEXT("pressing the explicit primary card selects the event attribute"), Panel && Panel->TriggerPrimaryActionForTest());
-	TestEqual(TEXT("event card selection alone grants no attribute"), Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxMana, RouteMaxManaBefore);
+	TestEqual(TEXT("event card selection alone grants no attribute"), Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxHealth, RouteMaxHealthBefore);
 	TestTrue(TEXT("confirm grants the selected event attribute"), Panel && Panel->ConfirmSelectedChoiceForTest());
-	TestTrue(TEXT("explicit event choice increases route-local maximum mana"), Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxMana > RouteMaxManaBefore);
+	TestTrue(TEXT("explicit event choice increases route-local maximum health"), Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses.MaxHealth > RouteMaxHealthBefore);
 	TestTrue(TEXT("attribute events never install a temporary support"), Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
-	TestEqual(TEXT("explicit task-NPC choice completes the route node back to map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestEqual(TEXT("explicit environment choice completes the route node back to map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestFalse(TEXT("panel closes after its explicit route choice resolves"), PlayerController->IsRouteEncounterPanelOpenForTest());
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKRouteEncounterPanelVariantTest,
-	"GameXXK.MVP.RouteEncounter.Panel.NiuHuanChestCampChoices",
+	"GameXXK.MVP.RouteEncounter.Panel.EnvironmentChestCampChoices",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKRouteEncounterPanelVariantTest::RunTest(const FString& Parameters)
@@ -1276,11 +1276,11 @@ bool FGameXXKRouteEncounterPanelVariantTest::RunTest(const FString& Parameters)
 	UGameXXKRouteEncounterPanelWidget* Panel = PlayerController->GetRouteEncounterPanelWidgetForTest();
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
-	ConfigureNiuHuanEncounter(Subsystem->GetMutableRuntimeState());
-	TestTrue(TEXT("NiuHuan event can be opened as a player choice"), PlayerController->OpenRouteEncounterPanel());
-	TestEqual(TEXT("event-only NPC displays its concrete identity"), Panel ? Panel->GetSpeakerTextForTest().ToString() : FString(), FString(TEXT("牛欢")));
-	TestEqual(TEXT("NiuHuan primary is its first route-attribute choice"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice0);
-	TestEqual(TEXT("NiuHuan alternative is its second route-attribute choice"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice1);
+	ConfigureMountainSpringEncounter(Subsystem->GetMutableRuntimeState());
+	TestTrue(TEXT("Mountain Spring event can be opened as a player choice"), PlayerController->OpenRouteEncounterPanel());
+	TestEqual(TEXT("environment event displays its concrete identity"), Panel ? Panel->GetSpeakerTextForTest().ToString() : FString(), FString(TEXT("无名山泉")));
+	TestEqual(TEXT("Mountain Spring primary is its first route-attribute choice"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice0);
+	TestEqual(TEXT("Mountain Spring alternative is its second route-attribute choice"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice1);
 	PlayerController->CloseRouteEncounterPanel();
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Chest, EGameXXKScreen::RouteEvent);
@@ -1327,15 +1327,15 @@ bool FGameXXKRouteEncounterPanelResolutionTest::RunTest(const FString& Parameter
 	UGameXXKRouteEncounterPanelWidget* Panel = PlayerController->GetRouteEncounterPanelWidgetForTest();
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
-	ConfigureNiuHuanEncounter(Subsystem->GetMutableRuntimeState());
-	const int32 NiuHuanAttributesBefore = TotalRouteAttributeBonus(Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses);
-	TestTrue(TEXT("NiuHuan primary route choice opens before it resolves"), PlayerController->OpenRouteEncounterPanel());
-	TestTrue(TEXT("NiuHuan primary click selects its concrete route attribute"), Panel && Panel->TriggerPrimaryActionForTest());
-	TestTrue(TEXT("NiuHuan selected card resolves only on confirm"), Panel && Panel->ConfirmSelectedChoiceForTest());
-	TestTrue(TEXT("NiuHuan route attribute is awarded only after its explicit click"),
-		TotalRouteAttributeBonus(Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses) > NiuHuanAttributesBefore);
-	TestEqual(TEXT("NiuHuan click returns to the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
-	TestFalse(TEXT("NiuHuan click closes the modal"), PlayerController->IsRouteEncounterPanelOpenForTest());
+	ConfigureMountainSpringEncounter(Subsystem->GetMutableRuntimeState());
+	const int32 EnvironmentAttributesBefore = TotalRouteAttributeBonus(Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses);
+	TestTrue(TEXT("environment primary route choice opens before it resolves"), PlayerController->OpenRouteEncounterPanel());
+	TestTrue(TEXT("environment primary click selects its concrete route attribute"), Panel && Panel->TriggerPrimaryActionForTest());
+	TestTrue(TEXT("environment selected card resolves only on confirm"), Panel && Panel->ConfirmSelectedChoiceForTest());
+	TestTrue(TEXT("environment route attribute is awarded only after its explicit click"),
+		TotalRouteAttributeBonus(Subsystem->GetRuntimeState().CardRun.RouteAttributeBonuses) > EnvironmentAttributesBefore);
+	TestEqual(TEXT("environment click returns to the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
+	TestFalse(TEXT("environment click closes the modal"), PlayerController->IsRouteEncounterPanelOpenForTest());
 
 	Subsystem->GetMutableRuntimeState() = BuildPendingRouteEncounterState(EGameXXKNodeKind::Chest, EGameXXKScreen::RouteEvent);
 	ConfigureChestRelicEncounter(Subsystem->GetMutableRuntimeState());

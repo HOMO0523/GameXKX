@@ -13,9 +13,9 @@ enum class EGameXXKRouteEncounterKind : uint8
 UENUM(BlueprintType)
 enum class EGameXXKRouteEncounterRewardKind : uint8
 {
-	RouteAttribute,
-	TemporaryNpcSupport,
-	Relic
+	RouteAttribute = 0,
+	TemporaryNpcSupport = 1 UMETA(Hidden),
+	Relic = 2
 };
 
 UENUM(BlueprintType)
@@ -84,6 +84,7 @@ class GAMEXXK_API FGameXXKRouteEncounterCatalog final
 public:
 	static const TArray<FGameXXKRouteEncounterDefinition>& GetAllDefinitions();
 	static const FGameXXKRouteEncounterDefinition* FindDefinition(FName EncounterId);
+	static bool IsRetiredNpcEncounterId(FName EncounterId);
 	static TArray<const FGameXXKRouteEncounterDefinition*> GetDefinitionsOfKind(EGameXXKRouteEncounterKind Kind);
 	static const FGameXXKRouteEncounterDefinition* ChooseDeterministic(EGameXXKRouteEncounterKind Kind, int32 ChoiceSeed);
 };

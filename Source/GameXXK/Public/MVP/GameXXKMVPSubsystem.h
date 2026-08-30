@@ -427,7 +427,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ReturnPendingRouteChoiceToMap();
 
-	/** Accepts the named task NPC offered by the active route event as this route's temporary third party member. */
+	/** Deprecated v29 Blueprint compatibility facade. Always returns false without mutation. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AcceptRouteEventNpcSupport();
 

@@ -16,7 +16,6 @@
 #include "Interaction/GameXXKInteractableComponent.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
@@ -1487,8 +1486,6 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 	// visible choice succeeds.
 	AGameXXKRouteEncounterSceneActor* EncounterActor = ActiveRouteEncounterSourceActor.Get();
 
-	const bool bTaskNpcEvent = State.Screen == EGameXXKScreen::RouteEvent
-		&& FGameXXKCompanionCatalog::FindQuestNpcDefinition(State.CardRun.PendingEvent.EventNpcId) != nullptr;
 	bool bResolved = false;
 	switch (Action)
 	{
@@ -1502,13 +1499,10 @@ bool AGameXXKMVPPlayerController::ResolveRouteEncounterAction(const EGameXXKRout
 		bResolved = State.Screen == EGameXXKScreen::RouteEvent && Subsystem->ResolveRouteEncounterChoice(2);
 		break;
 	case EGameXXKRouteEncounterAction::AcceptTaskNpcSupport:
-		bResolved = bTaskNpcEvent && State.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
-			&& Subsystem->AcceptRouteEventNpcSupport();
+		bResolved = false;
 		break;
 	case EGameXXKRouteEncounterAction::TakeGold:
-		// Task-NPC events deliberately offer a support-or-supply decision, not a
-		// bypass that silently turns the NPC into gold through an external call.
-		bResolved = State.Screen == EGameXXKScreen::RouteEvent && !bTaskNpcEvent
+		bResolved = State.Screen == EGameXXKScreen::RouteEvent
 			&& Subsystem->ResolveEventReward(true);
 		break;
 	case EGameXXKRouteEncounterAction::TakeHealingPowder:

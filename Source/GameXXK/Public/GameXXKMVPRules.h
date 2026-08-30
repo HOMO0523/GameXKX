@@ -899,7 +899,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveRouteEncounterChoice(UPARAM(ref) FGameXXKRuntimeState& State, int32 ChoiceIndex);
 
-	/** Accepts a named route-event NPC as this route's one temporary task-NPC support slot. */
+	/** Deprecated v29 Blueprint compatibility facade. Always returns false without mutation. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool AcceptRouteEventNpcSupport(UPARAM(ref) FGameXXKRuntimeState& State);
 

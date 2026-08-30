@@ -19,19 +19,19 @@ class UTextBlock;
 UENUM(BlueprintType)
 enum class EGameXXKRouteEncounterAction : uint8
 {
-	None,
-	AcceptTaskNpcSupport,
-	TakeGold,
-	TakeHealingPowder,
-	CampRest,
-	CampTakeHealingPowder,
-	MerchantLeave,
-	SelectChoice0,
-	SelectChoice1,
-	SelectChoice2,
-	ClosePanel,
-	CampTakeLifeSavingTalisman,
-	CampTakeRouteMoney
+	None = 0,
+	AcceptTaskNpcSupport = 1 UMETA(Hidden),
+	TakeGold = 2,
+	TakeHealingPowder = 3,
+	CampRest = 4,
+	CampTakeHealingPowder = 5,
+	MerchantLeave = 6,
+	SelectChoice0 = 7,
+	SelectChoice1 = 8,
+	SelectChoice2 = 9,
+	ClosePanel = 10,
+	CampTakeLifeSavingTalisman = 11,
+	CampTakeRouteMoney = 12
 };
 
 class UGameXXKRouteEncounterPanelWidget;

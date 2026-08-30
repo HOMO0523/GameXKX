@@ -2656,33 +2656,7 @@ bool UGameXXKMVPRules::ResolveRouteEncounterChoice(FGameXXKRuntimeState& State, 
 		return false;
 	}
 	const FGameXXKRouteEncounterChoiceDefinition& Choice = Encounter->Choices[ChoiceIndex];
-	if (Choice.RewardKind == EGameXXKRouteEncounterRewardKind::TemporaryNpcSupport)
-	{
-		FString FormationError;
-		FGameXXKOrderedPartyFormation UpdatedFormation;
-		if (!Candidate.CardRun.PartySelection.QuestNpc.NpcId.IsNone()
-			|| Choice.QuestNpcId.IsNone()
-			|| !FGameXXKPartyFormationRules::Validate(
-				Candidate,
-				Candidate.CardRun.OrderedFormation,
-				&FormationError)
-			|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError)
-			|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, Choice.QuestNpcId, {})
-			|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
-				Candidate,
-				UpdatedFormation,
-				&FormationError))
-		{
-			return false;
-		}
-		Candidate.CardRun.OrderedFormation = MoveTemp(UpdatedFormation);
-		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
-		if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError))
-		{
-			return false;
-		}
-	}
-	else if (Choice.RewardKind != EGameXXKRouteEncounterRewardKind::RouteAttribute)
+	if (Choice.RewardKind != EGameXXKRouteEncounterRewardKind::RouteAttribute)
 	{
 		return false;
 	}
@@ -2767,71 +2741,7 @@ bool UGameXXKMVPRules::ResolveEventReward(FGameXXKRuntimeState& State, bool bTak
 
 bool UGameXXKMVPRules::AcceptRouteEventNpcSupport(FGameXXKRuntimeState& State)
 {
-	if (!State.bHasGeneratedRouteMap || State.Screen != EGameXXKScreen::RouteEvent)
-	{
-		return false;
-	}
-	const FGameXXKRouteMapNode* PendingNode = GameXXKMVP::FindPendingRouteNode(State);
-	if (!PendingNode || PendingNode->NodeKind != EGameXXKNodeKind::Event)
-	{
-		return false;
-	}
-	const int32 NodeId = PendingNode->NodeId;
-	if (GameXXKMVP::HasRouteNodeReceipt(State, State.CardRun.RouteProgress.CurrentChapter, NodeId))
-	{
-		FGameXXKRuntimeState Candidate = State;
-		const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-		if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
-		{
-			return false;
-		}
-		Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
-		State = MoveTemp(Candidate);
-		return true;
-	}
-	const FGameXXKPendingRouteEvent PendingEvent = State.CardRun.PendingEvent;
-	if (PendingEvent.SourceNodeId != PendingNode->NodeId
-		|| PendingEvent.EventNpcId.IsNone()
-		|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(PendingEvent.EventNpcId))
-	{
-		return false;
-	}
-	// A route intentionally has one temporary support slot.  Never replace a
-	// previously accepted task NPC without a separate player-confirmed flow.
-	if (!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
-	{
-		return false;
-	}
-	FGameXXKRuntimeState Candidate = State;
-	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
-	FString FormationError;
-	FGameXXKOrderedPartyFormation UpdatedFormation;
-	if (!FGameXXKPartyFormationRules::Validate(
-			Candidate,
-			Candidate.CardRun.OrderedFormation,
-			&FormationError)
-		|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError)
-		|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, PendingEvent.EventNpcId, {})
-		|| !FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
-			Candidate,
-			UpdatedFormation,
-			&FormationError))
-	{
-		return false;
-	}
-	Candidate.CardRun.OrderedFormation = MoveTemp(UpdatedFormation);
-	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
-	if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, &FormationError))
-	{
-		return false;
-	}
-	if (!GameXXKMVP::SettleGeneratedRouteNode(Candidate, BeforeOneTimeRewards, NodeId, 0))
-	{
-		return false;
-	}
-	Candidate.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
-	State = MoveTemp(Candidate);
-	return true;
+	return false;
 }
 
 bool UGameXXKMVPRules::ResolveCampReward(
