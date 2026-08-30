@@ -25,6 +25,7 @@
 #include "Misc/Parse.h"
 #include "Misc/PackageName.h"
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKPrologueCarriageRig.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
@@ -277,6 +278,10 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
+	{
+		EndPrologueCarriagePresentation(Rig);
+	}
 	UnbindInteractionRequests();
 	if (DialogueCoordinator)
 	{
@@ -632,6 +637,73 @@ void AGameXXKMVPPlayerController::ExitBattleOverlay()
 bool AGameXXKMVPPlayerController::IsBattleOverlayActive() const
 {
 	return BattleOverlayCoordinator && BattleOverlayCoordinator->IsActive();
+}
+
+bool AGameXXKMVPPlayerController::BeginPrologueCarriagePresentation(
+	AGameXXKPrologueCarriageRig* Rig)
+{
+	if (!IsValid(Rig) || ActivePrologueCarriageRig.IsValid())
+	{
+		return false;
+	}
+
+	ActivePrologueCarriageRig = Rig;
+	ProloguePreviousViewTarget = GetViewTarget();
+	ProloguePreviousInputMode = TrackedInputMode;
+	bProloguePreviousShowMouseCursor = bShowMouseCursor;
+	bProloguePreviousClickEvents = bEnableClickEvents;
+	bProloguePreviousMouseOverEvents = bEnableMouseOverEvents;
+	bPrologueOwnedMoveInputIgnore = !IsMoveInputIgnored();
+	bPrologueOwnedLookInputIgnore = !IsLookInputIgnored();
+	FlushPressedKeys();
+	if (bPrologueOwnedMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(true);
+	}
+	if (bPrologueOwnedLookInputIgnore)
+	{
+		SetIgnoreLookInput(true);
+	}
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
+	SetTrackedInputMode(EGameXXKTrackedInputMode::GameOnly);
+	if (GetWorld())
+	{
+		SetViewTarget(Rig);
+	}
+	return true;
+}
+
+void AGameXXKMVPPlayerController::EndPrologueCarriagePresentation(
+	AGameXXKPrologueCarriageRig* Rig)
+{
+	if (!Rig || ActivePrologueCarriageRig.Get() != Rig)
+	{
+		return;
+	}
+	if (bPrologueOwnedMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(false);
+	}
+	if (bPrologueOwnedLookInputIgnore)
+	{
+		SetIgnoreLookInput(false);
+	}
+	bShowMouseCursor = bProloguePreviousShowMouseCursor;
+	bEnableClickEvents = bProloguePreviousClickEvents;
+	bEnableMouseOverEvents = bProloguePreviousMouseOverEvents;
+	SetTrackedInputMode(ProloguePreviousInputMode);
+	if (GetWorld())
+	{
+		AActor* ViewTarget = ProloguePreviousViewTarget.Get();
+		SetViewTarget(ViewTarget ? ViewTarget : GetPawn());
+	}
+
+	ActivePrologueCarriageRig.Reset();
+	ProloguePreviousViewTarget.Reset();
+	bPrologueOwnedMoveInputIgnore = false;
+	bPrologueOwnedLookInputIgnore = false;
 }
 
 FGameXXKBattleOverlaySnapshot AGameXXKMVPPlayerController::CaptureBattleOverlaySnapshot(

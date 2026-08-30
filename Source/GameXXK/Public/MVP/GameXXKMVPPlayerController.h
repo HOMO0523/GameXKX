@@ -35,6 +35,7 @@ class UGameXXKWorldMapWidget;
 class UGameXXKDesktopTrainingWorkbenchWidget;
 class UWidget;
 class AGameXXKRouteEncounterSceneActor;
+class AGameXXKPrologueCarriageRig;
 class SWidget;
 class SWindow;
 struct FWorldContext;
@@ -77,6 +78,12 @@ public:
 	void EnterBattleOverlay();
 	void ExitBattleOverlay();
 	bool IsBattleOverlayActive() const;
+	bool BeginPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
+	void EndPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
+	bool HasActivePrologueCarriageForTest() const
+	{
+		return ActivePrologueCarriageRig.IsValid();
+	}
 
 	/** Single canonical battle-board instance shared by the flow and route bridge. */
 	UGameXXKBattleBoardWidget* GetOrCreateBattleBoardWidget();
@@ -526,6 +533,14 @@ private:
 	bool bDesktopTrainingOverlayCompositionActive = false;
 	bool bDesktopTrainingOverlayFailedForSession = false;
 	bool bDesktopTownMapTravelPending = false;
+	TWeakObjectPtr<AGameXXKPrologueCarriageRig> ActivePrologueCarriageRig;
+	TWeakObjectPtr<AActor> ProloguePreviousViewTarget;
+	EGameXXKTrackedInputMode ProloguePreviousInputMode = EGameXXKTrackedInputMode::GameAndUI;
+	bool bProloguePreviousShowMouseCursor = false;
+	bool bProloguePreviousClickEvents = false;
+	bool bProloguePreviousMouseOverEvents = false;
+	bool bPrologueOwnedMoveInputIgnore = false;
+	bool bPrologueOwnedLookInputIgnore = false;
 	bool bOwnsDesktopWorkbenchTownMoveInputLock = false;
 	bool bOwnsDesktopWorkbenchTownLookInputLock = false;
 
