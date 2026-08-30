@@ -4,6 +4,8 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEncounterRules.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteMerchantRules.h"
@@ -37,9 +39,18 @@ namespace
 		return Result;
 	}
 
-	FGameXXKRuntimeState MakeMerchantState()
+	FGameXXKRuntimeState MakeMerchantState(const bool bPermanentParty = false)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		if (bPermanentParty)
+		{
+			UGameXXKMVPSubsystem* Subsystem =
+				NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+			if (Subsystem && Subsystem->StartGame())
+			{
+				State = Subsystem->GetRuntimeStateCopy();
+			}
+		}
 		State.Screen = EGameXXKScreen::RouteMerchant;
 		State.bDungeonActive = true;
 		State.bHasGeneratedRouteMap = true;
@@ -62,6 +73,8 @@ namespace
 		State.PlayerGold = 777;
 
 		const TArray<FName> HeroCards = FindCardIdsByOwner(EGameXXKCardOwner::Hero);
+		State.CardRun.HeroUnlockedCardIds.Reset();
+		State.CardRun.HeroSelectedCardIds.Reset();
 		State.CardRun.HeroUnlockedCardIds.Append(HeroCards.GetData(), FMath::Min(8, HeroCards.Num()));
 		State.CardRun.HeroSelectedCardIds = State.CardRun.HeroUnlockedCardIds;
 		return State;
@@ -330,7 +343,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = MakeMerchantState();
+	FGameXXKRuntimeState State = MakeMerchantState(true);
 	FString Error;
 	if (!TestTrue(TEXT("a locked route generates carried-card merchant stock"),
 		FGameXXKRouteMerchantRules::EnsureStock(State, &Error)))
@@ -381,7 +394,7 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	FGameXXKRuntimeState IndependentTwin = MakeMerchantState();
+	FGameXXKRuntimeState IndependentTwin = MakeMerchantState(true);
 	TestTrue(TEXT("independent same-root fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(IndependentTwin, &Error));
 	TestTrue(TEXT("root seed, source node, and refresh count deterministically reproduce identical ordered stock"), MerchantStatesMatch(IndependentTwin.CardRun.RouteMerchant, FirstStock));
 
@@ -935,7 +948,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKRouteMerchantCarriedCardUpgradeTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = MakeMerchantState();
+	FGameXXKRuntimeState State = MakeMerchantState(true);
+	const FGameXXKRuntimeState InitialState = State;
 	const int32 InitialRouteMoney = State.CardRun.RouteTravelMoney;
 	const int32 InitialPlayerGold = State.PlayerGold;
 	const TArray<FName> InitialHeroCards = State.CardRun.HeroSelectedCardIds;
@@ -945,7 +959,9 @@ bool FGameXXKRouteMerchantCarriedCardUpgradeTest::RunTest(const FString& Paramet
 	FGameXXKRouteMerchantView View;
 	TestTrue(TEXT("view builds"), FGameXXKRouteMerchantRules::GetView(State, View, &Error));
 	TestEqual(TEXT("exactly four card slots"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("no relic slots"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("current merchant keeps four relic slots"),
+		View.RelicOffers.Num(),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 
 	TSet<FName> CardIds;
 	TArray<FGameXXKRouteMerchantOfferView> Purchasable;
@@ -970,7 +986,7 @@ bool FGameXXKRouteMerchantCarriedCardUpgradeTest::RunTest(const FString& Paramet
 		return false;
 	}
 
-	FGameXXKRuntimeState IndependentTwin = MakeMerchantState();
+	FGameXXKRuntimeState IndependentTwin = InitialState;
 	TestTrue(TEXT("same state and seed generate stock"), FGameXXKRouteMerchantRules::EnsureStock(IndependentTwin, &Error));
 	TestTrue(TEXT("same state and seed produce identical stock"),
 		MerchantStatesMatch(IndependentTwin.CardRun.RouteMerchant, State.CardRun.RouteMerchant));
@@ -1017,12 +1033,20 @@ bool FGameXXKRouteMerchantPoolAndPlaceholderTest::RunTest(const FString& Paramet
 	Companion.bIsActive = true;
 	Companion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1], ProfessionCards[2]};
 	State.CardRun.CompanionRoster.PermanentCompanions.Add(Companion);
-	State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = Companion.InstanceId;
 	const FGameXXKQuestNpcDefinition& QuestNpc = FGameXXKCompanionCatalog::GetQuestNpcDefinitions()[0];
-	State.CardRun.ActiveTemporaryQuestNpcId = QuestNpc.NpcId;
-	State.CardRun.PartySelection.QuestNpc.NpcId = QuestNpc.NpcId;
-	State.CardRun.PartySelection.QuestNpc.SelectedCardIds = {
+	State.CardRun.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpc.NpcId).SelectedCardIds = {
 		QuestNpc.FixedCardIds[0], QuestNpc.FixedCardIds[1], QuestNpc.FixedCardIds[2]};
+	FGameXXKPartyMemberRef HeroRef;
+	HeroRef.Kind = EGameXXKPartyMemberKind::Hero;
+	HeroRef.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
+	FGameXXKPartyMemberRef CompanionRef;
+	CompanionRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+	CompanionRef.MemberId = Companion.InstanceId;
+	FGameXXKPartyMemberRef NpcRef;
+	NpcRef.Kind = EGameXXKPartyMemberKind::QuestNpc;
+	NpcRef.MemberId = QuestNpc.NpcId;
+	State.CardRun.OrderedFormation.Members = {HeroRef, CompanionRef, NpcRef};
+	FGameXXKPartyFormationRules::ProjectCompatibility(State);
 
 	TArray<FGameXXKRouteMerchantRules::FDeployedCardCandidate> Pool;
 	FString Error;
@@ -1040,7 +1064,7 @@ bool FGameXXKRouteMerchantPoolAndPlaceholderTest::RunTest(const FString& Paramet
 		return Candidate.OwnerMemberId == QuestNpc.NpcId;
 	});
 	TestTrue(TEXT("active companion follows hero in source order"), CompanionIndex > 0);
-	TestTrue(TEXT("active task NPC follows active companion in source order"), QuestNpcIndex > CompanionIndex);
+	TestTrue(TEXT("selected NPC follows active companion in source order"), QuestNpcIndex > CompanionIndex);
 	FGameXXKRuntimeState EpicFiltered = State;
 	EpicFiltered.CardRun.UpgradedCardQualities.Add(
 		EpicFiltered.CardRun.HeroSelectedCardIds[0], EGameXXKCardQuality::Epic);
@@ -1111,7 +1135,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters)
 {
 	FString Error;
-	FGameXXKRuntimeState State = MakeMerchantState();
+	FGameXXKRuntimeState State = MakeMerchantState(true);
 	TestTrue(TEXT("refresh fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(State, &Error));
 	FGameXXKRouteMerchantOffer* PurchasedOffer = FindAvailableOffer(State, EGameXXKRouteMerchantOfferKind::Card);
 	if (!TestNotNull(TEXT("refresh fixture has a card"), PurchasedOffer))
@@ -1144,7 +1168,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	TestFalse(TEXT("route money cannot fund refresh"), FGameXXKRouteMerchantRules::Refresh(NoGold, &Error));
 	TestTrue(TEXT("failed refresh is atomic"), RuntimeStatesMatch(NoGold, NoGoldBefore));
 
-	FGameXXKRuntimeState StaleQuality = MakeMerchantState();
+	FGameXXKRuntimeState StaleQuality = MakeMerchantState(true);
 	TestTrue(TEXT("stale quality fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(StaleQuality, &Error));
 	FGameXXKRouteMerchantOffer* StaleQualityOffer = FindAvailableOffer(StaleQuality, EGameXXKRouteMerchantOfferKind::Card);
 	if (TestNotNull(TEXT("stale quality fixture has a card"), StaleQualityOffer))
@@ -1155,14 +1179,17 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 			EGameXXKRouteMerchantPurchaseFailure::StaleCardQuality, TEXT("stale quality purchase"));
 	}
 
-	FGameXXKRuntimeState StaleCarry = MakeMerchantState();
-	StaleCarry.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
-	for (FGameXXKPermanentCompanion& Companion : StaleCarry.CardRun.CompanionRoster.PermanentCompanions)
-	{
-		Companion.bIsActive = false;
-	}
+	FGameXXKRuntimeState StaleCarry = MakeMerchantState(true);
 	TestTrue(TEXT("stale carry fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(StaleCarry, &Error));
-	FGameXXKRouteMerchantOffer* StaleCarryOffer = FindAvailableOffer(StaleCarry, EGameXXKRouteMerchantOfferKind::Card);
+	FGameXXKRouteMerchantOffer* StaleCarryOffer =
+		StaleCarry.CardRun.RouteMerchant.Offers.FindByPredicate(
+			[](const FGameXXKRouteMerchantOffer& Offer)
+			{
+				return Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+					&& Offer.OwnerMemberId == FGameXXKEquipmentRules::HeroCharacterId()
+					&& !Offer.bUnavailable
+					&& !Offer.bSold;
+			});
 	if (TestNotNull(TEXT("stale carry fixture has a hero card"), StaleCarryOffer))
 	{
 		const FName StaleOfferId = StaleCarryOffer->OfferId;
@@ -1171,7 +1198,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 			EGameXXKRouteMerchantPurchaseFailure::CardNoLongerCarried, TEXT("stale carried card purchase"));
 	}
 
-	FGameXXKRuntimeState StaleOwner = MakeMerchantState();
+	FGameXXKRuntimeState StaleOwner = MakeMerchantState(true);
 	StaleOwner.CardRun.HeroSelectedCardIds.Reset();
 	const TArray<FName> ProfessionCards = FindCardIdsByOwner(EGameXXKCardOwner::Profession);
 	FGameXXKPermanentCompanion OwnerCompanion;
@@ -1180,20 +1207,59 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	OwnerCompanion.bIsActive = true;
 	OwnerCompanion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1]};
 	StaleOwner.CardRun.CompanionRoster.PermanentCompanions.Add(OwnerCompanion);
-	StaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = OwnerCompanion.InstanceId;
+	FGameXXKPartyMemberRef* StaleOwnerFormationRef =
+		StaleOwner.CardRun.OrderedFormation.Members.FindByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			});
+	if (!TestNotNull(TEXT("stale owner fixture has a companion formation slot"),
+		StaleOwnerFormationRef))
+	{
+		return false;
+	}
+	const FName PreviousStaleOwnerId = StaleOwnerFormationRef->MemberId;
+	StaleOwnerFormationRef->MemberId = OwnerCompanion.InstanceId;
+	FGameXXKPartyFormationRules::ProjectCompatibility(StaleOwner);
 	TestTrue(TEXT("stale owner fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(StaleOwner, &Error));
-	FGameXXKRouteMerchantOffer* StaleOwnerOffer = FindAvailableOffer(StaleOwner, EGameXXKRouteMerchantOfferKind::Card);
+	FGameXXKRouteMerchantOffer* StaleOwnerOffer =
+		StaleOwner.CardRun.RouteMerchant.Offers.FindByPredicate(
+			[OwnerId = OwnerCompanion.InstanceId](const FGameXXKRouteMerchantOffer& Offer)
+			{
+				return Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+					&& Offer.OwnerMemberId == OwnerId
+					&& !Offer.bUnavailable
+					&& !Offer.bSold;
+			});
 	if (TestNotNull(TEXT("stale owner fixture has a companion card"), StaleOwnerOffer))
 	{
 		const FName StaleOwnerOfferId = StaleOwnerOffer->OfferId;
-		StaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
-		StaleOwner.CardRun.CompanionRoster.PermanentCompanions.Last().bIsActive = false;
+		FGameXXKPartyMemberRef* LiveStaleOwnerFormationRef =
+			StaleOwner.CardRun.OrderedFormation.Members.FindByPredicate(
+				[OwnerId = OwnerCompanion.InstanceId](const FGameXXKPartyMemberRef& Ref)
+				{
+					return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+						&& Ref.MemberId == OwnerId;
+				});
+		if (!TestNotNull(TEXT("stale owner fixture reacquires its live formation slot"),
+			LiveStaleOwnerFormationRef))
+		{
+			return false;
+		}
+		LiveStaleOwnerFormationRef->MemberId = PreviousStaleOwnerId;
+		FGameXXKPartyFormationRules::ProjectCompatibility(StaleOwner);
 		ExpectPurchaseFailureAndRollback(*this, StaleOwner, StaleOwnerOfferId, NAME_None,
 			EGameXXKRouteMerchantPurchaseFailure::OwnerNoLongerDeployed, TEXT("stale owner purchase"));
 	}
 
-	FGameXXKRuntimeState ExhaustedRefresh = MakeMerchantState();
+	FGameXXKRuntimeState ExhaustedRefresh = MakeMerchantState(true);
 	ExhaustedRefresh.CardRun.HeroSelectedCardIds.SetNum(1);
+	for (FGameXXKPermanentCompanion& Companion :
+		ExhaustedRefresh.CardRun.CompanionRoster.PermanentCompanions)
+	{
+		Companion.SelectedCardIds.Reset();
+	}
+	ExhaustedRefresh.CardRun.PartySelection.QuestNpc.SelectedCardIds.Reset();
 	TestTrue(TEXT("exhausted refresh fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(ExhaustedRefresh, &Error));
 	FGameXXKRouteMerchantOffer* OnlyOffer = FindAvailableOffer(ExhaustedRefresh, EGameXXKRouteMerchantOfferKind::Card);
@@ -1202,34 +1268,37 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		FGameXXKRouteMerchantPurchaseResult OnlyPurchase;
 		TestTrue(TEXT("only carried card buys"),
 			FGameXXKRouteMerchantRules::Purchase(ExhaustedRefresh, OnlyOffer->OfferId, NAME_None, OnlyPurchase));
-		ExpectRefreshDisabledAndRollback(*this, ExhaustedRefresh, TEXT("exhausted placeholder-only pool"));
-		const TArray<FName> HeroCards = FindCardIdsByOwner(EGameXXKCardOwner::Hero);
-		const FName* NewlyCarriedCardPtr = HeroCards.FindByPredicate([&OnlyPurchase](const FName CardId)
-		{
-			return CardId != OnlyPurchase.CardId;
-		});
-		const FName NewlyCarriedCard = NewlyCarriedCardPtr ? *NewlyCarriedCardPtr : NAME_None;
-		if (TestFalse(TEXT("fixture finds a newly legal carried card"), NewlyCarriedCard.IsNone()))
-		{
-			ExhaustedRefresh.CardRun.HeroSelectedCardIds.Add(NewlyCarriedCard);
-			FGameXXKRouteMerchantView NewlyEligibleView;
-			TestTrue(TEXT("newly legal carried card keeps view readable"),
-				FGameXXKRouteMerchantRules::GetView(ExhaustedRefresh, NewlyEligibleView, &Error));
-			TestTrue(TEXT("newly legal candidate re-enables refresh for placeholder slots"),
-				NewlyEligibleView.bRefreshEnabled);
-			const int32 NewlyEligibleRouteMoney = ExhaustedRefresh.CardRun.RouteTravelMoney;
-			TestTrue(TEXT("newly legal candidate permits refresh"),
-				FGameXXKRouteMerchantRules::Refresh(ExhaustedRefresh, &Error));
-			TestEqual(TEXT("newly legal refresh preserves route money"),
-				ExhaustedRefresh.CardRun.RouteTravelMoney, NewlyEligibleRouteMoney);
-		}
+		FGameXXKRouteMerchantView ExhaustedCardView;
+		TestTrue(TEXT("exhausted card pool keeps the merchant view readable"),
+			FGameXXKRouteMerchantRules::GetView(
+				ExhaustedRefresh,
+				ExhaustedCardView,
+				&Error));
+		TestTrue(TEXT("relic offers keep refresh available after card exhaustion"),
+			ExhaustedCardView.bRefreshEnabled);
+		TestEqual(TEXT("exhausted card pool still exposes four relic offers"),
+			ExhaustedCardView.RelicOffers.Num(),
+			FGameXXKRouteMerchantRules::RelicSlotCount);
+		const int32 ExhaustedRouteMoney = ExhaustedRefresh.CardRun.RouteTravelMoney;
+		TestTrue(TEXT("relic-backed refresh succeeds after card exhaustion"),
+			FGameXXKRouteMerchantRules::Refresh(ExhaustedRefresh, &Error));
+		TestEqual(TEXT("relic-backed refresh preserves route money"),
+			ExhaustedRefresh.CardRun.RouteTravelMoney,
+			ExhaustedRouteMoney);
 	}
 
-	FGameXXKRuntimeState RefreshStaleCarry = MakeMerchantState();
+	FGameXXKRuntimeState RefreshStaleCarry = MakeMerchantState(true);
 	TestTrue(TEXT("stale refresh carry fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleCarry, &Error));
 	FGameXXKRouteMerchantOffer* RefreshStaleCarryOffer =
-		FindAvailableOffer(RefreshStaleCarry, EGameXXKRouteMerchantOfferKind::Card);
+		RefreshStaleCarry.CardRun.RouteMerchant.Offers.FindByPredicate(
+			[](const FGameXXKRouteMerchantOffer& Offer)
+			{
+				return Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+					&& Offer.OwnerMemberId == FGameXXKEquipmentRules::HeroCharacterId()
+					&& !Offer.bUnavailable
+					&& !Offer.bSold;
+			});
 	if (TestNotNull(TEXT("stale refresh carry fixture has an offer"), RefreshStaleCarryOffer))
 	{
 		const FName StaleViewOfferId = RefreshStaleCarryOffer->OfferId;
@@ -1240,7 +1309,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		ExpectRefreshDisabledAndRollback(*this, RefreshStaleCarry, TEXT("unsold card no longer carried"));
 	}
 
-	FGameXXKRuntimeState RefreshStaleQuality = MakeMerchantState();
+	FGameXXKRuntimeState RefreshStaleQuality = MakeMerchantState(true);
 	TestTrue(TEXT("stale refresh quality fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleQuality, &Error));
 	FGameXXKRouteMerchantOffer* RefreshStaleQualityOffer =
@@ -1257,7 +1326,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		ExpectRefreshDisabledAndRollback(*this, RefreshStaleQuality, TEXT("unsold card quality changed"));
 	}
 
-	FGameXXKRuntimeState RefreshMaxQuality = MakeMerchantState();
+	FGameXXKRuntimeState RefreshMaxQuality = MakeMerchantState(true);
 	TestTrue(TEXT("max refresh quality fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(RefreshMaxQuality, &Error));
 	FGameXXKRouteMerchantOffer* RefreshMaxQualityOffer =
@@ -1274,7 +1343,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		ExpectRefreshDisabledAndRollback(*this, RefreshMaxQuality, TEXT("unsold card reached max quality"));
 	}
 
-	FGameXXKRuntimeState RefreshStaleOwner = MakeMerchantState();
+	FGameXXKRuntimeState RefreshStaleOwner = MakeMerchantState(true);
 	RefreshStaleOwner.CardRun.HeroSelectedCardIds.SetNum(1);
 	FGameXXKPermanentCompanion RefreshOwnerCompanion;
 	RefreshOwnerCompanion.InstanceId = TEXT("Companion.Test.RefreshStaleOwner");
@@ -1282,7 +1351,20 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	RefreshOwnerCompanion.bIsActive = true;
 	RefreshOwnerCompanion.SelectedCardIds = {ProfessionCards[0], ProfessionCards[1], ProfessionCards[2]};
 	RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Add(RefreshOwnerCompanion);
-	RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = RefreshOwnerCompanion.InstanceId;
+	FGameXXKPartyMemberRef* RefreshStaleOwnerFormationRef =
+		RefreshStaleOwner.CardRun.OrderedFormation.Members.FindByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			});
+	if (!TestNotNull(TEXT("stale refresh owner fixture has a companion formation slot"),
+		RefreshStaleOwnerFormationRef))
+	{
+		return false;
+	}
+	const FName PreviousRefreshOwnerId = RefreshStaleOwnerFormationRef->MemberId;
+	RefreshStaleOwnerFormationRef->MemberId = RefreshOwnerCompanion.InstanceId;
+	FGameXXKPartyFormationRules::ProjectCompatibility(RefreshStaleOwner);
 	TestTrue(TEXT("stale refresh owner fixture generates"),
 		FGameXXKRouteMerchantRules::EnsureStock(RefreshStaleOwner, &Error));
 	FGameXXKRouteMerchantOffer* RefreshStaleOwnerOffer =
@@ -1294,16 +1376,30 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	if (TestNotNull(TEXT("stale refresh owner fixture offers a companion card"), RefreshStaleOwnerOffer))
 	{
 		const FName StaleViewOfferId = RefreshStaleOwnerOffer->OfferId;
-		RefreshStaleOwner.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
-		RefreshStaleOwner.CardRun.CompanionRoster.PermanentCompanions.Last().bIsActive = false;
+		FGameXXKPartyMemberRef* LiveRefreshOwnerFormationRef =
+			RefreshStaleOwner.CardRun.OrderedFormation.Members.FindByPredicate(
+				[OwnerId = RefreshOwnerCompanion.InstanceId](const FGameXXKPartyMemberRef& Ref)
+				{
+					return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+						&& Ref.MemberId == OwnerId;
+				});
+		if (!TestNotNull(TEXT("stale refresh owner fixture reacquires its live formation slot"),
+			LiveRefreshOwnerFormationRef))
+		{
+			return false;
+		}
+		LiveRefreshOwnerFormationRef->MemberId = PreviousRefreshOwnerId;
+		FGameXXKPartyFormationRules::ProjectCompatibility(RefreshStaleOwner);
 		ExpectStaleOfferViewDisabled(
 			*this, RefreshStaleOwner, StaleViewOfferId, TEXT("no longer deployed"),
 			TEXT("unsold owner no longer deployed"));
 		ExpectRefreshDisabledAndRollback(*this, RefreshStaleOwner, TEXT("unsold owner no longer deployed"));
 	}
 
-	FGameXXKRuntimeState Legacy = MakeMerchantState();
+	FGameXXKRuntimeState Legacy = MakeMerchantState(true);
 	TestTrue(TEXT("legacy fixture first generates current stock"), FGameXXKRouteMerchantRules::EnsureStock(Legacy, &Error));
+	Legacy.CardRun.RouteMerchant.Offers.SetNum(
+		FGameXXKRouteMerchantRules::CardSlotCount);
 	for (FGameXXKRouteMerchantOffer& Offer : Legacy.CardRun.RouteMerchant.Offers)
 	{
 		Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
@@ -1315,19 +1411,26 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("same legacy relic snapshot normalizes deterministically"), FGameXXKRouteMerchantRules::EnsureStock(LegacyTwin, &Error));
 	TestTrue(TEXT("legacy normalization yields identical card stock"),
 		MerchantStatesMatch(Legacy.CardRun.RouteMerchant, LegacyTwin.CardRun.RouteMerchant));
-	TestEqual(TEXT("legacy normalization removes every relic offer"),
-		CountOffersOfKind(Legacy.CardRun.RouteMerchant, EGameXXKRouteMerchantOfferKind::Relic), 0);
+	TestEqual(TEXT("legacy normalization restores four current relic offers"),
+		CountOffersOfKind(Legacy.CardRun.RouteMerchant, EGameXXKRouteMerchantOfferKind::Relic),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 
 	FGameXXKRuntimeState LegacyView = LegacyTwin;
+	LegacyView.CardRun.RouteMerchant.Offers.SetNum(
+		FGameXXKRouteMerchantRules::CardSlotCount);
 	for (FGameXXKRouteMerchantOffer& Offer : LegacyView.CardRun.RouteMerchant.Offers)
 	{
 		Offer.Kind = EGameXXKRouteMerchantOfferKind::Relic;
+		Offer.OwnerMemberId = NAME_None;
+		Offer.NextQuality = EGameXXKCardQuality::Invalid;
 	}
 	FGameXXKRouteMerchantView NormalizedView;
 	TestTrue(TEXT("mutable GetView normalizes legacy relic stock on first view"),
 		FGameXXKRouteMerchantRules::GetView(LegacyView, NormalizedView, &Error));
 	TestEqual(TEXT("normalized legacy view exposes four cards"), NormalizedView.CardOffers.Num(), 4);
-	TestEqual(TEXT("normalized legacy view exposes no relics"), NormalizedView.RelicOffers.Num(), 0);
+	TestEqual(TEXT("normalized legacy view exposes four relics"),
+		NormalizedView.RelicOffers.Num(),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 	return true;
 }
 
@@ -1339,7 +1442,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKRouteMerchantLegacyPendingNormalizationTest::RunTest(const FString& Parameters)
 {
 	FString Error;
-	FGameXXKRuntimeState Legacy = MakeMerchantState();
+	FGameXXKRuntimeState Legacy = MakeMerchantState(true);
 	TestTrue(TEXT("legacy-pending fixture first generates current stock"),
 		FGameXXKRouteMerchantRules::EnsureStock(Legacy, &Error));
 	ConvertCurrentStockToLegacyRelicsWithPending(Legacy);
@@ -1350,7 +1453,9 @@ bool FGameXXKRouteMerchantLegacyPendingNormalizationTest::RunTest(const FString&
 		FGameXXKRouteMerchantRules::GetView(Legacy, View, &Error));
 	TestTrue(TEXT("legacy pending normalization reports no error"), Error.IsEmpty());
 	TestEqual(TEXT("legacy pending normalization yields four card offers"), View.CardOffers.Num(), 4);
-	TestEqual(TEXT("legacy pending normalization yields zero relic offers"), View.RelicOffers.Num(), 0);
+	TestEqual(TEXT("legacy pending normalization yields four relic offers"),
+		View.RelicOffers.Num(),
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 	TestFalse(TEXT("legacy pending active flag is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.bActive);
 	TestTrue(TEXT("legacy pending offer id is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.OfferId.IsNone());
 	TestTrue(TEXT("legacy pending card id is discarded"), Legacy.CardRun.RouteMerchant.PendingPurchase.CardId.IsNone());
@@ -1379,7 +1484,7 @@ bool FGameXXKRouteMerchantLegacyPendingNormalizationTest::RunTest(const FString&
 		FGameXXKRouteMerchantRules::GetView(BadSource, RejectedView, &Error));
 	TestTrue(TEXT("corrupt-source rejection is atomic"), RuntimeStatesMatch(BadSource, BadSourceBefore));
 
-	FGameXXKRuntimeState CurrentPending = MakeMerchantState();
+	FGameXXKRuntimeState CurrentPending = MakeMerchantState(true);
 	TestTrue(TEXT("current pending fixture generates current stock"),
 		FGameXXKRouteMerchantRules::EnsureStock(CurrentPending, &Error));
 	FGameXXKPendingRouteMerchantPurchase& CurrentPendingPurchase =

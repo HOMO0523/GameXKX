@@ -2,6 +2,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "Misc/AutomationTest.h"
 
@@ -11,7 +12,8 @@ namespace
 {
 	static FGameXXKRuntimeState BuildRouteBattleState(EGameXXKNodeKind NodeKind)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!UGameXXKMVPRules::OpenWorldMap(State)
 			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(State))
@@ -86,10 +88,11 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 				FGameXXKEncounterRules::ScaleStat(RawStats.Defense, Scale.DefensePercent, 0));
 		}
 	}
-	// bFollowerJoined is retained for the town quest narrative only.  It must not
-	// create the old implicit fourth/ghost combat unit; real combat support is
-	// supplied explicitly by the permanent-companion and task-NPC selections.
-	TestEqual(TEXT("party snapshot includes only the hero without an explicit combat companion"), BattleState.ActiveBattleParty.Num(), 1);
+	// bFollowerJoined is retained for the town quest narrative only. It must not
+	// create an implicit fourth/ghost unit beside the fixed three-person party.
+	TestEqual(TEXT("party snapshot includes hero, companion, and fixed NPC"),
+		BattleState.ActiveBattleParty.Num(),
+		3);
 	TestEqual(TEXT("hero snapshot is first party member"), BattleState.ActiveBattleParty[0].Id, FName(TEXT("Player")));
 	TestFalse(TEXT("legacy narrative follower never becomes a ghost combat member"), BattleState.ActiveBattleParty.ContainsByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
 	{
@@ -199,10 +202,12 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("hero defeat test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(HeroDefeatState, 1));
 	HeroDefeatState.ActiveBattleParty[0].HP = 1;
 	HeroDefeatState.PlayerHP = 1;
-	if (HeroDefeatState.ActiveBattleParty.IsValidIndex(1))
+	for (int32 PartyIndex = 1;
+		PartyIndex < HeroDefeatState.ActiveBattleParty.Num();
+		++PartyIndex)
 	{
-		HeroDefeatState.ActiveBattleParty[1].HP = HeroDefeatState.ActiveBattleParty[1].MaxHP;
-		HeroDefeatState.ActiveBattleParty[1].bDefeated = false;
+		HeroDefeatState.ActiveBattleParty[PartyIndex].HP = 0;
+		HeroDefeatState.ActiveBattleParty[PartyIndex].bDefeated = true;
 	}
 	for (int32 EnemyIndex = 0; EnemyIndex < HeroDefeatState.ActiveBattleEnemies.Num(); ++EnemyIndex)
 	{
@@ -214,7 +219,7 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 			Enemy.bDefeated = true;
 		}
 	}
-	TestTrue(TEXT("enemy AI defeats the hero when no explicit combat companion is selected"), UGameXXKMVPRules::ExecuteBattleDefend(HeroDefeatState, 0));
+	TestTrue(TEXT("enemy AI defeats the last living hero"), UGameXXKMVPRules::ExecuteBattleDefend(HeroDefeatState, 0));
 	TestEqual(TEXT("hero defeat returns to town"), HeroDefeatState.Screen, EGameXXKScreen::Town);
 	TestFalse(TEXT("hero defeat clears active battle state"), HeroDefeatState.bHasActiveBattle);
 	TestEqual(TEXT("hero defeat restores full town HP"), HeroDefeatState.PlayerHP, HeroDefeatState.PlayerMaxHP);
@@ -223,10 +228,12 @@ bool FGameXXKBattleEncounterRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("defeat test selects battle node"), UGameXXKMVPRules::SelectRouteNodeById(DefeatState, 1));
 	DefeatState.ActiveBattleParty[0].HP = 1;
 	DefeatState.PlayerHP = 1;
-	if (DefeatState.ActiveBattleParty.IsValidIndex(1))
+	for (int32 PartyIndex = 1;
+		PartyIndex < DefeatState.ActiveBattleParty.Num();
+		++PartyIndex)
 	{
-		DefeatState.ActiveBattleParty[1].HP = 0;
-		DefeatState.ActiveBattleParty[1].bDefeated = true;
+		DefeatState.ActiveBattleParty[PartyIndex].HP = 0;
+		DefeatState.ActiveBattleParty[PartyIndex].bDefeated = true;
 	}
 	for (FGameXXKBattleRuntimeUnit& Enemy : DefeatState.ActiveBattleEnemies)
 	{

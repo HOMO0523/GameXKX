@@ -101,7 +101,14 @@ namespace
 		const bool bOwnTalisman,
 		FString& OutError)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		UGameXXKMVPSubsystem* Subsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			Test.AddError(TEXT("life-saving fixture could not start a permanent party."));
+			return false;
+		}
+		OutState = Subsystem->GetRuntimeStateCopy();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			Test.AddError(FString::Printf(TEXT("life-saving fixture failed to initialize its card run: %s"), *OutError));

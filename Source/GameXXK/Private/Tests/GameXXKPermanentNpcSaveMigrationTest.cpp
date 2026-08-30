@@ -130,6 +130,7 @@ bool FGameXXKPermanentNpcV30SaveMigrationTest::RunTest(const FString& Parameters
 		}
 		SetOrderedNpcOrRemove(Source.RuntimeState, Recovery.OrderedNpcId);
 		SetLegacySelectionOrClear(Source.RuntimeState, Recovery.SelectionNpcId);
+		// Explicit legacy-v29 migration input; current fixtures never write this tombstone.
 		Source.RuntimeState.CardRun.ActiveTemporaryQuestNpcId = Recovery.TemporaryNpcId;
 
 		FGameXXKSaveState Migrated;

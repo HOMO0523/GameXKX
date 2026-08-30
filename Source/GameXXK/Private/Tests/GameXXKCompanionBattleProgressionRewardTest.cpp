@@ -1,6 +1,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -42,7 +43,10 @@ namespace
 			return false;
 		}
 		FString Error;
-		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error)
+		if (!GameXXKPermanentPartyTestFixtures::SelectNpc(
+				State,
+				TEXT("Npc.TusiChief"),
+				&Error)
 			|| !UGameXXKMVPRules::EnterDungeon(State))
 		{
 			return false;

@@ -84,8 +84,12 @@ namespace
 
 		for (int32 Seed = 1; Seed <= 256; ++Seed)
 		{
+			if (!Subsystem->StartGame())
+			{
+				OutError = TEXT("The bridge test subsystem could not start a permanent party.");
+				return false;
+			}
 			FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-			State = UGameXXKMVPRules::CreateNewGame();
 			State.Screen = EGameXXKScreen::Battle;
 			State.bHasActiveBattle = true;
 			State.ActiveBattleNodeId = 17;

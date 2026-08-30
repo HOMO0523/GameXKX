@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -11,7 +12,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardRouteEventOfferTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	TestTrue(TEXT("the event offer starts from a route-capable quest state"),
 		UGameXXKMVPRules::OpenWorldMap(State)
 		&& UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())

@@ -8,6 +8,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
@@ -106,8 +107,11 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 		|| !TestTrue(TEXT("fixture has an immediately recruited companion"), RecruitResult.Outcome == EGameXXKCompanionRecruitOutcome::Recruited)
 		|| !TestTrue(TEXT("fixture selects the permanent companion"),
 			FGameXXKCompanionRules::SetActivePermanentCompanion(State.CardRun.CompanionRoster, RecruitResult.Companion.InstanceId, &Error))
-		|| !TestTrue(TEXT("fixture configures the route-local task NPC"),
-			FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error)))
+		|| !TestTrue(TEXT("fixture configures the permanent NPC"),
+			GameXXKPermanentPartyTestFixtures::SelectNpc(
+				State,
+				TEXT("Npc.TusiChief"),
+				&Error)))
 	{
 		AddError(Error);
 		return false;

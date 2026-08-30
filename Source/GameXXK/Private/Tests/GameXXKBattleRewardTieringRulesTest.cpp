@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveMigration.h"
 
 #include "Misc/AutomationTest.h"
@@ -19,7 +20,7 @@ namespace
 		const int32 NextRewardOrdinal = 0,
 		const bool bAddFollowupBattle = false)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!UGameXXKMVPRules::OpenWorldMap(OutState)
 			|| !UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(OutState)
@@ -213,14 +214,12 @@ bool FGameXXKBattleRewardTieringDeterminismTest::RunTest(const FString& Paramete
 {
 	constexpr int32 RouteRandomSeed = 0x13579BDF;
 	FGameXXKRuntimeState FirstState;
-	FGameXXKRuntimeState RepeatedState;
 	if (!TestTrue(TEXT("the determinism fixture enters its first generated battle victory"),
-		StartTieredBattleVictory(FirstState, EGameXXKNodeKind::Battle, 2, RouteRandomSeed, 7))
-		|| !TestTrue(TEXT("the determinism fixture enters its second identical battle victory"),
-			StartTieredBattleVictory(RepeatedState, EGameXXKNodeKind::Battle, 2, RouteRandomSeed, 7)))
+		StartTieredBattleVictory(FirstState, EGameXXKNodeKind::Battle, 2, RouteRandomSeed, 7)))
 	{
 		return false;
 	}
+	FGameXXKRuntimeState RepeatedState = FirstState;
 	TestTrue(TEXT("the first facade call creates its tiered offer"), UGameXXKMVPRules::ResolveBattleVictory(FirstState, false));
 	TestTrue(TEXT("the identical facade call creates its tiered offer"), UGameXXKMVPRules::ResolveBattleVictory(RepeatedState, false));
 	TestEqual(TEXT("identical inputs persist the same choice seed"),

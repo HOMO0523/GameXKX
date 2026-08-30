@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -624,7 +625,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKTerminalPhaseWaitsForCompleteEnemyIntentTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKCardResolutionQueueTest;
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State =
+		GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("enemy-intent boundary fixture initializes its card run"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));

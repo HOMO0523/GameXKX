@@ -3,8 +3,10 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCombatSimulationRules.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 #include "HAL/PlatformTime.h"
@@ -59,7 +61,27 @@ namespace
 		Scenario.Policy = EGameXXKSimulationPolicy::Skilled;
 		Scenario.MaxRounds = 30;
 		Scenario.MaxDecisions = 500;
-		Scenario.InitialRuntimeState = UGameXXKMVPRules::CreateNewGame();
+		Scenario.InitialRuntimeState =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
+		for (FGameXXKPermanentCompanion& Companion :
+			Scenario.InitialRuntimeState.CardRun.CompanionRoster.PermanentCompanions)
+		{
+			if (!Companion.bIsActive)
+			{
+				continue;
+			}
+			TArray<FName> RebuiltBirthCards;
+			FString RebuildError;
+			if (FGameXXKCompanionRules::BuildPersonalCardPool(
+				Companion.Role,
+				Companion.CardSeed,
+				RebuiltBirthCards,
+				&RebuildError))
+			{
+				Companion.PersonalCardIds = MoveTemp(RebuiltBirthCards);
+			}
+			break;
+		}
 		Scenario.InitialRuntimeState.ActiveBattleNodeId = INDEX_NONE;
 		Scenario.InitialRuntimeState.ActiveBattleEnemies = {MakeSimulationEnemy()};
 		Scenario.InitialRuntimeState.bHasActiveBattle = true;

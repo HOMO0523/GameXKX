@@ -51,8 +51,8 @@ bool FGameXXKTaskNpcCodexWidgetTest::RunTest(const FString& Parameters)
 
 	const TArray<FName> TaskNpcIds = TownHud->GetTaskNpcCodexEntryIdsForTest();
 	TestEqual(TEXT("task NPC codex has exactly the approved six entries"), TaskNpcIds.Num(), static_cast<int32>(UE_ARRAY_COUNT(ExpectedTaskNpcs)));
-	TestFalse(TEXT("event NPC NiuHuan is never listed as a task-support entry"), TaskNpcIds.Contains(TEXT("Npc.Event.NiuHuan")));
-	TestFalse(TEXT("event NPC NiuHuan is not an approved task-support definition"), FGameXXKCompanionCatalog::FindQuestNpcDefinition(TEXT("Npc.Event.NiuHuan")) != nullptr);
+	TestFalse(TEXT("retired event NPC NiuHuan is never listed as a fixed-NPC entry"), TaskNpcIds.Contains(TEXT("Npc.Event.NiuHuan")));
+	TestFalse(TEXT("retired event NPC NiuHuan is not an approved fixed-NPC definition"), FGameXXKCompanionCatalog::FindQuestNpcDefinition(TEXT("Npc.Event.NiuHuan")) != nullptr);
 
 	for (const FExpectedTaskNpcCodexEntry& Expected : ExpectedTaskNpcs)
 	{

@@ -2,6 +2,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/AutomationTest.h"
@@ -67,7 +68,7 @@ namespace
 				: FormationError);
 			return false;
 		}
-		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &FormationError)
+		if (!GameXXKPermanentPartyTestFixtures::SelectNpc(State, TEXT("Npc.TusiChief"), &FormationError)
 			|| !FGameXXKPartyFormationRules::Normalize(State, &FormationError))
 		{
 			Test.AddError(FormationError);
@@ -102,10 +103,12 @@ namespace
 		State.Screen = Screen;
 		State.CardRun.bLoadoutLockedForRoute = false;
 		State.CardRun.bHasActiveCardBattle = false;
-		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = ExpectedActiveCompanionId;
 		State.CardRun.HeroSelectedCardIds = ExpectedHeroCards;
-		State.CardRun.PartySelection.QuestNpc = ExpectedQuestNpcSelection;
-		State.CardRun.ActiveTemporaryQuestNpcId = ExpectedQuestNpcSelection.NpcId;
+		if (GameXXKPermanentPartyTestFixtures::ResolveNpc(State)
+			!= ExpectedQuestNpcSelection.NpcId)
+		{
+			return false;
+		}
 		if (FGameXXKPermanentCompanion* StoredCompanion = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
 			[CompanionInstanceId](const FGameXXKPermanentCompanion& Candidate)
 			{
@@ -252,16 +255,23 @@ bool FGameXXKCompanionFacadeLoadoutProgressionTest::RunTest(const FString& Param
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestNotNull(TEXT("facade subsystem exists"), Subsystem);
-	if (!Subsystem)
+	if (!Subsystem || !TestTrue(TEXT("loadout facade fixture starts a full current game"),
+		Subsystem->StartGame()))
 	{
 		return false;
 	}
 
-	FGameXXKPermanentCompanion Recruit;
-	if (!RecruitOneCompanion(*this, Subsystem, 8831, Recruit))
+	const FGameXXKPermanentCompanion* Configurable =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return !Candidate.bIsActive;
+			});
+	if (!TestNotNull(TEXT("loadout fixture has an undeployed companion"), Configurable))
 	{
 		return false;
 	}
+	const FGameXXKPermanentCompanion Recruit = *Configurable;
 	FGameXXKPermanentCompanion Companion;
 	TestTrue(TEXT("the recruited companion is readable before configuration"), Subsystem->TryGetPermanentCompanionView(Recruit.InstanceId, Companion));
 	if (Companion.UnlockedPersonalCardIds.Num() < 6)
@@ -295,8 +305,10 @@ bool FGameXXKCompanionFacadeLoadoutProgressionTest::RunTest(const FString& Param
 	{
 		return false;
 	}
-	TestTrue(TEXT("the route-owned adapter attaches the NPC's canonical fixed three-card loadout"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}));
+	TestTrue(TEXT("the formation selects the NPC's canonical fixed three-card loadout"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			Subsystem->GetMutableRuntimeState(),
+			TusiChief->NpcId));
 	const FGameXXKQuestNpcCardSelection NpcLoadout = Subsystem->GetQuestNpcCardLoadout();
 	TestEqual(TEXT("the NPC read view exposes the route-selected three fixed cards"), NpcLoadout.SelectedCardIds.Num(), 3);
 	const TArray<FName> EditedNpcLoadout = FirstCards(TusiChief->FixedCardIds, 3);
@@ -325,16 +337,23 @@ bool FGameXXKCompanionFacadeTownOnlyConfigurationTest::RunTest(const FString& Pa
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestNotNull(TEXT("town-only configuration facade subsystem exists"), Subsystem);
-	if (!Subsystem)
+	if (!Subsystem || !TestTrue(TEXT("town-only configuration fixture starts a full current game"),
+		Subsystem->StartGame()))
 	{
 		return false;
 	}
 
-	FGameXXKPermanentCompanion Recruit;
-	if (!RecruitOneCompanion(*this, Subsystem, 94731, Recruit))
+	const FGameXXKPermanentCompanion* Configurable =
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+			[](const FGameXXKPermanentCompanion& Candidate)
+			{
+				return !Candidate.bIsActive;
+			});
+	if (!TestNotNull(TEXT("town-only fixture has an undeployed companion"), Configurable))
 	{
 		return false;
 	}
+	const FGameXXKPermanentCompanion Recruit = *Configurable;
 	FGameXXKPermanentCompanion Companion;
 	if (!this->TestTrue(TEXT("town-only configuration fixture can read its recruit"),
 		Subsystem->TryGetPermanentCompanionView(Recruit.InstanceId, Companion))
@@ -366,8 +385,10 @@ bool FGameXXKCompanionFacadeTownOnlyConfigurationTest::RunTest(const FString& Pa
 	{
 		return false;
 	}
-	TestTrue(TEXT("the route-owned adapter creates a fixed task NPC card selection"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}));
+	TestTrue(TEXT("the formation creates a fixed NPC card selection"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			Subsystem->GetMutableRuntimeState(),
+			TusiChief->NpcId));
 	TArray<FName> QuestNpcEditAttempt = FirstCards(TusiChief->FixedCardIds, 3);
 	QuestNpcEditAttempt[2] = TusiChief->FixedCardIds[3];
 	TestTrue(TEXT("town permits an owned NPC three-card persistence edit"),
@@ -507,8 +528,10 @@ bool FGameXXKOrderedFormationFacadeTransactionTest::RunTest(const FString& Param
 	}
 	TestEqual(TEXT("compatibility projection follows the first ordered companion"),
 		CommittedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId, FirstCompanionId);
-	TestEqual(TEXT("compatibility projection follows the first ordered task NPC"),
-		CommittedState.CardRun.ActiveTemporaryQuestNpcId, FirstNpcId);
+	TestEqual(TEXT("compatibility projection follows the first ordered NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(CommittedState), FirstNpcId);
+	TestTrue(TEXT("formation commit keeps temporary provenance retired"),
+		CommittedState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	FGameXXKRuntimeState ProjectionProbe = CommittedState;
 	FGameXXKPartyFormationRules::ProjectCompatibility(ProjectionProbe);
 	TestEqual(TEXT("compatibility projection never reorders authoritative members"),
@@ -598,10 +621,10 @@ bool FGameXXKOrderedFormationFacadeRejectionTest::RunTest(const FString& Paramet
 	{
 		return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
 	});
-	if (TestTrue(TEXT("rejection fixture contains a task NPC"), NpcIndex != INDEX_NONE))
+	if (TestTrue(TEXT("rejection fixture contains an NPC"), NpcIndex != INDEX_NONE))
 	{
-		StaleNpc.Members[NpcIndex].MemberId = TEXT("Npc.YueBai");
-		AssertFormationRejectedWithoutMutation(*this, Subsystem, StaleNpc, TEXT("stale task-NPC formation"));
+		StaleNpc.Members[NpcIndex].MemberId = TEXT("Npc.Unknown.Retired");
+		AssertFormationRejectedWithoutMutation(*this, Subsystem, StaleNpc, TEXT("unknown NPC formation"));
 	}
 
 	FGameXXKOrderedPartyFormation LegalSwap = Valid;
@@ -761,55 +784,39 @@ bool FGameXXKLegacyFormationFacadeAuthorityTest::RunTest(const FString& Paramete
 	}
 	AssertCurrentRoundTrip(TEXT("legacy companion replacement"), ReplaceSubsystem->GetRuntimeState());
 
-	UGameXXKMVPSubsystem* SwapSubsystem = MakeStartedSubsystem(TEXT("legacy companion swap subsystem"));
-	if (!SwapSubsystem)
+	UGameXXKMVPSubsystem* TwoCompanionSubsystem =
+		MakeStartedSubsystem(TEXT("two-companion rejection subsystem"));
+	if (!TwoCompanionSubsystem)
 	{
 		return false;
 	}
-	FGameXXKOrderedPartyFormation TwoCompanions = SwapSubsystem->GetOrderedPartyFormation();
-	const FName SecondCompanionId = FindUndeployedCompanionId(SwapSubsystem->GetRuntimeState());
-	const int32 NpcSlot = TwoCompanions.Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
-	});
-	if (!TestTrue(TEXT("legacy companion swap fixture has an NPC slot"), NpcSlot != INDEX_NONE)
+	FGameXXKOrderedPartyFormation TwoCompanions =
+		TwoCompanionSubsystem->GetOrderedPartyFormation();
+	const FName SecondCompanionId =
+		FindUndeployedCompanionId(TwoCompanionSubsystem->GetRuntimeState());
+	const int32 NpcSlot = TwoCompanions.Members.IndexOfByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+		});
+	if (!TestTrue(TEXT("two-companion rejection fixture has an NPC slot"),
+		NpcSlot != INDEX_NONE)
 		|| SecondCompanionId.IsNone())
 	{
 		return false;
 	}
 	TwoCompanions.Members[NpcSlot].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
 	TwoCompanions.Members[NpcSlot].MemberId = SecondCompanionId;
+	const TArray<uint8> BeforeTwoCompanionAttempt =
+		SerializeFacadeRuntimeState(TwoCompanionSubsystem->GetRuntimeState());
 	FString FormationError;
-	TestTrue(TEXT("legacy companion swap fixture commits two companions"),
-		SwapSubsystem->SetOrderedPartyFormation(TwoCompanions, FormationError));
-	const int32 TwoCompanionFirstSlot = TwoCompanions.Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
-	});
-	int32 TwoCompanionLaterSlot = INDEX_NONE;
-	for (int32 SlotIndex = TwoCompanionFirstSlot + 1; SlotIndex < TwoCompanions.Members.Num(); ++SlotIndex)
-	{
-		if (TwoCompanions.Members[SlotIndex].Kind == EGameXXKPartyMemberKind::PermanentCompanion)
-		{
-			TwoCompanionLaterSlot = SlotIndex;
-			break;
-		}
-	}
-	if (!TestTrue(TEXT("legacy companion swap fixture has two companion slots"),
-		TwoCompanionFirstSlot != INDEX_NONE && TwoCompanionLaterSlot != INDEX_NONE))
-	{
-		return false;
-	}
-	const FGameXXKPartyMemberRef FirstCompanionBeforeSwap = TwoCompanions.Members[TwoCompanionFirstSlot];
-	const FGameXXKPartyMemberRef LaterCompanionBeforeSwap = TwoCompanions.Members[TwoCompanionLaterSlot];
-	TestTrue(TEXT("legacy SetActive swaps an already-deployed later companion forward"),
-		SwapSubsystem->SetActivePermanentCompanion(LaterCompanionBeforeSwap.MemberId));
-	const FGameXXKOrderedPartyFormation SwapAfter = SwapSubsystem->GetOrderedPartyFormation();
-	TestTrue(TEXT("selected later companion becomes first companion"),
-		SwapAfter.Members[TwoCompanionFirstSlot] == LaterCompanionBeforeSwap);
-	TestTrue(TEXT("old first companion moves into the selected companion's old slot"),
-		SwapAfter.Members[TwoCompanionLaterSlot] == FirstCompanionBeforeSwap);
-	AssertCurrentRoundTrip(TEXT("legacy companion swap"), SwapSubsystem->GetRuntimeState());
+	TestFalse(TEXT("formation facade rejects replacing the fixed NPC with a second companion"),
+		TwoCompanionSubsystem->SetOrderedPartyFormation(
+			TwoCompanions,
+			FormationError));
+	TestEqual(TEXT("rejected two-companion formation is atomic"),
+		SerializeFacadeRuntimeState(TwoCompanionSubsystem->GetRuntimeState()),
+		BeforeTwoCompanionAttempt);
 
 	UGameXXKMVPSubsystem* NpcSubsystem = MakeStartedSubsystem(TEXT("legacy NPC replacement subsystem"));
 	if (!NpcSubsystem)
@@ -873,44 +880,24 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKDismissFormationSlotRepairTest::RunTest(const FString& Parameters)
 {
-	auto MakeCompanionRef = [](const FName InstanceId)
-	{
-		FGameXXKPartyMemberRef Ref;
-		Ref.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-		Ref.MemberId = InstanceId;
-		return Ref;
-	};
-	auto MakeHeroRef = []()
-	{
-		FGameXXKPartyMemberRef Ref;
-		Ref.Kind = EGameXXKPartyMemberKind::Hero;
-		Ref.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
-		return Ref;
-	};
-
 	UGameXXKMVPSubsystem* Deployed = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestNotNull(TEXT("deployed dismissal subsystem exists"), Deployed)
 		|| !TestTrue(TEXT("deployed dismissal subsystem starts"), Deployed->StartGame()))
 	{
 		return false;
 	}
-	const TArray<FGameXXKPermanentCompanion>& Roster =
-		Deployed->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions;
-	if (!TestTrue(TEXT("deployed dismissal fixture has three companion candidates"), Roster.Num() >= 3))
+	const FGameXXKOrderedPartyFormation Before = Deployed->GetOrderedPartyFormation();
+	const int32 DismissedSlot = Before.Members.IndexOfByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	if (!TestTrue(TEXT("deployed dismissal fixture has one companion slot"),
+		DismissedSlot != INDEX_NONE))
 	{
 		return false;
 	}
-	const FName SurvivorId = Roster[1].InstanceId;
-	const FName DismissedId = Roster[0].InstanceId;
-	FGameXXKOrderedPartyFormation Before;
-	Before.Members = {MakeCompanionRef(SurvivorId), MakeHeroRef(), MakeCompanionRef(DismissedId)};
-	FString FormationError;
-	if (!TestTrue(TEXT("deployed dismissal fixture commits survivor/hero/dismissed order"),
-		Deployed->SetOrderedPartyFormation(Before, FormationError)))
-	{
-		AddError(FormationError);
-		return false;
-	}
+	const FName DismissedId = Before.Members[DismissedSlot].MemberId;
 	TestTrue(TEXT("ordinary dismissal succeeds for deployed companion"),
 		Deployed->DismissPermanentCompanion(DismissedId));
 	const FGameXXKRuntimeState& DeployedAfter = Deployed->GetRuntimeState();
@@ -919,11 +906,20 @@ bool FGameXXKDismissFormationSlotRepairTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestTrue(TEXT("ordinary dismissal keeps 1P bit-identical"), AfterMembers[0] == Before.Members[0]);
-	TestTrue(TEXT("ordinary dismissal keeps non-companion 2P bit-identical"), AfterMembers[1] == Before.Members[1]);
-	TestEqual(TEXT("ordinary dismissal fills only the removed 3P slot kind"),
-		AfterMembers[2].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
-	TestNotEqual(TEXT("ordinary dismissal replaces removed 3P identity"), AfterMembers[2].MemberId, DismissedId);
+	for (int32 SlotIndex = 0; SlotIndex < Before.Members.Num(); ++SlotIndex)
+	{
+		if (SlotIndex != DismissedSlot)
+		{
+			TestTrue(TEXT("ordinary dismissal preserves every non-companion slot"),
+				AfterMembers[SlotIndex] == Before.Members[SlotIndex]);
+		}
+	}
+	TestEqual(TEXT("ordinary dismissal keeps the repaired slot as a companion"),
+		AfterMembers[DismissedSlot].Kind,
+		EGameXXKPartyMemberKind::PermanentCompanion);
+	TestNotEqual(TEXT("ordinary dismissal replaces the removed companion identity"),
+		AfterMembers[DismissedSlot].MemberId,
+		DismissedId);
 	TestFalse(TEXT("ordinary dismissal removes old roster identity"),
 		DeployedAfter.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
 			[DismissedId](const FGameXXKPermanentCompanion& Companion)
@@ -971,17 +967,23 @@ bool FGameXXKDismissFormationSlotRepairTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKRuntimeState& SparseState = NoReplacement->GetMutableRuntimeState();
 	const FName SparseDismissedId = SparseState.CardRun.CompanionRoster.PermanentCompanions[0].InstanceId;
-	const FName SparseSurvivorId = SparseState.CardRun.CompanionRoster.PermanentCompanions[1].InstanceId;
 	SparseState.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
-		[SparseDismissedId, SparseSurvivorId](const FGameXXKPermanentCompanion& Companion)
+		[SparseDismissedId](const FGameXXKPermanentCompanion& Companion)
 		{
-			return Companion.InstanceId != SparseDismissedId && Companion.InstanceId != SparseSurvivorId;
+			return Companion.InstanceId != SparseDismissedId;
 		});
-	FGameXXKOrderedPartyFormation SparseFormation;
-	SparseFormation.Members = {
-		MakeHeroRef(),
-		MakeCompanionRef(SparseDismissedId),
-		MakeCompanionRef(SparseSurvivorId)};
+	FGameXXKOrderedPartyFormation SparseFormation = SparseState.CardRun.OrderedFormation;
+	FGameXXKPartyMemberRef* SparseCompanionRef = SparseFormation.Members.FindByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	if (!TestNotNull(TEXT("sparse dismissal fixture keeps its companion slot"),
+		SparseCompanionRef))
+	{
+		return false;
+	}
+	SparseCompanionRef->MemberId = SparseDismissedId;
 	SparseState.CardRun.OrderedFormation = SparseFormation;
 	FGameXXKPartyFormationRules::ProjectCompatibility(SparseState);
 	const TArray<uint8> SparseBefore = SerializeFacadeRuntimeState(SparseState);

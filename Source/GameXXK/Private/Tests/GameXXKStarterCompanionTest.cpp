@@ -1,6 +1,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -77,8 +78,11 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the starter companion owns the full eighteen-card profession pool"), StarterCompanion.PersonalCardIds.Num(), 18);
 	TestEqual(TEXT("the starter companion initially unlocks six birth cards"), StarterCompanion.UnlockedPersonalCardIds.Num(), 6);
 	TestEqual(TEXT("the starter companion equips five selected cards"), StarterCompanion.SelectedCardIds.Num(), 5);
-	TestEqual(TEXT("the default NPC party slot is Tusi Chief"),
-		StartedState.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+	TestEqual(TEXT("the default permanent NPC party slot is Tusi Chief"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(StartedState),
+		FName(TEXT("Npc.TusiChief")));
+	TestTrue(TEXT("new game keeps temporary NPC provenance retired"),
+		StartedState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("Tusi Chief keeps the NPC three-card rule"),
 		StartedState.CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
 

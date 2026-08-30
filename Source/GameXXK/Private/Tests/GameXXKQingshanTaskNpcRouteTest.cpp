@@ -60,13 +60,14 @@ bool FGameXXKQingshanTaskNpcRouteTest::RunTest(const FString& Parameters)
 	State.PendingRouteNodeId = 701;
 	State.CardRun.PendingEvent.SourceNodeId = 701;
 	State.CardRun.PendingEvent.ChoiceSeed = 987654;
-	State.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-	TestFalse(TEXT("a route event cannot replace the permanent NPC slot"),
+	State.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
+	State.CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+	TestFalse(TEXT("the retired support facade cannot replace the permanent NPC slot"),
 		UGameXXKMVPRules::AcceptRouteEventNpcSupport(State));
 	FName NpcAfterRejectedEvent;
 	TestTrue(TEXT("NPC resolves after a rejected event offer"),
 		FGameXXKPartyFormationRules::ResolveQuestNpcId(State, NpcAfterRejectedEvent));
-	TestEqual(TEXT("a rejected event support offer preserves Tusi Chief"),
+	TestEqual(TEXT("the rejected support facade preserves Tusi Chief"),
 		NpcAfterRejectedEvent, TusiChiefId);
 
 	TestTrue(TEXT("failing the route clears route-local state"), UGameXXKMVPRules::FailDungeonToTown(State));

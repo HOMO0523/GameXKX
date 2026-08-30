@@ -40,10 +40,12 @@ bool FGameXXKRouteEncounterSceneActorTest::RunTest(const FString& Parameters)
 
 	UGameXXKMVPSubsystem* EventSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	EventSubsystem->GetMutableRuntimeState() = BuildPendingEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
-	// A generated event can deterministically invite either a task NPC or an event-only NPC.
-	// This case exercises the latter: event-only NiuHuan keeps the normal gold resolution.
 	EventSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.SourceNodeId = 1;
-	EventSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Npc.Event.NiuHuan");
+	EventSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.ChoiceSeed = 0x7135;
+	EventSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.EncounterId =
+		TEXT("Encounter.Event.MountainSpring");
+	EventSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId =
+		TEXT("Event.Attribute.MountainSpring");
 	AGameXXKRouteEncounterSceneActor* EventActor = NewObject<AGameXXKRouteEncounterSceneActor>();
 	EventActor->SetMVPSubsystemForTest(EventSubsystem);
 	EventActor->SetEncounterScreenForTest(EGameXXKScreen::RouteEvent);
@@ -53,32 +55,6 @@ bool FGameXXKRouteEncounterSceneActorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("opening an event interaction leaves the route event active"), EventSubsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteEvent);
 	TestEqual(TEXT("opening an event interaction grants no automatic gold"), EventSubsystem->GetRuntimeState().PlayerGold, GoldBeforeEvent);
 	TestFalse(TEXT("opening an event interaction does not visit the pending node"), EventSubsystem->GetRuntimeState().VisitedRouteNodeIds.Contains(1));
-
-	UGameXXKMVPSubsystem* SupportSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	SupportSubsystem->GetMutableRuntimeState() = BuildPendingEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
-	SupportSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.SourceNodeId = 1;
-	SupportSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-	AGameXXKRouteEncounterSceneActor* SupportActor = NewObject<AGameXXKRouteEncounterSceneActor>();
-	SupportActor->SetMVPSubsystemForTest(SupportSubsystem);
-	SupportActor->SetEncounterScreenForTest(EGameXXKScreen::RouteEvent);
-	const int32 GoldBeforeSupport = SupportSubsystem->GetRuntimeState().PlayerGold;
-	TestFalse(TEXT("opening a named task-NPC event cannot silently accept temporary support"), SupportActor->ApplyDefaultInteraction(nullptr));
-	TestTrue(TEXT("opening a named task-NPC event leaves the temporary support slot empty"), SupportSubsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
-	TestEqual(TEXT("opening a named task-NPC event does not silently grant gold"), SupportSubsystem->GetRuntimeState().PlayerGold, GoldBeforeSupport);
-	TestEqual(TEXT("opening a named task-NPC event keeps the route event screen active"), SupportSubsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteEvent);
-
-	UGameXXKMVPSubsystem* OccupiedSupportSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	OccupiedSupportSubsystem->GetMutableRuntimeState() = BuildPendingEncounterState(EGameXXKNodeKind::Event, EGameXXKScreen::RouteEvent);
-	OccupiedSupportSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.SourceNodeId = 1;
-	OccupiedSupportSubsystem->GetMutableRuntimeState().CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-	OccupiedSupportSubsystem->GetMutableRuntimeState().CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
-	OccupiedSupportSubsystem->GetMutableRuntimeState().CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.TusiChief");
-	AGameXXKRouteEncounterSceneActor* OccupiedSupportActor = NewObject<AGameXXKRouteEncounterSceneActor>();
-	OccupiedSupportActor->SetMVPSubsystemForTest(OccupiedSupportSubsystem);
-	OccupiedSupportActor->SetEncounterScreenForTest(EGameXXKScreen::RouteEvent);
-	TestFalse(TEXT("a task-NPC event without a presentation controller cannot replace the occupied support slot"), OccupiedSupportActor->ApplyDefaultInteraction(nullptr));
-	TestEqual(TEXT("the occupied support remains unchanged after the rejected event"),
-		OccupiedSupportSubsystem->GetRuntimeState().CardRun.PartySelection.QuestNpc.NpcId, FName(TEXT("Npc.TusiChief")));
 
 	UGameXXKMVPSubsystem* CampSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	CampSubsystem->GetMutableRuntimeState() = BuildPendingEncounterState(EGameXXKNodeKind::Camp, EGameXXKScreen::RouteCamp);

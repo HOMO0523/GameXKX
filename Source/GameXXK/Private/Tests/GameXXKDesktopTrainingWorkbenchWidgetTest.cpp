@@ -3,6 +3,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "IGameXXKDesktopOverlayModule.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -328,10 +329,24 @@ namespace
 			OutError = TEXT("The fixture has no active companion to retag.");
 			return false;
 		}
+		const FName PreviousCompanionId = ActiveCompanion->InstanceId;
 		ActiveCompanion->InstanceId = PermanentUnitId;
-		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = PermanentUnitId;
-		State.CardRun.ActiveTemporaryQuestNpcId = QuestNpcId;
-		State.CardRun.PartySelection.QuestNpc.NpcId = QuestNpcId;
+		for (FGameXXKPartyMemberRef& Ref : State.CardRun.OrderedFormation.Members)
+		{
+			if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+				&& Ref.MemberId == PreviousCompanionId)
+			{
+				Ref.MemberId = PermanentUnitId;
+			}
+		}
+		FGameXXKPartyFormationRules::ProjectCompatibility(State);
+		if (!GameXXKPermanentPartyTestFixtures::SelectNpc(
+			State,
+			QuestNpcId,
+			&OutError))
+		{
+			return false;
+		}
 		const FName StageId = FGameXXKTrainingRules::MakeStageId(
 			EGameXXKTrainingDifficulty::Normal,
 			1);
@@ -4726,9 +4741,12 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(
 	}
 	const FName BladeId = Blade->InstanceId;
 	const FName GuardId(TEXT("CompanionInstance.Companion_Guard_01.TravelFallbackTest"));
-	InitialState.CardRun.PartySelection.ActivePermanentCompanionInstanceId = BladeId;
-	InitialState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
-	InitialState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.TusiChief");
+	FString FormationError;
+	TestTrue(TEXT("fixture selects Tusi Chief through ordered formation"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			InitialState,
+			TEXT("Npc.TusiChief"),
+			&FormationError));
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	if (!TestTrue(TEXT("fixture starts Travel with Blade and Tusi Chief"), Subsystem->StartTrainingTravel(StageId)))
 	{
@@ -4898,9 +4916,20 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(
 		return false;
 	}
 	SwitchedCompanion->InstanceId = GuardId;
-	SwitchedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId = GuardId;
-	SwitchedState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.SongJinBao");
-	SwitchedState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.SongJinBao");
+	for (FGameXXKPartyMemberRef& Ref : SwitchedState.CardRun.OrderedFormation.Members)
+	{
+		if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+			&& Ref.MemberId == BladeId)
+		{
+			Ref.MemberId = GuardId;
+		}
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(SwitchedState);
+	TestTrue(TEXT("fixture selects Song Jin Bao through ordered formation"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			SwitchedState,
+			TEXT("Npc.SongJinBao"),
+			&FormationError));
 	if (!TestTrue(TEXT("fixture restarts Travel with Guard and Song Jin Bao"), Subsystem->StartTrainingTravel(StageId)))
 	{
 		return false;
@@ -5384,9 +5413,12 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		return false;
 	}
-	PartyState.CardRun.PartySelection.ActivePermanentCompanionInstanceId = ActiveCompanion->InstanceId;
-	PartyState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.YueBai");
-	PartyState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.YueBai");
+	FString FormationError;
+	TestTrue(TEXT("travel combat fixture selects Yue Bai through ordered formation"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			PartyState,
+			TEXT("Npc.YueBai"),
+			&FormationError));
 
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("travel combat fixture starts cleared 1-1"), Subsystem->StartTrainingTravel(StageId));
@@ -6540,7 +6572,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 	const FName ExpectedCompanionId = CompanionIds.Contains(ActiveCompanionId)
 		? ActiveCompanionId
 		: CompanionIds[0];
-	const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
+	const FName ActiveNpcId = GameXXKPermanentPartyTestFixtures::ResolveNpc(State);
 	const FName ExpectedNpcId = NpcIds.Contains(ActiveNpcId)
 		? ActiveNpcId
 		: NpcIds[0];

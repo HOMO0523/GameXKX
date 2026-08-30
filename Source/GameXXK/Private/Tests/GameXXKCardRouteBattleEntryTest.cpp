@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -11,7 +12,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	// Pin the route seed: a fresh game otherwise rolls it from the process RNG, which would
 	// make the chapter-one formation vary across automation runs.  Seed 1 yields the canonical
 	// Weasel formation asserted below.
@@ -22,7 +23,11 @@ bool FGameXXKCardRouteBattleEntryTest::RunTest(const FString& Parameters)
 	// New semantics: accepting the quest keeps the guide NPC in town. The narrative
 	// follower only joins through the NPC dialog's 入队 action (RecruitPendingTownNpc).
 	TestFalse(TEXT("accepting the Qingshan quest keeps the guide NPC in town instead of following"), State.bFollowerJoined);
-	TestTrue(TEXT("accepting the narrative quest does not auto-select a combat NPC"), State.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
+	TestEqual(TEXT("accepting the narrative quest preserves the default permanent NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
+		FName(TEXT("Npc.TusiChief")));
+	TestTrue(TEXT("accepting the narrative quest keeps temporary provenance retired"),
+		State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestTrue(TEXT("the accepted town quest enters the route map"), UGameXXKMVPRules::EnterDungeon(State));
 	// This test isolates the shared BeginBattle entry point rather than making an assumption about
 	// the first randomly generated map layer.  The legacy linear fallback reaches the same battle

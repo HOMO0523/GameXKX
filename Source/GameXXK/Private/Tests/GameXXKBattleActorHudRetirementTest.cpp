@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/WidgetTree.h"
 #include "Camera/CameraActor.h"
 #include "Components/CanvasPanel.h"
@@ -85,7 +86,7 @@ namespace
 		for (int32 Seed = 1; Seed <= 256; ++Seed)
 		{
 			FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-			State = UGameXXKMVPRules::CreateNewGame();
+			State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 			State.Screen = EGameXXKScreen::Battle;
 			State.bHasActiveBattle = true;
 			State.ActiveBattleNodeId = 47;

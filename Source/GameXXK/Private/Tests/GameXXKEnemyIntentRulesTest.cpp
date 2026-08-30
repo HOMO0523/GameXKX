@@ -8,6 +8,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -69,7 +70,7 @@ namespace
 		FString& OutError,
 		const int32 NodeId)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			return false;
@@ -92,7 +93,7 @@ namespace
 		FString& OutError,
 		const int32 NodeId)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			return false;
@@ -138,7 +139,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentCatalogForecastTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the catalog intent fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -170,8 +171,18 @@ bool FGameXXKEnemyIntentCatalogForecastTest::RunTest(const FString& Parameters)
 		RoosterIntent->CardDisplayName, ExpectedIntent.DisplayName.ToString());
 	TestEqual(TEXT("the forecast preserves every catalog effect packet"),
 		RoosterIntent->Effects.Num(), ExpectedIntent.Effects.Num());
-	TestTrue(TEXT("the forecast has a concrete locked target for its first effect"),
-		RoosterIntent->Effects.IsValidIndex(0) && RoosterIntent->Effects[0].TargetUnitIds.Contains(TEXT("Player")));
+	TestTrue(TEXT("the forecast has a concrete locked party target for its first effect"),
+		RoosterIntent->Effects.IsValidIndex(0)
+			&& RoosterIntent->Effects[0].TargetUnitIds.ContainsByPredicate(
+				[&State](const FName TargetId)
+				{
+					return State.CardRun.ActiveBattle.Units.ContainsByPredicate(
+						[TargetId](const FGameXXKCardCombatUnit& Unit)
+						{
+							return Unit.Side == EGameXXKCardTargetSide::Party
+								&& Unit.UnitId == TargetId;
+						});
+				}));
 	TestTrue(TEXT("the forecast computes a positive, inspectable effect magnitude"),
 		RoosterIntent->Effects.IsValidIndex(0) && RoosterIntent->Effects[0].Magnitude > 0);
 	TestFalse(TEXT("the forecast supplies visible tooltip detail from the catalog action"), RoosterIntent->TooltipLines.IsEmpty());
@@ -191,7 +202,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentCursorAdvanceTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the cursor fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -244,7 +255,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentMultiHitResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the multi-hit fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -286,7 +297,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentAttackModifierResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the modifier fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -349,7 +360,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentArmorResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the armor fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -632,7 +643,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKResolveEnemyPhaseFailureIsOuterAtomicTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	if (!TestTrue(TEXT("the outer-atomicity fixture initializes its route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))
@@ -719,24 +730,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentStatusResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the status fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
-	FGameXXKCompanionRecruitResult RecruitedPartner;
-	TestTrue(TEXT("the status fixture recruits a save-authoritative permanent partner"),
-		FGameXXKCompanionRules::RecruitPermanentCompanion(
-			State.CardRun.CompanionRoster,
-			TEXT("Companion.Blade.01"),
-			906,
-			RecruitedPartner,
-			&Error));
-	TestEqual(TEXT("the status fixture obtains a permanent partner"), RecruitedPartner.Outcome, EGameXXKCompanionRecruitOutcome::Recruited);
-	TestTrue(TEXT("the recruited partner becomes the route-authoritative carried partner"),
-		FGameXXKCompanionRules::SetActivePermanentCompanion(
-			State.CardRun.CompanionRoster,
-			RecruitedPartner.Companion.InstanceId,
-			&Error));
+	TestTrue(TEXT("the status fixture already owns an active permanent partner"),
+		State.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+			[](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.bIsActive;
+			}));
 	State.ActiveBattleParty = {MakeEnemyIntentFixtureHero()};
 	State.ActiveBattleEnemies = {
 		MakeEnemyIntentFixtureUnit(TEXT("Enemy.Weasel.P1"), TEXT("Enemy.Ch1.Weasel"), 1, 42, 6)};
@@ -765,7 +768,8 @@ bool FGameXXKEnemyIntentStatusResolutionTest::RunTest(const FString& Parameters)
 	{
 		return Unit.UnitId == TEXT("Player");
 	});
-	const FName PartnerId = RecruitedPartner.Companion.InstanceId;
+	const FName PartnerId =
+		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
 	const FGameXXKCardCombatUnit* PartnerAfter = State.CardRun.ActiveBattle.Units.FindByPredicate([PartnerId](const FGameXXKCardCombatUnit& Unit)
 	{
 		return Unit.UnitId == PartnerId;
@@ -786,7 +790,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentHealResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the healing fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -888,7 +892,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentSharedQiResolutionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the qi fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -932,7 +936,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentRemovePositiveStatusTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the positive-status fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -997,7 +1001,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentSpeedModifierTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the speed-modifier fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -1080,7 +1084,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentChargeTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the charge fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -1155,7 +1159,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEnemyIntentResolutionAtomicityTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the atomicity fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -1245,7 +1249,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKWhiteApeDisturbIntentTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	TestTrue(TEXT("the White Ape fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -1675,7 +1679,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	if (!TestTrue(TEXT("the Graymane fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))
@@ -1850,7 +1854,7 @@ bool FGameXXKGraymaneMarkedHuntCatalogPassiveTest::RunTest(const FString& Parame
 	TestEqual(TEXT("the re-marked generic packet consumes the reapplied Mark"),
 		GameXXKCardRules::GetCombatStatusStacks(*HeroAfterRemarkedGenericHit, EGameXXKCardStatus::Mark), 0);
 
-	FGameXXKRuntimeState OtherEnemyState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState OtherEnemyState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	if (!TestTrue(TEXT("the non-Graymane fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OtherEnemyState, &Error)))
 	{
@@ -1899,7 +1903,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKGraymaneMarkedHuntRequiresMarkedTargetTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	if (!TestTrue(TEXT("the no-mark Graymane fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))
@@ -1946,7 +1950,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKGraymaneMarkedHuntFloorRoundingTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	if (!TestTrue(TEXT("the rounding Graymane fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))
@@ -2005,7 +2009,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKGraymaneMarkedHuntActualTargetOnlyTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	if (!TestTrue(TEXT("the target-specific Graymane fixture initializes the route deck"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))
@@ -2194,7 +2198,7 @@ namespace
 		FString& OutError,
 		const int32 NodeId)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			return false;
@@ -2506,7 +2510,7 @@ namespace
 		const int32 NodeId,
 		const bool bIncludeTiedAllies)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			return false;
@@ -2942,7 +2946,7 @@ namespace
 		const int32 NodeId,
 		FString& OutError)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(OutState, &OutError))
 		{
 			return false;
@@ -3367,7 +3371,7 @@ bool FGameXXKBlackBearPhaseExtraHitTest::RunTest(const FString& Parameters)
 		}
 		TestEqual(FString::Printf(TEXT("Black Bear phase %s produces one audited result for each locked hit"), *Expectation.IntentId.ToString()),
 			IntentResults.Num(),
-			Expectation.ExpectedHitCount);
+			Expectation.ExpectedHitCount * DirectEffect->TargetUnitIds.Num());
 	}
 	return true;
 }

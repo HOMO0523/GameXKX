@@ -1,8 +1,8 @@
-#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionCatalog.h"
-#include "GameXXKCompanionRules.h"
-#include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -14,38 +14,57 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKQuestNpcDefaultLoadoutTest::RunTest(const FString& Parameters)
 {
-	constexpr int32 RouteSeed = 0x24681357;
-	for (const FGameXXKQuestNpcDefinition& Definition : FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("owned NPC loadout fixture starts"),
+		Subsystem && Subsystem->StartGame()))
 	{
-		TestEqual(FString::Printf(TEXT("the named task NPC retains four fixed candidates (%s)"), *Definition.NpcId.ToString()), Definition.FixedCardIds.Num(), 4);
-		TArray<FName> ExpectedSelection;
+		return false;
+	}
+	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+	for (const FGameXXKQuestNpcDefinition& Definition :
+		FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
+	{
+		TestEqual(
+			FString::Printf(TEXT("the named NPC retains four fixed candidates (%s)"),
+				*Definition.NpcId.ToString()),
+			Definition.FixedCardIds.Num(),
+			4);
+		const FGameXXKQuestNpcOwnedCardLoadout* OwnedLoadout =
+			State.CardRun.PartySelection.QuestNpcCardLoadouts.Find(Definition.NpcId);
+		if (!TestNotNull(TEXT("every owned NPC has a persisted loadout"), OwnedLoadout))
+		{
+			return false;
+		}
+		TestEqual(TEXT("each persisted NPC loadout selects exactly three cards"),
+			OwnedLoadout->SelectedCardIds.Num(),
+			3);
+		const TArray<FName> ExpectedSelection = OwnedLoadout->SelectedCardIds;
 		FString Error;
 		if (!TestTrue(
-			FString::Printf(TEXT("the seeded NPC selection builds for %s"), *Definition.NpcId.ToString()),
-			FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+			FString::Printf(TEXT("the formation selects %s with its owned loadout: %s"),
+				*Definition.NpcId.ToString(),
+				*Error),
+			GameXXKPermanentPartyTestFixtures::SelectNpc(
+				State,
 				Definition.NpcId,
-				RouteSeed,
-				ExpectedSelection,
 				&Error)))
 		{
 			return false;
 		}
-
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-		State.RouteSeed = RouteSeed;
-		if (!TestTrue(FString::Printf(TEXT("the route attaches %s with its seed-selected loadout: %s"), *Definition.NpcId.ToString(), *Error),
-			FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, Definition.NpcId, {}, &Error)))
-		{
-			return false;
-		}
-		TestEqual(FString::Printf(TEXT("the route stores the deterministic three-card NPC loadout in order (%s)"), *Definition.NpcId.ToString()),
+		TestEqual(
+			FString::Printf(TEXT("the formation projects the persisted NPC loadout in order (%s)"),
+				*Definition.NpcId.ToString()),
 			State.CardRun.PartySelection.QuestNpc.SelectedCardIds,
 			ExpectedSelection);
-		TestEqual(FString::Printf(TEXT("the route stores the task NPC identity with its seeded loadout (%s)"), *Definition.NpcId.ToString()),
-			State.CardRun.ActiveTemporaryQuestNpcId,
+		TestEqual(
+			FString::Printf(TEXT("the ordered formation stores the NPC identity (%s)"),
+				*Definition.NpcId.ToString()),
+			GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
 			Definition.NpcId);
+		TestTrue(TEXT("current owned-NPC fixture keeps temporary provenance empty"),
+			State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	}
-
 	return true;
 }
 

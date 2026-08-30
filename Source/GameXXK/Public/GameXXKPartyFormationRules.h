@@ -35,20 +35,6 @@ public:
 	static bool ValidateCompatibilityProjection(
 		const FGameXXKRuntimeState& State,
 		FString* OutError = nullptr);
-	/**
-	 * Builds an order-preserving formation after route cleanup retires a known task NPC.
-	 * Only known quest-NPC slots with both availability mirrors cleared may be replaced;
-	 * unrelated current-version corruption is rejected and OutFormation stays unchanged.
-	 */
-	static bool RepairUnavailableQuestNpcSlotsPreservingOrder(
-		const FGameXXKRuntimeState& State,
-		FGameXXKOrderedPartyFormation& OutFormation,
-		FString* OutError = nullptr);
-	/** Inserts the synchronized active task NPC without moving the hero or earlier companion slots. */
-	static bool InsertOrReplaceCurrentQuestNpcPreservingOrder(
-		const FGameXXKRuntimeState& State,
-		FGameXXKOrderedPartyFormation& OutFormation,
-		FString* OutError = nullptr);
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 	static void ProjectCompatibility(FGameXXKRuntimeState& InOutState);
 };

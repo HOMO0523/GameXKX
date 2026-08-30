@@ -3,6 +3,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCombatSimulationRules.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveMigration.h"
 
 #include "Misc/AutomationTest.h"
@@ -561,8 +562,11 @@ bool FGameXXKDeckCompositionIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("the permanent partner activates: %s"), *Error),
 		FGameXXKCompanionRules::SetActivePermanentCompanion(State.CardRun.CompanionRoster, Recruit.Companion.InstanceId, &Error));
 	State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = Recruit.Companion.InstanceId;
-	TestTrue(FString::Printf(TEXT("the temporary NPC configures three cards: %s"), *Error),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error));
+	TestTrue(FString::Printf(TEXT("the selected NPC configures three cards: %s"), *Error),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			State,
+			TEXT("Npc.TusiChief"),
+			&Error));
 	State.ActiveBattleParty = {MakeBattleUnit(TEXT("Player"), 100, 30, 15, false)};
 	State.ActiveBattleEnemies = {MakeBattleUnit(TEXT("MoneyRat"), 80, 0, 8, true)};
 	State.bHasActiveBattle = true;
@@ -596,7 +600,7 @@ bool FGameXXKDeckCompositionIntegrationTest::RunTest(const FString& Parameters)
 	for (const FGameXXKCardInstance& Instance : State.CardRun.ActiveBattle.Deck.ExhaustPile) CountInstance(Instance);
 	TestEqual(TEXT("the protagonist contributes exactly eight cards"), HeroCards, 8);
 	TestEqual(TEXT("the active permanent partner contributes exactly five cards"), PartnerCards, 5);
-	TestEqual(TEXT("the temporary NPC contributes exactly three cards"), NpcCards, 3);
+	TestEqual(TEXT("the selected NPC contributes exactly three cards"), NpcCards, 3);
 	TestEqual(TEXT("route cards remain a separately counted source"),
 		HeroCards + PartnerCards + NpcCards + RouteCards,
 		State.CardRun.ActiveBattle.Deck.ActiveInstanceIds.Num());
@@ -613,7 +617,8 @@ bool FGameXXKLevelLoadoutResumeIntegrationTest::RunTest(const FString& Parameter
 	using namespace GameXXKHeroCardIntegrationTest;
 	for (const int32 Level : {1, 20})
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		State.PlayerLevel = Level;
 		State.PlayerXP = 0;
 		UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(State);
@@ -811,7 +816,26 @@ bool FGameXXKFocusedHeroSimulationIntegrationTest::RunTest(const FString& Parame
 	{
 		const int32 BuildIndex = (Seed - 1101) % Loadouts.Num();
 		CoveredBuilds.Add(BuildIndex);
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
+		if (FGameXXKPermanentCompanion* ActiveCompanion =
+			State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[](const FGameXXKPermanentCompanion& Companion)
+				{
+					return Companion.bIsActive;
+				}))
+		{
+			TArray<FName> RebuiltBirthCards;
+			FString RebuildError;
+			if (FGameXXKCompanionRules::BuildPersonalCardPool(
+				ActiveCompanion->Role,
+				ActiveCompanion->CardSeed,
+				RebuiltBirthCards,
+				&RebuildError))
+			{
+				ActiveCompanion->PersonalCardIds = MoveTemp(RebuiltBirthCards);
+			}
+		}
 		State.PlayerLevel = 20;
 		FString Error;
 		if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)

@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "GameXXKCardCatalog.h"
 #include "Misc/AutomationTest.h"
@@ -17,7 +18,7 @@ namespace GameXXKRouteRewardEntryAcquisitionTest
 
 	bool StartRewardReadyBossState(FGameXXKRuntimeState& OutState)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!UGameXXKMVPRules::OpenWorldMap(OutState)
 			|| !UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(OutState)

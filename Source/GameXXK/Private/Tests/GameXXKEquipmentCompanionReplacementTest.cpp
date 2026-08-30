@@ -6,6 +6,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
@@ -336,39 +337,20 @@ namespace
 		const bool bIncludeDismissedCompanion,
 		FGameXXKOrderedPartyFormation& OutFormation)
 	{
-		OutFormation = FGameXXKOrderedPartyFormation();
-		FGameXXKPartyMemberRef Hero;
-		Hero.Kind = EGameXXKPartyMemberKind::Hero;
-		Hero.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
-		OutFormation.Members.Add(Hero);
-
+		OutFormation = Fixture.Subsystem->GetRuntimeState().CardRun.OrderedFormation;
+		FGameXXKPartyMemberRef* CompanionSlot = OutFormation.Members.FindByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			});
+		if (!Test.TestNotNull(TEXT("replacement formation fixture has one companion slot"),
+			CompanionSlot))
+		{
+			return false;
+		}
 		if (bIncludeDismissedCompanion)
 		{
-			FGameXXKPartyMemberRef Dismissed;
-			Dismissed.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-			Dismissed.MemberId = Fixture.DismissedInstanceId;
-			OutFormation.Members.Add(Dismissed);
-		}
-
-		for (const FGameXXKPermanentCompanion& Companion :
-			Fixture.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions)
-		{
-			if (Companion.InstanceId == Fixture.DismissedInstanceId
-				|| OutFormation.Members.ContainsByPredicate([&Companion](const FGameXXKPartyMemberRef& Ref)
-				{
-					return Ref.MemberId == Companion.InstanceId;
-				}))
-			{
-				continue;
-			}
-			FGameXXKPartyMemberRef Ref;
-			Ref.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-			Ref.MemberId = Companion.InstanceId;
-			OutFormation.Members.Add(Ref);
-			if (OutFormation.Members.Num() == FGameXXKPartyFormationRules::PartySize)
-			{
-				break;
-			}
+			CompanionSlot->MemberId = Fixture.DismissedInstanceId;
 		}
 
 		if (!Test.TestEqual(TEXT("replacement formation fixture has exactly three members"),
@@ -412,17 +394,6 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.HeroSelectedCardIds;
 	const FGameXXKPermanentCompanion PendingBefore =
 		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PendingRecruitment.Candidate;
-	const FGameXXKPermanentCompanion* SurvivorBefore =
-		DeployedDismissal.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
-			[&UnchangedThreeP](const FGameXXKPermanentCompanion& Companion)
-			{
-				return Companion.InstanceId == UnchangedThreeP.MemberId;
-			});
-	if (!TestNotNull(TEXT("formation replacement fixture finds its surviving 3P companion"), SurvivorBefore))
-	{
-		return false;
-	}
-	const TArray<FName> SurvivorDeckBefore = SurvivorBefore->SelectedCardIds;
 
 	FGameXXKEquipmentTransactionResult Result;
 	if (!TestTrue(TEXT("deployed companion full-roster replacement succeeds"),
@@ -469,16 +440,9 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 		TestEqual(TEXT("replacement preserves pending candidate selected deck"),
 			AddedCandidate->SelectedCardIds, PendingBefore.SelectedCardIds);
 	}
-	const FGameXXKPermanentCompanion* SurvivorAfter =
-		After.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
-			[&UnchangedThreeP](const FGameXXKPermanentCompanion& Companion)
-			{
-				return Companion.InstanceId == UnchangedThreeP.MemberId;
-			});
-	if (TestNotNull(TEXT("surviving 3P remains owned"), SurvivorAfter))
-	{
-		TestEqual(TEXT("surviving 3P deck remains exact"), SurvivorAfter->SelectedCardIds, SurvivorDeckBefore);
-	}
+	TestEqual(TEXT("replacement preserves the fixed NPC 3P slot"),
+		AfterMembers[2],
+		UnchangedThreeP);
 	TestEqual(TEXT("replacement leaves hero deck exact"), After.CardRun.HeroSelectedCardIds, HeroDeckBefore);
 	TestEqual(TEXT("compatibility active companion follows first ordered companion"),
 		After.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
@@ -506,27 +470,21 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 	{
 		return false;
 	}
-	const FName ExistingSurvivorId = ActiveAfterPromotion.SurvivingActiveInstanceId;
 	FGameXXKOrderedPartyFormation ActiveAfterBefore;
-	FGameXXKPartyMemberRef SurvivorRef;
-	SurvivorRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-	SurvivorRef.MemberId = ExistingSurvivorId;
-	FGameXXKPartyMemberRef HeroRef;
-	HeroRef.Kind = EGameXXKPartyMemberKind::Hero;
-	HeroRef.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
-	FGameXXKPartyMemberRef DismissedRef;
-	DismissedRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-	DismissedRef.MemberId = ActiveAfterPromotion.DismissedInstanceId;
-	ActiveAfterBefore.Members = {SurvivorRef, HeroRef, DismissedRef};
-	FString ActiveAfterFormationError;
-	if (!TestTrue(TEXT("ActiveAfter fixture commits survivor/hero/dismissed order"),
-		ActiveAfterPromotion.Subsystem->SetOrderedPartyFormation(
-			ActiveAfterBefore,
-			ActiveAfterFormationError)))
+	if (!ConfigureReplacementFormation(
+		*this,
+		ActiveAfterPromotion,
+		true,
+		ActiveAfterBefore))
 	{
-		AddError(ActiveAfterFormationError);
 		return false;
 	}
+	const int32 ActiveAfterCompanionSlot =
+		ActiveAfterBefore.Members.IndexOfByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			});
 	FGameXXKEquipmentTransactionResult ActiveAfterResult;
 	TestTrue(TEXT("replacement accepts the new recruit as explicit ActiveAfter"),
 		ActiveAfterPromotion.Subsystem->ResolvePendingPermanentCompanionReplacement(
@@ -540,12 +498,17 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 	{
 		return false;
 	}
-	TestEqual(TEXT("explicit ActiveAfter becomes first companion in its earlier companion slot"),
-		ActiveAfterMembers[0].MemberId, ActiveAfterPromotion.PendingCandidateInstanceId);
-	TestTrue(TEXT("ActiveAfter promotion preserves the non-companion hero slot bit-identically"),
-		ActiveAfterMembers[1] == HeroRef);
-	TestEqual(TEXT("displaced former first companion moves to removed companion slot"),
-		ActiveAfterMembers[2].MemberId, ExistingSurvivorId);
+	TestEqual(TEXT("explicit ActiveAfter occupies the repaired companion slot"),
+		ActiveAfterMembers[ActiveAfterCompanionSlot].MemberId,
+		ActiveAfterPromotion.PendingCandidateInstanceId);
+	for (int32 SlotIndex = 0; SlotIndex < ActiveAfterMembers.Num(); ++SlotIndex)
+	{
+		if (SlotIndex != ActiveAfterCompanionSlot)
+		{
+			TestTrue(TEXT("ActiveAfter promotion preserves hero and NPC slots"),
+				ActiveAfterMembers[SlotIndex] == ActiveAfterBefore.Members[SlotIndex]);
+		}
+	}
 	TestEqual(TEXT("legacy active ID follows explicit ActiveAfter"),
 		ActiveAfterState.CardRun.PartySelection.ActivePermanentCompanionInstanceId,
 		ActiveAfterPromotion.PendingCandidateInstanceId);
@@ -580,28 +543,55 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 	{
 		return false;
 	}
-	const FGameXXKPartyMemberRef LaterHeroBefore = OffFormationLaterBefore.Members[0];
-	const FGameXXKPartyMemberRef FirstCompanionBefore = OffFormationLaterBefore.Members[1];
-	const FGameXXKPartyMemberRef LaterCompanionBefore = OffFormationLaterBefore.Members[2];
+	const int32 OffFormationCompanionSlot =
+		OffFormationLaterBefore.Members.IndexOfByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			});
+	FName AlternativeCompanionId = NAME_None;
+	for (const FGameXXKPermanentCompanion& Companion :
+		OffFormationLaterActive.Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions)
+	{
+		if (!OffFormationLaterBefore.Members.ContainsByPredicate(
+			[&Companion](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.MemberId == Companion.InstanceId;
+			})
+			&& Companion.InstanceId != OffFormationLaterActive.DismissedInstanceId)
+		{
+			AlternativeCompanionId = Companion.InstanceId;
+			break;
+		}
+	}
+	if (!TestFalse(TEXT("off-formation fixture finds another owned companion"),
+		AlternativeCompanionId.IsNone()))
+	{
+		return false;
+	}
 	FGameXXKEquipmentTransactionResult OffFormationLaterResult;
-	TestTrue(TEXT("off-formation dismissal accepts an explicitly deployed later ActiveAfter"),
+	TestTrue(TEXT("off-formation dismissal accepts an explicit owned ActiveAfter"),
 		OffFormationLaterActive.Subsystem->ResolvePendingPermanentCompanionReplacement(
 			OffFormationLaterActive.DismissedInstanceId,
-			LaterCompanionBefore.MemberId,
+			AlternativeCompanionId,
 			OffFormationLaterResult));
 	const TArray<FGameXXKPartyMemberRef>& OffFormationLaterMembers =
 		OffFormationLaterActive.Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members;
-	TestTrue(TEXT("later ActiveAfter preserves the hero slot bit-identically"),
-		OffFormationLaterMembers[0] == LaterHeroBefore);
-	TestEqual(TEXT("later ActiveAfter swaps into the first companion slot"),
-		OffFormationLaterMembers[1].MemberId,
-		LaterCompanionBefore.MemberId);
-	TestEqual(TEXT("displaced first companion moves only to the later companion slot"),
-		OffFormationLaterMembers[2].MemberId,
-		FirstCompanionBefore.MemberId);
-	TestEqual(TEXT("later ActiveAfter controls the compatibility active projection"),
+	for (int32 SlotIndex = 0; SlotIndex < OffFormationLaterMembers.Num(); ++SlotIndex)
+	{
+		if (SlotIndex != OffFormationCompanionSlot)
+		{
+			TestTrue(TEXT("explicit ActiveAfter preserves hero and NPC slots"),
+				OffFormationLaterMembers[SlotIndex]
+					== OffFormationLaterBefore.Members[SlotIndex]);
+		}
+	}
+	TestEqual(TEXT("explicit ActiveAfter occupies the sole companion slot"),
+		OffFormationLaterMembers[OffFormationCompanionSlot].MemberId,
+		AlternativeCompanionId);
+	TestEqual(TEXT("explicit ActiveAfter controls the compatibility active projection"),
 		OffFormationLaterActive.Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
-		LaterCompanionBefore.MemberId);
+		AlternativeCompanionId);
 
 	FReplacementFixture OffFormationOwnedActive;
 	if (!CreateEquipmentFixture(*this, OffFormationOwnedActive, 0, 0, false))
@@ -610,11 +600,10 @@ bool FGameXXKEquipmentCompanionReplacementFormationTest::RunTest(const FString& 
 	}
 	FGameXXKRuntimeState& OwnedActiveState = OffFormationOwnedActive.Subsystem->GetMutableRuntimeState();
 	FString OwnedActiveError;
-	if (!TestTrue(TEXT("off-deployed ActiveAfter fixture attaches Tusi Chief"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+	if (!TestTrue(TEXT("off-deployed ActiveAfter fixture selects Tusi Chief"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
 			OwnedActiveState,
 			TEXT("Npc.TusiChief"),
-			{},
 			&OwnedActiveError)))
 	{
 		AddError(OwnedActiveError);

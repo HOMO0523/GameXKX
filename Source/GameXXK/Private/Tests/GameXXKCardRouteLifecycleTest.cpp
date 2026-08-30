@@ -48,7 +48,9 @@ bool FGameXXKCardRouteLifecycleTest::RunTest(const FString& Parameters)
 			&LockedBefore,
 			PPF_None));
 	State.CardRun.PendingEvent.SourceNodeId = 71;
-	State.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
+	State.CardRun.PendingEvent.ChoiceSeed = 0x7135;
+	State.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
+	State.CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
 	State.CardRun.RouteMerchant.SourceNodeId = 71;
 	State.CardRun.RouteMerchant.OfferSeed = 0x7135;
 	State.CardRun.RouteMerchant.RefreshCount = 2;
@@ -88,9 +90,13 @@ bool FGameXXKCardRouteLifecycleTest::RunTest(const FString& Parameters)
 	EventState.CardRun.RouteProgress.CurrentChapter = 1;
 	TestTrue(TEXT("event fixture initializes its route economy"), FGameXXKRouteEconomyRules::InitializeRoute(EventState.CardRun));
 	EventState.CardRun.PendingEvent.SourceNodeId = 79;
-	EventState.CardRun.PendingEvent.EventNpcId = TEXT("Npc.ZhouGuangZu");
-	TestTrue(TEXT("taking a normal event reward resolves its route node"), UGameXXKMVPRules::ResolveEventReward(EventState, true));
-	TestTrue(TEXT("taking a normal event reward clears its stale NPC invitation"), EventState.CardRun.PendingEvent.EventNpcId.IsNone());
+	EventState.CardRun.PendingEvent.ChoiceSeed = 0x7935;
+	EventState.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
+	EventState.CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+	TestTrue(TEXT("choosing the Mountain Spring blessing resolves its route node"),
+		UGameXXKMVPRules::ResolveRouteEncounterChoice(EventState, 0));
+	TestTrue(TEXT("choosing the environment event clears its pending offer"),
+		EventState.CardRun.PendingEvent.EventNpcId.IsNone());
 
 	return true;
 }

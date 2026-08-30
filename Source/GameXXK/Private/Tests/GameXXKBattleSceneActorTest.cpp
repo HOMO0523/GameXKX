@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Components/SceneComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Components/WidgetComponent.h"
@@ -29,7 +30,8 @@ namespace
 {
 	FGameXXKRuntimeState BuildSceneBattleState()
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		State.Screen = EGameXXKScreen::DungeonMap;
 		State.CurrentMapId = TEXT("HuangshanRoute");
 		State.QuestState = EGameXXKQuestState::Accepted;
@@ -161,7 +163,7 @@ namespace
 	bool BuildRuntimeBattleState(UGameXXKMVPSubsystem& Subsystem, FString& OutError)
 	{
 		FGameXXKRuntimeState& State = Subsystem.GetMutableRuntimeState();
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 17;
@@ -422,7 +424,7 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("Hero remains the central 我 2P"), HeroPlacement->SlotNumber, 2);
 		TestEqual(TEXT("permanent Blade remains 我 1P"), BladePlacement->SlotNumber, 1);
-		TestEqual(TEXT("temporary task NPC remains 我 3P"), QuestNpcPlacement->SlotNumber, 3);
+		TestEqual(TEXT("selected NPC remains 我 3P"), QuestNpcPlacement->SlotNumber, 3);
 		TestEqual(TEXT("party 2P uses the approved outward middle coordinate"), HeroPlacement->Location, FVector(-20.0f, 225.0f, 90.0f));
 		TestEqual(TEXT("party 1P uses the approved outward outer coordinate"), BladePlacement->Location, FVector(-80.0f, 295.0f, 90.0f));
 		TestEqual(TEXT("party 3P uses the approved outward inner coordinate"), QuestNpcPlacement->Location, FVector(40.0f, 155.0f, 90.0f));

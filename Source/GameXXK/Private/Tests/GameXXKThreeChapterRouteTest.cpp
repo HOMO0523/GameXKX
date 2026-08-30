@@ -2,6 +2,7 @@
 
 #include "GameXXKEnemyTypes.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRelicRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -157,8 +158,8 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState FirstBossState = EntryState;
 	FirstBossState.PlayerHP = 1;
 	FirstBossState.PlayerMP = 0;
-	FirstBossState.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
-	FirstBossState.CardRun.PartySelection.QuestNpc.NpcId = TEXT("Npc.TusiChief");
+	const FName NpcBeforeChapterAdvance =
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(FirstBossState);
 	FirstBossState.CardRun.RouteTravelMoney = 321;
 	FirstBossState.CardRun.RouteProgress.ActualRouteCardAcquisitionCount = 4;
 	FString RelicError;
@@ -188,7 +189,11 @@ bool FGameXXKThreeChapterLifecycleTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("chapter two has a freshly generated existing topology"), FirstBossState.bHasGeneratedRouteMap && !FirstBossState.RouteMapNodes.IsEmpty());
 	TestEqual(TEXT("chapter transitions fully restore hero health"), FirstBossState.PlayerHP, FirstBossState.PlayerMaxHP);
 	TestEqual(TEXT("chapter transitions fully restore hero MP"), FirstBossState.PlayerMP, FirstBossState.PlayerMaxMP);
-	TestEqual(TEXT("chapter transitions preserve the active temporary task NPC"), FirstBossState.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+	TestEqual(TEXT("chapter transitions preserve the fixed NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(FirstBossState),
+		NpcBeforeChapterAdvance);
+	TestTrue(TEXT("chapter transitions keep temporary provenance retired"),
+		FirstBossState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	const FGameXXKRouteMerchantState EmptyMerchant;
 	TestTrue(TEXT("chapter transitions clear the prior chapter's merchant snapshot before node IDs are reused"),
 		FGameXXKRouteMerchantState::StaticStruct()->CompareScriptStruct(

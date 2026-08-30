@@ -11,6 +11,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKRouteMerchantRules.h"
 #include "Interaction/GameXXKInteractionComponent.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -1151,7 +1152,9 @@ bool FGameXXKRouteEncounterNodeClickFlowTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Escape does not resolve or close the merchant screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteMerchant);
 	TestTrue(TEXT("Escape leaves the dedicated merchant HUD open"), PlayerController->IsRouteMerchantWidgetOpenForTest());
 	TestEqual(TEXT("runtime merchant HUD renders four card offers"), MerchantWidget ? MerchantWidget->GetRenderedCardOfferCountForTest() : 0, 4);
-	TestEqual(TEXT("runtime merchant HUD renders zero relic offers"), MerchantWidget ? MerchantWidget->GetRenderedRelicOfferCountForTest() : 0, 0);
+	TestEqual(TEXT("runtime merchant HUD renders four relic offers"),
+		MerchantWidget ? MerchantWidget->GetRenderedRelicOfferCountForTest() : 0,
+		FGameXXKRouteMerchantRules::RelicSlotCount);
 	TestTrue(TEXT("dedicated merchant leave action resolves the node"), MerchantWidget && MerchantWidget->LeaveMerchant());
 	TestEqual(TEXT("merchant leave returns to the route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestFalse(TEXT("merchant leave hides the dedicated merchant HUD"), PlayerController->IsRouteMerchantWidgetOpenForTest());

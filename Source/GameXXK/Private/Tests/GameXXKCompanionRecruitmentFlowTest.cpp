@@ -6,6 +6,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -194,11 +195,10 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 		EGameXXKCompanionRecruitOutcome::Recruited);
 	FGameXXKRuntimeState& FirstRecruitState = Subsystem->GetMutableRuntimeState();
 	FString FirstRecruitFormationError;
-	if (!TestTrue(TEXT("first recruitment save attaches the approved task NPC"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
+	if (!TestTrue(TEXT("first recruitment save selects the approved permanent NPC"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
 			FirstRecruitState,
 			TEXT("Npc.TusiChief"),
-			{},
 			&FirstRecruitFormationError))
 		|| !TestTrue(TEXT("first recruitment save materializes v24 formation"),
 			FGameXXKPartyFormationRules::Normalize(FirstRecruitState, &FirstRecruitFormationError)))

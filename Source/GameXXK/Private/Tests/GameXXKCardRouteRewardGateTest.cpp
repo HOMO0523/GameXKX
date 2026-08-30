@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -8,7 +9,7 @@ namespace
 {
 	bool BeginLinearCardBattle(FGameXXKRuntimeState& State)
 	{
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		return UGameXXKMVPRules::OpenWorldMap(State)
 			&& UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
 			&& UGameXXKMVPRules::AcceptTownQuest(State)

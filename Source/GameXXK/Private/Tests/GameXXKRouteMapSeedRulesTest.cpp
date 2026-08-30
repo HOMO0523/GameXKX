@@ -2,6 +2,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRelicRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
@@ -101,7 +102,8 @@ namespace
 
 	static FGameXXKRuntimeState BuildPendingRoomRouteState(EGameXXKNodeKind RoomKind)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State =
+			GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!UGameXXKMVPRules::OpenWorldMap(State)
 			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(State))
@@ -199,7 +201,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState Seed101A = UGameXXKMVPRules::CreateNewGame();
+	const FGameXXKRuntimeState BaseState =
+		GameXXKPermanentPartyTestFixtures::MakeStartedState();
+	FGameXXKRuntimeState Seed101A = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(Seed101A, 101);
 	TestTrue(TEXT("explicit seed generates a route map"), Seed101A.bHasGeneratedRouteMap);
 	TestEqual(TEXT("explicit seed persists on runtime state"), Seed101A.RouteSeed, 101);
@@ -261,23 +265,23 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("generated route starts with one reachable node"), Seed101A.ReachableRouteNodeIds.Num(), 1);
 	TestTrue(TEXT("generated route starts with reachable start node"), Seed101A.ReachableRouteNodeIds.Contains(0));
 
-	FGameXXKRuntimeState Seed101B = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Seed101B = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(Seed101B, 101);
 	TestEqual(TEXT("same seed produces same route signature"), BuildRouteSignature(Seed101B), BuildRouteSignature(Seed101A));
 
-	FGameXXKRuntimeState Seed102 = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState Seed102 = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(Seed102, 102);
 	TestNotEqual(TEXT("different seed changes visible route signature"), BuildRouteSignature(Seed102), BuildRouteSignature(Seed101A));
 
-	FGameXXKRuntimeState SeedZero = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState SeedZero = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedZero, 0);
 	TestEqual(TEXT("zero seed normalizes to one"), SeedZero.RouteSeed, 1);
 
-	FGameXXKRuntimeState SeedNegative = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState SeedNegative = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedNegative, -42);
 	TestEqual(TEXT("negative seed stores positive magnitude"), SeedNegative.RouteSeed, 42);
 
-	FGameXXKRuntimeState SeedMinInt = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState SeedMinInt = BaseState;
 	UGameXXKMVPRules::GenerateRouteMapForSeed(SeedMinInt, MIN_int32);
 	TestTrue(TEXT("minimum int seed stores positive nonzero"), SeedMinInt.RouteSeed > 0);
 
@@ -289,7 +293,7 @@ bool FGameXXKRouteMapSeedRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("entry opens dungeon route map"), EntrySubsystem->OpenDungeonFromTownExit());
 	TestNotEqual(TEXT("dungeon entry assigns a nonzero route seed"), EntrySubsystem->GetRuntimeState().RouteSeed, 0);
 
-	FGameXXKRuntimeState FlowState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState FlowState = BaseState;
 	TestTrue(TEXT("generated route flow reaches accepted Qingshan town"),
 		UGameXXKMVPRules::OpenWorldMap(FlowState)
 			&& UGameXXKMVPRules::EnterWorldRegion(FlowState, UGameXXKMVPRules::RegionQingshan())

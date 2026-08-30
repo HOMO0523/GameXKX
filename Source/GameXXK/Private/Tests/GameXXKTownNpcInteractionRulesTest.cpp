@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
@@ -79,11 +80,11 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("town-NPC fixture starts a new game in Qingshan town"), Subsystem->StartGame());
 	YueBai->SetMVPSubsystemForTest(Subsystem);
 	const FName PartyNpcBeforeWorldInteraction =
-		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId;
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState());
 	TestFalse(TEXT("world NPC interaction cannot configure the party slot"), YueBai->ApplyDefaultInteraction(nullptr));
 	TestEqual(
 		TEXT("world NPC interaction leaves the party NPC unchanged"),
-		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState()),
 		PartyNpcBeforeWorldInteraction);
 	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
 	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
@@ -93,15 +94,21 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	const FVector NarrativeFollowerLocation(320.0f, -96.0f, 72.0f);
 	Subsystem->RecordQuestNpcLocation(NarrativeFollowerLocation);
 	TestTrue(TEXT("Yue Bai can be selected directly from the town interaction"), Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
-	TestEqual(TEXT("town interaction stores the selected named NPC"), Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.YueBai")));
+	TestEqual(TEXT("town interaction stores the selected named NPC in ordered formation"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState()),
+		FName(TEXT("Npc.YueBai")));
+	TestTrue(TEXT("town interaction keeps temporary NPC provenance retired"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("town interaction applies the fixed three-card NPC loadout"), Subsystem->GetRuntimeState().CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
-	TestTrue(TEXT("route-support selection preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
-	TestTrue(TEXT("route-support selection preserves the narrative follower location flag"), Subsystem->GetRuntimeState().bHasQuestNpcLocation);
-	TestEqual(TEXT("route-support selection preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
+	TestTrue(TEXT("formation selection preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestTrue(TEXT("formation selection preserves the narrative follower location flag"), Subsystem->GetRuntimeState().bHasQuestNpcLocation);
+	TestEqual(TEXT("formation selection preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
 	TestTrue(TEXT("selecting another NPC replaces the current task NPC"), Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.SongJinBao")));
-	TestEqual(TEXT("replacement NPC becomes the active route support"), Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.SongJinBao")));
-	TestTrue(TEXT("replacing route support still preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
-	TestEqual(TEXT("replacing route support still preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
+	TestEqual(TEXT("replacement NPC becomes the active permanent NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState()),
+		FName(TEXT("Npc.SongJinBao")));
+	TestTrue(TEXT("replacing the fixed NPC still preserves the narrative follower"), Subsystem->GetRuntimeState().bFollowerJoined);
+	TestEqual(TEXT("replacing the fixed NPC still preserves the narrative follower location"), Subsystem->GetRuntimeState().QuestNpcLocation, NarrativeFollowerLocation);
 
 	return true;
 }

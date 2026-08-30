@@ -36,6 +36,15 @@
 
 namespace
 {
+	FGameXXKRuntimeState MakeStartedBattleBoardState()
+	{
+		UGameXXKMVPSubsystem* Subsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	bool RectanglesOverlap(const FBox2D& First, const FBox2D& Second)
 	{
 		return First.bIsValid
@@ -161,7 +170,7 @@ namespace
 		for (int32 Seed = 1; Seed <= 256; ++Seed)
 		{
 			FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-			State = UGameXXKMVPRules::CreateNewGame();
+			State = MakeStartedBattleBoardState();
 			State.Screen = EGameXXKScreen::Battle;
 			State.bHasActiveBattle = true;
 			State.ActiveBattleNodeId = 17;
@@ -473,7 +482,7 @@ namespace
 		}
 
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = MakeStartedBattleBoardState();
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 73;
@@ -605,7 +614,7 @@ namespace
 		}
 
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = MakeStartedBattleBoardState();
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 23;
@@ -1285,7 +1294,7 @@ bool FGameXXKCardBattleBoardAutoPlayEndsTurnTest::RunTest(const FString& Paramet
 	for (int32 Seed = 1; Seed <= 256 && !bFoundValidNoPlayFixture; ++Seed)
 	{
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = MakeStartedBattleBoardState();
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 31;
@@ -1699,7 +1708,7 @@ bool FGameXXKCardBattleBoardAutoPlayEliteEncounterTest::RunTest(const FString& P
 {
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
+	State = MakeStartedBattleBoardState();
 	TestTrue(TEXT("elite auto fixture opens the world map"), UGameXXKMVPRules::OpenWorldMap(State));
 	TestTrue(TEXT("elite auto fixture enters Qingshan"),
 		UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan()));
@@ -3408,7 +3417,7 @@ bool FGameXXKCardBattleBoardPendingInsightChoiceTest::RunTest(const FString& Par
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
+	State = MakeStartedBattleBoardState();
 	State.Screen = EGameXXKScreen::Battle;
 	State.bHasActiveBattle = true;
 	State.ActiveBattleNodeId = 23;
@@ -3478,7 +3487,7 @@ bool FGameXXKCardBattleBoardPendingInsightCancelTest::RunTest(const FString& Par
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
+	State = MakeStartedBattleBoardState();
 	State.Screen = EGameXXKScreen::Battle;
 	State.bHasActiveBattle = true;
 	State.ActiveBattleNodeId = 27;
@@ -3528,7 +3537,7 @@ bool FGameXXKCardBattleBoardPendingHeroTaskSearchTest::RunTest(const FString& Pa
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
+	State = MakeStartedBattleBoardState();
 	State.Screen = EGameXXKScreen::Battle;
 	State.bHasActiveBattle = true;
 	State.ActiveBattleNodeId = 28;
@@ -3675,7 +3684,7 @@ bool FGameXXKCardBattleBoardPendingForcedDiscardTest::RunTest(const FString& Par
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-	State = UGameXXKMVPRules::CreateNewGame();
+	State = MakeStartedBattleBoardState();
 	State.Screen = EGameXXKScreen::Battle;
 	State.bHasActiveBattle = true;
 	State.ActiveBattleNodeId = 29;

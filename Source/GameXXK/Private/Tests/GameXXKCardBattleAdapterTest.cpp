@@ -6,11 +6,24 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
+#include "MVP/GameXXKMVPSubsystem.h"
+
+#include "Engine/GameInstance.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	FGameXXKRuntimeState MakeStartedRuntimeState()
+	{
+		UGameXXKMVPSubsystem* Subsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		return Subsystem && Subsystem->StartGame()
+			? Subsystem->GetRuntimeStateCopy()
+			: FGameXXKRuntimeState();
+	}
+
 	FGameXXKBattleRuntimeUnit MakeLegacyBattleUnit(
 		const TCHAR* Id,
 		const TCHAR* DisplayName,
@@ -76,7 +89,14 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		static_cast<int64>(FGameXXKCardBattleAdapter::MakeStableEnemyIntentTargetSeed(StableEnemyId, 1)),
 		static_cast<int64>(ExpectedRandomTargetSeed));
 
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPSubsystem* FixtureSubsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("adapter fixture starts a permanent party"),
+		FixtureSubsystem && FixtureSubsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState State = FixtureSubsystem->GetRuntimeStateCopy();
 	FString Error;
 	TestTrue(FString::Printf(TEXT("a migrated or new runtime receives the approved card-run defaults: %s"), *Error),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -102,10 +122,15 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("migration keeps the previously equipped eight cards intact"),
 		MigratedState.CardRun.HeroSelectedCardIds, PreviouslyEquippedHeroCards);
 
-	TestTrue(TEXT("the accepted route can attach a specific temporary task NPC with three fixed cards"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error));
-	TestEqual(TEXT("a named temporary task NPC persists exactly three configured cards"), State.CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
-	TestEqual(TEXT("the configured temporary task NPC persists its stable identity"), State.CardRun.PartySelection.QuestNpc.NpcId, FName(TEXT("Npc.TusiChief")));
+	TestTrue(TEXT("the formation selects a specific permanent NPC with three fixed cards"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			State,
+			TEXT("Npc.TusiChief"),
+			&Error));
+	TestEqual(TEXT("a named permanent NPC persists exactly three configured cards"), State.CardRun.PartySelection.QuestNpc.SelectedCardIds.Num(), 3);
+	TestEqual(TEXT("the configured permanent NPC resolves from ordered formation"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
+		FName(TEXT("Npc.TusiChief")));
 
 	State.ActiveBattleParty = {
 		MakeLegacyBattleUnit(TEXT("Player"), TEXT("Hero"), 100, 30, 15, 8, false)};
@@ -118,10 +143,10 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleAdapter::BeginCardBattle(State, EGameXXKNodeKind::Battle, EGameXXKCardTerrain::Plain, 991, &Error));
 	TestTrue(TEXT("the active card battle is explicitly persisted inside runtime state"), State.CardRun.bHasActiveCardBattle);
 	TestTrue(TEXT("the active card battle passes its independent persistence validation"), GameXXKCardRules::ValidateCardBattleRuntime(State.CardRun.ActiveBattle, &Error));
-	TestEqual(TEXT("hero plus one temporary NPC creates the exact eleven-card opening deck without route cards"), State.CardRun.ActiveBattle.Deck.ActiveInstanceIds.Num(), 11);
+	TestEqual(TEXT("hero, companion, and NPC create the exact sixteen-card opening deck without route cards"), State.CardRun.ActiveBattle.Deck.ActiveInstanceIds.Num(), 16);
 	TestEqual(TEXT("the opening card runtime begins with five materialized hand cards"), State.CardRun.ActiveBattle.Deck.Hand.Num(), 5);
-	TestEqual(TEXT("the legacy projection contains hero and one task NPC, not the old automatic follower"), State.ActiveBattleParty.Num(), 2);
-	TestTrue(TEXT("the temporary task NPC has a stable card-runtime unit"), State.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	TestEqual(TEXT("the legacy projection contains the authoritative three-person party"), State.ActiveBattleParty.Num(), 3);
+	TestTrue(TEXT("the permanent NPC has a stable card-runtime unit"), State.CardRun.ActiveBattle.Units.ContainsByPredicate([](const FGameXXKCardCombatUnit& Unit)
 	{
 		return Unit.UnitId == TEXT("Npc.TusiChief") && Unit.Side == EGameXXKCardTargetSide::Party;
 	}));
@@ -150,7 +175,7 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("card runtime armor remains authoritative when syncing legacy shield"), State.ActiveBattleEnemies[0].Shield, 4);
 	}
 
-	FGameXXKRuntimeState ExplicitSlotState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState ExplicitSlotState = MakeStartedRuntimeState();
 	TestTrue(TEXT("explicit-slot fixture initializes the route card run"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(ExplicitSlotState, &Error));
 	ExplicitSlotState.ActiveBattleParty = {
 		MakeLegacyBattleUnit(TEXT("Player"), TEXT("Hero"), 100, 30, 15, 8, false)};
@@ -191,10 +216,13 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("rejected duplicate explicit slots preserve the source enemy slot"), DuplicateSlotState.ActiveBattleEnemies[1].BattleSlotNumber, DuplicateSlotBefore.ActiveBattleEnemies[1].BattleSlotNumber);
 	TestFalse(TEXT("rejected duplicate explicit slots do not create an active card runtime"), DuplicateSlotState.CardRun.bHasActiveCardBattle);
 
-	FGameXXKRuntimeState QuestNpcSnapshotState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState QuestNpcSnapshotState = FixtureSubsystem->GetRuntimeStateCopy();
 	TestTrue(TEXT("task-NPC snapshot fixture initializes the route card run"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(QuestNpcSnapshotState, &Error));
-	TestTrue(TEXT("task-NPC snapshot fixture configures the route NPC"),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(QuestNpcSnapshotState, TEXT("Npc.TusiChief"), {}, &Error));
+	TestTrue(TEXT("NPC snapshot fixture configures the permanent NPC"),
+		GameXXKPermanentPartyTestFixtures::SelectNpc(
+			QuestNpcSnapshotState,
+			TEXT("Npc.TusiChief"),
+			&Error));
 	QuestNpcSnapshotState.PlayerLevel = 20;
 	FGameXXKQuestNpcProgression& TusiProgression =
 		QuestNpcSnapshotState.CardRun.PartySelection.QuestNpcProgressions.FindOrAdd(TEXT("Npc.TusiChief"));
@@ -241,7 +269,7 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 			&& SnapshotNpc->Attack != SnapshotHero->Attack);
 	}
 
-	FGameXXKRuntimeState RewardState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState RewardState = MakeStartedRuntimeState();
 	bool bRewardBattleReady = UGameXXKMVPRules::OpenWorldMap(RewardState)
 		&& UGameXXKMVPRules::EnterWorldRegion(RewardState, UGameXXKMVPRules::RegionQingshan())
 		&& UGameXXKMVPRules::AcceptTownQuest(RewardState)
@@ -292,9 +320,15 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the reward offer clears only after an explicit pick"), RewardState.CardRun.PendingReward.Options.Num(), 0);
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(RewardState);
 
+	const FName NpcBeforeRouteCleanup =
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(State);
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(State);
 	TestFalse(TEXT("ending the route clears an in-progress card battle"), State.CardRun.bHasActiveCardBattle);
-	TestEqual(TEXT("ending the route removes the temporary task NPC selection"), State.CardRun.PartySelection.QuestNpc.NpcId, NAME_None);
+	TestEqual(TEXT("ending the route preserves the permanent NPC selection"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
+		NpcBeforeRouteCleanup);
+	TestTrue(TEXT("route cleanup keeps temporary provenance retired"),
+		State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("ending the route preserves the hero's permanent configured cards"), State.CardRun.HeroSelectedCardIds.Num(), 8);
 
 	return true;
@@ -427,7 +461,7 @@ bool FGameXXKCardBattlePresentationAndIntentTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("failed missing HUD view resets its stable identity"), InvalidView.UnitId, NAME_None);
 	TestEqual(TEXT("hero is always player 2P"), FGameXXKBattlePresentation::GetSlotNumber(PresentationRuntime, TEXT("Player")), 2);
 	TestEqual(TEXT("permanent companion is always player 1P"), FGameXXKBattlePresentation::GetSlotNumber(PresentationRuntime, TEXT("Companion.Blade")), 1);
-	TestEqual(TEXT("temporary NPC is always player 3P"), FGameXXKBattlePresentation::GetSlotNumber(PresentationRuntime, TEXT("Npc.YueBai")), 3);
+	TestEqual(TEXT("selected NPC is always player 3P"), FGameXXKBattlePresentation::GetSlotNumber(PresentationRuntime, TEXT("Npc.YueBai")), 3);
 	TestEqual(TEXT("enemy stable order maps outer to inner"), FGameXXKBattlePresentation::GetSlotNumber(PresentationRuntime, TEXT("Enemy.Three")), 3);
 	FGameXXKCardBattleRuntime PermanentRoleRuntime;
 	PermanentRoleRuntime.Units = {
@@ -483,7 +517,7 @@ bool FGameXXKCardBattlePresentationAndIntentTest::RunTest(const FString& Paramet
 		return Slot.UnitId == TEXT("Npc.YueBai") && Slot.Side == EGameXXKCardTargetSide::Party && Slot.SlotNumber == 3;
 	}));
 
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeStartedRuntimeState();
 	FString Error;
 	TestTrue(TEXT("intent fixture initializes the card run"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
 	State.ActiveBattleParty = {
@@ -623,7 +657,7 @@ bool FGameXXKCardBattleFourEnemySafetyTest::RunTest(const FString& Parameters)
 			return Slot.UnitId == TEXT("Enemy.Four");
 		}));
 
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeStartedRuntimeState();
 	FString Error;
 	TestTrue(TEXT("the four-enemy safety fixture initializes the card run"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -817,7 +851,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardBattleInitialLivingEnemyForecastTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeStartedRuntimeState();
 	FString Error;
 	TestTrue(TEXT("the living-enemy forecast fixture initializes the card run"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
@@ -861,7 +895,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardBattleEnemyIntentRetryTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeStartedRuntimeState();
 	FString Error;
 	TestTrue(TEXT("the retry fixture initializes the card run"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));
 	State.ActiveBattleParty = {
@@ -912,7 +946,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardBattleTerminalEnemyCompletionTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState State = MakeStartedRuntimeState();
 	FString Error;
 	// Card-battle startup now derives the hero from the save-authoritative character state and
 	// equipped loadout, rather than treating the legacy battle-widget projection as input.

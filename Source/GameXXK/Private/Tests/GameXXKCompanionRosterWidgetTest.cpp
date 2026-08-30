@@ -12,6 +12,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
@@ -30,7 +31,10 @@ namespace
 		}
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 		FString Error;
-		if (!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State, TEXT("Npc.TusiChief"), {}, &Error)
+		if (!GameXXKPermanentPartyTestFixtures::SelectNpc(
+				State,
+				TEXT("Npc.TusiChief"),
+				&Error)
 			|| !FGameXXKPartyFormationRules::Normalize(State, &Error))
 		{
 			Test.AddError(Error);
@@ -590,7 +594,8 @@ bool FGameXXKCompanionRosterWidgetRouteLockTest::RunTest(const FString& Paramete
 	}
 	const FGameXXKQuestNpcDefinition* TusiChief = FGameXXKCompanionCatalog::FindQuestNpcDefinition(TEXT("Npc.TusiChief"));
 	TestNotNull(TEXT("the route-lock fixture has a named task NPC card definition"), TusiChief);
-	if (!TusiChief || !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}))
+	if (!TusiChief || !GameXXKPermanentPartyTestFixtures::SelectNpc(
+		Subsystem->GetMutableRuntimeState(), TusiChief->NpcId))
 	{
 		return false;
 	}
@@ -643,7 +648,8 @@ bool FGameXXKCompanionRosterWidgetTaskNpcFixedDeckReadOnlyTest::RunTest(const FS
 
 	const FGameXXKQuestNpcDefinition* TusiChief = FGameXXKCompanionCatalog::FindQuestNpcDefinition(TEXT("Npc.TusiChief"));
 	TestNotNull(TEXT("the fixed-deck roster fixture resolves the named task NPC"), TusiChief);
-	if (!TusiChief || !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Subsystem->GetMutableRuntimeState(), TusiChief->NpcId, {}))
+	if (!TusiChief || !GameXXKPermanentPartyTestFixtures::SelectNpc(
+		Subsystem->GetMutableRuntimeState(), TusiChief->NpcId))
 	{
 		return false;
 	}
@@ -653,7 +659,7 @@ bool FGameXXKCompanionRosterWidgetTaskNpcFixedDeckReadOnlyTest::RunTest(const FS
 	// three-card selection remains facade-backed and read-only.
 	TestEqual(TEXT("the task-NPC summary remains the canonical fixed three-card selection"),
 		Widget->GetTaskNpcCardSummary().SelectedCardIds.Num(), 3);
-	TestEqual(TEXT("the task-NPC summary retains the active temporary NPC identity"),
+	TestEqual(TEXT("the NPC summary retains the selected permanent NPC identity"),
 		Widget->GetTaskNpcCardSummary().NpcId, TusiChief->NpcId);
 	TestNull(TEXT("the companion backpack does not expose a task-NPC loadout save action"),
 		Widget->WidgetTree->FindWidget(TEXT("CompanionRosterApplyTaskNpcLoadout")));

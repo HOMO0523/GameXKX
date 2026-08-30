@@ -14,7 +14,9 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRouteMerchantTypes.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKRouteMerchantWidget.h"
@@ -147,7 +149,6 @@ namespace GameXXKRouteMerchantWidgetTest
 		}
 		State.CardRun.CompanionRoster.PermanentCompanions.Reset();
 		State.CardRun.CompanionRoster.PermanentCompanions.Add(Companion);
-		State.CardRun.PartySelection.ActivePermanentCompanionInstanceId = Companion.InstanceId;
 		OutCompanionId = Companion.InstanceId;
 		OutCompanionName = FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed);
 
@@ -170,9 +171,20 @@ namespace GameXXKRouteMerchantWidgetTest
 			{
 				OutQuestNpcId = QuestNpc.NpcId;
 				OutQuestNpcName = FriendlyName;
-				State.CardRun.ActiveTemporaryQuestNpcId = QuestNpc.NpcId;
-				State.CardRun.PartySelection.QuestNpc.NpcId = QuestNpc.NpcId;
-				State.CardRun.PartySelection.QuestNpc.SelectedCardIds = MoveTemp(EligibleCards);
+				State.CardRun.PartySelection.QuestNpcCardLoadouts.FindOrAdd(
+					QuestNpc.NpcId).SelectedCardIds = MoveTemp(EligibleCards);
+				FGameXXKPartyMemberRef HeroRef;
+				HeroRef.Kind = EGameXXKPartyMemberKind::Hero;
+				HeroRef.MemberId = FGameXXKEquipmentRules::HeroCharacterId();
+				FGameXXKPartyMemberRef CompanionRef;
+				CompanionRef.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+				CompanionRef.MemberId = Companion.InstanceId;
+				FGameXXKPartyMemberRef NpcRef;
+				NpcRef.Kind = EGameXXKPartyMemberKind::QuestNpc;
+				NpcRef.MemberId = QuestNpc.NpcId;
+				State.CardRun.OrderedFormation.Members = {
+					HeroRef, CompanionRef, NpcRef};
+				FGameXXKPartyFormationRules::ProjectCompatibility(State);
 				break;
 			}
 		}

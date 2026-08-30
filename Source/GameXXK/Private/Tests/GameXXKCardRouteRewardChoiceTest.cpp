@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -9,7 +10,7 @@ namespace
 {
 	bool BeginLinearCardBattleForRewardChoice(FGameXXKRuntimeState& State)
 	{
-		State = UGameXXKMVPRules::CreateNewGame();
+		State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		if (!UGameXXKMVPRules::OpenWorldMap(State)
 			|| !UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(State)

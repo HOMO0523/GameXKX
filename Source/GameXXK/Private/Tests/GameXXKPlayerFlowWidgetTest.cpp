@@ -3,6 +3,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -959,13 +960,9 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestFalse(TEXT("player-facing town overlay does not expose a route map button"), PlayerController->GetTownOverlayWidgetForTest()->HasTownActionForTest(FName(TEXT("EnterDungeon")), false));
 	TestTrue(TEXT("town exit interaction opens route map"), Subsystem->OpenDungeonFromTownExit());
-	FString TaskNpcError;
-	TestTrue(FString::Printf(TEXT("an explicit task NPC joins the route before the player-flow battle test: %s"), *TaskNpcError),
-		FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
-			Subsystem->GetMutableRuntimeState(),
-			TEXT("Npc.TusiChief"),
-			{},
-			&TaskNpcError));
+	TestEqual(TEXT("the route keeps the already-selected permanent NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState()),
+		FName(TEXT("Npc.TusiChief")));
 	PlayerController->RefreshPlayerFlowWidgetsForTest();
 	TestEqual(TEXT("route map screen after town exit F interaction"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("route map widget visible after entering dungeon"), PlayerController->GetRouteMapWidgetForTest()->GetVisibility(), ESlateVisibility::Visible);

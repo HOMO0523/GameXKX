@@ -43,9 +43,13 @@ namespace
 			OutError = TEXT("The test subsystem is missing.");
 			return false;
 		}
+		if (!Subsystem->StartGame())
+		{
+			OutError = TEXT("The test subsystem could not start a permanent party.");
+			return false;
+		}
 
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
-		State = UGameXXKMVPRules::CreateNewGame();
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 41;

@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Blueprint/WidgetTree.h"
@@ -243,7 +244,7 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	UGameInstance* ShortLineGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* ShortLineSubsystem = NewObject<UGameXXKMVPSubsystem>(ShortLineGameInstance);
 	FGameXXKRuntimeState& ShortLineState = ShortLineSubsystem->GetMutableRuntimeState();
-	ShortLineState = UGameXXKMVPRules::CreateNewGame();
+	ShortLineState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	ShortLineState.Screen = EGameXXKScreen::DungeonMap;
 	ShortLineState.CurrentMapId = TEXT("HuangshanRoute");
 	ShortLineState.bDungeonActive = true;
@@ -353,7 +354,7 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	UGameInstance* SparseGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* SparseSubsystem = NewObject<UGameXXKMVPSubsystem>(SparseGameInstance);
 	FGameXXKRuntimeState& SparseState = SparseSubsystem->GetMutableRuntimeState();
-	SparseState = UGameXXKMVPRules::CreateNewGame();
+	SparseState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	SparseState.Screen = EGameXXKScreen::DungeonMap;
 	SparseState.CurrentMapId = TEXT("HuangshanRoute");
 	SparseState.bDungeonActive = true;

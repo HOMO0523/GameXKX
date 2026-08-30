@@ -1,5 +1,6 @@
 #include "GameXXKTrainingRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKSaveGame.h"
@@ -842,8 +843,11 @@ bool FGameXXKTrainingTravelDefaultPartyBridgeTest::RunTest(const FString& Parame
 		return false;
 	}
 	TestEqual(TEXT("new-game default permanent companion is Blade"), ActiveCompanion->Role, EGameXXKCharacterRole::Blade);
-	TestEqual(TEXT("new-game default NPC is Tusi Chief"),
-		State.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+	TestEqual(TEXT("new-game default permanent NPC is Tusi Chief"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
+		FName(TEXT("Npc.TusiChief")));
+	TestTrue(TEXT("new-game default keeps temporary provenance empty"),
+		State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("default three-unit party starts 1-1 travel"), Subsystem->StartTrainingTravel(StageOne));

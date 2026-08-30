@@ -465,6 +465,7 @@ bool FGameXXKBattleRetreatCheckpointCaptureAtomicityTest::RunTest(const FString&
 	{
 		return false;
 	}
+	// Intentional corruption fixture: invalid v29 provenance must remain atomic.
 	State.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.Invalid.Atomicity");
 	State.CardRun.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection{};
 	const FGameXXKRuntimeState Before = State;
