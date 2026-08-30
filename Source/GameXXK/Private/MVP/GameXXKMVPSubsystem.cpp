@@ -55,17 +55,15 @@ namespace
 		}
 	}
 
-	static FName ResolveDeployedQuestNpcId(const FGameXXKRuntimeState& State)
+	static bool ResolveDeployedQuestNpcId(
+		const FGameXXKRuntimeState& State,
+		FName& OutNpcId,
+		FString* OutError = nullptr)
 	{
-		if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
-		{
-			return State.CardRun.ActiveTemporaryQuestNpcId;
-		}
-		if (!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
-		{
-			return State.CardRun.PartySelection.QuestNpc.NpcId;
-		}
-		return TEXT("Npc.TusiChief");
+		return FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			State,
+			OutNpcId,
+			OutError);
 	}
 
 	static void AwardUnifiedNpcExperience(
@@ -123,8 +121,9 @@ namespace
 			return false;
 		}
 
-		const FName ActiveNpcId = ResolveDeployedQuestNpcId(State);
-		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(ActiveNpcId))
+		FName ActiveNpcId;
+		if (!ResolveDeployedQuestNpcId(State, ActiveNpcId, &Error)
+			|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(ActiveNpcId))
 		{
 			return false;
 		}
@@ -440,9 +439,11 @@ namespace
 				TalentAttack(Snapshot.AttributesBeforeRoute.Attack)));
 		}
 
-		const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
-			? FName(TEXT("Npc.TusiChief"))
-			: State.CardRun.ActiveTemporaryQuestNpcId;
+		FName ActiveNpcId;
+		if (!ResolveDeployedQuestNpcId(State, ActiveNpcId, OutError))
+		{
+			return false;
+		}
 		FGameXXKCompanionAttributes NpcAttributes;
 		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
 				ActiveNpcId,
@@ -474,6 +475,49 @@ namespace
 			TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
 			TalentAttack(NpcSnapshot.AttributesBeforeRoute.Attack)));
 		return OutParty.Num() == 3;
+	}
+
+	static bool ReplaceTrainingTravelPartyPreservingProgress(
+		const FGameXXKRuntimeState& State,
+		FGameXXKTrainingTravelRuntime& InOutRuntime)
+	{
+		TArray<FGameXXKTrainingTravelPartyUnitRuntime> FreshParty;
+		if (!BuildTrainingTravelParty(State, FreshParty) || FreshParty.Num() != 3)
+		{
+			return false;
+		}
+		if (!State.Training.bTravelActive)
+		{
+			return true;
+		}
+		if (InOutRuntime.PartyUnits.Num() != 3)
+		{
+			return false;
+		}
+		for (int32 SlotIndex = 0; SlotIndex < FreshParty.Num(); ++SlotIndex)
+		{
+			FGameXXKTrainingTravelPartyUnitRuntime& Fresh = FreshParty[SlotIndex];
+			const FGameXXKTrainingTravelPartyUnitRuntime& Previous =
+				InOutRuntime.PartyUnits[SlotIndex];
+			if (Fresh.UnitId == Previous.UnitId)
+			{
+				const int32 MissingHealth = FMath::Max(0, Previous.MaxHP - Previous.HP);
+				Fresh.HP = FMath::Clamp(Fresh.MaxHP - MissingHealth, 0, Fresh.MaxHP);
+			}
+		}
+		InOutRuntime.PartyUnits = MoveTemp(FreshParty);
+		InOutRuntime.PlayerHP = InOutRuntime.PartyUnits[0].HP;
+		InOutRuntime.PlayerMaxHP = InOutRuntime.PartyUnits[0].MaxHP;
+		InOutRuntime.PlayerAttack = InOutRuntime.PartyUnits[0].Attack;
+		InOutRuntime.ActivePartyIndex = FMath::Clamp(
+			InOutRuntime.ActivePartyIndex,
+			INDEX_NONE,
+			InOutRuntime.PartyUnits.Num() - 1);
+		InOutRuntime.NextEnemyTargetPartyIndex = FMath::Clamp(
+			InOutRuntime.NextEnemyTargetPartyIndex,
+			0,
+			InOutRuntime.PartyUnits.Num() - 1);
+		return true;
 	}
 
 	static bool SynchronizeTrainingTravelPartyProgression(
@@ -967,6 +1011,8 @@ namespace
 		return RuntimeState.CardRun.bLoadoutLockedForRoute
 			|| RuntimeState.CardRun.bHasActiveCardBattle
 			|| RuntimeState.bHasActiveBattle
+			|| RuntimeState.bDungeonActive
+			|| RuntimeState.Training.bChallengeActive
 			|| RuntimeState.Screen == EGameXXKScreen::Battle;
 	}
 
@@ -5358,9 +5404,7 @@ bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
 	if (Candidate.Training.bTravelActive)
 	{
-		TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
-		if (!BuildTrainingTravelParty(Candidate, Party)
-			|| !FGameXXKTrainingRules::InitializeTravelRunner(Candidate.Training, CandidateRunner, Party))
+		if (!ReplaceTrainingTravelPartyPreservingProgress(Candidate, CandidateRunner))
 		{
 			return false;
 		}
@@ -5452,15 +5496,13 @@ bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
 	if (Candidate.Training.bTravelActive)
 	{
-		TArray<FGameXXKTrainingTravelPartyUnitRuntime> Party;
-		if (!BuildTrainingTravelParty(Candidate, Party)
-			|| !FGameXXKTrainingRules::InitializeTravelRunner(Candidate.Training, CandidateRunner, Party))
+		if (!ReplaceTrainingTravelPartyPreservingProgress(Candidate, CandidateRunner))
 		{
 			return false;
 		}
 	}
 
-	// Route support selection is independent from the accepted story NPC that
+	// Permanent combat formation is independent from the accepted story NPC that
 	// follows the player in town. Never discard that follower's saved state here.
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
@@ -5485,7 +5527,9 @@ bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcI
 		return false;
 	}
 	Candidate.CardRun.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpcId).SelectedCardIds = SelectedCardIds;
-	if (Candidate.CardRun.ActiveTemporaryQuestNpcId == QuestNpcId
+	FName ActiveNpcId;
+	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(Candidate, ActiveNpcId)
+		&& ActiveNpcId == QuestNpcId
 		&& !FGameXXKCompanionRules::SetQuestNpcCardSelection(
 			Candidate.CardRun.PartySelection.QuestNpc,
 			QuestNpcId,

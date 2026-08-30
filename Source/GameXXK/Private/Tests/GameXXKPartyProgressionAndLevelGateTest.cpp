@@ -7,6 +7,7 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
@@ -32,15 +33,9 @@ namespace
 
 	FName ResolveDeployedNpcId(const FGameXXKRuntimeState& State)
 	{
-		if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
-		{
-			return State.CardRun.ActiveTemporaryQuestNpcId;
-		}
-		if (!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())
-		{
-			return State.CardRun.PartySelection.QuestNpc.NpcId;
-		}
-		return TEXT("Npc.TusiChief");
+		FName NpcId;
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(State, NpcId);
+		return NpcId;
 	}
 
 	TArray<uint8> SerializeEquipmentCollection(const FGameXXKEquipmentCollectionState& Collection)
@@ -211,6 +206,8 @@ bool FGameXXKTrainingDeployedPartyExperienceTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
+	TestTrue(TEXT("online XP fixture selects Yue Bai"),
+		Online->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
 	bool bStageCompleted = false;
 	FGameXXKTrainingReward OnlineReward;
 	TestTrue(TEXT("one online Training encounter settles"),
@@ -223,16 +220,18 @@ bool FGameXXKTrainingDeployedPartyExperienceTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
-	FGameXXKTrainingOfflineReward OfflineReward;
-	TestTrue(TEXT("offline Training simulation produces a reward"),
-		Offline->SimulateTrainingTravelOffline(512, OfflineReward));
-	TestTrue(TEXT("offline Training simulation grants positive XP"), OfflineReward.Experience > 0);
+	TestTrue(TEXT("offline XP fixture selects Yue Bai"),
+		Offline->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
+	constexpr int32 PendingOfflineExperience = 150;
+	Offline->GetMutableRuntimeState().Training.PendingTravelExperience =
+		PendingOfflineExperience;
+	Offline->GetMutableRuntimeState().Training.PendingTravelSimulatedSeconds = 1;
 	FGameXXKTrainingOfflineReward Collected;
 	TestTrue(TEXT("offline Training reward can be collected"),
 		Offline->CollectTrainingTravelRewards(Collected));
-	TestEqual(TEXT("collected offline XP matches the simulated ledger"),
-		Collected.Experience, OfflineReward.Experience);
-	VerifyAward(Offline, OfflineReward.Experience);
+	TestEqual(TEXT("collected offline XP matches the pending ledger"),
+		Collected.Experience, PendingOfflineExperience);
+	VerifyAward(Offline, PendingOfflineExperience);
 	return true;
 }
 

@@ -624,7 +624,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool SetHeroCardLoadout(const TArray<FName>& SelectedCardIds);
 
-	/** Town F-interaction action: replaces the optional temporary named NPC and uses its fixed default cards. */
+	/** Replaces the NPC slot with one of the six permanently owned named NPCs. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Companion")
 	bool SelectTownQuestNpcForParty(FName QuestNpcId);
 
