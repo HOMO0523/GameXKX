@@ -1,10 +1,18 @@
 ---
 status: record
 owner: codex
-updated_at: 2026-08-30T21:03:52+08:00
-source_commit: 8ae6d6441895dc89ec085243ed65c2d4e508cc0b
-working_tree: permanent NPC formation / route-event retirement implemented through fixture migration; probe and this acceptance entry pending docs commit
+updated_at: 2026-08-31T02:43:29+08:00
+source_commit: b79650530948c0cbc34e6d659e7b6ebfd65a1b04
+working_tree: Qingshan carriage preview calibrated and automated/visual gates green; player-operated replay, pause, return, and restart chains remain unverified
 ---
+
+> **2026-08-31 青山序章马车预览（实现与静态视觉门禁完成，玩家手工链待验收）**：桌面工作台现有 `剧情` 按钮只发出一次独立语义请求，携带瞬态 `GameXXKIntro=CarriagePreview` 进入已有六 NPC 的 `/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo`；普通城镇入口不带该参数。剧情入口会先收起已展开的背包，但不改挂机条折叠、阵容、任务、剧情、引导、奖励或存档状态。地图内唯一受管 Rig 复用现有包含马、车夫和车厢的图集，固定复制主角入场相机，马车从左侧 400 UU 驶入、停车后主角出现在车前、停 2 秒，再沿同方向驶离到 +800 UU；Escape 暂停层提供继续/返回桌面，异常与取消共用 fail-open 清理。实现提交依次为 `7e1b0c1`、`e002364`、`1e88bca`、`c1fc9ae`、`9ed4fb5`、`a018c02`、`5596f4b`，最终朝向、相机、背包收起与玩家批准坐标校准为 `b796505`。
+>
+> 玩家批准的 PlayerStart/Rig 锚点为 `(16678.592, 5270.000, 1075.711)`、Yaw `0`，显示统一应用 `Z=-72` 落地偏移；只移动了唯一 PlayerStart 与受管 Rig。MCP 地图校验 `ok=true`：Rig/PlayerStart 各 1、驶入距离 `400`、驶离同向点积 `320000`、Exit `(0,800,0)`、HeroReveal `(-80,0,0)`、四张 1K/2K 图集源尺寸正确、`dirty_after=[]`。新锚点四阶段证据为 `Saved/Screenshots/WindowsEditor/prologue_carriage_{arriving,parked,departing,handoff}_anchor_v1.png`；Luna Max 报告 `Saved/HarnessReports/prologue-carriage-anchor-v1-luna.md` 对可见项判定 PASS：没有台阶/地面/草地/建筑穿模，没有悬空、图集边框、透明框或帧裁切，马车明确朝右，停车时主角在前景、驶离时马车在后层，交接背景锚点无明显跳镜。静态截图不能证明连续运动、完整出画或真实输入恢复，这些不被冒充为已验收。
+>
+> 2026-08-31 最终冷 UBT：`python scripts/ue_tdd_pipeline.py --pie-duration 0 --log-lines 160 --filter "[TDD]"`，`GameXXKEditor Win64 Development -NoHotReload` GREEN。编辑器内精确 Automation 7/7、0 failed、0 skipped、0 warning：`GameXXK.Prologue.Carriage.{Rig,Rules,Widget}`、`GameXXK.DesktopTraining.Workbench.{StoryQuestCarriageRequest,TownTogglePresentation}`、`GameXXK.MVP.LevelFlow`、`GameXXK.MVP.PlayableShell.GameModeDefaults`。`scripts.test_prologue_carriage_policy` 3/3、三个 Python 脚本 `py_compile`、`git diff --check` 均 exit 0；harness validator 为 `OK`，仅保留既有旧生产文档 metadata warnings。已知无关 `GameXXK.MVP.Town.ShellInputInteractionFollower` 仍受用户动画/相机语义漂移影响，本轮没有削弱其旧断言或伪称全量全绿。
+>
+> 尚未由玩家亲手完成并确认的链保持显式未验收：真实点击 `剧情` 后背包收起并播完全段、再次点击完整重播、Escape 暂停后继续同一阶段、暂停后返回桌面无输入锁、关闭/重启只进桌面且不自动播剧情。新手引导与后续剧情内容尚未开始；必须等本段玩家验收后再进入独立设计/实现周期。
 
 > **2026-08-30 固定 NPC 编队与 NPC 路线事件退役（实现完成，手工月白链待玩家验收）**：`OrderedFormation` 现固定为“主角 + 一名永久伙伴 + 六名固定 NPC 之一”，`ActiveTemporaryQuestNpcId` 在当前运行时必须为空；挂机、路线/战斗、装备/卡组投影和经验归属读取同一 NPC。七个 NPC 路线事件与可达临时支援操作已删除，仅保留山泉和四类宝箱；旧枚举/action 序号作为隐藏墓碑保留。存档升至 v30，按“有效有序 NPC → 旧选择 → v29 临时字段 → 土司首领”恢复，并把待处理旧 NPC 事件原地改为山泉，不发奖励、不结算节点。实现提交依次为 `71eba5d`、`0b2dfe0`、`cca9bbb`、`1ba56d4`、`b1422cf`、`2231252`、`8ae6d64`。
 >
