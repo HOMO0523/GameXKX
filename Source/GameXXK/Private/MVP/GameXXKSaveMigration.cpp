@@ -4,6 +4,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCharacterStatRules.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEquipmentCatalog.h"
@@ -537,6 +538,105 @@ namespace
 		State.DesktopInventory.LockedItemIds.Remove(NormalId);
 		State.DesktopInventory.LockedItemIds.Remove(AdvancedId);
 		return FGameXXKDesktopInventoryRules::Normalize(State, &OutError);
+	}
+
+	bool MigratePermanentNpcFormation(
+		FGameXXKRuntimeState& State,
+		FGameXXKSaveMigrationReport& Report,
+		FString& OutError)
+	{
+		OutError.Reset();
+		FName OrderedNpcId;
+		const bool bHasOrderedNpc =
+			FGameXXKPartyFormationRules::ResolveQuestNpcId(State, OrderedNpcId);
+		const FName SelectionNpcId = State.CardRun.PartySelection.QuestNpc.NpcId;
+		const FName TemporaryNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
+		FName RecoveredNpcId = bHasOrderedNpc ? OrderedNpcId : NAME_None;
+		if (RecoveredNpcId.IsNone()
+			&& FGameXXKCompanionCatalog::FindQuestNpcDefinition(SelectionNpcId))
+		{
+			RecoveredNpcId = SelectionNpcId;
+		}
+		if (RecoveredNpcId.IsNone()
+			&& FGameXXKCompanionCatalog::FindQuestNpcDefinition(TemporaryNpcId))
+		{
+			RecoveredNpcId = TemporaryNpcId;
+		}
+		if (RecoveredNpcId.IsNone())
+		{
+			RecoveredNpcId = TEXT("Npc.TusiChief");
+			Report.Warnings.Add(TEXT("Missing legacy NPC formation repaired to Tusi Chief."));
+		}
+
+		State.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
+		const FGameXXKQuestNpcOwnedCardLoadout* RecoveredLoadout =
+			State.CardRun.PartySelection.QuestNpcCardLoadouts.Find(RecoveredNpcId);
+		if (!RecoveredLoadout)
+		{
+			OutError = TEXT("Recovered NPC has no persisted owned loadout.");
+			return false;
+		}
+		State.CardRun.PartySelection.QuestNpc.NpcId = RecoveredNpcId;
+		State.CardRun.PartySelection.QuestNpc.SelectedCardIds = RecoveredLoadout->SelectedCardIds;
+		if (!FGameXXKPartyFormationRules::Normalize(State, &OutError))
+		{
+			return false;
+		}
+
+		FGameXXKPartyMemberRef* NpcSlot =
+			State.CardRun.OrderedFormation.Members.FindByPredicate(
+				[](const FGameXXKPartyMemberRef& Ref)
+				{
+					return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+				});
+		if (!NpcSlot)
+		{
+			OutError = TEXT("Normalized migrated formation has no NPC slot.");
+			return false;
+		}
+		NpcSlot->MemberId = RecoveredNpcId;
+		FGameXXKPartyFormationRules::ProjectCompatibility(State);
+		if (!FGameXXKPartyFormationRules::Validate(
+				State,
+				State.CardRun.OrderedFormation,
+				&OutError)
+			|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(State, &OutError))
+		{
+			return false;
+		}
+		return true;
+	}
+
+	bool MigrateRetiredNpcEncounter(FGameXXKRuntimeState& State, FString& OutError)
+	{
+		OutError.Reset();
+		FGameXXKPendingRouteEvent& Pending = State.CardRun.PendingEvent;
+		const bool bRetiredCatalogId =
+			FGameXXKRouteEncounterCatalog::IsRetiredNpcEncounterId(Pending.EncounterId);
+		const bool bLegacyRosterNpc =
+			FGameXXKCompanionCatalog::FindQuestNpcDefinition(Pending.EventNpcId) != nullptr;
+		const bool bLegacyNiuHuan = Pending.EventNpcId == TEXT("Npc.Event.NiuHuan");
+		if (!bRetiredCatalogId && !bLegacyRosterNpc && !bLegacyNiuHuan)
+		{
+			return true;
+		}
+
+		const FGameXXKRouteEncounterDefinition* Replacement =
+			FGameXXKRouteEncounterCatalog::ChooseDeterministic(
+				EGameXXKRouteEncounterKind::Event,
+				Pending.ChoiceSeed);
+		if (!Replacement)
+		{
+			Pending = FGameXXKPendingRouteEvent();
+			State.Screen = EGameXXKScreen::DungeonMap;
+			State.CurrentMapId = TEXT("HuangshanRoute");
+			return true;
+		}
+
+		Pending.EncounterId = Replacement->Id;
+		Pending.EventNpcId = Replacement->EventNpcId;
+		Pending.bCanRecruitPermanentCompanion = false;
+		return true;
 	}
 
 	void MigrateInventoryCategories(FGameXXKRuntimeState& State)
@@ -1541,7 +1641,9 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 				&ValidationError)
 			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
-			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
+			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError)
+			|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, ValidationError)
+			|| !MigrateRetiredNpcEncounter(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1579,7 +1681,9 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 				&ValidationError)
 			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
-			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError))
+			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError)
+			|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, ValidationError)
+			|| !MigrateRetiredNpcEncounter(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1733,9 +1837,9 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	}
 	if (Source.SaveVersion < OrderedPartyFormationIntroducedSaveVersion)
 	{
-		// Only pre-v24 saves may derive ordered membership from compatibility fields.
-		// A mismatched or retired task NPC is ignored by BuildLegacyProjection and
-		// cleared by ProjectCompatibility instead of being reactivated implicitly.
+		// Only pre-v24 saves lack authoritative ordered membership. Leave the
+		// formation empty until the v30 helper can apply the approved recovery
+		// priority after all six persisted NPC loadouts exist.
 		Candidate.RuntimeState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
 		int32 AddedLegacyPartyCompanions = 0;
 		if (!AddMinimumLegacyPartyCompanions(
@@ -1752,12 +1856,6 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 				TEXT("Legacy ordered-party migration appended %d approved starter companion profile(s)."),
 				AddedLegacyPartyCompanions));
 		}
-		if (!FGameXXKPartyFormationRules::Normalize(Candidate.RuntimeState, &MigrationError))
-		{
-			Fail(OutReport, MigrationError);
-			return false;
-		}
-		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate.RuntimeState);
 	}
 	if (Source.SaveVersion < EquipmentToolsAndChestWalletIntroducedSaveVersion)
 	{
@@ -1797,6 +1895,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
 		|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 		|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, MigrationError)
+		|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, MigrationError)
+		|| !MigrateRetiredNpcEncounter(Candidate.RuntimeState, MigrationError)
 		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);

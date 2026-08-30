@@ -52,7 +52,7 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 	using namespace GameXXKNarrativeGuideSaveMigrationTestPrivate;
 	TestEqual(TEXT("narrative-stage-guide owns save version 29"),
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
-	TestEqual(TEXT("v29 is current"), FGameXXKSaveMigration::CurrentSaveVersion, 29);
+	TestEqual(TEXT("v30 follows the narrative-stage-guide boundary"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);
@@ -63,7 +63,9 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 	{
 		return false;
 	}
-	TestEqual(TEXT("save reaches v29"), Migrated.SaveVersion, 29);
+	TestEqual(TEXT("save reaches the current schema"),
+		Migrated.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestTrue(TEXT("ordinary save has no story progress"), Migrated.RuntimeState.NarrativeProgress.StoryProgressById.IsEmpty());
 	TestTrue(TEXT("ordinary save has no task progress"), Migrated.RuntimeState.NarrativeProgress.TaskProgressById.IsEmpty());
 	TestFalse(TEXT("ordinary save has no sequence session"), Migrated.RuntimeState.NarrativeSequenceSession.bActive);

@@ -62,7 +62,9 @@ bool FGameXXKDialogueSaveMigrationV28Test::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("save reaches current v29"), Migrated.SaveVersion, 29);
+	TestEqual(TEXT("save reaches the current schema"),
+		Migrated.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestFalse(TEXT("dialogue defaults inactive"), Migrated.RuntimeState.DialogueSession.bActive);
 	TestTrue(TEXT("dialogue identity defaults empty"), Migrated.RuntimeState.DialogueSession.DialogueId.IsNone());
 	TestEqual(TEXT("tutorial state preserved"),

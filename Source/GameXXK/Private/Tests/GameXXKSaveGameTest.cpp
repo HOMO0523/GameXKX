@@ -127,21 +127,6 @@ namespace
 		return FGameXXKPartyFormationRules::Normalize(InOutState, &Error);
 	}
 
-	FName FindFirstStableCompanionOtherThan(
-		const FGameXXKRuntimeState& State,
-		const FName ExcludedId)
-	{
-		TArray<FName> CompanionIds;
-		for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)
-		{
-			if (!Companion.InstanceId.IsNone() && Companion.InstanceId != ExcludedId)
-			{
-				CompanionIds.AddUnique(Companion.InstanceId);
-			}
-		}
-		CompanionIds.Sort(FNameLexicalLess());
-		return CompanionIds.IsEmpty() ? NAME_None : CompanionIds[0];
-	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -472,7 +457,9 @@ bool FGameXXKInventoryLocksSaveGameRoundTripTest::RunTest(const FString& Paramet
 
 	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
 	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(State);
-	TestEqual(TEXT("lock round-trip writes the v29 schema"), SaveObject->SaveState.SaveVersion, 29);
+	TestEqual(TEXT("lock round-trip writes the current schema"),
+		SaveObject->SaveState.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TArray<uint8> SaveBytes;
 	TestTrue(TEXT("v25 lock state serializes through SaveGame"),
 		UGameplayStatics::SaveGameToMemory(SaveObject, SaveBytes));
@@ -791,7 +778,7 @@ bool FGameXXKOrderedFormationSaveMigrationTest::RunTest(const FString& Parameter
 		return false;
 	}
 	const FName ExpectedCompanionId = LegacyState.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
-	const FName ExpectedQuestNpcId = LegacyState.CardRun.ActiveTemporaryQuestNpcId;
+	const FName ExpectedQuestNpcId = LegacyState.CardRun.PartySelection.QuestNpc.NpcId;
 	LegacyState.CardRun.OrderedFormation = FGameXXKOrderedPartyFormation();
 	FGameXXKSaveState LegacySave = UGameXXKMVPRules::MakeSaveState(LegacyState);
 	LegacySave.SaveVersion = ExpectedIntroducedVersion - 1;
@@ -813,8 +800,8 @@ bool FGameXXKOrderedFormationSaveMigrationTest::RunTest(const FString& Parameter
 	TestEqual(TEXT("legacy hero keeps the stable hero ID"), MigratedMembers[0].MemberId, FGameXXKEquipmentRules::HeroCharacterId());
 	TestEqual(TEXT("active permanent companion becomes 2P"), MigratedMembers[1].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
 	TestEqual(TEXT("active permanent companion ID is exact"), MigratedMembers[1].MemberId, ExpectedCompanionId);
-	TestEqual(TEXT("synchronized task NPC becomes 3P"), MigratedMembers[2].Kind, EGameXXKPartyMemberKind::QuestNpc);
-	TestEqual(TEXT("synchronized task NPC ID is exact"), MigratedMembers[2].MemberId, ExpectedQuestNpcId);
+	TestEqual(TEXT("legacy selected NPC becomes 3P"), MigratedMembers[2].Kind, EGameXXKPartyMemberKind::QuestNpc);
+	TestEqual(TEXT("legacy selected NPC ID is exact"), MigratedMembers[2].MemberId, ExpectedQuestNpcId);
 	TestEqual(TEXT("successful migration writes the current save version"),
 		Migrated.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 
@@ -853,10 +840,8 @@ bool FGameXXKOrderedFormationLegacyFallbackTest::RunTest(const FString& Paramete
 		return false;
 	}
 	const FName ActiveCompanionId = StaleNpcState.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
-	const FName StableFallbackId = FindFirstStableCompanionOtherThan(StaleNpcState, ActiveCompanionId);
 	const FName StaleNpcId = StaleNpcState.CardRun.PartySelection.QuestNpc.NpcId;
-	TestFalse(TEXT("fallback fixture has a second stable companion"), StableFallbackId.IsNone());
-	TestFalse(TEXT("fallback fixture starts with a task NPC"), StaleNpcId.IsNone());
+	TestFalse(TEXT("fallback fixture starts with a selected NPC"), StaleNpcId.IsNone());
 
 	FGameXXKRuntimeState OneCompanionNpcState = StaleNpcState;
 	OneCompanionNpcState.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(
@@ -917,17 +902,18 @@ bool FGameXXKOrderedFormationLegacyFallbackTest::RunTest(const FString& Paramete
 	}
 	TestEqual(TEXT("fallback keeps hero first"), FallbackMembers[0].Kind, EGameXXKPartyMemberKind::Hero);
 	TestEqual(TEXT("fallback keeps the active companion second"), FallbackMembers[1].MemberId, ActiveCompanionId);
-	TestEqual(TEXT("fallback deterministically chooses the next owned companion"), FallbackMembers[2].MemberId, StableFallbackId);
-	TestEqual(TEXT("fallback third member is a permanent companion"), FallbackMembers[2].Kind, EGameXXKPartyMemberKind::PermanentCompanion);
-	TestFalse(TEXT("stale NPC is not reactivated in ordered formation"),
+	TestEqual(TEXT("legacy selection deterministically becomes the fixed NPC"), FallbackMembers[2].MemberId, StaleNpcId);
+	TestEqual(TEXT("fallback third member is a fixed NPC"), FallbackMembers[2].Kind, EGameXXKPartyMemberKind::QuestNpc);
+	TestTrue(TEXT("legacy selected NPC is preserved in ordered formation"),
 		FallbackMembers.ContainsByPredicate([StaleNpcId](const FGameXXKPartyMemberRef& Ref)
 		{
 			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc && Ref.MemberId == StaleNpcId;
 		}));
-	TestTrue(TEXT("stale NPC compatibility projection is cleared"),
+	TestTrue(TEXT("legacy temporary NPC provenance is cleared"),
 		MigratedFallback.RuntimeState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
-	TestTrue(TEXT("stale NPC selection is cleared"),
-		MigratedFallback.RuntimeState.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
+	TestEqual(TEXT("fixed NPC compatibility selection matches ordered formation"),
+		MigratedFallback.RuntimeState.CardRun.PartySelection.QuestNpc.NpcId,
+		StaleNpcId);
 
 	FGameXXKRuntimeState TooSmallState = StaleNpcState;
 	TooSmallState.CardRun.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
@@ -1097,17 +1083,26 @@ bool FGameXXKOrderedFormationCurrentStrictValidationTest::RunTest(const FString&
 
 	for (int32 CorruptIndex = 0; CorruptIndex < CorruptSaves.Num(); ++CorruptIndex)
 	{
-		FGameXXKSaveState Rejected;
-		FGameXXKSaveMigrationReport RejectedReport;
-		TestFalse(
-			FString::Printf(TEXT("corrupt current formation %d is rejected instead of normalized"), CorruptIndex),
-			FGameXXKSaveMigration::MigrateToCurrent(CorruptSaves[CorruptIndex], Rejected, RejectedReport));
-		TestFalse(
-			FString::Printf(TEXT("corrupt current formation %d reports an error"), CorruptIndex),
-			RejectedReport.Error.IsEmpty());
+		FGameXXKSaveState Repaired;
+		FGameXXKSaveMigrationReport RepairedReport;
+		if (!TestTrue(
+			FString::Printf(TEXT("legacy malformed formation %d repairs at the load boundary"), CorruptIndex),
+			FGameXXKSaveMigration::MigrateToCurrent(CorruptSaves[CorruptIndex], Repaired, RepairedReport)))
+		{
+			AddError(RepairedReport.Error);
+			continue;
+		}
+		FString RepairedError;
 		TestTrue(
-			FString::Printf(TEXT("corrupt current formation %d does not produce a migrated party"), CorruptIndex),
-			Rejected.RuntimeState.CardRun.OrderedFormation.Members.IsEmpty());
+			FString::Printf(TEXT("repaired formation %d is a valid current runtime"), CorruptIndex),
+			FGameXXKSaveMigration::ValidateRuntimeState(Repaired.RuntimeState, RepairedError));
+		TestEqual(
+			FString::Printf(TEXT("repaired formation %d has exactly three members"), CorruptIndex),
+			Repaired.RuntimeState.CardRun.OrderedFormation.Members.Num(),
+			3);
+		TestTrue(
+			FString::Printf(TEXT("repaired formation %d clears temporary provenance"), CorruptIndex),
+			Repaired.RuntimeState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	}
 	return true;
 }

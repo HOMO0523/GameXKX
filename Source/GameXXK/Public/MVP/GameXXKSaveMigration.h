@@ -57,7 +57,9 @@ public:
 	static constexpr int32 DialogueRuntimeIntroducedSaveVersion = 28;
 	/** v29 adds multi-story/task, sequence-session and semantic combat-guide persistence. */
 	static constexpr int32 NarrativeStageGuideIntroducedSaveVersion = 29;
-	static constexpr int32 CurrentSaveVersion = 29;
+	/** v30: ordered formation always owns one permanent NPC; NPC route encounters are retired. */
+	static constexpr int32 PermanentNpcFormationIntroducedSaveVersion = 30;
+	static constexpr int32 CurrentSaveVersion = 30;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

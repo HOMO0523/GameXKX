@@ -202,9 +202,26 @@ namespace
 		return Unit;
 	}
 
+	bool BuildStartedRuntime(FGameXXKRuntimeState& OutState)
+	{
+		UGameXXKMVPSubsystem* Subsystem =
+			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return false;
+		}
+		OutState = Subsystem->GetRuntimeStateCopy();
+		return true;
+	}
+
 	FGameXXKSaveState MakeCurrentPendingEventFixture(const bool bChest)
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State;
+		if (!BuildStartedRuntime(State))
+		{
+			return FGameXXKSaveState();
+		}
+		State.Screen = EGameXXKScreen::RouteEvent;
 		State.bDungeonActive = true;
 		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60);
 		State.bHasGeneratedRouteMap = true;
@@ -221,8 +238,10 @@ namespace
 		State.CardRun.PendingEvent.ChoiceSeed = bChest ? 0x7102 : 0x7101;
 		State.CardRun.PendingEvent.EncounterId = bChest
 			? FName(TEXT("Encounter.Chest.Bamboo"))
-			: FName(TEXT("Encounter.Event.YueBai"));
-		State.CardRun.PendingEvent.EventNpcId = bChest ? NAME_None : FName(TEXT("Npc.YueBai"));
+			: FName(TEXT("Encounter.Event.MountainSpring"));
+		State.CardRun.PendingEvent.EventNpcId = bChest
+			? NAME_None
+			: FName(TEXT("Event.Attribute.MountainSpring"));
 		if (bChest)
 		{
 			State.CardRun.PendingRelicOffer.SourceNodeId = 10;
@@ -235,7 +254,11 @@ namespace
 
 	FGameXXKSaveState MakeCurrentPendingRewardFixture()
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State;
+		if (!BuildStartedRuntime(State))
+		{
+			return FGameXXKSaveState();
+		}
 		State.bDungeonActive = true;
 		FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60);
 		State.bHasGeneratedRouteMap = true;
@@ -294,7 +317,11 @@ namespace
 
 	FGameXXKSaveState MakeCurrentMerchantFixture()
 	{
-		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		FGameXXKRuntimeState State;
+		if (!BuildStartedRuntime(State))
+		{
+			return FGameXXKSaveState();
+		}
 		State.Screen = EGameXXKScreen::RouteMerchant;
 		State.bDungeonActive = true;
 		State.bHasGeneratedRouteMap = true;
@@ -461,7 +488,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("narrative stage and guides own the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 29);
+	TestEqual(TEXT("permanent NPC formation owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -540,7 +567,9 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 	UGameXXKSaveGame* SaveObject = NewObject<UGameXXKSaveGame>();
 	SaveObject->SaveState = UGameXXKMVPRules::MakeSaveState(Runtime);
 	const FGameXXKSaveState Source = SaveObject->SaveState;
-	TestEqual(TEXT("source SaveGame writes v29"), Source.SaveVersion, 29);
+	TestEqual(TEXT("source SaveGame writes the current schema"),
+		Source.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TArray<FGameXXKEquipmentInstance> ExpectedInstances;
 	for (const FName InstanceId : CreatedInstanceIds)
 	{
@@ -568,7 +597,9 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 		return false;
 	}
 	const FGameXXKSaveState& Reloaded = ReloadedObject->SaveState;
-	TestEqual(TEXT("memory round-trip preserves save version 29"), Reloaded.SaveVersion, 29);
+	TestEqual(TEXT("memory round-trip preserves the current save version"),
+		Reloaded.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestEqual(TEXT("memory round-trip preserves unrelated player gold"), Reloaded.RuntimeState.PlayerGold, Source.RuntimeState.PlayerGold);
 	TestEqual(TEXT("memory round-trip preserves collection seed"), Reloaded.RuntimeState.EquipmentCollection.CollectionSeed, Source.RuntimeState.EquipmentCollection.CollectionSeed);
 	TestEqual(TEXT("memory round-trip preserves next instance ordinal"), Reloaded.RuntimeState.EquipmentCollection.NextInstanceOrdinal, Source.RuntimeState.EquipmentCollection.NextInstanceOrdinal);
@@ -613,7 +644,9 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
-	TestEqual(TEXT("validated memory round-trip remains v29"), Migrated.SaveVersion, 29);
+	TestEqual(TEXT("validated memory round-trip remains current"),
+		Migrated.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestTrue(TEXT("v25 validation introduces no drift after true memory serialization"),
 		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Migrated, &Reloaded, PPF_None));
 
@@ -645,8 +678,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("narrative stage and guides advance the current save schema to v29"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 29);
+	TestEqual(TEXT("permanent NPC formation advances the current save schema to v30"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 30);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -665,6 +698,17 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 	const FGameXXKDesktopInventoryEntryKey EquipmentEntry =
 		FGameXXKDesktopInventoryRules::MakeEquipmentEntry(
 			VersionTwentyFourRuntime.EquipmentCollection.WarehouseInstanceIds[0]);
+	VersionTwentyFourRuntime.Inventory.FindOrAdd(UGameXXKMVPRules::ItemEnhancementStone()) =
+		FMath::Max(
+			1,
+			VersionTwentyFourRuntime.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()));
+	FString FixtureError;
+	if (!TestTrue(TEXT("v24 fixture materializes its explicit item stack"),
+		FGameXXKDesktopInventoryRules::Normalize(VersionTwentyFourRuntime, &FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
 	const int32 ItemBackpackSlot = FGameXXKDesktopInventoryRules::FindEntrySlot(
 		VersionTwentyFourRuntime,
 		EGameXXKDesktopItemContainer::Backpack,
@@ -673,22 +717,35 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 		VersionTwentyFourRuntime,
 		EGameXXKDesktopItemContainer::Backpack,
 		EquipmentEntry);
-	FString FixtureError;
-	if (!TestTrue(TEXT("v24 fixture moves an item stack into a sentinel Warehouse cell"),
-		FGameXXKDesktopInventoryRules::MoveEntry(
-			VersionTwentyFourRuntime,
-			EGameXXKDesktopItemContainer::Backpack,
-			ItemBackpackSlot,
-			EGameXXKDesktopItemContainer::Warehouse,
-			41,
-			&FixtureError))
-		|| !TestTrue(TEXT("v24 fixture moves equipment into a sentinel Warehouse cell"),
+	const int32 ItemWarehouseTargetSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		VersionTwentyFourRuntime,
+		EGameXXKDesktopItemContainer::Warehouse);
+	if (!TestTrue(TEXT("v24 fixture finds an unlocked Warehouse cell for its item stack"),
+		ItemWarehouseTargetSlot != INDEX_NONE)
+		|| !TestTrue(TEXT("v24 fixture moves an item stack into its chosen Warehouse cell"),
+			FGameXXKDesktopInventoryRules::MoveEntry(
+				VersionTwentyFourRuntime,
+				EGameXXKDesktopItemContainer::Backpack,
+				ItemBackpackSlot,
+				EGameXXKDesktopItemContainer::Warehouse,
+				ItemWarehouseTargetSlot,
+				&FixtureError)))
+	{
+		AddError(FixtureError);
+		return false;
+	}
+	const int32 EquipmentWarehouseTargetSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
+		VersionTwentyFourRuntime,
+		EGameXXKDesktopItemContainer::Warehouse);
+	if (!TestTrue(TEXT("v24 fixture finds a second unlocked Warehouse cell for equipment"),
+		EquipmentWarehouseTargetSlot != INDEX_NONE)
+		|| !TestTrue(TEXT("v24 fixture moves equipment into its chosen Warehouse cell"),
 			FGameXXKDesktopInventoryRules::MoveEntry(
 				VersionTwentyFourRuntime,
 				EGameXXKDesktopItemContainer::Backpack,
 				EquipmentBackpackSlot,
 				EGameXXKDesktopItemContainer::Warehouse,
-				42,
+				EquipmentWarehouseTargetSlot,
 				&FixtureError)))
 	{
 		AddError(FixtureError);
@@ -712,6 +769,14 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 	VersionTwentyFour.RuntimeState.PlayerGold = 2425;
 	VersionTwentyFour.RuntimeState.Inventory.Add(UGameXXKMVPRules::ItemQingshanRouteSeal(), 2);
 	FString SourceValidationError;
+	if (!TestTrue(TEXT("v24 fixture projects its explicit route-seal stack into a physical cell"),
+		FGameXXKDesktopInventoryRules::Normalize(
+			VersionTwentyFour.RuntimeState,
+			&SourceValidationError)))
+	{
+		AddError(SourceValidationError);
+		return false;
+	}
 	if (!TestTrue(TEXT("valid-but-noncanonical v24 runtime passes current invariants"),
 		FGameXXKSaveMigration::ValidateRuntimeState(
 			VersionTwentyFour.RuntimeState,
@@ -742,7 +807,9 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 		AddError(Report.Error);
 		return false;
 	}
-	TestEqual(TEXT("v24 migration writes v29"), Migrated.SaveVersion, 29);
+	TestEqual(TEXT("v24 migration writes the current schema"),
+		Migrated.SaveVersion,
+		FGameXXKSaveMigration::CurrentSaveVersion);
 	TestEqual(TEXT("v24 migration initializes an empty equipment lock set"),
 		Migrated.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Num(), 0);
 	TestEqual(TEXT("v24 migration initializes an empty item lock set"),
@@ -768,6 +835,22 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 			&Migrated.RuntimeState.DesktopInventory,
 			&ExpectedDesktopInventory,
 			PPF_None));
+	TestEqual(TEXT("v24 migration preserves the Warehouse equipment partition"),
+		Migrated.RuntimeState.DesktopInventory.WarehouseEquipmentInstanceIds,
+		ExpectedDesktopInventory.WarehouseEquipmentInstanceIds);
+	TestTrue(TEXT("v24 migration preserves Warehouse item stacks"),
+		Migrated.RuntimeState.DesktopInventory.WarehouseItems.OrderIndependentCompareEqual(
+			ExpectedDesktopInventory.WarehouseItems));
+	TestEqual(TEXT("v24 migration preserves every Backpack physical slot"),
+		Migrated.RuntimeState.DesktopInventory.BackpackSlots,
+		ExpectedDesktopInventory.BackpackSlots);
+	TestEqual(TEXT("v24 migration preserves every Warehouse physical slot"),
+		Migrated.RuntimeState.DesktopInventory.WarehouseSlots,
+		ExpectedDesktopInventory.WarehouseSlots);
+	TestTrue(TEXT("v24 migration clears exactly the legacy equipment locks"),
+		Migrated.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Num() == 0);
+	TestTrue(TEXT("v24 migration clears exactly the legacy item locks"),
+		Migrated.RuntimeState.DesktopInventory.LockedItemIds.Num() == 0);
 	TestTrue(TEXT("v24 migration preserves every equipment instance and loadout"),
 		FGameXXKEquipmentCollectionState::StaticStruct()->CompareScriptStruct(
 			&Migrated.RuntimeState.EquipmentCollection,
@@ -820,8 +903,9 @@ bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FSt
 			MigratedCollectionOnly.RuntimeState.Inventory.FindRef(SandId), 7);
 		TestEqual(TEXT("v24 collection-only repair preserves its compatibility mirror"),
 			MigratedCollectionOnly.RuntimeState.EquipmentCollection.RefinementSand, 7);
-		TestEqual(TEXT("v24 collection-only repair writes v28"),
-			MigratedCollectionOnly.SaveVersion, 29);
+		TestEqual(TEXT("v24 collection-only repair writes the current schema"),
+			MigratedCollectionOnly.SaveVersion,
+			FGameXXKSaveMigration::CurrentSaveVersion);
 	}
 
 	FGameXXKSaveState Mismatched = VersionTwentyFour;
@@ -847,8 +931,9 @@ bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FSt
 			MigratedMismatch.RuntimeState.Inventory.FindRef(SandId), 3);
 		TestEqual(TEXT("v24 stale collection mirror follows the backpack stack"),
 			MigratedMismatch.RuntimeState.EquipmentCollection.RefinementSand, 3);
-		TestEqual(TEXT("v24 mismatched-sand repair writes v28"),
-			MigratedMismatch.SaveVersion, 29);
+		TestEqual(TEXT("v24 mismatched-sand repair writes the current schema"),
+			MigratedMismatch.SaveVersion,
+			FGameXXKSaveMigration::CurrentSaveVersion);
 	}
 	return true;
 }
@@ -862,7 +947,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes narrative stage and guides"), FGameXXKSaveMigration::CurrentSaveVersion, 29);
+	TestEqual(TEXT("current save schema includes permanent NPC formation migration"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -1114,7 +1199,8 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	}
 	TestEqual(TEXT("legacy active battle source node survives"), State.ActiveBattleNodeId, 11);
 	TestEqual(TEXT("legacy enemy projection survives"), State.ActiveBattleEnemies.Num(), SourceState.ActiveBattleEnemies.Num());
-	TestEqual(TEXT("temporary task NPC provenance survives"), State.CardRun.ActiveTemporaryQuestNpcId, FName(TEXT("Npc.TusiChief")));
+	TestTrue(TEXT("legacy temporary NPC provenance is cleared"),
+		State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("route relic survives"), State.CardRun.Relics.Num(), 1);
 	TestTrue(TEXT("codex discovery migrates to the current enemy id"), State.DiscoveredCodexEntryIds.Contains(TEXT("Codex.Enemy.Ch1.MoneyRat")));
 	TestEqual(TEXT("twelve companions survive in order"), State.CardRun.CompanionRoster.PermanentCompanions.Num(), 12);
@@ -1198,11 +1284,15 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	FGameXXKSaveState MigratedEvent;
 	FGameXXKSaveMigrationReport EventReport;
 	TestTrue(TEXT("version six pending event migrates"), FGameXXKSaveMigration::MigrateToCurrent(EventSource, MigratedEvent, EventReport));
+	FGameXXKPendingRouteEvent ExpectedMigratedEvent = EventRuntime.CardRun.PendingEvent;
+	ExpectedMigratedEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
+	ExpectedMigratedEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+	ExpectedMigratedEvent.bCanRecruitPermanentCompanion = false;
 	TestTrue(
-		TEXT("version six pending event survives exactly"),
+		TEXT("version six pending NPC event remaps without changing its node or seed"),
 		FGameXXKPendingRouteEvent::StaticStruct()->CompareScriptStruct(
 			&MigratedEvent.RuntimeState.CardRun.PendingEvent,
-			&EventRuntime.CardRun.PendingEvent,
+			&ExpectedMigratedEvent,
 			PPF_None));
 
 	FGameXXKSaveState RelicOfferSource = EventSource;
@@ -1296,7 +1386,11 @@ bool FGameXXKEquipmentSaveMigrationRefinementSandMirrorTest::RunTest(const FStri
 
 	FGameXXKSaveState LegacyMirrorOnly;
 	LegacyMirrorOnly.SaveVersion = FGameXXKSaveMigration::CurrentSaveVersion;
-	LegacyMirrorOnly.RuntimeState = UGameXXKMVPRules::CreateNewGame();
+	if (!TestTrue(TEXT("refinement-sand current fixture starts"),
+		BuildStartedRuntime(LegacyMirrorOnly.RuntimeState)))
+	{
+		return false;
+	}
 	LegacyMirrorOnly.RuntimeState.Inventory.Remove(SandId);
 	LegacyMirrorOnly.RuntimeState.EquipmentCollection.RefinementSand = 7;
 	FGameXXKSaveState MigratedLegacyMirrorOnly;
