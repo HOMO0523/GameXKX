@@ -465,7 +465,7 @@ void UGameXXKTownHudWidget::BuildCompanionCodexOverlay()
 	{
 		AddCanvasChild(FilterCanvas, FilterHeader, FVector2D(15.0f, 14.0f), FVector2D(120.0f, 36.0f));
 	}
-	UTextBlock* FilterTitle = MakeNamedText(TEXT("TownHudCodexTitle"), FText::FromString(TEXT("任务支援图鉴")), 18, FLinearColor(0.18f, 0.10f, 0.05f, 1.0f));
+	UTextBlock* FilterTitle = MakeNamedText(TEXT("TownHudCodexTitle"), FText::FromString(TEXT("角色图鉴")), 18, FLinearColor(0.18f, 0.10f, 0.05f, 1.0f));
 	FilterTitle->SetJustification(ETextJustify::Center);
 	AddCanvasChild(FilterCanvas, FilterTitle, FVector2D(15.0f, 19.0f), FVector2D(120.0f, 28.0f));
 
@@ -496,7 +496,7 @@ void UGameXXKTownHudWidget::BuildCompanionCodexOverlay()
 	AddCanvasChild(CodexCanvas, CodexCollectionText, FVector2D(186.0f, 24.0f), FVector2D(310.0f, 34.0f));
 	UTextBlock* TaskNpcCaption = MakeNamedText(
 		TEXT("TownHudTaskNpcCodexCaption"),
-		FText::FromString(TEXT("任务支援 6 名 · 本次路线临时加入 · 不可招募")),
+		FText::FromString(TEXT("固定 NPC 6 名 · 固定拥有 · 可编入队伍")),
 		16,
 		FLinearColor(0.31f, 0.20f, 0.12f, 1.0f));
 	TaskNpcCaption->SetJustification(ETextJustify::Right);
@@ -531,7 +531,7 @@ void UGameXXKTownHudWidget::BuildCompanionCodexOverlay()
 	TaskNpcCodexDetailPortrait->SetVisibility(ESlateVisibility::Collapsed);
 	TaskNpcCodexDetailPortraitSlot->SetContent(TaskNpcCodexDetailPortrait);
 	AddCanvasChild(DetailCanvas, TaskNpcCodexDetailPortraitSlot, FVector2D(4.0f, 6.0f), FVector2D(88.0f, 118.0f));
-	CodexDetailText = MakeNamedText(TEXT("TownHudCodexDetailText"), FText::FromString(TEXT("选择任务 NPC 查看本次路线的临时支援与固定三张牌")), 17, FLinearColor(0.20f, 0.11f, 0.05f, 1.0f));
+	CodexDetailText = MakeNamedText(TEXT("TownHudCodexDetailText"), FText::FromString(TEXT("选择固定 NPC 查看战斗定位与固定三张牌")), 17, FLinearColor(0.20f, 0.11f, 0.05f, 1.0f));
 	AddCanvasChild(DetailCanvas, CodexDetailText, FVector2D(94.0f, 6.0f), FVector2D(352.0f, 116.0f));
 	for (int32 LoadoutIndex = 0; LoadoutIndex < 3; ++LoadoutIndex)
 	{
@@ -678,11 +678,11 @@ void UGameXXKTownHudWidget::RefreshCompanionCodex()
 			}
 			UBorder* SupportStrip = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
 			SupportStrip->SetBrushColor(FLinearColor(0.145f, 0.137f, 0.129f, 1.0f));
-			UTextBlock* SupportRoleText = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("%s · 临时支援"), Presentation->SupportRole)), 8, FLinearColor(0.722f, 0.706f, 0.671f, 1.0f));
+			UTextBlock* SupportRoleText = MakeText(WidgetTree, FText::FromString(FString::Printf(TEXT("%s · 固定 NPC"), Presentation->SupportRole)), 8, FLinearColor(0.722f, 0.706f, 0.671f, 1.0f));
 			SupportRoleText->SetJustification(ETextJustify::Center);
 			SupportStrip->SetContent(SupportRoleText);
 			AddCanvasChild(CardCanvas, SupportStrip, FVector2D(12.0f, 81.0f), FVector2D(89.0f, 21.0f));
-			UTextBlock* RouteSupportText = MakeText(WidgetTree, FText::FromString(TEXT("本次路线有效 · 不可招募")), 7, FLinearColor(0.28f, 0.19f, 0.12f, 1.0f));
+			UTextBlock* RouteSupportText = MakeText(WidgetTree, FText::FromString(TEXT("永久可用 · 可编入队伍")), 7, FLinearColor(0.28f, 0.19f, 0.12f, 1.0f));
 			RouteSupportText->SetJustification(ETextJustify::Center);
 			AddCanvasChild(CardCanvas, RouteSupportText, FVector2D(12.0f, 105.0f), FVector2D(89.0f, 15.0f));
 
@@ -782,7 +782,7 @@ void UGameXXKTownHudWidget::RefreshCompanionCodex()
 		if (bHasSelectedTaskNpc)
 		{
 			CodexDetailText->SetText(FText::FromString(FString::Printf(
-				TEXT("%s  |  支援定位：%s\n临时路线支援 · 不可招募\n基础属性：生命 %d  攻击 %d\n防御 %d  真气 %d  被动：%s"),
+				TEXT("%s  |  战斗定位：%s\n固定 NPC · 固定拥有 · 可编入队伍\n基础属性：生命 %d  攻击 %d\n防御 %d  真气 %d  被动：%s"),
 				SelectedTaskNpcPresentation->DisplayName,
 				SelectedTaskNpcPresentation->SupportRole,
 				SelectedTaskNpcDefinition->BaseAttributes.Health,
@@ -799,7 +799,7 @@ void UGameXXKTownHudWidget::RefreshCompanionCodex()
 			});
 			CodexDetailText->SetText(SelectedEntry
 				? FText::FromString(FString::Printf(TEXT("%s\n%s\n%s"), *GetCodexCategoryLabel(SelectedEntry->Category).ToString(), *SelectedEntry->DisplayName.ToString(), *SelectedEntry->Description.ToString()))
-				: FText::FromString(TEXT("选择任务 NPC 查看本次路线的临时支援与固定三张牌")));
+				: FText::FromString(TEXT("选择固定 NPC 查看战斗定位与固定三张牌")));
 		}
 	}
 	const TArray<FName> SelectedTaskNpcLoadout = bHasSelectedTaskNpc

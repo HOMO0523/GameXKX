@@ -36,6 +36,7 @@
 #include "GameXXKEquipmentToolRules.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKTalentRules.h"
 #include "Guide/GameXXKGuideCoordinator.h"
 #include "Guide/GameXXKGuideTargetRegistry.h"
@@ -1248,6 +1249,19 @@
 		return NpcId.ToString();
 	}
 
+	FName ResolveWorkbenchNpcId(const UGameXXKMVPSubsystem* Subsystem)
+	{
+		FName NpcId;
+		FString Error;
+		return Subsystem
+			&& FGameXXKPartyFormationRules::ResolveQuestNpcId(
+				Subsystem->GetRuntimeState(),
+				NpcId,
+				&Error)
+			? NpcId
+			: NAME_None;
+	}
+
 	FString CharacterRosterPortraitPath(
 		const UGameXXKMVPSubsystem* Subsystem,
 		const FName CharacterId)
@@ -2154,7 +2168,7 @@ FName UGameXXKDesktopTrainingWorkbenchWidget::ResolveRosterRepresentativeCharact
 		const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
 		const FName ActivePartyId = Roster == EGameXXKDesktopTrainingCharacterRoster::Companions
 			? CardRun.PartySelection.ActivePermanentCompanionInstanceId
-			: CardRun.ActiveTemporaryQuestNpcId;
+			: ResolveWorkbenchNpcId(Subsystem);
 		if (CharacterIds.Contains(ActivePartyId))
 		{
 			return ActivePartyId;
@@ -5599,9 +5613,8 @@ TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetTravelCompanionUnitIds(
 		}
 	}
 
-	const FName ActiveQuestNpcId = CardRun.ActiveTemporaryQuestNpcId;
-	if (!ActiveQuestNpcId.IsNone()
-		&& CardRun.PartySelection.QuestNpc.NpcId == ActiveQuestNpcId)
+	const FName ActiveQuestNpcId = ResolveWorkbenchNpcId(Subsystem);
+	if (!ActiveQuestNpcId.IsNone())
 	{
 		Result.AddUnique(ActiveQuestNpcId);
 	}
@@ -6172,7 +6185,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	BuildPanelCloseButton(TEXT("FormationCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Hint = MakeText(
 		WidgetTree,
-		FText::FromString(TEXT("查看角色不会换队；只有右侧“编入队伍”会写入当前伙伴或任务 NPC。")),
+		FText::FromString(TEXT("查看角色不会换队；只有右侧“编入队伍”会写入当前伙伴或 NPC。")),
 		15,
 		Ink);
 	AddCanvas(RootCanvas, Hint, FVector2D(520.0f, 264.0f), FVector2D(770.0f, 30.0f));
@@ -6183,7 +6196,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	const FName CompanionId = CardRun
 		? CardRun->PartySelection.ActivePermanentCompanionInstanceId
 		: NAME_None;
-	const FName NpcId = CardRun ? CardRun->ActiveTemporaryQuestNpcId : NAME_None;
+	const FName NpcId = ResolveWorkbenchNpcId(Subsystem);
 	const FName PartyIds[] = {HeroId, CompanionId, NpcId};
 	const TCHAR* SlotNames[] = {TEXT("FormationHeroSlot"), TEXT("FormationCompanionSlot"), TEXT("FormationNpcSlot")};
 	for (int32 Index = 0; Index < UE_ARRAY_COUNT(PartyIds); ++Index)
@@ -6202,9 +6215,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 		}
 		else
 		{
-			Label = CharacterId.IsNone()
-				? TEXT("NPC · 未编入")
-				: QuestNpcDisplayName(CharacterId);
+			Label = QuestNpcDisplayName(CharacterId);
 		}
 		UBorder* PartySlot = MakeSlotPanel(
 			WidgetTree,
@@ -6302,7 +6313,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 
 	UTextBlock* Footer = MakeText(
 		WidgetTree,
-		FText::FromString(TEXT("主角固定；伙伴与任务 NPC 各最多一名。候选选择不会改动背包当前查看对象。")),
+		FText::FromString(TEXT("主角固定；伙伴与 NPC 各一名。候选选择不会改动背包当前查看对象。")),
 		15,
 		Ink);
 	AddCanvas(RootCanvas, Footer, FVector2D(421.0f, 548.0f), FVector2D(470.0f, 64.0f));

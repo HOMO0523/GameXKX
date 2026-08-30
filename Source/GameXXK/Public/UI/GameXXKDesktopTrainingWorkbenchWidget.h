@@ -232,7 +232,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool SelectFormationCandidateForTest(FName CharacterId);
 
-	/** Explicitly commits the selected permanent-partner or task-NPC candidate. */
+	/** Explicitly commits the selected permanent-partner or owned-NPC candidate. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool ApplyFormationCandidateForTest();
 

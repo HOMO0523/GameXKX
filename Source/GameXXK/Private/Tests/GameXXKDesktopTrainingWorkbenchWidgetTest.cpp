@@ -2,6 +2,7 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "IGameXXKDesktopOverlayModule.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -5773,7 +5774,7 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest,
-	"GameXXK.DesktopTraining.Workbench.FormationNpcPortraitEmptyAndLoaded",
+	"GameXXK.DesktopTraining.Workbench.FormationNpcPortraitPermanent",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest::RunTest(
@@ -5789,46 +5790,32 @@ bool FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest::RunTest(
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
 	State.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
+	FName ExpectedNpcId;
+	TestTrue(TEXT("fixture resolves an authoritative NPC"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ExpectedNpcId));
 
-	UGameXXKDesktopTrainingWorkbenchWidget* EmptyWidget =
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
 		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
-	EmptyWidget->SetMVPSubsystem(Subsystem);
-	EmptyWidget->ConstructForTest();
-	if (!TestTrue(TEXT("empty NPC fixture opens workbench"), EmptyWidget->OpenWorkbench())
-		|| !TestTrue(TEXT("empty NPC fixture opens Backpack"), EmptyWidget->OpenBackpack()))
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->ConstructForTest();
+	if (!TestTrue(TEXT("permanent NPC fixture opens workbench"), Widget->OpenWorkbench())
+		|| !TestTrue(TEXT("permanent NPC fixture opens Backpack"), Widget->OpenBackpack()))
 	{
 		return false;
 	}
-	EmptyWidget->HandleActionClicked(1);
-	UImage* EmptyNpcPortrait = EmptyWidget->WidgetTree
-		? Cast<UImage>(EmptyWidget->WidgetTree->FindWidget(TEXT("FormationCurrentPortrait_2")))
+	Widget->HandleActionClicked(1);
+	UImage* NpcPortrait = Widget->WidgetTree
+		? Cast<UImage>(Widget->WidgetTree->FindWidget(TEXT("FormationCurrentPortrait_2")))
 		: nullptr;
-	TestNotNull(TEXT("empty NPC slot still owns a named portrait widget"), EmptyNpcPortrait);
-	TestEqual(TEXT("empty NPC portrait is collapsed instead of drawing a white quad"),
-		EmptyNpcPortrait ? EmptyNpcPortrait->GetVisibility() : ESlateVisibility::Visible,
-		ESlateVisibility::Collapsed);
-	TestTrue(TEXT("empty NPC portrait owns no texture resource"),
-		GetImageResourcePath(EmptyNpcPortrait).IsEmpty());
-
-	State.CardRun.ActiveTemporaryQuestNpcId = TEXT("Npc.TusiChief");
-	UGameXXKDesktopTrainingWorkbenchWidget* LoadedWidget =
-		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
-	LoadedWidget->SetMVPSubsystem(Subsystem);
-	LoadedWidget->ConstructForTest();
-	if (!TestTrue(TEXT("loaded NPC fixture opens workbench"), LoadedWidget->OpenWorkbench())
-		|| !TestTrue(TEXT("loaded NPC fixture opens Backpack"), LoadedWidget->OpenBackpack()))
-	{
-		return false;
-	}
-	LoadedWidget->HandleActionClicked(1);
-	UImage* LoadedNpcPortrait = LoadedWidget->WidgetTree
-		? Cast<UImage>(LoadedWidget->WidgetTree->FindWidget(TEXT("FormationCurrentPortrait_2")))
-		: nullptr;
-	TestEqual(TEXT("loaded NPC portrait is input-transparent and visible"),
-		LoadedNpcPortrait ? LoadedNpcPortrait->GetVisibility() : ESlateVisibility::Collapsed,
+	TestNotNull(TEXT("permanent NPC portrait exists"), NpcPortrait);
+	TestEqual(TEXT("permanent NPC portrait remains visible"),
+		NpcPortrait ? NpcPortrait->GetVisibility() : ESlateVisibility::Collapsed,
 		ESlateVisibility::HitTestInvisible);
-	TestTrue(TEXT("loaded NPC portrait resolves the named NPC card art"),
-		GetImageResourcePath(LoadedNpcPortrait).Contains(TEXT("T_CardPortrait_Npc_TusiChief")));
+	TestFalse(TEXT("permanent NPC portrait has a real texture"),
+		GetImageResourcePath(NpcPortrait).IsEmpty());
+	TestTrue(TEXT("permanent NPC portrait matches the resolved identity"),
+		ExpectedNpcId != TEXT("Npc.TusiChief")
+			|| GetImageResourcePath(NpcPortrait).Contains(TEXT("T_CardPortrait_Npc_TusiChief")));
 	return true;
 }
 
@@ -5910,7 +5897,11 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 
 	const FName InitialCompanionId =
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
-	const FName InitialNpcId = Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId;
+	FName InitialNpcId;
+	TestTrue(TEXT("initial permanent NPC resolves from ordered formation"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			InitialNpcId));
 	const FGameXXKTrainingTravelRuntime InitialTravel = Subsystem->GetTrainingTravelRuntimeCopy();
 	const FName InitialTravelCompanionId = InitialTravel.PartyUnits.IsValidIndex(1)
 		? InitialTravel.PartyUnits[1].UnitId
@@ -5943,9 +5934,16 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		: NpcIds[1];
 	TestTrue(TEXT("clicking an NPC portrait changes only the viewed backpack owner"),
 		Widget->SelectBackpackCharacterForTest(SelectedNpcId));
+	FName NpcAfterView;
+	TestTrue(TEXT("NPC still resolves after viewing another owner"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcAfterView));
 	TestEqual(TEXT("NPC view does not silently replace the active NPC party slot"),
-		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		NpcAfterView,
 		InitialNpcId);
+	TestTrue(TEXT("NPC view never revives temporary provenance"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("NPC view does not rebuild the running Travel NPC slot"),
 		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits.IsValidIndex(2)
 			? Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[2].UnitId
@@ -5998,19 +5996,92 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 
 	TestTrue(TEXT("formation page accepts an NPC candidate without applying it"),
 		Widget->SelectFormationCandidateForTest(SelectedNpcId));
+	FName NpcAfterCandidate;
+	TestTrue(TEXT("NPC resolves after candidate-only selection"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcAfterCandidate));
 	TestEqual(TEXT("candidate selection alone still leaves the NPC party slot untouched"),
-		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+		NpcAfterCandidate,
 		InitialNpcId);
+	for (int32 NpcIndex = 0; NpcIndex < 6; ++NpcIndex)
+	{
+		UButton* CandidateButton = Widget->WidgetTree
+			? Cast<UButton>(Widget->WidgetTree->FindWidget(
+				*FString::Printf(TEXT("FormationCandidateButton_%d"), NpcIndex)))
+			: nullptr;
+		TestNotNull(
+			*FString::Printf(TEXT("owned NPC candidate %d exists"), NpcIndex),
+			CandidateButton);
+		TestTrue(
+			*FString::Printf(TEXT("owned NPC candidate %d is enabled"), NpcIndex),
+			CandidateButton && CandidateButton->GetIsEnabled());
+	}
 	TestTrue(TEXT("explicit formation apply writes the NPC slot"),
 		Widget->ApplyFormationCandidateForTest());
-	TestEqual(TEXT("explicit formation apply replaces the task NPC"),
-		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId,
+	FName AppliedNpcId;
+	TestTrue(TEXT("applied NPC resolves from ordered formation"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			AppliedNpcId));
+	TestEqual(TEXT("explicit formation apply replaces the fixed NPC"),
+		AppliedNpcId,
 		SelectedNpcId);
+	TestTrue(TEXT("explicit NPC apply keeps temporary provenance retired"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	TestEqual(TEXT("explicit formation apply rebuilds the running Travel NPC slot"),
 		Subsystem->GetTrainingTravelRuntimeCopy().PartyUnits[2].UnitId,
 		SelectedNpcId);
 	TestEqual(TEXT("formation changes do not overwrite the backpack viewing owner"),
 		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchMapTravelSessionPreservesNpcTest,
+	"GameXXK.DesktopTraining.Workbench.MapTravelSessionPreservesNpc",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchMapTravelSessionPreservesNpcTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("map-session fixture starts"), Subsystem && Subsystem->StartGame())
+		|| !TestTrue(TEXT("map-session fixture selects Yue Bai"),
+			Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai"))))
+	{
+		return false;
+	}
+	FName NpcBefore;
+	TestTrue(TEXT("Yue Bai resolves before map session transfer"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcBefore));
+
+	UGameXXKDesktopTrainingWorkbenchWidget* FirstWidget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	FirstWidget->SetMVPSubsystem(Subsystem);
+	FirstWidget->ConstructForTest();
+	TestTrue(TEXT("first map-session workbench opens"), FirstWidget->OpenWorkbench());
+	TestTrue(TEXT("first map-session backpack opens"), FirstWidget->OpenBackpack());
+	const FGameXXKDesktopWorkbenchSessionState Session =
+		FirstWidget->CaptureSessionStateForMapTravel();
+
+	UGameXXKDesktopTrainingWorkbenchWidget* SecondWidget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	SecondWidget->SetMVPSubsystem(Subsystem);
+	SecondWidget->ConstructForTest();
+	SecondWidget->RestoreSessionStateAfterMapTravel(Session);
+
+	FName NpcAfter;
+	TestTrue(TEXT("NPC resolves after map session transfer"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcAfter));
+	TestEqual(TEXT("map session is presentation-only"), NpcAfter, NpcBefore);
+	TestTrue(TEXT("map session never revives temporary provenance"),
+		Subsystem->GetRuntimeState().CardRun.ActiveTemporaryQuestNpcId.IsNone());
 	return true;
 }
 

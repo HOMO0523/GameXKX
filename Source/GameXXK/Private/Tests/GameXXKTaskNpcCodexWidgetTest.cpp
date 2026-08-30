@@ -1,6 +1,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCompanionCatalog.h"
@@ -82,10 +83,20 @@ bool FGameXXKTaskNpcCodexWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("selecting a listed task NPC succeeds"), TownHud->SelectTaskNpcCodexEntryForTest(TEXT("Npc.TusiChief")));
 	const FString TusiDetail = TownHud->GetTaskNpcCodexDetailForTest().ToString();
 	TestTrue(TEXT("selected NPC detail names the original identity"), TusiDetail.Contains(TEXT("土司首领")));
-	TestTrue(TEXT("selected NPC detail identifies its temporary route support"), TusiDetail.Contains(TEXT("临时路线支援")));
-	TestTrue(TEXT("selected NPC detail makes its non-recruitable status explicit"), TusiDetail.Contains(TEXT("不可招募")));
-	TestTrue(TEXT("selected NPC detail includes its support role"), TusiDetail.Contains(TEXT("支援定位")));
+	TestTrue(TEXT("selected NPC detail identifies permanent ownership"), TusiDetail.Contains(TEXT("固定 NPC")));
+	TestTrue(TEXT("selected NPC detail says it can join the formation"), TusiDetail.Contains(TEXT("可编入队伍")));
+	TestFalse(TEXT("selected NPC detail has no temporary-route wording"), TusiDetail.Contains(TEXT("临时")));
+	TestFalse(TEXT("selected NPC detail has no non-recruitable wording"), TusiDetail.Contains(TEXT("不可招募")));
+	TestTrue(TEXT("selected NPC detail includes its combat role"), TusiDetail.Contains(TEXT("战斗定位")));
 	TestTrue(TEXT("selected NPC detail includes its base attributes"), TusiDetail.Contains(TEXT("生命 115")));
+	const UTextBlock* Caption = TownHud->WidgetTree
+		? Cast<UTextBlock>(TownHud->WidgetTree->FindWidget(TEXT("TownHudTaskNpcCodexCaption")))
+		: nullptr;
+	TestNotNull(TEXT("fixed NPC codex owns a caption"), Caption);
+	TestTrue(TEXT("fixed NPC caption describes all six as owned"),
+		Caption && Caption->GetText().ToString().Contains(TEXT("固定拥有")));
+	TestFalse(TEXT("fixed NPC caption does not advertise route-only support"),
+		Caption && Caption->GetText().ToString().Contains(TEXT("临时")));
 	TestNotNull(
 		TEXT("selected task NPC has a real named original-art portrait widget"),
 		TownHud->WidgetTree ? Cast<UImage>(TownHud->WidgetTree->FindWidget(TEXT("TownHudTaskNpcCodexDetailPortrait"))) : nullptr);
