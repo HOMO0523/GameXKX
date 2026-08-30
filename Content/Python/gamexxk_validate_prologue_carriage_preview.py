@@ -11,6 +11,8 @@ import unreal
 TARGET_MAP = "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"
 RIG_LABEL = "GameXXK_PrologueCarriageRig"
 MANAGED_TAG = "GameXXKManaged.PrologueCarriageRig"
+APPROVED_LOCATION = (16678.592, 5270.000, 1075.711)
+DISPLAY_GROUND_OFFSET_Z = -72.0
 TEXTURES = {
     "run_stop_2k": (
         "/Game/GameXXK/Cinematics/Prologue/Atlases/"
@@ -144,11 +146,21 @@ def validate() -> dict:
     player_location = player_start.get_actor_location()
     if (rig_location - player_location).length() > 0.1:
         raise RuntimeError("Rig is not anchored to PlayerStart")
+    actual_anchor = (
+        float(player_location.x),
+        float(player_location.y),
+        float(player_location.z),
+    )
+    if _length(_subtract(actual_anchor, APPROVED_LOCATION)) > 0.1:
+        raise RuntimeError(
+            f"PlayerStart/Rig anchor is not the approved PIE location: {actual_anchor}"
+        )
 
     start = _relative_location(_component(rig, "CarriageStart"))
     stop = _relative_location(_component(rig, "CarriageStop"))
     exit_location = _relative_location(_component(rig, "CarriageExit"))
     hero = _relative_location(_component(rig, "HeroReveal"))
+    display = _relative_location(_component(rig, "CarriageDisplay"))
     arrival = _subtract(stop, start)
     departure = _subtract(exit_location, stop)
     arrival_distance = _length(arrival)
@@ -158,6 +170,8 @@ def validate() -> dict:
         raise RuntimeError("departure does not continue in the arrival direction")
     if hero[0] >= stop[0]:
         raise RuntimeError("hero reveal marker is not in front of the carriage plane")
+    if abs(display[2] - DISPLAY_GROUND_OFFSET_Z) > 0.1:
+        raise RuntimeError(f"carriage display ground offset drifted: {display[2]}")
 
     texture_report: dict[str, dict[str, object]] = {}
     for key, (path, expected_size) in TEXTURES.items():
@@ -189,6 +203,8 @@ def validate() -> dict:
         "stop_offset": list(stop),
         "exit_offset": list(exit_location),
         "hero_reveal_offset": list(hero),
+        "carriage_display_offset": list(display),
+        "approved_anchor": list(APPROVED_LOCATION),
         "textures": texture_report,
         "dirty_after": dirty_after,
     }

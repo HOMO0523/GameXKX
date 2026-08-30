@@ -83,7 +83,7 @@ AGameXXKPrologueCarriageRig::AGameXXKPrologueCarriageRig()
 	CarriageDisplay->SetTwoSided(true);
 	CarriageDisplay->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	CarriageDisplay->SetRelativeLocation(FVector(0.0f, 0.0f, -72.0f));
-	CarriageDisplay->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+	CarriageDisplay->SetRelativeRotation(FRotator(0.0f, 180.0f, 0.0f));
 	CarriageDisplay->SetRelativeScale3D(FVector(0.75f));
 	CarriageDisplay->SetTranslucentSortPriority(CarriageSortPriority);
 	CarriageDisplay->SetVisibility(false);
@@ -178,6 +178,32 @@ FVector2D AGameXXKPrologueCarriageRig::GetCarriageDrawSizeForTest() const
 FVector2D AGameXXKPrologueCarriageRig::GetCarriagePivotForTest() const
 {
 	return CarriageDisplay ? CarriageDisplay->GetPivot() : FVector2D::ZeroVector;
+}
+
+FRotator AGameXXKPrologueCarriageRig::GetCarriageDisplayRotationForTest() const
+{
+	return CarriageDisplay
+		? CarriageDisplay->GetRelativeRotation()
+		: FRotator::ZeroRotator;
+}
+
+FRotator AGameXXKPrologueCarriageRig::ResolveCarriageFacingRotationForTest(
+	const FVector& CarriageLocation,
+	const FVector& CameraLocation)
+{
+	FVector ToCamera = CameraLocation - CarriageLocation;
+	ToCamera.Z = 0.0f;
+	if (ToCamera.IsNearlyZero())
+	{
+		return FRotator(0.0f, 180.0f, 0.0f);
+	}
+	return FRotator(0.0f, ToCamera.Rotation().Yaw, 0.0f);
+}
+
+FVector AGameXXKPrologueCarriageRig::ApplyDisplayGroundOffsetForTest(
+	const FVector& MarkerLocation)
+{
+	return MarkerLocation + FVector(0.0f, 0.0f, CarriageDisplayGroundOffsetZ);
 }
 
 TSubclassOf<UGameXXKPrologueCarriageWidget>
@@ -288,8 +314,8 @@ void AGameXXKPrologueCarriageRig::TryStartPresentation()
 	Controller = PlayerController;
 	Hero = PlayerHero;
 	if (!LoadCarriageTextures() || !ResolveCarriageWidget()
-		|| !PlayerController->BeginPrologueCarriagePresentation(this)
 		|| !CaptureAndHideHero()
+		|| !PlayerController->BeginPrologueCarriagePresentation(this)
 		|| !FGameXXKPrologueCarriageRules::Start(TimelineState))
 	{
 		FailOpen(TEXT("required carriage presentation dependency failed"));
@@ -297,7 +323,9 @@ void AGameXXKPrologueCarriageRig::TryStartPresentation()
 	}
 
 	bPresentationActive = true;
-	CarriageDisplay->SetWorldLocation(CarriageStart->GetComponentLocation());
+	CarriageDisplay->SetWorldLocation(ApplyDisplayGroundOffsetForTest(
+		CarriageStart->GetComponentLocation()));
+	UpdateCarriageFacing();
 	CarriageDisplay->SetVisibility(true);
 	CarriageWidget->SetAtlasFrame(LoadedRunStopTexture, 0);
 	LastPresentedFrameIndex = 0;
@@ -320,6 +348,10 @@ bool AGameXXKPrologueCarriageRig::CaptureAndHideHero()
 {
 	AGameXXKHeroCharacter* PlayerHero = Hero.Get();
 	if (!PlayerHero)
+	{
+		return false;
+	}
+	if (!CopyHeroCameraPose())
 	{
 		return false;
 	}
@@ -368,17 +400,18 @@ void AGameXXKPrologueCarriageRig::ApplyStep(
 	{
 		const float Alpha = FMath::InterpEaseOut(0.0f, 1.0f, Step.MotionAlpha, 2.0f);
 		CarriageDisplay->SetWorldLocation(FMath::Lerp(
-			CarriageStart->GetComponentLocation(),
-			CarriageStop->GetComponentLocation(),
+			ApplyDisplayGroundOffsetForTest(CarriageStart->GetComponentLocation()),
+			ApplyDisplayGroundOffsetForTest(CarriageStop->GetComponentLocation()),
 			Alpha));
 	}
 	else if (Step.PreviousPhase == EGameXXKPrologueCarriagePhase::Departing)
 	{
 		CarriageDisplay->SetWorldLocation(FMath::Lerp(
-			CarriageStop->GetComponentLocation(),
-			CarriageExit->GetComponentLocation(),
+			ApplyDisplayGroundOffsetForTest(CarriageStop->GetComponentLocation()),
+			ApplyDisplayGroundOffsetForTest(CarriageExit->GetComponentLocation()),
 			Step.MotionAlpha));
 	}
+	UpdateCarriageFacing();
 
 	UTexture2D* Texture = Step.Atlas == EGameXXKPrologueCarriageAtlas::PostStopIdle
 		? LoadedPostStopIdleTexture.Get()
@@ -562,6 +595,36 @@ void AGameXXKPrologueCarriageRig::HandleReturnDesktopRequested()
 	{
 		PlayerController->RequestDesktopReturnFromPrologue();
 	}
+}
+
+void AGameXXKPrologueCarriageRig::UpdateCarriageFacing()
+{
+	if (CarriageDisplay && IntroCamera)
+	{
+		CarriageDisplay->SetWorldRotation(
+			ResolveCarriageFacingRotationForTest(
+				CarriageDisplay->GetComponentLocation(),
+				IntroCamera->GetComponentLocation()));
+	}
+}
+
+bool AGameXXKPrologueCarriageRig::CopyHeroCameraPose()
+{
+	if (!bCopyHeroCameraPose)
+	{
+		return true;
+	}
+	const AGameXXKHeroCharacter* PlayerHero = Hero.Get();
+	const UCameraComponent* HeroCamera = PlayerHero
+		? PlayerHero->GetTopDownCameraComponent()
+		: nullptr;
+	if (!HeroCamera || !IntroCamera)
+	{
+		return false;
+	}
+	IntroCamera->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	IntroCamera->SetWorldTransform(HeroCamera->GetComponentTransform());
+	return true;
 }
 
 UGameXXKPrologueCarriageWidget*

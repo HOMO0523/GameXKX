@@ -3125,6 +3125,11 @@ bool AGameXXKMVPPlayerController::BeginDesktopTownMapTravelFromWorkbench(
 	{
 		return false;
 	}
+	if (GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(Options)
+		&& DesktopTrainingWorkbenchWidget->IsBackpackExpandedForTest())
+	{
+		DesktopTrainingWorkbenchWidget->HandleActionClicked(60);
+	}
 	const FGameXXKDesktopWorkbenchSessionState State =
 		DesktopTrainingWorkbenchWidget->CaptureSessionStateForMapTravel();
 	if (!State.bValid)

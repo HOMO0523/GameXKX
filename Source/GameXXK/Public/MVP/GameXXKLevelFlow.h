@@ -23,6 +23,8 @@ namespace GameXXKLevelFlow
 	GAMEXXK_API FString CarriagePreviewTravelOptions();
 	/** True only when the travelled URL explicitly requests the carriage preview. */
 	GAMEXXK_API bool HasCarriagePreviewTravelOption(const FString& Options);
+	/** Story travel closes the expanded backpack; ordinary town travel keeps its session policy. */
+	GAMEXXK_API bool ShouldCollapseBackpackForTravelOptions(const FString& Options);
 	GAMEXXK_API FName TownToggleTargetForMapPackage(
 		const FString& CurrentPackageName);
 	/** Zero keeps legacy maps uncapped; the HUD-only desktop surface is fixed at 30 FPS. */

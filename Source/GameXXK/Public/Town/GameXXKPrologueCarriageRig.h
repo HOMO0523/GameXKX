@@ -48,6 +48,12 @@ public:
 	int32 GetCarriageSortPriorityForTest() const;
 	FVector2D GetCarriageDrawSizeForTest() const;
 	FVector2D GetCarriagePivotForTest() const;
+	FRotator GetCarriageDisplayRotationForTest() const;
+	bool UsesHeroCameraPoseForTest() const { return bCopyHeroCameraPose; }
+	static FRotator ResolveCarriageFacingRotationForTest(
+		const FVector& CarriageLocation,
+		const FVector& CameraLocation);
+	static FVector ApplyDisplayGroundOffsetForTest(const FVector& MarkerLocation);
 	TSubclassOf<UGameXXKPrologueCarriageWidget> GetCarriageWidgetClassForTest() const;
 	bool ShouldActivateForOptionsForTest(const FString& Options) const;
 	FString GetRunStopTexturePathForTest(bool bLowResolution) const;
@@ -120,6 +126,8 @@ private:
 	void HidePauseOverlay();
 	void HandleResumeRequested();
 	void HandleReturnDesktopRequested();
+	void UpdateCarriageFacing();
+	bool CopyHeroCameraPose();
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Prologue|Carriage|Assets")
 	TSoftObjectPtr<UTexture2D> RunStopTexture2K;
@@ -135,6 +143,9 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Prologue|Carriage")
 	TSubclassOf<UGameXXKPrologueCarriageWidget> CarriageWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Prologue|Carriage")
+	bool bCopyHeroCameraPose = true;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTexture2D> LoadedRunStopTexture;
@@ -168,5 +179,6 @@ private:
 	bool bCleanupInProgress = false;
 	int32 StartRetryCount = 0;
 	static constexpr int32 MaximumStartRetries = 120;
+	static constexpr float CarriageDisplayGroundOffsetZ = -72.0f;
 	FGameXXKPrologueCarriageFinished FinishedDelegate;
 };

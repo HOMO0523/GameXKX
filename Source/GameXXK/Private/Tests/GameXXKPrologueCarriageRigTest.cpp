@@ -38,6 +38,10 @@ bool FGameXXKPrologueCarriageRigTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("hero appears closer to camera than the carriage path"),
 		Defaults->GetHeroRevealOffsetForTest(),
 		FVector(-80.0f, 0.0f, 0.0f));
+	TestEqual(TEXT("carriage display applies capsule-to-ground offset"),
+		AGameXXKPrologueCarriageRig::ApplyDisplayGroundOffsetForTest(
+			FVector(16678.592f, 5270.0f, 1075.711f)),
+		FVector(16678.592f, 5270.0f, 1003.711f));
 	TestEqual(TEXT("carriage sorts one layer behind the town hero"),
 		Defaults->GetCarriageSortPriorityForTest(), 9);
 	TestEqual(TEXT("carriage canvas matches authored five-twelve cells"),
@@ -46,6 +50,21 @@ bool FGameXXKPrologueCarriageRigTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("carriage uses bottom-center world pivot"),
 		Defaults->GetCarriagePivotForTest(),
 		FVector2D(0.5f, 1.0f));
+	TestEqual(TEXT("carriage default plane faces the town camera axis"),
+		Defaults->GetCarriageDisplayRotationForTest(),
+		FRotator(0.0f, 180.0f, 0.0f));
+	TestTrue(TEXT("intro camera copies the live hero camera pose"),
+		Defaults->UsesHeroCameraPoseForTest());
+	TestEqual(TEXT("billboard faces a camera on negative X"),
+		AGameXXKPrologueCarriageRig::ResolveCarriageFacingRotationForTest(
+			FVector::ZeroVector,
+			FVector(-400.0f, 0.0f, 700.0f)),
+		FRotator(0.0f, 180.0f, 0.0f));
+	TestEqual(TEXT("billboard faces a camera on positive Y"),
+		AGameXXKPrologueCarriageRig::ResolveCarriageFacingRotationForTest(
+			FVector::ZeroVector,
+			FVector(0.0f, 400.0f, 700.0f)),
+		FRotator(0.0f, 90.0f, 0.0f));
 	TestEqual(TEXT("carriage display uses the real atlas widget"),
 		Defaults->GetCarriageWidgetClassForTest().Get(),
 		UGameXXKPrologueCarriageWidget::StaticClass());

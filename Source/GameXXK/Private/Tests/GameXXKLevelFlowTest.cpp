@@ -114,6 +114,13 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("ordinary town travel is not a carriage preview"),
 		GameXXKLevelFlow::HasCarriagePreviewTravelOption(TEXT("")));
+	TestTrue(
+		TEXT("carriage preview closes only the expanded backpack before travel"),
+		GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(
+			GameXXKLevelFlow::CarriagePreviewTravelOptions()));
+	TestFalse(
+		TEXT("ordinary town travel preserves its existing session policy"),
+		GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(FString()));
 	TestEqual(
 		TEXT("playable Qingshan town exits to the desktop HUD"),
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(

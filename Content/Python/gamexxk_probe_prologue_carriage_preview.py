@@ -86,6 +86,7 @@ def observe() -> dict[str, object]:
     rig_reports: list[dict[str, object]] = []
     for rig in rigs:
         timeline = _call(rig, "get_timeline_state_for_test")
+        presented_frame = _call(rig, "get_presented_frame_for_test")
         rig_reports.append(
             {
                 "name": str(rig.get_name()),
@@ -97,7 +98,7 @@ def observe() -> dict[str, object]:
                 ),
                 "paused": bool(_call(rig, "is_sequence_paused")),
                 "presented_frame": int(
-                    _call(rig, "get_presented_frame_for_test") or -1
+                    presented_frame if presented_frame is not None else -1
                 ),
                 "pause_overlay_visible": bool(
                     _call(rig, "is_pause_overlay_visible_for_test")

@@ -68,6 +68,8 @@ void UGameXXKPrologueCarriageWidget::BuildProgrammaticLayout()
 		UImage::StaticClass(),
 		TEXT("PrologueCarriageImage"));
 	CarriageImage->SetVisibility(ESlateVisibility::HitTestInvisible);
+	CarriageImage->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	CarriageImage->SetRenderScale(FVector2D(-1.0f, 1.0f));
 	WidgetTree->RootWidget = CarriageImage;
 	SetVisibility(ESlateVisibility::HitTestInvisible);
 }

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import math
 
 import unreal
 
@@ -11,6 +13,8 @@ TARGET_MAP = "/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"
 RIG_CLASS_PATH = "/Script/GameXXK.GameXXKPrologueCarriageRig"
 RIG_LABEL = "GameXXK_PrologueCarriageRig"
 MANAGED_TAG = "GameXXKManaged.PrologueCarriageRig"
+APPROVED_LOCATION = unreal.Vector(16678.592, 5270.000, 1075.711)
+APPROVED_ROTATION = unreal.Rotator(0.0, 0.0, 0.0)
 
 
 def _package_name(package: object) -> str:
@@ -52,7 +56,7 @@ def _current_map_package() -> str:
     return str(world.get_outermost().get_name())
 
 
-def place() -> dict:
+def place(calibrate_approved_anchor: bool = False) -> dict:
     dirty_before = _dirty_packages()
     if dirty_before:
         raise RuntimeError(
@@ -77,6 +81,10 @@ def place() -> dict:
         raise RuntimeError(f"expected exactly one PlayerStart, got {len(player_starts)}")
     player_start = player_starts[0]
     player_start_before = _transform(player_start)
+
+    if calibrate_approved_anchor:
+        player_start.set_actor_location(APPROVED_LOCATION, False, False)
+        player_start.set_actor_rotation(APPROVED_ROTATION, False)
 
     candidates = [
         actor
@@ -110,8 +118,27 @@ def place() -> dict:
     rig.set_actor_scale3d(player_start.get_actor_scale3d())
 
     player_start_after = _transform(player_start)
-    if player_start_after != player_start_before:
+    if not calibrate_approved_anchor and player_start_after != player_start_before:
         raise RuntimeError("PlayerStart transform changed during Rig placement")
+    if calibrate_approved_anchor:
+        expected_location = [
+            float(APPROVED_LOCATION.x),
+            float(APPROVED_LOCATION.y),
+            float(APPROVED_LOCATION.z),
+        ]
+        expected_rotation = [
+            float(APPROVED_ROTATION.pitch),
+            float(APPROVED_ROTATION.yaw),
+            float(APPROVED_ROTATION.roll),
+        ]
+        rig_after = _transform(rig)
+        if (
+            math.dist(player_start_after["location"], expected_location) > 0.1
+            or player_start_after["rotation"] != expected_rotation
+            or math.dist(rig_after["location"], expected_location) > 0.1
+            or rig_after["rotation"] != expected_rotation
+        ):
+            raise RuntimeError("approved PlayerStart/Rig calibration did not commit exactly")
     if not level_subsystem.save_current_level():
         raise RuntimeError("could not save the target Qingshan level")
     dirty_after = _dirty_packages()
@@ -121,6 +148,7 @@ def place() -> dict:
     report = {
         "ok": True,
         "target_map": TARGET_MAP,
+        "calibration_mode": bool(calibrate_approved_anchor),
         "created": created,
         "rig_label": rig.get_actor_label(),
         "rig_tags": sorted(_tags(rig)),
@@ -137,4 +165,14 @@ def place() -> dict:
 
 
 if __name__ == "__main__":
-    print(json.dumps(place(), ensure_ascii=False, indent=2, sort_keys=True))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--calibrate-approved-anchor", action="store_true")
+    args = parser.parse_args()
+    print(
+        json.dumps(
+            place(calibrate_approved_anchor=args.calibrate_approved_anchor),
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+    )

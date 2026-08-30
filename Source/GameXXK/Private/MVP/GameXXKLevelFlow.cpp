@@ -127,6 +127,13 @@ bool GameXXKLevelFlow::HasCarriagePreviewTravelOption(const FString& Options)
 		== TEXT("CarriagePreview");
 }
 
+bool GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(
+	const FString& Options)
+{
+	return Options == CarriagePreviewTravelOptions()
+		|| HasCarriagePreviewTravelOption(Options);
+}
+
 FName GameXXKLevelFlow::TownToggleTargetForMapPackage(
 	const FString& CurrentPackageName)
 {

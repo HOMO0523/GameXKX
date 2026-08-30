@@ -68,6 +68,7 @@ class PrologueCarriagePolicyTests(unittest.TestCase):
         source = path.read_text(encoding="utf-8").lower()
         leaked = [token for token in PROBE_FORBIDDEN_TOKENS if token in source]
         self.assertEqual(leaked, [])
+        self.assertNotIn("or -1", source, "frame zero must not collapse to the sentinel")
 
 
 if __name__ == "__main__":

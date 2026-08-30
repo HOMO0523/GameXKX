@@ -47,6 +47,12 @@ bool FGameXXKPrologueCarriageWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("world image never captures input"),
 		Image->GetVisibility(),
 		ESlateVisibility::HitTestInvisible);
+	TestEqual(TEXT("left-facing source is mirrored for rightward travel"),
+		Image->GetRenderTransform().Scale,
+		FVector2D(-1.0f, 1.0f));
+	TestEqual(TEXT("horizontal mirror uses the image center pivot"),
+		Image->GetRenderTransformPivot(),
+		FVector2D(0.5f, 0.5f));
 
 	UTexture2D* Texture = NewObject<UTexture2D>();
 	TestTrue(TEXT("real image accepts an atlas frame"),
