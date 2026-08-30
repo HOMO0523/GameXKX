@@ -55,9 +55,7 @@ namespace
 					return Companion.InstanceId == Ref.MemberId;
 				});
 		case EGameXXKPartyMemberKind::QuestNpc:
-			return FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId) != nullptr
-				&& Ref.MemberId == State.CardRun.ActiveTemporaryQuestNpcId
-				&& Ref.MemberId == State.CardRun.PartySelection.QuestNpc.NpcId;
+			return FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId) != nullptr;
 		default:
 			return false;
 		}
@@ -106,6 +104,14 @@ namespace
 		const FGameXXKRuntimeState& State,
 		const TArray<FName>& StableOwnedCompanionIds)
 	{
+		for (const FGameXXKPartyMemberRef& Ref : State.CardRun.OrderedFormation.Members)
+		{
+			if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
+				&& StableOwnedCompanionIds.Contains(Ref.MemberId))
+			{
+				return Ref.MemberId;
+			}
+		}
 		const FName SelectedId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
 		if (StableOwnedCompanionIds.Contains(SelectedId))
 		{
@@ -131,10 +137,18 @@ namespace
 
 	FName FindLegacyQuestNpcId(const FGameXXKRuntimeState& State)
 	{
-		const FName ActiveNpcId = State.CardRun.ActiveTemporaryQuestNpcId;
-		const FGameXXKPartyMemberRef Ref =
-			MakeMember(EGameXXKPartyMemberKind::QuestNpc, ActiveNpcId);
-		return ResolveMember(State, Ref) ? ActiveNpcId : NAME_None;
+		for (const FGameXXKPartyMemberRef& Ref : State.CardRun.OrderedFormation.Members)
+		{
+			if (Ref.Kind == EGameXXKPartyMemberKind::QuestNpc
+				&& FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId))
+			{
+				return Ref.MemberId;
+			}
+		}
+		const FName SelectedNpcId = State.CardRun.PartySelection.QuestNpc.NpcId;
+		return FGameXXKCompanionCatalog::FindQuestNpcDefinition(SelectedNpcId)
+			? SelectedNpcId
+			: FName(TEXT("Npc.TusiChief"));
 	}
 
 	bool ValidatePermanentCompanionCompatibilityProjection(
@@ -193,23 +207,9 @@ bool FGameXXKPartyFormationRules::BuildLegacyProjection(
 	}
 
 	const FName LegacyQuestNpcId = FindLegacyQuestNpcId(State);
-	if (!LegacyQuestNpcId.IsNone())
-	{
-		AddUniqueMember(
-			Candidate,
-			MakeMember(EGameXXKPartyMemberKind::QuestNpc, LegacyQuestNpcId));
-	}
-
-	for (const FName CompanionId : StableOwnedCompanionIds)
-	{
-		if (Candidate.Members.Num() >= PartySize)
-		{
-			break;
-		}
-		AddUniqueMember(
-			Candidate,
-			MakeMember(EGameXXKPartyMemberKind::PermanentCompanion, CompanionId));
-	}
+	AddUniqueMember(
+		Candidate,
+		MakeMember(EGameXXKPartyMemberKind::QuestNpc, LegacyQuestNpcId));
 
 	if (Candidate.Members.Num() != PartySize || !Validate(State, Candidate))
 	{
@@ -242,6 +242,77 @@ bool FGameXXKPartyFormationRules::ResolveEffective(
 	return true;
 }
 
+bool FGameXXKPartyFormationRules::ResolveQuestNpcId(
+	const FGameXXKRuntimeState& State,
+	FName& OutNpcId,
+	FString* OutError)
+{
+	ResetError(OutError);
+	OutNpcId = NAME_None;
+	if (!Validate(State, State.CardRun.OrderedFormation, OutError))
+	{
+		return false;
+	}
+	for (const FGameXXKPartyMemberRef& Ref : State.CardRun.OrderedFormation.Members)
+	{
+		if (Ref.Kind == EGameXXKPartyMemberKind::QuestNpc)
+		{
+			OutNpcId = Ref.MemberId;
+			return true;
+		}
+	}
+	SetError(OutError, TEXT("Ordered formation has no approved NPC."));
+	return false;
+}
+
+bool FGameXXKPartyFormationRules::SetQuestNpc(
+	FGameXXKRuntimeState& InOutState,
+	const FName QuestNpcId,
+	FString* OutError)
+{
+	ResetError(OutError);
+	if (InOutState.CardRun.bLoadoutLockedForRoute
+		|| InOutState.CardRun.bHasActiveCardBattle
+		|| InOutState.bHasActiveBattle
+		|| InOutState.bDungeonActive
+		|| InOutState.Training.bChallengeActive
+		|| InOutState.Screen == EGameXXKScreen::Battle)
+	{
+		SetError(OutError, TEXT("NPC formation cannot change during a route or battle."));
+		return false;
+	}
+	if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId))
+	{
+		SetError(OutError, TEXT("Selected NPC is not one of the six owned definitions."));
+		return false;
+	}
+
+	FGameXXKRuntimeState Candidate = InOutState;
+	if (!Normalize(Candidate, OutError))
+	{
+		return false;
+	}
+	FGameXXKPartyMemberRef* NpcSlot = Candidate.CardRun.OrderedFormation.Members.FindByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
+		});
+	if (!NpcSlot)
+	{
+		SetError(OutError, TEXT("Normalized formation has no NPC slot."));
+		return false;
+	}
+	NpcSlot->MemberId = QuestNpcId;
+	ProjectCompatibility(Candidate);
+	if (!Validate(Candidate, Candidate.CardRun.OrderedFormation, OutError)
+		|| !ValidateCompatibilityProjection(Candidate, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(Candidate);
+	return true;
+}
+
 bool FGameXXKPartyFormationRules::Validate(
 	const FGameXXKRuntimeState& State,
 	const FGameXXKOrderedPartyFormation& Formation,
@@ -256,7 +327,9 @@ bool FGameXXKPartyFormationRules::Validate(
 
 	TArray<FName> SeenMemberIds;
 	SeenMemberIds.Reserve(PartySize);
-	bool bHasHero = false;
+	int32 HeroCount = 0;
+	int32 CompanionCount = 0;
+	int32 QuestNpcCount = 0;
 	for (int32 MemberIndex = 0; MemberIndex < Formation.Members.Num(); ++MemberIndex)
 	{
 		const FGameXXKPartyMemberRef& Ref = Formation.Members[MemberIndex];
@@ -287,12 +360,28 @@ bool FGameXXKPartyFormationRules::Validate(
 		}
 
 		SeenMemberIds.Add(Ref.MemberId);
-		bHasHero |= Ref.Kind == EGameXXKPartyMemberKind::Hero;
+		switch (Ref.Kind)
+		{
+		case EGameXXKPartyMemberKind::Hero:
+			++HeroCount;
+			break;
+		case EGameXXKPartyMemberKind::PermanentCompanion:
+			++CompanionCount;
+			break;
+		case EGameXXKPartyMemberKind::QuestNpc:
+			++QuestNpcCount;
+			break;
+		default:
+			SetError(OutError, TEXT("Party formation contains an invalid member kind."));
+			return false;
+		}
 	}
 
-	if (!bHasHero)
+	if (HeroCount != 1 || CompanionCount != 1 || QuestNpcCount != 1)
 	{
-		SetError(OutError, TEXT("Party formation must contain at least one hero."));
+		SetError(
+			OutError,
+			TEXT("Party formation requires exactly one hero, one permanent companion, and one NPC."));
 		return false;
 	}
 	return true;
@@ -319,10 +408,10 @@ bool FGameXXKPartyFormationRules::ValidateCompatibilityProjection(
 	{
 		return false;
 	}
-	if (State.CardRun.ActiveTemporaryQuestNpcId != FirstQuestNpcId
+	if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
 		|| State.CardRun.PartySelection.QuestNpc.NpcId != FirstQuestNpcId)
 	{
-		SetError(OutError, TEXT("Saved task-NPC compatibility fields do not match the first ordered quest NPC."));
+		SetError(OutError, TEXT("Saved NPC compatibility projection does not match ordered formation."));
 		return false;
 	}
 	return true;
@@ -470,22 +559,25 @@ bool FGameXXKPartyFormationRules::InsertOrReplaceCurrentQuestNpcPreservingOrder(
 bool FGameXXKPartyFormationRules::Normalize(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
 	ResetError(OutError);
-	if (Validate(InOutState, InOutState.CardRun.OrderedFormation))
-	{
-		return true;
-	}
-
 	FGameXXKRuntimeState Candidate = InOutState;
-	FGameXXKOrderedPartyFormation LegacyProjection;
-	if (!BuildLegacyProjection(Candidate, LegacyProjection))
+	if (!Validate(Candidate, Candidate.CardRun.OrderedFormation))
 	{
-		SetError(
-			OutError,
-			TEXT("Unable to normalize party formation: legacy state does not provide three legal members."));
+		FGameXXKOrderedPartyFormation LegacyProjection;
+		if (!BuildLegacyProjection(Candidate, LegacyProjection))
+		{
+			SetError(
+				OutError,
+				TEXT("Unable to normalize party formation: legacy state does not provide three legal members."));
+			return false;
+		}
+		Candidate.CardRun.OrderedFormation = MoveTemp(LegacyProjection);
+	}
+	ProjectCompatibility(Candidate);
+	if (!Validate(Candidate, Candidate.CardRun.OrderedFormation, OutError))
+	{
 		return false;
 	}
-	Candidate.CardRun.OrderedFormation = MoveTemp(LegacyProjection);
-	if (!Validate(Candidate, Candidate.CardRun.OrderedFormation, OutError))
+	if (!ValidateCompatibilityProjection(Candidate, OutError))
 	{
 		return false;
 	}
@@ -526,20 +618,11 @@ void FGameXXKPartyFormationRules::ProjectCompatibility(FGameXXKRuntimeState& InO
 	}
 
 	TArray<FName> ProjectedQuestNpcCards;
-	if (!FirstQuestNpcId.IsNone())
+	if (const FGameXXKQuestNpcOwnedCardLoadout* SavedLoadout =
+		InOutState.CardRun.PartySelection.QuestNpcCardLoadouts.Find(FirstQuestNpcId))
 	{
-		if (InOutState.CardRun.PartySelection.QuestNpc.NpcId == FirstQuestNpcId)
-		{
-			ProjectedQuestNpcCards = InOutState.CardRun.PartySelection.QuestNpc.SelectedCardIds;
-		}
-		else if (const FGameXXKQuestNpcOwnedCardLoadout* SavedLoadout =
-			InOutState.CardRun.PartySelection.QuestNpcCardLoadouts.Find(FirstQuestNpcId))
-		{
-			ProjectedQuestNpcCards = SavedLoadout->SelectedCardIds;
-		}
+		ProjectedQuestNpcCards = SavedLoadout->SelectedCardIds;
 	}
-
-	InOutState.CardRun.ActiveTemporaryQuestNpcId = FirstQuestNpcId;
 	InOutState.CardRun.PartySelection.QuestNpc.NpcId = FirstQuestNpcId;
 	InOutState.CardRun.PartySelection.QuestNpc.SelectedCardIds = MoveTemp(ProjectedQuestNpcCards);
 }

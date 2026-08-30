@@ -8,6 +8,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEncounterCatalog.h"
@@ -2144,15 +2145,10 @@ bool FGameXXKCardBattleAdapter::EnsureCardRunInitialized(FGameXXKRuntimeState& I
 	{
 		return false;
 	}
-	if (Run.ActiveTemporaryQuestNpcId == NAME_None && !Run.PartySelection.QuestNpc.NpcId.IsNone())
+	if (!Run.CompanionRoster.PermanentCompanions.IsEmpty()
+		&& !FGameXXKPartyFormationRules::Normalize(InOutState, OutError))
 	{
-		// A legacy save can contain no NPC selection only.  Do not silently make a task NPC active.
-		Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
-	}
-	if (Run.ActiveTemporaryQuestNpcId != NAME_None
-		&& Run.ActiveTemporaryQuestNpcId != Run.PartySelection.QuestNpc.NpcId)
-	{
-		return SetFailure(OutError, TEXT("The saved task NPC provenance and card selection disagree."));
+		return false;
 	}
 	return true;
 }
@@ -2204,52 +2200,52 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 	}
 	if (QuestNpcId.IsNone())
 	{
-		Run.ActiveTemporaryQuestNpcId = NAME_None;
-		Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
+		return SetFailure(OutError, TEXT("The permanent NPC formation slot cannot be empty."));
 	}
-	else
+	const FGameXXKQuestNpcDefinition* Definition =
+		FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
+	if (!Definition)
 	{
-		const FGameXXKQuestNpcDefinition* Definition = FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
-		if (!Definition)
+		return SetFailure(OutError, TEXT("The selected NPC is not one of the six owned definitions."));
+	}
+	TArray<FName> EffectiveSelection = SelectedCardIds;
+	if (EffectiveSelection.IsEmpty())
+	{
+		if (const FGameXXKQuestNpcOwnedCardLoadout* SavedLoadout =
+				Run.PartySelection.QuestNpcCardLoadouts.Find(QuestNpcId);
+			SavedLoadout && FGameXXKCompanionRules::ValidateQuestNpcCardSelection(
+				QuestNpcId,
+				SavedLoadout->SelectedCardIds))
 		{
-			return SetFailure(OutError, TEXT("The route task NPC is not one of the approved named task NPCs."));
+			EffectiveSelection = SavedLoadout->SelectedCardIds;
 		}
-		TArray<FName> EffectiveSelection = SelectedCardIds;
-		if (EffectiveSelection.IsEmpty())
+		else
 		{
-			if (const FGameXXKQuestNpcOwnedCardLoadout* SavedLoadout =
-					Run.PartySelection.QuestNpcCardLoadouts.Find(QuestNpcId);
-				SavedLoadout && FGameXXKCompanionRules::ValidateQuestNpcCardSelection(
-					QuestNpcId,
-					SavedLoadout->SelectedCardIds))
+			const int32 SelectionSeed = Run.RouteProgress.RootSeed != 0
+				? Run.RouteProgress.RootSeed
+				: (Candidate.RouteSeed != 0 ? Candidate.RouteSeed : Run.RouteRandomSeed);
+			if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
+				QuestNpcId,
+				SelectionSeed,
+				EffectiveSelection,
+				OutError))
 			{
-				EffectiveSelection = SavedLoadout->SelectedCardIds;
-			}
-			else
-			{
-				const int32 SelectionSeed = Run.RouteProgress.RootSeed != 0
-					? Run.RouteProgress.RootSeed
-					: (Candidate.RouteSeed != 0 ? Candidate.RouteSeed : Run.RouteRandomSeed);
-				if (!FGameXXKCompanionRules::BuildQuestNpcRouteCardSelection(
-					QuestNpcId,
-					SelectionSeed,
-					EffectiveSelection,
-					OutError))
-				{
-					return false;
-				}
+				return false;
 			}
 		}
-		if (!FGameXXKCompanionRules::SetQuestNpcCardSelection(
-			Run.PartySelection.QuestNpc,
+	}
+	if (!FGameXXKCompanionRules::ValidateQuestNpcCardSelection(
 			QuestNpcId,
 			EffectiveSelection,
 			OutError))
-		{
-			return false;
-		}
-		Run.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpcId).SelectedCardIds = EffectiveSelection;
-		Run.ActiveTemporaryQuestNpcId = QuestNpcId;
+	{
+		return false;
+	}
+	Run.PartySelection.QuestNpcCardLoadouts.FindOrAdd(QuestNpcId).SelectedCardIds =
+		EffectiveSelection;
+	if (!FGameXXKPartyFormationRules::SetQuestNpc(Candidate, QuestNpcId, OutError))
+	{
+		return false;
 	}
 
 	InOutState = MoveTemp(Candidate);

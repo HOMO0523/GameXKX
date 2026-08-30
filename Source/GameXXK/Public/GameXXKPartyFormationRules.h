@@ -19,6 +19,14 @@ public:
 		const FGameXXKRuntimeState& State,
 		FGameXXKOrderedPartyFormation& OutFormation,
 		FString* OutError = nullptr);
+	static bool ResolveQuestNpcId(
+		const FGameXXKRuntimeState& State,
+		FName& OutNpcId,
+		FString* OutError = nullptr);
+	static bool SetQuestNpc(
+		FGameXXKRuntimeState& InOutState,
+		FName QuestNpcId,
+		FString* OutError = nullptr);
 	static bool Validate(
 		const FGameXXKRuntimeState& State,
 		const FGameXXKOrderedPartyFormation& Formation,

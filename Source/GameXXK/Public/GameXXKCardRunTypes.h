@@ -289,7 +289,7 @@ struct GAMEXXK_API FGameXXKCardRunState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKOrderedPartyFormation OrderedFormation;
 
-	/** Explicit route provenance prevents a stale saved NPC selection from joining an unrelated route. */
+	/** Serialized v29-and-earlier route-provenance tombstone. Current runtime keeps this NAME_None. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName ActiveTemporaryQuestNpcId = NAME_None;
 

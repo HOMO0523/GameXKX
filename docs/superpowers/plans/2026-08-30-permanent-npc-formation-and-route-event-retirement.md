@@ -87,7 +87,7 @@ python scripts/ai_production_loop.py --run-automation `
 
 # Parse the authoritative report rather than trusting commandlet exit text.
 python scripts/parse_automation_index.py `
-  "Saved/Automation/PermanentNpcFormation-Task1-Red/index.json"
+  --index "Saved/Automation/PermanentNpcFormation-Task1-Red/index.json"
 ```
 
 Expected green evidence is a successful cold UBT plus an `index.json` with zero failed tests for the named filter. Expected red evidence is a freshly compiled test whose behavior assertion fails for the reason stated in the task; a stale DLL or missing report is not red evidence.

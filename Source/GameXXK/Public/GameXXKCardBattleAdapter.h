@@ -22,7 +22,7 @@ public:
 	/** Valid only outside a locked route; hero owns exactly eight selected cards from its unlocked pool. */
 	static bool SetHeroSelectedCards(FGameXXKRuntimeState& InOutState, const TArray<FName>& SelectedCardIds, FString* OutError = nullptr);
 
-	/** Configures the one temporary NPC slot (empty card list selects that NPC's stable default first three cards). */
+	/** Selects one of the six owned NPCs outside a locked route; an empty card list restores its persisted loadout. */
 	static bool SetQuestNpcForCurrentRun(FGameXXKRuntimeState& InOutState, FName QuestNpcId, const TArray<FName>& SelectedCardIds, FString* OutError = nullptr);
 
 	/** Builds a fresh, saved five-card opening hand for one battle from the current locked route party and cards. */
