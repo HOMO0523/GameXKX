@@ -1942,14 +1942,13 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 		return false;
 	}
 	FGameXXKRuntimeState Candidate = State;
-	// A route is a self-contained card run. Keep the explicit town NPC party choice,
-	// while clearing prior route rewards, battles, and pending events.
+	// A route is a self-contained card run. Keep the authoritative party while
+	// clearing prior route rewards, battles, and pending events.
 	FString CardRunError;
 	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &CardRunError))
 	{
 		return false;
 	}
-	const FName SelectedTownNpcId = Candidate.CardRun.ActiveTemporaryQuestNpcId;
 	FGameXXKCardBattleAdapter::ClearRouteLocalCardState(Candidate);
 	GameXXKMVP::ClearBattleEntryCheckpoint(Candidate);
 	// InitializeRoute is intentionally idempotent, so a genuinely new route must
@@ -1964,8 +1963,13 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	Candidate.TownPanelMode = EGameXXKTownPanelMode::None;
 	GameXXKMVP::GenerateRouteMap(Candidate);
 	GameXXKMVP::InitializeThreeChapterRouteProgress(Candidate);
-	if (!SelectedTownNpcId.IsNone()
-		&& !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, SelectedTownNpcId, {}, &CardRunError))
+	if (!FGameXXKPartyFormationRules::Validate(
+			Candidate,
+			Candidate.CardRun.OrderedFormation,
+			&CardRunError)
+		|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(
+			Candidate,
+			&CardRunError))
 	{
 		return false;
 	}
@@ -3431,10 +3435,11 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 
 	TArray<FGameXXKBattleUnit> Units;
 	Units.Add(GameXXKMVP::MakeBattleUnit(TEXT("Player"), State.PlayerHP, State.PlayerAttack, State.PlayerDefense, State.PlayerSpeed, TEXT("Sword"), 1));
-	if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
+	FName ActiveNpcId;
+	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId))
 	{
 		Units.Add(GameXXKMVP::MakeBattleUnit(
-			State.CardRun.ActiveTemporaryQuestNpcId,
+			ActiveNpcId,
 			State.PlayerHP,
 			State.PlayerAttack,
 			State.PlayerDefense,

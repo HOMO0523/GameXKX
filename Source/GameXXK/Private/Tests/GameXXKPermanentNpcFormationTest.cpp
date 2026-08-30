@@ -1,6 +1,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKTrainingRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Engine/GameInstance.h"
@@ -77,6 +78,51 @@ bool FGameXXKPermanentNpcFormationAuthorityTest::RunTest(const FString& Paramete
 			&InvalidCandidate,
 			&BeforeInvalid,
 			PPF_None));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKPermanentNpcChallengeLifecycleTest,
+	"GameXXK.Training.PermanentNpcChallengeLifecycle",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPermanentNpcChallengeLifecycleTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("challenge fixture starts"), Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	TestTrue(TEXT("challenge fixture selects Yue Bai"),
+		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
+	const FName StageId =
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	TestTrue(TEXT("challenge route starts"), Subsystem->StartTrainingChallenge(StageId));
+	TestTrue(TEXT("challenge route locks formation immediately"),
+		Subsystem->GetRuntimeState().CardRun.bLoadoutLockedForRoute);
+	TestFalse(TEXT("challenge route rejects NPC replacement"),
+		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.JinGui")));
+
+	FName NpcDuringChallenge;
+	TestTrue(TEXT("challenge resolves its frozen NPC"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcDuringChallenge));
+	TestEqual(TEXT("challenge keeps Yue Bai"),
+		NpcDuringChallenge,
+		FName(TEXT("Npc.YueBai")));
+	TestTrue(TEXT("challenge can return to Workbench"),
+		Subsystem->CancelTrainingChallengeToWorkbench());
+
+	FName NpcAfterCancel;
+	TestTrue(TEXT("cancelled challenge still resolves NPC"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			Subsystem->GetRuntimeState(),
+			NpcAfterCancel));
+	TestEqual(TEXT("challenge cancellation preserves Yue Bai"),
+		NpcAfterCancel,
+		FName(TEXT("Npc.YueBai")));
 	return true;
 }
 

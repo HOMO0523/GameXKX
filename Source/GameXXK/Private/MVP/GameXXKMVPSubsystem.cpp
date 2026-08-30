@@ -5436,23 +5436,10 @@ bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 	{
 		return false;
 	}
-	TArray<FGameXXKPartyMemberRef>& Members = Candidate.CardRun.OrderedFormation.Members;
-	const int32 QuestNpcSlot = Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
-	});
-	const int32 ExistingMemberSlot = Members.IndexOfByPredicate([QuestNpcId](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.MemberId == QuestNpcId;
-	});
-	if (QuestNpcSlot == INDEX_NONE
-		|| (ExistingMemberSlot != INDEX_NONE && ExistingMemberSlot != QuestNpcSlot)
-		|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(Candidate, QuestNpcId, {}, &Error))
+	if (!FGameXXKPartyFormationRules::SetQuestNpc(Candidate, QuestNpcId, &Error))
 	{
 		return false;
 	}
-	Members[QuestNpcSlot].Kind = EGameXXKPartyMemberKind::QuestNpc;
-	Members[QuestNpcSlot].MemberId = QuestNpcId;
 	if (!FGameXXKPartyFormationRules::Validate(Candidate, Candidate.CardRun.OrderedFormation, &Error))
 	{
 		return false;

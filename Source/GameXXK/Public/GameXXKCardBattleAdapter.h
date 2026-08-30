@@ -158,7 +158,7 @@ public:
 	/** Clears only the resolved/aborted battle session; route reward cards and temporary NPC selection remain for later nodes. */
 	static void ClearActiveCardBattle(FGameXXKRuntimeState& InOutState);
 
-	/** Clears temporary route cards, task NPC, reward/event offers and battle state while preserving hero and permanent companions. */
+	/** Clears battle, reward, merchant, relic, and pending-event route state while preserving the authoritative party and every owned loadout/progression. */
 	static void ClearRouteLocalCardState(FGameXXKRuntimeState& InOutState);
 
 	static bool IsCardBattleTerminal(const FGameXXKRuntimeState& State);

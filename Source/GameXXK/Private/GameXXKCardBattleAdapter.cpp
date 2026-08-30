@@ -369,51 +369,53 @@ namespace
 			NewParty.Add(MoveTemp(CompanionUnit));
 		}
 
-		if (Run.ActiveTemporaryQuestNpcId != NAME_None)
+		FName QuestNpcId;
+		if (!FGameXXKPartyFormationRules::ResolveQuestNpcId(InOutState, QuestNpcId, OutError))
 		{
-			if (Run.ActiveTemporaryQuestNpcId != Run.PartySelection.QuestNpc.NpcId)
-			{
-				return SetFailure(OutError, TEXT("The route-local task NPC provenance does not match the configured NPC cards."));
-			}
-			const FGameXXKQuestNpcProgression* TaskNpcProgression =
-				Run.PartySelection.QuestNpcProgressions.Find(Run.ActiveTemporaryQuestNpcId);
-			const int32 TaskNpcLevel = TaskNpcProgression
-				? FMath::Clamp(TaskNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
-				: 1;
-			FGameXXKCompanionAttributes TaskNpcAttributes;
-			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
-				Run.ActiveTemporaryQuestNpcId,
-				TaskNpcLevel,
-				TaskNpcAttributes,
-				OutError))
-			{
-				return false;
-			}
-			FGameXXKBattleRuntimeUnit TaskNpc = MakeLegacyProjectionUnit(
-				Run.ActiveTemporaryQuestNpcId,
-				FText::FromString(TEXT("任务同伴")),
-				TaskNpcAttributes,
-				false);
-			TaskNpc.MaxHP = FMath::Max(1, ScaleTalentStat(
-				TaskNpc.MaxHP + TalentProjection.FlatMaxHP,
-				TalentProjection.RouteMaxHPPercent));
-			TaskNpc.HP = TaskNpc.MaxHP;
-			TaskNpc.Attack = ScaleTalentStat(
-				TaskNpc.Attack + TalentProjection.FlatAttack,
-				TalentProjection.RouteAttackPercent);
-			TaskNpc.Defense = ScaleTalentStat(
-				TaskNpc.Defense + TalentProjection.FlatDefense,
-				TalentProjection.RouteDefensePercent);
-			TaskNpc.BattleSlotNumber = INDEX_NONE;
-			TaskNpc.EnemyDefinitionId = NAME_None;
-			TaskNpc.bDefending = false;
-			TaskNpc.CombatLevel = TaskNpcLevel;
-			NewParty.Add(MoveTemp(TaskNpc));
+			return false;
 		}
-
-		if (NewParty.Num() > 3)
+		if (Run.PartySelection.QuestNpc.NpcId != QuestNpcId)
 		{
-			return SetFailure(OutError, TEXT("The card battle party exceeds the fixed hero plus one companion plus one task-NPC limit."));
+			return SetFailure(OutError, TEXT("The ordered NPC does not match the configured NPC cards."));
+		}
+		const FGameXXKQuestNpcProgression* QuestNpcProgression =
+			Run.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
+		const int32 QuestNpcLevel = QuestNpcProgression
+			? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+			: 1;
+		FGameXXKCompanionAttributes QuestNpcAttributes;
+		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+			QuestNpcId,
+			QuestNpcLevel,
+			QuestNpcAttributes,
+			OutError))
+		{
+			return false;
+		}
+		FGameXXKBattleRuntimeUnit QuestNpc = MakeLegacyProjectionUnit(
+			QuestNpcId,
+			FText::FromString(TEXT("NPC")),
+			QuestNpcAttributes,
+			false);
+		QuestNpc.MaxHP = FMath::Max(1, ScaleTalentStat(
+			QuestNpc.MaxHP + TalentProjection.FlatMaxHP,
+			TalentProjection.RouteMaxHPPercent));
+		QuestNpc.HP = QuestNpc.MaxHP;
+		QuestNpc.Attack = ScaleTalentStat(
+			QuestNpc.Attack + TalentProjection.FlatAttack,
+			TalentProjection.RouteAttackPercent);
+		QuestNpc.Defense = ScaleTalentStat(
+			QuestNpc.Defense + TalentProjection.FlatDefense,
+			TalentProjection.RouteDefensePercent);
+		QuestNpc.BattleSlotNumber = INDEX_NONE;
+		QuestNpc.EnemyDefinitionId = NAME_None;
+		QuestNpc.bDefending = false;
+		QuestNpc.CombatLevel = QuestNpcLevel;
+		NewParty.Add(MoveTemp(QuestNpc));
+
+		if (NewParty.Num() != 3)
+		{
+			return SetFailure(OutError, TEXT("The card battle party must contain hero, companion, and NPC."));
 		}
 		InOutState.ActiveBattleParty = MoveTemp(NewParty);
 		return true;
@@ -544,19 +546,21 @@ namespace
 			}
 		}
 
-		if (Run.ActiveTemporaryQuestNpcId != NAME_None)
+		FName QuestNpcId;
+		if (!FGameXXKPartyFormationRules::ResolveQuestNpcId(State, QuestNpcId, OutError))
 		{
-			if (Run.PartySelection.QuestNpc.NpcId != Run.ActiveTemporaryQuestNpcId
-				|| Run.PartySelection.QuestNpc.SelectedCardIds.Num() != QuestNpcSelectedCardCount)
+			return false;
+		}
+		if (Run.PartySelection.QuestNpc.NpcId != QuestNpcId
+			|| Run.PartySelection.QuestNpc.SelectedCardIds.Num() != QuestNpcSelectedCardCount)
+		{
+			return SetFailure(OutError, TEXT("The selected NPC does not have a valid three-card loadout."));
+		}
+		for (const FName CardId : Run.PartySelection.QuestNpc.SelectedCardIds)
+		{
+			if (!AddInstance(CardId, QuestNpcId))
 			{
-				return SetFailure(OutError, TEXT("The active task NPC does not have a valid three-card route selection."));
-			}
-			for (const FName CardId : Run.PartySelection.QuestNpc.SelectedCardIds)
-			{
-				if (!AddInstance(CardId, Run.ActiveTemporaryQuestNpcId))
-				{
-					return false;
-				}
+				return false;
 			}
 		}
 
@@ -3438,8 +3442,6 @@ void FGameXXKCardBattleAdapter::ClearRouteLocalCardState(FGameXXKRuntimeState& I
 {
 	FGameXXKCardRunState& Run = InOutState.CardRun;
 	Run.bLoadoutLockedForRoute = false;
-	Run.ActiveTemporaryQuestNpcId = NAME_None;
-	Run.PartySelection.QuestNpc = FGameXXKQuestNpcCardSelection();
 	ClearActiveCardBattle(InOutState);
 	Run.PendingEvent = FGameXXKPendingRouteEvent();
 	Run.RouteMerchant = FGameXXKRouteMerchantState();

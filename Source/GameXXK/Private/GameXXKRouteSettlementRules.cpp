@@ -75,24 +75,11 @@ namespace
 		FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
 		Candidate.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
 
-		FGameXXKOrderedPartyFormation RepairedFormation;
-		if (!FGameXXKPartyFormationRules::RepairUnavailableQuestNpcSlotsPreservingOrder(
-				Candidate,
-				RepairedFormation,
-				OutError))
-		{
-			return false;
-		}
-		Candidate.CardRun.OrderedFormation = MoveTemp(RepairedFormation);
 		if (!FGameXXKPartyFormationRules::Validate(
 				Candidate,
 				Candidate.CardRun.OrderedFormation,
-				OutError))
-		{
-			return false;
-		}
-		FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
-		if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, OutError))
+				OutError)
+			|| !FGameXXKPartyFormationRules::ValidateCompatibilityProjection(Candidate, OutError))
 		{
 			return false;
 		}

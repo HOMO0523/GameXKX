@@ -1974,9 +1974,9 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		OutError = TEXT("Saved route or companion resources are invalid.");
 		return false;
 	}
-	if (State.CardRun.ActiveTemporaryQuestNpcId != State.CardRun.PartySelection.QuestNpc.NpcId)
+	if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone())
 	{
-		OutError = TEXT("Saved task-NPC route provenance is inconsistent.");
+		OutError = TEXT("Current saves cannot retain retired temporary NPC provenance.");
 		return false;
 	}
 	if (!ValidateRouteEconomyState(State, OutError))

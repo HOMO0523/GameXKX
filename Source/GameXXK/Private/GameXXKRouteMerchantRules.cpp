@@ -4,6 +4,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 
@@ -235,9 +236,10 @@ namespace
 				return true;
 			}
 		}
-		if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
-			&& State.CardRun.ActiveTemporaryQuestNpcId == OwnerMemberId
-			&& State.CardRun.PartySelection.QuestNpc.NpcId == OwnerMemberId)
+		FName ActiveNpcId;
+		if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId)
+			&& ActiveNpcId == OwnerMemberId
+			&& State.CardRun.PartySelection.QuestNpc.NpcId == ActiveNpcId)
 		{
 			OutCardIds = &State.CardRun.PartySelection.QuestNpc.SelectedCardIds;
 			return true;
@@ -854,11 +856,12 @@ bool FGameXXKRouteMerchantRules::BuildEffectiveDeployedCardPool(
 			AppendConfiguredCards(Companion->InstanceId, Companion->SelectedCardIds);
 		}
 	}
-	if (!State.CardRun.ActiveTemporaryQuestNpcId.IsNone()
-		&& State.CardRun.ActiveTemporaryQuestNpcId == State.CardRun.PartySelection.QuestNpc.NpcId)
+	FName ActiveNpcId;
+	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId)
+		&& ActiveNpcId == State.CardRun.PartySelection.QuestNpc.NpcId)
 	{
 		AppendConfiguredCards(
-			State.CardRun.ActiveTemporaryQuestNpcId,
+			ActiveNpcId,
 			State.CardRun.PartySelection.QuestNpc.SelectedCardIds);
 	}
 	return true;
