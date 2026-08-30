@@ -59,7 +59,7 @@ $ProtectedDeletions = @(
 - `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
   - Guarded story travel, active-Rig registration, scoped input snapshot, Escape routing, pause overlay, cleanup, and desktop return.
 - `Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap`
-  - Add exactly one managed dormant Rig at the existing PlayerStart; do not move existing actors.
+  - Keep exactly one managed dormant Rig. During final calibration, move only `PlayerStart` and the Rig together to the user-approved live PIE anchor `(16678.592, 5270.000, 1075.711)`; preserve `Yaw=0` and every other actor.
 
 ### Tests, focused editor scripts, and evidence
 
@@ -499,7 +499,7 @@ HeroReveal->SetupAttachment(Root);
 HeroReveal->SetRelativeLocation(FVector(-80.0f, 0.0f, 0.0f));
 ```
 
-Add a fixed `USpringArmComponent` using the town hero's established top-down envelope (`TargetArmLength=900`, absolute rotation `(-60,0,0)`) and an attached `UCameraComponent`. Add a `UWidgetComponent` with draw size 512×512, transparent world space, bottom-center pivot, yaw 90, relative ground offset Z=-72, scale 0.75, collision disabled, and translucent sort priority 9. Default Actor tick is disabled.
+Add a `USpringArmComponent` and attached `UCameraComponent`, but at runtime copy the actual hero camera world pose before hiding the hero, then keep that copied pose fixed. Add a `UWidgetComponent` with draw size 512×512, transparent world space, bottom-center pivot, camera-facing yaw, scale 0.75, collision disabled, and translucent sort priority 9. The left-facing source image is mirrored around its center for the authored left→right path. Default Actor tick is disabled.
 
 - [ ] **Step 4: Load existing atlas textures with an isolated fallback**
 
@@ -666,13 +666,13 @@ The script must:
 
 1. require the exact target map path;
 2. query dirty packages and refuse to load the map if any unsaved package remains; the caller saves through MCP first;
-3. find exactly one existing `PlayerStart` and never change its transform;
+3. find exactly one existing `PlayerStart`; ordinary placement preserves it, while the explicit calibration mode accepts only the exact approved location `(16678.592, 5270.000, 1075.711)` and `Yaw=0`;
 4. find zero or one actor labeled `GameXXK_PrologueCarriageRig` with tag `GameXXKManaged.PrologueCarriageRig`;
 5. refuse to update any actor lacking that tag;
 6. spawn the native Rig class only when absent;
 7. set Rig transform equal to the PlayerStart transform;
 8. save only the target map package;
-9. emit JSON containing pre/post PlayerStart transform, actor count, Rig transform, and changed package list.
+9. emit JSON containing pre/post PlayerStart transform, actor count, Rig transform, calibration mode, and changed package list.
 
 Core guard:
 
@@ -697,7 +697,7 @@ Validate without moving actors:
 
 - [ ] **Step 3: Save through MCP, then run placement through UE MCP**
 
-Call `UnrealMCPClient.save_dirty_packages()` and require `dirty_after=[]`, then use `UnrealMCPClient.run_project_python_file` for the placement script. Do not use UnrealBridge. Expected JSON: one managed Rig, unchanged PlayerStart transform, and exactly one dirty/saved map package.
+Call `UnrealMCPClient.save_dirty_packages()` and require `dirty_after=[]`, then use `UnrealMCPClient.run_project_python_file` for the placement script. Do not use UnrealBridge. In ordinary placement mode, expected JSON contains one managed Rig and an unchanged PlayerStart; in the later explicit calibration mode, the only accepted change is the exact approved PlayerStart/Rig transform. Exactly one map package may be dirty/saved.
 
 - [ ] **Step 4: Run validator and inspect the map diff boundary**
 
@@ -804,8 +804,36 @@ git diff --cached --name-status
 ### Task 8: Player visual acceptance, Luna review, and rolling evidence
 
 **Files:**
+- Modify: `Source/GameXXK/Public/Town/GameXXKPrologueCarriageRig.h`
+- Modify: `Source/GameXXK/Private/Town/GameXXKPrologueCarriageRig.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKPrologueCarriageRigTest.cpp`
+- Modify: `Content/Python/gamexxk_place_prologue_carriage_rig.py`
+- Modify: `Content/Python/gamexxk_validate_prologue_carriage_preview.py`
+- Modify: `Content/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo.umap`
 - Modify: `docs/production/current-goal-acceptance.md`
 - Evidence only: `Saved/Codex/*`, `Saved/HarnessReports/*`
+
+- [ ] **Step 0: Calibrate the approved live PIE anchor and preserve ground contact**
+
+Write the C++ test first:
+
+```cpp
+TestEqual(TEXT("carriage display applies capsule-to-ground offset"),
+    AGameXXKPrologueCarriageRig::ApplyDisplayGroundOffsetForTest(
+        FVector(16678.592f, 5270.0f, 1075.711f)),
+    FVector(16678.592f, 5270.0f, 1003.711f));
+```
+
+Cold-build and require the missing-method RED. Then define one `CarriageDisplayGroundOffsetZ=-72.0f` helper and use it for every Start→Stop→Exit display location; never call `SetWorldLocation` with the raw marker root height.
+
+Extend the guarded placement script with a single explicit `--calibrate-approved-anchor` mode whose constants are:
+
+```python
+APPROVED_LOCATION = unreal.Vector(16678.592, 5270.000, 1075.711)
+APPROVED_ROTATION = unreal.Rotator(0.0, 0.0, 0.0)
+```
+
+In that mode only, update exactly the unique `PlayerStart` and the managed `GameXXK_PrologueCarriageRig`, verify both transforms match, and save only the target map. Run through UE MCP after stopping PIE and saving dirty packages. The validator must require the approved anchor, 400-unit arrival, +800 same-direction exit, and `Z=-72` display offset. Cold-build and rerun Prologue/LevelFlow/Workbench gates before visual capture.
 
 - [ ] **Step 1: Prepare the canonical manual surface without synthetic input**
 
@@ -831,7 +859,7 @@ Invoke `C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1 -Eff
 - carriage visually behind hero during departure;
 - no camera jump at handoff.
 
-Only tune properties inside the new Rig. Do not move existing PlayerStart, NPCs, camera, PaperZD/Flipbooks, scene planes, or protected art.
+Only tune properties inside the new Rig after applying the one approved calibration that moves `PlayerStart` and the Rig together to `(16678.592, 5270.000, 1075.711)`. Do not move NPCs, exits, buildings, camera assets, PaperZD/Flipbooks, scene planes, or protected art.
 
 - [ ] **Step 4: Manually verify replay, pause, return, and restart**
 
