@@ -1,10 +1,12 @@
 #include "Town/GameXXKPrologueCarriageRig.h"
 
 #include "Components/WidgetComponent.h"
+#include "InputCoreTypes.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "Prologue/GameXXKPrologueCarriageTypes.h"
 #include "UI/GameXXKPrologueCarriageWidget.h"
+#include "UI/GameXXKProloguePauseWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -96,6 +98,54 @@ bool FGameXXKPrologueCarriageRigTest::RunTest(const FString& Parameters)
 		TimelineRig->GetTimelineStateForTest().Phase,
 		EGameXXKPrologueCarriagePhase::Departing);
 
+	AGameXXKPrologueCarriageRig* PauseTimelineRig =
+		NewObject<AGameXXKPrologueCarriageRig>();
+	TestTrue(TEXT("pause timeline fixture starts"),
+		PauseTimelineRig && PauseTimelineRig->StartTimelineForTest());
+	PauseTimelineRig->AdvanceTimelineForTest(0.5f);
+	TestTrue(TEXT("test seam pauses the real timeline"),
+		PauseTimelineRig->SetSequencePausedForTest(true));
+	const FGameXXKPrologueCarriageState PausedState =
+		PauseTimelineRig->GetTimelineStateForTest();
+	PauseTimelineRig->AdvanceTimelineForTest(10.0f);
+	TestTrue(TEXT("paused Rig cannot advance"),
+		PauseTimelineRig->GetTimelineStateForTest() == PausedState);
+	TestTrue(TEXT("test seam resumes the real timeline"),
+		PauseTimelineRig->SetSequencePausedForTest(false));
+	PauseTimelineRig->AdvanceTimelineForTest(0.5f);
+	TestTrue(TEXT("resumed Rig advances from the same point"),
+		PauseTimelineRig->GetTimelineStateForTest().PhaseElapsedSeconds
+			> PausedState.PhaseElapsedSeconds);
+
+	UGameXXKProloguePauseWidget* PauseWidget =
+		NewObject<UGameXXKProloguePauseWidget>();
+	if (!TestNotNull(TEXT("pause overlay fixture exists"), PauseWidget))
+	{
+		return false;
+	}
+	PauseWidget->TakeWidget();
+	TestEqual(TEXT("pause overlay title is explicit"),
+		PauseWidget->GetTitleTextForTest(),
+		FText::FromString(TEXT("剧情已暂停")));
+	TestEqual(TEXT("pause overlay exposes two recovery buttons"),
+		PauseWidget->GetButtonCountForTest(), 2);
+	int32 ResumeRequests = 0;
+	int32 ReturnRequests = 0;
+	PauseWidget->SetResumeRequested(
+		FGameXXKPrologueResumeRequested::CreateLambda([&ResumeRequests]()
+		{
+			++ResumeRequests;
+		}));
+	PauseWidget->SetReturnDesktopRequested(
+		FGameXXKPrologueReturnDesktopRequested::CreateLambda([&ReturnRequests]()
+		{
+			++ReturnRequests;
+		}));
+	PauseWidget->RequestResumeForTest();
+	PauseWidget->RequestReturnDesktopForTest();
+	TestEqual(TEXT("continue callback fires once"), ResumeRequests, 1);
+	TestEqual(TEXT("return callback fires once"), ReturnRequests, 1);
+
 	AGameXXKMVPPlayerController* Controller =
 		NewObject<AGameXXKMVPPlayerController>();
 	AGameXXKPrologueCarriageRig* OwnedRig =
@@ -154,6 +204,38 @@ bool FGameXXKPrologueCarriageRigTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("repeated release remains harmless"),
 		Controller->HasActivePrologueCarriageForTest());
 	Controller->SetIgnoreMoveInput(false);
+
+	AGameXXKMVPPlayerController* InputController =
+		NewObject<AGameXXKMVPPlayerController>();
+	AGameXXKPrologueCarriageRig* InputRig =
+		NewObject<AGameXXKPrologueCarriageRig>();
+	if (!TestTrue(TEXT("input routing fixtures exist"),
+		InputController && InputRig))
+	{
+		return false;
+	}
+	TestTrue(TEXT("input Rig timeline starts"), InputRig->StartTimelineForTest());
+	InputRig->SetPresentationActiveForTest(true);
+	TestTrue(TEXT("input Rig acquires presentation"),
+		InputController->BeginPrologueCarriagePresentation(InputRig));
+	TestTrue(TEXT("Escape pauses active carriage first"),
+		InputController->TriggerPrologueInputForTest(EKeys::Escape));
+	TestTrue(TEXT("Escape leaves the Rig paused"), InputRig->IsSequencePaused());
+	TestEqual(TEXT("pause restores UI-capable input"),
+		InputController->GetTrackedInputModeForTest(),
+		EGameXXKTrackedInputMode::GameAndUI);
+	TestTrue(TEXT("I cannot open inventory through a paused carriage"),
+		InputController->TriggerPrologueInputForTest(EKeys::I));
+	TestTrue(TEXT("Tab cannot open Workbench through a paused carriage"),
+		InputController->TriggerPrologueInputForTest(EKeys::Tab));
+	TestTrue(TEXT("second Escape resumes active carriage"),
+		InputController->TriggerPrologueInputForTest(EKeys::Escape));
+	TestFalse(TEXT("second Escape clears pause"), InputRig->IsSequencePaused());
+	TestEqual(TEXT("resume restores cinematic game-only input"),
+		InputController->GetTrackedInputModeForTest(),
+		EGameXXKTrackedInputMode::GameOnly);
+	InputRig->SetPresentationActiveForTest(false);
+	InputController->EndPrologueCarriagePresentation(InputRig);
 
 	return true;
 }

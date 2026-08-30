@@ -10,6 +10,7 @@ class AGameXXKHeroCharacter;
 class AGameXXKMVPPlayerController;
 class UCameraComponent;
 class UGameXXKPrologueCarriageWidget;
+class UGameXXKProloguePauseWidget;
 class USceneComponent;
 class USpringArmComponent;
 class UTexture2D;
@@ -31,6 +32,8 @@ public:
 
 	bool CancelPresentation();
 	bool IsPresentationActive() const { return bPresentationActive; }
+	bool TogglePauseFromController();
+	bool IsSequencePaused() const { return TimelineState.bPaused; }
 	FGameXXKPrologueCarriageFinished& OnFinished() { return FinishedDelegate; }
 
 	FVector GetStartOffsetForTest() const;
@@ -46,6 +49,8 @@ public:
 	FString GetPostStopIdleTexturePathForTest(bool bLowResolution) const;
 	bool StartTimelineForTest();
 	bool AdvanceTimelineForTest(float DeltaSeconds);
+	bool SetSequencePausedForTest(bool bPaused);
+	void SetPresentationActiveForTest(bool bActive) { bPresentationActive = bActive; }
 	const FGameXXKPrologueCarriageState& GetTimelineStateForTest() const
 	{
 		return TimelineState;
@@ -80,6 +85,11 @@ protected:
 	FGameXXKPrologueCarriageConfig TimelineConfig;
 
 private:
+	friend class AGameXXKMVPPlayerController;
+	void SetPresentationController(AGameXXKMVPPlayerController* InController)
+	{
+		Controller = InController;
+	}
 	void TryStartPresentation();
 	bool LoadCarriageTextures();
 	bool CaptureAndHideHero();
@@ -90,6 +100,11 @@ private:
 	void FailOpen(const TCHAR* Reason);
 	void CleanupPresentation(bool bSuccessfulHandoff);
 	UGameXXKPrologueCarriageWidget* ResolveCarriageWidget();
+	bool SetSequencePaused(bool bPaused);
+	bool ShowPauseOverlay();
+	void HidePauseOverlay();
+	void HandleResumeRequested();
+	void HandleReturnDesktopRequested();
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|Prologue|Carriage|Assets")
 	TSoftObjectPtr<UTexture2D> RunStopTexture2K;
@@ -114,6 +129,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKPrologueCarriageWidget> CarriageWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKProloguePauseWidget> PauseWidget;
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AGameXXKHeroCharacter> Hero;

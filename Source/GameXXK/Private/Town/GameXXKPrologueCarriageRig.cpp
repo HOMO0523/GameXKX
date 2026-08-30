@@ -15,6 +15,8 @@
 #include "TimerManager.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "UI/GameXXKPrologueCarriageWidget.h"
+#include "UI/GameXXKProloguePauseWidget.h"
+#include "Blueprint/UserWidget.h"
 
 namespace
 {
@@ -135,6 +137,11 @@ bool AGameXXKPrologueCarriageRig::CancelPresentation()
 	return true;
 }
 
+bool AGameXXKPrologueCarriageRig::TogglePauseFromController()
+{
+	return bPresentationActive && SetSequencePaused(!TimelineState.bPaused);
+}
+
 FVector AGameXXKPrologueCarriageRig::GetStartOffsetForTest() const
 {
 	return CarriageStart ? CarriageStart->GetRelativeLocation() : FVector::ZeroVector;
@@ -213,6 +220,20 @@ bool AGameXXKPrologueCarriageRig::AdvanceTimelineForTest(
 		TimelineConfig,
 		TimelineState,
 		Step);
+}
+
+bool AGameXXKPrologueCarriageRig::SetSequencePausedForTest(
+	const bool bPaused)
+{
+	if (TimelineState.Phase == EGameXXKPrologueCarriagePhase::Dormant
+		|| TimelineState.Phase == EGameXXKPrologueCarriagePhase::Finished
+		|| TimelineState.Phase == EGameXXKPrologueCarriagePhase::Cancelled
+		|| TimelineState.bPaused == bPaused)
+	{
+		return false;
+	}
+	FGameXXKPrologueCarriageRules::SetPaused(TimelineState, bPaused);
+	return TimelineState.bPaused == bPaused;
 }
 
 void AGameXXKPrologueCarriageRig::TryStartPresentation()
@@ -398,6 +419,7 @@ void AGameXXKPrologueCarriageRig::CleanupPresentation(
 		return;
 	}
 	bCleanupInProgress = true;
+	HidePauseOverlay();
 	SetActorTickEnabled(false);
 	if (CarriageDisplay)
 	{
@@ -433,6 +455,84 @@ void AGameXXKPrologueCarriageRig::CleanupPresentation(
 	Hero.Reset();
 	Controller.Reset();
 	bCleanupInProgress = false;
+}
+
+bool AGameXXKPrologueCarriageRig::SetSequencePaused(const bool bPaused)
+{
+	if (!bPresentationActive || TimelineState.bPaused == bPaused)
+	{
+		return false;
+	}
+	if (bPaused && !ShowPauseOverlay())
+	{
+		FailOpen(TEXT("pause overlay could not be created"));
+		return false;
+	}
+	FGameXXKPrologueCarriageRules::SetPaused(TimelineState, bPaused);
+	if (!bPaused)
+	{
+		HidePauseOverlay();
+	}
+	if (AGameXXKMVPPlayerController* PlayerController = Controller.Get())
+	{
+		PlayerController->SetPrologueCarriagePaused(
+			this,
+			bPaused,
+			PauseWidget.Get());
+	}
+	return TimelineState.bPaused == bPaused;
+}
+
+bool AGameXXKPrologueCarriageRig::ShowPauseOverlay()
+{
+	if (PauseWidget)
+	{
+		return true;
+	}
+	AGameXXKMVPPlayerController* PlayerController = Controller.Get();
+	if (!GetWorld() || !PlayerController)
+	{
+		return true;
+	}
+	PauseWidget = CreateWidget<UGameXXKProloguePauseWidget>(PlayerController);
+	if (!PauseWidget)
+	{
+		return false;
+	}
+	PauseWidget->SetResumeRequested(
+		FGameXXKPrologueResumeRequested::CreateUObject(
+			this,
+			&AGameXXKPrologueCarriageRig::HandleResumeRequested));
+	PauseWidget->SetReturnDesktopRequested(
+		FGameXXKPrologueReturnDesktopRequested::CreateUObject(
+			this,
+			&AGameXXKPrologueCarriageRig::HandleReturnDesktopRequested));
+	PauseWidget->AddToViewport(5000);
+	return true;
+}
+
+void AGameXXKPrologueCarriageRig::HidePauseOverlay()
+{
+	if (PauseWidget)
+	{
+		PauseWidget->RemoveFromParent();
+		PauseWidget = nullptr;
+	}
+}
+
+void AGameXXKPrologueCarriageRig::HandleResumeRequested()
+{
+	SetSequencePaused(false);
+}
+
+void AGameXXKPrologueCarriageRig::HandleReturnDesktopRequested()
+{
+	AGameXXKMVPPlayerController* PlayerController = Controller.Get();
+	CancelPresentation();
+	if (PlayerController)
+	{
+		PlayerController->RequestDesktopReturnFromPrologue();
+	}
 }
 
 UGameXXKPrologueCarriageWidget*

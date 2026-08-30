@@ -11,6 +11,10 @@ RUNTIME_FILES = (
     "Source/GameXXK/Private/Prologue/GameXXKPrologueCarriageRules.cpp",
     "Source/GameXXK/Public/UI/GameXXKPrologueCarriageWidget.h",
     "Source/GameXXK/Private/UI/GameXXKPrologueCarriageWidget.cpp",
+    "Source/GameXXK/Public/UI/GameXXKProloguePauseWidget.h",
+    "Source/GameXXK/Private/UI/GameXXKProloguePauseWidget.cpp",
+    "Source/GameXXK/Public/Town/GameXXKPrologueCarriageRig.h",
+    "Source/GameXXK/Private/Town/GameXXKPrologueCarriageRig.cpp",
 )
 FORBIDDEN_TOKENS = (
     "SetWindowsHookEx",

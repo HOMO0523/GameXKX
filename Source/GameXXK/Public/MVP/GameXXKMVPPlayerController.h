@@ -80,6 +80,11 @@ public:
 	bool IsBattleOverlayActive() const;
 	bool BeginPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
 	void EndPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
+	bool SetPrologueCarriagePaused(
+		AGameXXKPrologueCarriageRig* Rig,
+		bool bPaused,
+		UWidget* FocusWidget);
+	bool RequestDesktopReturnFromPrologue();
 	bool HasActivePrologueCarriageForTest() const
 	{
 		return ActivePrologueCarriageRig.IsValid();
@@ -349,6 +354,7 @@ public:
 	void SetBattleMousePositionOverrideForTest(FVector2D InMousePosition);
 	void ClearBattleMousePositionOverrideForTest();
 	void SetShouldPerformFullTickWhenPausedForTest(bool bEnabled);
+	bool TriggerPrologueInputForTest(FKey Key);
 #endif
 
 private:

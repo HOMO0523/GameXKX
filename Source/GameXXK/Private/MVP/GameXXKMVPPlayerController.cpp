@@ -280,7 +280,7 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 {
 	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
 	{
-		EndPrologueCarriagePresentation(Rig);
+		Rig->CancelPresentation();
 	}
 	UnbindInteractionRequests();
 	if (DialogueCoordinator)
@@ -356,6 +356,17 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	if (HandleNarrativeInput(Params))
 	{
 		return true;
+	}
+	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
+	{
+		if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
+		{
+			return Rig->TogglePauseFromController();
+		}
+		if (!Rig->IsSequencePaused() || !Params.Key.IsMouseButton())
+		{
+			return true;
+		}
 	}
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
@@ -648,6 +659,7 @@ bool AGameXXKMVPPlayerController::BeginPrologueCarriagePresentation(
 	}
 
 	ActivePrologueCarriageRig = Rig;
+	Rig->SetPresentationController(this);
 	ProloguePreviousViewTarget = GetViewTarget();
 	ProloguePreviousInputMode = TrackedInputMode;
 	bProloguePreviousShowMouseCursor = bShowMouseCursor;
@@ -701,9 +713,45 @@ void AGameXXKMVPPlayerController::EndPrologueCarriagePresentation(
 	}
 
 	ActivePrologueCarriageRig.Reset();
+	Rig->SetPresentationController(nullptr);
 	ProloguePreviousViewTarget.Reset();
 	bPrologueOwnedMoveInputIgnore = false;
 	bPrologueOwnedLookInputIgnore = false;
+}
+
+bool AGameXXKMVPPlayerController::SetPrologueCarriagePaused(
+	AGameXXKPrologueCarriageRig* Rig,
+	const bool bPaused,
+	UWidget* FocusWidget)
+{
+	if (!Rig || ActivePrologueCarriageRig.Get() != Rig)
+	{
+		return false;
+	}
+	bShowMouseCursor = bPaused;
+	bEnableClickEvents = bPaused;
+	bEnableMouseOverEvents = bPaused;
+	SetTrackedInputMode(
+		bPaused
+			? EGameXXKTrackedInputMode::GameAndUI
+			: EGameXXKTrackedInputMode::GameOnly,
+		bPaused ? FocusWidget : nullptr);
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::RequestDesktopReturnFromPrologue()
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return false;
+	}
+	const FString CurrentPackageName = World->GetOutermost()
+		? World->GetOutermost()->GetName()
+		: FString();
+	return BeginDesktopTownMapTravelFromWorkbench(
+		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName),
+		FString());
 }
 
 FGameXXKBattleOverlaySnapshot AGameXXKMVPPlayerController::CaptureBattleOverlaySnapshot(
@@ -3030,6 +3078,13 @@ bool AGameXXKMVPPlayerController::RequestDesktopTownToggleFromWorkbench()
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName);
 	return BeginDesktopTownMapTravelFromWorkbench(TargetMap, FString());
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool AGameXXKMVPPlayerController::TriggerPrologueInputForTest(const FKey Key)
+{
+	return InputKey(FInputKeyEventArgs::CreateSimulated(Key, IE_Pressed, 1.0f));
+}
+#endif
 
 bool AGameXXKMVPPlayerController::RequestDesktopStoryCarriageFromWorkbench()
 {
