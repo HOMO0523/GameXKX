@@ -166,6 +166,8 @@ NarrativeActive
 
 NarrativeActive 必须消费 `Tab/I/Q/C/F`，不能让它们穿透。暂停或正常结束后这些输入恢复。StoryTaskDrawer 打开时，`Q`保持抽屉聚焦；`I/C`关闭抽屉并切换对应 Workbench 页面。
 
+只要 `WorkbenchLayer` 可见，剧情任务与 Guide 一律不得否决挂机条或 Workbench 的普通操作。Tab、挂机条展开/折叠、宝箱、通知、HUD 设置、仓库、背包、编队和历练始终先按各自权威规则执行；Guide 只能在操作成功后观察语义事件并推进提示。教程路线面板只能处理自己的路线按钮，不能通过提前返回吞掉其他 Action。
+
 旧 Widget 类暂时保留给嵌入复用、测试和显式 Legacy 回退，但玩家入口不再调用 `OpenFreeInventoryWindow`、旧 `OpenTaskPanel`或独立 `OpenCompanionRoster`。
 
 ## 6. Narrative Layer 布局
@@ -173,6 +175,8 @@ NarrativeActive 必须消费 `Tab/I/Q/C/F`，不能让它们穿透。暂停或�
 Narrative Layer 使用屏幕/显示器工作区坐标，不依附挂机条位置、尺寸、拖动锚点或展开方向。
 
 挂机条是独立交互系统。Narrative 只能切换 Overlay 表层可见性与剧情输入锁，禁止读取、写入、推断或恢复挂机条自己的折叠状态。尤其禁止 Narrative、剧情暂停、剧情完成、剧情故障恢复、待重播存档恢复和教程任务结算修改 `bIdleStripFolded`、通知栏显示模式、游历进度、宝箱/重试状态或挂机条原生命中区域。剧情期间所谓“暂时收起整个挂机条”只表示隐藏 `WorkbenchLayer`，不等同于触发挂机条折叠动作。
+
+只有 `NarrativeFullscreen` 可以把 Desktop Overlay 原生窗口扩展到显示器工作区。Workbench Guide 必须留在挂机条或已展开 Workbench 的当前原生窗口内，不得改变窗口尺寸、桌面锚点、鼠标穿透或拖动策略；所有 Workbench Guide 均为非阻塞提示，不持有输入 token。
 
 进入 NarrativeActive：
 
@@ -386,11 +390,11 @@ Tutorial.Start
 → Tutorial.Settlement
 ```
 
-4. 新手启用现有 GuideAsset 的 Forced/Soft 引导；老玩家只关闭遮罩、箭头和输入限制，不跳过节点、战斗或奖励。
+4. 新手启用现有 GuideAsset 的逐步高亮与说明，但全部为 Soft；老玩家使用更精简的 Soft 提示。两种偏好都不屏蔽挂机条、Workbench 或桌面其他操作，也不跳过节点、战斗或奖励。
 5. 结算确认后写入 `StoryFlag.CombatBasicsCompleted`，开放`Task.Main.XuXiake.FirstJourney`，当前任务进入 Completed。
 6. `Reward.Main.XuXiake.CombatBasics`在任务抽屉手动领取。
 
-任何 Guide 目标缺失时立即解除输入限制、记录诊断并允许继续，禁止软锁。
+任何 Guide 目标缺失时记录诊断并允许继续。Workbench Guide 从不持有输入限制，因此目标缺失不能改变挂机条可用性。
 
 ### 12.3 天台初行
 
@@ -420,8 +424,8 @@ Stage.Normal.1-1
 
 图中试炼首次选择的 GuidePreference 同时作用于天台初行：
 
-- NewPlayer：Tab、历练、1-1、游历四步使用 Forced 点击；遭遇过程使用 Soft 说明。
-- ExperiencedPlayer：只显示 Soft 提示，不锁其他 Workbench 操作。
+- NewPlayer：Tab、历练、普通难度、1-1、游历与遭遇过程均使用逐步 Soft 高亮和说明，不锁任何 Workbench 操作。
+- ExperiencedPlayer：使用更精简的 Soft 提示，同样不锁任何 Workbench 操作。
 
 重启不自动打开任务、Workbench 或 Narrative。Active 任务与 Guide 步骤保存在存档中；玩家主动打开 Workbench 后恢复未完成引导。如果 Travel 已经启动，目标监听继续工作，不要求重新点击已经完成的入口步骤。
 
