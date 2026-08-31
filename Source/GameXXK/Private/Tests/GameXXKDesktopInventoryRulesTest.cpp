@@ -2,8 +2,10 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
+#include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
@@ -97,7 +99,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKDesktopInventoryPersistentContainerTest::RunTest(const FString& Parameters)
 {
-	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	UGameXXKMVPSubsystem* StartedSubsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("current inventory fixture starts with a legal formation"),
+		StartedSubsystem && StartedSubsystem->StartGame()))
+	{
+		return false;
+	}
+	FGameXXKRuntimeState State = StartedSubsystem->GetRuntimeStateCopy();
 	TestTrue(TEXT("new-game desktop inventory normalizes"), FGameXXKDesktopInventoryRules::Normalize(State));
 
 	const FGameXXKDesktopInventoryEntryKey StoneKey = FGameXXKDesktopInventoryRules::MakeItemEntry(
@@ -167,7 +176,7 @@ bool FGameXXKDesktopInventoryPersistentContainerTest::RunTest(const FString& Par
 	FGameXXKSaveState SaveState = UGameXXKMVPRules::MakeSaveState(State);
 	FGameXXKRuntimeState Restored;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(TEXT("current save restores desktop storage"),
+	TestTrue(FString::Printf(TEXT("current save restores desktop storage: %s"), *Report.Error),
 		FGameXXKSaveMigration::TryRestoreRuntimeState(SaveState, Restored, Report));
 	TestEqual(TEXT("warehouse stack slot survives save/restore"),
 		FGameXXKDesktopInventoryRules::GetEntryAt(Restored, EGameXXKDesktopItemContainer::Warehouse, 5),

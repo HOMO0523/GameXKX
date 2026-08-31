@@ -52,7 +52,7 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 	using namespace GameXXKNarrativeGuideSaveMigrationTestPrivate;
 	TestEqual(TEXT("narrative-stage-guide owns save version 29"),
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
-	TestEqual(TEXT("v30 follows the narrative-stage-guide boundary"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("v31 follows the permanent-NPC boundary"), FGameXXKSaveMigration::CurrentSaveVersion, 31);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);

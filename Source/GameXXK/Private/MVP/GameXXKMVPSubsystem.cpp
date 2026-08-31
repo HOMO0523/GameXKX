@@ -3863,6 +3863,47 @@ bool UGameXXKMVPSubsystem::NormalizeDesktopInventoryState()
 	return true;
 }
 
+bool UGameXXKMVPSubsystem::GrantTutorialRiverMap(FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	if (OwnsTutorialRiverMap())
+	{
+		return true;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKDesktopInventoryRules::GrantUniqueTaskItem(
+		Candidate,
+		UGameXXKMVPRules::ItemTutorialRiverMap(),
+		OutError))
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState Previous = RuntimeState;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	if (!SaveCurrentGame())
+	{
+		RuntimeState = Previous;
+		if (OutError && OutError->IsEmpty())
+		{
+			*OutError = GetLastSaveLoadError().ToString();
+		}
+		return false;
+	}
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::OwnsTutorialRiverMap() const
+{
+	const FName ItemId = UGameXXKMVPRules::ItemTutorialRiverMap();
+	return RuntimeState.Inventory.FindRef(ItemId) > 0
+		|| RuntimeState.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0
+		|| RuntimeState.DesktopInventory.PendingTaskItemIds.Contains(ItemId);
+}
+
 bool UGameXXKMVPSubsystem::MoveDesktopInventoryEntry(
 	const EGameXXKDesktopItemContainer FromContainer,
 	const int32 FromSlotIndex,

@@ -30,6 +30,7 @@ namespace GameXXKMVP
 	static const FName ItemQingshanRouteSealName(TEXT("Item.QingshanRouteSeal"));
 	static const FName ItemTrainingNormalChestName(TEXT("Item.TrainingNormalChest"));
 	static const FName ItemTrainingAdvancedChestName(TEXT("Item.TrainingAdvancedChest"));
+	static const FName ItemTutorialRiverMapName(TEXT("Item.Tutorial.RiverMap"));
 	static const FName ItemLingzhiPowderName(TEXT("Item.LingzhiPowder"));
 	static const FName ItemQingxinTeaName(TEXT("Item.QingxinTea"));
 	static const FName ItemCraneSachetName(TEXT("Item.CraneSachet"));
@@ -225,6 +226,7 @@ namespace GameXXKMVP
 			ItemWoodenSwordName,
 			ItemStarterClothArmorName,
 			ItemClothTalismanName,
+			ItemTutorialRiverMapName,
 		};
 		Result.Append(FGameXXKGemRules::GetAllItemIds());
 		return Result;
@@ -283,6 +285,11 @@ namespace GameXXKMVP
 		if (ItemId == ItemTrainingAdvancedChestName)
 		{
 			OutDef = MakeItem(ItemId, TEXT("高级历练宝箱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
+		if (ItemId == ItemTutorialRiverMapName)
+		{
+			OutDef = MakeItem(ItemId, TEXT("徐霞客游历路线"), EGameXXKItemKind::Task, 0, 0, 0, 0, 0, 0, 0, 0);
 			return true;
 		}
 		if (ItemId == ItemLingzhiPowderName)
@@ -1596,6 +1603,11 @@ FName UGameXXKMVPRules::ItemTrainingNormalChest()
 FName UGameXXKMVPRules::ItemTrainingAdvancedChest()
 {
 	return GameXXKMVP::ItemTrainingAdvancedChestName;
+}
+
+FName UGameXXKMVPRules::ItemTutorialRiverMap()
+{
+	return GameXXKMVP::ItemTutorialRiverMapName;
 }
 
 FName UGameXXKMVPRules::ItemIronSword()

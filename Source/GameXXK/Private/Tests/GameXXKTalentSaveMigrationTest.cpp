@@ -18,8 +18,8 @@ bool FGameXXKTalentSaveRoundTripTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("permanent talents own save version twenty-six"),
 		FGameXXKSaveMigration::PermanentTalentGraphIntroducedSaveVersion, 26);
-	TestEqual(TEXT("permanent NPC formation advances the current save schema to thirty"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("tutorial map item advances the current save schema to thirty-one"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 31);
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());

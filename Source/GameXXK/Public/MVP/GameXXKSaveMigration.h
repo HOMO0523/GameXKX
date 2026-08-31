@@ -59,7 +59,9 @@ public:
 	static constexpr int32 NarrativeStageGuideIntroducedSaveVersion = 29;
 	/** v30: ordered formation always owns one permanent NPC; NPC route encounters are retired. */
 	static constexpr int32 PermanentNpcFormationIntroducedSaveVersion = 30;
-	static constexpr int32 CurrentSaveVersion = 30;
+	/** v31: the unique tutorial map and pending full-inventory delivery become persistent. */
+	static constexpr int32 TutorialMapItemIntroducedSaveVersion = 31;
+	static constexpr int32 CurrentSaveVersion = 31;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

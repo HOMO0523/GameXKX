@@ -441,6 +441,10 @@ struct FGameXXKDesktopInventoryState
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TSet<FName> LockedItemIds;
 
+	/** Unique task items waiting for the first free Backpack/Warehouse cell. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TSet<FName> PendingTaskItemIds;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bToolAutoFillIncludesWarehouse = true;
 };
@@ -761,6 +765,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemTrainingAdvancedChest();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
+	static FName ItemTutorialRiverMap();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FName ItemIronSword();

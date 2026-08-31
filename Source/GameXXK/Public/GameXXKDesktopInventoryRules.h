@@ -60,6 +60,10 @@ public:
 	/** Preserves valid occupied indices, clears stale entries, and appends newly acquired entries. */
 	static bool Normalize(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 	static bool Validate(const FGameXXKRuntimeState& State, FString* OutError = nullptr);
+	static bool GrantUniqueTaskItem(
+		FGameXXKRuntimeState& InOutState,
+		FName ItemId,
+		FString* OutError = nullptr);
 
 	/** Whole-stack/instance move or occupied swap between exact physical cells. */
 	static bool MoveOrSwap(

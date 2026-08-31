@@ -545,6 +545,34 @@ bool FGameXXKDesktopInventoryRules::SetEntryLocked(
 bool FGameXXKDesktopInventoryRules::Normalize(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
 	SetError(OutError, FString());
+	TArray<FName> PendingTaskItems = InOutState.DesktopInventory.PendingTaskItemIds.Array();
+	PendingTaskItems.Sort(FNameLexicalLess());
+	for (const FName ItemId : PendingTaskItems)
+	{
+		if (InOutState.Inventory.FindRef(ItemId) > 0
+			|| InOutState.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0)
+		{
+			InOutState.DesktopInventory.PendingTaskItemIds.Remove(ItemId);
+			continue;
+		}
+		bool bFound = false;
+		const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		if (!bFound || Definition.Kind != EGameXXKItemKind::Task)
+		{
+			SetError(OutError, TEXT("Desktop inventory contains an invalid pending task item."));
+			return false;
+		}
+		if (FindFirstEmptySlot(InOutState, EGameXXKDesktopItemContainer::Backpack) != INDEX_NONE)
+		{
+			InOutState.Inventory.Add(ItemId, 1);
+			InOutState.DesktopInventory.PendingTaskItemIds.Remove(ItemId);
+		}
+		else if (FindFirstEmptySlot(InOutState, EGameXXKDesktopItemContainer::Warehouse) != INDEX_NONE)
+		{
+			InOutState.DesktopInventory.WarehouseItems.Add(ItemId, 1);
+			InOutState.DesktopInventory.PendingTaskItemIds.Remove(ItemId);
+		}
+	}
 	TSet<FName> SeenStorageEquipment;
 	InOutState.DesktopInventory.WarehouseEquipmentInstanceIds.RemoveAll(
 		[&InOutState, &SeenStorageEquipment](const FName InstanceId)
@@ -617,6 +645,20 @@ bool FGameXXKDesktopInventoryRules::Normalize(FGameXXKRuntimeState& InOutState, 
 bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, FString* OutError)
 {
 	SetError(OutError, FString());
+	for (const FName ItemId : State.DesktopInventory.PendingTaskItemIds)
+	{
+		bool bFound = false;
+		const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+		if (ItemId.IsNone()
+			|| !bFound
+			|| Definition.Kind != EGameXXKItemKind::Task
+			|| State.Inventory.FindRef(ItemId) > 0
+			|| State.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0)
+		{
+			SetError(OutError, TEXT("Desktop inventory pending task item state is invalid."));
+			return false;
+		}
+	}
 	TSet<FName> SeenStorageEquipment;
 	for (const FName InstanceId : State.DesktopInventory.WarehouseEquipmentInstanceIds)
 	{
@@ -687,6 +729,52 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 			AcrossContainers.Add(Entry);
 		}
 	}
+	return true;
+}
+
+bool FGameXXKDesktopInventoryRules::GrantUniqueTaskItem(
+	FGameXXKRuntimeState& InOutState,
+	const FName ItemId,
+	FString* OutError)
+{
+	SetError(OutError, FString());
+	bool bFound = false;
+	const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(ItemId, bFound);
+	if (ItemId.IsNone() || !bFound || Definition.Kind != EGameXXKItemKind::Task)
+	{
+		SetError(OutError, TEXT("Unique task-item grant requires a known task item."));
+		return false;
+	}
+	if (InOutState.Inventory.FindRef(ItemId) > 0
+		|| InOutState.DesktopInventory.WarehouseItems.FindRef(ItemId) > 0
+		|| InOutState.DesktopInventory.PendingTaskItemIds.Contains(ItemId))
+	{
+		return true;
+	}
+
+	FGameXXKRuntimeState Candidate = InOutState;
+	Candidate.Inventory.Add(ItemId, 1);
+	if (Normalize(Candidate, nullptr))
+	{
+		InOutState = MoveTemp(Candidate);
+		return true;
+	}
+
+	Candidate = InOutState;
+	Candidate.DesktopInventory.WarehouseItems.Add(ItemId, 1);
+	if (Normalize(Candidate, nullptr))
+	{
+		InOutState = MoveTemp(Candidate);
+		return true;
+	}
+
+	Candidate = InOutState;
+	Candidate.DesktopInventory.PendingTaskItemIds.Add(ItemId);
+	if (!Validate(Candidate, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(Candidate);
 	return true;
 }
 

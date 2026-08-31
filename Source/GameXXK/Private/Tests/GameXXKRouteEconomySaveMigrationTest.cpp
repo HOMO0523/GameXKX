@@ -27,8 +27,8 @@ static_assert(
 	FGameXXKSaveMigration::DesktopInventoryStorageIntroducedSaveVersion == 21,
 	"Persistent desktop inventory storage advances the current save version to twenty-one.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 30,
-	"Permanent NPC formation migration is part of the current save version.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 31,
+	"Tutorial map item migration is part of the current save version.");
 
 namespace
 {
@@ -144,7 +144,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version includes permanent NPC formation migration"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("current save version includes tutorial map item migration"), FGameXXKSaveMigration::CurrentSaveVersion, 31);
 	return true;
 }
 

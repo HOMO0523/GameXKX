@@ -11,8 +11,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 30,
-	"Permanent NPC formation migration advances the current save version to thirty.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 31,
+	"Tutorial map item migration advances the current save version to thirty-one.");
 
 namespace
 {

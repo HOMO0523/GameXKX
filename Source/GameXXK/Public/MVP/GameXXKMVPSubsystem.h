@@ -250,6 +250,10 @@ public:
 	/** Ensures save-authoritative desktop backpack/warehouse slots include all current possessions. */
 	bool NormalizeDesktopInventoryState();
 
+	/** Grants the unique inspectable tutorial map and saves its physical/pending placement atomically. */
+	bool GrantTutorialRiverMap(FString* OutError = nullptr);
+	bool OwnsTutorialRiverMap() const;
+
 	/** Read-only permanent talent graph and derived shared projection. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Talents")
 	TArray<FGameXXKTalentNodeView> GetTalentNodeViews() const;

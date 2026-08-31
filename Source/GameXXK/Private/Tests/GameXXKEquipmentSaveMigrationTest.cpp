@@ -488,7 +488,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("permanent NPC formation owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("tutorial map item owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 31);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -678,8 +678,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("permanent NPC formation advances the current save schema to v30"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("tutorial map item advances the current save schema to v31"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 31);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -947,7 +947,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes permanent NPC formation migration"), FGameXXKSaveMigration::CurrentSaveVersion, 30);
+	TestEqual(TEXT("current save schema includes tutorial map item migration"), FGameXXKSaveMigration::CurrentSaveVersion, 31);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());

@@ -1884,6 +1884,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	{
 		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
 	}
+	if (Source.SaveVersion < TutorialMapItemIntroducedSaveVersion)
+	{
+		Candidate.RuntimeState.DesktopInventory.PendingTaskItemIds.Reset();
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
