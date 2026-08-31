@@ -114,6 +114,29 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 	TestFalse(
 		TEXT("ordinary town travel is not a carriage preview"),
 		GameXXKLevelFlow::HasCarriagePreviewTravelOption(TEXT("")));
+	TestEqual(
+		TEXT("tutorial 0-1 map is isolated"),
+		GameXXKLevelFlow::Tutorial01Map(),
+		FName(TEXT("/Game/GameXXK/Maps/Tutorial/L_Tutorial_0_1")));
+	TestEqual(
+		TEXT("tutorial 0-1 entry option is stable"),
+		GameXXKLevelFlow::Tutorial01TravelOptions(),
+		FString(TEXT("GameXXKTutorial=0-1")));
+	TestTrue(
+		TEXT("tutorial 0-1 option parses from travelled URL"),
+		GameXXKLevelFlow::HasTutorial01TravelOption(
+			TEXT("?GameXXKTutorial=0-1")));
+	TestFalse(
+		TEXT("ordinary battle is not tutorial 0-1"),
+		GameXXKLevelFlow::HasTutorial01TravelOption(TEXT("")));
+	TestTrue(
+		TEXT("PIE tutorial package is recognized exactly"),
+		GameXXKLevelFlow::IsTutorial01MapPackage(
+			TEXT("/Game/GameXXK/Maps/Tutorial/UEDPIE_0_L_Tutorial_0_1")));
+	TestFalse(
+		TEXT("ordinary route battle is never tutorial 0-1"),
+		GameXXKLevelFlow::IsTutorial01MapPackage(
+			TEXT("/Game/GameXXK/Maps/L_RouteMap")));
 	TestTrue(
 		TEXT("carriage preview closes only the expanded backpack before travel"),
 		GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(

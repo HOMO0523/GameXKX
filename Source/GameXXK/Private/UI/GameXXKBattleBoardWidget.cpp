@@ -1165,6 +1165,8 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
+	ClearBattleTerminalInterceptor();
+	ClearBattleExitInterceptor();
 	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
 	GuideRegistry.UnregisterTarget(TEXT("Battle.Hud.PartyQi"), PartyQiWidget);
 	GuideRegistry.UnregisterTarget(TEXT("Battle.EndTurn"), EndTurnButton);
@@ -4129,6 +4131,28 @@ bool UGameXXKBattleBoardWidget::IsAutoBattleEnabled() const
 	return Subsystem && Subsystem->IsBattleAutoPlayEnabled();
 }
 
+void UGameXXKBattleBoardWidget::SetBattleTerminalInterceptor(
+	FGameXXKBattleTerminalInterceptor InDelegate)
+{
+	BattleTerminalInterceptor = MoveTemp(InDelegate);
+}
+
+void UGameXXKBattleBoardWidget::ClearBattleTerminalInterceptor()
+{
+	BattleTerminalInterceptor.Unbind();
+}
+
+void UGameXXKBattleBoardWidget::SetBattleExitInterceptor(
+	FGameXXKBattleExitInterceptor InDelegate)
+{
+	BattleExitInterceptor = MoveTemp(InDelegate);
+}
+
+void UGameXXKBattleBoardWidget::ClearBattleExitInterceptor()
+{
+	BattleExitInterceptor.Unbind();
+}
+
 bool UGameXXKBattleBoardWidget::CanAdvanceAutoBattle() const
 {
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
@@ -5455,6 +5479,11 @@ bool UGameXXKBattleBoardWidget::CancelBattleRetreatConfirmationForTest()
 bool UGameXXKBattleBoardWidget::ConfirmBattleRetreatForTest()
 {
 	return ConfirmBattleRetreat();
+}
+
+bool UGameXXKBattleBoardWidget::RequestBattleExitForTest()
+{
+	return RequestBattleExit();
 }
 
 bool UGameXXKBattleBoardWidget::IsBattleRetreatConfirmationOpenForTest() const
@@ -9816,6 +9845,16 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 	}
 
 	const EGameXXKCardBattlePhase Phase = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase;
+	const EGameXXKCardBattleNodeKind SourceNodeKind =
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.SourceNodeKind;
+	if ((Phase == EGameXXKCardBattlePhase::Victory
+			|| Phase == EGameXXKCardBattlePhase::Defeat)
+		&& BattleTerminalInterceptor.IsBound()
+		&& BattleTerminalInterceptor.Execute(Phase))
+	{
+		ClearCardOutcomePreview();
+		return true;
+	}
 	if ((Phase == EGameXXKCardBattlePhase::Victory || Phase == EGameXXKCardBattlePhase::Defeat)
 		&& Subsystem->IsTrainingChallengeBattleActive())
 	{
@@ -10126,7 +10165,17 @@ void UGameXXKBattleBoardWidget::HandleAutoBattleClicked()
 
 void UGameXXKBattleBoardWidget::HandleBattleCloseClicked()
 {
-	OpenBattleRetreatConfirmation();
+	RequestBattleExit();
+}
+
+bool UGameXXKBattleBoardWidget::RequestBattleExit()
+{
+	if (BattleExitInterceptor.IsBound()
+		&& BattleExitInterceptor.Execute())
+	{
+		return true;
+	}
+	return OpenBattleRetreatConfirmation();
 }
 
 void UGameXXKBattleBoardWidget::HandleBattleRetreatConfirmClicked()

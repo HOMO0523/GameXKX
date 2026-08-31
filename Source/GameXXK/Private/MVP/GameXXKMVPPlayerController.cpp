@@ -20,11 +20,13 @@
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKRouteEncounterSceneActor.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "MVP/GameXXKTutorial01SessionSubsystem.h"
 #include "Narrative/GameXXKNarrativeCoordinator.h"
 #include "Narrative/GameXXKNarrativeSequenceAsset.h"
 #include "Misc/Parse.h"
 #include "Misc/PackageName.h"
 #include "Town/GameXXKHeroCharacter.h"
+#include "Town/GameXXKPrologueAftermathController.h"
 #include "Town/GameXXKPrologueCarriageRig.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
@@ -47,6 +49,7 @@
 #include "UI/GameXXKRelicBarWidget.h"
 #include "UI/GameXXKSpeechBubbleWidget.h"
 #include "UI/GameXXKTaskPanelWidget.h"
+#include "UI/GameXXKTutorial01ResultWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
@@ -63,51 +66,12 @@ namespace
 {
 	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
 
-	class FGameXXKNarrativeUiCommandExecutor final : public IGameXXKNarrativeCommandExecutor
+	FString WorldOptions(const UWorld* World)
 	{
-	public:
-		FGameXXKNarrativeUiCommandExecutor(
-			const FName InCommandType,
-			TFunction<bool()> InOpenAction,
-			TFunction<void()> InCancelAction)
-			: CommandType(InCommandType)
-			, OpenAction(MoveTemp(InOpenAction))
-			, CancelAction(MoveTemp(InCancelAction))
-		{
-		}
-
-		virtual bool Supports(const FName InCommandType) const override
-		{
-			return InCommandType == CommandType;
-		}
-
-		virtual FGameXXKNarrativeCommandResult Execute(
-			const FGameXXKNarrativeCommandDefinition& Command,
-			FGameXXKRuntimeState& InOutCandidateState) override
-		{
-			(void)Command;
-			(void)InOutCandidateState;
-			FGameXXKNarrativeCommandResult Result;
-			Result.Status = OpenAction && OpenAction()
-				? EGameXXKNarrativeCommandStatus::Pending
-				: EGameXXKNarrativeCommandStatus::Failed;
-			if (Result.Status == EGameXXKNarrativeCommandStatus::Failed)
-			{
-				Result.Error = FString::Printf(TEXT("Failed to open narrative UI command: %s"), *CommandType.ToString());
-			}
-			return Result;
-		}
-
-		virtual void CancelPending() override
-		{
-			if (CancelAction) CancelAction();
-		}
-
-	private:
-		FName CommandType;
-		TFunction<bool()> OpenAction;
-		TFunction<void()> CancelAction;
-	};
+		return World
+			? FString(TEXT("?")) + FString::Join(World->URL.Op, TEXT("?"))
+			: FString();
+	}
 
 	FString NarrativeAssetStem(const FName StableId)
 	{
@@ -240,7 +204,25 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 	const FString DesktopTrainingPerfProfile = ResolveDesktopTrainingPerfProfile();
 	const bool bPerfEmptyProfile = DesktopTrainingPerfProfile == TEXT("empty");
-	const bool bIsDesktopTrainingHUDMap = ResolvePlayerFlowBootProfile()
+	const EGameXXKPlayerFlowBootProfile BootProfile =
+		ResolvePlayerFlowBootProfile();
+	if (BootProfile == EGameXXKPlayerFlowBootProfile::TutorialRouteOnly)
+	{
+		bEnableDesktopTrainingWorkbench = false;
+		if (!BeginTutorial01Route())
+		{
+			UE_LOG(LogTemp, Error,
+				TEXT("Tutorial 0-1 route rejected a missing option or transient session."));
+			if (UWorld* World = GetWorld(); World && World->IsGameWorld())
+			{
+				UGameplayStatics::OpenLevel(
+					World,
+					GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town));
+			}
+		}
+		return;
+	}
+	const bool bIsDesktopTrainingHUDMap = BootProfile
 		== EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly;
 	if (bIsDesktopTrainingHUDMap)
 	{
@@ -279,6 +261,11 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	if (AGameXXKPrologueAftermathController* Controller =
+		ActivePrologueAftermathController.Get())
+	{
+		Controller->CancelPresentation();
+	}
 	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
 	{
 		Rig->CancelPresentation();
@@ -355,6 +342,20 @@ void AGameXXKMVPPlayerController::SetupInputComponent()
 
 bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
+	if (AGameXXKPrologueAftermathController* Controller =
+		ActivePrologueAftermathController.Get())
+	{
+		if (Controller->HandleInputKey(Params))
+		{
+			return true;
+		}
+		if (Controller->IsBlockingPresentation())
+		{
+			return Params.Key.IsMouseButton()
+				? Super::InputKey(Params)
+				: true;
+		}
+	}
 	if (HandleNarrativeInput(Params))
 	{
 		return true;
@@ -749,6 +750,82 @@ bool AGameXXKMVPPlayerController::SetPrologueCarriagePaused(
 		bPaused
 			? EGameXXKTrackedInputMode::GameAndUI
 			: EGameXXKTrackedInputMode::GameOnly,
+		bPaused ? FocusWidget : nullptr);
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::BeginPrologueAftermathPresentation(
+	AGameXXKPrologueAftermathController* Controller)
+{
+	if (!IsValid(Controller)
+		|| ActivePrologueAftermathController.IsValid()
+		|| ActivePrologueCarriageRig.IsValid())
+	{
+		return false;
+	}
+
+	ActivePrologueAftermathController = Controller;
+	AftermathPreviousInputMode = TrackedInputMode;
+	bAftermathPreviousShowMouseCursor = bShowMouseCursor;
+	bAftermathPreviousClickEvents = bEnableClickEvents;
+	bAftermathPreviousMouseOverEvents = bEnableMouseOverEvents;
+	bAftermathOwnedMoveInputIgnore = !IsMoveInputIgnored();
+	bAftermathOwnedLookInputIgnore = !IsLookInputIgnored();
+	FlushPressedKeys();
+	if (bAftermathOwnedMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(true);
+	}
+	if (bAftermathOwnedLookInputIgnore)
+	{
+		SetIgnoreLookInput(true);
+	}
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI);
+	return true;
+}
+
+void AGameXXKMVPPlayerController::EndPrologueAftermathPresentation(
+	AGameXXKPrologueAftermathController* Controller)
+{
+	if (!Controller || ActivePrologueAftermathController.Get() != Controller)
+	{
+		return;
+	}
+	if (bAftermathOwnedMoveInputIgnore)
+	{
+		SetIgnoreMoveInput(false);
+	}
+	if (bAftermathOwnedLookInputIgnore)
+	{
+		SetIgnoreLookInput(false);
+	}
+	bShowMouseCursor = bAftermathPreviousShowMouseCursor;
+	bEnableClickEvents = bAftermathPreviousClickEvents;
+	bEnableMouseOverEvents = bAftermathPreviousMouseOverEvents;
+	SetTrackedInputMode(AftermathPreviousInputMode);
+
+	ActivePrologueAftermathController.Reset();
+	bAftermathOwnedMoveInputIgnore = false;
+	bAftermathOwnedLookInputIgnore = false;
+}
+
+bool AGameXXKMVPPlayerController::SetPrologueAftermathPaused(
+	AGameXXKPrologueAftermathController* Controller,
+	const bool bPaused,
+	UWidget* FocusWidget)
+{
+	if (!Controller || ActivePrologueAftermathController.Get() != Controller)
+	{
+		return false;
+	}
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetTrackedInputMode(
+		EGameXXKTrackedInputMode::GameAndUI,
 		bPaused ? FocusWidget : nullptr);
 	return true;
 }
@@ -1186,34 +1263,6 @@ bool AGameXXKMVPPlayerController::OpenTownNpcInteractionForNpc(AActor* TownNpc, 
 		ActiveNarrativeInteractionActor.Reset();
 	}
 	return bStarted;
-}
-
-bool AGameXXKMVPPlayerController::OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn)
-{
-	// A second modal request is rejected before it can replace the original
-	// pending NPC/instigator pair.
-	if (!QuestNpc || !InstigatorPawn
-		|| (IsNarrativeGameplayUiBlocked() && !bOpeningNarrativeUiCommand)
-		|| (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
-		|| (TaskPanelWidget && TaskPanelWidget->IsTaskPanelOpenForTest()))
-	{
-		return false;
-	}
-
-	CloseMetaShopWindow();
-	CloseInventoryWindow();
-	UGameXXKTaskPanelWidget* TaskPanel = EnsureTaskPanelWidget();
-	if (!TaskPanel || !TaskPanel->OpenTaskOfferPanel())
-	{
-		return false;
-	}
-
-	PendingQuestNpc = QuestNpc;
-	PendingQuestInstigator = InstigatorPawn;
-	FlushPressedKeys();
-	SetIgnoreMoveInput(true);
-	ApplyPlayerFlowInputMode();
-	return true;
 }
 
 bool AGameXXKMVPPlayerController::AcceptQuestDialog()
@@ -1844,53 +1893,6 @@ bool AGameXXKMVPPlayerController::EnsureNarrativeInteractionRuntime()
 	if (!NarrativeCoordinator)
 	{
 		NarrativeCoordinator = NewObject<UGameXXKNarrativeCoordinator>(this, TEXT("NarrativeCoordinator"));
-		const TWeakObjectPtr<AGameXXKMVPPlayerController> WeakController(this);
-		NarrativeCoordinator->RegisterExecutor(
-			TEXT("openShop"),
-			MakeShared<FGameXXKNarrativeUiCommandExecutor>(
-				TEXT("openShop"),
-				[WeakController]()
-				{
-					AGameXXKMVPPlayerController* Controller = WeakController.Get();
-					if (!Controller) return false;
-					Controller->bOpeningNarrativeUiCommand = true;
-					const bool bOpened = Controller->OpenMetaShopWindow();
-					Controller->bOpeningNarrativeUiCommand = false;
-					return bOpened;
-				},
-				[WeakController]()
-				{
-					if (AGameXXKMVPPlayerController* Controller = WeakController.Get())
-					{
-						Controller->bCancellingNarrativeUiCommand = true;
-						Controller->CloseMetaShopWindow();
-						Controller->bCancellingNarrativeUiCommand = false;
-					}
-				}));
-		NarrativeCoordinator->RegisterExecutor(
-			TEXT("openTaskOffer"),
-			MakeShared<FGameXXKNarrativeUiCommandExecutor>(
-				TEXT("openTaskOffer"),
-				[WeakController]()
-				{
-					AGameXXKMVPPlayerController* Controller = WeakController.Get();
-					if (!Controller) return false;
-					Controller->bOpeningNarrativeUiCommand = true;
-					const bool bOpened = Controller->OpenTaskOfferPanelForNpc(
-						Controller->ActiveNarrativeInteractionActor.Get(),
-						Controller->GetPawn());
-					Controller->bOpeningNarrativeUiCommand = false;
-					return bOpened;
-				},
-				[WeakController]()
-				{
-					if (AGameXXKMVPPlayerController* Controller = WeakController.Get())
-					{
-						Controller->bCancellingNarrativeUiCommand = true;
-						Controller->CloseTaskPanel();
-						Controller->bCancellingNarrativeUiCommand = false;
-					}
-				}));
 	}
 	if (!DialoguePanelWidget)
 	{
@@ -2193,9 +2195,387 @@ EGameXXKPlayerFlowBootProfile AGameXXKMVPPlayerController::ResolvePlayerFlowBoot
 	const FString PackageName = World && World->GetOutermost()
 		? World->GetOutermost()->GetName()
 		: FString();
-	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(PackageName)
+	return ResolvePlayerFlowBootProfileForMapForTest(PackageName);
+}
+
+EGameXXKPlayerFlowBootProfile
+AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapForTest(
+	const FString& MapPackageName)
+{
+	if (GameXXKLevelFlow::IsTutorial01MapPackage(MapPackageName))
+	{
+		return EGameXXKPlayerFlowBootProfile::TutorialRouteOnly;
+	}
+	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(MapPackageName)
 		? EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly
 		: EGameXXKPlayerFlowBootProfile::FullPlayerFlow;
+}
+
+bool AGameXXKMVPPlayerController::PrepareTutorial01RouteForTest(
+	UGameXXKMVPSubsystem* MVPSubsystem,
+	UGameXXKTutorial01SessionSubsystem* TutorialSession,
+	const FString& Options)
+{
+	if (!MVPSubsystem || !TutorialSession
+		|| !TutorialSession->HasActiveSession()
+		|| TutorialSession->GetGuidePreference()
+			== EGameXXKGuidePreference::Unset
+		|| !GameXXKLevelFlow::HasTutorial01TravelOption(Options))
+	{
+		return false;
+	}
+
+	FGameXXKRuntimeState RouteRuntime;
+	if (!TutorialSession->BuildRouteRuntime(RouteRuntime))
+	{
+		return false;
+	}
+	MVPSubsystem->GetMutableRuntimeState() = MoveTemp(RouteRuntime);
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::StartTutorial01BattleRuntimeForTest(
+	UGameXXKMVPSubsystem* MVPSubsystem,
+	UGameXXKTutorial01SessionSubsystem* TutorialSession)
+{
+	if (!MVPSubsystem || !TutorialSession || !TutorialSession->HasActiveSession())
+	{
+		return false;
+	}
+	const FGameXXKRuntimeState RuntimeBeforeAttempt =
+		MVPSubsystem->GetRuntimeStateCopy();
+	FGameXXKRuntimeState BattleSeed;
+	FString Error;
+	if (!TutorialSession->BuildBattleSeedRuntime(BattleSeed, &Error))
+	{
+		UE_LOG(LogTemp, Error,
+			TEXT("Tutorial 0-1 battle seed failed: %s"),
+			*Error);
+		return false;
+	}
+	MVPSubsystem->GetMutableRuntimeState() = MoveTemp(BattleSeed);
+	if (!MVPSubsystem->StartNarrativeEncounter(
+			TEXT("Encounter.Main.XuXiake.0-1"),
+			&Error)
+		|| !TutorialSession->ArrangeDeterministicOpeningHand(
+			MVPSubsystem->GetMutableRuntimeState(),
+			&Error))
+	{
+		MVPSubsystem->GetMutableRuntimeState() = RuntimeBeforeAttempt;
+		UE_LOG(LogTemp, Error,
+			TEXT("Tutorial 0-1 encounter failed to start: %s"),
+			*Error);
+		return false;
+	}
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::HandleTutorial01BattleTerminalForTest(
+	UGameXXKMVPSubsystem* MVPSubsystem,
+	UGameXXKTutorial01SessionSubsystem* TutorialSession,
+	const EGameXXKCardBattlePhase Phase)
+{
+	if (!MVPSubsystem || !TutorialSession || !TutorialSession->HasActiveSession())
+	{
+		return false;
+	}
+	if (Phase == EGameXXKCardBattlePhase::Victory)
+	{
+		FGameXXKRuntimeState RouteRuntime;
+		if (!TutorialSession->MarkBattleVictory(RouteRuntime))
+		{
+			return false;
+		}
+		MVPSubsystem->GetMutableRuntimeState() = MoveTemp(RouteRuntime);
+		return true;
+	}
+	if (Phase == EGameXXKCardBattlePhase::Defeat)
+	{
+		return TutorialSession->MarkBattleDefeat();
+	}
+	return false;
+}
+
+bool AGameXXKMVPPlayerController::BeginTutorial01Route()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKMVPSubsystem* MVPSubsystem = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>()
+		: nullptr;
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!PrepareTutorial01RouteForTest(
+			MVPSubsystem,
+			TutorialSession,
+			WorldOptions(GetWorld())))
+	{
+		return false;
+	}
+
+	RouteMapWidget = EnsureRouteMapWidget();
+	if (!RouteMapWidget)
+	{
+		return false;
+	}
+	RefreshTutorial01RouteProjection();
+	RouteMapWidget->SetVisibility(ESlateVisibility::Visible);
+	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI, RouteMapWidget);
+	return RouteMapWidget->GetVisibility() == ESlateVisibility::Visible;
+}
+
+void AGameXXKMVPPlayerController::RefreshTutorial01RouteProjection()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!RouteMapWidget || !TutorialSession || !TutorialSession->HasActiveSession())
+	{
+		return;
+	}
+	RouteMapWidget->SetTransientRouteProjection(
+		TutorialSession->BuildRouteNodes(),
+		TutorialSession->BuildRouteEdges(),
+		TutorialSession->BuildRouteLabels(),
+		TutorialSession->BuildRouteCompletionNotice(),
+		TutorialSession->GetRouteState().VisitedNodeIds,
+		TutorialSession->GetRouteState().ReachableNodeIds,
+		FGameXXKTransientRouteNodeExecuted::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::HandleTutorial01RouteNode));
+	RouteMapWidget->RefreshFromState();
+}
+
+bool AGameXXKMVPPlayerController::HandleTutorial01RouteNode(const int32 NodeId)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!TutorialSession)
+	{
+		return false;
+	}
+	EGameXXKTutorial01RouteAction Action = EGameXXKTutorial01RouteAction::None;
+	if (!TutorialSession->RequestRouteNode(NodeId, Action))
+	{
+		return false;
+	}
+	if (Action == EGameXXKTutorial01RouteAction::StartBattle)
+	{
+		return StartTutorial01Battle();
+	}
+	if (Action == EGameXXKTutorial01RouteAction::ReturnTown)
+	{
+		ReturnTutorial01ToTown(EGameXXKTutorial01ReturnReason::Victory);
+		return true;
+	}
+	return false;
+}
+
+bool AGameXXKMVPPlayerController::StartTutorial01Battle()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKMVPSubsystem* MVPSubsystem = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>()
+		: nullptr;
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!StartTutorial01BattleRuntimeForTest(MVPSubsystem, TutorialSession))
+	{
+		if (TutorialSession)
+		{
+			TutorialSession->MarkBattleDefeat();
+		}
+		ShowTutorial01Failure(FText::FromString(TEXT("0-1 战斗载入失败")));
+		return false;
+	}
+
+	UGameXXKBattleBoardWidget* TutorialBoard = EnsureBattleBoardWidget();
+	if (!RouteMapWidget || !TutorialBoard)
+	{
+		TutorialSession->MarkBattleDefeat();
+		ShowTutorial01Failure(FText::FromString(TEXT("0-1 战斗界面载入失败")));
+		return false;
+	}
+	TutorialBoard->SetMVPSubsystem(MVPSubsystem);
+	TutorialBoard->RefreshFromState();
+	TutorialBoard->SetBattleTerminalInterceptor(
+		FGameXXKBattleTerminalInterceptor::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::HandleTutorial01BattleTerminal));
+	TutorialBoard->SetBattleExitInterceptor(
+		FGameXXKBattleExitInterceptor::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::HandleTutorial01BattleExitRequested));
+	EnterBattleOverlay();
+	if (!IsBattleOverlayActive())
+	{
+		TutorialSession->MarkBattleDefeat();
+		ShowTutorial01Failure(FText::FromString(TEXT("0-1 战斗演出载入失败")));
+		return false;
+	}
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::HandleTutorial01BattleTerminal(
+	const EGameXXKCardBattlePhase Phase)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKMVPSubsystem* MVPSubsystem = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>()
+		: nullptr;
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!HandleTutorial01BattleTerminalForTest(
+			MVPSubsystem,
+			TutorialSession,
+			Phase))
+	{
+		return false;
+	}
+	if (Phase == EGameXXKCardBattlePhase::Victory)
+	{
+		DismissTutorial01Failure();
+		if (BattleBoardWidget)
+		{
+			BattleBoardWidget->ClearBattleTerminalInterceptor();
+			BattleBoardWidget->ClearBattleExitInterceptor();
+		}
+		ExitBattleOverlay();
+		RefreshTutorial01RouteProjection();
+		ApplyPlayerFlowInputMode();
+	}
+	else
+	{
+		ShowTutorial01Failure(FText::FromString(TEXT("战斗失败")));
+	}
+	return true;
+}
+
+bool AGameXXKMVPPlayerController::HandleTutorial01BattleExitRequested()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	if (!TutorialSession || !TutorialSession->MarkBattleDefeat())
+	{
+		return false;
+	}
+	ShowTutorial01Failure(FText::FromString(TEXT("教程战斗已暂停")));
+	return true;
+}
+
+void AGameXXKMVPPlayerController::ShowTutorial01Failure(const FText& Reason)
+{
+	if (!Tutorial01ResultWidget)
+	{
+		Tutorial01ResultWidget = CanAddPlayerWidgetsToViewport()
+			? CreateWidget<UGameXXKTutorial01ResultWidget>(this)
+			: NewObject<UGameXXKTutorial01ResultWidget>(this);
+		if (!Tutorial01ResultWidget)
+		{
+			return;
+		}
+		Tutorial01ResultWidget->SetRetryRequested(
+			FGameXXKTutorial01RetryRequested::CreateUObject(
+				this,
+				&AGameXXKMVPPlayerController::RetryTutorial01Battle));
+		Tutorial01ResultWidget->SetReturnTownRequested(
+			FGameXXKTutorial01ReturnTownRequested::CreateUObject(
+				this,
+				&AGameXXKMVPPlayerController::ReturnTutorial01ToTown,
+				EGameXXKTutorial01ReturnReason::Defeat));
+		if (CanAddPlayerWidgetsToViewport())
+		{
+			Tutorial01ResultWidget->AddToViewport(6000);
+		}
+	}
+	Tutorial01ResultWidget->PresentFailure(Reason);
+	SetTrackedInputMode(EGameXXKTrackedInputMode::UIOnly, Tutorial01ResultWidget);
+}
+
+void AGameXXKMVPPlayerController::DismissTutorial01Failure()
+{
+	if (Tutorial01ResultWidget)
+	{
+		Tutorial01ResultWidget->Dismiss();
+	}
+}
+
+void AGameXXKMVPPlayerController::RetryTutorial01Battle()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKMVPSubsystem* MVPSubsystem = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>()
+		: nullptr;
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	FGameXXKRuntimeState RetryRuntime;
+	if (!MVPSubsystem || !TutorialSession
+		|| !TutorialSession->PrepareRetry(RetryRuntime))
+	{
+		return;
+	}
+	DismissTutorial01Failure();
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->ClearBattleTerminalInterceptor();
+		BattleBoardWidget->ClearBattleExitInterceptor();
+	}
+	ExitBattleOverlay();
+	MVPSubsystem->GetMutableRuntimeState() = MoveTemp(RetryRuntime);
+	EGameXXKTutorial01RouteAction Action = EGameXXKTutorial01RouteAction::None;
+	if (!TutorialSession->RequestRouteNode(
+			FGameXXKTutorial01RouteRules::BattleNodeId,
+			Action)
+		|| Action != EGameXXKTutorial01RouteAction::StartBattle
+		|| !StartTutorial01Battle())
+	{
+		ShowTutorial01Failure(FText::FromString(TEXT("重新挑战载入失败")));
+	}
+}
+
+void AGameXXKMVPPlayerController::ReturnTutorial01ToTown(
+	const EGameXXKTutorial01ReturnReason Reason)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	UGameXXKMVPSubsystem* MVPSubsystem = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKMVPSubsystem>()
+		: nullptr;
+	UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr;
+	FGameXXKRuntimeState TownRuntime;
+	if (!MVPSubsystem || !TutorialSession
+		|| !TutorialSession->RestoreForTownReturn(Reason, TownRuntime))
+	{
+		return;
+	}
+	DismissTutorial01Failure();
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->ClearBattleTerminalInterceptor();
+		BattleBoardWidget->ClearBattleExitInterceptor();
+	}
+	ExitBattleOverlay();
+	MVPSubsystem->GetMutableRuntimeState() = MoveTemp(TownRuntime);
+	if (UWorld* World = GetWorld(); World && World->IsGameWorld())
+	{
+		const TCHAR* ReturnValue = Reason == EGameXXKTutorial01ReturnReason::Victory
+			? TEXT("Victory")
+			: TEXT("Defeat");
+		UGameplayStatics::OpenLevel(
+			World,
+			GameXXKLevelFlow::QingshanTownGameplayMap(),
+			true,
+			FString::Printf(TEXT("GameXXKTutorialReturn=%s"), ReturnValue));
+	}
 }
 
 bool AGameXXKMVPPlayerController::EnsureDesktopTrainingWidgets()

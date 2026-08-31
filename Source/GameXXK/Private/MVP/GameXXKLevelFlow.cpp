@@ -12,6 +12,7 @@ namespace
 	const FName QingshanTownMap(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo"));
 	const FName LegacyQingshanTownMap(TEXT("/Game/GameXXK/Maps/L_QingshanInn"));
 	const FName DesktopTrainingHUDMap(TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD"));
+	const FName Tutorial01MapName(TEXT("/Game/GameXXK/Maps/Tutorial/L_Tutorial_0_1"));
 	const FName RouteMap(TEXT("/Game/GameXXK/Maps/L_RouteMap"));
 	const FName RouteCampMap(TEXT("/Game/GameXXK/Maps/L_RouteCamp"));
 
@@ -125,6 +126,28 @@ bool GameXXKLevelFlow::HasCarriagePreviewTravelOption(const FString& Options)
 {
 	return UGameplayStatics::ParseOption(Options, TEXT("GameXXKIntro"))
 		== TEXT("CarriagePreview");
+}
+
+FName GameXXKLevelFlow::Tutorial01Map()
+{
+	return Tutorial01MapName;
+}
+
+FString GameXXKLevelFlow::Tutorial01TravelOptions()
+{
+	return TEXT("GameXXKTutorial=0-1");
+}
+
+bool GameXXKLevelFlow::HasTutorial01TravelOption(const FString& Options)
+{
+	return UGameplayStatics::ParseOption(Options, TEXT("GameXXKTutorial"))
+		== TEXT("0-1");
+}
+
+bool GameXXKLevelFlow::IsTutorial01MapPackage(
+	const FString& CurrentPackageName)
+{
+	return MapPackageMatches(CurrentPackageName, Tutorial01MapName);
 }
 
 bool GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(

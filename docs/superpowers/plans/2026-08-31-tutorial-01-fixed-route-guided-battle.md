@@ -515,7 +515,7 @@ Do not persist partial route/Guide state.
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests "GameXXK.Tutorial01.PlayerFlow"
 python scripts/ai_production_loop.py --run-automation --automation-tests "GameXXK.Tutorial01.BattleFlow"
-python scripts/ai_production_loop.py --run-automation --automation-tests "GameXXK.Battle.OverlayCoordinator"
+python scripts/ai_production_loop.py --run-automation --automation-tests "GameXXK.MVP.Battle.OverlayCoordinator"
 python scripts/ai_production_loop.py --run-automation --automation-tests "GameXXK.Prologue.Aftermath.Controller"
 ```
 

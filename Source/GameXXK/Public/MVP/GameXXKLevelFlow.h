@@ -23,6 +23,14 @@ namespace GameXXKLevelFlow
 	GAMEXXK_API FString CarriagePreviewTravelOptions();
 	/** True only when the travelled URL explicitly requests the carriage preview. */
 	GAMEXXK_API bool HasCarriagePreviewTravelOption(const FString& Options);
+	/** Isolated pure-2D tutorial battle map; ordinary map routing never resolves here. */
+	GAMEXXK_API FName Tutorial01Map();
+	/** Transient URL option required by the isolated tutorial map. */
+	GAMEXXK_API FString Tutorial01TravelOptions();
+	/** True only for an explicit 0-1 tutorial travel request. */
+	GAMEXXK_API bool HasTutorial01TravelOption(const FString& Options);
+	/** True only for the isolated tutorial map package, including PIE prefixes. */
+	GAMEXXK_API bool IsTutorial01MapPackage(const FString& CurrentPackageName);
 	/** Story travel closes the expanded backpack; ordinary town travel keeps its session policy. */
 	GAMEXXK_API bool ShouldCollapseBackpackForTravelOptions(const FString& Options);
 	GAMEXXK_API FName TownToggleTargetForMapPackage(

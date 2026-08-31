@@ -30,21 +30,26 @@ class UGameXXKRouteEncounterPanelWidget;
 class UGameXXKRouteMerchantWidget;
 class UGameXXKRelicBarWidget;
 class UGameXXKTaskPanelWidget;
+class UGameXXKTutorial01ResultWidget;
+class UGameXXKTutorial01SessionSubsystem;
 class UGameXXKTownHudWidget;
 class UGameXXKTownOverlayWidget;
 class UGameXXKWorldMapWidget;
 class UGameXXKDesktopTrainingWorkbenchWidget;
 class UWidget;
 class AGameXXKRouteEncounterSceneActor;
+class AGameXXKPrologueAftermathController;
 class AGameXXKPrologueCarriageRig;
 class SWidget;
 class SWindow;
 struct FWorldContext;
+enum class EGameXXKTutorial01ReturnReason : uint8;
 
 enum class EGameXXKPlayerFlowBootProfile : uint8
 {
 	FullPlayerFlow,
-	DesktopTrainingOnly
+	DesktopTrainingOnly,
+	TutorialRouteOnly,
 };
 
 UCLASS(Blueprintable)
@@ -69,6 +74,19 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	bool EnsurePlayerFlowWidgetsForTest();
+	static EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfileForMapForTest(
+		const FString& MapPackageName);
+	bool PrepareTutorial01RouteForTest(
+		UGameXXKMVPSubsystem* MVPSubsystem,
+		UGameXXKTutorial01SessionSubsystem* TutorialSession,
+		const FString& Options);
+	bool StartTutorial01BattleRuntimeForTest(
+		UGameXXKMVPSubsystem* MVPSubsystem,
+		UGameXXKTutorial01SessionSubsystem* TutorialSession);
+	bool HandleTutorial01BattleTerminalForTest(
+		UGameXXKMVPSubsystem* MVPSubsystem,
+		UGameXXKTutorial01SessionSubsystem* TutorialSession,
+		EGameXXKCardBattlePhase Phase);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow|Test")
 	void RefreshPlayerFlowWidgetsForTest();
@@ -85,6 +103,14 @@ public:
 		AGameXXKPrologueCarriageRig* Rig,
 		bool bPaused,
 		UWidget* FocusWidget);
+	bool BeginPrologueAftermathPresentation(
+		AGameXXKPrologueAftermathController* Controller);
+	void EndPrologueAftermathPresentation(
+		AGameXXKPrologueAftermathController* Controller);
+	bool SetPrologueAftermathPaused(
+		AGameXXKPrologueAftermathController* Controller,
+		bool bPaused,
+		UWidget* FocusWidget);
 	bool RequestDesktopReturnFromPrologue();
 	bool OpenTutorialMapInspection();
 	void CloseTutorialMapInspection();
@@ -96,6 +122,16 @@ public:
 	bool HasActivePrologueCarriageForTest() const
 	{
 		return ActivePrologueCarriageRig.IsValid();
+	}
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Aftermath|Observation")
+	bool HasActivePrologueAftermathForTest() const
+	{
+		return ActivePrologueAftermathController.IsValid();
+	}
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Aftermath|Observation")
+	bool IsPrologueAftermathInputLockedForTest() const
+	{
+		return ActivePrologueAftermathController.IsValid();
 	}
 
 	/** Single canonical battle-board instance shared by the flow and route bridge. */
@@ -203,9 +239,6 @@ public:
 	/** Starts the selected NPC's configured NarrativeSequence. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool OpenTownNpcInteractionForNpc(AActor* TownNpc, APawn* InstigatorPawn);
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
-	bool OpenTaskOfferPanelForNpc(AActor* QuestNpc, APawn* InstigatorPawn);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|PlayerFlow")
 	bool AcceptQuestDialog();
@@ -381,6 +414,16 @@ private:
 	void SetNarrativeInputLocked(bool bLocked);
 	bool IsNarrativeGameplayUiBlocked() const;
 	EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfile() const;
+	bool BeginTutorial01Route();
+	bool HandleTutorial01RouteNode(int32 NodeId);
+	bool StartTutorial01Battle();
+	bool HandleTutorial01BattleTerminal(EGameXXKCardBattlePhase Phase);
+	bool HandleTutorial01BattleExitRequested();
+	void RefreshTutorial01RouteProjection();
+	void ShowTutorial01Failure(const FText& Reason);
+	void DismissTutorial01Failure();
+	void RetryTutorial01Battle();
+	void ReturnTutorial01ToTown(EGameXXKTutorial01ReturnReason Reason);
 	bool EnsureDesktopTrainingWidgets();
 	void RestoreDesktopWorkbenchSessionAfterMapTravel();
 	bool BeginDesktopTownMapTravelFromWorkbench(
@@ -512,6 +555,9 @@ private:
 	TObjectPtr<UGameXXKBattleOverlayCoordinator> BattleOverlayCoordinator;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKTutorial01ResultWidget> Tutorial01ResultWidget;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKInventoryWindowWidget> InventoryWindowWidget;
 
 	UPROPERTY(Transient)
@@ -555,6 +601,13 @@ private:
 	bool bProloguePreviousMouseOverEvents = false;
 	bool bPrologueOwnedMoveInputIgnore = false;
 	bool bPrologueOwnedLookInputIgnore = false;
+	TWeakObjectPtr<AGameXXKPrologueAftermathController> ActivePrologueAftermathController;
+	EGameXXKTrackedInputMode AftermathPreviousInputMode = EGameXXKTrackedInputMode::GameAndUI;
+	bool bAftermathPreviousShowMouseCursor = false;
+	bool bAftermathPreviousClickEvents = false;
+	bool bAftermathPreviousMouseOverEvents = false;
+	bool bAftermathOwnedMoveInputIgnore = false;
+	bool bAftermathOwnedLookInputIgnore = false;
 	bool bOwnsDesktopWorkbenchTownMoveInputLock = false;
 	bool bOwnsDesktopWorkbenchTownLookInputLock = false;
 

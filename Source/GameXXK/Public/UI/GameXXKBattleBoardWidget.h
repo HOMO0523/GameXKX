@@ -30,6 +30,12 @@ class UGameXXKBattleUnitVisualWidget;
 class UGameXXKBattleBoardWidget;
 class UGameXXKCardOutcomePreviewWidget;
 
+DECLARE_DELEGATE_RetVal_OneParam(
+	bool,
+	FGameXXKBattleTerminalInterceptor,
+	EGameXXKCardBattlePhase);
+DECLARE_DELEGATE_RetVal(bool, FGameXXKBattleExitInterceptor);
+
 enum class EGameXXKBattleHudLayer : uint8
 {
 	Backdrop,
@@ -338,6 +344,11 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Auto")
 	bool IsAutoBattleEnabled() const;
+	void SetBattleTerminalInterceptor(
+		FGameXXKBattleTerminalInterceptor InDelegate);
+	void ClearBattleTerminalInterceptor();
+	void SetBattleExitInterceptor(FGameXXKBattleExitInterceptor InDelegate);
+	void ClearBattleExitInterceptor();
 
 	/** Retries a terminal enemy-phase completion after a recoverable board error. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Cards")
@@ -581,6 +592,7 @@ public:
 	bool OpenBattleRetreatConfirmationForTest();
 	bool CancelBattleRetreatConfirmationForTest();
 	bool ConfirmBattleRetreatForTest();
+	bool RequestBattleExitForTest();
 	bool IsBattleRetreatConfirmationOpenForTest() const;
 	bool IsBattleRetreatConfirmEnabledForTest() const;
 	FString GetBattleRetreatErrorForTest() const;
@@ -654,6 +666,7 @@ private:
 	};
 
 	void BuildProgrammaticLayout();
+	bool RequestBattleExit();
 	void QueuePresentationInternal(
 		const FGameXXKBattlePresentationEvent& Event,
 		bool bRefreshBaseline,
@@ -1267,6 +1280,8 @@ private:
 	TOptional<FGameXXKRuntimeState> CachedOutcomeSourceState;
 	FGameXXKCardOutcomePreview CachedOutcomePreview;
 	int32 OutcomePreviewBuildCountForTest = 0;
+	FGameXXKBattleTerminalInterceptor BattleTerminalInterceptor;
+	FGameXXKBattleExitInterceptor BattleExitInterceptor;
 
 	UPROPERTY(Transient)
 	TArray<FName> HandCardInstanceIds;
