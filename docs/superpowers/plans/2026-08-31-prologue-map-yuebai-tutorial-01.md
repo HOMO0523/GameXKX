@@ -6,7 +6,7 @@
 
 **Architecture:** A map-placed `AGameXXKPrologueAftermathController` subscribes to the existing carriage completion delegate and owns only the post-carriage state machine, transient dialogue/UI presentation, YueBai reveal/follow state, passive statue prompt, and tutorial travel request. A new GameInstance tutorial-session subsystem snapshots ordinary runtime state across map travel, while a `TutorialBattleOnly` player-flow boot profile hosts the existing BattleBoard and a tutorial-local `Guide.Battle.Basic`; ordinary desktop, town, route, challenge, travel, reward, formation, and window paths stay unchanged.
 
-**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, Paper2D/atlas widgets, JSON-authored Dialogue assets, GameInstance subsystems, UE Automation Framework, focused Unreal Python through UE MCP, cold UBT, Luna Max visual review.
+**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, Paper2D/atlas widgets, JSON-authored Dialogue assets, GameInstance subsystems, UE Automation Framework, focused Unreal Python through UE MCP, cold UBT, visual evidence review.
 
 ---
 
@@ -1061,7 +1061,7 @@ This task is map/art assembly: use guarded pre/post validation and visual eviden
 
 The probe requires the exact Qingshan map, enumerates static-mesh/instanced-mesh bounds in front of the approved prologue anchor, and emits actor/component/mesh paths, bounds, and walkable base points. It contains no save, spawn, transform, input, or map-load method. Policy rejects all mutation tokens.
 
-Run it in the already-open Qingshan editor map through UE MCP, capture the viewport with actor annotations, and use Luna Max to identify the visible giant center statue. Record the selected immutable actor/component reference and computed base interaction point in the placement report; do not modify the statue.
+Run it in the already-open Qingshan editor map through UE MCP, capture the viewport with actor annotations, and use a suitable review method to identify the visible giant center statue. Record the selected immutable actor/component reference and computed base interaction point in the placement report; do not modify the statue.
 
 - [ ] **Step 2: Write the guarded Qingshan placement script**
 
@@ -1151,7 +1151,7 @@ git diff --check
 
 Record unrelated baseline failures separately; do not weaken them or claim a full project suite if it was not run.
 
-- [ ] **Step 4: Capture and review visual states with Luna Max**
+- [ ] **Step 4: Capture and review visual states**
 
 Without synthetic input, capture:
 
@@ -1166,7 +1166,7 @@ Without synthetic input, capture:
 9. defeat retry/return overlay;
 10. victory return beside the statue.
 
-Luna must check crop, readability, anchor positions, overlap, follow distance, bubble visibility, unchanged camera, absence of Workbench/town UI on the tutorial map, and no input-block visual symptom.
+The selected review method must check crop, readability, anchor positions, overlap, follow distance, bubble visibility, unchanged camera, absence of Workbench/town UI on the tutorial map, and no input-block visual symptom.
 
 - [ ] **Step 5: Ask the player to perform the real chain**
 
@@ -1174,7 +1174,7 @@ Prepare PIE on the default 2D map with no input driver. The player manually veri
 
 - [ ] **Step 6: Update rolling acceptance and push**
 
-Record commits, cold UBT, exact Automation counts, JSON/policy/map validators, probe observations, Luna report, manual steps actually performed, and explicit non-goals in `docs/production/current-goal-acceptance.md`.
+Record commits, cold UBT, exact Automation counts, JSON/policy/map validators, probe observations, visual-review report, manual steps actually performed, and explicit non-goals in `docs/production/current-goal-acceptance.md`.
 
 Commit docs only, restore the three protected staged deletions, push `main`, and verify:
 
@@ -1204,5 +1204,5 @@ Remote and local hashes must match; cached paths must be exactly the three prote
 - [ ] Victory returns without rewards; defeat offers retry/return and restores the statue prompt on return.
 - [ ] Ordinary challenge, route, travel, rewards, formation, inventory beyond the map item, window, and idle states are invariant.
 - [ ] Pause, cancel, failure, travel, shutdown, and late callbacks cannot leave input, UI, action gates, NPCs, or map pending locked.
-- [ ] Cold UBT, focused Automation, source/policy/map checks, read-only probes, Luna review, and player-performed acceptance are recorded honestly.
+- [ ] Cold UBT, focused Automation, source/policy/map checks, read-only probes, visual review, and player-performed acceptance are recorded honestly.
 - [ ] Existing dirty work and the three protected staged deletions remain intact.
