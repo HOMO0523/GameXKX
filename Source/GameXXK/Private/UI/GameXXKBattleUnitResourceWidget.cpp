@@ -178,6 +178,16 @@ bool UGameXXKBattleUnitResourceWidget::HasRuntimeWidgetTreeForTest() const
 	return RootBox && WidgetTree && WidgetTree->RootWidget == RootBox;
 }
 
+UWidget* UGameXXKBattleUnitResourceWidget::GetHealthRowForGuide() const
+{
+	return HealthRow.Get();
+}
+
+UWidget* UGameXXKBattleUnitResourceWidget::GetManaRowForGuide() const
+{
+	return ManaRow.Get();
+}
+
 FString UGameXXKBattleUnitResourceWidget::GetHealthDisplayTextForTest() const
 {
 	return HealthText ? HealthText->GetText().ToString() : FString();

@@ -33,6 +33,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "Guide/GameXXKGuideTargetRegistry.h"
+#include "Guide/GameXXKTutorial01GuideHost.h"
 #include "Engine/Texture2D.h"
 #include "HAL/PlatformTime.h"
 #include "Input/Events.h"
@@ -50,6 +51,8 @@
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
+#include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKGuideOverlayWidget.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 
 int32 UGameXXKBattleBoardWidget::GAliveBattleBoardInstances = 0;
@@ -63,6 +66,23 @@ namespace
 	static const FName DefendAction(TEXT("BattleDefend"));
 	static const FName HealingPowderAction(TEXT("BattleHealingPowder"));
 	static const FName CardTargetingAction(TEXT("BattleCardTargeting"));
+	static const FName TutorialHeroUnitId(TEXT("Player"));
+	static const FName TutorialYueBaiUnitId(TEXT("Npc.YueBai"));
+	static const FName TutorialHengJianCardId(TEXT("Hero.Generic.HengJianShouShi"));
+	static const FName TutorialSuiYanCardId(TEXT("Hero.Generic.SuiYanJi"));
+	static const FName TutorialFengShenCardId(TEXT("Hero.Generic.FengShenBu"));
+	static const FName TutorialHengJianSelectAction(TEXT("Action.Battle.SelectCard.HengJianShouShi"));
+	static const FName TutorialSuiYanSelectAction(TEXT("Action.Battle.SelectCard.SuiYanJi"));
+	static const FName TutorialFengShenSelectAction(TEXT("Action.Battle.SelectCard.FengShenBu"));
+	static const FName TutorialHeroTargetAction(TEXT("Action.Battle.SelectTarget.Hero"));
+	static const FName TutorialEnemyTargetAction(TEXT("Action.Battle.SelectTarget.Enemy"));
+	static const FName TutorialHengJianEvent(TEXT("Event.Tutorial01.HengJianResolved"));
+	static const FName TutorialSuiYanEvent(TEXT("Event.Tutorial01.SuiYanResolved"));
+	static const FName TutorialFengShenEvent(TEXT("Event.Tutorial01.FengShenForcedDiscardOpened"));
+	static const FName TutorialForcedDiscardEvent(TEXT("Event.Tutorial01.ForcedDiscardResolved"));
+	static const FName TutorialPlayerTurnReadyEvent(TEXT("Event.Tutorial01.PlayerTurnReady"));
+	static const FName TutorialAutoEnabledEvent(TEXT("Event.Tutorial01.AutoBattleEnabled"));
+	static constexpr int32 TutorialGuideOverlayZOrder = 1000;
 	static constexpr int32 TargetingInkDabCount = 12;
 	static constexpr int32 MaximumVisibleHandCards = 5;
 	static constexpr int32 MaximumVisibleEnemyIntentCards = 3;
@@ -1165,9 +1185,11 @@ void UGameXXKBattleBoardWidget::NativeConstruct()
 
 void UGameXXKBattleBoardWidget::NativeDestruct()
 {
+	CancelTutorial01Guide(TEXT("Battle Board destroyed."));
 	ClearBattleTerminalInterceptor();
 	ClearBattleExitInterceptor();
 	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+	ClearTutorial01GuideTargets();
 	GuideRegistry.UnregisterTarget(TEXT("Battle.Hud.PartyQi"), PartyQiWidget);
 	GuideRegistry.UnregisterTarget(TEXT("Battle.EndTurn"), EndTurnButton);
 	for (UButton* Button : HandCardButtons)
@@ -1241,6 +1263,7 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 			RefreshPartyQiWidget();
 		}
 	}
+	TickTutorial01Guide(InDeltaTime);
 	TickAutoBattleAtRealTime(FPlatformTime::Seconds());
 }
 
@@ -2541,7 +2564,12 @@ void UGameXXKBattleBoardWidget::SetTargetProxiesVisible(const bool bVisible)
 		if (Pair.Value)
 		{
 			Pair.Value->SetIsEnabled(bActuallyVisible);
-			Pair.Value->SetVisibility(bActuallyVisible ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+			// Keep non-targeting proxies in layout for Guide spotlight geometry while
+			// remaining completely input-transparent until card targeting begins.
+			Pair.Value->SetVisibility(
+				bActuallyVisible
+					? ESlateVisibility::Visible
+					: ESlateVisibility::HitTestInvisible);
 		}
 	}
 }
@@ -3335,6 +3363,11 @@ FReply UGameXXKBattleBoardWidget::NativeOnKeyDown(const FGeometry& InGeometry, c
 	{
 		return FReply::Handled();
 	}
+	if (InKeyEvent.GetKey() == EKeys::SpaceBar
+		&& HandleTutorial01GuideContinue())
+	{
+		return FReply::Handled();
+	}
 	return Super::NativeOnKeyDown(InGeometry, InKeyEvent);
 }
 
@@ -3583,6 +3616,7 @@ void UGameXXKBattleBoardWidget::RefreshFromState()
 	RefreshProgrammaticLayout();
 	RefreshProjectedUnitHuds();
 	RefreshUnitVisuals();
+	RefreshGuideTargets();
 
 	SetVisibility(bInBattle ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 }
@@ -3925,10 +3959,6 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
 
 bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 {
-	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Battle.SelectTargetedCard")))
-	{
-		return false;
-	}
 	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
@@ -3958,13 +3988,25 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 		RefreshProgrammaticLayout();
 		return false;
 	}
-	if (!Runtime.Deck.Hand.ContainsByPredicate([CardInstanceId](const FGameXXKCardInstance& Card)
-	{
-		return Card.InstanceId == CardInstanceId;
-	}))
+	const FGameXXKCardInstance* HandCard = Runtime.Deck.Hand.FindByPredicate(
+		[CardInstanceId](const FGameXXKCardInstance& Card)
+		{
+			return Card.InstanceId == CardInstanceId;
+		});
+	if (!HandCard)
 	{
 		LastCardInteractionError = TEXT("该卡已不在当前手牌中。");
 		RefreshProgrammaticLayout();
+		return false;
+	}
+	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
+	const FName SpecificAction = ResolveTutorial01CardSelectAction(HandCard->CardId);
+	const bool bLegacyActionAllowed = GuideRegistry.IsActionAllowed(
+		TEXT("Action.Battle.SelectTargetedCard"));
+	const bool bSpecificActionAllowed = !SpecificAction.IsNone()
+		&& GuideRegistry.IsActionAllowed(SpecificAction);
+	if (!bLegacyActionAllowed && !bSpecificActionAllowed)
+	{
 		return false;
 	}
 
@@ -3997,7 +4039,12 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 {
 	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
-	if (!GuideRegistry.IsActionAllowed(TEXT("Action.Battle.SelectLegalTarget"))
+	const FName SpecificTargetAction = ResolveTutorial01TargetAction(UnitId);
+	const bool bLegacyTargetAllowed = GuideRegistry.IsActionAllowed(
+		TEXT("Action.Battle.SelectLegalTarget"));
+	const bool bSpecificTargetAllowed = !SpecificTargetAction.IsNone()
+		&& GuideRegistry.IsActionAllowed(SpecificTargetAction);
+	if ((!bLegacyTargetAllowed && !bSpecificTargetAllowed)
 		|| !GuideRegistry.IsActionAllowed(TEXT("Action.Battle.CommitCard")))
 	{
 		return false;
@@ -4045,15 +4092,23 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 		return false;
 	}
 
+	const FName TutorialCompletionEvent =
+		ResolveTutorial01CompletionEvent(Result, UnitId);
 	ClearCardTargetingState();
 	LastCardInteractionError.Reset();
 	GuideRegistry.EmitEvent(TEXT("Event.Battle.LegalTargetSelected"));
 	GuideRegistry.EmitEvent(TEXT("Event.Battle.CardResolved"));
-	return QueueMutationPresentation(
+	DeferredTutorial01GuideEvent = TutorialCompletionEvent;
+	const bool bQueued = QueueMutationPresentation(
 		Before,
 		Result.DamageResults,
 		EBattlePresentationContinuation::FinalizeCardMutation,
 		Result.CardInstanceId);
+	if (!bQueued)
+	{
+		DeferredTutorial01GuideEvent = NAME_None;
+	}
+	return bQueued;
 }
 
 bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
@@ -4096,6 +4151,8 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 		return false;
 	}
 	LastCardInteractionError.Reset();
+	bTutorial01AwaitingPlayerTurnReady = Tutorial01GuideHost
+		&& Tutorial01GuideHost->IsStarted();
 	FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Battle.EndTurnResolved"));
 	const EBattlePresentationContinuation Continuation =
 		MutableState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy
@@ -4107,6 +4164,12 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 {
 	if (bBattleRetreatConfirmationOpen)
+	{
+		return false;
+	}
+	if (bEnabled
+		&& !FGameXXKGuideTargetRegistry::Get().IsActionAllowed(
+			TEXT("Action.Battle.EnableAuto")))
 	{
 		return false;
 	}
@@ -4122,6 +4185,10 @@ bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 		AutoBattleLabel->SetText(FText::FromString(
 			bEnabled ? TEXT("自动战斗：开") : TEXT("自动战斗：关")));
 	}
+	if (bEnabled)
+	{
+		FGameXXKGuideTargetRegistry::Get().EmitEvent(TutorialAutoEnabledEvent);
+	}
 	return true;
 }
 
@@ -4129,6 +4196,58 @@ bool UGameXXKBattleBoardWidget::IsAutoBattleEnabled() const
 {
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	return Subsystem && Subsystem->IsBattleAutoPlayEnabled();
+}
+
+bool UGameXXKBattleBoardWidget::StartTutorial01Guide(
+	FGameXXKGuideProgress& Progress,
+	UGameXXKGuideAsset& Asset,
+	FGameXXKTutorial01GuideFailed OnFailed)
+{
+	CancelTutorial01Guide();
+	if (Progress.Preference != EGameXXKGuidePreference::NewPlayer
+		|| !Tutorial01GuideOverlay)
+	{
+		return false;
+	}
+	RefreshProjectedUnitHuds();
+	RefreshUnitVisuals();
+	RefreshGuideTargets();
+	Tutorial01GuideAsset = &Asset;
+	Tutorial01GuideHost = NewObject<UGameXXKTutorial01GuideHost>(this);
+	Tutorial01GuideHost->Bind(
+		Progress,
+		FGameXXKGuideTargetRegistry::Get(),
+		*Tutorial01GuideOverlay,
+		Asset,
+		MoveTemp(OnFailed));
+	if (!Tutorial01GuideHost->Start())
+	{
+		Tutorial01GuideHost = nullptr;
+		Tutorial01GuideAsset = nullptr;
+		return false;
+	}
+	return true;
+}
+
+void UGameXXKBattleBoardWidget::CancelTutorial01Guide(const FString& Diagnostic)
+{
+	if (Tutorial01GuideHost)
+	{
+		Tutorial01GuideHost->Cancel(Diagnostic);
+	}
+	Tutorial01GuideHost = nullptr;
+	Tutorial01GuideAsset = nullptr;
+	DeferredTutorial01GuideEvent = NAME_None;
+	bTutorial01AwaitingPlayerTurnReady = false;
+	if (Tutorial01GuideOverlay)
+	{
+		Tutorial01GuideOverlay->DismissGuide();
+	}
+}
+
+bool UGameXXKBattleBoardWidget::HandleTutorial01GuideContinue()
+{
+	return Tutorial01GuideHost && Tutorial01GuideHost->HandleContinue();
 }
 
 void UGameXXKBattleBoardWidget::SetBattleTerminalInterceptor(
@@ -4475,6 +4594,11 @@ bool UGameXXKBattleBoardWidget::SubmitPendingHeroTaskSearchChoice(FName PickedIn
 
 bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscards(const TArray<FName>& DiscardedInstanceIds)
 {
+	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(
+		TEXT("Action.Battle.SubmitForcedDiscard")))
+	{
+		return false;
+	}
 	if (RejectBattleHudFixtureMutation() || RejectBattlePresentationMutation())
 	{
 		return false;
@@ -4533,10 +4657,16 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscards(const TArray<FName>&
 	}
 
 	LastCardInteractionError.Reset();
-	return QueueMutationPresentation(
+	DeferredTutorial01GuideEvent = TutorialForcedDiscardEvent;
+	const bool bQueued = QueueMutationPresentation(
 		Before,
 		FlattenResumedCardDamageResults(ResumedResults),
 		EBattlePresentationContinuation::FinalizeCardMutation);
+	if (!bQueued)
+	{
+		DeferredTutorial01GuideEvent = NAME_None;
+	}
+	return bQueued;
 }
 
 bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscard(const FName DiscardedInstanceId)
@@ -7223,6 +7353,21 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	{
 		HealingPowderButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleHealingPowderClicked);
 	}
+
+	Tutorial01GuideOverlay = WidgetTree->ConstructWidget<UGameXXKGuideOverlayWidget>(
+		UGameXXKGuideOverlayWidget::StaticClass(),
+		TEXT("BattleTutorial01GuideOverlay"));
+	if (Tutorial01GuideOverlay && BattleDesignStage)
+	{
+		Tutorial01GuideOverlay->SetVisibility(ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* GuideSlot = BattleDesignStage->AddChildToCanvas(Tutorial01GuideOverlay))
+		{
+			GuideSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+			GuideSlot->SetOffsets(FMargin(0.0f));
+			GuideSlot->SetAlignment(FVector2D::ZeroVector);
+			GuideSlot->SetZOrder(TutorialGuideOverlayZOrder);
+		}
+	}
 }
 
 UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FName ButtonName, FName ActionName)
@@ -7679,9 +7824,49 @@ void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
 	RefreshPartyQiWidgetForCanvasSize(CanvasSize);
 }
 
+void UGameXXKBattleBoardWidget::ClearTutorial01GuideTargets()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitHudWidget>>& Pair : ProjectedUnitHuds)
+	{
+		if (UGameXXKBattleUnitResourceWidget* Resource =
+			Pair.Value ? Pair.Value->GetResourceWidgetForGuide() : nullptr)
+		{
+			Registry.UnregisterTarget(
+				TEXT("Battle.Unit.Hero.Health"),
+				Resource->GetHealthRowForGuide());
+			Registry.UnregisterTarget(
+				TEXT("Battle.Unit.Hero.Mana"),
+				Resource->GetManaRowForGuide());
+		}
+	}
+	for (UButton* Button : EnemyIntentCardButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Enemy.Intent"), Button);
+	}
+	for (UButton* Button : HandCardButtons)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Hand.HengJianShouShi"), Button);
+		Registry.UnregisterTarget(TEXT("Battle.Hand.SuiYanJi"), Button);
+		Registry.UnregisterTarget(TEXT("Battle.Hand.FengShenBu"), Button);
+	}
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitTargetProxyButton>>& Pair : UnitTargetProxies)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Unit.Hero.Target"), Pair.Value);
+		Registry.UnregisterTarget(TEXT("Battle.Unit.Enemy.Target"), Pair.Value);
+	}
+	for (const TPair<FName, TObjectPtr<UGameXXKBattleUnitVisualWidget>>& Pair : UnitVisuals)
+	{
+		Registry.UnregisterTarget(TEXT("Battle.Unit.YueBai.Visual"), Pair.Value);
+	}
+	Registry.UnregisterTarget(TEXT("Battle.Pending.ForcedDiscard"), PendingChoicePanel);
+	Registry.UnregisterTarget(TEXT("Battle.AutoBattle"), AutoBattleButton);
+}
+
 void UGameXXKBattleBoardWidget::RefreshGuideTargets()
 {
 	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	ClearTutorial01GuideTargets();
 	if (PartyQiWidget)
 	{
 		Registry.RegisterWidgetTarget(TEXT("Battle.Hud.PartyQi"), PartyQiWidget);
@@ -7689,6 +7874,10 @@ void UGameXXKBattleBoardWidget::RefreshGuideTargets()
 	if (EndTurnButton)
 	{
 		Registry.RegisterWidgetTarget(TEXT("Battle.EndTurn"), EndTurnButton);
+	}
+	if (AutoBattleButton)
+	{
+		Registry.RegisterWidgetTarget(TEXT("Battle.AutoBattle"), AutoBattleButton);
 	}
 	for (UButton* Button : HandCardButtons)
 	{
@@ -7704,6 +7893,52 @@ void UGameXXKBattleBoardWidget::RefreshGuideTargets()
 	if (!State || State->Screen != EGameXXKScreen::Battle || !State->CardRun.bHasActiveCardBattle)
 	{
 		return;
+	}
+	if (UGameXXKBattleUnitHudWidget* HeroHud = ProjectedUnitHuds.FindRef(TutorialHeroUnitId))
+	{
+		if (UGameXXKBattleUnitResourceWidget* Resource = HeroHud->GetResourceWidgetForGuide())
+		{
+			Registry.RegisterWidgetTarget(
+				TEXT("Battle.Unit.Hero.Health"),
+				Resource->GetHealthRowForGuide());
+			Registry.RegisterWidgetTarget(
+				TEXT("Battle.Unit.Hero.Mana"),
+				Resource->GetManaRowForGuide());
+		}
+	}
+	for (UButton* IntentButton : EnemyIntentCardButtons)
+	{
+		if (IntentButton
+			&& IntentButton->GetVisibility() != ESlateVisibility::Collapsed
+			&& IntentButton->GetVisibility() != ESlateVisibility::Hidden)
+		{
+			Registry.RegisterWidgetTarget(TEXT("Battle.Enemy.Intent"), IntentButton);
+			break;
+		}
+	}
+	for (int32 SlotIndex = 0; SlotIndex < HandCardInstanceIds.Num() && SlotIndex < HandCardButtons.Num(); ++SlotIndex)
+	{
+		const FGameXXKCardInstance* HandCard =
+			State->CardRun.ActiveBattle.Deck.Hand.FindByPredicate(
+				[this, SlotIndex](const FGameXXKCardInstance& Card)
+				{
+					return HandCardInstanceIds.IsValidIndex(SlotIndex)
+						&& Card.InstanceId == HandCardInstanceIds[SlotIndex];
+				});
+		if (HandCard && HandCardButtons[SlotIndex])
+		{
+			const FName TargetId = HandCard->CardId == TutorialHengJianCardId
+				? FName(TEXT("Battle.Hand.HengJianShouShi"))
+				: HandCard->CardId == TutorialSuiYanCardId
+					? FName(TEXT("Battle.Hand.SuiYanJi"))
+					: HandCard->CardId == TutorialFengShenCardId
+						? FName(TEXT("Battle.Hand.FengShenBu"))
+						: NAME_None;
+			if (!TargetId.IsNone())
+			{
+				Registry.RegisterWidgetTarget(TargetId, HandCardButtons[SlotIndex]);
+			}
+		}
 	}
 	for (int32 SlotIndex = 0; SlotIndex < HandCardInstanceIds.Num() && SlotIndex < HandCardButtons.Num(); ++SlotIndex)
 	{
@@ -7724,6 +7959,40 @@ void UGameXXKBattleBoardWidget::RefreshGuideTargets()
 			break;
 		}
 	}
+	if (UGameXXKBattleUnitTargetProxyButton* HeroProxy =
+		UnitTargetProxies.FindRef(TutorialHeroUnitId))
+	{
+		Registry.RegisterWidgetTarget(TEXT("Battle.Unit.Hero.Target"), HeroProxy);
+	}
+	const FGameXXKCardCombatUnit* FirstLivingEnemy =
+		State->CardRun.ActiveBattle.Units.FindByPredicate(
+			[](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy;
+			});
+	if (FirstLivingEnemy)
+	{
+		if (UGameXXKBattleUnitTargetProxyButton* EnemyProxy =
+			UnitTargetProxies.FindRef(FirstLivingEnemy->UnitId))
+		{
+			Registry.RegisterWidgetTarget(TEXT("Battle.Unit.Enemy.Target"), EnemyProxy);
+		}
+	}
+	if (UGameXXKBattleUnitVisualWidget* YueBaiVisual =
+		UnitVisuals.FindRef(TutorialYueBaiUnitId))
+	{
+		Registry.RegisterWidgetTarget(TEXT("Battle.Unit.YueBai.Visual"), YueBaiVisual);
+	}
+	if (State->CardRun.ActiveBattle.Deck.PendingChoice.Kind
+			== EGameXXKCardPendingChoiceKind::ForcedDiscard
+		&& PendingChoicePanel
+		&& PendingChoicePanel->GetVisibility() != ESlateVisibility::Collapsed
+		&& PendingChoicePanel->GetVisibility() != ESlateVisibility::Hidden)
+	{
+		Registry.RegisterWidgetTarget(
+			TEXT("Battle.Pending.ForcedDiscard"),
+			PendingChoicePanel);
+	}
 	if (IsCardTargetingActive())
 	{
 		for (const FGameXXKCardTargetCandidateView& Candidate : PendingCardPreview.TargetRequest.CandidateViews)
@@ -7738,6 +8007,120 @@ void UGameXXKBattleBoardWidget::RefreshGuideTargets()
 				break;
 			}
 		}
+	}
+}
+
+void UGameXXKBattleBoardWidget::TickTutorial01Guide(const float DeltaSeconds)
+{
+	if (!Tutorial01GuideHost || !Tutorial01GuideHost->IsStarted())
+	{
+		return;
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (!State || !State->CardRun.bHasActiveCardBattle)
+	{
+		return;
+	}
+	const bool bPaused = GetWorld() && GetWorld()->IsPaused();
+	const bool bBattleBusy = IsBattlePresentationPending()
+		|| IsEnemyIntentPresentationActive();
+	Tutorial01GuideHost->Tick(
+		DeltaSeconds,
+		bPaused,
+		bBattleBusy,
+		State->CardRun.ActiveBattle.Phase);
+}
+
+FName UGameXXKBattleBoardWidget::ResolveTutorial01CardSelectAction(
+	const FName CardId) const
+{
+	if (CardId == TutorialHengJianCardId)
+	{
+		return TutorialHengJianSelectAction;
+	}
+	if (CardId == TutorialSuiYanCardId)
+	{
+		return TutorialSuiYanSelectAction;
+	}
+	if (CardId == TutorialFengShenCardId)
+	{
+		return TutorialFengShenSelectAction;
+	}
+	return NAME_None;
+}
+
+FName UGameXXKBattleBoardWidget::ResolveTutorial01TargetAction(
+	const FName UnitId) const
+{
+	if (UnitId == TutorialHeroUnitId)
+	{
+		return TutorialHeroTargetAction;
+	}
+	const FGameXXKCardTargetCandidateView* Candidate =
+		PendingCardPreview.TargetRequest.CandidateViews.FindByPredicate(
+			[UnitId](const FGameXXKCardTargetCandidateView& View)
+			{
+				return View.UnitId == UnitId;
+			});
+	return Candidate && Candidate->Side == EGameXXKCardTargetSide::Enemy
+		? TutorialEnemyTargetAction
+		: NAME_None;
+}
+
+FName UGameXXKBattleBoardWidget::ResolveTutorial01CompletionEvent(
+	const FGameXXKCardPlayResult& Result,
+	const FName TargetUnitId) const
+{
+	if (!Tutorial01GuideHost || !Tutorial01GuideHost->IsStarted())
+	{
+		return NAME_None;
+	}
+	if (Result.CardId == TutorialHengJianCardId
+		&& TargetUnitId == TutorialHeroUnitId)
+	{
+		return TutorialHengJianEvent;
+	}
+	if (Result.CardId == TutorialSuiYanCardId)
+	{
+		const FGameXXKCardTargetCandidateView* Candidate =
+			PendingCardPreview.TargetRequest.CandidateViews.FindByPredicate(
+				[TargetUnitId](const FGameXXKCardTargetCandidateView& View)
+				{
+					return View.UnitId == TargetUnitId;
+				});
+		if (Candidate && Candidate->Side == EGameXXKCardTargetSide::Enemy)
+		{
+			return TutorialSuiYanEvent;
+		}
+	}
+	if (Result.CardId == TutorialFengShenCardId
+		&& TargetUnitId == TutorialHeroUnitId
+		&& Result.bOpenedPendingChoice)
+	{
+		return TutorialFengShenEvent;
+	}
+	return NAME_None;
+}
+
+void UGameXXKBattleBoardWidget::EmitDeferredTutorial01GuideEvents()
+{
+	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
+	if (!DeferredTutorial01GuideEvent.IsNone())
+	{
+		const FName EventId = DeferredTutorial01GuideEvent;
+		DeferredTutorial01GuideEvent = NAME_None;
+		Registry.EmitEvent(EventId);
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if (bTutorial01AwaitingPlayerTurnReady
+		&& State
+		&& State->CardRun.bHasActiveCardBattle
+		&& State->CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
+	{
+		bTutorial01AwaitingPlayerTurnReady = false;
+		Registry.EmitEvent(TutorialPlayerTurnReadyEvent);
 	}
 }
 
@@ -9958,6 +10341,7 @@ bool UGameXXKBattleBoardWidget::ResolveAndRefreshCardBattleAfterMutation()
 	{
 		RefreshFromState();
 	}
+	EmitDeferredTutorial01GuideEvents();
 	return true;
 }
 

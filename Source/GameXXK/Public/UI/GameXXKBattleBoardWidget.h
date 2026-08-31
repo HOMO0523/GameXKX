@@ -6,6 +6,7 @@
 #include "GameXXKCardTypes.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKMVPRules.h"
+#include "Guide/GameXXKTutorial01GuideHost.h"
 #include "Math/Box2D.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
@@ -29,6 +30,8 @@ class UGameXXKBattleUnitHudWidget;
 class UGameXXKBattleUnitVisualWidget;
 class UGameXXKBattleBoardWidget;
 class UGameXXKCardOutcomePreviewWidget;
+class UGameXXKGuideAsset;
+class UGameXXKGuideOverlayWidget;
 
 DECLARE_DELEGATE_RetVal_OneParam(
 	bool,
@@ -344,6 +347,16 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Auto")
 	bool IsAutoBattleEnabled() const;
+	bool StartTutorial01Guide(
+		FGameXXKGuideProgress& Progress,
+		UGameXXKGuideAsset& Asset,
+		FGameXXKTutorial01GuideFailed OnFailed);
+	void CancelTutorial01Guide(const FString& Diagnostic = FString());
+	bool HandleTutorial01GuideContinue();
+	UGameXXKTutorial01GuideHost* GetTutorial01GuideHost() const
+	{
+		return Tutorial01GuideHost;
+	}
 	void SetBattleTerminalInterceptor(
 		FGameXXKBattleTerminalInterceptor InDelegate);
 	void ClearBattleTerminalInterceptor();
@@ -738,6 +751,14 @@ private:
 	void RefreshHandCards();
 	void RefreshPartyQiWidget();
 	void RefreshGuideTargets();
+	void ClearTutorial01GuideTargets();
+	void TickTutorial01Guide(float DeltaSeconds);
+	FName ResolveTutorial01CardSelectAction(FName CardId) const;
+	FName ResolveTutorial01TargetAction(FName UnitId) const;
+	FName ResolveTutorial01CompletionEvent(
+		const FGameXXKCardPlayResult& Result,
+		FName TargetUnitId) const;
+	void EmitDeferredTutorial01GuideEvents();
 	void RefreshPartyQiWidgetForCanvasSize(FVector2D CanvasSize);
 	FText ResolveProjectedUnitHudDisplayName(FName UnitId) const;
 	FBox2D ResolveExpandedHandRect(FVector2D CanvasSize) const;
@@ -965,6 +986,18 @@ private:
 	/** Existing card/status controls now share one z=20 container in the design stage. */
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuideOverlayWidget> Tutorial01GuideOverlay;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKTutorial01GuideHost> Tutorial01GuideHost;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuideAsset> Tutorial01GuideAsset;
+
+	FName DeferredTutorial01GuideEvent = NAME_None;
+	bool bTutorial01AwaitingPlayerTurnReady = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UScaleBox> BattleBackdropScaleBox;

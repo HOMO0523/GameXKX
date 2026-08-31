@@ -32,6 +32,8 @@ public:
 
 	bool PrepareForScreenSpaceEmbedding();
 	bool HasRuntimeWidgetTreeForTest() const;
+	UWidget* GetHealthRowForGuide() const;
+	UWidget* GetManaRowForGuide() const;
 
 	/** Read-only rendered-value seams used by the real-PIE HUD probe. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))

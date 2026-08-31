@@ -425,6 +425,7 @@ private:
 	bool StartTutorial01Battle();
 	bool HandleTutorial01BattleTerminal(EGameXXKCardBattlePhase Phase);
 	bool HandleTutorial01BattleExitRequested();
+	void HandleTutorial01GuideFailed(const FString& Diagnostic);
 	void RefreshTutorial01RouteProjection();
 	void ShowTutorial01Failure(const FText& Reason);
 	void DismissTutorial01Failure();

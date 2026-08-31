@@ -87,6 +87,54 @@ namespace
 			|| Value.Equals(TEXT("Defeat"), ESearchCase::IgnoreCase);
 	}
 
+	bool StabilizeTutorial01EnemyDurability(
+		FGameXXKRuntimeState& State,
+		FString& OutError)
+	{
+		FGameXXKCardBattleRuntime& Battle = State.CardRun.ActiveBattle;
+		const FGameXXKCardCombatUnit* Hero = Battle.Units.FindByPredicate(
+			[](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == TEXT("Player")
+					&& Unit.Side == EGameXXKCardTargetSide::Party;
+			});
+		if (!Hero)
+		{
+			OutError = TEXT("Tutorial 0-1 battle has no hero combat unit.");
+			return false;
+		}
+		const int32 DurabilityFloor = FMath::Max(120, Hero->Attack * 8);
+		int32 EnemyCount = 0;
+		for (FGameXXKCardCombatUnit& Unit : Battle.Units)
+		{
+			if (Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			++EnemyCount;
+			Unit.MaxHP = FMath::Max(Unit.MaxHP, DurabilityFloor);
+			Unit.HP = Unit.MaxHP;
+			Unit.bLiving = true;
+			if (FGameXXKBattleRuntimeUnit* LegacyEnemy =
+				State.ActiveBattleEnemies.FindByPredicate(
+					[&Unit](const FGameXXKBattleRuntimeUnit& Candidate)
+					{
+						return Candidate.Id == Unit.UnitId;
+					}))
+			{
+				LegacyEnemy->MaxHP = Unit.MaxHP;
+				LegacyEnemy->HP = Unit.HP;
+				LegacyEnemy->bDefeated = false;
+			}
+		}
+		if (EnemyCount == 0)
+		{
+			OutError = TEXT("Tutorial 0-1 battle has no enemy combat unit.");
+			return false;
+		}
+		return true;
+	}
+
 	FString NarrativeAssetStem(const FName StableId)
 	{
 		FString Stem(TEXT("DA_"));
@@ -2304,6 +2352,9 @@ bool AGameXXKMVPPlayerController::StartTutorial01BattleRuntimeForTest(
 	if (!MVPSubsystem->StartNarrativeEncounter(
 			TEXT("Encounter.Main.XuXiake.0-1"),
 			&Error)
+		|| !StabilizeTutorial01EnemyDurability(
+			MVPSubsystem->GetMutableRuntimeState(),
+			Error)
 		|| !TutorialSession->ArrangeDeterministicOpeningHand(
 			MVPSubsystem->GetMutableRuntimeState(),
 			&Error))
@@ -2464,6 +2515,33 @@ bool AGameXXKMVPPlayerController::StartTutorial01Battle()
 		ShowTutorial01Failure(FText::FromString(TEXT("0-1 战斗演出载入失败")));
 		return false;
 	}
+	if (TutorialSession->GetGuidePreference()
+		== EGameXXKGuidePreference::NewPlayer)
+	{
+		UGameXXKGuideAsset* GuideAsset = LoadObject<UGameXXKGuideAsset>(
+			nullptr,
+			TEXT("/Game/GameXXK/Narrative/Guides/DA_Guide_Battle_Tutorial01_NewPlayer.DA_Guide_Battle_Tutorial01_NewPlayer"));
+		if (!GuideAsset
+			|| !TutorialBoard->StartTutorial01Guide(
+				TutorialSession->GetMutableGuideProgress(),
+				*GuideAsset,
+				FGameXXKTutorial01GuideFailed::CreateUObject(
+					this,
+					&AGameXXKMVPPlayerController::HandleTutorial01GuideFailed)))
+		{
+			if (!Tutorial01ResultWidget
+				|| !Tutorial01ResultWidget->IsVisibleForTest())
+			{
+				ShowTutorial01Failure(
+					FText::FromString(TEXT("0-1 新手引导载入失败")));
+			}
+			return false;
+		}
+	}
+	else
+	{
+		TutorialBoard->CancelTutorial01Guide();
+	}
 	return true;
 }
 
@@ -2483,6 +2561,10 @@ bool AGameXXKMVPPlayerController::HandleTutorial01BattleTerminal(
 			Phase))
 	{
 		return false;
+	}
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->CancelTutorial01Guide(TEXT("Tutorial battle reached a terminal state."));
 	}
 	if (Phase == EGameXXKCardBattlePhase::Victory)
 	{
@@ -2513,8 +2595,28 @@ bool AGameXXKMVPPlayerController::HandleTutorial01BattleExitRequested()
 	{
 		return false;
 	}
+	if (BattleBoardWidget)
+	{
+		BattleBoardWidget->CancelTutorial01Guide(TEXT("Tutorial battle exit requested."));
+	}
 	ShowTutorial01Failure(FText::FromString(TEXT("教程战斗已暂停")));
 	return true;
+}
+
+void AGameXXKMVPPlayerController::HandleTutorial01GuideFailed(
+	const FString& Diagnostic)
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (UGameXXKTutorial01SessionSubsystem* TutorialSession = GameInstance
+		? GameInstance->GetSubsystem<UGameXXKTutorial01SessionSubsystem>()
+		: nullptr)
+	{
+		TutorialSession->MarkBattleDefeat();
+	}
+	ShowTutorial01Failure(FText::FromString(
+		Diagnostic.IsEmpty()
+			? TEXT("0-1 新手引导中断")
+			: Diagnostic));
 }
 
 void AGameXXKMVPPlayerController::ShowTutorial01Failure(const FText& Reason)
@@ -2572,6 +2674,7 @@ void AGameXXKMVPPlayerController::RetryTutorial01Battle()
 	DismissTutorial01Failure();
 	if (BattleBoardWidget)
 	{
+		BattleBoardWidget->CancelTutorial01Guide(TEXT("Tutorial battle retry."));
 		BattleBoardWidget->ClearBattleTerminalInterceptor();
 		BattleBoardWidget->ClearBattleExitInterceptor();
 	}
@@ -2607,6 +2710,7 @@ void AGameXXKMVPPlayerController::ReturnTutorial01ToTown(
 	DismissTutorial01Failure();
 	if (BattleBoardWidget)
 	{
+		BattleBoardWidget->CancelTutorial01Guide(TEXT("Tutorial returned to town."));
 		BattleBoardWidget->ClearBattleTerminalInterceptor();
 		BattleBoardWidget->ClearBattleExitInterceptor();
 	}

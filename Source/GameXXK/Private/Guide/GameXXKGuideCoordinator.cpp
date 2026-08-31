@@ -231,6 +231,12 @@ bool UGameXXKGuideCoordinator::CanExecuteAction(const FName ActionId) const
 	return true;
 }
 
+void UGameXXKGuideCoordinator::SuspendPresentation()
+{
+	ReleaseInputToken();
+	DismissOverlay();
+}
+
 void UGameXXKGuideCoordinator::Cancel(const FString& Diagnostic)
 {
 	if (Progress)

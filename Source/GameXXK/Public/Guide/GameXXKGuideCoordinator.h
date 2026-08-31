@@ -36,6 +36,7 @@ public:
 	bool HandleEvent(FName EventId, FString* OutError = nullptr);
 	bool RefreshTarget(FString* OutError = nullptr);
 	bool CanExecuteAction(FName ActionId) const;
+	void SuspendPresentation();
 
 	void Cancel(const FString& Diagnostic = FString());
 	void CancelForMapTravel();
