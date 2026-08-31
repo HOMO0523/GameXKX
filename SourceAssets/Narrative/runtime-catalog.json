@@ -1,5 +1,6 @@
 {
   "speakers": [
+    "Character.Hero",
     "Npc.TusiChief",
     "Npc.SongJinBao",
     "Npc.YueBai"
@@ -11,7 +12,9 @@
     "Outcome.OptionLeave",
     "Outcome.Task",
     "Outcome.Shop",
-    "Outcome.Leave"
+    "Outcome.Leave",
+    "Outcome.Tutorial.MapReady",
+    "Outcome.Tutorial.YueBaiFollowing"
   ],
   "characterIds": [
     "Character.Hero",
@@ -26,7 +29,9 @@
   "dialogueIds": [
     "Dialogue.Npc.TusiChief.Default",
     "Dialogue.Npc.SongJinBao.Default",
-    "Dialogue.Npc.YueBai.Default"
+    "Dialogue.Npc.YueBai.Default",
+    "Dialogue.Tutorial.CarriageNotice",
+    "Dialogue.Tutorial.YueBaiFirstMeeting"
   ],
   "slotIdsByStage": {
     "Stage.Town.NpcInteraction": []
@@ -36,6 +41,8 @@
   "outcomeIds": [
     "Outcome.Task",
     "Outcome.Shop",
-    "Outcome.Leave"
+    "Outcome.Leave",
+    "Outcome.Tutorial.MapReady",
+    "Outcome.Tutorial.YueBaiFollowing"
   ]
 }

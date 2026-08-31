@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "dialogueId": "Dialogue.Tutorial.YueBaiFirstMeeting",
+  "dialogueVersion": 1,
+  "entryNode": "food.yuebai.hungry",
+  "nodes": {
+    "food.yuebai.hungry": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.food.yuebai.hungry",
+      "text": "你……可有吃的？本座已经好几日没吃东西了。",
+      "next": "food.hero.tease"
+    },
+    "food.hero.tease": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.food.hero.tease",
+      "text": "你从地图里钻出来，第一件事就是讨饭？",
+      "next": "food.yuebai.ask"
+    },
+    "food.yuebai.ask": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.food.yuebai.ask",
+      "text": "……有便给些，没有便罢。",
+      "next": "food.hero.offer"
+    },
+    "food.hero.offer": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.food.hero.offer",
+      "text": "行了，拿去吧。就剩这点干粮，省着吃。",
+      "next": "food.yuebai.thanks"
+    },
+    "food.yuebai.thanks": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.food.yuebai.thanks",
+      "text": "多谢恩公。救命赠食之恩，本座定会报答。",
+      "next": "guide.yuebai.destination"
+    },
+    "guide.yuebai.destination": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.guide.yuebai.destination",
+      "text": "恩公欲往何处？",
+      "next": "guide.hero.tiantai"
+    },
+    "guide.hero.tiantai": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.guide.hero.tiantai",
+      "text": "天台山。听说前面有活干，运气好还能混口饭吃。",
+      "next": "guide.yuebai.map"
+    },
+    "guide.yuebai.map": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.guide.yuebai.map",
+      "text": "天台山……此图上正有一条路通往那里。",
+      "next": "guide.hero.read"
+    },
+    "guide.hero.read": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.guide.hero.read",
+      "text": "你看得懂这玩意？",
+      "next": "guide.yuebai.yes"
+    },
+    "guide.yuebai.yes": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.guide.yuebai.yes",
+      "text": "自然。",
+      "next": "guide.hero.ask"
+    },
+    "guide.hero.ask": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.guide.hero.ask",
+      "text": "那正好，我不识字。你替我认路，就算报恩了。",
+      "next": "guide.yuebai.agree"
+    },
+    "guide.yuebai.agree": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.guide.yuebai.agree",
+      "text": "……也罢。本座随你同行，替你指路。",
+      "next": "guide.hero.arrangement"
+    },
+    "guide.hero.arrangement": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.guide.hero.arrangement",
+      "text": "那说好了，我在前面走，你在后面指。",
+      "next": "guide.yuebai.reply"
+    },
+    "guide.yuebai.reply": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Npc.YueBai",
+      "textId": "tutorial.guide.yuebai.reply",
+      "text": "……恩公倒是安排得明白。",
+      "next": "end"
+    },
+    "end": {
+      "type": "end",
+      "outcomeId": "Outcome.Tutorial.YueBaiFollowing"
+    }
+  }
+}

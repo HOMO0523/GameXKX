@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "dialogueId": "Dialogue.Tutorial.CarriageNotice",
+  "dialogueVersion": 1,
+  "entryNode": "notice",
+  "nodes": {
+    "notice": {
+      "type": "line",
+      "presentation": "dialogue",
+      "speaker": "Character.Hero",
+      "textId": "tutorial.carriage.notice",
+      "text": "再往前就是天台山了……这是什么？",
+      "next": "end"
+    },
+    "end": {
+      "type": "end",
+      "outcomeId": "Outcome.Tutorial.MapReady"
+    }
+  }
+}
