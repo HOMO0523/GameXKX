@@ -70,6 +70,41 @@ void AGameXXKTownNpcCharacter::Tick(float DeltaSeconds)
 	RaiseRootToGroundedHeightIfNeeded();
 
 	AActor* Target = FollowTarget.Get();
+	if (bNarrativeFollowerActive)
+	{
+		if (!Target)
+		{
+			DismissNarrativeFollower();
+			UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+			return;
+		}
+		const FVector CurrentLocation = GetActorLocation();
+		const FVector TargetLocation = Target->GetActorLocation();
+		FVector ToTarget = TargetLocation - CurrentLocation;
+		ToTarget.Z = 0.0f;
+		const float DistanceToTarget = ToTarget.Size();
+		const bool bNeedsChase = DistanceToTarget > NarrativeFollowMaximumDistance;
+		const bool bNeedsRetreat = DistanceToTarget < NarrativeFollowMinimumDistance;
+		if (bNeedsChase || bNeedsRetreat)
+		{
+			const FVector Direction = ToTarget.IsNearlyZero()
+				? FVector::ForwardVector
+				: ToTarget.GetSafeNormal();
+			FVector DesiredLocation = TargetLocation - Direction * FollowDistance;
+			DesiredLocation.Z = CurrentLocation.Z;
+			const FVector NewLocation = DistanceToTarget > 1600.0f
+				? DesiredLocation
+				: FMath::VInterpConstantTo(
+					CurrentLocation,
+					DesiredLocation,
+					DeltaSeconds,
+					FollowSpeed);
+			SetActorLocation(NewLocation);
+		}
+		// YueBai glides while keeping her authored hover-idle presentation.
+		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+		return;
+	}
 	if (!bFollowerActive || !Target)
 	{
 		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
@@ -237,6 +272,10 @@ bool AGameXXKTownNpcCharacter::CanJoinParty() const
 
 void AGameXXKTownNpcCharacter::ActivateFollower(AActor* Target, float Distance)
 {
+	if (bNarrativeFollowerActive)
+	{
+		DismissNarrativeFollower();
+	}
 	FollowTarget = Target;
 	FollowDistance = FMath::Max(0.0f, Distance);
 	bFollowerActive = Target != nullptr;
@@ -269,6 +308,64 @@ AActor* AGameXXKTownNpcCharacter::GetFollowTarget() const
 float AGameXXKTownNpcCharacter::GetFollowDistance() const
 {
 	return FollowDistance;
+}
+
+void AGameXXKTownNpcCharacter::ActivateNarrativeFollower(
+	AActor* Target,
+	const float MinimumDistance,
+	const float TargetDistance,
+	const float MaximumDistance)
+{
+	DismissNarrativeFollower();
+	if (!Target)
+	{
+		return;
+	}
+	NarrativeFollowMinimumDistance = FMath::Max(0.0f, MinimumDistance);
+	NarrativeFollowMaximumDistance = FMath::Max(
+		NarrativeFollowMinimumDistance,
+		MaximumDistance);
+	FollowDistance = FMath::Clamp(
+		TargetDistance,
+		NarrativeFollowMinimumDistance,
+		NarrativeFollowMaximumDistance);
+	FollowTarget = Target;
+	bFollowerActive = false;
+	bNarrativeFollowerActive = true;
+	if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+	{
+		NarrativePreviousCapsuleCollision = Capsule->GetCollisionEnabled();
+		Capsule->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	if (InteractionArea)
+	{
+		NarrativePreviousInteractionCollision = InteractionArea->GetCollisionEnabled();
+		InteractionArea->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+	bNarrativeCollisionSnapshotValid = true;
+	UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+}
+
+void AGameXXKTownNpcCharacter::DismissNarrativeFollower()
+{
+	if (bNarrativeCollisionSnapshotValid)
+	{
+		if (UCapsuleComponent* Capsule = GetCapsuleComponent())
+		{
+			Capsule->SetCollisionEnabled(NarrativePreviousCapsuleCollision);
+		}
+		if (InteractionArea)
+		{
+			InteractionArea->SetCollisionEnabled(NarrativePreviousInteractionCollision);
+		}
+	}
+	bNarrativeCollisionSnapshotValid = false;
+	bNarrativeFollowerActive = false;
+	if (!bFollowerActive)
+	{
+		FollowTarget = nullptr;
+	}
+	UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
 }
 
 USphereComponent* AGameXXKTownNpcCharacter::GetInteractionArea() const

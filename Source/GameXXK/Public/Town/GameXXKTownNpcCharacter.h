@@ -63,6 +63,22 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	float GetFollowDistance() const;
 
+	void ActivateNarrativeFollower(
+		AActor* Target,
+		float MinimumDistance = 220.0f,
+		float TargetDistance = 260.0f,
+		float MaximumDistance = 300.0f);
+	void DismissNarrativeFollower();
+	bool IsNarrativeFollowerActive() const { return bNarrativeFollowerActive; }
+	float GetNarrativeFollowMinimumForTest() const
+	{
+		return NarrativeFollowMinimumDistance;
+	}
+	float GetNarrativeFollowMaximumForTest() const
+	{
+		return NarrativeFollowMaximumDistance;
+	}
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	USphereComponent* GetInteractionArea() const;
 
@@ -112,6 +128,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GameXXK|Town")
 	float FollowSpeed = 240.0f;
 
+	UPROPERTY(BlueprintReadOnly, Category = "GameXXK|Town|Narrative")
+	bool bNarrativeFollowerActive = false;
+
+	UPROPERTY(BlueprintReadOnly, Category = "GameXXK|Town|Narrative")
+	float NarrativeFollowMinimumDistance = 220.0f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "GameXXK|Town|Narrative")
+	float NarrativeFollowMaximumDistance = 300.0f;
+
 private:
 	void RefreshNarrativeInteractionMetadata();
 	void ConfigureStaticIdleVisual();
@@ -126,6 +151,12 @@ private:
 
 	UPROPERTY(Transient)
 	bool bLastInteractionSuccessful = false;
+
+	TEnumAsByte<ECollisionEnabled::Type> NarrativePreviousCapsuleCollision =
+		ECollisionEnabled::QueryAndPhysics;
+	TEnumAsByte<ECollisionEnabled::Type> NarrativePreviousInteractionCollision =
+		ECollisionEnabled::QueryOnly;
+	bool bNarrativeCollisionSnapshotValid = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "GameXXK|Interaction")
 	TObjectPtr<UGameXXKInteractableComponent> NarrativeInteraction;
