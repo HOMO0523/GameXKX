@@ -81,7 +81,7 @@ source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
 | B1 | 全部 600 个测试 | 中 | 全部 `IMPLEMENT_SIMPLE_AUTOMATION_TEST`，单旗标，无 Latent/超时/Disabled | 分 Smoke/Critical/Stress/Disabled + 超时守护 |
 | B2 | 75 个生产文件约 1,155 处 `*ForTest` | 高 | 测试 seam 进入生产 API 与渲染热路径（BattleBoard 287 处、MVPPlayerController 97 处） | 迁到独立 TestAPI 或至少 `#if WITH_DEV_AUTOMATION_TESTS` |
 | B3 | Tests 目录 | 高 | `MakeUnit` 39 文件、`MakeCard` 35、`BuildRuntime` 30 份复制粘贴 | 建公共 fixture/序列化库 |
-| B4 | UI 测试 | 高 | 无 NullRHI/Slate 真实渲染/像素级验收；关键 Widget 直接测试稀疏 | 补 NullRHI/PIE 截图验收（表现类委托 lunamax） |
+| B4 | UI 测试 | 高 | 无 NullRHI/Slate 真实渲染/像素级验收；关键 Widget 直接测试稀疏 | 补 NullRHI/PIE 截图验收，并按可见条件复核表现 |
 | B5 | `CardBattleBoardWidgetTest.cpp:2302,2359` 等 | 中 | 大量脆弱硬编码坐标/中文文案逐字断言 | 改为几何公式/容差/ID 断言 |
 | B6 | 迁移/路线测试 | 中 | 无 v1→v17 全矩阵，无三章连乘整局路线通关率模型 | 补迁移矩阵与路线 Monte Carlo |
 | B7 | Python 测试 | 高 | `--script-tests all` 22/84 失败：外部素材缺失、旧测试未随生产变更、GBK 编解码、MCP 测试混入 headless | 建 headless/asset-contract/mcp-live 三级标签，修复或降级 |
@@ -147,7 +147,7 @@ source_commit: e78be7c8078760b4ea4eee0e7382cf3a7c9294c5
 2. 公共 fixture 库（B3）；合并 39+35+30 份复制。
 3. 补覆盖缺口：CommandRouter、MVPWidgetBase、DungeonMap/WorldMap/Trade/CharacterPanel/QuestDialog/TownHud、InteractionComponent。
 4. 补迁移矩阵与整局路线通关率模型（B6，与台账 §6.3 合并）。
-5. 关键 Widget NullRHI/PIE 像素验收（表现类委托 lunamax）。
+5. 关键 Widget NullRHI/PIE 像素验收（按可见条件选择合适的复核方式）。
 6. Python 门禁：headless 全绿；asset-contract/mcp-live 按环境选择性跑；默认门禁从 3 个扩到 headless 子集。
 
 ### Phase 4 —— 资产与仓库治理（与玩法并行，需用户决策）

@@ -61,20 +61,20 @@ source_of_truth: docs/production/current-goal-acceptance.md
 
 - 每次 C++ / 规则 / UI 改动后按序跑:`git diff --check` → 冷 UBT → 聚焦 Automation(至少 `DesktopTraining`、`Training`、`UI.Battle.Status`、本轮改动桶)→ `scripts/test_default_2d_entry_config.py`。
 - 每周或每轮收尾跑一次真实 PIE:`scripts/gamexxk_real_play_flow_mcp.py` 的 2D 权威链路 + 窗口尺寸/原点矩阵(1280×720 / 1672×941 / 1920×1080)。
-- 表现类取证优先委托 lunamax(`~/.claude/skills/codex-vision/scripts/codex_vision.ps1 -Effort max`);本机该脚本不存在时,用确定性坐标合同 + 真实 OS 鼠标输入 + 三尺寸截图替代(2026-08-21 已采用),不把 NullRHI/HighResShot 黑图当证据。
+- 表现类取证按任务与现有证据选择合适的复核方式;确定性坐标合同、真实 OS 鼠标输入与三尺寸截图均可作为证据,不把 NullRHI/HighResShot 黑图当视觉证据。
 
 ### 3.6 WP-A —— Task 6 两层退出最终验收(短期最高优先,预计 2–4 天)
 
 **现状**:功能代码已提交,唯一缺口是最终真实 PIE/MCP 验收与三分辨率视觉证据(报告 `ok=false`,根因为 1672×941 请求被系统 DPI 0.8 钳制成 1556×884)。
 
-执行依据:`docs/production/2026-08-19-task6-two-level-exit-continuation-plan.md`(阶段 A–F 完整步骤)、`docs/superpowers/plans/2026-08-19-battle-retreat-route-abandon-controls.md` Task 6 复选框、`docs/production/2026-08-19-deepseek-handoff.md` §8。
+执行依据:`docs/production/2026-08-19-task6-two-level-exit-continuation-plan.md`(阶段 A–F 完整步骤)与 `docs/superpowers/plans/2026-08-19-battle-retreat-route-abandon-controls.md` Task 6 复选框。
 
 步骤:
 
 1. **修复/确认高分辨率取证**:检查 `scripts/gamexxk_real_play_flow_mcp.py::capture_resolution_matrix`、`PreviewWindowController.resize_preview_window_logical`、`Content/Python/gamexxk_probe_real_play_flow.py::_handle_high_res_screenshot`;最小 smoke 对三尺寸各截一张,记录 `requested / actual / dpi / logical_scale / transport / viewport_size`;优先尝试 PIE 内 `r.SetRes` + viewport 轮询,失败则记录环境 blocker,不改 JSON 假绿。
 2. **宽回归**:冷 UBT(§10)+ `run_mvp_test_suites.ps1`(Route.BattleRetreat、Route.Settlement、MVP.SaveGame、MVP.RouteMap、Integration.CardRoute、Integration.CardBattle、DesktopTraining.Workbench、Training)+ Python harness 115/115 口径 + `harness_state_validator.py --json`。
 3. **真实 PIE/MCP**:`python scripts/gamexxk_real_play_flow_mcp.py --two-level-exit-acceptance --timeout 600 --report Saved/HarnessReports/battle-retreat-route-abandon-real-flow.json`,核对全部 named checkpoints(取消 no-op → 确认恢复检查点 → 精英重试 → 奖励 → RouteMap 预览取消/确认 → 回 Town → fixture/存档清理)。
-4. **视觉证据与 Luna**:`Saved/VisualReview/20260819-battle-retreat-route-abandon/` 补齐两个弹窗三分辨率 PNG,覆盖工具栏可读、End Turn/Party Qi 不重叠、RouteMap 关闭按钮固定、弹窗居中不变形。
+4. **视觉证据复核**:`Saved/VisualReview/20260819-battle-retreat-route-abandon/` 补齐两个弹窗三分辨率 PNG,确认工具栏可读、End Turn/Party Qi 不重叠、RouteMap 关闭按钮固定、弹窗居中不变形。
 5. **文档与提交**:更新滚动指针、`2026-08-19-goal-progress-evidence.md`、Task 6 复选框;只提交本轮意图文件,绝不含 §12 保护清单。
 
 **验收**:新鲜 `ok=true` 报告(或明确环境 blocker)、三分辨率截图、冷 UBT/聚焦/Python/validator 全绿、`L_Main.umap` 与 `L_DesktopTrainingHUD.umap` 观测 hash 未因本轮改动变化。
@@ -90,7 +90,7 @@ source_of_truth: docs/production/current-goal-acceptance.md
 - 范围:约 `1200×108` 顶部挂机条 + 工作台主页面,按冻结分层 `BG_CharcoalInk / BG_MountainSilhouette / BG_Path / BG_Decor / FX_GroundShadow / Actors_ExistingSprites / HUD_RuntimeOnly` 交付。
 - 规则(用户已冻结):实机截图与 `Content/GameXXK/UI` 批准资源是唯一视觉基准;GPT 生图只允许无文字、无 UI、无角色/怪物的背景板;框体、按钮、图标、文字、角色、敌人必须复用/拆分现有资源,保持等比与 nearest-neighbor,禁止非等比拉伸。
 - 已登记候选:`SourceArt/UI/PSD/desktop-training-v1/generated/TrainingIdleStrip_Background_GPT_v003_Seamless_RGBA.png` 仍为 draft,不得当作 PSD 完成证据。
-- 验收:PSD 分层清单、导入后 UE 资产合同、1920×1080 与 2560×1440 整体工作台截图、Luna/用户视觉复核。
+- 验收:PSD 分层清单、导入后 UE 资产合同、1920×1080 与 2560×1440 整体工作台截图、可见条件复核。
 
 ### 4.2 ImageTruth 逐张确认队列(图标真源)
 
@@ -135,7 +135,7 @@ source_of_truth: docs/production/current-goal-acceptance.md
 2. **卡牌反馈与 tooltip**:延续 8-16 tooltip 热修口径,修读性/换行/药丸排序/跟随定位保持确定性;发现表现问题时先取证、再改,不盲改绘制公式(8-15 箭头教训)。
 3. **自动战斗可读性**:自动出牌、意图标记、敌方反击的节奏与高亮反馈;`自动战斗`/`关闭`/`回合结束` 三控件位置语义已冻结,不得重排。
 4. **目标选择**:箭头吸附已修复;继续验证治疗/敌方双方向、拖拽/悬停边界与 DPI 缩放。
-- 验收:每项聚焦 Automation + 真实 PIE 截图 + Luna max(或等价替代取证)。
+- 验收:每项聚焦 Automation + 真实 PIE 截图 + 按可见条件完成复核。
 
 ---
 
@@ -162,7 +162,7 @@ source_of_truth: docs/production/current-goal-acceptance.md
    - 外部源缺失(`063/064/065.png`、`057.png`、`036.png` 等在个人 Downloads 路径)→ 请用户提供或批准改源;
    - 保护地图 hash 漂移(`L_QingshanInn.umap` 7856… vs 合同 a363…)→ 需用户批准重定基线,禁止覆盖/回滚地图;
    - 未实现 golden-asset 合同(`qingshan_building_concepts` 的 `NotImplementedError`)→ 独立功能立项;
-   - 视觉合同漂移(`reference_faithful_task_ui_icons` 等)→ 委托 Luna/用户复核后再改图。
+   - 视觉合同漂移(`reference_faithful_task_ui_icons` 等)→ 先复核可见差异再改图。
 5. **一次性探针归档**:`Content/Python/_*.py` 历史探针沿用 Phase 1.3 模式移入 `_archive/`(仅移动,不删除),确认无生产脚本 import 后再归档。
 6. **仓库与源美术治理(需用户拍板)**:`SourceAssets/`、`SourceArt/` 约 5.4 GB 未跟踪——决策前只生成只读 manifest(路径/SHA256/大小),不做批量 `git add`;候选路线:Git LFS / 独立资产库 / 网盘+manifest。同时梳理 `.gitignore`(源美术、根 `Private/`/`Public/`、探针、生成物),使 `git status` 可读、误提交风险消除。
 
@@ -240,4 +240,4 @@ python scripts/gamexxk_real_play_flow_mcp.py --two-level-exit-acceptance --timeo
 - 不覆盖/回滚/重调:`L_Main.umap`、角色 Sprite、PaperZD、关卡放置、相机、HD2D Plane;工作树中用户的 `L_Main.umap` 与 `scripts/test_battle_camera_framing.py` 修改保持不动、不提交。
 - 不用 UnrealBridge / Live Coding / Hot Reload;C++ 验证走冷 UBT / `scripts/ue_tdd_pipeline.py`。
 - 提交用精确文件清单,禁 `git add -A` / `git add .`;`SourceAssets/`、`SourceArt/`、历史探针不批量入库。
-- 表现类问题先取证、优先委托 lunamax,不自行盲改绘制层公式。
+- 表现类问题先取证,再按任务选择复核方式,不自行盲改绘制层公式。

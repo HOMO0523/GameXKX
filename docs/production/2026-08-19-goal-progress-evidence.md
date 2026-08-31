@@ -45,7 +45,7 @@ source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
 
 1. 性能：`Saved/HarnessReports/desktop-training-hud-memory-20260819-113244.json` 的 HUD-only 编辑器测量为 20 秒 Working 3248.6/Private 4652.8 MiB、50 秒 Working 3387.1/Private 4759.6 MiB，仍远高于 TaskBarHero 参照和目标包络。当前只有 HUD-only 一组，空壳/静置/局内/3D 四组尚未完成；禁止切默认 2D 入口。回滚点是保留 `main` 的 3D 青山镇入口与隔离地图 `L_DesktopTrainingHUD`。
 2. 视觉交付：ImageTruth 已有 8 张，但顶部音量/邮件/商店/退出、Tab、历练节点状态、挑战/游历/重试、工具五模式和宝箱/局内专用图标仍未逐张确认；主 PSD 页面尚未完成最终可编辑交付。
-3. 真实 PIE：工作台/训练自动化为绿，但完整 1920×1080/2560×1440 截图、挑战三敌三我连续画布、字体与 tooltip 可读性和最终 Luna 证据仍缺。
+3. 真实 PIE：工作台/训练自动化为绿，但完整 1920×1080/2560×1440 截图、挑战三敌三我连续画布、字体与 tooltip 可读性和最终视觉证据仍缺。
 4. 玩法：普通/困难/地狱状态、失败重试、1-1 同配置、两精英与首领 tooltip 已有规则/聚焦测试，但最终实际路线图节点交互、天赋 read model/掉率配置、FIFO 箱批和工具真实配方仍未完成。
 
 ## 下一步
@@ -72,5 +72,5 @@ source_commit: 0fd4c889a825ab54c5813fab5c40829cd69ffdb5
 | `test_qingshan_building_concepts.py` | 明确未实现：golden asset、canonical JSON、prompt packet 三个函数仍抛 `NotImplementedError` | 独立功能 blocker，不归因于环境，不在桌面历练批次伪绿 |
 | `test_qingshan_dress_b1_config.py` | 与保护地图哈希同根因 | 等待批准重定基线 |
 | `test_qingshan_dress_b1_scripts.py` | 75 项中 74 通过；唯一错误与保护地图哈希同根因 | 等待批准重定基线 |
-| `test_reference_faithful_task_ui_icons.py` | 视觉合同漂移：`reward_coin/exp/token` aspect 变化，`reward_exp` 还发生缩小 | 表现类 blocker；需 Luna/用户视觉复核，不自动改图 |
+| `test_reference_faithful_task_ui_icons.py` | 视觉合同漂移：`reward_coin/exp/token` aspect 变化，`reward_exp` 还发生缩小 | 表现类 blocker；需先复核可见差异，不自动改图 |
 | `test_town_hud_psd_visual_contract.py` | 混合 blocker：外部 `036.png` 缺失，同时旧测试仍要求当前 Town HUD 已不引用的 `T_TownBackpack_ActionBlank` | 外部源与运行时合同拆开独立复核，不修改保护 UI 追求假绿 |

@@ -15,7 +15,6 @@
 - Runtime code or gameplay behavior changes remain subject to the project's normal code verification rules.
 
 ### Visual / Presentation Issues
-- 表现类问题(渲染错位、视觉校准、截图取证、界面呈现判断)优先**委托 lunamax** 处理:通过 `~/.claude/skills/codex-vision/scripts/codex_vision.ps1` 的 luna 视觉代理(`-Effort max`)截图/读图、定位与修复,不要自行盲改表现层代码。
 - 教训(2026-08-15 箭头错位事件):坐标换算链经数值验证自洽时,优先怀疑绘制端局部公式(如贴图锚点/旋转枢轴),而不是反复改换算;取证截图前排除用户鼠标移动与同类色块(如立绘与箭头同为橙色墨)的干扰;方向向量只参与旋转/法线,不得参与位置平移。
 - 浮动 PIE 的目标箭头只允许使用 viewport-client / SafeStage 本地坐标。禁止在 `NativePaint` 中用 `StageGeometry.LocalToAbsolute -> AllottedGeometry.AbsoluteToLocal` 跨 Geometry 往返；它会把浮动窗口桌面原点重新加到箭头与墨点上。
 

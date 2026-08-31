@@ -10,12 +10,11 @@ source_of_truth: docs/production/current-goal-acceptance.md
 # Task 6 两层退出控制收尾执行计划（2026-08-19）
 
 > 本文件是当前唯一待执行工作包的行动计划：完成“局内自动出牌 + 两层退出确认”的最终真实 PIE/MCP 验收、视觉取证、回归门禁与安全提交。执行依据仍是
-> `docs/superpowers/plans/2026-08-19-battle-retreat-route-abandon-controls.md` 的 Task 6 与
-> `docs/production/2026-08-19-deepseek-handoff.md`。
+> `docs/superpowers/plans/2026-08-19-battle-retreat-route-abandon-controls.md` 的 Task 6。
 
 ## 0. 已核实的当前状态（计划落笔时）
 
-- Git：根目录 `main`，HEAD `643ac9b docs: add DeepSeek handoff progress`，领先 `origin/main` 38 个提交；工作树 dirty，234 条 status 记录。
+- Git：根目录 `main`，HEAD `643ac9b`（交接进度文档提交），领先 `origin/main` 38 个提交；工作树 dirty，234 条 status 记录。
 - 已提交功能：v23 战斗入口检查点、Battle 原子退回、RouteMap 放弃结算预览/结算、BattleBoard 与 RouteMap 弹窗 UI（`7d2a9f2..69c5f4b`）均已完成。
 - 未提交的本轮 Task 6 改动（必须人工拆分提交，禁止 `git add -A`）：
   `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h/.cpp`、`Source/GameXXK/Private/Tests/GameXXKBattleRetreatTest.cpp`、`Content/Python/gamexxk_probe_real_play_flow.py`、`scripts/gamexxk_real_play_flow_mcp.py`、`scripts/test_gamexxk_real_play_flow_mcp.py`、`scripts/test_gamexxk_real_play_flow_probe.py`。
@@ -23,7 +22,7 @@ source_of_truth: docs/production/current-goal-acceptance.md
   `EE6E8394E40298321F2A57CC030018BDD1109EED36248597A7D7F414E387E46B`。
 - 编辑器：`UnrealEditor.exe` PID 33648 运行中，MCP `127.0.0.1:18765` 可用；`ue_mcp_smoke.py` 通过（68 toolsets，必需工具集齐，无 gamefeature error）；PIE 未运行；`save_dirty_packages` 返回 `dirty_before=[]`、`dirty_after=[]`。
 - 脚本门禁：`py_compile` 通过；`python -m unittest scripts.test_gamexxk_real_play_flow_mcp scripts.test_gamexxk_real_play_flow_probe scripts.test_ue_pie_lifecycle` = **115/115 OK**；`git diff --check` 退出码 0（仅 LF→CRLF 警告）。
-- `harness_state_validator.py --json` 退出码 0，但有 1 条 warning：`docs/production/2026-08-19-deepseek-handoff.md` 缺 `source_commit` frontmatter；计划内补齐。
+- `harness_state_validator.py --json` 退出码 0；文档迁移后仍需重跑并保持无 error。
 - 最新真实流报告 `Saved/HarnessReports/battle-retreat-route-abandon-real-flow.json`：**`ok=false`**。
   流程已完成：主菜单→Town→任务→路线图→fixture 变 Elite→开自动战斗→后台节流观察到 ≥2 次权威变化→关闭自动战斗→打开 Battle 弹窗。
   失败点：分辨率矩阵在 1280×720 通过后，请求 1672×941 得到 PNG `(1556, 884)`；
@@ -46,7 +45,7 @@ Task 6 只有同时满足下列条件才能标记完成：
 2. Battle 取消是严格 no-op；确认恢复进入前 current/index/HP/MP/visited/reachable、丢弃未领取奖励、精英仍可重试。
 3. RouteMap 取消是严格 no-op；预览 `永久金币 +4 / 强化石 +2`；确认精确结算一次并回 Town。
 4. 冷 UBT、聚焦/回归 Automation、Python harness、状态 validator 通过；已知历史 baseline 单独列出。
-5. 1280×720、1672×941、1920×1080 的 Battle/RouteMap 弹窗截图存在并通过 Luna max；若环境确实达不到某分辨率，必须记录实际分辨率与根因，明确保留 blocker，不伪造通过。
+5. 1280×720、1672×941、1920×1080 的 Battle/RouteMap 弹窗截图存在，并确认工具栏、按钮、弹窗位置和缩放符合下述视觉条件；若环境确实达不到某分辨率，必须记录实际分辨率与根因，明确保留 blocker，不伪造通过。
 6. `L_Main.umap` 保护 hash 未变；用户调过的地图、相机、HD2D plane、动画与源美术未被覆盖。
 7. 计划、滚动指针、证据日志更新；提交清单不含保护文件。
 
@@ -142,26 +141,17 @@ python scripts/gamexxk_real_play_flow_mcp.py --two-level-exit-acceptance --timeo
 
 失败时保留 JSON 事件、截图与 probe fingerprint，修复最小差异后重跑；绝不删除失败 JSON 后宣称通过。
 
-### 阶段 D：视觉证据与 Luna 复审
+### 阶段 D：视觉证据复审
 
 目标目录：`Saved/VisualReview/20260819-battle-retreat-route-abandon/`。
 
 - 生成并保留六张关键 PNG：Battle 弹窗与 RouteMap 弹窗 × 1280×720 / 1672×941 / 1920×1080。
 - 每张记录 `requested` / `actual` / DPI / transport / window geometry。
-- 按 `AGENTS.md` 的表现类问题规则，调用：
-
-```powershell
-& 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' -Effort max
-```
-
-- Luna 结论至少覆盖：右上角工具栏可读、不压标题/敌方意图；End Turn/Party Qi 不重叠；RouteMap 关闭按钮固定；两个弹窗居中且不变形；无拉伸/重复工作台战斗壳/新生成艺术。
-- 如环境无法达到 1672×941 或 1920×1080：保留 Luna 对可用分辨率（至少 1280×720）的审查，同时在报告中明确 blocker，不写“三分辨率通过”。
+- 使用适合当前证据的复核方式，至少确认：右上角工具栏可读、不压标题/敌方意图；End Turn/Party Qi 不重叠；RouteMap 关闭按钮固定；两个弹窗居中且不变形；无拉伸/重复工作台战斗壳/新生成艺术。
+- 如环境无法达到 1672×941 或 1920×1080：保留可用分辨率（至少 1280×720）的审查，同时在报告中明确 blocker，不写“三分辨率通过”。
 
 ### 阶段 E：证据文档与 validator 清零
 
-- 更新 `docs/production/2026-08-19-deepseek-handoff.md`：
-  - 补 `source_commit: 69c5f4b`（或最终 HEAD）；
-  - 把第 5/6/7 节替换为最新真实报告路径、计数与失败项。
 - 更新 `docs/production/current-goal-acceptance.md`：
   - 记录 Task 6 最终结论；若环境分辨率 blocker 未解除，写“两层退出功能部分验收，视觉三分辨率仍阻塞”。
 - 更新 `docs/production/2026-08-19-goal-progress-evidence.md` 的真实流/视觉/回归条目。
@@ -180,7 +170,6 @@ git add Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h `
   scripts/gamexxk_real_play_flow_mcp.py `
   scripts/test_gamexxk_real_play_flow_mcp.py `
   scripts/test_gamexxk_real_play_flow_probe.py `
-  docs/production/2026-08-19-deepseek-handoff.md `
   docs/production/current-goal-acceptance.md `
   docs/production/2026-08-19-goal-progress-evidence.md
 git diff --cached --name-only
