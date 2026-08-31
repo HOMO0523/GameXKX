@@ -9,6 +9,8 @@ RUNTIME_FILES = (
     "Source/GameXXK/Public/Prologue/GameXXKPrologueAftermathTypes.h",
     "Source/GameXXK/Public/Prologue/GameXXKPrologueAftermathRules.h",
     "Source/GameXXK/Private/Prologue/GameXXKPrologueAftermathRules.cpp",
+    "Source/GameXXK/Public/UI/GameXXKPrologueMapWidget.h",
+    "Source/GameXXK/Private/UI/GameXXKPrologueMapWidget.cpp",
 )
 FORBIDDEN_TOKENS = (
     "SetWindowsHookEx",
