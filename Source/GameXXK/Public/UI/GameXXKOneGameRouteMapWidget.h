@@ -145,6 +145,11 @@ struct GAMEXXK_API FGameXXKRouteMapSummaryView
 	bool bCapacityValid = false;
 };
 
+DECLARE_DELEGATE_RetVal_OneParam(
+	bool,
+	FGameXXKTransientRouteNodeExecuted,
+	int32);
+
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKOneGameRouteMapWidget : public UGameXXKMVPWidgetBase
 {
@@ -182,6 +187,19 @@ public:
 	void SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize);
 	float GetCurrentScrollOffset() const;
 	void RestoreScrollOffset(float InOffset);
+	void SetTransientRouteProjection(
+		const TArray<FGameXXKRouteMapNode>& Nodes,
+		const TArray<FGameXXKRouteMapEdge>& Edges,
+		const TMap<int32, FText>& Labels,
+		const FText& CompletionNotice,
+		const TSet<int32>& VisitedNodeIds,
+		const TSet<int32>& ReachableNodeIds,
+		FGameXXKTransientRouteNodeExecuted OnExecuted);
+	void ClearTransientRouteProjection();
+	bool IsUsingTransientRouteProjectionForTest() const;
+	bool IsOrdinaryRouteSummaryVisibleForTest() const;
+	bool IsTransientCompletionNoticeVisibleForTest() const;
+	FText GetTransientCompletionNoticeForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	bool IsOneGameRouteWidgetClassConfigured() const;
@@ -490,6 +508,12 @@ private:
 	TObjectPtr<UTextBlock> RouteCapacitySummaryText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UBorder> TransientCompletionNoticeBorder;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TransientCompletionNoticeText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<USizeBox> RouteContentSizeBox;
 
 	UPROPERTY(Transient)
@@ -579,6 +603,15 @@ private:
 
 	UPROPERTY(Transient)
 	int32 LastBuiltRouteLineCount = INDEX_NONE;
+
+	bool bUsingTransientRouteProjection = false;
+	TArray<FGameXXKRouteMapNode> TransientRouteNodes;
+	TArray<FGameXXKRouteMapEdge> TransientRouteEdges;
+	TMap<int32, FText> TransientRouteLabels;
+	TSet<int32> TransientVisitedNodeIds;
+	TSet<int32> TransientReachableNodeIds;
+	FText TransientCompletionNotice;
+	FGameXXKTransientRouteNodeExecuted TransientNodeExecutedDelegate;
 
 	UPROPERTY(Transient)
 	bool bLastBuiltUseOneGameBlueprintVisualWidgets = false;

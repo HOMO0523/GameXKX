@@ -294,7 +294,69 @@ void UGameXXKOneGameRouteMapWidget::NativeDestruct()
 	}
 	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteAbandonConfirmButton);
 	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteCloseChallengeButton);
+	ClearTransientRouteProjection();
 	Super::NativeDestruct();
+}
+
+void UGameXXKOneGameRouteMapWidget::SetTransientRouteProjection(
+	const TArray<FGameXXKRouteMapNode>& Nodes,
+	const TArray<FGameXXKRouteMapEdge>& Edges,
+	const TMap<int32, FText>& Labels,
+	const FText& CompletionNotice,
+	const TSet<int32>& VisitedNodeIds,
+	const TSet<int32>& ReachableNodeIds,
+	FGameXXKTransientRouteNodeExecuted OnExecuted)
+{
+	bUsingTransientRouteProjection = true;
+	TransientRouteNodes = Nodes;
+	TransientRouteEdges = Edges;
+	TransientRouteLabels = Labels;
+	TransientCompletionNotice = CompletionNotice;
+	TransientVisitedNodeIds = VisitedNodeIds;
+	TransientReachableNodeIds = ReachableNodeIds;
+	TransientNodeExecutedDelegate = MoveTemp(OnExecuted);
+	bHasRememberedRouteIdentity = false;
+	bHasAppliedInitialScrollOffset = false;
+}
+
+void UGameXXKOneGameRouteMapWidget::ClearTransientRouteProjection()
+{
+	bUsingTransientRouteProjection = false;
+	TransientRouteNodes.Reset();
+	TransientRouteEdges.Reset();
+	TransientRouteLabels.Reset();
+	TransientVisitedNodeIds.Reset();
+	TransientReachableNodeIds.Reset();
+	TransientCompletionNotice = FText::GetEmpty();
+	TransientNodeExecutedDelegate.Unbind();
+	bHasRememberedRouteIdentity = false;
+	bHasAppliedInitialScrollOffset = false;
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsUsingTransientRouteProjectionForTest() const
+{
+	return bUsingTransientRouteProjection;
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsOrdinaryRouteSummaryVisibleForTest() const
+{
+	return RouteSummaryBorder
+		&& RouteSummaryBorder->GetVisibility() != ESlateVisibility::Collapsed
+		&& RouteSummaryBorder->GetVisibility() != ESlateVisibility::Hidden;
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsTransientCompletionNoticeVisibleForTest() const
+{
+	return TransientCompletionNoticeBorder
+		&& TransientCompletionNoticeBorder->GetVisibility() != ESlateVisibility::Collapsed
+		&& TransientCompletionNoticeBorder->GetVisibility() != ESlateVisibility::Hidden;
+}
+
+FText UGameXXKOneGameRouteMapWidget::GetTransientCompletionNoticeForTest() const
+{
+	return TransientCompletionNoticeText
+		? TransientCompletionNoticeText->GetText()
+		: FText::GetEmpty();
 }
 
 FReply UGameXXKOneGameRouteMapWidget::NativeOnKeyDown(
@@ -564,10 +626,18 @@ void UGameXXKOneGameRouteMapWidget::RefreshFixedControls()
 {
 	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	const bool bCanShowClose = State
+	const bool bCanShowClose = !bUsingTransientRouteProjection && State
 		&& State->Screen == EGameXXKScreen::DungeonMap
 		&& State->bDungeonActive
 		&& State->bHasGeneratedRouteMap;
+	if (bUsingTransientRouteProjection && bRouteAbandonConfirmationOpen)
+	{
+		bRouteAbandonConfirmationOpen = false;
+		bRouteAbandonPreviewValid = false;
+		bRouteSettlementInProgress = false;
+		RouteAbandonPreview = FGameXXKRouteSettlementReceipt{};
+		RouteAbandonError.Reset();
+	}
 	if (State && State->Screen != EGameXXKScreen::DungeonMap && bRouteAbandonConfirmationOpen)
 	{
 		bRouteAbandonConfirmationOpen = false;
@@ -584,6 +654,24 @@ void UGameXXKOneGameRouteMapWidget::RefreshFixedControls()
 	if (RouteCloseChallengeButton)
 	{
 		RouteCloseChallengeButton->SetIsEnabled(bCanShowClose && !bRouteAbandonConfirmationOpen);
+	}
+	if (RouteSummaryBorder)
+	{
+		RouteSummaryBorder->SetVisibility(
+			bUsingTransientRouteProjection
+				? ESlateVisibility::Collapsed
+				: ESlateVisibility::SelfHitTestInvisible);
+	}
+	if (TransientCompletionNoticeText)
+	{
+		TransientCompletionNoticeText->SetText(TransientCompletionNotice);
+	}
+	if (TransientCompletionNoticeBorder)
+	{
+		TransientCompletionNoticeBorder->SetVisibility(
+			bUsingTransientRouteProjection && !TransientCompletionNotice.IsEmpty()
+				? ESlateVisibility::HitTestInvisible
+				: ESlateVisibility::Collapsed);
 	}
 	if (RouteScrollBox)
 	{
@@ -603,7 +691,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshFixedControls()
 
 bool UGameXXKOneGameRouteMapWidget::OpenRouteAbandonConfirmation()
 {
-	if (bRouteAbandonConfirmationOpen)
+	if (bUsingTransientRouteProjection || bRouteAbandonConfirmationOpen)
 	{
 		return false;
 	}
@@ -786,6 +874,30 @@ void UGameXXKOneGameRouteMapWidget::UpdateRouteSummary()
 TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNodes() const
 {
 	TArray<FGameXXKOneGameRouteNode> AdapterNodes;
+	if (bUsingTransientRouteProjection)
+	{
+		AdapterNodes.Reserve(TransientRouteNodes.Num());
+		for (const FGameXXKRouteMapNode& RouteNode : TransientRouteNodes)
+		{
+			FGameXXKOneGameRouteNode AdapterNode;
+			AdapterNode.CommandName = FName(*FString::Printf(
+				TEXT("Tutorial01.Node.%d"),
+				RouteNode.NodeId));
+			const FText* Label = TransientRouteLabels.Find(RouteNode.NodeId);
+			AdapterNode.Label = Label && !Label->IsEmpty()
+				? *Label
+				: RoomTypeLabel(MapRoomType(RouteNode.NodeKind));
+			AdapterNode.NodeKind = RouteNode.NodeKind;
+			AdapterNode.RoomType = MapRoomType(RouteNode.NodeKind);
+			AdapterNode.NodeIndex = RouteNode.NodeId;
+			AdapterNode.bVisited = TransientVisitedNodeIds.Contains(RouteNode.NodeId);
+			AdapterNode.bEnabled = !AdapterNode.bVisited
+				&& TransientReachableNodeIds.Contains(RouteNode.NodeId);
+			AdapterNode.NormalizedPosition = RouteNode.NormalizedPosition;
+			AdapterNodes.Add(MoveTemp(AdapterNode));
+		}
+		return AdapterNodes;
+	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const TArray<FGameXXKMVPRouteNodeDescriptor> RouteNodes = GameXXKMVPCommandRouter::BuildRouteMapNodes(Subsystem);
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -831,6 +943,35 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 	if (bRouteAbandonConfirmationOpen)
 	{
 		return false;
+	}
+	if (bUsingTransientRouteProjection)
+	{
+		const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+		const FGameXXKOneGameRouteNode* NodeById = Nodes.FindByPredicate(
+			[NodeId](const FGameXXKOneGameRouteNode& Node)
+			{
+				return Node.NodeIndex == NodeId;
+			});
+		if (!NodeById
+			|| !NodeById->bEnabled
+			|| NodeById->bVisited
+			|| !TransientNodeExecutedDelegate.IsBound())
+		{
+			return false;
+		}
+		const FGameXXKOneGameRouteNode Node = *NodeById;
+		const bool bExecuted = TransientNodeExecutedDelegate.Execute(NodeId);
+		if (bExecuted)
+		{
+			FGameXXKGuideTargetRegistry::Get().EmitEvent(
+				TEXT("Event.Route.NextNodeSelected"));
+			OnRouteNodeExecuted(Node);
+			if (!NotifyPlayerFlowStateChanged())
+			{
+				RefreshFromState();
+			}
+		}
+		return bExecuted;
 	}
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem)
@@ -1357,6 +1498,35 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText);
 		AddSummaryLine(TEXT("GameXXKRouteCapacitySummary"), RouteCapacitySummaryText);
 		UpdateRouteSummary();
+	}
+
+	if (RootOverlay && !TransientCompletionNoticeBorder)
+	{
+		TransientCompletionNoticeBorder = WidgetTree->ConstructWidget<UBorder>(
+			UBorder::StaticClass(),
+			TEXT("Tutorial01RouteCompletionNotice"));
+		TransientCompletionNoticeBorder->SetPadding(FMargin(26.0f, 12.0f));
+		TransientCompletionNoticeBorder->SetBrushColor(
+			FLinearColor(0.88f, 0.80f, 0.64f, 0.96f));
+		TransientCompletionNoticeBorder->SetVisibility(ESlateVisibility::Collapsed);
+		TransientCompletionNoticeText = WidgetTree->ConstructWidget<UTextBlock>(
+			UTextBlock::StaticClass(),
+			TEXT("Tutorial01RouteCompletionNoticeText"));
+		TransientCompletionNoticeText->SetJustification(ETextJustify::Center);
+		TransientCompletionNoticeText->SetColorAndOpacity(
+			FSlateColor(FLinearColor(0.12f, 0.08f, 0.04f, 1.0f)));
+		FSlateFontInfo NoticeFont = TransientCompletionNoticeText->GetFont();
+		NoticeFont.Size = 28;
+		NoticeFont.TypefaceFontName = TEXT("Bold");
+		TransientCompletionNoticeText->SetFont(NoticeFont);
+		TransientCompletionNoticeBorder->SetContent(TransientCompletionNoticeText);
+		if (UOverlaySlot* NoticeSlot =
+			RootOverlay->AddChildToOverlay(TransientCompletionNoticeBorder))
+		{
+			NoticeSlot->SetHorizontalAlignment(HAlign_Center);
+			NoticeSlot->SetVerticalAlignment(VAlign_Top);
+			NoticeSlot->SetPadding(FMargin(0.0f, 72.0f, 0.0f, 0.0f));
+		}
 	}
 
 	if (RootOverlay && !RouteCloseChallengeContainer)
@@ -2118,6 +2288,20 @@ int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteNodeCount(const TArray<FGam
 
 int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteLineCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const
 {
+	if (bUsingTransientRouteProjection)
+	{
+		int32 RenderedLineCount = 0;
+		const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+		for (const FGameXXKRouteMapEdge& Edge : TransientRouteEdges)
+		{
+			if (FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.FromNodeId)
+				&& FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.ToNodeId))
+			{
+				++RenderedLineCount;
+			}
+		}
+		return RenderedLineCount;
+	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	if (!State || !State->bHasGeneratedRouteMap)
@@ -2145,6 +2329,26 @@ bool UGameXXKOneGameRouteMapWidget::TryGetRenderedRouteEdge(
 {
 	if (LineIndex < 0)
 	{
+		return false;
+	}
+	if (bUsingTransientRouteProjection)
+	{
+		int32 RenderedLineIndex = 0;
+		const int32 RenderedNodeCount = GetRenderedRouteNodeCount(Nodes);
+		for (const FGameXXKRouteMapEdge& Edge : TransientRouteEdges)
+		{
+			if (!FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.FromNodeId)
+				|| !FindRenderedRouteNodeById(Nodes, RenderedNodeCount, Edge.ToNodeId))
+			{
+				continue;
+			}
+			if (RenderedLineIndex == LineIndex)
+			{
+				OutEdge = Edge;
+				return true;
+			}
+			++RenderedLineIndex;
+		}
 		return false;
 	}
 
