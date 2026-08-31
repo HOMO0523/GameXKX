@@ -84,7 +84,18 @@ namespace GameXXKGuideRulesPrivate
 		Candidate.bActive = true;
 		Candidate.GuideId = Asset.GuideId;
 		Candidate.StepId = Step->StepId;
-		Candidate.TargetId = Step->TargetId;
+		if (!Step->TargetId.IsNone())
+		{
+			Candidate.TargetIds.Add(Step->TargetId);
+		}
+		for (const FName AdditionalTargetId : Step->AdditionalTargetIds)
+		{
+			if (!AdditionalTargetId.IsNone())
+			{
+				Candidate.TargetIds.AddUnique(AdditionalTargetId);
+			}
+		}
+		Candidate.BubbleAnchorTargetId = Step->BubbleAnchorTargetId;
 		Candidate.InputPolicy = Step->InputPolicy;
 		Candidate.Text = Step->Text;
 		Candidate.AllowedActionIds = Step->AllowedActionIds;
@@ -243,9 +254,19 @@ bool FGameXXKGuideRules::HandleTargetUnavailable(
 	{
 		return SetError(OutError, TEXT("Active guide step does not exist."));
 	}
-	if (Step->InputPolicy != EGameXXKGuideInputPolicy::Forced || Step->TargetId != TargetId)
+	const bool bMatchesFocusTarget = Step->TargetId == TargetId
+		|| Step->AdditionalTargetIds.Contains(TargetId);
+	const bool bMatchesBubbleAnchor = Step->BubbleAnchorTargetId == TargetId;
+	if (Step->InputPolicy != EGameXXKGuideInputPolicy::Forced
+		|| (!bMatchesFocusTarget && !bMatchesBubbleAnchor))
 	{
 		return false;
+	}
+	if (Step->MissingTargetPolicy == EGameXXKGuideMissingTargetPolicy::AbortGuide)
+	{
+		return SetError(OutError, FString::Printf(
+			TEXT("Guide target unavailable and policy requires abort: %s"),
+			*TargetId.ToString()));
 	}
 
 	FGameXXKGuideProgress Candidate = InOutProgress;

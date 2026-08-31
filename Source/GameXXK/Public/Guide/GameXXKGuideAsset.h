@@ -17,6 +17,13 @@ enum class EGameXXKGuideInputPolicy : uint8
 };
 
 UENUM(BlueprintType)
+enum class EGameXXKGuideMissingTargetPolicy : uint8
+{
+	SkipStep,
+	AbortGuide
+};
+
+UENUM(BlueprintType)
 enum class EGameXXKGuidePreference : uint8
 {
 	Unset,
@@ -37,6 +44,16 @@ struct GAMEXXK_API FGameXXKGuideStepDefinition
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide")
 	FName TargetId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide")
+	TArray<FName> AdditionalTargetIds;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide")
+	FName BubbleAnchorTargetId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide")
+	EGameXXKGuideMissingTargetPolicy MissingTargetPolicy =
+		EGameXXKGuideMissingTargetPolicy::SkipStep;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Guide")
 	EGameXXKGuideInputPolicy InputPolicy = EGameXXKGuideInputPolicy::Soft;

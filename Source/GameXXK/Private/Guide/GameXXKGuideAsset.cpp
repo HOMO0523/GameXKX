@@ -63,10 +63,47 @@ EDataValidationResult UGameXXKGuideAsset::IsDataValid(FDataValidationContext& Co
 		{
 			AddError(FString::Printf(TEXT("Guide step has an unknown trigger event: %s"), *Step.StepId.ToString()));
 		}
-		if (Step.TargetId.IsNone()
-			|| !FGameXXKGuideTargetRegistry::IsKnownTargetId(Step.TargetId))
+		TSet<FName> FocusTargetIds;
+		if (!Step.TargetId.IsNone())
 		{
-			AddError(FString::Printf(TEXT("Guide step has an unknown target: %s"), *Step.StepId.ToString()));
+			if (!FGameXXKGuideTargetRegistry::IsKnownTargetId(Step.TargetId))
+			{
+				AddError(FString::Printf(TEXT("Guide step has an unknown target: %s"), *Step.StepId.ToString()));
+			}
+			FocusTargetIds.Add(Step.TargetId);
+		}
+		for (const FName AdditionalTargetId : Step.AdditionalTargetIds)
+		{
+			if (AdditionalTargetId.IsNone()
+				|| !FGameXXKGuideTargetRegistry::IsKnownTargetId(AdditionalTargetId))
+			{
+				AddError(FString::Printf(
+					TEXT("Guide step has an unknown additional target: %s"),
+					*Step.StepId.ToString()));
+				continue;
+			}
+			if (FocusTargetIds.Contains(AdditionalTargetId))
+			{
+				AddError(FString::Printf(
+					TEXT("Guide step has a duplicate focus target: %s"),
+					*Step.StepId.ToString()));
+				continue;
+			}
+			FocusTargetIds.Add(AdditionalTargetId);
+		}
+		if (!Step.BubbleAnchorTargetId.IsNone()
+			&& !FGameXXKGuideTargetRegistry::IsKnownTargetId(Step.BubbleAnchorTargetId))
+		{
+			AddError(FString::Printf(
+				TEXT("Guide step has an unknown bubble anchor: %s"),
+				*Step.StepId.ToString()));
+		}
+		if (Step.InputPolicy == EGameXXKGuideInputPolicy::Forced
+			&& FocusTargetIds.IsEmpty())
+		{
+			AddError(FString::Printf(
+				TEXT("Forced guide step requires at least one focus target: %s"),
+				*Step.StepId.ToString()));
 		}
 		if (Step.Text.IsEmpty())
 		{

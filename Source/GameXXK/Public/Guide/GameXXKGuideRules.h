@@ -23,7 +23,10 @@ struct GAMEXXK_API FGameXXKGuideOutput
 	FName StepId;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Guide")
-	FName TargetId;
+	TArray<FName> TargetIds;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Guide")
+	FName BubbleAnchorTargetId;
 
 	UPROPERTY(BlueprintReadOnly, Category = "Guide")
 	EGameXXKGuideInputPolicy InputPolicy = EGameXXKGuideInputPolicy::Soft;

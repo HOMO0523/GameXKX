@@ -47,6 +47,11 @@ void UGameXXKGuideCoordinator::SetPersistenceDelegate(FGameXXKGuidePersistenceDe
 	PersistenceDelegate = MoveTemp(InDelegate);
 }
 
+void UGameXXKGuideCoordinator::SetFaultDelegate(FGameXXKGuideCoordinatorFault InDelegate)
+{
+	FaultDelegate = MoveTemp(InDelegate);
+}
+
 bool UGameXXKGuideCoordinator::ApplyPreference(
 	const EGameXXKGuidePreference Preference,
 	FString* OutError)
@@ -100,6 +105,7 @@ bool UGameXXKGuideCoordinator::StartGuide(
 {
 	using namespace GameXXKGuideCoordinatorPrivate;
 	ClearError(OutError);
+	bFaultNotified = false;
 	if (!Progress || !Registry)
 	{
 		return SetError(OutError, TEXT("Guide coordinator is not bound."));
@@ -157,6 +163,7 @@ bool UGameXXKGuideCoordinator::ResumeGuide(UGameXXKGuideAsset& Asset, FString* O
 {
 	using namespace GameXXKGuideCoordinatorPrivate;
 	ClearError(OutError);
+	bFaultNotified = false;
 	if (!Progress || !Registry)
 	{
 		return SetError(OutError, TEXT("Guide coordinator is not bound."));
@@ -247,9 +254,14 @@ void UGameXXKGuideCoordinator::CancelForMapTravel()
 
 void UGameXXKGuideCoordinator::NotifyOverlayDestroyed()
 {
+	const bool bHadActivePresentation = bInputTokenHeld || ActiveAsset.IsValid();
 	Overlay.Reset();
 	ActiveAsset.Reset();
 	ReleaseInputToken();
+	if (bHadActivePresentation)
+	{
+		NotifyFault(TEXT("Guide overlay was destroyed during an active guide."));
+	}
 }
 
 bool UGameXXKGuideCoordinator::IsInputTokenHeld() const
@@ -297,24 +309,49 @@ bool UGameXXKGuideCoordinator::ResolveUnavailableForcedTargets(
 		{
 			return true;
 		}
-		FSlateRect TargetRect;
-		if (Registry && Registry->ResolveTargetRect(InOutOutput.TargetId, TargetRect))
+		TArray<FName> RequiredTargetIds = InOutOutput.TargetIds;
+		if (!InOutOutput.BubbleAnchorTargetId.IsNone())
 		{
-			return true;
+			RequiredTargetIds.AddUnique(InOutOutput.BubbleAnchorTargetId);
 		}
-		// A live widget may be registered one frame before Slate assigns non-zero
-		// geometry. That is pending layout, not a permanently missing target.
-		if (Registry && Registry->IsTargetRegistered(InOutOutput.TargetId))
+		UGameXXKGuideOverlayWidget* OverlayWidget = Overlay.Get();
+		FName MissingTargetId = NAME_None;
+		for (const FName TargetId : RequiredTargetIds)
+		{
+			FSlateRect TargetRect;
+			if (Registry && OverlayWidget
+				&& Registry->ResolveTargetRect(TargetId, *OverlayWidget, TargetRect))
+			{
+				continue;
+			}
+			// A live widget may be registered one frame before Slate assigns non-zero
+			// geometry. That is pending layout, not a permanently missing target.
+			if (Registry && Registry->IsTargetRegistered(TargetId))
+			{
+				continue;
+			}
+			MissingTargetId = TargetId;
+			break;
+		}
+		if (MissingTargetId.IsNone())
 		{
 			return true;
 		}
 		if (!FGameXXKGuideRules::HandleTargetUnavailable(
 			Asset,
-			InOutOutput.TargetId,
+			MissingTargetId,
 			InOutCandidate,
 			InOutOutput,
 			OutError))
 		{
+			const FString Diagnostic = OutError && !OutError->IsEmpty()
+				? *OutError
+				: FString::Printf(
+					TEXT("Guide target unavailable: %s"),
+					*MissingTargetId.ToString());
+			ReleaseInputToken();
+			DismissOverlay();
+			NotifyFault(Diagnostic);
 			return false;
 		}
 	}
@@ -330,13 +367,24 @@ void UGameXXKGuideCoordinator::PresentOutput(const FGameXXKGuideOutput& Output)
 		DismissOverlay();
 		return;
 	}
-	FSlateRect TargetRect;
-	if (!Registry->ResolveTargetRect(Output.TargetId, TargetRect))
+	if (Output.TargetIds.IsEmpty())
 	{
 		DismissOverlay();
 		return;
 	}
-	OverlayWidget->PresentGuide(Output, TargetRect);
+	TArray<FSlateRect> TargetRects;
+	TargetRects.Reserve(Output.TargetIds.Num());
+	for (const FName TargetId : Output.TargetIds)
+	{
+		FSlateRect TargetRect;
+		if (!Registry->ResolveTargetRect(TargetId, *OverlayWidget, TargetRect))
+		{
+			DismissOverlay();
+			return;
+		}
+		TargetRects.Add(TargetRect);
+	}
+	OverlayWidget->PresentGuide(Output, TargetRects[0]);
 	if (Output.InputPolicy == EGameXXKGuideInputPolicy::Forced)
 	{
 		AcquireInputToken();
@@ -362,5 +410,15 @@ void UGameXXKGuideCoordinator::DismissOverlay()
 	if (UGameXXKGuideOverlayWidget* OverlayWidget = Overlay.Get())
 	{
 		OverlayWidget->DismissGuide();
+	}
+}
+
+void UGameXXKGuideCoordinator::NotifyFault(const FString& Diagnostic)
+{
+	ReleaseInputToken();
+	if (!bFaultNotified && FaultDelegate.IsBound())
+	{
+		bFaultNotified = true;
+		FaultDelegate.Execute(Diagnostic);
 	}
 }

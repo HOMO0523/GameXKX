@@ -1,6 +1,7 @@
 #include "Guide/GameXXKGuideTargetRegistry.h"
 
 #include "Components/Widget.h"
+#include "Math/TransformCalculus2D.h"
 
 namespace GameXXKGuideTargetRegistryPrivate
 {
@@ -156,7 +157,7 @@ bool FGameXXKGuideTargetRegistry::RegisterWidgetTarget(
 	return RegisterTarget(
 		TargetId,
 		Widget,
-		[WeakWidget](FSlateRect& OutRect)
+		[WeakWidget](const UWidget& HostWidget, FSlateRect& OutRect)
 		{
 			const UWidget* LiveWidget = WeakWidget.Get();
 			if (!LiveWidget
@@ -166,15 +167,42 @@ bool FGameXXKGuideTargetRegistry::RegisterWidgetTarget(
 				return false;
 			}
 			const FGeometry& Geometry = LiveWidget->GetCachedGeometry();
+			const FGeometry& HostGeometry = HostWidget.GetCachedGeometry();
 			const FVector2D LocalSize = Geometry.GetLocalSize();
-			if (LocalSize.X <= 0.0f || LocalSize.Y <= 0.0f)
+			if (LocalSize.X <= 0.0f || LocalSize.Y <= 0.0f
+				|| HostGeometry.GetLocalSize().X <= 0.0f
+				|| HostGeometry.GetLocalSize().Y <= 0.0f)
 			{
 				return false;
 			}
-			const FVector2D Minimum = Geometry.LocalToAbsolute(FVector2D::ZeroVector);
-			const FVector2D Maximum = Geometry.LocalToAbsolute(LocalSize);
+			const FSlateRenderTransform TargetToHost = Concatenate(
+				Geometry.GetAccumulatedRenderTransform(),
+				Inverse(HostGeometry.GetAccumulatedRenderTransform()));
+			const FVector2D Minimum = TransformPoint(
+				TargetToHost,
+				FVector2D::ZeroVector);
+			const FVector2D Maximum = TransformPoint(TargetToHost, LocalSize);
 			OutRect = FSlateRect(Minimum.X, Minimum.Y, Maximum.X, Maximum.Y);
 			return true;
+		},
+		OutError);
+}
+
+bool FGameXXKGuideTargetRegistry::RegisterTarget(
+	const FName TargetId,
+	UWidget* Widget,
+	FGameXXKLegacyGuideTargetRectResolver RectResolver,
+	FString* OutError)
+{
+	return RegisterTarget(
+		TargetId,
+		Widget,
+		[LegacyResolver = MoveTemp(RectResolver)](
+			const UWidget& HostWidget,
+			FSlateRect& OutRect)
+		{
+			(void)HostWidget;
+			return LegacyResolver && LegacyResolver(OutRect);
 		},
 		OutError);
 }
@@ -190,7 +218,10 @@ void FGameXXKGuideTargetRegistry::UnregisterTarget(const FName TargetId, const U
 	}
 }
 
-bool FGameXXKGuideTargetRegistry::ResolveTargetRect(const FName TargetId, FSlateRect& OutRect)
+bool FGameXXKGuideTargetRegistry::ResolveTargetRect(
+	const FName TargetId,
+	const UWidget& HostWidget,
+	FSlateRect& OutRect)
 {
 	PruneStaleTargets();
 	FEntry* Entry = Entries.Find(TargetId);
@@ -199,7 +230,7 @@ bool FGameXXKGuideTargetRegistry::ResolveTargetRect(const FName TargetId, FSlate
 		return false;
 	}
 	FSlateRect Candidate;
-	if (!Entry->RectResolver(Candidate)
+	if (!Entry->RectResolver(HostWidget, Candidate)
 		|| !FMath::IsFinite(Candidate.Left)
 		|| !FMath::IsFinite(Candidate.Top)
 		|| !FMath::IsFinite(Candidate.Right)
@@ -211,6 +242,17 @@ bool FGameXXKGuideTargetRegistry::ResolveTargetRect(const FName TargetId, FSlate
 	}
 	OutRect = Candidate;
 	return true;
+}
+
+bool FGameXXKGuideTargetRegistry::ResolveTargetRect(
+	const FName TargetId,
+	FSlateRect& OutRect)
+{
+	PruneStaleTargets();
+	const FEntry* Entry = Entries.Find(TargetId);
+	const UWidget* TargetWidget = Entry ? Entry->Widget.Get() : nullptr;
+	return TargetWidget
+		&& ResolveTargetRect(TargetId, *TargetWidget, OutRect);
 }
 
 bool FGameXXKGuideTargetRegistry::IsTargetRegistered(const FName TargetId) const
@@ -279,6 +321,11 @@ void FGameXXKGuideTargetRegistry::ClearActionGate(const UObject* Owner)
 bool FGameXXKGuideTargetRegistry::IsActionAllowed(const FName ActionId) const
 {
 	return !ActionGateOwner.IsValid() || !ActionGate || ActionGate(ActionId);
+}
+
+bool FGameXXKGuideTargetRegistry::HasActionGate() const
+{
+	return ActionGateOwner.IsValid() && static_cast<bool>(ActionGate);
 }
 
 bool FGameXXKGuideTargetRegistry::IsKnownTargetId(const FName TargetId)

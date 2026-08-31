@@ -5,8 +5,10 @@
 
 #include "Components/TextBlock.h"
 #include "Guide/GameXXKGuideAsset.h"
+#include "Guide/GameXXKGuideCoordinator.h"
 #include "Guide/GameXXKGuideRules.h"
 #include "Guide/GameXXKGuideTargetRegistry.h"
+#include "UI/GameXXKGuideOverlayWidget.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -87,6 +89,8 @@ bool FGameXXKGuideRulesLifecycleTest::RunTest(const FString& Parameters)
 		FGameXXKGuideRules::TryStart(*Asset, TEXT("Event.Route.Opened"), Progress, Output, &Error));
 	TestEqual(TEXT("forced step active"), Progress.ActiveGuideStepId, FName(TEXT("forced")));
 	TestEqual(TEXT("forced output policy"), Output.InputPolicy, EGameXXKGuideInputPolicy::Forced);
+	TestEqual(TEXT("legacy single-target guide emits one-element target array"),
+		Output.TargetIds.Num(), 1);
 	TestFalse(TEXT("forced guide rejects unrelated action"),
 		FGameXXKGuideRules::CanExecuteAction(*Asset, Progress, TEXT("Action.Unrelated")));
 	TestTrue(TEXT("forced guide permits registered action"),
@@ -213,6 +217,190 @@ bool FGameXXKGuideTargetRegistryLifecycleTest::RunTest(const FString& Parameters
 	TestFalse(TEXT("wrong owner cannot clear semantic gate"), Registry.IsActionAllowed(TEXT("Action.Unrelated")));
 	Registry.ClearActionGate(First);
 	TestTrue(TEXT("owner clears semantic gate"), Registry.IsActionAllowed(TEXT("Action.Unrelated")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideMultiTargetOutputTest,
+	"GameXXK.Guide.Core.MultiTargetOutput",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideMultiTargetOutputTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKGuideRulesTestPrivate;
+	UGameXXKGuideAsset* Asset = MakeGuide();
+	FGameXXKGuideStepDefinition& Step = Asset->Steps[0];
+	Step.AdditionalTargetIds = {
+		TEXT("Battle.Hud.PartyQi"),
+		TEXT("Route.Tutorial.NextNode")};
+	Step.BubbleAnchorTargetId = TEXT("Battle.Hud.PartyQi");
+
+	FGameXXKGuideProgress Progress;
+	Progress.Preference = EGameXXKGuidePreference::NewPlayer;
+	FGameXXKGuideOutput Output;
+	FString Error;
+	TestTrue(TEXT("multi-target guide starts"),
+		FGameXXKGuideRules::TryStart(
+			*Asset,
+			TEXT("Event.Route.Opened"),
+			Progress,
+			Output,
+			&Error));
+	TestEqual(TEXT("primary plus one unique additional target"), Output.TargetIds.Num(), 2);
+	if (Output.TargetIds.Num() == 2)
+	{
+		TestEqual(TEXT("primary target remains first"),
+			Output.TargetIds[0], FName(TEXT("Route.Tutorial.NextNode")));
+		TestEqual(TEXT("additional target follows primary"),
+			Output.TargetIds[1], FName(TEXT("Battle.Hud.PartyQi")));
+	}
+	TestEqual(TEXT("bubble anchor projects independently"),
+		Output.BubbleAnchorTargetId, FName(TEXT("Battle.Hud.PartyQi")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideMultiTargetValidationTest,
+	"GameXXK.Guide.Core.MultiTargetValidation",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideMultiTargetValidationTest::RunTest(const FString& Parameters)
+{
+#if WITH_EDITOR
+	using namespace GameXXKGuideRulesTestPrivate;
+	UGameXXKGuideAsset* Valid = MakeGuide();
+	Valid->Steps[0].AdditionalTargetIds = {TEXT("Battle.Hud.PartyQi")};
+	Valid->Steps[0].BubbleAnchorTargetId = TEXT("Battle.Hud.PartyQi");
+	FDataValidationContext ValidContext;
+	TestEqual(TEXT("known unique multi-target guide validates"),
+		Valid->IsDataValid(ValidContext), EDataValidationResult::Valid);
+
+	UGameXXKGuideAsset* Duplicate = MakeGuide();
+	Duplicate->Steps[0].AdditionalTargetIds = {
+		TEXT("Battle.Hud.PartyQi"),
+		TEXT("Battle.Hud.PartyQi")};
+	FDataValidationContext DuplicateContext;
+	TestEqual(TEXT("duplicate additional targets reject"),
+		Duplicate->IsDataValid(DuplicateContext), EDataValidationResult::Invalid);
+
+	UGameXXKGuideAsset* UnknownAnchor = MakeGuide();
+	UnknownAnchor->Steps[0].BubbleAnchorTargetId = TEXT("Battle.Unknown.Anchor");
+	FDataValidationContext UnknownAnchorContext;
+	TestEqual(TEXT("unknown bubble anchor rejects"),
+		UnknownAnchor->IsDataValid(UnknownAnchorContext), EDataValidationResult::Invalid);
+
+	UGameXXKGuideAsset* NoFocus = MakeGuide();
+	NoFocus->Steps[0].TargetId = NAME_None;
+	NoFocus->Steps[0].AdditionalTargetIds.Reset();
+	FDataValidationContext NoFocusContext;
+	TestEqual(TEXT("forced step without focus target rejects"),
+		NoFocus->IsDataValid(NoFocusContext), EDataValidationResult::Invalid);
+#endif
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideAbortMissingTargetTest,
+	"GameXXK.Guide.Core.AbortMissingTargetIsAtomic",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideAbortMissingTargetTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKGuideRulesTestPrivate;
+	UGameXXKGuideAsset* Asset = MakeGuide();
+	Asset->Steps[0].MissingTargetPolicy = EGameXXKGuideMissingTargetPolicy::AbortGuide;
+	FGameXXKGuideProgress Progress;
+	Progress.Preference = EGameXXKGuidePreference::NewPlayer;
+	FGameXXKGuideOutput Output;
+	FString Error;
+	TestTrue(TEXT("abort-policy guide starts"),
+		FGameXXKGuideRules::TryStart(
+			*Asset,
+			TEXT("Event.Route.Opened"),
+			Progress,
+			Output,
+			&Error));
+	const FName StepBefore = Progress.ActiveGuideStepId;
+	TestFalse(TEXT("abort policy rejects a missing target"),
+		FGameXXKGuideRules::HandleTargetUnavailable(
+			*Asset,
+			TEXT("Route.Tutorial.NextNode"),
+			Progress,
+			Output,
+			&Error));
+	TestTrue(TEXT("abort policy reports the missing target"),
+		Error.Contains(TEXT("Route.Tutorial.NextNode")));
+	TestEqual(TEXT("abort policy does not advance"), Progress.ActiveGuideStepId, StepBefore);
+	TestFalse(TEXT("abort policy does not complete the active step"),
+		Progress.CompletedGuideStepIds.Contains(StepBefore));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideHostLocalRegistryTest,
+	"GameXXK.Guide.Core.HostLocalTargetRegistry",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideHostLocalRegistryTest::RunTest(const FString& Parameters)
+{
+	FGameXXKGuideTargetRegistry Registry;
+	UTextBlock* Target = NewObject<UTextBlock>();
+	UTextBlock* Host = NewObject<UTextBlock>();
+	bool bSawExpectedHost = false;
+	const FSlateRect Expected(15.0f, 25.0f, 115.0f, 75.0f);
+	TestTrue(TEXT("host-local resolver registers"), Registry.RegisterTarget(
+		TEXT("Route.Tutorial.NextNode"),
+		Target,
+		[Host, Expected, &bSawExpectedHost](const UWidget& ResolverHost, FSlateRect& OutRect)
+		{
+			bSawExpectedHost = &ResolverHost == Host;
+			OutRect = Expected;
+			return true;
+		}));
+	FSlateRect Resolved;
+	TestTrue(TEXT("host-local resolver receives overlay host"),
+		Registry.ResolveTargetRect(TEXT("Route.Tutorial.NextNode"), *Host, Resolved));
+	TestTrue(TEXT("resolver observed the exact host"), bSawExpectedHost);
+	TestEqual(TEXT("host-local left is preserved"), Resolved.Left, Expected.Left);
+	TestFalse(TEXT("registry starts without action gate"), Registry.HasActionGate());
+	Registry.SetActionGate(Target, [](const FName ActionId) { return true; });
+	TestTrue(TEXT("registry reports an owned action gate"), Registry.HasActionGate());
+	Registry.ClearActionGate(Target);
+	TestFalse(TEXT("clearing owner releases action gate"), Registry.HasActionGate());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideCoordinatorFaultTest,
+	"GameXXK.Guide.Core.CoordinatorFaultReleasesToken",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideCoordinatorFaultTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKGuideRulesTestPrivate;
+	UGameXXKGuideAsset* Asset = MakeGuide();
+	Asset->Steps[0].MissingTargetPolicy = EGameXXKGuideMissingTargetPolicy::AbortGuide;
+	UGameXXKGuideOverlayWidget* Overlay = NewObject<UGameXXKGuideOverlayWidget>();
+	Overlay->TakeWidget();
+	FGameXXKGuideTargetRegistry Registry;
+	FGameXXKGuideProgress Progress;
+	Progress.Preference = EGameXXKGuidePreference::NewPlayer;
+	UGameXXKGuideCoordinator* Coordinator = NewObject<UGameXXKGuideCoordinator>();
+	Coordinator->Bind(Progress, Registry, Overlay);
+	int32 FaultCount = 0;
+	bool bTokenHeldAtFault = true;
+	Coordinator->SetFaultDelegate(FGameXXKGuideCoordinatorFault::CreateLambda(
+		[Coordinator, &FaultCount, &bTokenHeldAtFault](const FString& Diagnostic)
+		{
+			++FaultCount;
+			bTokenHeldAtFault = Coordinator->IsInputTokenHeld();
+		}));
+	FString Error;
+	TestFalse(TEXT("abort-policy missing target fails start"),
+		Coordinator->StartGuide(*Asset, TEXT("Event.Route.Opened"), &Error));
+	TestEqual(TEXT("missing target emits one coordinator fault"), FaultCount, 1);
+	TestFalse(TEXT("fault delegate runs after token release"), bTokenHeldAtFault);
+	TestFalse(TEXT("missing target leaves no input token"), Coordinator->IsInputTokenHeld());
 	return true;
 }
 
