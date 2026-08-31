@@ -384,7 +384,21 @@ void UGameXXKGuideCoordinator::PresentOutput(const FGameXXKGuideOutput& Output)
 		}
 		TargetRects.Add(TargetRect);
 	}
-	OverlayWidget->PresentGuide(Output, TargetRects[0]);
+	TOptional<FSlateRect> BubbleAnchorRect;
+	if (!Output.BubbleAnchorTargetId.IsNone())
+	{
+		FSlateRect ResolvedBubbleAnchor;
+		if (!Registry->ResolveTargetRect(
+				Output.BubbleAnchorTargetId,
+				*OverlayWidget,
+				ResolvedBubbleAnchor))
+		{
+			DismissOverlay();
+			return;
+		}
+		BubbleAnchorRect = ResolvedBubbleAnchor;
+	}
+	OverlayWidget->PresentGuide(Output, TargetRects, BubbleAnchorRect);
 	if (Output.InputPolicy == EGameXXKGuideInputPolicy::Forced)
 	{
 		AcquireInputToken();

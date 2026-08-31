@@ -1,14 +1,24 @@
 #include "UI/GameXXKGuideOverlayWidget.h"
 
 #include "Blueprint/WidgetTree.h"
-#include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
-#include "Components/TextBlock.h"
+#include "Rendering/DrawElements.h"
+#include "Styling/SlateBrush.h"
+#include "UI/GameXXKBattleGuideBubbleWidget.h"
 
 namespace GameXXKGuideOverlayWidgetPrivate
 {
-	void Place(UCanvasPanel* Canvas, UWidget* Widget, const FVector2D Position, const FVector2D Size, const int32 ZOrder)
+	constexpr float DimAlpha = 0.56f;
+	constexpr float OutlineThickness = 3.0f;
+	const FVector2D DefaultHostSize(1920.0f, 1080.0f);
+
+	void Place(
+		UCanvasPanel* Canvas,
+		UWidget* Widget,
+		const FVector2D Position,
+		const FVector2D Size,
+		const int32 ZOrder)
 	{
 		if (UCanvasPanelSlot* Slot = Canvas ? Canvas->AddChildToCanvas(Widget) : nullptr)
 		{
@@ -16,6 +26,55 @@ namespace GameXXKGuideOverlayWidgetPrivate
 			Slot->SetSize(Size);
 			Slot->SetZOrder(ZOrder);
 		}
+	}
+
+	TArray<FSlateRect> ClampCutouts(
+		const FVector2D HostSize,
+		const TArray<FSlateRect>& Cutouts,
+		const float Padding)
+	{
+		TArray<FSlateRect> Result;
+		if (HostSize.X <= 0.0f || HostSize.Y <= 0.0f)
+		{
+			return Result;
+		}
+		for (const FSlateRect& Cutout : Cutouts)
+		{
+			const FSlateRect Candidate(
+				FMath::Clamp(Cutout.Left - Padding, 0.0f, HostSize.X),
+				FMath::Clamp(Cutout.Top - Padding, 0.0f, HostSize.Y),
+				FMath::Clamp(Cutout.Right + Padding, 0.0f, HostSize.X),
+				FMath::Clamp(Cutout.Bottom + Padding, 0.0f, HostSize.Y));
+			if (Candidate.Right > Candidate.Left
+				&& Candidate.Bottom > Candidate.Top)
+			{
+				Result.Add(Candidate);
+			}
+		}
+		return Result;
+	}
+
+	void PaintRect(
+		FSlateWindowElementList& OutDrawElements,
+		const FGeometry& Geometry,
+		const int32 Layer,
+		const FSlateRect& Rect,
+		const FSlateBrush& Brush)
+	{
+		const FVector2D Size(Rect.Right - Rect.Left, Rect.Bottom - Rect.Top);
+		if (Size.X <= 0.0f || Size.Y <= 0.0f)
+		{
+			return;
+		}
+		FSlateDrawElement::MakeBox(
+			OutDrawElements,
+			Layer,
+			Geometry.ToPaintGeometry(
+				Size,
+				FSlateLayoutTransform(FVector2D(Rect.Left, Rect.Top))),
+			&Brush,
+			ESlateDrawEffect::None,
+			FLinearColor::White);
 	}
 }
 
@@ -34,70 +93,201 @@ void UGameXXKGuideOverlayWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+int32 UGameXXKGuideOverlayWidget::NativePaint(
+	const FPaintArgs& Args,
+	const FGeometry& AllottedGeometry,
+	const FSlateRect& MyCullingRect,
+	FSlateWindowElementList& OutDrawElements,
+	const int32 LayerId,
+	const FWidgetStyle& InWidgetStyle,
+	const bool bParentEnabled) const
+{
+	using namespace GameXXKGuideOverlayWidgetPrivate;
+	int32 ChildLayer = LayerId;
+	if (bGuideVisible && !CurrentTargetRects.IsEmpty())
+	{
+		const FVector2D HostSize = AllottedGeometry.GetLocalSize();
+		const TArray<FSlateRect> PaddedCutouts =
+			ClampCutouts(HostSize, CurrentTargetRects, 6.0f);
+		if (CurrentOutput.InputPolicy == EGameXXKGuideInputPolicy::Forced)
+		{
+			FSlateBrush DimBrush;
+			DimBrush.DrawAs = ESlateBrushDrawType::Box;
+			DimBrush.TintColor = FSlateColor(
+				FLinearColor(0.0f, 0.0f, 0.0f, DimAlpha));
+			for (const FSlateRect& Region : BuildDimRegions(HostSize, CurrentTargetRects, 6.0f))
+			{
+				PaintRect(OutDrawElements, AllottedGeometry, ChildLayer, Region, DimBrush);
+			}
+			++ChildLayer;
+		}
+
+		FSlateBrush OutlineBrush;
+		OutlineBrush.DrawAs = ESlateBrushDrawType::Box;
+		OutlineBrush.TintColor = FSlateColor(
+			FLinearColor(0.16f, 0.62f, 0.78f, 0.96f));
+		for (const FSlateRect& Cutout : PaddedCutouts)
+		{
+			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
+				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Right, Cutout.Top + OutlineThickness), OutlineBrush);
+			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
+				FSlateRect(Cutout.Left, Cutout.Bottom - OutlineThickness, Cutout.Right, Cutout.Bottom), OutlineBrush);
+			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
+				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Left + OutlineThickness, Cutout.Bottom), OutlineBrush);
+			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
+				FSlateRect(Cutout.Right - OutlineThickness, Cutout.Top, Cutout.Right, Cutout.Bottom), OutlineBrush);
+		}
+		++ChildLayer;
+	}
+	return Super::NativePaint(
+		Args,
+		AllottedGeometry,
+		MyCullingRect,
+		OutDrawElements,
+		ChildLayer,
+		InWidgetStyle,
+		bParentEnabled);
+}
+
 void UGameXXKGuideOverlayWidget::PresentGuide(
 	const FGameXXKGuideOutput& Output,
 	const FSlateRect& TargetRect)
 {
+	PresentGuide(Output, TArray<FSlateRect>{TargetRect}, TOptional<FSlateRect>());
+}
+
+void UGameXXKGuideOverlayWidget::PresentGuide(
+	const FGameXXKGuideOutput& Output,
+	const TArray<FSlateRect>& LocalTargetRects,
+	const TOptional<FSlateRect>& LocalBubbleAnchorRect)
+{
 	BuildProgrammaticLayout();
 	CurrentOutput = Output;
-	CurrentTargetRect = TargetRect;
-	bGuideVisible = Output.bActive;
-	if (!bGuideVisible || !RootCanvas)
+	CurrentTargetRects = LocalTargetRects;
+	CurrentBubbleAnchorRect = LocalBubbleAnchorRect;
+	bGuideVisible = Output.bActive && !CurrentTargetRects.IsEmpty();
+	if (!bGuideVisible || !RootCanvas || !GuideBubble)
 	{
 		DismissGuide();
 		return;
 	}
 
-	// Input filtering is semantic and tokenized by the coordinator. The visual
-	// overlay itself never steals the allowed target's pointer hit.
 	SetVisibility(ESlateVisibility::HitTestInvisible);
-	if (DimMask)
+	FVector2D HostSize = GetCachedGeometry().GetLocalSize();
+	if (HostSize.X <= 0.0f || HostSize.Y <= 0.0f)
 	{
-		DimMask->SetVisibility(Output.InputPolicy == EGameXXKGuideInputPolicy::Forced
-			? ESlateVisibility::Visible
-			: ESlateVisibility::Collapsed);
+		HostSize = GameXXKGuideOverlayWidgetPrivate::DefaultHostSize;
 	}
-	FVector2D TargetPosition(TargetRect.Left, TargetRect.Top);
-	FVector2D TargetMaximum(TargetRect.Right, TargetRect.Bottom);
-	const FGeometry& HostGeometry = GetCachedGeometry();
-	if (HostGeometry.GetLocalSize().X > 0.0f && HostGeometry.GetLocalSize().Y > 0.0f)
+	if (UCanvasPanelSlot* BubbleSlot = Cast<UCanvasPanelSlot>(GuideBubble->Slot))
 	{
-		TargetPosition = HostGeometry.AbsoluteToLocal(TargetPosition);
-		TargetMaximum = HostGeometry.AbsoluteToLocal(TargetMaximum);
+		BubbleSlot->SetPosition(FVector2D::ZeroVector);
+		BubbleSlot->SetSize(HostSize);
 	}
-	const FVector2D TargetSize(
-		FMath::Max(1.0f, TargetMaximum.X - TargetPosition.X),
-		FMath::Max(1.0f, TargetMaximum.Y - TargetPosition.Y));
-	if (UCanvasPanelSlot* CanvasSlot = TargetHighlight ? Cast<UCanvasPanelSlot>(TargetHighlight->Slot) : nullptr)
-	{
-		CanvasSlot->SetPosition(TargetPosition - FVector2D(6.0f));
-		CanvasSlot->SetSize(TargetSize + FVector2D(12.0f));
-	}
-	if (UCanvasPanelSlot* CanvasSlot = ArrowText ? Cast<UCanvasPanelSlot>(ArrowText->Slot) : nullptr)
-	{
-		CanvasSlot->SetPosition(FVector2D(TargetPosition.X + TargetSize.X * 0.5f - 20.0f, TargetPosition.Y - 52.0f));
-	}
-	if (UCanvasPanelSlot* CanvasSlot = GuideTextPanel ? Cast<UCanvasPanelSlot>(GuideTextPanel->Slot) : nullptr)
-	{
-		const float PanelY = TargetPosition.Y + TargetSize.Y + 14.0f;
-		CanvasSlot->SetPosition(FVector2D(FMath::Max(8.0f, TargetPosition.X - 100.0f), PanelY));
-	}
-	if (GuideText)
-	{
-		GuideText->SetText(Output.Text);
-	}
+	const bool bHasExplicitBubbleAnchor = CurrentBubbleAnchorRect.IsSet();
+	const FSlateRect BubbleAnchor = bHasExplicitBubbleAnchor
+		? CurrentBubbleAnchorRect.GetValue()
+		: CurrentTargetRects[0];
+	const bool bShowContinueHint =
+		Output.AllowedActionIds.Contains(TEXT("Action.Guide.Continue"));
+	GuideBubble->PresentBubble(
+		Output.Text,
+		bShowContinueHint,
+		BubbleAnchor,
+		HostSize,
+		!bHasExplicitBubbleAnchor);
 }
 
 void UGameXXKGuideOverlayWidget::DismissGuide()
 {
 	bGuideVisible = false;
 	CurrentOutput = FGameXXKGuideOutput();
+	CurrentTargetRects.Reset();
+	CurrentBubbleAnchorRect.Reset();
+	if (GuideBubble)
+	{
+		GuideBubble->DismissBubble();
+	}
 	SetVisibility(ESlateVisibility::Collapsed);
 }
 
-void UGameXXKGuideOverlayWidget::SetDestroyedDelegate(FGameXXKGuideOverlayDestroyed InDelegate)
+void UGameXXKGuideOverlayWidget::SetDestroyedDelegate(
+	FGameXXKGuideOverlayDestroyed InDelegate)
 {
 	DestroyedDelegate = MoveTemp(InDelegate);
+}
+
+TArray<FSlateRect> UGameXXKGuideOverlayWidget::BuildDimRegions(
+	const FVector2D HostSize,
+	const TArray<FSlateRect>& Cutouts,
+	const float Padding)
+{
+	using namespace GameXXKGuideOverlayWidgetPrivate;
+	TArray<FSlateRect> Regions;
+	const TArray<FSlateRect> ClampedCutouts =
+		ClampCutouts(HostSize, Cutouts, FMath::Max(0.0f, Padding));
+	if (HostSize.X <= 0.0f || HostSize.Y <= 0.0f)
+	{
+		return Regions;
+	}
+	if (ClampedCutouts.IsEmpty())
+	{
+		Regions.Add(FSlateRect(0.0f, 0.0f, HostSize.X, HostSize.Y));
+		return Regions;
+	}
+
+	TArray<float> YBoundaries = {
+		0.0f,
+		static_cast<float>(HostSize.Y)};
+	for (const FSlateRect& Cutout : ClampedCutouts)
+	{
+		YBoundaries.Add(Cutout.Top);
+		YBoundaries.Add(Cutout.Bottom);
+	}
+	YBoundaries.Sort();
+	for (int32 Index = YBoundaries.Num() - 1; Index > 0; --Index)
+	{
+		if (FMath::IsNearlyEqual(YBoundaries[Index], YBoundaries[Index - 1]))
+		{
+			YBoundaries.RemoveAt(Index);
+		}
+	}
+
+	for (int32 BandIndex = 0; BandIndex + 1 < YBoundaries.Num(); ++BandIndex)
+	{
+		const float Top = YBoundaries[BandIndex];
+		const float Bottom = YBoundaries[BandIndex + 1];
+		if (Bottom <= Top)
+		{
+			continue;
+		}
+		TArray<FVector2D> Intervals;
+		for (const FSlateRect& Cutout : ClampedCutouts)
+		{
+			if (Cutout.Top < Bottom && Cutout.Bottom > Top)
+			{
+				Intervals.Add(FVector2D(Cutout.Left, Cutout.Right));
+			}
+		}
+		Intervals.Sort([](const FVector2D& A, const FVector2D& B)
+		{
+			return A.X < B.X
+				|| (FMath::IsNearlyEqual(A.X, B.X) && A.Y < B.Y);
+		});
+		float Cursor = 0.0f;
+		for (const FVector2D Interval : Intervals)
+		{
+			if (Interval.X > Cursor)
+			{
+				Regions.Add(FSlateRect(Cursor, Top, Interval.X, Bottom));
+			}
+			Cursor = FMath::Max(Cursor, Interval.Y);
+		}
+		if (Cursor < HostSize.X)
+		{
+			Regions.Add(FSlateRect(Cursor, Top, HostSize.X, Bottom));
+		}
+	}
+	return Regions;
 }
 
 bool UGameXXKGuideOverlayWidget::IsGuideVisibleForTest() const
@@ -107,12 +297,15 @@ bool UGameXXKGuideOverlayWidget::IsGuideVisibleForTest() const
 
 bool UGameXXKGuideOverlayWidget::IsBlockingInputForTest() const
 {
-	return bGuideVisible && CurrentOutput.InputPolicy == EGameXXKGuideInputPolicy::Forced;
+	return bGuideVisible
+		&& CurrentOutput.InputPolicy == EGameXXKGuideInputPolicy::Forced;
 }
 
 FSlateRect UGameXXKGuideOverlayWidget::GetTargetRectForTest() const
 {
-	return CurrentTargetRect;
+	return CurrentTargetRects.IsEmpty()
+		? FSlateRect()
+		: CurrentTargetRects[0];
 }
 
 FText UGameXXKGuideOverlayWidget::GetGuideTextForTest() const
@@ -127,35 +320,14 @@ void UGameXXKGuideOverlayWidget::BuildProgrammaticLayout()
 	{
 		return;
 	}
-	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("GuideOverlayRoot"));
+	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("GuideOverlayRoot"));
+	RootCanvas->SetVisibility(ESlateVisibility::HitTestInvisible);
 	WidgetTree->RootWidget = RootCanvas;
-
-	DimMask = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("GuideDimMask"));
-	DimMask->SetBrushColor(FLinearColor(0.0f, 0.0f, 0.0f, 0.56f));
-	Place(RootCanvas, DimMask, FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f), 0);
-
-	TargetHighlight = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("GuideTargetHighlight"));
-	TargetHighlight->SetBrushColor(FLinearColor(0.18f, 0.72f, 0.92f, 0.26f));
-	Place(RootCanvas, TargetHighlight, FVector2D::ZeroVector, FVector2D(1.0f), 1);
-
-	ArrowText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("GuideArrow"));
-	ArrowText->SetText(FText::FromString(TEXT("↓")));
-	ArrowText->SetColorAndOpacity(FSlateColor(FLinearColor(0.16f, 0.62f, 0.78f, 1.0f)));
-	FSlateFontInfo ArrowFont = ArrowText->GetFont();
-	ArrowFont.Size = 38;
-	ArrowText->SetFont(ArrowFont);
-	Place(RootCanvas, ArrowText, FVector2D::ZeroVector, FVector2D(40.0f, 48.0f), 2);
-
-	GuideTextPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("GuideTextPanel"));
-	GuideTextPanel->SetPadding(FMargin(14.0f, 9.0f));
-	GuideTextPanel->SetBrushColor(FLinearColor(0.86f, 0.80f, 0.67f, 0.96f));
-	GuideText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("GuideText"));
-	GuideText->SetAutoWrapText(true);
-	GuideText->SetColorAndOpacity(FSlateColor(FLinearColor(0.12f, 0.09f, 0.05f, 1.0f)));
-	FSlateFontInfo TextFont = GuideText->GetFont();
-	TextFont.Size = 18;
-	GuideText->SetFont(TextFont);
-	GuideTextPanel->SetContent(GuideText);
-	Place(RootCanvas, GuideTextPanel, FVector2D::ZeroVector, FVector2D(320.0f, 76.0f), 3);
+	GuideBubble = WidgetTree->ConstructWidget<UGameXXKBattleGuideBubbleWidget>(
+		UGameXXKBattleGuideBubbleWidget::StaticClass(),
+		TEXT("GuideBattleBubble"));
+	Place(RootCanvas, GuideBubble, FVector2D::ZeroVector, DefaultHostSize, 3);
 	DismissGuide();
 }
