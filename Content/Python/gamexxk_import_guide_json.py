@@ -34,10 +34,25 @@ def _build_step(step_id: str, payload: dict[str, Any]) -> Any:
         "soft": unreal.GameXXKGuideInputPolicy.SOFT,
         "forced": unreal.GameXXKGuideInputPolicy.FORCED,
     }
+    missing_target_policy_map = {
+        "skip": unreal.GameXXKGuideMissingTargetPolicy.SKIP_STEP,
+        "abort": unreal.GameXXKGuideMissingTargetPolicy.ABORT_GUIDE,
+    }
     step = unreal.GameXXKGuideStepDefinition()
     step.set_editor_property("step_id", unreal.Name(step_id))
     step.set_editor_property("trigger_event_id", unreal.Name(payload["triggerEvent"]))
     step.set_editor_property("target_id", unreal.Name(payload.get("target", "")))
+    step.set_editor_property(
+        "additional_target_ids",
+        [unreal.Name(target_id) for target_id in payload.get("additionalTargets", [])],
+    )
+    step.set_editor_property(
+        "bubble_anchor_target_id", unreal.Name(payload.get("bubbleAnchor", ""))
+    )
+    step.set_editor_property(
+        "missing_target_policy",
+        missing_target_policy_map[payload.get("missingTargetPolicy", "skip")],
+    )
     step.set_editor_property("input_policy", policy_map[payload["inputPolicy"]])
     step.set_editor_property("text", unreal.Text(payload["text"]))
     step.set_editor_property(

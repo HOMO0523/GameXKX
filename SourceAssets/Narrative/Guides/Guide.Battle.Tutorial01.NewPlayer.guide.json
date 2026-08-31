@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "guideId": "Guide.Battle.Tutorial01.NewPlayer",
+  "guideVersion": 1,
+  "entryStep": "Guide.Battle.Tutorial01.Qi",
+  "steps": {
+    "Guide.Battle.Tutorial01.Qi": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Hud.PartyQi",
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "气力值：每回合出牌时消耗的点数。",
+      "allowedActions": ["Action.Guide.Continue"],
+      "completionEvent": "Event.Tutorial01.Continue",
+      "next": "Guide.Battle.Tutorial01.HeroVitals"
+    },
+    "Guide.Battle.Tutorial01.HeroVitals": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Unit.Hero.Health",
+      "additionalTargets": ["Battle.Unit.Hero.Mana"],
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "气血：主角生命值，归零时死亡。内力值：出牌时消耗的角色能量条，每回合恢复2点内力。",
+      "allowedActions": ["Action.Guide.Continue"],
+      "completionEvent": "Event.Tutorial01.Continue",
+      "next": "Guide.Battle.Tutorial01.EnemyIntent"
+    },
+    "Guide.Battle.Tutorial01.EnemyIntent": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Enemy.Intent",
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "怪物意图卡：玩家悬停可以看到下回合怪物的动向和攻击数值，提前布局。",
+      "allowedActions": ["Action.Guide.Continue"],
+      "completionEvent": "Event.Tutorial01.Continue",
+      "next": "Guide.Battle.Tutorial01.HengJian"
+    },
+    "Guide.Battle.Tutorial01.HengJian": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Hand.HengJianShouShi",
+      "additionalTargets": ["Battle.Unit.Hero.Target"],
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "先点击横剑守势，再点击主角，增加属性与护甲。",
+      "allowedActions": [
+        "Action.Battle.SelectCard.HengJianShouShi",
+        "Action.Battle.SelectTarget.Hero",
+        "Action.Battle.CommitCard"
+      ],
+      "completionEvent": "Event.Tutorial01.HengJianResolved",
+      "next": "Guide.Battle.Tutorial01.SuiYan"
+    },
+    "Guide.Battle.Tutorial01.SuiYan": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Hand.SuiYanJi",
+      "additionalTargets": ["Battle.Unit.Enemy.Target"],
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "先点击碎岩击，再点击敌方角色。",
+      "allowedActions": [
+        "Action.Battle.SelectCard.SuiYanJi",
+        "Action.Battle.SelectTarget.Enemy",
+        "Action.Battle.CommitCard"
+      ],
+      "completionEvent": "Event.Tutorial01.SuiYanResolved",
+      "next": "Guide.Battle.Tutorial01.FengShen"
+    },
+    "Guide.Battle.Tutorial01.FengShen": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Hand.FengShenBu",
+      "additionalTargets": ["Battle.Unit.Hero.Target"],
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "先点击风身步，再点击主角。",
+      "allowedActions": [
+        "Action.Battle.SelectCard.FengShenBu",
+        "Action.Battle.SelectTarget.Hero",
+        "Action.Battle.CommitCard"
+      ],
+      "completionEvent": "Event.Tutorial01.FengShenForcedDiscardOpened",
+      "next": "Guide.Battle.Tutorial01.ForcedDiscard"
+    },
+    "Guide.Battle.Tutorial01.ForcedDiscard": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.Pending.ForcedDiscard",
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "在弃牌框中选择一张手牌丢弃。",
+      "allowedActions": ["Action.Battle.SubmitForcedDiscard"],
+      "completionEvent": "Event.Tutorial01.ForcedDiscardResolved",
+      "next": "Guide.Battle.Tutorial01.EndTurn"
+    },
+    "Guide.Battle.Tutorial01.EndTurn": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.EndTurn",
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "结束回合：本回合气力消耗和出牌结束后，点击这个按钮结束回合。",
+      "allowedActions": ["Action.Battle.EndTurn"],
+      "completionEvent": "Event.Tutorial01.PlayerTurnReady",
+      "next": "Guide.Battle.Tutorial01.AutoBattle"
+    },
+    "Guide.Battle.Tutorial01.AutoBattle": {
+      "triggerEvent": "Event.Battle.Opened",
+      "target": "Battle.AutoBattle",
+      "bubbleAnchor": "Battle.Unit.YueBai.Visual",
+      "missingTargetPolicy": "abort",
+      "inputPolicy": "forced",
+      "text": "点击自动战斗，接下来会自动出牌完成战斗。",
+      "allowedActions": ["Action.Battle.EnableAuto"],
+      "completionEvent": "Event.Tutorial01.AutoBattleEnabled"
+    }
+  }
+}

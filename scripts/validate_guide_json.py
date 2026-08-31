@@ -101,6 +101,54 @@ def _reachable(entry: str, adjacency: dict[str, str | None]) -> set[str]:
     return reached
 
 
+# Tutorial 0-1 vocabulary is Guide-owned. Keep it in the Guide catalog snapshot
+# instead of borrowing the Dialogue-only runtime-catalog.json.
+DEFAULT_CATALOGS = GuideCatalogSnapshot(
+    target_ids=DEFAULT_CATALOGS.target_ids
+    | frozenset(
+        {
+            "Battle.Unit.Hero.Health",
+            "Battle.Unit.Hero.Mana",
+            "Battle.Enemy.Intent",
+            "Battle.Hand.HengJianShouShi",
+            "Battle.Hand.SuiYanJi",
+            "Battle.Hand.FengShenBu",
+            "Battle.Unit.Hero.Target",
+            "Battle.Unit.Enemy.Target",
+            "Battle.Unit.YueBai.Visual",
+            "Battle.Pending.ForcedDiscard",
+            "Battle.AutoBattle",
+        }
+    ),
+    trigger_event_ids=DEFAULT_CATALOGS.trigger_event_ids,
+    completion_event_ids=DEFAULT_CATALOGS.completion_event_ids
+    | frozenset(
+        {
+            "Event.Tutorial01.Continue",
+            "Event.Tutorial01.HengJianResolved",
+            "Event.Tutorial01.SuiYanResolved",
+            "Event.Tutorial01.FengShenForcedDiscardOpened",
+            "Event.Tutorial01.ForcedDiscardResolved",
+            "Event.Tutorial01.PlayerTurnReady",
+            "Event.Tutorial01.AutoBattleEnabled",
+        }
+    ),
+    action_ids=DEFAULT_CATALOGS.action_ids
+    | frozenset(
+        {
+            "Action.Guide.Continue",
+            "Action.Battle.SelectCard.HengJianShouShi",
+            "Action.Battle.SelectCard.SuiYanJi",
+            "Action.Battle.SelectCard.FengShenBu",
+            "Action.Battle.SelectTarget.Hero",
+            "Action.Battle.SelectTarget.Enemy",
+            "Action.Battle.SubmitForcedDiscard",
+            "Action.Battle.EnableAuto",
+        }
+    ),
+)
+
+
 def validate_guide(payload: dict, catalogs: GuideCatalogSnapshot) -> list[str]:
     if not isinstance(payload, dict):
         return ["guide root must be an object"]
@@ -127,6 +175,9 @@ def validate_guide(payload: dict, catalogs: GuideCatalogSnapshot) -> list[str]:
     allowed_step_fields = {
         "triggerEvent",
         "target",
+        "additionalTargets",
+        "bubbleAnchor",
+        "missingTargetPolicy",
         "inputPolicy",
         "text",
         "allowedActions",
@@ -154,12 +205,45 @@ def validate_guide(payload: dict, catalogs: GuideCatalogSnapshot) -> list[str]:
         if policy not in {"soft", "forced"}:
             errors.append(f"{step_id}: inputPolicy must be soft or forced")
         target = step.get("target")
-        if policy == "forced" and not _nonempty(target):
-            errors.append(f"{step_id}: forced target must not be empty")
         if _nonempty(target) and target not in catalogs.target_ids:
             errors.append(f"{step_id}: unknown target {target}")
         if not isinstance(target, str):
             errors.append(f"{step_id}: target must be a string")
+
+        additional_targets = step.get("additionalTargets", [])
+        if not isinstance(additional_targets, list):
+            errors.append(f"{step_id}: additionalTargets must be an array")
+            additional_targets = []
+        elif any(not _nonempty(value) for value in additional_targets):
+            errors.append(
+                f"{step_id}: additionalTargets must contain non-empty IDs"
+            )
+        elif len(additional_targets) != len(set(additional_targets)):
+            errors.append(f"{step_id}: additionalTargets must be unique")
+        if _nonempty(target) and target in additional_targets:
+            errors.append(f"{step_id}: focus targets must be unique")
+        for additional_target in additional_targets:
+            if (
+                _nonempty(additional_target)
+                and additional_target not in catalogs.target_ids
+            ):
+                errors.append(
+                    f"{step_id}: unknown additional target {additional_target}"
+                )
+
+        bubble_anchor = step.get("bubbleAnchor")
+        if bubble_anchor is not None and not _nonempty(bubble_anchor):
+            errors.append(f"{step_id}: bubbleAnchor must be a non-empty ID")
+        elif _nonempty(bubble_anchor) and bubble_anchor not in catalogs.target_ids:
+            errors.append(f"{step_id}: unknown bubble anchor {bubble_anchor}")
+
+        missing_target_policy = step.get("missingTargetPolicy", "skip")
+        if missing_target_policy not in {"skip", "abort"}:
+            errors.append(
+                f"{step_id}: missingTargetPolicy must be skip or abort"
+            )
+        if policy == "forced" and not _nonempty(target) and not additional_targets:
+            errors.append(f"{step_id}: forced target must not be empty")
         if not _nonempty(step.get("text")):
             errors.append(f"{step_id}: text must not be empty")
 
