@@ -24,7 +24,7 @@ The user supplied four visual references:
 - Reference 3 supplies the interaction model for a large branching talent/rune graph with node details and ranks; its dark pixel skin is reference-only.
 - Reference 4 supplies hierarchy and selection-state ideas for an orderly roster/formation editor; its portrait/mobile layout is reference-only.
 
-The required Luna Max review is recorded at `Saved/HarnessReports/20260822-workbench-parent-event-talent-formation-luna-max.md`.
+The historical visual review is recorded at `Saved/HarnessReports/20260822-workbench-parent-event-talent-formation-luna-max.md`.
 
 Targeted code inspection found:
 
