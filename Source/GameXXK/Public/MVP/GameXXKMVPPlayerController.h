@@ -18,6 +18,7 @@ class UGameXXKDialogueAsset;
 class UGameXXKDialogueCoordinator;
 class UGameXXKDialogueHistoryWidget;
 class UGameXXKDialoguePanelWidget;
+class UGameXXKPrologueMapWidget;
 class UGameXXKInteractionComponent;
 class UGameXXKNarrativeCoordinator;
 class UGameXXKNarrativeSequenceAsset;
@@ -85,6 +86,12 @@ public:
 		bool bPaused,
 		UWidget* FocusWidget);
 	bool RequestDesktopReturnFromPrologue();
+	bool OpenTutorialMapInspection();
+	void CloseTutorialMapInspection();
+	bool IsTutorialMapInspectionOpenForTest() const
+	{
+		return TutorialMapInspectionWidget != nullptr;
+	}
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
 	bool HasActivePrologueCarriageForTest() const
 	{
@@ -589,6 +596,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDialogueHistoryWidget> DialogueHistoryWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKPrologueMapWidget> TutorialMapInspectionWidget;
 
 	UPROPERTY(Transient)
 	TWeakObjectPtr<AActor> ActiveNarrativeInteractionActor;

@@ -48,6 +48,7 @@
 #include "UI/GameXXKGuideOverlayWidget.h"
 #include "UI/GameXXKGuidePreferenceWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UI/GameXXKInventoryItemPresentation.h"
 #include "UI/GameXXKTalentTreeWidget.h"
 #include "UObject/StrongObjectPtr.h"
 #include "Styling/CoreStyle.h"
@@ -2047,6 +2048,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::DestructForTest()
 bool UGameXXKDesktopTrainingWorkbenchWidget::RightClickBackpackSlotForTest(const int32 SlotIndex)
 {
 	return RouteBackpackRightClick(SlotIndex);
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RightClickWarehouseSlotForTest(
+	const int32 PhysicalSlotIndex)
+{
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	return Subsystem
+		&& RequestTutorialMapInspection(FGameXXKDesktopInventoryRules::GetEntryAt(
+			Subsystem->GetRuntimeState(),
+			EGameXXKDesktopItemContainer::Warehouse,
+			PhysicalSlotIndex));
 }
 
 int32 UGameXXKDesktopTrainingWorkbenchWidget::FindBackpackItemSlotForTest(const FName ItemId) const
@@ -7408,6 +7420,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedOnToolSlot(const int32 S
 	{
 		return false;
 	}
+	if (!CarriedEntry.Payload.Entry.bEquipmentInstance
+		&& FGameXXKInventoryItemPresentation::IsInspectable(
+			CarriedEntry.Payload.Entry.EntryId))
+	{
+		SetNotice(FText::FromString(TEXT("任务地图不能放入工具格；仍吸附在鼠标上")));
+		return false;
+	}
 	if (CarriedEntry.bOriginIsTool
 		&& SlotIndex == CarriedEntry.OriginToolSlotIndex)
 	{
@@ -7486,6 +7505,23 @@ UGameXXKDesktopTrainingWorkbenchWidget::BuildBatchTransferExclusions() const
 	return Result;
 }
 
+bool UGameXXKDesktopTrainingWorkbenchWidget::RequestTutorialMapInspection(
+	const FGameXXKDesktopInventoryEntryKey& Entry)
+{
+	if (!Entry.IsValid()
+		|| Entry.bEquipmentInstance
+		|| !FGameXXKInventoryItemPresentation::IsInspectable(Entry.EntryId))
+	{
+		return false;
+	}
+	if (TutorialMapInspectionRequested.IsBound())
+	{
+		return TutorialMapInspectionRequested.Execute();
+	}
+	AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController();
+	return PlayerController && PlayerController->OpenTutorialMapInspection();
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::RouteBackpackRightClick(const int32 SlotIndex)
 {
 	if (CarriedEntry.IsValid())
@@ -7501,6 +7537,14 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::RouteBackpackRightClick(const int32
 	if (!Subsystem)
 	{
 		return false;
+	}
+	const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
+		Subsystem->GetRuntimeState(),
+		EGameXXKDesktopItemContainer::Backpack,
+		SlotIndex);
+	if (RequestTutorialMapInspection(Entry))
+	{
+		return true;
 	}
 	if (bWarehousePanelOpen)
 	{
@@ -7534,10 +7578,6 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::RouteBackpackRightClick(const int32
 			&& DropCarriedOnToolSlot(ToolSlot);
 	}
 
-	const FGameXXKDesktopInventoryEntryKey Entry = FGameXXKDesktopInventoryRules::GetEntryAt(
-		Subsystem->GetRuntimeState(),
-		EGameXXKDesktopItemContainer::Backpack,
-		SlotIndex);
 	if (Entry.bEquipmentInstance && EmbeddedInventoryWidget)
 	{
 		const bool bEquipped = EmbeddedInventoryWidget->QuickEquipBackpackInstanceForTest(Entry.EntryId);
@@ -9390,6 +9430,10 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::HandleActionRightClicked(const int3
 			Subsystem->GetRuntimeState(),
 			EGameXXKDesktopItemContainer::Warehouse,
 			PhysicalSlotIndex);
+		if (RequestTutorialMapInspection(Entry))
+		{
+			return true;
+		}
 		const int32 BackpackSlot = FGameXXKDesktopInventoryRules::FindFirstEmptySlot(
 			Subsystem->GetRuntimeState(),
 			EGameXXKDesktopItemContainer::Backpack);

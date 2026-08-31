@@ -38,6 +38,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKInventoryItemPresentation.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
 
@@ -354,6 +355,12 @@ namespace
 
 	FString ResolveItemIconTexturePath(FName ItemId)
 	{
+		const FString InspectableIcon =
+			FGameXXKInventoryItemPresentation::ResolveIconPath(ItemId);
+		if (!InspectableIcon.IsEmpty())
+		{
+			return InspectableIcon;
+		}
 		const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
 		if (GemIconPath.IsValid())
 		{
@@ -1686,6 +1693,14 @@ bool UGameXXKInventoryWindowWidget::HandleConfiguredSlotRightClicked(
 		&& DesktopTrainingHost)
 	{
 		return DesktopTrainingHost->HandleDesktopBackpackSlotRightClicked(SlotIndex);
+	}
+	if (Source == EGameXXKInventorySlotSource::PlayerBackpack
+		&& CurrentBackpackSlotItemIds.IsValidIndex(SlotIndex)
+		&& FGameXXKInventoryItemPresentation::IsInspectable(
+			CurrentBackpackSlotItemIds[SlotIndex]))
+	{
+		AGameXXKMVPPlayerController* PlayerController = ResolveMVPPlayerController();
+		return PlayerController && PlayerController->OpenTutorialMapInspection();
 	}
 
 	if (Source == EGameXXKInventorySlotSource::Equipment)

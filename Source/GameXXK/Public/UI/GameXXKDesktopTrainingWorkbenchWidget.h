@@ -9,6 +9,7 @@
 #include "UI/GameXXKDesktopWorkbenchSessionState.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UI/GameXXKInventoryItemPresentation.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "UI/GameXXKTrainingTravelVisualRuntime.h"
 #include "GameXXKDesktopTrainingWorkbenchWidget.generated.h"
@@ -172,6 +173,10 @@ public:
 	bool CancelCarriedItemForTest();
 
 	bool DropCarriedOnBackpackSlotForTest(int32 SlotIndex);
+	bool DropCarriedOnToolSlotForTest(int32 SlotIndex)
+	{
+		return DropCarriedOnToolSlot(SlotIndex);
+	}
 	void NotifyApplicationDeactivatedForTest();
 	bool CancelCarriedFromWorkbenchRightMouseForTest();
 	void ForceExternalSlateRebuildForTest();
@@ -179,6 +184,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool RightClickBackpackSlotForTest(int32 SlotIndex);
+	bool RightClickWarehouseSlotForTest(int32 PhysicalSlotIndex);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 FindBackpackItemSlotForTest(FName ItemId) const;
@@ -499,6 +505,11 @@ public:
 	{
 		StoryCarriageRequested = MoveTemp(InRequest);
 	}
+	void SetTutorialMapInspectionRequestedForTest(
+		FGameXXKTutorialMapInspectionRequested InRequest)
+	{
+		TutorialMapInspectionRequested = MoveTemp(InRequest);
+	}
 	EGameXXKDesktopHudPresentationMode GetPresentationModeForTest() const
 	{
 		return PresentationMode;
@@ -623,6 +634,8 @@ private:
 	TSet<FGameXXKDesktopInventoryEntryKey> BuildBatchTransferExclusions() const;
 	bool ToggleDesktopEntryLock(const FGameXXKDesktopInventoryEntryKey& Entry);
 	bool RouteBackpackRightClick(int32 SlotIndex);
+	bool RequestTutorialMapInspection(
+		const FGameXXKDesktopInventoryEntryKey& Entry);
 	bool CancelCarriedItem();
 	void CancelCarryForStructuralChange();
 	void ReturnAllToolEntries();
@@ -994,6 +1007,7 @@ private:
 	bool bDesktopHudDragging = false;
 	bool bTownMapTravelPending = false;
 	FGameXXKStoryCarriageRequested StoryCarriageRequested;
+	FGameXXKTutorialMapInspectionRequested TutorialMapInspectionRequested;
 	bool bDesktopNativeLastExpanded = false;
 	int32 DesktopNativeLastHudScalePercent = INDEX_NONE;
 	float DesktopInputDpiScale = 1.0f;

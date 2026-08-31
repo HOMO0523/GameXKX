@@ -40,6 +40,7 @@
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKMetaShopWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UI/GameXXKPrologueMapWidget.h"
 #include "UI/GameXXKQuestDialogWidget.h"
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "UI/GameXXKRouteMerchantWidget.h"
@@ -291,6 +292,7 @@ void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReas
 	{
 		NarrativeCoordinator->PauseAndRelease();
 	}
+	CloseTutorialMapInspection();
 	SetNarrativeInputLocked(false);
 	if (PreLoadMapWithContextDelegateHandle.IsValid())
 	{
@@ -356,6 +358,18 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 	if (HandleNarrativeInput(Params))
 	{
 		return true;
+	}
+	if (TutorialMapInspectionWidget)
+	{
+		if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
+		{
+			CloseTutorialMapInspection();
+			return true;
+		}
+		if (!Params.Key.IsMouseButton())
+		{
+			return true;
+		}
 	}
 	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
 	{
@@ -752,6 +766,50 @@ bool AGameXXKMVPPlayerController::RequestDesktopReturnFromPrologue()
 	return BeginDesktopTownMapTravelFromWorkbench(
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName),
 		FString());
+}
+
+bool AGameXXKMVPPlayerController::OpenTutorialMapInspection()
+{
+	if (TutorialMapInspectionWidget)
+	{
+		return true;
+	}
+	TutorialMapInspectionWidget = CanAddPlayerWidgetsToViewport()
+		? CreateWidget<UGameXXKPrologueMapWidget>(
+			this,
+			UGameXXKPrologueMapWidget::StaticClass())
+		: NewObject<UGameXXKPrologueMapWidget>(this, TEXT("TutorialMapInspectionWidget"));
+	if (!TutorialMapInspectionWidget)
+	{
+		return false;
+	}
+	TutorialMapInspectionWidget->Configure(EGameXXKPrologueMapMode::InspectOnly);
+	TutorialMapInspectionWidget->SetCloseRequestedForTest(
+		FGameXXKPrologueMapCloseRequested::CreateUObject(
+			this,
+			&AGameXXKMVPPlayerController::CloseTutorialMapInspection));
+	if (CanAddPlayerWidgetsToViewport())
+	{
+		TutorialMapInspectionWidget->AddToViewport(225);
+	}
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+	SetTrackedInputMode(
+		EGameXXKTrackedInputMode::GameAndUI,
+		TutorialMapInspectionWidget);
+	return true;
+}
+
+void AGameXXKMVPPlayerController::CloseTutorialMapInspection()
+{
+	if (!TutorialMapInspectionWidget)
+	{
+		return;
+	}
+	TutorialMapInspectionWidget->RemoveFromParent();
+	TutorialMapInspectionWidget = nullptr;
+	ApplyPlayerFlowInputMode();
 }
 
 FGameXXKBattleOverlaySnapshot AGameXXKMVPPlayerController::CaptureBattleOverlaySnapshot(
