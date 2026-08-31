@@ -78,10 +78,10 @@ bool GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
 	const FString& CurrentPackageName,
 	const FGameXXKRuntimeState& State)
 {
-	// L_DesktopTrainingHUD is an intentionally self-contained 2D shell. Its
-	// Town/Battle transitions swap widgets in-place and must never fall through
-	// the legacy Town/Route map table.
-	if (IsDesktopTrainingHUDMapPackage(CurrentPackageName))
+	// The desktop shell and isolated 0-1 tutorial both swap route/battle widgets
+	// in-place. Neither may fall through to the legacy Town/Route map table.
+	if (IsDesktopTrainingHUDMapPackage(CurrentPackageName)
+		|| IsTutorial01MapPackage(CurrentPackageName))
 	{
 		return false;
 	}

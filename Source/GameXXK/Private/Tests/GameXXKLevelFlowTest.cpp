@@ -62,6 +62,13 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		TEXT("desktop training HUD keeps the post-battle workbench on the same pure-2D map"),
 		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
 			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD"), DesktopReturnState));
+	FGameXXKRuntimeState TutorialVictoryRouteState = BattleState;
+	TutorialVictoryRouteState.Screen = EGameXXKScreen::DungeonMap;
+	TestFalse(
+		TEXT("tutorial victory keeps the fixed route on the isolated tutorial map"),
+		GameXXKLevelFlow::RequiresMapLoadForRuntimeState(
+			TEXT("/Game/GameXXK/Maps/Tutorial/UEDPIE_0_L_Tutorial_0_1"),
+			TutorialVictoryRouteState));
 	TestTrue(
 		TEXT("PIE route map package matches route target"),
 		GameXXKLevelFlow::MapPackageMatches(TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_RouteMap"), FName(TEXT("/Game/GameXXK/Maps/L_RouteMap"))));

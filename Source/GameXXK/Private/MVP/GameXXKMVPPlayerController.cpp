@@ -73,6 +73,20 @@ namespace
 			: FString();
 	}
 
+	bool HasTutorialTownReturnOption(const FString& Options)
+	{
+		FString Value;
+		if (!FParse::Value(
+				*Options,
+				TEXT("GameXXKTutorialReturn="),
+				Value))
+		{
+			return false;
+		}
+		return Value.Equals(TEXT("Victory"), ESearchCase::IgnoreCase)
+			|| Value.Equals(TEXT("Defeat"), ESearchCase::IgnoreCase);
+	}
+
 	FString NarrativeAssetStem(const FName StableId)
 	{
 		FString Stem(TEXT("DA_"));
@@ -220,6 +234,14 @@ void AGameXXKMVPPlayerController::BeginPlay()
 					GameXXKLevelFlow::MapForScreen(EGameXXKScreen::Town));
 			}
 		}
+		return;
+	}
+	if (BootProfile == EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly)
+	{
+		// Tutorial return keeps the authored 3D town, hero and YueBai aftermath,
+		// but must never instantiate the retired full-flow HUD or Workbench.
+		bEnableDesktopTrainingWorkbench = false;
+		RefreshPlayerFlowWidgets();
 		return;
 	}
 	const bool bIsDesktopTrainingHUDMap = BootProfile
@@ -2195,16 +2217,33 @@ EGameXXKPlayerFlowBootProfile AGameXXKMVPPlayerController::ResolvePlayerFlowBoot
 	const FString PackageName = World && World->GetOutermost()
 		? World->GetOutermost()->GetName()
 		: FString();
-	return ResolvePlayerFlowBootProfileForMapForTest(PackageName);
+	return ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+		PackageName,
+		WorldOptions(World));
 }
 
 EGameXXKPlayerFlowBootProfile
 AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapForTest(
 	const FString& MapPackageName)
 {
+	return ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+		MapPackageName,
+		FString());
+}
+
+EGameXXKPlayerFlowBootProfile
+AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+	const FString& MapPackageName,
+	const FString& Options)
+{
 	if (GameXXKLevelFlow::IsTutorial01MapPackage(MapPackageName))
 	{
 		return EGameXXKPlayerFlowBootProfile::TutorialRouteOnly;
+	}
+	if (GameXXKLevelFlow::IsTownGameplayMapPackage(MapPackageName)
+		&& HasTutorialTownReturnOption(Options))
+	{
+		return EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly;
 	}
 	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(MapPackageName)
 		? EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly

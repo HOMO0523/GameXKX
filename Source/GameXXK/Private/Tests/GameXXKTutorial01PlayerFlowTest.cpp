@@ -30,6 +30,21 @@ bool FGameXXKTutorial01PlayerFlowTest::RunTest(const FString& Parameters)
 		AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapForTest(
 			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo")),
 		EGameXXKPlayerFlowBootProfile::FullPlayerFlow);
+	TestEqual(TEXT("tutorial victory return suppresses the legacy town HUD flow"),
+		AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo"),
+			TEXT("?GameXXKTutorialReturn=Victory")),
+		EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly);
+	TestEqual(TEXT("tutorial defeat return also suppresses the legacy town HUD flow"),
+		AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo"),
+			TEXT("?GameXXKTutorialReturn=Defeat")),
+		EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly);
+	TestEqual(TEXT("unrelated Qingshan options retain the full player flow"),
+		AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo"),
+			TEXT("?GameXXKIntro=CarriagePreview")),
+		EGameXXKPlayerFlowBootProfile::FullPlayerFlow);
 
 	const AGameXXKTutorial01GameMode* Defaults =
 		GetDefault<AGameXXKTutorial01GameMode>();

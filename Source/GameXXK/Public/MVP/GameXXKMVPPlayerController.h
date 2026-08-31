@@ -50,6 +50,7 @@ enum class EGameXXKPlayerFlowBootProfile : uint8
 	FullPlayerFlow,
 	DesktopTrainingOnly,
 	TutorialRouteOnly,
+	TutorialTownReturnOnly,
 };
 
 UCLASS(Blueprintable)
@@ -76,6 +77,9 @@ public:
 	bool EnsurePlayerFlowWidgetsForTest();
 	static EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfileForMapForTest(
 		const FString& MapPackageName);
+	static EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
+		const FString& MapPackageName,
+		const FString& Options);
 	bool PrepareTutorial01RouteForTest(
 		UGameXXKMVPSubsystem* MVPSubsystem,
 		UGameXXKTutorial01SessionSubsystem* TutorialSession,
