@@ -46,7 +46,7 @@
 - [ ] Open the generated PPTX through PowerPoint COM and export PDF plus 1920×1080 PNG slides.
 - [ ] Verify 50 PNGs, 50 PowerPoint slides, 173 unique CardIds, no non-boss route cards, and no external image relationships.
 - [ ] Build contact sheets for slides 1–20 and 21–50.
-- [ ] Run Luna visual review on the cover, three-core slide, Slate slide, numeric-test slide, and representative Hero/Guard/NPC card slides.
+- [ ] Review the cover, three-core slide, Slate slide, numeric-test slide, and representative Hero/Guard/NPC card slides with a suitable method.
 - [ ] Fix only confirmed overflow, clipping, contrast, alignment, or image-crop problems; regenerate and re-export once.
 
 ### Task 4: Deliver

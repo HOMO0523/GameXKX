@@ -262,8 +262,8 @@ Programmatic layout build count: stable during automatic travel
 
 - [ ] **Step 5: Capture and visually review the boundary**
 
-Capture one Walking frame near second four and one first-combat frame after second five. Invoke the project-required luna visual agent with `-Effort max`. Acceptance: no enemy or enemy bars during Walking; the next formation appears with all enemy and party bars full; existing positions, sizes, facing, ground anchors, and assets are unchanged.
+Capture one Walking frame near second four and one first-combat frame after second five, then review them with a suitable method. Acceptance: no enemy or enemy bars during Walking; the next formation appears with all enemy and party bars full; existing positions, sizes, facing, ground anchors, and assets are unchanged.
 
 - [ ] **Step 6: Final verification record**
 
-Run `git diff --check`, list exactly which tracked files changed, and report cold-build, automation, PIE data, and luna evidence paths. Do not claim unrelated dirty files or protected assets were verified or modified.
+Run `git diff --check`, list exactly which tracked files changed, and report cold-build, automation, PIE data, and visual-evidence paths. Do not claim unrelated dirty files or protected assets were verified or modified.

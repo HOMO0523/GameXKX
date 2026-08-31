@@ -58,7 +58,7 @@ $env:NODE_PATH = 'C:\Users\shxuw\.cache\codex-runtimes\codex-primary-runtime\dep
 - Create `scripts/test_graduation_showcase_content.py`: profile and 173-note coverage tests.
 - Create `scripts/test_graduation_showcase_render.py`: required sections, semantic structure, offline URLs, assets, and deterministic output tests.
 - Create `scripts/test_graduation_showcase_browser.mjs`: Playwright search/filter/deep-link/JavaScript-disabled/offline checks.
-- Create `Saved/HarnessReports/graduation-showcase/`: screenshots, print PDF, media report, browser report, and Luna review.
+- Create `Saved/HarnessReports/graduation-showcase/`: screenshots, print PDF, media report, browser report, and visual review.
 
 ### Deliverable
 
@@ -1187,29 +1187,17 @@ git commit --only -m 'test: verify graduation showcase offline layouts' -- scrip
 
 ---
 
-### Task 15: Run Luna visual review and fix presentation defects
+### Task 15: Review visual evidence and fix presentation defects
 
 **Files:**
 - Modify for confirmed findings only: `scripts/graduation_showcase/templates/styles.css`
 - Modify for confirmed findings only: `scripts/graduation_showcase/templates/index.template.html`
 - Modify for confirmed findings only: `docs/graduation-showcase/media-manifest.json`
-- Generate: `Saved/HarnessReports/graduation-showcase/luna-visual-review.json`
+- Generate: `Saved/HarnessReports/graduation-showcase/visual-review.json`
 
-- [ ] **Step 1: Submit the captured screenshots to the mandated visual agent**
+- [ ] **Step 1: Review the captured screenshots with a suitable method**
 
-```powershell
-& 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' `
-  -Prompt '复核 GameXXK 毕设离线 HTML：检查三大核心是否先于卡表清晰出现；水墨纸本风格是否克制；Slate 和数值测试章节是否像专业技术说明；173张卡表是否可读；1920/1440/1024 是否存在截断、遮挡、低对比、过密、图片变形或错误层级。只报告截图中可见的事实，并明确指出无异常的项目。' `
-  -Images @(
-    'D:\UE5 demo\GameXXK\Saved\HarnessReports\graduation-showcase\showcase-1920.png',
-    'D:\UE5 demo\GameXXK\Saved\HarnessReports\graduation-showcase\showcase-1440.png',
-    'D:\UE5 demo\GameXXK\Saved\HarnessReports\graduation-showcase\showcase-1024.png'
-  ) `
-  -Effort max `
-  -Out 'D:\UE5 demo\GameXXK\Saved\HarnessReports\graduation-showcase\luna-visual-review.json' `
-  -Title 'GameXXK graduation showcase final review' `
-  -Workspace 'D:\UE5 demo\GameXXK'
-```
+Review `showcase-1920.png`, `showcase-1440.png`, and `showcase-1024.png`. Check that the three core sections precede the card table clearly; the ink-and-paper style remains restrained; the Slate and numeric-test sections read as professional technical explanations; all 173 cards remain readable; and no size has clipping, overlap, low contrast, excess density, image distortion, or broken hierarchy. Record only visible facts in `Saved/HarnessReports/graduation-showcase/visual-review.json`.
 
 - [ ] **Step 2: Classify every finding**
 
@@ -1219,7 +1207,7 @@ For each finding record `confirmed`, `not-reproduced`, or `outside-scope`. Only 
 
 Do not modify gameplay code or source art. Fix only spacing, font size, contrast, overflow, responsive grouping, object-fit/object-position, or print rules supported by the evidence.
 
-- [ ] **Step 4: Rebuild, recapture, and rerun Luna once**
+- [ ] **Step 4: Rebuild, recapture, and repeat the visual review once**
 
 Expected: no confirmed clipping, overlap, unreadable text, distorted image, or broken hierarchy remains.
 
@@ -1230,7 +1218,7 @@ git add -- scripts/graduation_showcase/templates/styles.css scripts/graduation_s
 git commit --only -m 'fix: polish graduation showcase presentation' -- scripts/graduation_showcase/templates/styles.css scripts/graduation_showcase/templates/index.template.html docs/graduation-showcase/media-manifest.json Deliverables/GameXXK_Graduation_Showcase
 ```
 
-If Luna finds no defects, skip this commit.
+If the visual review finds no defects, skip this commit.
 
 ---
 
@@ -1265,7 +1253,7 @@ Resolve and verify `D:\UE5 demo\GameXXK\Deliverables\GameXXK_Graduation_Showcase
 
 - [ ] **Step 4: Record acceptance without overstating game freshness**
 
-Create the dedicated acceptance record with the HTML path, ZIP path, 173-card manifest count, site-test results, offline browser evidence, and Luna report. State that the 2026-08-11 simulation card is historical evidence rather than a fresh game-balance certification. Do not edit or commit the already-dirty rolling `docs/production/current-goal-acceptance.md` in this work package.
+Create the dedicated acceptance record with the HTML path, ZIP path, 173-card manifest count, site-test results, offline browser evidence, and visual-review report. State that the 2026-08-11 simulation card is historical evidence rather than a fresh game-balance certification. Do not edit or commit the already-dirty rolling `docs/production/current-goal-acceptance.md` in this work package.
 
 - [ ] **Step 5: Commit acceptance and package**
 
@@ -1276,4 +1264,4 @@ git commit --only -m 'docs: deliver GameXXK graduation showcase' -- Deliverables
 
 - [ ] **Step 6: Final handoff**
 
-Return clickable links to `index.html`, the showcase folder, the ZIP, the build manifest, and the Luna report. Report exact test counts from the fresh commands and do not claim any Unreal compile or gameplay suite was rerun unless it actually was.
+Return clickable links to `index.html`, the showcase folder, the ZIP, the build manifest, and the visual-review report. Report exact test counts from the fresh commands and do not claim any Unreal compile or gameplay suite was rerun unless it actually was.

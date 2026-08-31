@@ -90,7 +90,7 @@ Acceptance requires all of the following:
 - Idle-strip controls, Tab folding, task button, task panel, and entry into battle remain clickable in the UE window.
 - No unrelated tracked or untracked assets are changed, and the three user-staged scrollbar deletions remain staged.
 
-Visual evidence must be captured after runtime verification and reviewed through the project-required Luna Max visual workflow.
+Visual evidence must be captured after runtime verification and reviewed with a method suitable for the available evidence.
 
 ## Reversibility
 

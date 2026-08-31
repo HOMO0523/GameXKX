@@ -463,7 +463,7 @@ Run the canonical cold build. Expected: `Result: Succeeded`.
 
 On `L_DesktopTrainingHUD`, enter Challenge route, click an Event node, select card three, verify no immediate reward, confirm, then enter Merchant. Buy at least two carried-card upgrades, refresh, verify sold upgrades persist, and Leave. Confirm the route map remains the same widget and next nodes unlock.
 
-- [ ] **Step 5: Luna Max review**
+- [ ] **Step 5: Review the captured visual evidence**
 
 Review event unselected/selected states and merchant four-card/sold states. Acceptance: card art/name/details are visible, selection is clear, event has `X`, merchant has no `X`, and route map stays dimly visible underneath where specified.
 

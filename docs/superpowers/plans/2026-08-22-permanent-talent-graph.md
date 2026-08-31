@@ -539,7 +539,7 @@ Node click selects only. Upgrade calls subsystem purchase and refreshes projecti
 
 Expected: all talent widget and complete Workbench tests pass.
 
-### Task 11: Full verification, real PIE, Luna, production record, and commit
+### Task 11: Full verification, real PIE, visual review, production record, and commit
 
 - [ ] **Step 1: Cold UBT**
 
@@ -569,13 +569,13 @@ On `L_DesktopTrainingHUD`, buy root and four entries, inspect all four direction
 
 Verify movement ranks 0 and 5 (5.0 and 2.5 seconds), normal/advanced online windows 2/3 minutes with no eight-hour degradation, offline windows 4/6 minutes, capacity/page milestones, 108h offline amount caps, 16h45 chest cap, tool unlock/XP/gold, and combat caps.
 
-- [ ] **Step 5: Luna Max review**
+- [ ] **Step 5: Review the captured visual evidence**
 
 Capture root-only, four-entry, mid-depth, selected details, locked reason, max-rank, and panned deep branch. Acceptance: paper/map style, 45-degree fan, readable lines/nodes, details rail never covers graph, local X aligned, no unrelated Workbench layout changes.
 
 - [ ] **Step 6: Update production acceptance**
 
-Add a dated entry to `docs/production/current-goal-acceptance.md` with exact automation reports, cold UBT result, PIE evidence, save version, and Luna report. Preserve historical entries.
+Add a dated entry to `docs/production/current-goal-acceptance.md` with exact automation reports, cold UBT result, PIE evidence, save version, and visual-review report. Preserve historical entries.
 
 - [ ] **Step 7: Commit Unit D**
 

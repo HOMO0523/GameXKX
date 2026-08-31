@@ -6,7 +6,7 @@
 
 **Architecture:** `FGameXXKRuntimeState` owns one small, saved battle-entry checkpoint captured transactionally by `SelectRouteNodeById` before Battle/Elite/Boss entry. Rules perform both retreat and abandoned settlement on candidate copies; the subsystem exposes thin player-flow wrappers and a side-effect-free settlement preview. BattleBoard and OneGameRouteMap own only transient modal state and fixed top-right presentation, pausing input/auto-play while their modal is open. Map travel occurs only after the authoritative transaction succeeds.
 
-**Tech Stack:** Unreal Engine 5.8 C++, USTRUCT SaveGame state, UMG/Slate programmatic widgets, UE Automation, project UE MCP scripts, PowerShell, cold UBT, and Luna max visual review.
+**Tech Stack:** Unreal Engine 5.8 C++, USTRUCT SaveGame state, UMG/Slate programmatic widgets, UE Automation, project UE MCP scripts, PowerShell, cold UBT, and visual evidence review.
 
 ---
 
@@ -454,13 +454,9 @@ python scripts/gamexxk_real_play_flow_mcp.py --timeout 600 --report Saved/Harnes
 
 If UE MCP is unavailable while the editor may have dirty packages, stop and report the real blocker rather than force-closing it.
 
-- [ ] **Step 4: Capture dual-resolution visual evidence and delegate Luna review**
+- [ ] **Step 4: Capture and review multi-resolution visual evidence**
 
-Capture Battle and RouteMap states at 1280x720, 1672x941, and 1920x1080, including both confirmation modals. Store them under `Saved/VisualReview/20260819-battle-retreat-route-abandon/` and run:
-
-```powershell
-& 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' -Effort max
-```
+Capture Battle and RouteMap states at 1280x720, 1672x941, and 1920x1080, including both confirmation modals. Store them under `Saved/VisualReview/20260819-battle-retreat-route-abandon/` and review them with a method suitable for the available evidence.
 
 Acceptance:
 
@@ -503,5 +499,5 @@ This feature is complete only when all conditions hold together:
 - Battle top-right contains `自动战斗` then `关闭`; End Turn stays bottom-right; modal pauses all mutation without changing the auto session flag.
 - RouteMap top-right contains fixed `关闭挑战`; its modal previews the exact existing `/20` and `/10` abandoned settlement and applies it exactly once.
 - Neither auto-play nor either UI transaction selects routes, events, shops, rewards, retries, or confirmations on the player's behalf.
-- Cold UBT, focused/broad Automation, SaveGame migration, real PIE/MCP, three-resolution screenshots, and Luna max review pass.
+- Cold UBT, focused/broad Automation, SaveGame migration, real PIE/MCP, three-resolution screenshots, and the listed visual checks pass.
 - Protected maps, tuned art, animations, camera transforms, HD2D planes, and user files remain untouched.

@@ -476,7 +476,7 @@ Run Workbench Formation, close-stack, CompanionRoster, card-loadout, and player-
 git commit -m "feat: build decoupled formation editor"
 ```
 
-### Task 8: full verification, PIE, Luna, and production record
+### Task 8: full verification, PIE, visual review, and production record
 
 **Files:**
 - Verify all Unit C files.
@@ -515,9 +515,9 @@ On `/Game/GameXXK/Maps/L_DesktopTrainingHUD`:
 6. Open Merchant and verify offer owner order.
 7. Settle route and verify persistent selected Quest NPC/order survive.
 
-- [ ] **Step 4: Luna Max review**
+- [ ] **Step 4: Review the captured visual evidence**
 
-Capture composition selection, candidate filtering, position swap, applied/reopened state, idle strip, battle, and Merchant. Invoke `codex_vision.ps1 -Effort max`. Acceptance: the two sections are visually distinct, category labels are readable, companion profession labels are exact, and no panel loses its approved close affordance.
+Capture composition selection, candidate filtering, position swap, applied/reopened state, idle strip, battle, and Merchant. Review them with a suitable method. Acceptance: the two sections are visually distinct, category labels are readable, companion profession labels are exact, and no panel loses its approved close affordance.
 
 - [ ] **Step 5: Final integrity checks**
 

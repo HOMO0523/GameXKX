@@ -6,7 +6,7 @@
 
 **Architecture:** The existing Desktop Overlay remains the only desktop native window. Workbench, StoryTaskDrawer, and NarrativeLayer become sibling presentation layers; pure StoryTask rules build actionable/claimable views and atomically separate story completion from material reward claiming. PlayerController owns semantic input routing and the fail-safe abort path, while Dialogue/Narrative coordinators remain map- and widget-geometry-independent.
 
-**Tech Stack:** UE 5.8 C++, UMG/Slate `SWindow`, project DirectComposition overlay, existing Dialogue/Narrative cores, JSON authoring/importers, UE Automation, cold UBT, project UE MCP and Win32/luna acceptance.
+**Tech Stack:** UE 5.8 C++, UMG/Slate `SWindow`, project DirectComposition overlay, existing Dialogue/Narrative cores, JSON authoring/importers, UE Automation, cold UBT, project UE MCP and Win32/visual acceptance.
 
 ---
 
@@ -679,7 +679,7 @@ In `UnrealEditor -game`:
 - Route/Battle: primary restored WindowedFullscreen, Overlay hidden.
 - Pause/complete: Overlay returns to HUD-sized folded desktop.
 
-Capture task drawer, Narrative dialogue, pause recovery and claimable red-dot screenshots. Use `codex_vision.ps1 -Effort max` and record only observed facts.
+Capture task drawer, Narrative dialogue, pause recovery and claimable red-dot screenshots. Review them with a suitable method and record only observed facts.
 
 - [ ] **Step 7: Final gates**
 

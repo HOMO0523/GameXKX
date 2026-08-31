@@ -375,5 +375,5 @@ No UI callback loops over repeated public mutations for a batch. Combine, Disman
 - deterministic art dimension/alpha/hash checks;
 - cold UHT/UBT, no Live Coding or Hot Reload;
 - focused inventory/equipment/economy/Workbench/Training/SaveGame suites, then proportional broad regression;
-- direct visual review without Luna per user instruction;
+- direct visual review using a method suitable for the available evidence;
 - real PIE on `/Game/GameXXK/Maps/L_DesktopTrainingHUD`, left running for user testing.

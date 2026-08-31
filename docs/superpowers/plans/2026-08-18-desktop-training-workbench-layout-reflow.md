@@ -6,7 +6,7 @@
 
 **Architecture:** The widget will render on one 1672×941 reference `UCanvasPanel` inside a centered `UScaleBox`/`USizeBox` pair. Structural rectangles are owned by a small pure C++ layout module and consumed by both the widget and Automation tests; all runtime scaling uses one `min(widthScale, heightScale)` value. This batch changes geometry and presentation only: it reuses existing MasterV2 textures and gameplay read models, does not import concept-image pixels, does not change the default entry map, and does not touch `L_Main.umap`.
 
-**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, UE Automation Tests, project UE MCP scripts, cold UBT (`-NoHotReload`), Luna max visual comparison.
+**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, UE Automation Tests, project UE MCP scripts, cold UBT (`-NoHotReload`), visual evidence comparison.
 
 ---
 
@@ -52,7 +52,7 @@ Offset = (ViewportSize - FVector2D(1672.0f, 941.0f) * Scale) * 0.5f;
 - Modify `scripts/run_training_visual_pie_probe.py`: optional capture dimensions and evidence paths.
 - Modify `Content/Python/gamexxk_probe_training_visual_mvp.py`: requested capture size and reference-layout snapshot fields.
 - Create `scripts/test_run_training_visual_pie_probe.py`: headless argument/payload contract for the visual runner.
-- Update `docs/production/2026-08-18-desktop-training-2d-hud-migration.md`: dated cold-build, Automation, PIE, screenshot, and Luna evidence.
+- Update `docs/production/2026-08-18-desktop-training-2d-hud-migration.md`: dated cold-build, Automation, PIE, screenshot, and visual evidence.
 
 ### Task 1: Add the reference-space geometry contract
 
@@ -639,7 +639,7 @@ git diff --cached --name-only
 git commit -m "test: capture desktop training at two resolutions"
 ```
 
-### Task 6: Cold verification, Luna review, and production evidence
+### Task 6: Cold verification, visual review, and production evidence
 
 **Files:**
 - Modify: `docs/production/2026-08-18-desktop-training-2d-hud-migration.md`
@@ -665,15 +665,15 @@ Capture at 1920×1080 and 2560×1440:
 
 The normal-workbench screenshot must show all three panel tops aligned near y=17, the idle strip fully inside the center column, the right map narrower than the warehouse, five navigation buttons inside the center width, and round nodes/discs.
 
-- [ ] **Step 3: Run Luna max visual comparison**
+- [ ] **Step 3: Review the captured visual evidence**
 
-Use `C:/Users/shxuw/.claude/skills/codex-vision/scripts/codex_vision.ps1` with `-Effort max`. Provide the selected reference and each fresh PIE screenshot. The Luna brief must ask for measured P0/P1/P2 differences in outer rectangles, top alignment, column widths, content clipping, circle aspect ratio, text readability, and challenge-canvas size.
+Compare the selected reference with each fresh PIE screenshot using a suitable method. Measure P0/P1/P2 differences in outer rectangles, top alignment, column widths, content clipping, circle aspect ratio, text readability, and challenge-canvas size.
 
 Expected: no P0/P1/P2 geometry mismatch. Any remaining difference must be P3 art polish and must not come from stretching or concept-image reuse.
 
 - [ ] **Step 4: Record evidence and recheck protected assets**
 
-Append commands, timestamps, report paths, screenshot paths, Luna result, before/after `L_Main.umap` SHA256, and exact staged files to the migration production note. Then run:
+Append commands, timestamps, report paths, screenshot paths, visual-review result, before/after `L_Main.umap` SHA256, and exact staged files to the migration production note. Then run:
 
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath 'Content/GameXXK/Maps/L_Main.umap'
@@ -700,7 +700,7 @@ This plan is complete only when all of the following are backed by fresh evidenc
 - No node, navigation disc, equipment slot, or character image is scaled with different X/Y factors.
 - The ChallengeViewport ends before the bottom navigation and exposes a battle board wider than 900 reference pixels.
 - Existing warehouse/backpack/map data bindings and challenge/travel input ownership tests stay green.
-- Cold UBT, Workbench Automation, headless script tests, real PIE scrolling, and Luna max visual review all pass.
+- Cold UBT, Workbench Automation, headless script tests, real PIE scrolling, and the listed visual checks all pass.
 - `L_Main.umap`, untracked user art, 3D town rollback assets, and default-entry routing are untouched by this batch.
 
 Passing this checkpoint does not complete the full desktop-training goal. PSD icon production, remaining workbench semantics, progression/reward/save coverage, performance envelopes, and final default-entry approval remain separate acceptance packages.

@@ -6,7 +6,7 @@
 
 **Architecture:** The Workbench emits a semantic request; PlayerController owns guarded map travel with the transient `GameXXKIntro=CarriagePreview` option. A single map-placed `AGameXXKPrologueCarriageRig` owns the fixed camera, marker components, world-space atlas widget, pure timeline rules, hero presentation snapshot, scoped input lock, pause overlay, cleanup, and one runtime-only completion event. The default 2D map, normal town toggle, save schema, idle strip, Narrative, and Guide remain unchanged.
 
-**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, `UWidgetComponent`, `UCameraComponent`, existing Texture2D atlases, focused Unreal Python through UE MCP, Automation Framework, cold UBT, Luna Max visual review.
+**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, `UWidgetComponent`, `UCameraComponent`, existing Texture2D atlases, focused Unreal Python through UE MCP, Automation Framework, cold UBT, visual evidence review.
 
 ---
 
@@ -801,7 +801,7 @@ git diff --cached --name-status
 
 ---
 
-### Task 8: Player visual acceptance, Luna review, and rolling evidence
+### Task 8: Player visual acceptance, visual review, and rolling evidence
 
 **Files:**
 - Modify: `Source/GameXXK/Public/Town/GameXXKPrologueCarriageRig.h`
@@ -848,9 +848,9 @@ The user performs the click. While the sequence runs, use only the read-only pro
 3. departure behind hero;
 4. restored hero camera/control.
 
-- [ ] **Step 3: Review captures with Luna Max**
+- [ ] **Step 3: Review the captured visual evidence**
 
-Invoke `C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1 -Effort max` and require an evidence-backed verdict for:
+Use a suitable review method and require an evidence-backed verdict for:
 
 - carriage apparent size;
 - bottom-center ground contact;
@@ -876,7 +876,7 @@ If the user has not performed a chain, record it as unverified; do not infer it 
 
 - [ ] **Step 5: Update rolling acceptance honestly**
 
-Record commit IDs, cold UBT command/result, exact Automation counts, Python checks, map-validator JSON, read-only phase evidence, Luna verdict, user manual steps actually performed, and any unrelated baseline failures. State explicitly that Guide implementation has not started.
+Record commit IDs, cold UBT command/result, exact Automation counts, Python checks, map-validator JSON, read-only phase evidence, visual-review verdict, user manual steps actually performed, and any unrelated baseline failures. State explicitly that Guide implementation has not started.
 
 - [ ] **Step 6: Commit evidence documentation, restore protected staging, and push**
 
@@ -905,6 +905,6 @@ Verify `git ls-remote origin refs/heads/main` equals local `HEAD`. The three pro
 - [ ] Success, pause, cancel, failure, return, map travel, and shutdown cannot leave camera/input/hero state locked.
 - [ ] No story, guide, task, reward, idle, party, inventory, equipment, cards, currency, or experience state changes.
 - [ ] No save version or new persistent progress field.
-- [ ] Cold UBT, focused Automation, policy checks, map validator, read-only probe, Luna review, and player-visible acceptance are recorded.
+- [ ] Cold UBT, focused Automation, policy checks, map validator, read-only probe, visual review, and player-visible acceptance are recorded.
 - [ ] Existing user changes and three protected staged deletions remain intact.
 - [ ] Guide work remains a separate next design/implementation cycle after carriage acceptance.

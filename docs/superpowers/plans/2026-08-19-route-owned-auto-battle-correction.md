@@ -6,7 +6,7 @@
 
 **Architecture:** The desktop workbench challenge action becomes a thin adapter over `UGameXXKMVPSubsystem::OpenDungeonFromTownExit()` plus the same `GameXXKLevelFlow::OpenMapForRuntimeState()` travel used by the town exit; it never creates or owns a battle canvas. A transient session flag lives on `UGameXXKMVPSubsystem`, while `UGameXXKBattleBoardWidget` owns the timer and performs one legal action at a time through its existing card/target/choice/end-turn presentation APIs. Route nodes, events, shops, rewards, retries, and quest/follower prerequisites remain player-owned.
 
-**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, CardBattle adapter/rules, UE Automation, project UE MCP, PowerShell, cold UBT, Luna max visual review.
+**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, CardBattle adapter/rules, UE Automation, project UE MCP, PowerShell, cold UBT, visual evidence review.
 
 ---
 
@@ -688,11 +688,7 @@ python scripts/ue_tdd_pipeline.py --pie-duration 5
 python scripts/gamexxk_real_play_flow_mcp.py --timeout 600 --report Saved/HarnessReports/route-owned-auto-battle-real-flow.json
 ```
 
-Capture 1672x941 and 1920x1080 screenshots for route map and battle. Run Luna max through:
-
-```powershell
-& 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' -Effort max
-```
+Capture 1672x941 and 1920x1080 screenshots for route map and battle, then review them with a method suitable for the available evidence.
 
 Visual acceptance:
 
@@ -744,5 +740,5 @@ This correction is complete only when all of the following are simultaneously tr
 - Auto play uses legal stable cards, targets, pending choices, and end turn through Board presentation APIs.
 - Auto play never chooses routes, events, shops, rewards, retries, quests, or followers.
 - The rejected workbench battle UI has no source or runtime path.
-- Cold UBT, focused/full Automation, real PIE/MCP, dual-resolution screenshots, and Luna max all pass.
+- Cold UBT, focused/full Automation, real PIE/MCP, dual-resolution screenshots, and the listed visual checks all pass.
 - Protected map and user-tuned art remain untouched.

@@ -4,9 +4,9 @@
 
 **Goal:** Produce one reviewable, self-contained art handoff package for the current pure-2D desktop workbench backpack-expanded screen without modifying project code or Unreal assets.
 
-**Architecture:** Capture the real PIE Slate window, prepare a deterministic backpack-expanded runtime state, inspect the live programmatic widget tree for visible texture brushes, and export each referenced `UTexture2D` as a same-named PNG. Build the annotation guide as a deterministic overlay on a copy of the screenshot, verify it with the required Luna visual agent, then archive and hash the package.
+**Architecture:** Capture the real PIE Slate window, prepare a deterministic backpack-expanded runtime state, inspect the live programmatic widget tree for visible texture brushes, and export each referenced `UTexture2D` as a same-named PNG. Build the annotation guide as a deterministic overlay on a copy of the screenshot, review it with a method suitable for the evidence, then archive and hash the package.
 
-**Tech Stack:** Unreal Engine 5.8 MCP, existing `scripts/ue_mcp_client.py` and `scripts/gamexxk_vision_pie.py`, transient Unreal Python under `Saved/Codex`, host Python 3 with Pillow 11.3, PowerShell 7, and Luna visual review through `codex_vision.ps1`.
+**Tech Stack:** Unreal Engine 5.8 MCP, existing `scripts/ue_mcp_client.py`, transient Unreal Python under `Saved/Codex`, host Python 3 with Pillow 11.3, PowerShell 7, and visual evidence review.
 
 ---
 
@@ -21,7 +21,6 @@ Read only:
 - `SourceArt/UI/PSD/gamexxk-v4/ui-master/final-approved-runtime-assets-manifest.json`
 - `docs/production/current-goal-acceptance.md`
 - `scripts/ue_mcp_client.py`
-- `scripts/gamexxk_vision_pie.py`
 
 Create as transient evidence only:
 
@@ -30,8 +29,8 @@ Create as transient evidence only:
 - `Saved/Codex/ui-art-handoff-20260828/DesktopTrainingWorkbench_Default_Runtime.png`
 - `Saved/HarnessReports/ui-art-handoff-20260828/runtime-texture-report.json`
 - `Saved/HarnessReports/ui-art-handoff-20260828/capture-report.json`
-- `Saved/HarnessReports/ui-art-handoff-20260828/luna-screen-review.md`
-- `Saved/HarnessReports/ui-art-handoff-20260828/luna-guide-review.md`
+- `Saved/HarnessReports/ui-art-handoff-20260828/visual-screen-review.md`
+- `Saved/HarnessReports/ui-art-handoff-20260828/visual-guide-review.md`
 
 Create as the user-facing delivery:
 
@@ -114,24 +113,15 @@ The PIE world reported by the later runtime inventory must end in `L_DesktopTrai
 
 - [ ] **Step 2: Capture the real PIE Slate window**
 
-Run:
-
-```powershell
-python scripts/gamexxk_vision_pie.py --capture-only --name ui-art-handoff-20260828/DesktopTrainingWorkbench_Default_Runtime.png --output Saved/HarnessReports/ui-art-handoff-20260828/capture-report.json --json
-Copy-Item -LiteralPath 'Saved/Codex/ui-art-handoff-20260828/DesktopTrainingWorkbench_Default_Runtime.png' -Destination 'Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/01_Runtime_Screenshot/DesktopTrainingWorkbench_Default_Runtime.png' -Force
-```
+Capture the current PIE Preview window through the UE MCP `SlateInspectorToolset` screenshot operation, save it as `Saved/Codex/ui-art-handoff-20260828/DesktopTrainingWorkbench_Default_Runtime.png`, and write the capture metadata to `Saved/HarnessReports/ui-art-handoff-20260828/capture-report.json`. Then copy the PNG to `Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/01_Runtime_Screenshot/DesktopTrainingWorkbench_Default_Runtime.png`.
 
 Expected: the capture report has `ok: true`; both PNG paths exist and have the same SHA-256.
 
-- [ ] **Step 3: Ask Luna to validate the target state before asset work**
+- [ ] **Step 3: Review the target state before asset work**
 
-Run:
+Using a suitable review method, confirm that the image shows the desktop workbench with Backpack expanded, contains no legacy 3D Town, route map, BattleBoard, tooltip, hover, or debug-layer interference, and identifies the major image/icon regions that require separate delivery. Record only visible evidence in `Saved/HarnessReports/ui-art-handoff-20260828/visual-screen-review.md`.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' -Prompt '这是 GameXXK 当前纯2D主流程的样板截图。请以美术交付取证标准检查：1) 是否为桌面工作台背包展开态；2) 是否没有旧3D Town、路线图、战斗板、Tooltip、鼠标悬停或调试层干扰；3) 列出画面中需要单独交付的主要图片/图标区域。只报告可见证据，不推测代码。' -Images 'Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/01_Runtime_Screenshot/DesktopTrainingWorkbench_Default_Runtime.png' -Effort max -MaxDim 1920 -Out 'Saved/HarnessReports/ui-art-handoff-20260828/luna-screen-review.md' -Workspace 'D:\UE5 demo\GameXXK'
-```
-
-Expected: Luna explicitly confirms the screen state or identifies a concrete visible mismatch. If it identifies a mismatch, repeat Steps 1–3 after correcting only the runtime UI state.
+Expected: the review confirms the screen state or identifies a concrete visible mismatch. If it identifies a mismatch, repeat Steps 1–3 after correcting only the runtime UI state.
 
 ### Task 3: Export the textures actually used by the visible workbench
 
@@ -509,25 +499,21 @@ Expected: the instructions do not claim that program-drawn text or geometry is a
 
 **Files:**
 
-- Create: `Saved/HarnessReports/ui-art-handoff-20260828/luna-guide-review.md`
+- Create: `Saved/HarnessReports/ui-art-handoff-20260828/visual-guide-review.md`
 - Modify only if evidence requires it: `Saved/Codex/ui-art-handoff-20260828/render_pilot_guide.py`
 - Regenerate only if evidence requires it: `Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/03_Annotation_Guide/Guide_DesktopTrainingWorkbench_Default.png`
 
-- [ ] **Step 1: Run the required Luna max-effort comparison**
+- [ ] **Step 1: Compare the screenshot and annotation guide**
 
-Run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File 'C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1' -Prompt '对比两张图：第一张是原始实机截图，第二张是素材标注图。请逐项检查：标注框是否落在对应可见控件上；编号与右侧 PNG 文件名是否清楚且没有遮住关键内容；是否漏掉明显的图片或图标；是否把纯文字、纯色或程序绘制区域误当成贴图。输出 PASS 或按严重程度列出必须修正项。不要建议修改游戏代码。' -Images 'Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/01_Runtime_Screenshot/DesktopTrainingWorkbench_Default_Runtime.png','Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828/01_DesktopTrainingWorkbench_Default/03_Annotation_Guide/Guide_DesktopTrainingWorkbench_Default.png' -Effort max -MaxDim 1920 -Out 'Saved/HarnessReports/ui-art-handoff-20260828/luna-guide-review.md' -Workspace 'D:\UE5 demo\GameXXK'
-```
+Using a suitable review method, compare the original runtime screenshot with the annotation guide. Check that boxes land on the corresponding controls, numbers and PNG filenames are readable without hiding key content, no obvious image/icon is missing, and no pure text, flat color, or program-drawn geometry is mislabeled as a texture. Save the result to `Saved/HarnessReports/ui-art-handoff-20260828/visual-guide-review.md`.
 
 Expected: `PASS`, or a bounded list of guide-only corrections.
 
 - [ ] **Step 2: Apply only evidence-backed guide corrections**
 
-If Luna reports misaligned boxes, adjust the screenshot-to-root transform or split the legend in the transient renderer, rerun Task 4 Step 2, and repeat Task 5 Step 1. Do not edit runtime UI source, layout constants, assets, maps, or the original screenshot.
+If the review reports misaligned boxes, adjust the screenshot-to-root transform or split the legend in the transient renderer, rerun Task 4 Step 2, and repeat Task 5 Step 1. Do not edit runtime UI source, layout constants, assets, maps, or the original screenshot.
 
-Expected: the final Luna report is `PASS` with no missing visible image/icon category.
+Expected: the final visual-review report is `PASS` with no missing visible image/icon category.
 
 ### Task 6: Deterministic package verification and archive
 
@@ -601,4 +587,4 @@ git status --short -- Content Source Config SourceArt
 
 Expected: the output is identical to the preflight state for these roots; no new change was introduced by this plan. Existing user changes remain untouched.
 
-Do not commit or stage the exported media. Deliver the folder, ZIP, guide preview, asset count, Luna result, and any explicitly recorded limitation to the user. Do not start any other UI screen until the user accepts this pilot.
+Do not commit or stage the exported media. Deliver the folder, ZIP, guide preview, asset count, visual-review result, and any explicitly recorded limitation to the user. Do not start any other UI screen until the user accepts this pilot.

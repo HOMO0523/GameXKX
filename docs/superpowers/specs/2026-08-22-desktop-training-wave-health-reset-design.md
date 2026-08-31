@@ -72,7 +72,7 @@ Add failing tests before production changes:
 - Run focused Training, TravelVisualRuntime, and DesktopTraining Workbench automation.
 - Run a cold UBT build with Hot Reload and Live Coding disabled.
 - Run the pure-2D PIE flow for multiple complete encounter cycles, sampling authoritative HP, visual fractions, UMG percentages, and layout build count.
-- Capture pre-spawn Walking and post-spawn combat screenshots and send them through the required luna visual review. Acceptance requires five seconds without enemies/bars, then full bars on both sides with unchanged layout and assets.
+- Capture pre-spawn Walking and post-spawn combat screenshots, then review them with a suitable method. Acceptance requires five seconds without enemies/bars, then full bars on both sides with unchanged layout and assets.
 
 ## Rejected alternatives
 

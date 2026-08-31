@@ -1732,22 +1732,15 @@ Manual checkpoints:
 
 The probe observes only; all interactions are performed by the user/manual tester.
 
-- [ ] **Step 6: Review the scoped visual evidence with Luna Max if screenshots are needed**
+- [ ] **Step 6: Review the scoped visual evidence if screenshots are needed**
 
-If the portrait/name presentation needs screenshot judgment, capture only the relevant Workbench/idle strip and use the project-required Luna visual agent:
+If the portrait/name presentation needs screenshot judgment, capture only the relevant Workbench/idle strip and review it with a suitable method:
 
 ```powershell
 python -c "import sys; sys.path.insert(0, 'scripts'); from ue_mcp_client import UnrealMCPClient; c=UnrealMCPClient(); print(c.run_project_python_file('gamexxk_probe_training_visual_mvp.py', ['--phase', 'observe', '--capture']))"
 ```
 
-Then run:
-
-```powershell
-& "C:\Users\shxuw\.claude\skills\codex-vision\scripts\codex_vision.ps1" `
-  -Images "D:\UE5 demo\GameXXK\Saved\Screenshots\WindowsEditor\permanent-npc-yuebai-workbench.png" `
-  -Prompt "Verify that the formation NPC portrait/name and idle-strip third member show the same NPC; report any mismatch only." `
-  -Effort max
-```
+Review `Saved/Screenshots/WindowsEditor/permanent-npc-yuebai-workbench.png` and verify that the formation NPC portrait/name and idle-strip third member show the same NPC; report any mismatch only.
 
 Expected: formation and idle-strip identity agree; no `未编入`, invitation, or temporary-support UI appears. This visual check does not replace the state-ID probe.
 

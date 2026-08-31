@@ -6,7 +6,7 @@
 
 **Architecture:** `FGameXXKTrainingTravelVisualRuntime` becomes a pure presentation state machine. The widget captures immutable before/after Travel snapshots around each authoritative step, queues a bounded combat presentation, and advances it every Slate tick; authoritative rewards, saves, retry semantics, and encounter order remain unchanged. The workbench reuses `FGameXXKBattleAnimationPresentation` descriptors and `FGameXXKBattleAtlasCache` for asynchronous action-atlas loading, while the approved walk atlas and seamless background remain the walking presentation.
 
-**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, UE Automation Tests, project UE MCP scripts, cold UBT (`-NoHotReload`), real PIE sampling, Luna max visual review.
+**Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, UE Automation Tests, project UE MCP scripts, cold UBT (`-NoHotReload`), real PIE sampling, visual evidence review.
 
 ---
 
@@ -28,7 +28,7 @@
 - Modify `Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp`: capture before/after snapshots, build a compact combat strip, request existing atlases asynchronously, update only on changed frame/resource/value, and remove verbose labels.
 - Modify `Source/GameXXK/Private/Tests/GameXXKDesktopTrainingWorkbenchWidgetTest.cpp`: structural/player-facing contracts for a real enemy image, two health bars, three background tiles, and absence of the old diagnostic labels.
 - Modify `Content/Python/gamexxk_probe_training_visual_mvp.py`: expose visual phase, enemy visibility, action, frame, HP, offset, and delta in the PIE evidence payload.
-- Modify `docs/production/2026-08-18-desktop-training-2d-hud-migration.md`: dated RED/GREEN, UBT, Automation, PIE, screenshot, and Luna evidence.
+- Modify `docs/production/2026-08-18-desktop-training-2d-hud-migration.md`: dated RED/GREEN, UBT, Automation, PIE, screenshot, and visual evidence.
 
 ### Task 1: Lock the pure presentation behavior with failing tests
 
@@ -204,10 +204,10 @@ Run the focused suite above, then launch `/Game/GameXXK/Maps/L_DesktopTrainingHU
 
 The samples must prove: UE ticks continue; walking offset deltas do not exhibit the old unexplained 0.8–0.9 second zero plateau; combat uses a non-walk action throughout the intentional lane stop; enemy visibility is true during encounter/attack/hit/death; death retains the defeated enemy identity; loop completion does not reset the offset to zero.
 
-- [ ] **Step 5: Request Luna max visual review**
+- [ ] **Step 5: Review the captured visual evidence**
 
-Run `~/.claude/skills/codex-vision/scripts/codex_vision.ps1` with `-Effort max` over the new screenshot and motion evidence. Require a P0/P1/P2 report covering unit readability, Idle/Attack/Hit/Death evidence, HP clarity, text noise, non-stretched sprites, and comparison against the approved strip reference.
+Review the new screenshot and motion evidence with a suitable method. Record P0/P1/P2 findings covering unit readability, Idle/Attack/Hit/Death evidence, HP clarity, text noise, non-stretched sprites, and comparison against the approved strip reference.
 
 - [ ] **Step 6: Record actual results and remaining scope**
 
-Append commands, exit codes, report paths, screenshot path, Luna report path, map hash, and current dirty-state caveat to the production note. Explicitly list the not-yet-complete shared 3×3 formation/runtime work; do not mark the overall desktop Training goal complete.
+Append commands, exit codes, report paths, screenshot path, visual-review report path, map hash, and current dirty-state caveat to the production note. Explicitly list the not-yet-complete shared 3×3 formation/runtime work; do not mark the overall desktop Training goal complete.

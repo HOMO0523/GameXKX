@@ -14,7 +14,7 @@ Prerequisites:
 
 - Approved spec: `docs/superpowers/specs/2026-08-24-gem-icon-progression-design.md`.
 - Style reference: `SourceArt/Generated/Draft/V1/DRAFT-B02-EQUIPMENT_checkpoint31_contact_sheet.png`.
-- Work on root `main`; do not create a worktree and do not use UnrealBridge or Luna.
+- Work on root `main`; do not create a worktree and do not use UnrealBridge.
 
 ### Task 1: add the deterministic gem-icon asset processor
 
@@ -168,7 +168,7 @@ Constraints: genuine transparent background and preserved alpha; simplest rank-o
 
 - [ ] **Step 4: inspect all three masters**
 
-Use direct image inspection. Confirm the three silhouettes remain distinguishable in a 48×48 preview, share outline weight/camera/lighting, and contain real transparent corners. Do not use Luna.
+Inspect the images with a suitable method. Confirm the three silhouettes remain distinguishable in a 48×48 preview, share outline weight/camera/lighting, and contain real transparent corners.
 
 ### Task 3: derive the Attack quality chain
 
@@ -349,7 +349,7 @@ With the editor on `L_DesktopTrainingHUD` and PIE stopped, call `Content/Python/
 
 - [ ] **Step 3: direct visual review**
 
-Inspect the contact sheet without Luna. Confirm each row preserves its type silhouette and fixed main color, every step is visibly at least as complex as the prior step, and the 48×48 inset remains readable. Any failed cell is regenerated from its immediately preceding accepted rank and reprocessed.
+Inspect the contact sheet with a suitable method. Confirm each row preserves its type silhouette and fixed main color, every step is visibly at least as complex as the prior step, and the 48×48 inset remains readable. Any failed cell is regenerated from its immediately preceding accepted rank and reprocessed.
 
 - [ ] **Step 4: independent review**
 

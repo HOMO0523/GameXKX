@@ -224,7 +224,7 @@ Tests must prove:
 - route settlement clears route-local fields but preserves composition and order;
 - battle, Travel, idle strip, and merchant all resolve the same 1P/2P/3P order;
 - draft apply/cancel/global close semantics are atomic;
-- real PIE and Luna Max show distinct composition and position-order sections with readable category labels.
+- real PIE and the selected visual review method show distinct composition and position-order sections with readable category labels.
 
 ## 12. Deferred work
 

@@ -405,9 +405,9 @@ On `L_DesktopTrainingHUD`:
 5. Reopen all three; press Tab; verify only the idle strip remains.
 6. Press Tab; verify clean Backpack with no restored child panels.
 
-- [ ] **Step 4: Luna Max visual review**
+- [ ] **Step 4: Review the captured visual evidence**
 
-Capture occupied-click, three-open-panels, local-close, global-collapse, and clean-reopen screenshots. Invoke `codex_vision.ps1 -Effort max`. Acceptance: approved close glyphs are aligned in panel-local coordinates, no panel blanks, and unrelated geometry is unchanged.
+Capture occupied-click, three-open-panels, local-close, global-collapse, and clean-reopen screenshots. Review them with a suitable method. Acceptance: approved close glyphs are aligned in panel-local coordinates, no panel blanks, and unrelated geometry is unchanged.
 
 - [ ] **Step 5: Commit Unit A**
 

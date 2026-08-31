@@ -147,11 +147,10 @@ Enter Challenge route map, route event/camp/merchant where reachable, Battle, an
 
 Return from Battle/route settlement and from 3D Town. Require Overlay attachment/show before the primary becomes iconic again; workbench snapshot and travel continue.
 
-- [ ] **Step 6: Run luna visual review**
+- [ ] **Step 6: Review the captured visual evidence**
 
-Use `codex_vision.ps1 -Effort max` on desktop-idle, route, battle and town screenshots. Record only observed window/presentation facts.
+Review desktop-idle, route, battle, and town screenshots with a suitable method. Record only observed window/presentation facts.
 
 - [ ] **Step 7: Restore the canonical review surface**
 
 Leave `/Game/GameXXK/Maps/L_DesktopTrainingHUD` in its normal desktop idle state for user review.
-

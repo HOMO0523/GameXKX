@@ -327,7 +327,7 @@ Desktop map + NarrativeLayerActive + Overlay attached
 - 默认表面仍为 `L_DesktopTrainingHUD`。
 - 挂机 TravelRunner、路线图、商店、战斗与返回桌面保持原语义。
 - 显式 Legacy 3D 城镇仍可进入和退出，但不再拥有默认剧情任务入口。
-- 冷 Editor/Game UBT、聚焦 Automation、真实 `-game` 输入/窗口取证和 luna 视觉检查通过。
+- 冷 Editor/Game UBT、聚焦 Automation、真实 `-game` 输入/窗口取证和视觉检查通过。
 
 ## 12. 当前 MVP 主线任务线
 

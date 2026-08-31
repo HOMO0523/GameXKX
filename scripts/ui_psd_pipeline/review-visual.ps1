@@ -1,6 +1,8 @@
-﻿# review-visual.ps1 — PS 每次 apply 操作后，用 gpt-5.6-luna 对比改前/改后审核图
+# review-visual.ps1 — optional model-assisted before/after comparison helper
 #
-# 依赖：~/.claude/skills/codex-vision/scripts/codex_vision.ps1（codex-vision 技能 P0）
+# This helper is not a project gate. Agents may choose this helper, another
+# suitable review method, or direct inspection according to the task.
+# 依赖：~/.claude/skills/codex-vision/scripts/codex_vision.ps1
 # 用法（在 PS 操作跑完、Before/After PNG 已导出后）：
 #   powershell -File scripts/ui_psd_pipeline/review-visual.ps1 `
 #     -Before "SourceArt/UI/PSD/gamexxk-v4/ui-master/Review/TownHUD/Before/02_城镇HUD.png" `

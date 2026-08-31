@@ -285,4 +285,4 @@ Run spec, quality, then cross-work-package integration reviews. Fix/re-review ev
 
 - [ ] **Step 4: direct visual and gameplay PIE**
 
-Without Luna, verify both Q-version chest icons/counts, one/all opening, full-cap stop, Hero/Guard/YueBai Backpack separation, left-click swaps, lock overlays, every Tool mode, ten qualities, Tool XP/crafting level, multi-socket replacement, and chest loot. Leave `/Game/GameXXK/Maps/L_DesktopTrainingHUD` PIE running for the user.
+Using a suitable review method, verify both Q-version chest icons/counts, one/all opening, full-cap stop, Hero/Guard/YueBai Backpack separation, left-click swaps, lock overlays, every Tool mode, ten qualities, Tool XP/crafting level, multi-socket replacement, and chest loot. Leave `/Game/GameXXK/Maps/L_DesktopTrainingHUD` PIE running for the user.

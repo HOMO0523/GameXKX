@@ -84,4 +84,4 @@ Clicking the expanded Tab, the Backpack-local `X`, or pressing keyboard Tab uses
 - Backpack tests prove selected/normal Tab backgrounds, arrow text, separate paper-local X, shared global action, and no old top-strip CloseInk.
 - Real PIE cycles every companion and Quest NPC, exercises both Camp choices, triggers and consumes the relic, and leaves the editor running for user review.
 
-Per user instruction, visual acceptance is performed directly by the primary agent and the user; Luna is not used.
+Visual acceptance checks the captured evidence directly; the reviewer and method are selected according to the task.

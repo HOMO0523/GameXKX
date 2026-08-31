@@ -193,4 +193,4 @@ On `L_DesktopTrainingHUD`:
 
 - [ ] **Step 3: Direct visual review and leave PIE running**
 
-The primary agent directly checks screenshots and then leaves the project PIE open at a clean Workbench for the user. Do not invoke Luna.
+Review the screenshots with a method suitable for the available evidence, then leave the project PIE open at a clean Workbench for the user.

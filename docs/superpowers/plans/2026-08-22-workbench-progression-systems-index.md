@@ -35,9 +35,9 @@ Unit B initially reads the existing effective order (`Hero / active companion / 
 
 ## Cross-unit completion gate
 
-- [ ] Unit A focused automation, full `GameXXK.DesktopTraining.Workbench`, cold UBT, real occupied-slot click, and Luna close-stack review are green.
+- [ ] Unit A focused automation, full `GameXXK.DesktopTraining.Workbench`, cold UBT, real occupied-slot click, and close-stack visual checks are green.
 - [ ] Unit B event/merchant rules, widget, player-flow suites, cold UBT, and real route event/shop loop are green.
 - [ ] Unit C formation rules, save migration, battle/Travel/merchant consumers, Workbench suite, cold UBT, and real order swap are green.
-- [ ] Unit D talent catalog/rules, save migration, inventory, Training/offline/chest/tool integration, widget suites, cold UBT, 35-layer graph PIE, and Luna review are green.
+- [ ] Unit D talent catalog/rules, save migration, inventory, Training/offline/chest/tool integration, widget suites, cold UBT, 35-layer graph PIE, and visual checks are green.
 - [ ] `python scripts/harness_state_validator.py` reports no new production-record findings.
 - [ ] `git diff --check` reports no whitespace errors in scoped files.

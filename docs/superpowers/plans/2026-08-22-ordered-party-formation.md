@@ -385,7 +385,7 @@ Use approved portrait and selected/normal tab assets. Do not show instance IDs.
 
 Run focused Formation page test and complete Workbench suite.
 
-### Task 7: Full verification, PIE, Luna, and commit
+### Task 7: Full verification, PIE, visual review, and commit
 
 - [ ] **Step 1: Cold UBT**
 
@@ -410,7 +410,7 @@ Use fresh report paths and parse every `index.json`; expected zero failed/errors
 
 On the pure-2D map, open Formation, put the companion in 1P and hero in 2P, Apply, close to Backpack, and verify idle strip left-to-right order. Enter route battle and verify the same three members/order; enter merchant and verify owner labels follow the same formation.
 
-- [ ] **Step 4: Luna Max review**
+- [ ] **Step 4: Review the captured visual evidence**
 
 Review default, selected-slot, draft replacement, and swapped/apply screenshots. Acceptance: three equal slots, readable `1P/2P/3P`, tidy candidate grid, only six companion profession labels, approved paper style, local `X` present.
 
