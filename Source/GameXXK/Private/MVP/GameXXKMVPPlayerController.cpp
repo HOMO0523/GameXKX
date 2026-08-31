@@ -236,12 +236,14 @@ void AGameXXKMVPPlayerController::BeginPlay()
 		}
 		return;
 	}
-	if (BootProfile == EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly)
+	if (ShouldBootTutorialTownReturnWorkbenchOnly(BootProfile))
 	{
-		// Tutorial return keeps the authored 3D town, hero and YueBai aftermath,
-		// but must never instantiate the retired full-flow HUD or Workbench.
-		bEnableDesktopTrainingWorkbench = false;
+		// Keep the authored 3D town, hero and YueBai aftermath plus the canonical
+		// idle bar. Do not instantiate the retired TownOverlay/TownHud flow.
+		bEnableDesktopTrainingWorkbench = true;
+		EnsureDesktopTrainingWidgets();
 		RefreshPlayerFlowWidgets();
+		OpenDesktopTrainingWorkbench();
 		return;
 	}
 	const bool bIsDesktopTrainingHUDMap = BootProfile
@@ -2248,6 +2250,12 @@ AGameXXKMVPPlayerController::ResolvePlayerFlowBootProfileForMapAndOptionsForTest
 	return GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(MapPackageName)
 		? EGameXXKPlayerFlowBootProfile::DesktopTrainingOnly
 		: EGameXXKPlayerFlowBootProfile::FullPlayerFlow;
+}
+
+bool AGameXXKMVPPlayerController::ShouldBootTutorialTownReturnWorkbenchOnly(
+	const EGameXXKPlayerFlowBootProfile BootProfile)
+{
+	return BootProfile == EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly;
 }
 
 bool AGameXXKMVPPlayerController::PrepareTutorial01RouteForTest(

@@ -80,6 +80,8 @@ public:
 	static EGameXXKPlayerFlowBootProfile ResolvePlayerFlowBootProfileForMapAndOptionsForTest(
 		const FString& MapPackageName,
 		const FString& Options);
+	static bool ShouldBootTutorialTownReturnWorkbenchOnly(
+		EGameXXKPlayerFlowBootProfile BootProfile);
 	bool PrepareTutorial01RouteForTest(
 		UGameXXKMVPSubsystem* MVPSubsystem,
 		UGameXXKTutorial01SessionSubsystem* TutorialSession,

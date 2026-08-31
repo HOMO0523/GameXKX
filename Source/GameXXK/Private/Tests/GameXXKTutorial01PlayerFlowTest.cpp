@@ -45,6 +45,12 @@ bool FGameXXKTutorial01PlayerFlowTest::RunTest(const FString& Parameters)
 			TEXT("/Game/GameXXK/Maps/Prototype/UEDPIE_0_L_Qingshan_AsianVillage_Demo"),
 			TEXT("?GameXXKIntro=CarriagePreview")),
 		EGameXXKPlayerFlowBootProfile::FullPlayerFlow);
+	TestTrue(TEXT("tutorial town return boots the workbench-only surface"),
+		AGameXXKMVPPlayerController::ShouldBootTutorialTownReturnWorkbenchOnly(
+			EGameXXKPlayerFlowBootProfile::TutorialTownReturnOnly));
+	TestFalse(TEXT("ordinary Qingshan does not use the workbench-only surface"),
+		AGameXXKMVPPlayerController::ShouldBootTutorialTownReturnWorkbenchOnly(
+			EGameXXKPlayerFlowBootProfile::FullPlayerFlow));
 
 	const AGameXXKTutorial01GameMode* Defaults =
 		GetDefault<AGameXXKTutorial01GameMode>();
