@@ -747,17 +747,6 @@
       "visible": true
     },
     {
-      "name": "044_inventory_scrollbar_right",
-      "path": "Assets/LayoutAssets/03_主角背包_inventory_scrollbar_right.png",
-      "x": 6120,
-      "y": 0,
-      "width": 1920,
-      "height": 1080,
-      "fitMode": "stretch",
-      "group": "03_主角背包/42_InventoryScrollbar",
-      "visible": true
-    },
-    {
       "name": "001_town_world",
       "path": "Assets/UIV4_world_town_gray.png",
       "x": 8160,
@@ -5234,7 +5223,7 @@
       "preview": "Previews/03_主角背包.png",
       "status": "v2_master",
       "sourceFamily": "approved_v2",
-      "imageLayerCount": 44,
+      "imageLayerCount": 43,
       "textLayerCount": 22
     },
     {

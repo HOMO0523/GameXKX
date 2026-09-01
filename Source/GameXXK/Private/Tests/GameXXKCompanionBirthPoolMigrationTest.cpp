@@ -166,7 +166,7 @@ bool FGameXXKCompanionBirthPoolMigrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the fixed six-card companion birth pool was introduced by save version thirteen"),
 		FGameXXKSaveMigration::CompanionBirthPoolIntroducedSaveVersion, 13);
 	TestEqual(TEXT("the current save schema includes tutorial map item migration"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 31);
+		FGameXXKSaveMigration::CurrentSaveVersion, 32);
 
 	FGameXXKRuntimeState LegacyRuntime = UGameXXKMVPRules::CreateNewGame();
 	FGameXXKCompanionRecruitResult RecruitResult;

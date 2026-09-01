@@ -17,6 +17,21 @@ class UPaperFlipbookComponent;
 class UPrimitiveComponent;
 class USpringArmComponent;
 
+UENUM(BlueprintType)
+enum class EGameXXKHeroTownAction : uint8
+{
+	Idle,
+	WalkStart,
+	WalkLoop,
+	WalkStop,
+	DeepBreath,
+	AdjustBackpack,
+	CollectItem,
+	CombatIdle,
+	Punch,
+	Kick,
+};
+
 UCLASS(Blueprintable)
 class GAMEXXK_API AGameXXKHeroCharacter : public ACharacter
 {
@@ -109,6 +124,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void Interact();
 
+	/** Plays one approved town-state clip. One-shot actions return to the new Idle clip. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Visual")
+	bool PlayTownAction(EGameXXKHeroTownAction Action);
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town|Visual")
+	void ReturnToTownIdle();
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Town|Visual")
+	EGameXXKHeroTownAction GetCurrentTownAction() const { return CurrentTownAction; }
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Town")
 	void ResetTownMovementInput();
 
@@ -160,8 +185,46 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
 	TMap<EGameXXKTownFacingDirection, TSoftObjectPtr<UPaperFlipbook>> TownIdleDirectionFlipbookAssets;
 
+	/**
+	 * The controllable hero uses one authored left-facing three-clip locomotion
+	 * set.  NPC subclasses disable this and retain their existing directional
+	 * visual routing.
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	bool bUseHorizontalHeroLocomotion = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalIdleFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalWalkStartFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalWalkLoopFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalWalkStopFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalDeepBreathFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalAdjustBackpackFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalCollectItemFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalCombatIdleFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalPunchFlipbookAsset;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
+	TSoftObjectPtr<UPaperFlipbook> TownHorizontalKickFlipbookAsset;
+
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "GameXXK|Town|Visual")
-	EGameXXKTownFacingDirection CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
+	EGameXXKTownFacingDirection CurrentTownFacingDirection = EGameXXKTownFacingDirection::West;
 
 private:
 	UPROPERTY(Transient)
@@ -178,9 +241,17 @@ private:
 	UPaperFlipbook* GetTownFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	UPaperFlipbook* GetTownIdleFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
 	UPaperFlipbook* GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const;
+	UPaperFlipbook* GetHorizontalTownIdleFlipbook() const;
+	UPaperFlipbook* GetHorizontalTownWalkStartFlipbook() const;
+	UPaperFlipbook* GetHorizontalTownWalkLoopFlipbook() const;
+	UPaperFlipbook* GetHorizontalTownActionFlipbook(EGameXXKHeroTownAction Action) const;
 	void InitializeTownDirectionFlipbooks();
 	void SynchronizeOcclusionRevealVisual();
 	void InitializeOcclusionRevealMaterial();
+	void ApplyHorizontalTownFacingMirror();
+	void UpdateHorizontalTownLocomotion(float Horizontal, float Vertical);
+	void AdvanceHorizontalTownLocomotion();
+	void TickHorizontalTownAmbient(float DeltaSeconds);
 	void RefreshTownMovementIntent();
 	void ReleaseHeldTownAutomationKeys();
 	bool IsTownMovementBlockedByModalWindow() const;
@@ -201,6 +272,10 @@ private:
 	float HorizontalIntent = 0.0f;
 	float VerticalIntent = 0.0f;
 	bool bTownMoving = false;
+	EGameXXKHeroTownAction CurrentTownAction = EGameXXKHeroTownAction::Idle;
+	FRandomStream TownAmbientRandom{0x4A1C2026};
+	float TownAmbientElapsedSeconds = 0.0f;
+	float TownAmbientDelaySeconds = 10.0f;
 	EGameXXKTownFacingDirection PendingStopDiagonalFacingDirection = EGameXXKTownFacingDirection::South;
 	double PendingStopDiagonalReleaseTimeSeconds = -1.0;
 	bool bHasPendingStopDiagonalFacingDirection = false;

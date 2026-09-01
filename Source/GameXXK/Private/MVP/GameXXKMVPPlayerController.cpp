@@ -3299,6 +3299,18 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 	const TSharedRef<SWidget>& Content,
 	const bool bRequestComposition)
 {
+	// Installed Game/Shipping builds compile ALPHA_BLENDED_WINDOWS out of
+	// ApplicationCore, so EWindowTransparency::PerPixel is not part of the enum
+	// in that target. The DirectComposition provider owns the native alpha path
+	// there; editor builds still request PerPixel so Slate clears transparent
+	// windows through its normal renderer path.
+#if ALPHA_BLENDED_WINDOWS
+	const EWindowTransparency TransparencySupport = bRequestComposition
+		? EWindowTransparency::PerPixel
+		: EWindowTransparency::None;
+#else
+	const EWindowTransparency TransparencySupport = EWindowTransparency::None;
+#endif
 	TSharedRef<SWindow> Window = SNew(SWindow)
 		.Type(EWindowType::Normal)
 		.Style(&FWindowStyle::GetBorderless())
@@ -3307,10 +3319,7 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 		.ScreenPosition(WindowPosition)
 		.ClientSize(WindowSize)
 		.AdjustInitialSizeAndPositionForDPIScale(false)
-		.SupportsTransparency(
-			bRequestComposition
-				? EWindowTransparency::PerPixel
-				: EWindowTransparency::None)
+		.SupportsTransparency(TransparencySupport)
 		.SizingRule(ESizingRule::FixedSize)
 		.IsPopupWindow(false)
 		.IsTopmostWindow(true)
@@ -3341,8 +3350,7 @@ bool AGameXXKMVPPlayerController::ShouldUseDesktopTrainingOverlayWindow() const
 	return CanAddPlayerWidgetsToViewport()
 		&& FSlateApplication::IsInitialized()
 		&& !GIsAutomationTesting
-		&& ShouldAttemptDesktopOverlayAfterFailureForTest(
-			bDesktopTrainingOverlayFailedForSession)
+		&& !bDesktopTrainingOverlayFailedForSession
 		&& IGameXXKDesktopOverlayModule::Get().IsRuntimeSupported()
 		&& ShouldUseDesktopWindowForMapName(MapPackageName);
 #else

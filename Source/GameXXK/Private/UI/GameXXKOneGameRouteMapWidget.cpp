@@ -1012,6 +1012,15 @@ void UGameXXKOneGameRouteMapWidget::RegisterGuideTargets()
 	}
 	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteAbandonConfirmButton);
 	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteCloseChallengeButton);
+	const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem
+		|| Subsystem->GetRuntimeState().Screen != EGameXXKScreen::DungeonMap
+		|| GetVisibility() != ESlateVisibility::Visible)
+	{
+		// A hidden/generated route projection must not collide with the canonical
+		// desktop tutorial route panel or leave a stale semantic target in Battle.
+		return;
+	}
 	UButton* NextButton = nullptr;
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
 	for (int32 Index = 0; Index < NodeButtons.Num(); ++Index)

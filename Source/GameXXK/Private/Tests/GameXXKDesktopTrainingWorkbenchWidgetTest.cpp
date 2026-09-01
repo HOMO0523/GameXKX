@@ -1511,6 +1511,81 @@ bool FGameXXKDesktopTrainingAdaptiveWindowScaleTest::RunTest(const FString& Para
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingStableDragAnchorTest,
+	"GameXXK.DesktopTraining.Workbench.StableDragAnchor",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingStableDragAnchorTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	const FVector2D PhysicalWorkArea(1920.0f, 1020.0f);
+	const FVector2D CollapsedStripSize(1038.0f, 202.0f);
+	const FVector2D DragStartAnchor(0.4f, 0.6f);
+	const FVector2D DragStartPointer(600.0f, 700.0f);
+
+	TestEqual(
+		TEXT("a stationary pointer preserves the exact drag-start anchor"),
+		ResolveDesktopHudDragAnchor(
+			DragStartAnchor,
+			DragStartPointer,
+			DragStartPointer,
+			PhysicalWorkArea,
+			CollapsedStripSize),
+		DragStartAnchor);
+
+	const FVector2D MovedAnchor = ResolveDesktopHudDragAnchor(
+		DragStartAnchor,
+		DragStartPointer,
+		DragStartPointer + FVector2D(88.2f, -81.8f),
+		PhysicalWorkArea,
+		CollapsedStripSize);
+	TestTrue(TEXT("horizontal physical delta maps one-for-one into anchor travel"),
+		FMath::IsNearlyEqual(MovedAnchor.X, 0.5f, 0.001f));
+	TestTrue(TEXT("vertical physical delta maps one-for-one into anchor travel"),
+		FMath::IsNearlyEqual(MovedAnchor.Y, 0.5f, 0.001f));
+	TestEqual(
+		TEXT("repeating the same pointer sample is deterministic"),
+		ResolveDesktopHudDragAnchor(
+			DragStartAnchor,
+			DragStartPointer,
+			DragStartPointer + FVector2D(88.2f, -81.8f),
+			PhysicalWorkArea,
+			CollapsedStripSize),
+		MovedAnchor);
+
+	TestEqual(
+		TEXT("large negative movement clamps to the work-area origin"),
+		ResolveDesktopHudDragAnchor(
+			DragStartAnchor,
+			DragStartPointer,
+			DragStartPointer - FVector2D(10000.0f, 10000.0f),
+			PhysicalWorkArea,
+			CollapsedStripSize),
+		FVector2D::ZeroVector);
+	TestEqual(
+		TEXT("large positive movement clamps to the far work-area edge"),
+		ResolveDesktopHudDragAnchor(
+			DragStartAnchor,
+			DragStartPointer,
+			DragStartPointer + FVector2D(10000.0f, 10000.0f),
+			PhysicalWorkArea,
+			CollapsedStripSize),
+		FVector2D(1.0f, 1.0f));
+
+	const FVector2D DegenerateAxisAnchor = ResolveDesktopHudDragAnchor(
+		DragStartAnchor,
+		DragStartPointer,
+		DragStartPointer + FVector2D(100.0f, 81.8f),
+		FVector2D(800.0f, 1020.0f),
+		CollapsedStripSize);
+	TestTrue(TEXT("an axis with no available travel resolves to its canonical origin"),
+		FMath::IsNearlyZero(DegenerateAxisAnchor.X));
+	TestTrue(TEXT("a valid axis remains responsive beside a degenerate axis"),
+		FMath::IsNearlyEqual(DegenerateAxisAnchor.Y, 0.7f, 0.001f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingStablePresentationScaleTest,
 	"GameXXK.DesktopTraining.Workbench.StablePresentationScale",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

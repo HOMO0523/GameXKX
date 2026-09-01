@@ -23,13 +23,13 @@ public:
 		bool bShowContinueHint,
 		const FSlateRect& AnchorRect,
 		FVector2D HostSize,
-		bool bPreferBelow);
+		bool bPreferAbove);
 	void DismissBubble();
 
 	static FSlateRect ResolveBubbleRect(
 		const FSlateRect& AnchorRect,
 		FVector2D HostSize,
-		bool bPreferBelow);
+		bool bPreferAbove);
 
 	bool IsBubbleVisible() const { return bBubbleVisible; }
 	bool IsContinueHintVisible() const;

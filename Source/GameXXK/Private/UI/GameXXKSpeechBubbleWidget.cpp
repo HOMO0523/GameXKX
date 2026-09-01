@@ -1,10 +1,12 @@
 #include "UI/GameXXKSpeechBubbleWidget.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/SceneComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/PlayerController.h"
@@ -42,6 +44,21 @@ bool UGameXXKSpeechBubbleWidget::PresentBubble(
 	const FGameXXKDialoguePresentationView& View,
 	USceneComponent* Anchor)
 {
+	return PresentBubbleInternal(View, Anchor, false);
+}
+
+bool UGameXXKSpeechBubbleWidget::PresentBubbleAtVisualTop(
+	const FGameXXKDialoguePresentationView& View,
+	UPrimitiveComponent* VisualAnchor)
+{
+	return PresentBubbleInternal(View, VisualAnchor, true);
+}
+
+bool UGameXXKSpeechBubbleWidget::PresentBubbleInternal(
+	const FGameXXKDialoguePresentationView& View,
+	USceneComponent* Anchor,
+	const bool bInUseVisualBoundsTop)
+{
 	BuildProgrammaticLayout();
 	if (!IsValid(Anchor) || View.NodeId.IsNone() || View.Text.IsEmpty())
 	{
@@ -50,6 +67,7 @@ bool UGameXXKSpeechBubbleWidget::PresentBubble(
 		return false;
 	}
 	AnchorComponent = Anchor;
+	bUseVisualBoundsTop = bInUseVisualBoundsTop;
 	CurrentView = View;
 	if (BodyText)
 	{
@@ -69,25 +87,51 @@ bool UGameXXKSpeechBubbleWidget::UpdateAnchor(APlayerController* Controller)
 		LastPresentationError = TEXT("Speech bubble anchor projection is unavailable.");
 		return false;
 	}
+	FVector AnchorWorldLocation = Anchor->GetComponentLocation();
+	if (bUseVisualBoundsTop)
+	{
+		const UPrimitiveComponent* PrimitiveAnchor = Cast<UPrimitiveComponent>(Anchor);
+		if (!PrimitiveAnchor)
+		{
+			LastPresentationError = TEXT("Speech bubble visual-top anchor is not renderable.");
+			return false;
+		}
+		AnchorWorldLocation = VisualBoundsTopForTest(
+			PrimitiveAnchor->Bounds.Origin,
+			PrimitiveAnchor->Bounds.BoxExtent);
+	}
 	FVector2D Projected;
-	if (!Controller->ProjectWorldLocationToScreen(Anchor->GetComponentLocation(), Projected, true))
+	if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
+			Controller,
+			AnchorWorldLocation,
+			Projected,
+			true))
 	{
 		LastPresentationError = TEXT("Speech bubble anchor is outside the active projection.");
 		return false;
 	}
-	int32 ViewportWidth = 0;
-	int32 ViewportHeight = 0;
-	Controller->GetViewportSize(ViewportWidth, ViewportHeight);
-	if (ViewportWidth <= 0 || ViewportHeight <= 0)
+	FVector2D ViewportSize =
+		UWidgetLayoutLibrary::GetPlayerScreenWidgetGeometry(Controller).GetLocalSize();
+	if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
 	{
-		LastPresentationError = TEXT("Speech bubble viewport has no valid size.");
-		return false;
+		int32 ViewportWidth = 0;
+		int32 ViewportHeight = 0;
+		Controller->GetViewportSize(ViewportWidth, ViewportHeight);
+		const float ViewportScale = FMath::Max(
+			KINDA_SMALL_NUMBER,
+			UWidgetLayoutLibrary::GetViewportScale(Controller));
+		ViewportSize = FVector2D(ViewportWidth, ViewportHeight) / ViewportScale;
+		if (ViewportSize.X <= 0.0f || ViewportSize.Y <= 0.0f)
+		{
+			LastPresentationError = TEXT("Speech bubble viewport has no valid size.");
+			return false;
+		}
 	}
 	Projected.X -= GameXXKSpeechBubblePrivate::BubbleSize.X * 0.5f;
 	Projected.Y -= GameXXKSpeechBubblePrivate::BubbleSize.Y + GameXXKSpeechBubblePrivate::AnchorVerticalGap;
 	const FVector2D Position = ClampToViewport(
 		Projected,
-		FVector2D(ViewportWidth, ViewportHeight),
+		ViewportSize,
 		GameXXKSpeechBubblePrivate::BubbleSize);
 	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(BubbleFrame->Slot))
 	{
@@ -101,6 +145,7 @@ void UGameXXKSpeechBubbleWidget::ClearBubble()
 {
 	AnchorComponent.Reset();
 	CurrentView = FGameXXKDialoguePresentationView();
+	bUseVisualBoundsTop = false;
 	bBubbleVisible = false;
 	SetVisibility(ESlateVisibility::Collapsed);
 }
@@ -111,6 +156,13 @@ FVector2D UGameXXKSpeechBubbleWidget::ClampToViewportForTest(
 	const FVector2D InBubbleSize)
 {
 	return ClampToViewport(ProjectedPosition, ViewportSize, InBubbleSize);
+}
+
+FVector UGameXXKSpeechBubbleWidget::VisualBoundsTopForTest(
+	const FVector BoundsOrigin,
+	const FVector BoundsExtent)
+{
+	return BoundsOrigin + FVector(0.0f, 0.0f, FMath::Max(0.0f, BoundsExtent.Z));
 }
 
 bool UGameXXKSpeechBubbleWidget::IsBubbleVisibleForTest() const { return bBubbleVisible; }

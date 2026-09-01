@@ -1,5 +1,7 @@
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
 #include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -202,6 +204,22 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("direct Qingshan town PIE normalizes main menu state to town"), DirectTownSubsystem->EnsureQingshanTownRuntimeForDirectMap());
 	TestEqual(TEXT("direct Qingshan town PIE hides main menu state"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("direct Qingshan town PIE selects Qingshan region"), DirectTownSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
+	TestEqual(TEXT("direct Qingshan town owns all six starter partners"),
+		DirectTownSubsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.Num(),
+		6);
+	TestEqual(TEXT("direct Qingshan town owns all six named NPC loadouts"),
+		DirectTownSubsystem->GetRuntimeState().CardRun.PartySelection.QuestNpcCardLoadouts.Num(),
+		6);
+	TestEqual(TEXT("direct Qingshan town starts an exact three-member formation"),
+		DirectTownSubsystem->GetRuntimeState().CardRun.OrderedFormation.Members.Num(),
+		FGameXXKPartyFormationRules::PartySize);
+	TestFalse(TEXT("direct Qingshan town selects one permanent partner"),
+		DirectTownSubsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
+	FName DirectTownNpcId;
+	TestTrue(TEXT("direct Qingshan town selects one of the six named NPCs"),
+		FGameXXKPartyFormationRules::ResolveQuestNpcId(
+			DirectTownSubsystem->GetRuntimeState(),
+			DirectTownNpcId));
 	UGameXXKMVPSubsystem* WorldMapTownSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestTrue(TEXT("test setup starts directly in Qingshan town"), WorldMapTownSubsystem->StartGame());
 	TestTrue(TEXT("test setup explicitly opens world map before direct town normalization"), WorldMapTownSubsystem->OpenWorldMap());
@@ -335,9 +353,9 @@ bool FGameXXKDesktopTrainingDirectEntryPartyTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("direct desktop-training HUD initializes a complete playable new-game state"),
 		Subsystem->EnsureDesktopTrainingRuntimeForDirectMap());
 	const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
-	TestEqual(TEXT("direct desktop-training HUD initializes both deterministic starter companions"),
+	TestEqual(TEXT("direct desktop-training HUD initializes all six deterministic starter companions"),
 		CardRun.CompanionRoster.PermanentCompanions.Num(),
-		2);
+		6);
 	TestFalse(TEXT("direct desktop-training HUD selects the active permanent partner"),
 		CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
 	return true;

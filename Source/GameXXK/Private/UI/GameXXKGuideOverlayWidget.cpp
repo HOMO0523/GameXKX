@@ -59,7 +59,8 @@ namespace GameXXKGuideOverlayWidgetPrivate
 		const FGeometry& Geometry,
 		const int32 Layer,
 		const FSlateRect& Rect,
-		const FSlateBrush& Brush)
+		const FSlateBrush& Brush,
+		const FWidgetStyle& WidgetStyle)
 	{
 		const FVector2D Size(Rect.Right - Rect.Left, Rect.Bottom - Rect.Top);
 		if (Size.X <= 0.0f || Size.Y <= 0.0f)
@@ -74,8 +75,34 @@ namespace GameXXKGuideOverlayWidgetPrivate
 				FSlateLayoutTransform(FVector2D(Rect.Left, Rect.Top))),
 			&Brush,
 			ESlateDrawEffect::None,
-			FLinearColor::White);
+			WidgetStyle.GetColorAndOpacityTint()
+				* Brush.GetTint(WidgetStyle));
 	}
+}
+
+TSharedRef<SWidget> UGameXXKGuideSpotlightWidget::RebuildWidget()
+{
+	BuildProgrammaticLayout();
+	return Super::RebuildWidget();
+}
+
+void UGameXXKGuideSpotlightWidget::PresentSpotlight(
+	const FGameXXKGuideOutput& Output,
+	const TArray<FSlateRect>& LocalTargetRects)
+{
+	BuildProgrammaticLayout();
+	CurrentOutput = Output;
+	CurrentTargetRects = LocalTargetRects;
+	bSpotlightVisible = Output.bActive && !CurrentTargetRects.IsEmpty();
+	SetVisibility(ESlateVisibility::HitTestInvisible);
+}
+
+void UGameXXKGuideSpotlightWidget::DismissSpotlight()
+{
+	bSpotlightVisible = false;
+	CurrentOutput = FGameXXKGuideOutput();
+	CurrentTargetRects.Reset();
+	SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 TSharedRef<SWidget> UGameXXKGuideOverlayWidget::RebuildWidget()
@@ -93,7 +120,7 @@ void UGameXXKGuideOverlayWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-int32 UGameXXKGuideOverlayWidget::NativePaint(
+int32 UGameXXKGuideSpotlightWidget::NativePaint(
 	const FPaintArgs& Args,
 	const FGeometry& AllottedGeometry,
 	const FSlateRect& MyCullingRect,
@@ -104,7 +131,7 @@ int32 UGameXXKGuideOverlayWidget::NativePaint(
 {
 	using namespace GameXXKGuideOverlayWidgetPrivate;
 	int32 ChildLayer = LayerId;
-	if (bGuideVisible && !CurrentTargetRects.IsEmpty())
+	if (bSpotlightVisible && !CurrentTargetRects.IsEmpty())
 	{
 		const FVector2D HostSize = AllottedGeometry.GetLocalSize();
 		const TArray<FSlateRect> PaddedCutouts =
@@ -115,9 +142,12 @@ int32 UGameXXKGuideOverlayWidget::NativePaint(
 			DimBrush.DrawAs = ESlateBrushDrawType::Box;
 			DimBrush.TintColor = FSlateColor(
 				FLinearColor(0.0f, 0.0f, 0.0f, DimAlpha));
-			for (const FSlateRect& Region : BuildDimRegions(HostSize, CurrentTargetRects, 6.0f))
+			for (const FSlateRect& Region : UGameXXKGuideOverlayWidget::BuildDimRegions(
+				HostSize,
+				CurrentTargetRects,
+				6.0f))
 			{
-				PaintRect(OutDrawElements, AllottedGeometry, ChildLayer, Region, DimBrush);
+				PaintRect(OutDrawElements, AllottedGeometry, ChildLayer, Region, DimBrush, InWidgetStyle);
 			}
 			++ChildLayer;
 		}
@@ -129,13 +159,13 @@ int32 UGameXXKGuideOverlayWidget::NativePaint(
 		for (const FSlateRect& Cutout : PaddedCutouts)
 		{
 			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
-				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Right, Cutout.Top + OutlineThickness), OutlineBrush);
+				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Right, Cutout.Top + OutlineThickness), OutlineBrush, InWidgetStyle);
 			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
-				FSlateRect(Cutout.Left, Cutout.Bottom - OutlineThickness, Cutout.Right, Cutout.Bottom), OutlineBrush);
+				FSlateRect(Cutout.Left, Cutout.Bottom - OutlineThickness, Cutout.Right, Cutout.Bottom), OutlineBrush, InWidgetStyle);
 			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
-				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Left + OutlineThickness, Cutout.Bottom), OutlineBrush);
+				FSlateRect(Cutout.Left, Cutout.Top, Cutout.Left + OutlineThickness, Cutout.Bottom), OutlineBrush, InWidgetStyle);
 			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,
-				FSlateRect(Cutout.Right - OutlineThickness, Cutout.Top, Cutout.Right, Cutout.Bottom), OutlineBrush);
+				FSlateRect(Cutout.Right - OutlineThickness, Cutout.Top, Cutout.Right, Cutout.Bottom), OutlineBrush, InWidgetStyle);
 		}
 		++ChildLayer;
 	}
@@ -166,13 +196,14 @@ void UGameXXKGuideOverlayWidget::PresentGuide(
 	CurrentTargetRects = LocalTargetRects;
 	CurrentBubbleAnchorRect = LocalBubbleAnchorRect;
 	bGuideVisible = Output.bActive && !CurrentTargetRects.IsEmpty();
-	if (!bGuideVisible || !RootCanvas || !GuideBubble)
+	if (!bGuideVisible || !RootCanvas || !GuideSpotlight || !GuideBubble)
 	{
 		DismissGuide();
 		return;
 	}
 
 	SetVisibility(ESlateVisibility::HitTestInvisible);
+	GuideSpotlight->PresentSpotlight(Output, CurrentTargetRects);
 	FVector2D HostSize = GetCachedGeometry().GetLocalSize();
 	if (HostSize.X <= 0.0f || HostSize.Y <= 0.0f)
 	{
@@ -194,7 +225,7 @@ void UGameXXKGuideOverlayWidget::PresentGuide(
 		bShowContinueHint,
 		BubbleAnchor,
 		HostSize,
-		!bHasExplicitBubbleAnchor);
+		bHasExplicitBubbleAnchor);
 }
 
 void UGameXXKGuideOverlayWidget::DismissGuide()
@@ -203,11 +234,19 @@ void UGameXXKGuideOverlayWidget::DismissGuide()
 	CurrentOutput = FGameXXKGuideOutput();
 	CurrentTargetRects.Reset();
 	CurrentBubbleAnchorRect.Reset();
+	if (GuideSpotlight)
+	{
+		GuideSpotlight->DismissSpotlight();
+	}
 	if (GuideBubble)
 	{
 		GuideBubble->DismissBubble();
 	}
-	SetVisibility(ESlateVisibility::Collapsed);
+	// Keep the transparent host in Slate layout so a guide started before the
+	// first arrange pass can resolve its targets on a later tick. Collapsing the
+	// host here creates a deadlock: unresolved geometry dismisses the guide, and
+	// the collapsed host can never receive geometry needed by the refresh.
+	SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UGameXXKGuideOverlayWidget::SetDestroyedDelegate(
@@ -313,6 +352,20 @@ FText UGameXXKGuideOverlayWidget::GetGuideTextForTest() const
 	return CurrentOutput.Text;
 }
 
+void UGameXXKGuideSpotlightWidget::BuildProgrammaticLayout()
+{
+	if (!WidgetTree || WidgetTree->RootWidget)
+	{
+		return;
+	}
+	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("GuideSpotlightRoot"));
+	RootCanvas->SetVisibility(ESlateVisibility::HitTestInvisible);
+	WidgetTree->RootWidget = RootCanvas;
+	DismissSpotlight();
+}
+
 void UGameXXKGuideOverlayWidget::BuildProgrammaticLayout()
 {
 	using namespace GameXXKGuideOverlayWidgetPrivate;
@@ -325,6 +378,16 @@ void UGameXXKGuideOverlayWidget::BuildProgrammaticLayout()
 		TEXT("GuideOverlayRoot"));
 	RootCanvas->SetVisibility(ESlateVisibility::HitTestInvisible);
 	WidgetTree->RootWidget = RootCanvas;
+	GuideSpotlight = WidgetTree->ConstructWidget<UGameXXKGuideSpotlightWidget>(
+		UGameXXKGuideSpotlightWidget::StaticClass(),
+		TEXT("GuideSpotlight"));
+	if (UCanvasPanelSlot* SpotlightSlot = RootCanvas->AddChildToCanvas(GuideSpotlight))
+	{
+		SpotlightSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
+		SpotlightSlot->SetOffsets(FMargin(0.0f));
+		SpotlightSlot->SetAlignment(FVector2D::ZeroVector);
+		SpotlightSlot->SetZOrder(0);
+	}
 	GuideBubble = WidgetTree->ConstructWidget<UGameXXKBattleGuideBubbleWidget>(
 		UGameXXKBattleGuideBubbleWidget::StaticClass(),
 		TEXT("GuideBattleBubble"));

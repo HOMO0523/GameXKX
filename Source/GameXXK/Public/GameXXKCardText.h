@@ -43,4 +43,30 @@ namespace GameXXKCardText
 		EGameXXKCardQuality Quality,
 		const FGameXXKCardPlayPreview* Preview,
 		const FGameXXKCardTooltipContext& Context);
+
+	/**
+	 * Fixed-budget default tooltip body. It omits the duplicated title,
+	 * acquisition source and quality rows; Shift-expanded presentation keeps
+	 * using DescribeTooltip for the authoritative complete rules.
+	 */
+	GAMEXXK_API FString DescribeCompactTooltipBody(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context);
+	GAMEXXK_API FString DescribeCompactTooltipBody(
+		const FGameXXKCardDefinition& Definition,
+		EGameXXKCardQuality Quality,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context);
+
+	/** Full rules for Shift presentation, excluding the separately-rendered title and acquisition source. */
+	GAMEXXK_API FString DescribeExpandedTooltipBody(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context);
+	GAMEXXK_API FString DescribeExpandedTooltipBody(
+		const FGameXXKCardDefinition& Definition,
+		EGameXXKCardQuality Quality,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context);
 }

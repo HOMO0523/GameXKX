@@ -13,14 +13,14 @@ class UGameXXKBattleGuideBubbleWidget;
 
 DECLARE_DELEGATE(FGameXXKGuideOverlayDestroyed);
 
-UCLASS(Blueprintable)
-class GAMEXXK_API UGameXXKGuideOverlayWidget : public UUserWidget
+/** Paint-only sibling kept below the paper bubble in the overlay canvas. */
+UCLASS()
+class GAMEXXK_API UGameXXKGuideSpotlightWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
 public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
-	virtual void NativeDestruct() override;
 	virtual int32 NativePaint(
 		const FPaintArgs& Args,
 		const FGeometry& AllottedGeometry,
@@ -29,6 +29,31 @@ public:
 		int32 LayerId,
 		const FWidgetStyle& InWidgetStyle,
 		bool bParentEnabled) const override;
+
+	void PresentSpotlight(
+		const FGameXXKGuideOutput& Output,
+		const TArray<FSlateRect>& LocalTargetRects);
+	void DismissSpotlight();
+
+private:
+	void BuildProgrammaticLayout();
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	FGameXXKGuideOutput CurrentOutput;
+	TArray<FSlateRect> CurrentTargetRects;
+	bool bSpotlightVisible = false;
+};
+
+UCLASS(Blueprintable)
+class GAMEXXK_API UGameXXKGuideOverlayWidget : public UUserWidget
+{
+	GENERATED_BODY()
+
+public:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+	virtual void NativeDestruct() override;
 
 	void PresentGuide(const FGameXXKGuideOutput& Output, const FSlateRect& TargetRect);
 	void PresentGuide(
@@ -57,6 +82,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKGuideSpotlightWidget> GuideSpotlight;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleGuideBubbleWidget> GuideBubble;

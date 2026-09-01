@@ -55,10 +55,10 @@ CHECKLIST = [
     "default GameMode wires MVP PlayerController, clickable HUD, and editable BP_HeroCharacter for Play mode",
     "Qingshan town map has fixed Landscape terrain, boundaries, PlayerStart, lighting, no Water actors, and MVP GameMode override",
     "selected hero, follower, and merchant walk sprite sheets are stored in project content and imported as Texture2D assets",
-    "hero deep-blue high-ponytail sheet expands into 8-direction Paper2D walk flipbooks and BP_HeroCharacter loads South walk by default",
-    "BP_HeroCharacter switches hero Paper2D walk flipbooks across 8 directions from WASD, arrow-key, and axis movement intent",
+    "the corrected hero town sources import as shared-anchor idle, walk-start, and walk-loop Paper2D flipbooks",
+    "BP_HeroCharacter uses only left/right facing, mirrors the left source for right, and keeps horizontal facing during vertical movement",
     "UE MCP real play flow clicks Start and Qingshan, opens L_QingshanInn, moves BP_HeroCharacter with WASD, and accepts the quest with F",
-    "hero PaperZD flipbook animation source, AnimBP, and 8-direction directional walk sequence reference the Paper2D flipbooks",
+    "hero PaperZD source and AnimBP own three non-directional town locomotion sequences referencing the same runtime flipbooks",
 ]
 
 FLOW_EVIDENCE = [

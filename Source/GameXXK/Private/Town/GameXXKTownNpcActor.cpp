@@ -90,7 +90,7 @@ void AGameXXKTownNpcActor::NotifyActorBeginOverlap(AActor* OtherActor)
 
 	APawn* Pawn = Cast<APawn>(OtherActor);
 	UGameXXKInteractionComponent* Interaction = Pawn ? Pawn->FindComponentByClass<UGameXXKInteractionComponent>() : nullptr;
-	if (Interaction)
+	if (Interaction && NarrativeInteraction && NarrativeInteraction->IsInteractionEnabled())
 	{
 		Interaction->AddFocusedActor(this);
 	}
@@ -162,12 +162,12 @@ EGameXXKTownNpcRole AGameXXKTownNpcActor::GetNpcRole() const
 
 bool AGameXXKTownNpcActor::CanOfferQuest() const
 {
-	return NpcRole == EGameXXKTownNpcRole::Quest;
+	return false;
 }
 
 bool AGameXXKTownNpcActor::CanTrade() const
 {
-	return NpcRole == EGameXXKTownNpcRole::Merchant;
+	return false;
 }
 
 bool AGameXXKTownNpcActor::HasPrimaryInteractionAction() const
@@ -294,61 +294,14 @@ void AGameXXKTownNpcActor::Interact_Implementation(APawn* InstigatorPawn)
 
 bool AGameXXKTownNpcActor::ConfirmQuestDialogInteraction(APawn* InstigatorPawn)
 {
-	if (!CanOfferQuest())
-	{
-		bLastInteractionSuccessful = false;
-		return false;
-	}
-
-	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
-	OnQuestInteract(InstigatorPawn);
-	OnDefaultInteractionResolved(InstigatorPawn, bLastInteractionSuccessful);
-	if (bLastInteractionSuccessful && InstigatorPawn)
-	{
-		if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
-		{
-			PlayerController->RefreshPlayerFlowWidgetsFromState();
-		}
-	}
-	return bLastInteractionSuccessful;
+	(void)InstigatorPawn;
+	bLastInteractionSuccessful = false;
+	return false;
 }
 
 bool AGameXXKTownNpcActor::ApplyDefaultInteraction(APawn* InstigatorPawn)
 {
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(InstigatorPawn);
-	if (!Subsystem)
-	{
-		bLastInteractionSuccessful = false;
-		return false;
-	}
-
-	if (CanOfferQuest())
-	{
-		const bool bAccepted = Subsystem->AcceptQuest();
-		if (bAccepted)
-		{
-			// Accepting the quest keeps the guide NPC at its town spot. Any later
-			// story-follow behavior is narrative-owned, never an F-interaction party edit.
-			Subsystem->RecordQuestNpcLocation(GetActorLocation());
-		}
-		bLastInteractionSuccessful = bAccepted;
-		return bAccepted;
-	}
-	if (CanTrade())
-	{
-		if (InstigatorPawn)
-		{
-			if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
-			{
-				bLastInteractionSuccessful = PlayerController->OpenMetaShopWindow();
-				return bLastInteractionSuccessful;
-			}
-		}
-		// The retired subsystem trade panel is intentionally not a fallback. A
-		// player controller is required because it owns the new modal shop widget.
-		bLastInteractionSuccessful = false;
-		return false;
-	}
+	(void)InstigatorPawn;
 	bLastInteractionSuccessful = false;
 	return false;
 }

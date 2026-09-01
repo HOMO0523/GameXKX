@@ -13,42 +13,13 @@ namespace GameXXKStoryCatalogPrivate
 
 	const TArray<FGameXXKTaskDefinition>& BuildTasks()
 	{
-		static const TArray<FGameXXKTaskDefinition> Tasks = []
-		{
-			FGameXXKTaskDefinition Prologue;
-			Prologue.TaskId = TEXT("Task.Main.XuXiake.Prologue");
-			Prologue.StoryId = TEXT("Story.Main.XuXiakeTreasure");
-			Prologue.EntryStepId = TEXT("Step.Main.XuXiake.RiverScroll");
-
-			FGameXXKTaskStepDefinition River;
-			River.StepId = TEXT("Step.Main.XuXiake.RiverScroll");
-			River.SequenceId = TEXT("Sequence.Main.XuXiake.CarriageArrival");
-			River.StageContractId = TEXT("Stage.Tutorial.River");
-			River.NextStepIds = {TEXT("Step.Main.XuXiake.CombatTutorial")};
-			Prologue.Steps.Add(River);
-
-			FGameXXKTaskStepDefinition Combat;
-			Combat.StepId = TEXT("Step.Main.XuXiake.CombatTutorial");
-			Combat.EncounterId = TEXT("Encounter.Main.XuXiake.0-1");
-			Combat.RouteId = TEXT("Route.Tutorial.CombatBasics");
-			Combat.StageContractId = TEXT("Stage.Tutorial.River");
-			Combat.GuideId = TEXT("Guide.RouteMap.Basic");
-			Prologue.Steps.Add(Combat);
-			return TArray<FGameXXKTaskDefinition>{Prologue};
-		}();
+		static const TArray<FGameXXKTaskDefinition> Tasks;
 		return Tasks;
 	}
 
 	const TArray<FGameXXKStoryDefinition>& BuildStories()
 	{
-		static const TArray<FGameXXKStoryDefinition> Stories = []
-		{
-			FGameXXKStoryDefinition Main;
-			Main.StoryId = TEXT("Story.Main.XuXiakeTreasure");
-			Main.Version = 1;
-			Main.TaskIds = {TEXT("Task.Main.XuXiake.Prologue")};
-			return TArray<FGameXXKStoryDefinition>{Main};
-		}();
+		static const TArray<FGameXXKStoryDefinition> Stories;
 		return Stories;
 	}
 }

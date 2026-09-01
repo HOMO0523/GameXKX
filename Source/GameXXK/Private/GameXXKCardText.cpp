@@ -466,6 +466,35 @@ namespace
 		{
 			return FString();
 		}
+		FString DeferredCardCostText;
+		if (Modifier.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
+			&& Modifier.Target == EGameXXKCardEffectTarget::PlayedCard
+			&& (Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+				|| Modifier.EffectType == EGameXXKCardEffectType::ModifyManaCost))
+		{
+			FString Subject;
+			if (Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount
+				&& Modifier.RemainingTriggers > 0)
+			{
+				Subject = Modifier.RemainingTriggers == 1
+					? TEXT("后续打出的第一张牌")
+					: FString::Printf(TEXT("后续打出的%d张牌"), Modifier.RemainingTriggers);
+			}
+			else if (Modifier.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRound)
+			{
+				Subject = TEXT("本回合后续打出的牌");
+			}
+			else
+			{
+				Subject = TEXT("后续打出的牌");
+			}
+			const TCHAR* Resource = Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+				? TEXT("气力")
+				: TEXT("内力");
+			DeferredCardCostText = Modifier.Magnitude <= -99
+				? FString::Printf(TEXT("%s%s消耗改为0"), *Subject, Resource)
+				: FString::Printf(TEXT("%s%s消耗%+d"), *Subject, Resource, Modifier.Magnitude);
+		}
 		const FString Core = DescribeEffectType(
 			Modifier.EffectType,
 			Modifier.Target,
@@ -475,7 +504,9 @@ namespace
 			1,
 			Modifier.Status);
 		TArray<FString> Clauses;
-		Clauses.Add(FString::Printf(TEXT("持续效果：%s，%s"), *DescribeModifierTrigger(Modifier.Trigger), *Core));
+		Clauses.Add(DeferredCardCostText.IsEmpty()
+			? FString::Printf(TEXT("持续效果：%s，%s"), *DescribeModifierTrigger(Modifier.Trigger), *Core)
+			: DeferredCardCostText);
 		if (Modifier.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid)
 		{
 			Clauses.Add(TEXT("限指定职业触发"));
@@ -1401,6 +1432,280 @@ namespace
 		}
 		return FString::Join(Lines, TEXT("\n"));
 	}
+
+	constexpr int32 CompactTooltipMaximumLineLength = 48;
+	constexpr int32 CompactTooltipMaximumEffectLines = 3;
+	constexpr int32 CompactTooltipMaximumTotalLines = 7;
+
+	FString EllipsizeCompactTooltipLine(const FString& Value)
+	{
+		const FString Trimmed = Value.TrimStartAndEnd();
+		if (Trimmed.Len() <= CompactTooltipMaximumLineLength)
+		{
+			return Trimmed;
+		}
+		const auto IsDigit = [](const TCHAR Ch)
+		{
+			return Ch >= TEXT('0') && Ch <= TEXT('9');
+		};
+		const auto IsNumericUnit = [](const TCHAR Ch)
+		{
+			return Ch == TEXT('%') || Ch == TEXT('层') || Ch == TEXT('点')
+				|| Ch == TEXT('次') || Ch == TEXT('张') || Ch == TEXT('段');
+		};
+		int32 CutIndex = CompactTooltipMaximumLineLength - 1;
+		if (CutIndex < Trimmed.Len())
+		{
+			const TCHAR Before = Trimmed[CutIndex - 1];
+			const TCHAR After = Trimmed[CutIndex];
+			if ((Before == TEXT('-') || Before == TEXT('+')) && IsDigit(After))
+			{
+				--CutIndex;
+			}
+			else if ((IsDigit(Before) && IsDigit(After)) || (IsDigit(Before) && IsNumericUnit(After)))
+			{
+				while (CutIndex > 0 && IsDigit(Trimmed[CutIndex - 1]))
+				{
+					--CutIndex;
+				}
+				if (CutIndex > 0 && (Trimmed[CutIndex - 1] == TEXT('-') || Trimmed[CutIndex - 1] == TEXT('+')))
+				{
+					--CutIndex;
+				}
+			}
+		}
+		return Trimmed.Left(FMath::Max(1, CutIndex)).TrimEnd() + TEXT("…");
+	}
+
+	FString DescribeCompactTargetMode(const EGameXXKCardTargetMode Mode)
+	{
+		FString Target = DescribeTargetMode(Mode);
+		int32 AnnotationIndex = INDEX_NONE;
+		if (Target.FindChar(TEXT('（'), AnnotationIndex) && AnnotationIndex > 0)
+		{
+			Target = Target.Left(AnnotationIndex);
+		}
+		return Target;
+	}
+
+	bool IsCompactTooltipKeywordLine(const FString& Line)
+	{
+		static const TArray<FString> Keywords = {
+			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
+			TEXT("血势"), TEXT("乘势"), TEXT("重箭"),
+			TEXT("阵法"), TEXT("阵赏"), TEXT("编序"),
+			TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("药方"),
+			TEXT("地势"), TEXT("法术任务"),
+		};
+		int32 ColonIndex = INDEX_NONE;
+		Line.FindChar(TEXT('：'), ColonIndex);
+		if (ColonIndex <= 0)
+		{
+			return false;
+		}
+		const FString Prefix = Line.Left(ColonIndex);
+		const int32 DotIndex = Prefix.Find(TEXT("·"));
+		const FString BasePrefix = DotIndex == INDEX_NONE ? Prefix : Prefix.Left(DotIndex);
+		return Keywords.Contains(Prefix) || Keywords.Contains(BasePrefix);
+	}
+
+	FString CompactTooltipEffectLine(FString Line)
+	{
+		Line = Line.TrimStartAndEnd();
+		if (Line == TEXT("冲锋：此牌是本回合第一张主动牌打出时触发。")
+			|| Line == TEXT("收招：此牌是本回合最后一张主动牌时触发。")
+			|| Line == TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。"))
+		{
+			return FString();
+		}
+
+		Line = Line.Replace(TEXT("冲锋效果："), TEXT("冲锋："));
+		Line = Line.Replace(TEXT("收招效果："), TEXT("收招："));
+		Line = Line.Replace(TEXT("重箭效果："), TEXT("重箭："));
+		Line = Line.Replace(TEXT("冲锋：此牌是本回合第一张主动牌打出时，"), TEXT("冲锋："));
+		Line = Line.Replace(TEXT("收招：此牌是本回合最后一张主动牌时，"), TEXT("收招："));
+		Line = Line.Replace(TEXT("持续效果："), TEXT(""));
+		Line = Line.Replace(
+			TEXT("下个玩家回合首次主动攻击指定状态目标时"),
+			TEXT("下回合首次攻击目标时"));
+		Line = Line.Replace(TEXT("所选目标"), TEXT("目标"));
+
+		FString Prefix;
+		FString Payload = Line;
+		int32 ColonIndex = INDEX_NONE;
+		if (Line.FindChar(TEXT('：'), ColonIndex) && ColonIndex > 0)
+		{
+			Prefix = Line.Left(ColonIndex + 1);
+			Payload = Line.Mid(ColonIndex + 1);
+		}
+
+		TArray<FString> KeptClauses;
+		TArray<FString> Clauses;
+		Payload.ParseIntoArray(Clauses, TEXT("；"), true);
+		for (FString Clause : Clauses)
+		{
+			Clause = Clause.TrimStartAndEnd();
+			if (Clause.IsEmpty()
+				|| Clause == TEXT("仅主动出牌触发")
+				|| Clause == TEXT("触发1次后失效")
+				|| Clause == TEXT("触发状态伤害时不减层")
+				|| Clause == TEXT("不作用于效果来源单位")
+				|| Clause == TEXT("限指定职业触发")
+				|| Clause == TEXT("限指定角色触发")
+				|| Clause.StartsWith(TEXT("每次按当前层数造成生命伤害并减少1层")))
+			{
+				continue;
+			}
+			Clause = Clause.Replace(TEXT("当目标具有"), TEXT("需目标有"));
+			KeptClauses.Add(Clause);
+		}
+		const FString CompactPayload = FString::Join(KeptClauses, TEXT("；"));
+		return CompactPayload.IsEmpty()
+			? FString()
+			: EllipsizeCompactTooltipLine(Prefix + CompactPayload);
+	}
+
+	void MergeCompactTooltipLine(TArray<FString>& Lines, const FString& Candidate)
+	{
+		if (Candidate.IsEmpty())
+		{
+			return;
+		}
+		int32 ColonIndex = INDEX_NONE;
+		Candidate.FindChar(TEXT('：'), ColonIndex);
+		const FString CandidatePrefix = ColonIndex > 0 ? Candidate.Left(ColonIndex + 1) : FString();
+		if (!CandidatePrefix.IsEmpty())
+		{
+			for (FString& Existing : Lines)
+			{
+				if (Existing.StartsWith(CandidatePrefix))
+				{
+					Existing = EllipsizeCompactTooltipLine(
+						Existing + TEXT("；") + Candidate.Mid(CandidatePrefix.Len()));
+					return;
+				}
+			}
+		}
+		Lines.Add(EllipsizeCompactTooltipLine(Candidate));
+	}
+
+	FString DescribeCompactTooltipBodyResolved(
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const EGameXXKCardQuality ResolvedQuality,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context)
+	{
+		TArray<FString> Lines;
+		Lines.Add(FString::Printf(
+			TEXT("品质：%s"),
+			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
+		Lines.Add(FString::Printf(
+			TEXT("费用：%d 气 · %d 内"),
+			EffectiveDefinition.EnergyCost,
+			EffectiveDefinition.ManaCost));
+		Lines.Add(FString::Printf(
+			TEXT("目标：%s"),
+			*DescribeCompactTargetMode(EffectiveDefinition.TargetSpec.Mode)));
+
+		TArray<FString> BaseEffectLines;
+		TArray<FString> KeywordLines;
+		TArray<FString> RawEffectLines;
+		DescribeEffectsResolved(EffectiveDefinition, Context.CurrentTerrain).ParseIntoArrayLines(
+			RawEffectLines,
+			false);
+		for (const FString& RawLine : RawEffectLines)
+		{
+			const FString CompactLine = CompactTooltipEffectLine(RawLine);
+			if (CompactLine.IsEmpty())
+			{
+				continue;
+			}
+			if (IsCompactTooltipKeywordLine(CompactLine))
+			{
+				MergeCompactTooltipLine(KeywordLines, CompactLine);
+			}
+			else if (!BaseEffectLines.IsEmpty()
+				&& BaseEffectLines.Last().Len() + CompactLine.Len() + 1 <= CompactTooltipMaximumLineLength)
+			{
+				BaseEffectLines.Last() += TEXT("；") + CompactLine;
+			}
+			else
+			{
+				BaseEffectLines.Add(CompactLine);
+			}
+		}
+
+		for (const FString& BaseLine : BaseEffectLines)
+		{
+			if (Lines.Num() - 3 >= CompactTooltipMaximumEffectLines)
+			{
+				break;
+			}
+			Lines.Add(EllipsizeCompactTooltipLine(BaseLine));
+		}
+		for (const FString& KeywordLine : KeywordLines)
+		{
+			if (Lines.Num() - 3 >= CompactTooltipMaximumEffectLines)
+			{
+				break;
+			}
+			Lines.Add(EllipsizeCompactTooltipLine(KeywordLine));
+		}
+
+		if (!Context.UnavailableReason.IsEmpty())
+		{
+			Lines.Add(EllipsizeCompactTooltipLine(
+				FString::Printf(TEXT("当前不可用：%s"), *Context.UnavailableReason)));
+		}
+		else if (!Context.InteractionResult.IsEmpty())
+		{
+			Lines.Add(EllipsizeCompactTooltipLine(Context.InteractionResult));
+		}
+		else if (Preview)
+		{
+			Lines.Add(EllipsizeCompactTooltipLine(DescribePreviewState(*Preview)));
+		}
+
+		while (Lines.Num() >= CompactTooltipMaximumTotalLines)
+		{
+			Lines.RemoveAt(Lines.Num() - 1);
+		}
+		Lines.Add(TEXT("Shift：查看完整规则"));
+		return FString::Join(Lines, TEXT("\n"));
+	}
+
+	FString DescribeExpandedTooltipBodyResolved(
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const EGameXXKCardQuality ResolvedQuality,
+		const FGameXXKCardPlayPreview* Preview,
+		const FGameXXKCardTooltipContext& Context)
+	{
+		TArray<FString> Lines;
+		Lines.Add(FString::Printf(
+			TEXT("品质：%s"),
+			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
+		Lines.Add(FString::Printf(
+			TEXT("费用：%d 气 / %d 内"),
+			EffectiveDefinition.EnergyCost,
+			EffectiveDefinition.ManaCost));
+		Lines.Add(GameXXKCardText::DescribeTarget(EffectiveDefinition.TargetSpec));
+		Lines.Add(FString::Printf(
+			TEXT("效果：\n%s"),
+			*DescribeEffectsResolved(EffectiveDefinition, Context.CurrentTerrain)));
+		if (Preview)
+		{
+			Lines.Add(DescribePreviewState(*Preview));
+		}
+		if (!Context.InteractionResult.IsEmpty())
+		{
+			Lines.Add(Context.InteractionResult);
+		}
+		if (!Context.UnavailableReason.IsEmpty())
+		{
+			Lines.Add(FString::Printf(TEXT("当前不可用：%s"), *Context.UnavailableReason));
+		}
+		return FString::Join(Lines, TEXT("\n"));
+	}
 }
 
 FString GameXXKCardText::DescribeStatusName(const EGameXXKCardStatus Status)
@@ -1496,4 +1801,52 @@ FString GameXXKCardText::DescribeTooltip(
 		Lines.Add(FString::Printf(TEXT("当前不可用：%s"), *Context.UnavailableReason));
 	}
 	return FString::Join(Lines, TEXT("\n"));
+}
+
+FString GameXXKCardText::DescribeCompactTooltipBody(
+	const FGameXXKCardDefinition& Definition,
+	const FGameXXKCardPlayPreview* Preview,
+	const FGameXXKCardTooltipContext& Context)
+{
+	return DescribeCompactTooltipBody(Definition, Definition.BaseQuality, Preview, Context);
+}
+
+FString GameXXKCardText::DescribeCompactTooltipBody(
+	const FGameXXKCardDefinition& Definition,
+	const EGameXXKCardQuality Quality,
+	const FGameXXKCardPlayPreview* Preview,
+	const FGameXXKCardTooltipContext& Context)
+{
+	const FGameXXKCardDefinition EffectiveDefinition =
+		FGameXXKCardQualityRules::BuildEffectiveDefinition(Definition, Quality);
+	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(Definition, Quality);
+	return DescribeCompactTooltipBodyResolved(
+		EffectiveDefinition,
+		ResolvedQuality,
+		Preview,
+		Context);
+}
+
+FString GameXXKCardText::DescribeExpandedTooltipBody(
+	const FGameXXKCardDefinition& Definition,
+	const FGameXXKCardPlayPreview* Preview,
+	const FGameXXKCardTooltipContext& Context)
+{
+	return DescribeExpandedTooltipBody(Definition, Definition.BaseQuality, Preview, Context);
+}
+
+FString GameXXKCardText::DescribeExpandedTooltipBody(
+	const FGameXXKCardDefinition& Definition,
+	const EGameXXKCardQuality Quality,
+	const FGameXXKCardPlayPreview* Preview,
+	const FGameXXKCardTooltipContext& Context)
+{
+	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(Definition, Quality);
+	const FGameXXKCardDefinition EffectiveDefinition =
+		FGameXXKCardQualityRules::BuildEffectiveDefinition(Definition, Quality);
+	return DescribeExpandedTooltipBodyResolved(
+		EffectiveDefinition,
+		ResolvedQuality,
+		Preview,
+		Context);
 }

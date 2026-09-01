@@ -14,11 +14,11 @@
 namespace GameXXKPrologueMapWidgetPrivate
 {
 	const FVector2D ReferenceViewport(1920.0f, 1080.0f);
-	const FVector2D ThumbnailCardSize(420.0f, 470.0f);
-	const FVector2D ThumbnailImageSize(320.0f, 320.0f);
+	const FVector2D ThumbnailCardSize(560.0f, 500.0f);
+	const FVector2D ThumbnailImageSize(460.0f, 321.607f);
 	constexpr float InspectionMaximumHeight = 860.0f;
 	constexpr float InspectionViewportHeightRatio = 0.80f;
-	constexpr float InspectionAspect = 1279.0f / 1706.0f;
+	constexpr float InspectionAspect = 2388.0f / 1668.0f;
 	const TCHAR* TaskIconPath =
 		TEXT("/Game/GameXXK/UI/Relics/Icons/T_Relic_OldMap.T_Relic_OldMap");
 	const TCHAR* InspectionTexturePath =
@@ -214,7 +214,7 @@ void UGameXXKPrologueMapWidget::BuildProgrammaticLayout()
 	InspectButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("PrologueMapInspectButton"));
 	InspectButton->AddChild(MakeButtonText(WidgetTree, TEXT("检视")));
 	InspectButton->OnClicked.AddDynamic(this, &UGameXXKPrologueMapWidget::HandleInspectClicked);
-	Place(ThumbnailContent, InspectButton, FVector2D(78.0f, 338.0f), FVector2D(180.0f, 48.0f), 1);
+	Place(ThumbnailContent, InspectButton, FVector2D(148.0f, 335.0f), FVector2D(180.0f, 48.0f), 1);
 
 	ContinuePrompt = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("PrologueMapContinuePrompt"));
 	ContinuePrompt->SetText(FText::FromString(TEXT("空格继续")));
@@ -224,7 +224,7 @@ void UGameXXKPrologueMapWidget::BuildProgrammaticLayout()
 	FSlateFontInfo PromptFont = ContinuePrompt->GetFont();
 	PromptFont.Size = 17;
 	ContinuePrompt->SetFont(PromptFont);
-	Place(ThumbnailContent, ContinuePrompt, FVector2D(78.0f, 393.0f), FVector2D(180.0f, 30.0f), 2);
+	Place(ThumbnailContent, ContinuePrompt, FVector2D(148.0f, 390.0f), FVector2D(180.0f, 30.0f), 2);
 
 	const FVector2D InspectionSize = FitInspectionImageForTest(ReferenceViewport);
 	InspectionPaper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("PrologueMapInspectionPaper"));

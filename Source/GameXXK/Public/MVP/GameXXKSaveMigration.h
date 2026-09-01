@@ -61,7 +61,9 @@ public:
 	static constexpr int32 PermanentNpcFormationIntroducedSaveVersion = 30;
 	/** v31: the unique tutorial map and pending full-inventory delivery become persistent. */
 	static constexpr int32 TutorialMapItemIntroducedSaveVersion = 31;
-	static constexpr int32 CurrentSaveVersion = 31;
+	/** v32: retire the disconnected Xu Xiake StoryTask and town-NPC option sessions. */
+	static constexpr int32 RetiredLegacyTutorialNarrativeSaveVersion = 32;
+	static constexpr int32 CurrentSaveVersion = 32;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

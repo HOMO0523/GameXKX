@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "status": "runtime-source",
+  "output": "SourceArt/UI/DesktopOverlay/T_DesktopStoryQuestButton.png",
+  "sha256": "182a5003cf948f7aa5957e63354381d1ad001e11cc17b41a25c9dd852a8c89f9",
+  "size": [
+    512,
+    512
+  ],
+  "alphaExtrema": [
+    0,
+    255
+  ],
+  "alphaBounds": [
+    77,
+    45,
+    433,
+    450
+  ],
+  "cornerAlpha": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "visualFamily": "T_DesktopTownEnterButton",
+  "runtimeReplacementStatus": "new-entry-only"
+}

@@ -24,8 +24,6 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "Guide/GameXXKGuideRules.h"
 #include "Narrative/GameXXKNarrativeEncounterCatalog.h"
-#include "Narrative/GameXXKStoryCatalog.h"
-#include "Narrative/GameXXKStoryRules.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -3367,57 +3365,6 @@ bool UGameXXKMVPSubsystem::StartGame()
 	return StartNewGame();
 }
 
-bool UGameXXKMVPSubsystem::BeginTutorialQuest()
-{
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	FGameXXKTutorialQuestProgress& Tutorial = Candidate.TutorialQuest;
-	if (Tutorial.State == EGameXXKTutorialQuestState::Completed)
-	{
-		return true;
-	}
-	if (Tutorial.State == EGameXXKTutorialQuestState::NotStarted)
-	{
-		Tutorial.State = EGameXXKTutorialQuestState::Active;
-		Tutorial.CurrentStepId = TEXT("Tutorial.EnterTown");
-	}
-
-	const FName StoryId(TEXT("Story.Main.XuXiakeTreasure"));
-	const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
-	const FGameXXKStoryDefinition* Story = FGameXXKStoryCatalog::FindStory(StoryId);
-	const FGameXXKTaskDefinition* Task = FGameXXKStoryCatalog::FindTask(TaskId);
-	FString Error;
-	if (!Story || !Task)
-	{
-		return false;
-	}
-	if (!Candidate.NarrativeProgress.StoryProgressById.Contains(StoryId)
-		&& !FGameXXKStoryRules::StartStory(*Story, Candidate.NarrativeProgress, &Error))
-	{
-		return false;
-	}
-	if (!Candidate.NarrativeProgress.TaskProgressById.Contains(TaskId)
-		&& !FGameXXKStoryRules::StartTask(*Task, Candidate.NarrativeProgress, &Error))
-	{
-		return false;
-	}
-	const FGameXXKTaskProgress* TaskProgress =
-		Candidate.NarrativeProgress.TaskProgressById.Find(TaskId);
-	if (!TaskProgress
-		|| TaskProgress->State != EGameXXKTaskState::Active
-		|| (!Candidate.NarrativeProgress.TrackedTaskId.IsNone()
-			&& Candidate.NarrativeProgress.TrackedTaskId != TaskId)
-		|| (Candidate.NarrativeProgress.TrackedTaskId.IsNone()
-			&& !FGameXXKStoryRules::TrackTask(TaskId, Candidate.NarrativeProgress, &Error))
-		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
-	{
-		return false;
-	}
-
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
-}
-
 bool UGameXXKMVPSubsystem::CommitGuideProgress(
 	const FGameXXKGuideProgress& GuideProgress,
 	FString* OutError)
@@ -3881,17 +3828,21 @@ bool UGameXXKMVPSubsystem::GrantTutorialRiverMap(FString* OutError)
 	{
 		return false;
 	}
-	const FGameXXKRuntimeState Previous = RuntimeState;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	if (!SaveCurrentGame())
 	{
-		RuntimeState = Previous;
-		if (OutError && OutError->IsEmpty())
+		const FString PersistenceError = GetLastSaveLoadError().ToString();
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Tutorial route map remains granted in the live inventory, but full-state persistence was deferred: %s"),
+			*PersistenceError);
+		if (OutError)
 		{
-			*OutError = GetLastSaveLoadError().ToString();
+			OutError->Reset();
 		}
-		return false;
+		return true;
 	}
 	return true;
 }
@@ -4485,9 +4436,11 @@ bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
 	}
 	if (RuntimeState.Screen == EGameXXKScreen::MainMenu)
 	{
-		RuntimeState = UGameXXKMVPRules::CreateNewGame();
-		UGameXXKMVPRules::OpenWorldMap(RuntimeState);
-		return UGameXXKMVPRules::EnterWorldRegion(RuntimeState, UGameXXKMVPRules::RegionQingshan());
+		// Direct 3D-town PIE is a real playable entry, not a lightweight scene
+		// preview. Use the same atomic new-game path as the desktop entry so the
+		// six starter partners, six always-owned named NPC loadouts, and exact
+		// three-member formation cannot diverge by launch surface.
+		return StartNewGame();
 	}
 	if (RuntimeState.Screen == EGameXXKScreen::WorldMap)
 	{

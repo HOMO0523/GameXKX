@@ -37,6 +37,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
+#include "UI/GameXXKCardTooltipWidget.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryItemPresentation.h"
 #include "Styling/CoreStyle.h"
@@ -70,11 +71,80 @@ namespace
 		TWeakObjectPtr<UGameXXKInventorySlotButton> Owner;
 	};
 
+	class SGameXXKInventoryScrollbarThumbButton final : public SButton
+	{
+	public:
+		using FArguments = SButton::FArguments;
+
+		void Construct(
+			const FArguments& InArgs,
+			UGameXXKInventoryScrollbarThumbButton* InOwner)
+		{
+			Owner = InOwner;
+			SButton::Construct(InArgs);
+		}
+
+		virtual FReply OnMouseButtonDown(
+			const FGeometry& MyGeometry,
+			const FPointerEvent& MouseEvent) override
+		{
+			if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && Owner.IsValid())
+			{
+				Owner->BeginThumbDrag(
+					MouseEvent.GetScreenSpacePosition().Y,
+					FMath::Max(
+						0.01f,
+						static_cast<float>(MyGeometry.GetAccumulatedLayoutTransform().GetScale())));
+				return FReply::Handled().CaptureMouse(AsShared());
+			}
+			return SButton::OnMouseButtonDown(MyGeometry, MouseEvent);
+		}
+
+		virtual FReply OnMouseMove(
+			const FGeometry& MyGeometry,
+			const FPointerEvent& MouseEvent) override
+		{
+			if (HasMouseCapture() && Owner.IsValid())
+			{
+				Owner->UpdateThumbDrag(MouseEvent.GetScreenSpacePosition().Y);
+				return FReply::Handled();
+			}
+			return SButton::OnMouseMove(MyGeometry, MouseEvent);
+		}
+
+		virtual FReply OnMouseButtonUp(
+			const FGeometry& MyGeometry,
+			const FPointerEvent& MouseEvent) override
+		{
+			if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton
+				&& HasMouseCapture()
+				&& Owner.IsValid())
+			{
+				Owner->EndThumbDrag();
+				return FReply::Handled().ReleaseMouseCapture();
+			}
+			return SButton::OnMouseButtonUp(MyGeometry, MouseEvent);
+		}
+
+		virtual void OnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override
+		{
+			if (Owner.IsValid())
+			{
+				Owner->EndThumbDrag();
+			}
+			SButton::OnMouseCaptureLost(CaptureLostEvent);
+		}
+
+	private:
+		TWeakObjectPtr<UGameXXKInventoryScrollbarThumbButton> Owner;
+	};
+
 	// Master V1 page 03/18 WindowControls: 74x74 ink close glyph at (1652,201).
 	const FVector2D CloseButtonSize(74.0f, 74.0f);
-	const FVector2D BackpackSlotSize(110.0f, 116.0f);
-	const FVector2D BackpackIconSize(64.0f, 64.0f);
-	const FVector2D EquipmentSlotSize(118.0f, 124.0f);
+	const FVector2D BackpackSlotSize(114.0f, 114.0f);
+	const FVector2D BackpackIconSize(77.0f, 77.0f);
+	const FVector2D EquipmentSlotSize(114.0f, 114.0f);
+	const FVector2D EquipmentIconSize(77.0f, 77.0f);
 	const FVector2D ActionButtonSize(206.0f, 64.0f);
 	const FVector2D CharacterTabSize(105.0f, 62.0f);
 	// Page 18 hero deck cards are 137x190 in a 3-column grid.
@@ -95,26 +165,26 @@ namespace
 	const FVector2D InventoryPaperPos(274.75f, 151.775f);
 	const FVector2D InventoryPaperSize(1522.5f, 891.45f);
 	const FVector2D BackpackViewportPos(1135.0f, 300.0f);
-	const FVector2D BackpackViewportSize(488.0f, 650.0f);      // 4 cols x 5 rows
-	const FVector2D BackpackSlotPitch(122.0f, 130.0f);          // page 03 grid pitch
-	const FMargin BackpackSlotPadding(6.0f, 7.0f);
-	const FVector2D BackpackContentOffset(-6.0f, -7.0f);        // keeps slot 1 at (1135,300)
-	const FVector2D BackpackGridSize(488.0f, 6500.0f);          // 50 rows x pitch 130
-	const FVector2D InventoryScrollbarPos(1642.0f, 303.0f);
-	const FVector2D InventoryScrollbarSize(30.0f, 633.0f);
-	const FVector2D InventoryScrollbarTrackPos(1647.0f, 303.0f);
-	const FVector2D InventoryScrollbarTrackSize(19.0f, 633.0f);
-	const FVector2D InventoryScrollbarThumbTop(1642.0f, 323.0f);
+	const FVector2D BackpackViewportSize(550.0f, 600.0f);       // 520 content + 30 interactive ink scrollbar
+	const FMargin BackpackSlotPadding(8.0f, 3.0f);
+	const FVector2D BackpackContentOffset(-8.0f, -3.0f);        // keeps slot 1 at (1135,300)
+	const FVector2D BackpackGridSize(520.0f, 6000.0f);          // 50 rows x 120
+	const FVector2D InventoryScrollbarThumbTop(1652.0f, 312.0f);
 	const FVector2D InventoryScrollbarThumbSize(30.0f, 126.0f);
+	constexpr float InventoryScrollbarThumbTravel = 450.0f;
+	const FVector2D HeroDeckScrollbarThumbTop(1652.0f, 346.0f);
+	constexpr float HeroDeckScrollbarThumbTravel = 350.0f;
+	constexpr float HeroDeckFallbackMaximumScrollOffset = 1900.0f;
 	const FVector2D BackpackSelectionInkPos(1128.0f, 284.0f);
 	const FVector2D BackpackSelectionInkSize(126.0f, 42.0f);
+	const FVector2D CardSelectionInkSize(126.0f, 30.0f);
 	const FVector2D BackpackFilterRowPos(1142.0f, 240.0f);
 	const float BackpackFilterRowPitch = 80.0f;
 	const FVector2D BackpackFilterRowSize(80.0f, 26.0f);
 	const FVector2D DecomposeButtonSize(105.0f, 62.0f);
 	const FVector2D EquipmentFramePositions[6] = {
-		FVector2D(420.0f, 340.0f), FVector2D(420.0f, 515.0f), FVector2D(420.0f, 690.0f),
-		FVector2D(930.0f, 340.0f), FVector2D(930.0f, 515.0f), FVector2D(930.0f, 690.0f)};
+		FVector2D(422.0f, 345.0f), FVector2D(422.0f, 520.0f), FVector2D(422.0f, 695.0f),
+		FVector2D(932.0f, 345.0f), FVector2D(932.0f, 520.0f), FVector2D(932.0f, 695.0f)};
 	const FName WeaponSlotId(TEXT("Weapon"));
 	const FName HeadSlotId(TEXT("Head"));
 	const FName ArmorSlotId(TEXT("Armor"));
@@ -126,12 +196,10 @@ namespace
 	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
 	const FString SelectionInkTexturePath;
 	const FString SquareSelectedTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_SquareSelected.T_MasterV2_SquareSelected"));
-	const FString RectangularSelectionTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase"));
 	const FString WindowFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FString PanelFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FString ConfirmationDialogTexturePath(PanelFrameTexturePath);
 	const FString CloseButtonTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
-	const FString BackpackScrollbarTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_BackpackScrollbarRight.T_MasterV2_BackpackScrollbarRight"));
 	// Backpack slot paper for tooltips per user request.
 	const FString TooltipPaperTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"));
 	const FString BackpackSlotTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_ItemSlot.T_MasterV2_ItemSlot"));
@@ -728,6 +796,63 @@ TSharedRef<SWidget> UGameXXKInventorySlotButton::RebuildWidget()
 	return MyButton.ToSharedRef();
 }
 
+void UGameXXKInventoryScrollbarThumbButton::Configure(
+	UGameXXKInventoryWindowWidget* InOwner)
+{
+	Owner = InOwner;
+}
+
+void UGameXXKInventoryScrollbarThumbButton::BeginThumbDrag(
+	const float ScreenY,
+	const float GeometryScale)
+{
+	if (Owner)
+	{
+		Owner->BeginBackpackScrollbarThumbDrag(ScreenY, GeometryScale);
+	}
+}
+
+void UGameXXKInventoryScrollbarThumbButton::UpdateThumbDrag(const float ScreenY)
+{
+	if (Owner)
+	{
+		Owner->UpdateBackpackScrollbarThumbDrag(ScreenY);
+	}
+}
+
+void UGameXXKInventoryScrollbarThumbButton::EndThumbDrag()
+{
+	if (Owner)
+	{
+		Owner->EndBackpackScrollbarThumbDrag();
+	}
+}
+
+TSharedRef<SWidget> UGameXXKInventoryScrollbarThumbButton::RebuildWidget()
+{
+	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+	MyButton = SNew(SGameXXKInventoryScrollbarThumbButton, this)
+		.OnClicked(BIND_UOBJECT_DELEGATE(FOnClicked, SlateHandleClicked))
+		.OnPressed(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandlePressed))
+		.OnReleased(BIND_UOBJECT_DELEGATE(FSimpleDelegate, SlateHandleReleased))
+		.OnHovered_UObject(this, &ThisClass::SlateHandleHovered)
+		.OnUnhovered_UObject(this, &ThisClass::SlateHandleUnhovered)
+		.OnReceivedFocus_UObject(this, &ThisClass::SlateHandleOnReceivedFocus)
+		.OnLostFocus_UObject(this, &ThisClass::SlateHandleOnLostFocus)
+		.ButtonStyle(&WidgetStyle)
+		.ClickMethod(ClickMethod)
+		.TouchMethod(TouchMethod)
+		.PressMethod(PressMethod)
+		.IsFocusable(IsFocusable);
+	PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
+	if (GetChildrenCount() > 0)
+	{
+		Cast<UButtonSlot>(GetContentSlot())->BuildSlot(MyButton.ToSharedRef());
+	}
+	return MyButton.ToSharedRef();
+}
+
 void UGameXXKInventoryFilterButton::Configure(UGameXXKInventoryWindowWidget* InOwner, EGameXXKInventoryFilter InFilter)
 {
 	Owner = InOwner;
@@ -810,6 +935,25 @@ FName UGameXXKInventoryWindowWidget::ResolveInventoryCharacterId() const
 	return bDesktopTrainingEmbeddedMode && !ConfiguredDesktopTrainingCharacterId.IsNone()
 		? ConfiguredDesktopTrainingCharacterId
 		: FGameXXKEquipmentRules::HeroCharacterId();
+}
+
+void UGameXXKInventoryWindowWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	SynchronizeCardTooltipShiftState();
+}
+
+void UGameXXKInventoryWindowWidget::SynchronizeCardTooltipShiftState()
+{
+	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	bCardTooltipShiftExpanded = bShiftExpanded;
+	for (UGameXXKCardTooltipWidget* Tooltip : HeroDeckTooltipWidgets)
+	{
+		if (Tooltip)
+		{
+			Tooltip->SetExpandedFromOwner(bShiftExpanded);
+		}
+	}
 }
 
 FGameXXKBattleAnimationClipDescriptor
@@ -950,6 +1094,7 @@ FGameXXKEmbeddedInventorySessionState UGameXXKInventoryWindowWidget::CaptureEmbe
 	State.ActiveCharacterTab = ActiveCharacterTab;
 	State.bBackpackSorted = bBackpackSorted;
 	State.BackpackScrollOffset = DeferredBackpackScrollOffset;
+	State.HeroDeckScrollOffset = DeferredHeroDeckScrollOffset;
 	State.PendingDeckIds = PendingHeroDeckIds;
 	return State;
 }
@@ -961,6 +1106,7 @@ void UGameXXKInventoryWindowWidget::RestoreEmbeddedSessionState(const FGameXXKEm
 	ActiveCharacterTab = State.ActiveCharacterTab;
 	bBackpackSorted = State.bBackpackSorted;
 	DeferredBackpackScrollOffset = FMath::Max(0.0f, State.BackpackScrollOffset);
+	DeferredHeroDeckScrollOffset = FMath::Max(0.0f, State.HeroDeckScrollOffset);
 	PendingHeroDeckIds = State.PendingDeckIds;
 	RefreshProgrammaticLayout();
 	if (BackpackScrollBox)
@@ -981,11 +1127,144 @@ void UGameXXKInventoryWindowWidget::SetBackpackScrollOffsetForTest(const float S
 	{
 		BackpackScrollBox->SetScrollOffset(DeferredBackpackScrollOffset);
 	}
+	if (HeroDeckScrollBox)
+	{
+		HeroDeckScrollBox->SetScrollOffset(DeferredHeroDeckScrollOffset);
+	}
+	UpdateBackpackScrollbarThumb();
 }
 
 float UGameXXKInventoryWindowWidget::GetBackpackScrollOffsetForTest() const
 {
 	return DeferredBackpackScrollOffset;
+}
+
+float UGameXXKInventoryWindowWidget::GetHeroDeckScrollOffsetForTest() const
+{
+	return DeferredHeroDeckScrollOffset;
+}
+
+float UGameXXKInventoryWindowWidget::ResolveBackpackScrollOffsetForThumbDrag(
+	const float StartScrollOffset,
+	const float ScreenDeltaY,
+	const float GeometryScale,
+	const float MaximumScrollOffset,
+	const float ThumbTravel)
+{
+	const float LocalDeltaY = ScreenDeltaY / FMath::Max(0.01f, GeometryScale);
+	const float DeltaRatio = LocalDeltaY / FMath::Max(1.0f, ThumbTravel);
+	return FMath::Clamp(
+		StartScrollOffset + DeltaRatio * FMath::Max(0.0f, MaximumScrollOffset),
+		0.0f,
+		FMath::Max(0.0f, MaximumScrollOffset));
+}
+
+UScrollBox* UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbar() const
+{
+	if (WindowMode == EGameXXKInventoryWindowMode::MerchantTrade
+		|| ActiveCharacterTab == EGameXXKCharacterBackpackTab::Equipment)
+	{
+		return BackpackScrollBox.Get();
+	}
+	if (WindowMode == EGameXXKInventoryWindowMode::FreeInventory
+		&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck)
+	{
+		return HeroDeckScrollBox.Get();
+	}
+	return nullptr;
+}
+
+float UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbarMaximumOffset() const
+{
+	UScrollBox* Target = ResolveActiveInkScrollbar();
+	if (!Target)
+	{
+		return 0.0f;
+	}
+	const float ReportedMaximum = Target->GetScrollOffsetOfEnd();
+	if (ReportedMaximum > 0.0f)
+	{
+		return ReportedMaximum;
+	}
+	return Target == HeroDeckScrollBox
+		? HeroDeckFallbackMaximumScrollOffset
+		: FMath::Max(0.0f, BackpackGridSize.Y - BackpackViewportSize.Y);
+}
+
+float UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbarThumbTravel() const
+{
+	return ResolveActiveInkScrollbar() == HeroDeckScrollBox
+		? HeroDeckScrollbarThumbTravel
+		: InventoryScrollbarThumbTravel;
+}
+
+FVector2D UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbarThumbTop() const
+{
+	return ResolveActiveInkScrollbar() == HeroDeckScrollBox
+		? HeroDeckScrollbarThumbTop
+		: InventoryScrollbarThumbTop;
+}
+
+void UGameXXKInventoryWindowWidget::BeginBackpackScrollbarThumbDrag(
+	const float ScreenY,
+	const float GeometryScale)
+{
+	UScrollBox* Target = ResolveActiveInkScrollbar();
+	bBackpackScrollbarThumbDragging = Target != nullptr;
+	bBackpackScrollbarDragTargetsHeroDeck = Target && Target == HeroDeckScrollBox;
+	BackpackScrollbarDragStartScreenY = ScreenY;
+	BackpackScrollbarDragStartOffset = bBackpackScrollbarDragTargetsHeroDeck
+		? DeferredHeroDeckScrollOffset
+		: DeferredBackpackScrollOffset;
+	BackpackScrollbarDragGeometryScale = FMath::Max(0.01f, GeometryScale);
+}
+
+void UGameXXKInventoryWindowWidget::UpdateBackpackScrollbarThumbDrag(const float ScreenY)
+{
+	UScrollBox* Target = bBackpackScrollbarDragTargetsHeroDeck
+		? HeroDeckScrollBox.Get()
+		: BackpackScrollBox.Get();
+	if (!bBackpackScrollbarThumbDragging || !Target)
+	{
+		return;
+	}
+	const float ReportedMaximum = Target->GetScrollOffsetOfEnd();
+	const float FallbackMaximum = bBackpackScrollbarDragTargetsHeroDeck
+		? HeroDeckFallbackMaximumScrollOffset
+		: FMath::Max(0.0f, BackpackGridSize.Y - BackpackViewportSize.Y);
+	const float MaximumScrollOffset = ReportedMaximum > 0.0f
+		? ReportedMaximum
+		: FallbackMaximum;
+	const float ThumbTravel = bBackpackScrollbarDragTargetsHeroDeck
+		? HeroDeckScrollbarThumbTravel
+		: InventoryScrollbarThumbTravel;
+	const float ResolvedOffset = ResolveBackpackScrollOffsetForThumbDrag(
+		BackpackScrollbarDragStartOffset,
+		ScreenY - BackpackScrollbarDragStartScreenY,
+		BackpackScrollbarDragGeometryScale,
+		MaximumScrollOffset,
+		ThumbTravel);
+	if (bBackpackScrollbarDragTargetsHeroDeck)
+	{
+		DeferredHeroDeckScrollOffset = ResolvedOffset;
+	}
+	else
+	{
+		DeferredBackpackScrollOffset = ResolvedOffset;
+	}
+	Target->SetScrollOffset(ResolvedOffset);
+	// SScrollBox::ScrollBy invalidates both layout and volatility, while the
+	// programmatic SetScrollOffset path only invalidates layout.  The retained
+	// desktop-overlay render path needs the stronger invalidation so the clipped
+	// backpack content repaints in the same drag frame as the custom ink thumb.
+	Target->InvalidateLayoutAndVolatility();
+	UpdateBackpackScrollbarThumb();
+}
+
+void UGameXXKInventoryWindowWidget::EndBackpackScrollbarThumbDrag()
+{
+	bBackpackScrollbarThumbDragging = false;
+	bBackpackScrollbarDragTargetsHeroDeck = false;
 }
 
 FName UGameXXKInventoryWindowWidget::GetBackpackItemIdAtSlotForDesktopTraining(const int32 SlotIndex) const
@@ -1121,7 +1400,10 @@ bool UGameXXKInventoryWindowWidget::HasBackpackScrollBoxForTest() const
 
 FString UGameXXKInventoryWindowWidget::GetScrollbarResourcePathForTest() const
 {
-	return BackpackScrollbarTexturePath;
+	const UObject* Resource = InventoryScrollbarThumb
+		? InventoryScrollbarThumb->GetStyle().Normal.GetResourceObject()
+		: nullptr;
+	return Resource ? Resource->GetPathName() : FString();
 }
 
 FString UGameXXKInventoryWindowWidget::GetSelectionInkResourcePathForTest() const
@@ -1773,13 +2055,20 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryWindowFrameCanvas"));
 	AddCanvasChild(RootCanvas, FrameCanvas, FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f));
 
+	const int32 TitleFontSize = bDesktopTrainingEmbeddedMode ? 40 : 28;
+	const FVector2D TitlePosition = bDesktopTrainingEmbeddedMode
+		? FVector2D(315.0f, 185.0f)
+		: FVector2D(383.0f, 230.0f);
+	const FVector2D TitleSize = bDesktopTrainingEmbeddedMode
+		? FVector2D(160.0f, 68.0f)
+		: FVector2D(84.0f, 42.0f);
 	TitleTextBlock = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
-		28,
+		TitleFontSize,
 		FLinearColor(0.08f, 0.06f, 0.04f, 1.0f),
 		TEXT("InventoryWindowTitleText"));
-	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(383.0f, 230.0f), FVector2D(84.0f, 42.0f));
+	AddCanvasChild(FrameCanvas, TitleTextBlock, TitlePosition, TitleSize);
 
 	// The town HUD already renders the ingot currency strip on this screen;
 	// drawing it here would duplicate the display over the town shell.
@@ -1805,7 +2094,10 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			*FString::Printf(TEXT("InventoryCharacterTab_%d"), TabIndex));
 		TabButton->Configure(this, CharacterTabs[TabIndex]);
 		TabButton->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath, CharacterTabSize, FMargin(0.08f)));
-		UTextBlock* TabText = MakeText(WidgetTree, CharacterTabLabels[TabIndex], 14);
+		UTextBlock* TabText = MakeText(
+			WidgetTree,
+			CharacterTabLabels[TabIndex],
+			bDesktopTrainingEmbeddedMode ? 28 : 14);
 		TabText->SetJustification(ETextJustify::Center);
 		TabButton->AddChild(TabText);
 		AddCanvasChild(FrameCanvas, TabButton, CharacterTabPositions[TabIndex], CharacterTabSize);
@@ -1842,6 +2134,32 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	// behind the cells — they sit directly on the paper window.
 	BackpackScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("InventoryBackpackScrollBox"));
 	BackpackScrollBox->SetOrientation(EOrientation::Orient_Vertical);
+	FSlateBrush InvisibleScrollBrush;
+	InvisibleScrollBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
+	const FSlateBrush InkThumb = MakeTextureBrush(
+		ScrollbarThumbTexturePath,
+		InventoryScrollbarThumbSize);
+	FScrollBarStyle InkScrollBarStyle;
+	InkScrollBarStyle
+		.SetHorizontalBackgroundImage(InvisibleScrollBrush)
+		.SetVerticalBackgroundImage(InvisibleScrollBrush)
+		.SetHorizontalTopSlotImage(InvisibleScrollBrush)
+		.SetHorizontalBottomSlotImage(InvisibleScrollBrush)
+		.SetVerticalTopSlotImage(InvisibleScrollBrush)
+		.SetVerticalBottomSlotImage(InvisibleScrollBrush)
+		.SetNormalThumbImage(InkThumb)
+		.SetHoveredThumbImage(MakeTextureBrush(
+			ScrollbarThumbTexturePath,
+			InventoryScrollbarThumbSize,
+			FLinearColor(1.08f, 1.08f, 1.08f, 1.0f)))
+		.SetDraggedThumbImage(MakeTextureBrush(
+			ScrollbarThumbTexturePath,
+			InventoryScrollbarThumbSize,
+			FLinearColor(0.82f, 0.82f, 0.82f, 1.0f)))
+		.SetThickness(30.0f);
+	BackpackScrollBox->SetWidgetBarStyle(InkScrollBarStyle);
+	BackpackScrollBox->SetScrollbarThickness(FVector2D(30.0f, 30.0f));
+	BackpackScrollBox->SetScrollbarPadding(FMargin(0.0f));
 	BackpackScrollBox->SetAlwaysShowScrollbar(false);
 	BackpackScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	BackpackScrollBox->OnUserScrolled.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleBackpackScrolled);
@@ -1884,15 +2202,23 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		InventoryFilterTextBlocks.Add(FilterText);
 	}
 
-	// Page 03 right-side scrollbar: PSD track + thumb; the thumb follows scroll.
-	if (UImage* ScrollbarTrack = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryScrollbarTrack")))
+	InventoryScrollbarThumb = WidgetTree->ConstructWidget<UGameXXKInventoryScrollbarThumbButton>(
+		UGameXXKInventoryScrollbarThumbButton::StaticClass(),
+		TEXT("InventoryScrollbarThumb"));
+	InventoryScrollbarThumb->Configure(this);
+	InventoryScrollbarThumb->SetStyle(MakeTextureButtonStyle(
+		ScrollbarThumbTexturePath,
+		InventoryScrollbarThumbSize));
+	InventoryScrollbarThumb->SetBackgroundColor(FLinearColor::White);
+	AddCanvasChild(
+		FrameCanvas,
+		InventoryScrollbarThumb.Get(),
+		InventoryScrollbarThumbTop,
+		InventoryScrollbarThumbSize);
+	if (UCanvasPanelSlot* ThumbSlot = Cast<UCanvasPanelSlot>(InventoryScrollbarThumb->Slot))
 	{
-		ScrollbarTrack->SetBrush(MakeTextureBrush(BackpackScrollbarTexturePath, InventoryScrollbarTrackSize));
-		AddCanvasChild(FrameCanvas, ScrollbarTrack, InventoryScrollbarTrackPos, InventoryScrollbarTrackSize);
+		ThumbSlot->SetZOrder(20);
 	}
-	InventoryScrollbarThumb = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryScrollbarThumb"));
-	InventoryScrollbarThumb->SetBrush(MakeTextureBrush(ScrollbarThumbTexturePath, InventoryScrollbarThumbSize));
-	AddCanvasChild(FrameCanvas, InventoryScrollbarThumb, InventoryScrollbarThumbTop, InventoryScrollbarThumbSize);
 
 	// Page 03 selection ink: one bracket above the selected backpack column.
 	BackpackSelectionInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("InventoryBackpackSelectionInk"));
@@ -2027,6 +2353,11 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	HeroDeckScrollBox->SetOrientation(EOrientation::Orient_Vertical);
 	HeroDeckScrollBox->SetAlwaysShowScrollbar(false);
 	HeroDeckScrollBox->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+	HeroDeckScrollBox->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
+	HeroDeckScrollBox->OnUserScrolled.AddDynamic(
+		this,
+		&UGameXXKInventoryWindowWidget::HandleHeroDeckScrolled);
+	HeroDeckScrollBox->SetScrollOffset(DeferredHeroDeckScrollOffset);
 	HeroDeckScrollBox->AddChild(HeroDeckGrid);
 	AddCanvasChild(HeroDeckCanvas, HeroDeckScrollBox, FVector2D(0.0f, 34.0f), FVector2D(470.0f, 500.0f));
 	// Apply button centered below the deck grid, with a (x/8) pick counter.
@@ -2064,12 +2395,13 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		}
 		// Selection ink sits under the name so the selected card name stays visible.
 		UImage* SelectedInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckSelectedInk_%02d"), CardIndex));
-		SelectedInk->SetBrush(MakeBoxTextureBrush(RectangularSelectionTexturePath, BackpackSelectionInkSize));
+		SelectedInk->SetBrush(MakeTextureBrush(ScrollbarThumbTexturePath, CardSelectionInkSize));
 		SelectedInk->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* InkSlot = CardOverlay->AddChildToOverlay(SelectedInk))
 		{
 			InkSlot->SetHorizontalAlignment(HAlign_Center);
 			InkSlot->SetVerticalAlignment(VAlign_Top);
+			InkSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CardLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13));
@@ -2081,40 +2413,27 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			LabelSlot->SetPadding(FMargin(5.0f, 15.0f, 5.0f, 0.0f));
 		}
 		// Cost summary: second line "x气", third line "x内", left-aligned.
-		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(5.0f, 50.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 50.0f, 0.0f, 0.0f));
 		}
-		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(5.0f, 68.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 68.0f, 0.0f, 0.0f));
 		}
-		// Hover tooltip: card name + effect description.
-		UBorder* CardTooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckTooltip_%02d"), CardIndex));
-		CardTooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, FVector2D(260.0f, 120.0f)));
-		CardTooltipFrame->SetBrushColor(FLinearColor::White);
-		CardTooltipFrame->SetPadding(FMargin(16.0f, 12.0f));
-		UVerticalBox* CardTooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		CardTooltipFrame->AddChild(CardTooltipBox);
-		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		CardTooltipBox->AddChildToVerticalBox(TooltipName);
-		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		TooltipDetail->SetAutoWrapText(true);
-		if (UVerticalBoxSlot* TooltipDetailSlot = CardTooltipBox->AddChildToVerticalBox(TooltipDetail))
-		{
-			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
-		}
-		CardButton->SetToolTip(CardTooltipFrame);
-		HeroDeckTooltipNameBlocks.Add(TooltipName);
-		HeroDeckTooltipDetailBlocks.Add(TooltipDetail);
+		UGameXXKCardTooltipWidget* CardTooltip = WidgetTree->ConstructWidget<UGameXXKCardTooltipWidget>(
+			UGameXXKCardTooltipWidget::StaticClass(),
+			*FString::Printf(TEXT("InventoryHeroDeckTooltip_%02d"), CardIndex));
+		CardButton->SetToolTip(CardTooltip);
+		HeroDeckTooltipWidgets.Add(CardTooltip);
 		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckLockedIcon_%02d"), CardIndex));
 		LockedIcon->SetBrush(MakeTextureBrush(HeroLockedCardIconTexturePath, FVector2D(34.0f, 34.0f)));
 		LockedIcon->SetVisibility(ESlateVisibility::Collapsed);
@@ -2168,14 +2487,15 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		SlotIcon->SetVisibility(ESlateVisibility::Collapsed);
 		SlotOverlay->AddChildToOverlay(SlotIcon);
 
+		const int32 StackCountFontSize = bDesktopTrainingEmbeddedMode ? 23 : 14;
 		UTextBlock* SlotLabel = MakeText(
 			WidgetTree,
 			FText::GetEmpty(),
-			14,
+			StackCountFontSize,
 			FLinearColor::White,
 			*FString::Printf(TEXT("InventoryBackpackStackCount_%02d"), SlotIndex));
 		SlotLabel->SetJustification(ETextJustify::Right);
-		FSlateFontInfo StackCountFont = FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 14);
+		FSlateFontInfo StackCountFont = FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), StackCountFontSize);
 		StackCountFont.OutlineSettings.OutlineSize = 2;
 		StackCountFont.OutlineSettings.OutlineColor = FLinearColor::Black;
 		SlotLabel->SetFont(StackCountFont);
@@ -2183,20 +2503,21 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		{
 			LabelSlot->SetHorizontalAlignment(HAlign_Right);
 			LabelSlot->SetVerticalAlignment(VAlign_Bottom);
-			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 3.0f, 2.0f));
+			const float QuantityInset = bDesktopTrainingEmbeddedMode ? 10.0f : 6.0f;
+			LabelSlot->SetPadding(FMargin(0.0f, 0.0f, QuantityInset, QuantityInset));
 		}
 		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(
 			UImage::StaticClass(),
 			*FString::Printf(TEXT("InventoryBackpackLockedIcon_%03d"), SlotIndex));
 		LockedIcon->SetBrush(MakeTextureBrush(
 			HeroLockedCardIconTexturePath,
-			FVector2D(34.0f, 34.0f)));
+			FVector2D(54.0f, 54.0f)));
 		LockedIcon->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* LockSlot = SlotOverlay->AddChildToOverlay(LockedIcon))
 		{
 			LockSlot->SetHorizontalAlignment(HAlign_Right);
 			LockSlot->SetVerticalAlignment(VAlign_Top);
-			LockSlot->SetPadding(FMargin(4.0f));
+			LockSlot->SetPadding(FMargin(6.0f));
 		}
 
 		UBorder* TooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("InventoryBackpackTooltip_%02d"), SlotIndex));
@@ -2572,6 +2893,13 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 	}
 
 	const bool bShowDeck = bFreeInventory && ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck;
+	if (InventoryScrollbarThumb)
+	{
+		InventoryScrollbarThumb->SetVisibility(
+			(bShowEquipmentBackpack || bShowDeck)
+				? ESlateVisibility::Visible
+				: ESlateVisibility::Collapsed);
+	}
 	const bool bShowBody = bFreeInventory
 		&& ActiveCharacterTab != EGameXXKCharacterBackpackTab::Equipment
 		&& ActiveCharacterTab != EGameXXKCharacterBackpackTab::Deck;
@@ -2688,6 +3016,7 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 			CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "TitlesUnavailable", "称号\n\n尚未开放"));
 		}
 	}
+	UpdateBackpackScrollbarThumb();
 }
 
 void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
@@ -2793,21 +3122,31 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 				? FText::GetEmpty()
 				: FText::FromString(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
 		}
-		if (UTextBlock* TooltipName = HeroDeckTooltipNameBlocks.IsValidIndex(Index) ? HeroDeckTooltipNameBlocks[Index].Get() : nullptr)
+		if (UGameXXKCardTooltipWidget* Tooltip = HeroDeckTooltipWidgets.IsValidIndex(Index)
+			? HeroDeckTooltipWidgets[Index].Get()
+			: nullptr)
 		{
-			TooltipName->SetText(CardId.IsNone() || !Definition
-				? FText::GetEmpty()
-				: Definition->DisplayName);
-		}
-		if (UTextBlock* TooltipDetail = HeroDeckTooltipDetailBlocks.IsValidIndex(Index) ? HeroDeckTooltipDetailBlocks[Index].Get() : nullptr)
-		{
-			TooltipDetail->SetText(CardId.IsNone() || !Definition
-				? FText::GetEmpty()
-				: FText::FromString(GameXXKCardText::DescribeTooltip(
+			if (!Definition)
+			{
+				Tooltip->ConfigureDirect(FText::GetEmpty(), FString());
+			}
+			else
+			{
+				FGameXXKCardTooltipContext Context;
+				if (!bUnlocked)
+				{
+					Context.UnavailableReason = TEXT("此牌尚未解锁。");
+				}
+				else if (bMutationLocked)
+				{
+					Context.UnavailableReason = TEXT("当前牌组只读。");
+				}
+				Tooltip->ConfigureCard(
 					*Definition,
 					Definition->BaseQuality,
 					nullptr,
-					FGameXXKCardTooltipContext())));
+					Context);
+			}
 		}
 		if (UImage* Portrait = HeroDeckCardPortraits.IsValidIndex(Index) ? HeroDeckCardPortraits[Index].Get() : nullptr)
 		{
@@ -3191,20 +3530,37 @@ void UGameXXKInventoryWindowWidget::HandleBackpackScrolled(float CurrentOffset)
 	UpdateBackpackScrollbarThumb();
 }
 
+void UGameXXKInventoryWindowWidget::HandleHeroDeckScrolled(float CurrentOffset)
+{
+	DeferredHeroDeckScrollOffset = FMath::Max(0.0f, CurrentOffset);
+	UpdateBackpackScrollbarThumb();
+}
+
 void UGameXXKInventoryWindowWidget::UpdateBackpackScrollbarThumb()
 {
-	if (!InventoryScrollbarThumb || !BackpackScrollBox)
+	if (!InventoryScrollbarThumb)
 	{
 		return;
 	}
-	const float MaxOffset = BackpackScrollBox->GetScrollOffsetOfEnd();
-	const float Offset = BackpackScrollBox->GetScrollOffset();
-	const float ThumbTravel = InventoryScrollbarSize.Y - InventoryScrollbarThumbSize.Y;
-	const float Ratio = MaxOffset > 0.0f ? FMath::Clamp(Offset / MaxOffset, 0.0f, 1.0f) : 0.0f;
-	const FVector2D ThumbPosition = InventoryScrollbarThumbTop + FVector2D(0.0f, Ratio * ThumbTravel);
+	UScrollBox* Target = ResolveActiveInkScrollbar();
+	if (!Target)
+	{
+		InventoryScrollbarThumb->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	InventoryScrollbarThumb->SetVisibility(ESlateVisibility::Visible);
+	const float MaximumScrollOffset = ResolveActiveInkScrollbarMaximumOffset();
+	const float CurrentOffset = Target == HeroDeckScrollBox
+		? DeferredHeroDeckScrollOffset
+		: DeferredBackpackScrollOffset;
+	const float Ratio = MaximumScrollOffset > 0.0f
+		? FMath::Clamp(CurrentOffset / MaximumScrollOffset, 0.0f, 1.0f)
+		: 0.0f;
 	if (UCanvasPanelSlot* ThumbSlot = Cast<UCanvasPanelSlot>(InventoryScrollbarThumb->Slot))
 	{
-		ThumbSlot->SetPosition(ThumbPosition);
+		ThumbSlot->SetPosition(
+			ResolveActiveInkScrollbarThumbTop()
+			+ FVector2D(0.0f, Ratio * ResolveActiveInkScrollbarThumbTravel()));
 	}
 }
 
@@ -3316,7 +3672,7 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 			{
 				Icon->SetBrushFromTexture(Texture, true);
 				FSlateBrush Brush = Icon->GetBrush();
-				Brush.ImageSize = FVector2D(72.0f, 72.0f);
+				Brush.ImageSize = EquipmentIconSize;
 				Icon->SetBrush(Brush);
 				Icon->SetRenderOpacity(1.0f);
 				Icon->SetVisibility(ESlateVisibility::HitTestInvisible);

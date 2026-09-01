@@ -18,9 +18,9 @@ bool FGameXXKTutorialMapItemTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("tutorial map item owns v31 boundary"),
 		FGameXXKSaveMigration::TutorialMapItemIntroducedSaveVersion,
 		31);
-	TestEqual(TEXT("tutorial map item is current save boundary"),
+	TestEqual(TEXT("current schema advances to legacy-retirement v32"),
 		FGameXXKSaveMigration::CurrentSaveVersion,
-		31);
+		32);
 
 	bool bFound = false;
 	const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(
@@ -94,6 +94,43 @@ bool FGameXXKTutorialMapItemTest::RunTest(const FString& Parameters)
 			MapEntry),
 		WarehouseSlot);
 
+	UGameXXKMVPSubsystem* InvalidFormationSubsystem =
+		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!TestTrue(TEXT("invalid-formation grant fixture starts"),
+		InvalidFormationSubsystem && InvalidFormationSubsystem->StartGame()))
+	{
+		return false;
+	}
+	InvalidFormationSubsystem->GetMutableRuntimeState()
+		.CardRun.OrderedFormation.Members.Reset();
+	int32 InvalidFormationSaveCount = 0;
+	InvalidFormationSubsystem->SetSaveSlotWriteDelegateForTest(
+		FGameXXKSaveSlotWriteDelegate::CreateLambda(
+			[&InvalidFormationSaveCount](
+				USaveGame* SaveGame,
+				const FString& SlotName,
+				const int32 UserIndex)
+			{
+				++InvalidFormationSaveCount;
+				return SaveGame != nullptr;
+			}));
+	Error.Reset();
+	TestTrue(
+		FString::Printf(
+			TEXT("unrelated invalid formation cannot block the map story item: %s"),
+			*Error),
+		InvalidFormationSubsystem->GrantTutorialRiverMap(&Error));
+	TestTrue(TEXT("failed persistence still leaves the map in the live backpack"),
+		InvalidFormationSubsystem->OwnsTutorialRiverMap());
+	TestEqual(TEXT("story grant never rewrites the unrelated formation"),
+		InvalidFormationSubsystem->GetRuntimeState()
+			.CardRun.OrderedFormation.Members.Num(),
+		0);
+	TestEqual(TEXT("invalid full-state save never reaches the slot writer"),
+		InvalidFormationSaveCount,
+		0);
+	InvalidFormationSubsystem->ResetSaveSlotWriteDelegateForTest();
+
 	UGameXXKMVPSubsystem* MigrationSubsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("migration fixture starts with a legal v30 formation"),
@@ -111,9 +148,9 @@ bool FGameXXKTutorialMapItemTest::RunTest(const FString& Parameters)
 	V30.SaveVersion = 30;
 	FGameXXKSaveState Migrated;
 	FGameXXKSaveMigrationReport Report;
-	TestTrue(FString::Printf(TEXT("v30 migrates to v31: %s"), *Report.Error),
+	TestTrue(FString::Printf(TEXT("v30 migrates through v31 to v32: %s"), *Report.Error),
 		FGameXXKSaveMigration::MigrateToCurrent(V30, Migrated, Report));
-	TestEqual(TEXT("migration reaches v31"), Migrated.SaveVersion, 31);
+	TestEqual(TEXT("migration reaches v32"), Migrated.SaveVersion, 32);
 	TestTrue(TEXT("old saves start with no pending task item"),
 		Migrated.RuntimeState.DesktopInventory.PendingTaskItemIds.IsEmpty());
 

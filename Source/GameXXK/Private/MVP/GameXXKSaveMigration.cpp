@@ -1374,39 +1374,48 @@ namespace
 		State.NarrativeSequenceSession = FGameXXKNarrativeSequenceSessionState();
 		State.NarrativeProgress = FGameXXKNarrativeProgress();
 		State.GuideProgress = FGameXXKGuideProgress();
-		if (State.TutorialQuest.State == EGameXXKTutorialQuestState::NotStarted)
-		{
-			return;
-		}
+		Report.Warnings.Add(TEXT("Pre-v29 narrative state initialized without the retired Xu Xiake StoryTask."));
+	}
 
+	void RetireLegacyTutorialNarrative(
+		FGameXXKRuntimeState& State,
+		FGameXXKSaveMigrationReport& Report)
+	{
 		const FName StoryId(TEXT("Story.Main.XuXiakeTreasure"));
 		const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
-		const FName RiverStepId(TEXT("Step.Main.XuXiake.RiverScroll"));
-		const FName CombatStepId(TEXT("Step.Main.XuXiake.CombatTutorial"));
-		FGameXXKStoryProgress Story;
-		Story.Version = 1;
-		FGameXXKTaskProgress Task;
-		if (State.TutorialQuest.State == EGameXXKTutorialQuestState::Completed)
+		const FName SequenceId(TEXT("Sequence.Main.XuXiake.CarriageArrival"));
+		bool bChanged = false;
+
+		if (State.NarrativeSequenceSession.StoryId == StoryId
+			|| State.NarrativeSequenceSession.TaskId == TaskId
+			|| State.NarrativeSequenceSession.SequenceId == SequenceId)
 		{
-			Story.State = EGameXXKStoryState::Completed;
-			Story.CompletedTaskIds.Add(TaskId);
-			Task.State = EGameXXKTaskState::Rewarded;
-			Task.CurrentStepId = CombatStepId;
-			Task.bRewardCommitted = true;
+			State.NarrativeSequenceSession = FGameXXKNarrativeSequenceSessionState();
+			bChanged = true;
 		}
-		else
+		if (State.DialogueSession.StoryId == StoryId
+			|| State.DialogueSession.TaskId == TaskId)
 		{
-			Story.State = EGameXXKStoryState::Active;
-			Story.ActiveTaskIds.Add(TaskId);
-			Task.State = EGameXXKTaskState::Active;
-			Task.CurrentStepId = State.TutorialQuest.CurrentStepId == TEXT("Tutorial.CombatTutorial")
-				? CombatStepId
-				: RiverStepId;
-			State.NarrativeProgress.TrackedTaskId = TaskId;
+			State.DialogueSession = FGameXXKDialogueSessionState();
+			bChanged = true;
 		}
-		State.NarrativeProgress.StoryProgressById.Add(StoryId, MoveTemp(Story));
-		State.NarrativeProgress.TaskProgressById.Add(TaskId, MoveTemp(Task));
-		Report.Warnings.Add(TEXT("Legacy tutorial progress migrated to Story.Main.XuXiakeTreasure."));
+		if (State.NarrativeProgress.TrackedTaskId == TaskId)
+		{
+			State.NarrativeProgress.TrackedTaskId = NAME_None;
+			bChanged = true;
+		}
+		bChanged |= State.NarrativeProgress.TaskProgressById.Remove(TaskId) > 0;
+		bChanged |= State.NarrativeProgress.StoryProgressById.Remove(StoryId) > 0;
+		for (TPair<FName, FGameXXKStoryProgress>& Pair :
+			State.NarrativeProgress.StoryProgressById)
+		{
+			bChanged |= Pair.Value.ActiveTaskIds.Remove(TaskId) > 0;
+			bChanged |= Pair.Value.CompletedTaskIds.Remove(TaskId) > 0;
+		}
+		if (bChanged)
+		{
+			Report.Warnings.Add(TEXT("Retired legacy Xu Xiake StoryTask progress and sessions were removed."));
+		}
 	}
 
 	bool ValidateNarrativeStageGuideState(const FGameXXKRuntimeState& State, FString& OutError)
@@ -1887,6 +1896,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	if (Source.SaveVersion < TutorialMapItemIntroducedSaveVersion)
 	{
 		Candidate.RuntimeState.DesktopInventory.PendingTaskItemIds.Reset();
+	}
+	if (Source.SaveVersion < RetiredLegacyTutorialNarrativeSaveVersion)
+	{
+		RetireLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0

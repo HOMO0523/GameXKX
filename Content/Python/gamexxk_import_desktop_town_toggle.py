@@ -14,6 +14,7 @@ REPORT = PROJECT_ROOT / "Saved" / "GameXXK" / "DesktopOverlay" / "town_toggle_im
 ASSETS = {
     "T_DesktopTownEnterButton": "cb3c40ddf3b3ea5e2bddc1b30726ec4258cce3f0dc9ff735bf2b6be075123042",
     "T_DesktopTownExitButton": "e291a0e07953b7a66375ad99bd20e66f93f7664c547f036c288990669027244c",
+    "T_DesktopStoryQuestButton": "182a5003cf948f7aa5957e63354381d1ad001e11cc17b41a25c9dd852a8c89f9",
 }
 
 

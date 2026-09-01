@@ -1,5 +1,6 @@
 #include "Misc/AutomationTest.h"
 
+#include "Components/BoxComponent.h"
 #include "Dialogue/GameXXKDialogueTypes.h"
 #include "Components/SceneComponent.h"
 #include "GameFramework/Actor.h"
@@ -95,6 +96,17 @@ bool FGameXXKSpeechBubbleAnchorAndClampTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("bubble presenter owns one reusable bubble"), Bubble->GetBubbleCountForTest(), 1);
 	TestEqual(TEXT("bubble renders body only"), Bubble->GetBodyTextForTest(), View.Text);
 	TestEqual(TEXT("bubble layout is capped at two lines"), Bubble->GetMaximumLineCountForTest(), 2);
+	TestEqual(TEXT("visual top adds only the rendered Z extent"),
+		UGameXXKSpeechBubbleWidget::VisualBoundsTopForTest(
+			FVector(10.0f, 20.0f, 30.0f),
+			FVector(40.0f, 50.0f, 60.0f)),
+		FVector(10.0f, 20.0f, 90.0f));
+	UBoxComponent* VisualAnchor = NewObject<UBoxComponent>(Actor);
+	VisualAnchor->SetBoxExtent(FVector(40.0f, 50.0f, 60.0f));
+	TestTrue(TEXT("passive prompt accepts rendered visual-top anchoring"),
+		Bubble->PresentBubbleAtVisualTop(View, VisualAnchor));
+	TestTrue(TEXT("passive prompt records visual-top anchor mode"),
+		Bubble->UsesVisualBoundsTopForTest());
 
 	View.NodeId = TEXT("bubble.two");
 	View.Text = FText::FromString(TEXT("本座问你话。你是何人？"));

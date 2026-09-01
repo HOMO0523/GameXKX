@@ -17,7 +17,7 @@
   ],
   "ueDestinationRoot": "/Game/GameXXK/UI/MasterV2/Approved",
   "textBaked": false,
-  "assetCount": 48,
+  "assetCount": 47,
   "assets": [
     {
       "name": "T_MasterV2_MainMenuBackground",
@@ -304,18 +304,6 @@
       "hasAlpha": true,
       "sha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
       "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody",
-      "textBaked": false,
-      "status": "approved_pending_import"
-    },
-    {
-      "name": "T_MasterV2_BackpackScrollbarRight",
-      "file": "RuntimeApproved/T_MasterV2_BackpackScrollbarRight.png",
-      "source": "SourceArt/UI/PSD/gamexxk-v4/ui-master/Assets/LayoutAssets/03_主角背包_inventory_scrollbar_right.png",
-      "width": 1920,
-      "height": 1080,
-      "hasAlpha": true,
-      "sha256": "c2fa6fe0dd9dfcd2f93f16131d1f9944bc388ec39ee3f840fbdae1cf9d148f30",
-      "ueDestination": "/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight",
       "textBaked": false,
       "status": "approved_pending_import"
     },

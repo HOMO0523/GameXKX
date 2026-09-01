@@ -25,6 +25,124 @@ namespace
 	constexpr int32 FormationZOrder = 10;
 	constexpr int32 CinematicZOrder = 40;
 
+	struct FCinematicAlphaHeights
+	{
+		const TCHAR* AssetToken;
+		float Idle;
+		float Attack;
+		float Hit;
+		float Death;
+	};
+
+	// Median occupied-cell heights from the approved atlas audit. Cinematic
+	// widgets use one fixed 820px square, so action-specific transparent bounds
+	// must be normalized against that identity's Idle height or the body visibly
+	// pulses between close-up shots.
+	constexpr FCinematicAlphaHeights CinematicAlphaHeights[] = {
+		{TEXT("character_00_hero"), 0.8164f, 0.6016f, 0.6992f, 0.8125f},
+		{TEXT("character_01_blade"), 0.7832f, 0.6484f, 0.5957f, 0.7109f},
+		{TEXT("character_02_guard"), 0.7969f, 0.6367f, 0.7363f, 0.7617f},
+		{TEXT("character_03_healer"), 0.7969f, 0.5879f, 0.8242f, 0.7930f},
+		{TEXT("character_04_hunter"), 0.6582f, 0.5781f, 0.7129f, 0.6699f},
+		{TEXT("character_05_sorcerer"), 0.7773f, 0.5566f, 0.6738f, 0.7461f},
+		{TEXT("character_06_formation_master"), 0.7305f, 0.6094f, 0.5879f, 0.6699f},
+		{TEXT("character_07_tusi_chief"), 0.6934f, 0.6074f, 0.5703f, 0.5664f},
+		{TEXT("character_08_song_jin_bao"), 0.8340f, 0.8125f, 0.6367f, 0.7949f},
+		{TEXT("character_09_yue_bai"), 0.7344f, 0.6250f, 0.6797f, 0.8281f},
+		{TEXT("character_10_zhou_guang_zu"), 0.8262f, 0.7148f, 0.6680f, 0.7969f},
+		{TEXT("character_11_jin_gui"), 0.6992f, 0.7207f, 0.5859f, 0.8242f},
+		{TEXT("character_12_qiong_mei_er"), 0.8047f, 0.7383f, 0.7793f, 0.7715f},
+		{TEXT("enemy_01_rooster"), 0.8047f, 0.5869f, 0.6816f, 0.7363f},
+		{TEXT("enemy_02_goat"), 0.8320f, 0.6191f, 0.5352f, 0.7646f},
+		{TEXT("enemy_03_weasel"), 0.5840f, 0.4307f, 0.5127f, 0.4824f},
+		{TEXT("enemy_04_civet"), 0.5703f, 0.4688f, 0.5547f, 0.6133f},
+		{TEXT("enemy_05_ironfeather"), 0.8066f, 0.5713f, 0.5723f, 0.6602f},
+		{TEXT("enemy_06_bluehorn"), 0.7910f, 0.6094f, 0.5859f, 0.7090f},
+		{TEXT("enemy_19_moneyrat_boss"), 0.6562f, 0.5713f, 0.5684f, 0.5781f},
+	};
+
+	struct FCorrectedCinematicAttackHeights
+	{
+		const TCHAR* AssetToken;
+		float Idle;
+		float Attack;
+	};
+
+	// The corrected 2026-08-27 2K/1K atlases use a different transparent-body
+	// fit than the preserved 4K masters.  Keep this table resolution-specific so
+	// explicit 4K regression views still use the legacy audit above.
+	constexpr FCorrectedCinematicAttackHeights CorrectedCinematicAttackHeights[] = {
+		{TEXT("enemy_01_rooster"), 0.824219f, 0.789062f},
+		{TEXT("enemy_03_weasel"), 0.632812f, 0.406250f},
+		{TEXT("enemy_05_ironfeather"), 0.783203f, 0.567383f},
+		{TEXT("enemy_11_graymane"), 0.614258f, 0.578125f},
+		{TEXT("enemy_16_toad"), 0.417969f, 0.321289f},
+		{TEXT("enemy_18_deer"), 0.812500f, 0.789062f},
+		{TEXT("character_09_yue_bai"), 0.808594f, 0.615234f},
+	};
+
+	float ResolveCorrectedCinematicContentScale(const FString& ClipAssetId)
+	{
+		const bool bCorrectedResolution = ClipAssetId.Contains(TEXT("_2k_"), ESearchCase::IgnoreCase)
+			|| ClipAssetId.Contains(TEXT("_1k_"), ESearchCase::IgnoreCase);
+		if (!bCorrectedResolution)
+		{
+			return 0.0f;
+		}
+		if (ClipAssetId.EndsWith(TEXT("_attack_punch"), ESearchCase::IgnoreCase))
+		{
+			return 0.828125f / 0.781250f;
+		}
+		if (ClipAssetId.EndsWith(TEXT("_attack_kick"), ESearchCase::IgnoreCase))
+		{
+			return 0.828125f / 0.794922f;
+		}
+		if (!ClipAssetId.EndsWith(TEXT("_attack"), ESearchCase::IgnoreCase))
+		{
+			return 0.0f;
+		}
+		for (const FCorrectedCinematicAttackHeights& Entry : CorrectedCinematicAttackHeights)
+		{
+			if (ClipAssetId.Contains(Entry.AssetToken))
+			{
+				return FMath::Clamp(Entry.Idle / FMath::Max(0.01f, Entry.Attack), 0.75f, 2.2f);
+			}
+		}
+		return 0.0f;
+	}
+
+	float ResolveCinematicContentScale(const FString& ClipAssetId)
+	{
+		const float CorrectedScale = ResolveCorrectedCinematicContentScale(ClipAssetId);
+		if (CorrectedScale > 0.0f)
+		{
+			return CorrectedScale;
+		}
+		for (const FCinematicAlphaHeights& Entry : CinematicAlphaHeights)
+		{
+			if (!ClipAssetId.Contains(Entry.AssetToken))
+			{
+				continue;
+			}
+
+			float ActionHeight = Entry.Idle;
+			if (ClipAssetId.EndsWith(TEXT("_attack"), ESearchCase::IgnoreCase))
+			{
+				ActionHeight = Entry.Attack;
+			}
+			else if (ClipAssetId.EndsWith(TEXT("_hit"), ESearchCase::IgnoreCase))
+			{
+				ActionHeight = Entry.Hit;
+			}
+			else if (ClipAssetId.EndsWith(TEXT("_death"), ESearchCase::IgnoreCase))
+			{
+				ActionHeight = Entry.Death;
+			}
+			return FMath::Clamp(Entry.Idle / FMath::Max(0.01f, ActionHeight), 0.75f, 2.2f);
+		}
+		return 1.0f;
+	}
+
 	bool IsHiddenVisibility(const ESlateVisibility Visibility)
 	{
 		return Visibility == ESlateVisibility::Hidden || Visibility == ESlateVisibility::Collapsed;
@@ -104,6 +222,7 @@ void UGameXXKBattleUnitVisualWidget::ConfigureUnit(
 	CurrentAnchor = FormationAnchor;
 	IdlePlaybackClip = IdleClip;
 	bConfigured = !ConfiguredUnitId.IsNone();
+	ResetProceduralPresentation();
 	SetPlaybackClip(IdlePlaybackClip, true);
 	ApplyCanvasLayout();
 	RefreshImageVisibility();
@@ -156,6 +275,7 @@ void UGameXXKBattleUnitVisualWidget::ShowFormationIdle()
 	CurrentAnchor = FormationAnchor;
 	PresentedSize = FormationVisualSize;
 	CurrentZOrder = FormationZOrder;
+	ResetProceduralPresentation();
 	SetPlaybackClip(IdlePlaybackClip, true);
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	SetRenderScale(FVector2D(1.0f, 1.0f));
@@ -175,9 +295,11 @@ void UGameXXKBattleUnitVisualWidget::ShowCinematic(
 	CurrentAnchor = Anchor;
 	PresentedSize = CinematicVisualSize;
 	CurrentZOrder = CinematicZOrder;
+	ResetProceduralPresentation();
 	SetPlaybackClip(Clip, false);
 	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	SetRenderScale(FVector2D(1.0f, 1.0f));
+	const float ContentScale = ResolveCinematicContentScale(Clip.AssetId);
+	SetRenderScale(FVector2D(ContentScale, ContentScale));
 	ApplyCanvasLayout();
 	RefreshImageVisibility();
 }
@@ -189,6 +311,7 @@ void UGameXXKBattleUnitVisualWidget::HideForCinematic()
 		return;
 	}
 
+	ResetProceduralPresentation();
 	SetVisibility(ESlateVisibility::Hidden);
 	RefreshImageVisibility();
 }
@@ -208,6 +331,7 @@ void UGameXXKBattleUnitVisualWidget::RemoveAfterDeath()
 		return;
 	}
 
+	ResetProceduralPresentation();
 	SetVisibility(ESlateVisibility::Collapsed);
 	if (UnitImage)
 	{
@@ -251,6 +375,24 @@ void UGameXXKBattleUnitVisualWidget::AdvanceAtRealTime(const double AbsoluteSeco
 	{
 		ApplyFrame(FrameIndex);
 	}
+}
+
+void UGameXXKBattleUnitVisualWidget::ApplyProceduralPresentation(
+	const FVector2D& Translation,
+	const float Opacity)
+{
+	if (bRemoved)
+	{
+		return;
+	}
+	SetRenderTranslation(Translation);
+	SetRenderOpacity(FMath::IsFinite(Opacity) ? FMath::Clamp(Opacity, 0.0f, 1.0f) : 1.0f);
+}
+
+void UGameXXKBattleUnitVisualWidget::ResetProceduralPresentation()
+{
+	SetRenderTranslation(FVector2D::ZeroVector);
+	SetRenderOpacity(1.0f);
 }
 
 void UGameXXKBattleUnitVisualWidget::SetCardTargetingAvailability(
@@ -312,6 +454,16 @@ bool UGameXXKBattleUnitVisualWidget::IsRemovedForTest() const
 bool UGameXXKBattleUnitVisualWidget::IsDimmedForCardTargetingForTest() const
 {
 	return bDimmedForCardTargeting;
+}
+
+FVector2D UGameXXKBattleUnitVisualWidget::GetProceduralTranslationForTest() const
+{
+	return GetRenderTransform().Translation;
+}
+
+float UGameXXKBattleUnitVisualWidget::GetProceduralOpacityForTest() const
+{
+	return GetRenderOpacity();
 }
 
 void UGameXXKBattleUnitVisualWidget::BuildProgrammaticLayout()

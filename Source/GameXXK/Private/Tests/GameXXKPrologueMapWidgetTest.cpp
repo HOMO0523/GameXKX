@@ -59,8 +59,9 @@ bool FGameXXKPrologueMapWidgetTest::RunTest(const FString& Parameters)
 	const FVector2D Fit = UGameXXKPrologueMapWidget::FitInspectionImageForTest(
 		FVector2D(1920.0f, 1080.0f));
 	TestTrue(TEXT("inspection fits reference height"), FMath::IsNearlyEqual(Fit.Y, 860.0f));
-	TestTrue(TEXT("inspection preserves approved aspect"),
-		FMath::IsNearlyEqual(Fit.X / Fit.Y, 1279.0f / 1706.0f, 0.001f));
+	TestTrue(TEXT("inspection preserves replacement aspect"),
+		FMath::IsNearlyEqual(Fit.X / Fit.Y, 2388.0f / 1668.0f, 0.001f));
+	TestTrue(TEXT("replacement inspection is landscape"), Fit.X > Fit.Y);
 
 	return true;
 }

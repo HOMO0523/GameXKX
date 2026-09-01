@@ -8,27 +8,57 @@ import unreal
 PAPERZD_DIR = "/Game/GameXXK/Characters/Hero/PaperZD"
 PAPERZD_SOURCE = f"{PAPERZD_DIR}/AS_Hero_Flipbook"
 PAPERZD_ANIM_BP = f"{PAPERZD_DIR}/ABP_Hero_PaperZD"
-PAPERZD_WALK_SEQUENCE = f"{PAPERZD_DIR}/PZD_Hero_Walk_8Dir"
-PAPERZD_IDLE_SEQUENCE = f"{PAPERZD_DIR}/PZD_Hero_Idle_8Dir"
-
-DIRECTIONS = [
-    "South",
-    "SouthWest",
-    "West",
-    "NorthWest",
-    "North",
-    "NorthEast",
-    "East",
-    "SouthEast",
-]
-
-EXPECTED_FLIPBOOKS = [
-    f"/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Walk_{direction}.FB_Hero_Walk_{direction}"
-    for direction in DIRECTIONS
-]
-EXPECTED_IDLE_FLIPBOOKS = [
-    f"/Game/GameXXK/Characters/Hero/Flipbooks/FB_Hero_Idle_{direction}.FB_Hero_Idle_{direction}"
-    for direction in DIRECTIONS
+PAPERZD_CLIPS = [
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_Idle",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Idle_Left.FB_Hero_Town_Idle_Left",
+        "town idle",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_WalkStart",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStart_Left.FB_Hero_Town_WalkStart_Left",
+        "town walk-start",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_WalkLoop",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkLoop_Left.FB_Hero_Town_WalkLoop_Left",
+        "town walk-loop",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_WalkStop",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStop_Left.FB_Hero_Town_WalkStop_Left",
+        "town walk-stop",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_DeepBreath",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_DeepBreath_Left.FB_Hero_Town_DeepBreath_Left",
+        "town deep-breath",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_AdjustBackpack",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_AdjustBackpack_Left.FB_Hero_Town_AdjustBackpack_Left",
+        "town adjust-backpack",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_CollectItem",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CollectItem_Left.FB_Hero_Town_CollectItem_Left",
+        "town collect-item",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_CombatIdle",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CombatIdle_Left.FB_Hero_Town_CombatIdle_Left",
+        "town combat-idle",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_Punch",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Punch_Left.FB_Hero_Town_Punch_Left",
+        "town punch",
+    ),
+    (
+        f"{PAPERZD_DIR}/PZD_Hero_Town_Kick",
+        "/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Kick_Left.FB_Hero_Town_Kick_Left",
+        "town kick",
+    ),
 ]
 
 
@@ -77,7 +107,7 @@ def _result(ok: bool, name: str, **extra) -> dict:
     return entry
 
 
-def _validate_sequence(sequence_path: str, expected_flipbooks: list[str], label: str) -> list[dict]:
+def _validate_sequence(sequence_path: str, expected_flipbook: str, label: str) -> list[dict]:
     checks = []
     sequence = _load_asset(sequence_path)
     checks.append(_result(
@@ -106,10 +136,10 @@ def _validate_sequence(sequence_path: str, expected_flipbooks: list[str], label:
         expected=f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
     ))
     checks.append(_result(
-        directional is True,
-        f"paperzd {label} sequence is directional",
+        directional is False,
+        f"paperzd {label} sequence is non-directional",
         actual=directional,
-        expected=True,
+        expected=False,
     ))
     checks.append(_result(
         str(category) == "Locomotion",
@@ -125,10 +155,10 @@ def _validate_sequence(sequence_path: str, expected_flipbooks: list[str], label:
             actual_flipbooks.append(_object_path(animation))
 
     checks.append(_result(
-        actual_flipbooks == expected_flipbooks,
-        f"paperzd {label} sequence references all 8 Paper2D flipbooks in direction order",
+        actual_flipbooks == [expected_flipbook],
+        f"paperzd {label} sequence references exactly one authored left-facing flipbook",
         actual=actual_flipbooks,
-        expected=expected_flipbooks,
+        expected=[expected_flipbook],
     ))
     return checks
 
@@ -161,12 +191,14 @@ def validate() -> dict:
         expected=f"{PAPERZD_SOURCE}.AS_Hero_Flipbook",
     ))
 
-    checks.extend(_validate_sequence(PAPERZD_WALK_SEQUENCE, EXPECTED_FLIPBOOKS, "walk"))
-    checks.extend(_validate_sequence(PAPERZD_IDLE_SEQUENCE, EXPECTED_IDLE_FLIPBOOKS, "idle"))
+    for sequence_path, expected_flipbook, label in PAPERZD_CLIPS:
+        checks.extend(_validate_sequence(sequence_path, expected_flipbook, label))
 
     return {
         "ok": all(check["ok"] for check in checks),
         "paperzd_dir": PAPERZD_DIR,
+        "direction_policy": "one left-facing source; runtime mirrors right",
+        "clip_count": len(PAPERZD_CLIPS),
         "checks": checks,
     }
 

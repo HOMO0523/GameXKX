@@ -2,6 +2,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Interaction/GameXXKInteractableComponent.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 
@@ -20,13 +21,21 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	TusiChief->SetNpcId(TEXT("Npc.TusiChief"));
 	TestEqual(TEXT("Tusi Chief identity is stable"), TusiChief->GetNpcId(), FName(TEXT("Npc.TusiChief")));
 	TestEqual(TEXT("Tusi Chief is always the story NPC"), TusiChief->GetNpcRole(), EGameXXKTownNpcRole::Quest);
-	TestTrue(TEXT("Tusi Chief has a story action"), TusiChief->HasPrimaryInteractionAction());
+	TestFalse(TEXT("Tusi Chief old task action is retired"), TusiChief->HasPrimaryInteractionAction());
+	const UGameXXKInteractableComponent* TusiInteraction =
+		TusiChief->FindComponentByClass<UGameXXKInteractableComponent>();
+	TestTrue(TEXT("Tusi Chief has no focused town interaction"),
+		TusiInteraction && !TusiInteraction->IsInteractionEnabled());
 	TestTrue(TEXT("Tusi Chief can join the route party"), TusiChief->CanJoinParty());
 
 	AGameXXKTownNpcActor* SongJinBao = NewObject<AGameXXKTownNpcActor>();
 	SongJinBao->SetNpcId(TEXT("Npc.SongJinBao"));
 	TestEqual(TEXT("Song Jinbao is always the merchant NPC"), SongJinBao->GetNpcRole(), EGameXXKTownNpcRole::Merchant);
-	TestTrue(TEXT("Song Jinbao has a shop action"), SongJinBao->HasPrimaryInteractionAction());
+	TestFalse(TEXT("Song Jinbao old shop action is retired"), SongJinBao->HasPrimaryInteractionAction());
+	const UGameXXKInteractableComponent* SongInteraction =
+		SongJinBao->FindComponentByClass<UGameXXKInteractableComponent>();
+	TestTrue(TEXT("Song Jinbao has no focused town interaction"),
+		SongInteraction && !SongInteraction->IsInteractionEnabled());
 	TestTrue(TEXT("Song Jinbao can join the route party"), SongJinBao->CanJoinParty());
 
 	AGameXXKTownNpcActor* YueBai = NewObject<AGameXXKTownNpcActor>();
@@ -59,10 +68,8 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	RestoredActorFollower->SetNpcId(TEXT("Npc.TusiChief"));
 	RestoredActorFollower->SetMVPSubsystemForTest(RecoverySubsystem);
 	RestoredActorFollower->ActivateFollower(FollowTarget, 96.0f);
-	TestTrue(TEXT("restoring an actor follower backfills a missing legacy NPC location flag"),
+	TestFalse(TEXT("retired actor quest option never writes a legacy NPC location"),
 		RecoveryState.bHasQuestNpcLocation);
-	TestEqual(TEXT("restoring an actor follower records its actual current location"),
-		RecoveryState.QuestNpcLocation, RestoredActorFollower->GetActorLocation());
 
 	RecoveryState.bHasQuestNpcLocation = false;
 	RecoveryState.QuestNpcLocation = FVector::ZeroVector;
@@ -70,10 +77,8 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	RestoredCharacterFollower->SetNpcId(TEXT("Npc.TusiChief"));
 	RestoredCharacterFollower->SetMVPSubsystemForTest(RecoverySubsystem);
 	RestoredCharacterFollower->ActivateFollower(FollowTarget, 96.0f);
-	TestTrue(TEXT("restoring a character follower backfills a missing legacy NPC location flag"),
+	TestFalse(TEXT("retired character quest option never writes a legacy NPC location"),
 		RecoveryState.bHasQuestNpcLocation);
-	TestEqual(TEXT("restoring a character follower records its actual current location"),
-		RecoveryState.QuestNpcLocation, RestoredCharacterFollower->GetActorLocation());
 
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
@@ -86,7 +91,7 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 		TEXT("world NPC interaction leaves the party NPC unchanged"),
 		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState()),
 		PartyNpcBeforeWorldInteraction);
-	TestTrue(TEXT("town-NPC fixture accepts the narrative quest"), Subsystem->AcceptQuest());
+	TestTrue(TEXT("internal route compatibility can still seed its quest prerequisite"), Subsystem->AcceptQuest());
 	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog
 	// 入队 recruit (controller RecruitPendingTownNpc) so the route-support selection path
 	// below still verifies it preserves an already-recruited narrative follower.

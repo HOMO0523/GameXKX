@@ -32,6 +32,12 @@ DEFAULT_CATALOGS = GuideCatalogSnapshot(
             "Route.Camp.Gold",
             "Route.Chest.Open",
             "Desktop.Settings.ResetCombatGuide",
+            "Desktop.Tab",
+            "Desktop.Training",
+            "Desktop.Training.Difficulty.Normal",
+            "Desktop.Training.Stage.Normal.1-1",
+            "Desktop.Training.Travel",
+            "Desktop.Training.TravelStrip",
         }
     ),
     trigger_event_ids=frozenset(
@@ -45,6 +51,12 @@ DEFAULT_CATALOGS = GuideCatalogSnapshot(
             "Event.Route.ChestOpened",
             "Event.Boss.Opened",
             "Event.Settlement.Opened",
+            "Event.Desktop.FirstJourney.Started",
+            "Event.Desktop.Tab.Expanded",
+            "Event.Desktop.Training.Opened",
+            "Event.Desktop.Training.Difficulty.NormalSelected",
+            "Event.Desktop.Training.Stage.Normal.1-1.Selected",
+            "Event.Desktop.Training.Travel.Started",
         }
     ),
     completion_event_ids=frozenset(
@@ -65,6 +77,12 @@ DEFAULT_CATALOGS = GuideCatalogSnapshot(
             "Event.Boss.Completed",
             "Event.Settlement.Confirmed",
             "Event.Guide.Done",
+            "Event.Desktop.Tab.Expanded",
+            "Event.Desktop.Training.Opened",
+            "Event.Desktop.Training.Difficulty.NormalSelected",
+            "Event.Desktop.Training.Stage.Normal.1-1.Selected",
+            "Event.Desktop.Training.Travel.Started",
+            "Event.Desktop.Training.EncounterCompleted",
         }
     ),
     action_ids=frozenset(
@@ -83,6 +101,11 @@ DEFAULT_CATALOGS = GuideCatalogSnapshot(
             "Action.Route.ChestOpen",
             "Action.Route.SettlementConfirm",
             "Action.Desktop.ResetCombatGuide",
+            "Action.Desktop.Tab",
+            "Action.Desktop.Training",
+            "Action.Desktop.Training.Difficulty.Normal",
+            "Action.Desktop.Training.Stage.Normal.1-1",
+            "Action.Desktop.Training.Travel",
         }
     ),
 )

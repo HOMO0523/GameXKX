@@ -52,7 +52,7 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 	using namespace GameXXKNarrativeGuideSaveMigrationTestPrivate;
 	TestEqual(TEXT("narrative-stage-guide owns save version 29"),
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
-	TestEqual(TEXT("v31 follows the permanent-NPC boundary"), FGameXXKSaveMigration::CurrentSaveVersion, 31);
+	TestEqual(TEXT("v32 retires the disconnected tutorial narrative"), FGameXXKSaveMigration::CurrentSaveVersion, 32);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);
@@ -73,43 +73,26 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 		Migrated.RuntimeState.GuideProgress.Preference, EGameXXKGuidePreference::Unset);
 	TestTrue(TEXT("guide completed steps default empty"),
 		Migrated.RuntimeState.GuideProgress.CompletedGuideStepIds.IsEmpty());
-	TestTrue(TEXT("v28 dialogue remains active"), Migrated.RuntimeState.DialogueSession.bActive);
-	TestEqual(TEXT("v28 dialogue ID preserved"),
-		Migrated.RuntimeState.DialogueSession.DialogueId,
-		OrdinaryV28.RuntimeState.DialogueSession.DialogueId);
+	TestFalse(TEXT("retired v28 tutorial dialogue is cleared"),
+		Migrated.RuntimeState.DialogueSession.bActive);
 
 	FGameXXKSaveState ActiveV27 = MakeSave(27, EGameXXKTutorialQuestState::Active);
 	TestTrue(TEXT("active v27 tutorial migrates"),
 		FGameXXKSaveMigration::MigrateToCurrent(ActiveV27, Migrated, Report));
-	const FName StoryId(TEXT("Story.Main.XuXiakeTreasure"));
-	const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
-	const FGameXXKStoryProgress* ActiveStory = Migrated.RuntimeState.NarrativeProgress.StoryProgressById.Find(StoryId);
-	const FGameXXKTaskProgress* ActiveTask = Migrated.RuntimeState.NarrativeProgress.TaskProgressById.Find(TaskId);
-	TestNotNull(TEXT("active tutorial creates main story"), ActiveStory);
-	TestNotNull(TEXT("active tutorial creates prologue task"), ActiveTask);
-	if (ActiveStory && ActiveTask)
-	{
-		TestEqual(TEXT("main story remains active"), ActiveStory->State, EGameXXKStoryState::Active);
-		TestEqual(TEXT("prologue task remains active"), ActiveTask->State, EGameXXKTaskState::Active);
-		TestEqual(TEXT("legacy entry maps to river step"),
-			ActiveTask->CurrentStepId, FName(TEXT("Step.Main.XuXiake.RiverScroll")));
-	}
-	TestEqual(TEXT("migrated active task is tracked"),
-		Migrated.RuntimeState.NarrativeProgress.TrackedTaskId, TaskId);
+	TestTrue(TEXT("active legacy tutorial creates no retired story"),
+		Migrated.RuntimeState.NarrativeProgress.StoryProgressById.IsEmpty());
+	TestTrue(TEXT("active legacy tutorial creates no retired task"),
+		Migrated.RuntimeState.NarrativeProgress.TaskProgressById.IsEmpty());
+	TestTrue(TEXT("active legacy tutorial tracks no retired task"),
+		Migrated.RuntimeState.NarrativeProgress.TrackedTaskId.IsNone());
 
 	FGameXXKSaveState CompletedV27 = MakeSave(27, EGameXXKTutorialQuestState::Completed);
 	TestTrue(TEXT("completed v27 tutorial migrates"),
 		FGameXXKSaveMigration::MigrateToCurrent(CompletedV27, Migrated, Report));
-	const FGameXXKStoryProgress* CompletedStory = Migrated.RuntimeState.NarrativeProgress.StoryProgressById.Find(StoryId);
-	const FGameXXKTaskProgress* CompletedTask = Migrated.RuntimeState.NarrativeProgress.TaskProgressById.Find(TaskId);
-	TestNotNull(TEXT("completed tutorial creates story receipt"), CompletedStory);
-	TestNotNull(TEXT("completed tutorial creates task receipt"), CompletedTask);
-	if (CompletedStory && CompletedTask)
-	{
-		TestEqual(TEXT("story migration completes"), CompletedStory->State, EGameXXKStoryState::Completed);
-		TestEqual(TEXT("task migration prevents reward replay"), CompletedTask->State, EGameXXKTaskState::Rewarded);
-		TestTrue(TEXT("task reward receipt is committed"), CompletedTask->bRewardCommitted);
-	}
+	TestTrue(TEXT("completed legacy tutorial creates no story receipt"),
+		Migrated.RuntimeState.NarrativeProgress.StoryProgressById.IsEmpty());
+	TestTrue(TEXT("completed legacy tutorial creates no task receipt"),
+		Migrated.RuntimeState.NarrativeProgress.TaskProgressById.IsEmpty());
 	return true;
 }
 
@@ -145,38 +128,8 @@ bool FGameXXKNarrativeGuideSaveValidationTest::RunTest(const FString& Parameters
 	TestFalse(TEXT("unknown story progress rejects"),
 		FGameXXKSaveMigration::MigrateToCurrent(UnknownStory, RoundTrip, Report));
 
-	FGameXXKSaveState ValidGuide = Current;
-	FGameXXKTaskProgress* CombatTutorialTask =
-		ValidGuide.RuntimeState.NarrativeProgress.TaskProgressById.Find(TEXT("Task.Main.XuXiake.Prologue"));
-	if (!TestNotNull(TEXT("combat-guide fixture has prologue task"), CombatTutorialTask))
-	{
-		return false;
-	}
-	CombatTutorialTask->CurrentStepId = TEXT("Step.Main.XuXiake.CombatTutorial");
-	ValidGuide.RuntimeState.GuideProgress.Preference = EGameXXKGuidePreference::NewPlayer;
-	ValidGuide.RuntimeState.GuideProgress.ActiveGuideId = TEXT("Guide.RouteMap.Basic");
-	ValidGuide.RuntimeState.GuideProgress.ActiveGuideStepId = TEXT("Guide.RouteMap.Basic.SelectNext");
-	TestTrue(FString::Printf(TEXT("guide attached to active combat tutorial validates: %s"), *Report.Error),
-		FGameXXKSaveMigration::MigrateToCurrent(ValidGuide, RoundTrip, Report));
-
-	FGameXXKSaveState ValidSequence = Current;
-	FGameXXKNarrativeSequenceSessionState& Sequence = ValidSequence.RuntimeState.NarrativeSequenceSession;
-	Sequence.bActive = true;
-	Sequence.StoryId = TEXT("Story.Main.XuXiakeTreasure");
-	Sequence.StoryVersion = 1;
-	Sequence.TaskId = TEXT("Task.Main.XuXiake.Prologue");
-	Sequence.StepId = TEXT("Step.Main.XuXiake.RiverScroll");
-	Sequence.SequenceId = TEXT("Sequence.Main.XuXiake.CarriageArrival");
-	Sequence.SequenceVersion = 1;
-	Sequence.StageContractId = TEXT("Stage.Tutorial.River");
-	Sequence.CurrentSequenceStepId = TEXT("Step.Sequence.Arrival");
-	Sequence.CharacterIdByRole.Add(TEXT("Hero"), TEXT("Character.Hero"));
-	TestTrue(FString::Printf(TEXT("sequence matching active task validates: %s"), *Report.Error),
-		FGameXXKSaveMigration::MigrateToCurrent(ValidSequence, RoundTrip, Report));
-
-	ValidSequence.RuntimeState.NarrativeSequenceSession.StageContractId = TEXT("Stage.Wrong");
-	TestFalse(TEXT("sequence stage detached from task rejects"),
-		FGameXXKSaveMigration::MigrateToCurrent(ValidSequence, RoundTrip, Report));
+	TestTrue(TEXT("retired legacy narrative leaves an ordinary current save valid"),
+		FGameXXKSaveMigration::MigrateToCurrent(Current, RoundTrip, Report));
 	return true;
 }
 

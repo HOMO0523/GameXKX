@@ -139,98 +139,6 @@
 		return Hooks;
 	}
 
-	HHOOK& GetDesktopLowLevelMouseHook()
-	{
-		static HHOOK Hook = nullptr;
-		return Hook;
-	}
-
-	LRESULT CALLBACK GameXXKDesktopLowLevelMouseProc(
-		const int32 Code,
-		const WPARAM WParam,
-		const LPARAM LParam)
-	{
-		if (Code >= 0)
-		{
-			using namespace GameXXKDesktopTrainingLayout;
-			EDesktopOverlayMouseSignal Signal = EDesktopOverlayMouseSignal::Other;
-			switch (WParam)
-			{
-			case WM_MOUSEMOVE:
-				Signal = EDesktopOverlayMouseSignal::Move;
-				break;
-			case WM_LBUTTONDOWN:
-			case WM_LBUTTONUP:
-			case WM_LBUTTONDBLCLK:
-			case WM_RBUTTONDOWN:
-			case WM_RBUTTONUP:
-			case WM_RBUTTONDBLCLK:
-			case WM_MBUTTONDOWN:
-			case WM_MBUTTONUP:
-			case WM_MBUTTONDBLCLK:
-			case WM_XBUTTONDOWN:
-			case WM_XBUTTONUP:
-			case WM_XBUTTONDBLCLK:
-				Signal = EDesktopOverlayMouseSignal::Button;
-				break;
-			case WM_MOUSEWHEEL:
-			case WM_MOUSEHWHEEL:
-				Signal = EDesktopOverlayMouseSignal::Wheel;
-				break;
-			default:
-				break;
-			}
-
-			if (ShouldSynchronizeDesktopMousePassthrough(Signal))
-			{
-				for (const TPair<HWND, FGameXXKDesktopWindowHook>& Pair : GetDesktopWindowHooks())
-				{
-					if (Pair.Value.Owner.IsValid())
-					{
-						Pair.Value.Owner->RefreshDesktopNativeMousePassthrough();
-					}
-				}
-			}
-		}
-		return ::CallNextHookEx(GetDesktopLowLevelMouseHook(), Code, WParam, LParam);
-	}
-
-	bool InstallDesktopLowLevelMouseHook()
-	{
-		if (GetDesktopLowLevelMouseHook())
-		{
-			return true;
-		}
-		HMODULE ModuleHandle = nullptr;
-		if (!::GetModuleHandleExW(
-				GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-					| GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-				reinterpret_cast<LPCWSTR>(&GameXXKDesktopLowLevelMouseProc),
-				&ModuleHandle))
-		{
-			return false;
-		}
-		GetDesktopLowLevelMouseHook() = ::SetWindowsHookExW(
-			WH_MOUSE_LL,
-			&GameXXKDesktopLowLevelMouseProc,
-			ModuleHandle,
-			0);
-		return GetDesktopLowLevelMouseHook() != nullptr;
-	}
-
-	void ReleaseDesktopLowLevelMouseHookIfUnused()
-	{
-		if (!GetDesktopWindowHooks().IsEmpty())
-		{
-			return;
-		}
-		if (GetDesktopLowLevelMouseHook())
-		{
-			::UnhookWindowsHookEx(GetDesktopLowLevelMouseHook());
-			GetDesktopLowLevelMouseHook() = nullptr;
-		}
-	}
-
 	float GetDesktopMonitorDpiScale(HWND WindowHandle)
 	{
 		if (WindowHandle)
@@ -526,20 +434,18 @@
 		}
 		return FName(*Value);
 	}
-	// Deterministic alpha-bounds audit of the approved source atlases.  The walk
-	// atlas occupies 90.6% of its cell height; the battle clips occupy 81.2%
-	// (Idle), 59.8% (Attack), 69.5% (Hit), and 80.9% (Death).  Normalize each
-	// action around a bottom-center pivot so action changes preserve the hero's
-	// apparent size and ground contact.
+	// Deterministic alpha-bounds audit of the corrected 2026-08-27 atlases. Hit
+	// and death are procedural effects on the Idle pose, so they intentionally
+	// retain the same scale instead of referencing retired action atlases.
 	float ResolveTravelHeroContentScale(const EGameXXKBattleAnimationAction Action)
 	{
 		switch (Action)
 		{
-		case EGameXXKBattleAnimationAction::Attack: return 1.516f;
-		case EGameXXKBattleAnimationAction::Hit: return 1.303f;
-		case EGameXXKBattleAnimationAction::Death: return 1.121f;
+		case EGameXXKBattleAnimationAction::Attack: return 1.160f;
+		case EGameXXKBattleAnimationAction::Hit: return 1.094f;
+		case EGameXXKBattleAnimationAction::Death: return 1.094f;
 		case EGameXXKBattleAnimationAction::Idle:
-		default: return 1.117f;
+		default: return 1.094f;
 		}
 	}
 
@@ -558,12 +464,15 @@
 	// atlases have materially different transparent padding per enemy/action,
 	// so a single widget scale causes the visible character to pulse in size.
 	constexpr FTravelEnemyAlphaHeights TravelEnemyAlphaHeights[] = {
-		{TEXT("enemy_01_rooster"), 0.8047f, 0.5869f, 0.6816f, 0.7363f},
+		{TEXT("enemy_01_rooster"), 0.824219f, 0.789062f, 0.824219f, 0.824219f},
 		{TEXT("enemy_02_goat"), 0.8320f, 0.6191f, 0.5352f, 0.7646f},
-		{TEXT("enemy_03_weasel"), 0.5840f, 0.4307f, 0.5127f, 0.4824f},
+		{TEXT("enemy_03_weasel"), 0.632812f, 0.406250f, 0.632812f, 0.632812f},
 		{TEXT("enemy_04_civet"), 0.5703f, 0.4688f, 0.5547f, 0.6133f},
-		{TEXT("enemy_05_ironfeather"), 0.8066f, 0.5713f, 0.5723f, 0.6602f},
+		{TEXT("enemy_05_ironfeather"), 0.783203f, 0.567383f, 0.783203f, 0.783203f},
 		{TEXT("enemy_06_bluehorn"), 0.7910f, 0.6094f, 0.5859f, 0.7090f},
+		{TEXT("enemy_11_graymane"), 0.614258f, 0.578125f, 0.614258f, 0.614258f},
+		{TEXT("enemy_16_toad"), 0.417969f, 0.321289f, 0.417969f, 0.417969f},
+		{TEXT("enemy_18_deer"), 0.812500f, 0.789062f, 0.812500f, 0.812500f},
 		{TEXT("enemy_19_moneyrat_boss"), 0.6562f, 0.5713f, 0.5684f, 0.5781f},
 	};
 
@@ -583,8 +492,10 @@
 			switch (Action)
 			{
 			case EGameXXKBattleAnimationAction::Attack: OccupiedHeight = Entry.Attack; break;
-			case EGameXXKBattleAnimationAction::Hit: OccupiedHeight = Entry.Hit; break;
-			case EGameXXKBattleAnimationAction::Death: OccupiedHeight = Entry.Death; break;
+			case EGameXXKBattleAnimationAction::Hit:
+			case EGameXXKBattleAnimationAction::Death:
+				OccupiedHeight = Entry.Idle;
+				break;
 			case EGameXXKBattleAnimationAction::Idle:
 			default: break;
 			}
@@ -615,7 +526,7 @@
 		{TEXT("character_06_formation_master"), 0.7305f, 0.6094f, 0.5879f, 0.6699f},
 		{TEXT("character_07_tusi_chief"), 0.6934f, 0.6074f, 0.5703f, 0.5664f},
 		{TEXT("character_08_song_jin_bao"), 0.8340f, 0.8125f, 0.6367f, 0.7949f},
-		{TEXT("character_09_yue_bai"), 0.7344f, 0.6250f, 0.6797f, 0.8281f},
+		{TEXT("character_09_yue_bai"), 0.808594f, 0.615234f, 0.808594f, 0.808594f},
 		{TEXT("character_10_zhou_guang_zu"), 0.8262f, 0.7148f, 0.6680f, 0.7969f},
 		{TEXT("character_11_jin_gui"), 0.6992f, 0.7207f, 0.5859f, 0.8242f},
 		{TEXT("character_12_qiong_mei_er"), 0.8047f, 0.7383f, 0.7793f, 0.7715f},
@@ -634,8 +545,10 @@
 				switch (Action)
 				{
 				case EGameXXKBattleAnimationAction::Attack: OccupiedHeight = Entry.Attack; break;
-				case EGameXXKBattleAnimationAction::Hit: OccupiedHeight = Entry.Hit; break;
-				case EGameXXKBattleAnimationAction::Death: OccupiedHeight = Entry.Death; break;
+				case EGameXXKBattleAnimationAction::Hit:
+				case EGameXXKBattleAnimationAction::Death:
+					OccupiedHeight = Entry.Idle;
+					break;
 				case EGameXXKBattleAnimationAction::Idle:
 				default: break;
 				}
@@ -1096,6 +1009,9 @@
 
 	FString InventoryItemIconTexturePath(const FName ItemId)
 	{
+		const FString InspectableIcon =
+			FGameXXKInventoryItemPresentation::ResolveIconPath(ItemId);
+		if (!InspectableIcon.IsEmpty()) return InspectableIcon;
 		const FSoftObjectPath GemIconPath = FGameXXKGemRules::GetIconTexturePathForItemId(ItemId);
 		if (GemIconPath.IsValid()) return GemIconPath.ToString();
 		const FString Root(InventoryTextureRoot);
@@ -1682,9 +1598,14 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 			}
 			if (!bIdleControl)
 			{
-				bDesktopHudDragging = true;
-				DesktopHudDragPointerOffset = StripPoint;
-				return FReply::Handled().CaptureMouse(TakeWidget());
+				FVector2D PointerScreen;
+				if (TryGetDesktopHudPointerScreenPosition(PointerScreen))
+				{
+					bDesktopHudDragging = true;
+					DesktopHudDragStartPointerScreen = PointerScreen;
+					DesktopHudDragStartNormalizedAnchor = DesktopWindowPositionNormalized;
+					return FReply::Handled().CaptureMouse(TakeWidget());
+				}
 			}
 		}
 	}
@@ -1697,7 +1618,7 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonUp(
 {
 	if (bDesktopHudDragging && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		UpdateDesktopOverlayAnchorFromPointer(InGeometry, InMouseEvent.GetScreenSpacePosition());
+		UpdateDesktopOverlayAnchorFromPointer();
 		bDesktopHudDragging = false;
 		SaveDesktopNativeWindowPosition();
 		return FReply::Handled().ReleaseMouseCapture();
@@ -1711,7 +1632,7 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseMove(
 {
 	if (bDesktopHudDragging)
 	{
-		UpdateDesktopOverlayAnchorFromPointer(InGeometry, InMouseEvent.GetScreenSpacePosition());
+		UpdateDesktopOverlayAnchorFromPointer();
 		return FReply::Handled();
 	}
 	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
@@ -4402,13 +4323,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshGuideSurfaces()
 			&UGameXXKDesktopTrainingWorkbenchWidget::PersistGuideProgressCandidate));
 
 	GuidePreferenceWidget->RefreshFromProgress(State.GuideProgress);
-	const bool bTutorialStarted =
-		State.TutorialQuest.State != EGameXXKTutorialQuestState::NotStarted
-		|| State.NarrativeProgress.TaskProgressById.Contains(TEXT("Task.Main.XuXiake.Prologue"));
-	if (!bTutorialStarted)
-	{
-		GuidePreferenceWidget->SetVisibility(ESlateVisibility::Collapsed);
-	}
 
 	if (!State.GuideProgress.ActiveGuideId.IsNone())
 	{
@@ -5021,6 +4935,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 
 	if (TravelVisualRuntime.IsWalking())
 	{
+		TravelHeroImage->SetRenderTranslation(FVector2D::ZeroVector);
+		TravelHeroImage->SetRenderOpacity(1.0f);
 		const int32 WalkFrame = TravelVisualRuntime.GetWalkFrameIndex();
 		const FSoftObjectPath WalkAtlasPath(TravelHeroAtlasTexturePath);
 		if (TravelHeroAtlasTexture
@@ -5045,11 +4961,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 	else
 	{
 		const EGameXXKBattleAnimationAction HeroAction = TravelVisualRuntime.GetHeroAction();
+		const EGameXXKBattleAnimationAction HeroDisplayAction =
+			HeroAction == EGameXXKBattleAnimationAction::Hit
+				|| HeroAction == EGameXXKBattleAnimationAction::Death
+			? EGameXXKBattleAnimationAction::Idle
+			: HeroAction;
 		FGameXXKBattleAnimationClipDescriptor HeroClip = FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
 			MakeTravelOneKUnitId(FGameXXKEquipmentRules::HeroCharacterId()),
 			NAME_None,
 			false,
-			HeroAction);
+			HeroDisplayAction);
 		float HeroPhaseDuration = 0.0f;
 		switch (TravelVisualRuntime.GetVisualPhase())
 		{
@@ -5058,14 +4979,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		case EGameXXKTrainingTravelVisualPhase::HeroDeath: HeroPhaseDuration = FGameXXKTrainingTravelVisualRuntime::HeroDeathSeconds; break;
 		default: break;
 		}
-		if (HeroPhaseDuration > 0.0f)
+		if (HeroPhaseDuration > 0.0f && HeroDisplayAction != EGameXXKBattleAnimationAction::Idle)
 		{
 			HeroClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(HeroClip, HeroPhaseDuration);
 		}
 		if (!ApplyTravelAnimationFrame(
 			TravelHeroImage,
 			HeroClip,
-			HeroAction == EGameXXKBattleAnimationAction::Idle,
+			HeroDisplayAction == EGameXXKBattleAnimationAction::Idle,
 			TravelAppliedHeroAtlasPath,
 			TravelAppliedHeroFrame)
 			&& TravelHeroFallbackTextures.Num() > 0
@@ -5083,10 +5004,33 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		// The compact strip uses the same enemy-left / party-right formation as
 		// the battle board.  Preserve the authored left-facing hero action and
 		// compensate for each action atlas's authored alpha-bounds difference.
-		const float HeroContentScale = ResolveTravelHeroContentScale(HeroAction);
+		const float HeroContentScale = ResolveTravelHeroContentScale(HeroDisplayAction);
 		TravelHeroImage->SetRenderScale(FVector2D(
 			HeroContentScale,
 			HeroContentScale));
+		TravelHeroImage->SetRenderTranslation(FVector2D::ZeroVector);
+		if (HeroAction == EGameXXKBattleAnimationAction::Hit)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::HeroHitSeconds,
+				0.0f,
+				1.0f);
+			TravelHeroImage->SetRenderTranslation(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(false, Progress)
+				* (TravelCombatVisualSize.X / 410.0f));
+		}
+		else if (HeroAction == EGameXXKBattleAnimationAction::Death
+			&& TravelHeroImage->GetRenderOpacity() > 0.0f)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::HeroDeathSeconds,
+				0.0f,
+				1.0f);
+			TravelHeroImage->SetRenderOpacity(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(Progress));
+		}
 	}
 
 	const int32 PresentedEnemySlotIndex = TravelVisualRuntime.GetPresentedEnemySlotIndex();
@@ -5139,11 +5083,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		const EGameXXKBattleAnimationAction EnemyAction = bPresentedTarget
 			? TravelVisualRuntime.GetEnemyAction()
 			: EGameXXKBattleAnimationAction::Idle;
+		const EGameXXKBattleAnimationAction EnemyDisplayAction =
+			EnemyAction == EGameXXKBattleAnimationAction::Hit
+				|| EnemyAction == EGameXXKBattleAnimationAction::Death
+			? EGameXXKBattleAnimationAction::Idle
+			: EnemyAction;
 		FGameXXKBattleAnimationClipDescriptor EnemyClip = FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
 			MakeTravelOneKUnitId(EnemyId),
 			MakeTravelOneKUnitId(EnemyId),
 			true,
-			EnemyAction);
+			EnemyDisplayAction);
 		float EnemyPhaseDuration = 0.0f;
 		if (bPresentedTarget)
 		{
@@ -5155,18 +5104,42 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 			default: break;
 			}
 		}
-		if (EnemyPhaseDuration > 0.0f)
+		if (EnemyPhaseDuration > 0.0f && EnemyDisplayAction != EGameXXKBattleAnimationAction::Idle)
 		{
 			EnemyClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(EnemyClip, EnemyPhaseDuration);
 		}
 		ApplyTravelAnimationFrame(
 			EnemyImage,
 			EnemyClip,
-			EnemyAction == EGameXXKBattleAnimationAction::Idle,
+			EnemyDisplayAction == EGameXXKBattleAnimationAction::Idle,
 			TravelAppliedEnemyAtlasPaths[EnemySlotIndex],
 			TravelAppliedEnemyFrames[EnemySlotIndex]);
-		const float EnemyContentScale = ResolveTravelEnemyContentScale(EnemyId, EnemyAction);
+		const float EnemyContentScale = ResolveTravelEnemyContentScale(EnemyId, EnemyDisplayAction);
 		EnemyImage->SetRenderScale(FVector2D(EnemyContentScale, EnemyContentScale));
+		EnemyImage->SetRenderTranslation(FVector2D::ZeroVector);
+		if (bPresentedTarget && EnemyAction == EGameXXKBattleAnimationAction::Hit)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::EnemyHitSeconds,
+				0.0f,
+				1.0f);
+			EnemyImage->SetRenderTranslation(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(true, Progress)
+				* (TravelCombatVisualSize.X / 410.0f));
+		}
+		else if (bPresentedTarget
+			&& EnemyAction == EGameXXKBattleAnimationAction::Death
+			&& EnemyImage->GetRenderOpacity() > 0.0f)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::EnemyDeathSeconds,
+				0.0f,
+				1.0f);
+			EnemyImage->SetRenderOpacity(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(Progress));
+		}
 
 		const float EnemyHealth = TravelVisualRuntime.GetEnemyHealthFractionForSlot(EnemySlotIndex);
 		if (EnemyHealthFill && !FMath::IsNearlyEqual(EnemyHealth, TravelAppliedEnemyHealth[EnemySlotIndex]))
@@ -5222,11 +5195,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		const FName CompanionUnitId = CompanionUnitIds[CompanionIndex];
 		const EGameXXKBattleAnimationAction CompanionAction =
 			TravelVisualRuntime.GetPartyAction(CompanionIndex + 1);
+		const EGameXXKBattleAnimationAction CompanionDisplayAction =
+			CompanionAction == EGameXXKBattleAnimationAction::Hit
+				|| CompanionAction == EGameXXKBattleAnimationAction::Death
+			? EGameXXKBattleAnimationAction::Idle
+			: CompanionAction;
 		FGameXXKBattleAnimationClipPair CompanionClips =
 			FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
 				CompanionUnitId,
 				false,
-				CompanionAction);
+				CompanionDisplayAction);
 		float CompanionPhaseDuration = 0.0f;
 		switch (TravelVisualRuntime.GetVisualPhase())
 		{
@@ -5250,7 +5228,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 			break;
 		default: break;
 		}
-		if (CompanionPhaseDuration > 0.0f)
+		if (CompanionPhaseDuration > 0.0f && CompanionDisplayAction != EGameXXKBattleAnimationAction::Idle)
 		{
 			CompanionClips.Preferred = FGameXXKBattleAnimationPresentation::FitClipToDuration(
 				CompanionClips.Preferred,
@@ -5263,13 +5241,36 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		ApplyTravelAnimationFrame(
 			CompanionImage,
 			CompanionClips,
-			CompanionAction == EGameXXKBattleAnimationAction::Idle,
+			CompanionDisplayAction == EGameXXKBattleAnimationAction::Idle,
 			TravelAppliedCompanionAtlasPaths[CompanionIndex],
 			TravelAppliedCompanionFrames[CompanionIndex]);
 		const float CompanionContentScale = ResolveTravelPartyContentScale(
 			CompanionUnitId,
-			CompanionAction);
+			CompanionDisplayAction);
 		CompanionImage->SetRenderScale(FVector2D(CompanionContentScale, CompanionContentScale));
+		CompanionImage->SetRenderTranslation(FVector2D::ZeroVector);
+		if (CompanionAction == EGameXXKBattleAnimationAction::Hit)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::HeroHitSeconds,
+				0.0f,
+				1.0f);
+			CompanionImage->SetRenderTranslation(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(false, Progress)
+				* (TravelCombatVisualSize.X / 410.0f));
+		}
+		else if (CompanionAction == EGameXXKBattleAnimationAction::Death
+			&& CompanionImage->GetRenderOpacity() > 0.0f)
+		{
+			const float Progress = FMath::Clamp(
+				TravelVisualRuntime.GetVisualPhaseElapsedSeconds()
+					/ FGameXXKTrainingTravelVisualRuntime::HeroDeathSeconds,
+				0.0f,
+				1.0f);
+			CompanionImage->SetRenderOpacity(
+				FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(Progress));
+		}
 	}
 	const float HeroHealth = TravelVisualRuntime.GetHeroHealthFraction();
 	if (!FMath::IsNearlyEqual(HeroHealth, TravelAppliedHeroHealth))
@@ -5599,9 +5600,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RequestTravelCombatAtlases(const FN
 	EnsureTravelAtlasSession();
 	const EGameXXKBattleAnimationAction Actions[] = {
 		EGameXXKBattleAnimationAction::Idle,
-		EGameXXKBattleAnimationAction::Attack,
-		EGameXXKBattleAnimationAction::Hit,
-		EGameXXKBattleAnimationAction::Death};
+		EGameXXKBattleAnimationAction::Attack};
 	for (const EGameXXKBattleAnimationAction Action : Actions)
 	{
 		RequestTravelAtlas(FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
@@ -5758,6 +5757,10 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ApplyTravelAnimationFrame(
 	{
 		return false;
 	}
+	// A defeated unit fades this same UImage to zero. A later spawn can reuse
+	// the same atlas path and frame, so restore opacity before the cache-hit
+	// early return instead of leaving the new unit born invisible.
+	Image->SetRenderOpacity(1.0f);
 	const int32 FrameIndex = FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
 		Clip,
 		TravelVisualRuntime.GetVisualPhaseElapsedSeconds(),
@@ -8177,9 +8180,24 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 	}
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPointer(
-	const FGeometry& HostGeometry,
-	const FVector2D& ScreenSpacePointerPosition)
+bool UGameXXKDesktopTrainingWorkbenchWidget::TryGetDesktopHudPointerScreenPosition(
+	FVector2D& OutPointerScreen) const
+{
+#if PLATFORM_WINDOWS
+	POINT CursorPoint = {};
+	if (::GetCursorPos(&CursorPoint))
+	{
+		OutPointerScreen = FVector2D(
+			static_cast<float>(CursorPoint.x),
+			static_cast<float>(CursorPoint.y));
+		return true;
+	}
+#endif
+	OutPointerScreen = FVector2D::ZeroVector;
+	return false;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPointer()
 {
 	if (PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
 	{
@@ -8190,20 +8208,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPoint
 	{
 		return;
 	}
-	const FVector2D HostPoint = HostGeometry.AbsoluteToLocal(ScreenSpacePointerPosition)
-		* FMath::Max(0.01f, DesktopInputDpiScale);
-	FVector2D PointerInWorkArea = HostPoint + DesktopOverlayPlacement.HudTopLeft;
-#if PLATFORM_WINDOWS
-	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
-	RECT WindowRect = {};
-	if (WindowHandle && ::IsWindow(WindowHandle) && ::GetWindowRect(WindowHandle, &WindowRect))
+	FVector2D CurrentPointerScreen;
+	if (!TryGetDesktopHudPointerScreenPosition(CurrentPointerScreen))
 	{
-		PointerInWorkArea = FVector2D(
-			static_cast<float>(WindowRect.left - DesktopWorkAreaOrigin.X),
-			static_cast<float>(WindowRect.top - DesktopWorkAreaOrigin.Y)) + HostPoint;
+		return;
 	}
-#endif
-	const FVector2D DesiredStripTopLeft = PointerInWorkArea - DesktopHudDragPointerOffset;
 	const float Scale = bDesktopResolvedMetricsValid
 		? DesktopResolvedMetrics.Scale
 		: GameXXKDesktopTrainingLayout::ComputeEffectiveHudScale(
@@ -8211,12 +8220,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPoint
 			HudScalePercent);
 	const FVector2D CollapsedStripSize =
 		GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize() * Scale;
-	const FVector2D AvailableAnchorTravel(
-		FMath::Max(1.0f, HostSize.X - CollapsedStripSize.X),
-		FMath::Max(1.0f, HostSize.Y - CollapsedStripSize.Y));
-	DesktopWindowPositionNormalized = FVector2D(
-		FMath::Clamp(DesiredStripTopLeft.X / AvailableAnchorTravel.X, 0.0f, 1.0f),
-		FMath::Clamp(DesiredStripTopLeft.Y / AvailableAnchorTravel.Y, 0.0f, 1.0f));
+	DesktopWindowPositionNormalized =
+		GameXXKDesktopTrainingLayout::ResolveDesktopHudDragAnchor(
+			DesktopHudDragStartNormalizedAnchor,
+			DesktopHudDragStartPointerScreen,
+			CurrentPointerScreen,
+			HostSize,
+			CollapsedStripSize);
 	UpdateDesktopOverlayPlacement(HostSize);
 	bDesktopNativeLayoutDirty = true;
 }
@@ -8293,15 +8303,6 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresent
 	Hook.PreviousWindowProc = PreviousWindowProc;
 	Hook.Owner = this;
 	GetDesktopWindowHooks().Add(WindowHandle, Hook);
-	if (!InstallDesktopLowLevelMouseHook())
-	{
-		GetDesktopWindowHooks().Remove(WindowHandle);
-		::SetWindowLongPtr(
-			WindowHandle,
-			GWLP_WNDPROC,
-			reinterpret_cast<LONG_PTR>(PreviousWindowProc));
-		return false;
-	}
 	DesktopNativeWindowHandle = WindowHandle;
 	DesktopPreviousWindowProc = reinterpret_cast<void*>(PreviousWindowProc);
 	bDesktopNativeHookInstalled = true;
@@ -8507,6 +8508,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::TickDesktopNativeWindow()
 		SaveDesktopNativeWindowPosition();
 	}
 	ApplyDesktopNativeWindowLayout(false);
+	RefreshDesktopNativeMousePassthrough();
 #endif
 }
 
@@ -8527,7 +8529,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
 					reinterpret_cast<LONG_PTR>(Hook->PreviousWindowProc));
 			}
 			GetDesktopWindowHooks().Remove(WindowHandle);
-			ReleaseDesktopLowLevelMouseHookIfUnused();
 		}
 	}
 	DesktopNativeWindowHandle = nullptr;

@@ -14,14 +14,21 @@ namespace GameXXKBattleGuideBubblePrivate
 	const FVector2D BubbleSize(420.0f, 132.0f);
 	constexpr float SafeMargin = 16.0f;
 	constexpr float AnchorGap = 18.0f;
+	const FVector2D PaperSourceSize(100.0f, 101.0f);
 	const TCHAR* PaperTexturePath =
-		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 
 	bool Fits(const FVector2D Position, const FVector2D HostSize)
 	{
 		return Position.X >= SafeMargin
 			&& Position.Y >= SafeMargin
 			&& Position.X + BubbleSize.X <= HostSize.X - SafeMargin
+			&& Position.Y + BubbleSize.Y <= HostSize.Y - SafeMargin;
+	}
+
+	bool FitsVertically(const FVector2D Position, const FVector2D HostSize)
+	{
+		return Position.Y >= SafeMargin
 			&& Position.Y + BubbleSize.Y <= HostSize.Y - SafeMargin;
 	}
 
@@ -50,7 +57,7 @@ void UGameXXKBattleGuideBubbleWidget::PresentBubble(
 	const bool bShowContinueHint,
 	const FSlateRect& AnchorRect,
 	const FVector2D HostSize,
-	const bool bPreferBelow)
+	const bool bPreferAbove)
 {
 	BuildProgrammaticLayout();
 	if (!PaperFrame || Text.IsEmpty())
@@ -58,7 +65,7 @@ void UGameXXKBattleGuideBubbleWidget::PresentBubble(
 		DismissBubble();
 		return;
 	}
-	FinalLocalRect = ResolveBubbleRect(AnchorRect, HostSize, bPreferBelow);
+	FinalLocalRect = ResolveBubbleRect(AnchorRect, HostSize, bPreferAbove);
 	if (UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(PaperFrame->Slot))
 	{
 		CanvasSlot->SetPosition(FVector2D(FinalLocalRect.Left, FinalLocalRect.Top));
@@ -90,7 +97,7 @@ void UGameXXKBattleGuideBubbleWidget::DismissBubble()
 FSlateRect UGameXXKBattleGuideBubbleWidget::ResolveBubbleRect(
 	const FSlateRect& AnchorRect,
 	const FVector2D HostSize,
-	const bool bPreferBelow)
+	const bool bPreferAbove)
 {
 	using namespace GameXXKBattleGuideBubblePrivate;
 	const float AnchorCenterX = (AnchorRect.Left + AnchorRect.Right) * 0.5f;
@@ -107,16 +114,20 @@ FSlateRect UGameXXKBattleGuideBubbleWidget::ResolveBubbleRect(
 	const FVector2D Below(
 		AnchorCenterX - BubbleSize.X * 0.5f,
 		AnchorRect.Bottom + AnchorGap);
-	const TArray<FVector2D> Candidates = bPreferBelow
-		? TArray<FVector2D>{Below, Above, Right, Left}
-		: TArray<FVector2D>{Right, Left, Above};
-	FVector2D Position = Candidates[0];
-	for (const FVector2D Candidate : Candidates)
+	const FVector2D Preferred = bPreferAbove ? Above : Below;
+	FVector2D Position = Preferred;
+	if (!FitsVertically(Preferred, HostSize))
 	{
-		if (Fits(Candidate, HostSize))
+		const TArray<FVector2D> Fallbacks = bPreferAbove
+			? TArray<FVector2D>{Right, Left, Below}
+			: TArray<FVector2D>{Above, Right, Left};
+		for (const FVector2D Candidate : Fallbacks)
 		{
-			Position = Candidate;
-			break;
+			if (Fits(Candidate, HostSize))
+			{
+				Position = Candidate;
+				break;
+			}
 		}
 	}
 	Position = ClampPosition(Position, HostSize);
@@ -159,8 +170,8 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 		FSlateBrush PaperBrush;
 		PaperBrush.SetResourceObject(PaperTexture);
 		PaperBrush.DrawAs = ESlateBrushDrawType::Box;
-		PaperBrush.Margin = FMargin(0.07f);
-		PaperBrush.ImageSize = BubbleSize;
+		PaperBrush.Margin = FMargin(0.065f);
+		PaperBrush.ImageSize = PaperSourceSize;
 		PaperFrame->SetBrush(PaperBrush);
 	}
 	PaperFrame->SetBrushColor(FLinearColor::White);

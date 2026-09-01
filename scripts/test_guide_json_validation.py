@@ -8,6 +8,7 @@ from scripts.validate_guide_json import (
     DEFAULT_CATALOGS,
     GuideCatalogSnapshot,
     canonicalize_guide,
+    load_catalog,
     validate_file,
     validate_guide,
 )
@@ -178,12 +179,16 @@ class GuideJsonValidationTests(unittest.TestCase):
             "Guide.Chest.Basic.guide.json",
             "Guide.Boss.Basic.guide.json",
             "Guide.Settlement.Basic.guide.json",
+            "Guide.Desktop.FirstJourney.guide.json",
         }
         actual_files = {path.name for path in source_dir.glob("*.guide.json")}
         self.assertEqual(expected_files, actual_files)
 
+        runtime_catalogs = load_catalog(
+            PROJECT_ROOT / "SourceAssets" / "Narrative" / "runtime-catalog.json"
+        )
         payloads = {
-            path.name: validate_file(path, DEFAULT_CATALOGS)
+            path.name: validate_file(path, runtime_catalogs)
             for path in sorted(source_dir.glob("*.guide.json"))
         }
         self.assertEqual(
@@ -215,6 +220,71 @@ class GuideJsonValidationTests(unittest.TestCase):
 
         for payload in payloads.values():
             visit(payload)
+
+    def test_first_journey_semantic_vocabulary_and_exact_chain(self) -> None:
+        expected_targets = {
+            "Desktop.Tab",
+            "Desktop.Training",
+            "Desktop.Training.Difficulty.Normal",
+            "Desktop.Training.Stage.Normal.1-1",
+            "Desktop.Training.Travel",
+            "Desktop.Training.TravelStrip",
+        }
+        expected_actions = {
+            "Action.Desktop.Tab",
+            "Action.Desktop.Training",
+            "Action.Desktop.Training.Difficulty.Normal",
+            "Action.Desktop.Training.Stage.Normal.1-1",
+            "Action.Desktop.Training.Travel",
+        }
+        expected_triggers = {"Event.Desktop.FirstJourney.Started"}
+        expected_completions = {
+            "Event.Desktop.Tab.Expanded",
+            "Event.Desktop.Training.Opened",
+            "Event.Desktop.Training.Difficulty.NormalSelected",
+            "Event.Desktop.Training.Stage.Normal.1-1.Selected",
+            "Event.Desktop.Training.Travel.Started",
+            "Event.Desktop.Training.EncounterCompleted",
+        }
+        self.assertTrue(expected_targets.issubset(DEFAULT_CATALOGS.target_ids))
+        self.assertTrue(expected_actions.issubset(DEFAULT_CATALOGS.action_ids))
+        self.assertTrue(expected_triggers.issubset(DEFAULT_CATALOGS.trigger_event_ids))
+        self.assertTrue(
+            expected_completions.issubset(DEFAULT_CATALOGS.completion_event_ids)
+        )
+
+        path = (
+            PROJECT_ROOT
+            / "SourceAssets"
+            / "Narrative"
+            / "Guides"
+            / "Guide.Desktop.FirstJourney.guide.json"
+        )
+        payload = validate_file(path, DEFAULT_CATALOGS)
+        self.assertEqual("Guide.Desktop.FirstJourney", payload["guideId"])
+        expected_steps = [
+            "Guide.Desktop.FirstJourney.Tab",
+            "Guide.Desktop.FirstJourney.Training",
+            "Guide.Desktop.FirstJourney.NormalDifficulty",
+            "Guide.Desktop.FirstJourney.StageNormal1-1",
+            "Guide.Desktop.FirstJourney.Travel",
+            "Guide.Desktop.FirstJourney.Encounter",
+        ]
+        cursor = payload["entryStep"]
+        actual_steps = []
+        while cursor:
+            actual_steps.append(cursor)
+            cursor = payload["steps"][cursor].get("next")
+        self.assertEqual(expected_steps, actual_steps)
+        self.assertTrue(
+            all(
+                payload["steps"][step_id]["inputPolicy"] == "forced"
+                for step_id in expected_steps[:-1]
+            )
+        )
+        self.assertEqual(
+            "soft", payload["steps"][expected_steps[-1]]["inputPolicy"]
+        )
 
 
 if __name__ == "__main__":

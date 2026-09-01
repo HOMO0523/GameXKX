@@ -21,12 +21,58 @@ namespace
 constexpr TCHAR PaperZDDir[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD");
 constexpr TCHAR SourcePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/AS_Hero_Flipbook");
 constexpr TCHAR AnimBPPackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/ABP_Hero_PaperZD");
-constexpr TCHAR WalkSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Walk_8Dir");
-constexpr TCHAR IdleSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Idle_8Dir");
+constexpr TCHAR TownIdleSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_Idle");
+constexpr TCHAR TownWalkStartSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_WalkStart");
+constexpr TCHAR TownWalkLoopSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_WalkLoop");
+constexpr TCHAR TownWalkStopSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_WalkStop");
+constexpr TCHAR TownDeepBreathSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_DeepBreath");
+constexpr TCHAR TownAdjustBackpackSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_AdjustBackpack");
+constexpr TCHAR TownCollectItemSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_CollectItem");
+constexpr TCHAR TownCombatIdleSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_CombatIdle");
+constexpr TCHAR TownPunchSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_Punch");
+constexpr TCHAR TownKickSequencePackagePath[] = TEXT("/Game/GameXXK/Characters/Hero/PaperZD/PZD_Hero_Town_Kick");
 constexpr TCHAR SourceAssetName[] = TEXT("AS_Hero_Flipbook");
 constexpr TCHAR AnimBPAssetName[] = TEXT("ABP_Hero_PaperZD");
-constexpr TCHAR WalkSequenceAssetName[] = TEXT("PZD_Hero_Walk_8Dir");
-constexpr TCHAR IdleSequenceAssetName[] = TEXT("PZD_Hero_Idle_8Dir");
+constexpr TCHAR TownIdleSequenceAssetName[] = TEXT("PZD_Hero_Town_Idle");
+constexpr TCHAR TownWalkStartSequenceAssetName[] = TEXT("PZD_Hero_Town_WalkStart");
+constexpr TCHAR TownWalkLoopSequenceAssetName[] = TEXT("PZD_Hero_Town_WalkLoop");
+constexpr TCHAR TownWalkStopSequenceAssetName[] = TEXT("PZD_Hero_Town_WalkStop");
+constexpr TCHAR TownDeepBreathSequenceAssetName[] = TEXT("PZD_Hero_Town_DeepBreath");
+constexpr TCHAR TownAdjustBackpackSequenceAssetName[] = TEXT("PZD_Hero_Town_AdjustBackpack");
+constexpr TCHAR TownCollectItemSequenceAssetName[] = TEXT("PZD_Hero_Town_CollectItem");
+constexpr TCHAR TownCombatIdleSequenceAssetName[] = TEXT("PZD_Hero_Town_CombatIdle");
+constexpr TCHAR TownPunchSequenceAssetName[] = TEXT("PZD_Hero_Town_Punch");
+constexpr TCHAR TownKickSequenceAssetName[] = TEXT("PZD_Hero_Town_Kick");
+constexpr TCHAR TownIdleFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Idle_Left.FB_Hero_Town_Idle_Left");
+constexpr TCHAR TownWalkStartFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStart_Left.FB_Hero_Town_WalkStart_Left");
+constexpr TCHAR TownWalkLoopFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkLoop_Left.FB_Hero_Town_WalkLoop_Left");
+constexpr TCHAR TownWalkStopFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStop_Left.FB_Hero_Town_WalkStop_Left");
+constexpr TCHAR TownDeepBreathFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_DeepBreath_Left.FB_Hero_Town_DeepBreath_Left");
+constexpr TCHAR TownAdjustBackpackFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_AdjustBackpack_Left.FB_Hero_Town_AdjustBackpack_Left");
+constexpr TCHAR TownCollectItemFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CollectItem_Left.FB_Hero_Town_CollectItem_Left");
+constexpr TCHAR TownCombatIdleFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CombatIdle_Left.FB_Hero_Town_CombatIdle_Left");
+constexpr TCHAR TownPunchFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Punch_Left.FB_Hero_Town_Punch_Left");
+constexpr TCHAR TownKickFlipbookPath[] = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Kick_Left.FB_Hero_Town_Kick_Left");
+
+struct FTownPaperZDSequenceSpec
+{
+	const TCHAR* PackagePath;
+	const TCHAR* AssetName;
+	const TCHAR* FlipbookPath;
+};
+
+constexpr FTownPaperZDSequenceSpec TownPaperZDSequenceSpecs[] = {
+	{TownIdleSequencePackagePath, TownIdleSequenceAssetName, TownIdleFlipbookPath},
+	{TownWalkStartSequencePackagePath, TownWalkStartSequenceAssetName, TownWalkStartFlipbookPath},
+	{TownWalkLoopSequencePackagePath, TownWalkLoopSequenceAssetName, TownWalkLoopFlipbookPath},
+	{TownWalkStopSequencePackagePath, TownWalkStopSequenceAssetName, TownWalkStopFlipbookPath},
+	{TownDeepBreathSequencePackagePath, TownDeepBreathSequenceAssetName, TownDeepBreathFlipbookPath},
+	{TownAdjustBackpackSequencePackagePath, TownAdjustBackpackSequenceAssetName, TownAdjustBackpackFlipbookPath},
+	{TownCollectItemSequencePackagePath, TownCollectItemSequenceAssetName, TownCollectItemFlipbookPath},
+	{TownCombatIdleSequencePackagePath, TownCombatIdleSequenceAssetName, TownCombatIdleFlipbookPath},
+	{TownPunchSequencePackagePath, TownPunchSequenceAssetName, TownPunchFlipbookPath},
+	{TownKickSequencePackagePath, TownKickSequenceAssetName, TownKickFlipbookPath},
+};
 
 const TCHAR* DirectionNames[] = {
 	TEXT("South"),
@@ -155,14 +201,19 @@ UPaperZDAnimSequence_Flipbook* EnsureSequence(UPaperZDAnimationSource_Flipbook* 
 	return Sequence;
 }
 
-UPaperZDAnimSequence_Flipbook* EnsureWalkSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+UPaperZDAnimSequence_Flipbook* EnsureTownIdleSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
 {
-	return EnsureSequence(Source, WalkSequencePackagePath, WalkSequenceAssetName, bCreated);
+	return EnsureSequence(Source, TownIdleSequencePackagePath, TownIdleSequenceAssetName, bCreated);
 }
 
-UPaperZDAnimSequence_Flipbook* EnsureIdleSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+UPaperZDAnimSequence_Flipbook* EnsureTownWalkStartSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
 {
-	return EnsureSequence(Source, IdleSequencePackagePath, IdleSequenceAssetName, bCreated);
+	return EnsureSequence(Source, TownWalkStartSequencePackagePath, TownWalkStartSequenceAssetName, bCreated);
+}
+
+UPaperZDAnimSequence_Flipbook* EnsureTownWalkLoopSequence(UPaperZDAnimationSource_Flipbook* Source, bool& bCreated)
+{
+	return EnsureSequence(Source, TownWalkLoopSequencePackagePath, TownWalkLoopSequenceAssetName, bCreated);
 }
 
 bool LoadHeroFlipbooks(const TCHAR* StateName, TArray<UPaperFlipbook*>& OutFlipbooks, FString& OutError)
@@ -236,42 +287,73 @@ bool ConfigureWalkAnimData(UPaperZDAnimSequence_Flipbook* Sequence, const TArray
 	Sequence->MarkPackageDirty();
 	return true;
 }
+
+bool ConfigureTownHorizontalAnimData(
+	UPaperZDAnimSequence_Flipbook* Sequence,
+	UPaperFlipbook* Flipbook,
+	FString& OutError)
+{
+	if (!Sequence || !Flipbook)
+	{
+		OutError = TEXT("Town horizontal PaperZD sequence or flipbook is null");
+		return false;
+	}
+
+	FArrayProperty* AnimDataProperty = FindFProperty<FArrayProperty>(
+		UPaperZDAnimSequence_Flipbook::StaticClass(),
+		TEXT("AnimData"));
+	if (!AnimDataProperty)
+	{
+		OutError = TEXT("Could not find UPaperZDAnimSequence_Flipbook AnimData property");
+		return false;
+	}
+
+	Sequence->Modify();
+	Sequence->bDirectionalSequence = false;
+	Sequence->DirectionalAngleOffset = 0.0f;
+	Sequence->Category = FName(TEXT("Locomotion"));
+
+	FScriptArrayHelper Helper(AnimDataProperty, AnimDataProperty->ContainerPtrToValuePtr<void>(Sequence));
+	Helper.EmptyValues();
+	const int32 Index = Helper.AddValue();
+	FPaperZDFlipbookAnimDataSource* Entry = reinterpret_cast<FPaperZDFlipbookAnimDataSource*>(Helper.GetRawPtr(Index));
+	Entry->Animation = Flipbook;
+	Entry->CompositeLayerAnimations.Reset();
+	Entry->MirrorMode = EPaperZDFlipbookMirrorMode::None;
+	Entry->MirroredKeyFrames.Reset();
+	Entry->VerticalMirroredKeyFrames.Reset();
+
+	Sequence->PostEditChange();
+	Sequence->MarkPackageDirty();
+	return true;
+}
 }
 
 FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 {
-	TArray<UPaperFlipbook*> WalkFlipbooks;
-	TArray<UPaperFlipbook*> IdleFlipbooks;
 	FString Error;
-	if (!LoadWalkFlipbooks(WalkFlipbooks, Error))
+	TArray<UPaperFlipbook*> TownFlipbooks;
+	TownFlipbooks.Reserve(UE_ARRAY_COUNT(TownPaperZDSequenceSpecs));
+	for (const FTownPaperZDSequenceSpec& Spec : TownPaperZDSequenceSpecs)
 	{
-		return FString::Printf(TEXT("{\"ok\":false,\"error\":\"%s\"}"), *Error.ReplaceCharWithEscapedChar());
-	}
-	if (!LoadIdleFlipbooks(IdleFlipbooks, Error))
-	{
-		return FString::Printf(TEXT("{\"ok\":false,\"error\":\"%s\"}"), *Error.ReplaceCharWithEscapedChar());
+		UPaperFlipbook* Flipbook = LoadObject<UPaperFlipbook>(nullptr, Spec.FlipbookPath);
+		if (!Flipbook)
+		{
+			Error = FString::Printf(TEXT("Missing horizontal town hero flipbook %s"), Spec.FlipbookPath);
+			return FString::Printf(TEXT("{\"ok\":false,\"error\":\"%s\"}"), *Error.ReplaceCharWithEscapedChar());
+		}
+		TownFlipbooks.Add(Flipbook);
 	}
 
 	bool bCreatedSource = false;
 	bool bCreatedAnimBP = false;
-	bool bCreatedWalkSequence = false;
-	bool bCreatedIdleSequence = false;
 	UPaperZDAnimationSource_Flipbook* Source = EnsureSource(bCreatedSource);
 	UPaperZDAnimBP* AnimBP = Source ? EnsureAnimBP(Source, bCreatedAnimBP) : nullptr;
-	UPaperZDAnimSequence_Flipbook* WalkSequence = Source ? EnsureWalkSequence(Source, bCreatedWalkSequence) : nullptr;
-	UPaperZDAnimSequence_Flipbook* IdleSequence = Source ? EnsureIdleSequence(Source, bCreatedIdleSequence) : nullptr;
-
-	bool bConfiguredWalk = false;
-	bool bConfiguredIdle = false;
-	if (Source && AnimBP && WalkSequence && IdleSequence)
-	{
-		bConfiguredWalk = ConfigureWalkAnimData(WalkSequence, WalkFlipbooks, Error);
-		if (bConfiguredWalk)
-		{
-			bConfiguredIdle = ConfigureWalkAnimData(IdleSequence, IdleFlipbooks, Error);
-		}
-	}
-	else if (!Source)
+	TArray<UPaperZDAnimSequence_Flipbook*> TownSequences;
+	TownSequences.Reserve(UE_ARRAY_COUNT(TownPaperZDSequenceSpecs));
+	int32 CreatedSequenceCount = 0;
+	bool bConfiguredAll = Source && AnimBP;
+	if (!Source)
 	{
 		Error = TEXT("Could not create or load PaperZD source");
 	}
@@ -279,27 +361,54 @@ FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 	{
 		Error = TEXT("Could not create or load PaperZD AnimBP");
 	}
-	else if (!WalkSequence)
-	{
-		Error = TEXT("Could not create or load PaperZD walk sequence");
-	}
 	else
 	{
-		Error = TEXT("Could not create or load PaperZD idle sequence");
+		for (int32 Index = 0; Index < UE_ARRAY_COUNT(TownPaperZDSequenceSpecs); ++Index)
+		{
+			const FTownPaperZDSequenceSpec& Spec = TownPaperZDSequenceSpecs[Index];
+			bool bCreatedSequence = false;
+			UPaperZDAnimSequence_Flipbook* Sequence = EnsureSequence(
+				Source,
+				Spec.PackagePath,
+				Spec.AssetName,
+				bCreatedSequence);
+			if (!Sequence
+				|| !ConfigureTownHorizontalAnimData(Sequence, TownFlipbooks[Index], Error))
+			{
+				bConfiguredAll = false;
+				if (Error.IsEmpty())
+				{
+					Error = FString::Printf(TEXT("Could not configure PaperZD sequence %s"), Spec.AssetName);
+				}
+				break;
+			}
+			CreatedSequenceCount += bCreatedSequence ? 1 : 0;
+			TownSequences.Add(Sequence);
+		}
 	}
 
-	const bool bOk = Source && AnimBP && WalkSequence && IdleSequence && bConfiguredWalk && bConfiguredIdle;
+	const bool bOk = Source
+		&& AnimBP
+		&& bConfiguredAll
+		&& TownSequences.Num() == UE_ARRAY_COUNT(TownPaperZDSequenceSpecs);
 	if (bOk)
 	{
 		UEditorLoadingAndSavingUtils::SaveDirtyPackages(true, true);
 	}
 
-	UE_LOG(LogGameXXKPaperZDAutomation, Log, TEXT("EnsureHeroPaperZDAssets ok=%s source=%s animBP=%s walk=%s idle=%s"),
+	UE_LOG(LogGameXXKPaperZDAutomation, Log, TEXT("EnsureHeroPaperZDAssets ok=%s source=%s animBP=%s sequenceCount=%d"),
 		bOk ? TEXT("true") : TEXT("false"),
 		Source ? *Source->GetPathName() : TEXT(""),
 		AnimBP ? *AnimBP->GetPathName() : TEXT(""),
-		WalkSequence ? *WalkSequence->GetPathName() : TEXT(""),
-		IdleSequence ? *IdleSequence->GetPathName() : TEXT(""));
+		TownSequences.Num());
+
+	TArray<FString> SequenceJsonEntries;
+	for (UPaperZDAnimSequence_Flipbook* Sequence : TownSequences)
+	{
+		SequenceJsonEntries.Add(FString::Printf(
+			TEXT("\"%s\""),
+			Sequence ? *Sequence->GetPathName().ReplaceCharWithEscapedChar() : TEXT("")));
+	}
 
 	return FString::Printf(
 		TEXT("{")
@@ -307,27 +416,22 @@ FString UGameXXKPaperZDAutomationLibrary::EnsureHeroPaperZDAssets()
 		TEXT("\"paperzd_dir\":\"%s\",")
 		TEXT("\"created_source\":%s,")
 		TEXT("\"created_anim_bp\":%s,")
-		TEXT("\"created_walk_sequence\":%s,")
-		TEXT("\"created_idle_sequence\":%s,")
+		TEXT("\"created_sequence_count\":%d,")
 		TEXT("\"source\":\"%s\",")
 		TEXT("\"anim_bp\":\"%s\",")
-		TEXT("\"walk_sequence\":\"%s\",")
-		TEXT("\"idle_sequence\":\"%s\",")
-		TEXT("\"walk_flipbook_count\":%d,")
-		TEXT("\"idle_flipbook_count\":%d,")
+		TEXT("\"sequences\":[%s],")
+		TEXT("\"town_flipbook_count\":%d,")
+		TEXT("\"direction_policy\":\"left_source_with_runtime_horizontal_mirror\",")
 		TEXT("\"error\":\"%s\"")
 		TEXT("}"),
 		*JsonBool(bOk),
 		PaperZDDir,
 		*JsonBool(bCreatedSource),
 		*JsonBool(bCreatedAnimBP),
-		*JsonBool(bCreatedWalkSequence),
-		*JsonBool(bCreatedIdleSequence),
+		CreatedSequenceCount,
 		Source ? *Source->GetPathName() : TEXT(""),
 		AnimBP ? *AnimBP->GetPathName() : TEXT(""),
-		WalkSequence ? *WalkSequence->GetPathName() : TEXT(""),
-		IdleSequence ? *IdleSequence->GetPathName() : TEXT(""),
-		WalkFlipbooks.Num(),
-		IdleFlipbooks.Num(),
+		*FString::Join(SequenceJsonEntries, TEXT(",")),
+		TownFlipbooks.Num(),
 		*Error.ReplaceCharWithEscapedChar());
 }

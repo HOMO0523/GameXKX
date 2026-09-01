@@ -138,11 +138,19 @@ public:
 		FName EnemyDefinitionId,
 		bool bEnemy,
 		EGameXXKBattleAnimationAction Action);
+	/** Selects the corrected hero punch/kick pair stably; enemies and other party units retain their authored attack. */
+	static FGameXXKBattleAnimationClipDescriptor ResolveAttackClipForEvent(
+		FName RuntimeUnitId,
+		FName EnemyDefinitionId,
+		bool bEnemy,
+		uint64 EventId);
 	static FGameXXKBattleAnimationClipPair ResolveCompactTravelClipPair(
 		FName RuntimeUnitId,
 		bool bEnemy,
 		EGameXXKBattleAnimationAction Action);
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);
+	/** Selects one of four approved hit VFX with a save-stable battle seed and event ordinal. */
+	static FGameXXKBattleAnimationClipDescriptor ResolveHitEffectClip(int32 BattleSeed, uint64 EventId);
 	static FSoftObjectPath ResolveIdleFlipbookPath(FName RuntimeUnitId, bool bEnemy);
 	/** Source-less damage stays target-only; the legacy fallback parameter is intentionally ignored here. */
 	static TArray<FGameXXKBattlePresentationEvent> BuildPresentationEvents(
@@ -171,4 +179,11 @@ public:
 		float TargetDurationSeconds);
 	static float GetRuntimeDuration(const FGameXXKBattleAnimationClipDescriptor& Clip);
 	static float GetImpactRuntimeSeconds();
+	static float GetHitEffectDurationSeconds();
+	/** Half of the canonical 410px formation unit used by the procedural recoil. */
+	static float GetProceduralHitRetreatDistance();
+	/** Idle-pose recoil, mirrored away from the opposing side and returning to zero. */
+	static FVector2D CalculateProceduralHitOffset(bool bTargetEnemy, float NormalizedProgress);
+	/** Opacity-only death presentation; one at start and zero at completion. */
+	static float CalculateProceduralDeathOpacity(float NormalizedProgress);
 };

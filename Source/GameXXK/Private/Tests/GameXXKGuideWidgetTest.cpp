@@ -73,7 +73,12 @@ bool FGameXXKGuidePreferencePromptTest::RunTest(const FString& Parameters)
 	Widget->TakeWidget();
 	FGameXXKGuideProgress Progress;
 	Widget->RefreshFromProgress(Progress);
-	TestTrue(TEXT("unset preference shows prompt"), Widget->IsPromptVisibleForTest());
+	TestFalse(TEXT("unset preference never auto-opens the prompt"), Widget->IsPromptVisibleForTest());
+	TestEqual(TEXT("preference prompt uses approved paper"),
+		Widget->GetPaperTexturePathForTest(),
+		FString(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge")));
+	Widget->PresentPrompt();
+	TestTrue(TEXT("explicit statue request shows prompt"), Widget->IsPromptVisibleForTest());
 	TestEqual(TEXT("experienced button copy is exact"),
 		Widget->GetExperiencedButtonTextForTest().ToString(), FString(TEXT("我是老玩家，跳过")));
 	TestEqual(TEXT("new-player button copy is exact"),
@@ -87,8 +92,11 @@ bool FGameXXKGuidePreferencePromptTest::RunTest(const FString& Parameters)
 		}));
 	Widget->ChooseExperiencedPlayerForTest();
 	TestEqual(TEXT("experienced choice emits preference"), Selected, EGameXXKGuidePreference::ExperiencedPlayer);
+	TestFalse(TEXT("experienced choice closes prompt"), Widget->IsPromptVisibleForTest());
+	Widget->PresentPrompt();
 	Widget->ChooseNewPlayerForTest();
 	TestEqual(TEXT("new-player choice emits preference"), Selected, EGameXXKGuidePreference::NewPlayer);
+	TestFalse(TEXT("new-player choice closes prompt"), Widget->IsPromptVisibleForTest());
 
 	Progress.Preference = EGameXXKGuidePreference::NewPlayer;
 	Widget->RefreshFromProgress(Progress);
@@ -244,7 +252,7 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 	UGameXXKDesktopTrainingWorkbenchWidget* Workbench =
 		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	if (!TestTrue(TEXT("workbench guide fixture starts"),
-		Subsystem && Subsystem->StartGame() && Subsystem->BeginTutorialQuest() && Workbench))
+		Subsystem && Subsystem->StartGame() && Workbench))
 	{
 		return false;
 	}
@@ -256,9 +264,6 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 			return SaveGame != nullptr;
 		}));
 	Subsystem->GetMutableRuntimeState().Training.PendingTravelGold = 777;
-	const FName TaskId(TEXT("Task.Main.XuXiake.Prologue"));
-	const FName TaskStepBefore =
-		Subsystem->GetRuntimeState().NarrativeProgress.TaskProgressById.FindChecked(TaskId).CurrentStepId;
 
 	Workbench->SetMVPSubsystem(Subsystem);
 	Workbench->ConstructForTest();
@@ -267,7 +272,7 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 	{
 		return false;
 	}
-	TestTrue(TEXT("started tutorial with unset preference shows first-entry prompt"),
+	TestFalse(TEXT("workbench never auto-opens the combat-guide prompt"),
 		Workbench->IsGuidePreferencePromptVisibleForTest());
 	UGameXXKGuidePreferenceWidget* PreferenceWidget = Workbench->WidgetTree
 		? Cast<UGameXXKGuidePreferenceWidget>(
@@ -277,6 +282,7 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 	{
 		return false;
 	}
+	PreferenceWidget->PresentPrompt();
 	PreferenceWidget->ChooseNewPlayerForTest();
 	TestEqual(TEXT("new-player selection updates save-authoritative preference"),
 		Subsystem->GetRuntimeState().GuideProgress.Preference,
@@ -310,10 +316,6 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 	TestEqual(TEXT("reset preserves pending route reward gold"),
 		Subsystem->GetRuntimeState().Training.PendingTravelGold,
 		777);
-	TestEqual(TEXT("reset preserves narrative task step"),
-		Subsystem->GetRuntimeState().NarrativeProgress.TaskProgressById.FindChecked(TaskId).CurrentStepId,
-		TaskStepBefore);
-
 	FGameXXKGuideProgress NewPlayerAgain = Subsystem->GetRuntimeState().GuideProgress;
 	NewPlayerAgain.Preference = EGameXXKGuidePreference::NewPlayer;
 	TestTrue(TEXT("failure fixture restores new-player preference"),

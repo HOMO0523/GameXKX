@@ -22,12 +22,15 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 	void RefreshFromProgress(const FGameXXKGuideProgress& Progress);
+	void PresentPrompt();
+	void DismissPrompt();
 	void SetPreferenceChosenDelegate(FGameXXKGuidePreferenceChosen InDelegate);
 	void ChooseExperiencedPlayerForTest();
 	void ChooseNewPlayerForTest();
 	bool IsPromptVisibleForTest() const;
 	FText GetExperiencedButtonTextForTest() const;
 	FText GetNewPlayerButtonTextForTest() const;
+	static FString GetPaperTexturePathForTest();
 
 private:
 	void BuildProgrammaticLayout();

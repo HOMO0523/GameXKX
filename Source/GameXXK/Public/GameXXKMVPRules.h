@@ -790,6 +790,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	static FGameXXKItemDef GetItemDef(FName ItemId, bool& bFound);
 
+	/** Shared reward/inventory predicate: known non-equipment definitions are stackable. */
+	static bool IsStackableInventoryItem(FName ItemId);
+
 	static int32 GetPlayerExperienceRequiredForNextLevel(int32 CurrentLevel);
 	static void ApplyPlayerExperience(FGameXXKRuntimeState& InOutState, int32 ExperienceAmount);
 

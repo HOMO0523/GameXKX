@@ -1642,6 +1642,13 @@ FGameXXKItemDef UGameXXKMVPRules::GetItemDef(FName ItemId, bool& bFound)
 	return Def;
 }
 
+bool UGameXXKMVPRules::IsStackableInventoryItem(const FName ItemId)
+{
+	FGameXXKItemDef Def;
+	return GameXXKMVP::GetItemDef(ItemId, Def)
+		&& !FGameXXKEquipmentCatalog::FindDefinition(ItemId);
+}
+
 TArray<FName> UGameXXKMVPRules::GetKnownItemIds()
 {
 	return GameXXKMVP::GetKnownItemIds();
@@ -3002,12 +3009,7 @@ TArray<EGameXXKNodeKind> UGameXXKMVPRules::GetFixedDungeonNodes(int32 Seed)
 
 bool UGameXXKMVPRules::AddItem(FGameXXKRuntimeState& State, FName ItemId, int32 Quantity)
 {
-	FGameXXKItemDef Def;
-	if (Quantity <= 0 || !GameXXKMVP::GetItemDef(ItemId, Def))
-	{
-		return false;
-	}
-	if (FGameXXKEquipmentCatalog::FindDefinition(ItemId))
+	if (Quantity <= 0 || !IsStackableInventoryItem(ItemId))
 	{
 		return false;
 	}

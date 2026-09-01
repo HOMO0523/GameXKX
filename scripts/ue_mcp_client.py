@@ -253,10 +253,20 @@ class UnrealMCPClient:
     def is_in_pie(self) -> bool:
         return bool(self.call_tool("IsPIERunning", toolset_name=EDITOR_TOOLSET))
 
-    def start_pie(self, warmup_seconds: float = 1.0) -> bool:
+    def start_pie(
+        self,
+        warmup_seconds: float = 1.0,
+        play_mode: str = "PlayMode_InViewPort",
+    ) -> bool:
         self.call_tool(
             "StartPIE",
-            {"options": {"warmupSeconds": max(0.0, float(warmup_seconds))}},
+            {
+                "options": {
+                    "bSimulate": False,
+                    "playMode": play_mode,
+                    "warmupSeconds": max(0.0, float(warmup_seconds)),
+                }
+            },
             toolset_name=EDITOR_TOOLSET,
             timeout=max(self.timeout, 45.0),
         )

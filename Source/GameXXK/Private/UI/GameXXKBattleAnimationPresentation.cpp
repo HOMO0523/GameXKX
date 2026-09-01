@@ -80,9 +80,52 @@ namespace
 
 	FGameXXKBattleAnimationClipDescriptor MakeClip(const FString& AssetId, const float PlaybackRate)
 	{
+		struct FCorrectedClipTiming
+		{
+			const TCHAR* AssetId;
+			float SourceFramesPerSecond;
+		};
+		constexpr FCorrectedClipTiming CorrectedClipTimings[] = {
+			{TEXT("character_00_hero_2k_idle"), 29.702970f},
+			{TEXT("character_00_hero_1k_idle"), 29.702970f},
+			{TEXT("character_00_hero_2k_attack_punch"), 46.153846f},
+			{TEXT("character_00_hero_1k_attack_punch"), 46.153846f},
+			{TEXT("character_00_hero_2k_attack_kick"), 46.153846f},
+			{TEXT("character_00_hero_1k_attack_kick"), 46.153846f},
+			{TEXT("character_09_yue_bai_2k_idle"), 14.742015f},
+			{TEXT("character_09_yue_bai_1k_idle"), 14.742015f},
+			{TEXT("enemy_01_rooster_2k_idle"), 14.742015f},
+			{TEXT("enemy_01_rooster_1k_idle"), 14.742015f},
+			{TEXT("enemy_01_rooster_2k_attack"), 46.153846f},
+			{TEXT("enemy_01_rooster_1k_attack"), 46.153846f},
+			{TEXT("enemy_03_weasel_2k_idle"), 20.689655f},
+			{TEXT("enemy_03_weasel_1k_idle"), 20.689655f},
+			{TEXT("enemy_03_weasel_2k_attack"), 41.666668f},
+			{TEXT("enemy_03_weasel_1k_attack"), 41.666668f},
+			{TEXT("enemy_05_ironfeather_2k_idle"), 11.904762f},
+			{TEXT("enemy_05_ironfeather_1k_idle"), 11.904762f},
+			{TEXT("enemy_07_graywolf_2k_idle"), 14.742015f},
+			{TEXT("enemy_07_graywolf_1k_idle"), 14.742015f},
+			{TEXT("enemy_11_graymane_2k_attack"), 42.253521f},
+			{TEXT("enemy_11_graymane_1k_attack"), 42.253521f},
+			{TEXT("enemy_16_toad_2k_idle"), 11.904762f},
+			{TEXT("enemy_16_toad_1k_idle"), 11.904762f},
+			{TEXT("enemy_18_deer_2k_idle"), 11.904762f},
+			{TEXT("enemy_18_deer_1k_idle"), 11.904762f},
+			{TEXT("enemy_18_deer_2k_attack"), 44.444443f},
+			{TEXT("enemy_18_deer_1k_attack"), 44.444443f},
+		};
 		FGameXXKBattleAnimationClipDescriptor Clip;
 		Clip.AssetId = AssetId;
 		Clip.FrameCount = 60;
+		for (const FCorrectedClipTiming& Timing : CorrectedClipTimings)
+		{
+			if (AssetId.Equals(Timing.AssetId, ESearchCase::IgnoreCase))
+			{
+				Clip.SourceFramesPerSecond = Timing.SourceFramesPerSecond;
+				break;
+			}
+		}
 		Clip.PlaybackRate = PlaybackRate;
 		const FString TextureName = FString::Printf(TEXT("T_%s_atlas"), *AssetId);
 		Clip.TexturePath = FSoftObjectPath(FString::Printf(
@@ -101,6 +144,19 @@ namespace
 		TMap<EGameXXKCardStatus, int64> BeforeStacks;
 		TMap<EGameXXKCardStatus, int64> AfterStacks;
 	};
+
+	struct FHitEffectSpec
+	{
+		const TCHAR* AssetId;
+		const TCHAR* TextureName;
+		int32 FrameCount;
+	};
+
+	constexpr FHitEffectSpec HitEffectSpecs[] = {
+		{TEXT("battle_hit_effect_01"), TEXT("T_BattleHitEffect_01"), 6},
+		{TEXT("battle_hit_effect_02"), TEXT("T_BattleHitEffect_02"), 9},
+		{TEXT("battle_hit_effect_03"), TEXT("T_BattleHitEffect_03"), 9},
+		{TEXT("battle_hit_effect_04"), TEXT("T_BattleHitEffect_04"), 12}};
 
 	void CaptureStatusSnapshot(
 		const FGameXXKCardBattleRuntime& Battle,
@@ -173,7 +229,7 @@ namespace
 			break;
 		case EGameXXKBattlePresentationImpactTier::Lethal:
 			InOutRhythm.ShakeAmplitude = FVector2f(14.0f, 7.0f);
-			InOutRhythm.ShakeDurationSeconds = 0.26f;
+			InOutRhythm.ShakeDurationSeconds = 0.20f;
 			InOutRhythm.ReadoutPeakScale = 1.42f;
 			break;
 		case EGameXXKBattlePresentationImpactTier::None:
@@ -242,6 +298,11 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	const bool bEnemy,
 	const EGameXXKBattleAnimationAction Action)
 {
+	if (Action == EGameXXKBattleAnimationAction::Hit
+		|| Action == EGameXXKBattleAnimationAction::Death)
+	{
+		return {};
+	}
 	const TCHAR* ActionSuffix = ResolveActionSuffix(Action);
 	if (!ActionSuffix)
 	{
@@ -252,9 +313,24 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	{
 		return {};
 	}
-	const FString ClipAssetId = FString::Printf(TEXT("%s_%s"), *UnitAssetId, ActionSuffix);
-	const float PlaybackRate = Action == EGameXXKBattleAnimationAction::Attack
-		|| Action == EGameXXKBattleAnimationAction::Hit
+	FString ClipAssetId = FString::Printf(TEXT("%s_%s"), *UnitAssetId, ActionSuffix);
+	if (Action == EGameXXKBattleAnimationAction::Attack
+		&& (UnitAssetId.Equals(TEXT("character_00_hero_2k"), ESearchCase::IgnoreCase)
+			|| UnitAssetId.Equals(TEXT("character_00_hero_1k"), ESearchCase::IgnoreCase)))
+	{
+		ClipAssetId += TEXT("_punch");
+	}
+	const bool bCorrectedAuthoredTiming = ClipAssetId.Contains(TEXT("character_00_hero_2k_attack_"))
+		|| ClipAssetId.Contains(TEXT("character_00_hero_1k_attack_"))
+		|| ClipAssetId.Equals(TEXT("enemy_01_rooster_2k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_01_rooster_1k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_03_weasel_2k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_03_weasel_1k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_11_graymane_2k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_11_graymane_1k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_18_deer_2k_attack"))
+		|| ClipAssetId.Equals(TEXT("enemy_18_deer_1k_attack"));
+	const float PlaybackRate = Action == EGameXXKBattleAnimationAction::Attack && !bCorrectedAuthoredTiming
 		? 2.0f
 		: 1.0f;
 	return MakeClip(ClipAssetId, PlaybackRate);
@@ -270,6 +346,34 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 		? EnemyDefinitionId
 		: RuntimeUnitId;
 	return ResolveClip(AuthoritativeUnitId, bEnemy, Action);
+}
+
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveAttackClipForEvent(
+	const FName RuntimeUnitId,
+	const FName EnemyDefinitionId,
+	const bool bEnemy,
+	const uint64 EventId)
+{
+	if (bEnemy)
+	{
+		return ResolveClipForDefinition(
+			RuntimeUnitId,
+			EnemyDefinitionId,
+			true,
+			EGameXXKBattleAnimationAction::Attack);
+	}
+
+	const FString UnitAssetId = ResolveUnitAssetId(RuntimeUnitId, false);
+	if (!UnitAssetId.Equals(TEXT("character_00_hero_2k"), ESearchCase::IgnoreCase)
+		&& !UnitAssetId.Equals(TEXT("character_00_hero_1k"), ESearchCase::IgnoreCase))
+	{
+		return ResolveClip(RuntimeUnitId, false, EGameXXKBattleAnimationAction::Attack);
+	}
+
+	const TCHAR* Variant = EventId % 2 == 0 ? TEXT("punch") : TEXT("kick");
+	return MakeClip(
+		FString::Printf(TEXT("%s_attack_%s"), *UnitAssetId, Variant),
+		1.0f);
 }
 
 FGameXXKBattleAnimationClipPair FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(
@@ -297,6 +401,26 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	default:
 		return {};
 	}
+}
+
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveHitEffectClip(
+	const int32 BattleSeed,
+	const uint64 EventId)
+{
+	const uint64 StableValue = static_cast<uint64>(static_cast<uint32>(BattleSeed)) + EventId;
+	const FHitEffectSpec& Spec = HitEffectSpecs[StableValue % UE_ARRAY_COUNT(HitEffectSpecs)];
+	FGameXXKBattleAnimationClipDescriptor Clip;
+	Clip.AssetId = Spec.AssetId;
+	Clip.TexturePath = FSoftObjectPath(FString::Printf(
+		TEXT("/Game/GameXXK/UI/Battle/HitEffects/%s.%s"),
+		Spec.TextureName,
+		Spec.TextureName));
+	Clip.FrameCount = Spec.FrameCount;
+	Clip.Columns = 8;
+	Clip.Rows = 8;
+	Clip.SourceFramesPerSecond = 30.0f;
+	Clip.PlaybackRate = 1.0f;
+	return Clip;
 }
 
 FSoftObjectPath FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(
@@ -523,15 +647,14 @@ FGameXXKBattlePresentationRhythm FGameXXKBattleAnimationPresentation::ResolveCom
 	FGameXXKBattlePresentationRhythm Rhythm;
 	if (Event.bAvoided)
 	{
-		Rhythm.DurationSeconds = 0.45f;
-		Rhythm.ImpactSeconds = 0.16f;
+		Rhythm.DurationSeconds = 0.30f;
+		Rhythm.ImpactSeconds = 0.10f;
 		ApplyImpactFeedback(EGameXXKBattlePresentationImpactTier::Avoided, Rhythm);
 		return Rhythm;
 	}
 
-	const bool bFirstHit = Event.HitOrdinal <= 0;
-	Rhythm.DurationSeconds = bFirstHit ? 0.82f : 0.30f;
-	Rhythm.ImpactSeconds = bFirstHit ? 0.30f : 0.10f;
+	Rhythm.DurationSeconds = 0.30f;
+	Rhythm.ImpactSeconds = 0.10f;
 
 	const int64 SafeDamage = FMath::Max<int64>(
 		0,
@@ -614,4 +737,36 @@ float FGameXXKBattleAnimationPresentation::GetRuntimeDuration(
 float FGameXXKBattleAnimationPresentation::GetImpactRuntimeSeconds()
 {
 	return 2.2f / 2.0f;
+}
+
+float FGameXXKBattleAnimationPresentation::GetHitEffectDurationSeconds()
+{
+	return 0.20f;
+}
+
+float FGameXXKBattleAnimationPresentation::GetProceduralHitRetreatDistance()
+{
+	return 205.0f;
+}
+
+FVector2D FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(
+	const bool bTargetEnemy,
+	const float NormalizedProgress)
+{
+	const float Progress = FMath::IsFinite(NormalizedProgress)
+		? FMath::Clamp(NormalizedProgress, 0.0f, 1.0f)
+		: 0.0f;
+	const float Direction = bTargetEnemy ? -1.0f : 1.0f;
+	const float Distance = GetProceduralHitRetreatDistance()
+		* FMath::Sin(PI * Progress);
+	return FVector2D(Direction * Distance, 0.0f);
+}
+
+float FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(
+	const float NormalizedProgress)
+{
+	const float Progress = FMath::IsFinite(NormalizedProgress)
+		? FMath::Clamp(NormalizedProgress, 0.0f, 1.0f)
+		: 0.0f;
+	return 1.0f - Progress;
 }

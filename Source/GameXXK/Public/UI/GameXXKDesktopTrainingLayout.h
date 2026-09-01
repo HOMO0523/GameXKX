@@ -128,6 +128,12 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector2D PhysicalPixelsToSlateHost(
 		const FVector2D& PhysicalPixels,
 		float DpiScale);
+	GAMEXXK_API FVector2D ResolveDesktopHudDragAnchor(
+		const FVector2D& DragStartNormalizedAnchor,
+		const FVector2D& DragStartPointerScreen,
+		const FVector2D& CurrentPointerScreen,
+		const FVector2D& PhysicalWorkAreaSize,
+		const FVector2D& CollapsedStripSize);
 	GAMEXXK_API FVector2D DesktopClientPointToReference(
 		const FVector2D& ClientPoint,
 		float HudScale,

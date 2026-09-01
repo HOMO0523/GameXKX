@@ -48,6 +48,8 @@
 #include "UI/GameXXKMVPCommandRouter.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
+#include "UI/GameXXKCardTooltipPresentation.h"
+#include "UI/GameXXKCardTooltipWidget.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
@@ -114,6 +116,7 @@ namespace
 	static constexpr float FormationVisualVerticalOffsetPixels = -64.0f;
 	static constexpr float FormationVisualVerticalOffsetNormalized = FormationVisualVerticalOffsetPixels / 1080.0f;
 	static const FVector2D CinematicImpactVisualSize(360.0f, 360.0f);
+	static const FVector2D CinematicHitEffectVisualSize(720.0f, 720.0f);
 	static const FVector2D CinematicEnemyAnchor(590.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicPartyAnchor(1330.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicImpactAnchor(0.5f, 0.5f);
@@ -167,7 +170,7 @@ namespace
 	static const FVector2D RewardCardSize(206.0f, 285.0f);
 	static const FVector2D EnemyIntentRailSize(600.0f, 171.0f);
 	static const FVector2D EnemyIntentTooltipSize(460.0f, 256.0f);
-	static const FVector2D HandCardDetailPanelSize(420.0f, 252.0f);
+	static const FVector2D HandCardDetailPanelSize(360.0f, 252.0f);
 	static const FLinearColor BattleStatusInkColor(0.12f, 0.09f, 0.06f, 1.0f);
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
@@ -456,7 +459,7 @@ namespace
 			TEXT("血势"), TEXT("乘势"), TEXT("重箭"),
 			TEXT("阵法"), TEXT("阵赏"), TEXT("编序"),
 			TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("药方"),
-			TEXT("地势"),
+			TEXT("地势"), TEXT("法术任务"),
 		};
 		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
 		for (const FString& Keyword : PillKeywords)
@@ -554,7 +557,10 @@ namespace
 	};
 
 	/** Splits effect prose so every battle-status mention becomes its own neutral pill. */
-	TArray<FBodySegment> SplitStatusSegments(const FString& Text, const FLinearColor& StatusPillColor)
+	TArray<FBodySegment> SplitStatusSegments(
+		const FString& Text,
+		const FLinearColor& StatusPillColor,
+		const float StatusPillFontSize)
 	{
 		// Longer compound names first so e.g. 破绽免疫 never half-matches 破绽.
 		static const TArray<FString> StatusNames = {
@@ -604,7 +610,7 @@ namespace
 			PillSegment.Text = Name;
 			PillSegment.bPill = true;
 			PillSegment.PillColor = StatusPillColor;
-			PillSegment.FontSize = 10.0f;
+			PillSegment.FontSize = StatusPillFontSize;
 			Segments.Add(PillSegment);
 		};
 		const auto EmitText = [&](const FString& Value)
@@ -648,8 +654,14 @@ namespace
 					// "获得8层流血" reads better as 获得 + [流血] + 8层: detach
 					// the trailing quantity so the number lands after the pill.
 					FString PreText = Text.Mid(Pos, Next - Pos);
-					const int32 QuantityLen = TrailingQuantityRunLength(PreText);
 					FString QuantityText;
+					// A trailing quantity is detached only when a status Pill follows it
+					// ("获得8层流血" -> "获得" + [流血] + "8层").
+					// Without a following status, detaching here would silently drop the
+					// final value from ordinary prose such as "气力消耗-1".
+					const int32 QuantityLen = BestName
+						? TrailingQuantityRunLength(PreText)
+						: 0;
 					if (QuantityLen > 0)
 					{
 						QuantityText = PreText.Right(QuantityLen);
@@ -682,7 +694,12 @@ namespace
 		return Segments;
 	}
 
-	float PopulateHandCardDetailBody(UWidgetTree* WidgetTree, UVerticalBox* BodyBox, const FString& Title, const FString& Text)
+	float PopulateHandCardDetailBody(
+		UWidgetTree* WidgetTree,
+		UVerticalBox* BodyBox,
+		const FString& Title,
+		const FString& Text,
+		const FGameXXKCardTooltipPresentationStyle& Style)
 	{
 		if (!WidgetTree || !BodyBox)
 		{
@@ -690,8 +707,12 @@ namespace
 		}
 		BodyBox->ClearChildren();
 
-		constexpr float WrapWidth = 380.0f;
-		constexpr float RowHeight = 22.0f;
+		// Leave a small measured-width safety margin. Composite-font glyphs can
+		// paint a few pixels beyond the font service result under Windows DPI;
+		// using the full paper width clipped trailing digits such as the "1" in
+		// "-1" even though the logical string remained intact.
+		const float WrapWidth = FMath::Max(80.0f, Style.WrapWidth - 12.0f);
+		const float RowHeight = Style.RowHeight;
 		const FLinearColor PillInk(0.96f, 0.90f, 0.76f, 1.0f);
 		const FLinearColor BodyInk(0.14f, 0.11f, 0.08f, 1.0f);
 		const FLinearColor StatusPillColor(0.18f, 0.13f, 0.09f, 1.0f);
@@ -718,11 +739,11 @@ namespace
 			return TextBlock;
 		};
 
-		const auto MakePill = [WidgetTree, &PillInk](const FString& Content, const FLinearColor& Fill, const float FontSize) -> UBorder*
+		const auto MakePill = [WidgetTree, &PillInk, &Style](const FString& Content, const FLinearColor& Fill, const float FontSize) -> UBorder*
 		{
 			UBorder* Pill = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
 			Pill->SetBrush(BuildRoundedPillBrush(Fill, 5.0f));
-			Pill->SetPadding(FMargin(5.0f, 1.0f, 5.0f, 1.0f));
+			Pill->SetPadding(Style.PillPadding);
 			Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
 			UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			PillText->SetText(FText::FromString(Content));
@@ -767,6 +788,56 @@ namespace
 			return Segment.bPill
 				? 10.0f + MeasureText(Segment.Text, Segment.FontSize, true)
 				: MeasureText(Segment.Text, Segment.FontSize, false);
+		};
+
+		const auto AdjustBreakToNumericTokenBoundary = [](const FString& Value, const int32 ProposedCount)
+		{
+			if (ProposedCount <= 0 || ProposedCount >= Value.Len())
+			{
+				return ProposedCount;
+			}
+			const auto IsDigit = [](const TCHAR Ch)
+			{
+				return Ch >= TEXT('0') && Ch <= TEXT('9');
+			};
+			const auto IsNumericUnit = [](const TCHAR Ch)
+			{
+				return Ch == TEXT('%') || Ch == TEXT('层') || Ch == TEXT('点')
+					|| Ch == TEXT('次') || Ch == TEXT('张') || Ch == TEXT('气')
+					|| Ch == TEXT('内') || Ch == TEXT('段') || Ch == TEXT('回');
+			};
+
+			int32 SafeCount = ProposedCount;
+			const TCHAR Before = Value[SafeCount - 1];
+			const TCHAR After = Value[SafeCount];
+			if ((Before == TEXT('-') || Before == TEXT('+')) && IsDigit(After))
+			{
+				return SafeCount - 1;
+			}
+			if (IsDigit(After) && IsDigit(Before))
+			{
+				while (SafeCount > 0 && IsDigit(Value[SafeCount - 1]))
+				{
+					--SafeCount;
+				}
+				if (SafeCount > 0 && (Value[SafeCount - 1] == TEXT('-') || Value[SafeCount - 1] == TEXT('+')))
+				{
+					--SafeCount;
+				}
+				return SafeCount;
+			}
+			if (IsNumericUnit(After) && IsDigit(Before))
+			{
+				while (SafeCount > 0 && IsDigit(Value[SafeCount - 1]))
+				{
+					--SafeCount;
+				}
+				if (SafeCount > 0 && (Value[SafeCount - 1] == TEXT('-') || Value[SafeCount - 1] == TEXT('+')))
+				{
+					--SafeCount;
+				}
+			}
+			return SafeCount;
 		};
 
 		// Deterministic row packing: text segments are split into measured
@@ -855,27 +926,47 @@ namespace
 							High = Mid - 1;
 						}
 					}
-					const int32 Count = FMath::Max(Low, 1);
-					// Prefer splitting Latin runs at spaces ("1 气 / 3 内"),
-					// but only when the prefix actually truncates the text.
-					int32 BreakAt = INDEX_NONE;
+					const int32 MeasuredCount = FMath::Max(Low, 1);
+					int32 Count = AdjustBreakToNumericTokenBoundary(Remaining, MeasuredCount);
+					if (Count <= 0)
+					{
+						if (!Row.IsEmpty())
+						{
+							FlushRow();
+							continue;
+						}
+						Count = MeasuredCount;
+					}
+
+					// Prefer clause punctuation, then spaces. Numeric signs, digits and
+					// units stay together so no rendered row can end at an orphan '-'.
+					int32 ChunkCount = Count;
+					int32 ConsumeCount = Count;
 					if (Count < Remaining.Len())
 					{
 						for (int32 Index = Count - 1; Index >= 1; --Index)
 						{
-							if (Remaining[Index] == TEXT(' '))
+							const TCHAR Candidate = Remaining[Index];
+							if (Candidate == TEXT('；') || Candidate == TEXT('，') || Candidate == TEXT('。'))
 							{
-								BreakAt = Index;
+								ChunkCount = Index + 1;
+								ConsumeCount = Index + 1;
+								break;
+							}
+							if (Candidate == TEXT(' '))
+							{
+								ChunkCount = Index;
+								ConsumeCount = Index + 1;
 								break;
 							}
 						}
 					}
 					FBodySegment Chunk;
-					Chunk.Text = BreakAt == INDEX_NONE ? Remaining.Left(Count) : Remaining.Left(BreakAt);
+					Chunk.Text = Remaining.Left(ChunkCount);
 					Chunk.FontSize = Segment.FontSize;
 					Row.Add(Chunk);
 					RowWidth += MeasureText(Chunk.Text, Segment.FontSize, false);
-					Remaining = BreakAt == INDEX_NONE ? Remaining.Mid(Count) : Remaining.Mid(BreakAt + 1);
+					Remaining = Remaining.Mid(ConsumeCount);
 					if (!Remaining.IsEmpty())
 					{
 						FlushRow();
@@ -910,16 +1001,22 @@ namespace
 				KeywordSegment.Text = Keyword;
 				KeywordSegment.bPill = true;
 				KeywordSegment.PillColor = ResolvePillFillColor(Keyword);
-				KeywordSegment.FontSize = 11.0f;
+				KeywordSegment.FontSize = Style.KeywordPillFontSize;
 				Segments.Add(KeywordSegment);
-				for (const FBodySegment& StatusSegment : SplitStatusSegments(Rest, StatusPillColor))
+				for (const FBodySegment& StatusSegment : SplitStatusSegments(
+					Rest,
+					StatusPillColor,
+					Style.StatusPillFontSize))
 				{
 					Segments.Add(StatusSegment);
 				}
 			}
 			else
 			{
-				for (const FBodySegment& StatusSegment : SplitStatusSegments(Line, StatusPillColor))
+				for (const FBodySegment& StatusSegment : SplitStatusSegments(
+					Line,
+					StatusPillColor,
+					Style.StatusPillFontSize))
 				{
 					Segments.Add(StatusSegment);
 				}
@@ -1038,6 +1135,74 @@ namespace
 		}
 		return Context;
 	}
+}
+
+float GameXXKCardTooltipPresentation::PopulateBody(
+	UWidgetTree* WidgetTree,
+	UVerticalBox* BodyBox,
+	const FString& Title,
+	const FString& Text,
+	const FGameXXKCardTooltipPresentationStyle& Style)
+{
+	return PopulateHandCardDetailBody(WidgetTree, BodyBox, Title, Text, Style);
+}
+
+FString GameXXKCardTooltipPresentation::AppendStatusPillExplanations(const FString& Text)
+{
+	TArray<FString> Explanations;
+	const auto AddStyleIfMentioned = [&Text, &Explanations](const FGameXXKBattleStatusIconStyle& Style)
+	{
+		if (!Style.DisplayName.IsEmpty()
+			&& !Style.Tooltip.IsEmpty()
+			&& Text.Contains(Style.DisplayName)
+			&& !Text.Contains(Style.Tooltip))
+		{
+			Explanations.AddUnique(FString::Printf(
+				TEXT("%s：%s"),
+				*Style.DisplayName,
+				*Style.Tooltip));
+		}
+	};
+
+	if (Text.Contains(TEXT("护甲")))
+	{
+		AddStyleIfMentioned(FGameXXKBattleStatusIconStyle::ResolveArmorIconStyle());
+	}
+	for (const EGameXXKCardStatus Status : {
+		EGameXXKCardStatus::Momentum,
+		EGameXXKCardStatus::Agility,
+		EGameXXKCardStatus::Vulnerability,
+		EGameXXKCardStatus::Bleed,
+		EGameXXKCardStatus::Poison,
+		EGameXXKCardStatus::Burn,
+		EGameXXKCardStatus::Mark,
+		EGameXXKCardStatus::Guard,
+		EGameXXKCardStatus::DamageOverTime,
+		EGameXXKCardStatus::CannotReceiveVulnerability,
+		EGameXXKCardStatus::NextAttackBonus,
+		EGameXXKCardStatus::NextAttackAppliesVulnerability,
+		EGameXXKCardStatus::NextHealingBonus,
+		EGameXXKCardStatus::TerrainBonusDouble,
+		EGameXXKCardStatus::NextTerrainCardFree,
+		EGameXXKCardStatus::NextTerrainCardEnergyReduction,
+		EGameXXKCardStatus::RedirectSingleTargetEnemyAttack,
+		EGameXXKCardStatus::TerrainBonusDoubleThisRound,
+		EGameXXKCardStatus::Medicine,
+		EGameXXKCardStatus::Weak,
+		EGameXXKCardStatus::Wealth,
+		EGameXXKCardStatus::Rage,
+		EGameXXKCardStatus::Prey,
+		EGameXXKCardStatus::Charge,
+		EGameXXKCardStatus::Counter,
+		EGameXXKCardStatus::Block})
+	{
+		AddStyleIfMentioned(FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Status));
+	}
+	if (Explanations.IsEmpty())
+	{
+		return Text;
+	}
+	return Text + TEXT("\n状态说明：\n") + FString::Join(Explanations, TEXT("\n"));
 }
 
 void UGameXXKRouteRewardReplacementButton::Configure(UGameXXKBattleBoardWidget* InOwner, FName InEntryId)
@@ -1219,6 +1384,15 @@ void UGameXXKBattleBoardWidget::NativeDestruct()
 void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	if (bCardTooltipExpanded != bShiftExpanded)
+	{
+		bCardTooltipExpanded = bShiftExpanded;
+		if (HoveredCardTooltipSource != ECardTooltipSource::None)
+		{
+			RefreshCardTooltip();
+		}
+	}
 	RefreshCinematicViewportCoverLayout(MyGeometry.GetLocalSize());
 	if (ActiveBattleVisualSessionToken != 0 && FSlateApplicationBase::IsInitialized())
 	{
@@ -1306,18 +1480,23 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 		Entry.AttackerClip = ResolveUnitAnimationClip(
 			Event.AttackerUnitId,
 			Event.bAttackerEnemy,
-			EGameXXKBattleAnimationAction::Attack);
+			EGameXXKBattleAnimationAction::Attack,
+			Event.EventId);
 		Entry.AttackerClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
 			Entry.AttackerClip,
 			Entry.Rhythm.DurationSeconds);
 	}
-	Entry.TargetClip = ResolveUnitAnimationClip(
-		Event.TargetUnitId,
-		Event.bTargetEnemy,
-		EGameXXKBattleAnimationAction::Hit);
-	Entry.TargetClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
-		Entry.TargetClip,
-		Entry.Rhythm.DurationSeconds);
+	if (Event.bTargetEnemy && !Event.bAvoided)
+	{
+		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
+		const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+		const int32 BattleSeed = State && State->CardRun.bHasActiveCardBattle
+			? State->CardRun.ActiveBattle.Deck.InitialRandomSeed
+			: 0;
+		Entry.ImpactClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			FGameXXKBattleAnimationPresentation::ResolveHitEffectClip(BattleSeed, Event.EventId),
+			FGameXXKBattleAnimationPresentation::GetHitEffectDurationSeconds());
+	}
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
 	if (!DisplayedHealthOverrides.Contains(Event.TargetUnitId))
@@ -1842,6 +2021,7 @@ void UGameXXKBattleBoardWidget::PrefetchPresentationEntry(const uint64 QueueSeri
 
 	PrefetchPresentationAtlas(QueueSerial, Entry->AttackerClip.TexturePath, EBattlePresentationAtlasRole::Attacker);
 	PrefetchPresentationAtlas(QueueSerial, Entry->TargetClip.TexturePath, EBattlePresentationAtlasRole::Target);
+	PrefetchPresentationAtlas(QueueSerial, Entry->ImpactClip.TexturePath, EBattlePresentationAtlasRole::Impact);
 }
 
 void UGameXXKBattleBoardWidget::PrefetchPresentationAtlas(
@@ -2044,6 +2224,11 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 
 		const double ElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - Entry.StartSeconds);
 		const double DurationSeconds = static_cast<double>(Entry.Rhythm.DurationSeconds);
+		UpdateProceduralPresentation(Entry, ElapsedSeconds);
+		if (Entry.bImpactFired && BattleCinematicImpact)
+		{
+			BattleCinematicImpact->AdvanceAtRealTime(AbsoluteSeconds);
+		}
 		if (Entry.Kind == EBattlePresentationKind::AttackHit
 			&& !Entry.bImpactFired
 			&& ElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER)
@@ -2072,6 +2257,48 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 	if (bQueueDrained)
 	{
 		HandleBattlePresentationQueueDrained();
+	}
+}
+
+void UGameXXKBattleBoardWidget::UpdateProceduralPresentation(
+	FBattlePresentationQueueEntry& Entry,
+	const double ElapsedSeconds)
+{
+	UGameXXKBattleUnitVisualWidget* const TargetVisual =
+		UnitVisuals.FindRef(Entry.Event.TargetUnitId);
+	if (!TargetVisual)
+	{
+		return;
+	}
+	if (Entry.Kind == EBattlePresentationKind::AttackHit)
+	{
+		const double MotionDuration = FMath::Max(
+			static_cast<double>(Entry.Rhythm.DurationSeconds - Entry.Rhythm.ImpactSeconds),
+			static_cast<double>(KINDA_SMALL_NUMBER));
+		const float Progress = Entry.Event.bAvoided
+			? 0.0f
+			: static_cast<float>(FMath::Clamp(
+				(ElapsedSeconds - static_cast<double>(Entry.Rhythm.ImpactSeconds)) / MotionDuration,
+				0.0,
+				1.0));
+		TargetVisual->ApplyProceduralPresentation(
+			FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(
+				Entry.Event.bTargetEnemy,
+				Progress),
+			1.0f);
+		return;
+	}
+	if (Entry.Kind == EBattlePresentationKind::Death)
+	{
+		const float Progress = Entry.Rhythm.DurationSeconds > 0.0f
+			? static_cast<float>(FMath::Clamp(
+				ElapsedSeconds / static_cast<double>(Entry.Rhythm.DurationSeconds),
+				0.0,
+				1.0))
+			: 1.0f;
+		TargetVisual->ApplyProceduralPresentation(
+			FVector2D::ZeroVector,
+			FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(Progress));
 	}
 }
 
@@ -2282,6 +2509,27 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 		AppendBattleSettlementLine(Entry.SettlementLine);
 	}
 	ApplyDisplayedDamagePacket(Entry.Event);
+	if (BattleCinematicImpact && Entry.ImpactClip.IsValid())
+	{
+		if (Entry.ImpactAtlas.IsValid())
+		{
+			BattleCinematicImpact->SetAtlas(Entry.ImpactAtlas.Get());
+		}
+		const FVector2D TargetAnchor = Entry.Event.bTargetEnemy
+			? CinematicEnemyAnchor
+			: CinematicPartyAnchor;
+		BattleCinematicImpact->ShowCinematic(Entry.ImpactClip, TargetAnchor);
+		if (UCanvasPanelSlot* const ImpactSlot = Cast<UCanvasPanelSlot>(BattleCinematicImpact->Slot))
+		{
+			ImpactSlot->SetAnchors(FAnchors(TargetAnchor.X, TargetAnchor.Y));
+			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
+			ImpactSlot->SetPosition(FVector2D::ZeroVector);
+			ImpactSlot->SetSize(CinematicHitEffectVisualSize);
+			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
+		}
+		BattleCinematicImpact->AdvanceAtRealTime(
+			Entry.StartSeconds + Entry.Rhythm.ImpactSeconds);
+	}
 
 	if (BattleCinematicReadout)
 	{
@@ -2410,13 +2658,6 @@ void UGameXXKBattleBoardWidget::EnqueueDeathPresentationAfterActive(
 	{
 		NextBattlePresentationQueueSerial = 1;
 	}
-	DeathEntry.TargetClip = ResolveUnitAnimationClip(
-		Event.TargetUnitId,
-		Event.bTargetEnemy,
-		EGameXXKBattleAnimationAction::Death);
-	DeathEntry.TargetClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
-		DeathEntry.TargetClip,
-		DeathEntry.Rhythm.DurationSeconds);
 	const uint64 QueueSerial = DeathEntry.QueueSerial;
 	BattlePresentationQueue.Insert(MoveTemp(DeathEntry), FMath::Min(1, BattlePresentationQueue.Num()));
 	PrefetchPresentationEntry(QueueSerial);
@@ -2529,7 +2770,8 @@ void UGameXXKBattleBoardWidget::RestoreUnitIdleAtlas(
 FGameXXKBattleAnimationClipDescriptor UGameXXKBattleBoardWidget::ResolveUnitAnimationClip(
 	const FName UnitId,
 	const bool bEnemy,
-	const EGameXXKBattleAnimationAction Action) const
+	const EGameXXKBattleAnimationAction Action,
+	const uint64 StableEventId) const
 {
 	FName EnemyDefinitionId = NAME_None;
 	if (bEnemy)
@@ -2547,6 +2789,15 @@ FGameXXKBattleAnimationClipDescriptor UGameXXKBattleBoardWidget::ResolveUnitAnim
 				EnemyDefinitionId = Unit->EnemyDefinitionId;
 			}
 		}
+	}
+
+	if (Action == EGameXXKBattleAnimationAction::Attack)
+	{
+		return FGameXXKBattleAnimationPresentation::ResolveAttackClipForEvent(
+			UnitId,
+			EnemyDefinitionId,
+			bEnemy,
+			StableEventId);
 	}
 
 	return FGameXXKBattleAnimationPresentation::ResolveClipForDefinition(
@@ -4143,7 +4394,10 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 	FGameXXKRuntimeState& MutableState = Subsystem->GetMutableRuntimeState();
 	const FGameXXKCardBattleRuntime Before = MutableState.CardRun.ActiveBattle;
 	CapturePresentationHudSnapshot(Before);
-	if (!FGameXXKCardBattleAdapter::EndPlayerCardPhase(MutableState, DamageResults, &Error))
+	if (!FGameXXKCardBattleAdapter::EndPlayerCardPhase(
+		MutableState,
+		DamageResults,
+		&Error))
 	{
 		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
@@ -4415,6 +4669,18 @@ bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
 			EBattlePresentationContinuation::FinalizeCardMutation);
 	}
 
+	FGameXXKGuideTargetRegistry& GuideRegistry =
+		FGameXXKGuideTargetRegistry::Get();
+	if (!GuideRegistry.IsActionAllowed(TEXT("Action.Battle.SelectTargetedCard")))
+	{
+		// A Forced guide may have advanced to its explicit End Turn step while
+		// the hand still contains otherwise playable cards. Auto must execute
+		// that real authorized button action instead of repeatedly selecting the
+		// first guide-blocked card and stalling forever.
+		return GuideRegistry.IsActionAllowed(TEXT("Action.Battle.EndTurn"))
+			&& EndCardPlayerPhase();
+	}
+
 	const TArray<FGameXXKCardInstance> HandSnapshot = Runtime.Deck.Hand;
 	for (const FGameXXKCardInstance& Card : HandSnapshot)
 	{
@@ -4449,7 +4715,13 @@ bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
 
 		if (!ClickCardInHand(Card.InstanceId))
 		{
-			return false;
+			// Preview and commit can diverge when a prior deterministic Blade
+			// charge becomes unresolvable for this exact card destination. The
+			// adapter rejects that play atomically; do not retry the same first
+			// hand card forever. Clear any transient selection and try the next
+			// production card before falling back to End Turn.
+			CancelBattleTargeting();
+			continue;
 		}
 		if (!Preview.TargetRequest.bRequiresManualSelection)
 		{
@@ -4460,7 +4732,7 @@ bool UGameXXKBattleBoardWidget::AdvanceAutoBattleStep()
 			return true;
 		}
 		CancelBattleTargeting();
-		return false;
+		continue;
 	}
 	return EndCardPlayerPhase();
 }
@@ -6160,6 +6432,12 @@ bool UGameXXKBattleBoardWidget::IsCardTooltipHitTestInvisibleForTest() const
 	return HandCardDetailPanel && HandCardDetailPanel->GetVisibility() == ESlateVisibility::HitTestInvisible;
 }
 
+void UGameXXKBattleBoardWidget::SetCardTooltipExpandedForTest(const bool bExpanded)
+{
+	bCardTooltipExpanded = bExpanded;
+	RefreshCardTooltip();
+}
+
 UButton* UGameXXKBattleBoardWidget::GetHandCardButtonForTest(const int32 SlotIndex) const
 {
 	return HandCardButtons.IsValidIndex(SlotIndex) ? HandCardButtons[SlotIndex] : nullptr;
@@ -6312,6 +6590,11 @@ void UGameXXKBattleBoardWidget::RemoveUnitVisualForTest(const FName UnitId)
 bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalStateForTest()
 {
 	return ResolveCardBattleTerminalState();
+}
+
+bool UGameXXKBattleBoardWidget::ResolveAndRefreshCardBattleAfterMutationForTest()
+{
+	return ResolveAndRefreshCardBattleAfterMutation();
 }
 #endif
 
@@ -7357,10 +7640,10 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	Tutorial01GuideOverlay = WidgetTree->ConstructWidget<UGameXXKGuideOverlayWidget>(
 		UGameXXKGuideOverlayWidget::StaticClass(),
 		TEXT("BattleTutorial01GuideOverlay"));
-	if (Tutorial01GuideOverlay && BattleDesignStage)
+	if (Tutorial01GuideOverlay && ViewportRootCanvas)
 	{
 		Tutorial01GuideOverlay->SetVisibility(ESlateVisibility::Collapsed);
-		if (UCanvasPanelSlot* GuideSlot = BattleDesignStage->AddChildToCanvas(Tutorial01GuideOverlay))
+		if (UCanvasPanelSlot* GuideSlot = ViewportRootCanvas->AddChildToCanvas(Tutorial01GuideOverlay))
 		{
 			GuideSlot->SetAnchors(FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
 			GuideSlot->SetOffsets(FMargin(0.0f));
@@ -7646,16 +7929,10 @@ void UGameXXKBattleBoardWidget::RefreshProgrammaticLayout()
 	if (bInCardBattle && !bGuideBattleOpenedEmitted)
 	{
 		bGuideBattleOpenedEmitted = true;
-		bool bBossBattle = false;
 		const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-		if (const FGameXXKRouteMapNode* PendingNode = State.RouteMapNodes.FindByPredicate(
-			[&State](const FGameXXKRouteMapNode& Node)
-			{
-				return Node.NodeId == State.PendingRouteNodeId;
-			}))
-		{
-			bBossBattle = PendingNode->NodeKind == EGameXXKNodeKind::Boss;
-		}
+		const bool bBossBattle =
+			State.CardRun.ActiveBattle.SourceNodeKind
+				== EGameXXKCardBattleNodeKind::Boss;
 		FGameXXKGuideTargetRegistry::Get().EmitEvent(
 			bBossBattle ? TEXT("Event.Boss.Opened") : TEXT("Event.Battle.Opened"));
 	}
@@ -8410,10 +8687,21 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	else if (Definition)
 	{
 		TooltipTitle = Definition->DisplayName;
-		TooltipBody = FText::FromString(
-			TooltipQuality == EGameXXKCardQuality::Invalid
-				? GameXXKCardText::DescribeTooltip(*Definition, nullptr, Context)
-				: GameXXKCardText::DescribeTooltip(*Definition, TooltipQuality, nullptr, Context));
+		if (bCardTooltipExpanded)
+		{
+			const FString ExpandedBody = TooltipQuality == EGameXXKCardQuality::Invalid
+				? GameXXKCardText::DescribeExpandedTooltipBody(*Definition, nullptr, Context)
+				: GameXXKCardText::DescribeExpandedTooltipBody(*Definition, TooltipQuality, nullptr, Context);
+			TooltipBody = FText::FromString(
+				GameXXKCardTooltipPresentation::AppendStatusPillExplanations(ExpandedBody));
+		}
+		else
+		{
+			TooltipBody = FText::FromString(
+				TooltipQuality == EGameXXKCardQuality::Invalid
+					? GameXXKCardText::DescribeCompactTooltipBody(*Definition, nullptr, Context)
+					: GameXXKCardText::DescribeCompactTooltipBody(*Definition, TooltipQuality, nullptr, Context));
+		}
 	}
 	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
 	{
@@ -8435,7 +8723,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	{
 		// Height follows the populated rows: title band + gap + measured
 		// wrapped body height + vertical padding + parchment bottom border.
-		const float BodyHeight = PopulateHandCardDetailBody(
+		const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(
 			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString());
 		PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
 	}
@@ -10130,7 +10418,12 @@ bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 	CapturePresentationHudSnapshot(Before);
 	FGameXXKCardPlayResult Result;
 	FString Error;
-	if (!FGameXXKCardBattleAdapter::ResolveCardPlay(Subsystem->GetMutableRuntimeState(), CardInstanceId, NAME_None, Result, &Error))
+	if (!FGameXXKCardBattleAdapter::ResolveCardPlay(
+			Subsystem->GetMutableRuntimeState(),
+			CardInstanceId,
+			NAME_None,
+			Result,
+			&Error))
 	{
 		DiscardPresentationHudSnapshot();
 		LastCardInteractionError = Error;
@@ -10257,6 +10550,11 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 		{
 			LastCardInteractionError = TEXT("战斗胜利奖励未能生成。");
 			return false;
+		}
+		if (SourceNodeKind == EGameXXKCardBattleNodeKind::Boss)
+		{
+			FGameXXKGuideTargetRegistry::Get().EmitEvent(
+				TEXT("Event.Boss.Completed"));
 		}
 	}
 	else if (Phase == EGameXXKCardBattlePhase::Defeat)

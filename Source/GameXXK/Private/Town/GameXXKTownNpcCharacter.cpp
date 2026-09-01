@@ -2,6 +2,7 @@
 
 #include "Components/CapsuleComponent.h"
 #include "Components/SphereComponent.h"
+#include "CollisionQueryParams.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "Engine/GameInstance.h"
@@ -16,6 +17,9 @@
 
 namespace
 {
+	const TCHAR* YueBaiNarrativeFollowerIdlePath =
+		TEXT("/Game/GameXXK/Cinematics/Prologue/IdleFlipbooks/FB_character_09_yue_bai_town_2k_idle.FB_character_09_yue_bai_town_2k_idle");
+
 	FString TownNpcAssetStem(const FName NpcId)
 	{
 		if (NpcId == TEXT("Npc.TusiChief")) return TEXT("TusiChief");
@@ -31,6 +35,7 @@ namespace
 AGameXXKTownNpcCharacter::AGameXXKTownNpcCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
+	bUseHorizontalHeroLocomotion = false;
 	AutoPossessPlayer = EAutoReceiveInput::Disabled;
 	AutoPossessAI = EAutoPossessAI::Disabled;
 
@@ -85,24 +90,32 @@ void AGameXXKTownNpcCharacter::Tick(float DeltaSeconds)
 		const float DistanceToTarget = ToTarget.Size();
 		const bool bNeedsChase = DistanceToTarget > NarrativeFollowMaximumDistance;
 		const bool bNeedsRetreat = DistanceToTarget < NarrativeFollowMinimumDistance;
+		FVector DesiredLocation = CurrentLocation;
 		if (bNeedsChase || bNeedsRetreat)
 		{
 			const FVector Direction = ToTarget.IsNearlyZero()
 				? FVector::ForwardVector
 				: ToTarget.GetSafeNormal();
-			FVector DesiredLocation = TargetLocation - Direction * FollowDistance;
-			DesiredLocation.Z = CurrentLocation.Z;
-			const FVector NewLocation = DistanceToTarget > 1600.0f
-				? DesiredLocation
-				: FMath::VInterpConstantTo(
-					CurrentLocation,
-					DesiredLocation,
-					DeltaSeconds,
-					FollowSpeed);
+			DesiredLocation = TargetLocation - Direction * FollowDistance;
+		}
+		DesiredLocation.Z = ResolveNarrativeGroundedRootZ(
+			DesiredLocation,
+			CurrentLocation.Z,
+			Target);
+		const FVector NewLocation = DistanceToTarget > 1600.0f
+			? DesiredLocation
+			: FMath::VInterpConstantTo(
+				CurrentLocation,
+				DesiredLocation,
+				DeltaSeconds,
+				FollowSpeed);
+		if (!NewLocation.Equals(CurrentLocation))
+		{
 			SetActorLocation(NewLocation);
 		}
 		// YueBai glides while keeping her authored hover-idle presentation.
 		UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+		EnsureNarrativeFollowerIdlePlayback();
 		return;
 	}
 	if (!bFollowerActive || !Target)
@@ -154,7 +167,9 @@ void AGameXXKTownNpcCharacter::NotifyActorBeginOverlap(AActor* OtherActor)
 
 	APawn* Pawn = Cast<APawn>(OtherActor);
 	UGameXXKInteractionComponent* InteractionComponent = Pawn ? Pawn->FindComponentByClass<UGameXXKInteractionComponent>() : nullptr;
-	if (InteractionComponent)
+	if (InteractionComponent
+		&& NarrativeInteraction
+		&& NarrativeInteraction->IsInteractionEnabled())
 	{
 		InteractionComponent->AddFocusedActor(this);
 	}
@@ -252,12 +267,12 @@ EGameXXKTownNpcRole AGameXXKTownNpcCharacter::GetNpcRole() const
 
 bool AGameXXKTownNpcCharacter::CanOfferQuest() const
 {
-	return NpcRole == EGameXXKTownNpcRole::Quest;
+	return false;
 }
 
 bool AGameXXKTownNpcCharacter::CanTrade() const
 {
-	return NpcRole == EGameXXKTownNpcRole::Merchant;
+	return false;
 }
 
 bool AGameXXKTownNpcCharacter::HasPrimaryInteractionAction() const
@@ -343,7 +358,126 @@ void AGameXXKTownNpcCharacter::ActivateNarrativeFollower(
 		InteractionArea->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	}
 	bNarrativeCollisionSnapshotValid = true;
+	if (UPaperFlipbookComponent* TownVisual = GetTownVisualComponent();
+		TownVisual && NpcId == TEXT("Npc.YueBai"))
+	{
+		NarrativePreviousVisualScale = TownVisual->GetRelativeScale3D();
+		bNarrativeVisualScaleSnapshotValid = true;
+		TownVisual->SetRelativeScale3D(
+			NarrativePreviousVisualScale
+			* GetNarrativeFollowerVisualScaleMultiplierForTest());
+	}
 	UpdateTownVisualFromMovementIntent(0.0f, 0.0f);
+	EnsureNarrativeFollowerIdlePlayback();
+}
+
+float AGameXXKTownNpcCharacter::ResolveNarrativeGroundedRootZForTest(
+	const float CurrentRootZ,
+	const bool bGroundHit,
+	const float GroundImpactZ,
+	const float CapsuleHalfHeight)
+{
+	return bGroundHit
+		? GroundImpactZ + FMath::Max(0.0f, CapsuleHalfHeight)
+		: CurrentRootZ;
+}
+
+bool AGameXXKTownNpcCharacter::IsNarrativeGroundCandidateForTest(
+	const float GroundImpactZ,
+	const float SurfaceNormalZ,
+	const float MaximumRootZ)
+{
+	return GroundImpactZ <= MaximumRootZ + 1.0f
+		&& SurfaceNormalZ >= 0.35f;
+}
+
+FString AGameXXKTownNpcCharacter::GetNarrativeFollowerIdleFlipbookPathForTest()
+{
+	return YueBaiNarrativeFollowerIdlePath;
+}
+
+UPaperFlipbook* AGameXXKTownNpcCharacter::LoadNarrativeFollowerIdleFlipbookForTest()
+{
+	return LoadObject<UPaperFlipbook>(nullptr, YueBaiNarrativeFollowerIdlePath);
+}
+
+float AGameXXKTownNpcCharacter::ResolveNarrativeGroundedRootZ(
+	const FVector& HorizontalDestination,
+	const float CurrentRootZ,
+	AActor* Target) const
+{
+	const UWorld* World = GetWorld();
+	const UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!World || !Capsule)
+	{
+		return CurrentRootZ;
+	}
+
+	const float TargetRootZ = Target ? Target->GetActorLocation().Z : CurrentRootZ;
+	FVector TraceStart = HorizontalDestination;
+	TraceStart.Z = FMath::Max(CurrentRootZ, TargetRootZ) + 600.0f;
+	FVector TraceEnd = HorizontalDestination;
+	TraceEnd.Z = FMath::Min(CurrentRootZ, TargetRootZ) - 2000.0f;
+	FCollisionQueryParams QueryParams(
+		SCENE_QUERY_STAT(GameXXKNarrativeFollowerGround),
+		false,
+		this);
+	if (Target)
+	{
+		QueryParams.AddIgnoredActor(Target);
+	}
+	TArray<FHitResult> GroundHits;
+	World->LineTraceMultiByObjectType(
+		GroundHits,
+		TraceStart,
+		TraceEnd,
+		FCollisionObjectQueryParams(ECC_WorldStatic),
+		QueryParams);
+	const float MaximumRootZ = FMath::Max(CurrentRootZ, TargetRootZ);
+	bool bFoundGround = false;
+	float GroundImpactZ = 0.0f;
+	for (const FHitResult& GroundHit : GroundHits)
+	{
+		if (!IsNarrativeGroundCandidateForTest(
+				GroundHit.ImpactPoint.Z,
+				GroundHit.ImpactNormal.Z,
+				MaximumRootZ))
+		{
+			continue;
+		}
+		if (!bFoundGround || GroundHit.ImpactPoint.Z > GroundImpactZ)
+		{
+			bFoundGround = true;
+			GroundImpactZ = GroundHit.ImpactPoint.Z;
+		}
+	}
+	return ResolveNarrativeGroundedRootZForTest(
+		CurrentRootZ,
+		bFoundGround,
+		GroundImpactZ,
+		Capsule->GetScaledCapsuleHalfHeight());
+}
+
+void AGameXXKTownNpcCharacter::EnsureNarrativeFollowerIdlePlayback()
+{
+	UPaperFlipbookComponent* TownVisual = GetTownVisualComponent();
+	UPaperFlipbook* IdleFlipbook = NpcId == TEXT("Npc.YueBai")
+		? LoadNarrativeFollowerIdleFlipbookForTest()
+		: GetDefaultTownFlipbook();
+	if (!TownVisual || !IdleFlipbook)
+	{
+		return;
+	}
+	TownVisual->SetLooping(true);
+	if (TownVisual->GetFlipbook() != IdleFlipbook)
+	{
+		TownVisual->SetFlipbook(IdleFlipbook);
+		TownVisual->PlayFromStart();
+	}
+	else if (!TownVisual->IsPlaying())
+	{
+		TownVisual->Play();
+	}
 }
 
 void AGameXXKTownNpcCharacter::DismissNarrativeFollower()
@@ -360,6 +494,15 @@ void AGameXXKTownNpcCharacter::DismissNarrativeFollower()
 		}
 	}
 	bNarrativeCollisionSnapshotValid = false;
+	if (bNarrativeVisualScaleSnapshotValid)
+	{
+		if (UPaperFlipbookComponent* TownVisual = GetTownVisualComponent())
+		{
+			TownVisual->SetRelativeScale3D(NarrativePreviousVisualScale);
+		}
+	}
+	bNarrativeVisualScaleSnapshotValid = false;
+	NarrativePreviousVisualScale = FVector::OneVector;
 	bNarrativeFollowerActive = false;
 	if (!bFollowerActive)
 	{
@@ -423,61 +566,14 @@ void AGameXXKTownNpcCharacter::Interact_Implementation(APawn* InstigatorPawn)
 
 bool AGameXXKTownNpcCharacter::ConfirmQuestDialogInteraction(APawn* InstigatorPawn)
 {
-	if (!CanOfferQuest())
-	{
-		bLastInteractionSuccessful = false;
-		return false;
-	}
-
-	bLastInteractionSuccessful = ApplyDefaultInteraction(InstigatorPawn);
-	OnQuestInteract(InstigatorPawn);
-	OnDefaultInteractionResolved(InstigatorPawn, bLastInteractionSuccessful);
-	if (bLastInteractionSuccessful && InstigatorPawn)
-	{
-		if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
-		{
-			PlayerController->RefreshPlayerFlowWidgetsFromState();
-		}
-	}
-	return bLastInteractionSuccessful;
+	(void)InstigatorPawn;
+	bLastInteractionSuccessful = false;
+	return false;
 }
 
 bool AGameXXKTownNpcCharacter::ApplyDefaultInteraction(APawn* InstigatorPawn)
 {
-	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem(InstigatorPawn);
-	if (!Subsystem)
-	{
-		bLastInteractionSuccessful = false;
-		return false;
-	}
-
-	if (CanOfferQuest())
-	{
-		const bool bAccepted = Subsystem->AcceptQuest();
-		if (bAccepted)
-		{
-			// Accepting the quest keeps the guide NPC at its town spot. Any later
-			// story-follow behavior is narrative-owned, never an F-interaction party edit.
-			Subsystem->RecordQuestNpcLocation(GetActorLocation());
-		}
-		bLastInteractionSuccessful = bAccepted;
-		return bAccepted;
-	}
-	if (CanTrade())
-	{
-		if (InstigatorPawn)
-		{
-			if (AGameXXKMVPPlayerController* PlayerController = Cast<AGameXXKMVPPlayerController>(InstigatorPawn->GetController()))
-			{
-				bLastInteractionSuccessful = PlayerController->OpenMetaShopWindow();
-				return bLastInteractionSuccessful;
-			}
-		}
-		// The retired subsystem trade panel is intentionally not a fallback. A
-		// player controller is required because it owns the new modal shop widget.
-		bLastInteractionSuccessful = false;
-		return false;
-	}
+	(void)InstigatorPawn;
 	bLastInteractionSuccessful = false;
 	return false;
 }

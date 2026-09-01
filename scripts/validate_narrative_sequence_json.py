@@ -10,6 +10,19 @@ FORBIDDEN_SCENE_FIELDS = frozenset(
     {"map", "mappath", "worldlocation", "location", "transform", "x", "y", "z"}
 )
 STEP_TYPES = frozenset({"command", "wait", "dialogue", "branchOnOutcome", "end"})
+DESKTOP_COMMAND_ARGUMENTS = {
+    "stageShowRole": (frozenset({"role", "slot"}), frozenset({"role", "slot"})),
+    "stageHideRole": (frozenset({"role"}), frozenset({"role"})),
+    "stageMoveRole": (frozenset({"role", "slot"}), frozenset({"role", "slot"})),
+    "stageSetFacing": (frozenset({"role", "facing"}), frozenset({"role", "facing"})),
+    "stageShowProp": (frozenset({"resource", "slot"}), frozenset({"resource", "slot"})),
+    "stageHideProp": (frozenset({"resource"}), frozenset({"resource"})),
+    "stagePlayAction": (frozenset({"role", "resource"}), frozenset({"role", "resource"})),
+    "stagePlayVfx": (frozenset({"resource", "slot"}), frozenset({"resource", "slot"})),
+    "stageFlash": (frozenset({"resource", "slot"}), frozenset({"resource", "slot"})),
+    "showToast": (frozenset({"resource"}), frozenset({"resource"})),
+    "dialogue": (frozenset({"resource"}), frozenset({"resource"})),
+}
 
 
 @dataclass(frozen=True)
@@ -242,6 +255,28 @@ def validate_sequence(payload: dict, catalogs: NarrativeCatalogSnapshot) -> list
                     errors.append(
                         f"{step_id}: character {resolved_character} does not support action {action_id}"
                     )
+            desktop_contract = DESKTOP_COMMAND_ARGUMENTS.get(command_type)
+            if desktop_contract is not None:
+                allowed_arguments, required_arguments = desktop_contract
+                unknown_arguments = set(arguments) - allowed_arguments
+                missing_arguments = required_arguments - set(arguments)
+                for argument in sorted(unknown_arguments):
+                    errors.append(
+                        f"{step_id}: desktop command has unknown argument {argument}"
+                    )
+                for argument in sorted(missing_arguments):
+                    errors.append(
+                        f"{step_id}: desktop command is missing argument {argument}"
+                    )
+                semantic_slot = arguments.get("slot")
+                if semantic_slot is not None and semantic_slot not in stage_slots:
+                    errors.append(f"{step_id}: unknown semantic slot {semantic_slot}")
+                facing = arguments.get("facing")
+                if facing is not None and facing not in {"Left", "Right"}:
+                    errors.append(f"{step_id}: invalid semantic facing {facing}")
+                resource = arguments.get("resource")
+                if resource is not None and not _nonempty(resource):
+                    errors.append(f"{step_id}: semantic resource must not be empty")
             if not _nonempty(step.get("next")):
                 errors.append(f"{step_id}: command next must not be empty")
 

@@ -14,6 +14,7 @@ class UScrollBox;
 class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
+class UGameXXKCardTooltipWidget;
 
 /** Read-only profile data rendered for the permanent companion selected in the roster backpack. */
 USTRUCT(BlueprintType)
@@ -167,6 +168,7 @@ class GAMEXXK_API UGameXXKCompanionRosterWidget : public UGameXXKMVPWidgetBase
 public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|CompanionRoster")
 	void RefreshFromState();
@@ -586,15 +588,9 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> PersonalCardLockedIcons;
 
-	// Hero-style paper tooltips (name + full effect description) on every card.
+	// Shared fixed-width compact/Shift card tooltips on every card.
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UBorder>> PersonalCardTooltipFrames;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> PersonalCardTooltipNameBlocks;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> PersonalCardTooltipDetailBlocks;
+	TArray<TObjectPtr<UGameXXKCardTooltipWidget>> PersonalCardTooltipWidgets;
 
 	TArray<FString> PersonalCardTooltipTexts;
 
@@ -699,6 +695,7 @@ private:
 	FGameXXKQuestNpcCardSelection TaskNpcCardSummary;
 	FName HoveredCardTooltipId = NAME_None;
 	bool bHoveredCardTooltipIsHeroDeck = false;
+	bool bCardTooltipShiftExpanded = false;
 	FGameXXKPermanentCompanion PendingRecruitmentCandidate;
 	FString RecruitmentFeedback;
 	int32 SigilCount = 0;

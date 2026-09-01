@@ -204,6 +204,102 @@ class NarrativeSequenceJsonValidationTests(unittest.TestCase):
             self.assertIn(report_name, source)
             self.assertLess(source.index("validate_"), source.index("create_asset"))
 
+    def test_desktop_story_sequences_are_semantic_and_catalog_complete(self) -> None:
+        catalog_payload = json.loads(
+            (PROJECT_ROOT / "SourceAssets" / "Narrative" / "runtime-catalog.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        catalogs = NarrativeCatalogSnapshot(
+            character_ids=frozenset(catalog_payload["characterIds"]),
+            action_ids_by_character={
+                character_id: frozenset(action_ids)
+                for character_id, action_ids in catalog_payload[
+                    "actionIdsByCharacter"
+                ].items()
+            },
+            dialogue_ids=frozenset(catalog_payload["dialogueIds"]),
+            slot_ids_by_stage={
+                stage_id: frozenset(slot_ids)
+                for stage_id, slot_ids in catalog_payload["slotIdsByStage"].items()
+            },
+            command_types=frozenset(catalog_payload["commandTypes"]),
+            wait_types=frozenset(catalog_payload["waitTypes"]),
+            outcome_ids=frozenset(catalog_payload["outcomeIds"]),
+        )
+        expected = {
+            "Sequence.Main.XuXiake.CarriageArrival.sequence.json": (
+                "Sequence.Main.XuXiake.CarriageArrival",
+                "Stage.Tutorial.River",
+            ),
+            "Sequence.Main.XuXiake.CombatBriefing.sequence.json": (
+                "Sequence.Main.XuXiake.CombatBriefing",
+                "Stage.Desktop.Briefing",
+            ),
+            "Sequence.Main.XuXiake.FirstJourneyBriefing.sequence.json": (
+                "Sequence.Main.XuXiake.FirstJourneyBriefing",
+                "Stage.Desktop.Briefing",
+            ),
+        }
+        desktop_commands = {
+            "stageShowRole",
+            "stageHideRole",
+            "stageMoveRole",
+            "stageSetFacing",
+            "stageShowProp",
+            "stageHideProp",
+            "stagePlayAction",
+            "stagePlayVfx",
+            "stageFlash",
+            "showToast",
+            "dialogue",
+        }
+        source_dir = PROJECT_ROOT / "SourceAssets" / "Narrative" / "Sequences"
+        for filename, (sequence_id, stage_id) in expected.items():
+            with self.subTest(filename=filename):
+                payload = validate_file(source_dir / filename, catalogs)
+                self.assertEqual(sequence_id, payload["sequenceId"])
+                self.assertEqual(stage_id, payload["stageContractId"])
+                self.assertTrue({"Hero", "YueBai"}.issubset(payload["roles"]))
+                command_types = {
+                    step["commandType"]
+                    for step in payload["steps"].values()
+                    if step["type"] == "command"
+                }
+                self.assertTrue(command_types.issubset(desktop_commands))
+                serialized = json.dumps(payload, ensure_ascii=False).lower()
+                for forbidden in (
+                    "/maps/",
+                    "sceneprofile",
+                    "worldlocation",
+                    "transform",
+                    "spawnactor",
+                    "npcunlock",
+                    "recruit",
+                ):
+                    self.assertNotIn(forbidden, serialized)
+
+        carriage = validate_file(
+            source_dir / "Sequence.Main.XuXiake.CarriageArrival.sequence.json",
+            catalogs,
+        )
+        command_types = {
+            step["commandType"]
+            for step in carriage["steps"].values()
+            if step["type"] == "command"
+        }
+        self.assertIn("stageShowRole", command_types)
+        self.assertIn("stageShowProp", command_types)
+        self.assertIn("stagePlayAction", command_types)
+        self.assertIn(
+            "Dialogue.Tutorial.001",
+            {
+                step["dialogueId"]
+                for step in carriage["steps"].values()
+                if step["type"] == "dialogue"
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

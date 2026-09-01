@@ -78,6 +78,21 @@ public:
 	{
 		return NarrativeFollowMaximumDistance;
 	}
+	static float ResolveNarrativeGroundedRootZForTest(
+		float CurrentRootZ,
+		bool bGroundHit,
+		float GroundImpactZ,
+		float CapsuleHalfHeight);
+	static bool IsNarrativeGroundCandidateForTest(
+		float GroundImpactZ,
+		float SurfaceNormalZ,
+		float MaximumRootZ);
+	static FString GetNarrativeFollowerIdleFlipbookPathForTest();
+	static UPaperFlipbook* LoadNarrativeFollowerIdleFlipbookForTest();
+	static constexpr float GetNarrativeFollowerVisualScaleMultiplierForTest()
+	{
+		return 2.5f;
+	}
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Town")
 	USphereComponent* GetInteractionArea() const;
@@ -142,6 +157,11 @@ private:
 	void ConfigureStaticIdleVisual();
 	UGameXXKMVPSubsystem* ResolveMVPSubsystem(APawn* InstigatorPawn) const;
 	void RecordQuestNpcMovedLocation(UGameXXKMVPSubsystem* Subsystem, const FVector& Location);
+	float ResolveNarrativeGroundedRootZ(
+		const FVector& HorizontalDestination,
+		float CurrentRootZ,
+		AActor* Target) const;
+	void EnsureNarrativeFollowerIdlePlayback();
 	float GetGroundedRootZ() const;
 	void ConfigureGroundedPlaneConstraint();
 	void RaiseRootToGroundedHeightIfNeeded();
@@ -157,6 +177,8 @@ private:
 	TEnumAsByte<ECollisionEnabled::Type> NarrativePreviousInteractionCollision =
 		ECollisionEnabled::QueryOnly;
 	bool bNarrativeCollisionSnapshotValid = false;
+	FVector NarrativePreviousVisualScale = FVector::OneVector;
+	bool bNarrativeVisualScaleSnapshotValid = false;
 
 	UPROPERTY(VisibleAnywhere, Category = "GameXXK|Interaction")
 	TObjectPtr<UGameXXKInteractableComponent> NarrativeInteraction;

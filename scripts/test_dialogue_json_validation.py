@@ -266,6 +266,39 @@ class DialogueJsonValidationTests(unittest.TestCase):
         self.assertIn("does_asset_exist", source)
         self.assertLess(source.index("does_asset_exist"), source.index("load_asset"))
 
+    def test_desktop_story_dialogues_use_formal_panel_and_no_unlock_semantics(self) -> None:
+        project_root = Path(__file__).resolve().parents[1]
+        catalog_path = project_root / "SourceAssets" / "Narrative" / "runtime-catalog.json"
+        catalog_payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+        catalogs = CatalogSnapshot(
+            speakers=frozenset(catalog_payload["speakers"]),
+            roles=frozenset(catalog_payload["roles"]),
+            outcomes=frozenset(catalog_payload["outcomes"]),
+        )
+        source_dir = project_root / "SourceAssets" / "Narrative" / "Dialogues"
+        expected = {
+            "Dialogue.Tutorial.001.dialogue.json": "Dialogue.Tutorial.001",
+            "Dialogue.Main.XuXiake.CombatBriefing.dialogue.json": "Dialogue.Main.XuXiake.CombatBriefing",
+            "Dialogue.Main.XuXiake.FirstJourneyBriefing.dialogue.json": "Dialogue.Main.XuXiake.FirstJourneyBriefing",
+        }
+        payloads = {}
+        for filename, dialogue_id in expected.items():
+            payload = validate_file(source_dir / filename, catalogs)
+            payloads[dialogue_id] = payload
+            self.assertEqual(dialogue_id, payload["dialogueId"])
+            for node in payload["nodes"].values():
+                if node["type"] in {"line", "choice"}:
+                    self.assertEqual("dialogue", node["presentation"])
+            serialized = json.dumps(payload, ensure_ascii=False)
+            self.assertNotIn("解锁", serialized)
+            self.assertNotIn("加入队伍", serialized)
+
+        prologue_text = json.dumps(
+            payloads["Dialogue.Tutorial.001"], ensure_ascii=False
+        )
+        for required in ("河中旧图", "月白", "马车"):
+            self.assertIn(required, prologue_text)
+
 
 if __name__ == "__main__":
     unittest.main()

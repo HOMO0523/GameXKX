@@ -247,6 +247,42 @@ namespace GameXXKDesktopTrainingLayout
 		return PhysicalPixels / FMath::Max(0.01f, DpiScale);
 	}
 
+	FVector2D ResolveDesktopHudDragAnchor(
+		const FVector2D& DragStartNormalizedAnchor,
+		const FVector2D& DragStartPointerScreen,
+		const FVector2D& CurrentPointerScreen,
+		const FVector2D& PhysicalWorkAreaSize,
+		const FVector2D& CollapsedStripSize)
+	{
+		const FVector2D SafeStartAnchor(
+			FMath::Clamp(DragStartNormalizedAnchor.X, 0.0f, 1.0f),
+			FMath::Clamp(DragStartNormalizedAnchor.Y, 0.0f, 1.0f));
+		const FVector2D PointerDelta = CurrentPointerScreen - DragStartPointerScreen;
+		const auto ResolveAxis = [](const float StartAnchor,
+			const float Delta,
+			const float HostExtent,
+			const float StripExtent)
+		{
+			const float AvailableTravel = HostExtent - StripExtent;
+			if (AvailableTravel <= KINDA_SMALL_NUMBER)
+			{
+				return 0.0f;
+			}
+			return FMath::Clamp(StartAnchor + Delta / AvailableTravel, 0.0f, 1.0f);
+		};
+		return FVector2D(
+			ResolveAxis(
+				SafeStartAnchor.X,
+				PointerDelta.X,
+				PhysicalWorkAreaSize.X,
+				CollapsedStripSize.X),
+			ResolveAxis(
+				SafeStartAnchor.Y,
+				PointerDelta.Y,
+				PhysicalWorkAreaSize.Y,
+				CollapsedStripSize.Y));
+	}
+
 	FVector2D DesktopClientPointToReference(
 		const FVector2D& ClientPoint,
 		const float HudScale,

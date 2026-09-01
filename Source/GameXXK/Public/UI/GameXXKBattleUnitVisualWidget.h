@@ -35,6 +35,8 @@ public:
 	void RestoreFormation();
 	void RemoveAfterDeath();
 	void AdvanceAtRealTime(double AbsoluteSeconds);
+	void ApplyProceduralPresentation(const FVector2D& Translation, float Opacity);
+	void ResetProceduralPresentation();
 	void SetCardTargetingAvailability(bool bTargeting, bool bLegalTarget);
 
 	FVector2D GetPresentedSize() const;
@@ -47,6 +49,8 @@ public:
 	int32 GetFrameParameterWriteCountForTest() const;
 	bool IsRemovedForTest() const;
 	bool IsDimmedForCardTargetingForTest() const;
+	FVector2D GetProceduralTranslationForTest() const;
+	float GetProceduralOpacityForTest() const;
 
 private:
 	void BuildProgrammaticLayout();

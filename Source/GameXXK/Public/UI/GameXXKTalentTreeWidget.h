@@ -7,6 +7,7 @@
 #include "GameXXKTalentTreeWidget.generated.h"
 
 class UCanvasPanel;
+class UBorder;
 class UGameXXKMVPSubsystem;
 class UImage;
 class UScrollBox;
@@ -64,6 +65,12 @@ public:
 		return RenderedConnectionBoundaryOffsets;
 	}
 	FLinearColor GetNodeIconTintForTest(FName NodeId) const;
+	FVector2D GetGraphScrollOffsetForTest() const;
+	void PanGraphForTest(const FVector2D& DragDelta);
+	static FVector2D ResolveGraphPanOffset(
+		const FVector2D& CurrentOffset,
+		const FVector2D& DragDelta,
+		const FVector2D& MaximumOffset);
 	FGameXXKTalentPurchaseCommitted& OnPurchaseCommitted() { return PurchaseCommitted; }
 
 	void HandleNodeClicked(FName NodeId);
@@ -71,16 +78,27 @@ public:
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 
 private:
 	void BuildProgrammaticLayout();
 	void RebuildGraphAndDetails();
 	void BuildGraph(UCanvasPanel* GraphCanvas, const TArray<FGameXXKTalentNodeView>& Views);
 	void BuildDetails(const TArray<FGameXXKTalentNodeView>& Views);
+	void ApplyGraphPanDelta(const FVector2D& DragDelta);
 	const FGameXXKTalentNodeView* FindSelectedView(const TArray<FGameXXKTalentNodeView>& Views) const;
 
 	UFUNCTION()
 	void HandlePurchaseClicked();
+
+	UFUNCTION()
+	void HandleHorizontalGraphScrolled(float CurrentOffset);
+
+	UFUNCTION()
+	void HandleVerticalGraphScrolled(float CurrentOffset);
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKMVPSubsystem> MVPSubsystem;
@@ -90,6 +108,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> GraphCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> GraphFrame;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UScrollBox> HorizontalScroll;
@@ -129,5 +150,8 @@ private:
 	TArray<float> RenderedConnectionAngles;
 	TArray<FVector2D> RenderedConnectionBoundaryOffsets;
 	bool bSlateRebuildPending = false;
+	bool bGraphPanning = false;
+	FVector2D LastGraphPanScreenPosition = FVector2D::ZeroVector;
+	FVector2D RequestedGraphScrollOffset = FVector2D::ZeroVector;
 	FGameXXKTalentPurchaseCommitted PurchaseCommitted;
 };

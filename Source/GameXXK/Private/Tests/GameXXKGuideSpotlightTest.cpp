@@ -1,7 +1,15 @@
 #include "Misc/AutomationTest.h"
 
+#include "Blueprint/WidgetTree.h"
+#include "Components/CanvasPanel.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Input/HittestGrid.h"
+#include "Rendering/DrawElements.h"
+#include "Types/PaintArgs.h"
+#include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattleGuideBubbleWidget.h"
 #include "UI/GameXXKGuideOverlayWidget.h"
+#include "Widgets/SWindow.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -74,9 +82,9 @@ bool FGameXXKBattleGuideBubbleLayoutTest::RunTest(const FString& Parameters)
 	const FSlateRect BubbleRect = UGameXXKBattleGuideBubbleWidget::ResolveBubbleRect(
 		YueBaiNearRightEdge,
 		HostSize,
-		false);
-	TestTrue(TEXT("right-edge YueBai bubble chooses the left side"),
-		BubbleRect.Right <= YueBaiNearRightEdge.Left);
+		true);
+	TestTrue(TEXT("YueBai-anchored bubble prefers the space above 3P"),
+		BubbleRect.Bottom <= YueBaiNearRightEdge.Top);
 	TestTrue(TEXT("bubble remains inside left/top safe margin"),
 		BubbleRect.Left >= 16.0f && BubbleRect.Top >= 16.0f);
 	TestTrue(TEXT("bubble remains inside right/bottom safe margin"),
@@ -91,11 +99,11 @@ bool FGameXXKBattleGuideBubbleLayoutTest::RunTest(const FString& Parameters)
 		true,
 		YueBaiNearRightEdge,
 		HostSize,
-		false);
+		true);
 	TestTrue(TEXT("battle guide bubble becomes visible"), Bubble->IsBubbleVisible());
 	TestTrue(TEXT("information bubble shows Space hint"), Bubble->IsContinueHintVisible());
-	TestTrue(TEXT("battle guide bubble uses approved paper"),
-		Bubble->GetPaperTexturePath().Contains(TEXT("T_MasterV2_PanelLarge")));
+	TestTrue(TEXT("battle guide bubble uses the clean approved item-slot paper"),
+		Bubble->GetPaperTexturePath().Contains(TEXT("T_MasterV2_ItemSlot")));
 	return true;
 }
 
@@ -128,6 +136,176 @@ bool FGameXXKGuideOverlayMultiTargetPresentationTest::RunTest(const FString& Par
 		Overlay->GetVisibility() == ESlateVisibility::HitTestInvisible);
 	TestTrue(TEXT("overlay creates one guide bubble"),
 		Overlay->GetBattleBubbleForTest() != nullptr);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideOverlayDismissedLayoutParticipationTest,
+	"GameXXK.Guide.Widget.DismissedOverlayStaysLayoutable",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideOverlayDismissedLayoutParticipationTest::RunTest(
+	const FString& Parameters)
+{
+	UGameXXKGuideOverlayWidget* Overlay =
+		NewObject<UGameXXKGuideOverlayWidget>();
+	Overlay->TakeWidget();
+	Overlay->DismissGuide();
+
+	TestFalse(TEXT("dismissed overlay has no active guide"),
+		Overlay->IsGuideVisibleForTest());
+	TestFalse(TEXT("dismissed overlay never blocks input"),
+		Overlay->IsBlockingInputForTest());
+	TestEqual(
+		TEXT("dismissed overlay remains in Slate layout for late target geometry"),
+		Overlay->GetVisibility(),
+		ESlateVisibility::HitTestInvisible);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideOverlayDimPaintTintTest,
+	"GameXXK.Guide.Widget.DimPaintIsTranslucentBlack",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideOverlayDimPaintTintTest::RunTest(const FString& Parameters)
+{
+	UGameXXKGuideOverlayWidget* Overlay =
+		NewObject<UGameXXKGuideOverlayWidget>();
+	const TSharedRef<SWidget> OverlaySlate = Overlay->TakeWidget();
+	FGameXXKGuideOutput Output;
+	Output.bActive = true;
+	Output.InputPolicy = EGameXXKGuideInputPolicy::Forced;
+	Output.Text = FText::FromString(TEXT("气力值说明"));
+	Output.TargetIds = {TEXT("Battle.Hud.PartyQi")};
+	Overlay->PresentGuide(
+		Output,
+		TArray<FSlateRect>{FSlateRect(760.0f, 460.0f, 880.0f, 580.0f)},
+		TOptional<FSlateRect>());
+	UGameXXKGuideSpotlightWidget* Spotlight = Overlay->WidgetTree
+		? Cast<UGameXXKGuideSpotlightWidget>(
+			Overlay->WidgetTree->FindWidget(TEXT("GuideSpotlight")))
+		: nullptr;
+	TestNotNull(TEXT("dim-paint fixture owns its spotlight painter"), Spotlight);
+	if (!Spotlight)
+	{
+		return false;
+	}
+
+	const TSharedRef<SWindow> Window = SNew(SWindow)
+		.ClientSize(FVector2D(1280.0f, 720.0f))
+		.CreateTitleBar(false);
+	FSlateWindowElementList Elements(Window);
+	FHittestGrid HittestGrid;
+	const FGeometry Geometry = FGeometry::MakeRoot(
+		FVector2D(1280.0f, 720.0f),
+		FSlateLayoutTransform());
+	const FSlateRect CullingRect(0.0f, 0.0f, 1280.0f, 720.0f);
+	const FPaintArgs PaintArgs(
+		&Window.Get(),
+		HittestGrid,
+		FVector2D::ZeroVector,
+		0.0,
+		0.0f);
+	Spotlight->NativePaint(
+		PaintArgs,
+		Geometry,
+		CullingRect,
+		Elements,
+		0,
+		FWidgetStyle(),
+		true);
+
+	const FSlateDrawElementArray<FSlateBoxElement>& Boxes =
+		Elements.GetUncachedDrawElements().Get<(uint8)EElementType::ET_Box>();
+	bool bFoundTranslucentBlackDim = false;
+	for (const FSlateBoxElement& Box : Boxes)
+	{
+		const FLinearColor Tint = Box.GetTint();
+		if (FMath::IsNearlyZero(Tint.R)
+			&& FMath::IsNearlyZero(Tint.G)
+			&& FMath::IsNearlyZero(Tint.B)
+			&& FMath::IsNearlyEqual(Tint.A, 0.56f, 0.001f))
+		{
+			bFoundTranslucentBlackDim = true;
+			break;
+		}
+	}
+	TestTrue(TEXT("forced guide paints a translucent black dim region"),
+		bFoundTranslucentBlackDim);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKBattleGuideOverlayViewportRootTest,
+	"GameXXK.Guide.Widget.BattleOverlayFillsViewportRoot",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKBattleGuideOverlayViewportRootTest::RunTest(const FString& Parameters)
+{
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->TakeWidget();
+	UCanvasPanel* ViewportRoot = Board->GetBattleViewportRootForTest();
+	UGameXXKGuideOverlayWidget* GuideOverlay = Board->WidgetTree
+		? Cast<UGameXXKGuideOverlayWidget>(
+			Board->WidgetTree->FindWidget(TEXT("BattleTutorial01GuideOverlay")))
+		: nullptr;
+	const UCanvasPanelSlot* GuideSlot = GuideOverlay
+		? Cast<UCanvasPanelSlot>(GuideOverlay->Slot)
+		: nullptr;
+	TestNotNull(TEXT("battle guide overlay exists"), GuideOverlay);
+	TestTrue(TEXT("battle guide overlay is a viewport-root sibling"),
+		GuideOverlay && GuideOverlay->GetParent() == ViewportRoot);
+	TestTrue(TEXT("battle guide overlay stretches across the viewport root"),
+		GuideSlot
+		&& GuideSlot->GetAnchors().Minimum == FVector2D::ZeroVector
+		&& GuideSlot->GetAnchors().Maximum == FVector2D::UnitVector
+		&& GuideSlot->GetOffsets() == FMargin(0.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKGuideBubbleAboveDimLayerTest,
+	"GameXXK.Guide.Widget.BattleBubblePaintsAboveDimLayer",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKGuideBubbleAboveDimLayerTest::RunTest(const FString& Parameters)
+{
+	UGameXXKGuideOverlayWidget* Overlay =
+		NewObject<UGameXXKGuideOverlayWidget>();
+	Overlay->TakeWidget();
+	FGameXXKGuideOutput Output;
+	Output.bActive = true;
+	Output.InputPolicy = EGameXXKGuideInputPolicy::Forced;
+	Output.Text = FText::FromString(TEXT("气力值说明"));
+	Output.TargetIds = {TEXT("Battle.Hud.PartyQi")};
+	Output.AllowedActionIds = {TEXT("Action.Guide.Continue")};
+	Overlay->PresentGuide(
+		Output,
+		TArray<FSlateRect>{FSlateRect(760.0f, 460.0f, 880.0f, 580.0f)},
+		TOptional<FSlateRect>());
+
+	UWidget* Spotlight = Overlay->WidgetTree
+		? Overlay->WidgetTree->FindWidget(TEXT("GuideSpotlight"))
+		: nullptr;
+	UGameXXKBattleGuideBubbleWidget* Bubble =
+		Overlay->GetBattleBubbleForTest();
+	const UCanvasPanelSlot* SpotlightSlot = Spotlight
+		? Cast<UCanvasPanelSlot>(Spotlight->Slot)
+		: nullptr;
+	const UCanvasPanelSlot* BubbleSlot = Bubble
+		? Cast<UCanvasPanelSlot>(Bubble->Slot)
+		: nullptr;
+	TestNotNull(TEXT("overlay owns an independent spotlight child"), Spotlight);
+	TestTrue(TEXT("spotlight and paper bubble are sibling layers"),
+		Spotlight && Bubble && Spotlight->GetParent() == Bubble->GetParent());
+	TestTrue(TEXT("paper bubble z-order is above the spotlight"),
+		SpotlightSlot && BubbleSlot
+		&& BubbleSlot->GetZOrder() > SpotlightSlot->GetZOrder());
+	TestEqual(TEXT("overlay retains the guide body text"),
+		Overlay->GetGuideTextForTest(), Output.Text);
+	TestTrue(TEXT("bubble retains the continue hint"),
+		Bubble && Bubble->IsContinueHintVisible());
 	return true;
 }
 

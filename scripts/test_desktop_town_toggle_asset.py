@@ -11,6 +11,7 @@ SOURCE_ROOT = PROJECT_ROOT / "SourceArt" / "UI" / "DesktopOverlay"
 ASSETS = (
     SOURCE_ROOT / "T_DesktopTownEnterButton.png",
     SOURCE_ROOT / "T_DesktopTownExitButton.png",
+	SOURCE_ROOT / "T_DesktopStoryQuestButton.png",
 )
 
 

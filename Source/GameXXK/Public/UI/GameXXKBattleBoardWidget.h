@@ -542,6 +542,7 @@ public:
 	FString GetCardTooltipTextForTest() const;
 	bool IsCardTooltipVisibleForTest() const;
 	bool IsCardTooltipHitTestInvisibleForTest() const;
+	void SetCardTooltipExpandedForTest(bool bExpanded);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	UButton* GetHandCardButtonForTest(int32 SlotIndex) const;
@@ -594,6 +595,7 @@ public:
 	void RemoveUnitVisualForTest(FName UnitId);
 	/** Drives the production Victory/Defeat terminal handler against the supplied authoritative fixture state. */
 	bool ResolveCardBattleTerminalStateForTest();
+	bool ResolveAndRefreshCardBattleAfterMutationForTest();
 	/** Pure layout seam: callers supply a canvas size to validate the right rail against expanded hand and end-turn bounds. */
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
 	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
@@ -711,6 +713,7 @@ private:
 	const FBattlePresentationQueueEntry* GetActivePresentationEntry() const;
 	void AdvanceBattlePresentation(double AbsoluteSeconds);
 	void StartPresentationEntry(FBattlePresentationQueueEntry& Entry, double StartSeconds);
+	void UpdateProceduralPresentation(FBattlePresentationQueueEntry& Entry, double ElapsedSeconds);
 	void FirePresentationImpact(FBattlePresentationQueueEntry& Entry);
 	void CompletePresentationEntry(FBattlePresentationQueueEntry& Entry);
 	void EnqueueDeathPresentationAfterActive(const FGameXXKBattlePresentationEvent& Event);
@@ -722,7 +725,8 @@ private:
 	FGameXXKBattleAnimationClipDescriptor ResolveUnitAnimationClip(
 		FName UnitId,
 		bool bEnemy,
-		EGameXXKBattleAnimationAction Action) const;
+		EGameXXKBattleAnimationAction Action,
+		uint64 StableEventId = 0) const;
 	void SetTargetProxiesVisible(bool bVisible);
 	void SetDisplayedHealthOverlay(FName UnitId, int32 Health, int32 Armor = INDEX_NONE);
 	void ApplyDisplayedDamagePacket(const FGameXXKBattlePresentationEvent& Event);
@@ -1335,6 +1339,7 @@ private:
 	};
 
 	ECardTooltipSource HoveredCardTooltipSource = ECardTooltipSource::None;
+	bool bCardTooltipExpanded = false;
 
 	FName HoveredCardTooltipId = NAME_None;
 

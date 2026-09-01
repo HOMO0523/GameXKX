@@ -18,6 +18,7 @@ class UTextBlock;
 class UUniformGridPanel;
 class UVerticalBox;
 class UGameXXKDesktopTrainingWorkbenchWidget;
+class UGameXXKCardTooltipWidget;
 struct FGameXXKBattleAnimationClipDescriptor;
 
 UENUM(BlueprintType)
@@ -63,6 +64,7 @@ struct FGameXXKEmbeddedInventorySessionState
 	EGameXXKCharacterBackpackTab ActiveCharacterTab = EGameXXKCharacterBackpackTab::Equipment;
 	bool bBackpackSorted = false;
 	float BackpackScrollOffset = 0.0f;
+	float HeroDeckScrollOffset = 0.0f;
 	TArray<FName> PendingDeckIds;
 };
 
@@ -89,6 +91,25 @@ private:
 	EGameXXKInventorySlotSource Source = EGameXXKInventorySlotSource::None;
 	int32 SlotIndex = INDEX_NONE;
 	FName EquipmentSlotId;
+};
+
+UCLASS()
+class GAMEXXK_API UGameXXKInventoryScrollbarThumbButton : public UButton
+{
+	GENERATED_BODY()
+
+public:
+	void Configure(class UGameXXKInventoryWindowWidget* InOwner);
+	void BeginThumbDrag(float ScreenY, float GeometryScale);
+	void UpdateThumbDrag(float ScreenY);
+	void EndThumbDrag();
+
+protected:
+	virtual TSharedRef<SWidget> RebuildWidget() override;
+
+private:
+	UPROPERTY(Transient)
+	TObjectPtr<class UGameXXKInventoryWindowWidget> Owner;
 };
 
 UCLASS()
@@ -151,6 +172,8 @@ class GAMEXXK_API UGameXXKInventoryWindowWidget : public UGameXXKMVPWidgetBase
 	GENERATED_BODY()
 
 public:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
 	/**
 	 * Reuses the approved page-03 backpack inside the desktop-training shell.
 	 * The default full-screen inventory remains unchanged when this is false.
@@ -184,6 +207,16 @@ public:
 	bool IsBackpackSortedForTest() const;
 	void SetBackpackScrollOffsetForTest(float ScrollOffset);
 	float GetBackpackScrollOffsetForTest() const;
+	float GetHeroDeckScrollOffsetForTest() const;
+	static float ResolveBackpackScrollOffsetForThumbDrag(
+		float StartScrollOffset,
+		float ScreenDeltaY,
+		float GeometryScale,
+		float MaximumScrollOffset,
+		float ThumbTravel);
+	void BeginBackpackScrollbarThumbDrag(float ScreenY, float GeometryScale);
+	void UpdateBackpackScrollbarThumbDrag(float ScreenY);
+	void EndBackpackScrollbarThumbDrag();
 
 	FName GetBackpackItemIdAtSlotForDesktopTraining(int32 SlotIndex) const;
 	FName GetBackpackEquipmentInstanceIdAtSlotForDesktopTraining(int32 SlotIndex) const;
@@ -192,6 +225,8 @@ public:
 
 	/** Refreshes the current visible page from runtime state without rebuilding WidgetTree. */
 	void RefreshVisibleRuntimeValues();
+	/** Host heartbeat that enforces physical Shift even if a nested Tooltip misses key-up. */
+	void SynchronizeCardTooltipShiftState();
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
 	bool OpenFreeInventory();
@@ -392,6 +427,11 @@ private:
 	void RefreshDetailPanel();
 	void RefreshConfirmationDialog();
 	void RefreshCharacterTabs();
+	void UpdateBackpackScrollbarThumb();
+	UScrollBox* ResolveActiveInkScrollbar() const;
+	float ResolveActiveInkScrollbarMaximumOffset() const;
+	float ResolveActiveInkScrollbarThumbTravel() const;
+	FVector2D ResolveActiveInkScrollbarThumbTop() const;
 	void RefreshHeroDeckCards();
 	FName ResolveInventoryCharacterId() const;
 	FGameXXKBattleAnimationClipDescriptor ResolveCentralCharacterIdleClip() const;
@@ -429,7 +469,9 @@ private:
 	UFUNCTION()
 	void HandleBackpackScrolled(float CurrentOffset);
 
-	void UpdateBackpackScrollbarThumb();
+	UFUNCTION()
+	void HandleHeroDeckScrolled(float CurrentOffset);
+
 
 	UFUNCTION()
 	void HandleDecomposeClicked();
@@ -518,10 +560,7 @@ private:
 	TArray<TObjectPtr<UTextBlock>> HeroDeckManaCostLabels;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> HeroDeckTooltipNameBlocks;
-
-	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTextBlock>> HeroDeckTooltipDetailBlocks;
+	TArray<TObjectPtr<UGameXXKCardTooltipWidget>> HeroDeckTooltipWidgets;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> ApplyHeroDeckButton;
@@ -554,7 +593,7 @@ private:
 	TObjectPtr<UScrollBox> BackpackScrollBox;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UImage> InventoryScrollbarThumb;
+	TObjectPtr<UGameXXKInventoryScrollbarThumbButton> InventoryScrollbarThumb;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UImage> BackpackSelectionInk;
@@ -699,6 +738,13 @@ private:
 	FName ConfiguredDesktopTrainingCharacterId = NAME_None;
 	bool bBackpackSorted = false;
 	float DeferredBackpackScrollOffset = 0.0f;
+	float DeferredHeroDeckScrollOffset = 0.0f;
+	bool bBackpackScrollbarThumbDragging = false;
+	bool bBackpackScrollbarDragTargetsHeroDeck = false;
+	bool bCardTooltipShiftExpanded = false;
+	float BackpackScrollbarDragStartScreenY = 0.0f;
+	float BackpackScrollbarDragStartOffset = 0.0f;
+	float BackpackScrollbarDragGeometryScale = 1.0f;
 	TArray<FName> CurrentBackpackSlotItemIds;
 	TArray<FName> CurrentBackpackSlotEquipmentInstanceIds;
 	TArray<int32> CurrentBackpackSlotQuantities;

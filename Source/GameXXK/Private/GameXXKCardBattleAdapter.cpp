@@ -29,6 +29,22 @@ namespace
 	const FName SpiralHornDeerSpringHealIntentId(TEXT("SpringHeal"));
 	const FName LifeSavingTalismanRelicId(TEXT("Relic.LifeSavingTalisman"));
 
+	EGameXXKCardBattleNodeKind CardBattleNodeKind(
+		const EGameXXKNodeKind NodeKind)
+	{
+		switch (NodeKind)
+		{
+		case EGameXXKNodeKind::Battle:
+			return EGameXXKCardBattleNodeKind::Battle;
+		case EGameXXKNodeKind::Elite:
+			return EGameXXKCardBattleNodeKind::Elite;
+		case EGameXXKNodeKind::Boss:
+			return EGameXXKCardBattleNodeKind::Boss;
+		default:
+			return EGameXXKCardBattleNodeKind::Invalid;
+		}
+	}
+
 	bool SetFailure(FString* OutError, const TCHAR* Error)
 	{
 		if (OutError)
@@ -2309,6 +2325,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	NewRuntime.SourceNodeKind = CardBattleNodeKind(NodeKind);
 	FGameXXKTalentProjection TalentProjection;
 	if (!FGameXXKTalentRules::BuildProjection(NewState.Talents, TalentProjection, OutError))
 	{

@@ -22,6 +22,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "InputCoreTypes.h"
 #include "Styling/CoreStyle.h"
 
 namespace
@@ -262,6 +263,26 @@ void UGameXXKTalentTreeWidget::TickForTest(const float DeltaSeconds)
 	NativeTick(FGeometry(), FMath::Max(0.0f, DeltaSeconds));
 }
 
+FVector2D UGameXXKTalentTreeWidget::GetGraphScrollOffsetForTest() const
+{
+	return RequestedGraphScrollOffset;
+}
+
+void UGameXXKTalentTreeWidget::PanGraphForTest(const FVector2D& DragDelta)
+{
+	ApplyGraphPanDelta(DragDelta);
+}
+
+FVector2D UGameXXKTalentTreeWidget::ResolveGraphPanOffset(
+	const FVector2D& CurrentOffset,
+	const FVector2D& DragDelta,
+	const FVector2D& MaximumOffset)
+{
+	return FVector2D(
+		FMath::Clamp(CurrentOffset.X - DragDelta.X, 0.0f, FMath::Max(0.0f, MaximumOffset.X)),
+		FMath::Clamp(CurrentOffset.Y - DragDelta.Y, 0.0f, FMath::Max(0.0f, MaximumOffset.Y)));
+}
+
 bool UGameXXKTalentTreeWidget::ClickPurchaseButtonForTest()
 {
 	if (!PurchaseButton || !MVPSubsystem)
@@ -451,7 +472,7 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		TEXT("TalentTreeRoot"));
 	WidgetTree->RootWidget = RootCanvas;
 
-	UBorder* GraphFrame = WidgetTree->ConstructWidget<UBorder>(
+	GraphFrame = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(),
 		TEXT("TalentGraphFrame"));
 	GraphFrame->SetBrushColor(FLinearColor(0.12f, 0.105f, 0.08f, 0.86f));
@@ -463,8 +484,11 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		UScrollBox::StaticClass(),
 		TEXT("TalentHorizontalScroll"));
 	HorizontalScroll->SetOrientation(Orient_Horizontal);
-	HorizontalScroll->SetScrollBarVisibility(ESlateVisibility::Visible);
+	HorizontalScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	HorizontalScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	HorizontalScroll->OnUserScrolled.AddDynamic(
+		this,
+		&UGameXXKTalentTreeWidget::HandleHorizontalGraphScrolled);
 	GraphFrame->SetContent(HorizontalScroll);
 
 	USizeBox* HorizontalExtent = WidgetTree->ConstructWidget<USizeBox>(
@@ -478,8 +502,11 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		UScrollBox::StaticClass(),
 		TEXT("TalentVerticalScroll"));
 	VerticalScroll->SetOrientation(Orient_Vertical);
-	VerticalScroll->SetScrollBarVisibility(ESlateVisibility::Visible);
+	VerticalScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
 	VerticalScroll->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
+	VerticalScroll->OnUserScrolled.AddDynamic(
+		this,
+		&UGameXXKTalentTreeWidget::HandleVerticalGraphScrolled);
 	HorizontalExtent->SetContent(VerticalScroll);
 
 	USizeBox* VerticalExtent = WidgetTree->ConstructWidget<USizeBox>(
@@ -564,8 +591,93 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 	BuildGraph(GraphCanvas, Views);
 	BuildDetails(Views);
 
-	HorizontalScroll->SetScrollOffset(GraphCenter - GraphViewportWidth * 0.5f);
-	VerticalScroll->SetScrollOffset(GraphCenter - WidgetHeight * 0.5f);
+	RequestedGraphScrollOffset = FVector2D(
+		GraphCenter - GraphViewportWidth * 0.5f,
+		GraphCenter - WidgetHeight * 0.5f);
+	HorizontalScroll->SetScrollOffset(RequestedGraphScrollOffset.X);
+	VerticalScroll->SetScrollOffset(RequestedGraphScrollOffset.Y);
+}
+
+void UGameXXKTalentTreeWidget::ApplyGraphPanDelta(const FVector2D& DragDelta)
+{
+	if (!HorizontalScroll || !VerticalScroll)
+	{
+		return;
+	}
+	const FVector2D CurrentOffset = RequestedGraphScrollOffset;
+	const float HorizontalEnd = HorizontalScroll->GetScrollOffsetOfEnd();
+	const float VerticalEnd = VerticalScroll->GetScrollOffsetOfEnd();
+	const FVector2D MaximumOffset(
+		HorizontalEnd > 0.0f ? HorizontalEnd : GraphCanvasExtent - GraphViewportWidth,
+		VerticalEnd > 0.0f ? VerticalEnd : GraphCanvasExtent - WidgetHeight);
+	const FVector2D Resolved = ResolveGraphPanOffset(
+		CurrentOffset,
+		DragDelta,
+		MaximumOffset);
+	RequestedGraphScrollOffset = Resolved;
+	HorizontalScroll->SetScrollOffset(Resolved.X);
+	VerticalScroll->SetScrollOffset(Resolved.Y);
+}
+
+void UGameXXKTalentTreeWidget::HandleHorizontalGraphScrolled(const float CurrentOffset)
+{
+	RequestedGraphScrollOffset.X = FMath::Max(0.0f, CurrentOffset);
+}
+
+void UGameXXKTalentTreeWidget::HandleVerticalGraphScrolled(const float CurrentOffset)
+{
+	RequestedGraphScrollOffset.Y = FMath::Max(0.0f, CurrentOffset);
+}
+
+FReply UGameXXKTalentTreeWidget::NativeOnMouseButtonDown(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton
+		&& GraphFrame
+		&& GraphFrame->GetCachedGeometry().IsUnderLocation(InMouseEvent.GetScreenSpacePosition()))
+	{
+		bGraphPanning = true;
+		LastGraphPanScreenPosition = InMouseEvent.GetScreenSpacePosition();
+		return FReply::Handled().CaptureMouse(GetCachedWidget().ToSharedRef());
+	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
+}
+
+FReply UGameXXKTalentTreeWidget::NativeOnMouseButtonUp(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (bGraphPanning && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
+	{
+		bGraphPanning = false;
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
+}
+
+FReply UGameXXKTalentTreeWidget::NativeOnMouseMove(
+	const FGeometry& InGeometry,
+	const FPointerEvent& InMouseEvent)
+{
+	if (bGraphPanning)
+	{
+		const FVector2D CurrentScreenPosition = InMouseEvent.GetScreenSpacePosition();
+		const float GeometryScale = FMath::Max(
+			0.01f,
+			static_cast<float>(InGeometry.GetAccumulatedLayoutTransform().GetScale()));
+		ApplyGraphPanDelta((CurrentScreenPosition - LastGraphPanScreenPosition) / GeometryScale);
+		LastGraphPanScreenPosition = CurrentScreenPosition;
+		return FReply::Handled();
+	}
+	return Super::NativeOnMouseMove(InGeometry, InMouseEvent);
+}
+
+void UGameXXKTalentTreeWidget::NativeOnMouseCaptureLost(
+	const FCaptureLostEvent& CaptureLostEvent)
+{
+	bGraphPanning = false;
+	Super::NativeOnMouseCaptureLost(CaptureLostEvent);
 }
 
 void UGameXXKTalentTreeWidget::RebuildGraphAndDetails()
@@ -574,8 +686,8 @@ void UGameXXKTalentTreeWidget::RebuildGraphAndDetails()
 	{
 		return;
 	}
-	const float HorizontalOffset = HorizontalScroll ? HorizontalScroll->GetScrollOffset() : 0.0f;
-	const float VerticalOffset = VerticalScroll ? VerticalScroll->GetScrollOffset() : 0.0f;
+	const float HorizontalOffset = RequestedGraphScrollOffset.X;
+	const float VerticalOffset = RequestedGraphScrollOffset.Y;
 	GraphCanvas->ClearChildren();
 	NodeIconImages.Reset();
 	NodeButtons.Reset();

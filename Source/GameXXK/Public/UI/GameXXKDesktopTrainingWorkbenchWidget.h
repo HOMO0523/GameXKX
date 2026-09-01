@@ -562,9 +562,8 @@ private:
 	void LoadDesktopNativeWindowPosition();
 	void SaveDesktopNativeWindowPosition();
 	void UpdateDesktopOverlayPlacement(const FVector2D& HostSize);
-	void UpdateDesktopOverlayAnchorFromPointer(
-		const FGeometry& HostGeometry,
-		const FVector2D& ScreenSpacePointerPosition);
+	bool TryGetDesktopHudPointerScreenPosition(FVector2D& OutPointerScreen) const;
+	void UpdateDesktopOverlayAnchorFromPointer();
 	void RebuildLayoutNow();
 	void BuildWorkbenchShell();
 	void BuildTownToggleButton();
@@ -994,7 +993,8 @@ private:
 	void* DesktopPreviousWindowProc = nullptr;
 	FVector2D DesktopWindowPositionNormalized = FVector2D(0.5f, 0.08f);
 	FVector2D DesktopOverlayHostSize = FVector2D(1920.0f, 1020.0f);
-	FVector2D DesktopHudDragPointerOffset = FVector2D::ZeroVector;
+	FVector2D DesktopHudDragStartPointerScreen = FVector2D::ZeroVector;
+	FVector2D DesktopHudDragStartNormalizedAnchor = FVector2D::ZeroVector;
 	FIntPoint DesktopWorkAreaOrigin = FIntPoint::ZeroValue;
 	GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement DesktopOverlayPlacement;
 	GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics DesktopResolvedMetrics;

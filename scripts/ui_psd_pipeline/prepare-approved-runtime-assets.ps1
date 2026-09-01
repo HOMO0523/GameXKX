@@ -40,7 +40,6 @@ $assetMap = [ordered]@{
     T_MasterV2_EquipmentSlot = 'SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Components/equipment_slot_left_01.png'
 	T_MasterV2_ButtonPurchase = 'SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Components/tab_02_equipment_selected.png'
     T_MasterV2_HeroFullBody = 'SourceArt/UI/PSD/gamexxk-v3/hero-backpack/Assets/hero_runtime_idle_frame_0000.png'
-    T_MasterV2_BackpackScrollbarRight = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/Assets/LayoutAssets/03_主角背包_inventory_scrollbar_right.png'
     T_MasterV2_CloseInk = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/Assets/Controls/close_button_ink_v2.png'
     T_MasterV2_CardFrame = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/CardDeckKit/card_frame_base_PSD057.png'
     T_MasterV2_CardLockedIcon = 'SourceArt/UI/PSD/gamexxk-v4/ui-master/ManualEditing/CardDeckKit/card_state_locked_icon_full.png'

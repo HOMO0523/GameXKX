@@ -1747,6 +1747,16 @@ enum class EGameXXKCardBattlePhase : uint8
 	Defeat = 4
 };
 
+/** Persisted semantic source kind for a card battle, independent of generated-route provenance. */
+UENUM(BlueprintType)
+enum class EGameXXKCardBattleNodeKind : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	Battle = 1,
+	Elite = 2,
+	Boss = 3
+};
+
 /** Stable card/owner/target data sufficient to replay base effects after the live instance moves. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKResolvedCardSnapshot
@@ -2169,6 +2179,13 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardBattlePhase Phase = EGameXXKCardBattlePhase::Invalid;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardBattleNodeKind SourceNodeKind = EGameXXKCardBattleNodeKind::Invalid;
+
+	/** Exact semantic encounter identity; never inferred from a truncated node hash. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceEncounterId = NAME_None;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardTerrain Terrain = EGameXXKCardTerrain::Invalid;

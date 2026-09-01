@@ -17,6 +17,7 @@
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
+#include "Framework/Application/SlateApplication.h"
 #include "GameXXKAffixCatalog.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardText.h"
@@ -29,6 +30,7 @@
 #include "InputCoreTypes.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "UI/GameXXKCardTooltipWidget.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SButton.h"
@@ -106,6 +108,7 @@ namespace
 	const FVector2D CompanionScrollbarThumbSize(30.0f, 126.0f);
 	const FVector2D CompanionSelectionInkPos(1128.0f, 284.0f);
 	const FVector2D CompanionSelectionInkSize(126.0f, 42.0f);
+	const FVector2D CompanionCardSelectionInkSize(126.0f, 30.0f);
 	// Hero deck-tab geometry mirrored for the partner card grid (panel padding 24,20).
 	const FVector2D CompanionDeckScrollPos(0.0f, 34.0f);
 	const FVector2D CompanionDeckScrollSize(470.0f, 500.0f);
@@ -157,11 +160,9 @@ namespace
 	static constexpr const TCHAR* TooltipPaperTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	static constexpr const TCHAR* CloseButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	// Page 03/18 scrollbar and selection ink.
-	static constexpr const TCHAR* ScrollbarTrackTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight.T_MasterV2_BackpackScrollbarRight");
 	static constexpr const TCHAR* ScrollbarThumbTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button.inventory_scrollbar_Button");
 	static constexpr const TCHAR* SelectionInkTexturePath = nullptr;
 	static constexpr const TCHAR* SquareSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_SquareSelected.T_MasterV2_SquareSelected");
-	static constexpr const TCHAR* RectangularSelectionTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	// Page 18 dismiss action reuses the approved decompose paper (01_DecomposeButton).
 	static constexpr const TCHAR* DismissButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/01_DecomposeButton.01_DecomposeButton");
 	static constexpr const TCHAR* HeroCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero");
@@ -1241,8 +1242,21 @@ bool UGameXXKCompanionRosterWidget::HasPersonalCardScrollBoxForTest() const
 
 FString UGameXXKCompanionRosterWidget::GetPersonalCardScrollTrackResourcePathForTest() const
 {
-	// Page 18 deck grid shares the page 03 PSD scrollbar track with the warehouse window.
-	return ScrollbarTrackTexturePath;
+	return FString();
+}
+
+void UGameXXKCompanionRosterWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	bCardTooltipShiftExpanded = bShiftExpanded;
+	for (UGameXXKCardTooltipWidget* Tooltip : PersonalCardTooltipWidgets)
+	{
+		if (Tooltip)
+		{
+			Tooltip->SetExpandedFromOwner(bShiftExpanded);
+		}
+	}
 }
 
 FString UGameXXKCompanionRosterWidget::GetPersonalCardScrollThumbResourcePathForTest() const
@@ -1727,11 +1741,8 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		BackpackTooltipDetailTextBlocks.Add(TooltipDetail);
 	}
 
-	// Page 03/18 right-side scrollbar: PSD track + thumb; shared by the warehouse
-	// window and the card grid.
-	ScrollbarTrackImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CompanionRosterScrollbarTrack"));
-	ScrollbarTrackImage->SetBrush(MakeTextureBrush(ScrollbarTrackTexturePath, CompanionScrollbarTrackSize));
-	AddCanvasChild(FrameCanvas, ScrollbarTrackImage, CompanionScrollbarTrackPos, CompanionScrollbarTrackSize);
+	// The rejected light-handle/long-track export is deliberately absent. The
+	// approved black ink thumb remains the only visible scrollbar artwork.
 	InventoryScrollbarThumb = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CompanionRosterScrollbarThumb"));
 	InventoryScrollbarThumb->SetBrush(MakeTextureBrush(ScrollbarThumbTexturePath, CompanionScrollbarThumbSize));
 	AddCanvasChild(FrameCanvas, InventoryScrollbarThumb, CompanionScrollbarThumbTop, CompanionScrollbarThumbSize);
@@ -1794,12 +1805,15 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 
 		// Selection ink sits at the card top so the selected card name stays visible.
 		UImage* SelectedInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardInk_%02d"), CardIndex));
-		SelectedInk->SetBrush(MakeBoxTextureBrush(RectangularSelectionTexturePath, CompanionSelectionInkSize));
+		SelectedInk->SetBrush(MakeTextureBrush(
+			ScrollbarThumbTexturePath,
+			CompanionCardSelectionInkSize));
 		SelectedInk->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* InkSlot = CardOverlay->AddChildToOverlay(SelectedInk))
 		{
 			InkSlot->SetHorizontalAlignment(HAlign_Center);
 			InkSlot->SetVerticalAlignment(VAlign_Top);
+			InkSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 		}
 
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
@@ -1812,22 +1826,22 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 			LabelSlot->SetPadding(FMargin(5.0f, 15.0f, 5.0f, 0.0f));
 		}
 
-		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(5.0f, 50.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 50.0f, 0.0f, 0.0f));
 		}
 
-		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 10, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(5.0f, 68.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 68.0f, 0.0f, 0.0f));
 		}
 
 		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardLock_%02d"), CardIndex));
@@ -1839,22 +1853,10 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 			LockSlot->SetVerticalAlignment(VAlign_Center);
 		}
 
-		// Hero-style paper tooltip (name + full effect description) follows the cursor.
-		UBorder* CardTooltipFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardTooltip_%02d"), CardIndex));
-		CardTooltipFrame->SetBrush(MakeBoxTextureBrush(TooltipPaperTexturePath, CompanionTooltipPaperSize));
-		CardTooltipFrame->SetBrushColor(FLinearColor::White);
-		CardTooltipFrame->SetPadding(CompanionTooltipPadding);
-		UVerticalBox* CardTooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		CardTooltipFrame->AddChild(CardTooltipBox);
-		UTextBlock* CardTooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		CardTooltipBox->AddChildToVerticalBox(CardTooltipName);
-		UTextBlock* CardTooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		CardTooltipDetail->SetAutoWrapText(true);
-		if (UVerticalBoxSlot* TooltipDetailSlot = CardTooltipBox->AddChildToVerticalBox(CardTooltipDetail))
-		{
-			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
-		}
-		CardButton->SetToolTip(CardTooltipFrame);
+		UGameXXKCardTooltipWidget* CardTooltip = WidgetTree->ConstructWidget<UGameXXKCardTooltipWidget>(
+			UGameXXKCardTooltipWidget::StaticClass(),
+			*FString::Printf(TEXT("CompanionRosterPersonalCardTooltip_%02d"), CardIndex));
+		CardButton->SetToolTip(CardTooltip);
 
 		CardButton->AddChild(CardOverlay);
 		USizeBox* CardSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
@@ -1873,9 +1875,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		PersonalCardCostLabels.Add(CostQiLabel);
 		PersonalCardManaCostLabels.Add(CostManaLabel);
 		PersonalCardLockedIcons.Add(LockedIcon);
-		PersonalCardTooltipFrames.Add(CardTooltipFrame);
-		PersonalCardTooltipNameBlocks.Add(CardTooltipName);
-		PersonalCardTooltipDetailBlocks.Add(CardTooltipDetail);
+		PersonalCardTooltipWidgets.Add(CardTooltip);
 		PersonalCardTooltipTexts.Add(FString());
 	}
 
@@ -2330,19 +2330,10 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 				? ESlateVisibility::HitTestInvisible
 				: ESlateVisibility::Collapsed);
 		}
-		// Hero-style paper tooltip: name + full effect description (with the
-		// unavailable reason / interaction hint when applicable).
-		if (UBorder* TooltipFrame = PersonalCardTooltipFrames.IsValidIndex(CardIndex) ? PersonalCardTooltipFrames[CardIndex].Get() : nullptr)
+		if (UGameXXKCardTooltipWidget* Tooltip = PersonalCardTooltipWidgets.IsValidIndex(CardIndex)
+			? PersonalCardTooltipWidgets[CardIndex].Get()
+			: nullptr)
 		{
-			TooltipFrame->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
-		}
-		if (UTextBlock* TooltipName = PersonalCardTooltipNameBlocks.IsValidIndex(CardIndex) ? PersonalCardTooltipNameBlocks[CardIndex].Get() : nullptr)
-		{
-			TooltipName->SetText(Definition ? Definition->DisplayName : FText::FromName(CardId));
-		}
-		if (UTextBlock* TooltipDetail = PersonalCardTooltipDetailBlocks.IsValidIndex(CardIndex) ? PersonalCardTooltipDetailBlocks[CardIndex].Get() : nullptr)
-		{
-			FString TooltipText;
 			if (Definition)
 			{
 				FGameXXKCardTooltipContext Context;
@@ -2361,18 +2352,19 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 						? TEXT("主角牌组已满（8 张），无法编入此牌。")
 						: TEXT("该伙伴个人牌组已满（5 张），无法编入此牌。");
 				}
-				else
-				{
-					Context.InteractionResult = bEditingHeroDeck
-						? TEXT("点击后编入/移出主角牌组；需保持 8 张。")
-						: TEXT("点击后编入/移出该伙伴个人牌组；需保持 5 张。");
-				}
-				TooltipText = GameXXKCardText::DescribeTooltip(*Definition, Definition->BaseQuality, nullptr, Context);
+				Tooltip->ConfigureCard(
+					*Definition,
+					Definition->BaseQuality,
+					nullptr,
+					Context);
 			}
-			TooltipDetail->SetText(FText::FromString(TooltipText));
+			else
+			{
+				Tooltip->ConfigureDirect(FText::GetEmpty(), FString());
+			}
 			if (PersonalCardTooltipTexts.IsValidIndex(CardIndex))
 			{
-				PersonalCardTooltipTexts[CardIndex] = TooltipText;
+				PersonalCardTooltipTexts[CardIndex] = Tooltip->GetDisplayedTextForTest();
 			}
 		}
 	}

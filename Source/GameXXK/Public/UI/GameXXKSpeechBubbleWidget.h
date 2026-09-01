@@ -9,6 +9,7 @@
 class APlayerController;
 class UBorder;
 class UCanvasPanel;
+class UPrimitiveComponent;
 class USceneComponent;
 class UTextBlock;
 
@@ -21,6 +22,9 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 
 	bool PresentBubble(const FGameXXKDialoguePresentationView& View, USceneComponent* Anchor);
+	bool PresentBubbleAtVisualTop(
+		const FGameXXKDialoguePresentationView& View,
+		UPrimitiveComponent* VisualAnchor);
 	bool UpdateAnchor(APlayerController* Controller);
 	void ClearBubble();
 
@@ -28,13 +32,19 @@ public:
 		FVector2D ProjectedPosition,
 		FVector2D ViewportSize,
 		FVector2D BubbleSize);
+	static FVector VisualBoundsTopForTest(FVector BoundsOrigin, FVector BoundsExtent);
 	bool IsBubbleVisibleForTest() const;
+	bool UsesVisualBoundsTopForTest() const { return bUseVisualBoundsTop; }
 	bool IsBubbleHitTestInvisibleForTest() const;
 	int32 GetBubbleCountForTest() const;
 	FText GetBodyTextForTest() const;
 	int32 GetMaximumLineCountForTest() const;
 
 private:
+	bool PresentBubbleInternal(
+		const FGameXXKDialoguePresentationView& View,
+		USceneComponent* Anchor,
+		bool bInUseVisualBoundsTop);
 	void BuildProgrammaticLayout();
 	static FVector2D ClampToViewport(
 		FVector2D ProjectedPosition,
@@ -54,4 +64,5 @@ private:
 	FGameXXKDialoguePresentationView CurrentView;
 	FString LastPresentationError;
 	bool bBubbleVisible = false;
+	bool bUseVisualBoundsTop = false;
 };

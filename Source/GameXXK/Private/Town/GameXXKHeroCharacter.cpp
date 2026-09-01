@@ -18,6 +18,16 @@ namespace
 	constexpr float HeroTownMovementAxisDeadZone = 0.20f;
 	constexpr double HeroTownDiagonalReleaseGraceSeconds = 0.04;
 	const TCHAR* PlayerOcclusionRevealMaterialPath = TEXT("/Game/GameXXK/Materials/Player/M_PlayerOcclusionReveal.M_PlayerOcclusionReveal");
+	const TCHAR* HeroTownHorizontalIdlePath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Idle_Left.FB_Hero_Town_Idle_Left");
+	const TCHAR* HeroTownHorizontalWalkStartPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStart_Left.FB_Hero_Town_WalkStart_Left");
+	const TCHAR* HeroTownHorizontalWalkLoopPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkLoop_Left.FB_Hero_Town_WalkLoop_Left");
+	const TCHAR* HeroTownHorizontalWalkStopPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_WalkStop_Left.FB_Hero_Town_WalkStop_Left");
+	const TCHAR* HeroTownHorizontalDeepBreathPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_DeepBreath_Left.FB_Hero_Town_DeepBreath_Left");
+	const TCHAR* HeroTownHorizontalAdjustBackpackPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_AdjustBackpack_Left.FB_Hero_Town_AdjustBackpack_Left");
+	const TCHAR* HeroTownHorizontalCollectItemPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CollectItem_Left.FB_Hero_Town_CollectItem_Left");
+	const TCHAR* HeroTownHorizontalCombatIdlePath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_CombatIdle_Left.FB_Hero_Town_CombatIdle_Left");
+	const TCHAR* HeroTownHorizontalPunchPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Punch_Left.FB_Hero_Town_Punch_Left");
+	const TCHAR* HeroTownHorizontalKickPath = TEXT("/Game/GameXXK/Characters/Hero/TownHorizontal/Flipbooks/FB_Hero_Town_Kick_Left.FB_Hero_Town_Kick_Left");
 
 	FSoftObjectPath MakeHeroCharacterWalkFlipbookPath(const TCHAR* DirectionName)
 	{
@@ -91,6 +101,13 @@ namespace
 	{
 		return FPlatformTime::Seconds();
 	}
+
+	bool IsLoopingTownAction(const EGameXXKHeroTownAction Action)
+	{
+		return Action == EGameXXKHeroTownAction::Idle
+			|| Action == EGameXXKHeroTownAction::WalkLoop
+			|| Action == EGameXXKHeroTownAction::CombatIdle;
+	}
 }
 
 AGameXXKHeroCharacter::AGameXXKHeroCharacter()
@@ -131,7 +148,7 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	Visual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("Visual"));
 	Visual->SetupAttachment(Capsule);
 	Visual->SetRelativeLocation(FVector(0.0f, 0.0f, -80.0f));
-	Visual->SetRelativeRotation(FRotator(0.0f, 90.0f, -30.0f));
+	Visual->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	Visual->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	Visual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Visual->SetCastShadow(false);
@@ -142,7 +159,7 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	OcclusionRevealVisual = CreateDefaultSubobject<UPaperFlipbookComponent>(TEXT("OcclusionRevealVisual"));
 	OcclusionRevealVisual->SetupAttachment(Capsule);
 	OcclusionRevealVisual->SetRelativeLocation(FVector(0.0f, 0.0f, -80.0f));
-	OcclusionRevealVisual->SetRelativeRotation(FRotator(0.0f, 90.0f, -30.0f));
+	OcclusionRevealVisual->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
 	OcclusionRevealVisual->SetRelativeScale3D(FVector(1.0f, 1.0f, 1.0f));
 	OcclusionRevealVisual->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	OcclusionRevealVisual->SetCastShadow(false);
@@ -158,7 +175,8 @@ AGameXXKHeroCharacter::AGameXXKHeroCharacter()
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 
 	InitializeTownDirectionFlipbooks();
-	DefaultTownFlipbookAsset = TownIdleDirectionFlipbookAssets.FindRef(EGameXXKTownFacingDirection::South);
+	DefaultTownFlipbookAsset = TownHorizontalIdleFlipbookAsset;
+	CurrentTownFacingDirection = EGameXXKTownFacingDirection::West;
 	ApplyTownFacingFlipbook();
 }
 
@@ -205,6 +223,8 @@ void AGameXXKHeroCharacter::InitializeOcclusionRevealMaterial()
 void AGameXXKHeroCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	AdvanceHorizontalTownLocomotion();
+	TickHorizontalTownAmbient(DeltaSeconds);
 	SynchronizeOcclusionRevealVisual();
 
 	const FVector MoveDirection = (FVector::RightVector * HorizontalIntent) + (FVector::ForwardVector * VerticalIntent);
@@ -312,11 +332,23 @@ bool AGameXXKHeroCharacter::HasAssignedTownFlipbook() const
 
 UPaperFlipbook* AGameXXKHeroCharacter::GetDefaultTownFlipbook() const
 {
-	return DefaultTownFlipbookOverride ? DefaultTownFlipbookOverride.Get() : DefaultTownFlipbookAsset.LoadSynchronous();
+	if (DefaultTownFlipbookOverride)
+	{
+		return DefaultTownFlipbookOverride.Get();
+	}
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return GetHorizontalTownIdleFlipbook();
+	}
+	return DefaultTownFlipbookAsset.LoadSynchronous();
 }
 
 FSoftObjectPath AGameXXKHeroCharacter::GetDefaultTownFlipbookPath() const
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return TownHorizontalIdleFlipbookAsset.ToSoftObjectPath();
+	}
 	return DefaultTownFlipbookAsset.ToSoftObjectPath();
 }
 
@@ -347,6 +379,10 @@ FSoftObjectPath AGameXXKHeroCharacter::GetTownFlipbookPathForDirection(EGameXXKT
 
 FSoftObjectPath AGameXXKHeroCharacter::GetTownIdleFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return TownHorizontalIdleFlipbookAsset.ToSoftObjectPath();
+	}
 	if (Direction == EGameXXKTownFacingDirection::South)
 	{
 		return GetDefaultTownFlipbookPath();
@@ -362,6 +398,10 @@ FSoftObjectPath AGameXXKHeroCharacter::GetTownIdleFlipbookPathForDirection(EGame
 
 FSoftObjectPath AGameXXKHeroCharacter::GetTownWalkFlipbookPathForDirection(EGameXXKTownFacingDirection Direction) const
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return TownHorizontalWalkLoopFlipbookAsset.ToSoftObjectPath();
+	}
 	if (const TSoftObjectPtr<UPaperFlipbook>* DirectionAsset = TownDirectionFlipbookAssets.Find(Direction))
 	{
 		return DirectionAsset->ToSoftObjectPath();
@@ -424,17 +464,51 @@ void AGameXXKHeroCharacter::SetDefaultTownFlipbookForTest(UPaperFlipbook* InFlip
 
 void AGameXXKHeroCharacter::ApplyDefaultTownFlipbook()
 {
-	CurrentTownFacingDirection = EGameXXKTownFacingDirection::South;
+	CurrentTownFacingDirection = bUseHorizontalHeroLocomotion
+		? EGameXXKTownFacingDirection::West
+		: EGameXXKTownFacingDirection::South;
 	bTownMoving = false;
+	CurrentTownAction = EGameXXKHeroTownAction::Idle;
+	TownAmbientElapsedSeconds = 0.0f;
+	TownAmbientDelaySeconds = TownAmbientRandom.FRandRange(8.0f, 14.0f);
 	UPaperFlipbook* FlipbookToApply = GetDefaultTownFlipbook();
 	if (Visual && FlipbookToApply)
 	{
-		Visual->SetFlipbook(FlipbookToApply);
+		Visual->SetLooping(true);
+		if (Visual->GetFlipbook() != FlipbookToApply)
+		{
+			Visual->SetFlipbook(FlipbookToApply);
+			Visual->PlayFromStart();
+		}
+		ApplyHorizontalTownFacingMirror();
 	}
 }
 
 void AGameXXKHeroCharacter::ApplyTownFacingFlipbook()
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		UPaperFlipbook* FlipbookToApply = GetHorizontalTownActionFlipbook(CurrentTownAction);
+		const bool bLooping = IsLoopingTownAction(CurrentTownAction);
+
+		if (Visual && FlipbookToApply)
+		{
+			const bool bClipChanged = Visual->GetFlipbook() != FlipbookToApply;
+			Visual->SetLooping(bLooping);
+			if (bClipChanged)
+			{
+				Visual->SetFlipbook(FlipbookToApply);
+				Visual->PlayFromStart();
+			}
+			else if (bLooping && !Visual->IsPlaying())
+			{
+				Visual->Play();
+			}
+		}
+		ApplyHorizontalTownFacingMirror();
+		return;
+	}
+
 	UPaperFlipbook* FlipbookToApply = bTownMoving
 		? GetTownWalkFlipbookForDirection(CurrentTownFacingDirection)
 		: GetTownIdleFlipbookForDirection(CurrentTownFacingDirection);
@@ -451,6 +525,10 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownFlipbookForDirection(EGameXXKTownF
 
 UPaperFlipbook* AGameXXKHeroCharacter::GetTownIdleFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return GetHorizontalTownIdleFlipbook();
+	}
 	if (const TObjectPtr<UPaperFlipbook>* Override = TownIdleDirectionFlipbookOverrides.Find(Direction))
 	{
 		return Override->Get();
@@ -471,6 +549,10 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownIdleFlipbookForDirection(EGameXXKT
 
 UPaperFlipbook* AGameXXKHeroCharacter::GetTownWalkFlipbookForDirection(EGameXXKTownFacingDirection Direction) const
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		return GetHorizontalTownWalkLoopFlipbook();
+	}
 	if (const TObjectPtr<UPaperFlipbook>* Override = TownDirectionFlipbookOverrides.Find(Direction))
 	{
 		return Override->Get();
@@ -484,8 +566,64 @@ UPaperFlipbook* AGameXXKHeroCharacter::GetTownWalkFlipbookForDirection(EGameXXKT
 	return nullptr;
 }
 
+UPaperFlipbook* AGameXXKHeroCharacter::GetHorizontalTownIdleFlipbook() const
+{
+	return DefaultTownFlipbookOverride
+		? DefaultTownFlipbookOverride.Get()
+		: TownHorizontalIdleFlipbookAsset.LoadSynchronous();
+}
+
+UPaperFlipbook* AGameXXKHeroCharacter::GetHorizontalTownWalkStartFlipbook() const
+{
+	return TownHorizontalWalkStartFlipbookAsset.LoadSynchronous();
+}
+
+UPaperFlipbook* AGameXXKHeroCharacter::GetHorizontalTownWalkLoopFlipbook() const
+{
+	return TownHorizontalWalkLoopFlipbookAsset.LoadSynchronous();
+}
+
+UPaperFlipbook* AGameXXKHeroCharacter::GetHorizontalTownActionFlipbook(
+	const EGameXXKHeroTownAction Action) const
+{
+	switch (Action)
+	{
+	case EGameXXKHeroTownAction::WalkStart:
+		return GetHorizontalTownWalkStartFlipbook();
+	case EGameXXKHeroTownAction::WalkLoop:
+		return GetHorizontalTownWalkLoopFlipbook();
+	case EGameXXKHeroTownAction::WalkStop:
+		return TownHorizontalWalkStopFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::DeepBreath:
+		return TownHorizontalDeepBreathFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::AdjustBackpack:
+		return TownHorizontalAdjustBackpackFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::CollectItem:
+		return TownHorizontalCollectItemFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::CombatIdle:
+		return TownHorizontalCombatIdleFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::Punch:
+		return TownHorizontalPunchFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::Kick:
+		return TownHorizontalKickFlipbookAsset.LoadSynchronous();
+	case EGameXXKHeroTownAction::Idle:
+	default:
+		return GetHorizontalTownIdleFlipbook();
+	}
+}
+
 void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 {
+	TownHorizontalIdleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalIdlePath));
+	TownHorizontalWalkStartFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalWalkStartPath));
+	TownHorizontalWalkLoopFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalWalkLoopPath));
+	TownHorizontalWalkStopFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalWalkStopPath));
+	TownHorizontalDeepBreathFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalDeepBreathPath));
+	TownHorizontalAdjustBackpackFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalAdjustBackpackPath));
+	TownHorizontalCollectItemFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalCollectItemPath));
+	TownHorizontalCombatIdleFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalCombatIdlePath));
+	TownHorizontalPunchFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalPunchPath));
+	TownHorizontalKickFlipbookAsset = TSoftObjectPtr<UPaperFlipbook>(FSoftObjectPath(HeroTownHorizontalKickPath));
 	TownDirectionFlipbookAssets.Reset();
 	TownIdleDirectionFlipbookAssets.Reset();
 	TownDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::South, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterWalkFlipbookPath(TEXT("South"))));
@@ -506,8 +644,109 @@ void AGameXXKHeroCharacter::InitializeTownDirectionFlipbooks()
 	TownIdleDirectionFlipbookAssets.Add(EGameXXKTownFacingDirection::SouthEast, TSoftObjectPtr<UPaperFlipbook>(MakeHeroCharacterIdleFlipbookPath(TEXT("SouthEast"))));
 }
 
+void AGameXXKHeroCharacter::ApplyHorizontalTownFacingMirror()
+{
+	if (!bUseHorizontalHeroLocomotion || !Visual)
+	{
+		return;
+	}
+
+	FVector Scale = Visual->GetRelativeScale3D();
+	Scale.X = CurrentTownFacingDirection == EGameXXKTownFacingDirection::East
+		? -FMath::Abs(Scale.X)
+		: FMath::Abs(Scale.X);
+	Visual->SetRelativeScale3D(Scale);
+}
+
+void AGameXXKHeroCharacter::UpdateHorizontalTownLocomotion(float Horizontal, float Vertical)
+{
+	const bool bNewTownMoving = !FMath::IsNearlyZero(Horizontal) || !FMath::IsNearlyZero(Vertical);
+	EGameXXKTownFacingDirection NewDirection = CurrentTownFacingDirection;
+	if (Horizontal < 0.0f)
+	{
+		NewDirection = EGameXXKTownFacingDirection::West;
+	}
+	else if (Horizontal > 0.0f)
+	{
+		NewDirection = EGameXXKTownFacingDirection::East;
+	}
+	else if (NewDirection != EGameXXKTownFacingDirection::West
+		&& NewDirection != EGameXXKTownFacingDirection::East)
+	{
+		NewDirection = EGameXXKTownFacingDirection::West;
+	}
+
+	const bool bDirectionChanged = NewDirection != CurrentTownFacingDirection;
+	const bool bMovementStarted = !bTownMoving && bNewTownMoving;
+	const bool bMovementStopped = bTownMoving && !bNewTownMoving;
+	CurrentTownFacingDirection = NewDirection;
+	bTownMoving = bNewTownMoving;
+	if (bMovementStarted)
+	{
+		CurrentTownAction = EGameXXKHeroTownAction::WalkStart;
+		TownAmbientElapsedSeconds = 0.0f;
+	}
+	else if (bMovementStopped)
+	{
+		CurrentTownAction = EGameXXKHeroTownAction::WalkStop;
+		TownAmbientElapsedSeconds = 0.0f;
+	}
+
+	if (bDirectionChanged || bMovementStarted || bMovementStopped || !GetCurrentTownFlipbook())
+	{
+		ApplyTownFacingFlipbook();
+	}
+}
+
+void AGameXXKHeroCharacter::AdvanceHorizontalTownLocomotion()
+{
+	if (!bUseHorizontalHeroLocomotion
+		|| !Visual
+		|| IsLoopingTownAction(CurrentTownAction)
+		|| Visual->IsPlaying())
+	{
+		return;
+	}
+
+	if (CurrentTownAction == EGameXXKHeroTownAction::WalkStart && bTownMoving)
+	{
+		CurrentTownAction = EGameXXKHeroTownAction::WalkLoop;
+		ApplyTownFacingFlipbook();
+		return;
+	}
+	ReturnToTownIdle();
+}
+
+void AGameXXKHeroCharacter::TickHorizontalTownAmbient(const float DeltaSeconds)
+{
+	if (!bUseHorizontalHeroLocomotion
+		|| bTownMoving
+		|| CurrentTownAction != EGameXXKHeroTownAction::Idle
+		|| DeltaSeconds <= 0.0f)
+	{
+		return;
+	}
+
+	TownAmbientElapsedSeconds += DeltaSeconds;
+	if (TownAmbientElapsedSeconds < TownAmbientDelaySeconds)
+	{
+		return;
+	}
+
+	const EGameXXKHeroTownAction AmbientAction = TownAmbientRandom.RandRange(0, 1) == 0
+		? EGameXXKHeroTownAction::DeepBreath
+		: EGameXXKHeroTownAction::AdjustBackpack;
+	PlayTownAction(AmbientAction);
+}
+
 void AGameXXKHeroCharacter::UpdateTownFacingFromIntent(float Horizontal, float Vertical)
 {
+	if (bUseHorizontalHeroLocomotion)
+	{
+		UpdateHorizontalTownLocomotion(Horizontal, Vertical);
+		return;
+	}
+
 	const bool bNewTownMoving = !FMath::IsNearlyZero(Horizontal) || !FMath::IsNearlyZero(Vertical);
 	const double InputTimeSeconds = GetHeroTownInputTimeSeconds();
 	EGameXXKTownFacingDirection NewDirection = bNewTownMoving
@@ -780,4 +1019,48 @@ void AGameXXKHeroCharacter::Interact()
 	{
 		Interaction->Interact();
 	}
+}
+
+bool AGameXXKHeroCharacter::PlayTownAction(const EGameXXKHeroTownAction Action)
+{
+	if (!bUseHorizontalHeroLocomotion)
+	{
+		return false;
+	}
+	if (Action == EGameXXKHeroTownAction::Idle)
+	{
+		ReturnToTownIdle();
+		return true;
+	}
+	const bool bLocomotionAction = Action == EGameXXKHeroTownAction::WalkStart
+		|| Action == EGameXXKHeroTownAction::WalkLoop
+		|| Action == EGameXXKHeroTownAction::WalkStop;
+	if (bTownMoving && !bLocomotionAction)
+	{
+		return false;
+	}
+	if (!GetHorizontalTownActionFlipbook(Action))
+	{
+		return false;
+	}
+
+	CurrentTownAction = Action;
+	TownAmbientElapsedSeconds = 0.0f;
+	ApplyTownFacingFlipbook();
+	return true;
+}
+
+void AGameXXKHeroCharacter::ReturnToTownIdle()
+{
+	if (!bUseHorizontalHeroLocomotion)
+	{
+		ApplyDefaultTownFlipbook();
+		return;
+	}
+	CurrentTownAction = bTownMoving
+		? EGameXXKHeroTownAction::WalkLoop
+		: EGameXXKHeroTownAction::Idle;
+	TownAmbientElapsedSeconds = 0.0f;
+	TownAmbientDelaySeconds = TownAmbientRandom.FRandRange(8.0f, 14.0f);
+	ApplyTownFacingFlipbook();
 }

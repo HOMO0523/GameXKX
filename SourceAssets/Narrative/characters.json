@@ -25,16 +25,14 @@
       "displayName": "土司首领",
       "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief",
       "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_07_tusi_chief_idle_atlas.T_character_07_tusi_chief_idle_atlas",
-      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
-      "defaultInteractionSequenceId": "Sequence.Npc.TusiChief.Default"
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"]
     },
     {
       "characterId": "Npc.SongJinBao",
       "displayName": "宋金宝",
       "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao.T_CardPortrait_Npc_SongJinBao",
       "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_08_song_jin_bao_idle_atlas.T_character_08_song_jin_bao_idle_atlas",
-      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],
-      "defaultInteractionSequenceId": "Sequence.Npc.SongJinBao.Default"
+      "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"]
     },
     {
       "characterId": "Npc.YueBai",

@@ -13,6 +13,8 @@ RUNTIME_FILES = (
     "Source/GameXXK/Private/UI/GameXXKPrologueMapWidget.cpp",
     "Source/GameXXK/Public/UI/GameXXKPrologueYueBaiWidget.h",
     "Source/GameXXK/Private/UI/GameXXKPrologueYueBaiWidget.cpp",
+    "Source/GameXXK/Public/Town/GameXXKPrologueAftermathController.h",
+    "Source/GameXXK/Private/Town/GameXXKPrologueAftermathController.cpp",
 )
 FORBIDDEN_TOKENS = (
     "SetWindowsHookEx",

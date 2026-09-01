@@ -26,14 +26,6 @@ namespace GameXXKNarrativeCoordinatorPrivate
 	}
 }
 
-void UGameXXKNarrativeCoordinator::BeginDestroy()
-{
-	PauseAndRelease();
-	ClearDialogueStartDelegates();
-	CandidateValidator.Unbind();
-	Super::BeginDestroy();
-}
-
 void UGameXXKNarrativeCoordinator::BindState(
 	FGameXXKRuntimeState& InRuntimeState,
 	FGameXXKNarrativeSequenceSessionState& InSessionState)
@@ -57,93 +49,7 @@ bool UGameXXKNarrativeCoordinator::RegisterExecutor(
 void UGameXXKNarrativeCoordinator::SetDialogueStartDelegate(
 	FGameXXKNarrativeDialogueStartRequest Delegate)
 {
-	SetDialogueStartDelegate(
-		EGameXXKNarrativeDialogueHost::LegacyNpc3D,
-		MoveTemp(Delegate));
-	if (DialogueHost == EGameXXKNarrativeDialogueHost::None)
-	{
-		SelectDialogueHost(EGameXXKNarrativeDialogueHost::LegacyNpc3D, nullptr);
-	}
-}
-
-void UGameXXKNarrativeCoordinator::SetDialogueStartDelegate(
-	const EGameXXKNarrativeDialogueHost Host,
-	FGameXXKNarrativeDialogueStartRequest Delegate)
-{
-	if (FGameXXKNarrativeDialogueStartRequest* const Target =
-		ResolveDialogueStartDelegate(Host))
-	{
-		*Target = MoveTemp(Delegate);
-	}
-}
-
-void UGameXXKNarrativeCoordinator::ClearDialogueStartDelegate(
-	const EGameXXKNarrativeDialogueHost Host)
-{
-	if (FGameXXKNarrativeDialogueStartRequest* const Target =
-		ResolveDialogueStartDelegate(Host))
-	{
-		Target->Unbind();
-	}
-	if (DialogueHost == Host)
-	{
-		DialogueHost = EGameXXKNarrativeDialogueHost::None;
-		InvalidateDialogueCompletion();
-	}
-	if (!SessionState || !SessionState->bActive)
-	{
-		ActiveDialogueHostAffinity = EGameXXKNarrativeDialogueHost::None;
-	}
-}
-
-void UGameXXKNarrativeCoordinator::ClearDialogueStartDelegates()
-{
-	DesktopDialogueStartDelegate.Unbind();
-	LegacyDialogueStartDelegate.Unbind();
-	DialogueHost = EGameXXKNarrativeDialogueHost::None;
-	InvalidateDialogueCompletion();
-	if (!SessionState || !SessionState->bActive)
-	{
-		ActiveDialogueHostAffinity = EGameXXKNarrativeDialogueHost::None;
-	}
-}
-
-bool UGameXXKNarrativeCoordinator::SelectDialogueHost(
-	const EGameXXKNarrativeDialogueHost Host,
-	FString* OutError)
-{
-	using namespace GameXXKNarrativeCoordinatorPrivate;
-	if (Host == EGameXXKNarrativeDialogueHost::None)
-	{
-		return SetError(OutError, TEXT("Narrative dialogue host must be explicit."));
-	}
-	if (SessionState
-		&& SessionState->bActive
-		&& ActiveDialogueHostAffinity != EGameXXKNarrativeDialogueHost::None
-		&& ActiveDialogueHostAffinity != Host)
-	{
-		return SetError(OutError, TEXT("The active narrative sequence has a different dialogue-host affinity."));
-	}
-	if (DialogueHost == Host)
-	{
-		if (SessionState
-			&& SessionState->bActive
-			&& ActiveDialogueHostAffinity == EGameXXKNarrativeDialogueHost::None)
-		{
-			ActiveDialogueHostAffinity = Host;
-		}
-		ClearError(OutError);
-		return true;
-	}
-	if (SessionState
-		&& SessionState->bActive
-		&& ActiveDialogueHostAffinity == EGameXXKNarrativeDialogueHost::None)
-	{
-		ActiveDialogueHostAffinity = Host;
-	}
-	DialogueHost = Host;
-	ClearError(OutError);
-	return true;
+	DialogueStartDelegate = MoveTemp(Delegate);
 }
 
 void UGameXXKNarrativeCoordinator::SetCandidateValidator(
@@ -169,10 +75,8 @@ bool UGameXXKNarrativeCoordinator::StartSequence(
 	if (ActiveAsset)
 	{
 		CancelPendingExecutor();
-		InvalidateDialogueCompletion();
 		ActiveAsset = nullptr;
 	}
-	ActiveDialogueHostAffinity = EGameXXKNarrativeDialogueHost::None;
 
 	FGameXXKNarrativeSequenceSessionState Candidate = *SessionState;
 	FGameXXKNarrativeRequest Request;
@@ -182,7 +86,6 @@ bool UGameXXKNarrativeCoordinator::StartSequence(
 	}
 	*SessionState = MoveTemp(Candidate);
 	ActiveAsset = &Asset;
-	ActiveDialogueHostAffinity = DialogueHost;
 	bInputTokenHeld = SessionState->bActive;
 	return DispatchRequest(Request, OutError);
 }
@@ -201,10 +104,6 @@ bool UGameXXKNarrativeCoordinator::Resume(FString* OutError)
 		return false;
 	}
 	*SessionState = MoveTemp(Candidate);
-	if (ActiveDialogueHostAffinity == EGameXXKNarrativeDialogueHost::None)
-	{
-		ActiveDialogueHostAffinity = DialogueHost;
-	}
 	bInputTokenHeld = true;
 	return DispatchRequest(Request, OutError);
 }
@@ -257,37 +156,24 @@ bool UGameXXKNarrativeCoordinator::DispatchRequest(
 		break;
 
 	case EGameXXKNarrativeRequestType::Dialogue:
-	{
-		FGameXXKNarrativeDialogueStartRequest* const StartDelegate =
-			ResolveDialogueStartDelegate(DialogueHost);
-		if (!StartDelegate || !StartDelegate->IsBound())
+		if (!DialogueStartDelegate.IsBound())
 		{
-			SessionState->PauseReason = TEXT("The selected narrative dialogue host is not bound.");
+			SessionState->PauseReason = TEXT("Narrative dialogue host is not bound.");
 			ReleaseInputToken();
 			bResult = SetError(OutError, SessionState->PauseReason);
 			break;
 		}
-		ActiveDialogueCompletionGeneration = ++DialogueCompletionGenerationCounter;
-		FGameXXKNarrativeDialogueCompleted Completion =
+		DialogueStartDelegate.Execute(
+			Request.DialogueId,
 			FGameXXKNarrativeDialogueCompleted::CreateUObject(
 				this,
-				&UGameXXKNarrativeCoordinator::HandleDialogueCompleted,
-				ActiveDialogueCompletionGeneration);
-#if WITH_DEV_AUTOMATION_TESTS
-		LastIssuedDialogueCompletionForTest = Completion;
-#endif
-		StartDelegate->Execute(
-			Request.DialogueId,
-			MoveTemp(Completion));
+				&UGameXXKNarrativeCoordinator::HandleDialogueCompleted));
 		ClearError(OutError);
 		bResult = true;
 		break;
-	}
 
 	case EGameXXKNarrativeRequestType::Ended:
 		ReleaseInputToken();
-		InvalidateDialogueCompletion();
-		ActiveDialogueHostAffinity = EGameXXKNarrativeDialogueHost::None;
 		ActiveAsset = nullptr;
 		ClearError(OutError);
 		bResult = true;
@@ -443,19 +329,12 @@ bool UGameXXKNarrativeCoordinator::CommitAdvancedCandidate(
 	return DispatchRequest(NextRequest, OutError);
 }
 
-void UGameXXKNarrativeCoordinator::HandleDialogueCompleted(
-	const FName OutcomeId,
-	const uint64 CompletionGeneration)
+void UGameXXKNarrativeCoordinator::HandleDialogueCompleted(const FName OutcomeId)
 {
-	if (CompletionGeneration == 0
-		|| CompletionGeneration != ActiveDialogueCompletionGeneration
-		|| !SessionState
-		|| !ActiveAsset
-		|| !SessionState->bActive)
+	if (!SessionState || !ActiveAsset || !SessionState->bActive)
 	{
 		return;
 	}
-	ActiveDialogueCompletionGeneration = 0;
 	FGameXXKNarrativeSequenceSessionState Candidate = *SessionState;
 	FGameXXKNarrativeRequest NextRequest;
 	FString Error;
@@ -477,7 +356,6 @@ void UGameXXKNarrativeCoordinator::HandleDialogueCompleted(
 void UGameXXKNarrativeCoordinator::PauseAndRelease()
 {
 	CancelPendingExecutor();
-	InvalidateDialogueCompletion();
 	ReleaseInputToken();
 }
 
@@ -503,25 +381,4 @@ void UGameXXKNarrativeCoordinator::CancelPendingExecutor()
 		Executor->CancelPending();
 	}
 	PendingCommandType = NAME_None;
-}
-
-void UGameXXKNarrativeCoordinator::InvalidateDialogueCompletion()
-{
-	++DialogueCompletionGenerationCounter;
-	ActiveDialogueCompletionGeneration = 0;
-}
-
-FGameXXKNarrativeDialogueStartRequest*
-UGameXXKNarrativeCoordinator::ResolveDialogueStartDelegate(
-	const EGameXXKNarrativeDialogueHost Host)
-{
-	switch (Host)
-	{
-	case EGameXXKNarrativeDialogueHost::Desktop2D:
-		return &DesktopDialogueStartDelegate;
-	case EGameXXKNarrativeDialogueHost::LegacyNpc3D:
-		return &LegacyDialogueStartDelegate;
-	default:
-		return nullptr;
-	}
 }

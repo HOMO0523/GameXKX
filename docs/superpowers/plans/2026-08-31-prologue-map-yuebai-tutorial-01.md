@@ -60,7 +60,7 @@ $ProtectedDeletions = @(
 - `SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.CarriageNotice.dialogue.json`
 - `SourceAssets/Narrative/Dialogues/Dialogue.Tutorial.YueBaiFirstMeeting.dialogue.json`
 - `SourceAssets/Narrative/runtime-catalog.json`
-- `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.jpg`
+- `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.png`
 - `Content/GameXXK/Narrative/Items/T_Tutorial_XuXiakeTravelRouteInspect.uasset`
 - `Content/GameXXK/Narrative/Dialogues/DA_Dialogue_Tutorial_CarriageNotice.uasset`
 - `Content/GameXXK/Narrative/Dialogues/DA_Dialogue_Tutorial_YueBaiFirstMeeting.uasset`
@@ -440,7 +440,7 @@ feat: author YueBai first-meeting dialogue
 ### Task 3: Import the approved map image and build the reusable inspect widget
 
 **Files:**
-- Create: `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.jpg`
+- Create: `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.png`
 - Create: `Content/Python/gamexxk_import_tutorial_route_map.py`
 - Create: `Content/GameXXK/Narrative/Items/T_Tutorial_XuXiakeTravelRouteInspect.uasset`
 - Create: `Source/GameXXK/Public/UI/GameXXKPrologueMapWidget.h`
@@ -453,14 +453,14 @@ feat: author YueBai first-meeting dialogue
 Copy the user source from:
 
 ```text
-C:/Users/shxuw/xwechat_files/wxid_g90er9r4o8p312_cd3c/temp/RWTemp/2026-08/93b72d0770041befdeb6f18e6e3229c9/ad417c724738ace9762f997ffaef724f.jpg
+C:/Users/shxuw/xwechat_files/wxid_g90er9r4o8p312_cd3c/temp/RWTemp/2026-08/1f0f6da890b579e80094c634191d562a/a7a21b7944259977d52cf78423a1af12.png
 ```
 
-to `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.jpg` without recompression. Require:
+to `SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.png` without recompression. Require:
 
 ```text
-size = 1279×1706
-SHA256 = 195CB969EBE91691D585934F1265D81B3E285A36B81EFAA723E14B2CF52D36BC
+size = 2388×1668
+SHA256 = 3F4DEB047ABE7F73DD1A4EE4C29BFF527524B4B95ED153FC09080A73CC82782A
 ```
 
 - [ ] **Step 2: Write the widget test before production code**
@@ -497,10 +497,10 @@ Cold-build to prove the missing widget. Then implement `gamexxk_import_tutorial_
 The importer constants and guard are fixed to:
 
 ```python
-SOURCE = PROJECT_ROOT / "SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.jpg"
+SOURCE = PROJECT_ROOT / "SourceArt/Narrative/Tutorial/XuXiakeTravelRoute.png"
 DESTINATION = "/Game/GameXXK/Narrative/Items/T_Tutorial_XuXiakeTravelRouteInspect"
-EXPECTED_SHA256 = "195cb969ebe91691d585934f1265d81b3e285a36b81efaa723e14b2cf52d36bc"
-EXPECTED_SIZE = (1279, 1706)
+EXPECTED_SHA256 = "3f4deb047abe7f73dd1a4ee4c29bff527524b4b95ed153fc09080a73cc82782a"
+EXPECTED_SIZE = (2388, 1668)
 
 if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != EXPECTED_SHA256:
     raise RuntimeError("Xu Xiake route-map source hash drifted")
@@ -508,7 +508,7 @@ if hashlib.sha256(SOURCE.read_bytes()).hexdigest() != EXPECTED_SHA256:
 
 - [ ] **Step 4: Implement one responsive two-state widget**
 
-`UGameXXKPrologueMapWidget` must expose delegates for inspect, close, and continue. Programmatic layout uses a 1920×1080 reference canvas, a center thumbnail card, `检视`, `空格继续`, and an inspection paper sized by `min(860, ViewportHeight * 0.80)` with width derived from `1279 / 1706`. The close button is anchored at the inspection paper's top-right outer edge. Inspection consumes Space without firing Continue.
+`UGameXXKPrologueMapWidget` must expose delegates for inspect, close, and continue. Programmatic layout uses a 1920×1080 reference canvas, a landscape center thumbnail card, `检视`, `空格继续`, and an inspection paper sized by `min(860, ViewportHeight * 0.80)` with width derived from `2388 / 1668`. The close button is anchored at the inspection paper's top-right outer edge. Inspection consumes Space without firing Continue.
 
 The same widget supports `StoryCard` and `InspectOnly` modes; inventory right-click opens directly in `InspectOnly` with no continue prompt.
 
@@ -863,6 +863,105 @@ feat: continue the prologue after the carriage
 
 ---
 
+### Task 7A: Correct accepted YueBai follow grounding, idle playback, and bubble anchoring
+
+**Files:**
+- Modify: `Source/GameXXK/Public/Town/GameXXKTownNpcCharacter.h`
+- Modify: `Source/GameXXK/Private/Town/GameXXKTownNpcCharacter.cpp`
+- Modify: `Source/GameXXK/Public/UI/GameXXKSpeechBubbleWidget.h`
+- Modify: `Source/GameXXK/Private/UI/GameXXKSpeechBubbleWidget.cpp`
+- Modify: `Source/GameXXK/Private/Town/GameXXKPrologueAftermathController.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKPrologueYueBaiPresentationTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKDialoguePresenterTest.cpp`
+
+- [ ] **Step 1: Write the red follower and bubble tests**
+
+Extend `GameXXK.Prologue.Aftermath.YueBaiPresentation` to require that a ground hit at impact Z `300` resolves to root Z `372` for a `72` UU capsule half-height, while a missing hit preserves the previous root Z. Stop the NPC visual before narrative activation, then require the first follow tick to restore `IsLooping()` and `IsPlaying()` while `IsTownMoving()` stays false.
+
+Extend `GameXXK.Dialogue.Presenter.SpeechBubbleAnchorAndClamp` to require a visual-bounds-top presentation mode and exact bounds-top resolution:
+
+```cpp
+TestEqual(TEXT("visual top adds only Z extent"),
+    UGameXXKSpeechBubbleWidget::VisualBoundsTopForTest(
+        FVector(10.0f, 20.0f, 30.0f),
+        FVector(40.0f, 50.0f, 60.0f)),
+    FVector(10.0f, 20.0f, 90.0f));
+```
+
+- [ ] **Step 2: Prove red with cold UBT/Automation**
+
+Run cold UBT, then `GameXXK.Prologue.Aftermath.YueBaiPresentation` and `GameXXK.Dialogue.Presenter.SpeechBubbleAnchorAndClamp`. Expected: compile-red on the missing grounding and visual-top APIs.
+
+- [ ] **Step 3: Ground the non-blocking follower without changing collision policy**
+
+Keep narrative capsule/interaction collision disabled. On every narrative-follow tick, trace down at the chosen horizontal destination, ignore YueBai and the followed hero, and resolve root Z as `Hit.ImpactPoint.Z + CapsuleHalfHeight`. Smooth the full 3D destination with the existing follow speed; a missing hit retains current root Z. Do not alter legacy `ActivateFollower`, formation, or NPC save state.
+
+- [ ] **Step 4: Guarantee hover-idle playback**
+
+Add a narrative-only helper that selects the authored South idle flipbook, sets looping true, starts it when changed, and resumes it when stopped. Invoke it on activation and narrative follow ticks. Movement remains visually Idle even while YueBai glides.
+
+- [ ] **Step 5: Anchor the passive prompt to rendered visual bounds**
+
+Add `PresentBubbleAtVisualTop` as a separate speech-bubble path so ordinary Dialogue bubbles keep their existing anchor semantics. It projects the PaperFlipbook bounds top through `UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition`, which yields viewport-local DPI-correct UMG coordinates. The aftermath controller passes `GetTownVisualComponent()`; do not add screenshot-specific pixel offsets.
+
+- [ ] **Step 6: Run green gates and player checkpoint**
+
+Run cold UBT, both focused tests, `GameXXK.Prologue.Aftermath`, and the static policy suite. Start floating PIE without synthetic input and stop at the follower checkpoint for the player to verify stair ascent, looping idle, prompt placement, and unrestricted hero movement.
+
+Commit with Task 7 as:
+
+```text
+feat: continue the prologue after the carriage
+```
+
+---
+
+### Task 7B: Retire the disconnected legacy tutorial task and town-NPC options
+
+**Files:**
+- Modify: `SourceAssets/Narrative/characters.json`
+- Modify: `SourceAssets/Narrative/runtime-catalog.json`
+- Delete: `SourceAssets/Narrative/Dialogues/Dialogue.Npc.TusiChief.Default.dialogue.json`
+- Delete: `SourceAssets/Narrative/Dialogues/Dialogue.Npc.SongJinBao.Default.dialogue.json`
+- Delete: `SourceAssets/Narrative/Sequences/Sequence.Npc.TusiChief.Default.sequence.json`
+- Delete: `SourceAssets/Narrative/Sequences/Sequence.Npc.SongJinBao.Default.sequence.json`
+- Delete: matching generated Dialogue/Sequence DataAssets
+- Modify: `Source/GameXXK/Private/Narrative/GameXXKStoryCatalog.cpp`
+- Modify: `Source/GameXXK/Public/MVP/GameXXKMVPSubsystem.h`
+- Modify: `Source/GameXXK/Private/MVP/GameXXKMVPSubsystem.cpp`
+- Modify: `Source/GameXXK/Public/MVP/GameXXKSaveMigration.h`
+- Modify: `Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp`
+- Modify: `Source/GameXXK/Public/MVP/GameXXKMVPPlayerController.h`
+- Modify: `Source/GameXXK/Private/MVP/GameXXKMVPPlayerController.cpp`
+- Modify: `Source/GameXXK/Private/UI/GameXXKDesktopTrainingWorkbenchWidget.cpp`
+- Modify/Delete: old task/NPC interaction tests
+
+- [ ] **Step 1: Write red retirement contracts**
+
+Require the old story/task catalog lookups to return null, Tusi Chief and Song Jinbao to have no default interaction sequence, the runtime catalog/source tree to contain neither NPC option nor `openTaskOffer`/`openShop`, and save v32 migration to remove only the retired story/task/session IDs while preserving unrelated runtime state. Require YueBai narrative follow to select `/Game/GameXXK/BattleAnimations/IdleFlipbooks/FB_character_09_yue_bai_2k_idle` with more than one frame.
+
+- [ ] **Step 2: Prove red**
+
+Cold UBT and focused Python/C++ tests must fail against the existing legacy catalog, JSON sources, v31 save boundary, and single-frame follower selection.
+
+- [ ] **Step 3: Remove player-facing legacy task/shop data**
+
+Remove the two default interaction sequence IDs from `characters.json`, delete their Dialogue/Sequence source and generated assets, and remove now-unused catalog outcomes/command types. Remove PlayerController registration of `openTaskOffer` and `openShop` and the NPC-specific task-offer bridge. Keep route merchant/MetaShop implementations and internal `AcceptTownQuest` compatibility intact.
+
+- [ ] **Step 4: Retire old tutorial StoryTask persistence**
+
+Remove `BeginTutorialQuest` and the old StoryCatalog definitions. Bump to save v32 and migrate old story/task/session identities out of `NarrativeProgress` instead of recreating them. Do not reset unrelated guide, inventory, formation, route, reward, or companion state.
+
+- [ ] **Step 5: Use the animated YueBai production idle**
+
+Give narrative follow a YueBai-only soft path to the production 2K multi-frame idle, with no 1K fallback. Activation/tick selects it, loops it, resumes it, and applies a narrative-only `2.5×` visual scale; dismiss restores the exact previous relative scale. Ordinary static NPC and PartyDeck consumers retain their existing assets.
+
+- [ ] **Step 6: Import, verify, and stop for acceptance**
+
+Reimport the character catalog, delete only the four retired generated assets through a guarded UE script, run cold UBT plus narrative/source/migration/NPC/Aftermath tests, then leave PIE for manual confirmation that Tusi/Song have no stale choices and YueBai visibly animates.
+
+---
+
 ### Task 8: Add statue F travel and the transient tutorial return context
 
 **Files:**
@@ -940,7 +1039,7 @@ GAMEXXK_API bool IsTutorial01MapPackage(const FString& PackageName);
 
 - [ ] **Step 4: Make the aftermath actor an F interactable only in StatuePrompt**
 
-The actor implements `IGameXXKInteractable`, uses its `StatueInteractionArea` overlap to register with the possessed hero's existing InteractionComponent, returns prompt `F`, and accepts interaction only in `StatuePrompt`. It snapshots runtime/return transform, sets a travel-pending guard, clears the passive bubble, and calls absolute OpenLevel to `Tutorial01Map()` with the exact option.
+The actor implements `IGameXXKInteractable`, uses its `StatueInteractionArea` overlap to register with the possessed hero's existing InteractionComponent, returns prompt `F`, and accepts interaction only in `StatuePrompt`. F first opens an explicitly requested `UGameXXKGuidePreferenceWidget`; this widget never auto-opens from Workbench or unset guide preference and uses `T_MasterV2_PanelLarge` as its paper background. After the player selects skip/continue, the controller snapshots runtime/return transform, sets a travel-pending guard, clears the passive bubble, and calls absolute OpenLevel to `Tutorial01Map()` with the exact option and selected tutorial-guide preference.
 
 Out-of-range F never focuses the actor; repeated F after pending returns false.
 
@@ -1091,7 +1190,7 @@ The script must:
 - unchanged PlayerStart, carriage Rig, six fixed NPC transforms, statue transform, and map actor count outside the managed addition;
 - tutorial map GameMode exact and no 3D/town/route/workbench actors;
 - two Dialogue assets with exact IDs;
-- map icon 512×512 alpha and inspect image 1279×1706 with source hash;
+- map icon 512×512 alpha and inspect image 2388×1668 with source hash;
 - no dirty package after validation.
 
 - [ ] **Step 5: Save, visually inspect, and commit**

@@ -13,43 +13,19 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKStoryTaskCatalogConcurrencyTest::RunTest(const FString& Parameters)
 {
-	const FGameXXKStoryDefinition* Story =
-		FGameXXKStoryCatalog::FindStory(TEXT("Story.Main.XuXiakeTreasure"));
-	const FGameXXKTaskDefinition* Prologue =
-		FGameXXKStoryCatalog::FindTask(TEXT("Task.Main.XuXiake.Prologue"));
-	if (!TestNotNull(TEXT("main story exists"), Story)
-		|| !TestNotNull(TEXT("prologue task exists"), Prologue))
-	{
-		return false;
-	}
-	TestTrue(TEXT("prologue belongs to story"), Story->TaskIds.Contains(Prologue->TaskId));
-	TestEqual(TEXT("river scroll is entry"),
-		Prologue->EntryStepId, FName(TEXT("Step.Main.XuXiake.RiverScroll")));
-	const FGameXXKTaskStepDefinition* RiverStep = Prologue->Steps.FindByPredicate(
-		[](const FGameXXKTaskStepDefinition& Step)
-		{
-			return Step.StepId == TEXT("Step.Main.XuXiake.RiverScroll");
-		});
-	const FGameXXKTaskStepDefinition* CombatStep = Prologue->Steps.FindByPredicate(
-		[](const FGameXXKTaskStepDefinition& Step)
-		{
-			return Step.StepId == TEXT("Step.Main.XuXiake.CombatTutorial");
-		});
-	TestTrue(TEXT("river step references scene-independent sequence"),
-		RiverStep
-			&& RiverStep->SequenceId == TEXT("Sequence.Main.XuXiake.CarriageArrival")
-			&& RiverStep->StageContractId == TEXT("Stage.Tutorial.River")
-			&& RiverStep->NextStepIds == TArray<FName>{TEXT("Step.Main.XuXiake.CombatTutorial")});
-	TestTrue(TEXT("combat step references fixed route and encounter"),
-		CombatStep
-			&& CombatStep->RouteId == TEXT("Route.Tutorial.CombatBasics")
-			&& CombatStep->EncounterId == TEXT("Encounter.Main.XuXiake.0-1"));
+	TestNull(TEXT("retired main story is absent"),
+		FGameXXKStoryCatalog::FindStory(TEXT("Story.Main.XuXiakeTreasure")));
+	TestNull(TEXT("retired prologue task is absent"),
+		FGameXXKStoryCatalog::FindTask(TEXT("Task.Main.XuXiake.Prologue")));
+	TestTrue(TEXT("retired catalog has no player-facing stories"),
+		FGameXXKStoryCatalog::GetStories().IsEmpty());
+	TestTrue(TEXT("retired catalog has no player-facing tasks"),
+		FGameXXKStoryCatalog::GetTasks().IsEmpty());
+	TestTrue(TEXT("empty catalog remains structurally valid"),
+		FGameXXKStoryCatalog::Validate(nullptr));
 
 	FGameXXKNarrativeProgress Progress;
 	FString Error;
-	TestTrue(TEXT("main story starts"), FGameXXKStoryRules::StartStory(*Story, Progress, &Error));
-	TestTrue(TEXT("prologue task starts"), FGameXXKStoryRules::StartTask(*Prologue, Progress, &Error));
-
 	FGameXXKStoryDefinition SideStory;
 	SideStory.StoryId = TEXT("Story.Side.Test");
 	SideStory.Version = 1;
@@ -65,11 +41,11 @@ bool FGameXXKStoryTaskCatalogConcurrencyTest::RunTest(const FString& Parameters)
 		FGameXXKStoryRules::StartStory(SideStory, Progress, &Error));
 	TestTrue(TEXT("side task starts concurrently"),
 		FGameXXKStoryRules::StartTask(SideTask, Progress, &Error));
-	TestTrue(TEXT("track main task"),
-		FGameXXKStoryRules::TrackTask(Prologue->TaskId, Progress, &Error));
-	TestEqual(TEXT("two stories remain active"), Progress.StoryProgressById.Num(), 2);
-	TestEqual(TEXT("two tasks remain active"), Progress.TaskProgressById.Num(), 2);
-	TestEqual(TEXT("tracked task is independent"), Progress.TrackedTaskId, Prologue->TaskId);
+	TestTrue(TEXT("track synthetic task"),
+		FGameXXKStoryRules::TrackTask(SideTask.TaskId, Progress, &Error));
+	TestEqual(TEXT("one synthetic story remains active"), Progress.StoryProgressById.Num(), 1);
+	TestEqual(TEXT("one synthetic task remains active"), Progress.TaskProgressById.Num(), 1);
+	TestEqual(TEXT("tracked task is synthetic"), Progress.TrackedTaskId, SideTask.TaskId);
 	TestEqual(TEXT("side task remains active"),
 		Progress.TaskProgressById.FindChecked(SideTask.TaskId).State,
 		EGameXXKTaskState::Active);
@@ -83,38 +59,44 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKStoryTaskProgressionTest::RunTest(const FString& Parameters)
 {
-	const FGameXXKStoryDefinition* Story =
-		FGameXXKStoryCatalog::FindStory(TEXT("Story.Main.XuXiakeTreasure"));
-	const FGameXXKTaskDefinition* Prologue =
-		FGameXXKStoryCatalog::FindTask(TEXT("Task.Main.XuXiake.Prologue"));
-	if (!Story || !Prologue)
-	{
-		return false;
-	}
+	FGameXXKStoryDefinition Story;
+	Story.StoryId = TEXT("Story.Test.Progression");
+	Story.Version = 1;
+	Story.TaskIds = {TEXT("Task.Test.Progression")};
+	FGameXXKTaskDefinition TaskDefinition;
+	TaskDefinition.TaskId = Story.TaskIds[0];
+	TaskDefinition.StoryId = Story.StoryId;
+	TaskDefinition.EntryStepId = TEXT("Step.Test.One");
+	FGameXXKTaskStepDefinition FirstStep;
+	FirstStep.StepId = TaskDefinition.EntryStepId;
+	FirstStep.NextStepIds = {TEXT("Step.Test.Two")};
+	FGameXXKTaskStepDefinition SecondStep;
+	SecondStep.StepId = TEXT("Step.Test.Two");
+	TaskDefinition.Steps = {FirstStep, SecondStep};
 	FGameXXKNarrativeProgress Progress;
 	FString Error;
-	FGameXXKStoryRules::StartStory(*Story, Progress, &Error);
-	FGameXXKStoryRules::StartTask(*Prologue, Progress, &Error);
+	FGameXXKStoryRules::StartStory(Story, Progress, &Error);
+	FGameXXKStoryRules::StartTask(TaskDefinition, Progress, &Error);
 	TestFalse(TEXT("task cannot jump to an unknown step"),
-		FGameXXKStoryRules::AdvanceTask(*Prologue, TEXT("Step.Missing"), Progress, &Error));
-	TestEqual(TEXT("failed jump keeps river step"),
-		Progress.TaskProgressById.FindChecked(Prologue->TaskId).CurrentStepId,
-		Prologue->EntryStepId);
-	TestTrue(TEXT("river advances only to combat tutorial"),
+		FGameXXKStoryRules::AdvanceTask(TaskDefinition, TEXT("Step.Missing"), Progress, &Error));
+	TestEqual(TEXT("failed jump keeps entry step"),
+		Progress.TaskProgressById.FindChecked(TaskDefinition.TaskId).CurrentStepId,
+		TaskDefinition.EntryStepId);
+	TestTrue(TEXT("entry advances only to its authored successor"),
 		FGameXXKStoryRules::AdvanceTask(
-			*Prologue, TEXT("Step.Main.XuXiake.CombatTutorial"), Progress, &Error));
+			TaskDefinition, SecondStep.StepId, Progress, &Error));
 	TestTrue(TEXT("terminal task completes"),
-		FGameXXKStoryRules::CompleteTask(*Prologue, Progress, &Error));
+		FGameXXKStoryRules::CompleteTask(TaskDefinition, Progress, &Error));
 	TestEqual(TEXT("task is completed before reward"),
-		Progress.TaskProgressById.FindChecked(Prologue->TaskId).State,
+		Progress.TaskProgressById.FindChecked(TaskDefinition.TaskId).State,
 		EGameXXKTaskState::Completed);
 	TestTrue(TEXT("reward commits once"),
-		FGameXXKStoryRules::CommitTaskReward(*Prologue, Progress, &Error));
+		FGameXXKStoryRules::CommitTaskReward(TaskDefinition, Progress, &Error));
 	TestEqual(TEXT("task is rewarded"),
-		Progress.TaskProgressById.FindChecked(Prologue->TaskId).State,
+		Progress.TaskProgressById.FindChecked(TaskDefinition.TaskId).State,
 		EGameXXKTaskState::Rewarded);
 	TestFalse(TEXT("reward cannot commit twice"),
-		FGameXXKStoryRules::CommitTaskReward(*Prologue, Progress, &Error));
+		FGameXXKStoryRules::CommitTaskReward(TaskDefinition, Progress, &Error));
 	return true;
 }
 

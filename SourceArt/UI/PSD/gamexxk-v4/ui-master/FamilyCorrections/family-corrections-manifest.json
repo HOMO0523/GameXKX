@@ -463,16 +463,6 @@
             851
           ]
         },
-        {
-          "name": "09_背包滚动条",
-          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Assets\\LayoutAssets\\03_主角背包_inventory_scrollbar_right.png",
-          "box": [
-            0,
-            0,
-            1920,
-            1080
-          ]
-        }
       ]
     },
     {
@@ -1771,16 +1761,6 @@
             851
           ]
         },
-        {
-          "name": "09_背包滚动条",
-          "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\PSD\\gamexxk-v4\\ui-master\\Assets\\LayoutAssets\\03_主角背包_inventory_scrollbar_right.png",
-          "box": [
-            0,
-            0,
-            1920,
-            1080
-          ]
-        }
       ]
     },
     {
