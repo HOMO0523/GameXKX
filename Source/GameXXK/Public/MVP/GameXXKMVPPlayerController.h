@@ -42,6 +42,7 @@ class AGameXXKPrologueAftermathController;
 class AGameXXKPrologueCarriageRig;
 class SWidget;
 class SWindow;
+class SBox;
 struct FWorldContext;
 enum class EGameXXKTutorial01ReturnReason : uint8;
 
@@ -368,6 +369,8 @@ public:
 	static TSharedRef<SWindow> BuildDesktopTrainingOverlayWindowForTest(
 		const FVector2D& HostPosition,
 		const FVector2D& HostSize);
+	static bool ShouldBuildPersistentDesktopClearHostForTest(
+		bool bRequestComposition);
 	static bool ShouldHideDesktopTrainingGameViewportForTest(
 		bool bEditorMode,
 		bool bGameCommandLine);
@@ -468,7 +471,8 @@ private:
 		const FVector2D& HostPosition,
 		const FVector2D& HostSize,
 		const TSharedRef<SWidget>& Content,
-		bool bRequestComposition);
+		bool bRequestComposition,
+		TSharedPtr<SBox>* OutContentHost = nullptr);
 	UGameXXKWorldMapWidget* EnsureWorldMapWidget();
 	bool ConfirmPendingQuestNpc(FName TaskId);
 	void RefreshPlayerFlowWidgets();
@@ -595,6 +599,7 @@ private:
 	TObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> DesktopTrainingWorkbenchWidget;
 
 	TSharedPtr<SWindow> DesktopTrainingOverlayWindow;
+	TSharedPtr<SBox> DesktopTrainingOverlayContentHost;
 	TWeakPtr<SWindow> DesktopTrainingGameViewportWindow;
 	bool bDesktopTrainingGameViewportHidden = false;
 	bool bDesktopTrainingOverlayCompositionActive = false;

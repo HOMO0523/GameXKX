@@ -29,7 +29,6 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/App.h"
 #include "Misc/ConfigCacheIni.h"
-#include "Rendering/DrawElements.h"
 #include "Rendering/SlateRenderer.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
@@ -58,13 +57,11 @@
 #include "Styling/SlateTypes.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Input/SButton.h"
-#include "Widgets/SOverlay.h"
-#include "Widgets/SLeafWidget.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/SNullWidget.h"
 #include "Widgets/SWindow.h"
 
 #if PLATFORM_WINDOWS
-#include "IGameXXKDesktopOverlayModule.h"
 #include "Windows/AllowWindowsPlatformTypes.h"
 #include <Windows.h>
 #include "Windows/HideWindowsPlatformTypes.h"
@@ -88,107 +85,6 @@
 		{
 			bFlag = bPrevious;
 		}
-	};
-
-	using FGameXXKTransparentClearElementPtr =
-		TSharedPtr<ICustomSlateElement, ESPMode::ThreadSafe>;
-
-	class FGameXXKDesktopTransparentClearElement final : public ICustomSlateElement
-	{
-	public:
-#if PLATFORM_WINDOWS
-		explicit FGameXXKDesktopTransparentClearElement(
-			IGameXXKDesktopOverlayModule* InOverlayModule)
-			: OverlayModule(InOverlayModule)
-		{
-		}
-#else
-		FGameXXKDesktopTransparentClearElement() = default;
-#endif
-
-		virtual void Draw_RenderThread(
-			FRDGBuilder& GraphBuilder,
-			const FDrawPassInputs& Inputs) override
-		{
-#if PLATFORM_WINDOWS
-			if (OverlayModule && Inputs.OutputTexture)
-			{
-				OverlayModule->AddTransparentClearPass_RenderThread(
-					GraphBuilder,
-					Inputs.OutputTexture);
-			}
-#endif
-		}
-
-	private:
-#if PLATFORM_WINDOWS
-		IGameXXKDesktopOverlayModule* OverlayModule = nullptr;
-#endif
-	};
-
-	class SGameXXKDesktopTransparentClear final : public SLeafWidget
-	{
-	public:
-		SLATE_BEGIN_ARGS(SGameXXKDesktopTransparentClear)
-			: _ShouldClear(false)
-		{
-		}
-			SLATE_ATTRIBUTE(bool, ShouldClear)
-		SLATE_END_ARGS()
-
-		void Construct(const FArguments& InArgs)
-		{
-			ShouldClear = InArgs._ShouldClear;
-#if PLATFORM_WINDOWS
-			RenderTargetClearElement =
-				MakeShared<FGameXXKDesktopTransparentClearElement, ESPMode::ThreadSafe>(
-					&IGameXXKDesktopOverlayModule::Get());
-#else
-			RenderTargetClearElement =
-				MakeShared<FGameXXKDesktopTransparentClearElement, ESPMode::ThreadSafe>();
-#endif
-		}
-
-		virtual int32 OnPaint(
-			const FPaintArgs& Args,
-			const FGeometry& AllottedGeometry,
-			const FSlateRect& MyCullingRect,
-			FSlateWindowElementList& OutDrawElements,
-			const int32 LayerId,
-			const FWidgetStyle& InWidgetStyle,
-			const bool bParentEnabled) const override
-		{
-			if (ShouldClear.Get(false))
-			{
-				if (RenderTargetClearElement.IsValid())
-				{
-					FSlateDrawElement::MakeCustom(
-						OutDrawElements,
-						LayerId,
-						RenderTargetClearElement);
-				}
-				else
-				{
-					FSlateDrawElement::MakeBox(
-						OutDrawElements,
-						LayerId,
-						AllottedGeometry.ToPaintGeometry(),
-						FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")),
-						ESlateDrawEffect::NoBlending,
-						FLinearColor::Transparent);
-				}
-			}
-			return LayerId;
-		}
-
-		virtual FVector2D ComputeDesiredSize(float) const override
-		{
-			return FVector2D::ZeroVector;
-		}
-
-	private:
-		TAttribute<bool> ShouldClear;
-		FGameXXKTransparentClearElementPtr RenderTargetClearElement;
 	};
 
 	class SGameXXKDesktopTrainingActionButton final : public SButton
@@ -362,7 +258,6 @@
 	constexpr int32 ActionStoryQuest = 654;
 	constexpr int32 ActionResetCombatGuide = 655;
 	constexpr int32 NoticeHistoryCapacity = 200;
-	constexpr int32 DesktopTransparentResizeClearFrameCount = 4;
 	constexpr float NoticeLineHeight = 24.0f;
 	constexpr float NoticeRecordsBarHeight = 28.0f;
 	constexpr float IdleSummaryReportWidth = 420.0f;
@@ -1485,52 +1380,8 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 		AbortTransientInventoryInteraction(true, false);
 		BuildProgrammaticLayout();
 	}
-	const TSharedRef<SWidget> WorkbenchContent = Super::RebuildWidget();
-	const TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> WeakWidget(this);
-	const TSharedRef<SGameXXKDesktopTransparentClear> TransparentClear =
-		SNew(SGameXXKDesktopTransparentClear)
-		.ShouldClear(TAttribute<bool>::CreateLambda(
-			[WeakWidget]()
-			{
-				const UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakWidget.Get();
-				return Widget
-					&& ShouldPaintDesktopTransparentClear(
-						Widget->PresentationMode,
-						Widget->bDesktopNativeHookInstalled);
-			}));
-	TransparentClear->ForceVolatile(
-		ShouldPaintDesktopTransparentClear(PresentationMode, bDesktopNativeHookInstalled));
-	DesktopTransparentClearSlateWidget = TransparentClear;
-	return SNew(SOverlay)
-		+ SOverlay::Slot()
-		.ZOrder(-1000)
-		[
-			TransparentClear
-		]
-		+ SOverlay::Slot()
-		.ZOrder(0)
-		[
-			WorkbenchContent
-		];
+	return Super::RebuildWidget();
 }
-
-bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClear(
-	const EGameXXKDesktopHudPresentationMode InPresentationMode,
-	const bool bNativeWindowAttached)
-{
-	return InPresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
-		&& bNativeWindowAttached;
-}
-
-#if WITH_DEV_AUTOMATION_TESTS
-bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
-	const EGameXXKDesktopHudPresentationMode InPresentationMode,
-	const bool bNativeWindowAttached)
-{
-	return ShouldPaintDesktopTransparentClear(InPresentationMode, bNativeWindowAttached);
-}
-
-#endif
 
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
@@ -1700,9 +1551,13 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
 		&& InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		const FVector2D HostPoint =
+		const FVector2D HostPointInWindow =
 			InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition())
 			* FMath::Max(0.01f, DesktopInputDpiScale);
+		const FVector2D HostPoint = HostPointInWindow
+			- (bDesktopFixedHostEnabled
+				? DesktopFixedContentOffset
+				: FVector2D::ZeroVector);
 		const FVector2D StripLocalTopLeft =
 			DesktopOverlayPlacement.StripTopLeft - DesktopOverlayPlacement.HudTopLeft;
 		const FVector2D StripPoint = HostPoint - StripLocalTopLeft;
@@ -3620,6 +3475,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	StageButtons.Reset();
 	ActionButtons.Reset();
 	BuildWorkbenchShell();
+	bDesktopNativeInputRegionDirty = true;
 	UpdateTownPresentationInputLock();
 }
 
@@ -7150,13 +7006,22 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
 	TGuardValue<bool> InternalLayoutRebuildGuard(bInternalLayoutRebuild, true);
 	const bool bWasInViewport = IsInViewport();
 	const ESlateVisibility PreviousVisibility = GetVisibility();
+	const TSharedPtr<SBox> ExternalContentHost = DesktopOverlayContentHost.Pin();
 	TSharedPtr<SWindow> ExternalHostWindow;
 	if (!bWasInViewport && FSlateApplication::IsInitialized())
 	{
-		const TSharedPtr<SWidget> CachedSlateWidget = GetCachedWidget();
-		ExternalHostWindow = CachedSlateWidget.IsValid()
-			? FSlateApplication::Get().FindWidgetWindow(CachedSlateWidget.ToSharedRef())
-			: nullptr;
+		if (ExternalContentHost.IsValid())
+		{
+			ExternalHostWindow = FSlateApplication::Get().FindWidgetWindow(
+				ExternalContentHost.ToSharedRef());
+		}
+		else
+		{
+			const TSharedPtr<SWidget> CachedSlateWidget = GetCachedWidget();
+			ExternalHostWindow = CachedSlateWidget.IsValid()
+				? FSlateApplication::Get().FindWidgetWindow(CachedSlateWidget.ToSharedRef())
+				: nullptr;
+		}
 	}
 	if (bWasInViewport || ExternalHostWindow.IsValid())
 	{
@@ -7169,7 +7034,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
 		}
 		else
 		{
-			ExternalHostWindow->SetContent(SNullWidget::NullWidget);
+			if (ExternalContentHost.IsValid())
+			{
+				ExternalContentHost->SetContent(SNullWidget::NullWidget);
+			}
+			else
+			{
+				ExternalHostWindow->SetContent(SNullWidget::NullWidget);
+			}
 		}
 		ReleaseSlateResources(true);
 	}
@@ -7187,7 +7059,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RebuildLayoutNow()
 	}
 	else if (ExternalHostWindow.IsValid())
 	{
-		ExternalHostWindow->SetContent(TakeWidget());
+		if (ExternalContentHost.IsValid())
+		{
+			ExternalContentHost->SetContent(TakeWidget());
+		}
+		else
+		{
+			ExternalHostWindow->SetContent(TakeWidget());
+		}
 		SetVisibility(PreviousVisibility);
 	}
 }
@@ -7917,7 +7796,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateCarriedItemVisualPosition()
 		ReferencePosition = GameXXKDesktopTrainingLayout::DesktopClientPointToReference(
 			FVector2D(
 				static_cast<double>(CursorPoint.x),
-				static_cast<double>(CursorPoint.y)),
+				static_cast<double>(CursorPoint.y))
+			- (bDesktopFixedHostEnabled
+				? DesktopFixedContentOffset
+				: FVector2D::ZeroVector),
 			DesktopOverlayPlacement.Scale,
 			FVector2D(28.0f, 28.0f));
 	#else
@@ -7986,6 +7868,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::InitializeDesktopPresentationHostSi
 		return;
 	}
 	LoadHudScaleSetting();
+	bDesktopFixedHostEnabled =
+		PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow;
 	if (PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport)
 	{
 		DesktopInputDpiScale = 1.0f;
@@ -8283,6 +8167,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 				DesktopWindowPositionNormalized);
 	}
 	const FVector2D PreviousHudSize = DesktopOverlayPlacement.HudSize;
+	const FVector2D PreviousFixedHostSize = DesktopFixedHostPlacement.HudSize;
+	const FVector2D PreviousFixedHostTopLeft = DesktopFixedHostPlacement.HudTopLeft;
+	const FVector2D PreviousFixedContentOffset = DesktopFixedContentOffset;
 	DesktopOverlayHostSize = HostSize;
 	const GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics Metrics =
 		bDesktopResolvedMetricsValid
@@ -8312,9 +8199,40 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 			IdleSummaryTabX + IdleSummaryTabWidth,
 			NoticeLineHeight) * DesktopOverlayPlacement.Scale;
 	}
+	if (bDesktopFixedHostEnabled
+		&& PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		DesktopFixedHostPlacement =
+			GameXXKDesktopTrainingLayout::ComputeDesktopOverlayPlacementAtScale(
+				Metrics,
+				DesktopWindowPositionNormalized,
+				true,
+				bExpandUpward,
+				0.0f,
+				true);
+		DesktopFixedContentOffset =
+			DesktopOverlayPlacement.HudTopLeft
+			- DesktopFixedHostPlacement.HudTopLeft;
+	}
+	else
+	{
+		DesktopFixedHostPlacement = DesktopOverlayPlacement;
+		DesktopFixedContentOffset = FVector2D::ZeroVector;
+	}
 	if (!DesktopOverlayPlacement.HudSize.Equals(PreviousHudSize, 0.5f))
 	{
 		bDesktopNativeLayoutDirty = true;
+		bDesktopNativeInputRegionDirty = true;
+	}
+	if (!DesktopFixedHostPlacement.HudSize.Equals(PreviousFixedHostSize, 0.5f)
+		|| !DesktopFixedHostPlacement.HudTopLeft.Equals(PreviousFixedHostTopLeft, 0.5f))
+	{
+		bDesktopNativeLayoutDirty = true;
+		bDesktopNativeInputRegionDirty = true;
+	}
+	if (!DesktopFixedContentOffset.Equals(PreviousFixedContentOffset, 0.5f))
+	{
+		bDesktopNativeInputRegionDirty = true;
 	}
 	if (DesktopHudCanvasSlot)
 	{
@@ -8322,7 +8240,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 			PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow;
 		const float InputDpiScale = bDesktopWindow ? DesktopInputDpiScale : 1.0f;
 		DesktopHudCanvasSlot->SetPosition(bDesktopWindow
-			? FVector2D::ZeroVector
+			? GameXXKDesktopTrainingLayout::PhysicalPixelsToSlateHost(
+				DesktopFixedContentOffset,
+				InputDpiScale)
 			: DesktopOverlayPlacement.HudTopLeft);
 		DesktopHudCanvasSlot->SetSize(
 			GameXXKDesktopTrainingLayout::PhysicalPixelsToSlateHost(
@@ -8425,6 +8345,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateExpansionDirectionFromNativeW
 	UpdateDesktopOverlayPlacement(HostSize);
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::SetDesktopOverlayContentHost(
+	const TSharedPtr<SBox>& InContentHost)
+{
+	DesktopOverlayContentHost = InContentHost;
+}
+
 bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresentation(
 	void* NativeWindowHandle)
 {
@@ -8441,13 +8367,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresent
 	if (bDesktopNativeHookInstalled)
 	{
 		const bool bSameWindow = DesktopNativeWindowHandle == NativeWindowHandle;
-		if (bSameWindow && DesktopTransparentClearSlateWidget.IsValid())
+		if (bSameWindow && FSlateApplication::IsInitialized())
 		{
-			DesktopTransparentClearSlateWidget->ForceVolatile(true);
-			if (FSlateApplication::IsInitialized())
+			const TSharedPtr<SBox> ContentHost = DesktopOverlayContentHost.Pin();
+			if (ContentHost.IsValid())
 			{
 				DesktopNativeSlateWindow = FSlateApplication::Get().FindWidgetWindow(
-					DesktopTransparentClearSlateWidget.ToSharedRef());
+					ContentHost.ToSharedRef());
 			}
 		}
 		return bSameWindow;
@@ -8467,13 +8393,14 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresent
 	DesktopNativeWindowHandle = WindowHandle;
 	DesktopPreviousWindowProc = reinterpret_cast<void*>(PreviousWindowProc);
 	bDesktopNativeHookInstalled = true;
-	if (DesktopTransparentClearSlateWidget.IsValid())
+	bDesktopNativeInputRegionDirty = true;
+	if (FSlateApplication::IsInitialized())
 	{
-		DesktopTransparentClearSlateWidget->ForceVolatile(true);
-		if (FSlateApplication::IsInitialized())
+		const TSharedPtr<SBox> ContentHost = DesktopOverlayContentHost.Pin();
+		if (ContentHost.IsValid())
 		{
 			DesktopNativeSlateWindow = FSlateApplication::Get().FindWidgetWindow(
-				DesktopTransparentClearSlateWidget.ToSharedRef());
+				ContentHost.ToSharedRef());
 		}
 	}
 	bDesktopNativeLayoutDirty = true;
@@ -8496,62 +8423,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::DetachDesktopNativeWindowForPresent
 void UGameXXKDesktopTrainingWorkbenchWidget::SetDesktopNativeMousePassthrough(
 	const bool bEnabled)
 {
-#if PLATFORM_WINDOWS
-	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
-	if (!WindowHandle || !::IsWindow(WindowHandle))
-	{
-		return;
-	}
-	const LONG_PTR CurrentStyle = ::GetWindowLongPtrW(WindowHandle, GWL_EXSTYLE);
-	const bool bCurrentlyEnabled =
-		(CurrentStyle & static_cast<LONG_PTR>(WS_EX_TRANSPARENT)) != 0;
-	if (bCurrentlyEnabled == bEnabled)
-	{
-		bDesktopNativeMousePassthrough = bEnabled;
-		return;
-	}
-	const LONG_PTR DesiredStyle = bEnabled
-		? CurrentStyle | static_cast<LONG_PTR>(WS_EX_TRANSPARENT)
-		: CurrentStyle & ~static_cast<LONG_PTR>(WS_EX_TRANSPARENT);
-	::SetLastError(0);
-	const LONG_PTR PreviousStyle = ::SetWindowLongPtrW(
-		WindowHandle,
-		GWL_EXSTYLE,
-		DesiredStyle);
-	if (PreviousStyle == 0 && ::GetLastError() != 0)
-	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Failed to toggle desktop mouse passthrough: enabled=%s error=%lu"),
-			bEnabled ? TEXT("true") : TEXT("false"),
-			static_cast<uint32>(::GetLastError()));
-		return;
-	}
-	::SetWindowPos(
-		WindowHandle,
-		nullptr,
-		0,
-		0,
-		0,
-		0,
-		SWP_FRAMECHANGED
-			| SWP_NOACTIVATE
-			| SWP_NOMOVE
-			| SWP_NOSIZE
-			| SWP_NOZORDER);
 	bDesktopNativeMousePassthrough = bEnabled;
-#endif
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthrough()
+bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldDesktopNativeClientPointPassThrough(
+	const FVector2D ClientPoint) const
 {
-#if PLATFORM_WINDOWS
-	if (!bDesktopNativeHookInstalled
-		|| PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
-	{
-		return;
-	}
 	GameXXKDesktopTrainingLayout::FDesktopOverlayMouseState MouseState;
 	MouseState.bCarryingItem = CarriedEntry.IsValid();
 	MouseState.bHudDragging = bDesktopHudDragging;
@@ -8561,18 +8438,79 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthroug
 		MouseState.bDragDropActive = FSlateApplication::Get().IsDragDropping();
 	}
 
+	GameXXKDesktopTrainingLayout::FDesktopNativeRegionState SurfaceState;
+	SurfaceState.bExpanded = bBackpackExpanded;
+	SurfaceState.bIdleStripFolded = bIdleStripFolded;
+	SurfaceState.bExpandUpward = bExpandUpward;
+	SurfaceState.bWarehouseOpen = bWarehousePanelOpen;
+	SurfaceState.bRightPanelOpen =
+		RightPanel != EGameXXKDesktopTrainingRightPanel::None;
+	SurfaceState.bExitConfirmationOpen = bExitConfirmationOpen;
+	SurfaceState.NoticeHeight = GetNoticePanelLogicalHeight();
+	SurfaceState.Scale = DesktopOverlayPlacement.Scale;
+	SurfaceState.ContentOffset = DesktopOverlayPlacement.ContentOffset;
+	SurfaceState.bTownToggleVisible =
+		bBackpackExpanded && DesktopOverlayPlacement.TownToggleRect.Z > 0.0f;
+	SurfaceState.TownToggleRect = DesktopOverlayPlacement.TownToggleRect;
+	SurfaceState.bStoryQuestVisible =
+		bBackpackExpanded && DesktopOverlayPlacement.StoryQuestRect.Z > 0.0f;
+	SurfaceState.StoryQuestRect = DesktopOverlayPlacement.StoryQuestRect;
+	const TArray<GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape> Surfaces =
+		GameXXKDesktopTrainingLayout::BuildDesktopNativeRegionShapes(SurfaceState);
+	MouseState.bPointerOverInteractiveSurface =
+		GameXXKDesktopTrainingLayout::IsPointInsideDesktopNativeRegionShapes(
+			Surfaces,
+			ClientPoint - (bDesktopFixedHostEnabled
+				? DesktopFixedContentOffset
+				: FVector2D::ZeroVector));
+	return GameXXKDesktopTrainingLayout::ShouldDesktopOverlayPassMouseThrough(MouseState);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeInputRegion()
+{
+#if PLATFORM_WINDOWS
 	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
-	POINT CursorPoint = {};
+	if (!WindowHandle || !::IsWindow(WindowHandle))
+	{
+		return;
+	}
+	bool bRequireFullRegion = CarriedEntry.IsValid()
+		|| bDesktopHudDragging
+		|| bExitConfirmationOpen;
+	if (FSlateApplication::IsInitialized())
+	{
+		bRequireFullRegion |= FSlateApplication::Get().HasAnyMouseCaptor()
+			|| FSlateApplication::Get().IsDragDropping();
+	}
+	if (bRequireFullRegion != bDesktopNativeInputRegionWasFull)
+	{
+		bDesktopNativeInputRegionDirty = true;
+	}
+	if (!bDesktopNativeInputRegionDirty)
+	{
+		return;
+	}
+
 	RECT ClientRect = {};
-	if (WindowHandle
-		&& ::IsWindow(WindowHandle)
-		&& ::GetCursorPos(&CursorPoint)
-		&& ::ScreenToClient(WindowHandle, &CursorPoint)
-		&& ::GetClientRect(WindowHandle, &ClientRect)
-		&& CursorPoint.x >= ClientRect.left
-		&& CursorPoint.y >= ClientRect.top
-		&& CursorPoint.x < ClientRect.right
-		&& CursorPoint.y < ClientRect.bottom)
+	if (!::GetClientRect(WindowHandle, &ClientRect))
+	{
+		return;
+	}
+	HRGN CombinedRegion = ::CreateRectRgn(0, 0, 0, 0);
+	if (!CombinedRegion)
+	{
+		return;
+	}
+	if (bRequireFullRegion)
+	{
+		::SetRectRgn(
+			CombinedRegion,
+			0,
+			0,
+			ClientRect.right - ClientRect.left,
+			ClientRect.bottom - ClientRect.top);
+	}
+	else
 	{
 		GameXXKDesktopTrainingLayout::FDesktopNativeRegionState SurfaceState;
 		SurfaceState.bExpanded = bBackpackExpanded;
@@ -8593,16 +8531,78 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthroug
 		SurfaceState.StoryQuestRect = DesktopOverlayPlacement.StoryQuestRect;
 		const TArray<GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape> Surfaces =
 			GameXXKDesktopTrainingLayout::BuildDesktopNativeRegionShapes(SurfaceState);
-		MouseState.bPointerOverInteractiveSurface =
-			GameXXKDesktopTrainingLayout::IsPointInsideDesktopNativeRegionShapes(
-				Surfaces,
-				FVector2D(
-					static_cast<double>(CursorPoint.x),
-					static_cast<double>(CursorPoint.y)));
+		const FVector2D HostOffset = bDesktopFixedHostEnabled
+			? DesktopFixedContentOffset
+			: FVector2D::ZeroVector;
+		constexpr float RegionPadding = 3.0f;
+		for (const GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape& Surface : Surfaces)
+		{
+			const FVector4 Rect = Surface.Rect + FVector4(
+				HostOffset.X,
+				HostOffset.Y,
+				0.0f,
+				0.0f);
+			const int32 Left = FMath::FloorToInt(Rect.X - RegionPadding);
+			const int32 Top = FMath::FloorToInt(Rect.Y - RegionPadding);
+			const int32 Right = FMath::CeilToInt(Rect.X + Rect.Z + RegionPadding);
+			const int32 Bottom = FMath::CeilToInt(Rect.Y + Rect.W + RegionPadding);
+			HRGN ShapeRegion = Surface.Type
+				== GameXXKDesktopTrainingLayout::EDesktopNativeRegionShapeType::Ellipse
+				? ::CreateEllipticRgn(Left, Top, Right, Bottom)
+				: ::CreateRectRgn(Left, Top, Right, Bottom);
+			if (ShapeRegion)
+			{
+				::CombineRgn(CombinedRegion, CombinedRegion, ShapeRegion, RGN_OR);
+				::DeleteObject(ShapeRegion);
+			}
+		}
 	}
 
-	const bool bShouldPassMouseThrough =
-		GameXXKDesktopTrainingLayout::ShouldDesktopOverlayPassMouseThrough(MouseState);
+	const LONG_PTR CurrentStyle = ::GetWindowLongPtrW(WindowHandle, GWL_EXSTYLE);
+	if ((CurrentStyle & static_cast<LONG_PTR>(WS_EX_TRANSPARENT)) != 0)
+	{
+		::SetWindowLongPtrW(
+			WindowHandle,
+			GWL_EXSTYLE,
+			CurrentStyle & ~static_cast<LONG_PTR>(WS_EX_TRANSPARENT));
+	}
+	if (::SetWindowRgn(WindowHandle, CombinedRegion, false) == 0)
+	{
+		::DeleteObject(CombinedRegion);
+		return;
+	}
+	bDesktopNativeInputRegionWasFull = bRequireFullRegion;
+	bDesktopNativeInputRegionDirty = false;
+#endif
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::RefreshDesktopNativeMousePassthrough()
+{
+#if PLATFORM_WINDOWS
+	if (!bDesktopNativeHookInstalled
+		|| PresentationMode != EGameXXKDesktopHudPresentationMode::DesktopWindow)
+	{
+		return;
+	}
+	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
+	POINT CursorPoint = {};
+	RECT ClientRect = {};
+	bool bShouldPassMouseThrough = true;
+	if (WindowHandle
+		&& ::IsWindow(WindowHandle)
+		&& ::GetCursorPos(&CursorPoint)
+		&& ::ScreenToClient(WindowHandle, &CursorPoint)
+		&& ::GetClientRect(WindowHandle, &ClientRect)
+		&& CursorPoint.x >= ClientRect.left
+		&& CursorPoint.y >= ClientRect.top
+		&& CursorPoint.x < ClientRect.right
+		&& CursorPoint.y < ClientRect.bottom)
+	{
+		bShouldPassMouseThrough = ShouldDesktopNativeClientPointPassThrough(
+			FVector2D(
+				static_cast<double>(CursorPoint.x),
+				static_cast<double>(CursorPoint.y)));
+	}
 	SetDesktopNativeMousePassthrough(bShouldPassMouseThrough);
 #endif
 }
@@ -8644,23 +8644,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeWindowLayout(cons
 	{
 		UpdateDesktopOverlayPlacement(PhysicalWorkAreaSize);
 	}
+	const GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement& WindowPlacement =
+		bDesktopFixedHostEnabled
+			? DesktopFixedHostPlacement
+			: DesktopOverlayPlacement;
 	const int32 WindowLeft =
-		MonitorInfo.rcWork.left + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.X);
+		MonitorInfo.rcWork.left + FMath::RoundToInt(WindowPlacement.HudTopLeft.X);
 	const int32 WindowTop =
-		MonitorInfo.rcWork.top + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.Y);
+		MonitorInfo.rcWork.top + FMath::RoundToInt(WindowPlacement.HudTopLeft.Y);
 	const int32 WindowWidth =
-		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.X));
+		FMath::Max(1, FMath::RoundToInt(WindowPlacement.HudSize.X));
 	const int32 WindowHeight =
-		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.Y));
+		FMath::Max(1, FMath::RoundToInt(WindowPlacement.HudSize.Y));
 
 	TSharedPtr<SWindow> SlateWindow = DesktopNativeSlateWindow.Pin();
-	if (FSlateApplication::IsInitialized() && DesktopTransparentClearSlateWidget.IsValid())
+	if (FSlateApplication::IsInitialized())
 	{
 		if (!SlateWindow.IsValid())
 		{
-			SlateWindow = FSlateApplication::Get().FindWidgetWindow(
-				DesktopTransparentClearSlateWidget.ToSharedRef());
-			DesktopNativeSlateWindow = SlateWindow;
+			const TSharedPtr<SBox> ContentHost = DesktopOverlayContentHost.Pin();
+			if (ContentHost.IsValid())
+			{
+				SlateWindow = FSlateApplication::Get().FindWidgetWindow(
+					ContentHost.ToSharedRef());
+				DesktopNativeSlateWindow = SlateWindow;
+			}
 		}
 	}
 	const TSharedPtr<FGenericWindow> SlateNativeWindow =
@@ -8682,11 +8690,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeWindowLayout(cons
 				static_cast<uint32>(WindowWidth),
 				static_cast<uint32>(WindowHeight));
 		}
-		// The composition swap chain is multi-buffered. Clear one naturally
-		// acquired back buffer per presented frame after ResizeBuffers so no
-		// newly allocated buffer can retain opaque white pixels.
-		DesktopTransparentClearFramesRemaining =
-			DesktopTransparentResizeClearFrameCount;
 	}
 	else
 	{
@@ -8729,30 +8732,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::TickDesktopNativeWindow()
 	{
 		return;
 	}
+	ApplyDesktopNativeInputRegion();
 	if (bDesktopNativeMoveSavePending)
 	{
 		bDesktopNativeMoveSavePending = false;
 		SaveDesktopNativeWindowPosition();
 	}
 	ApplyDesktopNativeWindowLayout(false);
-	if (DesktopTransparentClearFramesRemaining > 0)
-	{
-		TSharedPtr<SWindow> SlateWindow = DesktopNativeSlateWindow.Pin();
-		if (!SlateWindow.IsValid()
-			&& FSlateApplication::IsInitialized()
-			&& DesktopTransparentClearSlateWidget.IsValid())
-		{
-			SlateWindow = FSlateApplication::Get().FindWidgetWindow(
-				DesktopTransparentClearSlateWidget.ToSharedRef());
-			DesktopNativeSlateWindow = SlateWindow;
-		}
-		if (SlateWindow.IsValid() && DesktopTransparentClearSlateWidget.IsValid())
-		{
-			SlateWindow->Invalidate(EInvalidateWidgetReason::Paint);
-			DesktopTransparentClearSlateWidget->Invalidate(EInvalidateWidgetReason::Paint);
-			--DesktopTransparentClearFramesRemaining;
-		}
-	}
 	RefreshDesktopNativeMousePassthrough();
 #endif
 }
@@ -8763,6 +8749,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
 	HWND WindowHandle = static_cast<HWND>(DesktopNativeWindowHandle);
 	if (WindowHandle && ::IsWindow(WindowHandle))
 	{
+		::SetWindowRgn(WindowHandle, nullptr, false);
 		SetDesktopNativeMousePassthrough(false);
 		if (FGameXXKDesktopWindowHook* Hook = GetDesktopWindowHooks().Find(WindowHandle))
 		{
@@ -8779,13 +8766,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
 	DesktopNativeWindowHandle = nullptr;
 	DesktopPreviousWindowProc = nullptr;
 	bDesktopNativeHookInstalled = false;
-	if (DesktopTransparentClearSlateWidget.IsValid())
-	{
-		DesktopTransparentClearSlateWidget->ForceVolatile(false);
-	}
 	DesktopNativeSlateWindow.Reset();
-	DesktopTransparentClearFramesRemaining = 0;
 	bDesktopNativeMousePassthrough = false;
+	bDesktopNativeInputRegionDirty = true;
+	bDesktopNativeInputRegionWasFull = false;
 	DesktopInputDpiScale = 1.0f;
 	bDesktopNativeLayoutDirty = true;
 	DesktopNativeLastHudScalePercent = INDEX_NONE;
@@ -9507,13 +9491,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		ConfirmExit(true);
 		break;
 	case 60:
-		if (FSlateApplication::IsInitialized())
-		{
-			// The Tab button owns a native Slate tooltip window. Hide it before
-			// destroying the hovered widget tree so an empty layered tool window
-			// cannot survive the resolution transition as a second white panel.
-			FSlateApplication::Get().CloseToolTip();
-		}
 		bNoticeSettingsOpen = false;
 		if (bBackpackExpanded)
 		{
@@ -9529,10 +9506,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		else
 		{
 			OpenBackpack();
-		}
-		if (FSlateApplication::IsInitialized())
-		{
-			FSlateApplication::Get().CloseToolTip();
 		}
 		break;
 	case 600:

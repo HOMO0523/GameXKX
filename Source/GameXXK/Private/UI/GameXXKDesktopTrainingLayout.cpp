@@ -342,6 +342,17 @@ namespace GameXXKDesktopTrainingLayout
 			AddLogicalRect(
 				FVector4(0.0f, 0.0f, CollapsedSize.X, CollapsedSize.Y),
 				FVector2D::ZeroVector);
+			// The notice rail's fold/progress/Tab controls occupy the complete
+			// 1025x24 row directly below the travel strip. Keep that visual and
+			// input row in the native region even though the scrolling notice text
+			// itself only extends across the left 420 pixels.
+			AddLogicalRect(
+				FVector4(
+					0.0f,
+					CollapsedSize.Y,
+					FoldedHudInteractiveSize.X,
+					FoldedHudInteractiveSize.Y),
+				FVector2D::ZeroVector);
 			if (State.NoticeHeight > 0.0f)
 			{
 				AddLogicalRect(
@@ -374,6 +385,18 @@ namespace GameXXKDesktopTrainingLayout
 			StripRect.W = 24.0f;
 		}
 		AddLogicalRect(StripRect, State.ContentOffset);
+		if (!State.bIdleStripFolded)
+		{
+			const float NoticeY = State.bExpandUpward
+				? StripRect.Y - State.NoticeHeight
+				: 210.0f;
+			AddLogicalRect(
+				FVector4(397.0f, NoticeY, 420.0f, State.NoticeHeight),
+				State.ContentOffset);
+			AddLogicalRect(
+				FVector4(397.0f, NoticeY, GetIdleStripRect().Z, 24.0f),
+				State.ContentOffset);
+		}
 		AddLogicalRect(GetContentRect(), State.ContentOffset);
 		for (int32 NavigationIndex = 0; NavigationIndex < 5; ++NavigationIndex)
 		{

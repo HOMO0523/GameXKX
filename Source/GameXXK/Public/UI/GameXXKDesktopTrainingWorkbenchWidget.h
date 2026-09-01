@@ -30,6 +30,7 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKGuideCoordinator;
 class UGameXXKGuideOverlayWidget;
 class UGameXXKGuidePreferenceWidget;
+class SBox;
 class SWindow;
 enum class EGameXXKGuidePreference : uint8;
 struct FGameXXKGuideProgress;
@@ -359,9 +360,6 @@ public:
 	void SetTravelAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
 	FSoftObjectPath GetTravelAppliedCompanionAtlasPathForTest(int32 CompanionIndex) const;
 	int32 GetTravelAppliedCompanionFrameForTest(int32 CompanionIndex) const;
-	static bool ShouldPaintDesktopTransparentClearForTest(
-		EGameXXKDesktopHudPresentationMode InPresentationMode,
-		bool bNativeWindowAttached);
 #endif
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
@@ -496,6 +494,7 @@ public:
 	int32 GetNoticeScrollOffsetForTest() const { return NoticeScrollOffset; }
 	void NotifyDesktopNativeMoveCompleted();
 	void NotifyDesktopNativeDisplayMetricsChanged();
+	void SetDesktopOverlayContentHost(const TSharedPtr<SBox>& InContentHost);
 	bool AttachDesktopNativeWindowForPresentation(void* NativeWindowHandle);
 	void DetachDesktopNativeWindowForPresentation();
 	void RefreshDesktopNativeMousePassthrough();
@@ -524,11 +523,15 @@ public:
 	}
 	FVector2D GetDesktopWindowTopLeftForHost() const
 	{
-		return DesktopOverlayPlacement.HudTopLeft;
+		return bDesktopFixedHostEnabled
+			? DesktopFixedHostPlacement.HudTopLeft
+			: DesktopOverlayPlacement.HudTopLeft;
 	}
 	FVector2D GetDesktopWindowSizeForHost() const
 	{
-		return DesktopOverlayPlacement.HudSize;
+		return bDesktopFixedHostEnabled
+			? DesktopFixedHostPlacement.HudSize
+			: DesktopOverlayPlacement.HudSize;
 	}
 	float GetDesktopPresentationScaleForTest() const
 	{
@@ -551,9 +554,6 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
-	static bool ShouldPaintDesktopTransparentClear(
-		EGameXXKDesktopHudPresentationMode InPresentationMode,
-		bool bNativeWindowAttached);
 	void BuildProgrammaticLayout();
 	FVector2D GetCurrentDesignCanvasSize() const;
 	float GetNoticePanelLogicalHeight() const;
@@ -564,7 +564,9 @@ private:
 	bool RequestStoryCarriage();
 	void ReleaseDesktopNativeWindow();
 	void ApplyDesktopNativeWindowLayout(bool bForce);
+	void ApplyDesktopNativeInputRegion();
 	void SetDesktopNativeMousePassthrough(bool bEnabled);
+	bool ShouldDesktopNativeClientPointPassThrough(FVector2D ClientPoint) const;
 	void UpdateExpansionDirectionFromNativeWindow();
 	void LoadDesktopNativeWindowPosition();
 	void SaveDesktopNativeWindowPosition();
@@ -998,21 +1000,25 @@ private:
 	bool bHudScaleSettingLoaded = false;
 	void* DesktopNativeWindowHandle = nullptr;
 	void* DesktopPreviousWindowProc = nullptr;
-	TSharedPtr<SWidget> DesktopTransparentClearSlateWidget;
+	TWeakPtr<SBox> DesktopOverlayContentHost;
 	TWeakPtr<SWindow> DesktopNativeSlateWindow;
-	int32 DesktopTransparentClearFramesRemaining = 0;
 	FVector2D DesktopWindowPositionNormalized = FVector2D(0.5f, 0.08f);
 	FVector2D DesktopOverlayHostSize = FVector2D(1920.0f, 1020.0f);
 	FVector2D DesktopHudDragStartPointerScreen = FVector2D::ZeroVector;
 	FVector2D DesktopHudDragStartNormalizedAnchor = FVector2D::ZeroVector;
 	FIntPoint DesktopWorkAreaOrigin = FIntPoint::ZeroValue;
 	GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement DesktopOverlayPlacement;
+	GameXXKDesktopTrainingLayout::FDesktopOverlayPlacement DesktopFixedHostPlacement;
+	FVector2D DesktopFixedContentOffset = FVector2D::ZeroVector;
 	GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics DesktopResolvedMetrics;
 	bool bDesktopWindowPositionLoaded = false;
 	bool bDesktopResolvedMetricsValid = false;
 	bool bDesktopNativeHookInstalled = false;
+	bool bDesktopFixedHostEnabled = false;
 	bool bDesktopNativeMousePassthrough = false;
 	bool bDesktopNativeLayoutDirty = true;
+	bool bDesktopNativeInputRegionDirty = true;
+	bool bDesktopNativeInputRegionWasFull = false;
 	bool bDesktopNativeMoveSavePending = false;
 	bool bDesktopHudDragging = false;
 	bool bTownMapTravelPending = false;

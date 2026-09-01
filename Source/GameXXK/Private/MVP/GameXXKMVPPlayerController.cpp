@@ -25,6 +25,7 @@
 #include "Narrative/GameXXKNarrativeSequenceAsset.h"
 #include "Misc/Parse.h"
 #include "Misc/PackageName.h"
+#include "Rendering/DrawElements.h"
 #include "Town/GameXXKHeroCharacter.h"
 #include "Town/GameXXKPrologueAftermathController.h"
 #include "Town/GameXXKPrologueCarriageRig.h"
@@ -55,7 +56,10 @@
 #include "UI/GameXXKWorldMapWidget.h"
 #include "UObject/UObjectGlobals.h"
 #include "Styling/SlateTypes.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SLeafWidget.h"
 #include "Widgets/SNullWidget.h"
+#include "Widgets/SOverlay.h"
 #include "Widgets/SWindow.h"
 
 #if PLATFORM_WINDOWS
@@ -65,6 +69,75 @@
 namespace
 {
 	const FVector2D DefaultRouteMapViewportSize(1280.0f, 720.0f);
+
+#if PLATFORM_WINDOWS
+	class FGameXXKDesktopPersistentClearElement final : public ICustomSlateElement
+	{
+	public:
+		explicit FGameXXKDesktopPersistentClearElement(
+			IGameXXKDesktopOverlayModule* InOverlayModule)
+			: OverlayModule(InOverlayModule)
+		{
+		}
+
+		virtual void Draw_RenderThread(
+			FRDGBuilder& GraphBuilder,
+			const FDrawPassInputs& Inputs) override
+		{
+			if (OverlayModule && Inputs.OutputTexture)
+			{
+				OverlayModule->AddTransparentClearPass_RenderThread(
+					GraphBuilder,
+					Inputs.OutputTexture);
+			}
+		}
+
+	private:
+		IGameXXKDesktopOverlayModule* OverlayModule = nullptr;
+	};
+
+	class SGameXXKDesktopPersistentClear final : public SLeafWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SGameXXKDesktopPersistentClear)
+		{
+		}
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments& InArgs)
+		{
+			RenderTargetClearElement =
+				MakeShared<FGameXXKDesktopPersistentClearElement, ESPMode::ThreadSafe>(
+					&IGameXXKDesktopOverlayModule::Get());
+			ForceVolatile(true);
+		}
+
+		virtual int32 OnPaint(
+			const FPaintArgs& Args,
+			const FGeometry& AllottedGeometry,
+			const FSlateRect& MyCullingRect,
+			FSlateWindowElementList& OutDrawElements,
+			const int32 LayerId,
+			const FWidgetStyle& InWidgetStyle,
+			const bool bParentEnabled) const override
+		{
+			FSlateDrawElement::MakeCustom(
+				OutDrawElements,
+				LayerId,
+				RenderTargetClearElement);
+			return LayerId;
+		}
+
+		virtual FVector2D ComputeDesiredSize(float) const override
+		{
+			return FVector2D::ZeroVector;
+		}
+
+	private:
+		TSharedPtr<ICustomSlateElement, ESPMode::ThreadSafe>
+			RenderTargetClearElement;
+	};
+#endif
 
 	FString WorldOptions(const UWorld* World)
 	{
@@ -1899,6 +1972,16 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 		true);
 }
 
+bool AGameXXKMVPPlayerController::ShouldBuildPersistentDesktopClearHostForTest(
+	const bool bRequestComposition)
+{
+#if PLATFORM_WINDOWS
+	return bRequestComposition;
+#else
+	return false;
+#endif
+}
+
 bool AGameXXKMVPPlayerController::ShouldHideDesktopTrainingGameViewportForTest(
 	const bool bEditorMode,
 	const bool bGameCommandLine)
@@ -3297,7 +3380,8 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 	const FVector2D& WindowPosition,
 	const FVector2D& WindowSize,
 	const TSharedRef<SWidget>& Content,
-	const bool bRequestComposition)
+	const bool bRequestComposition,
+	TSharedPtr<SBox>* OutContentHost)
 {
 	// Installed Game/Shipping builds compile ALPHA_BLENDED_WINDOWS out of
 	// ApplicationCore, so EWindowTransparency::PerPixel is not part of the enum
@@ -3311,6 +3395,29 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 #else
 	const EWindowTransparency TransparencySupport = EWindowTransparency::None;
 #endif
+	const TSharedRef<SBox> ContentHost = SNew(SBox)
+		[
+			Content
+		];
+	const TSharedRef<SOverlay> PersistentRoot = SNew(SOverlay);
+#if PLATFORM_WINDOWS
+	if (bRequestComposition)
+	{
+		PersistentRoot->AddSlot(-1000)
+		[
+			SNew(SGameXXKDesktopPersistentClear)
+		];
+	}
+#endif
+	PersistentRoot->AddSlot(0)
+	[
+		ContentHost
+	];
+	if (OutContentHost)
+	{
+		*OutContentHost = ContentHost;
+	}
+
 	TSharedRef<SWindow> Window = SNew(SWindow)
 		.Type(EWindowType::Normal)
 		.Style(&FWindowStyle::GetBorderless())
@@ -3334,7 +3441,7 @@ TSharedRef<SWindow> AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWind
 		.LayoutBorder(FMargin(0.0f))
 		.bManualManageDPI(true)
 		[
-			Content
+			PersistentRoot
 		];
 	Window->SetAcceptsInput(true);
 	return Window;
@@ -3383,6 +3490,8 @@ bool AGameXXKMVPPlayerController::EnsureDesktopTrainingOverlayWindow()
 		{
 			return false;
 		}
+		DesktopTrainingWorkbenchWidget->SetDesktopOverlayContentHost(
+			DesktopTrainingOverlayContentHost);
 #if PLATFORM_WINDOWS
 		const TSharedPtr<FGenericWindow> NativeWindow =
 			DesktopTrainingOverlayWindow->GetNativeWindow();
@@ -3428,7 +3537,10 @@ bool AGameXXKMVPPlayerController::EnsureDesktopTrainingOverlayWindow()
 		WindowPosition,
 		WindowSize,
 		DesktopTrainingWorkbenchWidget->TakeWidget(),
-		true);
+		true,
+		&DesktopTrainingOverlayContentHost);
+	DesktopTrainingWorkbenchWidget->SetDesktopOverlayContentHost(
+		DesktopTrainingOverlayContentHost);
 #if PLATFORM_WINDOWS
 	IGameXXKDesktopOverlayModule& Overlay = IGameXXKDesktopOverlayModule::Get();
 	FSlateApplication::Get().AddWindow(DesktopTrainingOverlayWindow.ToSharedRef(), false);
@@ -3463,6 +3575,8 @@ bool AGameXXKMVPPlayerController::EnsureDesktopTrainingOverlayWindow()
 		DesktopTrainingWorkbenchWidget->DetachDesktopNativeWindowForPresentation();
 		Overlay.ReleaseOverlayWindow(NativeWindowHandle);
 		DesktopTrainingOverlayWindow->SetContent(SNullWidget::NullWidget);
+		DesktopTrainingWorkbenchWidget->SetDesktopOverlayContentHost(nullptr);
+		DesktopTrainingOverlayContentHost.Reset();
 		FSlateApplication::Get().RequestDestroyWindow(
 			DesktopTrainingOverlayWindow.ToSharedRef());
 		DesktopTrainingOverlayWindow.Reset();
@@ -3575,6 +3689,11 @@ void AGameXXKMVPPlayerController::DestroyDesktopTrainingOverlayWindow()
 		DesktopTrainingOverlayWindow->SetContent(SNullWidget::NullWidget);
 		FSlateApplication::Get().RequestDestroyWindow(DesktopTrainingOverlayWindow.ToSharedRef());
 	}
+	if (DesktopTrainingWorkbenchWidget)
+	{
+		DesktopTrainingWorkbenchWidget->SetDesktopOverlayContentHost(nullptr);
+	}
+	DesktopTrainingOverlayContentHost.Reset();
 	DesktopTrainingOverlayWindow.Reset();
 	DesktopTrainingGameViewportWindow.Reset();
 	bDesktopTrainingOverlayCompositionActive = false;

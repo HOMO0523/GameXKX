@@ -1643,12 +1643,19 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	TestTrue(TEXT("stable-scale fixture opens collapsed"), Widget->OpenWorkbench());
 	Widget->InitializeDesktopPresentationHostSize(PhysicalWorkArea);
 	const float RuntimeCollapsedScale = Widget->GetDesktopPresentationScaleForTest();
+	const FVector2D RuntimeFixedHostSize = Widget->GetDesktopWindowSizeForHost();
+	TestEqual(TEXT("desktop mode reserves one maximum transparent native host"),
+		RuntimeFixedHostSize,
+		FVector2D(1820.0f, 941.0f));
 	Widget->HandleActionClicked(60);
 	Widget->TickForTest(0.0f);
 	TestTrue(TEXT("runtime Tab expansion reuses the resolved session scale"),
 		FMath::IsNearlyEqual(
 			Widget->GetDesktopPresentationScaleForTest(),
 			RuntimeCollapsedScale));
+	TestEqual(TEXT("Tab expansion never resizes the transparent native host"),
+		Widget->GetDesktopWindowSizeForHost(),
+		RuntimeFixedHostSize);
 	TestTrue(TEXT("canonical 2D map selects the layered desktop presentation"),
 		AGameXXKMVPPlayerController::ShouldUseDesktopWindowForMapNameForTest(
 			TEXT("/Game/GameXXK/Maps/L_DesktopTrainingHUD")));
@@ -2136,6 +2143,10 @@ bool FGameXXKDesktopTrainingNativeWindowRegionTest::RunTest(const FString& Param
 		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 100.0f)));
 	TestTrue(TEXT("collapsed notice rail belongs to the native window"),
 		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 225.0f)));
+	TestTrue(TEXT("collapsed progress and Tab row remains inside the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(800.0f, 215.0f)));
+	TestFalse(TEXT("space below the collapsed progress and Tab row remains transparent"),
+		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(800.0f, 235.0f)));
 	TestFalse(TEXT("a point below the collapsed HUD is outside the native window"),
 		IsPointInsideDesktopNativeRegionShapes(CollapsedShapes, FVector2D(100.0f, 260.0f)));
 
@@ -2145,6 +2156,10 @@ bool FGameXXKDesktopTrainingNativeWindowRegionTest::RunTest(const FString& Param
 		BuildDesktopNativeRegionShapes(Expanded);
 	TestTrue(TEXT("expanded center shell belongs to the native window"),
 		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(700.0f, 400.0f)));
+	TestTrue(TEXT("expanded progress and Tab row remains inside the native window"),
+		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(1200.0f, 215.0f)));
+	TestFalse(TEXT("transparent gap below the expanded control row remains outside"),
+		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(900.0f, 235.0f)));
 	TestFalse(TEXT("closed warehouse leaves its area outside the native window"),
 		IsPointInsideDesktopNativeRegionShapes(CenterOnlyShapes, FVector2D(100.0f, 400.0f)));
 	TestFalse(TEXT("closed right panel leaves its area outside the native window"),
@@ -6066,24 +6081,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKDesktopTrainingTransparentClearDrawContractTest::RunTest(const FString& Parameters)
 {
-	TestTrue(TEXT("the independent desktop window clears its complete surface before painting"),
-		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
-			EGameXXKDesktopHudPresentationMode::DesktopWindow,
-			true));
+	TestTrue(TEXT("the independent desktop window owns a persistent clear layer outside the rebuilt workbench"),
+		AGameXXKMVPPlayerController::ShouldBuildPersistentDesktopClearHostForTest(true));
 	IGameXXKDesktopOverlayModule& Overlay = IGameXXKDesktopOverlayModule::Get();
 	TestTrue(TEXT("the transparent clear uses an explicit render-target clear before Slate content"),
 		Overlay.UsesRenderTargetTransparentClearForTest());
 	TestEqual(TEXT("the retained surface is reset to premultiplied transparent black"),
 		Overlay.GetRenderTargetTransparentClearColorForTest(),
 		FLinearColor::Transparent);
-	TestFalse(TEXT("a desktop fallback without the native composition hook does not clear the shared viewport"),
-		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
-			EGameXXKDesktopHudPresentationMode::DesktopWindow,
-			false));
-	TestFalse(TEXT("the shared 3D town viewport never receives the desktop-window clear quad"),
-		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
-			EGameXXKDesktopHudPresentationMode::TownViewport,
-			true));
+	TestFalse(TEXT("a non-composition window does not add the persistent clear layer"),
+		AGameXXKMVPPlayerController::ShouldBuildPersistentDesktopClearHostForTest(false));
 	return true;
 }
 
