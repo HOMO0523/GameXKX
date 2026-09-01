@@ -6060,6 +6060,34 @@ bool FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest::RunTest(
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingTransparentClearDrawContractTest,
+	"GameXXK.DesktopTraining.Workbench.TransparentClearDrawContract",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingTransparentClearDrawContractTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("the independent desktop window clears its complete surface before painting"),
+		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
+			EGameXXKDesktopHudPresentationMode::DesktopWindow,
+			true));
+	IGameXXKDesktopOverlayModule& Overlay = IGameXXKDesktopOverlayModule::Get();
+	TestTrue(TEXT("the transparent clear uses an explicit render-target clear before Slate content"),
+		Overlay.UsesRenderTargetTransparentClearForTest());
+	TestEqual(TEXT("the retained surface is reset to premultiplied transparent black"),
+		Overlay.GetRenderTargetTransparentClearColorForTest(),
+		FLinearColor::Transparent);
+	TestFalse(TEXT("a desktop fallback without the native composition hook does not clear the shared viewport"),
+		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
+			EGameXXKDesktopHudPresentationMode::DesktopWindow,
+			false));
+	TestFalse(TEXT("the shared 3D town viewport never receives the desktop-window clear quad"),
+		UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
+			EGameXXKDesktopHudPresentationMode::TownViewport,
+			true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchCharacterRosterTest,
 	"GameXXK.DesktopTraining.Workbench.CharacterRosterPlacementAndViewIsolation",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

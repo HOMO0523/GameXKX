@@ -30,6 +30,7 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKGuideCoordinator;
 class UGameXXKGuideOverlayWidget;
 class UGameXXKGuidePreferenceWidget;
+class SWindow;
 enum class EGameXXKGuidePreference : uint8;
 struct FGameXXKGuideProgress;
 
@@ -358,6 +359,9 @@ public:
 	void SetTravelAtlasCacheForTest(TUniquePtr<FGameXXKBattleAtlasCache> InAtlasCache);
 	FSoftObjectPath GetTravelAppliedCompanionAtlasPathForTest(int32 CompanionIndex) const;
 	int32 GetTravelAppliedCompanionFrameForTest(int32 CompanionIndex) const;
+	static bool ShouldPaintDesktopTransparentClearForTest(
+		EGameXXKDesktopHudPresentationMode InPresentationMode,
+		bool bNativeWindowAttached);
 #endif
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
@@ -547,6 +551,9 @@ protected:
 	virtual void NativeDestruct() override;
 
 private:
+	static bool ShouldPaintDesktopTransparentClear(
+		EGameXXKDesktopHudPresentationMode InPresentationMode,
+		bool bNativeWindowAttached);
 	void BuildProgrammaticLayout();
 	FVector2D GetCurrentDesignCanvasSize() const;
 	float GetNoticePanelLogicalHeight() const;
@@ -991,6 +998,9 @@ private:
 	bool bHudScaleSettingLoaded = false;
 	void* DesktopNativeWindowHandle = nullptr;
 	void* DesktopPreviousWindowProc = nullptr;
+	TSharedPtr<SWidget> DesktopTransparentClearSlateWidget;
+	TWeakPtr<SWindow> DesktopNativeSlateWindow;
+	int32 DesktopTransparentClearFramesRemaining = 0;
 	FVector2D DesktopWindowPositionNormalized = FVector2D(0.5f, 0.08f);
 	FVector2D DesktopOverlayHostSize = FVector2D(1920.0f, 1020.0f);
 	FVector2D DesktopHudDragStartPointerScreen = FVector2D::ZeroVector;

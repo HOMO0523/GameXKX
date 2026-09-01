@@ -2,6 +2,7 @@
 
 #include "Features/IModularFeatures.h"
 #include "GameXXKDesktopSwapchainProvider.h"
+#include "RenderGraphUtils.h"
 
 class FGameXXKDesktopOverlayModule final : public IGameXXKDesktopOverlayModule
 {
@@ -56,11 +57,34 @@ public:
 		}
 	}
 
+	virtual void AddTransparentClearPass_RenderThread(
+		FRDGBuilder& GraphBuilder,
+		FRDGTexture* OutputTexture) const override
+	{
+		if (OutputTexture)
+		{
+			AddClearRenderTargetPass(
+				GraphBuilder,
+				OutputTexture,
+				FLinearColor::Transparent);
+		}
+	}
+
 	virtual FIntRect GetCompositionGlassMarginsForTest() const override
 	{
 		return Provider
 			? Provider->GetCompositionGlassMarginsForTest()
 			: FIntRect(0, 0, 0, 0);
+	}
+
+	virtual bool UsesRenderTargetTransparentClearForTest() const override
+	{
+		return true;
+	}
+
+	virtual FLinearColor GetRenderTargetTransparentClearColorForTest() const override
+	{
+		return FLinearColor::Transparent;
 	}
 
 	virtual bool ShouldInterceptForTest(

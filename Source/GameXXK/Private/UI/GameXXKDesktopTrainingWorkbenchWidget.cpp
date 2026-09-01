@@ -29,6 +29,8 @@
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/App.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Rendering/DrawElements.h"
+#include "Rendering/SlateRenderer.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
 #include "GameXXKEquipmentCatalog.h"
@@ -56,10 +58,13 @@
 #include "Styling/SlateTypes.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/SOverlay.h"
+#include "Widgets/SLeafWidget.h"
 #include "Widgets/SNullWidget.h"
 #include "Widgets/SWindow.h"
 
 #if PLATFORM_WINDOWS
+#include "IGameXXKDesktopOverlayModule.h"
 #include "Windows/AllowWindowsPlatformTypes.h"
 #include <Windows.h>
 #include "Windows/HideWindowsPlatformTypes.h"
@@ -83,6 +88,107 @@
 		{
 			bFlag = bPrevious;
 		}
+	};
+
+	using FGameXXKTransparentClearElementPtr =
+		TSharedPtr<ICustomSlateElement, ESPMode::ThreadSafe>;
+
+	class FGameXXKDesktopTransparentClearElement final : public ICustomSlateElement
+	{
+	public:
+#if PLATFORM_WINDOWS
+		explicit FGameXXKDesktopTransparentClearElement(
+			IGameXXKDesktopOverlayModule* InOverlayModule)
+			: OverlayModule(InOverlayModule)
+		{
+		}
+#else
+		FGameXXKDesktopTransparentClearElement() = default;
+#endif
+
+		virtual void Draw_RenderThread(
+			FRDGBuilder& GraphBuilder,
+			const FDrawPassInputs& Inputs) override
+		{
+#if PLATFORM_WINDOWS
+			if (OverlayModule && Inputs.OutputTexture)
+			{
+				OverlayModule->AddTransparentClearPass_RenderThread(
+					GraphBuilder,
+					Inputs.OutputTexture);
+			}
+#endif
+		}
+
+	private:
+#if PLATFORM_WINDOWS
+		IGameXXKDesktopOverlayModule* OverlayModule = nullptr;
+#endif
+	};
+
+	class SGameXXKDesktopTransparentClear final : public SLeafWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SGameXXKDesktopTransparentClear)
+			: _ShouldClear(false)
+		{
+		}
+			SLATE_ATTRIBUTE(bool, ShouldClear)
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments& InArgs)
+		{
+			ShouldClear = InArgs._ShouldClear;
+#if PLATFORM_WINDOWS
+			RenderTargetClearElement =
+				MakeShared<FGameXXKDesktopTransparentClearElement, ESPMode::ThreadSafe>(
+					&IGameXXKDesktopOverlayModule::Get());
+#else
+			RenderTargetClearElement =
+				MakeShared<FGameXXKDesktopTransparentClearElement, ESPMode::ThreadSafe>();
+#endif
+		}
+
+		virtual int32 OnPaint(
+			const FPaintArgs& Args,
+			const FGeometry& AllottedGeometry,
+			const FSlateRect& MyCullingRect,
+			FSlateWindowElementList& OutDrawElements,
+			const int32 LayerId,
+			const FWidgetStyle& InWidgetStyle,
+			const bool bParentEnabled) const override
+		{
+			if (ShouldClear.Get(false))
+			{
+				if (RenderTargetClearElement.IsValid())
+				{
+					FSlateDrawElement::MakeCustom(
+						OutDrawElements,
+						LayerId,
+						RenderTargetClearElement);
+				}
+				else
+				{
+					FSlateDrawElement::MakeBox(
+						OutDrawElements,
+						LayerId,
+						AllottedGeometry.ToPaintGeometry(),
+						FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")),
+						ESlateDrawEffect::NoBlending,
+						FLinearColor::Transparent);
+				}
+			}
+			return LayerId;
+		}
+
+		virtual FVector2D ComputeDesiredSize(float) const override
+		{
+			return FVector2D::ZeroVector;
+		}
+
+	private:
+		TAttribute<bool> ShouldClear;
+		FGameXXKTransparentClearElementPtr RenderTargetClearElement;
 	};
 
 	class SGameXXKDesktopTrainingActionButton final : public SButton
@@ -256,6 +362,7 @@
 	constexpr int32 ActionStoryQuest = 654;
 	constexpr int32 ActionResetCombatGuide = 655;
 	constexpr int32 NoticeHistoryCapacity = 200;
+	constexpr int32 DesktopTransparentResizeClearFrameCount = 4;
 	constexpr float NoticeLineHeight = 24.0f;
 	constexpr float NoticeRecordsBarHeight = 28.0f;
 	constexpr float IdleSummaryReportWidth = 420.0f;
@@ -1378,8 +1485,52 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 		AbortTransientInventoryInteraction(true, false);
 		BuildProgrammaticLayout();
 	}
-	return Super::RebuildWidget();
+	const TSharedRef<SWidget> WorkbenchContent = Super::RebuildWidget();
+	const TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> WeakWidget(this);
+	const TSharedRef<SGameXXKDesktopTransparentClear> TransparentClear =
+		SNew(SGameXXKDesktopTransparentClear)
+		.ShouldClear(TAttribute<bool>::CreateLambda(
+			[WeakWidget]()
+			{
+				const UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakWidget.Get();
+				return Widget
+					&& ShouldPaintDesktopTransparentClear(
+						Widget->PresentationMode,
+						Widget->bDesktopNativeHookInstalled);
+			}));
+	TransparentClear->ForceVolatile(
+		ShouldPaintDesktopTransparentClear(PresentationMode, bDesktopNativeHookInstalled));
+	DesktopTransparentClearSlateWidget = TransparentClear;
+	return SNew(SOverlay)
+		+ SOverlay::Slot()
+		.ZOrder(-1000)
+		[
+			TransparentClear
+		]
+		+ SOverlay::Slot()
+		.ZOrder(0)
+		[
+			WorkbenchContent
+		];
 }
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClear(
+	const EGameXXKDesktopHudPresentationMode InPresentationMode,
+	const bool bNativeWindowAttached)
+{
+	return InPresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
+		&& bNativeWindowAttached;
+}
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldPaintDesktopTransparentClearForTest(
+	const EGameXXKDesktopHudPresentationMode InPresentationMode,
+	const bool bNativeWindowAttached)
+{
+	return ShouldPaintDesktopTransparentClear(InPresentationMode, bNativeWindowAttached);
+}
+
+#endif
 
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 {
@@ -8289,7 +8440,17 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresent
 	}
 	if (bDesktopNativeHookInstalled)
 	{
-		return DesktopNativeWindowHandle == NativeWindowHandle;
+		const bool bSameWindow = DesktopNativeWindowHandle == NativeWindowHandle;
+		if (bSameWindow && DesktopTransparentClearSlateWidget.IsValid())
+		{
+			DesktopTransparentClearSlateWidget->ForceVolatile(true);
+			if (FSlateApplication::IsInitialized())
+			{
+				DesktopNativeSlateWindow = FSlateApplication::Get().FindWidgetWindow(
+					DesktopTransparentClearSlateWidget.ToSharedRef());
+			}
+		}
+		return bSameWindow;
 	}
 	WNDPROC PreviousWindowProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(
 		WindowHandle,
@@ -8306,6 +8467,15 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AttachDesktopNativeWindowForPresent
 	DesktopNativeWindowHandle = WindowHandle;
 	DesktopPreviousWindowProc = reinterpret_cast<void*>(PreviousWindowProc);
 	bDesktopNativeHookInstalled = true;
+	if (DesktopTransparentClearSlateWidget.IsValid())
+	{
+		DesktopTransparentClearSlateWidget->ForceVolatile(true);
+		if (FSlateApplication::IsInitialized())
+		{
+			DesktopNativeSlateWindow = FSlateApplication::Get().FindWidgetWindow(
+				DesktopTransparentClearSlateWidget.ToSharedRef());
+		}
+	}
 	bDesktopNativeLayoutDirty = true;
 	bDesktopNativeLastExpanded = bBackpackExpanded;
 	DesktopNativeLastHudScalePercent = INDEX_NONE;
@@ -8474,14 +8644,71 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeWindowLayout(cons
 	{
 		UpdateDesktopOverlayPlacement(PhysicalWorkAreaSize);
 	}
+	const int32 WindowLeft =
+		MonitorInfo.rcWork.left + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.X);
+	const int32 WindowTop =
+		MonitorInfo.rcWork.top + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.Y);
+	const int32 WindowWidth =
+		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.X));
+	const int32 WindowHeight =
+		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.Y));
+
+	TSharedPtr<SWindow> SlateWindow = DesktopNativeSlateWindow.Pin();
+	if (FSlateApplication::IsInitialized() && DesktopTransparentClearSlateWidget.IsValid())
+	{
+		if (!SlateWindow.IsValid())
+		{
+			SlateWindow = FSlateApplication::Get().FindWidgetWindow(
+				DesktopTransparentClearSlateWidget.ToSharedRef());
+			DesktopNativeSlateWindow = SlateWindow;
+		}
+	}
+	const TSharedPtr<FGenericWindow> SlateNativeWindow =
+		SlateWindow.IsValid() ? SlateWindow->GetNativeWindow() : nullptr;
+	const bool bSlateWindowMatchesNativeHandle = SlateNativeWindow.IsValid()
+		&& SlateNativeWindow->GetOSWindowHandle() == DesktopNativeWindowHandle;
+	if (bSlateWindowMatchesNativeHandle)
+	{
+		// Keep Slate's cached geometry and the RHI viewport in the same resize
+		// transaction as the HWND. Direct SetWindowPos sizing leaves the old
+		// swap-chain extent active and exposes opaque system pixels after Tab.
+		SlateWindow->ReshapeWindow(
+			FVector2D(WindowLeft, WindowTop),
+			FVector2D(WindowWidth, WindowHeight));
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().GetRenderer()->RequestResize(
+				SlateWindow,
+				static_cast<uint32>(WindowWidth),
+				static_cast<uint32>(WindowHeight));
+		}
+		// The composition swap chain is multi-buffered. Clear one naturally
+		// acquired back buffer per presented frame after ResizeBuffers so no
+		// newly allocated buffer can retain opaque white pixels.
+		DesktopTransparentClearFramesRemaining =
+			DesktopTransparentResizeClearFrameCount;
+	}
+	else
+	{
+		// Defensive fallback for a detached/rebuilding Slate tree. Normal desktop
+		// presentation always resolves the owning SWindow above.
+		::SetWindowPos(
+			WindowHandle,
+			nullptr,
+			WindowLeft,
+			WindowTop,
+			WindowWidth,
+			WindowHeight,
+			SWP_NOACTIVATE | SWP_NOZORDER);
+	}
 	::SetWindowPos(
 		WindowHandle,
 		bAlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST,
-		MonitorInfo.rcWork.left + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.X),
-		MonitorInfo.rcWork.top + FMath::RoundToInt(DesktopOverlayPlacement.HudTopLeft.Y),
-		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.X)),
-		FMath::Max(1, FMath::RoundToInt(DesktopOverlayPlacement.HudSize.Y)),
-		SWP_NOACTIVATE | SWP_FRAMECHANGED);
+		0,
+		0,
+		0,
+		0,
+		SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
 	bDesktopNativeLastExpanded = bBackpackExpanded;
 	DesktopNativeLastHudScalePercent = HudScalePercent;
 	bDesktopNativeLayoutDirty = false;
@@ -8508,6 +8735,24 @@ void UGameXXKDesktopTrainingWorkbenchWidget::TickDesktopNativeWindow()
 		SaveDesktopNativeWindowPosition();
 	}
 	ApplyDesktopNativeWindowLayout(false);
+	if (DesktopTransparentClearFramesRemaining > 0)
+	{
+		TSharedPtr<SWindow> SlateWindow = DesktopNativeSlateWindow.Pin();
+		if (!SlateWindow.IsValid()
+			&& FSlateApplication::IsInitialized()
+			&& DesktopTransparentClearSlateWidget.IsValid())
+		{
+			SlateWindow = FSlateApplication::Get().FindWidgetWindow(
+				DesktopTransparentClearSlateWidget.ToSharedRef());
+			DesktopNativeSlateWindow = SlateWindow;
+		}
+		if (SlateWindow.IsValid() && DesktopTransparentClearSlateWidget.IsValid())
+		{
+			SlateWindow->Invalidate(EInvalidateWidgetReason::Paint);
+			DesktopTransparentClearSlateWidget->Invalidate(EInvalidateWidgetReason::Paint);
+			--DesktopTransparentClearFramesRemaining;
+		}
+	}
 	RefreshDesktopNativeMousePassthrough();
 #endif
 }
@@ -8534,6 +8779,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
 	DesktopNativeWindowHandle = nullptr;
 	DesktopPreviousWindowProc = nullptr;
 	bDesktopNativeHookInstalled = false;
+	if (DesktopTransparentClearSlateWidget.IsValid())
+	{
+		DesktopTransparentClearSlateWidget->ForceVolatile(false);
+	}
+	DesktopNativeSlateWindow.Reset();
+	DesktopTransparentClearFramesRemaining = 0;
 	bDesktopNativeMousePassthrough = false;
 	DesktopInputDpiScale = 1.0f;
 	bDesktopNativeLayoutDirty = true;
@@ -9256,6 +9507,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		ConfirmExit(true);
 		break;
 	case 60:
+		if (FSlateApplication::IsInitialized())
+		{
+			// The Tab button owns a native Slate tooltip window. Hide it before
+			// destroying the hovered widget tree so an empty layered tool window
+			// cannot survive the resolution transition as a second white panel.
+			FSlateApplication::Get().CloseToolTip();
+		}
 		bNoticeSettingsOpen = false;
 		if (bBackpackExpanded)
 		{
@@ -9271,6 +9529,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		else
 		{
 			OpenBackpack();
+		}
+		if (FSlateApplication::IsInitialized())
+		{
+			FSlateApplication::Get().CloseToolTip();
 		}
 		break;
 	case 600:
