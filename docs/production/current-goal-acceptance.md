@@ -1,12 +1,14 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T02:10:39+08:00
-source_commit: 15fe4085b294114ece1f40a060ca770d7c7732d4
-working_tree: overall in-run optimization design and seven-plan suite approved; runtime implementation has not started
+updated_at: 2026-09-03T05:44:48+08:00
+source_commit: 7eb80027ebde5f350569f0f3802eaad55ab2b98f
+working_tree: overall in-run optimization Plan 1 combat scaling foundation complete and green; Plan 2 active-card catalog rebalance is next
 ---
 
-> **2026-09-03 整体局内优化（设计与实施计划已冻结，运行时代码尚未开始）**：当前工作分支为 `codex/overall-in-run-optimization`，批准规格为 `docs/superpowers/specs/2026-09-03-card-monster-progression-rebalance-design.md`，依赖顺序与七份可执行计划入口为 `docs/superpowers/plans/2026-09-03-overall-in-run-optimization-plan-suite.md`（计划提交 `15fe408`）。范围包括 173 张有效玩家牌、品质/等级/护甲/DOT/药效、任务/药方/地势状态、21 种怪物与精英/首领二三阶段、27 关/189 编队、135 级装备与宝石、单地图首领结算、全量遥测与 Hell 3-3 平衡认证；存档迁移规划从 v32 顺序推进到 v38。尚未开始任何玩法实现、资产调整、存档迁移或 UE 验收，不能把本条当作功能完成证据。
+> **2026-09-03 整体局内优化（Plan 1 战斗缩放基础已完成，Plan 2 待开始）**：当前工作分支为 `codex/overall-in-run-optimization`，批准规格为 `docs/superpowers/specs/2026-09-03-card-monster-progression-rebalance-design.md`，依赖顺序与七份可执行计划入口为 `docs/superpowers/plans/2026-09-03-overall-in-run-optimization-plan-suite.md`（计划提交 `15fe408`）。Plan 1 从 `4754be7` 到 `7eb8002` 完成普通/稀有/史诗 `1.0/1.2/1.4`、连续等级换算、队伍最高等级和难度快照、无 99 上限护甲、四类 DOT 水库、药效治疗与累计余数、下一回合气力惩罚以及 v32→v33 迁移；用户资产删除与未跟踪内容均未进入提交。
+>
+> Plan 1 最终门禁：冷 UBT GREEN；`GameXXK.Data.CombatScaling` 1/1、`GameXXK.Data.CardBattleRuntime` 5/5、`GameXXK.SaveMigration` 1/1、`GameXXK.MVP.SaveGame` 18/18、装备迁移 9/9、对话 1/1、商店 1/1、叙事 2/2、序章 10/10、天赋 1/1，均 0 failed/0 error。序章套件保留一条既有警告：测试编队不足三人时教程路线图仍发到实时背包，但完整状态持久化被延后；本轮未把它伪装为新错误或静默删除。Plan 2 的 173 张有效玩家牌目录重平衡尚未开始，不能把本条当作全套七计划完成证据。
 >
 > 规范继续冻结纯 2D `/Game/GameXXK/Maps/L_DesktopTrainingHUD` 为主流程；3D 城镇可保留在 UE 工程中，但不得重新进入默认启动、常规 PIE、结算返回或教程主链。局内商店/事件/遗物/奖励视觉、路线图原创美术、结算 UX 精修、跨机器 DPI 白边、3D 城镇 cook 隔离与教程重做仍为独立待设计项，不随本轮计划暗中扩张。现有用户资产删除与未跟踪美术/探针保持保护，不得被后续任务顺带提交。
 
