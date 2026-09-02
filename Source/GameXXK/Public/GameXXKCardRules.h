@@ -125,6 +125,12 @@ namespace GameXXKCardRules
 	/** Validates a persisted card-battle state before it is projected into UI, scene, or save-game code. */
 	GAMEXXK_API bool ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime& Runtime, FString* OutError = nullptr);
 
+	/** Accumulates enemy-phase shared-energy denial that is consumed by the next player-round refill. */
+	GAMEXXK_API bool QueueNextPlayerRoundEnergyPenalty(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		int32 Amount,
+		FString* OutError = nullptr);
+
 	/** Queues one non-stacking enemy-phase surcharge to bind after the next player hand refresh. */
 	GAMEXXK_API bool QueueNextPlayerHandEnergySurcharge(
 		FGameXXKCardBattleRuntime& InOutRuntime,

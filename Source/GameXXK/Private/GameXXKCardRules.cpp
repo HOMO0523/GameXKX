@@ -14864,6 +14864,37 @@ bool GameXXKCardRules::ApplyPlayerCardDirectDamage(
 		OutError);
 }
 
+bool GameXXKCardRules::QueueNextPlayerRoundEnergyPenalty(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const int32 Amount,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	FString ValidationError;
+	if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	if (InOutRuntime.Phase != EGameXXKCardBattlePhase::Enemy || Amount <= 0)
+	{
+		return SetFailure(OutError, TEXT("A next-player-round energy penalty requires a positive enemy-phase amount."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	NewRuntime.PendingNextRoundEnergyPenalty = static_cast<int32>(FMath::Min<int64>(
+		99,
+		static_cast<int64>(NewRuntime.PendingNextRoundEnergyPenalty) + Amount));
+	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	return true;
+}
+
 bool GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	const int32 SurchargeAmount,
@@ -16648,8 +16679,13 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		}
 		NewRuntime.ActiveCardsPlayedThisRound = 0;
 		NewRuntime.LastActiveCard = FGameXXKResolvedCardSnapshot();
-		NewRuntime.Deck.SharedEnergy = FMath::Min(MaxCardBattleEnergy, 3 + NewRuntime.BonusSharedEnergyCap + NewRuntime.PendingNextRoundEnergyBonus);
+		const int64 RequestedEnergyRefill = static_cast<int64>(3)
+			+ NewRuntime.BonusSharedEnergyCap
+			+ NewRuntime.PendingNextRoundEnergyBonus
+			- NewRuntime.PendingNextRoundEnergyPenalty;
+		NewRuntime.Deck.SharedEnergy = static_cast<int32>(FMath::Clamp<int64>(RequestedEnergyRefill, 0, MaxCardBattleEnergy));
 		NewRuntime.PendingNextRoundEnergyBonus = 0;
+		NewRuntime.PendingNextRoundEnergyPenalty = 0;
 		CancelBladeDelayIfOwnerDefeated(NewRuntime);
 		const int32 ReservedRetainedCardSlots = NewRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound ? 1 : 0;
 		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit + NewRuntime.BonusRoundDrawCount - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());

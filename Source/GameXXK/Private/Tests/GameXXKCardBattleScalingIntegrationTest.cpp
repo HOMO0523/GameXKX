@@ -171,4 +171,58 @@ bool FGameXXKCardBattleScalingIntegrationTest::RunTest(const FString& Parameters
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleEnergyPenaltyTest,
+	"GameXXK.Data.CardBattleRuntime.Scaling.EnergyPenalty",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleEnergyPenaltyTest::RunTest(const FString& Parameters)
+{
+	FGameXXKCardBattleRuntime Runtime;
+	if (!TestTrue(TEXT("energy-penalty runtime initializes"), InitializeScalingRuntime(Runtime)))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> EndPhaseDamageResults;
+	FString Error;
+	if (!TestTrue(
+		FString::Printf(TEXT("energy-penalty fixture enters the enemy phase: %s"), *Error),
+		GameXXKCardRules::EndPlayerCardPhase(Runtime, EndPhaseDamageResults, &Error)))
+	{
+		return true;
+	}
+
+	TestTrue(TEXT("the first enemy packet queues one point of next-round energy denial"),
+		GameXXKCardRules::QueueNextPlayerRoundEnergyPenalty(Runtime, 1, &Error));
+	TestTrue(TEXT("a second enemy packet queues two more points in the same phase"),
+		GameXXKCardRules::QueueNextPlayerRoundEnergyPenalty(Runtime, 2, &Error));
+	TestEqual(TEXT("same-phase energy denial accumulates to three"), Runtime.PendingNextRoundEnergyPenalty, 3);
+
+	TestTrue(TEXT("the separate next-hand surcharge queues one point"),
+		GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(Runtime, 1, TEXT("Enemy"), &Error));
+	TestTrue(TEXT("a duplicate next-hand surcharge collapses without stacking"),
+		GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(Runtime, 1, TEXT("Enemy"), &Error));
+	TestEqual(TEXT("hand surcharge remains a separate non-stacking one-point value"), Runtime.PendingNextPlayerHandEnergySurcharge, 1);
+	TestEqual(TEXT("queuing a hand surcharge does not alter shared-energy denial"), Runtime.PendingNextRoundEnergyPenalty, 3);
+
+	EndPhaseDamageResults.Reset();
+	if (TestTrue(
+		FString::Printf(TEXT("the denied player round begins: %s"), *Error),
+		GameXXKCardRules::BeginNextPlayerCardRound(Runtime, EndPhaseDamageResults, &Error)))
+	{
+		TestEqual(TEXT("base three energy minus the accumulated three refills to zero"), Runtime.Deck.SharedEnergy, 0);
+		TestEqual(TEXT("the next-round energy denial is consumed once"), Runtime.PendingNextRoundEnergyPenalty, 0);
+		TestEqual(TEXT("the pending hand surcharge materializes and clears independently"), Runtime.PendingNextPlayerHandEnergySurcharge, 0);
+	}
+
+	EndPhaseDamageResults.Reset();
+	if (TestTrue(TEXT("the denied round can end normally"), GameXXKCardRules::EndPlayerCardPhase(Runtime, EndPhaseDamageResults, &Error))
+		&& TestTrue(TEXT("the following player round begins normally"), GameXXKCardRules::BeginNextPlayerCardRound(Runtime, EndPhaseDamageResults, &Error)))
+	{
+		TestEqual(TEXT("the following round refills the normal base three energy"), Runtime.Deck.SharedEnergy, 3);
+		TestEqual(TEXT("no energy denial leaks into later rounds"), Runtime.PendingNextRoundEnergyPenalty, 0);
+	}
+	return true;
+}
+
 #endif
