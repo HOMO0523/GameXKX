@@ -99,20 +99,33 @@ namespace
 			: EGameXXKCardQuality::Common;
 	}
 
-	int32 ScaleMagnitude(
-		const EGameXXKCardEffectType EffectType,
+	int32 ResolveMagnitude(
+		const EGameXXKCardMagnitudePolicy Policy,
 		const int32 BaseMagnitude,
+		const int32 RareMagnitude,
+		const int32 EpicMagnitude,
 		const EGameXXKCardQuality Quality)
 	{
-		switch (EffectType)
+		switch (Policy)
 		{
-		case EGameXXKCardEffectType::DamagePercentAttack:
-		case EGameXXKCardEffectType::DamageFlat:
-		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
-		case EGameXXKCardEffectType::Heal:
-		case EGameXXKCardEffectType::AddArmor:
+		case EGameXXKCardMagnitudePolicy::ContinuousQuality:
 			return FGameXXKCombatScalingRules::ScaleContinuousCeil(BaseMagnitude, Quality);
-
+		case EGameXXKCardMagnitudePolicy::ExplicitByQuality:
+			switch (Quality)
+			{
+			case EGameXXKCardQuality::Rare:
+				return RareMagnitude;
+			case EGameXXKCardQuality::Epic:
+				return EpicMagnitude;
+			case EGameXXKCardQuality::Common:
+			default:
+				return BaseMagnitude;
+			}
+		case EGameXXKCardMagnitudePolicy::Unscaled:
+		case EGameXXKCardMagnitudePolicy::DotCoefficient:
+		case EGameXXKCardMagnitudePolicy::PrintedCostArmor:
+		case EGameXXKCardMagnitudePolicy::DefensePercent:
+		case EGameXXKCardMagnitudePolicy::MedicineCoefficient:
 		default:
 			return BaseMagnitude;
 		}
@@ -278,18 +291,40 @@ FGameXXKCardDefinition FGameXXKCardQualityRules::BuildEffectiveDefinition(
 {
 	FGameXXKCardDefinition EffectiveDefinition = BaseDefinition;
 	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(BaseDefinition, CurrentQuality);
-	for (FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
+	EffectiveDefinition.BaseQuality = ResolvedQuality;
+	const auto ResolveEffects = [ResolvedQuality](TArray<FGameXXKCardEffect>& Effects)
 	{
-		Effect.Magnitude = ScaleMagnitude(Effect.Type, Effect.Magnitude, ResolvedQuality);
-		if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
+		for (FGameXXKCardEffect& Effect : Effects)
 		{
-			Effect.Modifier.Magnitude = ScaleMagnitude(
-				Effect.Modifier.EffectType,
-				Effect.Modifier.Magnitude,
-				ResolvedQuality);
+			Effect.Magnitude = FGameXXKCardQualityRules::ResolveEffectMagnitude(Effect, ResolvedQuality);
+			if (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier)
+			{
+				Effect.Modifier.Magnitude = ResolveMagnitude(
+					Effect.Modifier.MagnitudePolicy,
+					Effect.Modifier.Magnitude,
+					Effect.Modifier.RareMagnitude,
+					Effect.Modifier.EpicMagnitude,
+					ResolvedQuality);
+			}
 		}
-	}
+	};
+	ResolveEffects(EffectiveDefinition.Effects);
+	ResolveEffects(EffectiveDefinition.ChargeEffects);
+	ResolveEffects(EffectiveDefinition.FinishEffects);
+	ResolveEffects(EffectiveDefinition.TaskNpcRewardEffects);
 	return EffectiveDefinition;
+}
+
+int32 FGameXXKCardQualityRules::ResolveEffectMagnitude(
+	const FGameXXKCardEffect& Effect,
+	const EGameXXKCardQuality CurrentQuality)
+{
+	return ResolveMagnitude(
+		Effect.MagnitudePolicy,
+		Effect.Magnitude,
+		Effect.RareMagnitude,
+		Effect.EpicMagnitude,
+		CurrentQuality);
 }
 
 int32 FGameXXKCardQualityRules::GetCardPrice(const EGameXXKCardQuality Quality)

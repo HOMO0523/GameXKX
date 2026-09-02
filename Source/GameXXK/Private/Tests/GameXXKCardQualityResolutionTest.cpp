@@ -78,6 +78,125 @@ namespace
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardMagnitudePolicyResolutionTest,
+	"GameXXK.Data.CardQuality.MagnitudePolicies",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardMagnitudePolicyResolutionTest::RunTest(const FString& Parameters)
+{
+	FGameXXKCardEffect ContinuousDamage;
+	ContinuousDamage.Type = EGameXXKCardEffectType::DamagePercentAttack;
+	ContinuousDamage.Target = EGameXXKCardEffectTarget::SelectedTarget;
+	ContinuousDamage.Magnitude = 101;
+	ContinuousDamage.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
+	TestEqual(TEXT("Rare continuously scales 101 upward to 122"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(ContinuousDamage, EGameXXKCardQuality::Rare), 122);
+	TestEqual(TEXT("Epic continuously scales 101 upward to 142"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(ContinuousDamage, EGameXXKCardQuality::Epic), 142);
+
+	FGameXXKCardEffect ExplicitDraw;
+	ExplicitDraw.Type = EGameXXKCardEffectType::DrawCards;
+	ExplicitDraw.Target = EGameXXKCardEffectTarget::CardOwner;
+	ExplicitDraw.Magnitude = 2;
+	ExplicitDraw.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ExplicitByQuality;
+	ExplicitDraw.RareMagnitude = 3;
+	ExplicitDraw.EpicMagnitude = 4;
+	TestEqual(TEXT("Common explicit draw uses its base value"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(ExplicitDraw, EGameXXKCardQuality::Common), 2);
+	TestEqual(TEXT("Rare explicit draw uses its authored value"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(ExplicitDraw, EGameXXKCardQuality::Rare), 3);
+	TestEqual(TEXT("Epic explicit draw uses its authored value"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(ExplicitDraw, EGameXXKCardQuality::Epic), 4);
+
+	FGameXXKCardEffect DotCoefficient;
+	DotCoefficient.Type = EGameXXKCardEffectType::ApplyStatus;
+	DotCoefficient.Target = EGameXXKCardEffectTarget::SelectedTarget;
+	DotCoefficient.Status = EGameXXKCardStatus::Bleed;
+	DotCoefficient.Magnitude = 6;
+	DotCoefficient.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DotCoefficient;
+	TestEqual(TEXT("DOT keeps coefficient six for runtime level resolution"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(DotCoefficient, EGameXXKCardQuality::Epic), 6);
+
+	FGameXXKCardEffect PrintedArmor;
+	PrintedArmor.Type = EGameXXKCardEffectType::AddArmor;
+	PrintedArmor.Target = EGameXXKCardEffectTarget::CardOwner;
+	PrintedArmor.Magnitude = 80;
+	PrintedArmor.MagnitudePolicy = EGameXXKCardMagnitudePolicy::PrintedCostArmor;
+	TestEqual(TEXT("printed-cost Armor stays data-only during quality resolution"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(PrintedArmor, EGameXXKCardQuality::Epic), 80);
+
+	FGameXXKCardEffect DefensePercent;
+	DefensePercent.Type = EGameXXKCardEffectType::AddArmor;
+	DefensePercent.Target = EGameXXKCardEffectTarget::CardOwner;
+	DefensePercent.Magnitude = 150;
+	DefensePercent.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DefensePercent;
+	TestEqual(TEXT("Defense percentage stays a runtime coefficient"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(DefensePercent, EGameXXKCardQuality::Rare), 150);
+
+	FGameXXKCardEffect MedicineCoefficient;
+	MedicineCoefficient.Type = EGameXXKCardEffectType::HealOrReverseWithMedicine;
+	MedicineCoefficient.Target = EGameXXKCardEffectTarget::SelectedTarget;
+	MedicineCoefficient.Magnitude = 25;
+	MedicineCoefficient.MagnitudePolicy = EGameXXKCardMagnitudePolicy::MedicineCoefficient;
+	TestEqual(TEXT("Medicine healing keeps coefficient twenty-five for runtime context"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(MedicineCoefficient, EGameXXKCardQuality::Epic), 25);
+
+	FGameXXKCardEffect UnscaledDraw;
+	UnscaledDraw.Type = EGameXXKCardEffectType::DrawCards;
+	UnscaledDraw.Target = EGameXXKCardEffectTarget::CardOwner;
+	UnscaledDraw.Magnitude = 2;
+	UnscaledDraw.MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+	TestEqual(TEXT("unscaled draw remains two"),
+		FGameXXKCardQualityRules::ResolveEffectMagnitude(UnscaledDraw, EGameXXKCardQuality::Epic), 2);
+
+	FGameXXKCardDefinition ModifierDefinition;
+	ModifierDefinition.BaseQuality = EGameXXKCardQuality::Common;
+	FGameXXKCardEffect ModifierEffect;
+	ModifierEffect.Type = EGameXXKCardEffectType::ApplyBattleModifier;
+	ModifierEffect.Modifier.EffectType = EGameXXKCardEffectType::DamageFlat;
+	ModifierEffect.Modifier.Magnitude = 101;
+	ModifierEffect.Modifier.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
+	ModifierDefinition.Effects = {ModifierEffect};
+	const FGameXXKCardDefinition EffectiveModifier = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+		ModifierDefinition,
+		EGameXXKCardQuality::Rare);
+	TestEqual(TEXT("effective definition records the resolved Rare quality"), EffectiveModifier.BaseQuality, EGameXXKCardQuality::Rare);
+	TestEqual(TEXT("nested modifier uses its own continuous policy"), EffectiveModifier.Effects[0].Modifier.Magnitude, 122);
+
+	const FGameXXKCardDefinition* ValidBase = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.QingFengYiShi"));
+	if (!TestNotNull(TEXT("policy validation fixture finds a stable card"), ValidBase))
+	{
+		return false;
+	}
+	FString Error;
+	FGameXXKCardDefinition InvalidDefinition = *ValidBase;
+	ExplicitDraw.RareMagnitude = INDEX_NONE;
+	InvalidDefinition.Effects = {ExplicitDraw};
+	TestFalse(TEXT("explicit policy rejects a missing Rare value"), FGameXXKCardCatalog::ValidateCardDefinition(InvalidDefinition, Error));
+	TestTrue(TEXT("missing explicit value reports the policy contract"), Error.Contains(TEXT("explicit quality")));
+
+	InvalidDefinition = *ValidBase;
+	DotCoefficient.Magnitude = -1;
+	InvalidDefinition.Effects = {DotCoefficient};
+	TestFalse(TEXT("DOT policy rejects a negative coefficient"), FGameXXKCardCatalog::ValidateCardDefinition(InvalidDefinition, Error));
+	TestTrue(TEXT("negative DOT coefficient reports the policy contract"), Error.Contains(TEXT("negative policy coefficient")));
+
+	InvalidDefinition = *ValidBase;
+	DotCoefficient.Magnitude = 6;
+	DotCoefficient.Status = EGameXXKCardStatus::Mark;
+	InvalidDefinition.Effects = {DotCoefficient};
+	TestFalse(TEXT("DOT policy rejects a non-DOT status"), FGameXXKCardCatalog::ValidateCardDefinition(InvalidDefinition, Error));
+	TestTrue(TEXT("wrong DOT status reports the policy contract"), Error.Contains(TEXT("non-DOT")));
+
+	InvalidDefinition = *ValidBase;
+	PrintedArmor.Type = EGameXXKCardEffectType::DrawCards;
+	InvalidDefinition.Effects = {PrintedArmor};
+	TestFalse(TEXT("printed-cost Armor policy rejects a non-Armor effect"), FGameXXKCardCatalog::ValidateCardDefinition(InvalidDefinition, Error));
+	TestTrue(TEXT("wrong printed Armor effect reports the policy contract"), Error.Contains(TEXT("non-Armor")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardQualityResolveCardPlayTest,
 	"GameXXK.Data.CardBattleRuntime.QualityResolution",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

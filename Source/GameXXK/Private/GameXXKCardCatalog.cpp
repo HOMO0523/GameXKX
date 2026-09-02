@@ -289,6 +289,21 @@ namespace
 		return Result;
 	}
 
+	EGameXXKCardMagnitudePolicy DefaultMagnitudePolicy(const EGameXXKCardEffectType Type)
+	{
+		switch (Type)
+		{
+		case EGameXXKCardEffectType::DamagePercentAttack:
+		case EGameXXKCardEffectType::DamageFlat:
+		case EGameXXKCardEffectType::Heal:
+		case EGameXXKCardEffectType::AddArmor:
+		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
+			return EGameXXKCardMagnitudePolicy::ContinuousQuality;
+		default:
+			return EGameXXKCardMagnitudePolicy::Unscaled;
+		}
+	}
+
 	FGameXXKCardEffect Effect(
 		const EGameXXKCardEffectType Type,
 		const EGameXXKCardEffectTarget EffectTarget,
@@ -301,10 +316,51 @@ namespace
 		Result.Type = Type;
 		Result.Target = EffectTarget;
 		Result.Magnitude = Magnitude;
+		Result.MagnitudePolicy = DefaultMagnitudePolicy(Type);
 		Result.Status = Status;
 		Result.HitCount = HitCount;
 		Result.Condition = Condition;
 		return Result;
+	}
+
+	FGameXXKCardEffect Continuous(FGameXXKCardEffect Result)
+	{
+		Result.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
+		return Result;
+	}
+
+	FGameXXKCardEffect Explicit(FGameXXKCardEffect Result, const int32 Rare, const int32 Epic)
+	{
+		Result.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ExplicitByQuality;
+		Result.RareMagnitude = Rare;
+		Result.EpicMagnitude = Epic;
+		return Result;
+	}
+
+	FGameXXKCardEffect WithPolicy(FGameXXKCardEffect Result, const EGameXXKCardMagnitudePolicy Policy)
+	{
+		Result.MagnitudePolicy = Policy;
+		return Result;
+	}
+
+	FGameXXKCardEffect Dot(FGameXXKCardEffect Result)
+	{
+		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::DotCoefficient);
+	}
+
+	FGameXXKCardEffect PrintedArmor(FGameXXKCardEffect Result)
+	{
+		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::PrintedCostArmor);
+	}
+
+	FGameXXKCardEffect DefensePercent(FGameXXKCardEffect Result)
+	{
+		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::DefensePercent);
+	}
+
+	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result)
+	{
+		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::MedicineCoefficient);
 	}
 
 	FGameXXKCardEffect EffectWithSecondary(
@@ -521,6 +577,7 @@ namespace
 		Result.Modifier.TriggeredAttackTargetScope = TriggeredAttackTargetScope;
 		Result.Modifier.Status = Status;
 		Result.Modifier.Magnitude = Magnitude;
+		Result.Modifier.MagnitudePolicy = DefaultMagnitudePolicy(ModifierEffectType);
 		Result.Modifier.RemainingTriggers = RemainingTriggers;
 		Result.Modifier.MinimumResult = MinimumResult;
 		Result.Modifier.bPersistent = true;
@@ -617,6 +674,77 @@ namespace
 		}
 
 		return true;
+	}
+
+	bool IsDotReservoirStatus(const EGameXXKCardStatus Status)
+	{
+		return Status == EGameXXKCardStatus::Bleed
+			|| Status == EGameXXKCardStatus::Poison
+			|| Status == EGameXXKCardStatus::Burn
+			|| Status == EGameXXKCardStatus::DamageOverTime;
+	}
+
+	bool ValidateMagnitudePolicy(
+		const EGameXXKCardMagnitudePolicy Policy,
+		const EGameXXKCardEffectType EffectType,
+		const EGameXXKCardStatus Status,
+		const int32 Magnitude,
+		const int32 RareMagnitude,
+		const int32 EpicMagnitude,
+		const FName CardId,
+		const TCHAR* Context,
+		FString& OutError)
+	{
+		if (Policy != EGameXXKCardMagnitudePolicy::Unscaled && Magnitude < 0)
+		{
+			OutError = FString::Printf(TEXT("%s has a negative policy coefficient: %s."), Context, *CardId.ToString());
+			return false;
+		}
+
+		switch (Policy)
+		{
+		case EGameXXKCardMagnitudePolicy::Unscaled:
+		case EGameXXKCardMagnitudePolicy::ContinuousQuality:
+			return true;
+		case EGameXXKCardMagnitudePolicy::ExplicitByQuality:
+			if (RareMagnitude < 0 || EpicMagnitude < 0)
+			{
+				OutError = FString::Printf(TEXT("%s explicit quality values are incomplete: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::DotCoefficient:
+			if (EffectType != EGameXXKCardEffectType::ApplyStatus || !IsDotReservoirStatus(Status))
+			{
+				OutError = FString::Printf(TEXT("%s DOT coefficient is attached to a non-DOT status effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::PrintedCostArmor:
+			if (EffectType != EGameXXKCardEffectType::AddArmor)
+			{
+				OutError = FString::Printf(TEXT("%s printed-cost Armor policy is attached to a non-Armor effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::DefensePercent:
+			if (EffectType != EGameXXKCardEffectType::AddArmor)
+			{
+				OutError = FString::Printf(TEXT("%s Defense percentage is attached to a non-Armor effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::MedicineCoefficient:
+			if (EffectType != EGameXXKCardEffectType::HealOrReverseWithMedicine)
+			{
+				OutError = FString::Printf(TEXT("%s Medicine coefficient is attached to a non-Medicine effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		default:
+			OutError = FString::Printf(TEXT("%s has an unknown magnitude policy: %s."), Context, *CardId.ToString());
+			return false;
+		}
 	}
 
 	void AddCard(
@@ -2278,6 +2406,19 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 			OutError = FString::Printf(TEXT("Card effect hit count must be positive: %s."), *Definition.Id.ToString());
 			return false;
 		}
+		if (!ValidateMagnitudePolicy(
+			CardEffect.MagnitudePolicy,
+			CardEffect.Type,
+			CardEffect.Status,
+			CardEffect.Magnitude,
+			CardEffect.RareMagnitude,
+			CardEffect.EpicMagnitude,
+			Definition.Id,
+			TEXT("Effect"),
+			OutError))
+		{
+			return false;
+		}
 		if ((CardEffect.Type == EGameXXKCardEffectType::ApplyStatus
 				|| CardEffect.Type == EGameXXKCardEffectType::RemoveStatus
 				|| CardEffect.Type == EGameXXKCardEffectType::RegisterReaction
@@ -2392,6 +2533,19 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 			if (CardEffect.Modifier.Trigger == EGameXXKCardBattleModifierTrigger::Invalid || CardEffect.Modifier.EffectType == EGameXXKCardEffectType::Invalid || CardEffect.Modifier.Target == EGameXXKCardEffectTarget::Invalid || CardEffect.Modifier.RecipientScope == EGameXXKCardModifierRecipientScope::Invalid || CardEffect.Modifier.RecipientTarget == EGameXXKCardEffectTarget::Invalid || CardEffect.Modifier.Expiry == EGameXXKCardModifierExpiry::Invalid || CardEffect.Modifier.TriggeredAttackTargetScope == EGameXXKCardTriggeredAttackTargetScope::Invalid || !CardEffect.Modifier.bPersistent)
 			{
 				OutError = FString::Printf(TEXT("Persistent modifier is incomplete: %s."), *Definition.Id.ToString());
+				return false;
+			}
+			if (!ValidateMagnitudePolicy(
+				CardEffect.Modifier.MagnitudePolicy,
+				CardEffect.Modifier.EffectType,
+				CardEffect.Modifier.Status,
+				CardEffect.Modifier.Magnitude,
+				CardEffect.Modifier.RareMagnitude,
+				CardEffect.Modifier.EpicMagnitude,
+				Definition.Id,
+				TEXT("Modifier"),
+				OutError))
+			{
 				return false;
 			}
 			if ((CardEffect.Modifier.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid && CardEffect.Modifier.RequiredTriggeredOwnerId.IsNone()) || (CardEffect.Modifier.RequiredTriggeredRole == EGameXXKCharacterRole::Invalid && !CardEffect.Modifier.RequiredTriggeredOwnerId.IsNone()))

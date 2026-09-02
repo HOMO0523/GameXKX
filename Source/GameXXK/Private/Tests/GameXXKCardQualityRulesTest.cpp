@@ -347,6 +347,8 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("card definitions default to Common quality"), FGameXXKCardDefinition().BaseQuality, EGameXXKCardQuality::Common);
 	TestEqual(TEXT("card instances default to Common quality"), FGameXXKCardInstance().CurrentQuality, EGameXXKCardQuality::Common);
+	TestEqual(TEXT("card effects default to explicit unscaled policy"), FGameXXKCardEffect().MagnitudePolicy, EGameXXKCardMagnitudePolicy::Unscaled);
+	TestEqual(TEXT("battle modifiers default to explicit unscaled policy"), FGameXXKCardBattleModifier().MagnitudePolicy, EGameXXKCardMagnitudePolicy::Unscaled);
 	TestEqual(TEXT("relic definitions default to Common quality"), FGameXXKRelicDefinition().BaseQuality, EGameXXKCardQuality::Common);
 
 	const UEnum* QualityEnum = StaticEnum<EGameXXKCardQuality>();
@@ -589,10 +591,14 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 	const FGameXXKCardEffectCondition SentinelCondition = MakeScalingSentinelCondition();
 	for (const FEffectScalingExpectation& Expectation : Expectations)
 	{
+		const EGameXXKCardMagnitudePolicy Policy = Expectation.RareMagnitude != Expectation.BaseMagnitude
+			? EGameXXKCardMagnitudePolicy::ContinuousQuality
+			: EGameXXKCardMagnitudePolicy::Unscaled;
 		FGameXXKCardEffect Effect;
 		Effect.Type = Expectation.Type;
 		Effect.Target = EGameXXKCardEffectTarget::SelectedTarget;
 		Effect.Magnitude = Expectation.BaseMagnitude;
+		Effect.MagnitudePolicy = Policy;
 		Effect.SecondaryMagnitude = 17;
 		Effect.HitCount = 3;
 		Effect.Status = EGameXXKCardStatus::Poison;
@@ -613,6 +619,7 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 		ModifierEffect.Modifier.Expiry = EGameXXKCardModifierExpiry::EndOfCurrentRoundOrTriggerCount;
 		ModifierEffect.Modifier.Status = EGameXXKCardStatus::Bleed;
 		ModifierEffect.Modifier.Magnitude = Expectation.BaseMagnitude;
+		ModifierEffect.Modifier.MagnitudePolicy = Policy;
 		ModifierEffect.Modifier.RemainingTriggers = 2;
 		ModifierEffect.Modifier.MinimumResult = 23;
 		ModifierEffect.Modifier.bPersistent = true;
@@ -657,7 +664,7 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("effective definition retains every source effect"), Effective.Effects.Num(), BaseDefinition.Effects.Num());
 		TestEqual(TEXT("energy cost is quality-invariant"), Effective.EnergyCost, BaseDefinition.EnergyCost);
 		TestEqual(TEXT("mana cost is quality-invariant"), Effective.ManaCost, BaseDefinition.ManaCost);
-		TestEqual(TEXT("base-quality metadata remains the catalog base quality"), Effective.BaseQuality, BaseDefinition.BaseQuality);
+		TestEqual(TEXT("base-quality metadata records the resolved runtime quality"), Effective.BaseQuality, QualityExpectation.Quality);
 		TestEqual(TEXT("target status threshold is quality-invariant"), Effective.TargetSpec.RequiredStatusMinimumStacks, BaseDefinition.TargetSpec.RequiredStatusMinimumStacks);
 		TestEqual(TEXT("target minimum health percentage is quality-invariant"), Effective.TargetSpec.MinimumHealthPercent, BaseDefinition.TargetSpec.MinimumHealthPercent);
 		TestEqual(TEXT("target maximum health percentage is quality-invariant"), Effective.TargetSpec.MaximumHealthPercent, BaseDefinition.TargetSpec.MaximumHealthPercent);
@@ -720,11 +727,13 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 	FGameXXKCardEffect OverflowDamage;
 	OverflowDamage.Type = EGameXXKCardEffectType::DamageFlat;
 	OverflowDamage.Magnitude = TNumericLimits<int32>::Max();
+	OverflowDamage.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
 	OverflowDefinition.Effects.Add(OverflowDamage);
 	FGameXXKCardEffect OverflowNestedDamage;
 	OverflowNestedDamage.Type = EGameXXKCardEffectType::ApplyBattleModifier;
 	OverflowNestedDamage.Modifier.EffectType = EGameXXKCardEffectType::DamageFlat;
 	OverflowNestedDamage.Modifier.Magnitude = TNumericLimits<int32>::Min();
+	OverflowNestedDamage.Modifier.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
 	OverflowDefinition.Effects.Add(OverflowNestedDamage);
 	FGameXXKCardEffect OverflowDraw;
 	OverflowDraw.Type = EGameXXKCardEffectType::DrawCards;

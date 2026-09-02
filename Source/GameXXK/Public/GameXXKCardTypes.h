@@ -437,6 +437,19 @@ enum class EGameXXKCardEffectType : uint8
 	IncreaseMaxMana = 55
 };
 
+/** Declares when and how an authored primary magnitude is resolved. */
+UENUM(BlueprintType)
+enum class EGameXXKCardMagnitudePolicy : uint8
+{
+	Unscaled = 0,
+	ContinuousQuality = 1,
+	ExplicitByQuality = 2,
+	DotCoefficient = 3,
+	PrintedCostArmor = 4,
+	DefensePercent = 5,
+	MedicineCoefficient = 6
+};
+
 /** Optional, soft gate for an effect. It may also describe status consumption. */
 UENUM(BlueprintType)
 enum class EGameXXKCardEffectConditionType : uint8
@@ -883,6 +896,15 @@ struct GAMEXXK_API FGameXXKCardBattleModifier
 	int32 Magnitude = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardMagnitudePolicy MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RareMagnitude = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EpicMagnitude = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RemainingTriggers = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -940,6 +962,15 @@ struct GAMEXXK_API FGameXXKCardEffect
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Magnitude = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardMagnitudePolicy MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RareMagnitude = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EpicMagnitude = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 SecondaryMagnitude = 0;

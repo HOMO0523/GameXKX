@@ -12,6 +12,10 @@ public:
 	static FGameXXKCardDefinition BuildEffectiveDefinition(
 		const FGameXXKCardDefinition& BaseDefinition,
 		EGameXXKCardQuality CurrentQuality);
+	/** Resolves only authored quality policy; runtime-context coefficients remain unchanged. */
+	static int32 ResolveEffectMagnitude(
+		const FGameXXKCardEffect& Effect,
+		EGameXXKCardQuality CurrentQuality);
 	static int32 GetCardPrice(EGameXXKCardQuality Quality);
 	static int32 GetRelicPrice(EGameXXKCardQuality Quality);
 	static FText GetDisplayName(EGameXXKCardQuality Quality);
