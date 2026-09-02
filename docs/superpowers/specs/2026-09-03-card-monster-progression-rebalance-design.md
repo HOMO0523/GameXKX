@@ -1159,3 +1159,41 @@ Tune in this order:
 This specification is ready for implementation planning only after its documentation diff is reviewed and committed by itself. The implementation plan must use test-driven development for runtime behavior, preserve the dirty user worktree, stay on root `main`, avoid UnrealBridge and Live Coding, and verify C++ with UBT/the project TDD pipeline after saving and safely closing the editor when required.
 
 The implementation should be split into dependency-ordered units rather than one balance mega-change: shared numeric primitives and migration; active card catalog; player cards; task/formula/terrain UI; enemy phase runtime; enemy catalogs; Training formations/levels; equipment/idle rewards; settlement; simulations and final PIE acceptance.
+
+## 18. Deferred in-run UX and content backlog
+
+The user explicitly recorded the following follow-up scope on 2026-09-03. These are **not yet designed or approved solutions** and must receive their own UX/content analysis before implementation:
+
+### 18.1 In-run interfaces
+
+- optimize the in-run shop UI;
+- design and optimize the in-run event UI;
+- optimize the in-run reward screen;
+- optimize individual reward option cards;
+- optimize in-run enemy intent cards for fast reading of targets, hits, final numbers, statuses, charge, and phase interactions.
+
+### 18.2 Event content
+
+- increase event variety;
+- improve how interesting, surprising, and decision-relevant events are;
+- audit whether choices create meaningful tradeoffs rather than obvious best answers or text-only variants of the same reward.
+
+### 18.3 Relics
+
+- bring in-run relic values into the approved card/equipment/monster budget;
+- increase relic variety;
+- improve relic strength and build-defining value without creating mandatory universal picks.
+
+Relic calibration is a dependency of final aggregate balance certification. Until relic design is approved, certification must either hold relics fixed/exclude them from the primary cohort or clearly label the results provisional; it must not attribute relic-driven variance to cards or monsters.
+
+### 18.4 Route-map presentation
+
+- create an original in-run route-map background;
+- improve route-node art, hierarchy, readability, connection lines, reachable/visited states, and interaction feedback;
+- do not use, copy, trace, extract, or ship unpacked *Slay the Spire* map assets. The user has rejected those assets because of copyright risk. Future work must use project-owned or newly created original visual assets and a distinct presentation.
+
+### 18.5 Settlement UX
+
+The settlement screen is currently not connected to the Boss-victory flow. Section 8 defines the required idempotent receipt and navigation behavior, but the page's information architecture, reward hierarchy, statistics presentation, confirmation flow, return transition, and reload experience still require a dedicated later UX analysis.
+
+These backlog items should not silently expand the first runtime implementation plan. That plan may establish required data/runtime hooks for intent display, rewards, relic telemetry, and settlement receipts, while visual/content optimization remains separately scoped and reviewed.
