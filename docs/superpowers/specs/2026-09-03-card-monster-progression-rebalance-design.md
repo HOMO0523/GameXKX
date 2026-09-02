@@ -1196,4 +1196,10 @@ Relic calibration is a dependency of final aggregate balance certification. Unti
 
 The settlement screen is currently not connected to the Boss-victory flow. Section 8 defines the required idempotent receipt and navigation behavior, but the page's information architecture, reward hierarchy, statistics presentation, confirmation flow, return transition, and reload experience still require a dedicated later UX analysis.
 
+### 18.6 Packaged HUD cross-machine DPI and white-edge risk
+
+The HUD was previously adjusted and may appear correct in a packaged build on the user's current computer and DPI setting. That local result is not cross-machine acceptance: other displays, Windows scale factors, resolutions, aspect ratios, or window modes may still expose white strips at one or more viewport edges.
+
+Record this as an unresolved packaged-build compatibility risk. A later focused investigation must reproduce and verify the HUD on multiple machines or equivalent display configurations, including common Windows DPI scales, 16:9/16:10/ultrawide resolutions, windowed/borderless/fullscreen modes, and monitor changes. Evidence must use packaged builds and edge-visible screenshots or pixel checks; PIE or one local DPI setting alone cannot close the issue. The eventual diagnosis must distinguish layout/rounding/viewport-fill errors from operating-system window chrome and GPU/display scaling before changing the HUD again.
+
 These backlog items should not silently expand the first runtime implementation plan. That plan may establish required data/runtime hooks for intent display, rewards, relic telemetry, and settlement receipts, while visual/content optimization remains separately scoped and reviewed.
