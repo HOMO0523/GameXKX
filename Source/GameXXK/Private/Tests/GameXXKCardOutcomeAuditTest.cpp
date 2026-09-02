@@ -677,9 +677,9 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		if (!BuildRuntime(*this, Runtime, 61030, TEXT("Hero.Generic.HengJianShouShi"))) return false;
 		FindUnit(Runtime, AllyUnitId)->Armor = 99;
 		FGameXXKCardPlayResult Result;
-		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("armor-cap positive AddArmor"))) return false;
-		if (!TestEqual(TEXT("an armor-cap positive attempt still emits exactly one packet"), Result.ArmorResults.Num(), 1)) return false;
-		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, AllyUnitId, 16, 0, TEXT("armor-cap positive AddArmor"));
+		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("high-armor positive AddArmor"))) return false;
+		if (!TestEqual(TEXT("a high-armor positive attempt emits exactly one packet"), Result.ArmorResults.Num(), 1)) return false;
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, AllyUnitId, 16, 16, TEXT("high-armor positive AddArmor"));
 	}
 
 	{
@@ -1209,6 +1209,9 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("direct single keeps kind"), Single.Kind, EGameXXKCardDamageKind::SingleTargetAttack);
 	TestEqual(TEXT("group packet keeps kind"), Group.Kind, EGameXXKCardDamageKind::GroupAttack);
 	TestEqual(TEXT("ordinary poison keeps dot kind"), Poison.Kind, EGameXXKCardDamageKind::DamageOverTime);
+	TestEqual(TEXT("ordinary poison deals the visible reservoir value"), Poison.HealthDamage, 3);
+	TestEqual(TEXT("ordinary poison reports no cross-reservoir Rot bonus"), Poison.RotDamageBonus, 0);
+	TestEqual(TEXT("ordinary poison does not consume its reservoir"), Poison.StatusStacksConsumed, 0);
 	TestEqual(TEXT("ordinary poison snapshots armor before bypassing it"), Poison.TargetArmorBefore, 9);
 	TestEqual(TEXT("ordinary poison preserves armor after bypassing it"), Poison.TargetArmorAfter, 9);
 	TestEqual(TEXT("medicine reverse has medicine cause"), Reverse.Cause, EGameXXKCardDamageCause::Medicine);
@@ -1457,13 +1460,13 @@ bool FGameXXKRelicLinkedDamageAuditTest::RunTest(const FString& Parameters)
 		{
 			return false;
 		}
-		TestEqual(TEXT("Sword Guard preserves owner armor at the cap"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 99);
+		TestEqual(TEXT("Sword Guard adds one owner armor above ninety-nine"), FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->Armor, 100);
 		TestEqual(TEXT("Sword Guard grants the ally one armor"), FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->Armor, 11);
 		if (!TestEqual(TEXT("Sword Guard appends one packet per living party member"), Result.ArmorResults.Num(), 2))
 		{
 			return false;
 		}
-		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 1, 0, TEXT("Sword Guard capped owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 1, 1, TEXT("Sword Guard high owner Armor"));
 		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 1, 1, TEXT("Sword Guard ally Armor"));
 	}
 

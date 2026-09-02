@@ -1497,7 +1497,8 @@ enum class EGameXXKCardDamageCause : uint8
 	Block = 12,
 	Medicine = 13,
 	Relic = 14,
-	FixedDamage = 15
+	FixedDamage = 15,
+	ToxicExplosionRot = 16
 };
 
 /** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */

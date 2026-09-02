@@ -298,8 +298,8 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FString MultiHitError;
 	const bool bResolvedMultiHit = GameXXKCardRules::ResolveCardPlay(MultiHitRuntime, MultiHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), MultiHitResult, &MultiHitError);
 	TestTrue(FString::Printf(TEXT("each Ji Yu hit resolves against live Bleed and only landed hits trigger it: %s"), *MultiHitError), bResolvedMultiHit);
-	TestEqual(TEXT("the first Ji Yu hit is avoided while the next two deal live-Bleed direct and DoT damage"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 63);
-	TestEqual(TEXT("only the two landed Ji Yu hits consume Bleed"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 1);
+	TestEqual(TEXT("the first Ji Yu hit is avoided while the next two each trigger the full live Bleed reservoir"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 60);
+	TestEqual(TEXT("the two landed Ji Yu hits preserve Bleed"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 3);
 	TestEqual(TEXT("Ji Yu audits three hit attempts and two landed Bleed triggers"), MultiHitResult.DamageResults.Num(), 5);
 
 	TArray<FGameXXKCardCombatUnit> GuardLinkUnits;
@@ -479,7 +479,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("lifesteal card resolves its attack before calculating its recovery"), GameXXKCardRules::ResolveCardPlay(LifestealRuntime, LifestealRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealResult));
 	TestEqual(TEXT("Yin Xue heals exactly the health damage from its triggered Bleed"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Blade"))->HP, 54);
 	TestEqual(TEXT("Yin Xue applies its live-Bleed attack and separate Bleed packet"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy"))->HP, 64);
-	TestEqual(TEXT("Yin Xue consumes one old Bleed then applies two new layers"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 5);
+	TestEqual(TEXT("Yin Xue preserves four old Bleed then applies two new points"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 6);
 
 	TArray<FGameXXKCardInstance> HealingBonusInstances = MakeRuntimeInstances(TEXT("Profession.Healer.CaoMuFuZhi"), 6, TEXT("Healer"));
 	TArray<FGameXXKCardCombatUnit> HealingBonusUnits;

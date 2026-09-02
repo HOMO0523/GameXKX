@@ -258,6 +258,22 @@ namespace GameXXKCardRules
 	/** Adds up to the approved cap for a combat status and returns the number of stacks actually applied. */
 	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount);
 
+	/** Resolves a card-authored DOT coefficient and adds only the amount that fits this battle's level cap. */
+	GAMEXXK_API int32 AddDotFromCoefficient(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName TargetUnitId,
+		EGameXXKCardStatus Status,
+		int32 BaseCoefficient,
+		EGameXXKCardQuality Quality);
+
+	/** Clears one complete Bleed, Poison, Burn, or Rot reservoir. */
+	GAMEXXK_API int32 ClearDotReservoir(
+		FGameXXKCardCombatUnit& InOutUnit,
+		EGameXXKCardStatus Status);
+
+	/** Clears all four complete DOT reservoirs and returns their saturating removed total. */
+	GAMEXXK_API int32 ClearAllDotReservoirs(FGameXXKCardCombatUnit& InOutUnit);
+
 	/**
 	 * Applies the White Ape's runtime-only status reaction after AddCombatStatus has already
 	 * returned a positive applied-stack count for the supplied final status target.
@@ -294,8 +310,8 @@ namespace GameXXKCardRules
 	GAMEXXK_API void BeginCombatUnitPhase(FGameXXKCardCombatUnit& InOutUnit);
 
 	/**
-	 * Applies owner-end Poison damage, then decays Poison, Burn, Rot, and Weak by their approved rules.
-	 * Bleed is unchanged. The atomic snapshot removes guard links made stale by Poison damage.
+	 * Applies owner-end Poison reservoir damage without consuming any DOT reservoir, then decays Weak.
+	 * The atomic snapshot removes guard links made stale by Poison damage.
 	 */
 	GAMEXXK_API bool ApplyCombatEndPhaseDot(
 		TArray<FGameXXKCardCombatUnit>& InOutUnits,
@@ -305,8 +321,8 @@ namespace GameXXKCardRules
 		FString* OutError = nullptr);
 
 	/**
-	 * Snapshots Bleed, Poison, and Burn in that order, deals each stack value plus current Rot as
-	 * health-only damage, then consumes one matching stack unless preservation is active.
+	 * Snapshots Bleed, Poison, Burn, and Rot in that order and deals each visible reservoir as
+	 * independent health-only damage without consuming or multiplying any reservoir.
 	 */
 	GAMEXXK_API bool ResolveToxicExplosion(
 		FGameXXKCardBattleRuntime& InOutRuntime,

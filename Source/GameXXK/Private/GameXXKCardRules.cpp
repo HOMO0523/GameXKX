@@ -1296,9 +1296,6 @@ namespace
 			const int32 PoisonStacksBefore = TargetBeforeDot
 				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::Poison)
 				: 0;
-			const int32 RotStacksBefore = TargetBeforeDot
-				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::DamageOverTime)
-				: 0;
 			const bool bLifeSavingConsumptionPendingBefore = InOutRuntime.bLifeSavingTalismanConsumptionPending;
 			int32 HealthDamage = 0;
 			int32 PacketHealthAfter = TargetHealthBefore;
@@ -1321,13 +1318,13 @@ namespace
 				Result.Kind = EGameXXKCardDamageKind::DamageOverTime;
 				Result.Cause = EGameXXKCardDamageCause::Poison;
 				Result.StatusStacksBefore = PoisonStacksBefore;
-				Result.RotDamageBonus = RotStacksBefore;
-				Result.StatusStacksConsumed = PoisonStacksBefore > 0 ? 1 : 0;
-				Result.RequestedDamage = static_cast<int32>(FMath::Min<int64>(
-					MAX_int32,
-					static_cast<int64>(PoisonStacksBefore) + RotStacksBefore));
+				Result.RotDamageBonus = 0;
+				Result.StatusStacksConsumed = 0;
+				Result.RequestedDamage = PoisonStacksBefore;
 				Result.DamageAfterDefense = Result.RequestedDamage;
 				Result.DamageAfterVulnerability = Result.RequestedDamage;
+				Result.DamageBeforeLevelDifference = Result.RequestedDamage;
+				Result.DamageAfterLevelDifference = Result.RequestedDamage;
 				Result.HealthDamage = HealthDamage;
 				Result.TargetHealthBefore = TargetHealthBefore;
 				Result.TargetArmorBefore = TargetArmorBefore;
@@ -2383,6 +2380,14 @@ namespace
 			&& Status != EGameXXKCardStatus::Guard;
 	}
 
+	bool IsDotReservoirStatus(const EGameXXKCardStatus Status)
+	{
+		return Status == EGameXXKCardStatus::Bleed
+			|| Status == EGameXXKCardStatus::Poison
+			|| Status == EGameXXKCardStatus::Burn
+			|| Status == EGameXXKCardStatus::DamageOverTime;
+	}
+
 	int32 GetCombatStatusCap(const EGameXXKCardStatus Status)
 	{
 		switch (Status)
@@ -2941,6 +2946,60 @@ int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const
 	return AppliedStacks;
 }
 
+int32 GameXXKCardRules::AddDotFromCoefficient(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FName TargetUnitId,
+	const EGameXXKCardStatus Status,
+	const int32 BaseCoefficient,
+	const EGameXXKCardQuality Quality)
+{
+	if (TargetUnitId.IsNone()
+		|| !IsDotReservoirStatus(Status)
+		|| BaseCoefficient <= 0
+		|| InOutRuntime.TeamMaxLevelSnapshot < 1
+		|| InOutRuntime.TeamMaxLevelSnapshot > 135
+		|| FGameXXKCombatScalingRules::GetQualityPercent(Quality) <= 0)
+	{
+		return 0;
+	}
+	FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, TargetUnitId);
+	if (!Target || !Target->bLiving)
+	{
+		return 0;
+	}
+	const int32 Cap = FGameXXKCombatScalingRules::ResolveDotCap(InOutRuntime.TeamMaxLevelSnapshot);
+	const int32 Current = GameXXKCardRules::GetCombatStatusStacks(*Target, Status);
+	const int32 Available = FMath::Max(0, Cap - FMath::Min(Current, Cap));
+	const int32 ResolvedAddition = FGameXXKCombatScalingRules::ResolveDotAddition(
+		BaseCoefficient,
+		Quality,
+		InOutRuntime.TeamMaxLevelSnapshot);
+	return GameXXKCardRules::AddCombatStatus(*Target, Status, FMath::Min(Available, ResolvedAddition));
+}
+
+int32 GameXXKCardRules::ClearDotReservoir(
+	FGameXXKCardCombatUnit& InOutUnit,
+	const EGameXXKCardStatus Status)
+{
+	return IsDotReservoirStatus(Status)
+		? GameXXKCardRules::ConsumeCombatStatus(InOutUnit, Status, MAX_int32)
+		: 0;
+}
+
+int32 GameXXKCardRules::ClearAllDotReservoirs(FGameXXKCardCombatUnit& InOutUnit)
+{
+	int64 RemovedTotal = 0;
+	for (const EGameXXKCardStatus Status : {
+		EGameXXKCardStatus::Bleed,
+		EGameXXKCardStatus::Poison,
+		EGameXXKCardStatus::Burn,
+		EGameXXKCardStatus::DamageOverTime})
+	{
+		RemovedTotal += GameXXKCardRules::ClearDotReservoir(InOutUnit, Status);
+	}
+	return static_cast<int32>(FMath::Min<int64>(MAX_int32, RemovedTotal));
+}
+
 bool GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	FGameXXKCardCombatUnit& InOutStatusTarget,
@@ -3155,7 +3214,6 @@ namespace
 		const FName TargetUnitId,
 		const EGameXXKCardDamageCause Cause,
 		const int32 BaseStacks,
-		const bool bApplyRot,
 		FGameXXKCardDamageResult& OutResult,
 		FString& OutError,
 		FGameXXKCardPlayResult* InOutPlayResult = nullptr)
@@ -3178,14 +3236,14 @@ namespace
 		NewResult.Kind = EGameXXKCardDamageKind::DamageOverTime;
 		NewResult.Cause = Cause;
 		NewResult.StatusStacksBefore = BaseStacks;
-		NewResult.RotDamageBonus = bApplyRot
-			? GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime)
-			: 0;
+		NewResult.RotDamageBonus = 0;
 		NewResult.RequestedDamage = static_cast<int32>(FMath::Min<int64>(
 			MAX_int32,
 			static_cast<int64>(BaseStacks) + NewResult.RotDamageBonus));
 		NewResult.DamageAfterDefense = NewResult.RequestedDamage;
 		NewResult.DamageAfterVulnerability = NewResult.RequestedDamage;
+		NewResult.DamageBeforeLevelDifference = NewResult.RequestedDamage;
+		NewResult.DamageAfterLevelDifference = NewResult.RequestedDamage;
 		NewResult.TargetHealthBefore = Target->HP;
 		NewResult.TargetArmorBefore = Target->Armor;
 		if (!ApplyHealthLossWithLifeSavingTalisman(
@@ -3239,19 +3297,10 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	}
 
 	const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
-	const int32 RotStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime);
-	const int64 RawDamage = PoisonStacks > 0
-		? static_cast<int64>(PoisonStacks) + RotStacks
-		: 0;
+	const int64 RawDamage = PoisonStacks;
 	const int32 NewHealthDamage = static_cast<int32>(FMath::Min<int64>(Target->HP, RawDamage));
 	Target->HP -= NewHealthDamage;
 	Target->bLiving = Target->HP > 0;
-	if (PoisonStacks > 0)
-	{
-		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, 1);
-	}
-	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, 1);
-	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::DamageOverTime, 1);
 	GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
 	RemoveLinksForDefeatedUnits(NewGuardLinks, NewUnits);
 
@@ -3294,10 +3343,7 @@ namespace
 		}
 
 		const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
-		const int32 RotStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::DamageOverTime);
-		const int64 RawDamage = PoisonStacks > 0
-			? static_cast<int64>(PoisonStacks) + RotStacks
-			: 0;
+		const int64 RawDamage = PoisonStacks;
 		if (!ApplyHealthLossWithLifeSavingTalisman(
 			NewRuntime.Units,
 			&NewRuntime.bLifeSavingTalismanArmed,
@@ -3317,12 +3363,6 @@ namespace
 		{
 			return SetFailure(OutError, TEXT("End-phase DoT target disappeared after health loss."));
 		}
-		if (PoisonStacks > 0)
-		{
-			GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, 1);
-		}
-		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, 1);
-		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::DamageOverTime, 1);
 		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
 		RemoveLinksForDefeatedUnits(NewRuntime.GuardLinks, NewRuntime.Units);
 		if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
@@ -3342,6 +3382,7 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 	TArray<FGameXXKCardDamageResult>& OutResults,
 	FString* OutError)
 {
+	(void)bPreserveDamageOverTimeStacks;
 	if (OutError)
 	{
 		OutError->Reset();
@@ -3370,45 +3411,19 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 		EGameXXKCardStatus Status;
 		EGameXXKCardDamageCause Cause;
 		int32 StacksBefore = 0;
-		int32 ResultIndex = INDEX_NONE;
 	};
 	TArray<FExplosionPacketSpec> PacketSpecs = {
 		{EGameXXKCardStatus::Bleed, EGameXXKCardDamageCause::ToxicExplosionBleed},
 		{EGameXXKCardStatus::Poison, EGameXXKCardDamageCause::ToxicExplosionPoison},
-		{EGameXXKCardStatus::Burn, EGameXXKCardDamageCause::ToxicExplosionBurn}};
+		{EGameXXKCardStatus::Burn, EGameXXKCardDamageCause::ToxicExplosionBurn},
+		{EGameXXKCardStatus::DamageOverTime, EGameXXKCardDamageCause::ToxicExplosionRot}};
 	for (FExplosionPacketSpec& PacketSpec : PacketSpecs)
 	{
 		PacketSpec.StacksBefore = GetCombatStatusStacksInternal(*Target, PacketSpec.Status);
 	}
-	int32 ShiGuSixPieceIndex = INDEX_NONE;
-	for (int32 EffectIndex = 0; EffectIndex < NewRuntime.EquipmentEffects.Num(); ++EffectIndex)
-	{
-		const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime = NewRuntime.EquipmentEffects[EffectIndex];
-		const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
-		const int32 TriggerCountThisRound = EffectRuntime.LastTriggerRound == NewRuntime.RoundNumber
-			? EffectRuntime.CurrentRoundTriggerCount
-			: 0;
-		if (Effect.Set == EGameXXKEquipmentSet::ShiGu
-			&& Effect.RequiredPieces == 6
-			&& Effect.Scope == EGameXXKEquipmentSetBonusScope::Owner
-			&& Effect.Hook == EGameXXKEquipmentSetBonusHook::ShiGuToxicExplosion
-			&& EffectRuntime.SourceCharacterId == SourceUnitId
-			&& TriggerCountThisRound < Effect.MaxTriggersPerRound)
-		{
-			ShiGuSixPieceIndex = EffectIndex;
-			break;
-		}
-	}
-	const bool bShiGuPreservesThisExplosion = ShiGuSixPieceIndex != INDEX_NONE
-		&& PacketSpecs.ContainsByPredicate([](const FExplosionPacketSpec& PacketSpec)
-		{
-			return PacketSpec.StacksBefore > 0;
-		});
-	const bool bEffectivePreserveDamageOverTimeStacks = bPreserveDamageOverTimeStacks
-		|| bShiGuPreservesThisExplosion;
 
 	TArray<FGameXXKCardDamageResult> NewResults;
-	NewResults.Reserve(3);
+	NewResults.Reserve(4);
 	for (FExplosionPacketSpec& PacketSpec : PacketSpecs)
 	{
 		if (PacketSpec.StacksBefore <= 0)
@@ -3421,38 +3436,13 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 			TargetUnitId,
 			PacketSpec.Cause,
 			PacketSpec.StacksBefore,
-			true,
 			PacketResult,
 			ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
 		}
 		PacketResult.SourceUnitId = SourceUnitId;
-		PacketSpec.ResultIndex = NewResults.Add(MoveTemp(PacketResult));
-	}
-
-	Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
-	if (!Target)
-	{
-		return SetFailure(OutError, TEXT("Toxic explosion target disappeared before status consumption."));
-	}
-	if (!bEffectivePreserveDamageOverTimeStacks)
-	{
-		for (const FExplosionPacketSpec& PacketSpec : PacketSpecs)
-		{
-			if (PacketSpec.ResultIndex == INDEX_NONE)
-			{
-				continue;
-			}
-			NewResults[PacketSpec.ResultIndex].StatusStacksConsumed =
-				GameXXKCardRules::ConsumeCombatStatus(*Target, PacketSpec.Status, 1);
-		}
-	}
-	if (bShiGuPreservesThisExplosion && NewResults.Num() > 0)
-	{
-		FGameXXKEquipmentBattleEffectRuntime& ShiGuSixPiece = NewRuntime.EquipmentEffects[ShiGuSixPieceIndex];
-		ShiGuSixPiece.LastTriggerRound = NewRuntime.RoundNumber;
-		ShiGuSixPiece.CurrentRoundTriggerCount = 1;
+		NewResults.Add(MoveTemp(PacketResult));
 	}
 	UpdateBattleTerminalPhase(NewRuntime);
 	InOutRuntime = MoveTemp(NewRuntime);
@@ -8164,7 +8154,6 @@ namespace
 			TargetUnitId,
 			EGameXXKCardDamageCause::Bleed,
 			TriggeredBleedStacks,
-			true,
 			BleedResult,
 			OutError,
 			&InOutResult))
@@ -8555,7 +8544,7 @@ namespace
 						TargetId,
 						HitSourceUnitId,
 						Origin,
-						Definition.BladeSequence.BaseRule == EGameXXKBladeBaseRule::PreserveTriggeredBleed ? 0 : 1,
+						0,
 						InOutResult,
 						TriggeredBleedDamage,
 						OutError))
@@ -10734,7 +10723,7 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
-					RemoveAnyDamageOverTime(*Target, Effect.Magnitude);
+					GameXXKCardRules::ClearAllDotReservoirs(*Target);
 					break;
 				case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime:
 					if (Effect.Magnitude <= 0)
@@ -10744,9 +10733,7 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Bleed, MAX_int32);
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Poison, MAX_int32);
-						GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Burn, MAX_int32);
+						GameXXKCardRules::ClearAllDotReservoirs(*Target);
 					}
 					break;
 				case EGameXXKCardEffectType::Cleanse:
@@ -10787,7 +10774,6 @@ namespace
 						TriggerTargetUnitId,
 						TriggeredCause,
 						TriggeredStacks,
-						true,
 						TriggerResult,
 						OutError,
 						&InOutResult))
@@ -10805,7 +10791,7 @@ namespace
 						InOutRuntime,
 						*Target,
 						TriggeredStatus,
-						1,
+						0,
 						TriggerSourceUnitId,
 						TriggerResult.HealthDamage,
 						TriggerResult.StatusStacksConsumed,
@@ -10831,8 +10817,11 @@ namespace
 					case EGameXXKCardStatus::Burn:
 						Cause = EGameXXKCardDamageCause::Burn;
 						break;
+					case EGameXXKCardStatus::DamageOverTime:
+						Cause = EGameXXKCardDamageCause::Rot;
+						break;
 					default:
-						OutError = TEXT("Triggered status damage supports Bleed, Poison, or Burn only.");
+						OutError = TEXT("Triggered status damage supports Bleed, Poison, Burn, or Rot only.");
 						return false;
 					}
 					if (Effect.Magnitude <= 0)
@@ -10858,7 +10847,6 @@ namespace
 							TriggerTargetId,
 							Cause,
 							StacksBefore,
-							true,
 							TriggerResult,
 							OutError,
 							&InOutResult))
@@ -10877,7 +10865,7 @@ namespace
 							InOutRuntime,
 							*Target,
 							Effect.Status,
-							1,
+							0,
 							TriggerOwnerId,
 							TriggerResult.HealthDamage,
 							TriggerResult.StatusStacksConsumed,
@@ -11404,7 +11392,7 @@ namespace
 						CardTargetIds[0],
 						ChargeOwnerUnitId,
 						EGameXXKCardResolutionOrigin::HeavyArrow,
-						1,
+						0,
 						InOutResult,
 						TriggeredBleedDamage,
 						OutError))
@@ -11495,7 +11483,7 @@ namespace
 					CardTargetIds[0],
 					ChargeOwnerUnitId,
 					EGameXXKCardResolutionOrigin::HeavyArrow,
-					1,
+					0,
 					InOutResult,
 					TriggeredBleedDamage,
 					OutError))
@@ -12973,8 +12961,11 @@ namespace
 			case EGameXXKCardStatus::Burn:
 				Cause = EGameXXKCardDamageCause::Burn;
 				break;
+			case EGameXXKCardStatus::DamageOverTime:
+				Cause = EGameXXKCardDamageCause::Rot;
+				break;
 			default:
-				OutError = TEXT("Triggered status damage supports Bleed, Poison, or Burn only.");
+				OutError = TEXT("Triggered status damage supports Bleed, Poison, Burn, or Rot only.");
 				return false;
 			}
 			FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, ConditionTargetUnitId);
@@ -12992,7 +12983,6 @@ namespace
 				ConditionTargetUnitId,
 				Cause,
 				StacksBefore,
-				true,
 				DamageResult,
 				OutError,
 				InOutResult))
@@ -13011,7 +13001,7 @@ namespace
 				InOutRuntime,
 				*Target,
 				Definition.Status,
-				1,
+				0,
 				Modifier.SourceUnitId,
 				DamageResult.HealthDamage,
 				DamageResult.StatusStacksConsumed,
@@ -14058,7 +14048,6 @@ namespace
 					EnemyUnitId,
 					EGameXXKCardDamageCause::Burn,
 					BurnStacks,
-					true,
 					TriggerResult,
 					OutError))
 				{

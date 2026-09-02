@@ -140,6 +140,7 @@ namespace
 		case EGameXXKCardDamageCause::ToxicExplosionBleed:
 		case EGameXXKCardDamageCause::ToxicExplosionPoison:
 		case EGameXXKCardDamageCause::ToxicExplosionBurn:
+		case EGameXXKCardDamageCause::ToxicExplosionRot:
 			return EDamageBucket::Toxic;
 		case EGameXXKCardDamageCause::Medicine:
 			return EDamageBucket::Medicine;
