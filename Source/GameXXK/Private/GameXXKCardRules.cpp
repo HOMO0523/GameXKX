@@ -2,6 +2,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCharacterStatRules.h"
+#include "GameXXKCombatScalingRules.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEquipmentRules.h"
 
@@ -2773,6 +2774,16 @@ namespace
 		return Kind == EGameXXKCardDamageKind::SingleTargetAttack || Kind == EGameXXKCardDamageKind::GroupAttack;
 	}
 
+	bool IsFixedDamageKind(const EGameXXKCardDamageKind Kind)
+	{
+		return Kind == EGameXXKCardDamageKind::FixedDamage;
+	}
+
+	bool IsDirectOrFixedDamageKind(const EGameXXKCardDamageKind Kind)
+	{
+		return IsDirectAttackDamageKind(Kind) || IsFixedDamageKind(Kind);
+	}
+
 	bool ValidateOnHitStatuses(const TArray<FGameXXKCardStatusStack>& OnHitStatuses, FString& OutError)
 	{
 		TMap<EGameXXKCardStatus, int64> TotalByStatus;
@@ -2828,6 +2839,21 @@ namespace
 				return false;
 			}
 			return ValidateOnHitStatuses(Context.OnHitStatuses, OutError);
+		}
+
+		if (IsFixedDamageKind(Context.Kind))
+		{
+			const FGameXXKCardCombatUnit* SourceUnit = FindCombatUnitById(Units, Context.SourceUnitId);
+			if (!SourceUnit || !SourceUnit->bLiving || SourceUnit->Side == OriginalTarget.Side
+				|| Context.IgnoredDefense != 0
+				|| Context.MomentumStacksOverride != INDEX_NONE
+				|| Context.VulnerabilityStacksToConsumeOverride != INDEX_NONE
+				|| !Context.OnHitStatuses.IsEmpty())
+			{
+				OutError = TEXT("Fixed damage requires a living opposing source and cannot carry attack-only modifiers.");
+				return false;
+			}
+			return true;
 		}
 
 		if (Context.Kind == EGameXXKCardDamageKind::SelfHealthLoss)
@@ -3477,7 +3503,9 @@ namespace
 	NewResult.ResolutionOrigin = Context.ResolutionOrigin;
 	NewResult.Cause = IsDirectAttackDamageKind(Context.Kind)
 		? EGameXXKCardDamageCause::DirectAttack
-		: Context.Kind == EGameXXKCardDamageKind::SelfHealthLoss
+		: IsFixedDamageKind(Context.Kind)
+			? EGameXXKCardDamageCause::FixedDamage
+			: Context.Kind == EGameXXKCardDamageKind::SelfHealthLoss
 			? EGameXXKCardDamageCause::SelfLoss
 			: EGameXXKCardDamageCause::Environment;
 	NewResult.OriginalTargetUnitId = TargetUnitId;
@@ -3515,6 +3543,7 @@ namespace
 	int32 PacketHealthAfter = ResolvedTarget->HP;
 
 	const bool bDirectAttack = IsDirectAttackDamageKind(Context.Kind);
+	const bool bDirectDamage = IsDirectOrFixedDamageKind(Context.Kind);
 	if (bDirectAttack)
 	{
 		NewResult.AgilityRollPercent = Context.AgilityRollPercent;
@@ -3541,7 +3570,7 @@ namespace
 	}
 	else
 	{
-		const FGameXXKCardCombatUnit* SourceUnit = bDirectAttack
+		const FGameXXKCardCombatUnit* SourceUnit = bDirectDamage
 			? FindCombatUnitById(NewUnits, Context.SourceUnitId)
 			: nullptr;
 		int32 TalentScaledDamage = RequestedDamage;
@@ -3579,7 +3608,8 @@ namespace
 				MAX_int32,
 				static_cast<int64>(TalentScaledDamage) + MomentumStacks))
 			: TalentScaledDamage;
-		const int32 DamageAfterWeak = SourceUnit
+		const int32 DamageAfterWeak = bDirectAttack
+			&& SourceUnit
 			&& GetCombatStatusStacksInternal(*SourceUnit, EGameXXKCardStatus::Weak) > 0
 			? FMath::Max(1, DamageWithMomentum / 2)
 			: DamageWithMomentum;
@@ -3594,16 +3624,16 @@ namespace
 		NewResult.DamageAfterDefense = bDirectAttack
 			? ComputeDamageAfterDefense(DamageAfterWeak, *ResolvedTarget, Context.IgnoredDefense)
 			: DamageAfterWeak;
-		const int32 VulnerabilityStacks = bDirectAttack
+		const int32 VulnerabilityStacks = bDirectDamage
 			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Vulnerability)
 			: 0;
-		const int32 MarkStacks = bDirectAttack
+		const int32 MarkStacks = bDirectDamage
 			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Mark)
 			: 0;
 		const int32 MarkBonusPercent = MarkStacks > 0
 			? GameXXKCardRules::MarkDirectDamageBonusPercent
 			: 0;
-		if (bDirectAttack)
+		if (bDirectDamage)
 		{
 			NewResult.VulnerabilityStacksBeforeHit = VulnerabilityStacks;
 			NewResult.MarkStacksBeforeHit = MarkStacks;
@@ -3613,6 +3643,15 @@ namespace
 			* static_cast<int64>(100 + 10 * VulnerabilityStacks + MarkBonusPercent)
 			/ 100;
 		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
+		NewResult.DamageBeforeLevelDifference = NewResult.DamageAfterVulnerability;
+		NewResult.DamageAfterLevelDifference = NewResult.DamageBeforeLevelDifference;
+		if (bDirectDamage && SourceUnit && SourceUnit->CombatLevel > 0 && ResolvedTarget->CombatLevel > 0)
+		{
+			NewResult.DamageAfterLevelDifference = FGameXXKCombatScalingRules::ApplyLevelDifferenceCeil(
+				NewResult.DamageBeforeLevelDifference,
+				SourceUnit->CombatLevel,
+				ResolvedTarget->CombatLevel);
+		}
 		if (VulnerabilityStacks > 0)
 		{
 			const int32 VulnerabilityConsumptionLimit = Context.VulnerabilityStacksToConsumeOverride == INDEX_NONE
@@ -3633,11 +3672,11 @@ namespace
 				EGameXXKCardStatus::Mark,
 				1);
 		}
-		NewResult.ArmorAbsorbed = IsDirectAttackDamageKind(Context.Kind)
-			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterVulnerability)
+		NewResult.ArmorAbsorbed = bDirectDamage
+			? FMath::Min(ResolvedTarget->Armor, NewResult.DamageAfterLevelDifference)
 			: 0;
 		ResolvedTarget->Armor -= NewResult.ArmorAbsorbed;
-		NewResult.HealthDamage = NewResult.DamageAfterVulnerability - NewResult.ArmorAbsorbed;
+		NewResult.HealthDamage = NewResult.DamageAfterLevelDifference - NewResult.ArmorAbsorbed;
 		EGameXXKEnemyPassiveId ResolvedPlayerCardEnemyPassive = EGameXXKEnemyPassiveId::None;
 		if (PlayerCardRuntime
 			&& ResolvedTarget->Side == EGameXXKCardTargetSide::Enemy
@@ -3660,7 +3699,8 @@ namespace
 			}
 			ResolvedPlayerCardEnemyPassive = EnemyDefinition->PassiveId;
 
-			if (EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::IronfeatherFirstHit
+			if (bDirectAttack
+				&& EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::IronfeatherFirstHit
 				&& EnemyState.bFirstHitPassiveAvailable)
 			{
 				const int32 PassiveReducedHealthDamage = NewResult.HealthDamage / 2;
@@ -3670,7 +3710,7 @@ namespace
 					EnemyState.bFirstHitPassiveAvailable = false;
 				}
 			}
-			else if (EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::BlackBearThickHide)
+			else if (bDirectAttack && EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::BlackBearThickHide)
 			{
 				const int64 ThickHideReducedHealthDamage = static_cast<int64>(NewResult.HealthDamage) * 85 / 100;
 				NewResult.HealthDamage = static_cast<int32>(FMath::Min<int64>(MAX_int32, ThickHideReducedHealthDamage));
@@ -4870,6 +4910,11 @@ namespace
 		const bool bLifeSavingProjectionActive = Runtime.bLifeSavingTalismanArmed
 			|| Runtime.bLifeSavingTalismanConsumptionPending;
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1
+			|| Runtime.TeamMaxLevelSnapshot < 1 || Runtime.TeamMaxLevelSnapshot > 135
+			|| (Runtime.EnemyDifficultyDamagePercent != 100
+				&& Runtime.EnemyDifficultyDamagePercent != 125
+				&& Runtime.EnemyDifficultyDamagePercent != 150)
+			|| Runtime.PendingNextRoundEnergyPenalty < 0 || Runtime.PendingNextRoundEnergyPenalty > 99
 			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0
 			|| Runtime.NextGeneratedCardOrdinal < 0 || Runtime.NextModifierOrdinal < 0
 			|| Runtime.PendingTriggeredDrawCount < 0
@@ -8151,9 +8196,9 @@ namespace
 		{
 			OutError->Reset();
 		}
-		if (!IsDirectAttackDamageKind(Context.Kind) || Context.SourceUnitId.IsNone())
+		if (!IsDirectOrFixedDamageKind(Context.Kind) || Context.SourceUnitId.IsNone())
 		{
-			return SetFailure(OutError, TEXT("Player card direct damage requires a concrete direct-attack context and source."));
+			return SetFailure(OutError, TEXT("Player card damage requires a concrete direct-attack or fixed-damage context and source."));
 		}
 		FString ValidationError;
 		if (!ValidateCardBattleRuntimeInternal(InOutRuntime, ValidationError))
@@ -8163,12 +8208,15 @@ namespace
 		const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, Context.SourceUnitId);
 		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Party)
 		{
-			return SetFailure(OutError, TEXT("Player card direct damage requires one living party source."));
+			return SetFailure(OutError, TEXT("Player card damage requires one living party source."));
 		}
 
 		FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
 		FGameXXKCardDamageContext ResolvedContext = Context;
-		ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
+		if (IsDirectAttackDamageKind(ResolvedContext.Kind))
+		{
+			ResolvedContext.AgilityRollPercent = AdvanceCombatRandomRoll(NewRuntime);
+		}
 		FGameXXKCardDamageResult NewResult;
 		FGameXXKCardPlayResult PendingAuditResult;
 		if (!ApplyCombatDirectDamageInternal(
@@ -14732,7 +14780,8 @@ bool GameXXKCardRules::InitializeCardBattleRuntime(
 	const TArray<FGameXXKCardCombatUnit>& Units,
 	const EGameXXKCardTerrain Terrain,
 	const int32 InitialRandomSeed,
-	FString* OutError)
+	FString* OutError,
+	const int32 EnemyDifficultyDamagePercent)
 {
 	if (OutError)
 	{
@@ -14747,6 +14796,15 @@ bool GameXXKCardRules::InitializeCardBattleRuntime(
 	NewRuntime.Terrain = Terrain;
 	NewRuntime.RoundNumber = 1;
 	NewRuntime.Units = Units;
+	NewRuntime.TeamMaxLevelSnapshot = 1;
+	for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
+	{
+		if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Party && Unit.CombatLevel > 0)
+		{
+			NewRuntime.TeamMaxLevelSnapshot = FMath::Max(NewRuntime.TeamMaxLevelSnapshot, Unit.CombatLevel);
+		}
+	}
+	NewRuntime.EnemyDifficultyDamagePercent = EnemyDifficultyDamagePercent;
 	FString ValidationError;
 	if (!ValidateCombatUnits(NewRuntime.Units, ValidationError))
 	{
@@ -16145,13 +16203,16 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	const int32 DifficultyScaledDamage = FGameXXKCombatScalingRules::ScaleByPercentCeil(
+		RequestedDamage,
+		NewRuntime.EnemyDifficultyDamagePercent);
 	FGameXXKCardDamageResult NewResult;
 	if (!ApplyCombatDirectDamageInternal(
 		NewRuntime.Units,
 		NewRuntime.GuardLinks,
 		ResolvedContext,
 		AppliedTargetUnitId,
-		RequestedDamage,
+		DifficultyScaledDamage,
 		NewResult,
 		nullptr,
 		&NewRuntime,
@@ -16199,9 +16260,10 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	}
 	NewResult.OriginalTargetUnitId = SelectedPartyTargetUnitId;
 	NewResult.bRedirected |= bRedirectedByCard;
-	UE_LOG(LogTemp, Verbose, TEXT("[EnemyAtk] source=%s requested=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
+	UE_LOG(LogTemp, Verbose, TEXT("[EnemyAtk] source=%s requested=%d scaled=%d target=%s redirected=%d before=%d dmg=%d after=%d"),
 		*ResolvedContext.SourceUnitId.ToString(),
 		RequestedDamage,
+		DifficultyScaledDamage,
 		*AppliedTargetUnitId.ToString(),
 		bRedirectedByCard,
 		NewResult.TargetHealthBefore,

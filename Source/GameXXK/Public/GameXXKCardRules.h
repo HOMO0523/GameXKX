@@ -119,7 +119,8 @@ namespace GameXXKCardRules
 		const TArray<FGameXXKCardCombatUnit>& Units,
 		EGameXXKCardTerrain Terrain,
 		int32 InitialRandomSeed,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		int32 EnemyDifficultyDamagePercent = 100);
 
 	/** Validates a persisted card-battle state before it is projected into UI, scene, or save-game code. */
 	GAMEXXK_API bool ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime& Runtime, FString* OutError = nullptr);
@@ -323,7 +324,7 @@ namespace GameXXKCardRules
 		FString* OutError = nullptr);
 
 	/**
-	 * Resolves one direct damage packet emitted by a player-owned card against the complete
+	 * Resolves one direct-attack or fixed-damage packet emitted by a player-owned card against the complete
 	 * runtime, allowing the final living receiver to apply serializable receiver passives
 	 * before health/death commits. Inputs and outputs commit atomically.
 	 */

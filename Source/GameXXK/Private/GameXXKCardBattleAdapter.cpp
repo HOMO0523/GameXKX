@@ -2277,7 +2277,8 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	const EGameXXKNodeKind NodeKind,
 	const EGameXXKCardTerrain Terrain,
 	const int32 InitialRandomSeed,
-	FString* OutError)
+	FString* OutError,
+	const int32 EnemyDifficultyDamagePercent)
 {
 	if (OutError)
 	{
@@ -2321,7 +2322,14 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	const int32 EffectiveSeed = InitialRandomSeed != 0
 		? InitialRandomSeed
 		: FGameXXKCardBattleAdapter::MixBattleSeed(Run.RouteRandomSeed, NewState.ActiveBattleNodeId);
-	if (!GameXXKCardRules::InitializeCardBattleRuntime(NewRuntime, Instances, Units, Terrain, EffectiveSeed, OutError))
+	if (!GameXXKCardRules::InitializeCardBattleRuntime(
+		NewRuntime,
+		Instances,
+		Units,
+		Terrain,
+		EffectiveSeed,
+		OutError,
+		EnemyDifficultyDamagePercent))
 	{
 		return false;
 	}

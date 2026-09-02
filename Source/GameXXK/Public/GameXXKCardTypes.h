@@ -1473,7 +1473,9 @@ enum class EGameXXKCardDamageKind : uint8
 	/** Global or map-source health loss: health only, with no guard, agility, defense, or vulnerability. */
 	EnvironmentalHealthLoss = 4,
 	/** End-phase status health loss. The dedicated DoT resolver owns this case. */
-	DamageOverTime = 5
+	DamageOverTime = 5,
+	/** Card-authored numeric damage: bypasses Attack/Defense, but keeps direct-status, Armor, and level rules. */
+	FixedDamage = 6
 };
 
 /** Identifies why a damage packet exists without changing its mitigation policy. */
@@ -1494,7 +1496,8 @@ enum class EGameXXKCardDamageCause : uint8
 	Environment = 11,
 	Block = 12,
 	Medicine = 13,
-	Relic = 14
+	Relic = 14,
+	FixedDamage = 15
 };
 
 /** Source and policy metadata for one atomic damage packet. It is never inferred from a UI widget. */
@@ -1598,6 +1601,14 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	/** Compatibility field containing all direct-hit status amplification, including Mark. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DamageAfterVulnerability = 0;
+
+	/** Damage after Defense and direct-status amplification, immediately before level difference. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageBeforeLevelDifference = 0;
+
+	/** Damage after the clamped source/target level difference and before Armor. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageAfterLevelDifference = 0;
 
 	/** Vulnerability stacks on the resolved receiver immediately before this hit. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -2192,6 +2203,18 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RoundNumber = 0;
+
+	/** Highest living party combat level captured once when this battle starts. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TeamMaxLevelSnapshot = 1;
+
+	/** Normal/Hard/Hell enemy direct-damage multiplier stored as 100/125/150. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 EnemyDifficultyDamagePercent = 100;
+
+	/** Accumulated enemy denial consumed by the next player-round energy refill. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingNextRoundEnergyPenalty = 0;
 
 	/** Exact protagonist eight-card equipment snapshot; never inferred from the materialized battle deck. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

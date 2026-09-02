@@ -31,7 +31,8 @@ public:
 		EGameXXKNodeKind NodeKind,
 		EGameXXKCardTerrain Terrain,
 		int32 InitialRandomSeed,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		int32 EnemyDifficultyDamagePercent = 100);
 
 	/** Copies HP/MP/attributes/defeat state from card authority to existing scene/widget-facing battle arrays. */
 	static bool SyncCardBattleToLegacyProjection(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
