@@ -1202,4 +1202,14 @@ The HUD was previously adjusted and may appear correct in a packaged build on th
 
 Record this as an unresolved packaged-build compatibility risk. A later focused investigation must reproduce and verify the HUD on multiple machines or equivalent display configurations, including common Windows DPI scales, 16:9/16:10/ultrawide resolutions, windowed/borderless/fullscreen modes, and monitor changes. Evidence must use packaged builds and edge-visible screenshots or pixel checks; PIE or one local DPI setting alone cannot close the issue. The eventual diagnosis must distinguish layout/rounding/viewport-fill errors from operating-system window chrome and GPU/display scaling before changing the HUD again.
 
+### 18.7 Remove the 3D town and redesign tutorials
+
+The user has explicitly reversed the earlier plan to retain the legacy 3D town as a regression surface. The 3D town is too large for the package and does not fit this project's final direction. A future scoped removal must eliminate it completely from the project and from packaged output rather than merely hiding its entry point.
+
+The removal scope must be established by a dependency audit before any destructive action. It includes 3D-town maps and placed content, town-only assets and source art, runtime entry/fallback paths, cook references, configuration, plugins or modules used only by that flow, tests, documentation, and obsolete save-state destinations. Shared assets or code still required by the pure-2D desktop/BattleBoard flow must be preserved. Existing saves located in a removed town state require a deterministic migration to the canonical 2D desktop surface. Package-size evidence must be captured before and after removal.
+
+The current tutorial guidance is not the final tutorial. Record a separate future redesign for the pure-2D desktop-to-BattleBoard experience. Do not mechanically transplant town movement, 3D NPC interaction, or removed-map guide anchors into the new tutorial. Its teaching order, anchors, skip/replay behavior, persistence, and first-battle flow require their own brainstorming and UX approval.
+
+No 3D-town asset, map, flow, or tutorial deletion is performed by this documentation update.
+
 These backlog items should not silently expand the first runtime implementation plan. That plan may establish required data/runtime hooks for intent display, rewards, relic telemetry, and settlement receipts, while visual/content optimization remains separately scoped and reviewed.
