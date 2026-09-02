@@ -275,8 +275,14 @@ namespace GameXXKCardRules
 	/** Removes up to Maximum stacks for one combat status and returns the amount actually consumed. */
 	GAMEXXK_API int32 ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Maximum);
 
-	/** Adds armor up to the approved cap of 99 and returns the amount actually applied. */
+	/** Adds armor with saturating int32 overflow protection and returns the amount actually applied. */
 	GAMEXXK_API int32 AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, int32 Amount);
+
+	/** Resolves one primary printed-cost Armor value from the living card owner's current Defense and quality. */
+	GAMEXXK_API int32 ResolvePrintedCostArmor(
+		const FGameXXKCardCombatUnit& CardOwner,
+		int32 PrintedEnergyCost,
+		EGameXXKCardQuality Quality);
 
 	/** Restores health up to the unit's saved maximum and returns the amount actually restored. */
 	GAMEXXK_API int32 HealCombatUnit(FGameXXKCardCombatUnit& InOutUnit, int32 Amount);

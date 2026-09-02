@@ -70,8 +70,8 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("mark has a five-stack cap"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Mark, 8), 5);
 	TestEqual(TEXT("bleed accepts the full declared stack amount"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Bleed, 12), 12);
 	TestEqual(TEXT("bare guard status is rejected because guard must carry a unit binding"), GameXXKCardRules::AddCombatStatus(Hero, EGameXXKCardStatus::Guard, 1), 0);
-	TestEqual(TEXT("armor add clamps at ninety-nine"), GameXXKCardRules::AddCombatArmor(Hero, 120), 99);
-	TestEqual(TEXT("armor stores the approved cap"), Hero.Armor, 99);
+	TestEqual(TEXT("armor add keeps the full value above ninety-nine"), GameXXKCardRules::AddCombatArmor(Hero, 120), 120);
+	TestEqual(TEXT("armor stores the full value"), Hero.Armor, 120);
 	GameXXKCardRules::BeginCombatUnitPhase(Hero);
 	TestEqual(TEXT("armor clears at the owner phase start"), Hero.Armor, 0);
 	TestEqual(TEXT("phase start does not erase persistent momentum"), GameXXKCardRules::GetCombatStatusStacks(Hero, EGameXXKCardStatus::Momentum), 9);

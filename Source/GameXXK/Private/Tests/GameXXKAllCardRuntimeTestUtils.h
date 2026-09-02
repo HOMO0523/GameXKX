@@ -377,7 +377,7 @@ namespace GameXXKAllCardPlayabilityAuditTest
 			LegacyUnit.Attack = Unit.Attack;
 			LegacyUnit.Defense = Unit.Defense;
 			LegacyUnit.Speed = Unit.Speed;
-			LegacyUnit.Shield = FMath::Clamp(Unit.Armor, 0, 99);
+			LegacyUnit.Shield = FMath::Max(0, Unit.Armor);
 			LegacyUnit.EnemyDefinitionId = Unit.EnemyDefinitionId;
 			LegacyUnit.BattleSlotNumber = Unit.BattleSlotNumber;
 			LegacyUnit.CombatLevel = Unit.CombatLevel;

@@ -106,7 +106,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.LingYanLianDan"), 59505, DoubleArmorRuntime);
 	FindUnit(DoubleArmorRuntime, SorcererId)->Armor = 60;
 	ResolveAutomaticSnapshot(*this, DoubleArmorRuntime, TEXT("Profession.Sorcerer.LingYanLianDan"), 3, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Ice, Result);
-	TestEqual(TEXT("nonzero armor doubles with the global ninety-nine cap"), FindUnit(DoubleArmorRuntime, SorcererId)->Armor, 99);
+	TestEqual(TEXT("nonzero armor doubles without a gameplay cap"), FindUnit(DoubleArmorRuntime, SorcererId)->Armor, 120);
 
 	FGameXXKCardBattleRuntime IceSearchRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.HuLingMu"), 59506, IceSearchRuntime);

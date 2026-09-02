@@ -2289,7 +2289,6 @@ bool GameXXKCardRules::IsManualTargetLegal(const FGameXXKCardTargetRequest& Requ
 
 namespace
 {
-	constexpr int32 MaxCombatArmor = 99;
 	constexpr int32 WhiteApeStatusGuardArmor = 8;
 	constexpr uint32 CombatRandomMultiplier = 196314165u;
 	constexpr uint32 CombatRandomIncrement = 907633515u;
@@ -2689,7 +2688,7 @@ namespace
 				|| Unit.MaxHP <= 0 || Unit.HP < 0 || Unit.HP > Unit.MaxHP
 				|| Unit.MaxMana < 0 || Unit.Mana < 0 || Unit.Mana > Unit.MaxMana
 				|| Unit.Attack < 0 || Unit.Defense < 0 || Unit.Speed < 1
-				|| Unit.Armor < 0 || Unit.Armor > MaxCombatArmor
+				|| Unit.Armor < 0
 				|| Unit.StableSortOrder == INDEX_NONE || Unit.StableSortOrder < 0
 				|| Unit.bLiving != (Unit.HP > 0))
 			{
@@ -3010,10 +3009,25 @@ int32 GameXXKCardRules::AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, const 
 	{
 		return 0;
 	}
-	const int32 OriginalArmor = FMath::Clamp(InOutUnit.Armor, 0, MaxCombatArmor);
+	const int32 OriginalArmor = FMath::Max(0, InOutUnit.Armor);
 	const int64 RequestedArmor = static_cast<int64>(OriginalArmor) + static_cast<int64>(Amount);
-	InOutUnit.Armor = static_cast<int32>(FMath::Min<int64>(MaxCombatArmor, RequestedArmor));
+	InOutUnit.Armor = static_cast<int32>(FMath::Min<int64>(MAX_int32, RequestedArmor));
 	return InOutUnit.Armor - OriginalArmor;
+}
+
+int32 GameXXKCardRules::ResolvePrintedCostArmor(
+	const FGameXXKCardCombatUnit& CardOwner,
+	const int32 PrintedEnergyCost,
+	const EGameXXKCardQuality Quality)
+{
+	if (!CardOwner.bLiving)
+	{
+		return 0;
+	}
+	return FGameXXKCombatScalingRules::ResolvePrintedCostArmor(
+		CardOwner.Defense,
+		PrintedEnergyCost,
+		Quality);
 }
 
 int32 GameXXKCardRules::HealCombatUnit(FGameXXKCardCombatUnit& InOutUnit, const int32 Amount)

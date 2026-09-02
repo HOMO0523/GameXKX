@@ -274,7 +274,7 @@ namespace
 		Unit.Attack = FMath::Max(0, LegacyUnit.Attack);
 		Unit.Defense = FMath::Max(0, LegacyUnit.Defense);
 		Unit.Speed = FMath::Max(1, LegacyUnit.Speed);
-		Unit.Armor = FMath::Clamp(LegacyUnit.Shield, 0, 99);
+		Unit.Armor = FMath::Max(0, LegacyUnit.Shield);
 		Unit.StableSortOrder = StableSortOrder;
 		Unit.EnemyDefinitionId = LegacyUnit.EnemyDefinitionId;
 		Unit.BattleSlotNumber = LegacyUnit.BattleSlotNumber;
@@ -2437,7 +2437,7 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 			LegacyUnit.Speed = CardUnit->Speed;
 			// Card runtime owns armor.  Legacy scenes still render Shield, so keep it
 			// as a one-way compatibility projection rather than a second mitigation pool.
-			LegacyUnit.Shield = FMath::Clamp(CardUnit->Armor, 0, 99);
+			LegacyUnit.Shield = FMath::Max(0, CardUnit->Armor);
 			LegacyUnit.bDefeated = !CardUnit->bLiving;
 			LegacyUnit.bDefending = false;
 		}

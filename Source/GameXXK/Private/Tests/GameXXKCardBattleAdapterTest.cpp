@@ -136,7 +136,7 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 		MakeLegacyBattleUnit(TEXT("Player"), TEXT("Hero"), 100, 30, 15, 8, false)};
 	State.ActiveBattleEnemies = {
 		MakeLegacyBattleUnit(TEXT("MoneyRat"), TEXT("钱鼠"), 60, 0, 9, 2, true)};
-	State.ActiveBattleEnemies[0].Shield = 7;
+	State.ActiveBattleEnemies[0].Shield = 1003;
 	State.bHasActiveBattle = true;
 	State.ActiveBattleNodeId = 42;
 	TestTrue(FString::Printf(TEXT("a route battle builds one serialized shared card runtime from the locked party: %s"), *Error),
@@ -163,16 +163,16 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("the card-runtime projection retains the route enemy by stable id"), EnemyUnit);
 	if (HeroUnit && EnemyUnit)
 	{
-		TestEqual(TEXT("opening legacy shield initializes card runtime armor exactly once"), EnemyUnit->Armor, 7);
+		TestEqual(TEXT("opening legacy shield initializes uncapped card runtime armor exactly once"), EnemyUnit->Armor, 1003);
 		HeroUnit->HP = 71;
 		HeroUnit->Mana = 12;
 		EnemyUnit->HP = 33;
-		EnemyUnit->Armor = 4;
+		EnemyUnit->Armor = 1004;
 		TestTrue(TEXT("projection sync only reflects serialized card state into legacy battle widgets"), FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(State, &Error));
 		TestEqual(TEXT("legacy hero health projects from the card runtime"), State.ActiveBattleParty[0].HP, 71);
 		TestEqual(TEXT("legacy hero mana projects from the card runtime"), State.ActiveBattleParty[0].MP, 12);
 		TestEqual(TEXT("legacy enemy health projects from the card runtime"), State.ActiveBattleEnemies[0].HP, 33);
-		TestEqual(TEXT("card runtime armor remains authoritative when syncing legacy shield"), State.ActiveBattleEnemies[0].Shield, 4);
+		TestEqual(TEXT("uncapped card runtime armor remains authoritative when syncing legacy shield"), State.ActiveBattleEnemies[0].Shield, 1004);
 	}
 
 	FGameXXKRuntimeState ExplicitSlotState = MakeStartedRuntimeState();

@@ -422,6 +422,43 @@ bool FGameXXKThreeHitReactionBoundaryTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKThreeHitBlockUsesPostCardArmorTest,
+	"GameXXK.Data.HeroCards.CounterBlock.ThreeHitBlockUsesPostCardArmor",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKThreeHitBlockUsesPostCardArmorTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroCounterBlockRuntimeTest;
+	FGameXXKCardBattleRuntime Runtime;
+	if (!MakeRuntime(*this, Runtime, false, 100, 12, 1000, 10, 1)) return false;
+	FindUnit(Runtime, HeroUnitId)->Armor = 430;
+	AddReaction(Runtime, HeroUnitId, EGameXXKCardStatus::Block, HeroUnitId, TEXT("Block.PostCard"));
+	FGameXXKRuntimeState State = MakeState(MoveTemp(Runtime), MakeIntent({HeroUnitId}, 10, 3));
+	TArray<FGameXXKCardDamageResult> Results;
+	if (!ResolveSavedIntent(*this, State, Results, TEXT("three-hit post-card Block intent"))) return true;
+
+	TestEqual(TEXT("three direct hits plus one Block are audited"), Results.Num(), 4);
+	TestEqual(TEXT("one Block source reacts once after the whole enemy card"), CountCause(Results, EGameXXKCardDamageCause::Block), 1);
+	const FGameXXKCardDamageResult* Block = FindCause(Results, EGameXXKCardDamageCause::Block);
+	if (Block)
+	{
+		TestEqual(TEXT("Block uses current Attack plus four hundred post-card Armor"), Block->BaseRequestedDamage, 412);
+	}
+	TestEqual(TEXT("three hits leave four hundred Armor"), FindUnit(State.CardRun.ActiveBattle, HeroUnitId)->Armor, 400);
+	TestEqual(TEXT("Block does not consume the remaining Armor"), FindUnit(State.CardRun.ActiveBattle, HeroUnitId)->Armor, 400);
+	const FGameXXKBattleRuntimeUnit* LegacyHero = State.ActiveBattleParty.FindByPredicate([](const FGameXXKBattleRuntimeUnit& Unit)
+	{
+		return Unit.Id == HeroUnitId;
+	});
+	TestNotNull(TEXT("legacy hero projection remains addressable"), LegacyHero);
+	if (LegacyHero)
+	{
+		TestEqual(TEXT("legacy Shield projection preserves uncapped post-card Armor"), LegacyHero->Shield, 400);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKPerfectDodgeReactionTest,
 	"GameXXK.Data.HeroCards.CounterBlock.PerfectDodgeStillAllowsRegisteredReaction",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

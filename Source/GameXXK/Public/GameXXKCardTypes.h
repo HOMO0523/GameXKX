@@ -1439,7 +1439,7 @@ struct GAMEXXK_API FGameXXKCardCombatUnit
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Speed = 1;
 
-	/** Armor is authoritative for card resolution and capped at 99. */
+	/** Armor is authoritative for card resolution and has no gameplay cap. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Armor = 0;
 

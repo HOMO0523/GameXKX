@@ -94,6 +94,15 @@ bool FGameXXKCombatStatusUnlimitedCapacityTest::RunTest(const FString& Parameter
 		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Weak, 250), 5);
 	TestEqual(TEXT("Agility retains every requested layer without the obsolete two-stack cap"),
 		GameXXKCardRules::AddCombatStatus(CappedUnit, EGameXXKCardStatus::Agility, 250), 250);
+
+	FGameXXKCardCombatUnit ArmorUnit = MakeStatusCapacityUnit();
+	TestEqual(TEXT("armor accepts a value above the obsolete ninety-nine cap"),
+		GameXXKCardRules::AddCombatArmor(ArmorUnit, 1003), 1003);
+	TestEqual(TEXT("armor preserves the complete large value"), ArmorUnit.Armor, 1003);
+	ArmorUnit.Defense = 358;
+	TestEqual(TEXT("printed cost armor resolves from owner defense and quality"),
+		GameXXKCardRules::ResolvePrintedCostArmor(ArmorUnit, 2, EGameXXKCardQuality::Rare),
+		602);
 	return true;
 }
 
