@@ -52,7 +52,10 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 	using namespace GameXXKNarrativeGuideSaveMigrationTestPrivate;
 	TestEqual(TEXT("narrative-stage-guide owns save version 29"),
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
-	TestEqual(TEXT("v32 retires the disconnected tutorial narrative"), FGameXXKSaveMigration::CurrentSaveVersion, 32);
+	TestEqual(TEXT("v32 retires the disconnected tutorial narrative"),
+		FGameXXKSaveMigration::RetiredLegacyTutorialNarrativeSaveVersion, 32);
+	TestEqual(TEXT("combat scaling persistence advances the current schema to v33"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 33);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);

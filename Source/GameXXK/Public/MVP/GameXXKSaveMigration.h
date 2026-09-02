@@ -63,7 +63,9 @@ public:
 	static constexpr int32 TutorialMapItemIntroducedSaveVersion = 31;
 	/** v32: retire the disconnected Xu Xiake StoryTask and town-NPC option sessions. */
 	static constexpr int32 RetiredLegacyTutorialNarrativeSaveVersion = 32;
-	static constexpr int32 CurrentSaveVersion = 32;
+	/** v33: persist battle level/difficulty scaling and deferred shared-energy denial. */
+	static constexpr int32 CombatScalingFoundationIntroducedSaveVersion = 33;
+	static constexpr int32 CurrentSaveVersion = 33;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

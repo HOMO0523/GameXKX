@@ -1619,6 +1619,29 @@ namespace
 		}
 		return true;
 	}
+
+	void MigrateCombatScalingFoundation(FGameXXKRuntimeState& InOutState)
+	{
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			return;
+		}
+
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		int32 HighestPartyLevel = 1;
+		for (const FGameXXKCardCombatUnit& Unit : Battle.Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				HighestPartyLevel = FMath::Max(
+					HighestPartyLevel,
+					FMath::Clamp(Unit.CombatLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel));
+			}
+		}
+		Battle.TeamMaxLevelSnapshot = HighestPartyLevel;
+		Battle.EnemyDifficultyDamagePercent = 100;
+		Battle.PendingNextRoundEnergyPenalty = 0;
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1678,6 +1701,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Candidate.RuntimeState.DesktopInventory.bToolAutoFillIncludesWarehouse = true;
 		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
 		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
+		MigrateCombatScalingFoundation(Candidate.RuntimeState);
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
@@ -1900,6 +1924,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	if (Source.SaveVersion < RetiredLegacyTutorialNarrativeSaveVersion)
 	{
 		RetireLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
+	}
+	if (Source.SaveVersion < CombatScalingFoundationIntroducedSaveVersion)
+	{
+		MigrateCombatScalingFoundation(Candidate.RuntimeState);
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
