@@ -1,4 +1,5 @@
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCombatScalingRules.h"
 
 #include <initializer_list>
 
@@ -98,31 +99,11 @@ namespace
 			: EGameXXKCardQuality::Common;
 	}
 
-	int32 ClampToInt32(const int64 Value)
-	{
-		if (Value > static_cast<int64>(TNumericLimits<int32>::Max()))
-		{
-			return TNumericLimits<int32>::Max();
-		}
-		if (Value < static_cast<int64>(TNumericLimits<int32>::Min()))
-		{
-			return TNumericLimits<int32>::Min();
-		}
-		return static_cast<int32>(Value);
-	}
-
 	int32 ScaleMagnitude(
 		const EGameXXKCardEffectType EffectType,
 		const int32 BaseMagnitude,
 		const EGameXXKCardQuality Quality)
 	{
-		const int64 QualityStep = Quality == EGameXXKCardQuality::Epic
-			? 2
-			: (Quality == EGameXXKCardQuality::Rare ? 1 : 0);
-		const int64 Multiplier = Quality == EGameXXKCardQuality::Epic
-			? 4
-			: (Quality == EGameXXKCardQuality::Rare ? 2 : 1);
-
 		switch (EffectType)
 		{
 		case EGameXXKCardEffectType::DamagePercentAttack:
@@ -130,17 +111,7 @@ namespace
 		case EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget:
 		case EGameXXKCardEffectType::Heal:
 		case EGameXXKCardEffectType::AddArmor:
-			return ClampToInt32(static_cast<int64>(BaseMagnitude) * Multiplier);
-
-		case EGameXXKCardEffectType::DrawCards:
-		case EGameXXKCardEffectType::ApplyStatus:
-		case EGameXXKCardEffectType::RemoveStatus:
-		case EGameXXKCardEffectType::RemoveAnyDamageOverTime:
-			return ClampToInt32(static_cast<int64>(BaseMagnitude) + QualityStep);
-
-		case EGameXXKCardEffectType::GainMana:
-		case EGameXXKCardEffectType::GainManaPerConsumedStatus:
-			return ClampToInt32(static_cast<int64>(BaseMagnitude) + QualityStep * 2);
+			return FGameXXKCombatScalingRules::ScaleContinuousCeil(BaseMagnitude, Quality);
 
 		default:
 			return BaseMagnitude;
@@ -349,7 +320,7 @@ FText FGameXXKCardQualityRules::GetDisplayName(const EGameXXKCardQuality Quality
 	{
 	case EGameXXKCardQuality::Common: return NSLOCTEXT("GameXXKCardQuality", "Common", "普通");
 	case EGameXXKCardQuality::Rare: return NSLOCTEXT("GameXXKCardQuality", "Rare", "稀有");
-	case EGameXXKCardQuality::Epic: return NSLOCTEXT("GameXXKCardQuality", "Epic", "珍稀");
+	case EGameXXKCardQuality::Epic: return NSLOCTEXT("GameXXKCardQuality", "Epic", "史诗");
 	default: return NSLOCTEXT("GameXXKCardQuality", "Invalid", "无效品质");
 	}
 }

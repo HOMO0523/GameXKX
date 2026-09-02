@@ -1,4 +1,5 @@
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCombatScalingRules.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "Misc/AutomationTest.h"
@@ -275,18 +276,18 @@ namespace
 	const TArray<FEffectScalingExpectation>& GetEffectScalingExpectations()
 	{
 		static const TArray<FEffectScalingExpectation> Expectations = {
-			{ EGameXXKCardEffectType::DamagePercentAttack, 7, 7, 14, 28 },
-			{ EGameXXKCardEffectType::DamageFlat, 7, 7, 14, 28 },
+			{ EGameXXKCardEffectType::DamagePercentAttack, 7, 7, 9, 10 },
+			{ EGameXXKCardEffectType::DamageFlat, 7, 7, 9, 10 },
 			{ EGameXXKCardEffectType::LoseHealth, 7, 7, 7, 7 },
-			{ EGameXXKCardEffectType::Heal, 7, 7, 14, 28 },
-			{ EGameXXKCardEffectType::AddArmor, 7, 7, 14, 28 },
-			{ EGameXXKCardEffectType::GainMana, 3, 3, 5, 7 },
+			{ EGameXXKCardEffectType::Heal, 7, 7, 9, 10 },
+			{ EGameXXKCardEffectType::AddArmor, 7, 7, 9, 10 },
+			{ EGameXXKCardEffectType::GainMana, 3, 3, 3, 3 },
 			{ EGameXXKCardEffectType::GainEnergy, 7, 7, 7, 7 },
-			{ EGameXXKCardEffectType::GainManaPerConsumedStatus, 3, 3, 5, 7 },
-			{ EGameXXKCardEffectType::DrawCards, 2, 2, 3, 4 },
-			{ EGameXXKCardEffectType::ApplyStatus, 2, 2, 3, 4 },
-			{ EGameXXKCardEffectType::RemoveStatus, 2, 2, 3, 4 },
-			{ EGameXXKCardEffectType::RemoveAnyDamageOverTime, 2, 2, 3, 4 },
+			{ EGameXXKCardEffectType::GainManaPerConsumedStatus, 3, 3, 3, 3 },
+			{ EGameXXKCardEffectType::DrawCards, 2, 2, 2, 2 },
+			{ EGameXXKCardEffectType::ApplyStatus, 2, 2, 2, 2 },
+			{ EGameXXKCardEffectType::RemoveStatus, 2, 2, 2, 2 },
+			{ EGameXXKCardEffectType::RemoveAnyDamageOverTime, 2, 2, 2, 2 },
 			{ EGameXXKCardEffectType::Insight, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::DiscoverCards, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::ReorderCards, 7, 7, 7, 7 },
@@ -295,7 +296,7 @@ namespace
 			{ EGameXXKCardEffectType::BonusDamagePercent, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::BonusDamagePercentPerConsumedArmor, 7, 7, 7, 7 },
-			{ EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, 7, 7, 14, 28 },
+			{ EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, 7, 7, 9, 10 },
 			{ EGameXXKCardEffectType::ApplyGuardLink, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::ApplyBattleModifier, 7, 7, 7, 7 },
 			{ EGameXXKCardEffectType::ModifyHealingPercent, 7, 7, 7, 7 },
@@ -354,7 +355,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	{
 		const int32 InvalidIndex = QualityEnum->GetIndexByValue(static_cast<int64>(EGameXXKCardQuality::Invalid));
 #if WITH_METADATA
-		TestTrue(TEXT("Invalid quality stays hidden"), !QualityEnum->GetMetaData(TEXT("Hidden"), InvalidIndex).IsEmpty());
+		TestTrue(TEXT("Invalid quality stays hidden"), QualityEnum->HasMetaData(TEXT("Hidden"), InvalidIndex));
 #else
 		TestTrue(TEXT("Invalid quality metadata is unavailable in this target"), true);
 #endif
@@ -363,7 +364,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Rare has the approved Chinese display name"),
 			QualityEnum->GetDisplayNameTextByValue(static_cast<int64>(EGameXXKCardQuality::Rare)).ToString(), FString(TEXT("稀有")));
 		TestEqual(TEXT("Epic has the approved Chinese display name"),
-			QualityEnum->GetDisplayNameTextByValue(static_cast<int64>(EGameXXKCardQuality::Epic)).ToString(), FString(TEXT("珍稀")));
+			QualityEnum->GetDisplayNameTextByValue(static_cast<int64>(EGameXXKCardQuality::Epic)).ToString(), FString(TEXT("史诗")));
 	}
 
 	const TArray<FExpectedQuality>& ExpectedCardEntries = GetExpectedCardQualities();
@@ -550,6 +551,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 {
+	TestEqual(TEXT("Rare scales 101 upward"),
+		FGameXXKCombatScalingRules::ScaleContinuousCeil(101, EGameXXKCardQuality::Rare),
+		122);
+	TestEqual(TEXT("Epic scales 101 upward"),
+		FGameXXKCombatScalingRules::ScaleContinuousCeil(101, EGameXXKCardQuality::Epic),
+		142);
+
 	const TArray<FEffectScalingExpectation>& Expectations = GetEffectScalingExpectations();
 	TestEqual(TEXT("scaling table covers every declared concrete effect type"), Expectations.Num(), 28);
 	TSet<EGameXXKCardEffectType> CoveredEffectTypes;
@@ -702,7 +710,7 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 	InvalidQualityFallback.BaseQuality = EGameXXKCardQuality::Rare;
 	TestEqual(TEXT("invalid requested quality falls back to the definition base quality"),
 		FGameXXKCardQualityRules::BuildEffectiveDefinition(InvalidQualityFallback, EGameXXKCardQuality::Invalid).Effects[0].Magnitude,
-		14);
+		9);
 	InvalidQualityFallback.BaseQuality = EGameXXKCardQuality::Invalid;
 	TestEqual(TEXT("two invalid qualities safely fall back to Common"),
 		FGameXXKCardQualityRules::BuildEffectiveDefinition(InvalidQualityFallback, EGameXXKCardQuality::Invalid).Effects[0].Magnitude,
@@ -730,12 +738,12 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition ClampedDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
 		OverflowDefinition,
 		EGameXXKCardQuality::Epic);
-	TestEqual(TEXT("x4 positive overflow clamps to int32 maximum"), ClampedDefinition.Effects[0].Magnitude, TNumericLimits<int32>::Max());
+	TestEqual(TEXT("continuous positive overflow clamps to int32 maximum"), ClampedDefinition.Effects[0].Magnitude, TNumericLimits<int32>::Max());
 	TestEqual(TEXT("outer ApplyBattleModifier zero magnitude remains zero for nested damage"), ClampedDefinition.Effects[1].Magnitude, 0);
-	TestEqual(TEXT("x4 negative overflow clamps to int32 minimum"), ClampedDefinition.Effects[1].Modifier.Magnitude, TNumericLimits<int32>::Min());
-	TestEqual(TEXT("additive effect overflow clamps to int32 maximum"), ClampedDefinition.Effects[2].Magnitude, TNumericLimits<int32>::Max());
+	TestEqual(TEXT("continuous negative damage clamps to zero"), ClampedDefinition.Effects[1].Modifier.Magnitude, 0);
+	TestEqual(TEXT("unscaled draw remains int32 maximum"), ClampedDefinition.Effects[2].Magnitude, TNumericLimits<int32>::Max());
 	TestEqual(TEXT("outer ApplyBattleModifier zero magnitude remains zero for nested mana"), ClampedDefinition.Effects[3].Magnitude, 0);
-	TestEqual(TEXT("nested additive overflow clamps to int32 maximum"), ClampedDefinition.Effects[3].Modifier.Magnitude, TNumericLimits<int32>::Max());
+	TestEqual(TEXT("nested unscaled mana remains int32 maximum"), ClampedDefinition.Effects[3].Modifier.Magnitude, TNumericLimits<int32>::Max());
 
 	TestEqual(TEXT("Common card price"), FGameXXKCardQualityRules::GetCardPrice(EGameXXKCardQuality::Common), 25);
 	TestEqual(TEXT("Rare card price"), FGameXXKCardQualityRules::GetCardPrice(EGameXXKCardQuality::Rare), 40);
@@ -748,7 +756,7 @@ bool FGameXXKCardQualityScalingTest::RunTest(const FString& Parameters)
 
 	TestEqual(TEXT("Common display name"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Common).ToString(), FString(TEXT("普通")));
 	TestEqual(TEXT("Rare display name"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Rare).ToString(), FString(TEXT("稀有")));
-	TestEqual(TEXT("Epic display name"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Epic).ToString(), FString(TEXT("珍稀")));
+	TestEqual(TEXT("Epic display name"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Epic).ToString(), FString(TEXT("史诗")));
 	TestEqual(TEXT("invalid display name"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Invalid).ToString(), FString(TEXT("无效品质")));
 
 	TestTrue(TEXT("Common display color matches the approved warm neutral"),

@@ -282,13 +282,13 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		EGameXXKCardQuality::Epic,
 		nullptr,
 		TooltipContext);
-	TestTrue(TEXT("explicit-quality effects show the effective Epic value"), EpicEffectsText.Contains(TEXT("28%攻击伤害")));
-	TestTrue(TEXT("explicit-quality detail shows the same effective Epic value"), EpicDetailText.Contains(TEXT("28%攻击伤害")));
-	TestTrue(TEXT("explicit-quality tooltip shows the same effective Epic value"), EpicTooltipText.Contains(TEXT("28%攻击伤害")));
-	TestFalse(TEXT("detail does not scale an already-effective value twice"), EpicDetailText.Contains(TEXT("112%攻击伤害")));
-	TestFalse(TEXT("tooltip does not scale an already-effective value twice"), EpicTooltipText.Contains(TEXT("112%攻击伤害")));
-	TestTrue(TEXT("detail has an independent Epic quality line"), EpicDetailText.Contains(TEXT("品质：珍稀")));
-	TestTrue(TEXT("tooltip has an independent Epic quality line"), EpicTooltipText.Contains(TEXT("品质：珍稀")));
+	TestTrue(TEXT("explicit-quality effects show the effective Epic value"), EpicEffectsText.Contains(TEXT("10%攻击伤害")));
+	TestTrue(TEXT("explicit-quality detail shows the same effective Epic value"), EpicDetailText.Contains(TEXT("10%攻击伤害")));
+	TestTrue(TEXT("explicit-quality tooltip shows the same effective Epic value"), EpicTooltipText.Contains(TEXT("10%攻击伤害")));
+	TestFalse(TEXT("detail does not scale an already-effective value twice"), EpicDetailText.Contains(TEXT("14%攻击伤害")));
+	TestFalse(TEXT("tooltip does not scale an already-effective value twice"), EpicTooltipText.Contains(TEXT("14%攻击伤害")));
+	TestTrue(TEXT("detail has an independent Epic quality line"), EpicDetailText.Contains(TEXT("品质：史诗")));
+	TestTrue(TEXT("tooltip has an independent Epic quality line"), EpicTooltipText.Contains(TEXT("品质：史诗")));
 	TestTrue(TEXT("legacy rarity remains a separately-labelled acquisition-source semantic"), EpicDetailText.Contains(TEXT("来源：路线临时卡 · 首领")));
 	TestTrue(TEXT("condition percentage remains unchanged in quality-aware detail"), EpicDetailText.Contains(TEXT("50%")));
 	TestTrue(TEXT("target interaction language remains unchanged in quality-aware detail"), EpicDetailText.Contains(TEXT("单体敌方")) && EpicDetailText.Contains(TEXT("选择目标")));
@@ -297,10 +297,10 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 
 	const FString DefaultQualityText = GameXXKCardText::DescribeDetail(QualityFixture, nullptr);
 	TestTrue(TEXT("legacy detail signature defaults to definition BaseQuality"),
-		DefaultQualityText.Contains(TEXT("14%攻击伤害")) && DefaultQualityText.Contains(TEXT("品质：稀有")));
+		DefaultQualityText.Contains(TEXT("9%攻击伤害")) && DefaultQualityText.Contains(TEXT("品质：稀有")));
 	const FString InvalidRequestedQualityText = GameXXKCardText::DescribeDetail(QualityFixture, EGameXXKCardQuality::Invalid, nullptr);
 	TestTrue(TEXT("explicit Invalid quality safely falls back to definition BaseQuality"),
-		InvalidRequestedQualityText.Contains(TEXT("14%攻击伤害")) && InvalidRequestedQualityText.Contains(TEXT("品质：稀有")));
+		InvalidRequestedQualityText.Contains(TEXT("9%攻击伤害")) && InvalidRequestedQualityText.Contains(TEXT("品质：稀有")));
 	QualityFixture.BaseQuality = EGameXXKCardQuality::Invalid;
 	const FString DoubleInvalidQualityText = GameXXKCardText::DescribeDetail(QualityFixture, nullptr);
 	TestTrue(TEXT("legacy detail safely falls back to Common when BaseQuality is Invalid"),

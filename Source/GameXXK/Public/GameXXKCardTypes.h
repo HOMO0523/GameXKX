@@ -65,7 +65,7 @@ enum class EGameXXKCardQuality : uint8
 	Invalid = 0 UMETA(Hidden),
 	Common = 1 UMETA(DisplayName = "普通"),
 	Rare = 2 UMETA(DisplayName = "稀有"),
-	Epic = 3 UMETA(DisplayName = "珍稀")
+	Epic = 3 UMETA(DisplayName = "史诗")
 };
 
 UENUM(BlueprintType)

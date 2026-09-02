@@ -30,7 +30,7 @@ bool FGameXXKEquipmentTypesContractTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("independent card quality Epic stays capped at three"), static_cast<uint8>(EGameXXKCardQuality::Epic), static_cast<uint8>(3));
 	TestEqual(TEXT("independent Common card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Common).ToString(), FString(TEXT("普通")));
 	TestEqual(TEXT("independent Rare card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Rare).ToString(), FString(TEXT("稀有")));
-	TestEqual(TEXT("independent Epic card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Epic).ToString(), FString(TEXT("珍稀")));
+	TestEqual(TEXT("independent Epic card display stays Chinese"), FGameXXKCardQualityRules::GetDisplayName(EGameXXKCardQuality::Epic).ToString(), FString(TEXT("史诗")));
 	TestEqual(TEXT("the approved five universal and thirty set-specific modifier kinds are present"), static_cast<uint8>(EGameXXKEquipmentModifierKind::TeamTerrainPower), static_cast<uint8>(35));
 
 	const FGameXXKEquipmentCollectionState Collection;

@@ -106,7 +106,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Rare damage keeps the enemy fixture addressable"), RareDamageEnemy);
 	if (RareDamageEnemy)
 	{
-		TestEqual(TEXT("Rare doubles the 100-percent attack packet to 200 percent"), RareDamageEnemy->HP, 460);
+		TestEqual(TEXT("Rare scales the 100-percent attack packet to 120 percent"), RareDamageEnemy->HP, 476);
 	}
 	TestEqual(TEXT("Rare damage still spends the catalog's one energy"), RareDamageRuntime.Deck.SharedEnergy, 2);
 
@@ -131,8 +131,8 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic armor keeps the hero fixture addressable"), EpicArmorHero);
 	if (EpicArmorHero)
 	{
-		TestEqual(TEXT("Epic quadruples eight armor to thirty-two"), EpicArmorHero->Armor, 32);
-		TestEqual(TEXT("Epic adds four quality mana to the base three"), EpicArmorHero->Mana, 7);
+		TestEqual(TEXT("Epic scales eight armor upward to twelve"), EpicArmorHero->Armor, 12);
+		TestEqual(TEXT("Epic leaves discrete mana at the base three"), EpicArmorHero->Mana, 3);
 	}
 	TestEqual(TEXT("Epic armor still spends the catalog's one energy"), EpicArmorRuntime.Deck.SharedEnergy, 2);
 
@@ -168,8 +168,8 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Rare effective healing doubles twelve to twenty-four"), HealingEffectiveDefinition.Effects[0].Magnitude, 24);
-	TestEqual(TEXT("Rare effective cleansing increases one stack to two"), HealingEffectiveDefinition.Effects[1].Magnitude, 2);
+	TestEqual(TEXT("Rare effective healing scales twelve upward to fifteen"), HealingEffectiveDefinition.Effects[0].Magnitude, 15);
+	TestEqual(TEXT("Rare effective cleansing keeps one discrete stack"), HealingEffectiveDefinition.Effects[1].Magnitude, 1);
 	TestEqual(TEXT("quality does not change effective energy cost"), HealingEffectiveDefinition.EnergyCost, HealingBaseDefinition->EnergyCost);
 	TestEqual(TEXT("quality does not change effective mana cost"), HealingEffectiveDefinition.ManaCost, HealingBaseDefinition->ManaCost);
 
@@ -185,8 +185,8 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 		*HealingBaseDefinition,
 		HealingInstance.CurrentQuality,
 		&HealingPreview);
-	TestTrue(TEXT("quality-aware text shows the same twenty-four healing"), HealingText.Contains(TEXT("24点生命")));
-	TestTrue(TEXT("quality-aware text shows the same two-stack bleed removal"), HealingText.Contains(TEXT("2层流血")));
+	TestTrue(TEXT("quality-aware text shows the same fifteen healing"), HealingText.Contains(TEXT("15点生命")));
+	TestTrue(TEXT("quality-aware text shows the same one-stack bleed removal"), HealingText.Contains(TEXT("1层流血")));
 	TestTrue(TEXT("quality-aware text preserves the catalog costs"), HealingText.Contains(TEXT("费用：1 气 / 0 内")));
 
 	FGameXXKCardPlayResult HealingResult;
@@ -201,10 +201,10 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Rare healing keeps the owner fixture addressable"), HealingHero);
 	if (HealedAlly)
 	{
-		TestEqual(TEXT("real resolution heals the same twenty-four shown in text"), HealedAlly->HP, 44);
-		TestEqual(TEXT("real resolution removes the same two stacks shown in text"),
+		TestEqual(TEXT("real resolution heals the same fifteen shown in text"), HealedAlly->HP, 35);
+		TestEqual(TEXT("real resolution removes the same one stack shown in text"),
 			GameXXKCardRules::GetCombatStatusStacks(*HealedAlly, EGameXXKCardStatus::Bleed),
-			0);
+			1);
 	}
 	if (HealingHero)
 	{
@@ -212,7 +212,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("real resolution spends the unchanged one energy"), HealingRuntime.Deck.SharedEnergy, 2);
 
-	// Rare draw increases the redesigned card's two draws to three. The five-card value is only the round-refill target;
+	// Rare quality leaves this discrete two-card draw unchanged. The five-card value is only the round-refill target;
 	// card effects may grow the hand up to the twenty-card battle capacity without forcing discard.
 	FGameXXKCardBattleRuntime RareDrawRuntime;
 	if (!TestTrue(TEXT("Rare draw runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
@@ -231,15 +231,15 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 		RareDrawRuntime.Deck.Hand[0].InstanceId,
 		TEXT("Enemy"),
 		RareDrawResult));
-	TestEqual(TEXT("Rare draw grows the hand from four to seven"), RareDrawRuntime.Deck.Hand.Num(), 7);
-	TestEqual(TEXT("Rare draws three concrete cards from the draw pile"),
+	TestEqual(TEXT("Rare draw grows the hand from four to six"), RareDrawRuntime.Deck.Hand.Num(), 6);
+	TestEqual(TEXT("Rare draws two concrete cards from the draw pile"),
 		RareDrawRuntime.Deck.DrawPile.Num(),
-		RareDrawPileBeforePlay - 3);
+		RareDrawPileBeforePlay - 2);
 	TestEqual(TEXT("draw without a declared discard opens no pending choice below capacity"),
 		RareDrawRuntime.Deck.PendingChoice.Kind,
 		EGameXXKCardPendingChoiceKind::None);
 
-	// Epic mana uses +4 over the base two without changing the zero cost.
+	// Epic quality leaves discrete mana generation unchanged without changing the zero cost.
 	FGameXXKCardBattleRuntime EpicManaRuntime;
 	if (!TestTrue(TEXT("Epic mana runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicManaRuntime,
@@ -260,11 +260,11 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic mana keeps the hero fixture addressable"), EpicManaHero);
 	if (EpicManaHero)
 	{
-		TestEqual(TEXT("Epic adds four mana to the base five"), EpicManaHero->Mana, 9);
+		TestEqual(TEXT("Epic keeps the base five mana"), EpicManaHero->Mana, 5);
 	}
 	TestEqual(TEXT("Epic mana preserves the catalog's zero energy cost"), EpicManaRuntime.Deck.SharedEnergy, 3);
 
-	// Epic status increases the redesigned card's three vulnerability stacks to five.
+	// Epic quality leaves the redesigned card's three vulnerability stacks unchanged.
 	FGameXXKCardBattleRuntime EpicStatusRuntime;
 	if (!TestTrue(TEXT("Epic status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicStatusRuntime,
@@ -285,9 +285,9 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic status keeps the enemy fixture addressable"), EpicStatusEnemy);
 	if (EpicStatusEnemy)
 	{
-		TestEqual(TEXT("Epic adds two stacks to the base three vulnerability"),
+		TestEqual(TEXT("Epic keeps the base three vulnerability"),
 			GameXXKCardRules::GetCombatStatusStacks(*EpicStatusEnemy, EGameXXKCardStatus::Vulnerability),
-			5);
+			3);
 	}
 
 	return true;
@@ -335,8 +335,8 @@ bool FGameXXKCardQualityTerrainCompositionTest::RunTest(const FString& Parameter
 	{
 		return false;
 	}
-	TestEqual(TEXT("Rare scales the unconditional mana segment before terrain amplification"), QualityEffectiveDefinition.Effects[0].Magnitude, 5);
-	TestEqual(TEXT("Rare scales the water-shore mana segment before terrain amplification"), QualityEffectiveDefinition.Effects[1].Magnitude, 5);
+	TestEqual(TEXT("Rare keeps the unconditional mana segment before terrain amplification"), QualityEffectiveDefinition.Effects[0].Magnitude, 3);
+	TestEqual(TEXT("Rare keeps the water-shore mana segment before terrain amplification"), QualityEffectiveDefinition.Effects[1].Magnitude, 3);
 
 	FGameXXKCardPlayResult Result;
 	TestTrue(TEXT("Rare terrain card resolves through quality then terrain amplification"), GameXXKCardRules::ResolveCardPlay(
@@ -350,14 +350,14 @@ bool FGameXXKCardQualityTerrainCompositionTest::RunTest(const FString& Parameter
 	TestNotNull(TEXT("resolved quality and terrain composition keeps the ally addressable"), Ally);
 	if (Hero)
 	{
-		TestEqual(TEXT("Rare base five plus two amplified water-shore fives gives the hero fifteen mana"), Hero->Mana, 15);
+		TestEqual(TEXT("Rare base three plus two amplified water-shore threes gives the hero nine mana"), Hero->Mana, 9);
 		TestEqual(TEXT("quality and terrain composition consumes exactly one doubling window"),
 			GameXXKCardRules::GetCombatStatusStacks(*Hero, EGameXXKCardStatus::TerrainBonusDouble),
 			0);
 	}
 	if (Ally)
 	{
-		TestEqual(TEXT("Rare base five plus two amplified water-shore fives gives the ally fifteen mana"), Ally->Mana, 15);
+		TestEqual(TEXT("Rare base three plus two amplified water-shore threes gives the ally nine mana"), Ally->Mana, 9);
 	}
 	TestEqual(TEXT("quality and terrain composition preserves the catalog's one energy cost"), Runtime.Deck.SharedEnergy, 2);
 
