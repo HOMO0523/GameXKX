@@ -502,13 +502,13 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKCardPlayResult HealingBonusHealResult;
 		TestTrue(TEXT("treatment resolves with the card owner's Medicine snapshot"), GameXXKCardRules::ResolveCardPlay(HealingBonusRuntime, HealingBonusHealInstance->InstanceId, TEXT("Healer"), HealingBonusHealResult));
-		TestEqual(TEXT("base eight healing plus six Medicine restores fourteen health"), FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer"))->HP, 64);
+		TestEqual(TEXT("level-one base eight plus six Medicine continuously scales to healing fifteen"), FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer"))->HP, 65);
 		TestEqual(TEXT("Medicine is consumed in full by the qualified treatment"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer")), EGameXXKCardStatus::Medicine), 0);
 		TestEqual(TEXT("Medicine treatment emits one stable healing audit packet"), HealingBonusHealResult.HealingResults.Num(), 1);
 		if (HealingBonusHealResult.HealingResults.Num() == 1)
 		{
-			TestEqual(TEXT("Medicine treatment audit preserves the requested fourteen healing"), HealingBonusHealResult.HealingResults[0].RequestedHealing, 14);
-			TestEqual(TEXT("Medicine treatment audit preserves the effective fourteen healing"), HealingBonusHealResult.HealingResults[0].EffectiveHealing, 14);
+			TestEqual(TEXT("Medicine treatment audit preserves the requested fifteen healing"), HealingBonusHealResult.HealingResults[0].RequestedHealing, 15);
+			TestEqual(TEXT("Medicine treatment audit preserves the effective fifteen healing"), HealingBonusHealResult.HealingResults[0].EffectiveHealing, 15);
 		}
 	}
 

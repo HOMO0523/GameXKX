@@ -8,6 +8,7 @@
 namespace GameXXKTaskNpcHealerFormationRuntimeTest
 {
 	const FName AllyUnitId(TEXT("Ally.Support"));
+	const FName SecondAllyUnitId(TEXT("Ally.SecondSupport"));
 	const FName EnemyUnitId(TEXT("Enemy.Target"));
 
 	FGameXXKCardCombatUnit MakeUnit(
@@ -55,13 +56,24 @@ namespace GameXXKTaskNpcHealerFormationRuntimeTest
 		const TCHAR* ActiveInstanceId,
 		const TCHAR* ActiveCardId,
 		const EGameXXKCardTerrain Terrain,
-		const int32 Seed)
+		const int32 Seed,
+		const int32 CombatLevel = 1,
+		const bool bIncludeSecondAlly = false,
+		const EGameXXKCardQuality ActiveQuality = EGameXXKCardQuality::Common)
 	{
 		TArray<FGameXXKCardCombatUnit> Units = {
 			MakeUnit(OwnerUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 1),
 			MakeUnit(AllyUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2),
 			MakeUnit(EnemyUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10)};
-		const TArray<FGameXXKCardInstance> Cards = {
+		if (bIncludeSecondAlly)
+		{
+			Units.Add(MakeUnit(SecondAllyUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 3));
+		}
+		for (FGameXXKCardCombatUnit& Unit : Units)
+		{
+			Unit.CombatLevel = CombatLevel;
+		}
+		TArray<FGameXXKCardInstance> Cards = {
 			MakeCard(OwnerUnitId, ActiveInstanceId, ActiveCardId, 0),
 			MakeCard(OwnerUnitId, TEXT("Filler.1"), TEXT("Hero.Generic.QingFengYiShi"), 1),
 			MakeCard(OwnerUnitId, TEXT("Filler.2"), TEXT("Hero.Generic.HeYuZhan"), 2),
@@ -69,6 +81,7 @@ namespace GameXXKTaskNpcHealerFormationRuntimeTest
 			MakeCard(OwnerUnitId, TEXT("Filler.4"), TEXT("Hero.Generic.FengShenBu"), 4),
 			MakeCard(OwnerUnitId, TEXT("Filler.5"), TEXT("Hero.Generic.GuiYuanShu"), 5),
 			MakeCard(OwnerUnitId, TEXT("Filler.6"), TEXT("Hero.Generic.HengJianShouShi"), 6)};
+		Cards[0].CurrentQuality = ActiveQuality;
 		FString Error;
 		if (!GameXXKCardRules::InitializeCardBattleRuntime(OutRuntime, Cards, Units, Terrain, Seed, &Error))
 		{
@@ -144,11 +157,11 @@ bool FGameXXKTaskNpcMedicineTargetSideTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult FriendlyResult;
 	if (Resolve(*this, FriendlyRuntime, TEXT("YiCao.Friendly"), AllyUnitId, FriendlyResult, TEXT("异草辨识友方分支")))
 	{
-		TestEqual(TEXT("friendly branch heals base6 plus Medicine6"), FindUnit(FriendlyRuntime, AllyUnitId)->HP, 32);
+		TestEqual(TEXT("level-one friendly branch continuously scales base6 plus Medicine6 to thirteen"), FindUnit(FriendlyRuntime, AllyUnitId)->HP, 33);
 		TestEqual(TEXT("friendly branch clears all Bleed"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Bleed), 0);
 		TestEqual(TEXT("friendly branch clears all Poison"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Poison), 0);
 		TestEqual(TEXT("friendly branch clears all Burn"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Burn), 0);
-		TestEqual(TEXT("friendly cleanse does not erase Rot"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
+		TestEqual(TEXT("friendly all-DOT cleanse also erases Rot"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::DamageOverTime), 0);
 		TestEqual(TEXT("Medicine snapshot is consumed once"), Status(FriendlyRuntime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
 		TestEqual(TEXT("gaining Medicine6 grants Momentum1"), Status(FriendlyRuntime, OwnerUnitId, EGameXXKCardStatus::Momentum), 1);
 	}
@@ -161,7 +174,7 @@ bool FGameXXKTaskNpcMedicineTargetSideTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult EnemyResult;
 	if (Resolve(*this, EnemyRuntime, TEXT("YiCao.Enemy"), EnemyUnitId, EnemyResult, TEXT("异草辨识敌方分支")))
 	{
-		TestEqual(TEXT("enemy branch loses base6 plus Medicine6 health"), FindUnit(EnemyRuntime, EnemyUnitId)->HP, 1988);
+		TestEqual(TEXT("level-one enemy branch continuously scales base6 plus Medicine6 to thirteen"), FindUnit(EnemyRuntime, EnemyUnitId)->HP, 1987);
 		TestEqual(TEXT("enemy Bleed is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Bleed), 3);
 		TestEqual(TEXT("enemy Poison is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Poison), 4);
 		TestEqual(TEXT("enemy Burn is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Burn), 5);
@@ -180,7 +193,17 @@ bool FGameXXKTaskNpcGroupMedicineTest::RunTest(const FString& Parameters)
 	using namespace GameXXKTaskNpcHealerFormationRuntimeTest;
 	const FName OwnerUnitId(TEXT("Npc.ZhouGuangZu"));
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, OwnerUnitId, TEXT("HuangShan"), TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), EGameXXKCardTerrain::Plain, 58203)) return false;
+	if (!BuildRuntime(
+		*this,
+		Runtime,
+		OwnerUnitId,
+		TEXT("HuangShan"),
+		TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"),
+		EGameXXKCardTerrain::Plain,
+		58203,
+		100,
+		true,
+		EGameXXKCardQuality::Epic)) return false;
 	const FGameXXKCardInstance* HuangShanInstance = Runtime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
 	{
 		return Instance.InstanceId == TEXT("HuangShan");
@@ -198,11 +221,13 @@ bool FGameXXKTaskNpcGroupMedicineTest::RunTest(const FString& Parameters)
 	}
 	FindUnit(Runtime, OwnerUnitId)->HP = 2;
 	FindUnit(Runtime, AllyUnitId)->HP = 1;
+	FindUnit(Runtime, SecondAllyUnitId)->HP = 1;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuangShan"), NAME_None, Result, TEXT("黄山敷治"))) return true;
 
-	TestEqual(TEXT("owner loses one nonlethally then heals 6+6"), FindUnit(Runtime, OwnerUnitId)->HP, 13);
-	TestEqual(TEXT("one-HP ally cannot be killed and still heals 6+6"), FindUnit(Runtime, AllyUnitId)->HP, 13);
+	TestEqual(TEXT("owner loses one nonlethally then receives the full Epic level-100 healing84"), FindUnit(Runtime, OwnerUnitId)->HP, 85);
+	TestEqual(TEXT("first ally receives the full Epic level-100 healing84"), FindUnit(Runtime, AllyUnitId)->HP, 85);
+	TestEqual(TEXT("second ally receives the full Epic level-100 healing84"), FindUnit(Runtime, SecondAllyUnitId)->HP, 85);
 	TestEqual(TEXT("group heal consumes Medicine only once"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("one Medicine6 grant yields one Momentum"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Momentum), 1);
 	TestEqual(TEXT("only the owner produces an actual nonlethal-loss packet"), Result.DamageResults.Num(), 1);
@@ -211,7 +236,7 @@ bool FGameXXKTaskNpcGroupMedicineTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTaskNpcToxicExplosionTest,
-	"GameXXK.Data.TaskNpcCards.Runtime.HealerFormation.ToxicExplosionResolvesThreeDotsAndExcludesRot",
+	"GameXXK.Data.TaskNpcCards.Runtime.HealerFormation.ToxicExplosionResolvesFourDotsAndPreservesReservoirs",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKTaskNpcToxicExplosionTest::RunTest(const FString& Parameters)
@@ -225,11 +250,11 @@ bool FGameXXKTaskNpcToxicExplosionTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("GuWu"), EnemyUnitId, Result, TEXT("蛊雾迷踪"))) return true;
 
-	TestEqual(TEXT("toxic explosion emits Bleed, Poison, and Burn only"), Result.DamageResults.Num(), 3);
-	TestEqual(TEXT("Bleed4 resolves then loses one layer"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 3);
-	TestEqual(TEXT("Poison6 resolves then loses one layer"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 5);
-	TestEqual(TEXT("existing Burn3 resolves then loses one layer"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Burn), 2);
-	TestEqual(TEXT("Rot is not exploded or consumed"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
+	TestEqual(TEXT("toxic explosion emits Bleed, Poison, Burn, and Rot packets"), Result.DamageResults.Num(), 4);
+	TestEqual(TEXT("Bleed4 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 4);
+	TestEqual(TEXT("Poison6 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 6);
+	TestEqual(TEXT("existing Burn3 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Burn), 3);
+	TestEqual(TEXT("Rot7 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
 	return true;
 }
 

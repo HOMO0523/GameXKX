@@ -175,7 +175,7 @@ bool FGameXXKHealerEnemyDotFormulaTest::RunTest(const FString& Parameters)
 		GameXXKCardRules::BeginNextPlayerCardRound(Runtime, DamageResults, &Error)))
 	{
 		TestEqual(TEXT("the real Poison packet feeds both health-change and Poison formulas"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 2);
-		TestEqual(TEXT("Poison loses one layer after its end-phase packet"), Status(Runtime, EnemyId, EGameXXKCardStatus::Poison), 3);
+		TestEqual(TEXT("Poison remains a four-layer reservoir after its end-phase packet"), Status(Runtime, EnemyId, EGameXXKCardStatus::Poison), 4);
 	}
 	return true;
 }

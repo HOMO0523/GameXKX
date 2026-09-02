@@ -1,5 +1,6 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCombatScalingRules.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -109,6 +110,83 @@ namespace GameXXKHealerPartnerFormulaRuntimeTest
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHealerMedicineHealingScalingTest,
+	"GameXXK.Data.Healer.Medicine.HealingScalesByQualityAndTeamLevel",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHealerMedicineHealingScalingTest::RunTest(const FString& Parameters)
+{
+	TestEqual(
+		TEXT("level-100 Common coefficient25 plus Medicine6 resolves 155 healing"),
+		FGameXXKCombatScalingRules::ResolveMedicineHealing(25, 6, EGameXXKCardQuality::Common, 100),
+		155);
+	TestEqual(
+		TEXT("level-100 Rare coefficient25 plus Medicine6 resolves 186 healing"),
+		FGameXXKCombatScalingRules::ResolveMedicineHealing(25, 6, EGameXXKCardQuality::Rare, 100),
+		186);
+	TestEqual(
+		TEXT("level-100 Epic coefficient25 plus Medicine6 resolves 217 healing"),
+		FGameXXKCombatScalingRules::ResolveMedicineHealing(25, 6, EGameXXKCardQuality::Epic, 100),
+		217);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHealerMedicineGainRemainderTest,
+	"GameXXK.Data.Healer.Medicine.CumulativeGainRemainderSurvivesSpending",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHealerMedicineGainRemainderTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHealerPartnerFormulaRuntimeTest;
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, TEXT("Profession.Healer.YaoNangFeiTou"), TEXT("Profession.Healer.YaoYin"), Runtime))
+	{
+		return false;
+	}
+	TestEqual(
+		TEXT("fixture restores the live Medicine from an earlier four-stack gain"),
+		GameXXKCardRules::AddCombatStatus(*Unit(Runtime, HealerId), EGameXXKCardStatus::Medicine, 4),
+		4);
+	Runtime.MedicineGainRemainderByOwner.Add(HealerId, 4);
+
+	FGameXXKCardPlayResult DamageResult;
+	if (!Resolve(*this, Runtime, NAME_None, DamageResult, TEXT("four-enemy health-change formula")))
+	{
+		return true;
+	}
+	TestEqual(TEXT("a second Medicine4 gain leaves eight live Medicine"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 8);
+	TestEqual(TEXT("cumulative Medicine4 plus Medicine4 grants Momentum1"), Status(Runtime, HealerId, EGameXXKCardStatus::Momentum), 1);
+	TestEqual(TEXT("cumulative Medicine4 plus Medicine4 keeps remainder2"), Runtime.MedicineGainRemainderByOwner.FindRef(HealerId), 2);
+
+	Runtime.HealerFormulas.Reset();
+	const int32 SpendMedicineIndex = Runtime.Deck.DrawPile.IndexOfByPredicate([](const FGameXXKCardInstance& Card)
+	{
+		return Card.InstanceId == TEXT("Reward");
+	});
+	if (SpendMedicineIndex == INDEX_NONE)
+	{
+		AddError(TEXT("the initialized card ledger has no reusable follow-up treatment instance"));
+		return true;
+	}
+	FGameXXKCardInstance SpendMedicine = Runtime.Deck.DrawPile[SpendMedicineIndex];
+	Runtime.Deck.DrawPile.RemoveAt(SpendMedicineIndex);
+	SpendMedicine.CardId = TEXT("Hero.Healer.HuiChunNiMai");
+	Runtime.Deck.Hand.Add(SpendMedicine);
+	Unit(Runtime, AllyAId)->HP = 50;
+	FGameXXKCardPlayResult HealingResult;
+	FString Error;
+	if (TestTrue(
+		FString::Printf(TEXT("the follow-up treatment spends Medicine: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(Runtime, TEXT("Reward"), AllyAId, HealingResult, &Error)))
+	{
+		TestEqual(TEXT("the treatment consumes all live Medicine"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 0);
+		TestEqual(TEXT("spending Medicine does not clear cumulative gain remainder"), Runtime.MedicineGainRemainderByOwner.FindRef(HealerId), 2);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerTreatmentFormulaMatrixTest,
 	"GameXXK.Data.PartnerCards.Healer.Formulas.TreatmentEight",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -199,7 +277,7 @@ bool FGameXXKHealerDotFormulaMatrixTest::RunTest(const FString& Parameters)
 	{
 		if (Resolve(*this, Runtime, EnemyAId, Result, TEXT("Bleed-Poison formula")))
 		{
-			TestEqual(TEXT("the trigger applies Bleed6 and its direct hit consumes one layer"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Bleed), 5);
+			TestEqual(TEXT("the trigger applies Bleed6 and its direct hit preserves the reservoir"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Bleed), 6);
 			TestEqual(TEXT("the trigger applies Poison4"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 4);
 			TestEqual(TEXT("an enemy gaining a debuff with Bleed and Poison gains Mark1"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), 1);
 		}

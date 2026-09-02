@@ -10496,15 +10496,19 @@ namespace
 						}
 						bPreparedMedicineAction = true;
 					}
-					const int64 RawAmount = static_cast<int64>(Effect.Magnitude) + MedicineSnapshot;
-					if (RawAmount <= 0 || RawAmount > MAX_int32)
+					const int32 ResolvedAmount = FGameXXKCombatScalingRules::ResolveMedicineHealing(
+						Effect.Magnitude,
+						MedicineSnapshot,
+						Instance.CurrentQuality,
+						InOutRuntime.TeamMaxLevelSnapshot);
+					if (ResolvedAmount <= 0)
 					{
 						OutError = TEXT("Medicine healing or reversal produced an unsupported amount.");
 						return false;
 					}
 					if (Target->Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, static_cast<int32>(RawAmount));
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount);
 					}
 					else
 					{
@@ -10519,7 +10523,7 @@ namespace
 							InOutRuntime.GuardLinks,
 							Context,
 							ReverseTargetUnitId,
-							static_cast<int32>(RawAmount),
+							ResolvedAmount,
 							DamageResult,
 							&OutError))
 						{

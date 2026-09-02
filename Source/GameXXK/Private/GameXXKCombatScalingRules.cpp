@@ -54,6 +54,20 @@ int32 FGameXXKCombatScalingRules::ResolveDotAddition(
 	return CeilPositiveRatio(Numerator, 2500);
 }
 
+int32 FGameXXKCombatScalingRules::ResolveMedicineHealing(
+	const int32 BaseCoefficient,
+	const int32 Medicine,
+	const EGameXXKCardQuality Quality,
+	const int32 TeamMaxLevel)
+{
+	const int64 CombinedCoefficient = static_cast<int64>(FMath::Max(0, BaseCoefficient))
+		+ FMath::Max(0, Medicine);
+	return ResolveDotAddition(
+		static_cast<int32>(FMath::Min<int64>(MAX_int32, CombinedCoefficient)),
+		Quality,
+		TeamMaxLevel);
+}
+
 int32 FGameXXKCombatScalingRules::ResolveDotCap(const int32 TeamMaxLevel)
 {
 	const int32 Level = FMath::Clamp(TeamMaxLevel, 1, 135);

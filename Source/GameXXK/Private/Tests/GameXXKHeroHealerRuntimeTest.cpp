@@ -298,7 +298,7 @@ bool FGameXXKHealerFriendlyReverseTest::RunTest(const FString& Parameters)
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, 5);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuiChun"), AllyAUnitId, Result, TEXT("friendly Hui Chun"))) return true;
-	TestEqual(TEXT("friendly Hui Chun heals base ten plus Medicine5"), FindUnit(Runtime, AllyAUnitId)->HP, 55);
+	TestEqual(TEXT("level-one friendly Hui Chun scales base ten plus Medicine5 to sixteen"), FindUnit(Runtime, AllyAUnitId)->HP, 56);
 	TestEqual(TEXT("friendly Hui Chun consumes the full snapshot"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("friendly Hui Chun cleanses Bleed"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::Bleed), 0);
 	TestEqual(TEXT("friendly Hui Chun cleanses Poison"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::Poison), 0);
@@ -360,7 +360,7 @@ bool FGameXXKHealerNewMedicineSurvivesTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("listener fixture validates: %s"), *ValidationError), GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &ValidationError));
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuiChun"), AllyAUnitId, Result, TEXT("snapshot-safe Hui Chun"))) return true;
-	TestEqual(TEXT("the old snapshot still heals for fifteen"), FindUnit(Runtime, AllyAUnitId)->HP, 55);
+	TestEqual(TEXT("the old snapshot still scales to healing sixteen"), FindUnit(Runtime, AllyAUnitId)->HP, 56);
 	TestEqual(TEXT("Medicine created after the action snapshot survives"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 6);
 	TestEqual(TEXT("the post-resolution Medicine6 award grants Momentum1"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 1);
 	return true;
@@ -386,7 +386,7 @@ bool FGameXXKHealerGroupSnapshotTest::RunTest(const FString& Parameters)
 	if (!Resolve(*this, Runtime, TEXT("BaiCao"), NAME_None, Result, TEXT("Bai Cao group snapshot"))) return true;
 	for (const FName UnitId : {HeroUnitId, AllyAUnitId, AllyBUnitId})
 	{
-		TestEqual(FString::Printf(TEXT("%s receives full 6+5 healing"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->HP, 61);
+		TestEqual(FString::Printf(TEXT("%s receives full level-one scaled 6+5 healing"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->HP, 62);
 	}
 	TestEqual(TEXT("the group action consumes Medicine only once"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 0);
 	return true;
@@ -409,8 +409,8 @@ bool FGameXXKHealerDuHuoTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Du Huo emits one direct packet"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::DirectAttack), 1);
 	TestEqual(TEXT("Du Huo explodes Poison once"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionPoison), 1);
 	TestEqual(TEXT("Du Huo explodes Burn once"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionBurn), 1);
-	TestEqual(TEXT("one Poison layer is consumed after applying six"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Poison), 5);
-	TestEqual(TEXT("one Burn layer is consumed after applying two"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("Poison6 remains in its reservoir after exploding"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Poison), 6);
+	TestEqual(TEXT("Burn2 remains in its reservoir after exploding"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Burn), 2);
 	TestEqual(TEXT("Du Huo grants Medicine6 at the end"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 6);
 	TestEqual(TEXT("Du Huo's Medicine6 grants Momentum1"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 1);
 	return true;
@@ -439,11 +439,11 @@ bool FGameXXKHealerBaiCaoStatusTest::RunTest(const FString& Parameters)
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKHealerToxicExplosionNoRotTest,
-	"GameXXK.Data.HeroCards.Healer.ToxicExplosionNeverTriggersRot",
+	FGameXXKHealerToxicExplosionRotReservoirTest,
+	"GameXXK.Data.HeroCards.Healer.ToxicExplosionTriggersRotAsIndependentReservoir",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FGameXXKHealerToxicExplosionNoRotTest::RunTest(const FString& Parameters)
+bool FGameXXKHealerToxicExplosionRotReservoirTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroHealerRuntimeTest;
 	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("DuHuo"), TEXT("Hero.Healer.DuHuoTongLu"), 0)};
@@ -452,8 +452,8 @@ bool FGameXXKHealerToxicExplosionNoRotTest::RunTest(const FString& Parameters)
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, EnemyAUnitId), EGameXXKCardStatus::DamageOverTime, 7);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("DuHuo"), EnemyAUnitId, Result, TEXT("Rot-safe Du Huo"))) return true;
-	TestEqual(TEXT("Du Huo still emits only direct, Poison, and Burn packets"), Result.DamageResults.Num(), 3);
-	TestEqual(TEXT("toxic explosion never emits a Rot packet"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::Rot), 0);
+	TestEqual(TEXT("Du Huo emits direct, Poison, Burn, and Rot packets"), Result.DamageResults.Num(), 4);
+	TestEqual(TEXT("toxic explosion emits one independent Rot packet"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionRot), 1);
 	TestEqual(TEXT("toxic explosion preserves all Rot stacks"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::DamageOverTime), 7);
 	const FGameXXKCardDamageResult* PoisonResult = FindCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionPoison);
 	const FGameXXKCardDamageResult* BurnResult = FindCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionBurn);
@@ -461,8 +461,8 @@ bool FGameXXKHealerToxicExplosionNoRotTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Burn explosion packet exists"), BurnResult);
 	if (PoisonResult && BurnResult)
 	{
-		TestEqual(TEXT("Rot contributes seven to Poison without being triggered"), PoisonResult->RotDamageBonus, 7);
-		TestEqual(TEXT("Rot contributes seven to Burn without being triggered"), BurnResult->RotDamageBonus, 7);
+		TestEqual(TEXT("Rot no longer multiplies Poison"), PoisonResult->RotDamageBonus, 0);
+		TestEqual(TEXT("Rot no longer multiplies Burn"), BurnResult->RotDamageBonus, 0);
 	}
 	return true;
 }

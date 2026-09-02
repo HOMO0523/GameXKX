@@ -111,7 +111,7 @@ bool FGameXXKHealerPartnerYinYangFormulaRuntimeTest::RunTest(const FString& Para
 	TestEqual(TEXT("the unopened formula adds one Energy"), Preview.EffectiveEnergyCost, 3);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YinYangA"), AllyAId, Result)) return true;
-	TestEqual(TEXT("friendly Yin-Yang heals its eight-point base"), Unit(Runtime, AllyAId)->HP, 58);
+	TestEqual(TEXT("level-one friendly Yin-Yang continuously scales its coefficient eight to healing nine"), Unit(Runtime, AllyAId)->HP, 59);
 	for (const FName EnemyId : {EnemyAId, EnemyBId})
 	{
 		TestEqual(TEXT("friendly Yin-Yang applies Poison1 to every enemy"), Status(Runtime, EnemyId, EGameXXKCardStatus::Poison), 1);
@@ -140,11 +140,11 @@ bool FGameXXKHealerPartnerYinYangEnemyRuntimeTest::RunTest(const FString& Parame
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YinYang"), EnemyAId, Result)) return true;
 	TestEqual(TEXT("the enemy branch resolves Poison2 and Burn2 once each"), Unit(Runtime, EnemyAId)->HP, 96);
-	TestEqual(TEXT("one layer of Poison remains after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 1);
-	TestEqual(TEXT("one layer of Burn remains after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("Poison2 remains in its reservoir after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("Burn2 remains in its reservoir after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2);
 	for (const FName AllyId : {HealerId, AllyAId, AllyBId})
 	{
-		TestEqual(TEXT("every ally receives the full 4+Medicine3 snapshot"), Unit(Runtime, AllyId)->HP, 57);
+		TestEqual(TEXT("every ally receives the full level-one scaled 4+Medicine3 snapshot"), Unit(Runtime, AllyId)->HP, 58);
 	}
 	TestEqual(TEXT("group healing consumes Medicine only once"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 0);
 	return true;
@@ -169,8 +169,8 @@ bool FGameXXKHealerPartnerYinYangLethalEnemyRuntimeTest::RunTest(const FString& 
 	TestFalse(TEXT("Yin-Yang toxic explosion defeats the selected enemy"), Unit(Runtime, EnemyAId)->bLiving);
 	for (const FName AllyId : {HealerId, AllyAId, AllyBId})
 	{
-		TestEqual(TEXT("lethal enemy branch still heals every ally for the full 4+Medicine3 snapshot"),
-			Unit(Runtime, AllyId)->HP, 57);
+		TestEqual(TEXT("lethal enemy branch still heals every ally for the full level-one scaled 4+Medicine3 snapshot"),
+			Unit(Runtime, AllyId)->HP, 58);
 	}
 	TestEqual(TEXT("lethal enemy branch consumes the shared Medicine snapshot once"),
 		Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 0);
@@ -196,7 +196,7 @@ bool FGameXXKHealerPartnerYaoWangLethalSideAnchorRuntimeTest::RunTest(const FStr
 	TestFalse(TEXT("Yao Wang defeats the selected enemy even when it is the side anchor"),
 		Unit(Runtime, EnemyAId)->bLiving);
 	TestEqual(TEXT("Yao Wang continues the selected-side reverse heal against the other living enemy"),
-		Unit(Runtime, EnemyBId)->HP, 94);
+		Unit(Runtime, EnemyBId)->HP, 93);
 	return true;
 }
 
