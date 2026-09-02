@@ -1642,6 +1642,179 @@ namespace
 		Battle.EnemyDifficultyDamagePercent = 100;
 		Battle.PendingNextRoundEnergyPenalty = 0;
 	}
+
+	bool IsRetiredRouteCard(const FName CardId)
+	{
+		const FString Id = CardId.ToString();
+		return Id.StartsWith(TEXT("Route.General."))
+			|| Id.StartsWith(TEXT("Route.Terrain."))
+			|| Id.StartsWith(TEXT("Route.Rare."));
+	}
+
+	void ResetPendingCardChoice(FGameXXKBattleDeckState& InOutDeck)
+	{
+		InOutDeck.PendingChoice = FGameXXKPendingCardChoice();
+		InOutDeck.PendingChoice.Kind = EGameXXKCardPendingChoiceKind::None;
+	}
+
+	bool RemoveRetiredRouteCardsFromBattle(FGameXXKCardBattleRuntime& InOutBattle)
+	{
+		TSet<FName> RemovedInstanceIds;
+		const auto RemoveZone = [&RemovedInstanceIds](TArray<FGameXXKCardInstance>& Zone)
+		{
+			for (const FGameXXKCardInstance& Instance : Zone)
+			{
+				if (IsRetiredRouteCard(Instance.CardId))
+				{
+					RemovedInstanceIds.Add(Instance.InstanceId);
+				}
+			}
+			Zone.RemoveAll([](const FGameXXKCardInstance& Instance)
+			{
+				return IsRetiredRouteCard(Instance.CardId);
+			});
+		};
+
+		RemoveZone(InOutBattle.Deck.DrawPile);
+		RemoveZone(InOutBattle.Deck.Hand);
+		RemoveZone(InOutBattle.Deck.DiscardPile);
+		RemoveZone(InOutBattle.Deck.ExhaustPile);
+		RemoveZone(InOutBattle.Deck.PendingAutomaticHandCards);
+
+		const bool bChoiceReferencesRetiredCard = InOutBattle.Deck.PendingChoice.Candidates.ContainsByPredicate(
+			[](const FGameXXKCardInstance& Instance)
+			{
+				return IsRetiredRouteCard(Instance.CardId);
+			});
+		if (!RemovedInstanceIds.IsEmpty() || bChoiceReferencesRetiredCard)
+		{
+			ResetPendingCardChoice(InOutBattle.Deck);
+		}
+		if (RemovedInstanceIds.Contains(InOutBattle.Deck.ResolvingCardInstanceId))
+		{
+			InOutBattle.Deck.ResolvingCardInstanceId = NAME_None;
+		}
+
+		InOutBattle.Modifiers.RemoveAll([&RemovedInstanceIds](const FGameXXKCardBattleModifierRuntime& Modifier)
+		{
+			return RemovedInstanceIds.Contains(Modifier.SourceCardInstanceId)
+				|| RemovedInstanceIds.Contains(Modifier.RequiredPlayedCardInstanceId)
+				|| IsRetiredRouteCard(Modifier.SourceCardSnapshot.CardId);
+		});
+		for (FGameXXKCardBattleModifierRuntime& Modifier : InOutBattle.Modifiers)
+		{
+			Modifier.Definition.MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+			Modifier.Definition.RareMagnitude = INDEX_NONE;
+			Modifier.Definition.EpicMagnitude = INDEX_NONE;
+		}
+		InOutBattle.Reactions.RemoveAll([&RemovedInstanceIds](const FGameXXKReactionRuntime& Reaction)
+		{
+			return RemovedInstanceIds.Contains(Reaction.SourceCardInstanceId);
+		});
+		if (IsRetiredRouteCard(InOutBattle.LastActiveCard.CardId))
+		{
+			InOutBattle.LastActiveCard = FGameXXKResolvedCardSnapshot();
+		}
+		if (InOutBattle.AutomaticResolutionQueue.PendingCards.ContainsByPredicate(
+			[](const FGameXXKResolvedCardSnapshot& Snapshot)
+			{
+				return IsRetiredRouteCard(Snapshot.CardId);
+			}))
+		{
+			InOutBattle.AutomaticResolutionQueue = FGameXXKAutomaticResolutionQueue();
+		}
+		if (IsRetiredRouteCard(InOutBattle.PendingBladeCharge.SourceCardId))
+		{
+			InOutBattle.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+		}
+		if (IsRetiredRouteCard(InOutBattle.PendingBladeDelayedCard.SourceCardId)
+			|| IsRetiredRouteCard(InOutBattle.PendingBladeDelayedCard.RecordedCard.CardId)
+			|| IsRetiredRouteCard(InOutBattle.PendingBladeDelayedCard.RecordedInstance.CardId))
+		{
+			InOutBattle.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		}
+		if (IsRetiredRouteCard(InOutBattle.PendingBladeNativeStyle.SourceCardId))
+		{
+			InOutBattle.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		}
+		if (IsRetiredRouteCard(InOutBattle.PendingBladeResidualStyle.SourceCardId))
+		{
+			InOutBattle.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		}
+		if (IsRetiredRouteCard(InOutBattle.PendingBladeFinish.SourceCardId))
+		{
+			InOutBattle.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		}
+
+		if (!RemovedInstanceIds.IsEmpty())
+		{
+			InOutBattle.Deck.ActiveInstanceIds.Reset();
+			const auto AppendLedger = [&InOutBattle](const TArray<FGameXXKCardInstance>& Zone)
+			{
+				for (const FGameXXKCardInstance& Instance : Zone)
+				{
+					InOutBattle.Deck.ActiveInstanceIds.Add(Instance.InstanceId);
+				}
+			};
+			AppendLedger(InOutBattle.Deck.DrawPile);
+			AppendLedger(InOutBattle.Deck.DiscardPile);
+			AppendLedger(InOutBattle.Deck.Hand);
+			AppendLedger(InOutBattle.Deck.ExhaustPile);
+			AppendLedger(InOutBattle.Deck.PendingAutomaticHandCards);
+		}
+		return !InOutBattle.Deck.ActiveInstanceIds.IsEmpty();
+	}
+
+	void MigrateRetiredRouteCards(FGameXXKRuntimeState& InOutState)
+	{
+		FGameXXKCardRunState& Run = InOutState.CardRun;
+		Run.BossCardSlots.RemoveAll([](const FName CardId)
+		{
+			return IsRetiredRouteCard(CardId);
+		});
+		for (auto It = Run.UpgradedCardQualities.CreateIterator(); It; ++It)
+		{
+			if (IsRetiredRouteCard(It.Key()))
+			{
+				It.RemoveCurrent();
+			}
+		}
+
+		const bool bRetiredReward = Run.PendingReward.CardIds.ContainsByPredicate([](const FName CardId)
+		{
+			return IsRetiredRouteCard(CardId);
+		}) || Run.PendingReward.Options.ContainsByPredicate([](const FGameXXKBattleRewardOption& Option)
+		{
+			return IsRetiredRouteCard(Option.CardId);
+		});
+		if (bRetiredReward)
+		{
+			Run.PendingReward = FGameXXKPendingRouteCardReward();
+			Run.bActiveBattleRewardResolved = false;
+		}
+
+		const bool bRetiredMerchantState = Run.RouteMerchant.Offers.ContainsByPredicate([](const FGameXXKRouteMerchantOffer& Offer)
+		{
+			return Offer.Kind == EGameXXKRouteMerchantOfferKind::Card
+				&& IsRetiredRouteCard(Offer.ContentId);
+		}) || IsRetiredRouteCard(Run.RouteMerchant.PendingPurchase.CardId);
+		if (bRetiredMerchantState)
+		{
+			Run.RouteMerchant = FGameXXKRouteMerchantState();
+		}
+
+		if (Run.bHasActiveCardBattle && !RemoveRetiredRouteCardsFromBattle(Run.ActiveBattle))
+		{
+			FGameXXKCardBattleAdapter::ClearActiveCardBattle(InOutState);
+			InOutState.bHasActiveBattle = false;
+			InOutState.ActiveBattleNodeId = INDEX_NONE;
+			InOutState.ActiveBattleParty.Reset();
+			InOutState.ActiveBattleEnemies.Reset();
+			InOutState.Screen = InOutState.bDungeonActive
+				? EGameXXKScreen::DungeonMap
+				: EGameXXKScreen::Town;
+		}
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1702,6 +1875,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		MigrateLegacyTalentProgress(Candidate.RuntimeState, OutReport);
 		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
 		MigrateCombatScalingFoundation(Candidate.RuntimeState);
+		MigrateRetiredRouteCards(Candidate.RuntimeState);
 		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
@@ -1928,6 +2102,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	if (Source.SaveVersion < CombatScalingFoundationIntroducedSaveVersion)
 	{
 		MigrateCombatScalingFoundation(Candidate.RuntimeState);
+	}
+	if (Source.SaveVersion < ActiveCardPool173IntroducedSaveVersion)
+	{
+		MigrateRetiredRouteCards(Candidate.RuntimeState);
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0

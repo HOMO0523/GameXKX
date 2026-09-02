@@ -122,7 +122,9 @@ namespace
 	bool IsRouteCard(const FName CardId)
 	{
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
-		return Definition && Definition->Owner == EGameXXKCardOwner::Route;
+		return Definition
+			&& Definition->Owner == EGameXXKCardOwner::Route
+			&& CardId.ToString().StartsWith(TEXT("Route.Boss."));
 	}
 
 	bool AreUniqueNonEmptyCardIds(const TArray<FName>& CardIds)
@@ -2010,7 +2012,7 @@ namespace
 				if (CardId.IsNone()
 					|| SeenCardIds.Contains(CardId)
 					|| !Definition
-					|| Definition->Owner != EGameXXKCardOwner::Route)
+					|| !IsRouteCard(CardId))
 				{
 					return SetFailure(OutError, TEXT("The pending route reward must contain three distinct catalog route cards."));
 				}
@@ -2038,7 +2040,7 @@ namespace
 	{
 		for (const FGameXXKCardDefinition& Definition : FGameXXKCardCatalog::GetAllCardDefinitions())
 		{
-			if (Definition.Owner == EGameXXKCardOwner::Route
+			if (IsRouteCard(Definition.Id)
 				&& Predicate(Definition)
 				&& !Run.BossCardSlots.Contains(Definition.Id))
 			{
@@ -3122,7 +3124,11 @@ bool FGameXXKCardBattleAdapter::CommitBossCardReward(
 		{
 			return Option.CardId == RewardCardId && Option.Kind == EGameXXKBattleRewardKind::BossCard;
 		});
-	if (RewardCardId.IsNone() || !bInTieredOffer || !Definition || Definition->Owner != EGameXXKCardOwner::Route)
+	if (!CandidateState.bHasGeneratedRouteMap
+		|| RewardCardId.IsNone()
+		|| !bInTieredOffer
+		|| !Definition
+		|| !IsRouteCard(RewardCardId))
 	{
 		return SetFailure(OutError, TEXT("The selected boss card is not part of the saved boss reward offer."));
 	}
@@ -3228,7 +3234,9 @@ bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 	{
 		for (const FName CardId : CardIds)
 		{
-			if (!CardId.IsNone() && !SeenDeckCards.Contains(CardId)
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (!CardId.IsNone() && Definition && Definition->Owner != EGameXXKCardOwner::Route
+				&& !SeenDeckCards.Contains(CardId)
 				&& GetConfiguredCardQuality(Run, CardId) < EGameXXKCardQuality::Epic)
 			{
 				SeenDeckCards.Add(CardId);
@@ -3279,7 +3287,7 @@ bool FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
 		return true;
 	};
 
-	if (NodeKind == EGameXXKNodeKind::Boss)
+	if (NodeKind == EGameXXKNodeKind::Boss && CandidateState.bHasGeneratedRouteMap)
 	{
 		const bool bTiger = CandidateState.ActiveBattleEnemies.ContainsByPredicate(
 			[](const FGameXXKBattleRuntimeUnit& Enemy) { return Enemy.Id == TEXT("Tiger"); });
@@ -3371,7 +3379,11 @@ bool FGameXXKCardBattleAdapter::PreviewPendingRouteReward(
 		{
 			return Option.CardId == RewardCardId && Option.Kind == EGameXXKBattleRewardKind::BossCard;
 		});
-	if (RewardCardId.IsNone() || !bInTieredOffer || !Definition || Definition->Owner != EGameXXKCardOwner::Route)
+	if (!State.bHasGeneratedRouteMap
+		|| RewardCardId.IsNone()
+		|| !bInTieredOffer
+		|| !Definition
+		|| !IsRouteCard(RewardCardId))
 	{
 		return SetFailure(OutError, TEXT("The selected boss card is not part of the saved boss reward offer."));
 	}

@@ -488,7 +488,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("combat scaling persistence owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("the active 173-card pool owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -678,8 +678,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("combat scaling persistence advances the current save schema to v33"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("the active 173-card pool advances the current save schema to v34"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 34);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -947,7 +947,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes combat scaling persistence"), FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("current save schema includes the active 173-card pool"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -1176,6 +1176,12 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	ExpectedLegacyDamageEffect.Magnitude = LegacyDamageIntent.Damage;
 	ExpectedLegacyDamageEffect.HitCount = 1;
 	ExpectedCardRun.EnemyIntents[0].Effects = { ExpectedLegacyDamageEffect };
+	for (FGameXXKCardBattleModifierRuntime& Modifier : ExpectedCardRun.ActiveBattle.Modifiers)
+	{
+		Modifier.Definition.MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+		Modifier.Definition.RareMagnitude = INDEX_NONE;
+		Modifier.Definition.EpicMagnitude = INDEX_NONE;
+	}
 	TestTrue(
 		TEXT("card-run payload survives except for explicit three-chapter and removed route-card migration state"),
 		FGameXXKCardRunState::StaticStruct()->CompareScriptStruct(&State.CardRun, &ExpectedCardRun, PPF_None));

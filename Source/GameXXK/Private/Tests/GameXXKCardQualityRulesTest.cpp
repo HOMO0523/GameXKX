@@ -185,31 +185,6 @@ namespace
 			{ TEXT("Profession.FormationMaster.ZhenQiGuWu"), EGameXXKCardQuality::Rare },
 			{ TEXT("Profession.FormationMaster.DiMaiJieLi"), EGameXXKCardQuality::Rare },
 			{ TEXT("Profession.FormationMaster.SiXiangLianHuan"), EGameXXKCardQuality::Epic },
-			{ TEXT("Route.General.PoJiaTuCi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.ShouShiHuiYuan"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.QingShenQuShi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.TuNaJue"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.ZhiXueSan"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.FeiZhen"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.YanDun"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.TieJiLi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.LinZhenMoRen"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.General.HeJiLing"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.DuanYaLuoShi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.LinYingFuXi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.DuKouHuiLiu"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.ZhaiHuoYuanShou"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.DongHuoZhaoMing"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.JieShiTuXi"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.XingJunBuZhen"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.DiMaiHuiXiang"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.LinShiZhaYing"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Terrain.XianLuTuWei"), EGameXXKCardQuality::Common },
-			{ TEXT("Route.Rare.GuJuanCanZhang"), EGameXXKCardQuality::Rare },
-			{ TEXT("Route.Rare.TieYiYiJue"), EGameXXKCardQuality::Rare },
-			{ TEXT("Route.Rare.LingQuanYiYin"), EGameXXKCardQuality::Rare },
-			{ TEXT("Route.Rare.JueJingFanJi"), EGameXXKCardQuality::Rare },
-			{ TEXT("Route.Rare.TongXinHeBi"), EGameXXKCardQuality::Rare },
 			{ TEXT("Route.Boss.XiongPiPiJia"), EGameXXKCardQuality::Epic },
 			{ TEXT("Route.Boss.HanDiYiShi"), EGameXXKCardQuality::Epic },
 			{ TEXT("Route.Boss.HuPoZhenDan"), EGameXXKCardQuality::Epic },
@@ -370,7 +345,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	}
 
 	const TArray<FExpectedQuality>& ExpectedCardEntries = GetExpectedCardQualities();
-	TestEqual(TEXT("independent card authority contains exactly 198 entries"), ExpectedCardEntries.Num(), 198);
+	TestEqual(TEXT("independent card authority contains exactly 173 entries"), ExpectedCardEntries.Num(), 173);
 	TMap<FName, EGameXXKCardQuality> ExpectedCards;
 	int32 ExpectedCommonCards = 0;
 	int32 ExpectedRareCards = 0;
@@ -391,12 +366,12 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		default: AddError(FString::Printf(TEXT("independent card authority has invalid quality: %s"), Entry.Id)); break;
 		}
 	}
-	TestEqual(TEXT("independent Common card count"), ExpectedCommonCards, 122);
-	TestEqual(TEXT("independent Rare card count"), ExpectedRareCards, 47);
+	TestEqual(TEXT("independent Common card count"), ExpectedCommonCards, 102);
+	TestEqual(TEXT("independent Rare card count"), ExpectedRareCards, 42);
 	TestEqual(TEXT("independent Epic card count"), ExpectedEpicCards, 29);
 
 	const TArray<FGameXXKCardDefinition>& CardDefinitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("card catalog contains exactly 198 definitions"), CardDefinitions.Num(), 198);
+	TestEqual(TEXT("card catalog contains exactly 173 definitions"), CardDefinitions.Num(), 173);
 	TSet<FName> ActualCardIds;
 	int32 ActualCommonCards = 0;
 	int32 ActualRareCards = 0;
@@ -427,8 +402,8 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("independent card authority ID is present in actual catalog: %s"), *Expected.Key.ToString()), ActualCardIds.Contains(Expected.Key));
 	}
 	TestEqual(TEXT("actual card catalog has no missing or extra unique IDs"), ActualCardIds.Num(), ExpectedCards.Num());
-	TestEqual(TEXT("Common card count"), ActualCommonCards, 122);
-	TestEqual(TEXT("Rare card count"), ActualRareCards, 47);
+	TestEqual(TEXT("Common card count"), ActualCommonCards, 102);
+	TestEqual(TEXT("Rare card count"), ActualRareCards, 42);
 	TestEqual(TEXT("Epic card count"), ActualEpicCards, 29);
 
 	FString CardValidationError;

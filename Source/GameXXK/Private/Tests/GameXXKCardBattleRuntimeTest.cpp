@@ -164,7 +164,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	AttackUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	FGameXXKCardBattleRuntime AttackRuntime;
 	TestTrue(TEXT("battle runtime initializes a serializable player phase from materialized card instances"),
-		GameXXKCardRules::InitializeCardBattleRuntime(AttackRuntime, MakeRuntimeInstances(TEXT("Route.General.PoJiaTuCi"), 6), AttackUnits, EGameXXKCardTerrain::Plain, 771));
+		GameXXKCardRules::InitializeCardBattleRuntime(AttackRuntime, MakeRuntimeInstances(TEXT("Hero.Generic.SuiYanJi"), 6), AttackUnits, EGameXXKCardTerrain::Plain, 771));
 	TestEqual(TEXT("new battle runtime starts in the player card phase"), AttackRuntime.Phase, EGameXXKCardBattlePhase::Player);
 	TestEqual(TEXT("new battle runtime starts with the shared three energy"), AttackRuntime.Deck.SharedEnergy, 3);
 	TestEqual(TEXT("new battle runtime materializes the first five cards into hand"), AttackRuntime.Deck.Hand.Num(), 5);
@@ -185,9 +185,9 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult AttackResult;
 	TestTrue(TEXT("submitting a fresh legal stable enemy UnitId resolves the played card"), GameXXKCardRules::ResolveCardPlay(AttackRuntime, AttackInstanceId, TEXT("Enemy"), AttackResult));
 	TestEqual(TEXT("a resolved attack spends its shared energy exactly once"), AttackRuntime.Deck.SharedEnergy, 2);
-	TestEqual(TEXT("an attack without a mana effect preserves the source mana"), FindRuntimeUnit(AttackRuntime.Units, TEXT("Hero"))->Mana, 10);
-	TestEqual(TEXT("the target takes the source attack percentage as direct damage"), FindRuntimeUnit(AttackRuntime.Units, TEXT("Enemy"))->HP, 80);
-	TestEqual(TEXT("the landed attack applies its linked vulnerability"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(AttackRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Vulnerability), 1);
+	TestEqual(TEXT("the active attack pays its three-mana cost"), FindRuntimeUnit(AttackRuntime.Units, TEXT("Hero"))->Mana, 7);
+	TestEqual(TEXT("the target takes the source attack percentage as direct damage"), FindRuntimeUnit(AttackRuntime.Units, TEXT("Enemy"))->HP, 70);
+	TestEqual(TEXT("the landed attack applies its linked vulnerability"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(AttackRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Vulnerability), 3);
 	TestTrue(TEXT("the successful play records the selected stable target"), AttackResult.TargetUnitIds.Contains(TEXT("Enemy")));
 	TestTrue(TEXT("the successful play moves the exact hand instance into discard"), IsInDiscard(AttackRuntime.Deck, AttackInstanceId));
 
@@ -197,7 +197,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	HealUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	TestEqual(TEXT("healing fixture adds a removable bleed stack"), GameXXKCardRules::AddCombatStatus(HealUnits[1], EGameXXKCardStatus::Bleed, 1), 1);
 	FGameXXKCardBattleRuntime HealRuntime;
-	TestTrue(TEXT("healing runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(HealRuntime, MakeRuntimeInstances(TEXT("Route.General.ZhiXueSan"), 6), HealUnits, EGameXXKCardTerrain::Plain, 772));
+	TestTrue(TEXT("healing runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(HealRuntime, MakeRuntimeInstances(TEXT("Hero.Generic.GuiYuanShu"), 6), HealUnits, EGameXXKCardTerrain::Plain, 772));
 	const FName HealInstanceId = HealRuntime.Deck.Hand[0].InstanceId;
 	FGameXXKCardPlayPreview HealPreview;
 	TestTrue(TEXT("a friendly card builds a fresh manual target preview"), GameXXKCardRules::BuildCardPlayPreview(HealRuntime, HealInstanceId, HealPreview));
@@ -225,7 +225,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	SelfUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 10, 20, 1));
 	SelfUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	FGameXXKCardBattleRuntime SelfRuntime;
-	TestTrue(TEXT("self-target runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(SelfRuntime, MakeRuntimeInstances(TEXT("Route.General.QingShenQuShi"), 6), SelfUnits, EGameXXKCardTerrain::Plain, 773));
+	TestTrue(TEXT("self-target runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(SelfRuntime, MakeRuntimeInstances(TEXT("Profession.Blade.HuiFengJiaShi"), 6), SelfUnits, EGameXXKCardTerrain::Plain, 773));
 	const FName SelfInstanceId = SelfRuntime.Deck.Hand[0].InstanceId;
 	FGameXXKCardPlayPreview SelfPreview;
 	TestTrue(TEXT("self-target card preview succeeds"), GameXXKCardRules::BuildCardPlayPreview(SelfRuntime, SelfInstanceId, SelfPreview));
@@ -324,10 +324,10 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("TaskNpc"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 0, 0, 3));
 	JointAttackUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 12, 0, 0, 10));
 	FGameXXKCardBattleRuntime JointAttackRuntime;
-	TestTrue(TEXT("joint-attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(JointAttackRuntime, MakeRuntimeInstances(TEXT("Route.General.HeJiLing"), 6), JointAttackUnits, EGameXXKCardTerrain::Plain, 780));
+	TestTrue(TEXT("joint-attack runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(JointAttackRuntime, MakeRuntimeInstances(TEXT("Npc.TusiChief.MengZhaiShiYue"), 6), JointAttackUnits, EGameXXKCardTerrain::Plain, 780));
 	FGameXXKCardPlayResult JointAttackResult;
 	TestTrue(TEXT("each living party member attacks the one selected enemy from a data-only joint-attack effect"), GameXXKCardRules::ResolveCardPlay(JointAttackRuntime, JointAttackRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), JointAttackResult));
-	TestEqual(TEXT("joint attack uses each current party member's own attack value"), FindRuntimeUnit(JointAttackRuntime.Units, TEXT("Enemy"))->HP, 78);
+	TestEqual(TEXT("joint attack uses each party member's attack plus the newly granted Momentum"), FindRuntimeUnit(JointAttackRuntime.Units, TEXT("Enemy"))->HP, 70);
 	TestEqual(TEXT("joint attack creates one stable damage audit per living party member"), JointAttackResult.DamageResults.Num(), 3);
 
 	TArray<FGameXXKCardCombatUnit> DiscardChoiceUnits;
@@ -357,35 +357,13 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("discard choice keeps the five-card post-draw hand below battle capacity without self-redraw"), DiscardChoiceRuntime.Deck.Hand.Num(), 5);
 	TestEqual(TEXT("submitting the discard clears the serialized blocking choice"), DiscardChoiceRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::None);
 
-	TArray<FGameXXKCardCombatUnit> DiscoverUnits;
-	DiscoverUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 10, 0, 0, 1));
-	DiscoverUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
-	FGameXXKCardBattleRuntime DiscoverRuntime;
-	TestTrue(TEXT("discover runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(DiscoverRuntime, MakeRuntimeInstances(TEXT("Route.Rare.GuJuanCanZhang"), 8), DiscoverUnits, EGameXXKCardTerrain::Plain, 782));
-	FGameXXKCardPlayResult DiscoverResult;
-	TestTrue(TEXT("insight followed by discover preserves one explicit top-card choice"), GameXXKCardRules::ResolveCardPlay(DiscoverRuntime, DiscoverRuntime.Deck.Hand[0].InstanceId, NAME_None, DiscoverResult));
-	TestTrue(TEXT("discover result reports its pending insight choice"), DiscoverResult.bOpenedPendingChoice);
-	TestEqual(TEXT("discover remains a serialized insight choose-to-hand operation"), DiscoverRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::InsightChooseToHand);
-	TestEqual(TEXT("discover exposes the requested top three card candidates"), DiscoverRuntime.Deck.PendingChoice.Candidates.Num(), 3);
-	if (DiscoverRuntime.Deck.PendingChoice.Candidates.Num() == 3)
-	{
-		const FName DiscoverPickId = DiscoverRuntime.Deck.PendingChoice.Candidates[0].InstanceId;
-		TArray<FName> DiscoverRemainingIds;
-		for (int32 DiscoverIndex = 1; DiscoverIndex < DiscoverRuntime.Deck.PendingChoice.Candidates.Num(); ++DiscoverIndex)
-		{
-			DiscoverRemainingIds.Add(DiscoverRuntime.Deck.PendingChoice.Candidates[DiscoverIndex].InstanceId);
-		}
-		TestTrue(TEXT("submitting a discover choice moves one offered card to hand and commits the remaining order"), GameXXKCardRules::SubmitInsightChoice(DiscoverRuntime.Deck, DiscoverPickId, DiscoverRemainingIds));
-		TestEqual(TEXT("discover returns to a legal no-choice deck state"), DiscoverRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::None);
-	}
-
 	TArray<FGameXXKCardCombatUnit> CostModifierUnits;
 	CostModifierUnits.Add(MakeRuntimeUnit(TEXT("SongJinBao"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 10, 30, 30, 1));
 	CostModifierUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	TArray<FGameXXKCardInstance> CostModifierInstances = MakeRuntimeInstances(TEXT("Npc.SongJinBao.YiNuoQianJin"), 1, TEXT("SongJinBao"));
 	CostModifierInstances.Append(MakeRuntimeInstances(TEXT("Npc.SongJinBao.ErMuMiBao"), 1, TEXT("SongJinBao")));
 	CostModifierInstances.Append(MakeRuntimeInstances(TEXT("Npc.SongJinBao.GuiKeLing"), 1, TEXT("SongJinBao")));
-	CostModifierInstances.Append(MakeRuntimeInstances(TEXT("Route.General.HeJiLing"), 3, TEXT("SongJinBao")));
+	CostModifierInstances.Append(MakeRuntimeInstances(TEXT("Hero.Generic.SuiYanJi"), 3, TEXT("SongJinBao")));
 	FGameXXKCardBattleRuntime CostModifierRuntime;
 	TestTrue(TEXT("future-card cost modifier runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(CostModifierRuntime, CostModifierInstances, CostModifierUnits, EGameXXKCardTerrain::Plain, 783));
 	TestTrue(TEXT("cost-modifier fixture exposes its first Yi Nuo"), EnsureCardIsInHand(CostModifierRuntime.Deck, TEXT("Npc.SongJinBao.YiNuoQianJin")));
@@ -410,15 +388,15 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 			ResumedCostResults,
 			&CostModifierError));
 	}
-	TestTrue(TEXT("cost-modifier fixture exposes a paid card after Yi Nuo"), EnsureCardIsInHand(CostModifierRuntime.Deck, TEXT("Route.General.HeJiLing")));
-	const FGameXXKCardInstance* CostModifierSecondInstance = FindHandCardById(CostModifierRuntime.Deck, TEXT("Route.General.HeJiLing"));
+	TestTrue(TEXT("cost-modifier fixture exposes a paid card after Yi Nuo"), EnsureCardIsInHand(CostModifierRuntime.Deck, TEXT("Hero.Generic.SuiYanJi")));
+	const FGameXXKCardInstance* CostModifierSecondInstance = FindHandCardById(CostModifierRuntime.Deck, TEXT("Hero.Generic.SuiYanJi"));
 	const FName CostModifierSecondInstanceId = CostModifierSecondInstance ? CostModifierSecondInstance->InstanceId : NAME_None;
 	FGameXXKCardPlayPreview CostModifierPreview;
 	TestTrue(TEXT("a subsequent hand card previews with the registered shared-deck energy reduction"), GameXXKCardRules::BuildCardPlayPreview(CostModifierRuntime, CostModifierSecondInstanceId, CostModifierPreview));
 	TestEqual(TEXT("Yi Nuo makes the next card's energy cost zero"), CostModifierPreview.EffectiveEnergyCost, 0);
 	TestEqual(TEXT("Yi Nuo makes the next card's mana cost zero"), CostModifierPreview.EffectiveManaCost, 0);
 	FGameXXKCardPlayResult CostModifierSecondResult;
-	TestTrue(TEXT("the free joint attack resolves without spending more party resources"), GameXXKCardRules::ResolveCardPlay(CostModifierRuntime, CostModifierSecondInstanceId, TEXT("Enemy"), CostModifierSecondResult));
+	TestTrue(TEXT("the free active attack resolves without spending more party resources"), GameXXKCardRules::ResolveCardPlay(CostModifierRuntime, CostModifierSecondInstanceId, TEXT("Enemy"), CostModifierSecondResult));
 	for (const FName OriginalCostModifierId : OriginalCostModifierIds)
 	{
 		const FGameXXKCardBattleModifierRuntime* ConsumedCostModifier = CostModifierRuntime.Modifiers.FindByPredicate([OriginalCostModifierId](const FGameXXKCardBattleModifierRuntime& Modifier)
@@ -432,24 +410,24 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	TArray<FGameXXKCardInstance> AttackModifierInstances = MakeRuntimeInstances(TEXT("Route.General.LinZhenMoRen"), 1, TEXT("Blade"));
+	TArray<FGameXXKCardInstance> AttackModifierInstances = MakeRuntimeInstances(TEXT("Profession.FormationMaster.ZhenQiGuWu"), 1, TEXT("Blade"));
 	AttackModifierInstances.Append(MakeRuntimeInstances(TEXT("Profession.Blade.LieFengZhan"), 6, TEXT("Blade")));
 	TArray<FGameXXKCardCombatUnit> AttackModifierUnits;
 	AttackModifierUnits.Add(MakeRuntimeUnit(TEXT("Blade"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Blade, 100, 100, 20, 0, 0, 1));
 	AttackModifierUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
 	FGameXXKCardBattleRuntime AttackModifierRuntime;
 	TestTrue(TEXT("next-attack modifier runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(AttackModifierRuntime, AttackModifierInstances, AttackModifierUnits, EGameXXKCardTerrain::Plain, 784));
-	TestTrue(TEXT("next-attack modifier fixture can expose its setup card in the current hand"), EnsureCardIsInHand(AttackModifierRuntime.Deck, TEXT("Route.General.LinZhenMoRen")));
+	TestTrue(TEXT("next-attack modifier fixture can expose its setup card in the current hand"), EnsureCardIsInHand(AttackModifierRuntime.Deck, TEXT("Profession.FormationMaster.ZhenQiGuWu")));
 	TestTrue(TEXT("next-attack modifier fixture can expose its attack card in the current hand"), EnsureCardIsInHand(AttackModifierRuntime.Deck, TEXT("Profession.Blade.LieFengZhan")));
 	const FGameXXKCardInstance* AttackModifierSetupInstance = AttackModifierRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
 	{
-		return Instance.CardId == TEXT("Route.General.LinZhenMoRen");
+		return Instance.CardId == TEXT("Profession.FormationMaster.ZhenQiGuWu");
 	});
 	TestNotNull(TEXT("next-attack modifier fixture retains the setup card in hand"), AttackModifierSetupInstance);
 	if (AttackModifierSetupInstance)
 	{
 		FGameXXKCardPlayResult AttackModifierSetupResult;
-		TestTrue(TEXT("a next-attack setup card registers its recipient-bound persistent modifier"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierSetupInstance->InstanceId, TEXT("Blade"), AttackModifierSetupResult));
+		TestTrue(TEXT("a next-attack setup card registers its party-bound persistent modifier"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierSetupInstance->InstanceId, NAME_None, AttackModifierSetupResult));
 		TestEqual(TEXT("next-attack setup leaves one persistent modifier ready for the blade"), AttackModifierRuntime.Modifiers.Num(), 1);
 		const FGameXXKCardInstance* AttackModifierAttackInstance = AttackModifierRuntime.Deck.Hand.FindByPredicate([](const FGameXXKCardInstance& Instance)
 		{
@@ -460,12 +438,8 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		{
 			FGameXXKCardPlayResult AttackModifierAttackResult;
 			TestTrue(TEXT("the next blade attack consumes the registered modifier and resolves"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierAttackInstance->InstanceId, TEXT("Enemy"), AttackModifierAttackResult));
-			TestEqual(TEXT("the next-attack modifier upgrades one hundred percent to one hundred twenty-five before the linked Bleed"), FindRuntimeUnit(AttackModifierRuntime.Units, TEXT("Enemy"))->HP, 74);
-			TestEqual(TEXT("the two-trigger next-attack modifier remains for one more attack"), AttackModifierRuntime.Modifiers.Num(), 1);
-			if (AttackModifierRuntime.Modifiers.Num() == 1)
-			{
-				TestEqual(TEXT("the next-attack modifier consumes exactly one trigger"), AttackModifierRuntime.Modifiers[0].Definition.RemainingTriggers, 1);
-			}
+			TestEqual(TEXT("the next-attack modifier and active Blade sequencing resolve a twenty-five-point packet"), FindRuntimeUnit(AttackModifierRuntime.Units, TEXT("Enemy"))->HP, 75);
+			TestEqual(TEXT("the one-trigger next-attack modifier is consumed"), AttackModifierRuntime.Modifiers.Num(), 0);
 		}
 	}
 
@@ -583,23 +557,6 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("enemy on-hit statuses remain inside the redirected packet and land on the final target"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Burn), 1);
 
-	TArray<FGameXXKCardCombatUnit> EndRoundUnits;
-	EndRoundUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 0, 1));
-	EndRoundUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
-	FGameXXKCardBattleRuntime EndRoundRuntime;
-	TestTrue(TEXT("end-of-round energy runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(EndRoundRuntime, MakeRuntimeInstances(TEXT("Route.Rare.TieYiYiJue"), 6), EndRoundUnits, EGameXXKCardTerrain::Plain, 789));
-	FGameXXKCardPlayResult EndRoundSetupResult;
-	TestTrue(TEXT("iron-clad legacy card registers its full-round modifier"), GameXXKCardRules::ResolveCardPlay(EndRoundRuntime, EndRoundRuntime.Deck.Hand[0].InstanceId, NAME_None, EndRoundSetupResult));
-	TArray<FGameXXKCardDamageResult> EndRoundPlayerDotResults;
-	TestTrue(TEXT("iron-clad card can close the player phase"), GameXXKCardRules::EndPlayerCardPhase(EndRoundRuntime, EndRoundPlayerDotResults));
-	TestEqual(TEXT("player armor remains through the intervening enemy phase"), FindRuntimeUnit(EndRoundRuntime.Units, TEXT("Hero"))->Armor, 18);
-	TArray<FGameXXKCardDamageResult> EndRoundEnemyDotResults;
-	TestTrue(TEXT("the new player phase resolves after the empty enemy phase"), GameXXKCardRules::BeginNextPlayerCardRound(EndRoundRuntime, EndRoundEnemyDotResults));
-	TestEqual(TEXT("iron-clad checks armor only after the full enemy phase and grants next-round energy"), EndRoundRuntime.Deck.SharedEnergy, 4);
-	TestEqual(TEXT("party armor clears at the next party phase start after the end-round check"), FindRuntimeUnit(EndRoundRuntime.Units, TEXT("Hero"))->Armor, 0);
-	TestEqual(TEXT("the full-round energy modifier expires after its one declared trigger"), EndRoundRuntime.Modifiers.Num(), 0);
-	TestEqual(TEXT("a new player phase refills the normal hand after unused cards were discarded"), EndRoundRuntime.Deck.Hand.Num(), 5);
-
 	TArray<FGameXXKCardCombatUnit> TimedTerrainUnits;
 	TimedTerrainUnits.Add(MakeRuntimeUnit(TEXT("Zhou"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::QuestNpc, 100, 100, 12, 0, 0, 1));
 	TimedTerrainUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
@@ -617,46 +574,6 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("timed terrain bonus can pass through the player phase"), GameXXKCardRules::EndPlayerCardPhase(TimedTerrainRuntime, TimedTerrainPlayerDots));
 	TestTrue(TEXT("timed terrain bonus expires before the subsequent player phase"), GameXXKCardRules::BeginNextPlayerCardRound(TimedTerrainRuntime, TimedTerrainEnemyDots));
 	TestEqual(TEXT("an unused current-round terrain bonus cannot leak into the next round"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TimedTerrainRuntime.Units, TEXT("Zhou")), EGameXXKCardStatus::TerrainBonusDoubleThisRound), 0);
-
-	TArray<FGameXXKCardCombatUnit> TerrainCostUnits;
-	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 20, 1));
-	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Formation"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::FormationMaster, 100, 100, 10, 0, 20, 2));
-	TerrainCostUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
-	FGameXXKCardBattleRuntime TerrainCostRuntime;
-	TestTrue(TEXT("terrain-cost status runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(TerrainCostRuntime, MakeRuntimeInstances(TEXT("Route.Terrain.DuanYaLuoShi"), 6), TerrainCostUnits, EGameXXKCardTerrain::Plain, 791));
-	TestEqual(TEXT("terrain-cost fixture applies a party reduction source"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction, 1), 1);
-	TestEqual(TEXT("terrain-cost fixture applies a higher-priority free source"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::NextTerrainCardFree, 1), 1);
-	FGameXXKCardPlayPreview TerrainFreePreview;
-	TestTrue(TEXT("a route terrain card sees the party free-cost source in preview"), GameXXKCardRules::BuildCardPlayPreview(TerrainCostRuntime, TerrainCostRuntime.Deck.Hand[0].InstanceId, TerrainFreePreview));
-	TestEqual(TEXT("a terrain free-cost source overrides the ordinary terrain reduction"), TerrainFreePreview.EffectiveEnergyCost, 0);
-	FGameXXKCardPlayResult TerrainFreeResult;
-	TestTrue(TEXT("the free terrain card resolves through its stable enemy target"), GameXXKCardRules::ResolveCardPlay(TerrainCostRuntime, TerrainCostRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), TerrainFreeResult));
-	TestEqual(TEXT("the chosen free source is consumed exactly once"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::NextTerrainCardFree), 0);
-	TestEqual(TEXT("the unused reduction source is preserved for the following terrain card"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction), 1);
-	const FGameXXKCardInstance* TerrainDiscountInstance = FindHandCardById(TerrainCostRuntime.Deck, TEXT("Route.Terrain.DuanYaLuoShi"));
-	TestNotNull(TEXT("a second terrain card remains available after the free terrain card resolves"), TerrainDiscountInstance);
-	if (TerrainDiscountInstance)
-	{
-		FGameXXKCardPlayPreview TerrainDiscountPreview;
-		TestTrue(TEXT("a remaining terrain reduction lowers the next terrain card by one energy"), GameXXKCardRules::BuildCardPlayPreview(TerrainCostRuntime, TerrainDiscountInstance->InstanceId, TerrainDiscountPreview));
-		TestEqual(TEXT("a two-energy terrain card previews at one energy after one reduction"), TerrainDiscountPreview.EffectiveEnergyCost, 1);
-		FGameXXKCardPlayResult TerrainDiscountResult;
-		TestTrue(TEXT("the discounted terrain card resolves"), GameXXKCardRules::ResolveCardPlay(TerrainCostRuntime, TerrainDiscountInstance->InstanceId, TEXT("Enemy"), TerrainDiscountResult));
-		TestEqual(TEXT("the applied terrain reduction consumes after its actual contribution"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainCostRuntime.Units, TEXT("Formation")), EGameXXKCardStatus::NextTerrainCardEnergyReduction), 0);
-	}
-
-	TArray<FGameXXKCardCombatUnit> TerrainDoubleUnits;
-	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 0, 20, 1));
-	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Ally"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Healer, 100, 100, 10, 0, 20, 2));
-	TerrainDoubleUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
-	FGameXXKCardBattleRuntime TerrainDoubleRuntime;
-	TestTrue(TEXT("terrain-bonus double runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(TerrainDoubleRuntime, MakeRuntimeInstances(TEXT("Route.Terrain.DuKouHuiLiu"), 6), TerrainDoubleUnits, EGameXXKCardTerrain::WaterShore, 792));
-	TestEqual(TEXT("terrain-bonus fixture adds one persistent doubling status"), GameXXKCardRules::AddCombatStatus(*FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::TerrainBonusDouble, 1), 1);
-	FGameXXKCardPlayResult TerrainDoubleResult;
-	TestTrue(TEXT("terrain-bonus double duplicates only the declared water-shore bonus effects"), GameXXKCardRules::ResolveCardPlay(TerrainDoubleRuntime, TerrainDoubleRuntime.Deck.Hand[0].InstanceId, NAME_None, TerrainDoubleResult));
-	TestEqual(TEXT("base plus two water-shore mana bonuses give the hero nine mana"), FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero"))->Mana, 9);
-	TestEqual(TEXT("base plus two water-shore mana bonuses give each ally nine mana"), FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Ally"))->Mana, 9);
-	TestEqual(TEXT("terrain-bonus doubling consumes exactly one ready status"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(TerrainDoubleRuntime.Units, TEXT("Hero")), EGameXXKCardStatus::TerrainBonusDouble), 0);
 
 	TArray<FGameXXKCardCombatUnit> XingHuoUnits;
 	XingHuoUnits.Add(MakeRuntimeUnit(TEXT("Sorcerer"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Sorcerer, 100, 100, 20, 4, 20, 1));

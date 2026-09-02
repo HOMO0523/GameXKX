@@ -60,7 +60,7 @@ bool FGameXXKRetiredLegacyNarrativeTest::RunTest(const FString& Parameters)
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(FString::Printf(TEXT("v31 retires legacy narrative: %s"), *Report.Error),
 		FGameXXKSaveMigration::MigrateToCurrent(V31, Migrated, Report));
-	TestEqual(TEXT("migration reaches current v33"), Migrated.SaveVersion, 33);
+	TestEqual(TEXT("migration reaches current v34"), Migrated.SaveVersion, 34);
 	TestFalse(TEXT("retired story progress is removed"),
 		Migrated.RuntimeState.NarrativeProgress.StoryProgressById.Contains(StoryId));
 	TestFalse(TEXT("retired task progress is removed"),

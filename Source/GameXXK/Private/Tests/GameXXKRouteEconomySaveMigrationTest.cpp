@@ -27,8 +27,8 @@ static_assert(
 	FGameXXKSaveMigration::DesktopInventoryStorageIntroducedSaveVersion == 21,
 	"Persistent desktop inventory storage advances the current save version to twenty-one.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 33,
-	"Combat scaling persistence is part of the current save version.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 34,
+	"The active 173-card pool is part of the current save version.");
 
 namespace
 {
@@ -144,7 +144,7 @@ bool FGameXXKRouteEconomySaveVersionContractTest::RunTest(const FString& Paramet
 		TEXT("canonical merchant stock schema is version ten"),
 		FGameXXKSaveMigration::RouteMerchantStockSchemaIntroducedSaveVersion,
 		10);
-	TestEqual(TEXT("current save version includes combat scaling persistence"), FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("current save version includes the active 173-card pool"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
 	return true;
 }
 

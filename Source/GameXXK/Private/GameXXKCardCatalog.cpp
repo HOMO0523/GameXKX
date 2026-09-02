@@ -1763,88 +1763,7 @@ namespace
 	void AddRouteCards(TArray<FGameXXKCardDefinition>& Cards)
 	{
 		constexpr const TCHAR* OwnerId = TEXT("Route");
-		constexpr const TCHAR* GeneralFrame = TEXT("Style.Route.General");
-		constexpr const TCHAR* TerrainFrame = TEXT("Style.Route.Terrain");
-		constexpr const TCHAR* RareFrame = TEXT("Style.Route.Rare");
 		constexpr const TCHAR* BossFrame = TEXT("Style.Route.Boss");
-
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.PoJiaTuCi"), TEXT("破甲突刺"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.ShouShiHuiYuan"), TEXT("守势回元"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 8), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 3) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.QingShenQuShi"), TEXT("轻身取势"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Agility) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.TuNaJue"), TEXT("吐纳诀"), 0, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 5) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.ZhiXueSan"), TEXT("止血散"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 12), Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Bleed) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.FeiZhen"), TEXT("飞针"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(70, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Mark) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.YanDun"), TEXT("烟遁"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 4) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.TieJiLi"), TEXT("铁蒺藜"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.LinZhenMoRen"), TEXT("临阵磨刃"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Modifier(EGameXXKCardBattleModifierTrigger::OnNextAttack, EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::PlayedCard, 25, 2, 0, FGameXXKCardEffectCondition(), EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::SelectedTarget, EGameXXKCardEffectTarget::SelectedTarget) }, GeneralFrame, TEXT("Route.General"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.General.HeJiLing"), TEXT("合击令"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, EGameXXKCardEffectTarget::SelectedTarget, 50) }, GeneralFrame, TEXT("Route.General"));
-
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.DuanYaLuoShi"), TEXT("断崖落石"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(130, EGameXXKCardEffectTarget::SelectedTarget, 1, TerrainIs(EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Invalid, true)), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability, 1, TerrainIs(EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Invalid, true)), Attack(180, EGameXXKCardEffectTarget::SelectedTarget, 1, TerrainIs(EGameXXKCardTerrain::Cliff)), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability, 1, TerrainIs(EGameXXKCardTerrain::Cliff)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.LinYingFuXi"), TEXT("林影伏袭"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Agility, 1, TerrainIs(EGameXXKCardTerrain::Forest)), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Forest)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.DuKouHuiLiu"), TEXT("渡口回流"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::WaterShore, EGameXXKCardTerrain::Ferry)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.ZhaiHuoYuanShou"), TEXT("寨火援手"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 5), Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 6, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Village)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.DongHuoZhaoMing"), TEXT("洞火照明"), 1, 0, EGameXXKCardTargetMode::AllEnemies,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Burn, 1, TerrainIs(EGameXXKCardTerrain::Cave)), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Cave)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.JieShiTuXi"), TEXT("借势突袭"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(115, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability, 1, TerrainIs(EGameXXKCardTerrain::Cliff)), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark, 1, TerrainIs(EGameXXKCardTerrain::Forest)), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 4, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::WaterShore, EGameXXKCardTerrain::Ferry)), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 4, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Village)), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Poison, 1, TerrainIs(EGameXXKCardTerrain::Cave)), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Plain)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.XingJunBuZhen"), TEXT("行军布阵"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 4), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextTerrainCardEnergyReduction) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.DiMaiHuiXiang"), TEXT("地脉回响"), 0, 0, EGameXXKCardTargetMode::None,
-			{ Effect(EGameXXKCardEffectType::DoubleTerrainBonus, EGameXXKCardEffectTarget::CardOwner, 2) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.LinShiZhaYing"), TEXT("临时扎营"), 2, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 8), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 2), Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 4, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Forest, EGameXXKCardTerrain::Village)) }, TerrainFrame, TEXT("Route.Terrain"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Common, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Terrain.XianLuTuWei"), TEXT("险路突围"), 2, 6, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllAllies, 1, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::LowestHealthAlly, 8, EGameXXKCardStatus::None, 1, TerrainIs(EGameXXKCardTerrain::Cliff, EGameXXKCardTerrain::Forest)) }, TerrainFrame, TEXT("Route.Terrain"));
-
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Rare, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Rare.GuJuanCanZhang"), TEXT("古卷残章"), 0, 0, EGameXXKCardTargetMode::None,
-			{ Effect(EGameXXKCardEffectType::Insight, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::DiscoverCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::ReorderCards, EGameXXKCardEffectTarget::CardOwner, 3) }, RareFrame, TEXT("Route.Rare"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Rare, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Rare.TieYiYiJue"), TEXT("铁衣遗诀"), 2, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 18), Modifier(EGameXXKCardBattleModifierTrigger::EndOfRound, EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1, 1, 0, OwnerArmorAtLeast(10)) }, RareFrame, TEXT("Route.Rare"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Rare, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Rare.LingQuanYiYin"), TEXT("灵泉一饮"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::SelectedTarget, 20), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::SelectedTarget, 5), Effect(EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1) }, RareFrame, TEXT("Route.Rare"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Rare, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Rare.JueJingFanJi"), TEXT("绝境反击"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10), Attack(220, EGameXXKCardEffectTarget::SelectedTarget, 1, OwnerHealthBelow(30.0f)), Attack(120, EGameXXKCardEffectTarget::SelectedTarget, 1, OwnerHealthBelow(30.0f, true)) }, RareFrame, TEXT("Route.Rare"));
-		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Rare, EGameXXKCharacterRole::Route, OwnerId, nullptr,
-			TEXT("Route.Rare.TongXinHeBi"), TEXT("同心合璧"), 2, 8, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllAllies, 1, EGameXXKCardStatus::Momentum), Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1) }, RareFrame, TEXT("Route.Rare"));
 
 		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Boss, EGameXXKCharacterRole::Route, OwnerId, nullptr,
 			TEXT("Route.Boss.XiongPiPiJia"), TEXT("熊罴皮甲"), 2, 0, EGameXXKCardTargetMode::Self,
@@ -2621,9 +2540,9 @@ bool FGameXXKCardCatalog::ValidateCardDefinitions(FString& OutError)
 {
 	OutError.Reset();
 	const TArray<FGameXXKCardDefinition>& Definitions = GetAllCardDefinitions();
-	if (Definitions.Num() != 198)
+	if (Definitions.Num() != 173)
 	{
-		OutError = FString::Printf(TEXT("Expected 198 card definitions but found %d."), Definitions.Num());
+		OutError = FString::Printf(TEXT("Expected 173 active card definitions but found %d."), Definitions.Num());
 		return false;
 	}
 

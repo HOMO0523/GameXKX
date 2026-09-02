@@ -205,7 +205,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		TEXT("the replacement Blade partner cards introduce save version fourteen"),
 		FGameXXKSaveMigration::BladePartnerCardsIntroducedSaveVersion,
 		14);
-	TestEqual(TEXT("the current save version includes combat scaling persistence"), FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("the current save version includes the active 173-card pool"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
 	FString Error;
 	for (int32 Seed = 1; Seed <= 256; ++Seed)
 	{

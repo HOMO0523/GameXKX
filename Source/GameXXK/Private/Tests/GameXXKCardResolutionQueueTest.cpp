@@ -95,7 +95,7 @@ namespace GameXXKCardResolutionQueueTest
 		FGameXXKCardBattleRuntime& OutRuntime,
 		TArray<FGameXXKCardCombatUnit> Units,
 		const int32 CardCount = 10,
-		const FName DeckCardId = TEXT("Route.General.PoJiaTuCi"),
+		const FName DeckCardId = TEXT("Hero.Generic.QingFengYiShi"),
 		const int32 Seed = 31001)
 	{
 		FString Error;
@@ -226,7 +226,7 @@ bool FGameXXKAutomaticReplayPaysNoCostAndMovesNoCardTest::RunTest(const FString&
 	}
 	Runtime.Deck.SharedEnergy = 0;
 	const FGameXXKBattleDeckState DeckBefore = Runtime.Deck;
-	SeedQueue(Runtime, {MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId})});
+	SeedQueue(Runtime, {MakeSnapshot(TEXT("Profession.Blade.LieFengZhan"), {EnemyUnitId})});
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("automatic replay resolves at zero energy: %s"), *Error),
@@ -236,7 +236,7 @@ bool FGameXXKAutomaticReplayPaysNoCostAndMovesNoCardTest::RunTest(const FString&
 	TestTrue(
 		TEXT("automatic replay leaves every deck zone and resource unchanged"),
 		FGameXXKBattleDeckState::StaticStruct()->CompareScriptStruct(&Runtime.Deck, &DeckBefore, PPF_None));
-	TestEqual(TEXT("automatic replay deals the stored card's base attack"), FindUnit(Runtime, EnemyUnitId)->HP, 80);
+	TestEqual(TEXT("automatic replay deals the active replacement card's twenty-one-point base packet"), FindUnit(Runtime, EnemyUnitId)->HP, 79);
 	if (Results.Num() == 1 && Results[0].DamageResults.Num() == 1)
 	{
 		TestEqual(TEXT("automatic play result has explicit origin"), Results[0].ResolutionOrigin, EGameXXKCardResolutionOrigin::AutomaticReplay);
@@ -278,7 +278,7 @@ bool FGameXXKAutomaticReplayDoesNotIncrementActivePlayCountTest::RunTest(const F
 	TestEqual(TEXT("fixture grants one active-play next-attack status"),
 		GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::NextAttackBonus, 1), 1);
 	const FGameXXKResolvedCardSnapshot LastActiveBefore = Runtime.LastActiveCard;
-	SeedQueue(Runtime, {MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId})});
+	SeedQueue(Runtime, {MakeSnapshot(TEXT("Profession.Blade.LieFengZhan"), {EnemyUnitId})});
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("automatic replay resolves: %s"), *Error),
@@ -290,7 +290,7 @@ bool FGameXXKAutomaticReplayDoesNotIncrementActivePlayCountTest::RunTest(const F
 	TestEqual(TEXT("automatic replay does not consume active next-attack modifiers"), Runtime.Modifiers.Num(), 1);
 	TestEqual(TEXT("automatic replay does not consume active next-attack status"),
 		GameXXKCardRules::GetCombatStatusStacks(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::NextAttackBonus), 1);
-	TestEqual(TEXT("automatic replay ignores the active-only attack bonus"), FindUnit(Runtime, EnemyUnitId)->HP, 80);
+	TestEqual(TEXT("automatic replay ignores the active-only attack bonus"), FindUnit(Runtime, EnemyUnitId)->HP, 79);
 	TestEqual(TEXT("automatic replay does not apply the active-only on-hit Mark"),
 		GameXXKCardRules::GetCombatStatusStacks(*FindUnit(Runtime, EnemyUnitId), EGameXXKCardStatus::Mark), 0);
 
@@ -309,7 +309,7 @@ bool FGameXXKAutomaticReplayDoesNotIncrementActivePlayCountTest::RunTest(const F
 	NextHealingModifier.Definition.RemainingTriggers = 1;
 	NextHealingModifier.Definition.bPersistent = true;
 	FindUnit(Runtime, HeroUnitId)->HP = 50;
-	SeedQueue(Runtime, {MakeSnapshot(TEXT("Route.General.ZhiXueSan"), {HeroUnitId})});
+	SeedQueue(Runtime, {MakeSnapshot(TEXT("Profession.FormationMaster.CunZhaiYuanZhen"))});
 	TArray<FGameXXKCardPlayResult> HealingResults;
 	TestTrue(TEXT("automatic healing replay resolves"),
 		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, HealingResults, &Error));
@@ -340,12 +340,12 @@ bool FGameXXKDeadOriginalEnemyFallsBackByStableOrderTest::RunTest(const FString&
 	{
 		return false;
 	}
-	SeedQueue(Runtime, {MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {DeadEnemyId})});
+	SeedQueue(Runtime, {MakeSnapshot(TEXT("Profession.Blade.LieFengZhan"), {DeadEnemyId})});
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("dead-target replay resolves: %s"), *Error),
 		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	TestEqual(TEXT("first living same-side target takes fallback damage"), FindUnit(Runtime, FirstEnemyId)->HP, 90);
+	TestEqual(TEXT("first living same-side target takes fallback damage"), FindUnit(Runtime, FirstEnemyId)->HP, 89);
 	TestEqual(TEXT("later stable target remains untouched"), FindUnit(Runtime, SecondEnemyId)->HP, 100);
 	TestEqual(TEXT("dead original target remains dead"), FindUnit(Runtime, DeadEnemyId)->HP, 0);
 	if (Results.Num() == 1)
@@ -449,7 +449,7 @@ bool FGameXXKForcedDiscardPausesAndResumesReplayQueueTest::RunTest(const FString
 	}
 	SeedQueue(Runtime, {
 		MakeSnapshot(TEXT("Hero.Mage.GuiXuTongXuan")),
-		MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId})
+		MakeSnapshot(TEXT("Profession.Blade.LieFengZhan"), {EnemyUnitId})
 	});
 	TArray<FGameXXKCardPlayResult> InitialResults;
 	FString Error;
@@ -472,70 +472,6 @@ bool FGameXXKForcedDiscardPausesAndResumesReplayQueueTest::RunTest(const FString
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKInsightPausesAndResumesReplayQueueTest,
-	"GameXXK.Data.HeroCards.Foundation.InsightPausesAndResumesReplayQueue",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FGameXXKInsightPausesAndResumesReplayQueueTest::RunTest(const FString& Parameters)
-{
-	using namespace GameXXKCardResolutionQueueTest;
-	FGameXXKCardBattleRuntime BaseRuntime;
-	if (!InitializeRuntime(*this, BaseRuntime, MakeBasicUnits(10)))
-	{
-		return false;
-	}
-	SeedQueue(BaseRuntime, {
-		MakeSnapshot(TEXT("Route.Rare.GuJuanCanZhang")),
-		MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId})
-	});
-
-	FGameXXKCardBattleRuntime SubmitRuntime = BaseRuntime;
-	TArray<FGameXXKCardPlayResult> InitialResults;
-	FString Error;
-	TestTrue(FString::Printf(TEXT("insight queue pauses: %s"), *Error),
-		GameXXKCardRules::ResumeAutomaticResolutionQueue(SubmitRuntime, InitialResults, &Error));
-	TestTrue(TEXT("insight keeps the queue active"), SubmitRuntime.AutomaticResolutionQueue.bActive);
-	TestEqual(TEXT("insight advances the queue before pausing"), SubmitRuntime.AutomaticResolutionQueue.NextCardIndex, 1);
-	TestEqual(TEXT("insight leaves later lethal damage pending"), FindUnit(SubmitRuntime, EnemyUnitId)->HP, 10);
-	TestEqual(TEXT("insight opens the expected choice"), SubmitRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::InsightChooseToHand);
-	const TArray<FGameXXKCardInstance> SubmitCandidates = SubmitRuntime.Deck.PendingChoice.Candidates;
-	TestTrue(TEXT("insight exposes at least one safe candidate"), !SubmitCandidates.IsEmpty());
-	if (SubmitCandidates.IsEmpty())
-	{
-		return false;
-	}
-	TArray<FName> RemainingOrder;
-	for (int32 Index = 1; Index < SubmitCandidates.Num(); ++Index)
-	{
-		RemainingOrder.Add(SubmitCandidates[Index].InstanceId);
-	}
-	TArray<FGameXXKCardPlayResult> SubmitResumedResults;
-	TestTrue(FString::Printf(TEXT("submitting insight resumes the later replay: %s"), *Error),
-		GameXXKCardRules::SubmitInsightChoice(
-			SubmitRuntime,
-			SubmitCandidates[0].InstanceId,
-			RemainingOrder,
-			&Error,
-			&SubmitResumedResults));
-	TestEqual(TEXT("insight submission exposes only the resumed replay"), SubmitResumedResults.Num(), 1);
-	TestEqual(TEXT("insight submission resumes lethal damage exactly once"), FindUnit(SubmitRuntime, EnemyUnitId)->HP, 0);
-	TestTrue(TEXT("submitted insight clears the queue"), IsQueueDefault(SubmitRuntime.AutomaticResolutionQueue));
-
-	FGameXXKCardBattleRuntime CancelRuntime = BaseRuntime;
-	TArray<FGameXXKCardPlayResult> CancelInitialResults;
-	TestTrue(TEXT("second insight fixture pauses"), GameXXKCardRules::ResumeAutomaticResolutionQueue(CancelRuntime, CancelInitialResults, &Error));
-	const FName DrawTopBeforeCancel = GameXXKCardRules::GetDrawPileTop(CancelRuntime.Deck)->InstanceId;
-	TArray<FGameXXKCardPlayResult> CancelResumedResults;
-	TestTrue(FString::Printf(TEXT("cancelling insight resumes the later replay: %s"), *Error),
-		GameXXKCardRules::CancelInsight(CancelRuntime, &Error, &CancelResumedResults));
-	TestEqual(TEXT("insight cancellation preserves the inspected draw top"), GameXXKCardRules::GetDrawPileTop(CancelRuntime.Deck)->InstanceId, DrawTopBeforeCancel);
-	TestEqual(TEXT("insight cancellation exposes only the resumed replay"), CancelResumedResults.Num(), 1);
-	TestEqual(TEXT("insight cancellation resumes lethal damage exactly once"), FindUnit(CancelRuntime, EnemyUnitId)->HP, 0);
-	TestTrue(TEXT("cancelled insight clears the queue"), IsQueueDefault(CancelRuntime.AutomaticResolutionQueue));
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTerminalPhaseWaitsForTheWholeQueuedSequenceTest,
 	"GameXXK.Data.HeroCards.Foundation.TerminalPhaseWaitsForTheWholeQueuedSequence",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -549,20 +485,29 @@ bool FGameXXKTerminalPhaseWaitsForTheWholeQueuedSequenceTest::RunTest(const FStr
 		return false;
 	}
 	SeedQueue(Runtime, {
-		MakeSnapshot(TEXT("Route.General.PoJiaTuCi"), {EnemyUnitId}),
-		MakeSnapshot(TEXT("Route.Rare.GuJuanCanZhang"))
+		MakeSnapshot(TEXT("Profession.Blade.LieFengZhan"), {EnemyUnitId}),
+		MakeSnapshot(TEXT("Hero.Mage.GuiXuTongXuan"))
 	});
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
-	TestTrue(FString::Printf(TEXT("lethal then insight queue pauses: %s"), *Error),
+	TestTrue(FString::Printf(TEXT("lethal then forced-discard queue pauses: %s"), *Error),
 		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
 	TestEqual(TEXT("the first replay kills the final enemy"), FindUnit(Runtime, EnemyUnitId)->HP, 0);
 	TestEqual(TEXT("terminal phase stays deferred while the queued choice is open"), Runtime.Phase, EGameXXKCardBattlePhase::Player);
 	TestTrue(TEXT("the completed snapshots remain represented by an active queue"), Runtime.AutomaticResolutionQueue.bActive);
 	TestEqual(TEXT("both queued snapshots advanced before the choice pause"), Runtime.AutomaticResolutionQueue.NextCardIndex, 2);
 	TArray<FGameXXKCardPlayResult> ResumedResults;
-	TestTrue(TEXT("cancelling the terminal insight resumes the empty tail"), GameXXKCardRules::CancelInsight(Runtime, &Error, &ResumedResults));
-	TestTrue(TEXT("no unprocessed snapshot is reported after terminal insight cancellation"), ResumedResults.IsEmpty());
+	TestEqual(TEXT("terminal sequence pauses on forced discard"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	if (!Runtime.Deck.PendingChoice.Candidates.IsEmpty())
+	{
+		TestTrue(TEXT("submitting the terminal forced discard resumes the empty tail"),
+			GameXXKCardRules::SubmitForcedDiscard(
+				Runtime,
+				{Runtime.Deck.PendingChoice.Candidates[0].InstanceId},
+				&Error,
+				&ResumedResults));
+	}
+	TestTrue(TEXT("no unprocessed snapshot is reported after terminal discard submission"), ResumedResults.IsEmpty());
 	TestTrue(TEXT("terminal queue resets only after the choice clears"), IsQueueDefault(Runtime.AutomaticResolutionQueue));
 	TestEqual(TEXT("victory is evaluated at the whole-queue boundary"), Runtime.Phase, EGameXXKCardBattlePhase::Victory);
 	return true;

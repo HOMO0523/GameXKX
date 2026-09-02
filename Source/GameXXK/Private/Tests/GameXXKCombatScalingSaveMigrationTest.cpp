@@ -57,8 +57,8 @@ bool FGameXXKCombatScalingSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("combat scaling foundation owns save version 33"),
 		FGameXXKSaveMigration::CombatScalingFoundationIntroducedSaveVersion, 33);
-	TestEqual(TEXT("combat scaling foundation is the current save schema"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 33);
+	TestEqual(TEXT("the active card-pool migration follows combat scaling"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 34);
 
 	FGameXXKRuntimeState Runtime = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
@@ -148,8 +148,8 @@ bool FGameXXKCombatScalingSaveMigrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("migration does not mutate its v32 source"),
 		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Source, &SourceBefore, PPF_None));
 	TestEqual(TEXT("migration reports v32 as its source"), Report.SourceVersion, 32);
-	TestEqual(TEXT("migration reports v33 as its target"), Report.TargetVersion, 33);
-	TestEqual(TEXT("migration writes v33"), Migrated.SaveVersion, 33);
+	TestEqual(TEXT("migration reports current v34 as its target"), Report.TargetVersion, 34);
+	TestEqual(TEXT("migration writes current v34"), Migrated.SaveVersion, 34);
 
 	FGameXXKCardBattleRuntime& Battle = Migrated.RuntimeState.CardRun.ActiveBattle;
 	TestEqual(TEXT("migration derives the highest party level once"), Battle.TeamMaxLevelSnapshot, 100);

@@ -53,9 +53,7 @@ namespace
 			TEXT("Profession.Sorcerer.HuLingMu"), TEXT("Profession.Sorcerer.ChiXiaoFenXing"), TEXT("Profession.Sorcerer.XingHuoHuiShou"),
 			TEXT("Profession.FormationMaster.CunZhaiYuanZhen"), TEXT("Profession.FormationMaster.HuiShengZhenSha"),
 			TEXT("Profession.FormationMaster.BaMenLunZhuan"), TEXT("Profession.FormationMaster.ShuiJingZheGuang"),
-			TEXT("Profession.FormationMaster.ZhenQiGuWu"), TEXT("Profession.FormationMaster.DiMaiJieLi"),
-			TEXT("Route.Rare.GuJuanCanZhang"), TEXT("Route.Rare.TieYiYiJue"), TEXT("Route.Rare.LingQuanYiYin"),
-			TEXT("Route.Rare.JueJingFanJi"), TEXT("Route.Rare.TongXinHeBi")
+			TEXT("Profession.FormationMaster.ZhenQiGuWu"), TEXT("Profession.FormationMaster.DiMaiJieLi")
 		});
 		return Ids;
 	}
@@ -404,10 +402,10 @@ bool FGameXXKCardQualityRules::ValidateCardCatalog(
 	return ValidateCatalog(
 		TEXT("Card"),
 		Definitions,
-		198,
-		122,
+		173,
+		102,
 		GetRareCardIds(),
-		47,
+		42,
 		GetEpicCardIds(),
 		29,
 		[](const FName Id) { return FGameXXKCardQualityRules::GetCardBaseQuality(Id); },

@@ -65,7 +65,9 @@ public:
 	static constexpr int32 RetiredLegacyTutorialNarrativeSaveVersion = 32;
 	/** v33: persist battle level/difficulty scaling and deferred shared-energy denial. */
 	static constexpr int32 CombatScalingFoundationIntroducedSaveVersion = 33;
-	static constexpr int32 CurrentSaveVersion = 33;
+	/** v34: retire 25 run-local route cards while retaining five Boss compatibility IDs. */
+	static constexpr int32 ActiveCardPool173IntroducedSaveVersion = 34;
+	static constexpr int32 CurrentSaveVersion = 34;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

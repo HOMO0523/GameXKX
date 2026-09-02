@@ -81,7 +81,19 @@ namespace
 bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("catalog contains the approved 198 card definitions"), Definitions.Num(), 198);
+	TestEqual(TEXT("catalog contains the approved 173 active card definitions"), Definitions.Num(), 173);
+	int32 RetiredRouteCardCount = 0;
+	int32 CompatibleBossCardCount = 0;
+	for (const FGameXXKCardDefinition& Definition : Definitions)
+	{
+		const FString CardId = Definition.Id.ToString();
+		RetiredRouteCardCount += CardId.StartsWith(TEXT("Route.General."))
+			|| CardId.StartsWith(TEXT("Route.Terrain."))
+			|| CardId.StartsWith(TEXT("Route.Rare.")) ? 1 : 0;
+		CompatibleBossCardCount += CardId.StartsWith(TEXT("Route.Boss.")) ? 1 : 0;
+	}
+	TestEqual(TEXT("retired non-Boss route-card prefixes are absent"), RetiredRouteCardCount, 0);
+	TestEqual(TEXT("exactly five Boss compatibility CardIds remain"), CompatibleBossCardCount, 5);
 	TestEqual(TEXT("target mode invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardTargetMode::Invalid), static_cast<uint8>(0));
 	TestEqual(TEXT("target mode terminal value remains stable"), static_cast<uint8>(EGameXXKCardTargetMode::AnyLivingUnit), static_cast<uint8>(12));
 	TestEqual(TEXT("target presentation invalid remains serialized as zero"), static_cast<uint8>(EGameXXKCardTargetPresentation::Invalid), static_cast<uint8>(0));
@@ -186,7 +198,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("hero card count"), HeroCount, 36);
 	TestEqual(TEXT("profession card count"), ProfessionCount, 108);
 	TestEqual(TEXT("quest NPC card count"), QuestNpcCount, 24);
-	TestEqual(TEXT("route reward card count"), RouteCount, 30);
+	TestEqual(TEXT("Boss compatibility route-card count"), RouteCount, 5);
 	TestEqual(TEXT("hero and NPC identity locks"), IdentityLockedCount, 60);
 	TestEqual(TEXT("all card ids are unique"), UniqueIds.Num(), Definitions.Num());
 	TestEqual(TEXT("hero owner query preserves the hero pool size"), FGameXXKCardCatalog::GetCardDefinitionsForOwner(FName(TEXT("Hero"))).Num(), 36);
@@ -196,7 +208,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("pointer lookup returns null for a missing card"), FGameXXKCardCatalog::FindCardDefinition(FName(TEXT("Missing.Card"))));
 
 	const TArray<FGameXXKCardVisualDefinition>& Visuals = FGameXXKCardCatalog::GetCardVisualDefinitions();
-	TestEqual(TEXT("each card has one visual recipe"), Visuals.Num(), 198);
+	TestEqual(TEXT("each active card has one visual recipe"), Visuals.Num(), 173);
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{
 		const FGameXXKCardVisualDefinition* Visual = FGameXXKCardCatalog::FindCardVisualDefinition(Definition.Id);
@@ -217,7 +229,7 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	}
 
 	FString ValidationError;
-	TestTrue(TEXT("the approved card catalog validates"), FGameXXKCardCatalog::ValidateCardDefinitions(ValidationError));
+	TestTrue(FString::Printf(TEXT("the approved card catalog validates: %s"), *ValidationError), FGameXXKCardCatalog::ValidateCardDefinitions(ValidationError));
 	TestTrue(TEXT("successful validation has no error text"), ValidationError.IsEmpty());
 
 	if (const FGameXXKCardDefinition* QingFengYiShi = RequireCard(*this, TEXT("Hero.Generic.QingFengYiShi")))
@@ -272,21 +284,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		TestDefinitionIsRejected(*this, TEXT("public validator rejects an apply-status effect without a status"), MissingAppliedStatus);
 	}
 
-	if (const FGameXXKCardDefinition* JieShiTuXi = RequireCard(*this, TEXT("Route.Terrain.JieShiTuXi")))
-	{
-		FGameXXKCardDefinition InvalidTerrainCondition = *JieShiTuXi;
-		FGameXXKCardEffect* TerrainEffect = InvalidTerrainCondition.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
-		{
-			return Effect.Condition.Type == EGameXXKCardEffectConditionType::TerrainIsAny;
-		});
-		TestNotNull(TEXT("terrain-condition validation fixture has a conditioned effect"), TerrainEffect);
-		if (TerrainEffect)
-		{
-			TerrainEffect->Condition.Terrain = EGameXXKCardTerrain::Invalid;
-			TestDefinitionIsRejected(*this, TEXT("public validator rejects TerrainIsAny without a terrain"), InvalidTerrainCondition);
-		}
-	}
-
 	if (const FGameXXKCardDefinition* PoYunYiShan = RequireCard(*this, TEXT("Hero.Generic.PoYunYiShan")))
 	{
 		FGameXXKCardDefinition InapplicableStatusConsumption = *PoYunYiShan;
@@ -313,25 +310,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 			ChangeTerrain->TerrainOverride = EGameXXKCardTerrain::Invalid;
 			TestDefinitionIsRejected(*this, TEXT("public validator rejects a terrain switch without a destination"), InvalidTerrainSwitch);
 		}
-	}
-
-	if (const FGameXXKCardDefinition* TieYiYiJue = RequireCard(*this, TEXT("Route.Rare.TieYiYiJue")))
-	{
-		FGameXXKCardDefinition NestedModifierRecipientTarget = *TieYiYiJue;
-		NestedModifierRecipientTarget.TargetSpec.Mode = EGameXXKCardTargetMode::SingleAlly;
-		NestedModifierRecipientTarget.TargetSpec.Presentation = EGameXXKCardTargetPresentation::PlayerSelectsUnit;
-		NestedModifierRecipientTarget.Effects[1].Target = EGameXXKCardEffectTarget::CardOwner;
-		NestedModifierRecipientTarget.Effects[1].Modifier.RecipientTarget = EGameXXKCardEffectTarget::SelectedTarget;
-		AddAllAlliesTerrainOverride(NestedModifierRecipientTarget);
-		TestDefinitionIsRejected(*this, TEXT("public validator rejects a nested modifier recipient target under an all-allies override"), NestedModifierRecipientTarget);
-
-		FGameXXKCardDefinition NestedModifierTarget = *TieYiYiJue;
-		NestedModifierTarget.TargetSpec.Mode = EGameXXKCardTargetMode::SingleAlly;
-		NestedModifierTarget.TargetSpec.Presentation = EGameXXKCardTargetPresentation::PlayerSelectsUnit;
-		NestedModifierTarget.Effects[1].Target = EGameXXKCardEffectTarget::CardOwner;
-		NestedModifierTarget.Effects[1].Modifier.Target = EGameXXKCardEffectTarget::SelectedTarget;
-		AddAllAlliesTerrainOverride(NestedModifierTarget);
-		TestDefinitionIsRejected(*this, TEXT("public validator rejects a nested modifier effect target under an all-allies override"), NestedModifierTarget);
 	}
 
 	if (const FGameXXKCardDefinition* HuZhu = RequireCard(*this, TEXT("Profession.Guard.HuZhu")))
@@ -449,11 +427,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	if (const FGameXXKCardDefinition* HeJiLing = RequireCard(*this, TEXT("Route.General.HeJiLing")))
-	{
-		TestTrue(TEXT("HeJiLing represents each living ally attacking the selected target as a data effect"), HasEffect(*HeJiLing, EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, EGameXXKCardEffectTarget::SelectedTarget, 50));
-	}
-
 	if (const FGameXXKCardDefinition* SheLingHuo = RequireCard(*this, TEXT("Profession.Sorcerer.SheLingHuo")))
 	{
 		const FGameXXKCardEffect* CurrentManaPlaceholder = SheLingHuo->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
@@ -511,32 +484,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 			return Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier;
 		});
 	};
-
-	if (const FGameXXKCardDefinition* TieYiYiJue = RequireCard(*this, TEXT("Route.Rare.TieYiYiJue")))
-	{
-		TestEqual(TEXT("TieYiYiJue has exactly one modifier"), CountEffects(*TieYiYiJue, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-		const FGameXXKCardEffect* Modifier = FindModifier(*TieYiYiJue);
-		TestNotNull(TEXT("TieYiYiJue has an end-of-round armor-gated modifier"), Modifier);
-		if (Modifier)
-		{
-			TestEqual(TEXT("TieYiYiJue uses the owner-armor condition"), Modifier->Modifier.Condition.Type, EGameXXKCardEffectConditionType::OwnerArmorAtLeast);
-			TestEqual(TEXT("TieYiYiJue uses the independent minimum armor field"), Modifier->Modifier.Condition.MinimumArmor, 10);
-			TestEqual(TEXT("TieYiYiJue does not overload the status stack minimum for armor"), Modifier->Modifier.Condition.MinimumStatusStacks, 0);
-		}
-	}
-
-	if (const FGameXXKCardDefinition* LinZhenMoRen = RequireCard(*this, TEXT("Route.General.LinZhenMoRen")))
-	{
-		TestEqual(TEXT("LinZhenMoRen has exactly one modifier"), CountEffects(*LinZhenMoRen, EGameXXKCardEffectType::ApplyBattleModifier), 1);
-		const FGameXXKCardEffect* Modifier = FindModifier(*LinZhenMoRen);
-		TestNotNull(TEXT("LinZhenMoRen has a modifier"), Modifier);
-		if (Modifier)
-		{
-			TestEqual(TEXT("LinZhenMoRen grants its modifier to the selected ally"), Modifier->Modifier.RecipientScope, EGameXXKCardModifierRecipientScope::SelectedTarget);
-			TestEqual(TEXT("LinZhenMoRen stores the selected ally binding"), Modifier->Modifier.RecipientTarget, EGameXXKCardEffectTarget::SelectedTarget);
-			TestEqual(TEXT("LinZhenMoRen lasts for two attacks"), Modifier->Modifier.RemainingTriggers, 2);
-		}
-	}
 
 	if (const FGameXXKCardDefinition* ZhenQiGuWu = RequireCard(*this, TEXT("Profession.FormationMaster.ZhenQiGuWu")))
 	{
@@ -597,29 +544,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.YiWeiZhen"));
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.ShuiJingZheGuang"));
 	TestSingleAllyTarget(TEXT("Profession.FormationMaster.LinFengFuZhen"));
-	TestSingleAllyTarget(TEXT("Route.General.YanDun"));
-	TestSingleAllyTarget(TEXT("Route.General.LinZhenMoRen"));
-
-	const auto TestWaterShoreAndFerryCondition = [this](const TCHAR* CardId)
-	{
-		if (const FGameXXKCardDefinition* Definition = RequireCard(*this, CardId))
-		{
-			const FGameXXKCardEffect* WaterMana = Definition->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
-			{
-				return Effect.Type == EGameXXKCardEffectType::GainMana
-					&& Effect.Target == EGameXXKCardEffectTarget::CardOwner
-					&& Effect.Magnitude == 4
-					&& Effect.Condition.Type == EGameXXKCardEffectConditionType::TerrainIsAny
-					&& Effect.Condition.Terrain == EGameXXKCardTerrain::WaterShore;
-			});
-			TestNotNull(FString::Printf(TEXT("%s has its water-terrain mana effect"), CardId), WaterMana);
-			if (WaterMana)
-			{
-				TestEqual(FString::Printf(TEXT("%s also recognizes Ferry terrain"), CardId), WaterMana->Condition.AlternateTerrain, EGameXXKCardTerrain::Ferry);
-			}
-		}
-	};
-	TestWaterShoreAndFerryCondition(TEXT("Route.Terrain.JieShiTuXi"));
 
 	const auto TestNoUnitTarget = [this](const TCHAR* CardId)
 	{
@@ -631,8 +555,6 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 		}
 	};
 	TestNoUnitTarget(TEXT("Npc.SongJinBao.YiNuoQianJin"));
-	TestNoUnitTarget(TEXT("Route.Terrain.DiMaiHuiXiang"));
-	TestNoUnitTarget(TEXT("Route.Rare.GuJuanCanZhang"));
 
 	TMap<FName, int32> ProfessionCardCounts;
 	TMap<FName, int32> ProfessionCoreCounts;
@@ -715,9 +637,9 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(FString::Printf(TEXT("%s has exactly four NPC cards"), *OwnerId.ToString()), NpcCardCounts.FindRef(OwnerId), 4);
 	}
-	TestEqual(TEXT("route general category has ten cards"), GeneralRouteCount, 10);
-	TestEqual(TEXT("route terrain category has ten cards"), TerrainRouteCount, 10);
-	TestEqual(TEXT("route rare category has five cards"), RareRouteCount, 5);
+	TestEqual(TEXT("route general category is retired"), GeneralRouteCount, 0);
+	TestEqual(TEXT("route terrain category is retired"), TerrainRouteCount, 0);
+	TestEqual(TEXT("route rare category is retired"), RareRouteCount, 0);
 	TestEqual(TEXT("route boss category has five cards"), BossRouteCount, 5);
 
 	return true;

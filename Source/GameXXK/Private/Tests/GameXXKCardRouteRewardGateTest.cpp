@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
@@ -7,7 +8,9 @@
 
 namespace
 {
-	bool BeginLinearCardBattle(FGameXXKRuntimeState& State)
+	bool BeginLinearCardBattle(
+		FGameXXKRuntimeState& State,
+		const EGameXXKNodeKind NodeKind = EGameXXKNodeKind::Battle)
 	{
 		State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		return UGameXXKMVPRules::OpenWorldMap(State)
@@ -15,7 +18,7 @@ namespace
 			&& UGameXXKMVPRules::AcceptTownQuest(State)
 			&& UGameXXKMVPRules::EnterDungeon(State)
 			&& (State.bHasGeneratedRouteMap = false, State.RouteMapNodes.Reset(), State.RouteMapEdges.Reset(), State.ReachableRouteNodeIds.Reset(), State.DungeonNodeIndex = 1, true)
-			&& UGameXXKMVPRules::AdvanceDungeonNode(State, EGameXXKNodeKind::Battle);
+			&& UGameXXKMVPRules::AdvanceDungeonNode(State, NodeKind);
 	}
 }
 
@@ -49,6 +52,27 @@ bool FGameXXKCardRouteRewardGateTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the pending offer does not advance acquisition history"),
 		State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount,
 		0);
+
+	FGameXXKRuntimeState SingleMapBossState;
+	if (TestTrue(TEXT("single-map Boss reward fixture begins from a real victory gate"),
+		BeginLinearCardBattle(SingleMapBossState)))
+	{
+		SingleMapBossState.CardRun.ActiveBattle.Phase = EGameXXKCardBattlePhase::Victory;
+		if (TestTrue(TEXT("single-map Boss victory creates only non-Boss compatibility choices"),
+			FGameXXKCardBattleAdapter::CreateTieredBattleRewardOffer(
+				SingleMapBossState,
+				EGameXXKNodeKind::Boss,
+				SingleMapBossState.DungeonNodeIndex,
+				773401)))
+		{
+			TestFalse(TEXT("single-map Boss reward never offers a Boss card"),
+				SingleMapBossState.CardRun.PendingReward.Options.ContainsByPredicate([](const FGameXXKBattleRewardOption& Option)
+				{
+					return Option.Kind == EGameXXKBattleRewardKind::BossCard
+						|| Option.CardId.ToString().StartsWith(TEXT("Route.Boss."));
+				}));
+		}
+	}
 	return true;
 }
 
