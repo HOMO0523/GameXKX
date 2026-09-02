@@ -1,10 +1,14 @@
 ---
-status: record
+status: active
 owner: codex
-updated_at: 2026-08-31T02:43:29+08:00
-source_commit: b79650530948c0cbc34e6d659e7b6ebfd65a1b04
-working_tree: Qingshan carriage preview calibrated and automated/visual gates green; player-operated replay, pause, return, and restart chains remain unverified
+updated_at: 2026-09-03T02:10:39+08:00
+source_commit: 15fe4085b294114ece1f40a060ca770d7c7732d4
+working_tree: overall in-run optimization design and seven-plan suite approved; runtime implementation has not started
 ---
+
+> **2026-09-03 整体局内优化（设计与实施计划已冻结，运行时代码尚未开始）**：当前工作分支为 `codex/overall-in-run-optimization`，批准规格为 `docs/superpowers/specs/2026-09-03-card-monster-progression-rebalance-design.md`，依赖顺序与七份可执行计划入口为 `docs/superpowers/plans/2026-09-03-overall-in-run-optimization-plan-suite.md`（计划提交 `15fe408`）。范围包括 173 张有效玩家牌、品质/等级/护甲/DOT/药效、任务/药方/地势状态、21 种怪物与精英/首领二三阶段、27 关/189 编队、135 级装备与宝石、单地图首领结算、全量遥测与 Hell 3-3 平衡认证；存档迁移规划从 v32 顺序推进到 v38。尚未开始任何玩法实现、资产调整、存档迁移或 UE 验收，不能把本条当作功能完成证据。
+>
+> 规范继续冻结纯 2D `/Game/GameXXK/Maps/L_DesktopTrainingHUD` 为主流程；3D 城镇可保留在 UE 工程中，但不得重新进入默认启动、常规 PIE、结算返回或教程主链。局内商店/事件/遗物/奖励视觉、路线图原创美术、结算 UX 精修、跨机器 DPI 白边、3D 城镇 cook 隔离与教程重做仍为独立待设计项，不随本轮计划暗中扩张。现有用户资产删除与未跟踪美术/探针保持保护，不得被后续任务顺带提交。
 
 > **2026-08-31 青山序章马车预览（实现与静态视觉门禁完成，玩家手工链待验收）**：桌面工作台现有 `剧情` 按钮只发出一次独立语义请求，携带瞬态 `GameXXKIntro=CarriagePreview` 进入已有六 NPC 的 `/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo`；普通城镇入口不带该参数。剧情入口会先收起已展开的背包，但不改挂机条折叠、阵容、任务、剧情、引导、奖励或存档状态。地图内唯一受管 Rig 复用现有包含马、车夫和车厢的图集，固定复制主角入场相机，马车从左侧 400 UU 驶入、停车后主角出现在车前、停 2 秒，再沿同方向驶离到 +800 UU；Escape 暂停层提供继续/返回桌面，异常与取消共用 fail-open 清理。实现提交依次为 `7e1b0c1`、`e002364`、`1e88bca`、`c1fc9ae`、`9ed4fb5`、`a018c02`、`5596f4b`，最终朝向、相机、背包收起与玩家批准坐标校准为 `b796505`。
 >
