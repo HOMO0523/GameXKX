@@ -67,13 +67,17 @@ The five `Route.Boss.*` IDs remain only as save-compatible IDs and are presented
 
 Damage, healing, fixed damage, ally attacks, DOT coefficients, and defense-derived armor use the quality multiplier and round upward. Old output based on quality x2/x4 is obsolete.
 
+Player-facing card-quality labels are `普通 / 稀有 / 史诗`; the existing internal `Epic` enum maps to the user-facing `史诗` tier. Older generated text that calls this card tier `珍稀` must be reconciled rather than creating a fourth card quality.
+
 Discrete counts do not automatically scale: status layers, Energy, Mana, draw, discard, replay, reaction uses, task pieces, terrain-trigger counts, and cleanse categories change only when the card explicitly supplies a quality table.
+
+Numeric values explicitly labeled `Rare` or `Epic` in the card override tables are already the final authored value at that quality and must not be multiplied again. An unlabeled base coefficient is multiplied exactly once by the card's runtime quality.
 
 ### 4.2 Level-difference damage
 
 Player levels remain capped at 100. Enemy combat levels and equipment item levels may reach 135.
 
-For every damage packet, compare attacker and target combat levels. Each level of difference changes damage by one percent, clamped to `[-50%, +50%]`. The adjustment applies after the card's attack/fixed-damage calculation and defense, using one deterministic rounding rule shared by preview and resolution.
+For direct-attack and fixed-damage packets, compare attacker and target combat levels. Each level of difference changes damage by one percent, clamped to `[-50%, +50%]`. The adjustment applies after the card's attack/fixed-damage calculation and defense, using one deterministic rounding rule shared by preview and resolution. DOT-reservoir damage is excluded because the visible reservoir is already its final damage number; do not apply a second level-difference or difficulty multiplier to it.
 
 Training enemy damage also uses a difficulty multiplier:
 
@@ -84,6 +88,10 @@ Training enemy damage also uses a difficulty multiplier:
 | Hell | 150% |
 
 There is no extra difficulty HP or Defense multiplier. Difficulty strength comes from stage level, damage multiplier, intent values, formations, and phases.
+
+Keep each enemy's current catalog base HP/Attack/Defense and per-level growth and extrapolate them through combat level 135. Phase changes never mutate those base stats; stronger phases use stronger decks and passives.
+
+For direct attacks, use one shared preview/resolution order: resolve Attack coefficient and quality; apply the enemy difficulty multiplier when applicable; apply source Weak; subtract effective target Defense; apply Mark/Vulnerability; apply the clamped level-difference modifier; then absorb with Armor and resolve post-card reactions/passives. Fixed damage bypasses Attack and Defense but still uses its approved quality and level-difference rules. DOT reservoir packets bypass this chain and deal their visible reservoir value.
 
 ### 4.3 Defense-derived armor
 
@@ -113,6 +121,8 @@ Block resolves after the entire opposing single-target attack card has finished.
 `Block damage = 100% current Attack + post-card remaining Armor`
 
 Counter likewise triggers once per opposing single-target direct attack card and deals 100% current Attack. Group attacks, DOT, Counter, and Block never recursively trigger Counter or Block. A defeated reaction owner cannot react.
+
+For player reactions, the card that registered Counter/Block supplies its quality to the 100% Attack portion; do not quality-scale the carried Armor a second time. Enemy reactions use implicit quality 1.0, then the normal enemy difficulty/level damage pipeline.
 
 ### 4.5 DOT reservoirs
 
@@ -155,9 +165,18 @@ Medicine generation remains a small explicit integer, generally 1 through 8, and
 
 Hero and partner Healer formulas are independently owned. A Hero formula can consume or update only Hero state; a partner formula can consume or update only that partner's state. The same battle event may satisfy both independently.
 
+Enemy shared-Energy theft stores an additive penalty for the next player-round refill, applies it once with a minimum resulting Energy of zero, and then clears it. White Ape/Money Rat next-card surcharges are a separate single pending +1 that refreshes rather than stacks.
+
+### 4.7 Retained core status semantics
+
+- Mark is a binary damage amplifier with duration expressed by layers: while at least one layer exists, direct damage receives the existing 15% Mark bonus, then each direct hit consumes one layer. It is not +15% per layer. Enemy single-target intents prioritize Marked party members unless an explicit persistent target such as Prey overrides them.
+- Vulnerability keeps its existing +10% direct-damage amplification per layer and normal per-hit consumption behavior.
+- Weak makes direct attacks deal 50% less damage and loses one layer at its normal round boundary.
+- Agility, Guard links, Counter, Block, Charge, and Prey keep their established visible resolution order except where this specification explicitly replaces it.
+
 ## 5. Equipment, gems, and late-game benchmark
 
-Deterministic equipment Attack contribution is approximately halved from the current curve. Equipment base Defense and HP contribution are also halved. The approved post-reduction level-100 late-game reference stats before the balanced Treasure-gem package are:
+Deterministic equipment Attack contribution is approximately halved from the current curve. Equipment base Defense and HP contribution are also halved. Gem MaxHealth uses five times its same-rank Attack/Defense value rather than the old ten-times layer; do not halve innate character HP a second time. The approved post-reduction level-100 late-game reference stats used for the Hell 3-3 calculations **already include** six Treasure equipment pieces and the balanced four-Attack/four-Defense/four-HP Treasure-gem package:
 
 | Role | HP | Attack | Defense |
 |---|---:|---:|---:|
@@ -184,9 +203,9 @@ Gem growth after Immortal uses x1.25 with upward rounding, not x2:
 | Ascendant (9) | 40 | 40 | 200 |
 | Cosmic (10) | 50 | 50 | 250 |
 
-Treasure equipment has twelve gem slots. The primary Hell 3-3 benchmark uses four Attack, four Defense, and four HP Treasure gems, adding +80 Attack, +80 Defense, and +400 HP under the approved socket accounting.
+Treasure equipment has twelve gem slots. The primary Hell 3-3 benchmark uses four Attack, four Defense, and four HP Treasure gems, adding +80 Attack, +80 Defense, and +400 HP under the approved socket accounting. Do not add this package again to the reference stats above.
 
-Level-100 characters may equip item-level 101-135 equipment. Idle equipment drops between the previous stage level plus one and the current stage level, inclusive; the last band is 131-135.
+Level-100 characters may equip item-level 101-135 equipment. Idle equipment drops between the previous stage level plus one and the current stage level, inclusive; the first stage uses 1-5 and the last band is 131-135.
 
 ## 6. Player-card semantic overrides
 
@@ -266,7 +285,7 @@ The Hero Sorcerer task requires the four distinct Hero Sorcerer cards, not eight
 | Lightning | Mark 3 and quality-scaled 60% Attack per Mark. |
 | Universal | Draw 2, Energy 1, and the next Hero card costs 1 less. |
 
-Exhausted Sorcerer cards still count as played for the task; the task must never deadlock by searching only live draw/discard zones.
+The reward locks and uses the starter card's quality. Exhausted Sorcerer cards still count as played for the task; the task must never deadlock by searching only live draw/discard zones.
 
 #### Formation Master
 
@@ -282,24 +301,24 @@ All 108 existing permanent-partner CardIds remain. Their existing identity, cost
 #### Partner Blade
 
 - Global Blood Edge conversion is +2 attack-percentage points per resolved DOT point.
-- `YinXue` Finish healing is capped at coefficient 20 (level-100 Rare 120, Epic 140).
-- `PoJun` extra hit is 60% Rare / 70% Epic.
-- `ZhanJin` raw base becomes 300% (Epic 420%).
-- `HengYun` raw base becomes 100% (Rare 120%).
-- `LianXi` grants Mana 4 Rare / 6 Epic.
-- `BaoDao` grants Agility 2, not 4.
+- `Profession.Blade.YinXueDao` Finish healing is capped at coefficient 20 (level-100 Rare 120, Epic 140).
+- `Profession.Blade.PoJun` extra hit is 60% Rare / 70% Epic.
+- `Profession.Blade.ZhanJin` raw base becomes 300% (Epic 420%).
+- `Profession.Blade.HengYunKaiFeng` raw base becomes 100% (Rare 120%).
+- `Profession.Blade.LianXiGuiQiao` grants Mana 4 Rare / 6 Epic.
+- `Profession.Blade.BaoDaoShouYe` grants Agility 2, not 4.
 - Other partner-Blade semantics remain as in the baseline catalog, transformed by the shared rules.
 
 #### Partner Guard
 
 - Convert every flat primary Armor grant to the printed-cost Defense formula.
-- `ZhenDun` secondary Armor is 40% Defense.
-- `ZhenYue`: consume Armor; quality-scaled base 180% plus one point per Armor; group secondary Armor 50%; Block retained.
-- `BiLei`: consume Armor; quality-scaled base 220% plus one point per Armor; secondary Armor 50%.
-- `PanShi` condition becomes `Armor > 0`.
-- `YuanJun`: target primary Armor 80%; owner secondary Armor 40%.
-- `DunZhen`: group secondary Armor 40%.
-- `YiFu`: one complete Epic cost-3 Armor grant to each ally, with no duplicate owner grant.
+- `Profession.Guard.ZhenDun` secondary Armor is 40% Defense.
+- `Profession.Guard.ZhenYueLing`: consume Armor; quality-scaled base 180% plus one point per Armor; group secondary Armor 50%; Block retained.
+- `Profession.Guard.BiLeiFanGong`: consume Armor; quality-scaled base 220% plus one point per Armor; secondary Armor 50%.
+- `Profession.Guard.PanShiTuNa` condition becomes `Armor > 0`.
+- `Profession.Guard.YuanJunBiLei`: target primary Armor 80%; owner secondary Armor 40%.
+- `Profession.Guard.DunZhenTuiJin`: group secondary Armor 40%.
+- `Profession.Guard.YiFuDangGuan`: one complete Epic cost-3 Armor grant to each ally, with no duplicate owner grant.
 - Existing Block counts remain.
 
 At Defense 358, reference Armor values are: cost 0 = 144, cost 1 = 287, cost 2 = 502, cost 3 = 716; Rare cost 1 = 344, Rare cost 2 = 602; Epic cost 2 = 702, Epic cost 3 = 1003.
@@ -308,24 +327,24 @@ At Defense 358, reference Armor values are: cost 0 = 144, cost 1 = 287, cost 2 =
 
 | Card suffix | Approved base output and formula note |
 |---|---|
-| `YaoYin` | Ally coefficient 30; enemy branch group coefficient 15; any HP packet formula grants Medicine 1. |
-| `XingQi` | Recurring formula heal coefficient 10. |
-| `CaoMu` | Coefficient 25. |
-| `QingXin` | Coefficient 20; ally clears all four DOT reservoirs; formula grants Medicine 1 per cleared type, max 3/round. |
-| `LingZhi` | Rare coefficient 40 plus low-HP coefficient 10; low-HP formula grants Medicine 3. |
-| `HuiChunLu` | Rare group coefficient 25; every three effective heals draws 1, max 2/round. |
-| `ZhiXue` | Cost 0, coefficient 10, clear all Bleed; first successful clear formula grants group Armor equal to 20% Healer Defense. |
-| `WenYang` | Rare coefficient 25 plus ally secondary Armor 30%; threshold formula coefficient 20 grants ally Armor 20% or enemy Vulnerability 1. |
-| `JinChuang` | Rare coefficient 45 and Agility 1; below-30% formula grants Agility 2. |
-| `YaoWang` | Epic group coefficient 30; clear all Bleed/Poison/Burn; Mana 3; three units changing HP grants draw 1 and team Mana 2. |
-| `BaiCao` | Poison coefficient 6; each Poison packet grants Medicine 1. |
-| `FuGu` | Rare Attack 72%, Bleed coefficient 36, Poison coefficient 24, Vulnerability 1; dual-status formula marks. |
-| `HuiQi` | AoE Poison coefficient 5; group Poison formula grants Medicine 2 and draw 1. |
-| `LianQiao` | Poison coefficient 25 and explosion; dual explosion grants Medicine 2. |
-| `HongHua` | 70% Attack and Bleed coefficient 40; every two Bleed packets grants Medicine 1. |
-| `YaoNang` | Epic AoE 63%, Bleed coefficient 21, Poison coefficient 7; group hit grants Energy 1. |
-| `KuShen` | Rare Poison coefficient 48, Vulnerability 2; poisoned Vulnerability grants Medicine 1 and draw 1. |
-| `WuDu` | Epic AoE Poison coefficient 7 and two explosions; triple-DOT condition grants Momentum 1 and draw 1. |
+| `Profession.Healer.YaoYin` | Ally coefficient 30; enemy branch group coefficient 15; any HP packet formula grants Medicine 1. |
+| `Profession.Healer.XingQiZhen` | Recurring formula heal coefficient 10. |
+| `Profession.Healer.CaoMuFuZhi` | Coefficient 25. |
+| `Profession.Healer.QingXinSan` | Coefficient 20; ally clears all four DOT reservoirs; formula grants Medicine 1 per cleared type, max 3/round. |
+| `Profession.Healer.LingZhiXuMing` | Rare coefficient 40 plus low-HP coefficient 10; low-HP formula grants Medicine 3. |
+| `Profession.Healer.HuiChunLu` | Rare group coefficient 25; every three effective heals draws 1, max 2/round. |
+| `Profession.Healer.ZhiXueCao` | Cost 0, coefficient 10, clear all Bleed; first successful clear formula grants group Armor equal to 20% Healer Defense. |
+| `Profession.Healer.WenYangGao` | Rare coefficient 25 plus ally secondary Armor 30%; threshold formula coefficient 20 grants ally Armor 20% or enemy Vulnerability 1. |
+| `Profession.Healer.JinChuangXuMing` | Rare coefficient 45 and Agility 1; below-30% formula grants Agility 2. |
+| `Profession.Healer.YaoWangGuiYuan` | Epic group coefficient 30; clear all Bleed/Poison/Burn; Mana 3; three units changing HP grants draw 1 and team Mana 2. |
+| `Profession.Healer.BaiCaoDu` | Poison base coefficient 6 (level-100 Common display 30); each Poison packet grants Medicine 1. |
+| `Profession.Healer.FuGuSan` | Base Attack 60% (Rare 72%); Bleed/Poison base coefficients 6/4 (level-100 Rare displays 36/24); Vulnerability 1; dual-status formula marks. |
+| `Profession.Healer.HuiQiXiang` | AoE Poison base coefficient 1 (level-100 display 5); group Poison formula grants Medicine 2 and draw 1. |
+| `Profession.Healer.LianQiaoJieDu` | Poison base coefficient 5 (level-100 display 25) and explosion; dual explosion grants Medicine 2. |
+| `Profession.Healer.YaoJiuWenShen` | 70% Attack and Bleed base coefficient 8 (level-100 display 40); every two Bleed packets grants Medicine 1. |
+| `Profession.Healer.YaoNangFeiTou` | Base AoE 45% (Epic 63%); Bleed/Poison base coefficients 3/1 (level-100 Epic displays 21/7); group hit grants Energy 1. |
+| `Profession.Healer.KuShenMaSan` | Poison base coefficient 8 (level-100 Rare display 48), Vulnerability 2; poisoned Vulnerability grants Medicine 1 and draw 1. |
+| `Profession.Healer.WuWeiTiaoHe` | AoE Poison base coefficient 1 (level-100 Epic display 7) and two explosions; triple-DOT condition grants Momentum 1 and draw 1. |
 
 Every partner-Healer formula opens on first play at +1 Energy and is owned only by that partner.
 
@@ -334,21 +353,21 @@ Every partner-Healer formula opens on first play at +1 Energy and is owned only 
 Defense-ignore values use `ceil(ignore coefficient * quality * level factor)`. At level 100, coefficient 6 resolves to 30/36/42 and coefficient 2 resolves to 10/12/14.
 
 - Direct Heavy-Arrow coefficients quality-scale; counts do not.
-- `RuiYi`: remove immediate Energy refund; draw 2, Agility 2, Charge 3; Epic draws 3.
-- `LieWang`: Mana cost 3/2/1.
-- `ChuanYang`: Rare 180%, ignore 36; +60 points and +12 ignore per Charge.
-- `LianZhu`: Rare Bleed 48, Poison 36, Attack 60%; gain Charge 1; Heavy 60%.
-- `CuiDu`: include its approved hidden +20 primary points per Charge in displayed output.
-- `YinZong`: Rare Agility 2, Charge 1, next perfect dodge +2; Epic starts with Charge 2.
-- `DuanMai`: Rare 120%, Bleed 48, +36 points and a Bleed trigger per Charge.
-- `ShouHun`: Epic 210%, +20 per Mark, +49 per Charge, Mark per Charge.
-- `BaiBu`: Epic 294%, +56 per Charge, then draw.
-- `LueYing`: Agility 1 per two Charge, maximum 2, not one per Charge.
-- `LieHun`: Mana 4/3/2.
-- `PoJia`: Rare 90%, Vulnerability 2, Poison coefficient 6, +30 per Charge, ignore 12 per Charge.
-- `HuiHuan`: remove base Energy refund; retain draw/Charge/Mana behavior.
-- `FuYe`: Rare Poison 48, Mark 2, Charge 2.
-- `YingLuo`: Epic 280%, +100 below the HP threshold, +84 per Charge, threshold rises five points per Charge.
+- `Profession.Hunter.YingYan`: remove immediate Energy refund; draw 2, Agility 2, Charge 3; Epic draws 3.
+- `Profession.Hunter.LieWang`: Mana cost 3/2/1.
+- `Profession.Hunter.ChuanYang`: Rare 180%, ignore 36; +60 points and +12 ignore per Charge.
+- `Profession.Hunter.LianZhuJian`: Bleed/Poison base coefficients 8/6 (level-100 Rare displays 48/36); base Attack/Heavy 50% (Rare 60%); gain Charge 1.
+- `Profession.Hunter.FuZuShi`: include its approved hidden +20 primary points per Charge in displayed output.
+- `Profession.Hunter.YinZong`: Rare Agility 2, Charge 1, next perfect dodge +2; Epic starts with Charge 2.
+- `Profession.Hunter.DuanMaiShi`: base 100% (Rare 120%), Bleed base coefficient 8 (level-100 Rare display 48), +30 base points (+36 Rare) and a Bleed trigger per Charge.
+- `Profession.Hunter.ShouHun`: Epic 210%, +20 per Mark, +49 per Charge, Mark per Charge.
+- `Profession.Hunter.BaiBuChuanYang`: Epic 294%, +56 per Charge, then draw.
+- `Profession.Hunter.LueYingJian`: Agility 1 per two Charge, maximum 2, not one per Charge.
+- `Profession.Hunter.LieHunBiao`: Mana 4/3/2.
+- `Profession.Hunter.PoJiaDing`: base 75% (Rare 90%), Vulnerability 2, Poison base coefficient 1 (level-100 Rare display 6), +25 base points (+30 Rare) and level-100 ignore 12 per Charge.
+- `Profession.Hunter.HuiHuanJian`: remove base Energy refund; retain draw/Charge/Mana behavior.
+- `Profession.Hunter.FuYeXianJing`: Poison base coefficient 8 (level-100 Rare display 48), Mark 2, Charge 2.
+- `Profession.Hunter.YingLuo`: Epic 280%, +100 below the HP threshold, +84 per Charge, threshold rises five points per Charge.
 
 #### Partner Sorcerer
 
@@ -356,15 +375,15 @@ The task requires five distinct partner Sorcerer cards and completes at most onc
 
 - Fire/BaoYan DOT conversion is +2 points per resolved Burn.
 - Standard Ice conversion uses quality-scaled base 200% plus one point per Armor.
-- `FenMai`: cost 0, Armor 40%.
-- `LingYan`: Rare cost 0; first Armor 40%, otherwise double current Armor without a gameplay cap.
-- `HuLing`: Rare cost 1, Armor 80%; repeat only when no search occurred.
-- `ChiXiao`: Rare AoE 60%, Mark 2.
-- `FenTian`: Epic 98%.
-- `LianTing`: 55%/70% by approved quality.
-- `LeiZou`: 45%/60%.
-- `WanFa` Ice reward: base 220% plus Armor conversion.
-- `LiuHeHuFa`: Rare cost 0, group Armor 40%, condition 80%; rewards are Normal 80%, Fire 60%, Ice 40% plus 25% consumed Armor, Lightning 40%.
+- `Profession.Sorcerer.FenMaiFu`: cost 0, Armor 40%.
+- `Profession.Sorcerer.LingYanLianDan`: Rare cost 0; first Armor 40%, otherwise double current Armor without a gameplay cap.
+- `Profession.Sorcerer.HuLingMu`: Rare cost 1, Armor 80%; repeat only when no search occurred.
+- `Profession.Sorcerer.ChiXiaoFenXing`: Rare AoE 60%, Mark 2.
+- `Profession.Sorcerer.FenTianJue`: Epic 98%.
+- `Profession.Sorcerer.NingYanChengRen`: 55%/70% by approved quality.
+- `Profession.Sorcerer.RanLingHuanYuan`: 45%/60%.
+- `Profession.Sorcerer.YanMuHuTi` Ice reward: base 220% plus Armor conversion.
+- `Profession.Sorcerer.XingHuoHuiShou`: Rare cost 0, group Armor 40%, condition 80%; rewards are Normal 80%, Fire 60%, Ice 40% plus 25% consumed Armor, Lightning 40%.
 
 #### Partner Formation Master
 
@@ -398,36 +417,36 @@ NPC Sorcerer tasks use three distinct NPC cards; Hero uses four; permanent partn
 
 #### Tusi Chief and Song Jinbao
 
-- `ZhaiZhu`: Rare cost 0; highest-Attack ally Momentum 1; Tusi secondary Armor 48%; Block 1; 120% attack; Finish group Armor 20%.
-- `ShiMen`: target Armor 80%, Mark 2, Agility 2, Block 2; Charge secondary Armor 40% plus Block; Finish redirects.
-- `TuSiJunLing`: Mark 2, Vulnerability 3, highest-Attack ally Armor 40% plus Block and 150% attack; retain approved branches.
-- `MengZhai`: Epic group Momentum 1, group Armor 70% of Tusi Defense, Block 1, each ally attacks for 84%, next card free, Retain.
-- `ShangQian`: cost 0; target Momentum 2, Mana 6, 100% attack; task reward group Momentum 2, draw 2, Energy 2.
-- `ErMuMiBao`: use the correct public name `市井耳目`; Rare cost 0/Mana 3; replace redundant intent reveal with Weak 1 and Mark 2, then search; reward Mark 3 and all allies attack 120%.
-- `GuiKe`: Mark 2, Agility 2, Counter 1, draw; reward Mark 3, Agility 4, Counter 3.
-- `YiNuo`: Epic cost 1/Mana 6; search and next two cards free; reward draw 3, Energy 2, next two cards free.
+- `Npc.TusiChief.ZhaiZhuHaoLing`: Rare cost 0; highest-Attack ally Momentum 1; Tusi secondary Armor 48%; Block 1; 120% attack; Finish group Armor 20%.
+- `Npc.TusiChief.ShiMenShouShi`: target Armor 80%, Mark 2, Agility 2, Block 2; Charge secondary Armor 40% plus Block; Finish redirects.
+- `Npc.TusiChief.TuSiJunLing`: Mark 2, Vulnerability 3, highest-Attack ally Armor 40% plus Block and 150% attack; retain approved branches.
+- `Npc.TusiChief.MengZhaiShiYue`: Epic group Momentum 1, group Armor 70% of Tusi Defense, Block 1, each ally attacks for 84%, next card free, Retain.
+- `Npc.SongJinBao.ShangQianGuWu`: cost 0; target Momentum 2, Mana 6, 100% attack; task reward group Momentum 2, draw 2, Energy 2.
+- `Npc.SongJinBao.ErMuMiBao` (`耳目密报`): Rare cost 0/Mana 3; replace redundant intent reveal with Weak 1 and Mark 2, then search; reward Mark 3 and all allies attack 120%.
+- `Npc.SongJinBao.GuiKeLing`: Mark 2, Agility 2, Counter 1, draw; reward Mark 3, Agility 4, Counter 3.
+- `Npc.SongJinBao.YiNuoQianJin`: Epic cost 1/Mana 6; search and next two cards free; reward draw 3, Energy 2, next two cards free.
 
 #### Yue Bai and Zhou Guangzu
 
-- `QingYan`: cost 0/Mana 3; Burn coefficient 6, trigger once, search; reward is the AoE form.
-- `CanJuan`: Rare cost 0; draw 2, terrain trigger 1, search, no target; reward terrain trigger 3.
-- `YueBaiZhao`: cost 1/Mana 3; Mark 2, Burn coefficient 4, 100%, trigger Burn, search; reward AoE Mark 3 and lightning 60%.
-- `ShanHe`: Epic cost 0/Mana 6; group Armor 56% of Yue Bai Defense, Mana 5, terrain 1, search, no target; reward consumes Armor for AoE base 140% plus one point per Armor.
-- `YiCao`: cost 0; Medicine 6, heal/reversal coefficient 15, ally clears all Bleed/Poison/Burn.
-- `HuangShan`: cost 0/Mana 3; party loses 1 nonlethal HP, Medicine 6, group coefficient 15.
-- `DiZhi`: Rare cost 0/Mana 3; draw 2, terrain trigger 2, no target.
-- `YanFen`: Epic cost 1/Mana 3; terrain 1, Vulnerability 3, Poison coefficient 11, then explosion.
+- `Npc.YueBai.QingYanDianDeng`: cost 0/Mana 3; Burn coefficient 6, trigger once, search; reward is the AoE form.
+- `Npc.YueBai.CanJuanPiZhu`: Rare cost 0; draw 2, terrain trigger 1, search, no target; reward terrain trigger 3.
+- `Npc.YueBai.YueBaiZhaoYe`: cost 1/Mana 3; Mark 2, Burn coefficient 4, 100%, trigger Burn, search; reward AoE Mark 3 and lightning 60%.
+- `Npc.YueBai.ShanHeCanTu`: Epic cost 0/Mana 6; group Armor 56% of Yue Bai Defense, Mana 5, terrain 1, search, no target; reward consumes Armor for AoE base 140% plus one point per Armor.
+- `Npc.ZhouGuangZu.YiCaoBianShi`: cost 0; Medicine 6, heal/reversal coefficient 15, ally clears all Bleed/Poison/Burn.
+- `Npc.ZhouGuangZu.HuangShanFuZhi`: cost 0/Mana 3; party loses 1 nonlethal HP, Medicine 6, group coefficient 15.
+- `Npc.ZhouGuangZu.DiZhiMoTu`: Rare cost 0/Mana 3; draw 2, terrain trigger 2, no target.
+- `Npc.ZhouGuangZu.YanFenFengMai`: Epic cost 1/Mana 3; terrain 1, Vulnerability 3, Poison coefficient 11, then explosion.
 
 #### Jin Gui and Qiong Meier
 
-- `ShiJingErMu`: Rare cost 0/Mana 3; AoE Mark 2, draw 2; highest-Attack ally Charge 2 and Heavy 60%.
-- `QiaoYan`: cost 1; target Vulnerability 3; highest-Armor ally receives 80% Jin Gui Defense Armor and Block 2.
-- `ZaYi`: cost 1/Mana 3; draw 3, discard 1, refund 1; highest-Attack ally Charge 3, Heavy 40%, Mana 1.
-- `HouXiang`: Epic cost 2/Mana 6; team Agility 2, lowest enemy Mark 2, Jin Gui Armor 196%, Block 2.
-- `TengQiao`: Rare cost 0/Mana 3; highest-Attack ally Agility 2, Charge 2, draw 1, Heavy 60%.
-- `GuWu`: cost 1; target Bleed coefficient 4 and Poison coefficient 6, then explosion.
-- `YinLing`: cost 1/Mana 3; Medicine 6; ally clears all Bleed/Poison/Burn; healing coefficient 30.
-- `ShanGe`: Epic cost 2/Mana 6; Medicine 6; group healing coefficient 25.
+- `Npc.JinGui.ShiJingErMu`: the correct public name is `市井耳目`; Rare cost 0/Mana 3; AoE Mark 2, draw 2; highest-Attack ally Charge 2 and Heavy 60%.
+- `Npc.JinGui.QiaoYanZhouXuan`: cost 1; target Vulnerability 3; highest-Armor ally receives 80% Jin Gui Defense Armor and Block 2.
+- `Npc.JinGui.ZaYiChouBei`: cost 1/Mana 3; draw 3, discard 1, refund 1; highest-Attack ally Charge 3, Heavy 40%, Mana 1.
+- `Npc.JinGui.HouXiangTuoShen`: Epic cost 2/Mana 6; team Agility 2, lowest enemy Mark 2, Jin Gui Armor 196%, Block 2.
+- `Npc.QiongMeiEr.TengQiaoFeiDu`: Rare cost 0/Mana 3; highest-Attack ally Agility 2, Charge 2, draw 1, Heavy 60%.
+- `Npc.QiongMeiEr.GuWuMiZong`: cost 1; target Bleed coefficient 4 and Poison coefficient 6, then explosion.
+- `Npc.QiongMeiEr.YinLingZhenXin`: cost 1/Mana 3; Medicine 6; ally clears all Bleed/Poison/Burn; healing coefficient 30.
+- `Npc.QiongMeiEr.ShanGeHuanLing`: Epic cost 2/Mana 6; Medicine 6; group healing coefficient 25.
 
 These NPC cards do not open partner prescriptions unless explicitly listed; ownership remains with their NPC source.
 
@@ -463,6 +482,8 @@ Each formula uses the source card's miniature artwork as its status icon. Hero a
 
 Hover text shows card name, exact persistent formula, per-round cap, current progress, and owner. The separate Medicine icon shows the owner's current numeric reservoir. Formula state, cumulative Medicine remainder, per-round budgets, and icon order survive save/load.
 
+Task and formula icons are state presentation, not removable combat buffs. Cleanse, Snatch, and other status-removal effects cannot select or erase them.
+
 ### 7.3 Enemy phase icons
 
 Phase icons are immutable ink marks above the enemy status row:
@@ -490,6 +511,8 @@ The six conceptual terrain benefits are:
 Terrain payload coefficients use an implicit quality multiplier of 1.0. The quality of a card that explicitly triggers terrain changes only its printed trigger count or other card effects; it does not multiply the terrain payload again.
 
 Only the terrain **benefit payload** is group-wide. A card's independent base target may remain single-target.
+
+A card whose only actionable payload is changing or triggering terrain requires no manual unit target. This includes all six permanent-partner terrain switches and Hero `YiZhenHuiXiang`. Cards with an independent single-target attack/debuff may keep that base target; the terrain payload itself still resolves group-wide. The approved no-target NPC cards (`CanJuanPiZhu`, `ShanHeCanTu`, and `DiZhiMoTu`) remain no-target.
 
 There are two trigger paths:
 
@@ -537,6 +560,22 @@ The nine stage-end cores, repeated across the three difficulties, are:
 | 1 | Ironfeather | Bluehorn | Money Rat |
 | 2 | Graymane | Redtusk | Black Bear |
 | 3 | White Ape | Spiral-Horn Deer | Tiger |
+
+Level-135 phase-unit stat checkpoints from the retained catalog curves are:
+
+| Enemy | HP | Attack | Defense |
+|---|---:|---:|---:|
+| Ironfeather | 2128 | 242 | 72 |
+| Bluehorn | 2416 | 227 | 94 |
+| Money Rat | 3456 | 285 | 109 |
+| Graymane | 2570 | 286 | 80 |
+| Redtusk | 2868 | 272 | 110 |
+| Black Bear | 4340 | 345 | 132 |
+| White Ape | 3012 | 316 | 95 |
+| Spiral-Horn Deer | 3158 | 301 | 110 |
+| Tiger | 4936 | 390 | 146 |
+
+With three total phases on White Ape, Tiger, and Deer, Hell 3-3 has 33,318 raw phase HP before Armor and healing. This is intentional and is balanced around simultaneous AoE damage and the ten-round benchmark rather than pre-nerfing phase counts.
 
 ### 9.1 Difficulty status values
 
@@ -972,11 +1011,15 @@ In Hell stage 1 and 2 endings, only the center Elite has three phases. In every 
 
 Each formation stores an initial intent per slot. Do not derive all openings from cursor zero.
 
+The percentages and coefficients in sections 10-12 are authoring values. Enemy intent cards show resolved target scope, per-hit final damage, hit count, final DOT/status amounts, Armor/healing, charge remaining, and conditional bonuses; players are not required to reverse-engineer these tables during combat.
+
 - Weasel/Civet opens Mark before Rooster Double Peck or Goat Horn.
 - Gray Wolf/Graymane opens Mark before Porcupine Quill, Boar charge, Redtusk, or Black Bear payoff.
 - Vulture opens Gaze; Venom Snake opens Venom Bite; Wildcat opens Rake or Stalk as authored; Giant Toad opens Poison Fog in mixed-DOT formations.
 - Duplicate Roosters split Crow/attack; duplicate Goats split Horn/Stomp; duplicate Gray Wolves split Bite/Call Pack; duplicate Boars split Tusk/Bristle; duplicate Snakes split Venom Bite/Coil; duplicate Wildcats split Stalk/Rake.
 - Full phase-deck trios use the first listed phase card after all relevant units enter that phase.
+
+Charged intents save their source, declared target rule, visible locked target, remaining rounds, and explicit fallback. If the target becomes invalid, refresh to the declared fallback before execution and update the preview; never display target A and silently hit target B.
 
 Avoid duplicate Weasels, Civets, Porcupines, or Vultures in one formation. Their group Weak, Energy denial, repeated Block, or Burn pressure would become a restriction rather than an interaction.
 
@@ -1004,7 +1047,7 @@ The implementation plan must address these root conflicts rather than patch symp
 Save migration requirements:
 
 - map legacy Boss `bPhaseTwo=true` to current phase 2 without retroactively healing or clearing state;
-- infer total phases from saved Training difficulty and encounter tier; old non-Boss enemies start at phase 1;
+- infer total phases from saved Training difficulty and encounter tier; old non-Boss enemies start at phase 1; an active legacy non-Training battle with an old catalog Boss phase preserves a compatible two-total-phase profile rather than crashing or receiving a new Hell phase;
 - convert or safely clear a pending intent that is invalid in the inferred phase, then rebuild a visible intent without executing it;
 - preserve HP, positive statuses, deck zones, owner formula/task state, and rewards;
 - never grant a phase heal, phase reward, or settlement reward merely because a save was migrated;
@@ -1087,7 +1130,7 @@ Flag for human review, without automatically nerfing:
 - more than 65% selection when comparable alternatives are available;
 - a task/formula that almost never completes in a normal ten-round Boss fight.
 
-Mandatory observation cards/systems include Armor conversion (`XuanJiaZhenYue`, `ZhenShaZhen`), Blood Edge/DOT conversion, toxic explosions and multi-Charge Heavy Arrow, `FengShenBu`, the Sorcerer Exhaust/task boundary, multi-trigger terrain cards, Money Rat Energy denial plus White Ape surcharge, and White Ape/Deer group Armor/Agility/healing.
+Mandatory observation cards/systems include uncapped Armor conversion (`XuanJiaZhenYue`), the large `ZhenShaZhen` terrain payoff, Blood Edge/DOT conversion, toxic explosions and multi-Charge Heavy Arrow, `FengShenBu`, the Sorcerer Exhaust/task boundary, multi-trigger terrain cards, Money Rat Energy denial plus White Ape surcharge, and White Ape/Deer group Armor/Agility/healing.
 
 ## 16. Acceptance and tuning order
 
