@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T20:08:54+08:00
+updated_at: 2026-09-03T20:31:49+08:00
 source_commit: 2e0db810df578590758f842ced2a36c72588a58e
-working_tree: Plan 2 Tasks 3 through 5 and Task 6 fixed Mana prerequisite committed; remaining Sorcerer Formation cards pending; Lightning coefficients remain candidates
+working_tree: Fixed Mana committed; approved remaining card runtime work continues; pill and tooltip text require user table review before edits
 ---
+
+> **2026-09-03 用户新增 tooltip 文案审阅要求**：已确认的卡牌实装继续；后续pill与短/长tooltip必须先列逐卡文本表，交用户看过后再改。用户倾向短说明保留攻击倍率、护甲等直接显示计算值，长说明展示计算系数与实际补正。本轮先形成待审显示规则与效果片段样表，文件为 docs/design/2026-09-03-card-tooltip-text-review-draft.md；不是173张完整文案，尚未修改UI代码，详细显示格式也尚未冻结。Plan 2 Task 8已增加逐批文案审阅门槛。
+
 
 > **2026-09-03 固定内力与全部装备排除完成**：提交2e0db81，主角基础上限30、法师伙伴34不随等级/升星增长；所有角色均不从装备获得内力，含基础、等级、强化、旧固定20与纳息百分比。纳息停止生成及洗炼，旧记录可读并显示已停用，换装预览同步为零内力贡献。玄冰+4/+8、山泉+6、月白玉璧节点+1等明确效果保留，战斗额外容量及当前值保存读取不丢失。另修正旧装备空宝石孔先补齐后校验，并补齐旧回归的天赋、容量、队伍前提及非消耗DOT期望。冷UBT与装备/主角牌/伙伴牌/存档/模拟316/316通过，0失败、0警告，见 docs/production/2026-09-03-fixed-mana-equipment-acceptance.md。只完成Task 6资源前置，伙伴冰牌、气力和阵师效果继续；雷走候选倍率未确认。以下为历史记录。
 

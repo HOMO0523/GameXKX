@@ -536,7 +536,17 @@ git commit -m "feat: rebalance npc and boss cards"
 
 ### Task 8: Project runtime-resolved Armor, DOT, Medicine, and fixed values
 
+**User review gate (latest instruction):** Before changing any pill text, tooltip copy, compact/expanded formatting or pill presentation, prepare a reviewable per-card text table and obtain the user's approval of that batch. Existing gameplay Tasks 6/7 remain authorized. The first display-rule proposal and effect examples are in docs/design/2026-09-03-card-tooltip-text-review-draft.md; these are a draft, not approval of 173 final card texts. The user is considering attack percentages in compact text, calculated numbers for Armor and similar effects, and coefficient/correction breakdowns in expanded text. Resolve this distinction in the reviewed table before replacing the older blanket result-only wording. Preserve all previously confirmed gameplay formulas.
+
+- [ ] **Step 0: Prepare and obtain review of the text table**
+
+For each scoped card, list stable ID, quality/cost, target/branch condition, pill names/order, complete compact copy, complete expanded copy, computation sources/example values, and unresolved candidates. Review all branches and explicit quality differences. Do not use the representative effect-fragment sample as approval of unlisted card text. Keep uncertain future task rewards symbolic unless the actual finishing sequence is simulated. The short version must retain essential conditions rather than truncating them with ellipses. Visual layout/PIE acceptance follows approval of the table.
+
 **Files:**
+- Review draft: docs/design/2026-09-03-card-tooltip-text-review-draft.md
+- Modify after text approval: Source/GameXXK/Private/UI/GameXXKCardTooltipWidget.cpp
+- Modify after text approval: Source/GameXXK/Public/UI/GameXXKCardTooltipPresentation.h
+- Modify after text approval: shared tooltip presentation functions in Source/GameXXK/Private/UI/GameXXKBattleBoardWidget.cpp
 - Modify: `Source/GameXXK/Public/GameXXKCardTypes.h`
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKCardText.cpp`
