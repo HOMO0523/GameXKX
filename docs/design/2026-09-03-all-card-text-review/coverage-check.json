@@ -14,7 +14,7 @@
   "quality_variants": 419,
   "universal_reward_rows": 36,
   "glossary_rows": 65,
-  "state_template_rows": 27,
+  "state_template_rows": 28,
   "all_ids_match_active_baseline": true,
   "all_ids_present_in_current_catalog_source": true,
   "all_pills_defined": true,
@@ -48,5 +48,12 @@
   ],
   "pill_help_click_toggle": true,
   "pill_help_survives_mouseup": true,
-  "pill_help_max_characters": 47
+  "pill_help_max_characters": 34,
+  "resource_help_at_resource_bars": [
+    "气力",
+    "内力"
+  ],
+  "charge_heavy_arrow_help_merged": true,
+  "shared_dot_note_once": true,
+  "automatic_hand_in_card_copy": 4
 }

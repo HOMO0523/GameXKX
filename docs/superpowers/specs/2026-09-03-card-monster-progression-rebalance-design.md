@@ -169,6 +169,8 @@ The reservoir's visible value is the damage value. Never multiply it by level a 
 
 An ordinary "trigger DOT" effect reads the current reservoir and does not consume it. A card consumes DOT only if its approved text explicitly says so. Approved cleanses are all-or-nothing: "remove Bleed" clears the whole Bleed reservoir; "remove all DOT" clears all four reservoirs.
 
+**Latest confirmed Poison timing:** whenever either the player phase or enemy phase ends, every living poisoned unit on both sides loses HP equal to its current Poison reservoir once. A complete player/enemy round normally gives two ticks. This supersedes the old owner-side-only timing. Poison remains non-consuming and bypasses Defense, Armor and another quality/level multiplier. Do not broaden Weak decay or Armor expiry: those retain their own side-specific boundaries. Finish all Poison packets for this boundary before evaluating terminal outcomes or phase transitions, preserving the existing simultaneous enemy-elimination victory precedence. Each real packet feeds eligible Healer formulas once. Player wording: “任意一方回合结束时，失去等同中毒值的生命。”
+
 On an enemy phase transition, every negative reservoir on that enemy is cleared. DOT-to-attack conversion uses `+2 attack-percentage points` per point in the resolved reservoir; old `+10 per layer` behavior is retired.
 
 ### 4.6 Healing and Medicine

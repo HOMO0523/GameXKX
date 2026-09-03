@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T22:21:14+08:00
-source_commit: 118e679ab1342bf4c86fa3b4d52e9ecfbaa3057a
-working_tree: Uniform healing committed; 173-card text review prepared; tooltip implementation awaits user text review
+updated_at: 2026-09-03T23:15:06+08:00
+source_commit: 77250368873c92f56c6a71b0eedda754689f6e28
+working_tree: Poison ticks on both sides at either phase end; player-focused pill copy prepared
 ---
+
+> **2026-09-03 中毒双边回合末与Pill信息分工**：用户确认中毒在任意一方回合末触发，并同意按玩家需要的信息整理其余Pill。代码提交7725036已让双方中毒在每个阵营回合末各触发一次，保持虚弱所属方衰减、护甲时机和胜负优先级；游戏中毒说明同步。冷UBT与252/252范围回归通过，0失败、0警告。文案移除卡内气力/内力释义、合并蓄力/重箭、统一持续伤害共性，将自动入手条件与重箭顺序写回卡牌正文；右键仍单击开关。验收见docs/production/2026-09-03-poison-boundary-and-pill-copy-acceptance.md；整套TooltipUI尚未接入。
 
 > **2026-09-03 Tooltip三种交互与短pill说明**：用户明确默认简述、按住Shift详述、右键单击开启pill说明；松开右键不关闭，再次右键关闭。已更新审阅页的交互预览、455个卡牌/阵赏品质版本的专属pill说明及逐卡右键文本表11-card-pill-descriptions.md。仅列本卡当前品质的pill，去重；对象标题不是效果pill。60条通用说明及按卡生成的说明已精简，最长47字；卡牌效果数值/倍率/费用对比均保持。原型的单击开关、松开保持、Shift返回、离开/失焦等状态逻辑检查及脚本语法检查通过。正式UE tooltip仍待文案确认后接入，本轮没有修改游戏代码。
 

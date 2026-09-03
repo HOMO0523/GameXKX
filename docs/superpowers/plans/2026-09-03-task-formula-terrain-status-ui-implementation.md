@@ -14,6 +14,8 @@
 
 Complete Plans 1 and 2 first. Work on `codex/overall-in-run-optimization` and preserve unrelated dirty assets.
 
+Latest approved Poison timing: both sides' living poisoned units tick once whenever either side's phase ends. Weak still decays only for the ending side; do not broaden other status or Armor boundaries. The approved short text is “任意一方回合结束时，失去等同中毒值的生命。” Preserve this rule when projecting phase-end damage, formula events and status help.
+
 Create:
 
 - `Source/GameXXK/Public/UI/GameXXKBattleStateBadgeRules.h`

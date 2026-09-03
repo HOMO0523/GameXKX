@@ -22,7 +22,8 @@ function interactivePreview(card, variant) {
     if (mode === 'pills') {
       content.innerHTML = variant.pill_descriptions.length
         ? variant.pill_descriptions.map(p => `<div class="pill-explanation"><strong>${esc(p.name)}</strong><div>${copy(p.description)}</div></div>`).join('')
-        : '这张牌没有额外的pill说明。';
+        : '无额外关键词说明。';
+      if (variant.pill_shared_note) content.innerHTML += `<div class="pill-shared-note">${esc(variant.pill_shared_note)}</div>`;
     } else {
       content.innerHTML = `<div class="target-line">${esc(variant.target_heading)}</div><div class="text">${copy(mode === 'detail' ? variant.detail : variant.compact)}</div>`;
     }
