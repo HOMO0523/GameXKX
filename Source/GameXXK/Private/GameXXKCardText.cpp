@@ -204,6 +204,7 @@ namespace
 		case EGameXXKCardBattleModifierTrigger::AfterFirstActiveCardNextPlayerRound: return TEXT("下个玩家回合第一张主动牌结算后");
 		case EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound: return TEXT("下个玩家回合首次主动攻击指定状态目标时");
 		case EGameXXKCardBattleModifierTrigger::AfterEachActiveCard: return TEXT("每张主动牌结算后");
+		case EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit: return TEXT("下一次地势收益结算前");
 		default: return TEXT("无效触发");
 		}
 	}
@@ -435,7 +436,7 @@ namespace
 		case EGameXXKCardEffectType::WidenNextActiveSingleTarget: return FString::Printf(TEXT("%s的单体效果扩展为目标所在阵营全体"), *Target);
 		case EGameXXKCardEffectType::PreserveNextReactionUse: return TEXT("全队下一次反击或格挡不消耗次数");
 		case EGameXXKCardEffectType::RetainArmorNextRound: return FString::Printf(TEXT("%s下回合保留当前护甲"), *Target);
-		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime: return FString::Printf(TEXT("若%s为友方，清除其全部流血、中毒和灼烧"), *Target);
+		case EGameXXKCardEffectType::CleanseFriendlyDamageOverTime: return FString::Printf(TEXT("若%s为友方，清除其全部流血、中毒、灼烧和蚀伤"), *Target);
 		case EGameXXKCardEffectType::HealOrReverseFlat:
 		{
 			FGameXXKCardEffect EffectForFlat;
@@ -466,7 +467,7 @@ namespace
 		{
 			return FString();
 		}
-		FString DeferredCardCostText;
+		FString TimingText;
 		if (Modifier.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
 			&& Modifier.Target == EGameXXKCardEffectTarget::PlayedCard
 			&& (Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
@@ -491,9 +492,14 @@ namespace
 			const TCHAR* Resource = Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
 				? TEXT("气力")
 				: TEXT("内力");
-			DeferredCardCostText = Modifier.Magnitude <= -99
+			TimingText = Modifier.Magnitude <= -99
 				? FString::Printf(TEXT("%s%s消耗改为0"), *Subject, Resource)
 				: FString::Printf(TEXT("%s%s消耗%+d"), *Subject, Resource, Modifier.Magnitude);
+		}
+		else if (Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit
+			&& Modifier.EffectType == EGameXXKCardEffectType::TriggerTerrainBenefit)
+		{
+			TimingText = FString::Printf(TEXT("下一次地势收益改为触发%d次"), Modifier.Magnitude);
 		}
 		const FString Core = DescribeEffectType(
 			Modifier.EffectType,
@@ -504,9 +510,9 @@ namespace
 			1,
 			Modifier.Status);
 		TArray<FString> Clauses;
-		Clauses.Add(DeferredCardCostText.IsEmpty()
+		Clauses.Add(TimingText.IsEmpty()
 			? FString::Printf(TEXT("持续效果：%s，%s"), *DescribeModifierTrigger(Modifier.Trigger), *Core)
-			: DeferredCardCostText);
+			: TimingText);
 		if (Modifier.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid)
 		{
 			Clauses.Add(TEXT("限指定职业触发"));
@@ -531,7 +537,9 @@ namespace
 		{
 			Clauses.Add(FString::Printf(TEXT("前序结果至少为%d"), Modifier.MinimumResult));
 		}
-		Clauses.Add(DescribeModifierExpiry(Modifier.Expiry, Modifier.RemainingTriggers));
+		Clauses.Add(Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit
+			&& Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && Modifier.RemainingTriggers == 1
+			? TEXT("生效一次") : DescribeModifierExpiry(Modifier.Expiry, Modifier.RemainingTriggers));
 		const FString Condition = DescribeCondition(Modifier.Condition);
 		if (!Condition.IsEmpty())
 		{

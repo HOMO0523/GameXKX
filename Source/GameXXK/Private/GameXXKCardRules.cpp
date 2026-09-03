@@ -348,6 +348,12 @@ namespace
 			}
 		}
 
+		if (Deck.PendingChoice.bLegacyHeroTaskSearch
+			&& Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+		{
+			OutError = TEXT("A legacy Hero search marker belongs to an unrelated or inactive choice.");
+			return false;
+		}
 		switch (Deck.PendingChoice.Kind)
 		{
 		case EGameXXKCardPendingChoiceKind::None:
@@ -4511,16 +4517,40 @@ namespace
 			&& Left.SorcererTaskBranch == Right.SorcererTaskBranch;
 	}
 
+	TArray<FName> CollectEquippedHeroSorcererCardIds(const FGameXXKCardBattleRuntime& Runtime)
+	{
+		TArray<FName> Result;
+		for (const FName CardId : Runtime.EquippedHeroCardIds)
+		{
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (Definition
+				&& Definition->Owner == EGameXXKCardOwner::Hero
+				&& Definition->LinkedRole == EGameXXKCharacterRole::Sorcerer
+				&& Definition->SpellTaskReward != EGameXXKHeroSpellTaskReward::None)
+			{
+				Result.Add(CardId);
+			}
+		}
+		return Result;
+	}
+
 	bool ValidateHeroSpellTaskRuntime(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		if (!ValidateEquippedHeroCardIds(Runtime.EquippedHeroCardIds, OutError))
 		{
 			return false;
 		}
+		if (Runtime.HeroSpellTaskLastCompletedRound < 0
+			|| Runtime.HeroSpellTaskLastCompletedRound > Runtime.RoundNumber)
+		{
+			OutError = TEXT("The protagonist spell-task completion round is outside the battle timeline.");
+			return false;
+		}
 		const FGameXXKHeroSpellTaskRuntime& Task = Runtime.HeroSpellTask;
 		if (!Task.bActive)
 		{
 			if (!Task.LockedHeroCardIds.IsEmpty()
+				|| Runtime.Deck.PendingChoice.bLegacyHeroTaskSearch
 				|| !Task.CompletedHeroCardIds.IsEmpty()
 				|| !Task.FirstPlayOrder.IsEmpty()
 				|| Task.StarterReward != EGameXXKHeroSpellTaskReward::None
@@ -4538,12 +4568,15 @@ namespace
 			return true;
 		}
 
-		if (Runtime.EquippedHeroCardIds.Num() != 8
-			|| Task.LockedHeroCardIds != Runtime.EquippedHeroCardIds
+		const TArray<FName> EquippedSorcererCardIds = CollectEquippedHeroSorcererCardIds(Runtime);
+		if (EquippedSorcererCardIds.Num() != 4
+			|| Task.LockedHeroCardIds != EquippedSorcererCardIds
 			|| Task.CompletedHeroCardIds.Num() != Task.FirstPlayOrder.Num()
 			|| Task.CompletedHeroCardIds.Num() > Task.LockedHeroCardIds.Num()
 			|| Task.StarterReward == EGameXXKHeroSpellTaskReward::None
-			|| Task.StarterOwnerUnitId.IsNone())
+			|| Task.StarterOwnerUnitId.IsNone()
+			|| (Runtime.HeroSpellTaskLastCompletedRound > 0
+				&& Runtime.HeroSpellTaskLastCompletedRound == Runtime.RoundNumber))
 		{
 			OutError = TEXT("An active protagonist spell task has invalid locked IDs, progress, or starter metadata.");
 			return false;
@@ -4580,9 +4613,9 @@ namespace
 				&& StarterDefinition->Owner == EGameXXKCardOwner::Hero
 				&& StarterDefinition->LinkedRole == EGameXXKCharacterRole::Sorcerer
 				&& StarterDefinition->SpellTaskReward != EGameXXKHeroSpellTaskReward::None;
-			if (!StarterDefinition
+			if (!bRecordedMageStarter
 				|| Task.FirstPlayOrder[0].OwnerUnitId != Task.StarterOwnerUnitId
-				|| (bRecordedMageStarter && StarterDefinition->SpellTaskReward != Task.StarterReward))
+				|| StarterDefinition->SpellTaskReward != Task.StarterReward)
 			{
 				OutError = TEXT("A protagonist spell task starter no longer matches its saved Mage reward.");
 				return false;
@@ -4590,9 +4623,23 @@ namespace
 		}
 
 		const FGameXXKAutomaticResolutionQueue& Queue = Runtime.AutomaticResolutionQueue;
+		if (Runtime.Deck.PendingChoice.bLegacyHeroTaskSearch)
+		{
+			if (!Queue.bActive || Runtime.Deck.PendingChoice.Candidates.ContainsByPredicate([&Task, &Runtime](const FGameXXKCardInstance& Card)
+			{
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Card.CardId);
+				return Card.OwnerUnitId != Task.StarterOwnerUnitId
+					|| !Runtime.EquippedHeroCardIds.Contains(Card.CardId)
+					|| !Definition || Definition->Owner != EGameXXKCardOwner::Hero;
+			}))
+			{
+				OutError = TEXT("A legacy Hero search has no saved replay or contains an unrelated candidate.");
+				return false;
+			}
+		}
 		if (Queue.bActive && Queue.Origin == EGameXXKCardResolutionOrigin::MageTaskReplay)
 		{
-			if (Task.CompletedHeroCardIds.Num() != 8
+			if (Task.CompletedHeroCardIds.Num() != 4
 				|| Queue.PendingCards.Num() != Task.FirstPlayOrder.Num()
 				|| Queue.PendingReward != Task.StarterReward
 				|| Queue.RewardOwnerUnitId != Task.StarterOwnerUnitId)
@@ -4994,14 +5041,22 @@ namespace
 		{
 			const FGameXXKCardCombatUnit* FormulaOwner = FindCombatUnitById(Runtime.Units, Formula.OwnerUnitId);
 			const FGameXXKCardDefinition* FormulaCard = FGameXXKCardCatalog::FindCardDefinition(Formula.SourceCardId);
+			const bool bValidFormulaSource = FormulaCard
+				&& ((FormulaCard->Owner == EGameXXKCardOwner::Profession
+						&& FormulaCard->Role == EGameXXKCharacterRole::Healer)
+					|| (FormulaCard->Owner == EGameXXKCardOwner::Hero
+						&& FormulaCard->LinkedRole == EGameXXKCharacterRole::Healer));
 			const FString FormulaKey = Formula.OwnerUnitId.ToString() + TEXT("|") + Formula.SourceCardId.ToString();
 			TSet<FName> FormulaTriggeredUnits;
 			bool bTriggeredUnitsValid = true;
 			for (const FName TriggeredUnitId : Formula.TriggeredUnitIdsThisRound)
 			{
 				const FGameXXKCardCombatUnit* TriggeredUnit = FindCombatUnitById(Runtime.Units, TriggeredUnitId);
+				const EGameXXKCardTargetSide ExpectedTriggeredSide = Formula.Kind == EGameXXKHealerFormulaKind::HeroFirstPartyHealthLossMedicine
+					? EGameXXKCardTargetSide::Party
+					: EGameXXKCardTargetSide::Enemy;
 				if (TriggeredUnitId.IsNone() || FormulaTriggeredUnits.Contains(TriggeredUnitId)
-					|| !TriggeredUnit || TriggeredUnit->Side != EGameXXKCardTargetSide::Enemy)
+					|| !TriggeredUnit || TriggeredUnit->Side != ExpectedTriggeredSide)
 				{
 					bTriggeredUnitsValid = false;
 					break;
@@ -5013,9 +5068,7 @@ namespace
 				|| Formula.Kind == EGameXXKHealerFormulaKind::None
 				|| !FormulaOwner
 				|| FormulaOwner->Side != EGameXXKCardTargetSide::Party
-				|| !FormulaCard
-				|| FormulaCard->Owner != EGameXXKCardOwner::Profession
-				|| FormulaCard->Role != EGameXXKCharacterRole::Healer
+				|| !bValidFormulaSource
 				|| FormulaCard->HealerRule.FormulaKind != Formula.Kind
 				|| Formula.Progress < 0
 				|| Formula.PhaseProgress < 0
@@ -5026,7 +5079,11 @@ namespace
 				|| Formula.SecondaryLastTriggeredRound > Runtime.RoundNumber
 				|| Formula.UnitBudgetRound > Runtime.RoundNumber
 				|| !bTriggeredUnitsValid
-				|| (Formula.Kind != EGameXXKHealerFormulaKind::BleedPoisonMark && !Formula.TriggeredUnitIdsThisRound.IsEmpty())
+				|| (Formula.Kind == EGameXXKHealerFormulaKind::HeroFirstPartyHealthLossMedicine
+					&& Formula.TriggeredUnitIdsThisRound.Num() > 3)
+				|| ((Formula.Kind != EGameXXKHealerFormulaKind::BleedPoisonMark
+						&& Formula.Kind != EGameXXKHealerFormulaKind::HeroFirstPartyHealthLossMedicine)
+					&& !Formula.TriggeredUnitIdsThisRound.IsEmpty())
 				|| HealerFormulaKeys.Contains(FormulaKey))
 			{
 				OutError = TEXT("A Healer formula has invalid owner, catalog identity, progress, or duplicate state.");
@@ -6313,6 +6370,42 @@ namespace
 		return true;
 	}
 
+	int32 ResolveDefensePercentArmorAmount(
+		const FGameXXKCardCombatUnit& Caster,
+		const int32 DefensePercent,
+		const EGameXXKCardQuality Quality)
+	{
+		const int32 QualityPercent = FGameXXKCombatScalingRules::GetQualityPercent(Quality);
+		if (!Caster.bLiving || Caster.Defense <= 0 || DefensePercent <= 0 || QualityPercent <= 0)
+		{
+			return 0;
+		}
+		const int64 Numerator = static_cast<int64>(Caster.Defense)
+			* static_cast<int64>(DefensePercent)
+			* static_cast<int64>(QualityPercent);
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, (Numerator + 9999) / 10000));
+	}
+
+	int32 ResolveCardStatusApplicationAmount(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Target,
+		const FGameXXKCardEffect& Effect,
+		const EGameXXKCardQuality Quality)
+	{
+		if (Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::DotCoefficient)
+		{
+			return Effect.Magnitude;
+		}
+		const int32 Cap = FGameXXKCombatScalingRules::ResolveDotCap(Runtime.TeamMaxLevelSnapshot);
+		const int32 Current = GameXXKCardRules::GetCombatStatusStacks(Target, Effect.Status);
+		const int32 Available = FMath::Max(0, Cap - FMath::Min(Current, Cap));
+		const int32 Resolved = FGameXXKCombatScalingRules::ResolveDotAddition(
+			Effect.Magnitude,
+			Quality,
+			Runtime.TeamMaxLevelSnapshot);
+		return FMath::Min(Available, Resolved);
+	}
+
 	bool GrantStatusFromCardEffect(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		FGameXXKCardCombatUnit& InOutTarget,
@@ -6809,6 +6902,55 @@ namespace
 			&& Result.HealthDamage > 0;
 	}
 
+	bool ResolveHeroFirstPartyHealthLossMedicine(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKHealerFormulaRuntime& InOutFormula,
+		const TArray<FGameXXKCardDamageResult>& DamageResults,
+		const int32 FirstDamageResultIndex,
+		FGameXXKCardPlayResult* InOutResult,
+		FString& OutError)
+	{
+		if (FirstDamageResultIndex < 0 || FirstDamageResultIndex > DamageResults.Num())
+		{
+			OutError = TEXT("A Hero health-loss formula received an invalid result range.");
+			return false;
+		}
+		if (InOutFormula.UnitBudgetRound != InOutRuntime.RoundNumber)
+		{
+			InOutFormula.UnitBudgetRound = InOutRuntime.RoundNumber;
+			InOutFormula.TriggeredUnitIdsThisRound.Reset();
+		}
+		int32 Granted = 0;
+		for (int32 ResultIndex = FirstDamageResultIndex;
+			ResultIndex < DamageResults.Num() && InOutFormula.TriggeredUnitIdsThisRound.Num() < 3;
+			++ResultIndex)
+		{
+			const FGameXXKCardDamageResult& Damage = DamageResults[ResultIndex];
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(InOutRuntime.Units, Damage.ResolvedTargetUnitId);
+			if (Damage.HealthDamage <= 0
+				|| !Target
+				|| Target->Side != EGameXXKCardTargetSide::Party
+				|| InOutFormula.TriggeredUnitIdsThisRound.Contains(Damage.ResolvedTargetUnitId))
+			{
+				continue;
+			}
+			InOutFormula.TriggeredUnitIdsThisRound.Add(Damage.ResolvedTargetUnitId);
+			++Granted;
+		}
+		FGameXXKCardCombatUnit* FormulaOwner = FindCombatUnitById(InOutRuntime.Units, InOutFormula.OwnerUnitId);
+		return Granted <= 0
+			|| (FormulaOwner
+				&& FormulaOwner->bLiving
+				&& GrantStatusFromCardEffect(
+					InOutRuntime,
+					*FormulaOwner,
+					EGameXXKCardStatus::Medicine,
+					Granted,
+					OutError,
+					InOutResult,
+					FormulaOwner->UnitId));
+	}
+
 	bool ResolveOpenedHealerFormulasAfterActiveCard(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const TArray<FGameXXKCardCombatUnit>& UnitsBeforeActiveCard,
@@ -7238,6 +7380,107 @@ namespace
 					if (!GrantStatusFromCardEffect(InOutRuntime, *FormulaOwner, EGameXXKCardStatus::Momentum, 1, OutError, &InOutResult, FormulaOwner->UnitId) || !DrawFormulaCards(1)) return false;
 				}
 				break;
+			case EGameXXKHealerFormulaKind::HeroFirstPartyHealthLossMedicine:
+				if (!ResolveHeroFirstPartyHealthLossMedicine(
+					InOutRuntime,
+					Formula,
+					InOutResult.DamageResults,
+					0,
+					&InOutResult,
+					OutError))
+				{
+					return false;
+				}
+				break;
+			case EGameXXKHealerFormulaKind::HeroSixMedicineHealDraw:
+			{
+				const FGameXXKCardDefinition* PlayedDefinition = FGameXXKCardCatalog::FindCardDefinition(PlayedSnapshot.CardId);
+				int32 MedicineConsumed = 0;
+				for (const FGameXXKCardStatusChangeResult& Change : InOutResult.StatusChanges)
+				{
+					if (Change.TargetUnitId == PlayedSnapshot.OwnerUnitId
+						&& Change.Status == EGameXXKCardStatus::Medicine
+						&& Change.RemovedStacks > 0)
+					{
+						MedicineConsumed = static_cast<int32>(FMath::Min<int64>(
+							MAX_int32,
+							static_cast<int64>(MedicineConsumed) + Change.RemovedStacks));
+					}
+				}
+				const bool bHeroMedicineAction = PlayedDefinition
+					&& PlayedDefinition->Owner == EGameXXKCardOwner::Hero
+					&& PlayedSnapshot.OwnerUnitId == Formula.OwnerUnitId
+					&& (InOutResult.HealingResults.ContainsByPredicate([](const FGameXXKCardHealingResult& Result)
+						{
+							return Result.RequestedHealing > 0;
+						})
+						|| InOutResult.DamageResults.ContainsByPredicate([&PlayedSnapshot](const FGameXXKCardDamageResult& Result)
+						{
+							return IsMedicineReverseDamage(Result, PlayedSnapshot.OwnerUnitId);
+						}));
+				if (bHeroMedicineAction
+					&& MedicineConsumed >= 6
+					&& Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					if (!DrawFormulaCards(1))
+					{
+						return false;
+					}
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::HeroDualDotExplosionMedicine:
+			{
+				if (Formula.UnitBudgetRound != InOutRuntime.RoundNumber)
+				{
+					Formula.UnitBudgetRound = InOutRuntime.RoundNumber;
+					Formula.Progress = 0;
+				}
+				int32 QualifiedExplosions = 0;
+				for (const int32 DistinctDotTypeCount : InOutResult.ToxicExplosionDistinctDotTypeCounts)
+				{
+					QualifiedExplosions += DistinctDotTypeCount >= 2 ? 1 : 0;
+				}
+				const int32 GrantedTriggers = FMath::Min(QualifiedExplosions, FMath::Max(0, 2 - Formula.Progress));
+				Formula.Progress += GrantedTriggers;
+				if (GrantedTriggers > 0
+					&& !GrantStatusFromCardEffect(
+						InOutRuntime,
+						*FormulaOwner,
+						EGameXXKCardStatus::Medicine,
+						GrantedTriggers * 2,
+						OutError,
+						&InOutResult,
+						FormulaOwner->UnitId))
+				{
+					return false;
+				}
+				break;
+			}
+			case EGameXXKHealerFormulaKind::HeroGroupHealEnergy:
+			{
+				TSet<FName> EffectivelyHealedAllies;
+				for (const FGameXXKCardHealingResult& Healing : InOutResult.HealingResults)
+				{
+					const FGameXXKCardCombatUnit* HealedUnit = FindCombatUnitById(InOutRuntime.Units, Healing.TargetUnitId);
+					if (Healing.EffectiveHealing > 0
+						&& HealedUnit
+						&& HealedUnit->Side == FormulaOwner->Side)
+					{
+						EffectivelyHealedAllies.Add(Healing.TargetUnitId);
+					}
+				}
+				if (EffectivelyHealedAllies.Num() >= 2
+					&& Formula.LastTriggeredRound != InOutRuntime.RoundNumber)
+				{
+					Formula.LastTriggeredRound = InOutRuntime.RoundNumber;
+					InOutRuntime.Deck.SharedEnergy = FMath::Min(
+						MaxCardBattleEnergy,
+						InOutRuntime.Deck.SharedEnergy + 1);
+				}
+				break;
+			}
 			default:
 				break;
 			}
@@ -7348,6 +7591,18 @@ namespace
 				}
 				break;
 			}
+			case EGameXXKHealerFormulaKind::HeroFirstPartyHealthLossMedicine:
+				if (!ResolveHeroFirstPartyHealthLossMedicine(
+					InOutRuntime,
+					Formula,
+					DamageResults,
+					FirstDamageResultIndex,
+					nullptr,
+					OutError))
+				{
+					return false;
+				}
+				break;
 			default:
 				break;
 			}
@@ -7368,9 +7623,12 @@ namespace
 			return true;
 		}
 		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(InOutRuntime.Units, OwnerUnitId);
+		const bool bValidFormulaSource = (Definition.Owner == EGameXXKCardOwner::Profession
+				&& Definition.Role == EGameXXKCharacterRole::Healer)
+			|| (Definition.Owner == EGameXXKCardOwner::Hero
+				&& Definition.LinkedRole == EGameXXKCharacterRole::Healer);
 		if (!Owner || !Owner->bLiving || Owner->Side != EGameXXKCardTargetSide::Party
-			|| Definition.Owner != EGameXXKCardOwner::Profession
-			|| Definition.Role != EGameXXKCharacterRole::Healer
+			|| !bValidFormulaSource
 			|| Rule.UnopenedFormulaEnergySurcharge <= 0)
 		{
 			OutError = TEXT("A permanent Healer formula could not be installed for its living party owner.");
@@ -7589,7 +7847,8 @@ namespace
 		OutError.Reset();
 		const FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
 		if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextAttack
-			|| ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent)
+			|| (ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent
+				&& ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus))
 		{
 			return true;
 		}
@@ -7647,8 +7906,8 @@ namespace
 				continue;
 			}
 			bool bConditionSatisfied = false;
-			int32 IgnoredConsumed = 0;
-			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, nullptr, bConditionSatisfied, IgnoredConsumed, OutError))
+			int32 Consumed = 0;
+			if (!TryApplyEffectConditionAndConsumption(Modifier.Definition.Condition, InOutRuntime, InOutOwner, ConditionTarget, nullptr, bConditionSatisfied, Consumed, OutError))
 			{
 				return false;
 			}
@@ -7656,13 +7915,18 @@ namespace
 			{
 				continue;
 			}
-			if ((Modifier.Definition.Magnitude > 0 && OutBonusPercent > MAX_int32 - Modifier.Definition.Magnitude)
-				|| (Modifier.Definition.Magnitude < 0 && OutBonusPercent < MIN_int32 - Modifier.Definition.Magnitude))
+			const int64 AppliedMagnitude = Modifier.Definition.EffectType == EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus
+				? static_cast<int64>(Modifier.Definition.Magnitude) * Consumed
+				: Modifier.Definition.Magnitude;
+			if (AppliedMagnitude > MAX_int32
+				|| AppliedMagnitude < MIN_int32
+				|| OutBonusPercent > MAX_int32 - AppliedMagnitude
+				|| OutBonusPercent < MIN_int32 - AppliedMagnitude)
 			{
 				OutError = TEXT("Next-attack modifier bonuses exceed the supported range.");
 				return false;
 			}
-			OutBonusPercent += Modifier.Definition.Magnitude;
+			OutBonusPercent += static_cast<int32>(AppliedMagnitude);
 			OutModifierIds.Add(Modifier.ModifierId);
 		}
 		return true;
@@ -7693,7 +7957,8 @@ namespace
 			}
 			FGameXXKCardBattleModifier& ModifierDefinition = Modifier.Definition;
 			if (ModifierDefinition.Trigger != EGameXXKCardBattleModifierTrigger::OnNextAttack
-				|| ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent)
+				|| (ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercent
+					&& ModifierDefinition.EffectType != EGameXXKCardEffectType::BonusDamagePercentPerConsumedStatus))
 			{
 				OutError = TEXT("A non-attack modifier was selected for next-attack consumption.");
 				return false;
@@ -8505,9 +8770,17 @@ namespace
 				{
 					if (OnHitEffect->HitCount == Attack.HitCount || HitIndex < OnHitEffect->HitCount)
 					{
-						FGameXXKCardStatusStack& Status = Context.OnHitStatuses.AddDefaulted_GetRef();
-						Status.Status = OnHitEffect->Status;
-						Status.Stacks = OnHitEffect->Magnitude;
+						const int32 AppliedMagnitude = ResolveCardStatusApplicationAmount(
+							InOutRuntime,
+							*HitTarget,
+							*OnHitEffect,
+							Instance.CurrentQuality);
+						if (AppliedMagnitude > 0)
+						{
+							FGameXXKCardStatusStack& Status = Context.OnHitStatuses.AddDefaulted_GetRef();
+							Status.Status = OnHitEffect->Status;
+							Status.Stacks = AppliedMagnitude;
+						}
 					}
 				}
 				if (HitIndex == 0 && bApplyNextAttackVulnerability)
@@ -9567,12 +9840,18 @@ namespace
 		return Fallback;
 	}
 
+	bool ConsumeTriggeredModifierUse(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName ModifierId,
+		FString& OutError);
+
 	bool ResolveTerrainBenefit(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardInstance& SourceInstance,
 		const FName PreferredEnemyTargetUnitId,
 		const EGameXXKCardTerrain Terrain,
 		const int32 Repetitions,
+		const EGameXXKCardResolutionOrigin Origin,
 		FGameXXKCardPlayResult* InOutResult,
 		FString& OutError)
 	{
@@ -9587,7 +9866,60 @@ namespace
 			return true;
 		}
 
-		for (int32 Repetition = 0; Repetition < Repetitions; ++Repetition)
+		int32 EffectiveRepetitions = Repetitions;
+		TArray<FName> CountOverrideIds;
+		const FGameXXKCardDefinition* SourceDefinition = FGameXXKCardCatalog::FindCardDefinition(SourceInstance.CardId);
+		const FGameXXKCardCombatUnit* ConditionTarget = FindLivingTerrainEnemyAnchor(
+			InOutRuntime, SourceInstance.OwnerUnitId, PreferredEnemyTargetUnitId);
+		for (const FGameXXKCardBattleModifierRuntime& Modifier : InOutRuntime.Modifiers)
+		{
+			const FGameXXKCardBattleModifier& Definition = Modifier.Definition;
+			if (Definition.Trigger != EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit)
+			{
+				continue;
+			}
+			if (Definition.EffectType != EGameXXKCardEffectType::TriggerTerrainBenefit || Definition.Magnitude <= 0
+				|| Definition.Condition.bConsumeStatus || Definition.Condition.bConsumeOwnerArmor)
+			{
+				OutError = TEXT("A terrain count override requires a positive terrain count and a non-consuming condition.");
+				return false;
+			}
+			const FGameXXKCardCombatUnit* ModifierOwner = FindCombatUnitById(InOutRuntime.Units, Modifier.SourceUnitId);
+			if (!ModifierOwner || !ModifierOwner->bLiving || ModifierOwner->Side != Owner->Side
+				|| (Definition.bActivePlayOnly && Origin != EGameXXKCardResolutionOrigin::ActivePlay)
+				|| (Definition.bExcludeSourceUnit && Modifier.SourceUnitId == SourceInstance.OwnerUnitId)
+				|| (Definition.RecipientScope != EGameXXKCardModifierRecipientScope::SharedDeck
+					&& !Modifier.RecipientUnitIds.Contains(SourceInstance.OwnerUnitId))
+				|| (!Modifier.RequiredPlayedCardInstanceId.IsNone()
+					&& Modifier.RequiredPlayedCardInstanceId != SourceInstance.InstanceId)
+				|| (Definition.RequiredTriggeredRole != EGameXXKCharacterRole::Invalid
+					&& Definition.RequiredTriggeredRole != Owner->Role)
+				|| (!Definition.RequiredTriggeredOwnerId.IsNone()
+					&& (!SourceDefinition || Definition.RequiredTriggeredOwnerId != SourceDefinition->OwnerId)))
+			{
+				continue;
+			}
+			bool bSatisfied = false;
+			if (!IsConditionSatisfied(Definition.Condition, InOutRuntime, *Owner, ConditionTarget, nullptr, bSatisfied, OutError))
+			{
+				return false;
+			}
+			if (bSatisfied)
+			{
+				// Assign the total count for this event, without emitting a second benefit.
+				EffectiveRepetitions = Definition.Magnitude;
+				CountOverrideIds.Add(Modifier.ModifierId);
+			}
+		}
+		for (const FName ModifierId : CountOverrideIds)
+		{
+			if (!ConsumeTriggeredModifierUse(InOutRuntime, ModifierId, OutError))
+			{
+				return false;
+			}
+		}
+
+		for (int32 Repetition = 0; Repetition < EffectiveRepetitions; ++Repetition)
 		{
 			Owner = FindCombatUnitById(InOutRuntime.Units, SourceInstance.OwnerUnitId);
 			if (!Owner || !Owner->bLiving)
@@ -9860,6 +10192,7 @@ namespace
 					CardTargetIds.Num() == 1 ? CardTargetIds[0] : NAME_None,
 					BenefitTerrain,
 					Repetitions,
+					Origin,
 					&InOutResult,
 					OutError))
 				{
@@ -10433,6 +10766,27 @@ namespace
 				case EGameXXKCardEffectType::Heal:
 				{
 					int64 BaseHealing = FMath::Max(0, Effect.Magnitude);
+					if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::MedicineCoefficient)
+					{
+						if (!bPreparedMedicineAction)
+						{
+							MedicineSnapshot = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::Medicine);
+							if (MedicineSnapshot > 0)
+							{
+								const int32 ConsumedMedicine = GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::Medicine, MedicineSnapshot);
+								FGameXXKCardStatusChangeResult& MedicineChange = InOutResult.StatusChanges.AddDefaulted_GetRef();
+								MedicineChange.TargetUnitId = Owner->UnitId;
+								MedicineChange.Status = EGameXXKCardStatus::Medicine;
+								MedicineChange.RemovedStacks = ConsumedMedicine;
+							}
+							bPreparedMedicineAction = true;
+						}
+						BaseHealing = FGameXXKCombatScalingRules::ResolveMedicineHealing(
+							Effect.Magnitude,
+							MedicineSnapshot,
+							Instance.CurrentQuality,
+							InOutRuntime.TeamMaxLevelSnapshot);
+					}
 					if (Effect.SecondaryMagnitude > 0)
 					{
 						int64 DirectHealthDamage = 0;
@@ -10492,7 +10846,11 @@ namespace
 						MedicineSnapshot = GameXXKCardRules::GetCombatStatusStacks(*Owner, EGameXXKCardStatus::Medicine);
 						if (MedicineSnapshot > 0)
 						{
-							GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::Medicine, MedicineSnapshot);
+							const int32 ConsumedMedicine = GameXXKCardRules::ConsumeCombatStatus(*Owner, EGameXXKCardStatus::Medicine, MedicineSnapshot);
+							FGameXXKCardStatusChangeResult& MedicineChange = InOutResult.StatusChanges.AddDefaulted_GetRef();
+							MedicineChange.TargetUnitId = Owner->UnitId;
+							MedicineChange.Status = EGameXXKCardStatus::Medicine;
+							MedicineChange.RemovedStacks = ConsumedMedicine;
 						}
 						bPreparedMedicineAction = true;
 					}
@@ -10572,11 +10930,28 @@ namespace
 					break;
 				}
 				case EGameXXKCardEffectType::AddArmor:
-					if (Effect.Magnitude > 0)
+				{
+					int32 ArmorAmount = Effect.Magnitude;
+					if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::PrintedCostArmor)
 					{
-						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, Effect.Magnitude);
+						ArmorAmount = GameXXKCardRules::ResolvePrintedCostArmor(
+							*Owner,
+							Definition.EnergyCost,
+							Instance.CurrentQuality);
+					}
+					else if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DefensePercent)
+					{
+						ArmorAmount = ResolveDefensePercentArmorAmount(
+							*Owner,
+							Effect.Magnitude,
+							Instance.CurrentQuality);
+					}
+					if (ArmorAmount > 0)
+					{
+						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, ArmorAmount);
 					}
 					break;
+				}
 				case EGameXXKCardEffectType::RetainArmorNextRound:
 					if ((Effect.Target != EGameXXKCardEffectTarget::AllAllies
 							&& Effect.Target != EGameXXKCardEffectTarget::CardOwner)
@@ -10629,12 +11004,9 @@ namespace
 					}
 					const int64 RawMana = static_cast<int64>(Target->Mana) + Effect.SecondaryMagnitude;
 					const int64 Overflow = FMath::Max<int64>(0, RawMana - Target->MaxMana);
-					const int64 ArmorGain = Overflow * Effect.Magnitude / 100;
-					if (ArmorGain > MAX_int32)
-					{
-						OutError = TEXT("Mana overflow conversion exceeds the supported range.");
-						return false;
-					}
+					const int32 ArmorGain = FGameXXKCombatScalingRules::ResolveManaOverflowArmor(
+						static_cast<int32>(Overflow), Effect.Magnitude,
+						Instance.CurrentQuality, InOutRuntime.TeamMaxLevelSnapshot);
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, RawMana));
 					if (ArmorGain > 0)
 					{
@@ -10693,11 +11065,16 @@ namespace
 				case EGameXXKCardEffectType::ApplyStatus:
 				{
 					const int32 StatusBefore = GameXXKCardRules::GetCombatStatusStacks(*Target, Effect.Status);
+					const int32 AppliedMagnitude = ResolveCardStatusApplicationAmount(
+						InOutRuntime,
+						*Target,
+						Effect,
+						Instance.CurrentQuality);
 					if (!GrantStatusFromCardEffect(
 						InOutRuntime,
 						*Target,
 						Effect.Status,
-						Effect.Magnitude,
+						AppliedMagnitude,
 						OutError,
 						&InOutResult,
 						Owner->UnitId))
@@ -12832,6 +13209,7 @@ namespace
 				Modifier.OriginalSelectedTargetUnitId,
 				InOutRuntime.Terrain,
 				Definition.Magnitude,
+				EGameXXKCardResolutionOrigin::Reaction,
 				InOutResult,
 				OutError);
 		}
@@ -13365,17 +13743,19 @@ namespace
 		{
 			if (Definition.LinkedRole != EGameXXKCharacterRole::Sorcerer
 				|| Definition.SpellTaskReward == EGameXXKHeroSpellTaskReward::None
-				|| InOutRuntime.EquippedHeroCardIds.IsEmpty())
+				|| InOutRuntime.EquippedHeroCardIds.IsEmpty()
+				|| (InOutRuntime.HeroSpellTaskLastCompletedRound > 0
+					&& InOutRuntime.HeroSpellTaskLastCompletedRound == InOutRuntime.RoundNumber))
 			{
 				return true;
 			}
-			if (InOutRuntime.EquippedHeroCardIds.Num() != 8)
+			const TArray<FName> EquippedSorcererCardIds = CollectEquippedHeroSorcererCardIds(InOutRuntime);
+			if (EquippedSorcererCardIds.Num() != 4)
 			{
-				OutError = TEXT("A protagonist spell task can start only from an exact eight-card equipped Hero loadout.");
-				return false;
+				return true;
 			}
 			Task.bActive = true;
-			Task.LockedHeroCardIds = InOutRuntime.EquippedHeroCardIds;
+			Task.LockedHeroCardIds = EquippedSorcererCardIds;
 			Task.StarterReward = Definition.SpellTaskReward;
 			Task.StarterOwnerUnitId = Snapshot.OwnerUnitId;
 		}
@@ -13810,14 +14190,14 @@ namespace
 		OutError.Reset();
 		const FGameXXKHeroSpellTaskRuntime& Task = InOutRuntime.HeroSpellTask;
 		if (!Task.bActive
-			|| Task.CompletedHeroCardIds.Num() != 8
-			|| Task.FirstPlayOrder.Num() != 8
+			|| Task.CompletedHeroCardIds.Num() != 4
+			|| Task.FirstPlayOrder.Num() != 4
 			|| InOutRuntime.AutomaticResolutionQueue.bActive
 			|| IsActiveChoice(InOutRuntime.Deck.PendingChoice.Kind))
 		{
 			return true;
 		}
-		if (Task.LockedHeroCardIds.Num() != 8
+		if (Task.LockedHeroCardIds.Num() != 4
 			|| Task.StarterReward == EGameXXKHeroSpellTaskReward::None
 			|| Task.StarterOwnerUnitId.IsNone())
 		{
@@ -13884,10 +14264,13 @@ namespace
 		RewardDefinition.OwnerId = TEXT("Hero");
 		RewardDefinition.Role = EGameXXKCharacterRole::Hero;
 		RewardDefinition.LinkedRole = EGameXXKCharacterRole::Sorcerer;
+		const EGameXXKCardQuality StarterQuality = InOutRuntime.HeroSpellTask.FirstPlayOrder.IsEmpty()
+			? EGameXXKCardQuality::Common
+			: InOutRuntime.HeroSpellTask.FirstPlayOrder[0].Quality;
 		FGameXXKCardInstance RewardInstance;
 		RewardInstance.InstanceId = FName(*FString::Printf(TEXT("TaskReward.%d.%s"), InOutRuntime.RoundNumber, *OwnerUnitId.ToString()));
 		RewardInstance.CardId = OutResult.CardId;
-		RewardInstance.CurrentQuality = EGameXXKCardQuality::Common;
+		RewardInstance.CurrentQuality = StarterQuality;
 		RewardInstance.OwnerUnitId = OwnerUnitId;
 		RewardInstance.SourceEntryId = RewardInstance.InstanceId;
 		RewardInstance.AcquisitionOrdinal = 0;
@@ -13896,31 +14279,27 @@ namespace
 		{
 		case EGameXXKHeroSpellTaskReward::Fire:
 			RewardDefinition.Effects = {
-				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 8, EGameXXKCardStatus::Burn),
-				MakeTaskRewardEffect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Burn)};
+				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn)};
+			RewardDefinition.Effects[0].MagnitudePolicy = EGameXXKCardMagnitudePolicy::DotCoefficient;
 			break;
 		case EGameXXKHeroSpellTaskReward::Ice:
-		{
-			const int32 ArmorSnapshot = Owner->Armor;
-			Owner->Armor = 0;
-			if (ArmorSnapshot <= 0)
-			{
-				return true;
-			}
 			RewardDefinition.Effects = {
-				MakeTaskRewardEffect(EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::AllEnemies, 20, EGameXXKCardStatus::None, ArmorSnapshot)};
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 100)};
+			RewardDefinition.Effects[0].MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
+			RewardDefinition.Effects[0].SecondaryMagnitude = 1;
 			break;
-		}
 		case EGameXXKHeroSpellTaskReward::Lightning:
 			RewardDefinition.Effects = {
 				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark),
 				MakeTaskRewardEffect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 60, EGameXXKCardStatus::Mark)};
+			RewardDefinition.Effects[1].MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
 			break;
 		case EGameXXKHeroSpellTaskReward::Universal:
 		{
 			RewardDefinition.Effects = {
-				MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 4),
-				MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 2)};
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1)};
 			FGameXXKCardEffect Discount = MakeTaskRewardEffect(
 				EGameXXKCardEffectType::ApplyBattleModifier,
 				EGameXXKCardEffectTarget::CardOwner,
@@ -13932,7 +14311,8 @@ namespace
 			Discount.Modifier.RecipientTarget = EGameXXKCardEffectTarget::PlayedCard;
 			Discount.Modifier.RequiredTriggeredRole = EGameXXKCharacterRole::Hero;
 			Discount.Modifier.RequiredTriggeredOwnerId = TEXT("Hero");
-			Discount.Modifier.Expiry = EGameXXKCardModifierExpiry::EndOfCurrentRound;
+			Discount.Modifier.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+			Discount.Modifier.RemainingTriggers = 1;
 			Discount.Modifier.Magnitude = -1;
 			Discount.Modifier.bPersistent = true;
 			RewardDefinition.Effects.Add(MoveTemp(Discount));
@@ -13944,9 +14324,12 @@ namespace
 			return false;
 		}
 
+		const FGameXXKCardDefinition EffectiveRewardDefinition = FGameXXKCardQualityRules::BuildEffectiveDefinition(
+			RewardDefinition,
+			StarterQuality);
 		return ResolveDefinitionEffects(
 			InOutRuntime,
-			RewardDefinition,
+			EffectiveRewardDefinition,
 			RewardInstance,
 			{},
 			EGameXXKCardResolutionOrigin::TaskReward,
@@ -14846,6 +15229,20 @@ bool GameXXKCardRules::ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime
 	return bValid;
 }
 
+bool GameXXKCardRules::ValidateCardSnapshot(
+	const FGameXXKResolvedCardSnapshot& Snapshot,
+	const TArray<FGameXXKCardCombatUnit>& Units,
+	FString* OutError)
+{
+	FString ValidationError;
+	const bool bValid = ValidateResolvedCardSnapshot(Snapshot, Units, ValidationError);
+	if (OutError)
+	{
+		*OutError = ValidationError;
+	}
+	return bValid;
+}
+
 bool GameXXKCardRules::ApplyPlayerCardDirectDamage(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	const FGameXXKCardDamageContext& Context,
@@ -15025,6 +15422,7 @@ bool GameXXKCardRules::ResumeAutomaticResolutionQueue(
 		Queue = FGameXXKAutomaticResolutionQueue();
 		if (bCompletedMageTask)
 		{
+			NewRuntime.HeroSpellTaskLastCompletedRound = NewRuntime.RoundNumber;
 			NewRuntime.HeroSpellTask = FGameXXKHeroSpellTaskRuntime();
 		}
 		if (bCompletedSorcererPartnerTask)
@@ -15221,6 +15619,11 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 		&& Offered->OwnerUnitId == HeroTask.StarterOwnerUnitId
 		&& HeroTask.LockedHeroCardIds.Contains(Offered->CardId)
 		&& !HeroTask.CompletedHeroCardIds.Contains(Offered->CardId);
+	const bool bValidLegacyHeroCandidate = HeroTask.bActive
+		&& InOutRuntime.Deck.PendingChoice.bLegacyHeroTaskSearch
+		&& InOutRuntime.AutomaticResolutionQueue.bActive
+		&& Offered->OwnerUnitId == HeroTask.StarterOwnerUnitId
+		&& InOutRuntime.EquippedHeroCardIds.Contains(Offered->CardId);
 	const FGameXXKTaskNpcSpellTaskRuntime* TaskNpcTask = InOutRuntime.TaskNpcSpellTasks.FindByPredicate(
 		[Offered](const FGameXXKTaskNpcSpellTaskRuntime& Candidate)
 		{
@@ -15238,7 +15641,7 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 				&& Candidate.LockedCardIds.Contains(Offered->CardId)
 				&& !Candidate.CompletedCardIds.Contains(Offered->CardId);
 		});
-	if (!bValidHeroTaskCandidate && !TaskNpcTask && !SorcererTask)
+	if (!bValidHeroTaskCandidate && !bValidLegacyHeroCandidate && !TaskNpcTask && !SorcererTask)
 	{
 		return SetFailure(OutError, TEXT("The selected card no longer belongs to an active unfinished spell task."));
 	}

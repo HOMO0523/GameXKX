@@ -2,6 +2,7 @@
 
 #include "GameXXKCardRules.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardQualityRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
@@ -1815,6 +1816,209 @@ namespace
 				: EGameXXKScreen::Town;
 		}
 	}
+
+	bool MigrateLegacyHeroTimedModifiers(FGameXXKRuntimeState& InOutState, FString& OutError)
+	{
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			return true;
+		}
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		const bool bHasLegacyTiming = Battle.Modifiers.ContainsByPredicate([](const FGameXXKCardBattleModifierRuntime& Modifier)
+		{
+			return (Modifier.SourceCardSnapshot.CardId == TEXT("Hero.Formation.LianYingBuShi")
+					&& Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard)
+				|| (Modifier.SourceCardSnapshot.CardId == TEXT("Hero.Mage.GuiXuTongXuan")
+					&& Modifier.Definition.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRound);
+		});
+		if (!bHasLegacyTiming)
+		{
+			return true;
+		}
+		// Validate the old anchors and recipients before replacing their obsolete scope.
+		if (!GameXXKCardRules::ValidateCardBattleRuntime(Battle, &OutError))
+		{
+			return false;
+		}
+		for (FGameXXKCardBattleModifierRuntime& Modifier : Battle.Modifiers)
+		{
+			if (Modifier.SourceCardSnapshot.CardId == TEXT("Hero.Formation.LianYingBuShi")
+				&& Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard
+				&& Modifier.Definition.EffectType == EGameXXKCardEffectType::TriggerTerrainBenefit)
+			{
+				const FGameXXKCardDefinition* Card = FGameXXKCardCatalog::FindCardDefinition(Modifier.SourceCardSnapshot.CardId);
+				if (!Card)
+				{
+					OutError = TEXT("A legacy terrain modifier lost its Hero card definition.");
+					return false;
+				}
+				const FGameXXKCardDefinition Effective = FGameXXKCardQualityRules::BuildEffectiveDefinition(*Card, Modifier.SourceCardSnapshot.Quality);
+				const FGameXXKCardEffect* CountOverride = Effective.Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+				{
+					return Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier
+						&& Effect.Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit;
+				});
+				if (!CountOverride)
+				{
+					OutError = TEXT("A legacy terrain modifier has no current count-override rule.");
+					return false;
+				}
+				Modifier.Definition = CountOverride->Modifier;
+				Modifier.OriginalSelectedTargetUnitId = NAME_None;
+				Modifier.RecipientUnitIds.Reset();
+			}
+			else if (Modifier.SourceCardSnapshot.CardId == TEXT("Hero.Mage.GuiXuTongXuan")
+				&& Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
+				&& Modifier.Definition.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
+				&& Modifier.Definition.Target == EGameXXKCardEffectTarget::PlayedCard
+				&& Modifier.Definition.RequiredTriggeredRole == EGameXXKCharacterRole::Hero
+				&& Modifier.Definition.RequiredTriggeredOwnerId == TEXT("Hero")
+				&& Modifier.Definition.Magnitude == -1
+				&& Modifier.Definition.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRound)
+			{
+				Modifier.Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
+				Modifier.Definition.RemainingTriggers = 1;
+			}
+		}
+		return true;
+	}
+
+	bool MigrateLegacyHeroSpellTask(FGameXXKRuntimeState& InOutState, FString& OutError)
+	{
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		FGameXXKHeroSpellTaskRuntime& Task = Battle.HeroSpellTask;
+		if (!InOutState.CardRun.bHasActiveCardBattle || !Task.bActive || Task.LockedHeroCardIds.Num() != 8)
+		{
+			return true;
+		}
+		if (!GameXXKCardRules::ValidateDeckState(Battle.Deck, &OutError))
+		{
+			return false;
+		}
+		if (Task.LockedHeroCardIds != Battle.EquippedHeroCardIds
+			|| Task.CompletedHeroCardIds.Num() != Task.FirstPlayOrder.Num()
+			|| Task.CompletedHeroCardIds.Num() > Task.LockedHeroCardIds.Num())
+		{
+			OutError = TEXT("A legacy Hero spell task has inconsistent locked cards or first-play progress.");
+			return false;
+		}
+
+		TArray<FName> RequiredMageIds;
+		for (const FName CardId : Battle.EquippedHeroCardIds)
+		{
+			const FGameXXKCardDefinition* Card = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (Card && Card->Owner == EGameXXKCardOwner::Hero
+				&& Card->LinkedRole == EGameXXKCharacterRole::Sorcerer
+				&& Card->SpellTaskReward != EGameXXKHeroSpellTaskReward::None)
+			{
+				RequiredMageIds.Add(CardId);
+			}
+		}
+		if (RequiredMageIds.Num() != 4)
+		{
+			OutError = TEXT("A legacy Hero spell task cannot be converted without four equipped Mage cards; the source save is preserved.");
+			return false;
+		}
+
+		TSet<FName> SeenCompleted;
+		TArray<FName> CompletedMageIds;
+		TArray<FGameXXKResolvedCardSnapshot> MageFirstPlayOrder;
+		for (int32 Index = 0; Index < Task.CompletedHeroCardIds.Num(); ++Index)
+		{
+			const FName CardId = Task.CompletedHeroCardIds[Index];
+			const FGameXXKResolvedCardSnapshot& Snapshot = Task.FirstPlayOrder[Index];
+			if (!GameXXKCardRules::ValidateCardSnapshot(Snapshot, Battle.Units, &OutError))
+			{
+				return false;
+			}
+			if (!Task.LockedHeroCardIds.Contains(CardId) || SeenCompleted.Contains(CardId) || Snapshot.CardId != CardId)
+			{
+				OutError = TEXT("A legacy Hero spell task contains duplicate, unlocked, or mismatched first plays.");
+				return false;
+			}
+			SeenCompleted.Add(CardId);
+			if (RequiredMageIds.Contains(CardId))
+			{
+				CompletedMageIds.Add(CardId);
+				MageFirstPlayOrder.Add(Snapshot);
+			}
+		}
+
+		FGameXXKAutomaticResolutionQueue& Queue = Battle.AutomaticResolutionQueue;
+		const bool bMigratingReplay = Queue.bActive && Queue.Origin == EGameXXKCardResolutionOrigin::MageTaskReplay;
+		int32 MigratedCursor = 0;
+		if (bMigratingReplay)
+		{
+			if (Task.CompletedHeroCardIds.Num() != 8 || Queue.PendingCards.Num() != Task.FirstPlayOrder.Num()
+				|| Queue.NextCardIndex < 0 || Queue.NextCardIndex > Queue.PendingCards.Num()
+				|| Queue.PendingReward != Task.StarterReward || Queue.RewardOwnerUnitId != Task.StarterOwnerUnitId)
+			{
+				OutError = TEXT("A legacy Hero replay queue does not match its completed task or cursor.");
+				return false;
+			}
+			for (int32 Index = 0; Index < Queue.PendingCards.Num(); ++Index)
+			{
+				if (!FGameXXKResolvedCardSnapshot::StaticStruct()->CompareScriptStruct(
+					&Queue.PendingCards[Index], &Task.FirstPlayOrder[Index], PPF_None))
+				{
+					OutError = TEXT("A legacy Hero replay queue changed its saved first-play snapshots.");
+					return false;
+				}
+				if (Index < Queue.NextCardIndex && RequiredMageIds.Contains(Queue.PendingCards[Index].CardId))
+				{
+					++MigratedCursor;
+				}
+			}
+		}
+
+		if (Battle.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+		{
+			for (const FGameXXKCardInstance& Card : Battle.Deck.PendingChoice.Candidates)
+			{
+				if (Card.OwnerUnitId == Task.StarterOwnerUnitId
+					&& (!Task.LockedHeroCardIds.Contains(Card.CardId) || Task.CompletedHeroCardIds.Contains(Card.CardId)))
+				{
+					OutError = TEXT("A legacy Hero search offers a card outside its unfinished task.");
+					return false;
+				}
+			}
+		}
+		// v33 and early v34 used all eight equipped Hero cards as task pieces.
+		// Convert only that recognizable payload; never execute a card or reward on load.
+		Task.LockedHeroCardIds = MoveTemp(RequiredMageIds);
+		Task.CompletedHeroCardIds = MoveTemp(CompletedMageIds);
+		Task.FirstPlayOrder = MoveTemp(MageFirstPlayOrder);
+		if (bMigratingReplay)
+		{
+			Queue.PendingCards = Task.FirstPlayOrder;
+			Queue.NextCardIndex = MigratedCursor;
+		}
+		FGameXXKPendingCardChoice& Choice = Battle.Deck.PendingChoice;
+		if (Choice.Kind == EGameXXKCardPendingChoiceKind::HeroTaskSearchChooseToHand)
+		{
+			const TArray<FGameXXKCardInstance> LegacyCandidates = Choice.Candidates;
+			Choice.Candidates.RemoveAll([&Task](const FGameXXKCardInstance& Card)
+			{
+				return Card.OwnerUnitId == Task.StarterOwnerUnitId
+					&& (!Task.LockedHeroCardIds.Contains(Card.CardId) || Task.CompletedHeroCardIds.Contains(Card.CardId));
+			});
+			if (Choice.Candidates.IsEmpty())
+			{
+				if (Queue.bActive)
+				{
+					// Keep the already-earned choice as the explicit player action that
+					// releases this saved replay. Loading must not execute the queue.
+					Choice.Candidates = LegacyCandidates;
+					Choice.bLegacyHeroTaskSearch = true;
+				}
+				else
+				{
+					ResetPendingCardChoice(Battle.Deck);
+				}
+			}
+		}
+		return true;
+	}
 }
 
 bool FGameXXKSaveMigration::MigrateToCurrent(
@@ -1826,6 +2030,14 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	OutReport = FGameXXKSaveMigrationReport();
 	OutReport.SourceVersion = Source.SaveVersion;
 	OutReport.TargetVersion = CurrentSaveVersion;
+	if (Source.RuntimeState.CardRun.bHasActiveCardBattle
+		&& Source.RuntimeState.CardRun.ActiveBattle.HeroSpellTask.bActive
+		&& Source.RuntimeState.CardRun.ActiveBattle.HeroSpellTask.LockedHeroCardIds.Num() == 8)
+	{
+		UE_LOG(LogTemp, Log, TEXT("[TDD] HeroTaskResumeLegacySource: actual=%d expected=8 sourceVersion=%d"),
+			Source.RuntimeState.CardRun.ActiveBattle.HeroSpellTask.LockedHeroCardIds.Num(),
+			Source.SaveVersion);
+	}
 	if (Source.SaveVersion < 0 || Source.SaveVersion > CurrentSaveVersion)
 	{
 		Fail(OutReport, TEXT("Unsupported save version."));
@@ -1853,7 +2065,9 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			Fail(OutReport, ValidationError);
 			return false;
 		}
-		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
+		if (!MigrateLegacyHeroSpellTask(Candidate.RuntimeState, ValidationError)
+			|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, ValidationError)
+			|| !ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -1895,7 +2109,9 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			Fail(OutReport, ValidationError);
 			return false;
 		}
-		if (!ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
+		if (!MigrateLegacyHeroSpellTask(Candidate.RuntimeState, ValidationError)
+			|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, ValidationError)
+			|| !ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
 		{
 			Fail(OutReport, ValidationError);
 			return false;
@@ -2120,6 +2336,8 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, MigrationError)
 		|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, MigrationError)
 		|| !MigrateRetiredNpcEncounter(Candidate.RuntimeState, MigrationError)
+		|| !MigrateLegacyHeroSpellTask(Candidate.RuntimeState, MigrationError)
+		|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, MigrationError)
 		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);

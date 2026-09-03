@@ -456,20 +456,26 @@ namespace
 		}
 
 		TArray<FName> RebuiltBirthCards;
+		TArray<FName> RebuiltFullCards;
 		FName PrimaryArchetypeId;
 		FString RebuildError;
-		if (!FGameXXKCompanionRules::BuildPersonalCardPool(
+		if (!FGameXXKCompanionRules::BuildFullProfessionCardPool(
+			Companion->Role,
+			Companion->CardSeed,
+			RebuiltFullCards,
+			&RebuildError)
+			|| RebuiltFullCards != Companion->PersonalCardIds
+			|| !FGameXXKCompanionRules::BuildPersonalCardPool(
 			Companion->Role,
 			Companion->CardSeed,
 			RebuiltBirthCards,
 			&RebuildError,
-			&PrimaryArchetypeId)
-			|| RebuiltBirthCards != Companion->PersonalCardIds)
+			&PrimaryArchetypeId))
 		{
 			if (OutError)
 			{
 				*OutError = RebuildError.IsEmpty()
-					? TEXT("The active companion birth-card identity does not match Role + CardSeed.")
+					? TEXT("The active companion full card-pool identity does not match Role + CardSeed.")
 					: RebuildError;
 			}
 			return false;

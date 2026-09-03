@@ -125,6 +125,12 @@ namespace GameXXKCardRules
 	/** Validates a persisted card-battle state before it is projected into UI, scene, or save-game code. */
 	GAMEXXK_API bool ValidateCardBattleRuntime(const FGameXXKCardBattleRuntime& Runtime, FString* OutError = nullptr);
 
+	/** Uses the same saved-snapshot contract as battle validation before migrations filter retired task pieces. */
+	GAMEXXK_API bool ValidateCardSnapshot(
+		const FGameXXKResolvedCardSnapshot& Snapshot,
+		const TArray<FGameXXKCardCombatUnit>& Units,
+		FString* OutError = nullptr);
+
 	/** Accumulates enemy-phase shared-energy denial that is consumed by the next player-round refill. */
 	GAMEXXK_API bool QueueNextPlayerRoundEnergyPenalty(
 		FGameXXKCardBattleRuntime& InOutRuntime,

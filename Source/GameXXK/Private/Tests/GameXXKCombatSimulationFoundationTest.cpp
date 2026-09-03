@@ -70,15 +70,15 @@ namespace
 			{
 				continue;
 			}
-			TArray<FName> RebuiltBirthCards;
+			TArray<FName> RebuiltFullCards;
 			FString RebuildError;
-			if (FGameXXKCompanionRules::BuildPersonalCardPool(
+			if (FGameXXKCompanionRules::BuildFullProfessionCardPool(
 				Companion.Role,
 				Companion.CardSeed,
-				RebuiltBirthCards,
+				RebuiltFullCards,
 				&RebuildError))
 			{
-				Companion.PersonalCardIds = MoveTemp(RebuiltBirthCards);
+				Companion.PersonalCardIds = MoveTemp(RebuiltFullCards);
 			}
 			break;
 		}

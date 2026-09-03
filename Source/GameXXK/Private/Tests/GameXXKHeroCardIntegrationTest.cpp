@@ -164,17 +164,26 @@ namespace GameXXKHeroCardIntegrationTest
 		return Snapshot;
 	}
 
-	TArray<FGameXXKResolvedCardSnapshot> MakeMageQueue(const FName LastCardId)
+	TArray<FName> MageEquippedEight()
+	{
+		return {
+			TEXT("Hero.Mage.YanXuLiaoYuan"),
+			TEXT("Hero.Mage.HanXuNingChuan"),
+			TEXT("Hero.Mage.LeiXuYinTing"),
+			TEXT("Hero.Mage.GuiXuTongXuan"),
+			TEXT("Hero.Generic.QingFengYiShi"),
+			TEXT("Hero.Generic.HeYuZhan"),
+			TEXT("Hero.Generic.SuiYanJi"),
+			TEXT("Hero.Generic.PoYunYiShan")};
+	}
+
+	TArray<FGameXXKResolvedCardSnapshot> MakeMageQueue()
 	{
 		return {
 			MakeSnapshot(TEXT("Hero.Mage.YanXuLiaoYuan")),
-			MakeSnapshot(TEXT("Hero.Generic.QingFengYiShi"), {EnemyId}),
-			MakeSnapshot(TEXT("Hero.Generic.HeYuZhan"), {EnemyId}),
-			MakeSnapshot(TEXT("Hero.Generic.SuiYanJi"), {EnemyId}),
-			MakeSnapshot(TEXT("Hero.Generic.PoYunYiShan"), {EnemyId}),
-			MakeSnapshot(TEXT("Hero.Blade.XueLuXiangCheng"), {EnemyId}),
-			MakeSnapshot(TEXT("Hero.Hunter.LieYuLianShi"), {EnemyId}),
-			MakeSnapshot(LastCardId, {EnemyId})};
+			MakeSnapshot(TEXT("Hero.Mage.HanXuNingChuan")),
+			MakeSnapshot(TEXT("Hero.Mage.LeiXuYinTing")),
+			MakeSnapshot(TEXT("Hero.Mage.GuiXuTongXuan"))};
 	}
 
 	void SetMageQueue(
@@ -187,7 +196,7 @@ namespace GameXXKHeroCardIntegrationTest
 		{
 			LockedIds.Add(Snapshot.CardId);
 		}
-		Runtime.EquippedHeroCardIds = LockedIds;
+		Runtime.EquippedHeroCardIds = MageEquippedEight();
 		Runtime.HeroSpellTask.bActive = true;
 		Runtime.HeroSpellTask.LockedHeroCardIds = LockedIds;
 		Runtime.HeroSpellTask.CompletedHeroCardIds = LockedIds;
@@ -417,7 +426,7 @@ bool FGameXXKBladeReplayHunterIntegrationTest::RunTest(const FString& Parameters
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageFormationListenerIntegrationTest,
-	"GameXXK.Data.HeroCards.Integration.MageReplayOfFormationDoesNotConsumeTerrainListener",
+	"GameXXK.Data.HeroCards.Integration.AutomaticTerrainBenefitConsumesNextCountOverride",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageFormationListenerIntegrationTest::RunTest(const FString& Parameters)
@@ -429,43 +438,43 @@ bool FGameXXKMageFormationListenerIntegrationTest::RunTest(const FString& Parame
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Listener")}, 61002)) return false;
 	FGameXXKCardPlayResult Result;
-	if (!Resolve(*this, Runtime, TEXT("Listener"), EnemyId, Result, TEXT("terrain listener source"))) return false;
+	if (!Resolve(*this, Runtime, TEXT("Listener"), NAME_None, Result, TEXT("terrain listener source"))) return false;
 	const FGameXXKCardBattleModifierRuntime* Listener = Runtime.Modifiers.FindByPredicate([](const FGameXXKCardBattleModifierRuntime& Modifier)
 	{
-		return Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard;
+		return Modifier.SourceCardSnapshot.CardId == FName(TEXT("Hero.Formation.LianYingBuShi"));
 	});
-	TestNotNull(TEXT("the Formation card registers its three-use active listener"), Listener);
+	TestNotNull(TEXT("the Formation card registers its one-use terrain override"), Listener);
 	if (!Listener) return false;
 	const FName ListenerId = Listener->ModifierId;
-	const int32 TriggersBefore = Listener->Definition.RemainingTriggers;
-	const TArray<FGameXXKResolvedCardSnapshot> Snapshots = MakeMageQueue(TEXT("Hero.Formation.GuanShiLuoZi"));
-	SetMageQueue(Runtime, Snapshots, 7);
+	TestEqual(TEXT("the next actual terrain benefit has one pending use"), Listener->Definition.RemainingTriggers, 1);
+	Runtime.AutomaticResolutionQueue.bActive = true;
+	Runtime.AutomaticResolutionQueue.Origin = EGameXXKCardResolutionOrigin::AutomaticReplay;
+	Runtime.AutomaticResolutionQueue.PendingCards = {
+		MakeSnapshot(TEXT("Hero.Formation.GuanShiLuoZi"), {EnemyId})};
+	Runtime.AutomaticResolutionQueue.NextCardIndex = 0;
 	FString Error;
-	TestTrue(FString::Printf(TEXT("the completed Mage queue fixture validates: %s"), *Error), GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error));
+	TestTrue(FString::Printf(TEXT("the automatic replay fixture validates: %s"), *Error), GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error));
 	TArray<FGameXXKCardPlayResult> Results;
-	TestTrue(FString::Printf(TEXT("Mage replays the Formation card: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
+	TestTrue(FString::Printf(TEXT("the queue replays the Formation card: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
 	const FGameXXKCardBattleModifierRuntime* ListenerAfter = Runtime.Modifiers.FindByPredicate([ListenerId](const FGameXXKCardBattleModifierRuntime& Modifier)
 	{
 		return Modifier.ModifierId == ListenerId;
 	});
-	TestNotNull(TEXT("the active-only terrain listener survives the Mage replay"), ListenerAfter);
-	if (ListenerAfter)
-	{
-		TestEqual(TEXT("the Mage replay consumes no terrain-listener trigger"), ListenerAfter->Definition.RemainingTriggers, TriggersBefore);
-	}
+	TestNull(TEXT("an actual automatically replayed terrain benefit consumes the override"), ListenerAfter);
+	TestEqual(TEXT("the single replayed Plain benefit becomes exactly two for Burn4"), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), 4);
 	int32 TerrainListenerPackets = 0;
 	for (const FGameXXKCardPlayResult& QueueResult : Results)
 	{
 		TerrainListenerPackets += CountDamage(QueueResult.DamageResults, EGameXXKCardResolutionOrigin::TerrainListener);
 	}
-	TestEqual(TEXT("the automatic Formation replay never opens the active terrain listener"), TerrainListenerPackets, 0);
-	TestEqual(TEXT("the Mage replay does not increment the active-card counter"), Runtime.ActiveCardsPlayedThisRound, 1);
+	TestEqual(TEXT("the count override does not insert a separate listener card"), TerrainListenerPackets, 0);
+	TestEqual(TEXT("the replay does not increment the active-card counter"), Runtime.ActiveCardsPlayedThisRound, 1);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerMageQueueIntegrationTest,
-	"GameXXK.Data.HeroCards.Integration.HealerToxicExplosionCanFinishMageFireQueueWithoutPartialCommit",
+	"GameXXK.Data.HeroCards.Integration.MageFireRewardCanFinishQueueWithoutPartialCommit",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerMageQueueIntegrationTest::RunTest(const FString& Parameters)
@@ -473,23 +482,20 @@ bool FGameXXKHealerMageQueueIntegrationTest::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardIntegrationTest;
 	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Hero.Generic.NingShenTuNa"), 0)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {}, 61003, 20, 100, 10)) return false;
-	const TArray<FGameXXKResolvedCardSnapshot> Snapshots = MakeMageQueue(TEXT("Hero.Healer.DuHuoTongLu"));
-	SetMageQueue(Runtime, Snapshots, 7);
+	if (!BuildRuntime(*this, Runtime, Cards, {}, 61003, 7, 100, 10)) return false;
+	const TArray<FGameXXKResolvedCardSnapshot> Snapshots = MakeMageQueue();
+	SetMageQueue(Runtime, Snapshots, 4);
 	FString Error;
 	TestTrue(FString::Printf(TEXT("the lethal Mage queue fixture validates: %s"), *Error), GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &Error));
 	TArray<FGameXXKCardPlayResult> Results;
-	TestTrue(FString::Printf(TEXT("the lethal Toxic Explosion queue resolves atomically: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	int32 PoisonExplosions = 0;
+	TestTrue(FString::Printf(TEXT("the lethal Fire reward queue resolves atomically: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
 	int32 BurnExplosions = 0;
 	for (const FGameXXKCardPlayResult& QueueResult : Results)
 	{
-		PoisonExplosions += CountCause(QueueResult.DamageResults, EGameXXKCardDamageCause::ToxicExplosionPoison);
-		BurnExplosions += CountCause(QueueResult.DamageResults, EGameXXKCardDamageCause::ToxicExplosionBurn);
+		BurnExplosions += CountCause(QueueResult.DamageResults, EGameXXKCardDamageCause::Burn);
 	}
-	TestEqual(TEXT("the queued Healer base commits its Poison explosion"), PoisonExplosions, 1);
-	TestEqual(TEXT("the queued Healer base commits its Burn explosion even when it is terminal"), BurnExplosions, 1);
-	TestEqual(TEXT("the Toxic Explosion defeats the final enemy"), FindUnit(Runtime, EnemyId)->HP, 0);
+	TestEqual(TEXT("the Fire reward commits its one Burn trigger even when terminal"), BurnExplosions, 1);
+	TestEqual(TEXT("the Fire reservoir trigger defeats the final enemy"), FindUnit(Runtime, EnemyId)->HP, 0);
 	TestFalse(TEXT("the completed Mage queue leaves no partial continuation"), Runtime.AutomaticResolutionQueue.bActive);
 	TestFalse(TEXT("the completed Mage task resets after its reward boundary"), Runtime.HeroSpellTask.bActive);
 	TestEqual(TEXT("the terminal queue gives the player victory"), Runtime.Phase, EGameXXKCardBattlePhase::Victory);
@@ -721,11 +727,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMageSearchReloadIntegrationTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroCardIntegrationTest;
-	const TArray<FName> Equipped = {
-		TEXT("Hero.Mage.YanXuLiaoYuan"), TEXT("Hero.Generic.QingFengYiShi"),
-		TEXT("Hero.Generic.HeYuZhan"), TEXT("Hero.Generic.SuiYanJi"),
-		TEXT("Hero.Generic.PoYunYiShan"), TEXT("Hero.Blade.XueLuXiangCheng"),
-		TEXT("Hero.Hunter.LieYuLianShi"), TEXT("Hero.Healer.DuHuoTongLu")};
+	const TArray<FName> Equipped = MageEquippedEight();
 	TArray<FGameXXKCardInstance> Cards;
 	for (int32 Index = 0; Index < Equipped.Num(); ++Index)
 	{
@@ -735,7 +737,11 @@ bool FGameXXKMageSearchReloadIntegrationTest::RunTest(const FString& Parameters)
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Starter")}, 61007)) return false;
 	Runtime.EquippedHeroCardIds = Equipped;
 	Runtime.HeroSpellTask.bActive = true;
-	Runtime.HeroSpellTask.LockedHeroCardIds = Equipped;
+	Runtime.HeroSpellTask.LockedHeroCardIds = {
+		TEXT("Hero.Mage.YanXuLiaoYuan"),
+		TEXT("Hero.Mage.HanXuNingChuan"),
+		TEXT("Hero.Mage.LeiXuYinTing"),
+		TEXT("Hero.Mage.GuiXuTongXuan")};
 	Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Fire;
 	Runtime.HeroSpellTask.StarterOwnerUnitId = HeroId;
 	FGameXXKCardPlayResult Result;
@@ -827,13 +833,20 @@ bool FGameXXKFocusedHeroSimulationIntegrationTest::RunTest(const FString& Parame
 		{
 			TArray<FName> RebuiltBirthCards;
 			FString RebuildError;
-			if (FGameXXKCompanionRules::BuildPersonalCardPool(
+			if (FGameXXKCompanionRules::BuildFullProfessionCardPool(
 				ActiveCompanion->Role,
 				ActiveCompanion->CardSeed,
 				RebuiltBirthCards,
 				&RebuildError))
 			{
 				ActiveCompanion->PersonalCardIds = MoveTemp(RebuiltBirthCards);
+				if (!FGameXXKCompanionRules::RefreshUnlockedPersonalCards(*ActiveCompanion, &RebuildError))
+				{
+					AddError(FString::Printf(TEXT("seed %d could not refresh its companion unlock frontier: %s"), Seed, *RebuildError));
+					continue;
+				}
+				ActiveCompanion->SelectedCardIds = ActiveCompanion->UnlockedPersonalCardIds;
+				ActiveCompanion->SelectedCardIds.SetNum(5, EAllowShrinking::No);
 			}
 		}
 		State.PlayerLevel = 20;

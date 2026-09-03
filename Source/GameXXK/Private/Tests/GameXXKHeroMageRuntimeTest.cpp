@@ -17,26 +17,42 @@ namespace GameXXKHeroMageRuntimeTest
 	{
 		return {
 			TEXT("Hero.Mage.HanXuNingChuan"),
+			TEXT("Hero.Mage.YanXuLiaoYuan"),
+			TEXT("Hero.Mage.LeiXuYinTing"),
+			TEXT("Hero.Mage.GuiXuTongXuan"),
 			TEXT("Hero.Generic.QingFengYiShi"),
 			TEXT("Hero.Generic.HeYuZhan"),
 			TEXT("Hero.Generic.SuiYanJi"),
-			TEXT("Hero.Generic.PoYunYiShan"),
-			TEXT("Hero.Blade.XueLuXiangCheng"),
-			TEXT("Hero.Hunter.LieYuLianShi"),
-			TEXT("Hero.Hunter.CuiDuChuanXin")};
+			TEXT("Hero.Generic.PoYunYiShan")};
 	}
 
 	TArray<FName> SearchEight()
 	{
 		return {
 			TEXT("Hero.Mage.YanXuLiaoYuan"),
+			TEXT("Hero.Mage.HanXuNingChuan"),
+			TEXT("Hero.Mage.LeiXuYinTing"),
+			TEXT("Hero.Mage.GuiXuTongXuan"),
 			TEXT("Hero.Generic.QingFengYiShi"),
 			TEXT("Hero.Generic.HeYuZhan"),
 			TEXT("Hero.Generic.SuiYanJi"),
-			TEXT("Hero.Generic.GuiYuanShu"),
-			TEXT("Hero.Generic.HengJianShouShi"),
-			TEXT("Hero.Generic.NingShenTuNa"),
-			TEXT("Hero.Guard.TieBiTongShou")};
+			TEXT("Hero.Generic.GuiYuanShu")};
+	}
+
+	TArray<FName> MageCardsInEquippedOrder(const TArray<FName>& EquippedIds)
+	{
+		TArray<FName> Result;
+		for (const FName CardId : EquippedIds)
+		{
+			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+			if (Definition
+				&& Definition->Owner == EGameXXKCardOwner::Hero
+				&& Definition->LinkedRole == EGameXXKCharacterRole::Sorcerer)
+			{
+				Result.Add(CardId);
+			}
+		}
+		return Result;
 	}
 
 	FGameXXKCardCombatUnit MakeUnit(
@@ -192,7 +208,7 @@ namespace GameXXKHeroMageRuntimeTest
 			|| CardId == TEXT("Hero.Mage.LeiXuYinTing")
 			|| CardId == TEXT("Hero.Mage.GuiXuTongXuan")
 			|| CardId == TEXT("Hero.Generic.NingShenTuNa")
-			|| CardId == TEXT("Route.General.ShouShiHuiYuan"))
+			|| CardId == TEXT("Route.Boss.XiongPiPiJia"))
 		{
 			return NAME_None;
 		}
@@ -236,7 +252,7 @@ namespace GameXXKHeroMageRuntimeTest
 	TArray<FGameXXKResolvedCardSnapshot> CanonicalSnapshots()
 	{
 		TArray<FGameXXKResolvedCardSnapshot> Snapshots;
-		for (const FName CardId : CanonicalEight())
+		for (const FName CardId : MageCardsInEquippedOrder(CanonicalEight()))
 		{
 			Snapshots.Add(MakeSnapshot(CardId, HeroId, TargetForCard(CardId).IsNone() ? TArray<FName>() : TArray<FName>{TargetForCard(CardId)}));
 		}
@@ -245,12 +261,12 @@ namespace GameXXKHeroMageRuntimeTest
 
 	void SetActiveTask(
 		FGameXXKCardBattleRuntime& Runtime,
-		const TArray<FName>& LockedIds,
+		const TArray<FName>& EquippedIds,
 		const EGameXXKHeroSpellTaskReward Reward = EGameXXKHeroSpellTaskReward::Fire)
 	{
-		Runtime.EquippedHeroCardIds = LockedIds;
+		Runtime.EquippedHeroCardIds = EquippedIds;
 		Runtime.HeroSpellTask.bActive = true;
-		Runtime.HeroSpellTask.LockedHeroCardIds = LockedIds;
+		Runtime.HeroSpellTask.LockedHeroCardIds = MageCardsInEquippedOrder(EquippedIds);
 		Runtime.HeroSpellTask.StarterReward = Reward;
 		Runtime.HeroSpellTask.StarterOwnerUnitId = HeroId;
 	}
@@ -258,7 +274,7 @@ namespace GameXXKHeroMageRuntimeTest
 	void SetCompletedTaskQueue(
 		FGameXXKCardBattleRuntime& Runtime,
 		const EGameXXKHeroSpellTaskReward Reward,
-		const int32 NextCardIndex = 8)
+		const int32 NextCardIndex = 4)
 	{
 		FName StarterCardId = NAME_None;
 		switch (Reward)
@@ -280,20 +296,21 @@ namespace GameXXKHeroMageRuntimeTest
 			break;
 		}
 		TArray<FGameXXKResolvedCardSnapshot> Snapshots = {
-			MakeSnapshot(StarterCardId, HeroId, TargetForCard(StarterCardId).IsNone() ? TArray<FName>() : TArray<FName>{TargetForCard(StarterCardId)}),
-			MakeSnapshot(TEXT("Hero.Generic.QingFengYiShi"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Generic.HeYuZhan"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Generic.SuiYanJi"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Generic.PoYunYiShan"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Blade.XueLuXiangCheng"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Hunter.LieYuLianShi"), HeroId, {EnemyAId}),
-			MakeSnapshot(TEXT("Hero.Hunter.CuiDuChuanXin"), HeroId, {EnemyAId})};
+			MakeSnapshot(StarterCardId, HeroId, TargetForCard(StarterCardId).IsNone() ? TArray<FName>() : TArray<FName>{TargetForCard(StarterCardId)})};
+		for (const FName CardId : MageCardsInEquippedOrder(CanonicalEight()))
+		{
+			if (CardId != StarterCardId)
+			{
+				Snapshots.Add(MakeSnapshot(CardId, HeroId, TargetForCard(CardId).IsNone() ? TArray<FName>() : TArray<FName>{TargetForCard(CardId)}));
+			}
+		}
 		TArray<FName> LockedIds;
 		for (const FGameXXKResolvedCardSnapshot& Snapshot : Snapshots)
 		{
 			LockedIds.Add(Snapshot.CardId);
 		}
-		SetActiveTask(Runtime, LockedIds, Reward);
+		const TArray<FName> EquippedIds = CanonicalEight();
+		SetActiveTask(Runtime, EquippedIds, Reward);
 		Runtime.HeroSpellTask.CompletedHeroCardIds = LockedIds;
 		Runtime.HeroSpellTask.FirstPlayOrder = Snapshots;
 		Runtime.AutomaticResolutionQueue.bActive = true;
@@ -320,24 +337,27 @@ namespace GameXXKHeroMageRuntimeTest
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageTaskLockTest,
-	"GameXXK.Data.HeroCards.Mage.FirstActiveHeroMageCardLocksExactlyEightEquippedHeroIds",
+	"GameXXK.Data.HeroCards.Mage.FirstActiveHeroMageCardLocksExactlyFourEquippedMageIds",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageTaskLockTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
 	TArray<FName> Equipped = SearchEight();
-	Equipped[0] = TEXT("Hero.Mage.GuiXuTongXuan");
+	const int32 UniversalIndex = Equipped.IndexOfByKey(FName(TEXT("Hero.Mage.GuiXuTongXuan")));
+	if (!TestTrue(TEXT("fixture contains the Universal starter"), UniversalIndex != INDEX_NONE)) return false;
+	Equipped.Swap(0, UniversalIndex);
 	TArray<FGameXXKCardInstance> Cards = MakeHeroCards(Equipped);
-	Cards.Add(MakeCard(TEXT("DrawA"), TEXT("Route.General.TuNaJue"), HeroId, 20));
-	Cards.Add(MakeCard(TEXT("DrawB"), TEXT("Route.General.QingShenQuShi"), HeroId, 21));
+	Cards.Add(MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 20));
+	Cards.Add(MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 21));
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("HeroCard.0")}, {}, Equipped, 56001)) return false;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HeroCard.0"), NAME_None, Result, TEXT("Universal task starter"))) return true;
 	TestTrue(TEXT("the first active Hero Mage card starts the task"), Runtime.HeroSpellTask.bActive);
-	TestEqual(TEXT("the task locks exactly eight IDs"), Runtime.HeroSpellTask.LockedHeroCardIds.Num(), 8);
-	TestEqual(TEXT("the exact equipped order is locked"), Runtime.HeroSpellTask.LockedHeroCardIds, Equipped);
+	const TArray<FName> ExpectedMageIds = MageCardsInEquippedOrder(Equipped);
+	TestEqual(TEXT("the task locks exactly four Mage IDs"), Runtime.HeroSpellTask.LockedHeroCardIds.Num(), 4);
+	TestEqual(TEXT("only the equipped Mage order is locked"), Runtime.HeroSpellTask.LockedHeroCardIds, ExpectedMageIds);
 	TestEqual(TEXT("the starter itself is completed before its search or choice"), Runtime.HeroSpellTask.CompletedHeroCardIds, TArray<FName>{Equipped[0]});
 	TestEqual(TEXT("the starter play snapshot is recorded"), Runtime.HeroSpellTask.FirstPlayOrder.Num(), 1);
 	TestEqual(TEXT("the starter reward is Universal"), Runtime.HeroSpellTask.StarterReward, EGameXXKHeroSpellTaskReward::Universal);
@@ -354,14 +374,18 @@ bool FGameXXKMageTaskOutsiderTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
 	const TArray<FName> Equipped = SearchEight();
-	const TArray<FGameXXKCardInstance> Cards = {
+	TArray<FGameXXKCardInstance> Cards = {
 		MakeCard(TEXT("Partner"), TEXT("Profession.Blade.FengHou"), AllyId, 1),
 		MakeCard(TEXT("NpcCard"), TEXT("Npc.TusiChief.ShiMenShouShi"), NpcId, 2),
-		MakeCard(TEXT("RouteCard"), TEXT("Route.General.ShouShiHuiYuan"), HeroId, 3),
+		MakeCard(TEXT("RouteCard"), TEXT("Route.Boss.XiongPiPiJia"), HeroId, 3),
 		MakeCard(TEXT("TemporaryHero"), TEXT("Hero.Generic.PoYunYiShan"), HeroId, 4)};
+	Cards[3].bTemporary = true;
+	Cards[3].EnergyCostOverride = 1;
+	Cards[3].ManaCostOverride = 3;
+	Cards[3].ExpireAfterPlayerRound = 1;
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Partner"), TEXT("NpcCard"), TEXT("RouteCard"), TEXT("TemporaryHero")}, {}, Equipped, 56002)) return false;
-	SetActiveTask(Runtime, Equipped);
+	SetActiveTask(Runtime, Equipped, EGameXXKHeroSpellTaskReward::Ice);
 	for (const FGameXXKCardInstance& Card : Cards)
 	{
 		FGameXXKCardPlayResult Result;
@@ -383,106 +407,99 @@ bool FGameXXKMageTaskDuplicateTest::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroMageRuntimeTest;
 	const TArray<FName> Equipped = SearchEight();
 	const TArray<FGameXXKCardInstance> Cards = {
-		MakeCard(TEXT("QingA"), TEXT("Hero.Generic.QingFengYiShi"), HeroId, 1),
-		MakeCard(TEXT("QingB"), TEXT("Hero.Generic.QingFengYiShi"), HeroId, 2)};
+		MakeCard(TEXT("MageA"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 1),
+		MakeCard(TEXT("MageB"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 2)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("QingA"), TEXT("QingB")}, {}, Equipped, 56003)) return false;
-	SetActiveTask(Runtime, Equipped);
-	for (const FName InstanceId : {FName(TEXT("QingA")), FName(TEXT("QingB"))})
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("MageA"), TEXT("MageB")}, {}, Equipped, 56003)) return false;
+	SetActiveTask(Runtime, Equipped, EGameXXKHeroSpellTaskReward::Ice);
+	for (const FName InstanceId : {FName(TEXT("MageA")), FName(TEXT("MageB"))})
 	{
 		FGameXXKCardPlayResult Result;
-		if (!Resolve(*this, Runtime, InstanceId, EnemyAId, Result, TEXT("duplicate equipped Hero ID"))) return true;
+		if (!Resolve(*this, Runtime, InstanceId, NAME_None, Result, TEXT("duplicate equipped Mage ID"))) return true;
 	}
 	TestEqual(TEXT("the repeated CardId completes only one slot"), Runtime.HeroSpellTask.CompletedHeroCardIds.Num(), 1);
 	TestEqual(TEXT("the first play order contains only one snapshot"), Runtime.HeroSpellTask.FirstPlayOrder.Num(), 1);
-	TestEqual(TEXT("the other seven equipped IDs remain unfinished"), Runtime.HeroSpellTask.LockedHeroCardIds.Num() - Runtime.HeroSpellTask.CompletedHeroCardIds.Num(), 7);
+	TestEqual(TEXT("the other three Mage IDs remain unfinished"), Runtime.HeroSpellTask.LockedHeroCardIds.Num() - Runtime.HeroSpellTask.CompletedHeroCardIds.Num(), 3);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageTaskFirstOrderTest,
-	"GameXXK.Data.HeroCards.Mage.AllEightFirstPlaysAreRecordedInOrderWithOwnerAndTarget",
+	"GameXXK.Data.HeroCards.Mage.AllFourMageFirstPlaysAreRecordedInOrder",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageTaskFirstOrderTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	TArray<FName> Equipped = SearchEight();
-	Equipped[0] = TEXT("Hero.Mage.HanXuNingChuan");
-	Equipped[7] = TEXT("Hero.Mage.GuiXuTongXuan");
+	const TArray<FName> Equipped = CanonicalEight();
 	TArray<FGameXXKCardInstance> Cards = MakeHeroCards(Equipped);
-	Cards.Add(MakeCard(TEXT("DrawA"), TEXT("Route.General.TuNaJue"), HeroId, 20));
-	Cards.Add(MakeCard(TEXT("DrawB"), TEXT("Route.General.QingShenQuShi"), HeroId, 21));
+	Cards.Add(MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 20));
+	Cards.Add(MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 21));
+	const TArray<FName> MageIds = MageCardsInEquippedOrder(Equipped);
 	TArray<FName> HandIds;
-	for (int32 Index = 0; Index < 8; ++Index)
+	for (int32 Index = 0; Index < MageIds.Num(); ++Index)
 	{
 		HandIds.Add(FName(*FString::Printf(TEXT("HeroCard.%d"), Index)));
 	}
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, HandIds, {}, Equipped, 56004)) return false;
-	for (int32 Index = 0; Index < 8; ++Index)
+	for (int32 Index = 0; Index < MageIds.Num(); ++Index)
 	{
 		FGameXXKCardPlayResult Result;
-		if (!Resolve(*this, Runtime, HandIds[Index], TargetForCard(Equipped[Index]), Result, TEXT("ordered equipped Hero play"))) return true;
+		if (!Resolve(*this, Runtime, HandIds[Index], NAME_None, Result, TEXT("ordered equipped Mage play"))) return true;
 	}
-	TestEqual(TEXT("the eighth base list pauses on its forced discard"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	TestEqual(TEXT("the fourth Mage base list pauses on its forced discard"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
 	TestTrue(TEXT("the completed task remains persisted while the choice is open"), Runtime.HeroSpellTask.bActive);
-	TestEqual(TEXT("all eight unique IDs are complete"), Runtime.HeroSpellTask.CompletedHeroCardIds, Equipped);
-	TestEqual(TEXT("all eight first plays are ordered"), Runtime.HeroSpellTask.FirstPlayOrder.Num(), 8);
+	TestEqual(TEXT("all four unique Mage IDs are complete"), Runtime.HeroSpellTask.CompletedHeroCardIds, MageIds);
+	TestEqual(TEXT("all four Mage first plays are ordered"), Runtime.HeroSpellTask.FirstPlayOrder.Num(), 4);
 	for (int32 Index = 0; Index < Runtime.HeroSpellTask.FirstPlayOrder.Num(); ++Index)
 	{
 		const FGameXXKResolvedCardSnapshot& Snapshot = Runtime.HeroSpellTask.FirstPlayOrder[Index];
 		TestEqual(FString::Printf(TEXT("snapshot %d retains CardId"), Index), Snapshot.CardId, Equipped[Index]);
 		TestEqual(FString::Printf(TEXT("snapshot %d retains owner"), Index), Snapshot.OwnerUnitId, HeroId);
-		const FName ExpectedTarget = TargetForCard(Equipped[Index]);
-		TestEqual(FString::Printf(TEXT("snapshot %d retains target count"), Index), Snapshot.OriginalTargetUnitIds.Num(), ExpectedTarget.IsNone() ? 0 : 1);
-		if (!ExpectedTarget.IsNone() && Snapshot.OriginalTargetUnitIds.Num() == 1)
-		{
-			TestEqual(FString::Printf(TEXT("snapshot %d retains stable target"), Index), Snapshot.OriginalTargetUnitIds[0], ExpectedTarget);
-		}
+		TestEqual(FString::Printf(TEXT("snapshot %d needs no manual target"), Index), Snapshot.OriginalTargetUnitIds.Num(), 0);
 	}
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageTaskReplayOrderTest,
-	"GameXXK.Data.HeroCards.Mage.TaskReplaysEightBaseEffectsInFirstPlayOrder",
+	"GameXXK.Data.HeroCards.Mage.TaskReplaysFourMageBaseEffectsInFirstPlayOrder",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageTaskReplayOrderTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FName> Equipped = CanonicalEight();
-	const TArray<FGameXXKCardInstance> Cards = MakeHeroCards(Equipped);
-	TArray<FName> HandIds;
-	for (int32 Index = 0; Index < Cards.Num(); ++Index)
-	{
-		HandIds.Add(Cards[Index].InstanceId);
-	}
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 0),
+		MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 1)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, HandIds, {}, Equipped, 56005)) return false;
-	FGameXXKCardPlayResult FinalResult;
-	for (int32 Index = 0; Index < Cards.Num(); ++Index)
-	{
-		FGameXXKCardPlayResult Result;
-		if (!Resolve(*this, Runtime, Cards[Index].InstanceId, TargetForCard(Cards[Index].CardId), Result, TEXT("eight-card Mage sequence"))) return true;
-		if (Index == Cards.Num() - 1)
-		{
-			FinalResult = MoveTemp(Result);
-		}
-	}
+	if (!BuildRuntime(*this, Runtime, Cards, {}, {}, {}, 56005)) return false;
+	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Ice, 0);
+	TArray<FGameXXKCardPlayResult> ReplayResults;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("four-card Mage replay reaches Gui Xu discard: %s"), *Error),
+		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, ReplayResults, &Error))) return false;
 
 	TArray<int32> ReplayDirectRequests;
-	for (const FGameXXKCardDamageResult& DamageResult : FinalResult.DamageResults)
+	for (const FGameXXKCardPlayResult& ReplayResult : ReplayResults)
 	{
-		if (DamageResult.ResolutionOrigin == EGameXXKCardResolutionOrigin::MageTaskReplay
-			&& DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack)
+		for (const FGameXXKCardDamageResult& DamageResult : ReplayResult.DamageResults)
 		{
-			ReplayDirectRequests.Add(DamageResult.BaseRequestedDamage);
+			if (DamageResult.ResolutionOrigin == EGameXXKCardResolutionOrigin::MageTaskReplay
+				&& DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack)
+			{
+				ReplayDirectRequests.Add(DamageResult.BaseRequestedDamage);
+			}
 		}
 	}
-	const TArray<int32> ExpectedRequests = {14, 16, 15, 16, 15, 14, 13};
-	TestEqual(TEXT("the seven attacking base cards replay in their first-play order"), ReplayDirectRequests, ExpectedRequests);
+	const TArray<int32> ExpectedRequests = {10, 10, 5, 5, 5, 5, 5, 5};
+	TestEqual(TEXT("Fire then Lightning damage stays in the four-card replay order"), ReplayDirectRequests, ExpectedRequests);
+	TestEqual(TEXT("Gui Xu replay pauses for its real discard"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	if (!TestTrue(TEXT("Gui Xu replay produced a discard candidate"), !Runtime.Deck.Hand.IsEmpty())) return false;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	if (!TestTrue(FString::Printf(TEXT("discard resumes the Ice reward: %s"), *Error),
+		GameXXKCardRules::SubmitForcedDiscard(Runtime, {Runtime.Deck.Hand[0].InstanceId}, &Error, &ResumedResults))) return false;
 	TestFalse(TEXT("the task resets only after replay and reward finish"), Runtime.HeroSpellTask.bActive);
 	TestFalse(TEXT("the automatic queue is empty after the full task"), Runtime.AutomaticResolutionQueue.bActive);
 	return true;
@@ -496,7 +513,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMageStarterRewardOnlyTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
+	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56006)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Fire);
@@ -509,7 +526,7 @@ bool FGameXXKMageStarterRewardOnlyTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("an unselected Ice reward does not consume armor"), FindUnit(Runtime, HeroId)->Armor, 9);
 	TestEqual(TEXT("an unselected Universal reward does not grant energy"), Runtime.Deck.SharedEnergy, 4);
 	TestEqual(TEXT("an unselected Lightning reward does not grant Mark"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), 0);
-	TestEqual(TEXT("the selected Fire reward finishes at Burn6 after two triggers"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 6);
+	TestEqual(TEXT("the selected Fire reward adds level-resolved Burn7 and triggers it without consumption"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 7);
 	return true;
 }
 
@@ -522,113 +539,29 @@ bool FGameXXKMageNoRecursiveTaskTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
 	TArray<FGameXXKCardInstance> Cards = {
-		MakeCard(TEXT("DrawA"), TEXT("Route.General.TuNaJue"), HeroId, 1),
-		MakeCard(TEXT("DrawB"), TEXT("Route.General.QingShenQuShi"), HeroId, 2),
-		MakeCard(TEXT("DrawC"), TEXT("Route.General.ShouShiHuiYuan"), HeroId, 3),
-		MakeCard(TEXT("DrawD"), TEXT("Route.General.FeiZhen"), HeroId, 4)};
+		MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 1),
+		MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 2),
+		MakeCard(TEXT("DrawC"), TEXT("Hero.Generic.HengJianShouShi"), HeroId, 3),
+		MakeCard(TEXT("DrawD"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 4)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {}, {}, {}, 56007)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Ice, 0);
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("Mage replay plus Ice reward resolves: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
+	if (Runtime.Deck.PendingChoice.Kind == EGameXXKCardPendingChoiceKind::ForcedDiscard)
+	{
+		if (!TestTrue(TEXT("recursive-safety fixture has a discard candidate"), !Runtime.Deck.Hand.IsEmpty())) return false;
+		TArray<FGameXXKCardPlayResult> ResumedResults;
+		if (!TestTrue(FString::Printf(TEXT("forced discard completes the non-recursive queue: %s"), *Error),
+			GameXXKCardRules::SubmitForcedDiscard(Runtime, {Runtime.Deck.Hand[0].InstanceId}, &Error, &ResumedResults))) return false;
+		Results.Append(MoveTemp(ResumedResults));
+	}
 	TestEqual(TEXT("automatic replay never advances the active-card counter"), Runtime.ActiveCardsPlayedThisRound, 0);
 	TestFalse(TEXT("the replayed Mage card does not start a replacement task"), Runtime.HeroSpellTask.bActive);
 	TestEqual(TEXT("the completed task leaves no recursive first-play snapshots"), Runtime.HeroSpellTask.FirstPlayOrder.Num(), 0);
 	TestFalse(TEXT("the completed queue does not recursively enqueue itself"), Runtime.AutomaticResolutionQueue.bActive);
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKMageDeadTargetFallbackTest,
-	"GameXXK.Data.HeroCards.Mage.DeadOriginalTargetFallsBackToSameSideStableFirst",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FGameXXKMageDeadTargetFallbackTest::RunTest(const FString& Parameters)
-{
-	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
-	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56008)) return false;
-	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Universal, 7);
-	const int32 QingIndex = Runtime.HeroSpellTask.FirstPlayOrder.IndexOfByPredicate([](const FGameXXKResolvedCardSnapshot& Snapshot)
-	{
-		return Snapshot.CardId == TEXT("Hero.Generic.QingFengYiShi");
-	});
-	TestTrue(TEXT("the fixture finds Qing Feng"), QingIndex != INDEX_NONE);
-	if (QingIndex == INDEX_NONE) return false;
-	Runtime.HeroSpellTask.FirstPlayOrder.Swap(QingIndex, 7);
-	Runtime.HeroSpellTask.CompletedHeroCardIds.Swap(QingIndex, 7);
-	Runtime.HeroSpellTask.LockedHeroCardIds = Runtime.HeroSpellTask.CompletedHeroCardIds;
-	Runtime.EquippedHeroCardIds = Runtime.HeroSpellTask.LockedHeroCardIds;
-	Runtime.AutomaticResolutionQueue.PendingCards = Runtime.HeroSpellTask.FirstPlayOrder;
-	FGameXXKCardCombatUnit* DeadOriginal = FindUnit(Runtime, EnemyAId);
-	DeadOriginal->HP = 0;
-	DeadOriginal->bLiving = false;
-	TArray<FGameXXKCardPlayResult> Results;
-	FString Error;
-	TestTrue(FString::Printf(TEXT("dead-target replay resolves: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	const FGameXXKCardDamageResult* ReplayHit = nullptr;
-	for (const FGameXXKCardPlayResult& Result : Results)
-	{
-		ReplayHit = Result.DamageResults.FindByPredicate([](const FGameXXKCardDamageResult& DamageResult)
-		{
-			return DamageResult.ResolutionOrigin == EGameXXKCardResolutionOrigin::MageTaskReplay
-				&& DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack;
-		});
-		if (ReplayHit) break;
-	}
-	TestNotNull(TEXT("the replay still emits its direct attack"), ReplayHit);
-	if (ReplayHit)
-	{
-		TestEqual(TEXT("the dead enemy target falls back to stable-first EnemyB"), ReplayHit->OriginalTargetUnitId, EnemyBId);
-	}
-	return true;
-}
-
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKMageMissingTargetSkipTest,
-	"GameXXK.Data.HeroCards.Mage.MissingTargetSkipsOnlyDependentEffects",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FGameXXKMageMissingTargetSkipTest::RunTest(const FString& Parameters)
-{
-	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
-	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56009)) return false;
-	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Fire, 7);
-	const int32 QingIndex = Runtime.HeroSpellTask.FirstPlayOrder.IndexOfByPredicate([](const FGameXXKResolvedCardSnapshot& Snapshot)
-	{
-		return Snapshot.CardId == TEXT("Hero.Generic.QingFengYiShi");
-	});
-	if (QingIndex == INDEX_NONE) return false;
-	Runtime.HeroSpellTask.FirstPlayOrder.Swap(QingIndex, 7);
-	Runtime.HeroSpellTask.CompletedHeroCardIds.Swap(QingIndex, 7);
-	Runtime.HeroSpellTask.LockedHeroCardIds = Runtime.HeroSpellTask.CompletedHeroCardIds;
-	Runtime.EquippedHeroCardIds = Runtime.HeroSpellTask.LockedHeroCardIds;
-	Runtime.AutomaticResolutionQueue.PendingCards = Runtime.HeroSpellTask.FirstPlayOrder;
-	for (FGameXXKCardCombatUnit& Unit : Runtime.Units)
-	{
-		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
-		{
-			Unit.HP = 0;
-			Unit.bLiving = false;
-		}
-	}
-	TArray<FGameXXKCardPlayResult> Results;
-	FString Error;
-	TestTrue(FString::Printf(TEXT("missing-target replay resolves: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	int32 ReplayDamageCount = 0;
-	for (const FGameXXKCardPlayResult& Result : Results)
-	{
-		for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
-		{
-			ReplayDamageCount += DamageResult.ResolutionOrigin == EGameXXKCardResolutionOrigin::MageTaskReplay ? 1 : 0;
-		}
-	}
-	TestEqual(TEXT("selected-target damage is skipped when no same-side fallback lives"), ReplayDamageCount, 0);
-	TestEqual(TEXT("the independent Qing Feng discount modifier still registers"), Runtime.Modifiers.Num(), 1);
+	TestEqual(TEXT("the completed task records this round's one-completion budget"), Runtime.HeroSpellTaskLastCompletedRound, Runtime.RoundNumber);
 	return true;
 }
 
@@ -643,11 +576,11 @@ bool FGameXXKMageSearchCandidatesTest::RunTest(const FString& Parameters)
 	const TArray<FName> Equipped = SearchEight();
 	const TArray<FGameXXKCardInstance> Cards = {
 		MakeCard(TEXT("Starter"), TEXT("Hero.Mage.YanXuLiaoYuan"), HeroId, 0),
-		MakeCard(TEXT("DiscardCandidate"), TEXT("Hero.Generic.HeYuZhan"), HeroId, 2),
-		MakeCard(TEXT("DrawCandidate"), TEXT("Hero.Generic.QingFengYiShi"), HeroId, 5),
-		MakeCard(TEXT("AlreadyInHand"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 3),
+		MakeCard(TEXT("DiscardCandidate"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 2),
+		MakeCard(TEXT("DrawCandidate"), TEXT("Hero.Mage.LeiXuYinTing"), HeroId, 5),
+		MakeCard(TEXT("AlreadyInHand"), TEXT("Hero.Mage.GuiXuTongXuan"), HeroId, 3),
 		MakeCard(TEXT("NotEquipped"), TEXT("Hero.Generic.PoYunYiShan"), HeroId, 4),
-		MakeCard(TEXT("RouteCard"), TEXT("Route.General.ShouShiHuiYuan"), HeroId, 6)};
+		MakeCard(TEXT("RouteCard"), TEXT("Route.Boss.XiongPiPiJia"), HeroId, 6)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(
 		*this,
@@ -681,8 +614,8 @@ bool FGameXXKMageSearchNoCopyTest::RunTest(const FString& Parameters)
 	const TArray<FName> Equipped = SearchEight();
 	const TArray<FGameXXKCardInstance> Cards = {
 		MakeCard(TEXT("Starter"), TEXT("Hero.Mage.YanXuLiaoYuan"), HeroId, 0),
-		MakeCard(TEXT("Candidate"), TEXT("Hero.Generic.HeYuZhan"), HeroId, 1),
-		MakeCard(TEXT("AlreadyInHand"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 2)};
+		MakeCard(TEXT("Candidate"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 1),
+		MakeCard(TEXT("AlreadyInHand"), TEXT("Hero.Mage.GuiXuTongXuan"), HeroId, 2)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Starter"), TEXT("AlreadyInHand")}, {}, Equipped, 56011)) return false;
 	SetActiveTask(Runtime, Equipped, EGameXXKHeroSpellTaskReward::Fire);
@@ -713,7 +646,7 @@ bool FGameXXKMageSearchResumeTest::RunTest(const FString& Parameters)
 	const TArray<FName> Equipped = SearchEight();
 	const TArray<FGameXXKCardInstance> Cards = {
 		MakeCard(TEXT("Starter"), TEXT("Hero.Mage.YanXuLiaoYuan"), HeroId, 0),
-		MakeCard(TEXT("Candidate"), TEXT("Hero.Generic.HeYuZhan"), HeroId, 1)};
+		MakeCard(TEXT("Candidate"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 1)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Starter")}, {TEXT("Candidate")}, Equipped, 56012)) return false;
 	SetActiveTask(Runtime, Equipped, EGameXXKHeroSpellTaskReward::Fire);
@@ -746,81 +679,124 @@ bool FGameXXKMageForcedDiscardResumeTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
 	const TArray<FGameXXKCardInstance> Cards = {
-		MakeCard(TEXT("DrawA"), TEXT("Route.General.TuNaJue"), HeroId, 1),
-		MakeCard(TEXT("DrawB"), TEXT("Route.General.QingShenQuShi"), HeroId, 2)};
+		MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 1),
+		MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 2)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {}, {}, {}, 56013)) return false;
-	TArray<FGameXXKResolvedCardSnapshot> Snapshots = {
-		MakeSnapshot(TEXT("Hero.Mage.YanXuLiaoYuan"), HeroId),
-		MakeSnapshot(TEXT("Hero.Generic.QingFengYiShi"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Generic.HeYuZhan"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Generic.SuiYanJi"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Generic.PoYunYiShan"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Blade.XueLuXiangCheng"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Hunter.LieYuLianShi"), HeroId, {EnemyAId}),
-		MakeSnapshot(TEXT("Hero.Mage.GuiXuTongXuan"), HeroId)};
-	TArray<FName> LockedIds;
-	for (const FGameXXKResolvedCardSnapshot& Snapshot : Snapshots)
-	{
-		LockedIds.Add(Snapshot.CardId);
-	}
-	SetActiveTask(Runtime, LockedIds, EGameXXKHeroSpellTaskReward::Fire);
-	Runtime.HeroSpellTask.CompletedHeroCardIds = LockedIds;
-	Runtime.HeroSpellTask.FirstPlayOrder = Snapshots;
-	Runtime.AutomaticResolutionQueue.bActive = true;
-	Runtime.AutomaticResolutionQueue.Origin = EGameXXKCardResolutionOrigin::MageTaskReplay;
-	Runtime.AutomaticResolutionQueue.PendingCards = Snapshots;
-	Runtime.AutomaticResolutionQueue.NextCardIndex = 7;
-	Runtime.AutomaticResolutionQueue.PendingReward = EGameXXKHeroSpellTaskReward::Fire;
-	Runtime.AutomaticResolutionQueue.RewardOwnerUnitId = HeroId;
+	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Fire, 3);
 	TArray<FGameXXKCardPlayResult> InitialResults;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("replay reaches forced discard: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, InitialResults, &Error));
 	TestEqual(TEXT("the replay pauses on the existing forced-discard choice"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
 	TestEqual(TEXT("the reward has not applied before the choice"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 0);
 	TestTrue(TEXT("the completed task remains active across the interruption"), Runtime.HeroSpellTask.bActive);
+	if (!TestTrue(TEXT("the forced-discard replay has a real hand candidate"), !Runtime.Deck.Hand.IsEmpty())) return false;
 	TArray<FGameXXKCardPlayResult> ResumedResults;
 	const FName DiscardId = Runtime.Deck.Hand[0].InstanceId;
 	TestTrue(FString::Printf(TEXT("forced discard resumes replay and reward: %s"), *Error), GameXXKCardRules::SubmitForcedDiscard(Runtime, {DiscardId}, &Error, &ResumedResults));
-	TestEqual(TEXT("the Fire reward runs only after discard confirmation"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 6);
+	TestEqual(TEXT("the Fire reward runs only after discard confirmation"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 7);
 	TestFalse(TEXT("the task resets after the resumed reward"), Runtime.HeroSpellTask.bActive);
 	TestFalse(TEXT("the queue completes after the resumed reward"), Runtime.AutomaticResolutionQueue.bActive);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKMageApprovedEnergyTest,
+	"GameXXK.Data.HeroCards.Mage.ApprovedEnergyRejectsUnpaidIce",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKMageApprovedEnergyTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroMageRuntimeTest;
+	const TCHAR* CardIds[] = {
+		TEXT("Hero.Mage.YanXuLiaoYuan"), TEXT("Hero.Mage.HanXuNingChuan"),
+		TEXT("Hero.Mage.LeiXuYinTing"), TEXT("Hero.Mage.GuiXuTongXuan")};
+	const int32 EnergyCosts[] = {1, 1, 1, 0};
+	const int32 ManaCosts[] = {3, 0, 3, 0};
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardIds[Index]);
+		if (!TestNotNull(TEXT("approved Mage card exists"), Definition)) return false;
+		TestEqual(FString::Printf(TEXT("%s printed Energy"), CardIds[Index]), Definition->EnergyCost, EnergyCosts[Index]);
+		TestEqual(FString::Printf(TEXT("%s unchanged Mana cost"), CardIds[Index]), Definition->ManaCost, ManaCosts[Index]);
+	}
+
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime,
+		{MakeCard(TEXT("Ice"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 0)},
+		{TEXT("Ice")}, {}, {}, 56021)) return false;
+	Runtime.Deck.SharedEnergy = 0;
+	FindUnit(Runtime, HeroId)->Mana = 4;
+	FindUnit(Runtime, HeroId)->MaxMana = 10;
+	FindUnit(Runtime, HeroId)->Armor = 1;
+	FindUnit(Runtime, HeroId)->Defense = 100;
+	FGameXXKCardPlayResult Result;
+	FString Error;
+	TestFalse(TEXT("zero Energy rejects active Ice before its effects"),
+		GameXXKCardRules::ResolveCardPlay(Runtime, TEXT("Ice"), NAME_None, Result, &Error));
+	TestEqual(TEXT("rejected Ice does not recover Mana"), FindUnit(Runtime, HeroId)->Mana, 4);
+	TestEqual(TEXT("rejected Ice does not grant Armor"), FindUnit(Runtime, HeroId)->Armor, 1);
+	TestEqual(TEXT("rejected Ice preserves shared Energy"), Runtime.Deck.SharedEnergy, 0);
+	TestEqual(TEXT("rejected Ice stays in hand"), Runtime.Deck.Hand.Num(), 1);
+	TestTrue(TEXT("the unpaid instance stays available"), Runtime.Deck.Hand.ContainsByPredicate(
+		[](const FGameXXKCardInstance& Card) { return Card.InstanceId == TEXT("Ice"); }));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageIceBaseTest,
-	"GameXXK.Data.HeroCards.Mage.IceBaseUsesCurrentManaAndConvertsOnlyOverflow",
+	"GameXXK.Data.HeroCards.Mage.IceBaseUsesDefenseQualityAndConvertsOnlyOverflow",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageIceBaseTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Ice"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 0)};
-	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Ice")}, {}, {}, 56014)) return false;
-	FGameXXKCardCombatUnit* Hero = FindUnit(Runtime, HeroId);
-	Hero->Mana = 8;
-	Hero->MaxMana = 10;
-	Hero->Armor = 1;
-	FGameXXKCardPlayResult Result;
-	if (!Resolve(*this, Runtime, TEXT("Ice"), NAME_None, Result, TEXT("Ice base effect"))) return true;
-	Hero = FindUnit(Runtime, HeroId);
-	TestEqual(TEXT("Ice restores Mana only to the existing cap"), Hero->Mana, 10);
-	TestEqual(TEXT("armor is old1 plus floor(8x25%)2 plus overflow4"), Hero->Armor, 7);
-	TestEqual(TEXT("the Ice base effect deals no damage"), Result.DamageResults.Num(), 0);
+	const EGameXXKCardQuality Qualities[] = {EGameXXKCardQuality::Common, EGameXXKCardQuality::Rare, EGameXXKCardQuality::Epic};
+	const int32 TeamLevels[] = {1, 100};
+	const int32 ExpectedOverflowArmor[][3] = {{150, 178, 208}, {165, 197, 230}};
+	const int32 ExpectedNoOverflowArmor[] = {145, 173, 202};
+	for (int32 LevelIndex = 0; LevelIndex < 2; ++LevelIndex)
+	{
+		for (int32 QualityIndex = 0; QualityIndex < 3; ++QualityIndex)
+		{
+			for (const bool bOverflow : {false, true})
+			{
+				TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Ice"), TEXT("Hero.Mage.HanXuNingChuan"), HeroId, 0)};
+				Cards[0].CurrentQuality = Qualities[QualityIndex];
+				FGameXXKCardBattleRuntime Runtime;
+				if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Ice")}, {}, {}, 56014)) return false;
+				Runtime.TeamMaxLevelSnapshot = TeamLevels[LevelIndex];
+				FindUnit(Runtime, AllyId)->CombatLevel = TeamLevels[LevelIndex];
+				FGameXXKCardCombatUnit* Hero = FindUnit(Runtime, HeroId);
+				Hero->Mana = bOverflow ? 8 : 0;
+				Hero->MaxMana = 10;
+				Hero->Armor = 1;
+				Hero->Defense = 358;
+				Runtime.Deck.SharedEnergy = 1;
+				FGameXXKCardPlayResult Result;
+				const FString Context = FString::Printf(TEXT("Ice level=%d quality=%d overflow=%d"), TeamLevels[LevelIndex], QualityIndex, bOverflow);
+				if (!Resolve(*this, Runtime, TEXT("Ice"), NAME_None, Result, *Context)) return false;
+				Hero = FindUnit(Runtime, HeroId);
+				TestEqual(Context + TEXT(" fixed six Mana respects the cap"), Hero->Mana, bOverflow ? 10 : 6);
+				TestEqual(Context + TEXT(" Defense Armor and scaled actual overflow resolve independently"),
+					Hero->Armor, bOverflow ? ExpectedOverflowArmor[LevelIndex][QualityIndex] : ExpectedNoOverflowArmor[QualityIndex]);
+				TestEqual(Context + TEXT(" active Ice pays one Energy"), Runtime.Deck.SharedEnergy, 0);
+				TestEqual(Context + TEXT(" base effect deals no damage"), Result.DamageResults.Num(), 0);
+			}
+		}
+	}
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKMageFireRewardTest,
-	"GameXXK.Data.HeroCards.Mage.FireRewardBurnsAndTriggersTwicePerEnemy",
+	"GameXXK.Data.HeroCards.Mage.FireRewardAddsCoefficientSixAndTriggersOncePerEnemy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKMageFireRewardTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
+	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56015)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Fire);
@@ -830,14 +806,14 @@ bool FGameXXKMageFireRewardTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Fire emits one reward audit"), Results.Num(), 1);
 	if (Results.Num() == 1)
 	{
-		TestEqual(TEXT("two Burn triggers per two enemies emit four packets"), CountDamage(Results[0].DamageResults, EGameXXKCardResolutionOrigin::TaskReward, EGameXXKCardDamageCause::Burn), 4);
+		TestEqual(TEXT("one Burn trigger per two enemies emits two packets"), CountDamage(Results[0].DamageResults, EGameXXKCardResolutionOrigin::TaskReward, EGameXXKCardDamageCause::Burn), 2);
 		for (const FGameXXKCardDamageResult& DamageResult : Results[0].DamageResults)
 		{
-			TestEqual(TEXT("each Fire trigger consumes one Burn layer"), DamageResult.StatusStacksConsumed, 1);
+			TestEqual(TEXT("ordinary Fire triggers do not consume the Burn reservoir"), DamageResult.StatusStacksConsumed, 0);
 		}
 	}
-	TestEqual(TEXT("EnemyA retains Burn6 after 8 then two triggers"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 6);
-	TestEqual(TEXT("EnemyB retains Burn6 after 8 then two triggers"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 6);
+	TestEqual(TEXT("EnemyA retains its level-resolved Burn7 reservoir"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 7);
+	TestEqual(TEXT("EnemyB retains its level-resolved Burn7 reservoir"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 7);
 	return true;
 }
 
@@ -849,7 +825,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMageIceRewardTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
+	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56016)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Ice);
@@ -858,12 +834,12 @@ bool FGameXXKMageIceRewardTest::RunTest(const FString& Parameters)
 	FString Error;
 	TestTrue(FString::Printf(TEXT("Ice reward resolves: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
 	TestEqual(TEXT("Ice consumes the complete armor snapshot"), FindUnit(Runtime, HeroId)->Armor, 0);
-	TestEqual(TEXT("Armor3 emits three 20% group hits against each of two enemies"), Results.Num() == 1 ? CountDamage(Results[0].DamageResults, EGameXXKCardResolutionOrigin::TaskReward, EGameXXKCardDamageCause::DirectAttack) : 0, 6);
+	TestEqual(TEXT("Ice emits one 103% group hit against each of two enemies"), Results.Num() == 1 ? CountDamage(Results[0].DamageResults, EGameXXKCardResolutionOrigin::TaskReward, EGameXXKCardDamageCause::DirectAttack) : 0, 2);
 	if (Results.Num() == 1)
 	{
 		for (const FGameXXKCardDamageResult& DamageResult : Results[0].DamageResults)
 		{
-			TestEqual(TEXT("each Ice shard requests 20% of Attack10"), DamageResult.BaseRequestedDamage, 2);
+			TestEqual(TEXT("each Ice hit requests floor(Attack10 x 103%)"), DamageResult.BaseRequestedDamage, 10);
 		}
 	}
 	return true;
@@ -877,7 +853,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKMageLightningRewardTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
-	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Route.General.TuNaJue"), HeroId, 0)};
+	const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("Filler"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Filler")}, {}, {}, 56017)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Lightning);
@@ -928,7 +904,7 @@ bool FGameXXKMageAutomaticAreaTargetingTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Lightning adds three Mark"), LightningDefinition->Effects[0].Magnitude, 3);
 		TestEqual(TEXT("Lightning then locks one strike per Mark"), LightningDefinition->Effects[1].Type, EGameXXKCardEffectType::LightningPerTargetStatusSnapshot);
 		TestEqual(TEXT("Lightning strikes each enemy independently"), LightningDefinition->Effects[1].Target, EGameXXKCardEffectTarget::AllEnemies);
-		TestEqual(TEXT("base Lightning uses a restrained 30 percent strike"), LightningDefinition->Effects[1].Magnitude, 30);
+		TestEqual(TEXT("base Lightning uses the approved 50 percent strike"), LightningDefinition->Effects[1].Magnitude, 50);
 	}
 
 	FGameXXKCardBattleRuntime FireRuntime;
@@ -950,8 +926,8 @@ bool FGameXXKMageAutomaticAreaTargetingTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult FireResult;
 	TestTrue(FString::Printf(TEXT("group Fire resolves without a selected target: %s"), *Error), GameXXKCardRules::ResolveCardPlay(FireRuntime, TEXT("Fire"), NAME_None, FireResult, &Error));
 	TestEqual(TEXT("group Fire directly attacks both enemies"), CountDamage(FireResult.DamageResults, EGameXXKCardResolutionOrigin::ActivePlay, EGameXXKCardDamageCause::DirectAttack), 2);
-	TestEqual(TEXT("group Fire applies Burn to EnemyA"), Status(FireRuntime, EnemyAId, EGameXXKCardStatus::Burn), 4);
-	TestEqual(TEXT("group Fire applies Burn to EnemyB"), Status(FireRuntime, EnemyBId, EGameXXKCardStatus::Burn), 4);
+	TestEqual(TEXT("group Fire applies level-resolved Burn5 to EnemyA"), Status(FireRuntime, EnemyAId, EGameXXKCardStatus::Burn), 5);
+	TestEqual(TEXT("group Fire applies level-resolved Burn5 to EnemyB"), Status(FireRuntime, EnemyBId, EGameXXKCardStatus::Burn), 5);
 
 	FGameXXKCardBattleRuntime LightningRuntime;
 	if (!BuildRuntime(
@@ -985,27 +961,36 @@ bool FGameXXKMageUniversalRewardTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroMageRuntimeTest;
 	const TArray<FGameXXKCardInstance> Cards = {
-		MakeCard(TEXT("HeroPreview"), TEXT("Hero.Generic.QingFengYiShi"), HeroId, 0),
-		MakeCard(TEXT("RoutePreview"), TEXT("Route.General.PoJiaTuCi"), HeroId, 1),
-		MakeCard(TEXT("DrawA"), TEXT("Route.General.TuNaJue"), HeroId, 2),
-		MakeCard(TEXT("DrawB"), TEXT("Route.General.QingShenQuShi"), HeroId, 3),
-		MakeCard(TEXT("DrawC"), TEXT("Route.General.ShouShiHuiYuan"), HeroId, 4),
-		MakeCard(TEXT("DrawD"), TEXT("Route.General.FeiZhen"), HeroId, 5)};
+		MakeCard(TEXT("HeroPreview"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 0),
+		MakeCard(TEXT("RoutePreview"), TEXT("Route.Boss.XiongPiPiJia"), HeroId, 1),
+		MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.NingShenTuNa"), HeroId, 2),
+		MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.GuanXi"), HeroId, 3),
+		MakeCard(TEXT("DrawC"), TEXT("Hero.Generic.HengJianShouShi"), HeroId, 4),
+		MakeCard(TEXT("DrawD"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 5),
+		MakeCard(TEXT("SecondHero"), TEXT("Hero.Generic.SuiYanJi"), HeroId, 6)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("HeroPreview"), TEXT("RoutePreview")}, {}, {}, 56018)) return false;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("HeroPreview"), TEXT("RoutePreview"), TEXT("SecondHero")}, {}, {}, 56018)) return false;
 	SetCompletedTaskQueue(Runtime, EGameXXKHeroSpellTaskReward::Universal);
 	Runtime.Deck.SharedEnergy = 3;
 	TArray<FGameXXKCardPlayResult> Results;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("Universal reward resolves: %s"), *Error), GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	TestEqual(TEXT("Universal draws four real cards"), Runtime.Deck.Hand.Num(), 6);
-	TestEqual(TEXT("Universal restores two shared energy"), Runtime.Deck.SharedEnergy, 5);
+	TestEqual(TEXT("Universal draws two real cards"), Runtime.Deck.Hand.Num(), 5);
+	TestEqual(TEXT("Universal restores one shared energy"), Runtime.Deck.SharedEnergy, 4);
 	FGameXXKCardPlayPreview HeroPreview;
 	FGameXXKCardPlayPreview RoutePreview;
 	TestTrue(FString::Printf(TEXT("discounted Hero preview builds: %s"), *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("HeroPreview"), HeroPreview, &Error));
 	TestTrue(FString::Printf(TEXT("undiscounted Route preview builds: %s"), *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("RoutePreview"), RoutePreview, &Error));
-	TestEqual(TEXT("the rest-of-round Hero discount floors cost at zero"), HeroPreview.EffectiveEnergyCost, 0);
-	TestEqual(TEXT("the same modifier does not discount a Route card"), RoutePreview.EffectiveEnergyCost, 1);
+	TestEqual(TEXT("the next-Hero discount floors cost at zero"), HeroPreview.EffectiveEnergyCost, 0);
+	TestEqual(TEXT("the same modifier does not discount a Boss compatibility card"), RoutePreview.EffectiveEnergyCost, 2);
+	FGameXXKCardPlayResult Played;
+	if (!Resolve(*this, Runtime, TEXT("RoutePreview"), NAME_None, Played, TEXT("non-Hero card before discount"))) return false;
+	TestTrue(TEXT("the Hero preview remains legal after a non-Hero card"), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("HeroPreview"), HeroPreview, &Error));
+	TestEqual(TEXT("a non-Hero card does not consume the pending discount"), HeroPreview.EffectiveEnergyCost, 0);
+	if (!Resolve(*this, Runtime, TEXT("HeroPreview"), EnemyAId, Played, TEXT("first discounted Hero card"))) return false;
+	FGameXXKCardPlayPreview SecondHeroPreview;
+	TestTrue(TEXT("the second Hero card still previews"), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("SecondHero"), SecondHeroPreview, &Error));
+	TestEqual(TEXT("the second Hero card pays its ordinary one Energy"), SecondHeroPreview.EffectiveEnergyCost, 1);
 	return true;
 }
 

@@ -37,12 +37,14 @@ namespace GameXXKHeroGuardRuntimeTest
 
 	TArray<FGameXXKCardCombatUnit> MakeUnits()
 	{
-		return {
+		TArray<FGameXXKCardCombatUnit> Units = {
 			MakeUnit(HeroUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 10, 1),
 			MakeUnit(GuardAUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 12, 2),
 			MakeUnit(GuardBUnitId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 18, 3),
 			MakeUnit(EnemyAUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 8, 10),
 			MakeUnit(EnemyBUnitId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 8, 11)};
+		Units[0].Defense = 20;
+		return Units;
 	}
 
 	FGameXXKCardInstance MakeCard(const TCHAR* InstanceId, const TCHAR* CardId, const int32 Ordinal)
@@ -140,12 +142,12 @@ bool FGameXXKGuardExactProtectionTest::RunTest(const FString& Parameters)
 	if (!BuildRuntime(*this, Runtime, Cards, 53001)) return false;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("TieBi"), GuardAUnitId, Result, TEXT("Tie Bi"))) return true;
-	TestEqual(TEXT("Tie Bi grants exactly Armor18"), FindUnit(Runtime, GuardAUnitId)->Armor, 18);
+	TestEqual(TEXT("Tie Bi grants 80% of caster Defense20 as Armor16"), FindUnit(Runtime, GuardAUnitId)->Armor, 16);
 	TestEqual(TEXT("Tie Bi registers exactly two Block uses"), Status(Runtime, GuardAUnitId, EGameXXKCardStatus::Block), 2);
 	if (!Resolve(*this, Runtime, TEXT("LieZhen"), NAME_None, Result, TEXT("Lie Zhen"))) return true;
-	TestEqual(TEXT("Lie Zhen grants Hero Armor8"), FindUnit(Runtime, HeroUnitId)->Armor, 8);
-	TestEqual(TEXT("Lie Zhen adds Armor8 to the prior target"), FindUnit(Runtime, GuardAUnitId)->Armor, 26);
-	TestEqual(TEXT("Lie Zhen grants GuardB Armor8"), FindUnit(Runtime, GuardBUnitId)->Armor, 8);
+	TestEqual(TEXT("Lie Zhen grants Hero the full cost-two Armor28"), FindUnit(Runtime, HeroUnitId)->Armor, 28);
+	TestEqual(TEXT("Lie Zhen adds the full Armor28 to the prior target"), FindUnit(Runtime, GuardAUnitId)->Armor, 44);
+	TestEqual(TEXT("Lie Zhen grants GuardB the full Armor28"), FindUnit(Runtime, GuardBUnitId)->Armor, 28);
 	TestEqual(TEXT("Lie Zhen grants Hero Block1"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Block), 1);
 	TestEqual(TEXT("Lie Zhen stacks one Block after Tie Bi's two"), Status(Runtime, GuardAUnitId, EGameXXKCardStatus::Block), 3);
 	TestEqual(TEXT("Lie Zhen grants GuardB Block1"), Status(Runtime, GuardBUnitId, EGameXXKCardStatus::Block), 1);
@@ -167,7 +169,7 @@ bool FGameXXKGuardHighestArmorTieTest::RunTest(const FString& Parameters)
 	FindUnit(Runtime, GuardBUnitId)->Armor = 20;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("JieJia"), EnemyAUnitId, Result, TEXT("Jie Jia stable tie"))) return true;
-	TestEqual(TEXT("stable-earlier GuardA receives the follow-up Armor10"), FindUnit(Runtime, GuardAUnitId)->Armor, 30);
+	TestEqual(TEXT("stable-earlier GuardA receives 40% of caster Defense20 as Armor8"), FindUnit(Runtime, GuardAUnitId)->Armor, 28);
 	TestEqual(TEXT("stable-later GuardB is not chosen on a tie"), FindUnit(Runtime, GuardBUnitId)->Armor, 20);
 	TestEqual(TEXT("stable-earlier GuardA receives Block1"), Status(Runtime, GuardAUnitId, EGameXXKCardStatus::Block), 1);
 	TestEqual(TEXT("the packet source is the stable-earlier highest-armor ally"), Result.DamageResults[0].SourceUnitId, GuardAUnitId);
@@ -196,7 +198,7 @@ bool FGameXXKGuardAttackPlusArmorTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Jie Jia uses highest ally Attack18 plus Armor30"), Result.DamageResults[0].BaseRequestedDamage, 48);
 		TestEqual(TEXT("Jie Jia records GuardB as the actual source"), Result.DamageResults[0].SourceUnitId, GuardBUnitId);
 	}
-	TestEqual(TEXT("Jie Jia never consumes converted Armor and then grants ten more"), FindUnit(Runtime, GuardBUnitId)->Armor, 40);
+	TestEqual(TEXT("Jie Jia never consumes converted Armor and then grants secondary Armor8"), FindUnit(Runtime, GuardBUnitId)->Armor, 38);
 	TestEqual(TEXT("Jie Jia grants one Block to the converted source"), Status(Runtime, GuardBUnitId, EGameXXKCardStatus::Block), 1);
 	return true;
 }
@@ -220,10 +222,10 @@ bool FGameXXKGuardXuanJiaConsumeTest::RunTest(const FString& Parameters)
 	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
 	{
 		TestEqual(TEXT("each Xuan Jia packet uses GuardA as source"), DamageResult.SourceUnitId, GuardAUnitId);
-		TestEqual(TEXT("Armor4 produces 180% of Attack12, floored to 21"), DamageResult.BaseRequestedDamage, 21);
+		TestEqual(TEXT("Armor4 produces 204% of Attack12, floored to 24"), DamageResult.BaseRequestedDamage, 24);
 	}
-	TestEqual(TEXT("the first enemy loses 21"), FindUnit(Runtime, EnemyAUnitId)->HP, 979);
-	TestEqual(TEXT("the second enemy loses 21"), FindUnit(Runtime, EnemyBUnitId)->HP, 979);
+	TestEqual(TEXT("the first enemy loses 24"), FindUnit(Runtime, EnemyAUnitId)->HP, 976);
+	TestEqual(TEXT("the second enemy loses 24"), FindUnit(Runtime, EnemyBUnitId)->HP, 976);
 	return true;
 }
 
@@ -243,7 +245,7 @@ bool FGameXXKGuardXuanJiaZeroArmorTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("zero Armor still emits both group packets"), Result.DamageResults.Num(), 2);
 	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
 	{
-		TestEqual(TEXT("zero Armor retains the 100% Attack floor"), DamageResult.BaseRequestedDamage, 12);
+		TestEqual(TEXT("zero Armor retains the approved 200% Attack base"), DamageResult.BaseRequestedDamage, 24);
 	}
 	TestEqual(TEXT("zero Armor remains zero"), FindUnit(Runtime, GuardAUnitId)->Armor, 0);
 	return true;

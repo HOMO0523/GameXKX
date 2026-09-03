@@ -208,7 +208,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("rejected friendly-card target leaves energy intact"), HealRuntime.Deck.SharedEnergy, HealEnergyBeforeRejectedTarget);
 	FGameXXKCardPlayResult HealResult;
 	TestTrue(TEXT("a valid friendly target resolves healing and cleansing"), GameXXKCardRules::ResolveCardPlay(HealRuntime, HealInstanceId, TEXT("Ally"), HealResult));
-	TestEqual(TEXT("healing applies its fixed declared amount"), FindRuntimeUnit(HealRuntime.Units, TEXT("Ally"))->HP, 42);
+	TestEqual(TEXT("coefficient fifteen heals sixteen at team level one"), FindRuntimeUnit(HealRuntime.Units, TEXT("Ally"))->HP, 46);
 	TestEqual(TEXT("healing card removes its declared one DoT stack"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealRuntime.Units, TEXT("Ally")), EGameXXKCardStatus::Bleed), 0);
 	TestEqual(TEXT("healing card spends its one shared energy"), HealRuntime.Deck.SharedEnergy, 2);
 	TestEqual(TEXT("zero-mana healing preserves owner mana"), FindRuntimeUnit(HealRuntime.Units, TEXT("Hero"))->Mana, 20);
@@ -217,8 +217,8 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("healing audit keeps the stable card owner"), HealResult.HealingResults[0].SourceUnitId, FName(TEXT("Hero")));
 		TestEqual(TEXT("healing audit keeps the stable selected ally"), HealResult.HealingResults[0].TargetUnitId, FName(TEXT("Ally")));
-		TestEqual(TEXT("healing audit records the declared request"), HealResult.HealingResults[0].RequestedHealing, 12);
-		TestEqual(TEXT("healing audit records the effective restoration"), HealResult.HealingResults[0].EffectiveHealing, 12);
+		TestEqual(TEXT("healing audit records the resolved request"), HealResult.HealingResults[0].RequestedHealing, 16);
+		TestEqual(TEXT("healing audit records the effective restoration"), HealResult.HealingResults[0].EffectiveHealing, 16);
 	}
 
 	TArray<FGameXXKCardCombatUnit> SelfUnits;

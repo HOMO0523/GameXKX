@@ -282,7 +282,7 @@ bool FGameXXKHunterLieYuTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("the base direct hit and its Bleed packet have active-play origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::ActivePlay), 2);
 	TestEqual(TEXT("three appended hits and their Bleed packets have HeavyArrow origin"), CountOrigin(Result.DamageResults, EGameXXKCardResolutionOrigin::HeavyArrow), 6);
-	TestEqual(TEXT("four hits consume Bleed8 down to Bleed4"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 4);
+	TestEqual(TEXT("Bleed coefficient8 resolves to reservoir9 and four hits do not consume it"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 9);
 	TestEqual(TEXT("all four direct hits consume the four live Mark layers"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Mark), 0);
 	TestEqual(TEXT("the locked Charge is empty after resolution"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Charge), 0);
 	return true;
@@ -290,7 +290,7 @@ bool FGameXXKHunterLieYuTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHunterCuiDuTest,
-	"GameXXK.Data.HeroCards.Hunter.CuiDuExplodesWithoutAddingPoisonOrRot",
+	"GameXXK.Data.HeroCards.Hunter.CuiDuExplodesAllExistingReservoirsWithoutConsumingThem",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHunterCuiDuTest::RunTest(const FString& Parameters)
@@ -306,22 +306,22 @@ bool FGameXXKHunterCuiDuTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Cui Du locks Charge3"), Result.HeavyArrowChargeConsumed, 3);
 	TestEqual(TEXT("Cui Du records exactly three added Toxic Explosions"), Result.HeavyArrowToxicExplosionCount, 3);
 	TestEqual(TEXT("Cui Du never adds an attack segment"), Result.HeavyArrowExtraAttackCount, 0);
-	TestEqual(TEXT("one base attack plus four Poison explosions are emitted"), Result.DamageResults.Num(), 5);
+	TestEqual(TEXT("one base attack plus four Poison and four Rot explosions are emitted"), Result.DamageResults.Num(), 9);
 	TestEqual(TEXT("four explosion packets are Poison only"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionPoison), 4);
-	TestEqual(TEXT("Heavy Arrow never emits a Rot packet"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::Rot), 0);
-	const TArray<int32> ExpectedPoisonSnapshots = {6, 5, 4, 3};
+	TestEqual(TEXT("each explosion also reads the independent Rot reservoir"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionRot), 4);
+	const TArray<int32> ExpectedPoisonSnapshots = {7, 7, 7, 7};
 	int32 PoisonIndex = 0;
 	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
 	{
 		if (DamageResult.Cause == EGameXXKCardDamageCause::ToxicExplosionPoison)
 		{
 			TestEqual(FString::Printf(TEXT("Poison explosion %d observes the live decreasing stack"), PoisonIndex), DamageResult.StatusStacksBefore, ExpectedPoisonSnapshots[PoisonIndex]);
-			TestEqual(FString::Printf(TEXT("Poison explosion %d consumes one Poison"), PoisonIndex), DamageResult.StatusStacksConsumed, 1);
+			TestEqual(FString::Printf(TEXT("Poison explosion %d consumes no Poison"), PoisonIndex), DamageResult.StatusStacksConsumed, 0);
 			++PoisonIndex;
 		}
 	}
-	TestEqual(TEXT("only the base card applies Poison6; four explosions leave Poison2"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 2);
-	TestEqual(TEXT("all Rot survives and only amplifies real Poison packets"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
+	TestEqual(TEXT("the coefficient-six Poison resolves to seven and survives all explosions"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 7);
+	TestEqual(TEXT("all Rot survives its four independent explosion packets"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
 	TestEqual(TEXT("Cui Du consumes all locked Charge"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Charge), 0);
 	return true;
 }

@@ -39,7 +39,7 @@ namespace GameXXKHeroCardCatalogTest
 			{TEXT("Hero.Generic.XingQiHuiHuan"), EGameXXKCharacterRole::Invalid, 10, 0, 0, EGameXXKCardTargetMode::None, 2, 0, 0, true, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Generic.JianYiGuanHong"), EGameXXKCharacterRole::Invalid, 15, 2, 6, EGameXXKCardTargetMode::SingleEnemy, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Generic.GuiYuanFanZhao"), EGameXXKCharacterRole::Invalid, 20, 2, 6, EGameXXKCardTargetMode::AllAllies, 4, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
-			{TEXT("Hero.Blade.TongFengYinShi"), EGameXXKCharacterRole::Blade, 1, 0, 0, EGameXXKCardTargetMode::SingleAlly, 2, 1, 1, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
+			{TEXT("Hero.Blade.TongFengYinShi"), EGameXXKCharacterRole::Blade, 1, 1, 0, EGameXXKCardTargetMode::SingleAlly, 2, 1, 1, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Blade.XueLuXiangCheng"), EGameXXKCharacterRole::Blade, 1, 1, 3, EGameXXKCardTargetMode::SingleEnemy, 2, 1, 2, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Blade.YingFengHuanBu"), EGameXXKCharacterRole::Blade, 1, 1, 0, EGameXXKCardTargetMode::Self, 3, 2, 2, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Blade.TongPaoJuShi"), EGameXXKCharacterRole::Blade, 1, 1, 0, EGameXXKCardTargetMode::SingleAlly, 2, 1, 1, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
@@ -56,13 +56,13 @@ namespace GameXXKHeroCardCatalogTest
 			{TEXT("Hero.Hunter.CuiDuChuanXin"), EGameXXKCharacterRole::Hunter, 1, 1, 3, EGameXXKCardTargetMode::SingleEnemy, 3, 0, 0, false, EGameXXKHeavyArrowKind::ToxicExplosionPerCharge, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Hunter.HuiFengGuanRi"), EGameXXKCharacterRole::Hunter, 1, 1, 6, EGameXXKCardTargetMode::SingleEnemy, 1, 0, 0, false, EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, EGameXXKHeroSpellTaskReward::None},
 			{TEXT("Hero.Mage.YanXuLiaoYuan"), EGameXXKCharacterRole::Sorcerer, 1, 1, 3, EGameXXKCardTargetMode::AllEnemies, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Fire},
-			{TEXT("Hero.Mage.HanXuNingChuan"), EGameXXKCharacterRole::Sorcerer, 1, 0, 0, EGameXXKCardTargetMode::Self, 2, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Ice},
+			{TEXT("Hero.Mage.HanXuNingChuan"), EGameXXKCharacterRole::Sorcerer, 1, 1, 0, EGameXXKCardTargetMode::Self, 2, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Ice},
 			{TEXT("Hero.Mage.LeiXuYinTing"), EGameXXKCharacterRole::Sorcerer, 1, 1, 3, EGameXXKCardTargetMode::AllEnemies, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Lightning},
-			{TEXT("Hero.Mage.GuiXuTongXuan"), EGameXXKCharacterRole::Sorcerer, 1, 0, 0, EGameXXKCardTargetMode::None, 2, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Universal},
-			{TEXT("Hero.Formation.GuanShiLuoZi"), EGameXXKCharacterRole::FormationMaster, 1, 0, 3, EGameXXKCardTargetMode::SingleEnemy, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
-			{TEXT("Hero.Formation.YiZhenHuiXiang"), EGameXXKCharacterRole::FormationMaster, 1, 1, 3, EGameXXKCardTargetMode::SingleEnemy, 2, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
-			{TEXT("Hero.Formation.LianYingBuShi"), EGameXXKCharacterRole::FormationMaster, 1, 1, 0, EGameXXKCardTargetMode::SingleEnemy, 1, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
-			{TEXT("Hero.Formation.LiuHeGuiYi"), EGameXXKCharacterRole::FormationMaster, 1, 2, 6, EGameXXKCardTargetMode::SingleEnemy, 7, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None}
+			{TEXT("Hero.Mage.GuiXuTongXuan"), EGameXXKCharacterRole::Sorcerer, 1, 0, 0, EGameXXKCardTargetMode::None, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::Universal},
+			{TEXT("Hero.Formation.GuanShiLuoZi"), EGameXXKCharacterRole::FormationMaster, 1, 1, 3, EGameXXKCardTargetMode::SingleEnemy, 3, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
+			{TEXT("Hero.Formation.YiZhenHuiXiang"), EGameXXKCharacterRole::FormationMaster, 1, 1, 3, EGameXXKCardTargetMode::None, 1, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
+			{TEXT("Hero.Formation.LianYingBuShi"), EGameXXKCharacterRole::FormationMaster, 1, 1, 0, EGameXXKCardTargetMode::None, 1, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None},
+			{TEXT("Hero.Formation.LiuHeGuiYi"), EGameXXKCharacterRole::FormationMaster, 1, 2, 6, EGameXXKCardTargetMode::None, 6, 0, 0, false, EGameXXKHeavyArrowKind::None, EGameXXKHeroSpellTaskReward::None}
 		};
 		return Expected;
 	}
@@ -205,7 +205,7 @@ bool FGameXXKHeroCardCatalogDataTest::RunTest(const FString& Parameters)
 
 	const TArray<FExpectedHeroCard>& Expected = ExpectedHeroCards();
 	TestEqual(TEXT("the protagonist pool has thirty-six cards"), HeroDefinitions.Num(), Expected.Num());
-	TestEqual(TEXT("the full catalog grows to one hundred ninety-eight cards"), AllDefinitions.Num(), 198);
+	TestEqual(TEXT("the full active catalog contains one hundred seventy-three cards"), AllDefinitions.Num(), 173);
 	TestEqual(TEXT("hero and named NPC identity locks total sixty"), IdentityLockedCount, 60);
 
 	TSet<FName> SeenIds;
@@ -299,6 +299,9 @@ bool FGameXXKHeroCardCatalogDataTest::RunTest(const FString& Parameters)
 			continue;
 		}
 		FormationInstance.CardId = Definition->Id;
+		const EGameXXKCardTargetMode ExpectedMode = Index == 32
+			? EGameXXKCardTargetMode::SingleEnemy
+			: EGameXXKCardTargetMode::None;
 		for (const EGameXXKCardTerrain Terrain : Terrains)
 		{
 			FGameXXKCardTargetRequest Request;
@@ -307,9 +310,9 @@ bool FGameXXKHeroCardCatalogDataTest::RunTest(const FString& Parameters)
 				FString::Printf(TEXT("%s builds a target request on terrain %d"), Expected[Index].Id, static_cast<int32>(Terrain)),
 				GameXXKCardRules::BuildTargetRequest(*Definition, FormationInstance, Terrain, Units, Request, &Error));
 			TestEqual(
-				FString::Printf(TEXT("%s stays manually enemy-targeted on terrain %d"), Expected[Index].Id, static_cast<int32>(Terrain)),
+				FString::Printf(TEXT("%s keeps its approved target mode on terrain %d"), Expected[Index].Id, static_cast<int32>(Terrain)),
 				Request.EffectiveMode,
-				EGameXXKCardTargetMode::SingleEnemy);
+				ExpectedMode);
 		}
 	}
 

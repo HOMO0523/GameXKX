@@ -290,6 +290,27 @@ FGameXXKCardDefinition FGameXXKCardQualityRules::BuildEffectiveDefinition(
 	FGameXXKCardDefinition EffectiveDefinition = BaseDefinition;
 	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(BaseDefinition, CurrentQuality);
 	EffectiveDefinition.BaseQuality = ResolvedQuality;
+	if (BaseDefinition.RareManaCost != INDEX_NONE && BaseDefinition.EpicManaCost != INDEX_NONE)
+	{
+		switch (ResolvedQuality)
+		{
+		case EGameXXKCardQuality::Rare:
+			EffectiveDefinition.ManaCost = BaseDefinition.RareManaCost;
+			break;
+		case EGameXXKCardQuality::Epic:
+			EffectiveDefinition.ManaCost = BaseDefinition.EpicManaCost;
+			break;
+		case EGameXXKCardQuality::Common:
+		default:
+			break;
+		}
+	}
+	EffectiveDefinition.HeavyArrow.MagnitudePerCharge = ResolveMagnitude(
+		BaseDefinition.HeavyArrow.MagnitudePolicy,
+		BaseDefinition.HeavyArrow.MagnitudePerCharge,
+		BaseDefinition.HeavyArrow.RareMagnitudePerCharge,
+		BaseDefinition.HeavyArrow.EpicMagnitudePerCharge,
+		ResolvedQuality);
 	const auto ResolveEffects = [ResolvedQuality](TArray<FGameXXKCardEffect>& Effects)
 	{
 		for (FGameXXKCardEffect& Effect : Effects)

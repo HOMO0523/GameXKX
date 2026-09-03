@@ -173,7 +173,7 @@ namespace GameXXKHeroGenericCardRuntimeTest
 		{
 			Cards.Add(MakeCard(
 				*FString::Printf(TEXT("Generic.Hand.%d"), Index),
-				TEXT("Route.General.PoJiaTuCi"),
+				TEXT("Hero.Generic.QingFengYiShi"),
 				HeroUnitId,
 				Cards.Num()));
 		}
@@ -181,7 +181,7 @@ namespace GameXXKHeroGenericCardRuntimeTest
 		{
 			Cards.Add(MakeCard(
 				*FString::Printf(TEXT("Generic.Draw.%d"), Index),
-				TEXT("Route.General.PoJiaTuCi"),
+				TEXT("Hero.Generic.QingFengYiShi"),
 				HeroUnitId,
 				Cards.Num()));
 		}
@@ -225,7 +225,7 @@ bool FGameXXKHeroGenericQingFengTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Qing Feng emits one direct packet"), QingFengResult.DamageResults.Num(), 1);
 	if (QingFengResult.DamageResults.Num() == 1)
 	{
-		TestEqual(TEXT("Qing Feng deals exactly 140% of ten attack"), QingFengResult.DamageResults[0].BaseRequestedDamage, 14);
+		TestEqual(TEXT("Qing Feng deals exactly 100% of ten attack"), QingFengResult.DamageResults[0].BaseRequestedDamage, 10);
 	}
 	TestEqual(TEXT("Qing Feng registers one next-card modifier"), Runtime.Modifiers.Num(), 1);
 
@@ -275,7 +275,7 @@ bool FGameXXKHeroGenericHeYuTest::RunTest(const FString& Parameters)
 	{
 		const TArray<FGameXXKCardInstance> Cards = {
 			MakeCard(TEXT("HeYu"), TEXT("Hero.Generic.HeYuZhan"), HeroUnitId, 0),
-			MakeCard(TEXT("Filler"), TEXT("Route.General.PoJiaTuCi"), HeroUnitId, 1)};
+			MakeCard(TEXT("Filler"), TEXT("Hero.Generic.QingFengYiShi"), HeroUnitId, 1)};
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, MakeBasicUnits(), Cards, {TEXT("HeYu"), TEXT("Filler")}, 3, 41100 + Bleed + Poison + Burn))
 		{
@@ -313,32 +313,37 @@ bool FGameXXKHeroGenericHeYuTest::RunTest(const FString& Parameters)
 			if (AutomaticBleed)
 			{
 				TestEqual(FString::Printf(TEXT("%s automatic Bleed snapshots its live layers"), Label), AutomaticBleed->StatusStacksBefore, Bleed);
-				TestEqual(FString::Printf(TEXT("%s automatic Bleed consumes one layer"), Label), AutomaticBleed->StatusStacksConsumed, 1);
+				TestEqual(FString::Printf(TEXT("%s automatic Bleed does not consume the reservoir"), Label), AutomaticBleed->StatusStacksConsumed, 0);
 			}
-			TestEqual(FString::Printf(TEXT("%s leaves Bleed one lower after the direct hit"), Label),
-				Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), Bleed - 1);
+			TestEqual(FString::Printf(TEXT("%s leaves Bleed unchanged after the direct hit"), Label),
+				Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), Bleed);
 		}
 		if (ExpectedTriggeredStacks > 0)
 		{
-			const FGameXXKCardDamageResult* Trigger = Result.DamageResults.FindByPredicate([ExpectedCause](const FGameXXKCardDamageResult& DamageResult)
+			const FGameXXKCardDamageResult* Trigger = nullptr;
+			for (int32 ResultIndex = Result.DamageResults.Num() - 1; ResultIndex >= 0; --ResultIndex)
 			{
-				return DamageResult.Cause == ExpectedCause;
-			});
+				if (Result.DamageResults[ResultIndex].Cause == ExpectedCause)
+				{
+					Trigger = &Result.DamageResults[ResultIndex];
+					break;
+				}
+			}
 			TestNotNull(FString::Printf(TEXT("%s explicitly triggers the highest remaining DoT"), Label), Trigger);
 			if (Trigger)
 			{
 				TestEqual(FString::Printf(TEXT("%s uses the fixed status cause"), Label), Trigger->Cause, ExpectedCause);
 				TestEqual(FString::Printf(TEXT("%s snapshots the highest remaining live stack"), Label), Trigger->StatusStacksBefore, ExpectedTriggeredStacks);
-				TestEqual(FString::Printf(TEXT("%s adds the full Rot amplifier"), Label), Trigger->RotDamageBonus, Rot);
-				TestEqual(FString::Printf(TEXT("%s consumes one explicitly triggered stack"), Label), Trigger->StatusStacksConsumed, 1);
+				TestEqual(FString::Printf(TEXT("%s does not mix the independent Rot reservoir into this trigger"), Label), Trigger->RotDamageBonus, 0);
+				TestEqual(FString::Printf(TEXT("%s consumes no explicitly triggered reservoir"), Label), Trigger->StatusStacksConsumed, 0);
 			}
-			TestEqual(FString::Printf(TEXT("%s leaves the explicitly chosen status one lower"), Label),
-				Status(Runtime, EnemyUnitId, ExpectedConsumedStatus), ExpectedTriggeredStacks - 1);
+			TestEqual(FString::Printf(TEXT("%s leaves the explicitly chosen reservoir unchanged"), Label),
+				Status(Runtime, EnemyUnitId, ExpectedConsumedStatus), ExpectedTriggeredStacks);
 		}
 		TestEqual(FString::Printf(TEXT("%s never consumes Rot"), Label), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), Rot);
 	};
 
-	RunCase(TEXT("initial tie becomes Poison after the direct hit consumes Bleed"), 5, 5, 5, 20, EGameXXKCardDamageCause::Poison, EGameXXKCardStatus::Poison, 5);
+	RunCase(TEXT("initial tie remains Bleed when triggers no longer consume it"), 5, 5, 5, 20, EGameXXKCardDamageCause::Bleed, EGameXXKCardStatus::Bleed, 5);
 	RunCase(TEXT("Poison wins when strictly highest"), 3, 6, 4, 2, EGameXXKCardDamageCause::Poison, EGameXXKCardStatus::Poison, 6);
 	RunCase(TEXT("Burn wins when strictly highest"), 3, 4, 7, 2, EGameXXKCardDamageCause::Burn, EGameXXKCardStatus::Burn, 7);
 	RunCase(TEXT("Rot alone is never selected"), 0, 0, 0, 20, EGameXXKCardDamageCause::Invalid, EGameXXKCardStatus::None, 0);
@@ -441,7 +446,7 @@ bool FGameXXKHeroGenericGuiYuanTest::RunTest(const FString& Parameters)
 	{
 		return true;
 	}
-	TestEqual(TEXT("Gui Yuan heals twelve"), FindUnit(Runtime, AllyUnitId)->HP, 42);
+	TestEqual(TEXT("Gui Yuan coefficient fifteen resolves to sixteen healing at level one"), FindUnit(Runtime, AllyUnitId)->HP, 46);
 	TestEqual(TEXT("Gui Yuan clears all Bleed"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Bleed), 0);
 	TestEqual(TEXT("Gui Yuan clears all Poison"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Poison), 0);
 	TestEqual(TEXT("Gui Yuan clears all Burn"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Burn), 0);
@@ -480,7 +485,9 @@ bool FGameXXKHeroGenericHengJianTest::RunTest(const FString& Parameters)
 	const TArray<FGameXXKCardInstance> Cards = {
 		MakeCard(TEXT("HengJian"), TEXT("Hero.Generic.HengJianShouShi"), HeroUnitId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, MakeBasicUnits(true), Cards, {TEXT("HengJian")}, 3, 41501))
+	TArray<FGameXXKCardCombatUnit> Units = MakeBasicUnits(true);
+	Units[0].Defense = 20;
+	if (!BuildRuntime(*this, Runtime, Units, Cards, {TEXT("HengJian")}, 3, 41501))
 	{
 		return false;
 	}
@@ -490,7 +497,7 @@ bool FGameXXKHeroGenericHengJianTest::RunTest(const FString& Parameters)
 		return true;
 	}
 	TestEqual(TEXT("Heng Jian applies Mark2"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Mark), 2);
-	TestEqual(TEXT("Heng Jian adds Armor16"), FindUnit(Runtime, AllyUnitId)->Armor, 16);
+	TestEqual(TEXT("Heng Jian grants cost-one Armor from 80% of caster Defense20"), FindUnit(Runtime, AllyUnitId)->Armor, 16);
 	TestEqual(TEXT("Heng Jian registers one visible Block use"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Block), 1);
 	return true;
 }
@@ -567,8 +574,8 @@ bool FGameXXKHeroGenericPoYunTest::RunTest(const FString& Parameters)
 		Units[0].Attack = 20;
 		const TArray<FGameXXKCardInstance> Cards = {
 			MakeCard(TEXT("PoYun"), TEXT("Hero.Generic.PoYunYiShan"), HeroUnitId, 0),
-			MakeCard(TEXT("HandFiller"), TEXT("Route.General.PoJiaTuCi"), HeroUnitId, 1),
-			MakeCard(TEXT("DrawFiller"), TEXT("Route.General.PoJiaTuCi"), HeroUnitId, 2)};
+			MakeCard(TEXT("HandFiller"), TEXT("Hero.Generic.QingFengYiShi"), HeroUnitId, 1),
+			MakeCard(TEXT("DrawFiller"), TEXT("Hero.Generic.QingFengYiShi"), HeroUnitId, 2)};
 		return BuildRuntime(*this, Runtime, Units, Cards, {TEXT("PoYun"), TEXT("HandFiller")}, 3, Seed);
 	};
 
@@ -687,6 +694,7 @@ bool FGameXXKHeroGenericGuiYuanFanZhaoTest::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroGenericCardRuntimeTest;
 	TArray<FGameXXKCardCombatUnit> Units = MakeBasicUnits(true, true);
 	Units[0].HP = 90;
+	Units[0].Defense = 20;
 	Units[1].HP = 80;
 	Units[2].HP = 98;
 	Units.Insert(MakeUnit(TEXT("DefeatedAlly"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 0, 100, 10, 10, 10, 4), 3);
@@ -710,13 +718,13 @@ bool FGameXXKHeroGenericGuiYuanFanZhaoTest::RunTest(const FString& Parameters)
 	{
 		return true;
 	}
-	TestEqual(TEXT("Fan Zhao heals the hero by six"), FindUnit(Runtime, HeroUnitId)->HP, 96);
-	TestEqual(TEXT("Fan Zhao heals the first ally by six"), FindUnit(Runtime, AllyUnitId)->HP, 86);
+	TestEqual(TEXT("Fan Zhao coefficient fifteen heals the hero to full"), FindUnit(Runtime, HeroUnitId)->HP, 100);
+	TestEqual(TEXT("Fan Zhao coefficient fifteen resolves to sixteen for the first ally"), FindUnit(Runtime, AllyUnitId)->HP, 96);
 	TestEqual(TEXT("Fan Zhao clamps the second ally at max health"), FindUnit(Runtime, SecondAllyUnitId)->HP, 100);
 	TestEqual(TEXT("Fan Zhao never revives a defeated ally"), FindUnit(Runtime, TEXT("DefeatedAlly"))->HP, 0);
 	for (const FName UnitId : {HeroUnitId, AllyUnitId, SecondAllyUnitId})
 	{
-		TestEqual(FString::Printf(TEXT("Fan Zhao gives %s Armor12"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->Armor, 12);
+		TestEqual(FString::Printf(TEXT("Fan Zhao gives %s the caster's full 50%%-Defense Armor10"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->Armor, 10);
 		TestEqual(FString::Printf(TEXT("Fan Zhao clears %s Bleed"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Bleed), 0);
 		TestEqual(FString::Printf(TEXT("Fan Zhao clears %s Poison"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Poison), 0);
 		TestEqual(FString::Printf(TEXT("Fan Zhao clears %s Burn"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Burn), 0);

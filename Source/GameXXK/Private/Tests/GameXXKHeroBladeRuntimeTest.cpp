@@ -232,8 +232,8 @@ bool FGameXXKBladeOnlyFirstChargeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YingFeng"), NAME_None, Result, TEXT("first Blade card"))) return true;
 	if (!Resolve(*this, Runtime, TEXT("TongPao"), AllyUnitId, Result, TEXT("second Blade card"))) return true;
-	TestEqual(TEXT("the first Blade Charge affects the second card owner"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Agility), 5);
-	TestEqual(TEXT("the first Blade Charge grants exactly one additional Counter"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 3);
+	TestEqual(TEXT("Ying Feng base Agility2 plus Charge2 reaches four"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Agility), 4);
+	TestEqual(TEXT("Ying Feng base Counter1 plus Charge1 reaches two"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 2);
 	if (!Resolve(*this, Runtime, TEXT("Attack"), EnemyUnitId, Result, TEXT("third active card"))) return true;
 	TestEqual(TEXT("the second Blade card does not create another Charge"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 0);
 	return true;
@@ -255,7 +255,7 @@ bool FGameXXKBladeChargeAnyOwnerTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("TongPao"), HeroUnitId, Result, TEXT("Tong Pao Charge source"))) return true;
 	if (!Resolve(*this, Runtime, TEXT("AllyCard"), AllyUnitId, Result, TEXT("different owner's next card"))) return true;
-	TestEqual(TEXT("shared-deck Charge grants Momentum to a different owner"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Momentum), 3);
+	TestEqual(TEXT("shared-deck Charge grants Momentum2 to a different owner"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Momentum), 2);
 	return true;
 }
 
@@ -425,10 +425,10 @@ bool FGameXXKXueLuChargeBleedTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Xue Lu's own direct hit triggers its attached Bleed"), SourceBleed);
 	if (SourceBleed)
 	{
-		TestEqual(TEXT("Xue Lu applies eight Bleed before its own hit trigger"), SourceBleed->StatusStacksBefore, 8);
-		TestEqual(TEXT("the ordinary direct hit consumes one of those eight layers"), SourceBleed->StatusStacksConsumed, 1);
+		TestEqual(TEXT("Xue Lu's coefficient six resolves to Bleed7 at the fixture level"), SourceBleed->StatusStacksBefore, 7);
+		TestEqual(TEXT("the ordinary direct hit does not drain the Bleed reservoir"), SourceBleed->StatusStacksConsumed, 0);
 	}
-	TestEqual(TEXT("Xue Lu leaves seven Bleed after its own ordinary direct hit"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 7);
+	TestEqual(TEXT("Xue Lu retains the full Bleed7 reservoir after its own trigger"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 7);
 	if (!Resolve(*this, Runtime, TEXT("Attack"), EnemyUnitId, Result, TEXT("next active attack"))) return true;
 	TArray<const FGameXXKCardDamageResult*> BleedResults;
 	for (const FGameXXKCardDamageResult& DamageResult : Result.DamageResults)
@@ -442,11 +442,11 @@ bool FGameXXKXueLuChargeBleedTest::RunTest(const FString& Parameters)
 	if (BleedResults.Num() == 2)
 	{
 		TestEqual(TEXT("the ordinary hit snapshots the seven live Bleed"), BleedResults[0]->StatusStacksBefore, 7);
-		TestEqual(TEXT("the ordinary hit consumes one Bleed"), BleedResults[0]->StatusStacksConsumed, 1);
-		TestEqual(TEXT("Xue Lu's extra trigger reads the remaining six Bleed"), BleedResults[1]->StatusStacksBefore, 6);
-		TestEqual(TEXT("the preserving trigger still audits its provisional one-layer consumption"), BleedResults[1]->StatusStacksConsumed, 1);
+		TestEqual(TEXT("the ordinary hit consumes no Bleed"), BleedResults[0]->StatusStacksConsumed, 0);
+		TestEqual(TEXT("Xue Lu's extra trigger reads the same seven-point reservoir"), BleedResults[1]->StatusStacksBefore, 7);
+		TestEqual(TEXT("the extra trigger also consumes no Bleed"), BleedResults[1]->StatusStacksConsumed, 0);
 	}
-	TestEqual(TEXT("Xue Lu restores only its extra trigger's layer, leaving the ordinary hit decay"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 6);
+	TestEqual(TEXT("both triggers leave the Bleed reservoir unchanged"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 7);
 	return true;
 }
 
@@ -500,14 +500,14 @@ bool FGameXXKYingFengChargeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YingFeng"), NAME_None, Result, TEXT("Ying Feng Charge source"))) return true;
 	if (!Resolve(*this, Runtime, TEXT("Next"), HeroUnitId, Result, TEXT("Ying Feng next card"))) return true;
-	TestEqual(TEXT("Ying Feng base3 plus Charge2 produces Agility5"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Agility), 5);
-	TestEqual(TEXT("Ying Feng base Counter2 plus Charge Counter1 produces three sources"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 3);
+	TestEqual(TEXT("Ying Feng base2 plus Charge2 produces Agility4"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Agility), 4);
+	TestEqual(TEXT("Ying Feng base Counter1 plus Charge Counter1 produces two sources"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 2);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKYingFengFinishTest,
-	"GameXXK.Data.HeroCards.Blade.YingFengFinishAtRoundStartGrantsHeroMark2Counter2",
+	"GameXXK.Data.HeroCards.Blade.YingFengFinishAtRoundStartGrantsHeroMark2Counter1",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKYingFengFinishTest::RunTest(const FString& Parameters)
@@ -521,17 +521,17 @@ bool FGameXXKYingFengFinishTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YingFeng"), NAME_None, Result, TEXT("Ying Feng Finish source"))) return true;
 	TestEqual(TEXT("the base creates Mark2"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Mark), 2);
-	TestEqual(TEXT("the base creates two temporary Counter sources"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 2);
+	TestEqual(TEXT("the base creates one temporary Counter source"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 1);
 	if (!EndRoundAndBeginNext(*this, Runtime, TEXT("Ying Feng Finish"))) return true;
 	TestEqual(TEXT("round-start Finish adds Mark2 without consuming the original Mark"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Mark), 4);
-	TestEqual(TEXT("expired base Counter is replaced by exactly two Finish sources"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 2);
-	TestEqual(TEXT("the round-start Finish creates two independent reactions"), Runtime.Reactions.Num(), 2);
+	TestEqual(TEXT("expired base Counter is replaced by exactly one Finish source"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Counter), 1);
+	TestEqual(TEXT("the round-start Finish creates one independent reaction"), Runtime.Reactions.Num(), 1);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTongPaoChargeTest,
-	"GameXXK.Data.HeroCards.Blade.TongPaoChargeGrantsNextOwnerMomentum3",
+	"GameXXK.Data.HeroCards.Blade.TongPaoChargeGrantsNextOwnerMomentum2",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKTongPaoChargeTest::RunTest(const FString& Parameters)
@@ -545,14 +545,14 @@ bool FGameXXKTongPaoChargeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("TongPao"), AllyUnitId, Result, TEXT("Tong Pao Charge source"))) return true;
 	if (!Resolve(*this, Runtime, TEXT("Next"), HeroUnitId, Result, TEXT("Tong Pao next card"))) return true;
-	TestEqual(TEXT("the next active card owner receives Momentum3 before its base"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 3);
-	TestEqual(TEXT("the source base still grants the selected ally its own Momentum3"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Momentum), 3);
+	TestEqual(TEXT("the next active card owner receives Momentum2 before its base"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 2);
+	TestEqual(TEXT("the source base still grants the selected ally its own Momentum2"), Status(Runtime, AllyUnitId, EGameXXKCardStatus::Momentum), 2);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTongPaoFinishFreeTest,
-	"GameXXK.Data.HeroCards.Blade.TongPaoFinishMakesBoundTargetsFirstNextRoundCardFree",
+	"GameXXK.Data.HeroCards.Blade.TongPaoFinishDiscountsBoundTargetsFirstNextRoundCardByOne",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKTongPaoFinishFreeTest::RunTest(const FString& Parameters)
@@ -562,14 +562,14 @@ bool FGameXXKTongPaoFinishFreeTest::RunTest(const FString& Parameters)
 		MakeCard(TEXT("Opening"), TEXT("Hero.Generic.NingShenTuNa"), HeroUnitId, 0),
 		MakeCard(TEXT("TongPao"), TEXT("Hero.Blade.TongPaoJuShi"), HeroUnitId, 1),
 		MakeCard(TEXT("HeroAttack"), TEXT("Hero.Generic.SuiYanJi"), HeroUnitId, 2),
-		MakeCard(TEXT("AllyAttack"), TEXT("Hero.Generic.SuiYanJi"), AllyUnitId, 3)};
+		MakeCard(TEXT("AllyCard"), TEXT("Hero.Generic.GuiYuanFanZhao"), AllyUnitId, 3)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Opening"), TEXT("TongPao"), TEXT("HeroAttack"), TEXT("AllyAttack")}, 52013)) return false;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Opening"), TEXT("TongPao"), TEXT("HeroAttack"), TEXT("AllyCard")}, 52013)) return false;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("Opening"), NAME_None, Result, TEXT("non-Blade opener"))) return true;
 	if (!Resolve(*this, Runtime, TEXT("TongPao"), AllyUnitId, Result, TEXT("Tong Pao Finish source"))) return true;
 	if (!EndRoundAndBeginNext(*this, Runtime, TEXT("Tong Pao Finish"))) return true;
-	if (!ArrangeHand(*this, Runtime, {TEXT("HeroAttack"), TEXT("AllyAttack")}, TEXT("Tong Pao bound-target order"))) return true;
+	if (!ArrangeHand(*this, Runtime, {TEXT("HeroAttack"), TEXT("AllyCard")}, TEXT("Tong Pao bound-target order"))) return true;
 
 	FGameXXKCardPlayPreview Preview;
 	FString Error;
@@ -577,15 +577,15 @@ bool FGameXXKTongPaoFinishFreeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("an unbound owner's first card still costs one"), Preview.EffectiveEnergyCost, 1);
 	if (!Resolve(*this, Runtime, TEXT("HeroAttack"), EnemyUnitId, Result, TEXT("unbound owner's card"))) return true;
 	const int32 EnergyAfterHero = Runtime.Deck.SharedEnergy;
-	TestEqual(TEXT("the bound free-card modifier remains after an unbound play"),
+	TestEqual(TEXT("the bound discount modifier remains after an unbound play"),
 		CountModifiers(Runtime, EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound), 1);
 
 	Error.Reset();
-	TestTrue(FString::Printf(TEXT("bound ally preview builds: %s"), *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("AllyAttack"), Preview, &Error));
-	TestEqual(TEXT("the bound owner's first next-round card costs zero"), Preview.EffectiveEnergyCost, 0);
-	if (!Resolve(*this, Runtime, TEXT("AllyAttack"), EnemyUnitId, Result, TEXT("bound owner's free card"))) return true;
-	TestEqual(TEXT("the free bound card spends no shared energy"), Runtime.Deck.SharedEnergy, EnergyAfterHero);
-	TestEqual(TEXT("the bound free-card modifier is consumed exactly once"),
+	TestTrue(FString::Printf(TEXT("bound ally preview builds: %s"), *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("AllyCard"), Preview, &Error));
+	TestEqual(TEXT("the bound owner's printed cost-two card is discounted to one"), Preview.EffectiveEnergyCost, 1);
+	if (!Resolve(*this, Runtime, TEXT("AllyCard"), NAME_None, Result, TEXT("bound owner's discounted card"))) return true;
+	TestEqual(TEXT("the bound card spends exactly one shared energy"), Runtime.Deck.SharedEnergy, EnergyAfterHero - 1);
+	TestEqual(TEXT("the bound discount modifier is consumed exactly once"),
 		CountModifiers(Runtime, EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound), 0);
 	return true;
 }

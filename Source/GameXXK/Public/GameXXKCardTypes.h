@@ -125,7 +125,7 @@ enum class EGameXXKHeavyArrowLockTiming : uint8
 	AfterBaseEffects = 1
 };
 
-/** Reward executed after the complete eight-card protagonist spell task replay. */
+/** Reward executed after the complete four-card protagonist Sorcerer task replay. */
 UENUM(BlueprintType)
 enum class EGameXXKHeroSpellTaskReward : uint8
 {
@@ -489,7 +489,15 @@ enum class EGameXXKHealerFormulaKind : uint8
 	TwoBleedPacketsMedicine = 15,
 	GroupDirectDamageEnergy = 16,
 	PoisonedVulnerabilityMedicineDraw = 17,
-	TripleDotExplosionMomentumDraw = 18
+	TripleDotExplosionMomentumDraw = 18,
+	/** First actual HP loss per distinct ally each round grants Medicine, at most three allies. */
+	HeroFirstPartyHealthLossMedicine = 19,
+	/** First Hero healing/reversal action each round that spends at least six Medicine draws one. */
+	HeroSixMedicineHealDraw = 20,
+	/** A two-or-more-type Toxic Explosion grants Medicine twice per round at most. */
+	HeroDualDotExplosionMedicine = 21,
+	/** First action each round that effectively heals at least two allies grants shared Energy. */
+	HeroGroupHealEnergy = 22
 };
 
 UENUM(BlueprintType)
@@ -508,7 +516,8 @@ enum class EGameXXKCardBattleModifierTrigger : uint8
 	BeforeFirstActiveCardNextPlayerRound = 10,
 	AfterFirstActiveCardNextPlayerRound = 11,
 	FirstActiveAttackAgainstStatusNextPlayerRound = 12,
-	AfterEachActiveCard = 13
+	AfterEachActiveCard = 13,
+	BeforeNextTerrainBenefit = 14
 };
 
 /** How a guard link redirects a qualifying attack. */
@@ -604,6 +613,16 @@ struct GAMEXXK_API FGameXXKHeavyArrowRule
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MagnitudePerCharge = 0;
+
+	/** Quality handling for MagnitudePerCharge; discrete Heavy Arrow fields stay unscaled. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardMagnitudePolicy MagnitudePolicy = EGameXXKCardMagnitudePolicy::Unscaled;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RareMagnitudePerCharge = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EpicMagnitudePerCharge = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 DrawPerCharge = 0;
@@ -1046,6 +1065,13 @@ struct GAMEXXK_API FGameXXKCardDefinition
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 ManaCost = 0;
 
+	/** Optional final authored Mana costs for Rare and Epic. Both must be present or both absent. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 RareManaCost = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EpicManaCost = INDEX_NONE;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FGameXXKCardTargetSpec TargetSpec;
 
@@ -1213,6 +1239,10 @@ struct GAMEXXK_API FGameXXKPendingCardChoice
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardPendingChoiceKind Kind = EGameXXKCardPendingChoiceKind::Invalid;
+
+	/** An already-open legacy Hero search may release a saved replay after its old generic requirements retire. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bLegacyHeroTaskSearch = false;
 
 	/** Candidate copies are views; the owning instance remains in Hand or DrawPile until confirmation. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -2135,7 +2165,7 @@ struct GAMEXXK_API FGameXXKAutomaticResolutionQueue
 	FName RewardOwnerUnitId = NAME_None;
 };
 
-/** Persisted progress and first-play ordering for the protagonist eight-card spell task. */
+/** Persisted progress and first-play ordering for the protagonist four-card Sorcerer task. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKHeroSpellTaskRuntime
 {
@@ -2358,6 +2388,10 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKHeroSpellTaskRuntime HeroSpellTask;
+
+	/** Prevents more than one completed protagonist Sorcerer task in a player round. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HeroSpellTaskLastCompletedRound = 0;
 
 	/** Owner-scoped permanent Sorcerer five-card tasks; inactive entries retain only battle history. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

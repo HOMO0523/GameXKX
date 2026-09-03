@@ -281,7 +281,7 @@ bool FGameXXKHealerMedicineNoLegacyCapTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerFriendlyReverseTest,
-	"GameXXK.Data.HeroCards.Healer.FriendlyReverseCardHealsTenPlusSnapshotAndCleanses",
+	"GameXXK.Data.HeroCards.Healer.FriendlyReverseCardHealsCoefficientTwentyFivePlusSnapshotAndCleanses",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerFriendlyReverseTest::RunTest(const FString& Parameters)
@@ -295,14 +295,16 @@ bool FGameXXKHealerFriendlyReverseTest::RunTest(const FString& Parameters)
 	GameXXKCardRules::AddCombatStatus(*Ally, EGameXXKCardStatus::Bleed, 4);
 	GameXXKCardRules::AddCombatStatus(*Ally, EGameXXKCardStatus::Poison, 3);
 	GameXXKCardRules::AddCombatStatus(*Ally, EGameXXKCardStatus::Burn, 2);
+	GameXXKCardRules::AddCombatStatus(*Ally, EGameXXKCardStatus::DamageOverTime, 3);
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, 5);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuiChun"), AllyAUnitId, Result, TEXT("friendly Hui Chun"))) return true;
-	TestEqual(TEXT("level-one friendly Hui Chun scales base ten plus Medicine5 to sixteen"), FindUnit(Runtime, AllyAUnitId)->HP, 56);
+	TestEqual(TEXT("level-one friendly Hui Chun scales coefficient25 plus Medicine5 to healing32"), FindUnit(Runtime, AllyAUnitId)->HP, 72);
 	TestEqual(TEXT("friendly Hui Chun consumes the full snapshot"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("friendly Hui Chun cleanses Bleed"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::Bleed), 0);
 	TestEqual(TEXT("friendly Hui Chun cleanses Poison"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::Poison), 0);
 	TestEqual(TEXT("friendly Hui Chun cleanses Burn"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::Burn), 0);
+	TestEqual(TEXT("friendly Hui Chun cleanses the full Rot reservoir"), Status(Runtime, AllyAUnitId, EGameXXKCardStatus::DamageOverTime), 0);
 	TestEqual(TEXT("healing does not emit damage"), Result.DamageResults.Num(), 0);
 	return true;
 }
@@ -323,6 +325,7 @@ bool FGameXXKHealerEnemyReverseTest::RunTest(const FString& Parameters)
 	Enemy->Defense = 40;
 	Enemy->Armor = 50;
 	GameXXKCardRules::AddCombatStatus(*Enemy, EGameXXKCardStatus::Poison, 3);
+	GameXXKCardRules::AddCombatStatus(*Enemy, EGameXXKCardStatus::DamageOverTime, 4);
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, 5);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuiChun"), EnemyAUnitId, Result, TEXT("enemy Hui Chun"))) return true;
@@ -330,6 +333,7 @@ bool FGameXXKHealerEnemyReverseTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("enemy Hui Chun can defeat its target"), FindUnit(Runtime, EnemyAUnitId)->bLiving);
 	TestEqual(TEXT("enemy Hui Chun bypasses Armor"), FindUnit(Runtime, EnemyAUnitId)->Armor, 50);
 	TestEqual(TEXT("enemy Hui Chun does not cleanse enemy Poison"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Poison), 3);
+	TestEqual(TEXT("enemy Hui Chun does not cleanse enemy Rot"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::DamageOverTime), 4);
 	TestEqual(TEXT("enemy Hui Chun consumes Medicine once"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("enemy Hui Chun emits one health-loss audit"), Result.DamageResults.Num(), 1);
 	if (Result.DamageResults.Num() == 1)
@@ -360,7 +364,7 @@ bool FGameXXKHealerNewMedicineSurvivesTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("listener fixture validates: %s"), *ValidationError), GameXXKCardRules::ValidateCardBattleRuntime(Runtime, &ValidationError));
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuiChun"), AllyAUnitId, Result, TEXT("snapshot-safe Hui Chun"))) return true;
-	TestEqual(TEXT("the old snapshot still scales to healing sixteen"), FindUnit(Runtime, AllyAUnitId)->HP, 56);
+	TestEqual(TEXT("the old snapshot still scales coefficient25 plus Medicine5 to healing32"), FindUnit(Runtime, AllyAUnitId)->HP, 72);
 	TestEqual(TEXT("Medicine created after the action snapshot survives"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 6);
 	TestEqual(TEXT("the post-resolution Medicine6 award grants Momentum1"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 1);
 	return true;
@@ -368,7 +372,7 @@ bool FGameXXKHealerNewMedicineSurvivesTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerGroupSnapshotTest,
-	"GameXXK.Data.HeroCards.Healer.GroupHealAppliesSixPlusSnapshotToEveryAllyButConsumesOnce",
+	"GameXXK.Data.HeroCards.Healer.GroupHealAppliesCoefficientTwentyPlusSnapshotToEveryAllyButConsumesOnce",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerGroupSnapshotTest::RunTest(const FString& Parameters)
@@ -386,7 +390,7 @@ bool FGameXXKHealerGroupSnapshotTest::RunTest(const FString& Parameters)
 	if (!Resolve(*this, Runtime, TEXT("BaiCao"), NAME_None, Result, TEXT("Bai Cao group snapshot"))) return true;
 	for (const FName UnitId : {HeroUnitId, AllyAUnitId, AllyBUnitId})
 	{
-		TestEqual(FString::Printf(TEXT("%s receives full level-one scaled 6+5 healing"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->HP, 62);
+		TestEqual(FString::Printf(TEXT("%s receives full level-one scaled coefficient20 plus Medicine5 healing"), *UnitId.ToString()), FindUnit(Runtime, UnitId)->HP, 76);
 	}
 	TestEqual(TEXT("the group action consumes Medicine only once"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 0);
 	return true;
@@ -394,7 +398,7 @@ bool FGameXXKHealerGroupSnapshotTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerDuHuoTest,
-	"GameXXK.Data.HeroCards.Healer.DuHuoAppliesPoison6Burn2ThenExplodesThenGrantsMedicine6",
+	"GameXXK.Data.HeroCards.Healer.DuHuoResolvesDotCoefficientsThenExplodesAndGrantsMedicine6",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerDuHuoTest::RunTest(const FString& Parameters)
@@ -409,8 +413,8 @@ bool FGameXXKHealerDuHuoTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Du Huo emits one direct packet"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::DirectAttack), 1);
 	TestEqual(TEXT("Du Huo explodes Poison once"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionPoison), 1);
 	TestEqual(TEXT("Du Huo explodes Burn once"), CountCause(Result.DamageResults, EGameXXKCardDamageCause::ToxicExplosionBurn), 1);
-	TestEqual(TEXT("Poison6 remains in its reservoir after exploding"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Poison), 6);
-	TestEqual(TEXT("Burn2 remains in its reservoir after exploding"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Burn), 2);
+	TestEqual(TEXT("Poison coefficient6 resolves to a persistent reservoir7"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Poison), 7);
+	TestEqual(TEXT("Burn coefficient2 resolves to a persistent reservoir3"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Burn), 3);
 	TestEqual(TEXT("Du Huo grants Medicine6 at the end"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 6);
 	TestEqual(TEXT("Du Huo's Medicine6 grants Momentum1"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Momentum), 1);
 	return true;
@@ -418,7 +422,7 @@ bool FGameXXKHealerDuHuoTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerBaiCaoStatusTest,
-	"GameXXK.Data.HeroCards.Healer.BaiCaoAddsOnlyPoison1Burn1PerEnemy",
+	"GameXXK.Data.HeroCards.Healer.BaiCaoAddsResolvedPoisonAndBurnCoefficientOnePerEnemy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerBaiCaoStatusTest::RunTest(const FString& Parameters)
@@ -432,8 +436,8 @@ bool FGameXXKHealerBaiCaoStatusTest::RunTest(const FString& Parameters)
 	if (!Resolve(*this, Runtime, TEXT("BaiCao"), NAME_None, Result, TEXT("Bai Cao status spread"))) return true;
 	for (const FName UnitId : {EnemyAUnitId, EnemyBUnitId})
 	{
-		TestEqual(FString::Printf(TEXT("%s receives exactly Poison1"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Poison), 1);
-		TestEqual(FString::Printf(TEXT("%s receives exactly Burn1"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Burn), 1);
+		TestEqual(FString::Printf(TEXT("%s receives level-one Poison2 from coefficient1"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Poison), 2);
+		TestEqual(FString::Printf(TEXT("%s receives level-one Burn2 from coefficient1"), *UnitId.ToString()), Status(Runtime, UnitId, EGameXXKCardStatus::Burn), 2);
 	}
 	return true;
 }
@@ -464,6 +468,128 @@ bool FGameXXKHealerToxicExplosionRotReservoirTest::RunTest(const FString& Parame
 		TestEqual(TEXT("Rot no longer multiplies Poison"), PoisonResult->RotDamageBonus, 0);
 		TestEqual(TEXT("Rot no longer multiplies Burn"), BurnResult->RotDamageBonus, 0);
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroYiXueFormulaRuntimeTest,
+	"GameXXK.Data.HeroCards.Healer.Formula.YiXueFirstLossPerAllyCapsAtThreePerRound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroYiXueFormulaRuntimeTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroHealerRuntimeTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeCard(TEXT("Open"), TEXT("Hero.Healer.YiXueCuiFang"), 0),
+		MakeCard(TEXT("Second"), TEXT("Hero.Healer.YiXueCuiFang"), 1),
+		MakeCard(TEXT("Third"), TEXT("Hero.Healer.YiXueCuiFang"), 2)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Open"), TEXT("Second"), TEXT("Third")}, 54020)) return false;
+	FGameXXKCardPlayResult Result;
+	if (!Resolve(*this, Runtime, TEXT("Open"), NAME_None, Result, TEXT("open Yi Xue formula"))) return true;
+	if (!TestEqual(TEXT("the opening card installs exactly one Hero formula"), Runtime.HealerFormulas.Num(), 1)) return false;
+	GameXXKCardRules::ConsumeCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, MAX_int32);
+	GameXXKCardRules::ConsumeCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Momentum, MAX_int32);
+	if (!Resolve(*this, Runtime, TEXT("Second"), NAME_None, Result, TEXT("trigger Yi Xue formula"))) return true;
+	TestEqual(TEXT("base Medicine6 plus three first-loss formula grants produce Medicine9"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 9);
+	TestEqual(TEXT("the formula records exactly three distinct allies this round"), Runtime.HealerFormulas[0].TriggeredUnitIdsThisRound.Num(), 3);
+	if (!Resolve(*this, Runtime, TEXT("Third"), NAME_None, Result, TEXT("repeat Yi Xue in same round"))) return true;
+	TestEqual(TEXT("repeat losses from the same allies add only the card's Medicine6"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 15);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroHuiChunFormulaRuntimeTest,
+	"GameXXK.Data.HeroCards.Healer.Formula.HuiChunSixMedicineDrawsOncePerRound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroHuiChunFormulaRuntimeTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroHealerRuntimeTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeCard(TEXT("Open"), TEXT("Hero.Healer.HuiChunNiMai"), 0),
+		MakeCard(TEXT("Second"), TEXT("Hero.Healer.HuiChunNiMai"), 1),
+		MakeCard(TEXT("Third"), TEXT("Hero.Healer.HuiChunNiMai"), 2),
+		MakeCard(TEXT("DrawA"), TEXT("Hero.Generic.QingFengYiShi"), 3),
+		MakeCard(TEXT("DrawB"), TEXT("Hero.Generic.SuiYanJi"), 4)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Open"), TEXT("Second"), TEXT("Third")}, 54021)) return false;
+	FindUnit(Runtime, AllyAUnitId)->HP = 1;
+	FGameXXKCardPlayResult Result;
+	if (!Resolve(*this, Runtime, TEXT("Open"), AllyAUnitId, Result, TEXT("open Hui Chun formula"))) return true;
+	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, 6);
+	const int32 HandBeforeFirstTrigger = Runtime.Deck.Hand.Num();
+	if (!Resolve(*this, Runtime, TEXT("Second"), AllyAUnitId, Result, TEXT("trigger Hui Chun formula"))) return true;
+	TestTrue(TEXT("the healing action explicitly audits all six consumed Medicine"), Result.StatusChanges.ContainsByPredicate([](const FGameXXKCardStatusChangeResult& Change)
+	{
+		return Change.TargetUnitId == HeroUnitId
+			&& Change.Status == EGameXXKCardStatus::Medicine
+			&& Change.RemovedStacks == 6;
+	}));
+	TestEqual(TEXT("the first six-Medicine Hero heal draws one"), Runtime.Deck.Hand.Num(), HandBeforeFirstTrigger);
+	GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, 6);
+	const int32 HandBeforeRepeat = Runtime.Deck.Hand.Num();
+	if (!Resolve(*this, Runtime, TEXT("Third"), AllyAUnitId, Result, TEXT("repeat Hui Chun formula"))) return true;
+	TestEqual(TEXT("the same-round repeat does not draw again"), Runtime.Deck.Hand.Num(), HandBeforeRepeat - 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroDuHuoFormulaRuntimeTest,
+	"GameXXK.Data.HeroCards.Healer.Formula.DuHuoDualDotGrantsMedicineTwicePerRound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroDuHuoFormulaRuntimeTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroHealerRuntimeTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeCard(TEXT("Open"), TEXT("Hero.Healer.DuHuoTongLu"), 0),
+		MakeCard(TEXT("Second"), TEXT("Hero.Healer.DuHuoTongLu"), 1),
+		MakeCard(TEXT("Third"), TEXT("Hero.Healer.DuHuoTongLu"), 2),
+		MakeCard(TEXT("Fourth"), TEXT("Hero.Healer.DuHuoTongLu"), 3)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Open"), TEXT("Second"), TEXT("Third"), TEXT("Fourth")}, 54022)) return false;
+	FindUnit(Runtime, EnemyAUnitId)->HP = 10000;
+	FindUnit(Runtime, EnemyAUnitId)->MaxHP = 10000;
+	FGameXXKCardPlayResult Result;
+	if (!Resolve(*this, Runtime, TEXT("Open"), EnemyAUnitId, Result, TEXT("open Du Huo formula"))) return true;
+	GameXXKCardRules::ConsumeCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Medicine, MAX_int32);
+	GameXXKCardRules::ConsumeCombatStatus(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::Momentum, MAX_int32);
+	if (!Resolve(*this, Runtime, TEXT("Second"), EnemyAUnitId, Result, TEXT("first Du Huo formula trigger"))) return true;
+	TestEqual(TEXT("first qualifying explosion grants base six plus formula two Medicine"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 8);
+	if (!Resolve(*this, Runtime, TEXT("Third"), EnemyAUnitId, Result, TEXT("second Du Huo formula trigger"))) return true;
+	TestEqual(TEXT("second qualifying explosion receives the second formula budget"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 16);
+	if (!Resolve(*this, Runtime, TEXT("Fourth"), EnemyAUnitId, Result, TEXT("capped Du Huo formula trigger"))) return true;
+	TestEqual(TEXT("third same-round explosion adds only the card's base Medicine6"), Status(Runtime, HeroUnitId, EGameXXKCardStatus::Medicine), 22);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroBaiCaoFormulaRuntimeTest,
+	"GameXXK.Data.HeroCards.Healer.Formula.BaiCaoTwoEffectiveAlliesGainEnergyOncePerRound",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroBaiCaoFormulaRuntimeTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKHeroHealerRuntimeTest;
+	const TArray<FGameXXKCardInstance> Cards = {
+		MakeCard(TEXT("Open"), TEXT("Hero.Healer.BaiCaoJiZhen"), 0),
+		MakeCard(TEXT("Second"), TEXT("Hero.Healer.BaiCaoJiZhen"), 1),
+		MakeCard(TEXT("Third"), TEXT("Hero.Healer.BaiCaoJiZhen"), 2)};
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, Runtime, Cards, {TEXT("Open"), TEXT("Second"), TEXT("Third")}, 54023)) return false;
+	FGameXXKCardPlayResult Result;
+	if (!Resolve(*this, Runtime, TEXT("Open"), NAME_None, Result, TEXT("open Bai Cao formula"))) return true;
+	for (const FName UnitId : {HeroUnitId, AllyAUnitId, AllyBUnitId})
+	{
+		FindUnit(Runtime, UnitId)->HP = 50;
+	}
+	const int32 EnergyBeforeTrigger = Runtime.Deck.SharedEnergy;
+	if (!Resolve(*this, Runtime, TEXT("Second"), NAME_None, Result, TEXT("trigger Bai Cao formula"))) return true;
+	TestEqual(TEXT("the first two-plus-ally heal pays two and refunds one Energy"), Runtime.Deck.SharedEnergy, EnergyBeforeTrigger - 1);
+	const int32 EnergyBeforeRepeat = Runtime.Deck.SharedEnergy;
+	if (!Resolve(*this, Runtime, TEXT("Third"), NAME_None, Result, TEXT("repeat Bai Cao formula"))) return true;
+	TestEqual(TEXT("the same-round repeat pays two without another formula refund"), Runtime.Deck.SharedEnergy, EnergyBeforeRepeat - 2);
 	return true;
 }
 

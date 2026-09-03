@@ -1,4 +1,7 @@
+#include "GameXXKCardCatalog.h"
+#include "GameXXKCardQualityRules.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCardText.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -238,7 +241,7 @@ namespace GameXXKHeroFormationRuntimeTest
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHeroFormationTargetMatrixTest,
-	"GameXXK.Data.HeroCards.Formation.TargetMatrixKeepsOneEnemyAnchor",
+	"GameXXK.Data.HeroCards.Formation.OnlyIndependentAttackKeepsOneEnemyAnchor",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHeroFormationTargetMatrixTest::RunTest(const FString& Parameters)
@@ -265,14 +268,16 @@ bool FGameXXKHeroFormationTargetMatrixTest::RunTest(const FString& Parameters)
 				continue;
 			}
 			++PreviewCount;
-			TestTrue(FString::Printf(TEXT("%s requires one manual target"), *Context), Preview.TargetRequest.bRequiresManualSelection);
-			TestEqual(FString::Printf(TEXT("%s remains SingleEnemy"), *Context), Preview.TargetRequest.EffectiveMode, EGameXXKCardTargetMode::SingleEnemy);
+			const bool bIndependentAttack = CardId == FName(TEXT("Hero.Formation.GuanShiLuoZi"));
+			TestEqual(FString::Printf(TEXT("%s manual-target requirement"), *Context), Preview.TargetRequest.bRequiresManualSelection, bIndependentAttack);
+			TestEqual(FString::Printf(TEXT("%s effective target mode"), *Context), Preview.TargetRequest.EffectiveMode,
+				bIndependentAttack ? EGameXXKCardTargetMode::SingleEnemy : EGameXXKCardTargetMode::None);
 			FGameXXKCardPlayResult Result;
-			if (Resolve(*this, Runtime, TEXT("Primary"), EnemyAId, Result, Context))
+			if (Resolve(*this, Runtime, TEXT("Primary"), bIndependentAttack ? EnemyAId : NAME_None, Result, Context))
 			{
 				++ResolveCount;
-				TestEqual(FString::Printf(TEXT("%s commits the selected anchor"), *Context), Result.TargetUnitIds.Num(), 1);
-				if (Result.TargetUnitIds.Num() == 1)
+				TestEqual(FString::Printf(TEXT("%s committed target count"), *Context), Result.TargetUnitIds.Num(), bIndependentAttack ? 1 : 0);
+				if (bIndependentAttack && Result.TargetUnitIds.Num() == 1)
 				{
 					TestEqual(FString::Printf(TEXT("%s keeps EnemyA as anchor"), *Context), Result.TargetUnitIds[0], EnemyAId);
 				}
@@ -337,13 +342,13 @@ bool FGameXXKHeroFormationYiZhenTest::RunTest(const FString& Parameters)
 			Runtime.bTerrainChangedThisRound = bChanged;
 			FGameXXKCardPlayResult Result;
 			const FString Context = FString::Printf(TEXT("YiZhen changed=%d terrain=%d"), bChanged, static_cast<int32>(Terrain));
-			if (!Resolve(*this, Runtime, TEXT("Primary"), EnemyAId, Result, Context))
+			if (!Resolve(*this, Runtime, TEXT("Primary"), NAME_None, Result, Context))
 			{
 				continue;
 			}
-			const int32 Repetitions = bChanged ? 3 : 2;
+			const int32 Repetitions = bChanged ? 2 : 1;
 			AssertBenefit(*this, Runtime, Terrain, Repetitions, 27, Terrain == EGameXXKCardTerrain::Village ? Repetitions : 0, Context);
-			TestEqual(FString::Printf(TEXT("%s energy reward follows the real-change branch"), *Context), Runtime.Deck.SharedEnergy, bChanged ? 10 : 9);
+			TestEqual(FString::Printf(TEXT("%s pays one Energy with no refund"), *Context), Runtime.Deck.SharedEnergy, 9);
 		}
 	}
 	return true;
@@ -351,64 +356,64 @@ bool FGameXXKHeroFormationYiZhenTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHeroFormationListenerTest,
-	"GameXXK.Data.HeroCards.Formation.LianYingUsesThreeLiveActiveCardTerrainsAndRetargets",
+	"GameXXK.Data.HeroCards.Formation.LianYingDoublesTheNextLiveTerrainBenefit",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHeroFormationListenerTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroFormationRuntimeTest;
+	const EGameXXKCardQuality Qualities[] = {EGameXXKCardQuality::Common, EGameXXKCardQuality::Rare, EGameXXKCardQuality::Epic};
+	for (int32 QualityIndex = 0; QualityIndex < 3; ++QualityIndex)
+	{
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, TEXT("Hero.Formation.LianYingBuShi"), EGameXXKCardTerrain::Plain, 3, 61300))
 	{
 		return false;
 	}
+	for (FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+	{
+		if (Card.InstanceId == TEXT("Primary")) Card.CurrentQuality = Qualities[QualityIndex];
+		if (Card.InstanceId == TEXT("Active.1") || Card.InstanceId == TEXT("Active.2")) Card.CardId = TEXT("Hero.Formation.GuanShiLuoZi");
+	}
 	FGameXXKCardPlayResult Result;
-	if (!Resolve(*this, Runtime, TEXT("Primary"), EnemyAId, Result, TEXT("LianYing registration")))
+	if (!Resolve(*this, Runtime, TEXT("Primary"), NAME_None, Result, TEXT("LianYing registration")))
 	{
 		return true;
 	}
-	TestEqual(TEXT("LianYing does not consume itself"), CountModifiers(Runtime, EGameXXKCardBattleModifierTrigger::AfterEachActiveCard), 1);
+	TestEqual(TEXT("LianYing does not consume itself"), Runtime.Modifiers.Num(), 1);
 	const FGameXXKCardBattleModifierRuntime* Listener = Runtime.Modifiers.FindByPredicate([](const FGameXXKCardBattleModifierRuntime& Modifier)
 	{
-		return Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard;
+		return Modifier.SourceCardSnapshot.CardId == FName(TEXT("Hero.Formation.LianYingBuShi"));
 	});
 	TestNotNull(TEXT("LianYing registers one listener"), Listener);
 	if (Listener)
 	{
-		TestEqual(TEXT("LianYing listener starts with three uses"), Listener->Definition.RemainingTriggers, 3);
-		TestEqual(TEXT("LianYing retains the enemy anchor"), Listener->OriginalSelectedTargetUnitId, EnemyAId);
+		TestEqual(TEXT("LianYing waits for one actual terrain benefit"), Listener->Definition.RemainingTriggers, 1);
+		TestTrue(TEXT("terrain-only LianYing stores no selected enemy anchor"), Listener->OriginalSelectedTargetUnitId.IsNone());
 	}
 
 	Runtime.Terrain = EGameXXKCardTerrain::Plain;
-	if (Resolve(*this, Runtime, TEXT("Active.0"), NAME_None, Result, TEXT("first listener trigger")))
+	if (Resolve(*this, Runtime, TEXT("Active.0"), NAME_None, Result, TEXT("non-terrain active card")))
 	{
-		TestEqual(TEXT("first live terrain adds Burn2 to the anchor"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2);
+		TestEqual(TEXT("a non-terrain card cannot create a terrain benefit"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 0);
+		TestEqual(TEXT("a non-terrain card does not consume the count override"), Runtime.Modifiers.Num(), 1);
 	}
-	FGameXXKCardCombatUnit* EnemyA = FindUnit(Runtime, EnemyAId);
-	if (EnemyA)
+	if (Resolve(*this, Runtime, TEXT("Active.1"), EnemyAId, Result, TEXT("first actual terrain benefit")))
 	{
-		EnemyA->HP = 0;
-		EnemyA->bLiving = false;
+		TestEqual(TEXT("the next benefit has exactly its quality-authored total count"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2 * (QualityIndex + 2));
+		TestEqual(TEXT("one terrain benefit consumes the override"), Runtime.Modifiers.Num(), 0);
 	}
-	Runtime.Terrain = EGameXXKCardTerrain::Cliff;
-	if (Resolve(*this, Runtime, TEXT("Active.1"), NAME_None, Result, TEXT("second listener trigger")))
+	if (Resolve(*this, Runtime, TEXT("Active.2"), EnemyAId, Result, TEXT("later ordinary terrain benefit")))
 	{
-		TestEqual(TEXT("dead anchor retargets to stable EnemyB Vulnerability"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Vulnerability), 2);
-		TestEqual(TEXT("dead anchor retargets to stable EnemyB Mark"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Mark), 1);
+		TestEqual(TEXT("the following benefit returns to its ordinary one trigger"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2 * (QualityIndex + 3));
 	}
-	Runtime.Terrain = EGameXXKCardTerrain::Forest;
-	if (Resolve(*this, Runtime, TEXT("Active.2"), NAME_None, Result, TEXT("third listener trigger")))
-	{
-		TestEqual(TEXT("third live terrain heals Hero4"), FindUnit(Runtime, HeroId)->HP, 64);
-		TestEqual(TEXT("third live terrain heals ally4"), FindUnit(Runtime, AllyId)->HP, 54);
 	}
-	TestEqual(TEXT("LianYing listener expires after exactly three later active cards"), CountModifiers(Runtime, EGameXXKCardBattleModifierTrigger::AfterEachActiveCard), 0);
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHeroFormationListenerTerrainMatrixTest,
-	"GameXXK.Data.HeroCards.Formation.LianYingReadsEveryLiveTerrainAndIgnoresAutomaticReplay",
+	"GameXXK.Data.HeroCards.Formation.LianYingReadsEveryLiveTerrainAndIgnoresNonTerrainReplay",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHeroFormationListenerTerrainMatrixTest::RunTest(const FString& Parameters)
@@ -424,7 +429,11 @@ bool FGameXXKHeroFormationListenerTerrainMatrixTest::RunTest(const FString& Para
 		}
 		FGameXXKCardPlayResult Result;
 		const FString Context = FString::Printf(TEXT("LianYing live terrain=%d"), static_cast<int32>(Terrain));
-		if (!Resolve(*this, Runtime, TEXT("Primary"), EnemyAId, Result, Context + TEXT(" registration")))
+		for (FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+		{
+			if (Card.InstanceId == TEXT("Active.0")) Card.CardId = TEXT("Hero.Formation.YiZhenHuiXiang");
+		}
+		if (!Resolve(*this, Runtime, TEXT("Primary"), NAME_None, Result, Context + TEXT(" registration")))
 		{
 			continue;
 		}
@@ -444,12 +453,12 @@ bool FGameXXKHeroFormationListenerTerrainMatrixTest::RunTest(const FString& Para
 			GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, ReplayResults, &Error));
 		const FGameXXKCardBattleModifierRuntime* Listener = Runtime.Modifiers.FindByPredicate([](const FGameXXKCardBattleModifierRuntime& Modifier)
 		{
-			return Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard;
+			return Modifier.SourceCardSnapshot.CardId == FName(TEXT("Hero.Formation.LianYingBuShi"));
 		});
 		TestNotNull(FString::Printf(TEXT("%s retains its listener after automatic replay"), *Context), Listener);
 		if (Listener)
 		{
-			TestEqual(FString::Printf(TEXT("%s automatic replay consumes no listener use"), *Context), Listener->Definition.RemainingTriggers, 3);
+			TestEqual(FString::Printf(TEXT("%s automatic replay consumes no listener use"), *Context), Listener->Definition.RemainingTriggers, 1);
 		}
 
 		if (!Resolve(*this, Runtime, TEXT("Active.0"), NAME_None, Result, Context + TEXT(" active trigger")))
@@ -460,26 +469,22 @@ bool FGameXXKHeroFormationListenerTerrainMatrixTest::RunTest(const FString& Para
 			*this,
 			Runtime,
 			Terrain,
-			1,
-			50,
-			Terrain == EGameXXKCardTerrain::Village ? 1 : 0,
+			2,
+			37,
+			Terrain == EGameXXKCardTerrain::Village ? 2 : 0,
 			Context);
 		Listener = Runtime.Modifiers.FindByPredicate([](const FGameXXKCardBattleModifierRuntime& Modifier)
 		{
-			return Modifier.Definition.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard;
+			return Modifier.SourceCardSnapshot.CardId == FName(TEXT("Hero.Formation.LianYingBuShi"));
 		});
-		TestNotNull(FString::Printf(TEXT("%s retains two later uses"), *Context), Listener);
-		if (Listener)
-		{
-			TestEqual(FString::Printf(TEXT("%s consumes exactly one active-play use"), *Context), Listener->Definition.RemainingTriggers, 2);
-		}
+		TestNull(FString::Printf(TEXT("%s consumes its one active-play use"), *Context), Listener);
 	}
 	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHeroFormationLiuHeTest,
-	"GameXXK.Data.HeroCards.Formation.LiuHeRunsSixFixedBenefitsThenCurrentWithoutSwitching",
+	"GameXXK.Data.HeroCards.Formation.LiuHeRunsExactlySixFixedBenefitsWithoutSwitching",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHeroFormationLiuHeTest::RunTest(const FString& Parameters)
@@ -491,7 +496,7 @@ bool FGameXXKHeroFormationLiuHeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKCardPlayResult Result;
-	if (!Resolve(*this, Runtime, TEXT("Primary"), EnemyAId, Result, TEXT("LiuHe")))
+	if (!Resolve(*this, Runtime, TEXT("Primary"), NAME_None, Result, TEXT("LiuHe")))
 	{
 		return true;
 	}
@@ -500,8 +505,8 @@ bool FGameXXKHeroFormationLiuHeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("LiuHe fixed Cliff adds Mark1"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), 1);
 	TestEqual(TEXT("LiuHe fixed Forest heals Hero4"), FindUnit(Runtime, HeroId)->HP, 64);
 	TestEqual(TEXT("LiuHe fixed Forest heals ally4"), FindUnit(Runtime, AllyId)->HP, 54);
-	TestEqual(TEXT("LiuHe fixed Water plus current Ferry grants Hero Mana6 after cost"), FindUnit(Runtime, HeroId)->Mana, 30);
-	TestEqual(TEXT("LiuHe fixed Water plus current Ferry grants ally Mana6"), FindUnit(Runtime, AllyId)->Mana, 26);
+	TestEqual(TEXT("LiuHe fixed Water grants Hero Mana3 after cost"), FindUnit(Runtime, HeroId)->Mana, 27);
+	TestEqual(TEXT("LiuHe fixed Water grants ally Mana3"), FindUnit(Runtime, AllyId)->Mana, 23);
 	TestEqual(TEXT("LiuHe Village plus Cave grants Hero Armor12"), FindUnit(Runtime, HeroId)->Armor, 12);
 	TestEqual(TEXT("LiuHe Village plus Cave grants ally Armor12"), FindUnit(Runtime, AllyId)->Armor, 12);
 	TestEqual(TEXT("LiuHe Cave registers one Block for each ally"), CountReactions(Runtime, EGameXXKCardStatus::Block), 2);
@@ -547,6 +552,28 @@ bool FGameXXKHeroFormationTerrainChangeTest::RunTest(const FString& Parameters)
 		GameXXKCardRules::BeginNextPlayerCardRound(Runtime, DamageResults, &Error));
 	TestFalse(TEXT("the next player round clears the terrain-change flag"), Runtime.bTerrainChangedThisRound);
 	TestEqual(TEXT("the selected terrain persists across rounds"), Runtime.Terrain, EGameXXKCardTerrain::Cliff);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKHeroFormationCountOverrideTextTest,
+	"GameXXK.Data.HeroCards.Formation.LianYingTextDescribesNextBenefitTotal",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKHeroFormationCountOverrideTextTest::RunTest(const FString& Parameters)
+{
+	const FGameXXKCardDefinition* Base = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Formation.LianYingBuShi"));
+	if (!TestNotNull(TEXT("LianYing text source exists"), Base)) return false;
+	const EGameXXKCardQuality Qualities[] = {EGameXXKCardQuality::Common, EGameXXKCardQuality::Rare, EGameXXKCardQuality::Epic};
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const FGameXXKCardDefinition Effective = FGameXXKCardQualityRules::BuildEffectiveDefinition(*Base, Qualities[Index]);
+		const FString Detail = GameXXKCardText::DescribeDetail(Effective, nullptr);
+		TestTrue(TEXT("text names the next terrain benefit and its total count"),
+			Detail.Contains(FString::Printf(TEXT("下一次地势收益改为触发%d次"), Index + 2)));
+		TestFalse(TEXT("text does not promise a trigger after every active card"), Detail.Contains(TEXT("每张主动牌")));
+		TestFalse(TEXT("automatic terrain benefits remain eligible"), Detail.Contains(TEXT("仅主动出牌触发")));
+	}
 	return true;
 }
 

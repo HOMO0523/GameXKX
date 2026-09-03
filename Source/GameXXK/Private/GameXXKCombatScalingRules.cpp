@@ -54,6 +54,29 @@ int32 FGameXXKCombatScalingRules::ResolveDotAddition(
 	return CeilPositiveRatio(Numerator, 2500);
 }
 
+int32 FGameXXKCombatScalingRules::ResolveManaOverflowArmor(
+	const int32 OverflowMana,
+	const int32 ConversionPercent,
+	const EGameXXKCardQuality Quality,
+	const int32 TeamMaxLevel)
+{
+	const int64 GenerationFactor = static_cast<int64>(GetQualityPercent(Quality))
+		* (FMath::Clamp(TeamMaxLevel, 1, 135) + 25);
+	if (GenerationFactor <= 0)
+	{
+		return 0;
+	}
+	const int64 BaseProduct = static_cast<int64>(FMath::Max(0, OverflowMana))
+		* FMath::Max(0, ConversionPercent);
+	constexpr int64 Denominator = 250000;
+	// Saturate before the remaining multiplication; round the complete grant once.
+	if (BaseProduct > static_cast<int64>(MAX_int32) * Denominator / GenerationFactor)
+	{
+		return MAX_int32;
+	}
+	return CeilPositiveRatio(BaseProduct * GenerationFactor, Denominator);
+}
+
 int32 FGameXXKCombatScalingRules::ResolveMedicineHealing(
 	const int32 BaseCoefficient,
 	const int32 Medicine,
