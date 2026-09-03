@@ -131,17 +131,16 @@ bool FGameXXKHunterPartnerCoreCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Rui Yi costs one Energy"), RuiYi->EnergyCost, 1);
 	TestEqual(TEXT("Rui Yi costs no Mana"), RuiYi->ManaCost, 0);
 	TestEqual(TEXT("Rui Yi targets self"), RuiYi->TargetSpec.Mode, EGameXXKCardTargetMode::Self);
-	TestEqual(TEXT("Rui Yi has four base effects"), RuiYi->Effects.Num(), 4);
-	if (RuiYi->Effects.Num() == 4)
+	TestEqual(TEXT("Rui Yi has three base effects"), RuiYi->Effects.Num(), 3);
+	if (RuiYi->Effects.Num() == 3)
 	{
 		TestEqual(TEXT("Rui Yi draws two"), RuiYi->Effects[0].Type, EGameXXKCardEffectType::DrawCards);
 		TestEqual(TEXT("Rui Yi draw amount"), RuiYi->Effects[0].Magnitude, 2);
-		TestEqual(TEXT("Rui Yi refunds one Energy"), RuiYi->Effects[1].Type, EGameXXKCardEffectType::GainEnergy);
-		TestEqual(TEXT("Rui Yi Energy amount"), RuiYi->Effects[1].Magnitude, 1);
-		TestEqual(TEXT("Rui Yi grants Agility"), RuiYi->Effects[2].Status, EGameXXKCardStatus::Agility);
-		TestEqual(TEXT("Rui Yi grants two Agility"), RuiYi->Effects[2].Magnitude, 2);
-		TestEqual(TEXT("Rui Yi grants Charge"), RuiYi->Effects[3].Status, EGameXXKCardStatus::Charge);
-		TestEqual(TEXT("Rui Yi grants three Charge"), RuiYi->Effects[3].Magnitude, 3);
+		TestFalse(TEXT("Rui Yi has no base Energy refund"), RuiYi->Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect) { return Effect.Type == EGameXXKCardEffectType::GainEnergy; }));
+		TestEqual(TEXT("Rui Yi grants Agility"), RuiYi->Effects[1].Status, EGameXXKCardStatus::Agility);
+		TestEqual(TEXT("Rui Yi grants two Agility"), RuiYi->Effects[1].Magnitude, 2);
+		TestEqual(TEXT("Rui Yi grants Charge"), RuiYi->Effects[2].Status, EGameXXKCardStatus::Charge);
+		TestEqual(TEXT("Rui Yi grants three Charge"), RuiYi->Effects[2].Magnitude, 3);
 	}
 
 	const FGameXXKCardDefinition* LianZhu = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Hunter.LianZhuJian"));
@@ -190,7 +189,7 @@ bool FGameXXKHunterPartnerCoreLoopTest::RunTest(const FString& Parameters)
 		AddError(Error);
 		return false;
 	}
-	TestEqual(TEXT("Rui Yi is Energy-neutral"), Runtime.Deck.SharedEnergy, 10);
+	TestEqual(TEXT("Rui Yi pays one Energy"), Runtime.Deck.SharedEnergy, 9);
 	TestEqual(TEXT("Rui Yi draws two cards"), Runtime.Deck.Hand.Num(), 3);
 	TestEqual(TEXT("Rui Yi grants Agility2"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Agility), 2);
 	TestEqual(TEXT("Rui Yi grants Charge3"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Charge), 3);
@@ -216,11 +215,11 @@ bool FGameXXKHunterPartnerCoreLoopTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Lian Zhu adds three fifty-percent attacks"), LianZhuResult.HeavyArrowExtraAttackCount, 3);
 	TestEqual(TEXT("Lian Zhu leaves its newly granted Charge1"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Charge), 1);
 	TestEqual(TEXT("Lian Zhu spends three Mana"), FindUnit(Runtime, HunterUnitId)->Mana, ManaBefore - 3);
-	TestEqual(TEXT("Lian Zhu leaves Poison6"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 6);
-	TestEqual(TEXT("four hits consume Bleed8 down to Bleed4"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 4);
+	TestEqual(TEXT("Lian Zhu coefficient6 generates and leaves Poison7"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 7);
+	TestEqual(TEXT("four hits preserve generated Bleed9"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 9);
 	TestEqual(TEXT("Lian Zhu emits four direct attack packets"), CountDamageCause(LianZhuResult.DamageResults, EGameXXKCardDamageCause::DirectAttack), 4);
 	TestEqual(TEXT("Lian Zhu emits four Bleed packets"), CountDamageCause(LianZhuResult.DamageResults, EGameXXKCardDamageCause::Bleed), 4);
-	TestEqual(TEXT("the full core combo deals forty-six damage"), FindUnit(Runtime, EnemyUnitId)->HP, EnemyHpBefore - 46);
+	TestEqual(TEXT("the full core combo deals four times Attack5 plus Bleed9"), FindUnit(Runtime, EnemyUnitId)->HP, EnemyHpBefore - 56);
 	return true;
 }
 

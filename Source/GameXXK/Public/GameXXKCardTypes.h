@@ -447,7 +447,8 @@ enum class EGameXXKCardMagnitudePolicy : uint8
 	DotCoefficient = 3,
 	PrintedCostArmor = 4,
 	DefensePercent = 5,
-	MedicineCoefficient = 6
+	MedicineCoefficient = 6,
+	DefenseIgnoreCoefficient = 7
 };
 
 /** Optional, soft gate for an effect. It may also describe status consumption. */
@@ -645,7 +646,7 @@ struct GAMEXXK_API FGameXXKHeavyArrowRule
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 AdditionalPrimaryAttackPercentPerCharge = 0;
 
-	/** Defense ignored by the primary attack for each locked Charge stack. */
+	/** Raw coefficient, quality/level generated once per locked Charge, with no DOT cap. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 IgnoreDefensePerCharge = 0;
 
@@ -659,6 +660,14 @@ struct GAMEXXK_API FGameXXKHeavyArrowRule
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 BonusStatusStacksPerCharge = 0;
+
+	/** One status grant per complete interval of locked Charge. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 BonusStatusChargeInterval = 1;
+
+	/** Zero means no additional cap. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 MaxBonusStatusStacks = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardEffectTarget BonusStatusTarget = EGameXXKCardEffectTarget::Invalid;
@@ -731,6 +740,10 @@ struct GAMEXXK_API FGameXXKHealerFormulaRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKHealerFormulaKind Kind = EGameXXKHealerFormulaKind::None;
+
+	/** Older saves lack this field and use the catalog's base quality. New formulas lock opening quality. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality SourceQuality = EGameXXKCardQuality::Invalid;
 
 	/** Generic cumulative counter used by the selected formula kind. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -978,6 +991,10 @@ struct GAMEXXK_API FGameXXKCardEffect
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardEffectSource Source = EGameXXKCardEffectSource::CardOwner;
+
+	/** Quality already included in an authored healing coefficient; preserve through upgrades. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardQuality CoefficientReferenceQuality = EGameXXKCardQuality::Common;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 Magnitude = 0;

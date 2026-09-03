@@ -182,7 +182,7 @@ bool FGameXXKHealerEnemyDotFormulaTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKHealerEnemyMedicineEnergyQueueTest,
-	"GameXXK.Data.PartnerCards.Healer.EnemyEvents.SixMedicineDeferredEnergy",
+	"GameXXK.Data.PartnerCards.Healer.EnemyEvents.SixFormulaMedicineDoesNotQueueEnergy",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKHealerEnemyMedicineEnergyQueueTest::RunTest(const FString& Parameters)
@@ -205,7 +205,7 @@ bool FGameXXKHealerEnemyMedicineEnergyQueueTest::RunTest(const FString& Paramete
 	}
 	TestEqual(TEXT("six enemy-phase health changes grant Medicine6"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 6);
 	TestEqual(TEXT("each cumulative Medicine6 grants Momentum1"), Status(Runtime, HealerId, EGameXXKCardStatus::Momentum), 1);
-	TestEqual(TEXT("enemy-phase Medicine6 queues one next-round Energy"), Runtime.PendingNextRoundEnergyBonus, 1);
+	TestEqual(TEXT("formula-generated Medicine cannot queue Energy through another formula"), Runtime.PendingNextRoundEnergyBonus, 0);
 
 	TArray<FGameXXKCardDamageResult> DamageResults;
 	FString Error;
@@ -213,7 +213,7 @@ bool FGameXXKHealerEnemyMedicineEnergyQueueTest::RunTest(const FString& Paramete
 		FString::Printf(TEXT("the queued-energy player round begins: %s"), *Error),
 		GameXXKCardRules::BeginNextPlayerCardRound(Runtime, DamageResults, &Error)))
 	{
-		TestEqual(TEXT("the next player round starts with Energy4"), Runtime.Deck.SharedEnergy, 4);
+		TestEqual(TEXT("the next player round starts at the normal Energy3"), Runtime.Deck.SharedEnergy, 3);
 		TestEqual(TEXT("the deferred Energy queue is consumed once"), Runtime.PendingNextRoundEnergyBonus, 0);
 	}
 	return true;

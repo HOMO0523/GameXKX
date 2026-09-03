@@ -46,7 +46,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	NormalOwner->MaxMana = 10;
 	ResolveAutomaticSnapshot(*this, NormalRestore, TEXT("Profession.Sorcerer.SheLingHuo"), 1, EGameXXKSorcererCardFamily::None, EGameXXKSorcererTaskBranch::Normal, Result);
 	TestEqual(TEXT("normal branch caps current Mana after floor current-Mana twenty-five percent"), FindUnit(NormalRestore, SorcererId)->Mana, 10);
-	TestEqual(TEXT("current-Mana restore always converts its own overflow to armor"), FindUnit(NormalRestore, SorcererId)->Armor, 1);
+	TestEqual(TEXT("one overflow Mana generates two Armor after the level-one ceiling"), FindUnit(NormalRestore, SorcererId)->Armor, 2);
 
 	FGameXXKCardBattleRuntime IceRestore;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.SheLingHuo"), 59502, IceRestore);
@@ -55,7 +55,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	IceOwner->MaxMana = 10;
 	ResolveAutomaticSnapshot(*this, IceRestore, TEXT("Profession.Sorcerer.SheLingHuo"), 2, EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererTaskBranch::Ice, Result);
 	TestEqual(TEXT("Ice branch caps current Mana"), FindUnit(IceRestore, SorcererId)->Mana, 10);
-	TestEqual(TEXT("Ice branch converts one overflow to one armor"), FindUnit(IceRestore, SorcererId)->Armor, 1);
+	TestEqual(TEXT("Ice branch converts one overflow to two Armor at level one"), FindUnit(IceRestore, SorcererId)->Armor, 2);
 
 	FGameXXKCardBattleRuntime MaxManaRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.FenMaiFu"), 59503, MaxManaRuntime);
@@ -95,7 +95,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	FindUnit(IceBranchRuntime, SorcererId)->Armor = 0;
 	ResolveActive(*this, IceBranchRuntime, IceBranchCards[2].InstanceId, BranchResult, TEXT("Core Mana echo in Ice task"));
 	TestEqual(TEXT("Ice branch caps another Sorcerer card's Mana gain"), FindUnit(IceBranchRuntime, SorcererId)->Mana, 14);
-	TestEqual(TEXT("Ice branch converts another Sorcerer card's four overflow Mana to armor"), FindUnit(IceBranchRuntime, SorcererId)->Armor, 4);
+	TestEqual(TEXT("Ice branch converts four overflow Mana to five Armor at level one"), FindUnit(IceBranchRuntime, SorcererId)->Armor, 5);
 
 	FGameXXKCardBattleRuntime ZeroArmorRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.LingYanLianDan"), 59504, ZeroArmorRuntime);

@@ -210,7 +210,7 @@ bool FGameXXKHealerTreatmentFormulaMatrixTest::RunTest(const FString& Parameters
 		GameXXKCardRules::AddCombatStatus(*Unit(Runtime, AllyAId), EGameXXKCardStatus::Poison, 1);
 		GameXXKCardRules::AddCombatStatus(*Unit(Runtime, AllyAId), EGameXXKCardStatus::Burn, 1);
 		if (Resolve(*this, Runtime, AllyAId, Result, TEXT("three-cleanse formula")))
-			TestEqual(TEXT("three cleansed DOT layers grant Medicine1"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 1);
+			TestEqual(TEXT("three fully cleansed DOT types grant Medicine3"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 3);
 	}
 	if (BuildRuntime(*this, TEXT("Profession.Healer.XingQiZhen"), TEXT("Profession.Healer.LingZhiXuMing"), Runtime))
 	{
@@ -226,17 +226,19 @@ bool FGameXXKHealerTreatmentFormulaMatrixTest::RunTest(const FString& Parameters
 	}
 	if (BuildRuntime(*this, TEXT("Profession.Healer.QingXinSan"), TEXT("Profession.Healer.ZhiXueCao"), Runtime))
 	{
+		Unit(Runtime, HealerId)->Defense = 20;
 		Unit(Runtime, AllyAId)->HP = 50;
 		GameXXKCardRules::AddCombatStatus(*Unit(Runtime, AllyAId), EGameXXKCardStatus::Bleed, 1);
 		if (Resolve(*this, Runtime, AllyAId, Result, TEXT("bleed-removal formula")))
-			for (const FName AllyId : {HealerId, AllyAId, AllyBId}) TestEqual(TEXT("Bleed removal grants party Armor2"), Unit(Runtime, AllyId)->Armor, 2);
+			for (const FName AllyId : {HealerId, AllyAId, AllyBId}) TestEqual(TEXT("Bleed removal grants each ally20 percent of caster Defense20"), Unit(Runtime, AllyId)->Armor, 4);
 	}
 	if (BuildRuntime(*this, TEXT("Profession.Healer.CaoMuFuZhi"), TEXT("Profession.Healer.WenYangGao"), Runtime))
 	{
+		Unit(Runtime, HealerId)->Defense = 20;
 		Unit(Runtime, AllyAId)->HP = 50;
 		GameXXKCardRules::AddCombatStatus(*Unit(Runtime, HealerId), EGameXXKCardStatus::Medicine, 2);
 		if (Resolve(*this, Runtime, AllyAId, Result, TEXT("large-healing formula")))
-			TestEqual(TEXT("a resolved 10-point heal grants Armor4 to that ally"), Unit(Runtime, AllyAId)->Armor, 4);
+			TestEqual(TEXT("a heal above the Rare coefficient20 threshold grants20 percent Defense20 times Rare quality"), Unit(Runtime, AllyAId)->Armor, 5);
 	}
 	if (BuildRuntime(*this, TEXT("Profession.Healer.XingQiZhen"), TEXT("Profession.Healer.JinChuangXuMing"), Runtime))
 	{
@@ -277,8 +279,8 @@ bool FGameXXKHealerDotFormulaMatrixTest::RunTest(const FString& Parameters)
 	{
 		if (Resolve(*this, Runtime, EnemyAId, Result, TEXT("Bleed-Poison formula")))
 		{
-			TestEqual(TEXT("the trigger applies Bleed6 and its direct hit preserves the reservoir"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Bleed), 6);
-			TestEqual(TEXT("the trigger applies Poison4"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 4);
+			TestEqual(TEXT("Common coefficient6 generates Bleed7 and its direct hit preserves the reservoir"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Bleed), 7);
+			TestEqual(TEXT("Common coefficient4 generates Poison5"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 5);
 			TestEqual(TEXT("an enemy gaining a debuff with Bleed and Poison gains Mark1"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), 1);
 		}
 	}

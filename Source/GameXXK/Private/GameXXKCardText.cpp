@@ -356,7 +356,10 @@ namespace
 		case EGameXXKCardEffectType::GainManaPerConsumedStatus: return FString::Printf(TEXT("%s每消耗1层状态获得%d点内力"), *Target, Magnitude);
 		case EGameXXKCardEffectType::DrawCards: return FString::Printf(TEXT("%s抽%d张牌"), *Target, Magnitude);
 		case EGameXXKCardEffectType::ApplyStatus: return FString::Printf(TEXT("%s获得%d层%s"), *Target, Magnitude, *DescribeStatus(Status));
-		case EGameXXKCardEffectType::RemoveStatus: return FString::Printf(TEXT("移除%s%d层%s"), *Target, Magnitude, *DescribeStatus(Status));
+		case EGameXXKCardEffectType::RemoveStatus:
+			return Magnitude == MAX_int32
+				? FString::Printf(TEXT("清除%s的全部%s"), *Target, *DescribeStatus(Status))
+				: FString::Printf(TEXT("移除%s%d层%s"), *Target, Magnitude, *DescribeStatus(Status));
 		case EGameXXKCardEffectType::RemoveAnyDamageOverTime: return FString::Printf(TEXT("从%s的流血、中毒、灼烧、蚀伤中依次清除至多%d层"), *Target, Magnitude);
 		case EGameXXKCardEffectType::Insight: return FString::Printf(TEXT("%s洞察牌堆顶%d张牌"), *Target, Magnitude);
 		case EGameXXKCardEffectType::DiscoverCards: return FString::Printf(TEXT("%s发现%d张牌"), *Target, Magnitude);
@@ -781,11 +784,16 @@ namespace
 		if (Rule.BonusStatus != EGameXXKCardStatus::None && Rule.BonusStatusStacksPerCharge > 0)
 		{
 			Text += FString::Printf(
-				TEXT("；%s获得%d层%s"),
+				TEXT("；每消耗%d层蓄力，%s获得%d层%s"),
+				Rule.BonusStatusChargeInterval,
 				Rule.BonusStatusTarget == EGameXXKCardEffectTarget::CardOwner ? TEXT("出牌者") : TEXT("所选目标"),
 				Rule.BonusStatusStacksPerCharge,
 				*DescribeStatus(Rule.BonusStatus));
+			if (Rule.MaxBonusStatusStacks > 0)
+				Text += FString::Printf(TEXT("，本次最多%d层"), Rule.MaxBonusStatusStacks);
 		}
+		if (Rule.AdditionalPrimaryAttackPercentPerCharge > 0)
+			Text += FString::Printf(TEXT("；每消耗1层蓄力，本牌首段攻击倍率+%d个百分点"), Rule.AdditionalPrimaryAttackPercentPerCharge);
 		return Text + TEXT("。");
 	}
 

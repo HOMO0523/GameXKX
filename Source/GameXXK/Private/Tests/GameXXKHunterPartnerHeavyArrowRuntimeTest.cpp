@@ -160,7 +160,7 @@ bool FGameXXKHunterPartnerHeavyArrowPayloadsTest::RunTest(const FString& Paramet
 				TestEqual(TEXT("Cui Du adds twenty percent per Charge to its base hit"), Direct->BaseRequestedDamage, 11);
 			}
 			TestEqual(TEXT("Cui Du resolves its base explosion plus two Heavy Arrow explosions"), CountCause(Result, EGameXXKCardDamageCause::ToxicExplosionPoison), 3);
-			TestEqual(TEXT("three Poison explosions leave Poison3"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 3);
+			TestEqual(TEXT("three Poison explosions preserve the generated Poison7 reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 7);
 		}
 	}
 	{
@@ -175,7 +175,7 @@ bool FGameXXKHunterPartnerHeavyArrowPayloadsTest::RunTest(const FString& Paramet
 				TestEqual(TEXT("Duan Mai adds thirty percent per Charge"), Direct->BaseRequestedDamage, 16);
 			}
 			TestEqual(TEXT("Duan Mai triggers Bleed once for the hit and once per Charge"), CountCause(Result, EGameXXKCardDamageCause::Bleed), 3);
-			TestEqual(TEXT("three triggers consume Bleed8 down to Bleed5"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 5);
+			TestEqual(TEXT("three triggers preserve coefficient8 generated as Bleed9"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 9);
 		}
 	}
 	{
@@ -196,7 +196,7 @@ bool FGameXXKHunterPartnerHeavyArrowPayloadsTest::RunTest(const FString& Paramet
 			const FGameXXKCardDamageResult* Direct = FindDirect(Result);
 			if (TestNotNull(TEXT("Po Jia has one direct packet"), Direct))
 			{
-				TestEqual(TEXT("Po Jia ignores two Defense per Charge in addition to its damage multiplier"), Direct->DamageAfterDefense, 8);
+				TestEqual(TEXT("Po Jia coefficient2 resolves three ignored Defense per Charge at level one"), Direct->DamageAfterDefense, 10);
 			}
 		}
 	}
@@ -224,7 +224,7 @@ bool FGameXXKHunterPartnerHeavyArrowPayloadsTest::RunTest(const FString& Paramet
 			const FGameXXKCardDamageResult* Direct = FindDirect(Result);
 			if (TestNotNull(TEXT("Chuan Yang has one direct packet"), Direct))
 			{
-				TestEqual(TEXT("Chuan Yang ignores base six plus two Defense per Charge"), Direct->DamageAfterDefense, 23);
+				TestEqual(TEXT("Chuan Yang ignores generated base seven plus three Defense per Charge"), Direct->DamageAfterDefense, 25);
 			}
 		}
 	}
@@ -248,7 +248,7 @@ bool FGameXXKHunterPartnerHeavyArrowPayloadsTest::RunTest(const FString& Paramet
 		FGameXXKCardPlayResult Result;
 		if (Resolve(*this, Runtime, Result, TEXT("Lue Ying Jian")))
 		{
-			TestEqual(TEXT("Lue Ying grants one Agility per consumed Charge"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Agility), 2);
+			TestEqual(TEXT("Lue Ying grants one Agility per two consumed Charge"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Agility), 1);
 		}
 	}
 	return true;
@@ -295,7 +295,7 @@ bool FGameXXKHunterPartnerSequenceAndSetupTest::RunTest(const FString& Parameter
 		FGameXXKCardPlayResult Result;
 		if (Resolve(*this, Runtime, Result, TEXT("Lue Ying after six cards")))
 		{
-			TestEqual(TEXT("Lue Ying grants two interval Agility plus two Charge Agility"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Agility), 4);
+			TestEqual(TEXT("Lue Ying grants two interval Agility plus one Charge-pair Agility"), Status(Runtime, HunterUnitId, EGameXXKCardStatus::Agility), 3);
 		}
 	}
 	{
@@ -336,7 +336,7 @@ bool FGameXXKHunterPartnerSequenceAndSetupTest::RunTest(const FString& Parameter
 			const FGameXXKCardDamageResult* Direct = FindDirect(FirstArrowResult);
 			if (TestNotNull(TEXT("the empowered Chuan Yang has one direct packet"), Direct))
 			{
-				TestEqual(TEXT("Eagle Eye adds six Defense ignore to the next Heavy Arrow"), Direct->DamageAfterDefense, 28);
+				TestEqual(TEXT("Eagle Eye snapshots seven Defense ignore for the next Heavy Arrow"), Direct->DamageAfterDefense, 30);
 			}
 		}
 		else
@@ -350,7 +350,7 @@ bool FGameXXKHunterPartnerSequenceAndSetupTest::RunTest(const FString& Parameter
 			const FGameXXKCardDamageResult* Direct = FindDirect(SecondArrowResult);
 			if (TestNotNull(TEXT("the unempowered Chuan Yang has one direct packet"), Direct))
 			{
-				TestEqual(TEXT("Eagle Eye is consumed by exactly one Heavy Arrow"), Direct->DamageAfterDefense, 1);
+				TestEqual(TEXT("Eagle Eye is consumed by exactly one Heavy Arrow"), Direct->DamageAfterDefense, 2);
 			}
 		}
 		else

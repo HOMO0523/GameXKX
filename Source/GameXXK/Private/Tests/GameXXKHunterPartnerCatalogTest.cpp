@@ -40,7 +40,6 @@ namespace GameXXKHunterPartnerCatalogTest
 		static const TArray<FExpectedCard> Cards = {
 			{TEXT("Profession.Hunter.YingYan"), TEXT("锐意感知"), 1, 0, EGameXXKCardTargetMode::Self, true, {
 				{EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2},
-				{EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1},
 				{EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility},
 				{EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Charge}}},
 			{TEXT("Profession.Hunter.LianZhuJian"), TEXT("连珠箭"), 1, 3, EGameXXKCardTargetMode::SingleEnemy, true, {
@@ -104,8 +103,7 @@ namespace GameXXKHunterPartnerCatalogTest
 				EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 25},
 			{TEXT("Profession.Hunter.HuiHuanJian"), TEXT("回环箭"), 1, 2, EGameXXKCardTargetMode::SingleEnemy, false, {
 				{EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 60},
-				{EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1},
-				{EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1}},
+				{EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1}},
 				EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 15, 1, 2},
 			{TEXT("Profession.Hunter.FuYeXianJing"), TEXT("腐叶陷阱"), 1, 5, EGameXXKCardTargetMode::SingleEnemy, false, {
 				{EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Poison},

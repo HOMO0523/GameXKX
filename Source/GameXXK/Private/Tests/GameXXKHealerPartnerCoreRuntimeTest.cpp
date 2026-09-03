@@ -111,11 +111,11 @@ bool FGameXXKHealerPartnerYinYangFormulaRuntimeTest::RunTest(const FString& Para
 	TestEqual(TEXT("the unopened formula adds one Energy"), Preview.EffectiveEnergyCost, 3);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YinYangA"), AllyAId, Result)) return true;
-	TestEqual(TEXT("level-one friendly Yin-Yang continuously scales its coefficient eight to healing nine"), Unit(Runtime, AllyAId)->HP, 59);
+	TestEqual(TEXT("level-one Common Yin-Yang coefficient30 resolves healing32"), Unit(Runtime, AllyAId)->HP, 82);
 	for (const FName EnemyId : {EnemyAId, EnemyBId})
 	{
-		TestEqual(TEXT("friendly Yin-Yang applies Poison1 to every enemy"), Status(Runtime, EnemyId, EGameXXKCardStatus::Poison), 1);
-		TestEqual(TEXT("friendly Yin-Yang applies Burn1 to every enemy"), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), 1);
+		TestEqual(TEXT("friendly Yin-Yang coefficient1 generates Poison2 per enemy"), Status(Runtime, EnemyId, EGameXXKCardStatus::Poison), 2);
+		TestEqual(TEXT("friendly Yin-Yang coefficient1 generates Burn2 per enemy"), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), 2);
 	}
 	TestTrue(FString::Printf(TEXT("opened duplicate Yin-Yang previews: %s"), *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, TEXT("YinYangB"), Preview, &Error));
 	TestEqual(TEXT("the formula surcharge disappears for the CardId after first play"), Preview.EffectiveEnergyCost, 2);
@@ -139,12 +139,12 @@ bool FGameXXKHealerPartnerYinYangEnemyRuntimeTest::RunTest(const FString& Parame
 	GameXXKCardRules::AddCombatStatus(*Unit(Runtime, HealerId), EGameXXKCardStatus::Medicine, 3);
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("YinYang"), EnemyAId, Result)) return true;
-	TestEqual(TEXT("the enemy branch resolves Poison2 and Burn2 once each"), Unit(Runtime, EnemyAId)->HP, 96);
-	TestEqual(TEXT("Poison2 remains in its reservoir after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 2);
-	TestEqual(TEXT("Burn2 remains in its reservoir after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2);
+	TestEqual(TEXT("the enemy branch generates and resolves Poison3 and Burn3 once each"), Unit(Runtime, EnemyAId)->HP, 94);
+	TestEqual(TEXT("generated Poison3 remains after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Poison), 3);
+	TestEqual(TEXT("generated Burn3 remains after the explosion"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 3);
 	for (const FName AllyId : {HealerId, AllyAId, AllyBId})
 	{
-		TestEqual(TEXT("every ally receives the full level-one scaled 4+Medicine3 snapshot"), Unit(Runtime, AllyId)->HP, 58);
+		TestEqual(TEXT("every ally receives the full level-one scaled coefficient15 plus Medicine3 snapshot"), Unit(Runtime, AllyId)->HP, 69);
 	}
 	TestEqual(TEXT("group healing consumes Medicine only once"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 0);
 	return true;
@@ -169,8 +169,8 @@ bool FGameXXKHealerPartnerYinYangLethalEnemyRuntimeTest::RunTest(const FString& 
 	TestFalse(TEXT("Yin-Yang toxic explosion defeats the selected enemy"), Unit(Runtime, EnemyAId)->bLiving);
 	for (const FName AllyId : {HealerId, AllyAId, AllyBId})
 	{
-		TestEqual(TEXT("lethal enemy branch still heals every ally for the full level-one scaled 4+Medicine3 snapshot"),
-			Unit(Runtime, AllyId)->HP, 58);
+		TestEqual(TEXT("lethal enemy branch still heals every ally for the full level-one scaled coefficient15 plus Medicine3 snapshot"),
+			Unit(Runtime, AllyId)->HP, 69);
 	}
 	TestEqual(TEXT("lethal enemy branch consumes the shared Medicine snapshot once"),
 		Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 0);
@@ -196,7 +196,7 @@ bool FGameXXKHealerPartnerYaoWangLethalSideAnchorRuntimeTest::RunTest(const FStr
 	TestFalse(TEXT("Yao Wang defeats the selected enemy even when it is the side anchor"),
 		Unit(Runtime, EnemyAId)->bLiving);
 	TestEqual(TEXT("Yao Wang continues the selected-side reverse heal against the other living enemy"),
-		Unit(Runtime, EnemyBId)->HP, 93);
+		Unit(Runtime, EnemyBId)->HP, 77);
 	return true;
 }
 
@@ -223,7 +223,7 @@ bool FGameXXKHealerPartnerBloodFormulaRuntimeTest::RunTest(const FString& Parame
 	for (const FName AllyId : {HealerId, AllyAId, AllyBId}) TestEqual(TEXT("blood base loses one nonlethal HP"), Unit(Runtime, AllyId)->HP, 49);
 	TestEqual(TEXT("blood base grants one Medicine per actual ally loss"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 3);
 	if (!Resolve(*this, Runtime, TEXT("HighCost"), NAME_None, Result)) return true;
-	for (const FName AllyId : {HealerId, AllyAId, AllyBId}) TestEqual(TEXT("the first paid-2 card resolves fixed lose1 then heal2"), Unit(Runtime, AllyId)->HP, 50);
+	for (const FName AllyId : {HealerId, AllyAId, AllyBId}) TestEqual(TEXT("the first paid-2 card loses1 then heals coefficient10, resolved to11 at level one"), Unit(Runtime, AllyId)->HP, 59);
 	TestEqual(TEXT("the formula terminal cycle does not grant itself Medicine"), Status(Runtime, HealerId, EGameXXKCardStatus::Medicine), 3);
 	return true;
 }

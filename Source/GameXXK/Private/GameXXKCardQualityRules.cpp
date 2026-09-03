@@ -124,6 +124,7 @@ namespace
 		case EGameXXKCardMagnitudePolicy::PrintedCostArmor:
 		case EGameXXKCardMagnitudePolicy::DefensePercent:
 		case EGameXXKCardMagnitudePolicy::MedicineCoefficient:
+		case EGameXXKCardMagnitudePolicy::DefenseIgnoreCoefficient:
 		default:
 			return BaseMagnitude;
 		}
@@ -311,6 +312,8 @@ FGameXXKCardDefinition FGameXXKCardQualityRules::BuildEffectiveDefinition(
 		BaseDefinition.HeavyArrow.RareMagnitudePerCharge,
 		BaseDefinition.HeavyArrow.EpicMagnitudePerCharge,
 		ResolvedQuality);
+	EffectiveDefinition.HeavyArrow.AdditionalPrimaryAttackPercentPerCharge = FGameXXKCombatScalingRules::ScaleContinuousCeil(
+		BaseDefinition.HeavyArrow.AdditionalPrimaryAttackPercentPerCharge, ResolvedQuality);
 	const auto ResolveEffects = [ResolvedQuality](TArray<FGameXXKCardEffect>& Effects)
 	{
 		for (FGameXXKCardEffect& Effect : Effects)

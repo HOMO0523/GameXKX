@@ -1,6 +1,7 @@
 #include "GameXXKCardCatalog.h"
 
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCombatScalingRules.h"
 
 #include "UObject/Class.h"
 
@@ -358,8 +359,10 @@ namespace
 		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::DefensePercent);
 	}
 
-	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result)
+	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result,
+		const EGameXXKCardQuality ReferenceQuality = EGameXXKCardQuality::Common)
 	{
+		Result.CoefficientReferenceQuality = ReferenceQuality;
 		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::MedicineCoefficient);
 	}
 
@@ -742,9 +745,17 @@ namespace
 			return true;
 		case EGameXXKCardMagnitudePolicy::MedicineCoefficient:
 			if (EffectType != EGameXXKCardEffectType::Heal
-				&& EffectType != EGameXXKCardEffectType::HealOrReverseWithMedicine)
+				&& EffectType != EGameXXKCardEffectType::HealOrReverseWithMedicine
+				&& EffectType != EGameXXKCardEffectType::HealOrReverseFlat)
 			{
 				OutError = FString::Printf(TEXT("%s Medicine coefficient is attached to a non-Medicine effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::DefenseIgnoreCoefficient:
+			if (EffectType != EGameXXKCardEffectType::IgnoreDefense)
+			{
+				OutError = FString::Printf(TEXT("%s Defense-ignore coefficient requires an IgnoreDefense effect: %s."), Context, *CardId.ToString());
 				return false;
 			}
 			return true;
@@ -1488,6 +1499,15 @@ namespace
 			const int32 ManaCost, const EGameXXKCardTargetMode TargetMode, TArray<FGameXXKCardEffect> Effects,
 			const EGameXXKHealerFormulaKind FormulaKind, const bool bCore = false)
 		{
+			for (FGameXXKCardEffect& CardEffect : Effects)
+			{
+				if (CardEffect.Type == EGameXXKCardEffectType::ApplyStatus && IsDotReservoirStatus(CardEffect.Status))
+					CardEffect = Dot(MoveTemp(CardEffect));
+				else if (CardEffect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine || CardEffect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
+					CardEffect = MedicineCoefficient(MoveTemp(CardEffect), FGameXXKCardQualityRules::GetCardBaseQuality(FName(CardId)));
+				else if (CardEffect.Type == EGameXXKCardEffectType::AddArmor)
+					CardEffect = DefensePercent(MoveTemp(CardEffect));
+			}
 			AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent,
 				EGameXXKCharacterRole::Healer, OwnerId, nullptr, CardId, DisplayName, EnergyCost, ManaCost,
 				TargetMode, MoveTemp(Effects), Frame, Pool, bCore, false, {}, EGameXXKCharacterRole::Invalid,
@@ -1495,13 +1515,13 @@ namespace
 		};
 
 		AddHealer(TEXT("Profession.Healer.YaoYin"), TEXT("阴阳药引"), 2, 0, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::None, 1, TargetIsAlly()),
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 30, EGameXXKCardStatus::None, 1, TargetIsAlly()),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Poison, 1, TargetIsAlly()),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn, 1, TargetIsAlly()),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Poison, 1, TargetIsEnemy()),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Burn, 1, TargetIsEnemy()),
 			 Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::None, 1, TargetIsEnemy()),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 4, EGameXXKCardStatus::None, 1, TargetIsEnemy())},
+			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 15, EGameXXKCardStatus::None, 1, TargetIsEnemy())},
 			EGameXXKHealerFormulaKind::AnyHealthChangeMedicine, true);
 		AddHealer(TEXT("Profession.Healer.XingQiZhen"), TEXT("行气活血"), 2, 3, EGameXXKCardTargetMode::Self,
 			{Effect(EGameXXKCardEffectType::LoseHealthNonlethal, EGameXXKCardEffectTarget::AllAllies, 1),
@@ -1510,31 +1530,29 @@ namespace
 			EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine, true);
 
 		AddHealer(TEXT("Profession.Healer.CaoMuFuZhi"), TEXT("草木敷治"), 1, 2, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 8)}, EGameXXKHealerFormulaKind::FirstHealingMedicine);
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 25)}, EGameXXKHealerFormulaKind::FirstHealingMedicine);
 		AddHealer(TEXT("Profession.Healer.QingXinSan"), TEXT("清心散"), 1, 3, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Bleed, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Poison, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 6)}, EGameXXKHealerFormulaKind::ThreeCleansedDotMedicine);
+			{Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1),
+			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 20)}, EGameXXKHealerFormulaKind::ThreeCleansedDotMedicine);
 		AddHealer(TEXT("Profession.Healer.LingZhiXuMing"), TEXT("灵芝续命"), 2, 6, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 10),
-			 Effect(EGameXXKCardEffectType::HealOrReverseFlat, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::None, 1, TargetHealthBelow(35.0f))}, EGameXXKHealerFormulaKind::LowHealthCrossMedicine);
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 40),
+			 Effect(EGameXXKCardEffectType::HealOrReverseFlat, EGameXXKCardEffectTarget::SelectedTarget, 10, EGameXXKCardStatus::None, 1, TargetHealthBelow(35.0f))}, EGameXXKHealerFormulaKind::LowHealthCrossMedicine);
 		AddHealer(TEXT("Profession.Healer.HuiChunLu"), TEXT("回春露"), 2, 5, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTargetSide, 5)}, EGameXXKHealerFormulaKind::ThreeEffectiveHealsDraw);
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTargetSide, 25)}, EGameXXKHealerFormulaKind::ThreeEffectiveHealsDraw);
 		AddHealer(TEXT("Profession.Healer.ZhiXueCao"), TEXT("止血草"), 0, 2, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Bleed, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 4)}, EGameXXKHealerFormulaKind::BleedRemovedPartyArmor);
+			{Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, MAX_int32, EGameXXKCardStatus::Bleed, 1, TargetIsAlly()),
+			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 10)}, EGameXXKHealerFormulaKind::BleedRemovedPartyArmor);
 		AddHealer(TEXT("Profession.Healer.WenYangGao"), TEXT("温养膏"), 1, 3, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 10),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::None, 1, TargetIsAlly())}, EGameXXKHealerFormulaKind::LargeHealingArmorOrVulnerability);
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 25),
+			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 30, EGameXXKCardStatus::None, 1, TargetIsAlly())}, EGameXXKHealerFormulaKind::LargeHealingArmorOrVulnerability);
 		AddHealer(TEXT("Profession.Healer.JinChuangXuMing"), TEXT("金疮续命"), 2, 8, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 12),
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 45),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility, 1, TargetIsAlly())}, EGameXXKHealerFormulaKind::LowHealthCrossAgility);
 		AddHealer(TEXT("Profession.Healer.YaoWangGuiYuan"), TEXT("药王归元"), 2, 12, EGameXXKCardTargetMode::AnyLivingUnit,
-			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTargetSide, 6),
-			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, 1, EGameXXKCardStatus::Bleed, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, 1, EGameXXKCardStatus::Poison, 1, TargetIsAlly()),
-			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, 1, EGameXXKCardStatus::Burn, 1, TargetIsAlly()),
+			{Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTargetSide, 30),
+			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, MAX_int32, EGameXXKCardStatus::Bleed, 1, TargetIsAlly()),
+			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, MAX_int32, EGameXXKCardStatus::Poison, 1, TargetIsAlly()),
+			 Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTargetSide, MAX_int32, EGameXXKCardStatus::Burn, 1, TargetIsAlly()),
 			 Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::SelectedTargetSide, 3, EGameXXKCardStatus::None, 1, TargetIsAlly())}, EGameXXKHealerFormulaKind::ThreeUnitHealthChangeDrawMana);
 
 		AddHealer(TEXT("Profession.Healer.BaiCaoDu"), TEXT("百草毒"), 1, 2, EGameXXKCardTargetMode::SingleEnemy,
@@ -1567,6 +1585,7 @@ namespace
 
 	void AddHunterCards(TArray<FGameXXKCardDefinition>& Cards)
 	{
+		const int32 FirstHunterIndex = Cards.Num();
 		constexpr const TCHAR* OwnerId = TEXT("Profession.Hunter");
 		constexpr const TCHAR* Frame = TEXT("Style.Hunter");
 		constexpr const TCHAR* Pool = TEXT("Pool.Profession.Hunter");
@@ -1581,10 +1600,12 @@ namespace
 			{ Attack(75, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TargetHasStatus(EGameXXKCardStatus::Mark)), Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TargetHasStatus(EGameXXKCardStatus::Mark)) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 25, 0, 0, 0, EGameXXKHeavyArrowChargeSource::CardOwner, 2), EGameXXKHeroSpellTaskReward::None, {}, HunterRule(15));
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.YingYan"), TEXT("锐意感知"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Charge) }, Frame, Pool, true);
+			{ Explicit(Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2), 2, 3), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 3, EGameXXKCardStatus::Charge) }, Frame, Pool, true);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.LieWang"), TEXT("猎网"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Charge) }, Frame, Pool);
+		Cards.Last().RareManaCost = 2;
+		Cards.Last().EpicManaCost = 1;
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.ChuanYang"), TEXT("穿杨"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(150, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::IgnoreDefense, EGameXXKCardEffectTarget::SelectedTarget, 6) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowDefenseIgnore(HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 50), 2));
@@ -1596,7 +1617,7 @@ namespace
 			{ Attack(70, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowPrimaryBonus(HeavyArrow(EGameXXKHeavyArrowKind::ToxicExplosionPerCharge, 1), 20));
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.YinZong"), TEXT("隐踪"), 1, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Charge) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::None, {}, HunterRule(0, 0, 0, EGameXXKCardStatus::None, 0, 0, 2));
+			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Agility), Explicit(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::Charge), 1, 2) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, {}, EGameXXKHeroSpellTaskReward::None, {}, HunterRule(0, 0, 0, EGameXXKCardStatus::None, 0, 0, 2));
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.DuanMaiShi"), TEXT("断脉矢"), 1, 4, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(100, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Bleed) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowBleedTriggers(HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 30), 1));
@@ -1609,21 +1630,39 @@ namespace
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.LueYingJian"), TEXT("掠影箭"), 1, 2, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(65, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TargetHasStatus(EGameXXKCardStatus::Mark)), Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, 1, TargetHasStatus(EGameXXKCardStatus::Mark)) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowStatus(HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 20), EGameXXKCardStatus::Agility, 1, EGameXXKCardEffectTarget::CardOwner), EGameXXKHeroSpellTaskReward::None, {}, HunterRule(0, 3, 0, EGameXXKCardStatus::Agility, 1));
+		Cards.Last().HeavyArrow.BonusStatusChargeInterval = 2;
+		Cards.Last().HeavyArrow.MaxBonusStatusStacks = 2;
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.LieHunBiao"), TEXT("猎魂标"), 0, 4, EGameXXKCardTargetMode::SingleEnemy,
 			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Charge) }, Frame, Pool);
+		Cards.Last().RareManaCost = 3;
+		Cards.Last().EpicManaCost = 2;
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.PoJiaDing"), TEXT("破甲钉"), 1, 2, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(75, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Poison) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowDefenseIgnore(HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 25), 2));
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.HuiHuanJian"), TEXT("回环箭"), 1, 2, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(60, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 15, 1, 0, 0, EGameXXKHeavyArrowChargeSource::CardOwner, 2), EGameXXKHeroSpellTaskReward::None, {}, HunterRule(0, 3, 1));
+			{ Attack(60, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 15, 1, 0, 0, EGameXXKHeavyArrowChargeSource::CardOwner, 2), EGameXXKHeroSpellTaskReward::None, {}, HunterRule(0, 3, 1));
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.FuYeXianJing"), TEXT("腐叶陷阱"), 1, 5, EGameXXKCardTargetMode::SingleEnemy,
 			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 8, EGameXXKCardStatus::Poison), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 2, EGameXXKCardStatus::Charge) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::Hunter, OwnerId, nullptr,
 			TEXT("Profession.Hunter.YingLuo"), TEXT("鹰落"), 3, 12, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(200, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::SelectedTarget, 100, EGameXXKCardStatus::None, 1, TargetHealthBelow(35.0f)) }, Frame, Pool, false, false, {}, EGameXXKCharacterRole::Invalid, 0, false, {}, {}, WithHeavyArrowHealthThreshold(HeavyArrow(EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge, 60), 5));
+		for (int32 Index = FirstHunterIndex; Index < Cards.Num(); ++Index)
+		{
+			FGameXXKCardDefinition& Card = Cards[Index];
+			for (FGameXXKCardEffect& CardEffect : Card.Effects)
+			{
+				if (CardEffect.Type == EGameXXKCardEffectType::ApplyStatus && IsDotReservoirStatus(CardEffect.Status))
+					CardEffect = Dot(MoveTemp(CardEffect));
+				else if (CardEffect.Type == EGameXXKCardEffectType::IgnoreDefense)
+					CardEffect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DefenseIgnoreCoefficient;
+			}
+			if (Card.HeavyArrow.Kind == EGameXXKHeavyArrowKind::ExtraAttackPerCharge
+				|| Card.HeavyArrow.Kind == EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge)
+				Card.HeavyArrow = ContinuousHeavyArrow(MoveTemp(Card.HeavyArrow));
+		}
 	}
 
 	void AddSorcererCards(TArray<FGameXXKCardDefinition>& Cards)
@@ -2260,6 +2299,8 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 			|| HeavyArrowRule.TriggeredBleedResolutionsPerCharge != 0
 			|| HeavyArrowRule.BonusStatus != EGameXXKCardStatus::None
 			|| HeavyArrowRule.BonusStatusStacksPerCharge != 0
+			|| HeavyArrowRule.BonusStatusChargeInterval != 1
+			|| HeavyArrowRule.MaxBonusStatusStacks != 0
 			|| HeavyArrowRule.BonusStatusTarget != EGameXXKCardEffectTarget::Invalid
 			|| HeavyArrowRule.HealthThresholdPointsPerCharge != 0)
 		{
@@ -2296,6 +2337,8 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 		|| HeavyArrowRule.IgnoreDefensePerCharge < 0
 		|| HeavyArrowRule.TriggeredBleedResolutionsPerCharge < 0
 		|| HeavyArrowRule.BonusStatusStacksPerCharge < 0
+		|| HeavyArrowRule.BonusStatusChargeInterval <= 0
+		|| HeavyArrowRule.MaxBonusStatusStacks < 0
 		|| HeavyArrowRule.HealthThresholdPointsPerCharge < 0
 		|| ((HeavyArrowRule.MinimumChargeForEnergy == 0) != (HeavyArrowRule.EnergyGain == 0))
 		|| ((HeavyArrowRule.BonusStatus == EGameXXKCardStatus::None)
@@ -2369,6 +2412,13 @@ bool FGameXXKCardCatalog::ValidateCardDefinition(const FGameXXKCardDefinition& D
 		if (CardEffect.HitCount <= 0)
 		{
 			OutError = FString::Printf(TEXT("Card effect hit count must be positive: %s."), *Definition.Id.ToString());
+			return false;
+		}
+		if (FGameXXKCombatScalingRules::GetQualityPercent(CardEffect.CoefficientReferenceQuality) <= 0
+			|| (CardEffect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::MedicineCoefficient
+				&& CardEffect.CoefficientReferenceQuality != EGameXXKCardQuality::Common))
+		{
+			OutError = FString::Printf(TEXT("Card effect has an invalid coefficient reference quality: %s."), *Definition.Id.ToString());
 			return false;
 		}
 		if (!ValidateMagnitudePolicy(
