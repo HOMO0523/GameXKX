@@ -245,7 +245,7 @@ bool FGameXXKBattleStatusTooltipsTest::RunTest(const FString& Parameters)
 		{EGameXXKCardStatus::Agility, TEXT("灵动"), TEXT("25%概率消耗1层完美闪避；失败时可消耗2层闪避。"), TEXT("AgilityWing")},
 		{EGameXXKCardStatus::Vulnerability, TEXT("破绽"), TEXT("每层使下一段直接攻击伤害提高10%；结算后清空。"), TEXT("VulnerabilityMask")},
 		{EGameXXKCardStatus::Bleed, TEXT("流血"), TEXT("受到直接攻击后，失去等同层数的生命并减少1层；回合结束不衰减。"), TEXT("BleedDrop")},
-		{EGameXXKCardStatus::Poison, TEXT("中毒"), TEXT("回合结束时，失去等同层数的生命并减少1层。"), TEXT("PoisonVial")},
+		{EGameXXKCardStatus::Poison, TEXT("中毒"), TEXT("任意一方回合结束时，失去等同中毒值的生命。"), TEXT("PoisonVial")},
 		{EGameXXKCardStatus::Burn, TEXT("灼烧"), TEXT("打出牌或执行意图后，失去等同层数的生命并减少1层；回合结束再减少1层。"), TEXT("BurnFlame")},
 		{EGameXXKCardStatus::Mark, TEXT("标记"), TEXT("直接攻击伤害提高15%；每段有效命中后减少1层。"), TEXT("MarkTarget")},
 		{EGameXXKCardStatus::Guard, TEXT("守护"), TEXT("下一次针对本单位的单体攻击由守护者承受；触发后减少1层。"), TEXT("GuardShield")},

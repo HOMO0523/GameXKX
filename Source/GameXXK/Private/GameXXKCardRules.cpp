@@ -1011,6 +1011,7 @@ namespace
 	bool ApplyCombatEndPhaseDotForRuntime(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		FName TargetUnitId,
+		EGameXXKCardTargetSide EndingSide,
 		int32& OutHealthDamage,
 		int32& OutPacketHealthAfter,
 		FString* OutError);
@@ -1287,14 +1288,19 @@ namespace
 		MaterializePendingAutomaticHandCards(InOutDeck, IgnoredError);
 	}
 
-	bool ApplyEndPhaseDotForSide(
+	bool ApplyPoisonAtPhaseEnd(
 		FGameXXKCardBattleRuntime& InOutRuntime,
-		const EGameXXKCardTargetSide Side,
+		const EGameXXKCardTargetSide EndingSide,
 		TArray<FGameXXKCardDamageResult>& OutResults,
 		FString& OutError)
 	{
 		OutError.Reset();
-		for (const FName UnitId : CollectLivingUnitIdsForSide(InOutRuntime, Side))
+		// Both sides take Poison at every boundary; complete all packets before
+		// the caller evaluates formulas, phase changes, or the terminal result.
+		TArray<FName> UnitIds = CollectLivingUnitIdsForSide(InOutRuntime, EndingSide);
+		UnitIds.Append(CollectLivingUnitIdsForSide(InOutRuntime,
+			EndingSide == EGameXXKCardTargetSide::Party ? EGameXXKCardTargetSide::Enemy : EGameXXKCardTargetSide::Party));
+		for (const FName UnitId : UnitIds)
 		{
 			const FGameXXKCardCombatUnit* TargetBeforeDot = FindCombatUnitById(InOutRuntime.Units, UnitId);
 			const int32 TargetHealthBefore = TargetBeforeDot ? TargetBeforeDot->HP : 0;
@@ -1308,6 +1314,7 @@ namespace
 			if (!ApplyCombatEndPhaseDotForRuntime(
 				InOutRuntime,
 				UnitId,
+				EndingSide,
 				HealthDamage,
 				PacketHealthAfter,
 				&OutError))
@@ -3321,6 +3328,7 @@ namespace
 	bool ApplyCombatEndPhaseDotForRuntime(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName TargetUnitId,
+		const EGameXXKCardTargetSide EndingSide,
 		int32& OutHealthDamage,
 		int32& OutPacketHealthAfter,
 		FString* OutError)
@@ -3369,7 +3377,10 @@ namespace
 		{
 			return SetFailure(OutError, TEXT("End-phase DoT target disappeared after health loss."));
 		}
-		GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
+		if (Target->Side == EndingSide)
+		{
+			GameXXKCardRules::ConsumeCombatStatus(*Target, EGameXXKCardStatus::Weak, 1);
+		}
 		RemoveLinksForDefeatedUnits(NewRuntime.GuardLinks, NewRuntime.Units);
 		if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 		{
@@ -16573,7 +16584,7 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 	RemoveHandBoundEnergySurchargesOutsideCurrentHand(NewRuntime);
 	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforePlayerDot = NewRuntime.Units;
 	const int32 FirstPlayerDotResultIndex = NewEndPhaseDamageResults.Num();
-	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
+	if (!ApplyPoisonAtPhaseEnd(NewRuntime, EGameXXKCardTargetSide::Party, NewEndPhaseDamageResults, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -16602,7 +16613,7 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 	}
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Player)
 	{
-		// Enemies begin their own phase after player-side DoT resolves, so only their armor expires here.
+		// Enemies begin their own phase after boundary Poison resolves, so only their armor expires here.
 		if (!ClearArmorAtSidePhaseStart(NewRuntime, EGameXXKCardTargetSide::Enemy, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
@@ -17047,7 +17058,7 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
 	const TArray<FGameXXKCardCombatUnit> HealerFormulaUnitsBeforeEnemyDot = NewRuntime.Units;
 	TArray<FGameXXKCardDamageResult> NewEndPhaseDamageResults;
-	if (!ApplyEndPhaseDotForSide(NewRuntime, EGameXXKCardTargetSide::Enemy, NewEndPhaseDamageResults, ValidationError))
+	if (!ApplyPoisonAtPhaseEnd(NewRuntime, EGameXXKCardTargetSide::Enemy, NewEndPhaseDamageResults, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}

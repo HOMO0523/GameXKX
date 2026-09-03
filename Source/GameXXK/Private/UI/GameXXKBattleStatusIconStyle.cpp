@@ -103,7 +103,7 @@ FGameXXKBattleStatusIconStyle FGameXXKBattleStatusIconStyle::ResolveStatusIconSt
 	case EGameXXKCardStatus::Bleed:
 		return MakeStyle(TEXT("BleedDrop"), TEXT("流血"), TEXT("受到直接攻击后，失去等同层数的生命并减少1层；回合结束不衰减。"), FLinearColor(0.55f, 0.31f, 0.29f, 1.0f), 980);
 	case EGameXXKCardStatus::Poison:
-		return MakeStyle(TEXT("PoisonVial"), TEXT("中毒"), TEXT("回合结束时，失去等同层数的生命并减少1层。"), FLinearColor(0.41f, 0.49f, 0.32f, 1.0f), 970);
+		return MakeStyle(TEXT("PoisonVial"), TEXT("中毒"), TEXT("任意一方回合结束时，失去等同中毒值的生命。"), FLinearColor(0.41f, 0.49f, 0.32f, 1.0f), 970);
 	case EGameXXKCardStatus::Burn:
 		return MakeStyle(TEXT("BurnFlame"), TEXT("灼烧"), TEXT("打出牌或执行意图后，失去等同层数的生命并减少1层；回合结束再减少1层。"), FLinearColor(0.65f, 0.39f, 0.30f, 1.0f), 960);
 	case EGameXXKCardStatus::Mark:
