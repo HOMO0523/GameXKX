@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T05:44:48+08:00
-source_commit: 7eb80027ebde5f350569f0f3802eaad55ab2b98f
-working_tree: overall in-run optimization Plan 1 combat scaling foundation complete and green; Plan 2 active-card catalog rebalance is next
+updated_at: 2026-09-03T09:20:00+08:00
+source_commit: 8a78a66499cd2c37f048384c060384aa0f7f7987
+working_tree: recovery audit verified Plan 2 Task 3 Hero gate 116/116; legacy eight-card Hero-task save migration must be fixed before task completion
 ---
+
+> **2026-09-03 中断恢复审查（Plan 2 Task 3 待修兼容缺口）**：原任务记录的终止原因是用量限制；工作仍保存在用户已授权的根目录分支 `codex/overall-in-run-optimization`。Plan 2 Task 1 数值策略 `a2d4c87`、Task 2 路线卡退役及 v34 迁移 `8a78a66` 已提交；36 张主角牌的 Task 3 尚未提交。本次对最后编辑重新冷 UBT 并复验 `GameXXK.Data.HeroCards`，116/116、0 failed/0 warning/0 error；新增旧存档回归后确认 v33/v34 八牌术士任务均无法通过新的四牌任务校验，迁移桶 2 passed / 1 failed。该缺口必须先修复、转绿，再提交 Task 3 并继续后续卡牌。证据、七阶段现状、Plan 7 双伙伴模拟与固定 NPC 规则的冲突及恢复顺序见 `docs/production/2026-09-03-in-run-optimization-recovery-audit.md`。本条不宣称全量回归、真实 PIE 或正式打包已通过，保护原有资源删除和未跟踪素材。
 
 > **2026-09-03 整体局内优化（Plan 1 战斗缩放基础已完成，Plan 2 待开始）**：当前工作分支为 `codex/overall-in-run-optimization`，批准规格为 `docs/superpowers/specs/2026-09-03-card-monster-progression-rebalance-design.md`，依赖顺序与七份可执行计划入口为 `docs/superpowers/plans/2026-09-03-overall-in-run-optimization-plan-suite.md`（计划提交 `15fe408`）。Plan 1 从 `4754be7` 到 `7eb8002` 完成普通/稀有/史诗 `1.0/1.2/1.4`、连续等级换算、队伍最高等级和难度快照、无 99 上限护甲、四类 DOT 水库、药效治疗与累计余数、下一回合气力惩罚以及 v32→v33 迁移；用户资产删除与未跟踪内容均未进入提交。
 >
