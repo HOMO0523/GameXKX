@@ -1,6 +1,6 @@
 # Balance Telemetry and Certification Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution:** Use superpowers:executing-plans in the current task. The user prohibits sub-agents. Steps use checkbox (`- [ ]`) syntax for tracking; current design review still pauses runtime implementation.
 
 **Goal:** Certify all approved cards, enemy intents, formations, and representative three-person builds with a deterministic strategy that understands setup, defense, tasks, formulas, terrain, and delayed payoffs.
 
@@ -13,6 +13,12 @@
 ## Preconditions and files
 
 Complete Plans 1-6; current schema is v38. Work on `codex/overall-in-run-optimization`. Relic redesign is not approved, so the binding certification uses no route relics and labels that exclusion explicitly. Any later fixed-relic sensitivity run is provisional and outside this plan's completion gate.
+
+Use the revised partner Ice semantics from design sections 4.3.1 and 6.3, not the superseded 40%/80%-Defense base effects. Carry Plan 2's deterministic 照见/斗转 Ice fixtures through adapter parity: initial Mana 34/34, zero Armor, Attack 495, minimum legal qualities; expected pre-reward Armor 456/816 and 100%-base standard Ice damage 1694/2981 against level-135 Defense 146 before phase protection. Record actual phase-limited HP damage separately from potential damage and overkill. Reset ordinary Armor correctly at a new player phase, account for every once-per-battle automatic-hand budget, and preserve live Mana changes/+4 capacity in replays. These conditional combo figures are not substitutes for sampled completion rates, full battles, or the approved win-rate target. Resolve the review's broader fixed-base-Mana/equipment-growth inconsistency before certifying a live loadout; never silently benchmark the old level-grown Mana pool.
+
+The subsequent 霜镜 reward amendment grants `floor(consumed Armor / 4)` to each living ally including the caster, independent of Defense/quality/level. Add the matching starter control to adapter parity: 霜镜→寒息→玄冰→冰鉴→照见 produces 351 pre-reward Armor, potential Ice damage 1421, and 87 Armor per living ally at the same baseline with unavailable searches. Attribute each recipient's generated/absorbed/refunded Armor to 霜镜, and do not execute that reward in the existing 照见/斗转 starter cases. Conditional party protection and overkill must remain distinct metrics.
+
+The confirmed 六合 revision uses caster-only current-Mana recovery 8/16 and one shared overflow Armor grant per living ally, then only a consumed-Armor quarter for its Ice reward. With confirmed 10% Ice recovery, the ordinary 六合 starter benchmark is 774 consumed Armor / 2782 potential damage / 193 new Armor per ally, with final party Armor 193/265/265. 照见→寒息→六合→冰鉴→霜镜 uses 16 and gives 912 / 3161 with final Armor 228/168/168; the corresponding 斗转 sequence gives 1728 / 5915 and final Armor 0/168/168. Attribute caster Mana separately from group Armor and distinguish new reward Armor from retained base grants. Use 10% for current certification fixtures; the earlier 20% and 25% comparisons are not alternate acceptance targets.
 
 Create:
 

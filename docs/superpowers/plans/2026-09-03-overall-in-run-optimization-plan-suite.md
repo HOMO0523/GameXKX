@@ -1,6 +1,6 @@
 # Overall In-Run Optimization Plan Suite
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan suite one document at a time. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution:** Use superpowers:executing-plans in the current task, one document at a time. The user explicitly prohibits sub-agents. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Deliver the approved 173-card, combat-scaling, monster-phase, 27-stage, equipment, settlement, and balance-certification redesign as independently testable increments.
 
@@ -16,6 +16,8 @@
 - Working directory: `D:\UE5 demo\GameXXK`
 - Authorized branch: `codex/overall-in-run-optimization`
 - Canonical runtime surface: `/Game/GameXXK/Maps/L_DesktopTrainingHUD`
+
+**Current review checkpoint:** The user has confirmed the 10% current-Mana recovery version for all four partner Ice cards. Design sections 4.3.1/6.3 and Plan 2 Tasks 6/8 now use upward-rounded 10% recovery, level/quality-scaled overflow Armor, exact mirror doubling, and a failed-search copy of the Armor just generated. Standard Ice is 100% times starter quality plus one attack-percentage point per consumed Armor. Mirror and 六合 Ice rewards grant each living ally floor(consumed Armor/4). 六合 separately recovers fixed 8/16 caster Mana and shares only this recovery's overflow Armor, after any active cost, exactly once per living recipient. Current expected figures are in `docs/design/2026-09-03-ice-mana-armor-confirmed-step-tables.md`; earlier 20%/25% figures and Defense-derived Ice/六合 versions are historical. Numeric design approval does not complete Plan 2 or certify a compile, PIE run, or win-rate target. Runtime implementation remains paused for the remaining overall design review, with existing uncommitted code preserved.
 
 The dirty worktree contains user-owned deletions and many untracked assets/scripts. Every task stages only its named paths, inspects `git diff --cached --name-status`, and never runs reset/checkout/clean against unrelated files.
 

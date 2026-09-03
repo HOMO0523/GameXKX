@@ -1,10 +1,10 @@
 # Card, monster phase, progression, and settlement rebalance
 
-**Status:** Approved for implementation
+**Status:** Approved base design; current user-led design review pauses runtime implementation. The Ice and Universal card revisions below record the latest user wording and explicit calculation interpretations.
 
 **Date:** 2026-09-03
 
-**Workspace:** root project on `main`
+**Workspace:** root checkout on the user-authorized `codex/overall-in-run-optimization` branch; no worktrees
 
 ## 1. Intent and authority
 
@@ -65,7 +65,7 @@ The five `Route.Boss.*` IDs remain only as save-compatible IDs and are presented
 | Rare | 1.2 |
 | Epic | 1.4 |
 
-Damage, healing, fixed damage, ally attacks, DOT coefficients, and defense-derived armor use the quality multiplier and round upward. Old output based on quality x2/x4 is obsolete.
+Damage, healing, fixed damage, ally attacks, DOT coefficients, and defense-derived or Mana-derived Armor use the quality multiplier and round upward. Mana recovery itself remains an unscaled resource operation. Old output based on quality x2/x4 is obsolete.
 
 Player-facing card-quality labels are `普通 / 稀有 / 史诗`; the existing internal `Epic` enum maps to the user-facing `史诗` tier. Older generated text that calls this card tier `珍稀` must be reconciled rather than creating a fourth card quality.
 
@@ -95,7 +95,7 @@ For direct attacks, use one shared preview/resolution order: resolve Attack coef
 
 ### 4.3 Defense-derived armor
 
-Player armor is calculated from the **caster's current Defense**, not the recipient's Defense:
+An effect explicitly authored as Defense-derived Armor is calculated from the **caster's current Defense**, not the recipient's Defense:
 
 `Armor = ceil(caster Defense * printed-cost factor * quality multiplier)`
 
@@ -112,9 +112,23 @@ Group armor uses the caster's value and grants the full resolved amount independ
 
 Mixed effects use their explicit secondary Defense coefficient, such as 20%, 40%, or 50%. There is no gameplay cap of 99 armor; use saturating integer arithmetic only for technical overflow protection.
 
+### 4.3.1 Mana overflow converted to Armor
+
+The latest user clarification applies the DOT **generation multiplier** to Mana overflow converted into Armor. Mana points are not Defense-percentage points, and Defense does not participate in this conversion:
+
+`OverflowArmor = ceil(OverflowMana * CardConversionRate * Q * (TeamMaxLevel / 25 + 1))`
+
+All currently specified Ice overflow conversions use `CardConversionRate = 1` (100%). Read the existing battle-start `TeamMaxLevel` snapshot. Reuse the shared integer generation arithmetic; do not apply a DOT reservoir cap to Armor or multiply the resolved Armor by quality/level again when it is copied, doubled, refunded, or consumed for an attack.
+
+For the revised four partner Ice cards, percentage recovery is `ceil(current Mana * RecoveryPercent / 100)`. Take current Mana at the moment that effect resolves, round the recovery upward first, restore up to the current maximum, then convert only the actual overflow. Do not multiply recovered Mana by quality, level, or Defense. Each replay recomputes recovery from its then-current Mana; it does not reuse the amount recovered on the first play. Explicit fixed battle effects such as `MaxMana +4/+8` remain resource effects.
+
+An Ice partner task enables this overflow rule for Mana recovery from that partner's Sorcerer cards. A Universal starter followed by an Ice second card enables the branch before the second card resolves; its replays use the locked Ice branch. `HanXu` retains its separately authored Hero card effects, with only its overflow using the new conversion formula. This subsection does not turn every ordinary Mana recovery in other task branches into an Armor effect.
+
+The review's numeric fixtures use level-one raw Mana with no equipment/level growth (partner 34; Hero 30) and no extra fixed bonus. The broader Mana-pool/equipment-growth reconciliation identified in the review remains a prerequisite before full balance certification; the current implementation's growing Mana pool must not silently replace that fixture.
+
 ### 4.4 Armor conversion and reactions
 
-Armor-to-damage conversion has no gameplay cap. Each consumed Armor adds **one attack-percentage point**. The approved base attack coefficient is the old base plus 100 percentage points. Quality scales the base attack portion only; it never scales the `+1 point per Armor` portion.
+Armor-to-damage conversion has no gameplay cap. Each consumed Armor adds **one attack-percentage point**. The general rebalance base is the old base plus 100 percentage points, except where a later explicit card rule overrides it. The latest user override sets the partner standard Ice base to 100% (not 200%); separately authored conversion attacks keep their own explicit bases. Quality scales the base attack portion only; it never scales the `+1 point per Armor` portion.
 
 Block resolves after the entire opposing single-target attack card has finished. It uses the defender's post-card remaining Armor and triggers once per opposing card, not once per hit:
 
@@ -374,16 +388,39 @@ Defense-ignore values use `ceil(ignore coefficient * quality * level factor)`. A
 The task requires five distinct partner Sorcerer cards and completes at most once per player round. Keep the approved Fire/Ice/Lightning/Universal task identities, with these numeric corrections:
 
 - Fire/BaoYan DOT conversion is +2 points per resolved Burn.
-- Standard Ice conversion uses quality-scaled base 200% plus one point per Armor.
-- `Profession.Sorcerer.FenMaiFu`: cost 0, Armor 40%.
-- `Profession.Sorcerer.LingYanLianDan`: Rare cost 0; first Armor 40%, otherwise double current Armor without a gameplay cap.
-- `Profession.Sorcerer.HuLingMu`: Rare cost 1, Armor 80%; repeat only when no search occurred.
+- Standard Ice conversion uses quality-scaled base 100% plus one attack-percentage point per consumed Armor. Its base is therefore 100%/120%/140% at Common/Rare/Epic; consuming 300 Armor gives 400%/420%/440% Attack. This applies to all rewards explicitly using standard Ice, including 照见/六合/斗转. 万法归一 retains its separately authored 220% base and Hero 寒序 its 100% base.
+
+The user confirmed the 10% current-Mana recovery version after reviewing the damage comparisons and step tables. This is now the authoritative rate for all four partner Ice cards, superseding the previous 25%/20% drafts and earlier Defense-derived base grants. Recovery rounds upward; base card quality does not multiply the recovery percentage.
+
+| CardId / name | Base quality / cost | Base effect, in order | Starter reward after the standard Ice attack |
+|---|---|---|---|
+| `Profession.Sorcerer.SheLingHuo` / 寒息回流 | Rare; 1 Energy / 0 Mana | Recover `ceil(current Mana * 10%)`; convert actual overflow by section 4.3.1. | Gain Energy 1; draw 1. |
+| `Profession.Sorcerer.FenMaiFu` / 玄冰拓脉 | Common; 0 Energy / 0 Mana | Increase this battle's MaxMana by 4 without changing current Mana; then recover `ceil(current Mana * 10%)` and convert actual overflow. | Increase this battle's MaxMana by another 8 and fill current Mana to that new maximum. |
+| `Profession.Sorcerer.LingYanLianDan` / 霜镜叠甲 | Rare; 0 Energy / 0 Mana | If current Armor is zero, recover `ceil(current Mana * 10%)` and convert actual overflow. Otherwise double current Armor, without recovering Mana or applying another multiplier. | Every unique living ally, including the caster, receives `floor(ArmorConsumedByThisIceBlast / 4)` Armor. |
+| `Profession.Sorcerer.HuLingMu` / 冰鉴索法 | Rare; 1 Energy / 0 Mana | Recover `ceil(current Mana * 10%)` and convert actual overflow; search for one unfinished carried Sorcerer card; if no legal search exists, grant one more copy of the Armor generated by this recovery. | All enemies gain Weak 2. |
+
+Operational interpretation for this review: all four Ice cards' 10%-Mana recoveries use upward rounding. Ice Search's "another equal Armor grant" copies this execution's **resolved overflow Armor**, not the owner's total Armor; it neither recovers Mana a second time nor rescales the copy. If the recovery produces no overflow Armor, the extra grant is zero. Search candidates remain unfinished carried cards in Draw/Discard, so cards already in Hand do not qualify. The latest standard Ice base is 100% times starter quality. Costs and the four starter reward identities follow the current table.
+
+The latest user amendment replaces 霜镜's former 40%-Defense group reward with one quarter of the Armor consumed by this same Ice blast. Capture that Armor once before consuming it, resolve the standard Ice attack, then grant the full quarter independently to every living ally including the caster. Use the existing quarter-Armor refund convention (round downward); do not multiply the grant by quality, level, Defense, damage dealt, or number of enemies. Do not divide the grant among allies. Consuming 1003 Armor grants 250 to each living ally; consuming zero grants zero. This reward occurs only when 霜镜 was the task starter, not on every ordinary or automatic play of 霜镜.
+
+At TeamMaxLevel 100, independently begin each card at Mana 34/34 and Armor 0: Rare 寒息 recovers 4 and generates Armor 24; Common 玄冰 raises MaxMana to 38, recovers 4, ends Mana 38, and generates zero Armor because the enlarged pool is exactly filled; Rare 霜镜 at zero Armor recovers 4 and generates Armor 24; Rare 冰鉴 recovers 4 and generates Armor 24, or 48 total when search fails. From Mana 31/34, Rare 冰鉴 recovers 4, generates Armor 6, and a failed search adds only another 6. From Mana 30/34 it recovers 3, ends at 33/34, and generates no Armor. Zero overflow is a valid effect result and must not fail the card or its task progress. From Mana 42/42, 玄冰 raises the cap to 46, recovers 5, and converts one overflow into 5/6/7 Armor by quality. Defense changes must not alter these results or a fixed consumed-Armor refund.
+
+At the confirmed 10% rate, the same-round minimum-quality sequence 照见→寒息→玄冰→冰鉴→霜镜 starts at Mana 34/34 and zero Armor. With the first Universal automatic-hand budget available, Ice Search cannot find an unfinished Draw/Discard target on either pass: Armor is 144 after active cards and 456 before the reward; Common 照见 refunds 114 Armor, and its potential Ice damage is 1694 against level-135 Defense 146 at Attack 495. The equivalent 斗转→寒息→玄冰→冰鉴→霜镜 sequence pays 2 Mana on its starter and performs the extra mirror replay: pre-reward Armor 816, potential Ice damage 2981. With 霜镜→寒息→玄冰→冰鉴→照见, pre-reward Armor is 351, Rare Ice is 471% Attack / potential damage 1421, and each living ally receives 87 Armor afterward. These are controlled semantic fixtures, not measured win rates; all earlier 25%/20% numbers are historical.
+
 - `Profession.Sorcerer.ChiXiaoFenXing`: Rare AoE 60%, Mark 2.
 - `Profession.Sorcerer.FenTianJue`: Epic 98%.
 - `Profession.Sorcerer.NingYanChengRen`: 55%/70% by approved quality.
 - `Profession.Sorcerer.RanLingHuanYuan`: 45%/60%.
 - `Profession.Sorcerer.YanMuHuTi` Ice reward: base 220% plus Armor conversion.
-- `Profession.Sorcerer.XingHuoHuiShou`: Rare cost 0, group Armor 40%, condition 80%; rewards are Normal 80%, Fire 60%, Ice 40% plus 25% consumed Armor, Lightning 40%.
+- `Profession.Sorcerer.XingHuoHuiShou` / 六合护法: Rare, 0 Energy / 4 Mana. Restore 8 current Mana to the caster only; every unique living ally, including the caster, receives the Armor converted from **this recovery's actual overflow**. If the previous recorded card in this task contains no direct damage, replace recovery 8 with 16. This is current-Mana recovery, not MaxMana growth. The fixed 8/16 is not quality-, level-, or Defense-scaled; only overflow Armor uses section 4.3.1 once.
+
+六合's composite base effect applies before a Universal starter has selected its task branch and also outside the Ice branch. Pay the card's actual Mana cost first, recover the caster's Mana, snapshot the resulting overflow once, resolve one Armor amount using the card's quality and TeamMaxLevel, and grant that full amount independently to every living ally. Other allies' Mana and MaxMana do not change. Give the caster one grant, not an extra self-only grant from the generic Ice overflow path. A first recorded card has no predecessor and uses 8. Replays use the recorded position/predecessor condition but do not pay Mana, so their overflow may differ; 16 replaces 8 rather than being added to it. If the previous card contains a direct attack that misses or deals no HP damage, it still does not satisfy the non-damage condition.
+
+六合's **Ice starter reward** is now standard Ice, then `floor(ArmorConsumedByThisIceBlast / 4)` Armor to every unique living ally including the caster. Use the consumed-Armor snapshot, with no additional Defense term or quality/level scaling. Already-held recipient Armor is preserved and the grant is added normally. The separately authored non-Ice reward branches remain recorded as Normal group 80%-Defense Armor plus Weak 2, Fire group 60%-Defense Armor plus Burn coefficient 4 and Weak 1, and Lightning Mark 2 / 30% per-Mark lightning / group 40%-Defense Armor; this amendment changes the composite base/sequence effect and the Ice reward.
+
+At TeamMaxLevel 100 and Rare quality, begin an active 六合 at Mana 34/34: pay 4, recover 8, and generate 24 Armor for each living ally. Under the qualifying predecessor, recover 16 instead and generate 72 per ally. At full Mana, free replay produces 48/96 per ally for the locked 8/16 branch. With only Mana 4 before an active ordinary cast, payment leaves zero, recovery ends at 8/34, and nobody gains Armor. A cast with less than the actual 4-Mana cost is rejected before recovery. Changing ally Mana, Defense, or level must not change the grant calculated from the caster and the existing TeamMaxLevel snapshot.
+
+The confirmed four-Ice recovery rate is 10%. At the shared level-100 / Attack-495 / initial Mana-34 benchmark, 六合→寒息→周天→冰鉴→霜镜 produces 774 Armor before its Ice reward and potential damage 2782, then grants 193 Armor per living ally. The caster ends at 193, while the other two initially unarmored allies retain 24+48 base Armor and end at 265 each. 照见→寒息→六合→冰鉴→霜镜 uses the 16-Mana branch, produces 912 pre-reward Armor / potential damage 3161, and ends with caster Armor 228 and other allies 168 each. 斗转→寒息→六合→冰鉴→霜镜 produces 1728 / 5915 and ends with caster Armor 0 and other allies 168 each. The accepted step ledger is `docs/design/2026-09-03-ice-mana-armor-confirmed-step-tables.md`; earlier revision and 20% ledgers remain historical. This numeric approval does not certify current runtime implementation or full-battle balance.
 
 #### Partner Formation Master
 

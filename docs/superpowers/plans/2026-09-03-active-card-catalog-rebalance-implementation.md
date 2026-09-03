@@ -1,6 +1,6 @@
 # Active Card Catalog Rebalance Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Execution:** Use superpowers:executing-plans in this task. The user prohibits sub-agents. Steps use checkbox (`- [ ]`) syntax for tracking. Runtime implementation remains paused until the current design discussion is confirmed.
 
 **Goal:** Replace the 198-card legacy catalog with the approved 173-card pool and encode every approved player-card value without CardId-specific runtime branching.
 
@@ -16,6 +16,7 @@
 - Work on `codex/overall-in-run-optimization` in the root checkout.
 - Preserve unrelated dirty assets and never stage them.
 - Use the exact CardIds and values in design sections 3, 4, and 6.
+- The latest partner Ice revision in design section 6.3 and Mana-overflow formula in section 4.3.1 supersede the earlier 40%/80%-Defense base grants. Record the user-authored card behavior before resuming Task 6; do not use the first damage projection as current balance evidence.
 
 ## File map
 
@@ -49,7 +50,7 @@
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardQualityResolutionTest.cpp`
 
-- [ ] **Step 1: Write red policy tests**
+- [x] **Step 1: Write red policy tests**
 
 Create fixture effects for every policy and assert: Continuous 101 -> 122/142; Explicit 2 -> 3/4; DOT coefficient remains 6 until runtime; PrintedCostArmor remains data-only; Unscaled draw remains 2.
 
@@ -64,13 +65,13 @@ TestEqual(TEXT("Rare explicit draw"),
     FGameXXKCardQualityRules::ResolveEffectMagnitude(ExplicitDraw, EGameXXKCardQuality::Rare), 3);
 ```
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.CardQuality --automation-report InRun02_Task01_RED --json
 ```
 
-- [ ] **Step 3: Add policy fields**
+- [x] **Step 3: Add policy fields**
 
 ```cpp
 UENUM(BlueprintType)
@@ -103,7 +104,7 @@ Use the `SaveGame` metadata on the modifier copy because `FGameXXKCardBattleModi
 
 Implement `ResolveEffectMagnitude`. Continuous uses `ScaleContinuousCeil`; explicit requires nonnegative Rare/Epic values; DOT/Armor/Medicine policies preserve the base coefficient for runtime context. Set `EffectiveDefinition.BaseQuality` to the resolved instance quality so runtime composite policies receive it.
 
-- [ ] **Step 4: Add catalog builder helpers**
+- [x] **Step 4: Add catalog builder helpers**
 
 ```cpp
 FGameXXKCardEffect Continuous(FGameXXKCardEffect Effect)
@@ -152,7 +153,7 @@ Validation rejects missing explicit values, negative coefficients, DOT policy on
 
 In this first policy commit, update the shared catalog `Effect(...)`/modifier builders so every still-unconverted legacy definition receives the Plan 1 equivalent explicitly: direct/fixed/heal/ally-attack/AddArmor magnitudes use `ContinuousQuality`, while draw, resources, and discrete status/count values use `Unscaled`. This preserves the green v33 behavior between commits. Later card-family tasks replace Armor, DOT, Medicine, and quality-specific counts with their exact policies; no active definition may depend on an implicit effect-type fallback by Task 9.
 
-- [ ] **Step 5: Run green and commit**
+- [x] **Step 5: Run green and commit**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.CardQuality --automation-report InRun02_Task01_GREEN --json
@@ -173,17 +174,17 @@ git commit -m "feat: add declarative card value policies"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardCatalogTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardRouteRewardGateTest.cpp`
 
-- [ ] **Step 1: Write red catalog and migration tests**
+- [x] **Step 1: Write red catalog and migration tests**
 
 Assert active counts 173/102 Common/42 Rare/29 Epic, no IDs with `Route.General.`, `Route.Terrain.`, or `Route.Rare.`, and exactly five `Route.Boss.*` IDs. Build a v33 save containing retired instances in every deck zone, reward, and merchant field; migration removes them and repairs `ActiveInstanceIds`. A `Route.Boss.XiongPiPiJia` instance survives.
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.CardCatalog --automation-report InRun02_Task02_RED --json
 ```
 
-- [ ] **Step 3: Remove active definitions and reward sources**
+- [x] **Step 3: Remove active definitions and reward sources**
 
 Delete construction of indices 169-193 from the active catalog. Keep 194-198. Replace validation counts:
 
@@ -199,7 +200,7 @@ return ValidateCatalog(
 
 Remove the five `Route.Rare.*` IDs from Rare classification. Filter every reward and merchant candidate through `FGameXXKCardCatalog::FindCardDefinition`; single-map logic must also reject `Route.Boss.*` acquisition.
 
-- [ ] **Step 4: Implement v34 retirement migration**
+- [x] **Step 4: Implement v34 retirement migration**
 
 ```cpp
 static constexpr int32 ActiveCardPool173IntroducedSaveVersion = 34;
@@ -218,7 +219,7 @@ Remove retired IDs from configured decks, every battle zone, pending automatic c
 
 For surviving v33 active-battle modifiers, preserve their already-resolved `Magnitude`, set new policy metadata to `Unscaled`, and leave remaining triggers/expiry/owner bindings untouched; never reapply 120/140 quality during migration.
 
-- [ ] **Step 5: Run green and commit**
+- [x] **Step 5: Run green and commit**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.CardCatalog --automation-report InRun02_Task02_GREEN --json
@@ -238,6 +239,21 @@ git commit -m "feat: retire legacy route cards"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHeroGenericCardRuntimeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHeroCardIntegrationTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHeroCounterBlockRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Public/GameXXKCardTypes.h`
+- Modify: `Source/GameXXK/Public/GameXXKCardRules.h`
+- Modify: `Source/GameXXK/Private/GameXXKCardQualityRules.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKCombatSimulationRules.cpp`
+- Modify: `Source/GameXXK/Private/MVP/GameXXKSaveMigration.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKCardBattleRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroBladeRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroGuardRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroHealerRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroHunterRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroMageRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHeroFormationRuntimeTest.cpp`
+- Create: `Source/GameXXK/Private/Tests/GameXXKHeroTaskResumeMigrationTest.cpp`
+
+Recovery audit refinement: this task must also migrate recognizable v33/early-v34 eight-card Hero tasks to the four equipped Mage requirements before current-state validation. Validate complete old snapshots/deck choices before filtering, preserve existing replay progress and paused manual choices, never execute cards or grant rewards during migration, and keep repeat loads idempotent. A narrow saved marker may retain an already-earned legacy search when it is the manual continuation of a saved replay; it does not change new-card search rules. Cover source versions 33/34, incomplete/full tasks, every replay cursor, forced discard, search, malformed data, and real choice continuation. This compatibility correction does not renumber the planned v35-v38 schemas. See `docs/production/2026-09-03-in-run-optimization-recovery-audit.md` for the reproduced interruption and original RED evidence.
 
 - [ ] **Step 1: Add exact red catalog rows**
 
@@ -374,27 +390,64 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKApprovedCardCatalogTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerRewardRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerIceLightningRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerUniversalRewardMatrixTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerUniversalRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerTextTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerSaveResumeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKPartyFormationRulesTest.cpp`
 
 - [ ] **Step 1: Add red CardId 133-168 and unlock assertions**
 
-Assert task size 5, Fire conversion 2 points per Burn, Ice base 200 plus one per Armor, `ZhenShaZhen` base 320/Epic 448, and Formation unlock counts 12/14/16/18 at levels 1/5/10/15 with all six switch cards present at level 1.
+Assert task size 5, Fire conversion 2 points per Burn, Ice base 100 plus one per Armor, `ZhenShaZhen` base 320/Epic 448, and Formation unlock counts 12/14/16/18 at levels 1/5/10/15 with all six switch cards present at level 1.
+
+Add actual card-preview/commit fixtures for the revised Ice cards, resetting Mana to 34/34, Armor to 0, and TeamMaxLevel to 100 for each independent row:
+
+| Card / quality | Mana recovery | Ending Mana / MaxMana | Generated Armor |
+|---|---:|---|---:|
+| 寒息回流 / Rare | 4 | 34 / 34 | 24 |
+| 玄冰拓脉 / Common | 4, after MaxMana +4 | 38 / 38 | 0 |
+| 霜镜叠甲 / Rare, zero initial Armor | 4 | 34 / 34 | 24 |
+| 冰鉴索法 / Rare, legal search | 4 | 34 / 34 | 24 |
+| 冰鉴索法 / Rare, unavailable search | 4 | 34 / 34 | 48 |
+
+Also assert these boundaries through the real resolver:
+
+- Current Mana 31/34: Rare 冰鉴 recovers 4, generates 6 Armor, and a failed search adds only 6 more; it does not recover Mana twice. Current Mana 30/34 recovers 3 to 33/34 and generates zero Armor even when search fails. Zero overflow must not fail an otherwise legal play or prevent task progress.
+- Starting Armor 100: 霜镜 ends at Armor 200 and leaves Mana unchanged. Starting Mana 0 and Armor 0: percentage recovery and overflow grant zero; 玄冰 still increases MaxMana by 4.
+- Vary Defense across 5/257/1000 while holding Mana, quality, and TeamMaxLevel fixed. The four base effects stay identical. For 霜镜's revised starter reward, hold consumed Armor fixed at 1003 and assert every unique living ally, including the caster, receives 250; vary Defense, legal starter quality, and team level without rescaling that resolved Armor refund. Repeat with zero consumed Armor, one defeated ally, and a phase-limited damage target. The grant uses consumed Armor, not actual HP damage or enemy count, and is not divided among recipients.
+- Change only quality: recovered Mana remains 4 at 34/34 while generated Armor receives exactly one legal quality multiplier. TeamMaxLevel uses the shared battle snapshot and its real-valued level/25 factor; no DOT cap is imposed on Armor.
+- At current Mana 41, 10% recovery rounds up to 5; replay must recompute it instead of reusing the 4 recovered at first-play Mana 34. Preserve sequence position and first-play quality separately from current Mana/Armor. For 玄冰 at Mana 42/42, increase the cap to 46 before recovery 5: one overflow produces Armor 5/6/7 by quality. Initial zero-Armor outcomes at 34/34 must not disable future overflow.
+- Whole task 照见→寒息→玄冰→冰鉴→霜镜 at confirmed 10% recovery, minimum legal qualities, and its first automatic-hand budget: Armor 144 after active cards, 456 before the Ice reward, 114 refunded, ending Mana 42/42. For 斗转→寒息→玄冰→冰鉴→霜镜, including the starter's 2 Mana payment and extra mirror replay, pre-reward Armor is 816. At Attack 495 against level-135 Defense 146, the two potential Ice packets are 1694 and 2981 before phase protection.
+- Using the same five cards in order 霜镜→寒息→玄冰→冰鉴→照见, with unavailable searches and the first non-starter Universal automatic-hand budget, assert Armor 121 after active cards, 351 before the reward, and 87 granted to every living ally afterward. Potential Ice damage is 1421 at the same target fixture. No mirror group reward may execute in the 照见/斗转 starter controls.
+- Pause a task replay at an existing search choice, serialize/restore, and finish it. Already-applied recovery, MaxMana growth, Armor copies, and the final reward must not run twice. No new active task is advanced by automatic replay.
+
+Add the latest 六合 base/sequence and Ice-reward cases to the actual Universal runtime/reward tests:
+
+- At Rare / TeamMaxLevel 100 / Mana 34/34, an active 0-Energy, 4-Mana ordinary 六合 pays first, restores 8, and grants Armor 24 to each living ally exactly once. It works even when it is the first Universal card and no Ice branch is locked yet. Only the caster's current Mana changes; every MaxMana and other allies' Mana remain unchanged.
+- With a previous recorded non-direct-damage card, replace 8 with 16: active grant 72 per ally. A first record or a predecessor containing direct damage uses 8 even if the attack dealt zero HP damage. An interleaved other-owner card must not replace the previous Sorcerer record. Free replay at full Mana gives 48/96 for the locked ordinary/conditional branch, without paying 4 or recomputing predecessor from the latest chronological action.
+- Starting Mana 4, ordinary active 六合 ends Mana 8/34 with zero Armor for every ally; Mana 3 rejects without mutation. Fixed recovery 8/16 stays unchanged across legal qualities and levels; only actual overflow Armor is scaled. Vary allies' Mana, Defense, and level without recalculating their individual overflow. Exclude defeated recipients and never split one Armor budget among living allies.
+- The generic Ice overflow listener must not add a second owner-only grant after the composite group grant. Zero overflow produces zero group Armor. Preview, committed results, and a resumed paused queue must agree on one Mana recovery and one grant per recipient.
+- 六合's Ice reward consumes the caster's Armor for standard Ice, then adds floor(consumed/4) to each living ally, with no remaining 40%-Defense addition. At consumed Armor 1003, every living ally receives 250 even when actual HP damage is phase-limited. Preserve Armor already on the other recipients.
+- With confirmed 10% Ice cards, 六合→寒息→周天→冰鉴→霜镜 at the shared minimum-quality benchmark yields pre-reward Armor 774, potential Ice damage 2782, and a new group reward of 193 per ally. The caster ends at 193; the other two initially unarmored allies end at 265 after retaining the base grants. Check the 16-Mana branch with 照见→寒息→六合→冰鉴→霜镜 (912 Armor / 3161 potential damage; final Armor 228/168/168) and 斗转→寒息→六合→冰鉴→霜镜 (1728 / 5915; final Armor 0/168/168). Prior 25%/20% outcomes are historical comparisons, not passing expectations.
 
 - [ ] **Step 2: Run red**
 
 ```powershell
-python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards.Sorcerer --automation-report InRun02_Task06_RED --json
+python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests 'GameXXK.Data.PartnerCards.Sorcerer+GameXXK.Data.HeroCards.ApprovedCatalog' --automation-report InRun02_Task06_RED --json
 ```
 
 - [ ] **Step 3: Encode all 36 definitions**
 
 Use design section 6.3. Make all six switch cards cost 1, destination-trigger once, and grant explicit Mana 0/2/4. Terrain-only cards use `TargetMode=None`; cards with an independent attack retain that attack target. Preserve trigger counts 2 and 3 where approved.
 
+For partner Ice, keep the stable CardIds, base qualities, costs, and reward families. Replace the former Defense-derived base effects with the user-confirmed 10%-Mana recovery on all four cards. Reuse the existing integer generation authority for overflow Armor, after upward-rounded recovery and capacity accounting. 玄冰 must increase capacity before recovery. 霜镜 must choose recovery or exact doubling based on Armor at execution time. 冰鉴's unavailable-search branch must copy the first recovery's resolved Armor delta, including zero, rather than cloning a Mana-recovery effect or the owner's complete Armor. Express this through the existing Sorcerer rule/effect dispatch; do not add CardId string checks. Do not rescale the copy or impose the DOT reservoir cap. Standard Ice consumes the resulting Armor once and uses `100 * starter Q + consumed Armor` attack-percentage points; scale only that 100-point base, then retain all authored secondary rewards. Add reward assertions for zero and 300 consumed Armor: legal quality bases are 100/120/140 and the latter totals 400/420/440. Exercise standard Ice through all four Ice starters and the 照见/六合/斗转 Ice branches. Do not bulk-replace the separate 220-point 万法 or other cards' authored conversion bases.
+
 - [ ] **Step 4: Run green and commit**
 
 ```powershell
-python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards --automation-report InRun02_Task06_GREEN --json
-git add Source/GameXXK/Private/GameXXKCardCatalog.cpp Source/GameXXK/Private/GameXXKCardRules.cpp Source/GameXXK/Private/Tests/GameXXKApprovedCardCatalogTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerRewardRuntimeTest.cpp Source/GameXXK/Private/Tests/GameXXKPartyFormationRulesTest.cpp
+python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests 'GameXXK.Data.PartnerCards+GameXXK.Data.HeroCards.ApprovedCatalog' --automation-report InRun02_Task06_GREEN --json
+git add Source/GameXXK/Private/GameXXKCardCatalog.cpp Source/GameXXK/Private/GameXXKCardRules.cpp Source/GameXXK/Private/Tests/GameXXKApprovedCardCatalogTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerRewardRuntimeTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerIceLightningRuntimeTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerUniversalRewardMatrixTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerUniversalRuntimeTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerTextTest.cpp Source/GameXXK/Private/Tests/GameXXKSorcererPartnerSaveResumeTest.cpp Source/GameXXK/Private/Tests/GameXXKPartyFormationRulesTest.cpp
 git diff --cached --check
 git commit -m "feat: rebalance sorcerer and formation cards"
 ```
@@ -446,6 +499,12 @@ git commit -m "feat: rebalance npc and boss cards"
 At TeamMaxLevel 100, assert coefficient-6 DOT previews 30/36/42 by quality and cap 100; coefficient-25 healing with owner Medicine 6 previews 155/186/217; Defense 358 produces the approved printed-cost Armor values; and fixed damage reflects quality plus source/target level difference while bypassing Defense. Assert card detail/compact/expanded text contains these resolved integers, contains no raw Defense percentage for a resolved Armor grant, does not call DOT a consumable layer, and matches the committed `FGameXXKCardPlayResult`/combat-log number.
 
 When legal targets produce different fixed damage or remaining DOT capacity, assert the card face shows the resolved minimum-maximum range and each candidate tooltip shows its exact actual value. A no-target or all-target card with one shared owner-context value shows one integer.
+
+For the revised Ice cards, preview and committed results must agree on recovery, overflow, and Armor separately. Reuse the Task 6 34/34, 31/34, and 30/34 fixtures, including zero overflow and the failed-search Armor copy. A preview of 玄冰 accounts for its +4 capacity before predicting recovery, and a preview of 霜镜 distinguishes recovery from doubling. A Defense-only change must not change the displayed Mana-derived base Armor. Keep card text faithful to the percentage-Mana recovery plus overflow rule; do not display the retired 40%/80%-Defense base effect or call recovered Mana itself an Armor percentage.
+
+霜镜's task tooltip/reward projection must describe and display 25% of this Ice blast's consumed Armor for each living ally, rounded down. Snapshot the consumed amount before the owner loses Armor; do not display the former 40%-Defense reward, a quarter of zero post-consumption Armor, or a quarter of dealt damage. Ordinary card preview still shows only the base effect unless that play will complete the starter-owned task.
+
+六合's text and preview show current-Mana recovery 8/16 for the caster and the resolved shared overflow Armor for each ally, using cost-before-recovery and the locked sequence condition. Its Ice reward projection shows only the consumed-Armor quarter after the standard attack. Remove the old 40%/80%-Defense **base/sequence** and Ice-reward addition from this card's current text without rewriting its separately authored Normal/Fire/Lightning rewards.
 
 - [ ] **Step 2: Run red**
 
