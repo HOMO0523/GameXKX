@@ -225,7 +225,7 @@ git commit -m "test: gate skilled combat policy"
 
 - [ ] **Step 1: Write red matrix-shape tests**
 
-Assert six Hero profession packages, every legal unordered pair from six distinct permanent partner roles (`6 * C(6,2) = 90` builds), all 27 stages, four equipment cohorts, and stable seeds. The primary cohort has no relics; Hell 3-3 Treasure has 4/4/4 gems.
+Assert six Hero profession packages, one permanent-partner role and one fixed named task NPC, all 27 stages, four equipment cohorts, and stable seeds. Enumerate candidates through the actual party and deck validators; report the resulting legal count N and exclusions. The retired two-permanent-partner/90-build matrix is illegal in the current game. There are at most 6 * 6 * 6 = 216 candidate combinations before validation, not 216 guaranteed legal builds. The primary cohort has no relics; Hell 3-3 Treasure has 4/4/4 gems.
 
 - [ ] **Step 2: Run red**
 
@@ -240,8 +240,8 @@ struct FGameXXKApprovedBalanceCase
 {
     FName StageId = NAME_None;
     EGameXXKCharacterRole HeroPackage = EGameXXKCharacterRole::Invalid;
-    EGameXXKCharacterRole PartnerRoleA = EGameXXKCharacterRole::Invalid;
-    EGameXXKCharacterRole PartnerRoleB = EGameXXKCharacterRole::Invalid;
+    EGameXXKCharacterRole PermanentPartnerRole = EGameXXKCharacterRole::Invalid;
+    FName TaskNpcId = NAME_None;
     FName EquipmentCohortId = NAME_None;
     FName GemDistributionId = NAME_None;
     int32 Seed = 0;

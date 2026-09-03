@@ -119,7 +119,7 @@ FGameXXKHealerFormulaRuntime* FindFormula(
 }
 ```
 
-All event resolvers pass the actual source owner. Formula-produced effects carry a formula origin and cannot recursively satisfy that same formula. Preserve per-round caps from the design.
+All event resolvers pass the actual source owner. Formula-produced effects cannot satisfy any formula, including a different owner's formula. Preserve per-round caps from the design. Plan 2 Task 5 freezes original action results before formula evaluation and prevents formula-generated Medicine from progressing another formula while retaining cumulative Medicine-to-Momentum; retain those rules when adding badges and saved state. Preserve each formula's opening quality; legacy formulas without that field use their source card's catalog base quality.
 
 - [ ] **Step 4: Run green and commit**
 

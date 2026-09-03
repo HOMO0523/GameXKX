@@ -1,6 +1,6 @@
 # Card, monster phase, progression, and settlement rebalance
 
-**Status:** Approved base design; current user-led design review pauses runtime implementation. The Ice and Universal card revisions below record the latest user wording and explicit calculation interpretations.
+**Status:** Approved base design. The user resumed implementation with “继续”; execute confirmed semantics while keeping the unresolved LeiZou numeric package as a candidate. The live production pointer records completed stages and verification.
 
 **Date:** 2026-09-03
 
@@ -124,7 +124,9 @@ For the revised four partner Ice cards, percentage recovery is `ceil(current Man
 
 An Ice partner task enables this overflow rule for Mana recovery from that partner's Sorcerer cards. A Universal starter followed by an Ice second card enables the branch before the second card resolves; its replays use the locked Ice branch. `HanXu` retains its separately authored Hero card effects, with only its overflow using the new conversion formula. This subsection does not turn every ordinary Mana recovery in other task branches into an Armor effect.
 
-The review's numeric fixtures use level-one raw Mana with no equipment/level growth (partner 34; Hero 30) and no extra fixed bonus. The broader Mana-pool/equipment-growth reconciliation identified in the review remains a prerequisite before full balance certification; the current implementation's growing Mana pool must not silently replace that fixture.
+The user confirmed level-one base Mana plus explicitly authored fixed additions: Sorcerer partner 34 and Hero 30 before such additions. Ordinary character-level/star growth and equipment growth must not inflate those pools. Mana itself does not use Defense, card quality, or the DOT level multiplier. The runtime reconciliation remains required before full balance certification; the current implementation's growing Mana pool must not silently replace this rule.
+
+There is no unconditional extra Mana bonus: it is zero unless an explicit effect applies. Existing fixed MaxMana sources are FenMaiFu's battle-local +4 on each resolution and another +8 from its own task reward, the MountainSpring route choice +6, and MoonDisc +1 per completed route node. The latter two currently affect the Hero only and expire with the route. XingHuoHuiShou's 8/16 and HanXu's 6 restore current Mana; they do not raise MaxMana. Legacy InkstonePendant +20, modern Belt/Accessory Mana curves, enhancement Mana and the percentage MaxMana affix are equipment-derived benefits, not silently approved exceptions to the user's no-equipment rule. Preserve explicitly accumulated battle/route additions when reconciling the base pool.
 
 ### 4.4 Armor conversion and reactions
 
@@ -172,6 +174,8 @@ On an enemy phase transition, every negative reservoir on that enemy is cleared.
 Player healing uses coefficients, normally 10 through 50:
 
 `Healing = ceil((healing coefficient + current owner Medicine) * quality multiplier * (TeamMaxLevel / 25 + 1))`
+
+This expression uses a Common reference coefficient. The user explicitly confirmed that a coefficient labeled Rare 25 already includes Rare quality: at level 100 with zero Medicine it heals 125, not 150. Preserve the authored coefficient and its reference quality without first rounding it back to an integer Common value. For coefficient C authored at reference quality Qref, resolve `ceil((C * Q / Qref + Medicine * Q) * (TeamMaxLevel / 25 + 1))` with one final ceiling. Thus Rare C25 with Medicine5 heals155 at level100, and an Epic upgrade of that same Rare-authored effect heals181. Medicine remains its own unscaled integer reservoir before this calculation. An explicitly Medicine-free supplemental heal follows the same coefficient/reference-quality rule with Medicine0.
 
 Medicine is an owner-scoped, battle-local integer reservoir. It starts at zero and resets after battle. A successful heal or Medicine reversal consumes the owner's complete current Medicine reservoir once. A group heal consumes once and grants the full resolved amount to each living ally.
 
@@ -274,7 +278,7 @@ The first play of each Hero formula costs one additional Energy and opens that f
 | `DuHuoTongLu` | An explosion that resolves at least two DOT types grants Medicine 2, maximum two triggers per round. |
 | `BaiCaoJiZhen` | The first action each round that actually heals at least two allies grants shared Energy 1. |
 
-Formula-produced effects cannot recursively satisfy the same formula.
+Formula-produced effects cannot satisfy any formula, including another owner's formula. Qualify all formulas against the frozen original action results, before applying formula outputs. Medicine granted by a formula still advances the shared cumulative Medicine-to-Momentum rule, but cannot advance XingQiZhen's separate formula Energy threshold.
 
 #### Hunter
 
@@ -1141,7 +1145,7 @@ The current immediate-value greedy policy cannot certify this design. Before agg
 
 ### 15.3 Aggregate simulations
 
-Enumerate six Hero profession packages and every legal pair of the six permanent-partner roles (up to `6 * C(6,2) = 90` three-person builds). Use four progression cohorts:
+Enumerate six Hero profession packages, one of the six permanent-partner roles, and one fixed named task NPC. A three-person party is Hero + one permanent partner + one task NPC. The former two-permanent-partner/90-build matrix contradicts the live party validator and is retired. Derive the legal build count N through the production party/deck validators, including each NPC's actual carried-card rules; never bypass them for simulation. The Cartesian candidate ceiling is 6 * 6 * 6 = 216, not a claim that all candidates are legal. Use four progression cohorts:
 
 1. minimum eligible equipment;
 2. mean equipment between previous and current stage;
@@ -1150,9 +1154,9 @@ Enumerate six Hero profession packages and every legal pair of the six permanent
 
 Recommended run sizes:
 
-- tuning gate: `27 stages * up to 90 builds * 4 cohorts * 20 seeds` = up to 194,400 deterministic runs;
-- certification: the same matrix at 100 seeds = up to 972,000 runs;
-- Hell 3-3 sensitivity: up to 90 builds, four gem distributions, 200 seeds = up to 72,000 runs.
+- tuning gate: `27 stages * N legal builds * 4 cohorts * 20 seeds`;
+- certification: the same legal matrix at 100 seeds;
+- Hell 3-3 sensitivity: N legal builds, four gem distributions, 200 seeds.
 
 Repeated runs of the same seed must produce identical result and telemetry hashes.
 

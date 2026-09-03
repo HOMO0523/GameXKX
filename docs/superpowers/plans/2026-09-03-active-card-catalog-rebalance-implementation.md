@@ -369,29 +369,42 @@ git commit -m "feat: rebalance blade and guard partner cards"
 
 ### Task 5: Rebalance partner Healer and Hunter cards
 
+Completed at `c8ce175`: cold UBT and 147/147 partner/Hero Healer-Hunter/scaling/catalog/save contracts, zero warnings. Evidence and remaining display work: `docs/production/2026-09-03-healer-hunter-rebalance-acceptance.md`.
+
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
-- Modify: `Source/GameXXK/Private/Tests/GameXXKApprovedCardCatalogTest.cpp`
+- Create: `Source/GameXXK/Private/Tests/GameXXKPartnerHealerHunterRebalanceTest.cpp`
+- Modify: `Source/GameXXK/Public/GameXXKCardTypes.h`
+- Modify: `Source/GameXXK/Public/GameXXKCombatScalingRules.h`
+- Modify: `Source/GameXXK/Private/GameXXKCombatScalingRules.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKCardQualityRules.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKCardText.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHealerPartnerCoreRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHealerPartnerEnemyPhaseFormulaTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKHunterPartnerHeavyArrowRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKSorcererPartnerIceLightningRuntimeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHealerPartnerFormulaRuntimeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHunterPartnerCatalogTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHunterPartnerCoreRuntimeTest.cpp`
 
-- [ ] **Step 1: Add red rows for CardIds 097-132**
+- [x] **Step 1: Add red rows for CardIds 097-132**
 
 Assert raw coefficients rather than level-100 displays: `FuGuSan` Attack 60, Bleed 6, Poison 4; `YaoNangFeiTou` Attack 45, Bleed 3, Poison 1; `LianZhuJian` Bleed 8, Poison 6, Attack/Heavy 50; `DuanMaiShi` Bleed 8 and +30 per Charge; `PoJiaDing` Poison 1 and +25 per Charge.
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards.Healer --automation-report InRun02_Task05_RED --json
 ```
 
-- [ ] **Step 3: Encode all 36 definitions and formula rules**
+- [x] **Step 3: Encode all 36 definitions and formula rules**
 
 Use design section 6.3 exactly. DOT fields use `DotCoefficient`, healing/reversal fields use `MedicineCoefficient`, Heavy-Arrow damage uses `ContinuousQuality`, and Charge/status counts remain explicit integers. Keep one owner-scoped formula per source CardId and forbid recursive formula satisfaction.
 
-- [ ] **Step 4: Run green and commit**
+User clarification: Rare-labeled healing coefficients already contain Rare quality. Test Rare HuiChunLu coefficient25 at TeamMaxLevel100/Medicine0 as125 per ally, and Medicine5 as155 with one spend for the whole action; test its Epic upgrade as181 to prevent lossy integer normalization. Retain the reference quality with each coefficient. Freeze the original action's results before qualifying any opened formula, so one formula cannot satisfy another. QingXin counts cleared DOT types, including Rot, rather than the number of removed reservoir points.
+
+- [x] **Step 4: Run green and commit**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards --automation-report InRun02_Task05_GREEN --json
@@ -401,6 +414,8 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 ```
 
 ### Task 6: Rebalance partner Sorcerer and Formation Master cards
+
+User confirmation for the Mana prerequisite: use Hero30 and Sorcerer34 at every character level, with no ordinary star/equipment growth. Preserve explicit battle MaxMana +4/+8 and existing fixed route bonuses; current-Mana recovery8/16 or6 does not increase MaxMana. Add focused stat/equipment/battle-entry and saved-battle preservation checks before claiming the Ice projection fixtures match runtime.
 
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
@@ -420,7 +435,7 @@ Assert task size 5, Fire conversion 2 points per Burn, Ice base 100 plus one per
 
 Add exact approved Energy rows for all 18 partner Mage cards: only JuLing/LieFu are 0, all others 1 at every legal quality; Mana stays unchanged. With enough Mana/cards and no external gain/discount, start at Energy 3 and play 照见→引雷→周天→雷走→连霆: active Energy becomes 3/2/2/1/0, free replay keeps 0, and the reward raises it to 1. For 引雷→索敌→周天→雷走→连霆, starting at 3 rejects final 连霆 at zero Energy and 4/5 records, with no final effects/reward; starting at 4 completes and ends at 1. For 斗转→寒息→六合→冰鉴→霜镜, starting at 4 rejects final 霜镜; starting at 5 completes and ends at 0, including the free extra replay. Failure preserves the rejected card transaction, while earlier successful records remain. Keep the existing 24/72 per-ally 六合 grants with at least one available Energy; increased printed fees must not inflate explicit Armor. Preserve partial tasks across round boundaries and save/resume; no advance credit from future refunds.
 
-**雷走 direction amendment:** `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` records the user-approved one-hit identity and normal use of at most one Mark per enemy. Keep Common / 1 Energy / 4 Mana and a valid zero-Mark base hit; retire the old all-Mark volley. The 120/180/220 base candidates, positions 3-4 window, and Mark-3-then-one-240 starter reward remain under numeric review. Do not turn those provisional coefficients into a claimed approved catalog gate. 引雷's proposed Vulnerability reward is excluded; its current reward stays unchanged. Runtime execution remains paused for the existing overall review.
+**雷走 direction amendment:** `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` records the user-approved one-hit identity and normal use of at most one Mark per enemy. Keep Common / 1 Energy / 4 Mana and a valid zero-Mark base hit; retire the old all-Mark volley. The 120/180/220 base candidates, positions 3-4 window, and Mark-3-then-one-240 starter reward remain under numeric review. Do not turn those provisional coefficients into a claimed approved catalog gate. 引雷's proposed Vulnerability reward is excluded; its current reward stays unchanged. The user has resumed approved runtime work; only the unresolved 雷走 numeric package remains pending confirmation.
 
 Once the candidate numeric package is confirmed, cover the following through actual preview/commit and Universal replay tests, using the final approved coefficients if they change:
 
