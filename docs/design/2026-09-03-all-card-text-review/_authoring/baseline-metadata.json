@@ -1,0 +1,1213 @@
+[
+  {
+    "id": "Hero.Generic.QingFengYiShi",
+    "name": "青锋一式",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.HeYuZhan",
+    "name": "鹤羽斩",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.FengShenBu",
+    "name": "风身步",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.SuiYanJi",
+    "name": "碎岩击",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.GuiYuanShu",
+    "name": "归元术",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.HengJianShouShi",
+    "name": "横剑守势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.NingShenTuNa",
+    "name": "凝神吐纳",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Hero.Generic.GuanXi",
+    "name": "观隙",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Generic.PoYunYiShan",
+    "name": "破云一闪",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.XingQiHuiHuan",
+    "name": "行气回环",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Generic.JianYiGuanHong",
+    "name": "剑意贯虹",
+    "quality": "普通",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Generic.GuiYuanFanZhao",
+    "name": "归元返照",
+    "quality": "普通",
+    "cost": "2 气 / 6 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Hero.Blade.TongFengYinShi",
+    "name": "同锋引式",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Blade.XueLuXiangCheng",
+    "name": "血路相承",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Blade.YingFengHuanBu",
+    "name": "迎锋换步",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Hero.Blade.TongPaoJuShi",
+    "name": "同袍聚势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Guard.TieBiTongShou",
+    "name": "铁壁同守",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Guard.JieJiaHuanFeng",
+    "name": "借甲还锋",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Guard.LieZhenChengFeng",
+    "name": "列阵承锋",
+    "quality": "普通",
+    "cost": "2 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Hero.Guard.XuanJiaZhenYue",
+    "name": "玄甲镇岳",
+    "quality": "普通",
+    "cost": "2 气 / 6 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Healer.YiXueCuiFang",
+    "name": "以血催方",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Healer.HuiChunNiMai",
+    "name": "回春逆脉",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Healer.DuHuoTongLu",
+    "name": "毒火同炉",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Healer.BaiCaoJiZhen",
+    "name": "百草济阵",
+    "quality": "普通",
+    "cost": "2 气 / 6 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Hunter.FengYanDingXian",
+    "name": "风眼定弦",
+    "quality": "普通",
+    "cost": "0 气 / 3 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Hunter.LieYuLianShi",
+    "name": "裂羽连矢",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Hunter.CuiDuChuanXin",
+    "name": "淬毒穿心",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Hunter.HuiFengGuanRi",
+    "name": "回风贯日",
+    "quality": "普通",
+    "cost": "1 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Mage.YanXuLiaoYuan",
+    "name": "炎序燎原",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Hero.Mage.HanXuNingChuan",
+    "name": "寒序凝川",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Hero.Mage.LeiXuYinTing",
+    "name": "雷序引霆",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Hero.Mage.GuiXuTongXuan",
+    "name": "归序通玄",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Hero.Formation.GuanShiLuoZi",
+    "name": "观势落子",
+    "quality": "普通",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Formation.YiZhenHuiXiang",
+    "name": "移阵回响",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Formation.LianYingBuShi",
+    "name": "连营布势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Hero.Formation.LiuHeGuiYi",
+    "name": "六合归一",
+    "quality": "普通",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.TusiChief.ZhaiZhuHaoLing",
+    "name": "寨主号令",
+    "quality": "稀有",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.TusiChief.ShiMenShouShi",
+    "name": "石门守势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.TusiChief.TuSiJunLing",
+    "name": "土司军令",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.TusiChief.MengZhaiShiYue",
+    "name": "盟寨誓约",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.SongJinBao.ShangQianGuWu",
+    "name": "赏钱鼓舞",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.SongJinBao.ErMuMiBao",
+    "name": "耳目密报",
+    "quality": "稀有",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.SongJinBao.GuiKeLing",
+    "name": "贵客令",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Npc.SongJinBao.YiNuoQianJin",
+    "name": "一诺千金",
+    "quality": "史诗",
+    "cost": "1 气 / 6 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Npc.YueBai.QingYanDianDeng",
+    "name": "青焰点灯",
+    "quality": "普通",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.YueBai.CanJuanPiZhu",
+    "name": "残卷批注",
+    "quality": "稀有",
+    "cost": "0 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.YueBai.YueBaiZhaoYe",
+    "name": "月白照夜",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.YueBai.ShanHeCanTu",
+    "name": "山河残图",
+    "quality": "史诗",
+    "cost": "0 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.ZhouGuangZu.YiCaoBianShi",
+    "name": "异草辨识",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Npc.ZhouGuangZu.HuangShanFuZhi",
+    "name": "黄山敷治",
+    "quality": "普通",
+    "cost": "0 气 / 3 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Npc.ZhouGuangZu.DiZhiMoTu",
+    "name": "地志摹图",
+    "quality": "稀有",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.ZhouGuangZu.YanFenFengMai",
+    "name": "岩粉封脉",
+    "quality": "史诗",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.JinGui.ShiJingErMu",
+    "name": "市井耳目",
+    "quality": "稀有",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.JinGui.QiaoYanZhouXuan",
+    "name": "巧言周旋",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.JinGui.ZaYiChouBei",
+    "name": "杂役筹备",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.JinGui.HouXiangTuoShen",
+    "name": "后巷脱身",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "无需选择（直接施放）"
+  },
+  {
+    "id": "Npc.QiongMeiEr.TengQiaoFeiDu",
+    "name": "藤桥飞渡",
+    "quality": "稀有",
+    "cost": "0 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.QiongMeiEr.GuWuMiZong",
+    "name": "蛊雾迷踪",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.QiongMeiEr.YinLingZhenXin",
+    "name": "银铃镇心",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Npc.QiongMeiEr.ShanGeHuanLing",
+    "name": "山歌唤灵",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.LieFengZhan",
+    "name": "裂风斩",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.HuiFengJiaShi",
+    "name": "回锋架势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.FengHou",
+    "name": "封喉",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.JiYuLianZhan",
+    "name": "疾雨连斩",
+    "quality": "普通",
+    "cost": "2 气 / 5 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.YinXueDao",
+    "name": "饮血刀",
+    "quality": "稀有",
+    "cost": "2 气 / 4 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.LangDuan",
+    "name": "浪断",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.DuanYue",
+    "name": "断岳",
+    "quality": "稀有",
+    "cost": "2 气 / 5 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.PoJun",
+    "name": "破军",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.ZhanYiFeiTeng",
+    "name": "战意沸腾",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.ZhanJin",
+    "name": "斩尽",
+    "quality": "史诗",
+    "cost": "3 气 / 12 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.JieShiHuiFeng",
+    "name": "借势回锋",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.ZhuYing",
+    "name": "逐影",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.PoLangTuJin",
+    "name": "破浪突进",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.YiShiDuanJiang",
+    "name": "一式断江",
+    "quality": "史诗",
+    "cost": "2 气 / 7 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.JingHongChuQiao",
+    "name": "惊鸿出鞘",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Blade.HengYunKaiFeng",
+    "name": "横云开锋",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.LianXiGuiQiao",
+    "name": "敛息归鞘",
+    "quality": "稀有",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Blade.BaoDaoShouYe",
+    "name": "抱刀守夜",
+    "quality": "史诗",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.TieBi",
+    "name": "铁壁",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.HuZhu",
+    "name": "护主",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.ZhenDun",
+    "name": "震盾",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.GuShou",
+    "name": "固守",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.FanZhenJia",
+    "name": "反震甲",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.ZhenYueLing",
+    "name": "镇岳令",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.YuanHuBu",
+    "name": "援护步",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "生命最低友方（自动结算）"
+  },
+  {
+    "id": "Profession.Guard.PiJiaXingJun",
+    "name": "披甲行军",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.QinWangDunJi",
+    "name": "擒王盾击",
+    "quality": "稀有",
+    "cost": "2 气 / 5 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.TieBiRuShan",
+    "name": "铁壁如山",
+    "quality": "稀有",
+    "cost": "2 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.BiLeiFanGong",
+    "name": "壁垒反攻",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.BuDongRuShan",
+    "name": "不动如山",
+    "quality": "史诗",
+    "cost": "3 气 / 10 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.PanShiTuNa",
+    "name": "磐石吐纳",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.YuanJunBiLei",
+    "name": "援军壁垒",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.DunZhenTuiJin",
+    "name": "盾阵推进",
+    "quality": "普通",
+    "cost": "2 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.TieSuoHengJiang",
+    "name": "铁锁横江",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Guard.SuiJiaHuiJi",
+    "name": "碎甲回击",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Guard.YiFuDangGuan",
+    "name": "一夫当关",
+    "quality": "史诗",
+    "cost": "3 气 / 12 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.Healer.YaoYin",
+    "name": "阴阳药引",
+    "quality": "普通",
+    "cost": "2 气 / 0 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.XingQiZhen",
+    "name": "行气活血",
+    "quality": "普通",
+    "cost": "2 气 / 3 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Healer.CaoMuFuZhi",
+    "name": "草木敷治",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.QingXinSan",
+    "name": "清心散",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.LingZhiXuMing",
+    "name": "灵芝续命",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.HuiChunLu",
+    "name": "回春露",
+    "quality": "稀有",
+    "cost": "2 气 / 5 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.ZhiXueCao",
+    "name": "止血草",
+    "quality": "普通",
+    "cost": "0 气 / 2 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.WenYangGao",
+    "name": "温养膏",
+    "quality": "稀有",
+    "cost": "1 气 / 3 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.JinChuangXuMing",
+    "name": "金疮续命",
+    "quality": "稀有",
+    "cost": "2 气 / 8 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.YaoWangGuiYuan",
+    "name": "药王归元",
+    "quality": "史诗",
+    "cost": "2 气 / 12 内",
+    "target": "任意存活单位（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.BaiCaoDu",
+    "name": "百草毒",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.FuGuSan",
+    "name": "腐骨散",
+    "quality": "稀有",
+    "cost": "2 气 / 5 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.HuiQiXiang",
+    "name": "蚀心香",
+    "quality": "普通",
+    "cost": "1 气 / 4 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Healer.LianQiaoJieDu",
+    "name": "连翘引毒",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.YaoJiuWenShen",
+    "name": "红花透骨",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.YaoNangFeiTou",
+    "name": "药囊飞投",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Healer.KuShenMaSan",
+    "name": "苦参麻散",
+    "quality": "稀有",
+    "cost": "2 气 / 4 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Healer.WuWeiTiaoHe",
+    "name": "五毒调和",
+    "quality": "史诗",
+    "cost": "2 气 / 10 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Hunter.XunXiJian",
+    "name": "寻隙箭",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.FuBu",
+    "name": "鹰眼",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Hunter.ZhuiLie",
+    "name": "追猎",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.YingYan",
+    "name": "锐意感知",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Hunter.LieWang",
+    "name": "猎网",
+    "quality": "普通",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.ChuanYang",
+    "name": "穿杨",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.LianZhuJian",
+    "name": "连珠箭",
+    "quality": "稀有",
+    "cost": "1 气 / 3 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.FuZuShi",
+    "name": "淬毒矢",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.YinZong",
+    "name": "隐踪",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Hunter.DuanMaiShi",
+    "name": "断脉矢",
+    "quality": "稀有",
+    "cost": "1 气 / 4 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.ShouHun",
+    "name": "狩魂",
+    "quality": "史诗",
+    "cost": "2 气 / 8 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.BaiBuChuanYang",
+    "name": "百步穿杨",
+    "quality": "史诗",
+    "cost": "3 气 / 12 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.LueYingJian",
+    "name": "掠影箭",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.LieHunBiao",
+    "name": "猎魂标",
+    "quality": "普通",
+    "cost": "0 气 / 4 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.PoJiaDing",
+    "name": "破甲钉",
+    "quality": "稀有",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.HuiHuanJian",
+    "name": "回环箭",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.FuYeXianJing",
+    "name": "腐叶陷阱",
+    "quality": "稀有",
+    "cost": "1 气 / 5 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Hunter.YingLuo",
+    "name": "鹰落",
+    "quality": "史诗",
+    "cost": "3 气 / 12 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.Sorcerer.LingHuoFu",
+    "name": "灵枢引法",
+    "quality": "普通",
+    "cost": "1 气 / 2 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.JuLing",
+    "name": "周天归元",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.LiHuoYin",
+    "name": "灵火点灯",
+    "quality": "普通",
+    "cost": "0 气 / 1 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.YanQiang",
+    "name": "流焰传薪",
+    "quality": "普通",
+    "cost": "0 气 / 2 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.BaoYanShu",
+    "name": "焚脉爆炎",
+    "quality": "稀有",
+    "cost": "0 气 / 4 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.XingHuoLiaoYuan",
+    "name": "燎原寻诀",
+    "quality": "史诗",
+    "cost": "1 气 / 2 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.SheLingHuo",
+    "name": "寒息回流",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.FenMaiFu",
+    "name": "玄冰拓脉",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.LingYanLianDan",
+    "name": "霜镜叠甲",
+    "quality": "稀有",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.HuLingMu",
+    "name": "冰鉴索法",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.ChiXiaoFenXing",
+    "name": "引雷定标",
+    "quality": "稀有",
+    "cost": "0 气 / 1 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.FenTianJue",
+    "name": "雷符索敌",
+    "quality": "史诗",
+    "cost": "1 气 / 2 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.NingYanChengRen",
+    "name": "连霆穿云",
+    "quality": "普通",
+    "cost": "0 气 / 3 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.RanLingHuanYuan",
+    "name": "雷走八方",
+    "quality": "普通",
+    "cost": "0 气 / 4 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.YanMuHuTi",
+    "name": "万法归一",
+    "quality": "普通",
+    "cost": "0 气 / 5 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.LieFu",
+    "name": "照见五蕴",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.XingHuoHuiShou",
+    "name": "六合护法",
+    "quality": "稀有",
+    "cost": "0 气 / 4 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.Sorcerer.ChiYanFengJie",
+    "name": "斗转星移",
+    "quality": "史诗",
+    "cost": "0 气 / 2 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.GuanShi",
+    "name": "平野观势",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.DingZhen",
+    "name": "定阵",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.YinShuiHuiYuan",
+    "name": "引水回元",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.KunZhen",
+    "name": "困阵",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.LinYingMiZong",
+    "name": "林影迷踪",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.JieShanWeiZhang",
+    "name": "借山为障",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.CunZhaiYuanZhen",
+    "name": "村寨援阵",
+    "quality": "稀有",
+    "cost": "2 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.HuiShengZhenSha",
+    "name": "回声震杀",
+    "quality": "稀有",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.YiWeiZhen",
+    "name": "易位阵",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.BaMenLunZhuan",
+    "name": "八门轮转",
+    "quality": "稀有",
+    "cost": "2 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.ZhenShaZhen",
+    "name": "镇煞阵",
+    "quality": "史诗",
+    "cost": "3 气 / 10 内",
+    "target": "全体敌方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.WanXiangGuiZhen",
+    "name": "万象归阵",
+    "quality": "史诗",
+    "cost": "3 气 / 14 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.ShanMenFengSuo",
+    "name": "山门封锁",
+    "quality": "普通",
+    "cost": "1 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.ShuiJingZheGuang",
+    "name": "水镜折光",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.LinFengFuZhen",
+    "name": "林风拂阵",
+    "quality": "普通",
+    "cost": "0 气 / 0 内",
+    "target": "单体友方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.ZhenQiGuWu",
+    "name": "阵旗鼓舞",
+    "quality": "稀有",
+    "cost": "1 气 / 0 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Profession.FormationMaster.DiMaiJieLi",
+    "name": "地脉借力",
+    "quality": "稀有",
+    "cost": "2 气 / 0 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Profession.FormationMaster.SiXiangLianHuan",
+    "name": "四象连环",
+    "quality": "史诗",
+    "cost": "3 气 / 12 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Route.Boss.XiongPiPiJia",
+    "name": "熊罴皮甲",
+    "quality": "史诗",
+    "cost": "2 气 / 0 内",
+    "target": "自身（直接施放）"
+  },
+  {
+    "id": "Route.Boss.HanDiYiShi",
+    "name": "撼地遗势",
+    "quality": "史诗",
+    "cost": "3 气 / 10 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Route.Boss.HuPoZhenDan",
+    "name": "虎魄镇胆",
+    "quality": "史诗",
+    "cost": "2 气 / 8 内",
+    "target": "全体友方（直接施放）"
+  },
+  {
+    "id": "Route.Boss.DuKouLieFeng",
+    "name": "渡口猎风",
+    "quality": "史诗",
+    "cost": "2 气 / 6 内",
+    "target": "单体敌方（点击后选择目标）"
+  },
+  {
+    "id": "Route.Boss.FuHuDuanJiang",
+    "name": "伏虎断江",
+    "quality": "史诗",
+    "cost": "3 气 / 14 内",
+    "target": "单体敌方（点击后选择目标）"
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "card_ids": 173,
+  "groups": {
+    "主角": 36,
+    "伙伴·刀客": 18,
+    "伙伴·守卫": 18,
+    "伙伴·药师": 18,
+    "伙伴·弓手": 18,
+    "伙伴·法师": 18,
+    "伙伴·阵师": 18,
+    "任务NPC": 24,
+    "Boss牌": 5
+  },
+  "quality_variants": 419,
+  "universal_reward_rows": 36,
+  "glossary_rows": 60,
+  "state_template_rows": 26,
+  "all_ids_match_active_baseline": true,
+  "all_ids_present_in_current_catalog_source": true,
+  "all_pills_defined": true,
+  "no_unexpanded_card_tokens": true,
+  "no_attack_source_parameter_rows": true,
+  "no_dense_multiplication_strings": true,
+  "numeric_spot_checks": "passed",
+  "generator_changed_runtime_code": false,
+  "generator_runs_ue": false,
+  "pending": [
+    "Profession.Sorcerer.RanLingHuanYuan",
+    "Npc.JinGui.HouXiangTuoShen"
+  ]
+}

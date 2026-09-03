@@ -1,12 +1,17 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T20:51:28+08:00
-source_commit: 2e0db810df578590758f842ced2a36c72588a58e
-working_tree: Fixed Mana committed; approved remaining card runtime work continues; pill and tooltip text require user table review before edits
+updated_at: 2026-09-03T21:45:21+08:00
+source_commit: 118e679ab1342bf4c86fa3b4d52e9ecfbaa3057a
+working_tree: Uniform healing committed; 173-card text review prepared; tooltip implementation awaits user text review
 ---
 
-> **2026-09-03 两种tooltip分工确认**：卡面显示攻击数值；卡牌详述采用“角色攻击（100 × 120% = 120）”，只解释角色/卡牌自身计算。目标防御、状态、护甲吸收和最终损血由随后鼠标移到怪物时的tooltip负责，不混入卡牌详述。文本草案更新为V3，计划加入对应显示边界验收。仍须先审具体逐卡文本表再修改UI，本轮只有文档修正。
+> **2026-09-03 全卡文案与统一治疗修订**：已整理173张卡、419个合法品质版本、36条通用阵赏品质分支及共享提示，入口docs/design/2026-09-03-all-card-text-review/README.md。用户确认攻击详述“造成120%的攻击伤害”，不注明出手对象；持续伤害/治疗使用“6点流血，600%增幅倍率”“25点治疗，600%增幅倍率”，品质与等级合并，不再另乘。所有治疗系数统一作为基础值，稀有25百级为150、药效5为180，旧125/155口径作废。用户明确授权同步治疗代码，已通过新增测试复现旧逻辑，提交118e679已完成，冷UBT与范围回归242/242通过、0警告，验收见docs/production/2026-09-03-uniform-healing-and-card-text-review-acceptance.md；本轮未修改tooltip/pill实现。所有逐卡文本仍待用户审阅。
+
+> **2026-09-03 攻击详述短句确认**：用户明确详述只需“造成120%的攻击伤害”。样表已更新为V5，替代V3的括号算式和V4的攻击参数分行；攻击详述不再追加当前攻击值、计算结果或品质说明，攻击句不追加出手对象。卡面/简述仍显示计算后的伤害数字；目标结算仍归怪物tooltip。护甲等其他效果的详述与逐卡完整表继续待审，未将本次格式确认视为173张文案全获批准。已同步Plan 2 Task 8，本轮只改文档。
+
+
+> **2026-09-03 两种tooltip分工确认（详述格式已由上方V5替代）**：卡面显示攻击数值；当时V3曾采用“角色攻击（100 × 120% = 120）”，只解释角色/卡牌自身计算。目标防御、状态、护甲吸收和最终损血由随后鼠标移到怪物时的tooltip负责，不混入卡牌详述。计划加入对应显示边界验收。仍须先审具体逐卡文本表再修改UI，本轮只有文档修正。
 
 
 > **2026-09-03 攻击显示口径纠正**：用户明确卡面攻击也必须显示数字，不能仅显示百分比；取实际攻击来源对象的属性，不默认主角或牌持有者。草案已修正为V2，区分来源计算的攻击伤害与对实际目标的护甲吸收/预计损血，倍率保留在详述解释。具体逐卡文本仍须先审阅后修改，UI代码未改。

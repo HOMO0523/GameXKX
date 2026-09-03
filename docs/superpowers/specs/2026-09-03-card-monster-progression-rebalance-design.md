@@ -71,7 +71,7 @@ Player-facing card-quality labels are `普通 / 稀有 / 史诗`; the existing i
 
 Discrete counts do not automatically scale: status layers, Energy, Mana, draw, discard, replay, reaction uses, task pieces, terrain-trigger counts, and cleanse categories change only when the card explicitly supplies a quality table.
 
-Numeric values explicitly labeled `Rare` or `Epic` in the card override tables are already the final authored value at that quality and must not be multiplied again. An unlabeled base coefficient is multiplied exactly once by the card's runtime quality.
+Attack/Armor percentages explicitly presented as resolved Rare/Epic values in the override tables already include that quality and must not be multiplied again. All healing and DOT coefficients are raw base values regardless of a card's native quality, and are multiplied once by current quality and the generation level multiplier. The latest user confirmation makes no native-quality exception for healing.
 
 ### 4.2 Level-difference damage
 
@@ -177,7 +177,9 @@ Player healing uses coefficients, normally 10 through 50:
 
 `Healing = ceil((healing coefficient + current owner Medicine) * quality multiplier * (TeamMaxLevel / 25 + 1))`
 
-This expression uses a Common reference coefficient. The user explicitly confirmed that a coefficient labeled Rare 25 already includes Rare quality: at level 100 with zero Medicine it heals 125, not 150. Preserve the authored coefficient and its reference quality without first rounding it back to an integer Common value. For coefficient C authored at reference quality Qref, resolve `ceil((C * Q / Qref + Medicine * Q) * (TeamMaxLevel / 25 + 1))` with one final ceiling. Thus Rare C25 with Medicine5 heals155 at level100, and an Epic upgrade of that same Rare-authored effect heals181. Medicine remains its own unscaled integer reservoir before this calculation. An explicitly Medicine-free supplemental heal follows the same coefficient/reference-quality rule with Medicine0.
+Latest user correction: **every healing coefficient is raw**, including cards whose native quality is Rare or Epic. The former “25 already contains Rare quality” interpretation is superseded. At level100, coefficient25 heals125/150/175 at Common/Rare/Epic with zero Medicine, and150/180/210 with Medicine5. Add Medicine before applying the shared quality and level multiplier, then round upward once. Legacy coefficient-reference-quality metadata never divides or cancels quality. An effect explicitly not using Medicine passes Medicine0 to the same formula; it still receives its full quality and level multiplier.
+
+The user confirmed expanded wording “25点治疗，600%增幅倍率” and “6点流血，600%增幅倍率” for level100 Rare. Merge applicable quality and generation-level factors into the displayed total amplification percentage;600% means six times, not an additional600%. Compact text shows150 healing or36 Bleed. Attack detail remains “造成120%的攻击伤害”, with quality already merged into the attack percentage and no extra attacker/source/attribute/arithmetic lines. Keep target outcome accounting in the separate monster-hover tooltip.
 
 Medicine is an owner-scoped, battle-local integer reservoir. It starts at zero and resets after battle. A successful heal or Medicine reversal consumes the owner's complete current Medicine reservoir once. A group heal consumes once and grants the full resolved amount to each living ally.
 
