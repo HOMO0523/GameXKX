@@ -1021,7 +1021,8 @@ namespace
 		Collection.EquipmentSchemaVersion = 1;
 		if (!Collection.EquipmentInstances.IsEmpty())
 		{
-			if (!FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(Collection, State.CardRun.CompanionRoster, &OutError))
+			if (!FGameXXKEquipmentRules::NormalizeSocketArrays(Collection, &OutError)
+				|| !FGameXXKEquipmentRules::ValidateCollectionAgainstRoster(Collection, State.CardRun.CompanionRoster, &OutError))
 			{
 				return false;
 			}

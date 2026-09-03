@@ -324,7 +324,7 @@ namespace GameXXKMVP
 		}
 		if (ItemId == ItemInkstonePendantName)
 		{
-			OutDef = MakeItem(ItemId, TEXT("墨砚坠饰"), EGameXXKItemKind::Accessory, 32, 16, 0, 0, 0, 0, 0, 20);
+			OutDef = MakeItem(ItemId, TEXT("墨砚坠饰"), EGameXXKItemKind::Accessory, 32, 16, 0, 0, 0, 0, 0, 0);
 			return true;
 		}
 		if (ItemId == ItemWoodenSwordName)
@@ -424,9 +424,7 @@ namespace GameXXKMVP
 		const int32 RouteMaxHP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth);
 		const int32 RouteMaxMP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana);
 		const int32 OldMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
-		const int32 OldMaxMP = FMath::Max(1, State.PlayerMaxMP + RouteMaxMP);
 		const int32 MissingHP = bPreserveMissingResources ? FMath::Max(0, OldMaxHP - State.PlayerHP) : 0;
-		const int32 MissingMP = bPreserveMissingResources ? FMath::Max(0, OldMaxMP - State.PlayerMP) : 0;
 
 		State.PlayerLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
 		const FGameXXKCharacterStats BareStats = FGameXXKCharacterStatRules::GetBareHeroStats(State.PlayerLevel);
@@ -455,7 +453,8 @@ namespace GameXXKMVP
 		const int32 NewEffectiveMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
 		const int32 NewEffectiveMaxMP = FMath::Max(1, State.PlayerMaxMP + RouteMaxMP);
 		State.PlayerHP = FMath::Clamp(NewEffectiveMaxHP - MissingHP, 0, NewEffectiveMaxHP);
-		State.PlayerMP = FMath::Clamp(NewEffectiveMaxMP - MissingMP, 0, NewEffectiveMaxMP);
+		State.PlayerMP = bPreserveMissingResources
+			? FMath::Clamp(State.PlayerMP, 0, NewEffectiveMaxMP) : NewEffectiveMaxMP;
 	}
 
 	static void NormalizeLoadedCharacterProgression(FGameXXKRuntimeState& State)

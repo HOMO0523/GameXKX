@@ -1252,7 +1252,7 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	TestEqual(TEXT("material remains authoritative"), State.Inventory.FindRef(TEXT("Item.EnhancementStone")), 9);
 	TestEqual(TEXT("hero enhancement compatibility mirror derives from equipped instance"), State.ItemEnhancementLevels.FindRef(TEXT("Item.WoodenSword")), 2);
 	TestEqual(TEXT("active-route HP preserves exact ten missing health"), State.PlayerHP, State.PlayerMaxHP + 25 - 10);
-	TestEqual(TEXT("active-route MP preserves exact five missing mana"), State.PlayerMP, State.PlayerMaxMP + 12 - 5);
+	TestEqual(TEXT("old grown current Mana clamps to base plus fixed route capacity"), State.PlayerMP, State.PlayerMaxMP + 12);
 
 	const FName FirstCompanionId = Source.RuntimeState.CardRun.CompanionRoster.PermanentCompanions[0].InstanceId;
 	const FGameXXKEquipmentLoadout* FirstCompanionLoadout = State.EquipmentCollection.CharacterLoadouts.Find(FirstCompanionId);

@@ -67,7 +67,7 @@ FGameXXKCharacterStats FGameXXKCharacterStatRules::GetBareHeroStats(const int32 
 	const int32 LevelOffset = ClampedLevel - 1;
 	FGameXXKCharacterStats Stats;
 	Stats.MaxHealth = 100 + LevelOffset * 15;
-	Stats.MaxMana = 30 + LevelOffset * 5;
+	Stats.MaxMana = 30;
 	Stats.Attack = 15 + LevelOffset * 3;
 	Stats.Defense = 8 + LevelOffset * 2;
 	Stats.Speed = 10 + LevelOffset;
@@ -92,7 +92,9 @@ bool FGameXXKCharacterStatRules::GetBareCompanionStats(
 	const int32 ClampedLevel = FMath::Clamp(Level, 1, MaxCharacterLevel);
 	const float StarMultiplier = 1.0f + 0.08f * static_cast<float>(Star - 1);
 	OutStats.MaxHealth = ComputeProgressedAttribute(Definition.BaseHealth, Definition.HealthGrowth, ClampedLevel, StarMultiplier);
-	OutStats.MaxMana = ComputeProgressedAttribute(Definition.BaseMana, Definition.ManaGrowth, ClampedLevel, StarMultiplier);
+	OutStats.MaxMana = Role == EGameXXKCharacterRole::Sorcerer
+		? Definition.BaseMana
+		: ComputeProgressedAttribute(Definition.BaseMana, Definition.ManaGrowth, ClampedLevel, StarMultiplier);
 	OutStats.Attack = ComputeProgressedAttribute(Definition.BaseAttack, Definition.AttackGrowth, ClampedLevel, StarMultiplier);
 	OutStats.Defense = ComputeProgressedAttribute(Definition.BaseDefense, Definition.DefenseGrowth, ClampedLevel, StarMultiplier);
 	const int32 PreStarSpeed = Definition.BaseSpeed + (ClampedLevel - 1) / 5;

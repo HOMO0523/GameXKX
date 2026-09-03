@@ -3,6 +3,8 @@
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -31,13 +33,13 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 
 	const FGameXXKCharacterStats LevelTwentyHero = FGameXXKCharacterStatRules::GetBareHeroStats(20);
 	TestEqual(TEXT("level-twenty hero max health matches the former formula"), LevelTwentyHero.MaxHealth, 385);
-	TestEqual(TEXT("level-twenty hero max mana matches the former formula"), LevelTwentyHero.MaxMana, 125);
+	TestEqual(TEXT("level-twenty hero keeps base Mana thirty"), LevelTwentyHero.MaxMana, 30);
 	TestEqual(TEXT("level-twenty hero attack matches the former formula"), LevelTwentyHero.Attack, 72);
 	TestEqual(TEXT("level-twenty hero defense matches the former formula"), LevelTwentyHero.Defense, 46);
 	TestEqual(TEXT("level-twenty hero speed matches the former formula"), LevelTwentyHero.Speed, 29);
 	const FGameXXKCharacterStats LevelHundredHero = FGameXXKCharacterStatRules::GetBareHeroStats(100);
 	TestEqual(TEXT("level-one-hundred hero max health keeps the linear formula"), LevelHundredHero.MaxHealth, 1585);
-	TestEqual(TEXT("level-one-hundred hero max mana keeps the linear formula"), LevelHundredHero.MaxMana, 525);
+	TestEqual(TEXT("level-one-hundred hero keeps base Mana thirty"), LevelHundredHero.MaxMana, 30);
 	TestEqual(TEXT("level-one-hundred hero attack keeps the linear formula"), LevelHundredHero.Attack, 312);
 	TestEqual(TEXT("level-one-hundred hero defense keeps the linear formula"), LevelHundredHero.Defense, 206);
 	TestEqual(TEXT("level-one-hundred hero speed keeps the linear formula"), LevelHundredHero.Speed, 109);
@@ -90,7 +92,7 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	FGameXXKCompanionAttributes LegacyAttributes;
 	TestTrue(TEXT("the legacy companion API delegates to shared naked stats"), FGameXXKCompanionRules::GetCompanionAttributes(EGameXXKCharacterRole::Blade, 6, 2, EquipmentBonus, LegacyAttributes, nullptr));
 	TestEqual(TEXT("legacy API adds health equipment after shared naked stats"), LegacyAttributes.Health, ProgressedBlade.MaxHealth + EquipmentBonus.Health);
-	TestEqual(TEXT("legacy API adds mana equipment after shared naked stats"), LegacyAttributes.Mana, ProgressedBlade.MaxMana + EquipmentBonus.Mana);
+	TestEqual(TEXT("legacy API excludes all equipment Mana"), LegacyAttributes.Mana, ProgressedBlade.MaxMana);
 	TestEqual(TEXT("legacy API adds attack equipment after shared naked stats"), LegacyAttributes.Attack, ProgressedBlade.Attack + EquipmentBonus.Attack);
 	TestEqual(TEXT("legacy API adds defense equipment after shared naked stats"), LegacyAttributes.Defense, ProgressedBlade.Defense + EquipmentBonus.Defense);
 	TestEqual(TEXT("legacy API adds speed equipment after shared naked stats"), LegacyAttributes.Speed, ProgressedBlade.Speed + EquipmentBonus.Speed);
@@ -109,6 +111,18 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKRuntimeState HeroCapState = UGameXXKMVPRules::CreateNewGame();
+	FString HeroCapSetupError;
+	FGameXXKCompanionRecruitResult HeroCapRecruit;
+	if (!TestTrue(TEXT("cap fixture recruits an active partner"), FGameXXKCompanionRules::RecruitPermanentCompanion(HeroCapState.CardRun.CompanionRoster, TEXT("Companion.Blade.01"), 7311, HeroCapRecruit, &HeroCapSetupError))
+		|| !TestTrue(TEXT("cap fixture selects that partner"), FGameXXKCompanionRules::SetActivePermanentCompanion(HeroCapState.CardRun.CompanionRoster, HeroCapRecruit.Companion.InstanceId, &HeroCapSetupError))
+		|| !TestTrue(TEXT("cap fixture owns a reserve partner"), FGameXXKCompanionRules::RecruitPermanentCompanion(HeroCapState.CardRun.CompanionRoster, TEXT("Companion.Guard.01"), 7312, HeroCapRecruit, &HeroCapSetupError))
+		|| !TestTrue(TEXT("cap fixture selects the fixed NPC"), GameXXKPermanentPartyTestFixtures::SelectNpc(HeroCapState, TEXT("Npc.TusiChief"), &HeroCapSetupError))
+		|| !TestTrue(TEXT("cap fixture has a legal three-person party"), FGameXXKPartyFormationRules::Normalize(HeroCapState, &HeroCapSetupError)))
+	{
+		AddError(HeroCapSetupError);
+		return false;
+	}
+	FGameXXKPartyFormationRules::ProjectCompatibility(HeroCapState);
 	TestTrue(TEXT("the fixed-route cap fixture opens the world map"), UGameXXKMVPRules::OpenWorldMap(HeroCapState));
 	TestTrue(TEXT("the fixed-route cap fixture enters Qingshan"), UGameXXKMVPRules::EnterWorldRegion(HeroCapState, UGameXXKMVPRules::RegionQingshan()));
 	TestTrue(TEXT("the fixed-route cap fixture accepts the town quest"), UGameXXKMVPRules::AcceptTownQuest(HeroCapState));

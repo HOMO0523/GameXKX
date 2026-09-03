@@ -337,7 +337,7 @@ bool FGameXXKShiGuFourPieceQualifyingTriggerTest::RunTest(const FString& Paramet
 	TestEqual(TEXT("the first real qualifying application automatically explodes once"), SecondResult.ToxicExplosionDistinctDotTypeCounts.Num(), 1);
 	if (SecondResult.ToxicExplosionDistinctDotTypeCounts.Num() == 1)
 	{
-		TestEqual(TEXT("the automatic Toxic Explosion snapshots all three present DoT types"), SecondResult.ToxicExplosionDistinctDotTypeCounts[0], 3);
+		TestEqual(TEXT("the automatic Toxic Explosion snapshots all four present reservoirs, including Rot"), SecondResult.ToxicExplosionDistinctDotTypeCounts[0], 4);
 	}
 	FourPiece = FindEffect(Runtime, 4);
 	if (FourPiece)
@@ -374,8 +374,8 @@ bool FGameXXKShiGuSixPieceFirstExplosionTest::RunTest(const FString& Parameters)
 		return true;
 	}
 	Enemy = FindUnit(Runtime, TEXT("Enemy1"));
-	TestEqual(TEXT("the first Toxic Explosion preserves Bleed after the direct hit spends its normal one stack"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 2);
-	TestEqual(TEXT("the first Toxic Explosion preserves the post-application Poison snapshot"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 8);
+	TestEqual(TEXT("the first direct hit and Toxic Explosion preserve the full Bleed reservoir"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 3);
+	TestEqual(TEXT("the first Toxic Explosion preserves initial Poison2 plus generated Poison7"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 9);
 	TestEqual(TEXT("the first Toxic Explosion preserves Burn"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 4);
 
 	FGameXXKCardPlayResult SecondResult;
@@ -384,14 +384,14 @@ bool FGameXXKShiGuSixPieceFirstExplosionTest::RunTest(const FString& Parameters)
 		return true;
 	}
 	Enemy = FindUnit(Runtime, TEXT("Enemy1"));
-	TestEqual(TEXT("the second direct hit and non-preserved Toxic Explosion each consume one Bleed"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 0);
-	TestEqual(TEXT("the second same-round Toxic Explosion consumes one Poison after adding six"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 13);
-	TestEqual(TEXT("the second same-round Toxic Explosion consumes one Burn"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 3);
+	TestEqual(TEXT("the second direct hit and Toxic Explosion also preserve Bleed"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 3);
+	TestEqual(TEXT("the second same-round Toxic Explosion preserves Poison after adding another generated seven"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 16);
+	TestEqual(TEXT("the second same-round Toxic Explosion preserves Burn"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 4);
 	FGameXXKEquipmentBattleEffectRuntime* SixPiece = FindEffect(Runtime, 6);
 	TestNotNull(TEXT("the six-piece runtime exists"), SixPiece);
 	if (SixPiece)
 	{
-		TestEqual(TEXT("the six-piece preservation budget is consumed once"), SixPiece->CurrentRoundTriggerCount, 1);
+		TestEqual(TEXT("the shared non-consuming rule does not spend the legacy preservation budget"), SixPiece->CurrentRoundTriggerCount, 0);
 	}
 	return true;
 }
@@ -418,8 +418,8 @@ bool FGameXXKShiGuFullTierInteractionTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKCardCombatUnit* Enemy = FindUnit(Runtime, TEXT("Enemy1"));
 	TestEqual(TEXT("two-piece adds Rot before the automatic explosion"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::DamageOverTime), 1);
-	TestEqual(TEXT("six-piece preserves Poison on the four-piece automatic explosion"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 1);
-	TestEqual(TEXT("six-piece preserves Burn on the four-piece automatic explosion"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("the four-piece automatic explosion preserves generated Poison2"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("the four-piece automatic explosion preserves generated Burn2"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 2);
 	TestEqual(TEXT("the automatic explosion resolves exactly once"), Result.ToxicExplosionDistinctDotTypeCounts.Num(), 1);
 	return true;
 }

@@ -127,6 +127,8 @@ namespace
 		FGameXXKRuntimeState& OutState)
 	{
 		OutState = UGameXXKMVPRules::CreateNewGame();
+		// This fixture represents a migrated 200-cell inventory, not a new 20-cell character.
+		OutState.Talents.MinimumBackpackCapacity = FGameXXKDesktopInventoryRules::BackpackCapacity;
 		OutState.Screen = EGameXXKScreen::Town;
 		OutState.Inventory.Reset();
 		OutState.EnhancementMaterial = 0;
@@ -237,6 +239,8 @@ bool FGameXXKEquipmentFacadeMutationTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Town;
+	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
 	State.Inventory.FindOrAdd(UGameXXKMVPRules::ItemEnhancementStone()) = 10;
 	State.Inventory.FindOrAdd(UGameXXKMVPRules::ItemRefinementSand()) = 30;
 	State.EnhancementMaterial = 10;
@@ -380,6 +384,8 @@ bool FGameXXKEquipmentFacadePhysicalCellReplacementTest::RunTest(const FString& 
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State = UGameXXKMVPRules::CreateNewGame();
 	State.Screen = EGameXXKScreen::Town;
+	// The exact-source probes use Warehouse slots71 and88 across three pages.
+	State.Talents.MinimumWarehousePages = 3;
 	const FName HeroId = FGameXXKEquipmentRules::HeroCharacterId();
 	const FName GuardId = RecruitGuardOwner(*this, State);
 	const FName NpcId(TEXT("Npc.TusiChief"));

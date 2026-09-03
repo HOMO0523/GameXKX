@@ -134,6 +134,11 @@ namespace
 			const FGameXXKAffixDefinition* Affix = FGameXXKAffixCatalog::FindDefinition(Roll.AffixId);
 			if (Affix)
 			{
+				if (Affix->ModifierKind == EGameXXKEquipmentModifierKind::MaxMana)
+				{
+					Lines.Add(FString::Printf(TEXT("%s（已停用）"), *Affix->DisplayName.ToString()));
+					continue;
+				}
 				if (Roll.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
 				{
 					Lines.Add(FString::Printf(TEXT("%s +%.2f%%"), *Affix->DisplayName.ToString(), Roll.Magnitude / 100.0));

@@ -40,13 +40,11 @@ namespace
 			break;
 		case EGameXXKEquipmentSlot::Belt:
 			Coefficients.MaxHealth = Curve(6, 1, 1);
-			Coefficients.MaxMana = Curve(2, 1, 1);
 			break;
 		case EGameXXKEquipmentSlot::Shoes:
 			Coefficients.Speed = Curve(1, 1, 5);
 			break;
 		case EGameXXKEquipmentSlot::Accessory:
-			Coefficients.MaxMana = Curve(4, 1, 1);
 			Coefficients.Attack = Curve(1, 1, 4);
 			break;
 		default:

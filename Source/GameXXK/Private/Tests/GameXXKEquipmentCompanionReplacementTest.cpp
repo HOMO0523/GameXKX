@@ -160,6 +160,8 @@ namespace
 
 		FGameXXKRuntimeState& State = Fixture.Subsystem->GetMutableRuntimeState();
 		State = UGameXXKMVPRules::CreateNewGame();
+		// Capacity-boundary transactions require the full legacy-compatible storage surface.
+		State.Talents.MinimumBackpackCapacity = FGameXXKDesktopInventoryRules::BackpackCapacity;
 		State.Screen = EGameXXKScreen::Town;
 		State.EquipmentCollection = FGameXXKEquipmentCollectionState();
 		State.DesktopInventory = FGameXXKDesktopInventoryState();

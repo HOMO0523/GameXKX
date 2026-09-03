@@ -236,7 +236,7 @@ bool FGameXXKAutomaticReplayPaysNoCostAndMovesNoCardTest::RunTest(const FString&
 	TestTrue(
 		TEXT("automatic replay leaves every deck zone and resource unchanged"),
 		FGameXXKBattleDeckState::StaticStruct()->CompareScriptStruct(&Runtime.Deck, &DeckBefore, PPF_None));
-	TestEqual(TEXT("automatic replay deals the active replacement card's twenty-one-point base packet"), FindUnit(Runtime, EnemyUnitId)->HP, 79);
+	TestEqual(TEXT("automatic replay deals Attack20 plus generated Bleed2"), FindUnit(Runtime, EnemyUnitId)->HP, 78);
 	if (Results.Num() == 1 && Results[0].DamageResults.Num() == 1)
 	{
 		TestEqual(TEXT("automatic play result has explicit origin"), Results[0].ResolutionOrigin, EGameXXKCardResolutionOrigin::AutomaticReplay);
@@ -290,7 +290,7 @@ bool FGameXXKAutomaticReplayDoesNotIncrementActivePlayCountTest::RunTest(const F
 	TestEqual(TEXT("automatic replay does not consume active next-attack modifiers"), Runtime.Modifiers.Num(), 1);
 	TestEqual(TEXT("automatic replay does not consume active next-attack status"),
 		GameXXKCardRules::GetCombatStatusStacks(*FindUnit(Runtime, HeroUnitId), EGameXXKCardStatus::NextAttackBonus), 1);
-	TestEqual(TEXT("automatic replay ignores the active-only attack bonus"), FindUnit(Runtime, EnemyUnitId)->HP, 79);
+	TestEqual(TEXT("automatic replay ignores active-only bonuses and deals Attack20 plus Bleed2"), FindUnit(Runtime, EnemyUnitId)->HP, 78);
 	TestEqual(TEXT("automatic replay does not apply the active-only on-hit Mark"),
 		GameXXKCardRules::GetCombatStatusStacks(*FindUnit(Runtime, EnemyUnitId), EGameXXKCardStatus::Mark), 0);
 
@@ -345,7 +345,7 @@ bool FGameXXKDeadOriginalEnemyFallsBackByStableOrderTest::RunTest(const FString&
 	FString Error;
 	TestTrue(FString::Printf(TEXT("dead-target replay resolves: %s"), *Error),
 		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error));
-	TestEqual(TEXT("first living same-side target takes fallback damage"), FindUnit(Runtime, FirstEnemyId)->HP, 89);
+	TestEqual(TEXT("first living same-side target takes Attack10 plus generated Bleed2"), FindUnit(Runtime, FirstEnemyId)->HP, 88);
 	TestEqual(TEXT("later stable target remains untouched"), FindUnit(Runtime, SecondEnemyId)->HP, 100);
 	TestEqual(TEXT("dead original target remains dead"), FindUnit(Runtime, DeadEnemyId)->HP, 0);
 	if (Results.Num() == 1)

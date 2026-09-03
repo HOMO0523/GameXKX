@@ -57,13 +57,13 @@ namespace
 			break;
 		case EGameXXKEquipmentSlot::Belt:
 			Stats.MaxHealth = 6 + Offset;
-			Stats.MaxMana = 2 + Offset;
+			Stats.MaxMana = 0;
 			break;
 		case EGameXXKEquipmentSlot::Shoes:
 			Stats.Speed = 1 + Offset / 5;
 			break;
 		case EGameXXKEquipmentSlot::Accessory:
-			Stats.MaxMana = 4 + Offset;
+			Stats.MaxMana = 0;
 			Stats.Attack = 1 + Offset / 4;
 			break;
 		default:

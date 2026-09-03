@@ -1133,7 +1133,7 @@ bool FGameXXKCompanionRules::GetCompanionAttributes(
 	OutAttributes.Health = BareStats.MaxHealth + EquipmentBonus.Health;
 	OutAttributes.Attack = BareStats.Attack + EquipmentBonus.Attack;
 	OutAttributes.Defense = BareStats.Defense + EquipmentBonus.Defense;
-	OutAttributes.Mana = BareStats.MaxMana + EquipmentBonus.Mana;
+	OutAttributes.Mana = BareStats.MaxMana;
 	OutAttributes.Speed = BareStats.Speed + EquipmentBonus.Speed;
 	return true;
 }

@@ -218,9 +218,7 @@ namespace
 		const int32 RouteMaxHealth = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth);
 		const int32 RouteMaxMana = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana);
 		const int32 OldMaxHealth = FMath::Max(1, State.PlayerMaxHP + RouteMaxHealth);
-		const int32 OldMaxMana = FMath::Max(1, State.PlayerMaxMP + RouteMaxMana);
 		const int32 MissingHealth = FMath::Max(0, OldMaxHealth - State.PlayerHP);
-		const int32 MissingMana = FMath::Max(0, OldMaxMana - State.PlayerMP);
 		FGameXXKEquipmentLoadoutSnapshot Snapshot;
 		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 			State.EquipmentCollection,
@@ -238,7 +236,7 @@ namespace
 		const int32 NewEffectiveMaxHealth = FMath::Max(1, State.PlayerMaxHP + RouteMaxHealth);
 		const int32 NewEffectiveMaxMana = FMath::Max(1, State.PlayerMaxMP + RouteMaxMana);
 		State.PlayerHP = FMath::Clamp(NewEffectiveMaxHealth - MissingHealth, 0, NewEffectiveMaxHealth);
-		State.PlayerMP = FMath::Clamp(NewEffectiveMaxMana - MissingMana, 0, NewEffectiveMaxMana);
+		State.PlayerMP = FMath::Clamp(State.PlayerMP, 0, NewEffectiveMaxMana);
 		return true;
 	}
 

@@ -325,9 +325,7 @@ namespace
 	// include these bonuses from the previous room, so incrementing that projection would
 	// silently double every event reward.
 	const int32 PreviousHeroMaxHP = FMath::Max(1, InOutState.PlayerMaxHP + FMath::Max(0, RouteBonus.MaxHealth));
-	const int32 PreviousHeroMaxMP = FMath::Max(0, InOutState.PlayerMaxMP + FMath::Max(0, RouteBonus.MaxMana));
 	const int32 MissingHeroHP = FMath::Max(0, PreviousHeroMaxHP - InOutState.PlayerHP);
-	const int32 MissingHeroMP = FMath::Max(0, PreviousHeroMaxMP - InOutState.PlayerMP);
 	Hero.MaxHP = FMath::Max(1, ScaleTalentStat(
 		HeroSnapshot.AttributesBeforeRoute.MaxHealth
 			+ FMath::Max(0, RouteBonus.MaxHealth)
@@ -335,7 +333,7 @@ namespace
 		TalentProjection.RouteMaxHPPercent));
 	Hero.HP = FMath::Clamp(Hero.MaxHP - MissingHeroHP, 1, Hero.MaxHP);
 	Hero.MaxMP = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.MaxMana + FMath::Max(0, RouteBonus.MaxMana));
-	Hero.MP = FMath::Clamp(Hero.MaxMP - MissingHeroMP, 0, Hero.MaxMP);
+	Hero.MP = FMath::Clamp(InOutState.PlayerMP, 0, Hero.MaxMP);
 	Hero.Attack = ScaleTalentStat(
 		HeroSnapshot.AttributesBeforeRoute.Attack
 			+ FMath::Max(0, RouteBonus.Attack)
@@ -2455,7 +2453,12 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 		// Keep the current route value, including any temporary event-created capacity.  The permanent
 		// maxima remain unchanged and route cleanup restores the town baseline.
 		InOutState.PlayerHP = FMath::Clamp(Hero->HP, 0, Hero->MaxHP);
-		InOutState.PlayerMP = FMath::Clamp(Hero->Mana, 0, Hero->MaxMana);
+		// The permanent mirror stays within base + route capacity. Explicit battle-local
+		// capacity and its current Mana remain on the saved combat unit until battle ends.
+		const int32 SurfaceManaCap = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(InOutState.PlayerMaxMP) + FMath::Max(0, Run.RouteAttributeBonuses.MaxMana),
+			0, Hero->MaxMana));
+		InOutState.PlayerMP = FMath::Clamp(Hero->Mana, 0, SurfaceManaCap);
 	}
 	return true;
 }

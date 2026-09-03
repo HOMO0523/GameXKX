@@ -13,7 +13,7 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKAffixDefinition>& Universal = FGameXXKAffixCatalog::GetUniversalDefinitions();
 	const TArray<FGameXXKAffixDefinition>& All = FGameXXKAffixCatalog::GetAllDefinitions();
-	TestEqual(TEXT("there are exactly four rollable universal affix families"), Universal.Num(), 4);
+	TestEqual(TEXT("there are three active universal families after Mana retirement"), Universal.Num(), 3);
 	TestEqual(TEXT("five universal plus thirty set-specific families are exposed"), All.Num(), 35);
 	TestFalse(TEXT("retired Speed is absent from the new-roll universal pool"), Universal.ContainsByPredicate(
 		[](const FGameXXKAffixDefinition& Definition)

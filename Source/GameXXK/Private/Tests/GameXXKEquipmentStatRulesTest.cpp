@@ -281,8 +281,8 @@ bool FGameXXKEquipmentStatOrderTest::RunTest(const FString& Parameters)
 	FGameXXKEquipmentLoadoutSnapshot Snapshot;
 	FString Error;
 	TestTrue(TEXT("modern six-piece projection builds"), FGameXXKEquipmentRules::BuildLoadoutSnapshot(Modern, Hero, Bare, Snapshot, &Error));
-	TestStats(*this, TEXT("percent and flat enhancement resolve per item before summing"), Snapshot.EnhancedEquipmentBaseStats, Stats(80, 40, 34, 31, 32));
-	TestStats(*this, TEXT("six attack percentages add to sixty percent of the shared attack subtotal once"), Snapshot.AttributesBeforeRoute, Stats(181, 91, 72, 38, 35));
+	TestStats(*this, TEXT("percent and flat enhancement resolve per item before summing"), Snapshot.EnhancedEquipmentBaseStats, Stats(80, 0, 34, 31, 32));
+	TestStats(*this, TEXT("six attack percentages add to sixty percent of the shared attack subtotal once"), Snapshot.AttributesBeforeRoute, Stats(181, 51, 72, 38, 35));
 	TestEqual(TEXT("six attack affixes aggregate to 6000 BP"), Snapshot.UniversalModifiers.FindRef(EGameXXKEquipmentModifierKind::Attack), 6000);
 	TestEqual(TEXT("set percentage affixes remain additive descriptors"), Snapshot.SetModifiers.FindRef(EGameXXKEquipmentModifierKind::DirectDamage), 6000);
 	TestEqual(TEXT("flat-count set affixes remain exact integers"), Snapshot.SetModifiers.FindRef(EGameXXKEquipmentModifierKind::ArmorBreakStacks), 12);
@@ -307,8 +307,8 @@ bool FGameXXKEquipmentStatOrderTest::RunTest(const FString& Parameters)
 		Snapshot.AttributesBeforeRoute,
 		PostBasisPoints,
 		PostFlatCounts);
-	TestStats(*this, TEXT("route/relic/terrain/status modifiers apply only through explicit post call"), Post, Stats(186, 91, 79, 38, 35));
-	TestStats(*this, TEXT("explicit post call never mutates the pre-route snapshot"), Snapshot.AttributesBeforeRoute, Stats(181, 91, 72, 38, 35));
+	TestStats(*this, TEXT("route/relic/terrain/status modifiers apply only through explicit post call"), Post, Stats(186, 51, 79, 38, 35));
+	TestStats(*this, TEXT("explicit post call never mutates the pre-route snapshot"), Snapshot.AttributesBeforeRoute, Stats(181, 51, 72, 38, 35));
 	return true;
 }
 
@@ -468,7 +468,7 @@ bool FGameXXKEquipmentTooltipProjectionTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("current complete loadout has five PoJun pieces"), TooltipA.CurrentSetPieceCounts.FindRef(EGameXXKEquipmentSet::PoJun), 5);
 	TestEqual(TEXT("candidate complete loadout crosses ZhuiFeng two-piece threshold"), TooltipA.CandidateSetPieceCounts.FindRef(EGameXXKEquipmentSet::ZhuiFeng), 2);
 	TestEqual(TEXT("legal warehouse swap reports no transaction error"), TooltipA.EquipError, EGameXXKEquipmentTransactionError::None);
-	TestStats(*this, TEXT("tooltip delta is candidate complete stats minus current complete stats"), TooltipA.CharacterStatDeltas, Stats(-1, 3, 3, 2, 2));
+	TestStats(*this, TEXT("tooltip delta is candidate complete stats minus current complete stats"), TooltipA.CharacterStatDeltas, Stats(-1, 0, 3, 2, 2));
 
 	const FGameXXKCharacterStats BareB = Stats(100, 40, 220, 10, 220);
 	FGameXXKEquipmentTooltipSnapshot TooltipB;

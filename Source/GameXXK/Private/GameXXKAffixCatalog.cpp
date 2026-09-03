@@ -57,7 +57,6 @@ namespace
 		using U = EGameXXKEquipmentMagnitudeUnit;
 		return {
 			MakeAffix(TEXT("Affix.Universal.MaxHealth"), TEXT("强身"), EGameXXKEquipmentSet::Invalid, K::MaxHealth, U::BasisPoints),
-			MakeAffix(TEXT("Affix.Universal.MaxMana"), TEXT("纳息"), EGameXXKEquipmentSet::Invalid, K::MaxMana, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Attack"), TEXT("劲力"), EGameXXKEquipmentSet::Invalid, K::Attack, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Defense"), TEXT("坚骨"), EGameXXKEquipmentSet::Invalid, K::Defense, U::BasisPoints),
 		};
@@ -68,6 +67,7 @@ namespace
 		using K = EGameXXKEquipmentModifierKind;
 		using U = EGameXXKEquipmentMagnitudeUnit;
 		return {
+			MakeAffix(TEXT("Affix.Universal.MaxMana"), TEXT("纳息"), EGameXXKEquipmentSet::Invalid, K::MaxMana, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Speed"), TEXT("轻身"), EGameXXKEquipmentSet::Invalid, K::Speed, U::BasisPoints),
 		};
 	}

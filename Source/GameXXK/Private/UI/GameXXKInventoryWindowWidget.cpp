@@ -648,6 +648,11 @@ namespace
 			const FGameXXKAffixDefinition* Affix = FGameXXKAffixCatalog::FindDefinition(Roll.AffixId);
 			if (Affix)
 			{
+				if (Affix->ModifierKind == EGameXXKEquipmentModifierKind::MaxMana)
+				{
+					Lines.Add(FString::Printf(TEXT("%s（已停用）"), *Affix->DisplayName.ToString()));
+					continue;
+				}
 				if (Roll.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
 				{
 					// 万分比词缀显示为百分比（312 → +3.12%）

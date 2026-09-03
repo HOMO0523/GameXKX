@@ -322,9 +322,12 @@ namespace
 		const FGameXXKEquipmentInstance& Instance,
 		const FGameXXKEquipmentDefinition& Definition)
 	{
-		return Instance.ScalingRule == EGameXXKEquipmentScalingRule::LegacyFlatPerEnhancement
+		FGameXXKCharacterStats Result = Instance.ScalingRule == EGameXXKEquipmentScalingRule::LegacyFlatPerEnhancement
 			? Instance.LegacyBaseStatSnapshot
 			: Definition.BaseStatCoefficients.Resolve(Instance.ItemLevel);
+		// Legacy snapshots remain readable; no equipment supplies effective Mana.
+		Result.MaxMana = 0;
+		return Result;
 	}
 
 	FGameXXKCharacterStats ResolveItemCurrentStats(
@@ -336,7 +339,6 @@ namespace
 		{
 			const int32 Factor = 10000 + 1000 * Instance.EnhancementLevel;
 			Result.MaxHealth = ScaleFloor(Result.MaxHealth, Factor);
-			Result.MaxMana = ScaleFloor(Result.MaxMana, Factor);
 			Result.Attack = ScaleFloor(Result.Attack, Factor);
 			Result.Defense = ScaleFloor(Result.Defense, Factor);
 			Result.Speed = ScaleFloor(Result.Speed, Factor);
@@ -344,7 +346,6 @@ namespace
 			// stats each enhancement (percent-only growth floors away on
 			// single-digit base values).
 			Result.MaxHealth = AddClamped(Result.MaxHealth, 2 * Instance.EnhancementLevel);
-			Result.MaxMana = AddClamped(Result.MaxMana, 1 * Instance.EnhancementLevel);
 			Result.Attack = AddClamped(Result.Attack, 1 * Instance.EnhancementLevel);
 			Result.Defense = AddClamped(Result.Defense, 1 * Instance.EnhancementLevel);
 			Result.Speed = AddClamped(Result.Speed, 1 * Instance.EnhancementLevel);
@@ -984,6 +985,11 @@ bool FGameXXKEquipmentRules::CreateRolledInstance(
 	{
 		Candidates.Add(&Definition);
 	}
+	if (Candidates.Num() < FGameXXKEquipmentQualityRules::GetAffixCount(Request.Quality))
+	{
+		SetError(OutError, TEXT("Equipment quality requires more distinct active affixes than this set provides."));
+		return false;
+	}
 
 	FGameXXKEquipmentInstance Instance;
 	Instance.InstanceId = InstanceId;
@@ -1265,6 +1271,10 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 				OutSnapshot = FGameXXKEquipmentLoadoutSnapshot();
 				return false;
 			}
+			if (AffixDefinition->ModifierKind == EGameXXKEquipmentModifierKind::MaxMana)
+			{
+				continue;
+			}
 			if (AffixDefinition->Set == EGameXXKEquipmentSet::Invalid)
 			{
 				OutSnapshot.UniversalModifiers.FindOrAdd(AffixDefinition->ModifierKind) = AddClamped(
@@ -1395,6 +1405,7 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 	// Gems are a separate flat layer: equipment percentages never multiply them,
 	// while route/battle projection still consumes the final AttributesBeforeRoute.
 	AddStats(OutSnapshot.AttributesBeforeRoute, OutSnapshot.SocketGemFlatStats);
+	OutSnapshot.AttributesBeforeRoute.MaxMana = BareStats.MaxMana;
 	return true;
 }
 
