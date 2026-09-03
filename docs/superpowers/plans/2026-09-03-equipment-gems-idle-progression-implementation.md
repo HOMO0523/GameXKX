@@ -4,7 +4,7 @@
 
 **Goal:** Extend equipment to item level 135, halve approved equipment/HP-gem contributions, implement the post-Immortal gem curve, and make Training/idle drops use the previous+1-to-current stage band.
 
-**Architecture:** Equipment catalog curves remain deterministic rational curves; only approved HP/Attack/Defense coefficients change. Gem values use one explicit ten-rank table. Training resolves a stable item level from StageId plus reward seed before creating a chest token, so online and offline rewards share the same level authority.
+**Architecture:** Equipment catalog curves remain deterministic rational curves. The latest user clarification removes all equipment Mana contributions; the approved HP/Attack/Defense reductions remain, while Speed is unchanged. Gem values use one explicit ten-rank table. Training resolves a stable item level from StageId plus reward seed before creating a chest token, so online and offline rewards share the same level authority.
 
 **Tech Stack:** Unreal Engine 5.8 C++, equipment/gem catalogs, Training reward rules, SaveGame migration, UE Automation.
 
@@ -96,7 +96,7 @@ git commit -m "feat: rebalance gem growth curve"
 
 - [ ] **Step 1: Write red level-135 and coefficient tests**
 
-Create item levels 100, 101, 134, and 135; assert validation succeeds and 136 fails. Equip a level-135 item on the level-100 Hero fixture. Assert Mana/Speed curves are unchanged and the approved slot curves are:
+Create item levels 100, 101, 134, and 135; assert validation succeeds and 136 fails. Equip a level-135 item on the level-100 Hero fixture. Assert every slot contributes zero Mana at every level and enhancement, Speed curves are unchanged, and the approved slot curves are:
 
 ```cpp
 // LevelOne, GrowthNumerator, GrowthDivisor
@@ -116,7 +116,7 @@ python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tes
 
 - [ ] **Step 3: Raise only item-level limits and replace curves**
 
-Set `MaxEquipmentLevel` and `FGameXXKEquipmentRules::MaxItemLevel` to 135. Do not raise character level. Replace `MakeSlotCoefficients` with the exact approved values above; preserve MaxMana and Speed curves. Keep modern enhancement percentages operating on the reduced base.
+Set `MaxEquipmentLevel` and `FGameXXKEquipmentRules::MaxItemLevel` to 135. Do not raise character level. Replace `MakeSlotCoefficients` with the exact approved values above; keep Mana contributions at zero and preserve Speed curves. Keep modern enhancement percentages operating on the reduced base, with no Mana growth. Preserve the equipment-wide Mana exclusion and retired-affix compatibility introduced by Plan 2 Task 6.
 
 - [ ] **Step 4: Run green and commit**
 

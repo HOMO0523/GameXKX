@@ -415,7 +415,11 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 
 ### Task 6: Rebalance partner Sorcerer and Formation Master cards
 
+Resource prerequisite completed at 2e0db81: Hero30/Sorcerer34 fixed bases, equipment Mana exclusion for all characters, preserved explicit route/battle capacity and current-Mana save state, retired Mana affix generation, consistent previews, and legacy empty-socket normalization. Cold UBT and 316/316 equipment/card/save/simulation regressions passed. Acceptance: docs/production/2026-09-03-fixed-mana-equipment-acceptance.md. The card steps below remain incomplete.
+
 User confirmation for the Mana prerequisite: use Hero30 and Sorcerer34 at every character level, with no ordinary star/equipment growth. Preserve explicit battle MaxMana +4/+8 and existing fixed route bonuses; current-Mana recovery8/16 or6 does not increase MaxMana. Add focused stat/equipment/battle-entry and saved-battle preservation checks before claiming the Ice projection fixtures match runtime.
+
+Further user clarification: no equipment may increase any character's Mana. Remove base/level/enhancement Mana from effective item stats, disable legacy flat and percentage Mana contributions, retire MaxMana from new and reforge affix pools, and align item tooltips. Preserve owned-item IDs and recorded legacy rolls for load compatibility; do not silently assign replacement bonuses. Validate high-quality roll requests against the available distinct active affixes before indexing a candidate pool.
 
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`

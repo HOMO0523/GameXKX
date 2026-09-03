@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T19:15:25+08:00
-source_commit: c8ce17508c123324ae2364220fff4485f24c2e84
-working_tree: Plan 2 Tasks 3 through 5 committed; proceeding to confirmed fixed Mana and Sorcerer Formation work; Lightning coefficients remain candidates
+updated_at: 2026-09-03T20:08:54+08:00
+source_commit: 2e0db810df578590758f842ced2a36c72588a58e
+working_tree: Plan 2 Tasks 3 through 5 and Task 6 fixed Mana prerequisite committed; remaining Sorcerer Formation cards pending; Lightning coefficients remain candidates
 ---
+
+> **2026-09-03 固定内力与全部装备排除完成**：提交2e0db81，主角基础上限30、法师伙伴34不随等级/升星增长；所有角色均不从装备获得内力，含基础、等级、强化、旧固定20与纳息百分比。纳息停止生成及洗炼，旧记录可读并显示已停用，换装预览同步为零内力贡献。玄冰+4/+8、山泉+6、月白玉璧节点+1等明确效果保留，战斗额外容量及当前值保存读取不丢失。另修正旧装备空宝石孔先补齐后校验，并补齐旧回归的天赋、容量、队伍前提及非消耗DOT期望。冷UBT与装备/主角牌/伙伴牌/存档/模拟316/316通过，0失败、0警告，见 docs/production/2026-09-03-fixed-mana-equipment-acceptance.md。只完成Task 6资源前置，伙伴冰牌、气力和阵师效果继续；雷走候选倍率未确认。以下为历史记录。
 
 > **2026-09-03 药师／弓手阶段完成**：Task 5提交 `c8ce175`。药师稀有治疗系数保留标注品质，百级系数25零药效125、药效5时155；群体只消耗出牌者药效一次。清心清除四类DOT并按种类计入每回合3次预算，止血与温养用药师防御产甲；方剂记录开启品质，读取原动作快照，互不触发。弓手重箭及无视防御按批准品质/等级结算，锐意与回环取消基础返气，猎网/猎魂标用品质耗内表，隐踪史诗蓄力2，掠影每2蓄力给1灵动且最多2。冷UBT与伙伴总回归、主角药师/弓手、共享计算、卡表、存档147/147通过、0失败/0警告；详见 `docs/production/2026-09-03-healer-hunter-rebalance-acceptance.md`。下一步Task 6落实固定主角30/法师34内力与已确认的冰牌、法师气力、阵师效果；雷走候选倍率仍未确认，完整数值文案和后续计划尚未完成。以下为历史记录。
 
