@@ -13,8 +13,8 @@
   },
   "quality_variants": 419,
   "universal_reward_rows": 36,
-  "glossary_rows": 60,
-  "state_template_rows": 26,
+  "glossary_rows": 65,
+  "state_template_rows": 27,
   "all_ids_match_active_baseline": true,
   "all_ids_present_in_current_catalog_source": true,
   "all_pills_defined": true,
@@ -27,5 +27,26 @@
   "pending": [
     "Profession.Sorcerer.RanLingHuanYuan",
     "Npc.JinGui.HouXiangTuoShen"
-  ]
+  ],
+  "target_labels": [
+    "单体友方",
+    "单体敌方",
+    "单体友方/敌方",
+    "全体敌方",
+    "全体友方"
+  ],
+  "target_descriptions_complete": true,
+  "target_description_variants": 455,
+  "separate_bold_target_lines": true,
+  "pill_help_variants": 455,
+  "pill_help_current_card_only": true,
+  "pill_help_no_duplicates": true,
+  "tooltip_modes": [
+    "compact",
+    "shift_detail",
+    "right_button_pill_help"
+  ],
+  "pill_help_click_toggle": true,
+  "pill_help_survives_mouseup": true,
+  "pill_help_max_characters": 47
 }
