@@ -163,13 +163,13 @@ bool FGameXXKJiYuLianZhanLiveBleedRuntimeTest::RunTest(const FString& Parameters
 	{
 		return true;
 	}
-	TestEqual(TEXT("three live Blood Edge hits plus three Bleed packets deal fifty-one total damage"), Enemy->HP, 149);
-	TestEqual(TEXT("each landed hit consumes one of Ji Yu's three Bleed layers"),
-		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 0);
+	TestEqual(TEXT("three twelve-point hits and three four-point reservoirs deal forty-eight"), Enemy->HP, 152);
+	TestEqual(TEXT("ordinary hits preserve the generated four-point Bleed reservoir"),
+		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 4);
 	TestEqual(TEXT("Ji Yu audits three direct hits and the three Bleed triggers that follow them"), Result.DamageResults.Num(), 6);
 
-	const TArray<int32> ExpectedDirectDamage = {17, 15, 13};
-	const TArray<int32> ExpectedBleedSnapshots = {3, 2, 1};
+	const TArray<int32> ExpectedDirectDamage = {12, 12, 12};
+	const TArray<int32> ExpectedBleedSnapshots = {4, 4, 4};
 	for (int32 HitIndex = 0; HitIndex < 3 && Result.DamageResults.Num() == 6; ++HitIndex)
 	{
 		const FGameXXKCardDamageResult& Direct = Result.DamageResults[HitIndex * 2];
@@ -178,10 +178,10 @@ bool FGameXXKJiYuLianZhanLiveBleedRuntimeTest::RunTest(const FString& Parameters
 			Direct.RequestedDamage, ExpectedDirectDamage[HitIndex]);
 		TestEqual(FString::Printf(TEXT("hit %d remains a direct-attack audit"), HitIndex + 1),
 			Direct.Cause, EGameXXKCardDamageCause::DirectAttack);
-		TestEqual(FString::Printf(TEXT("Bleed trigger %d snapshots the pre-decay stack"), HitIndex + 1),
+		TestEqual(FString::Printf(TEXT("Bleed trigger %d reads the current reservoir"), HitIndex + 1),
 			Bleed.StatusStacksBefore, ExpectedBleedSnapshots[HitIndex]);
-		TestEqual(FString::Printf(TEXT("Bleed trigger %d consumes exactly one layer"), HitIndex + 1),
-			Bleed.StatusStacksConsumed, 1);
+		TestEqual(FString::Printf(TEXT("Bleed trigger %d does not consume its reservoir"), HitIndex + 1),
+			Bleed.StatusStacksConsumed, 0);
 	}
 	return true;
 }
@@ -235,13 +235,13 @@ bool FGameXXKLangDuanPreservesTriggeredBleedRuntimeTest::RunTest(const FString& 
 	{
 		return true;
 	}
-	TestEqual(TEXT("four Bleed add forty percentage points before Lang Duan deals its four-point Bleed trigger"), Enemy->HP, 68);
+	TestEqual(TEXT("four Bleed add eight attack points before the four-point Bleed packet"), Enemy->HP, 75);
 	TestEqual(TEXT("Lang Duan's own Bleed trigger does not reduce the target's layers"),
 		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 4);
 	TestEqual(TEXT("Lang Duan produces one direct hit and one Bleed trigger"), Result.DamageResults.Num(), 2);
 	if (Result.DamageResults.Num() == 2)
 	{
-		TestEqual(TEXT("Lang Duan snapshots its one-hundred-forty-percent live Blood Edge hit"), Result.DamageResults[0].RequestedDamage, 28);
+		TestEqual(TEXT("Lang Duan uses one-hundred-eight percent of Attack twenty"), Result.DamageResults[0].RequestedDamage, 21);
 		TestEqual(TEXT("Lang Duan audits all four triggered Bleed layers"), Result.DamageResults[1].StatusStacksBefore, 4);
 		TestEqual(TEXT("Lang Duan records zero consumed Bleed layers"), Result.DamageResults[1].StatusStacksConsumed, 0);
 	}
@@ -301,9 +301,9 @@ bool FGameXXKYinXueDaoHealsTriggeredBleedRuntimeTest::RunTest(const FString& Par
 		return true;
 	}
 	TestEqual(TEXT("Yin Xue heals exactly the four health damage from its triggered Bleed"), Blade->HP, 54);
-	TestEqual(TEXT("Yin Xue deals a live one-hundred-sixty-percent hit followed by four Bleed damage"), Enemy->HP, 64);
-	TestEqual(TEXT("Yin Xue consumes one old Bleed then applies its two new layers"),
-		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 5);
+	TestEqual(TEXT("Yin Xue deals twenty-five direct damage followed by four Bleed"), Enemy->HP, 71);
+	TestEqual(TEXT("Yin Xue preserves four old Bleed and generates three more"),
+		GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed), 7);
 	TestEqual(TEXT("Yin Xue audits its direct hit and triggered Bleed separately"), Result.DamageResults.Num(), 2);
 	TestEqual(TEXT("Yin Xue audits its triggered-Bleed healing attempt"), Result.HealingResults.Num(), 1);
 	if (Result.HealingResults.Num() == 1)
@@ -315,7 +315,7 @@ bool FGameXXKYinXueDaoHealsTriggeredBleedRuntimeTest::RunTest(const FString& Par
 	}
 	if (Result.DamageResults.Num() == 2)
 	{
-		TestEqual(TEXT("Yin Xue's live Blood Edge hit requests thirty-two damage"), Result.DamageResults[0].RequestedDamage, 32);
+		TestEqual(TEXT("Yin Xue uses one-hundred-twenty-eight percent of Attack twenty"), Result.DamageResults[0].RequestedDamage, 25);
 		TestEqual(TEXT("Yin Xue's healing source is the four-point Bleed packet"), Result.DamageResults[1].HealthDamage, 4);
 	}
 	return true;
@@ -413,14 +413,14 @@ bool FGameXXKFengHouFinishPreservesTwoBleedRuntimeTest::RunTest(const FString& P
 	{
 		TestEqual(TEXT("the first triggered Bleed keeps every layer"), Result.DamageResults[1].StatusStacksConsumed, 0);
 		TestEqual(TEXT("the second triggered Bleed keeps every layer"), Result.DamageResults[3].StatusStacksConsumed, 0);
-		TestEqual(TEXT("the third triggered Bleed resumes normal one-layer decay"), Result.DamageResults[5].StatusStacksConsumed, 1);
-		TestEqual(TEXT("all three triggers see eight live Bleed because only the third decays"),
-			Result.DamageResults[5].StatusStacksBefore, 8);
+		TestEqual(TEXT("the third trigger follows the ordinary non-consuming reservoir rule"), Result.DamageResults[5].StatusStacksConsumed, 0);
+		TestEqual(TEXT("six generated FengHou Bleed plus four JiYu Bleed are read by every hit"),
+			Result.DamageResults[5].StatusStacksBefore, 10);
 	}
 	const FGameXXKCardCombatUnit* Enemy = FindUnit(Runtime, EnemyUnitId);
 	TestNotNull(TEXT("Feng Hou Finish keeps the enemy available"), Enemy);
-	TestEqual(TEXT("five old plus three new Bleed lose only the third trigger's one layer"),
-		Enemy ? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 7);
+	TestEqual(TEXT("the ten-point reservoir remains after all three triggers"),
+		Enemy ? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 10);
 	TestEqual(TEXT("Feng Hou Finish clears immediately after its second protected trigger"),
 		Runtime.PendingBladeFinish.Rule, EGameXXKBladeFinishRule::None);
 	return true;
@@ -484,13 +484,13 @@ bool FGameXXKJiYuChargeReplaysNextRoundRuntimeTest::RunTest(const FString& Param
 
 	Enemy = FindUnit(Runtime, EnemyUnitId);
 	TestNotNull(TEXT("the original target survives the delayed replay"), Enemy);
-	TestEqual(TEXT("Lang Duan's recorded one-hundred-percent base hit replays without another active play"),
-		Enemy ? Enemy->HP : INDEX_NONE, HPBeforeDelayedReplay - 20);
+	TestEqual(TEXT("delayed LangDuan replays twenty-one direct plus four Bleed damage"),
+		Enemy ? Enemy->HP : INDEX_NONE, HPBeforeDelayedReplay - 25);
 	TestEqual(TEXT("the next player round still starts with zero active cards played"), Runtime.ActiveCardsPlayedThisRound, 0);
-	TestEqual(TEXT("the delayed base replay exposes its one damage packet at the round boundary"), RoundBoundaryDamage.Num(), 1);
-	if (RoundBoundaryDamage.Num() == 1)
+	TestEqual(TEXT("the delayed replay exposes its direct and Bleed packets"), RoundBoundaryDamage.Num(), 2);
+	if (RoundBoundaryDamage.Num() == 2)
 	{
-		TestEqual(TEXT("the delayed hit keeps its original base magnitude"), RoundBoundaryDamage[0].RequestedDamage, 20);
+		TestEqual(TEXT("the delayed hit uses the live four-point Bleed reservoir"), RoundBoundaryDamage[0].RequestedDamage, 21);
 		TestEqual(TEXT("the delayed hit is audited as an automatic replay"),
 			RoundBoundaryDamage[0].ResolutionOrigin, EGameXXKCardResolutionOrigin::AutomaticReplay);
 	}
@@ -651,7 +651,7 @@ bool FGameXXKYinXueChargeRestoresConsumptionRuntimeTest::RunTest(const FString& 
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKYinXueFinishHealsCappedBleedRuntimeTest,
-	"GameXXK.Data.PartnerCards.BladeRuntime.BloodEdge.YinXueFinishHealsBladeBleedUpToTwelve",
+	"GameXXK.Data.PartnerCards.BladeRuntime.BloodEdge.YinXueFinishHealsBladeBleedUpToScaledBudget",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKYinXueFinishHealsCappedBleedRuntimeTest::RunTest(const FString& Parameters)
@@ -685,8 +685,8 @@ bool FGameXXKYinXueFinishHealsCappedBleedRuntimeTest::RunTest(const FString& Par
 	}
 	TestEqual(TEXT("Yin Xue Finish enters the next player round"),
 		Runtime.PendingBladeFinish.Rule, EGameXXKBladeFinishRule::HealBladeBleedCapTwelve);
-	TestEqual(TEXT("Yin Xue Finish begins with a twelve-health healing budget"),
-		Runtime.PendingBladeFinish.RemainingTriggers, 12);
+	TestEqual(TEXT("Yin Xue Finish uses level-one coefficient-twenty budget"),
+		Runtime.PendingBladeFinish.RemainingTriggers, 21);
 
 	Error.Reset();
 	Result = FGameXXKCardPlayResult();
@@ -698,15 +698,15 @@ bool FGameXXKYinXueFinishHealsCappedBleedRuntimeTest::RunTest(const FString& Par
 	}
 	Blade = FindUnit(Runtime, BladeUnitId);
 	TestNotNull(TEXT("the Blade survives its Finish healing window"), Blade);
-	TestEqual(TEXT("five, four, and three Bleed damage heal exactly the twelve-point cap"),
-		Blade ? Blade->HP : INDEX_NONE, 62);
+	TestEqual(TEXT("three seven-point Bleed packets exhaust the twenty-one-point cap"),
+		Blade ? Blade->HP : INDEX_NONE, 71);
 	TestEqual(TEXT("the healing Finish clears immediately when its budget reaches zero"),
 		Runtime.PendingBladeFinish.Rule, EGameXXKBladeFinishRule::None);
 	TestEqual(TEXT("the three-hit trigger still audits three direct and three Bleed packets"), Result.DamageResults.Num(), 6);
 	TestEqual(TEXT("the three Bleed triggers each emit one healing attempt packet"), Result.HealingResults.Num(), 3);
 	if (Result.HealingResults.Num() == 3)
 	{
-		const int32 ExpectedHealing[3] = {5, 4, 3};
+		const int32 ExpectedHealing[3] = {7, 7, 7};
 		for (int32 Index = 0; Index < 3; ++Index)
 		{
 			const FString Context = FString::Printf(TEXT("Yin Xue Finish healing packet %d"), Index);
@@ -768,10 +768,10 @@ bool FGameXXKLangDuanChargeBranchesByTargetModeRuntimeTest::RunTest(const FStrin
 		FirstEnemy ? FirstEnemy->HP : INDEX_NONE, 960);
 	TestEqual(TEXT("the stable second enemy receives exactly one automatic Feng Hou base hit"),
 		SecondEnemy ? SecondEnemy->HP : INDEX_NONE, 980);
-	TestEqual(TEXT("the original Feng Hou applies five Bleed to its selected enemy"),
-		FirstEnemy ? GameXXKCardRules::GetCombatStatusStacks(*FirstEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 5);
-	TestEqual(TEXT("the duplicated Feng Hou applies five Bleed to the second enemy"),
-		SecondEnemy ? GameXXKCardRules::GetCombatStatusStacks(*SecondEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 5);
+	TestEqual(TEXT("the original FengHou generates six Bleed at level one"),
+		FirstEnemy ? GameXXKCardRules::GetCombatStatusStacks(*FirstEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 6);
+	TestEqual(TEXT("the duplicated FengHou generates six Bleed at level one"),
+		SecondEnemy ? GameXXKCardRules::GetCombatStatusStacks(*SecondEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 6);
 	TestEqual(TEXT("the duplicated base does not count as a third active card"), SingleTargetRuntime.ActiveCardsPlayedThisRound, 2);
 
 	FGameXXKCardBattleRuntime DrawRuntime;
@@ -855,9 +855,8 @@ bool FGameXXKLangDuanFinishReturnsBleedingTargetCardRuntimeTest::RunTest(const F
 	}
 	BleedingEnemy = FindUnit(Runtime, EnemyUnitId);
 	TestNotNull(TEXT("the enemy remains addressable immediately after Lang Duan"), BleedingEnemy);
-	TestEqual(TEXT("Lang Duan preserves all five Bleed immediately after its own trigger"),
-		BleedingEnemy ? GameXXKCardRules::GetCombatStatusStacks(*BleedingEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE,
-		5);
+	TestEqual(TEXT("LangDuan preserves all six generated Bleed after its trigger"),
+		BleedingEnemy ? GameXXKCardRules::GetCombatStatusStacks(*BleedingEnemy, EGameXXKCardStatus::Bleed) : INDEX_NONE, 6);
 	TestEqual(TEXT("the combined Lang Duan play emits one direct packet and one Bleed packet"), Result.DamageResults.Num(), 2);
 
 	TArray<FGameXXKCardDamageResult> RoundBoundaryDamage;

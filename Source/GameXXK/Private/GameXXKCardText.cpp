@@ -1090,7 +1090,7 @@ namespace
 		case EGameXXKBladeFinishRule::DrawOnFirstThreeBleedTriggers:
 			return TEXT("下回合最先3次流血各抽1张。");
 		case EGameXXKBladeFinishRule::HealBladeBleedCapTwelve:
-			return TEXT("下回合结束前刀客触发的流血回复等量生命（累计上限12）。");
+			return TEXT("下回合结束前刀客触发的流血回复等量生命（累计上限按基础系数20、品质和队伍等级结算）。");
 		case EGameXXKBladeFinishRule::ReturnFirstActiveAgainstBleeding:
 			return TEXT("下回合首张以流血敌人为目标的牌结算后返回手牌。");
 		case EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay:
@@ -1146,7 +1146,7 @@ namespace
 
 		if (EffectiveDefinition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.BloodEdge")))
 		{
-			Lines.Add(TEXT("血势：每层目标流血使本段攻击倍率+10%。"));
+			Lines.Add(TEXT("血势：每点目标流血使本段攻击倍率+2个百分点。"));
 		}
 		if (EffectiveDefinition.ProfessionArchetypeIds.Contains(TEXT("Archetype.Blade.MomentumBreak")))
 		{

@@ -329,10 +329,10 @@ bool FGameXXKZhanJinKillRefundRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Zhan Jin emits one killing packet"), Result.DamageResults.Num(), 1);
 	if (Result.DamageResults.Num() == 1)
 	{
-		TestEqual(TEXT("Zhan Jin combines two-layer Momentum multiplier with its base attack"),
-			Result.DamageResults[0].BaseRequestedDamage, 44);
-		TestEqual(TEXT("Zhan Jin also receives two flat Momentum damage"),
-			Result.DamageResults[0].RequestedDamage, 46);
+		TestEqual(TEXT("ZhanJin combines base300 and two Momentum for 320 percent"),
+			Result.DamageResults[0].BaseRequestedDamage, 64);
+		TestEqual(TEXT("ZhanJin then adds two flat Momentum damage"),
+			Result.DamageResults[0].RequestedDamage, 66);
 		TestEqual(TEXT("Zhan Jin completes the kill"), Result.DamageResults[0].TargetHealthAfter, 0);
 	}
 	Blade = FindUnit(Runtime, BladeUnitId);

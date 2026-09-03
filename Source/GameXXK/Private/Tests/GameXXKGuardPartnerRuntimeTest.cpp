@@ -42,7 +42,7 @@ namespace GameXXKGuardPartnerRuntimeTest
 		return Card;
 	}
 
-	bool BuildRuntime(FAutomationTestBase& Test, const TArray<FGameXXKCardInstance>& Cards, FGameXXKCardBattleRuntime& OutRuntime, const int32 Seed)
+	bool BuildRuntime(FAutomationTestBase& Test, const TArray<FGameXXKCardInstance>& Cards, FGameXXKCardBattleRuntime& OutRuntime, const int32 Seed, const int32 GuardDefense = 0)
 	{
 		const TArray<FGameXXKCardCombatUnit> Units = {
 			MakeUnit(GuardId, EGameXXKCardTargetSide::Party, 1),
@@ -61,6 +61,10 @@ namespace GameXXKGuardPartnerRuntimeTest
 		OutRuntime.Deck.DiscardPile.Reset();
 		OutRuntime.Deck.ExhaustPile.Reset();
 		OutRuntime.Deck.SharedEnergy = 20;
+		for (FGameXXKCardCombatUnit& Unit : OutRuntime.Units)
+		{
+			if (Unit.UnitId == GuardId) Unit.Defense = GuardDefense;
+		}
 		if (!GameXXKCardRules::ValidateCardBattleRuntime(OutRuntime, &Error))
 		{
 			Test.AddError(FString::Printf(TEXT("Guard partner fixture validates: %s"), *Error));
@@ -109,15 +113,15 @@ bool FGameXXKGuardPartnerCoreProtectionRuntimeTest::RunTest(const FString& Param
 		MakeCard(TEXT("TieBi"), TEXT("Profession.Guard.TieBi"), 0),
 		MakeCard(TEXT("HuZhu"), TEXT("Profession.Guard.HuZhu"), 1)};
 	FGameXXKCardBattleRuntime Runtime;
-	if (!BuildRuntime(*this, Cards, Runtime, 71001)) return false;
+	if (!BuildRuntime(*this, Cards, Runtime, 71001, 20)) return false;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("TieBi"), NAME_None, Result)) return true;
-	TestEqual(TEXT("铁壁精确获得14护甲"), Unit(Runtime, GuardId)->Armor, 14);
+	TestEqual(TEXT("铁壁按防御20的80%获得16护甲"), Unit(Runtime, GuardId)->Armor, 16);
 	TestEqual(TEXT("铁壁精确获得1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 1);
 	TestEqual(TEXT("铁壁为守卫叠加1层嘲讽标记"), Status(Runtime, GuardId, EGameXXKCardStatus::Mark), 1);
 	if (!Resolve(*this, Runtime, TEXT("HuZhu"), AllyAId, Result)) return true;
-	TestEqual(TEXT("护主为指定友军增加8护甲"), Unit(Runtime, AllyAId)->Armor, 8);
-	TestEqual(TEXT("护主为守卫本人再增加8护甲"), Unit(Runtime, GuardId)->Armor, 22);
+	TestEqual(TEXT("护主为指定友军增加16护甲"), Unit(Runtime, AllyAId)->Armor, 16);
+	TestEqual(TEXT("护主为守卫再增加16护甲"), Unit(Runtime, GuardId)->Armor, 32);
 	TestEqual(TEXT("护主再增加1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 2);
 	TestEqual(TEXT("护主继续叠加1层嘲讽标记"), Status(Runtime, GuardId, EGameXXKCardStatus::Mark), 2);
 	TestTrue(TEXT("护主注册守卫保护指定友军一次"), HasGuardLink(Runtime, GuardId, AllyAId, 1));
@@ -135,21 +139,21 @@ bool FGameXXKGuardPartnerSelfProtectionEdgeRuntimeTest::RunTest(const FString& P
 	{
 		const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("HuZhu"), TEXT("Profession.Guard.HuZhu"), 0)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Cards, Runtime, 71002)) return false;
+		if (!BuildRuntime(*this, Cards, Runtime, 71002, 20)) return false;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("HuZhu"), GuardId, Result)) return true;
-		TestEqual(TEXT("护主选自己时两段基础护甲都结算"), Unit(Runtime, GuardId)->Armor, 16);
+		TestEqual(TEXT("护主选自己时两段16护甲都结算"), Unit(Runtime, GuardId)->Armor, 32);
 		TestEqual(TEXT("护主选自己时仍获得1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 1);
 		TestEqual(TEXT("护主选自己不会生成自指守护关系"), Runtime.GuardLinks.Num(), 0);
 	}
 	{
 		const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("YuanHu"), TEXT("Profession.Guard.YuanHuBu"), 0)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Cards, Runtime, 71003)) return false;
+		if (!BuildRuntime(*this, Cards, Runtime, 71003, 20)) return false;
 		Unit(Runtime, GuardId)->HP = 100;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("YuanHu"), NAME_None, Result)) return true;
-		TestEqual(TEXT("援护步自动选中自己时两段6护甲都结算"), Unit(Runtime, GuardId)->Armor, 12);
+		TestEqual(TEXT("援护步选自己时两段40%防御护甲都结算"), Unit(Runtime, GuardId)->Armor, 16);
 		TestEqual(TEXT("援护步自动选中自己时仍获得1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 1);
 		TestEqual(TEXT("援护步不会生成自指守护关系"), Runtime.GuardLinks.Num(), 0);
 	}
@@ -352,32 +356,32 @@ bool FGameXXKGuardPartnerAllArmorReleaseRuntimeTest::RunTest(const FString& Para
 	{
 		const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("ZhenYue"), TEXT("Profession.Guard.ZhenYueLing"), 0)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Cards, Runtime, 71005)) return false;
+		if (!BuildRuntime(*this, Cards, Runtime, 71005, 20)) return false;
 		Unit(Runtime, GuardId)->Armor = 4;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("ZhenYue"), NAME_None, Result)) return true;
 		TestEqual(TEXT("镇岳令对两名敌人各生成一个伤害包"), Result.DamageResults.Num(), 2);
 		for (const FGameXXKCardDamageResult& Damage : Result.DamageResults)
 		{
-			TestEqual(TEXT("镇岳令护甲4时挊160%攻击造成19点伤害"), Damage.BaseRequestedDamage, 19);
+			TestEqual(TEXT("镇岳令护甲4时按184%攻击造成22点伤害"), Damage.BaseRequestedDamage, 22);
 		}
 		for (const FName UnitId : {GuardId, AllyAId, AllyBId})
 		{
-			TestEqual(TEXT("镇岳令消耗旧护甲后为全队重建8护甲"), Unit(Runtime, UnitId)->Armor, 8);
+			TestEqual(TEXT("镇岳令按50%守卫防御为全队各重建10护甲"), Unit(Runtime, UnitId)->Armor, 10);
 			TestEqual(TEXT("镇岳令为全队获得1层格挡"), Status(Runtime, UnitId, EGameXXKCardStatus::Block), 1);
 		}
 	}
 	{
 		const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("BiLei"), TEXT("Profession.Guard.BiLeiFanGong"), 0)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Cards, Runtime, 71006)) return false;
+		if (!BuildRuntime(*this, Cards, Runtime, 71006, 20)) return false;
 		Unit(Runtime, GuardId)->Armor = 4;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("BiLei"), NAME_None, Result)) return true;
 		TestEqual(TEXT("壁垒反攻对两名敌人各生成一个伤害包"), Result.DamageResults.Num(), 2);
 		for (const FGameXXKCardDamageResult& Damage : Result.DamageResults)
 		{
-			TestEqual(TEXT("壁垒反攻护甲4时按200%攻击造成24点伤害"), Damage.BaseRequestedDamage, 24);
+			TestEqual(TEXT("壁垒反攻护甲4时按224%攻击造成26点伤害"), Damage.BaseRequestedDamage, 26);
 		}
 		TestEqual(TEXT("壁垒反攻消耗旧护甲后为自己重建10护甲"), Unit(Runtime, GuardId)->Armor, 10);
 		TestEqual(TEXT("壁垒反攻为自己获得1层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 1);
@@ -398,39 +402,39 @@ bool FGameXXKGuardPartnerConditionalAndRetentionRuntimeTest::RunTest(const FStri
 		const FGameXXKCardInstance PanShi = MakeCard(TEXT("PanShi"), TEXT("Profession.Guard.PanShiTuNa"), 0);
 		const FGameXXKCardInstance Drawn = MakeCard(TEXT("Drawn"), TEXT("Profession.Guard.TieBi"), 1);
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, {PanShi, Drawn}, Runtime, 71007)) return false;
+		if (!BuildRuntime(*this, {PanShi, Drawn}, Runtime, 71007, 20)) return false;
 		Runtime.Deck.Hand = {PanShi};
 		Runtime.Deck.DrawPile = {Drawn};
-		Unit(Runtime, GuardId)->Armor = 7;
+		Unit(Runtime, GuardId)->Armor = 0;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("PanShi"), NAME_None, Result)) return true;
-		TestEqual(TEXT("护甲低于8时磐石吐纳只增加6护甲"), Unit(Runtime, GuardId)->Armor, 13);
-		TestEqual(TEXT("低护甲分支不回复内力"), Unit(Runtime, GuardId)->Mana, 20);
-		TestEqual(TEXT("低护甲分支不抽牌"), Runtime.Deck.Hand.Num(), 0);
+		TestEqual(TEXT("零护甲时磐石吐纳按40%防御获得8护甲"), Unit(Runtime, GuardId)->Armor, 8);
+		TestEqual(TEXT("零护甲分支不回复内力"), Unit(Runtime, GuardId)->Mana, 20);
+		TestEqual(TEXT("零护甲分支不抽牌"), Runtime.Deck.Hand.Num(), 0);
 	}
 	{
 		const FGameXXKCardInstance PanShi = MakeCard(TEXT("PanShi"), TEXT("Profession.Guard.PanShiTuNa"), 0);
 		const FGameXXKCardInstance Drawn = MakeCard(TEXT("Drawn"), TEXT("Profession.Guard.TieBi"), 1);
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, {PanShi, Drawn}, Runtime, 71008)) return false;
+		if (!BuildRuntime(*this, {PanShi, Drawn}, Runtime, 71008, 20)) return false;
 		Runtime.Deck.Hand = {PanShi};
 		Runtime.Deck.DrawPile = {Drawn};
-		Unit(Runtime, GuardId)->Armor = 8;
+		Unit(Runtime, GuardId)->Armor = 1;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("PanShi"), NAME_None, Result)) return true;
-		TestEqual(TEXT("护甲不低于8时不再增加护甲"), Unit(Runtime, GuardId)->Armor, 8);
-		TestEqual(TEXT("高护甲分支回复5内力"), Unit(Runtime, GuardId)->Mana, 25);
-		TestTrue(TEXT("高护甲分支抽1张"), Runtime.Deck.Hand.ContainsByPredicate([](const FGameXXKCardInstance& Card) { return Card.InstanceId == TEXT("Drawn"); }));
+		TestEqual(TEXT("一护甲已足够进入资源分支且不再加甲"), Unit(Runtime, GuardId)->Armor, 1);
+		TestEqual(TEXT("正护甲分支回复5内力"), Unit(Runtime, GuardId)->Mana, 25);
+		TestTrue(TEXT("正护甲分支抽1张"), Runtime.Deck.Hand.ContainsByPredicate([](const FGameXXKCardInstance& Card) { return Card.InstanceId == TEXT("Drawn"); }));
 	}
 	{
 		const TArray<FGameXXKCardInstance> Cards = {MakeCard(TEXT("BuDong"), TEXT("Profession.Guard.BuDongRuShan"), 0)};
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Cards, Runtime, 71009)) return false;
+		if (!BuildRuntime(*this, Cards, Runtime, 71009, 20)) return false;
 		Unit(Runtime, GuardId)->Armor = 5;
 		Unit(Runtime, AllyAId)->Armor = 7;
 		FGameXXKCardPlayResult Result;
 		if (!Resolve(*this, Runtime, TEXT("BuDong"), NAME_None, Result)) return true;
-		TestEqual(TEXT("不动如山增加36护甲"), Unit(Runtime, GuardId)->Armor, 41);
+		TestEqual(TEXT("不动如山按防御20的200%增加40护甲"), Unit(Runtime, GuardId)->Armor, 45);
 		TestEqual(TEXT("不动如山获得3层格挡"), Status(Runtime, GuardId, EGameXXKCardStatus::Block), 3);
 		TestEqual(TEXT("不动如山只登记一名护甲保留单位"), Runtime.RetainArmorAtNextPartyPhaseUnitIds.Num(), 1);
 		TestTrue(TEXT("不动如山保留的是守卫自身"), Runtime.RetainArmorAtNextPartyPhaseUnitIds.Contains(GuardId));
@@ -451,7 +455,7 @@ bool FGameXXKGuardPartnerConditionalAndRetentionRuntimeTest::RunTest(const FStri
 		{
 			return true;
 		}
-		TestEqual(TEXT("不动如山让守卫在下一玩家阶段完整保留41护甲"), Unit(Runtime, GuardId)->Armor, 41);
+		TestEqual(TEXT("不动如山在下一玩家阶段完整保留45护甲"), Unit(Runtime, GuardId)->Armor, 45);
 		TestEqual(TEXT("不动如山不替其他友军保留护甲"), Unit(Runtime, AllyAId)->Armor, 0);
 		TestEqual(TEXT("护甲保留凭据在一次阶段边界后清空"), Runtime.RetainArmorAtNextPartyPhaseUnitIds.Num(), 0);
 	}

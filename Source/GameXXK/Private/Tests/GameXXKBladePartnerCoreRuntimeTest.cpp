@@ -161,10 +161,10 @@ bool FGameXXKBladePartnerLieFengChargeReplayTest::RunTest(const FString& Paramet
 	if (Result.DamageResults.Num() == 2)
 	{
 		TestEqual(TEXT("Lie Feng base deals exactly one-hundred-percent attack"), Result.DamageResults[0].HealthDamage, 10);
-		TestEqual(TEXT("Lie Feng's newly applied Bleed triggers for one damage"), Result.DamageResults[1].HealthDamage, 1);
-		TestEqual(TEXT("the Bleed trigger consumes its one applied layer"), Result.DamageResults[1].StatusStacksConsumed, 1);
+		TestEqual(TEXT("LieFeng coefficient one generates and triggers two Bleed at level one"), Result.DamageResults[1].HealthDamage, 2);
+		TestEqual(TEXT("the Bleed trigger preserves its generated reservoir"), Result.DamageResults[1].StatusStacksConsumed, 0);
 	}
-	TestEqual(TEXT("Lie Feng's direct hit and Bleed leave the exact target health"), FindUnit(Runtime, EnemyUnitId)->HP, 989);
+	TestEqual(TEXT("LieFeng deals ten direct plus two Bleed damage"), FindUnit(Runtime, EnemyUnitId)->HP, 988);
 	TestEqual(TEXT("Lie Feng is the first active card"), Runtime.ActiveCardsPlayedThisRound, 1);
 	TestEqual(TEXT("Lie Feng registers its declarative Charge"),
 		Runtime.PendingBladeCharge.Rule,
@@ -180,7 +180,7 @@ bool FGameXXKBladePartnerLieFengChargeReplayTest::RunTest(const FString& Paramet
 		return true;
 	}
 
-	TestEqual(TEXT("the next active base resolves once and its replay resolves once"), FindUnit(Runtime, EnemyUnitId)->HP, 957);
+	TestEqual(TEXT("HeYu active and replay each deal sixteen direct plus two Bleed plus two explicit DOT"), FindUnit(Runtime, EnemyUnitId)->HP, 948);
 	TestEqual(TEXT("the replay is reported as one automatic resolution"), Result.AutomaticResolutionCount, 1);
 	TestEqual(TEXT("the replay does not count as another active card"), Runtime.ActiveCardsPlayedThisRound, 2);
 	TestEqual(TEXT("the replay spends no additional shared energy"), Runtime.Deck.SharedEnergy, EnergyBeforeNext - 1);

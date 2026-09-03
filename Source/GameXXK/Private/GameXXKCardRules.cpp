@@ -4299,7 +4299,8 @@ namespace
 			&& !Finish.bTriggeredForCurrentEnemyCard;
 		const bool bBleedHealingRule = Finish.Rule == EGameXXKBladeFinishRule::HealBladeBleedCapTwelve
 			&& Finish.RemainingTriggers >= 1
-			&& Finish.RemainingTriggers <= 12
+			&& Finish.RemainingTriggers <= FGameXXKCombatScalingRules::ResolveDotAddition(
+				20, Finish.SourceQuality, Runtime.TeamMaxLevelSnapshot)
 			&& bNoProtectedStatus
 			&& !Finish.bTriggeredForCurrentEnemyCard;
 		const FGameXXKCardCombatUnit* ProtectedTarget = FindCombatUnitById(Runtime.Units, Finish.ProtectedTargetUnitId);
@@ -8746,7 +8747,7 @@ namespace
 				const int64 HitPercent = FMath::Min<int64>(
 					MAX_int32,
 					Percent
-						+ static_cast<int64>(LiveBleedStacks) * 10
+						+ static_cast<int64>(LiveBleedStacks) * 2
 						+ (bMomentumBreakAttack ? static_cast<int64>(MomentumAtPacketStart) * 10 : 0));
 				const int64 RawDamage = static_cast<int64>(HitOwner->Attack) * HitPercent / 100 + FlatDamage;
 				if (RawDamage <= 0 || RawDamage > MAX_int32 || IgnoredDefense < 0 || IgnoredDefense > MAX_int32)
@@ -8861,7 +8862,8 @@ namespace
 				{
 					break;
 				}
-				const int64 ExtraHitPercent = static_cast<int64>(50)
+				const int64 ExtraHitPercent = static_cast<int64>(
+					FGameXXKCombatScalingRules::ScaleContinuousCeil(50, Instance.CurrentQuality))
 					+ (bMomentumBreakAttack ? static_cast<int64>(MomentumAtPacketStart) * 10 : 0)
 					+ TriggeredAttackBonusPercent;
 				const int64 ExtraRawDamage = static_cast<int64>(ExtraHitOwner->Attack) * ExtraHitPercent / 100 + FlatDamage;
@@ -12842,7 +12844,9 @@ namespace
 		}
 		else if (Finish.Rule == EGameXXKBladeFinishRule::HealBladeBleedCapTwelve)
 		{
-			Finish.RemainingTriggers = 12;
+			// Keep the serialized enum name; the remaining healing budget now uses coefficient twenty.
+			Finish.RemainingTriggers = FGameXXKCombatScalingRules::ResolveDotAddition(
+				20, SourceSnapshot.Quality, InOutRuntime.TeamMaxLevelSnapshot);
 		}
 		else if (Finish.Rule == EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley)
 		{

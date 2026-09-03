@@ -101,7 +101,7 @@ bool FGameXXKBladePartnerCatalogTest::RunTest(const FString& Parameters)
 			{ Status(EGameXXKCardEffectTarget::CardOwner, EGameXXKCardStatus::Momentum, 2), Mana(4) } },
 		{ TEXT("Profession.Blade.ZhanJin"), TEXT("斩尽"), 3, 12, EGameXXKCardTargetMode::SingleEnemy, false, MomentumBreak,
 			EGameXXKBladeBaseRule::RefundCostsAndDrawOnKill, EGameXXKBladeChargeRule::CountNextActiveTwice, EGameXXKBladeFinishRule::CopyFirstKill,
-			{ Attack(200) } },
+			{ Attack(300) } },
 
 		{ TEXT("Profession.Blade.JieShiHuiFeng"), TEXT("借势回锋"), 1, 0, EGameXXKCardTargetMode::Self, false, Counterflow,
 			EGameXXKBladeBaseRule::None, EGameXXKBladeChargeRule::CopyNextActiveNextRound, EGameXXKBladeFinishRule::MarkAndReregisterCounterVolley,
@@ -121,7 +121,7 @@ bool FGameXXKBladePartnerCatalogTest::RunTest(const FString& Parameters)
 			{ Attack(90) } },
 		{ TEXT("Profession.Blade.HengYunKaiFeng"), TEXT("横云开锋"), 2, 6, EGameXXKCardTargetMode::AllEnemies, false, Sheathed,
 			EGameXXKBladeBaseRule::OpenBladeResidualStyle, EGameXXKBladeChargeRule::DrawTwoAfterNextActive, EGameXXKBladeFinishRule::StoreChargeAsNativeStyle,
-			{ Attack(70, EGameXXKCardEffectTarget::AllEnemies) } },
+			{ Attack(100, EGameXXKCardEffectTarget::AllEnemies) } },
 		{ TEXT("Profession.Blade.LianXiGuiQiao"), TEXT("敛息归鞘"), 0, 0, EGameXXKCardTargetMode::Self, false, Sheathed,
 			EGameXXKBladeBaseRule::None, EGameXXKBladeChargeRule::DrawSameOwnerAfterNextActive, EGameXXKBladeFinishRule::StoreChargeAsNativeStyle,
 			{ Mana(3) } },
