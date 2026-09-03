@@ -8763,6 +8763,11 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	if (HandCardDetailTitle)
 	{
 		HandCardDetailTitle->SetText(TooltipTitle);
+		const EGameXXKCardQuality TitleQuality = TooltipQuality == EGameXXKCardQuality::Invalid && Definition ? Definition->BaseQuality : TooltipQuality;
+		const FLinearColor TitleColor = !Definition ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
+			: TitleQuality == EGameXXKCardQuality::Common ? FLinearColor::White
+			: FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
+		HandCardDetailTitle->SetColorAndOpacity(FSlateColor(TitleColor));
 		FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
 		TitleFont.Size = 22;
 		TitleFont.TypefaceFontName = TEXT("Bold");

@@ -10,6 +10,7 @@
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardQualityRules.h"
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UObject/UObjectGlobals.h"
 #include "Widgets/SWindow.h"
@@ -111,12 +112,13 @@ void UGameXXKCardTooltipWidget::ConfigureCard(
 	const FGameXXKCardPlayPreview* Preview,
 	const FGameXXKCardTooltipContext& Context)
 {
-	if (ConfiguredCardId != Definition.Id || ConfiguredQuality != Quality)
+	const EGameXXKCardQuality DisplayQuality = Quality == EGameXXKCardQuality::Invalid ? Definition.BaseQuality : Quality;
+	if (ConfiguredCardId != Definition.Id || ConfiguredQuality != DisplayQuality)
 	{
 		Inspection.Reset();
 	}
 	ConfiguredCardId = Definition.Id;
-	ConfiguredQuality = Quality;
+	ConfiguredQuality = DisplayQuality;
 	ConfiguredTitle = Definition.DisplayName;
 	CompactBody = GameXXKCardText::DescribeCompactTooltipBody(
 		Definition,
@@ -353,6 +355,10 @@ void UGameXXKCardTooltipWidget::RefreshPresentation(const bool bForce)
 		return;
 	}
 	TitleText->SetText(ConfiguredTitle);
+	const FLinearColor TitleColor = ConfiguredQuality == EGameXXKCardQuality::Common ? FLinearColor::White
+		: ConfiguredQuality == EGameXXKCardQuality::Invalid ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
+		: FGameXXKCardQualityRules::GetDisplayColor(ConfiguredQuality);
+	TitleText->SetColorAndOpacity(FSlateColor(TitleColor));
 	const FString& Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
 	FGameXXKCardTooltipPresentationStyle Style;
 	Style.bPillHelp = bPillHelpDisplayed;

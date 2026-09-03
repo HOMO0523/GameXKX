@@ -32,7 +32,12 @@
     "tooltip_typography": {
       "card_name": "22px heavy",
       "target_line": "14px bold",
-      "body": "13px"
+      "body": "13px",
+      "rarity_colors": {
+        "普通": "white",
+        "稀有": "blue",
+        "史诗": "purple"
+      }
     },
     "tooltip_interaction": {
       "default": "compact",

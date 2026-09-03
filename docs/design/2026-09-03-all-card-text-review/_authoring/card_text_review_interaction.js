@@ -2,7 +2,7 @@
 function interactivePreview(card, variant) {
   return `<details class="interaction-demo"><summary>交互预览：Shift详述 · Ctrl开关pill说明</summary>
   <div class="interactive-preview" tabindex="0" data-card-id="${esc(card.id)}" data-quality="${esc(variant.quality)}">
-    <div class="preview-card-name">${esc(card.name)}</div>
+    <div class="preview-card-name quality-name" data-quality="${esc(variant.quality)}">${esc(card.name)}</div>
     <div class="interaction-mode">简述</div><div class="interaction-content">
       <div class="target-line">${esc(variant.target_heading)}</div><div class="text">${copy(variant.compact)}</div>
     </div>
