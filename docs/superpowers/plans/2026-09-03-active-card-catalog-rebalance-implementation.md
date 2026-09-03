@@ -16,6 +16,7 @@
 - Work on `codex/overall-in-run-optimization` in the root checkout.
 - Preserve unrelated dirty assets and never stage them.
 - Use the exact CardIds and values in design sections 3, 4, and 6.
+- The Energy baseline is approved independently of 雷走 Attack candidates: `docs/superpowers/specs/2026-09-03-sorcerer-energy-cost-design.md`. Partner JuLing/LieFu cost 0, the other sixteen cost 1; Hero Mage costs 1/1/1/0. Preserve Mana, explicit Armor coefficients, free replays and post-completion refunds. The overall runtime pause remains.
 - The latest partner Ice revision in design section 6.3 and Mana-overflow formula in section 4.3.1 supersede the earlier 40%/80%-Defense base grants. Record the user-authored card behavior before resuming Task 6; do not use the first damage projection as current balance evidence.
 
 ## File map
@@ -257,7 +258,7 @@ Recovery audit refinement: this task must also migrate recognizable v33/early-v3
 
 - [ ] **Step 1: Add exact red catalog rows**
 
-Create one table-driven expected row for each Hero CardId. The first critical rows are:
+Create one table-driven expected row for each Hero CardId. Assert Hero Mage Energy 1/1/1/0 and Mana 3/0/3/0. HanXu at zero Energy rejects without granting Armor/Mana; at sufficient Energy it pays one and retains its explicit 40%-Defense Armor. Four active Mage cards pay three Energy, with no repeated payment on replay; GuiXu retains its next-Hero-only one-use discount. The first critical rows are:
 
 ```cpp
 struct FExpectedApprovedCard
@@ -401,13 +402,15 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 
 Assert task size 5, Fire conversion 2 points per Burn, Ice base 100 plus one per Armor, `ZhenShaZhen` base 320/Epic 448, and Formation unlock counts 12/14/16/18 at levels 1/5/10/15 with all six switch cards present at level 1.
 
-**雷走 direction amendment:** `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` records the user-approved one-hit identity and normal use of at most one Mark per enemy. Keep Common / 0 Energy / 4 Mana and a valid zero-Mark base hit; retire the old all-Mark volley. The 120/180/220 base candidates, positions 3-4 window, and Mark-3-then-one-240 starter reward remain under numeric review. Do not turn those provisional coefficients into a claimed approved catalog gate. 引雷's proposed Vulnerability reward is excluded; its current reward stays unchanged. Runtime execution remains paused for the existing overall review.
+Add exact approved Energy rows for all 18 partner Mage cards: only JuLing/LieFu are 0, all others 1 at every legal quality; Mana stays unchanged. With enough Mana/cards and no external gain/discount, start at Energy 3 and play 照见→引雷→周天→雷走→连霆: active Energy becomes 3/2/2/1/0, free replay keeps 0, and the reward raises it to 1. For 引雷→索敌→周天→雷走→连霆, starting at 3 rejects final 连霆 at zero Energy and 4/5 records, with no final effects/reward; starting at 4 completes and ends at 1. For 斗转→寒息→六合→冰鉴→霜镜, starting at 4 rejects final 霜镜; starting at 5 completes and ends at 0, including the free extra replay. Failure preserves the rejected card transaction, while earlier successful records remain. Keep the existing 24/72 per-ally 六合 grants with at least one available Energy; increased printed fees must not inflate explicit Armor. Preserve partial tasks across round boundaries and save/resume; no advance credit from future refunds.
+
+**雷走 direction amendment:** `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` records the user-approved one-hit identity and normal use of at most one Mark per enemy. Keep Common / 1 Energy / 4 Mana and a valid zero-Mark base hit; retire the old all-Mark volley. The 120/180/220 base candidates, positions 3-4 window, and Mark-3-then-one-240 starter reward remain under numeric review. Do not turn those provisional coefficients into a claimed approved catalog gate. 引雷's proposed Vulnerability reward is excluded; its current reward stays unchanged. Runtime execution remains paused for the existing overall review.
 
 Once the candidate numeric package is confirmed, cover the following through actual preview/commit and Universal replay tests, using the final approved coefficients if they change:
 
 - One effect against enemies with Marks 0/1/4 produces one hit per living enemy and leaves Marks 0/0/3 absent phase changes; it never fans out into 1/4 hits. At candidate values, positions 3-4 choose 120/220/220 respectively, while position 5 chooses 120/180/180. Multiply selected Attack coefficients by quality once, then use ordinary hit/Mark resolution.
 - Common/Rare/Epic and recorded positions 1-5 preserve the same hit count. A marked fourth-position Common candidate at Attack 495 versus level-135 Defense 146 produces one potential hit of 705; a following fifth-position 连霆 with three remaining Marks produces three hits of 150. Higher starting Mark count does not add 雷走 hits.
-- An active play pays its actual Mana cost; free task/斗转 replay pays none and retains the card's own original quality and recorded position, while reading current target Marks. Repeated already-recorded active cards do not reacquire sequence bonuses. 雷走 remains a direct-damage predecessor for 六合.
+- An active play pays its actual Energy and Mana costs; free task/斗转 replay pays neither and retains the card's own original quality and recorded position, while reading current target Marks. Repeated already-recorded active cards do not reacquire sequence bonuses. 雷走 remains a direct-damage predecessor for 六合.
 - Only 雷走 starter reward adds its reward Marks and executes its single reward hit. With the current candidate, initial Marks 0/3 become 2/5 after one 240%-base hit; old three 60% hits are not a valid replacement. A paused/resumed reward cannot seed or hit twice.
 - A 斗转 reward from zero Marks, with a fifth-position Common 雷走 as last Lightning record, adds two Marks, replays one 180%-base hit, then resolves one remaining 56%-Attack Epic 斗转 lightning hit. Candidate tiger damage is 557+98=655. Do not use the 220% fourth-position boost, grant 雷走's own starter reward, or promote the replayed Common card to Epic.
 - A hit that transitions an enemy clears that enemy's Marks before the following card; remaining old-phase Marks cannot feed 连霆 or 斗转. Mixed living/dead targets, Armor absorption, normal Mark consumption, and byte-stable save/resume follow the existing shared pipeline.
@@ -435,7 +438,7 @@ Also assert these boundaries through the real resolver:
 
 Add the latest 六合 base/sequence and Ice-reward cases to the actual Universal runtime/reward tests:
 
-- At Rare / TeamMaxLevel 100 / Mana 34/34, an active 0-Energy, 4-Mana ordinary 六合 pays first, restores 8, and grants Armor 24 to each living ally exactly once. It works even when it is the first Universal card and no Ice branch is locked yet. Only the caster's current Mana changes; every MaxMana and other allies' Mana remain unchanged.
+- At Rare / TeamMaxLevel 100 / Mana 34/34, an active 1-Energy, 4-Mana ordinary 六合 pays first, restores 8, and grants Armor 24 to each living ally exactly once. It works even when it is the first Universal card and no Ice branch is locked yet. Only the caster's current Mana changes; every MaxMana and other allies' Mana remain unchanged.
 - With a previous recorded non-direct-damage card, replace 8 with 16: active grant 72 per ally. A first record or a predecessor containing direct damage uses 8 even if the attack dealt zero HP damage. An interleaved other-owner card must not replace the previous Sorcerer record. Free replay at full Mana gives 48/96 for the locked ordinary/conditional branch, without paying 4 or recomputing predecessor from the latest chronological action.
 - Starting Mana 4, ordinary active 六合 ends Mana 8/34 with zero Armor for every ally; Mana 3 rejects without mutation. Fixed recovery 8/16 stays unchanged across legal qualities and levels; only actual overflow Armor is scaled. Vary allies' Mana, Defense, and level without recalculating their individual overflow. Exclude defeated recipients and never split one Armor budget among living allies.
 - The generic Ice overflow listener must not add a second owner-only grant after the composite group grant. Zero overflow produces zero group Armor. Preview, committed results, and a resumed paused queue must agree on one Mana recovery and one grant per recipient.
@@ -506,6 +509,8 @@ git commit -m "feat: rebalance npc and boss cards"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardOutcomePreviewWidgetTest.cpp`
 
 - [ ] **Step 1: Write red value-projection and text-parity tests**
+
+Verify all 22 Mage printed fees and effective-cost previews use the confirmed prices. Explicit discounts only alter payment. An unaffordable final card stays unavailable even when its prospective task reward returns Energy. Free queued replays do not rewrite printed costs. Regenerate card documentation so the old all-zero Universal rule cannot reappear.
 
 At TeamMaxLevel 100, assert coefficient-6 DOT previews 30/36/42 by quality and cap 100; coefficient-25 healing with owner Medicine 6 previews 155/186/217; Defense 358 produces the approved printed-cost Armor values; and fixed damage reflects quality plus source/target level difference while bypassing Defense. Assert card detail/compact/expanded text contains these resolved integers, contains no raw Defense percentage for a resolved Armor grant, does not call DOT a consumable layer, and matches the committed `FGameXXKCardPlayResult`/combat-log number.
 

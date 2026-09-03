@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T15:20:07+08:00
+updated_at: 2026-09-03T15:46:58+08:00
 source_commit: 8a78a66499cd2c37f048384c060384aa0f7f7987
-working_tree: Lightning single-hit direction confirmed; candidate coefficients projected and documented; overall runtime implementation remains paused
+working_tree: Mage Energy fees confirmed and synchronized; Lightning Attack coefficients remain candidates; overall runtime implementation remains paused
 ---
+
+> **2026-09-03 法师气力费用确认**：用户确认伙伴仅周天、照见0气，其余16张1气；主角炎／寒／雷／归为1／1／1／0气。内力费用和独立效果不变，寒序仍40%防御护甲。新增 `docs/superpowers/specs/2026-09-03-sorcerer-energy-cost-design.md`，同步总规格、速查、雷走设计、冰法账本前提、Plan 2/7和总入口，旧稿加历史费用提示。五张至少先付3气：3气周转、4气专精、5气爆发，阵赏返气在完成后到账。原生四雷＋周天、照见六合冰需4气，斗转四雷／六合冰需5气，主角四牌需3气。原单回合伤害表必须满足新预算，跨回合另算状态。费用已冻结，不代表雷走120/180/220/240或引雷易伤提案获批；运行时代码继续按整体讨论要求暂停。下方旧气力值均为历史。
 
 > **2026-09-03 雷走单次重击方向确认**：用户选择“单次重击、保留标记”。保留普通、0气/4内；每个敌人一次直接攻击，按普通命中消耗最多1层标记，余下标记可接连霆。新增 `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md`，同步总规格、Plan 2/7、计划总入口与法师速查表。120%无标记／180%有标记／第3～4位220%及先加3标记再一段240%的阵赏仍是数值候选；引雷“易伤2替换回气抽牌”未获本轮确认，不纳入计算。`Saved/HarnessReports/2026-09-03-lightning-single-hit-projection.py/.json/.md` 保存44组新旧同序、45组标记/序位/品质边界与斗转额外重放对照。百级495攻、老虎146防御固定条件下，候选定标完整任务3520、雷走3610、斗转按末位牌与顺序3814～4417；全史诗转阶段另算。已区分排序收益与形态增强，这些不是UE验证或胜率结论。运行时代码继续暂停，寒冰10%确认不变；下方旧雷走逐层落雷与固定3次阵赏数据保留为历史对照。
 
