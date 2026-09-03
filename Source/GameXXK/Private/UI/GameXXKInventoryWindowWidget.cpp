@@ -951,12 +951,16 @@ void UGameXXKInventoryWindowWidget::NativeTick(const FGeometry& MyGeometry, cons
 void UGameXXKInventoryWindowWidget::SynchronizeCardTooltipShiftState()
 {
 	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	const bool bControlDown = UGameXXKCardTooltipWidget::IsPhysicalControlDown();
+	const bool bEscapeDown = UGameXXKCardTooltipWidget::IsPhysicalEscapeDown();
+	const bool bWindowActive = UGameXXKCardTooltipWidget::IsOwnerWindowActive(this);
 	bCardTooltipShiftExpanded = bShiftExpanded;
-	for (UGameXXKCardTooltipWidget* Tooltip : HeroDeckTooltipWidgets)
+	for (int32 Index = 0; Index < HeroDeckTooltipWidgets.Num(); ++Index)
 	{
-		if (Tooltip)
+		if (UGameXXKCardTooltipWidget* Tooltip = HeroDeckTooltipWidgets[Index])
 		{
-			Tooltip->SetExpandedFromOwner(bShiftExpanded);
+			const UButton* Button = HeroDeckCardButtons.IsValidIndex(Index) ? HeroDeckCardButtons[Index].Get() : nullptr;
+			Tooltip->UpdateInspectionFromOwner(bWindowActive && Button && Button->IsHovered(), bShiftExpanded, bControlDown, bEscapeDown);
 		}
 	}
 }

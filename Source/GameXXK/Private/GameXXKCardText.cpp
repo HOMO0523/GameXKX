@@ -1,6 +1,7 @@
 #include "GameXXKCardText.h"
 
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKCardPillText.h"
 
 namespace
 {
@@ -1449,6 +1450,102 @@ namespace
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
+	FString DescribeTooltipRules(const FGameXXKCardDefinition& Definition, const FGameXXKCardTooltipContext& Context)
+	{
+		TArray<FString> RawLines;
+		DescribeEffectsResolved(Definition, Context.CurrentTerrain).ParseIntoArrayLines(RawLines, false);
+		TArray<FString> Lines;
+		TArray<FString> TargetLines;
+		GameXXKCardText::DescribeTarget(Definition.TargetSpec).ParseIntoArrayLines(TargetLines, false);
+		// Only the old heading moves. Eligibility and conditional target rules remain card prose.
+		for (int32 Index = 1; Index < TargetLines.Num(); ++Index) Lines.Add(TargetLines[Index]);
+		switch (Definition.TargetSpec.Mode)
+		{
+		case EGameXXKCardTargetMode::Self:
+			if (GameXXKCardText::DescribeTargetHeading(Definition) == TEXT("单体友方")) Lines.AddUnique(TEXT("基础效果仅作用于自身。"));
+			break;
+		case EGameXXKCardTargetMode::OtherAlly: Lines.AddUnique(TEXT("不能选择出牌者自身")); break;
+		case EGameXXKCardTargetMode::AllOtherAllies: Lines.AddUnique(TEXT("不包含自身。")); break;
+		case EGameXXKCardTargetMode::RandomEnemy: Lines.AddUnique(TEXT("随机选择一名敌方。")); break;
+		case EGameXXKCardTargetMode::LowestHealthAlly: Lines.AddUnique(TEXT("自动选择生命最低的友方。")); break;
+		case EGameXXKCardTargetMode::LowestHealthOtherAlly: Lines.AddUnique(TEXT("自动选择生命最低的其他友方。")); break;
+		default: break;
+		}
+		const TCHAR* BranchPrefix = nullptr;
+		switch (Context.LockedSpellBranch)
+		{
+		case EGameXXKSorcererTaskBranch::Normal: BranchPrefix = TEXT("阵赏·普通："); break;
+		case EGameXXKSorcererTaskBranch::Fire: BranchPrefix = TEXT("阵赏·炎法："); break;
+		case EGameXXKSorcererTaskBranch::Ice: BranchPrefix = TEXT("阵赏·寒冰："); break;
+		case EGameXXKSorcererTaskBranch::Lightning: BranchPrefix = TEXT("阵赏·雷法："); break;
+		default: break;
+		}
+		for (FString Line : RawLines)
+		{
+			if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal && BranchPrefix)
+			{
+				if (Line.StartsWith(TEXT("阵赏·")) && !Line.StartsWith(BranchPrefix)) continue;
+				if (Line.StartsWith(TEXT("标准寒冰伤害：")) && Context.LockedSpellBranch != EGameXXKSorcererTaskBranch::Ice) continue;
+			}
+			if (Line.StartsWith(TEXT("法术任务：")) || Line.StartsWith(TEXT("阵法：携带的5张法师牌")))
+			{
+				Lines.AddUnique(TEXT("法术任务"));
+				continue;
+			}
+			if (Line.StartsWith(TEXT("任务分支：")))
+			{
+				Lines.AddUnique(TEXT("通用"));
+				continue;
+			}
+			if (Line.StartsWith(TEXT("药效：下一次治疗"))
+				|| Line.StartsWith(TEXT("反击：敌方单体攻击牌结算后"))
+				|| Line.StartsWith(TEXT("格挡：敌方单体攻击牌结算后"))
+				|| Line == TEXT("地势：按当前地势触发对应效果。")
+				|| Line == TEXT("冲锋：此牌是本回合第一张主动牌打出时触发。")
+				|| Line == TEXT("收招：此牌是本回合最后一张主动牌时触发。")
+				|| Line == TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。")
+				|| Line == TEXT("藏式：下回合第一张主动牌消耗；未消耗则回合末失效。")) continue;
+			if (Line.StartsWith(TEXT("血势："))) { Lines.AddUnique(TEXT("血势")); continue; }
+			if (Line.StartsWith(TEXT("乘势："))) { Lines.AddUnique(TEXT("乘势")); continue; }
+			Line.ReplaceInline(TEXT("消耗：打出后进入本局消耗区。"), TEXT("消耗"));
+			Line.ReplaceInline(TEXT("冲锋效果："), TEXT("冲锋："));
+			Line.ReplaceInline(TEXT("收招效果："), TEXT("收招："));
+			Line.ReplaceInline(TEXT("冲锋：此牌是本回合第一张主动牌打出时，"), TEXT("冲锋："));
+			Line.ReplaceInline(TEXT("收招：此牌是本回合最后一张主动牌时，"), TEXT("收招："));
+			if (Line.StartsWith(TEXT("重箭效果：")))
+			{
+				const bool bBeforeBase = Definition.HeavyArrow.LockTiming == EGameXXKHeavyArrowLockTiming::BeforeBaseEffects;
+				Line.ReplaceInline(TEXT("重箭效果："), bBeforeBase
+					? TEXT("重箭：消耗打出前的全部蓄力；") : TEXT("重箭：基础效果后，消耗全部蓄力；"));
+			}
+			Line.ReplaceInline(TEXT("药方：首次打出本牌时气力+1并激活，本局持续；"), TEXT("药方：首次额外消耗1气；"));
+			Line.ReplaceInline(TEXT("标准寒冰伤害"), TEXT("冰爆"));
+			Line.ReplaceInline(TEXT("；每次按当前层数造成生命伤害并减少1层"), TEXT(""));
+			Line.ReplaceInline(TEXT("守护"), TEXT("援护"));
+			Line.ReplaceInline(TEXT("地形双效"), TEXT("地势双效"));
+			Line.ReplaceInline(TEXT("地形免耗"), TEXT("地势免耗"));
+			Line.ReplaceInline(TEXT("地形减耗"), TEXT("地势减耗"));
+			Lines.Add(MoveTemp(Line));
+		}
+		if (!Definition.TaskNpcRewardEffects.IsEmpty())
+		{
+			Lines.Add(TEXT("阵赏：") + DescribeEffectArray(Definition.TaskNpcRewardEffects));
+			Lines.AddUnique(TEXT("法术任务"));
+		}
+		FString Text = FString::Join(Lines, TEXT("\n"));
+		Text.ReplaceInline(TEXT("守护"), TEXT("援护"));
+		Text.ReplaceInline(TEXT("；每次按当前层数造成生命伤害并减少1层"), TEXT(""));
+		const EGameXXKCardStatus RequiredStatus = Definition.TargetSpec.RequiredStatus;
+		if (RequiredStatus == EGameXXKCardStatus::Bleed || RequiredStatus == EGameXXKCardStatus::Poison
+			|| RequiredStatus == EGameXXKCardStatus::Burn || RequiredStatus == EGameXXKCardStatus::DamageOverTime)
+		{
+			const FString Previous = FString::Printf(TEXT("目标需具有%s%d层"), *DescribeStatus(RequiredStatus), Definition.TargetSpec.RequiredStatusMinimumStacks);
+			const FString Updated = FString::Printf(TEXT("目标需具有至少%d点%s"), Definition.TargetSpec.RequiredStatusMinimumStacks, *DescribeStatus(RequiredStatus));
+			Text.ReplaceInline(*Previous, *Updated);
+		}
+		return Text;
+	}
+
 	constexpr int32 CompactTooltipMaximumLineLength = 48;
 	constexpr int32 CompactTooltipMaximumEffectLines = 3;
 	constexpr int32 CompactTooltipMaximumTotalLines = 7;
@@ -1491,17 +1588,6 @@ namespace
 			}
 		}
 		return Trimmed.Left(FMath::Max(1, CutIndex)).TrimEnd() + TEXT("…");
-	}
-
-	FString DescribeCompactTargetMode(const EGameXXKCardTargetMode Mode)
-	{
-		FString Target = DescribeTargetMode(Mode);
-		int32 AnnotationIndex = INDEX_NONE;
-		if (Target.FindChar(TEXT('（'), AnnotationIndex) && AnnotationIndex > 0)
-		{
-			Target = Target.Left(AnnotationIndex);
-		}
-		return Target;
 	}
 
 	bool IsCompactTooltipKeywordLine(const FString& Line)
@@ -1619,14 +1705,12 @@ namespace
 			TEXT("费用：%d 气 · %d 内"),
 			EffectiveDefinition.EnergyCost,
 			EffectiveDefinition.ManaCost));
-		Lines.Add(FString::Printf(
-			TEXT("目标：%s"),
-			*DescribeCompactTargetMode(EffectiveDefinition.TargetSpec.Mode)));
+		Lines.Add(GameXXKCardText::DescribeTargetHeading(EffectiveDefinition));
 
 		TArray<FString> BaseEffectLines;
 		TArray<FString> KeywordLines;
 		TArray<FString> RawEffectLines;
-		DescribeEffectsResolved(EffectiveDefinition, Context.CurrentTerrain).ParseIntoArrayLines(
+		DescribeTooltipRules(EffectiveDefinition, Context).ParseIntoArrayLines(
 			RawEffectLines,
 			false);
 		for (const FString& RawLine : RawEffectLines)
@@ -1686,7 +1770,7 @@ namespace
 		{
 			Lines.RemoveAt(Lines.Num() - 1);
 		}
-		Lines.Add(TEXT("Shift：查看完整规则"));
+		Lines.Add(TEXT("Shift：详述 · Ctrl：Pill说明"));
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
@@ -1704,10 +1788,10 @@ namespace
 			TEXT("费用：%d 气 / %d 内"),
 			EffectiveDefinition.EnergyCost,
 			EffectiveDefinition.ManaCost));
-		Lines.Add(GameXXKCardText::DescribeTarget(EffectiveDefinition.TargetSpec));
+		Lines.Add(GameXXKCardText::DescribeTargetHeading(EffectiveDefinition));
 		Lines.Add(FString::Printf(
 			TEXT("效果：\n%s"),
-			*DescribeEffectsResolved(EffectiveDefinition, Context.CurrentTerrain)));
+			*DescribeTooltipRules(EffectiveDefinition, Context)));
 		if (Preview)
 		{
 			Lines.Add(DescribePreviewState(*Preview));
@@ -1727,6 +1811,92 @@ namespace
 FString GameXXKCardText::DescribeStatusName(const EGameXXKCardStatus Status)
 {
 	return DescribeStatus(Status);
+}
+
+FString GameXXKCardText::DescribeTargetHeading(const FGameXXKCardDefinition& Definition)
+{
+	const EGameXXKCardTargetMode Mode = Definition.TargetSpec.Mode;
+	if (Mode == EGameXXKCardTargetMode::AnyLivingUnit) return TEXT("单体友方/敌方");
+	TArray<FString> Labels;
+	const auto AddMode = [&Labels](const EGameXXKCardTargetMode TargetMode)
+	{
+		switch (TargetMode)
+		{
+		case EGameXXKCardTargetMode::SingleEnemy:
+		case EGameXXKCardTargetMode::RandomEnemy: Labels.AddUnique(TEXT("单体敌方")); break;
+		case EGameXXKCardTargetMode::AllEnemies: Labels.AddUnique(TEXT("全体敌方")); break;
+		case EGameXXKCardTargetMode::AllAllies:
+		case EGameXXKCardTargetMode::AllOtherAllies: Labels.AddUnique(TEXT("全体友方")); break;
+		case EGameXXKCardTargetMode::Self:
+		case EGameXXKCardTargetMode::SingleAlly:
+		case EGameXXKCardTargetMode::OtherAlly:
+		case EGameXXKCardTargetMode::LowestHealthAlly:
+		case EGameXXKCardTargetMode::LowestHealthOtherAlly: Labels.AddUnique(TEXT("单体友方")); break;
+		default: break;
+		}
+	};
+	if (Mode != EGameXXKCardTargetMode::Self && Mode != EGameXXKCardTargetMode::None) AddMode(Mode);
+	for (const FGameXXKCardEffect& Effect : Definition.Effects)
+	{
+		if (Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor) Labels.AddUnique(TEXT("全体敌方"));
+		if (Effect.Type == EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss)
+		{
+			Labels.AddUnique(TEXT("全体友方"));
+			continue;
+		}
+		if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit
+			|| (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier && Effect.Modifier.EffectType == EGameXXKCardEffectType::TriggerTerrainBenefit))
+		{
+			const EGameXXKCardTerrain Terrain = Effect.TerrainOverride;
+			if (Terrain == EGameXXKCardTerrain::Invalid) Labels.AddUnique(TEXT("全体友方"));
+			if (Terrain == EGameXXKCardTerrain::Invalid || Terrain == EGameXXKCardTerrain::Plain || Terrain == EGameXXKCardTerrain::Cliff)
+				Labels.AddUnique(TEXT("全体敌方"));
+			else Labels.AddUnique(TEXT("全体友方"));
+			continue;
+		}
+		if (Effect.Type == EGameXXKCardEffectType::DrawCards || Effect.Type == EGameXXKCardEffectType::GainEnergy
+			|| Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier || Effect.Type == EGameXXKCardEffectType::ModifyEnergyCost
+			|| Effect.Type == EGameXXKCardEffectType::Insight || Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard
+			|| Effect.Type == EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard) continue;
+		if (Effect.Target == EGameXXKCardEffectTarget::CardOwner
+			&& (Effect.Type == EGameXXKCardEffectType::GainMana || Effect.Status == EGameXXKCardStatus::Medicine)
+			&& !Labels.IsEmpty()) continue;
+		switch (Effect.Target)
+		{
+		case EGameXXKCardEffectTarget::SelectedTarget: AddMode(Mode); break;
+		case EGameXXKCardEffectTarget::AllEnemies: Labels.AddUnique(TEXT("全体敌方")); break;
+		case EGameXXKCardEffectTarget::AllAllies:
+		case EGameXXKCardEffectTarget::AllOtherAllies:
+		case EGameXXKCardEffectTarget::EachLivingAlly: Labels.AddUnique(TEXT("全体友方")); break;
+		case EGameXXKCardEffectTarget::PriorityEnemy: Labels.AddUnique(TEXT("单体敌方")); break;
+		case EGameXXKCardEffectTarget::CardOwner:
+		case EGameXXKCardEffectTarget::LowestHealthAlly:
+		case EGameXXKCardEffectTarget::LowestHealthOtherAlly:
+		case EGameXXKCardEffectTarget::HighestArmorAlly:
+		case EGameXXKCardEffectTarget::HighestAttackAlly: Labels.AddUnique(TEXT("单体友方")); break;
+		default: break;
+		}
+	}
+	if (Labels.IsEmpty()) AddMode(Mode);
+	return Labels.IsEmpty() ? TEXT("无需选择对象") : FString::Join(Labels, TEXT(" · "));
+}
+
+FString GameXXKCardText::DescribePillTooltipBody(
+	const FGameXXKCardDefinition& Definition,
+	EGameXXKCardQuality Quality,
+	const FGameXXKCardTooltipContext& Context)
+{
+	const EGameXXKCardQuality ResolvedQuality = ResolveQuality(Definition, Quality);
+	const FGameXXKCardDefinition Effective = FGameXXKCardQualityRules::BuildEffectiveDefinition(Definition, ResolvedQuality);
+	FString Rules = DescribeTooltipRules(Effective, Context);
+	int32 TaskCardCount = 0;
+	if (Definition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None) TaskCardCount = 4;
+	if (Definition.SorcererRule.Family != EGameXXKSorcererCardFamily::None) TaskCardCount = 5;
+	if (!Definition.TaskNpcRewardEffects.IsEmpty())
+	{
+		TaskCardCount = 3;
+	}
+	return GameXXKCardPillText::DescribeHelp(Rules, ResolvedQuality, TaskCardCount);
 }
 
 FString GameXXKCardText::DescribeTarget(const FGameXXKCardTargetSpec& TargetSpec)

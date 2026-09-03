@@ -11,6 +11,9 @@ struct GAMEXXK_API FGameXXKCardTooltipContext
 
 	/** Live battle terrain used to resolve current-terrain benefit text. */
 	EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid;
+
+	/** None shows every possible reward; a locked branch hides the other rewards. */
+	EGameXXKSorcererTaskBranch LockedSpellBranch = EGameXXKSorcererTaskBranch::None;
 };
 
 /**
@@ -19,6 +22,13 @@ struct GAMEXXK_API FGameXXKCardTooltipContext
  */
 namespace GameXXKCardText
 {
+	/** Recipient labels only, rendered as a separate bold line. */
+	GAMEXXK_API FString DescribeTargetHeading(const FGameXXKCardDefinition& Definition);
+	/** Current-card keyword explanations, never appended to Shift detail. */
+	GAMEXXK_API FString DescribePillTooltipBody(
+		const FGameXXKCardDefinition& Definition,
+		EGameXXKCardQuality Quality,
+		const FGameXXKCardTooltipContext& Context);
 	/** One authoritative player-facing name for every serialized battle status. */
 	GAMEXXK_API FString DescribeStatusName(EGameXXKCardStatus Status);
 	GAMEXXK_API FString DescribeTarget(const FGameXXKCardTargetSpec& TargetSpec);

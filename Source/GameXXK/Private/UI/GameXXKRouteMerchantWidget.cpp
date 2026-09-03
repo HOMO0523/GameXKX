@@ -336,12 +336,19 @@ void UGameXXKRouteMerchantWidget::NativeTick(const FGeometry& MyGeometry, const 
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+	const bool bControlDown = UGameXXKCardTooltipWidget::IsPhysicalControlDown();
+	const bool bEscapeDown = UGameXXKCardTooltipWidget::IsPhysicalEscapeDown();
+	const bool bWindowActive = UGameXXKCardTooltipWidget::IsOwnerWindowActive(this);
 	bCardTooltipShiftExpanded = bShiftExpanded;
-	for (UGameXXKCardTooltipWidget* Tooltip : OfferCardTooltipWidgets)
+	for (int32 Index = 0; Index < OfferCardTooltipWidgets.Num(); ++Index)
 	{
-		if (Tooltip)
+		if (UGameXXKCardTooltipWidget* Tooltip = OfferCardTooltipWidgets[Index])
 		{
-			Tooltip->SetExpandedFromOwner(bShiftExpanded);
+			const UButton* Display = OfferDisplayButtons.IsValidIndex(Index) ? OfferDisplayButtons[Index].Get() : nullptr;
+			const UButton* Buy = OfferPurchaseButtons.IsValidIndex(Index) ? OfferPurchaseButtons[Index].Get() : nullptr;
+			const bool bHovered = (Display && Display->GetToolTip() == Tooltip && Display->IsHovered())
+				|| (Buy && Buy->GetToolTip() == Tooltip && Buy->IsHovered());
+			Tooltip->UpdateInspectionFromOwner(bWindowActive && bHovered, bShiftExpanded, bControlDown, bEscapeDown);
 		}
 	}
 }

@@ -12,6 +12,7 @@
 #include "GameXXKCardCatalog.h"
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UObject/UObjectGlobals.h"
+#include "Widgets/SWindow.h"
 
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
@@ -59,6 +60,38 @@ bool UGameXXKCardTooltipWidget::IsPhysicalShiftDown()
 #endif
 }
 
+bool UGameXXKCardTooltipWidget::IsPhysicalControlDown()
+{
+#if PLATFORM_WINDOWS
+	return (::GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0
+		|| (::GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
+#else
+	return FSlateApplication::IsInitialized()
+		&& FSlateApplication::Get().GetModifierKeys().IsControlDown();
+#endif
+}
+
+bool UGameXXKCardTooltipWidget::IsPhysicalEscapeDown()
+{
+#if PLATFORM_WINDOWS
+	return (::GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0;
+#else
+	return false;
+#endif
+}
+
+bool UGameXXKCardTooltipWidget::IsOwnerWindowActive(const UWidget* Owner)
+{
+	if (!Owner || !FSlateApplication::IsInitialized() || !FSlateApplication::Get().IsActive())
+	{
+		return false;
+	}
+	const TSharedPtr<SWidget> CachedWidget = Owner->GetCachedWidget();
+	const TSharedPtr<SWindow> Window = CachedWidget.IsValid()
+		? FSlateApplication::Get().FindWidgetWindow(CachedWidget.ToSharedRef()) : nullptr;
+	return Window.IsValid() && Window->IsActive();
+}
+
 void UGameXXKCardTooltipWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -78,18 +111,20 @@ void UGameXXKCardTooltipWidget::ConfigureCard(
 	const FGameXXKCardPlayPreview* Preview,
 	const FGameXXKCardTooltipContext& Context)
 {
+	if (ConfiguredCardId != Definition.Id || ConfiguredQuality != Quality)
+	{
+		Inspection.Reset();
+	}
+	ConfiguredCardId = Definition.Id;
+	ConfiguredQuality = Quality;
 	ConfiguredTitle = Definition.DisplayName;
 	CompactBody = GameXXKCardText::DescribeCompactTooltipBody(
 		Definition,
 		Quality,
 		Preview,
 		Context);
-	ExpandedBody = GameXXKCardTooltipPresentation::AppendStatusPillExplanations(
-		GameXXKCardText::DescribeExpandedTooltipBody(
-			Definition,
-			Quality,
-			Preview,
-			Context));
+	ExpandedBody = GameXXKCardText::DescribeExpandedTooltipBody(Definition, Quality, Preview, Context);
+	PillBody = GameXXKCardText::DescribePillTooltipBody(Definition, Quality, Context);
 	RefreshPresentation(true);
 }
 
@@ -98,6 +133,10 @@ void UGameXXKCardTooltipWidget::ConfigureDirect(
 	const FString& InCompactBody,
 	const FString& InExpandedBody)
 {
+	Inspection.Reset();
+	ConfiguredCardId = NAME_None;
+	ConfiguredQuality = EGameXXKCardQuality::Invalid;
+	PillBody.Reset();
 	ConfiguredTitle = InTitle;
 	CompactBody = RemoveLeadingTitleLine(InTitle.ToString(), InCompactBody);
 	ExpandedBody = RemoveLeadingTitleLine(
@@ -113,7 +152,7 @@ float UGameXXKCardTooltipWidget::GetFixedWidthForTest() const
 
 FString UGameXXKCardTooltipWidget::GetDisplayedTextForTest() const
 {
-	const FString Body = bExpanded ? ExpandedBody : CompactBody;
+	const FString Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
 	return ConfiguredTitle.IsEmpty()
 		? Body
 		: ConfiguredTitle.ToString() + TEXT("\n") + Body;
@@ -235,6 +274,16 @@ void UGameXXKCardTooltipWidget::SetExpandedFromOwner(const bool bInExpanded)
 	RefreshPresentation(true);
 }
 
+void UGameXXKCardTooltipWidget::UpdateInspectionFromOwner(
+	const bool bHovered, const bool bShiftDown, const bool bControlDown, const bool bEscapeDown)
+{
+	bUseExpandedOverrideForTest = false;
+	bUseOwnerExpandedState = true;
+	bOwnerExpandedState = bHovered && bShiftDown;
+	Inspection.Update(bHovered, bShiftDown, bControlDown, bEscapeDown);
+	RefreshPresentation(false);
+}
+
 void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 {
 	if (!WidgetTree || RootSizeBox)
@@ -269,8 +318,10 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 	TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	TitleText->SetJustification(ETextJustify::Left);
 	FSlateFontInfo TitleFont = TitleText->GetFont();
-	TitleFont.Size = 18;
+	TitleFont.Size = 22;
 	TitleFont.TypefaceFontName = TEXT("Bold");
+	TitleFont.OutlineSettings.OutlineSize = 1;
+	TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 	TitleText->SetFont(TitleFont);
 	TitleText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	Stack->AddChildToVerticalBox(TitleText);
@@ -289,22 +340,28 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 void UGameXXKCardTooltipWidget::RefreshPresentation(const bool bForce)
 {
 	const bool bResolvedExpanded = ResolveExpandedState();
-	if (!bForce && bExpanded == bResolvedExpanded)
+	const bool bResolvedPills = !bResolvedExpanded && !PillBody.IsEmpty()
+		&& Inspection.GetMode() == EGameXXKCardTooltipMode::Pills;
+	if (!bForce && bExpanded == bResolvedExpanded && bPillHelpDisplayed == bResolvedPills)
 	{
 		return;
 	}
 	bExpanded = bResolvedExpanded;
+	bPillHelpDisplayed = bResolvedPills;
 	if (!TitleText || !BodyBox || !WidgetTree)
 	{
 		return;
 	}
 	TitleText->SetText(ConfiguredTitle);
-	const FString& Body = bExpanded ? ExpandedBody : CompactBody;
+	const FString& Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
+	FGameXXKCardTooltipPresentationStyle Style;
+	Style.bPillHelp = bPillHelpDisplayed;
 	GameXXKCardTooltipPresentation::PopulateBody(
 		WidgetTree,
 		BodyBox,
 		ConfiguredTitle.ToString(),
-		Body);
+		Body,
+		Style);
 }
 
 bool UGameXXKCardTooltipWidget::ResolveExpandedState() const

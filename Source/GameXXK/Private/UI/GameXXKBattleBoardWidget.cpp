@@ -50,6 +50,7 @@
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UI/GameXXKCardTooltipWidget.h"
+#include "GameXXKCardPillText.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
@@ -454,22 +455,9 @@ namespace
 	/** Trait keywords rendered as pill chips at the start of a tooltip line. */
 	bool IsPillKeywordText(const FString& Prefix)
 	{
-		static const TArray<FString> PillKeywords = {
-			TEXT("冲锋"), TEXT("收招"), TEXT("藏式"), TEXT("开锋"),
-			TEXT("血势"), TEXT("乘势"), TEXT("重箭"),
-			TEXT("阵法"), TEXT("阵赏"), TEXT("编序"),
-			TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("药方"),
-			TEXT("地势"), TEXT("法术任务"),
-		};
-		const FString BasePrefix = Prefix.Left(Prefix.Find(TEXT("·"), ESearchCase::CaseSensitive, ESearchDir::FromStart, INDEX_NONE));
-		for (const FString& Keyword : PillKeywords)
-		{
-			if (Prefix == Keyword || BasePrefix == Keyword)
-			{
-				return true;
-			}
-		}
-		return false;
+		const int32 Dot = Prefix.Find(TEXT("·"));
+		const FString Base = Dot == INDEX_NONE ? Prefix : Prefix.Left(Dot);
+		return GameXXKCardPillText::IsKeyword(Base) || Base == TEXT("阵法");
 	}
 
 	bool TrySplitKeywordPill(const FString& Line, FString& OutKeyword, FString& OutRest)
@@ -483,7 +471,10 @@ namespace
 			: (FullColon == INDEX_NONE ? HalfColon : FMath::Min(HalfColon, FullColon));
 		if (ColonIndex <= 0)
 		{
-			return false;
+			if (!IsPillKeywordText(Line)) return false;
+			OutKeyword = Line;
+			OutRest.Reset();
+			return true;
 		}
 		const FString Prefix = Line.Left(ColonIndex);
 		// Sub-tagged variants (阵赏·炎法) keep their full prefix as the
@@ -563,14 +554,14 @@ namespace
 		const float StatusPillFontSize)
 	{
 		// Longer compound names first so e.g. 破绽免疫 never half-matches 破绽.
-		static const TArray<FString> StatusNames = {
-			TEXT("本回合地形双效"), TEXT("破绽免疫"), TEXT("追击标记"), TEXT("破绽追击"),
-			TEXT("疗愈增幅"), TEXT("地形双效"), TEXT("地形免耗"), TEXT("地形减耗"),
-			TEXT("护甲"), TEXT("蚀伤"), TEXT("流血"), TEXT("中毒"), TEXT("灼烧"),
-			TEXT("破绽"), TEXT("气势"), TEXT("灵动"), TEXT("标记"), TEXT("虚弱"),
-			TEXT("蓄力"), TEXT("反击"), TEXT("格挡"), TEXT("药效"), TEXT("守护"),
-			TEXT("代挡"),
-		};
+		static const TArray<FString> StatusNames = []
+		{
+			TArray<FString> Names = GameXXKCardPillText::InlineNames();
+			// Non-card tooltips may still use the serialized status names.
+			Names.Append({TEXT("本回合地形双效"), TEXT("地形双效"), TEXT("地形免耗"), TEXT("地形减耗"), TEXT("守护")});
+			Names.Sort([](const FString& A, const FString& B) { return A.Len() > B.Len(); });
+			return Names;
+		}();
 
 		/** Length of a trailing quantity run ("8层", "2点", "1回合", "5") or 0. */
 		const auto TrailingQuantityRunLength = [](const FString& S) -> int32
@@ -992,6 +983,22 @@ namespace
 			FString Rest;
 			TArray<FBodySegment> Segments;
 			bool bAbilityLine = false;
+			TArray<FString> TargetLabels;
+			Line.ParseIntoArray(TargetLabels, TEXT(" · "), false);
+			const bool bTargetHeading = !TargetLabels.IsEmpty() && !TargetLabels.ContainsByPredicate([](const FString& Label)
+			{
+				return Label != TEXT("单体友方") && Label != TEXT("单体敌方") && Label != TEXT("单体友方/敌方")
+					&& Label != TEXT("全体敌方") && Label != TEXT("全体友方") && Label != TEXT("无需选择对象");
+			});
+			if (bTargetHeading || Line == TEXT("本牌Pill说明"))
+			{
+				UHorizontalBox* HeadingRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
+				HeadingRow->SetVisibility(ESlateVisibility::HitTestInvisible);
+				HeadingRow->AddChildToHorizontalBox(MakeTextBlock(Line, Style.TargetFontSize, true));
+				if (UVerticalBoxSlot* Slot = BodyBox->AddChildToVerticalBox(HeadingRow)) Slot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 4.0f));
+				TotalEstimatedHeight += Style.RowHeight + 6.0f;
+				continue;
+			}
 			if (TrySplitKeywordPill(Line, Keyword, Rest))
 			{
 				bAbilityLine = true;
@@ -1003,13 +1010,22 @@ namespace
 				KeywordSegment.PillColor = ResolvePillFillColor(Keyword);
 				KeywordSegment.FontSize = Style.KeywordPillFontSize;
 				Segments.Add(KeywordSegment);
-				for (const FBodySegment& StatusSegment : SplitStatusSegments(
-					Rest,
-					StatusPillColor,
-					Style.StatusPillFontSize))
+				if (Style.bPillHelp)
 				{
-					Segments.Add(StatusSegment);
+					FBodySegment Prose;
+					Prose.Text = Rest;
+					Segments.Add(Prose);
 				}
+				else
+				{
+					Segments.Append(SplitStatusSegments(Rest, StatusPillColor, Style.StatusPillFontSize));
+				}
+			}
+			else if (Style.bPillHelp)
+			{
+				FBodySegment Prose;
+				Prose.Text = Line;
+				Segments.Add(Prose);
 			}
 			else
 			{
@@ -1385,9 +1401,18 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
-	if (bCardTooltipExpanded != bShiftExpanded)
+	const bool bTooltipWindowActive = UGameXXKCardTooltipWidget::IsOwnerWindowActive(this);
+	if (!bTooltipWindowActive && HoveredCardTooltipSource != ECardTooltipSource::None)
 	{
-		bCardTooltipExpanded = bShiftExpanded;
+		ClearCardTooltipHoverState();
+	}
+	if (CardTooltipInspection.Update(
+		bTooltipWindowActive && HoveredCardTooltipSource != ECardTooltipSource::None,
+		bShiftExpanded,
+		UGameXXKCardTooltipWidget::IsPhysicalControlDown(),
+		UGameXXKCardTooltipWidget::IsPhysicalEscapeDown()))
+	{
+		bCardTooltipExpanded = CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Detail;
 		if (HoveredCardTooltipSource != ECardTooltipSource::None)
 		{
 			RefreshCardTooltip();
@@ -8583,6 +8608,13 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	{
 		Context.CurrentTerrain = State->CardRun.ActiveBattle.Terrain;
 	}
+	const auto SetTaskBranch = [&Context, State](const FGameXXKCardInstance* Card)
+	{
+		if (!Card) return;
+		const FGameXXKSorcererPartnerTaskRuntime* Task = State->CardRun.ActiveBattle.SorcererPartnerTasks.FindByPredicate(
+			[Card](const FGameXXKSorcererPartnerTaskRuntime& Candidate) { return Candidate.bActive && Candidate.OwnerUnitId == Card->OwnerUnitId; });
+		if (Task) Context.LockedSpellBranch = Task->LockedBranch;
+	};
 
 	switch (HoveredCardTooltipSource)
 	{
@@ -8599,6 +8631,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		});
 		Definition = CardInstance ? FGameXXKCardCatalog::FindCardDefinition(CardInstance->CardId) : nullptr;
 		TooltipQuality = CardInstance ? CardInstance->CurrentQuality : EGameXXKCardQuality::Invalid;
+		SetTaskBranch(CardInstance);
 		break;
 	}
 	case ECardTooltipSource::PendingChoice:
@@ -8612,6 +8645,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			: nullptr;
 		Definition = Candidate ? FGameXXKCardCatalog::FindCardDefinition(Candidate->CardId) : nullptr;
 		TooltipQuality = Candidate ? Candidate->CurrentQuality : EGameXXKCardQuality::Invalid;
+		SetTaskBranch(Candidate);
 		if (Definition)
 		{
 			const bool bAddsToHand = HoveredPendingChoiceKind == EGameXXKCardPendingChoiceKind::InsightChooseToHand
@@ -8665,8 +8699,17 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		break;
 	}
 
-	// Unified concise format shared with the out-of-battle deck tooltips:
-	// 18pt ink title + 13pt concise description, no battle preview or context noise.
+	const FName HoveredInstance = HoveredCardTooltipSource == ECardTooltipSource::Hand && HandCardInstanceIds.IsValidIndex(HoveredHandCardSlot)
+		? HandCardInstanceIds[HoveredHandCardSlot] : HoveredCardTooltipId;
+	const FString InspectionKey = FString::Printf(TEXT("%d:%s:%d:%d"),
+		static_cast<int32>(HoveredCardTooltipSource), *HoveredInstance.ToString(), HoveredRewardCardSlot, static_cast<int32>(TooltipQuality));
+	if (CardTooltipInspectionKey != InspectionKey)
+	{
+		CardTooltipInspection.Reset();
+		bCardTooltipExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+		CardTooltipInspectionKey = InspectionKey;
+	}
+	// Shared typography: 22pt heavy title, 14pt bold recipient line, 13pt prose.
 	FText TooltipTitle;
 	FText TooltipBody;
 	if (DirectTooltipText.IsSet())
@@ -8692,8 +8735,11 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			const FString ExpandedBody = TooltipQuality == EGameXXKCardQuality::Invalid
 				? GameXXKCardText::DescribeExpandedTooltipBody(*Definition, nullptr, Context)
 				: GameXXKCardText::DescribeExpandedTooltipBody(*Definition, TooltipQuality, nullptr, Context);
-			TooltipBody = FText::FromString(
-				GameXXKCardTooltipPresentation::AppendStatusPillExplanations(ExpandedBody));
+			TooltipBody = FText::FromString(ExpandedBody);
+		}
+		else if (CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Pills)
+		{
+			TooltipBody = FText::FromString(GameXXKCardText::DescribePillTooltipBody(*Definition, TooltipQuality, Context));
 		}
 		else
 		{
@@ -8717,15 +8763,24 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	if (HandCardDetailTitle)
 	{
 		HandCardDetailTitle->SetText(TooltipTitle);
+		FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
+		TitleFont.Size = 22;
+		TitleFont.TypefaceFontName = TEXT("Bold");
+		TitleFont.OutlineSettings.OutlineSize = 1;
+		TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
+		HandCardDetailTitle->SetFont(TitleFont);
 	}
 	float PanelHeight = HandCardDetailPanelSize.Y;
 	if (HandCardDetailBody)
 	{
 		// Height follows the populated rows: title band + gap + measured
 		// wrapped body height + vertical padding + parchment bottom border.
+		FGameXXKCardTooltipPresentationStyle Style;
+		Style.bPillHelp = Definition && !bCardTooltipExpanded
+			&& CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Pills;
 		const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(
-			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString());
-		PanelHeight = 12.0f + 28.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
+			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString(), Style);
+		PanelHeight = 12.0f + 34.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
 	}
 
 	// Follow the hovered card slot instead of the fixed default anchor.
@@ -9329,6 +9384,9 @@ void UGameXXKBattleBoardWidget::SetHandCardHoverState(int32 SlotIndex, bool bHov
 
 void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 {
+	CardTooltipInspection.Reset();
+	CardTooltipInspectionKey.Reset();
+	bCardTooltipExpanded = false;
 	ClearCardOutcomePreview();
 	HoveredCardTooltipSource = ECardTooltipSource::None;
 	HoveredHandCardSlot = INDEX_NONE;

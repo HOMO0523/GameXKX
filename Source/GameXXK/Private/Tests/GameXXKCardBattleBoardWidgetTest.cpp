@@ -154,7 +154,8 @@ namespace
 		FName& OutOwnerUnitId,
 		FGameXXKCardPlayPreview& OutPreview,
 		FString& OutError,
-		const int32 EnemyCount = 1)
+		const int32 EnemyCount = 1,
+		const FName FixtureCardId = FName(TEXT("Route.General.PoJiaTuCi")))
 	{
 		OutCardInstanceId = NAME_None;
 		OutTargetUnitId = NAME_None;
@@ -191,12 +192,17 @@ namespace
 			}
 			if (!State.CardRun.ActiveBattle.Deck.Hand.IsEmpty())
 			{
-				State.CardRun.ActiveBattle.Deck.Hand[0].CardId = TEXT("Route.General.PoJiaTuCi");
+				State.CardRun.ActiveBattle.Deck.Hand[0].CardId = FixtureCardId;
+				const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(FixtureCardId);
+				if (Definition && Definition->Owner == EGameXXKCardOwner::Hero)
+				{
+					State.CardRun.ActiveBattle.Deck.Hand[0].OwnerUnitId = TEXT("Player");
+				}
 			}
 
 			for (const FGameXXKCardInstance& CardInstance : State.CardRun.ActiveBattle.Deck.Hand)
 			{
-				if (CardInstance.CardId != FName(TEXT("Route.General.PoJiaTuCi")))
+				if (CardInstance.CardId != FixtureCardId)
 				{
 					continue;
 				}
@@ -3758,6 +3764,9 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Parameters)
 {
+	// This UI-only fixture has no world/visual session; these four refreshes intentionally skip actor rendering.
+	AddExpectedMessagePlain(TEXT("[BattleVisual] RefreshUnitVisuals SKIPPED token=0 stage=1 tree=1 cache=0"),
+		ELogVerbosity::Warning, EAutomationExpectedMessageFlags::Contains, 4);
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	FName CardInstanceId;
@@ -3766,7 +3775,7 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	FGameXXKCardPlayPreview CardPreview;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("hover fixture enters a playable manual-target card battle: %s"), *Error),
-		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, CardPreview, Error));
+		BuildManualTargetCardFixture(Subsystem, CardInstanceId, TargetUnitId, OwnerUnitId, CardPreview, Error, 1, TEXT("Hero.Generic.QingFengYiShi")));
 
 	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
 	Board->SetMVPSubsystem(Subsystem);
@@ -3809,7 +3818,8 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	TestNotNull(TEXT("hover creates a readable card-detail body"), DetailBody);
 	TestEqual(TEXT("hover reveals the card-detail panel"), DetailPanel ? DetailPanel->GetVisibility() : ESlateVisibility::Collapsed, ESlateVisibility::HitTestInvisible);
 	const FString DetailText = Board->GetCardTooltipTextForTest();
-	TestTrue(TEXT("hover detail explains the target instruction"), DetailText.Contains(TEXT("目标：")) && DetailText.Contains(TEXT("单体敌方")));
+	TestTrue(TEXT("hover detail names the enemy recipient on its own line"), DetailText.Contains(TEXT("\n单体敌方\n")));
+	TestFalse(TEXT("recipient line omits the old target prefix"), DetailText.Contains(TEXT("目标：")));
 	TestTrue(TEXT("hover detail explains the card effect"), DetailText.Contains(TEXT("攻击伤害")));
 	TestFalse(TEXT("concise hand tooltip omits the legacy interaction instruction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));
 	TestTrue(TEXT("hand hover keeps the reusable tooltip input-transparent"), Board->IsCardTooltipHitTestInvisibleForTest());

@@ -10,6 +10,7 @@
 #include "Math/Box2D.h"
 #include "UI/GameXXKBattleAnimationPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
+#include "UI/GameXXKCardTooltipInteraction.h"
 #include "UI/GameXXKMVPWidgetBase.h"
 #include "Input/Reply.h"
 #include "GameXXKBattleBoardWidget.generated.h"
@@ -1340,6 +1341,8 @@ private:
 
 	ECardTooltipSource HoveredCardTooltipSource = ECardTooltipSource::None;
 	bool bCardTooltipExpanded = false;
+	FGameXXKCardTooltipInteraction CardTooltipInspection;
+	FString CardTooltipInspectionKey;
 
 	FName HoveredCardTooltipId = NAME_None;
 

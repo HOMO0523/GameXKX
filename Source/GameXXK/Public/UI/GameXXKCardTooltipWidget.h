@@ -2,6 +2,7 @@
 
 #include "Blueprint/UserWidget.h"
 #include "GameXXKCardText.h"
+#include "UI/GameXXKCardTooltipInteraction.h"
 #include "GameXXKCardTooltipWidget.generated.h"
 
 class UBorder;
@@ -23,6 +24,9 @@ class GAMEXXK_API UGameXXKCardTooltipWidget : public UUserWidget
 public:
 	/** Reads current physical Shift state; Windows uses GetAsyncKeyState rather than Slate's cached key events. */
 	static bool IsPhysicalShiftDown();
+	static bool IsPhysicalControlDown();
+	static bool IsPhysicalEscapeDown();
+	static bool IsOwnerWindowActive(const UWidget* Owner);
 
 	void ConfigureCard(
 		const FGameXXKCardDefinition& Definition,
@@ -43,6 +47,8 @@ public:
 	void SetExpandedForTest(bool bExpanded);
 	/** Parent-window tick path; unlike a tooltip-window tick, it always observes key release. */
 	void SetExpandedFromOwner(bool bExpanded);
+	/** Called by the card's owning window, so key release and leaving the card are always observed. */
+	void UpdateInspectionFromOwner(bool bHovered, bool bShiftDown, bool bControlDown, bool bEscapeDown);
 
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
@@ -70,6 +76,11 @@ private:
 	FText ConfiguredTitle;
 	FString CompactBody;
 	FString ExpandedBody;
+	FString PillBody;
+	FName ConfiguredCardId;
+	EGameXXKCardQuality ConfiguredQuality = EGameXXKCardQuality::Invalid;
+	FGameXXKCardTooltipInteraction Inspection;
+	bool bPillHelpDisplayed = false;
 	bool bExpanded = false;
 	bool bUseOwnerExpandedState = false;
 	bool bOwnerExpandedState = false;
