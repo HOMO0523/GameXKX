@@ -1,10 +1,16 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T23:47:00+08:00
-source_commit: f31ca578ccc7b57424f2ec4421b6b7b21634156f
-working_tree: Ctrl pill help and larger card titles implemented; full numeric card-copy integration remains pending
+updated_at: 2026-09-04T01:07:00+08:00
+source_commit: 0eb0fe7d0695fbdc0fe6fdc886b5d998d57deaa3
+working_tree: Confirmed 17 Sorcerer rules and all fees implemented; Formation Master is next
 ---
+
+> **2026-09-04 法师已确认规则通过**：提交0eb0fe7完成17张规则与18张费用，四冰10%回内、六合8/16溢出共享、周天累计实付、品质化编序与阵赏、标准冰爆及25%返甲均接入。165项范围/边界检查通过；六套冰法链吻合确认表。雷走只调整费用，重击倍率仍待确认；标记5层上限保持，旧例子3+3后命中应剩4已纠正。见docs/production/2026-09-04-confirmed-sorcerer-rebalance-acceptance.md。当前125/173张最新主要规则已完成，阵师18、NPC24、Boss5和雷走1待续；完整数值简述/增幅详述仍在Task 8。
+
+
+> **2026-09-04 稀有度卡名字色**：用户确认普通白、稀有蓝、史诗紫。提交780275d已同步悬停卡名与审阅页，保留22/14/13字号层级及深色描边；当前显示品质变化时名字颜色相应变化。冷UBT与5/5范围检查通过，见docs/production/2026-09-04-card-name-rarity-colors.md。用户已确认继续，当前在补法师已确认的基础/编序/阵赏规则；新增冰牌、六合与整套连段用例已复现旧差异，尚未把进行中的实现标为完成。
+
 
 > **2026-09-03 Ctrl说明与卡名字体已接入**：用户最终选定Ctrl开关Pill说明，取代此前的右键/中键方案；Shift临时查看详述并返回原模式。运行时代码提交f31ca57已接入手牌、背包、伙伴/NPC牌组与商店：独立对象行、当前品质/已定分支Pill去重、简短释义与重箭合并、离开/失焦清状态。卡名22号粗体加重，对象名14号加粗，正文13号；审阅页同步。冷UBT及13/13范围回归通过，0非预期警告，见docs/production/2026-09-03-ctrl-card-tooltip-acceptance.md。此处完成交互与排版部分；剩余65张卡、数值预览与逐卡最终正文仍按Plan 2后续任务推进，未宣称全卡实装或实机视觉验收完成。
 
