@@ -45,8 +45,8 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	NormalOwner->Mana = 9;
 	NormalOwner->MaxMana = 10;
 	ResolveAutomaticSnapshot(*this, NormalRestore, TEXT("Profession.Sorcerer.SheLingHuo"), 1, EGameXXKSorcererCardFamily::None, EGameXXKSorcererTaskBranch::Normal, Result);
-	TestEqual(TEXT("normal branch caps current Mana after floor current-Mana twenty-five percent"), FindUnit(NormalRestore, SorcererId)->Mana, 10);
-	TestEqual(TEXT("one overflow Mana generates two Armor after the level-one ceiling"), FindUnit(NormalRestore, SorcererId)->Armor, 2);
+	TestEqual(TEXT("normal branch caps Mana after ceiling ten-percent recovery"), FindUnit(NormalRestore, SorcererId)->Mana, 10);
+	TestEqual(TEXT("ten-percent recovery exactly fills Mana without overflow"), FindUnit(NormalRestore, SorcererId)->Armor, 0);
 
 	FGameXXKCardBattleRuntime IceRestore;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.SheLingHuo"), 59502, IceRestore);
@@ -55,7 +55,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	IceOwner->MaxMana = 10;
 	ResolveAutomaticSnapshot(*this, IceRestore, TEXT("Profession.Sorcerer.SheLingHuo"), 2, EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererTaskBranch::Ice, Result);
 	TestEqual(TEXT("Ice branch caps current Mana"), FindUnit(IceRestore, SorcererId)->Mana, 10);
-	TestEqual(TEXT("Ice branch converts one overflow to two Armor at level one"), FindUnit(IceRestore, SorcererId)->Armor, 2);
+	TestEqual(TEXT("explicit recovery is not converted twice in the Ice branch"), FindUnit(IceRestore, SorcererId)->Armor, 0);
 
 	FGameXXKCardBattleRuntime MaxManaRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.FenMaiFu"), 59503, MaxManaRuntime);
@@ -64,8 +64,8 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	MaxManaOwner->MaxMana = 10;
 	ResolveAutomaticSnapshot(*this, MaxManaRuntime, TEXT("Profession.Sorcerer.FenMaiFu"), 2, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Ice, Result);
 	TestEqual(TEXT("Ice max-Mana card increases maximum by four"), FindUnit(MaxManaRuntime, SorcererId)->MaxMana, 14);
-	TestEqual(TEXT("Ice max-Mana card leaves current Mana unchanged"), FindUnit(MaxManaRuntime, SorcererId)->Mana, 5);
-	TestEqual(TEXT("Ice max-Mana card also grants four armor"), FindUnit(MaxManaRuntime, SorcererId)->Armor, 4);
+	TestEqual(TEXT("capacity grows before ten-percent current-Mana recovery"), FindUnit(MaxManaRuntime, SorcererId)->Mana, 6);
+	TestEqual(TEXT("capacity growth has no flat Armor grant"), FindUnit(MaxManaRuntime, SorcererId)->Armor, 0);
 
 	const TArray<FName> IceBranchIds = {
 		TEXT("Profession.Sorcerer.FenMaiFu"),
@@ -100,7 +100,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime ZeroArmorRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.LingYanLianDan"), 59504, ZeroArmorRuntime);
 	ResolveAutomaticSnapshot(*this, ZeroArmorRuntime, TEXT("Profession.Sorcerer.LingYanLianDan"), 2, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Ice, Result);
-	TestEqual(TEXT("zero armor becomes four"), FindUnit(ZeroArmorRuntime, SorcererId)->Armor, 4);
+	TestEqual(TEXT("ten overflow Mana generate eleven Armor at level one"), FindUnit(ZeroArmorRuntime, SorcererId)->Armor, 11);
 
 	FGameXXKCardBattleRuntime DoubleArmorRuntime;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.LingYanLianDan"), 59505, DoubleArmorRuntime);
@@ -114,7 +114,7 @@ bool FGameXXKSorcererPartnerIceRuntimeTest::RunTest(const FString& Parameters)
 	IceSearchOwner->Mana = 12;
 	IceSearchOwner->MaxMana = 20;
 	ResolveAutomaticSnapshot(*this, IceSearchRuntime, TEXT("Profession.Sorcerer.HuLingMu"), 3, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Ice, Result);
-	TestEqual(TEXT("candidate-free Ice search grants its same three armor twice"), FindUnit(IceSearchRuntime, SorcererId)->Armor, 6);
+	TestEqual(TEXT("candidate-free search with no overflow grants no Armor"), FindUnit(IceSearchRuntime, SorcererId)->Armor, 0);
 	TestTrue(TEXT("Ice base suite deals no direct damage"), Result.DamageResults.IsEmpty());
 	return true;
 }
@@ -155,7 +155,7 @@ bool FGameXXKSorcererPartnerLightningRuntimeTest::RunTest(const FString& Paramet
 	GameXXKCardRules::AddCombatStatus(*FindUnit(ChainEarly, EnemyAId), EGameXXKCardStatus::Mark, 3);
 	const int32 ChainEarlyHp = FindUnit(ChainEarly, EnemyAId)->HP;
 	ResolveAutomaticSnapshot(*this, ChainEarly, TEXT("Profession.Sorcerer.NingYanChengRen"), 3, EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererTaskBranch::Lightning, Result);
-	TestEqual(TEXT("position-three chain uses three fifty-percent marked hits"), ChainEarlyHp - FindUnit(ChainEarly, EnemyAId)->HP, 33);
+	TestEqual(TEXT("position-three chain uses three fifty-five-percent marked hits"), ChainEarlyHp - FindUnit(ChainEarly, EnemyAId)->HP, 36);
 	TestEqual(TEXT("position-three chain emits three packets"), Result.DamageResults.Num(), 3);
 	TestEqual(TEXT("each chain hit consumes one Mark"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(ChainEarly, EnemyAId), EGameXXKCardStatus::Mark), 0);
 
@@ -164,7 +164,7 @@ bool FGameXXKSorcererPartnerLightningRuntimeTest::RunTest(const FString& Paramet
 	GameXXKCardRules::AddCombatStatus(*FindUnit(ChainLate, EnemyAId), EGameXXKCardStatus::Mark, 3);
 	const int32 ChainLateHp = FindUnit(ChainLate, EnemyAId)->HP;
 	ResolveAutomaticSnapshot(*this, ChainLate, TEXT("Profession.Sorcerer.NingYanChengRen"), 4, EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererTaskBranch::Lightning, Result);
-	TestEqual(TEXT("position-four chain uses three sixty-five-percent marked hits"), ChainLateHp - FindUnit(ChainLate, EnemyAId)->HP, 42);
+	TestEqual(TEXT("position-four chain uses three seventy-percent marked hits"), ChainLateHp - FindUnit(ChainLate, EnemyAId)->HP, 48);
 
 	FGameXXKCardBattleRuntime StormEarly;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.RanLingHuanYuan"), 59516, StormEarly);

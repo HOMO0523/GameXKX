@@ -9465,18 +9465,20 @@ namespace
 			{
 				return false;
 			}
-			int32 PreviousPaidMana = 0;
-			if (Position > 1)
+			int64 PreviousPaidMana = 0;
+			for (int32 PreviousPosition = 1; PreviousPosition < Position; ++PreviousPosition)
 			{
-				const FGameXXKResolvedCardSnapshot* Previous = FindPreviousSorcererTaskSnapshot(Runtime, Snapshot);
-				if (!Previous || Previous->SorcererSequencePosition != Position - 1)
+				FGameXXKResolvedCardSnapshot Lookup = Snapshot;
+				Lookup.SorcererSequencePosition = PreviousPosition + 1;
+				const FGameXXKResolvedCardSnapshot* Previous = FindPreviousSorcererTaskSnapshot(Runtime, Lookup);
+				if (!Previous || Previous->SorcererSequencePosition != PreviousPosition)
 				{
-					OutError = TEXT("A Sorcerer Mana echo cannot find its preceding first-play snapshot.");
+					OutError = TEXT("A Sorcerer Mana echo cannot find its earlier first-play payment snapshot.");
 					return false;
 				}
-				PreviousPaidMana = Previous->PaidManaCost;
+				PreviousPaidMana += Previous->PaidManaCost;
 			}
-			Mana->Magnitude = 3 + PreviousPaidMana / 2;
+			Mana->Magnitude = static_cast<int32>(FMath::Min<int64>(MAX_int32, Mana->Magnitude + PreviousPaidMana / 2));
 			return true;
 		}
 		case EGameXXKSorcererSequenceRule::FireLamp:
@@ -9516,7 +9518,7 @@ namespace
 			{
 				Attack->Type = EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus;
 				Attack->Status = EGameXXKCardStatus::Burn;
-				Attack->SecondaryMagnitude = 10;
+				Attack->SecondaryMagnitude = 2;
 			}
 			return true;
 		}
@@ -9529,68 +9531,15 @@ namespace
 			}
 			if (Position >= 4)
 			{
-				Attack->Magnitude = 70;
+				Attack->Magnitude = FGameXXKCombatScalingRules::ScaleContinuousCeil(70, Snapshot.Quality);
 			}
 			return true;
 		}
 		case EGameXXKSorcererSequenceRule::IceCurrentManaRestore:
-		{
-			FGameXXKCardEffect* Mana = FindEffect(EGameXXKCardEffectType::GainMana);
-			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Snapshot.OwnerUnitId);
-			if (!RequireEffect(Mana, TEXT("Mana")) || !Owner)
-			{
-				if (OutError.IsEmpty())
-				{
-					OutError = TEXT("An Ice Mana sequence has no living runtime owner.");
-				}
-				return false;
-			}
-			const int32 ManaGain = static_cast<int32>(static_cast<int64>(Owner->Mana) * 25 / 100);
-			if (ManaGain > 0)
-			{
-				Mana->Type = EGameXXKCardEffectType::GainManaOverflowToArmor;
-				Mana->Magnitude = 100;
-				Mana->SecondaryMagnitude = ManaGain;
-			}
-			else
-			{
-				Mana->Magnitude = ManaGain;
-			}
-			return true;
-		}
 		case EGameXXKSorcererSequenceRule::IceMaxMana:
-		{
-			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
-			if (!RequireEffect(Armor, TEXT("maximum-Mana")))
-			{
-				return false;
-			}
-			Armor->Type = EGameXXKCardEffectType::IncreaseMaxMana;
-			Armor->Magnitude = 4;
-			FGameXXKCardEffect BonusArmor;
-			BonusArmor.Type = EGameXXKCardEffectType::AddArmor;
-			BonusArmor.Target = Armor->Target;
-			BonusArmor.Source = Armor->Source;
-			BonusArmor.Magnitude = 4;
-			InOutDefinition.Effects.Add(MoveTemp(BonusArmor));
-			return true;
-		}
 		case EGameXXKSorcererSequenceRule::IceArmorDouble:
-		{
-			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
-			const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Runtime.Units, Snapshot.OwnerUnitId);
-			if (!RequireEffect(Armor, TEXT("armor")) || !Owner)
-			{
-				if (OutError.IsEmpty())
-				{
-					OutError = TEXT("An Ice armor sequence has no living runtime owner.");
-				}
-				return false;
-			}
-			Armor->Magnitude = Owner->Armor == 0 ? 4 : Owner->Armor;
-			return true;
-		}
 		case EGameXXKSorcererSequenceRule::IceSearch:
+			// Ice recovery, capacity and conditional doubling are ordinary data-driven base effects.
 			return true;
 		case EGameXXKSorcererSequenceRule::LightningMark:
 		case EGameXXKSorcererSequenceRule::LightningSearch:
@@ -9617,7 +9566,7 @@ namespace
 			if (Position >= 4)
 			{
 				Lightning->Magnitude = InOutDefinition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::LightningMarkHits
-					? 65
+					? FGameXXKCombatScalingRules::ScaleContinuousCeil(70, Snapshot.Quality)
 					: 45;
 			}
 			return true;
@@ -9629,7 +9578,7 @@ namespace
 			{
 				return false;
 			}
-			Attack->Magnitude = 60 + 25 * (Position - 1);
+			Attack->Magnitude = FGameXXKCombatScalingRules::ScaleContinuousCeil(60 + 25 * (Position - 1), Snapshot.Quality);
 			return true;
 		}
 		case EGameXXKSorcererSequenceRule::UniversalDraw:
@@ -9640,15 +9589,15 @@ namespace
 				Mana.Type = EGameXXKCardEffectType::GainMana;
 				Mana.Target = EGameXXKCardEffectTarget::CardOwner;
 				Mana.Source = EGameXXKCardEffectSource::CardOwner;
-				Mana.Magnitude = 5;
+				Mana.Magnitude = FGameXXKCombatScalingRules::ScaleContinuousCeil(5, Snapshot.Quality);
 				InOutDefinition.Effects.Add(MoveTemp(Mana));
 			}
 			return true;
 		}
 		case EGameXXKSorcererSequenceRule::UniversalPartyArmor:
 		{
-			FGameXXKCardEffect* Armor = FindEffect(EGameXXKCardEffectType::AddArmor);
-			if (!RequireEffect(Armor, TEXT("armor")))
+			FGameXXKCardEffect* Mana = FindEffect(EGameXXKCardEffectType::GainManaOverflowToArmor);
+			if (!RequireEffect(Mana, TEXT("Mana recovery")))
 			{
 				return false;
 			}
@@ -9663,7 +9612,7 @@ namespace
 					OutError = TEXT("A Sorcerer party-armor sequence cannot find its preceding card definition.");
 					return false;
 				}
-				Armor->Magnitude = SorcererDefinitionHasDirectDamage(*PreviousDefinition) ? 3 : 6;
+				Mana->SecondaryMagnitude = SorcererDefinitionHasDirectDamage(*PreviousDefinition) ? 8 : 16;
 			}
 			return true;
 		}
@@ -9676,7 +9625,7 @@ namespace
 			}
 			if (Position >= 4)
 			{
-				Attack->Magnitude = 90;
+				Attack->Magnitude = FGameXXKCombatScalingRules::ScaleContinuousCeil(90, Snapshot.Quality);
 			}
 			return true;
 		}
@@ -9829,7 +9778,7 @@ namespace
 			return Effect.Type == EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard;
 		});
 		const EGameXXKCardEffectType FallbackType = InOutDefinition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::IceSearch
-			? EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
+			? EGameXXKCardEffectType::GainManaOverflowToArmor
 			: EGameXXKCardEffectType::DamagePercentAttack;
 		int32 FallbackIndex = INDEX_NONE;
 		for (int32 Index = SearchIndex - 1; Index >= 0; --Index)
@@ -9845,7 +9794,17 @@ namespace
 			OutError = TEXT("A Sorcerer task search fallback requires its preceding repeatable base effect.");
 			return false;
 		}
-		const FGameXXKCardEffect FallbackEffect = InOutDefinition.Effects[FallbackIndex];
+		FGameXXKCardEffect FallbackEffect = InOutDefinition.Effects[FallbackIndex];
+		if (FallbackType == EGameXXKCardEffectType::GainManaOverflowToArmor)
+		{
+			// Copy this recovery's already-resolved Armor, never another recovery or all current Armor.
+			FallbackEffect.Type = EGameXXKCardEffectType::AddArmor;
+			FallbackEffect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::PriorEffectResult;
+			FallbackEffect.Magnitude = 0;
+			FallbackEffect.SecondaryMagnitude = 0;
+			FallbackEffect.ResultRef = FallbackEffect.ResultGroupId;
+			FallbackEffect.ResultGroupId = NAME_None;
+		}
 		InOutDefinition.Effects.Insert(FallbackEffect, SearchIndex + 1);
 		return true;
 	}
@@ -10993,6 +10952,14 @@ namespace
 							Effect.Magnitude,
 							Instance.CurrentQuality);
 					}
+					else if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentArmorPercent)
+					{
+						ArmorAmount = static_cast<int32>(FMath::Min<int64>(MAX_int32, static_cast<int64>(Target->Armor) * Effect.Magnitude / 100));
+					}
+					else if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::PriorEffectResult)
+					{
+						ArmorAmount = EffectResults.FindRef(Effect.ResultRef);
+					}
 					if (ArmorAmount > 0)
 					{
 						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, ArmorAmount);
@@ -11044,17 +11011,21 @@ namespace
 					break;
 				case EGameXXKCardEffectType::GainManaOverflowToArmor:
 				{
-					if (Effect.Magnitude <= 0 || Effect.SecondaryMagnitude <= 0)
+					if (Effect.Magnitude <= 0 || Effect.SecondaryMagnitude < 0)
 					{
-						OutError = TEXT("Mana overflow conversion requires a positive percentage and Mana grant.");
+						OutError = TEXT("Mana overflow conversion requires a positive conversion rate and nonnegative recovery.");
 						return false;
 					}
-					const int64 RawMana = static_cast<int64>(Target->Mana) + Effect.SecondaryMagnitude;
+					const int32 ManaGain = Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery
+						? static_cast<int32>(FMath::Min<int64>(MAX_int32, (static_cast<int64>(Target->Mana) * Effect.SecondaryMagnitude + 99) / 100))
+						: Effect.SecondaryMagnitude;
+					const int64 RawMana = static_cast<int64>(Target->Mana) + ManaGain;
 					const int64 Overflow = FMath::Max<int64>(0, RawMana - Target->MaxMana);
 					const int32 ArmorGain = FGameXXKCombatScalingRules::ResolveManaOverflowArmor(
 						static_cast<int32>(Overflow), Effect.Magnitude,
 						Instance.CurrentQuality, InOutRuntime.TeamMaxLevelSnapshot);
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, RawMana));
+					if (!Effect.ResultGroupId.IsNone()) EffectResults.FindOrAdd(Effect.ResultGroupId) = ArmorGain;
 					if (ArmorGain > 0)
 					{
 						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain));
@@ -14431,11 +14402,14 @@ namespace
 			return true;
 		}
 		const int32 Before = GameXXKCardRules::GetCombatStatusStacks(*Target, Status);
+		const int32 AppliedRequest = IsDamageOverTimeStatus(Status)
+			? FMath::Min(Stacks, FMath::Max(0, FGameXXKCombatScalingRules::ResolveDotCap(InOutRuntime.TeamMaxLevelSnapshot) - Before))
+			: Stacks;
 		if (!GrantStatusFromCardEffect(
 			InOutRuntime,
 			*Target,
 			Status,
-			Stacks,
+			AppliedRequest,
 			OutError,
 			&InOutResult,
 			InOutResult.OwnerUnitId))
@@ -14503,6 +14477,7 @@ namespace
 	bool ResolveSorcererRewardIceDamage(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName OwnerUnitId,
+		const EGameXXKCardQuality StarterQuality,
 		const int32 BasePercent,
 		const int32 PercentPerArmor,
 		FGameXXKCardPlayResult& InOutResult,
@@ -14519,7 +14494,7 @@ namespace
 		OutConsumedArmor = FMath::Max(0, Owner->Armor);
 		const int32 OwnerAttack = Owner->Attack;
 		Owner->Armor = 0;
-		const int64 Percent = static_cast<int64>(BasePercent)
+		const int64 Percent = FGameXXKCombatScalingRules::ScaleContinuousCeil(BasePercent, StarterQuality)
 			+ static_cast<int64>(PercentPerArmor) * OutConsumedArmor;
 		const int64 RawDamage = static_cast<int64>(OwnerAttack) * Percent / 100;
 		if (RawDamage <= 0 || RawDamage > MAX_int32)
@@ -14656,22 +14631,36 @@ namespace
 		FGameXXKCardInstance RewardInstance;
 		RewardInstance.InstanceId = FName(*FString::Printf(TEXT("SorcererTaskReward.%d.%s"), InOutRuntime.RoundNumber, *OwnerUnitId.ToString()));
 		RewardInstance.CardId = OutResult.CardId;
-		RewardInstance.CurrentQuality = EGameXXKCardQuality::Common;
+		RewardInstance.CurrentQuality = CompletedTask.FirstPlayOrder[0].Quality;
 		RewardInstance.OwnerUnitId = OwnerUnitId;
 		RewardInstance.SourceEntryId = RewardInstance.InstanceId;
 		RewardInstance.AcquisitionOrdinal = 0;
 		const auto ResolveEffects = [&](TArray<FGameXXKCardEffect> Effects) -> bool
 		{
+			for (FGameXXKCardEffect& Effect : Effects)
+			{
+				if (Effect.Type == EGameXXKCardEffectType::ApplyStatus && IsDamageOverTimeStatus(Effect.Status))
+					Effect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DotCoefficient;
+				else if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack || Effect.Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot)
+					Effect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
+			}
 			RewardDefinition.Effects = MoveTemp(Effects);
+			const FGameXXKCardDefinition EffectiveReward = FGameXXKCardQualityRules::BuildEffectiveDefinition(RewardDefinition, RewardInstance.CurrentQuality);
 			return ResolveDefinitionEffects(
 				InOutRuntime,
-				RewardDefinition,
+				EffectiveReward,
 				RewardInstance,
 				{},
 				EGameXXKCardResolutionOrigin::TaskReward,
 				false,
 				OutResult,
 				OutError);
+		};
+		const auto PartyArmorReward = [](const int32 DefensePercent)
+		{
+			FGameXXKCardEffect Effect = MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, DefensePercent);
+			Effect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DefensePercent;
+			return Effect;
 		};
 		const auto ResolveLightning = [&](const int32 MarkStacks, const int32 Percent, const int32 Energy, const int32 Draw) -> bool
 		{
@@ -14734,12 +14723,12 @@ namespace
 				const int32 ExistingBurn = Enemy
 					? GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn)
 					: 0;
-				if (!GrantSorcererRewardStatus(InOutRuntime, EnemyUnitId, EGameXXKCardStatus::Burn, HighestBurn - ExistingBurn + 3, OutResult, OutError))
+				if (!GrantSorcererRewardStatus(InOutRuntime, EnemyUnitId, EGameXXKCardStatus::Burn, HighestBurn - ExistingBurn, OutResult, OutError))
 				{
 					return false;
 				}
 			}
-			return true;
+			return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Burn)});
 		}
 		case EGameXXKSorcererRewardRule::FireBurst:
 			return TriggerSorcererRewardBurnWithoutDecay(InOutRuntime, OwnerUnitId, 2, OutResult, OutError);
@@ -14754,7 +14743,7 @@ namespace
 		case EGameXXKSorcererRewardRule::IceSearch:
 		{
 			int32 ConsumedArmor = 0;
-			if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+			if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, RewardInstance.CurrentQuality, 100, 1, OutResult, ConsumedArmor, OutError))
 			{
 				return false;
 			}
@@ -14777,7 +14766,7 @@ namespace
 				return true;
 			}
 			case EGameXXKSorcererRewardRule::IceArmorDouble:
-				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
+				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, ConsumedArmor / 4)});
 			case EGameXXKSorcererRewardRule::IceSearch:
 				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Weak)});
 			default:
@@ -14789,7 +14778,9 @@ namespace
 		case EGameXXKSorcererRewardRule::LightningSearch:
 			return ResolveLightning(3, 0, 1, 2);
 		case EGameXXKSorcererRewardRule::LightningMarkHits:
-			return ResolveLightning(5, 70, 0, 0);
+			return ResolveEffects({
+				MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 5, EGameXXKCardStatus::Mark),
+				MakeTaskRewardEffect(EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::AllEnemies, 70, EGameXXKCardStatus::None, 5)});
 		case EGameXXKSorcererRewardRule::LightningStorm:
 			return ResolveLightning(3, 60, 0, 0);
 		case EGameXXKSorcererRewardRule::UniversalScalingAttack:
@@ -14807,7 +14798,7 @@ namespace
 			case EGameXXKSorcererTaskBranch::Ice:
 			{
 				int32 ConsumedArmor = 0;
-				return ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 120, 25, OutResult, ConsumedArmor, OutError);
+				return ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, RewardInstance.CurrentQuality, 220, 1, OutResult, ConsumedArmor, OutError);
 			}
 			case EGameXXKSorcererTaskBranch::Lightning:
 				return ResolveLightning(3, 60, 0, 0);
@@ -14834,7 +14825,7 @@ namespace
 			case EGameXXKSorcererTaskBranch::Ice:
 			{
 				int32 ConsumedArmor = 0;
-				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, RewardInstance.CurrentQuality, 100, 1, OutResult, ConsumedArmor, OutError))
 				{
 					return false;
 				}
@@ -14867,31 +14858,31 @@ namespace
 			{
 			case EGameXXKSorcererTaskBranch::Normal:
 				return ResolveEffects({
-					MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 12),
+					PartyArmorReward(80),
 					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Weak)});
 			case EGameXXKSorcererTaskBranch::Fire:
 				return ResolveEffects({
-					MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8),
+					PartyArmorReward(60),
 					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 4, EGameXXKCardStatus::Burn),
 					MakeTaskRewardEffect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Weak)});
 			case EGameXXKSorcererTaskBranch::Ice:
 			{
 				int32 ConsumedArmor = 0;
-				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, RewardInstance.CurrentQuality, 100, 1, OutResult, ConsumedArmor, OutError))
 				{
 					return false;
 				}
 				return ResolveEffects({MakeTaskRewardEffect(
 					EGameXXKCardEffectType::AddArmor,
 					EGameXXKCardEffectTarget::AllAllies,
-					6 + ConsumedArmor / 4)});
+					ConsumedArmor / 4)});
 			}
 			case EGameXXKSorcererTaskBranch::Lightning:
 				if (!ResolveLightning(2, 30, 0, 0))
 				{
 					return false;
 				}
-				return ResolveEffects({MakeTaskRewardEffect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
+				return ResolveEffects({PartyArmorReward(40)});
 			case EGameXXKSorcererTaskBranch::None:
 			default:
 				OutError = TEXT("A Universal Sorcerer reward has no locked task branch.");
@@ -14949,7 +14940,7 @@ namespace
 				}
 				AppendNestedSorcererRewardResult(OutResult, MoveTemp(ReplayResult));
 				int32 ConsumedArmor = 0;
-				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, 100, 20, OutResult, ConsumedArmor, OutError))
+				if (!ResolveSorcererRewardIceDamage(InOutRuntime, OwnerUnitId, RewardInstance.CurrentQuality, 100, 1, OutResult, ConsumedArmor, OutError))
 				{
 					return false;
 				}

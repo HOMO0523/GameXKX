@@ -758,6 +758,21 @@ namespace
 				return false;
 			}
 			return true;
+		case EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery:
+			if (EffectType != EGameXXKCardEffectType::GainManaOverflowToArmor)
+			{
+				OutError = FString::Printf(TEXT("%s current-Mana percentage requires Mana recovery: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
+		case EGameXXKCardMagnitudePolicy::CurrentArmorPercent:
+		case EGameXXKCardMagnitudePolicy::PriorEffectResult:
+			if (EffectType != EGameXXKCardEffectType::AddArmor)
+			{
+				OutError = FString::Printf(TEXT("%s resolved Armor policy requires an Armor effect: %s."), Context, *CardId.ToString());
+				return false;
+			}
+			return true;
 		default:
 			OutError = FString::Printf(TEXT("%s has an unknown magnitude policy: %s."), Context, *CardId.ToString());
 			return false;
@@ -1664,6 +1679,22 @@ namespace
 		}
 	}
 
+	FGameXXKCardEffect ManaOverflowRecovery(const int32 Grant, const bool bCurrentPercent = false, const FName ResultName = NAME_None)
+	{
+		FGameXXKCardEffect Recovery = EffectWithSecondary(EGameXXKCardEffectType::GainManaOverflowToArmor,
+			EGameXXKCardEffectTarget::CardOwner, 100, Grant);
+		Recovery.MagnitudePolicy = bCurrentPercent ? EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery : EGameXXKCardMagnitudePolicy::Unscaled;
+		Recovery.ResultGroupId = ResultName;
+		return Recovery;
+	}
+
+	FGameXXKCardEffect ArmorFromResult(const EGameXXKCardEffectTarget Target, const FName ResultName)
+	{
+		FGameXXKCardEffect Armor = WithPolicy(Effect(EGameXXKCardEffectType::AddArmor, Target), EGameXXKCardMagnitudePolicy::PriorEffectResult);
+		Armor.ResultRef = ResultName;
+		return Armor;
+	}
+
 	void AddSorcererCards(TArray<FGameXXKCardDefinition>& Cards)
 	{
 		constexpr const TCHAR* OwnerId = TEXT("Profession.Sorcerer");
@@ -1698,22 +1729,27 @@ namespace
 				Pool,
 				bCore);
 			Cards.Last().SorcererRule = SorcererRule(Family, SequenceRule, RewardRule);
+			for (FGameXXKCardEffect& CardEffect : Cards.Last().Effects)
+			{
+				if (CardEffect.Type == EGameXXKCardEffectType::ApplyStatus && IsDotReservoirStatus(CardEffect.Status))
+					CardEffect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::DotCoefficient;
+			}
 		};
 
 		AddSorcerer(TEXT("Profession.Sorcerer.LingHuoFu"), TEXT("灵枢引法"), 1, 2, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(70, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, true,
 			EGameXXKSorcererCardFamily::Core, EGameXXKSorcererSequenceRule::CoreSearch, EGameXXKSorcererRewardRule::CoreSearch);
 		AddSorcerer(TEXT("Profession.Sorcerer.JuLing"), TEXT("周天归元"), 0, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 3)}, true,
+			{Continuous(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 3))}, true,
 			EGameXXKSorcererCardFamily::Core, EGameXXKSorcererSequenceRule::CoreManaEcho, EGameXXKSorcererRewardRule::CoreManaEcho);
 
-		AddSorcerer(TEXT("Profession.Sorcerer.LiHuoYin"), TEXT("灵火点灯"), 0, 1, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.LiHuoYin"), TEXT("灵火点灯"), 1, 1, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(60, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Burn)}, false,
 			EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererSequenceRule::FireLamp, EGameXXKSorcererRewardRule::FireLamp);
-		AddSorcerer(TEXT("Profession.Sorcerer.YanQiang"), TEXT("流焰传薪"), 0, 2, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.YanQiang"), TEXT("流焰传薪"), 1, 2, EGameXXKCardTargetMode::AllEnemies,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn)}, false,
 			EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererSequenceRule::FireSpread, EGameXXKSorcererRewardRule::FireSpread);
-		AddSorcerer(TEXT("Profession.Sorcerer.BaoYanShu"), TEXT("焚脉爆炎"), 0, 4, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.BaoYanShu"), TEXT("焚脉爆炎"), 1, 4, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(80, EGameXXKCardEffectTarget::AllEnemies)}, false,
 			EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererSequenceRule::FireBurst, EGameXXKSorcererRewardRule::FireBurst);
 		AddSorcerer(TEXT("Profession.Sorcerer.XingHuoLiaoYuan"), TEXT("燎原寻诀"), 1, 2, EGameXXKCardTargetMode::AllEnemies,
@@ -1721,41 +1757,48 @@ namespace
 			EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererSequenceRule::FireSearch, EGameXXKSorcererRewardRule::FireSearch);
 
 		AddSorcerer(TEXT("Profession.Sorcerer.SheLingHuo"), TEXT("寒息回流"), 1, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 1)}, false,
+			{ManaOverflowRecovery(10, true)}, false,
 			EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererSequenceRule::IceCurrentManaRestore, EGameXXKSorcererRewardRule::IceCurrentManaRestore);
-		AddSorcerer(TEXT("Profession.Sorcerer.FenMaiFu"), TEXT("玄冰拓脉"), 0, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 4)}, false,
+		AddSorcerer(TEXT("Profession.Sorcerer.FenMaiFu"), TEXT("玄冰拓脉"), 1, 0, EGameXXKCardTargetMode::Self,
+			{Effect(EGameXXKCardEffectType::IncreaseMaxMana, EGameXXKCardEffectTarget::CardOwner, 4), ManaOverflowRecovery(10, true)}, false,
 			EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererSequenceRule::IceMaxMana, EGameXXKSorcererRewardRule::IceMaxMana);
-		AddSorcerer(TEXT("Profession.Sorcerer.LingYanLianDan"), TEXT("霜镜叠甲"), 0, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 4)}, false,
+		FGameXXKCardEffect DoubleArmor = WithPolicy(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 100), EGameXXKCardMagnitudePolicy::CurrentArmorPercent);
+		DoubleArmor.Condition.Type = EGameXXKCardEffectConditionType::OwnerArmorAtLeast;
+		DoubleArmor.Condition.MinimumArmor = 1;
+		FGameXXKCardEffect RecoverWithoutArmor = ManaOverflowRecovery(10, true);
+		RecoverWithoutArmor.Condition = DoubleArmor.Condition;
+		RecoverWithoutArmor.Condition.bNegate = true;
+		// Resolve the existing-Armor branch first, so Armor made by recovery cannot be doubled by this play.
+		AddSorcerer(TEXT("Profession.Sorcerer.LingYanLianDan"), TEXT("霜镜叠甲"), 1, 0, EGameXXKCardTargetMode::Self,
+			{DoubleArmor, RecoverWithoutArmor}, false,
 			EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererSequenceRule::IceArmorDouble, EGameXXKSorcererRewardRule::IceArmorDouble);
 		AddSorcerer(TEXT("Profession.Sorcerer.HuLingMu"), TEXT("冰鉴索法"), 1, 0, EGameXXKCardTargetMode::Self,
-			{Effect(EGameXXKCardEffectType::GainArmorFromCurrentManaPercent, EGameXXKCardEffectTarget::CardOwner, 25), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, false,
+			{ManaOverflowRecovery(10, true, TEXT("ManaRecoveryArmor")), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, false,
 			EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererSequenceRule::IceSearch, EGameXXKSorcererRewardRule::IceSearch);
 
-		AddSorcerer(TEXT("Profession.Sorcerer.ChiXiaoFenXing"), TEXT("引雷定标"), 0, 1, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.ChiXiaoFenXing"), TEXT("引雷定标"), 1, 1, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(50, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Mark)}, false,
 			EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererSequenceRule::LightningMark, EGameXXKSorcererRewardRule::LightningMark);
 		AddSorcerer(TEXT("Profession.Sorcerer.FenTianJue"), TEXT("雷符索敌"), 1, 2, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(70, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Mark)}, false,
 			EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererSequenceRule::LightningSearch, EGameXXKSorcererRewardRule::LightningSearch);
-		AddSorcerer(TEXT("Profession.Sorcerer.NingYanChengRen"), TEXT("连霆穿云"), 0, 3, EGameXXKCardTargetMode::AllEnemies,
-			{Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 50, EGameXXKCardStatus::Mark)}, false,
+		AddSorcerer(TEXT("Profession.Sorcerer.NingYanChengRen"), TEXT("连霆穿云"), 1, 3, EGameXXKCardTargetMode::AllEnemies,
+			{Continuous(Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 55, EGameXXKCardStatus::Mark))}, false,
 			EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererSequenceRule::LightningMarkHits, EGameXXKSorcererRewardRule::LightningMarkHits);
-		AddSorcerer(TEXT("Profession.Sorcerer.RanLingHuanYuan"), TEXT("雷走八方"), 0, 4, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.RanLingHuanYuan"), TEXT("雷走八方"), 1, 4, EGameXXKCardTargetMode::AllEnemies,
 			{Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 30, EGameXXKCardStatus::Mark)}, false,
 			EGameXXKSorcererCardFamily::Lightning, EGameXXKSorcererSequenceRule::LightningStorm, EGameXXKSorcererRewardRule::LightningStorm);
 
-		AddSorcerer(TEXT("Profession.Sorcerer.YanMuHuTi"), TEXT("万法归一"), 0, 5, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.YanMuHuTi"), TEXT("万法归一"), 1, 5, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(60, EGameXXKCardEffectTarget::AllEnemies)}, false,
 			EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererSequenceRule::UniversalScalingAttack, EGameXXKSorcererRewardRule::UniversalScalingAttack);
 		AddSorcerer(TEXT("Profession.Sorcerer.LieFu"), TEXT("照见五蕴"), 0, 0, EGameXXKCardTargetMode::Self,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)}, false,
 			EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererSequenceRule::UniversalDraw, EGameXXKSorcererRewardRule::UniversalDraw);
-		AddSorcerer(TEXT("Profession.Sorcerer.XingHuoHuiShou"), TEXT("六合护法"), 0, 4, EGameXXKCardTargetMode::AllAllies,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 3)}, false,
+		AddSorcerer(TEXT("Profession.Sorcerer.XingHuoHuiShou"), TEXT("六合护法"), 1, 4, EGameXXKCardTargetMode::AllAllies,
+			{ManaOverflowRecovery(8, false, TEXT("ManaRecoveryArmor")), ArmorFromResult(EGameXXKCardEffectTarget::AllOtherAllies, TEXT("ManaRecoveryArmor"))}, false,
 			EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererSequenceRule::UniversalPartyArmor, EGameXXKSorcererRewardRule::UniversalPartyArmor);
-		AddSorcerer(TEXT("Profession.Sorcerer.ChiYanFengJie"), TEXT("斗转星移"), 0, 2, EGameXXKCardTargetMode::AllEnemies,
+		AddSorcerer(TEXT("Profession.Sorcerer.ChiYanFengJie"), TEXT("斗转星移"), 1, 2, EGameXXKCardTargetMode::AllEnemies,
 			{Attack(65, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard, EGameXXKCardEffectTarget::CardOwner, 1)}, false,
 			EGameXXKSorcererCardFamily::Universal, EGameXXKSorcererSequenceRule::UniversalSearch, EGameXXKSorcererRewardRule::UniversalSearch);
 	}

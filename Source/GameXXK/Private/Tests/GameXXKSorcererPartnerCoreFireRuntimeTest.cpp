@@ -235,22 +235,22 @@ bool FGameXXKSorcererPartnerFireRuntimeTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Fire lamp at position one applies Burn four"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(LampEarly, EnemyAId), EGameXXKCardStatus::Burn), 4);
+	TestEqual(TEXT("level-one Fire lamp coefficient four generates five Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(LampEarly, EnemyAId), EGameXXKCardStatus::Burn), 5);
 
 	FGameXXKCardBattleRuntime LampLate;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.LiHuoYin"), 59412, LampLate);
 	ResolveAutomaticSnapshot(*this, LampLate, TEXT("Profession.Sorcerer.LiHuoYin"), 3, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Fire, Result);
-	TestEqual(TEXT("Fire lamp after position two applies base Burn two"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(LampLate, EnemyAId), EGameXXKCardStatus::Burn), 2);
+	TestEqual(TEXT("level-one late Fire lamp coefficient two generates three Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(LampLate, EnemyAId), EGameXXKCardStatus::Burn), 3);
 
 	FGameXXKCardBattleRuntime SpreadFire;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.YanQiang"), 59413, SpreadFire);
 	ResolveAutomaticSnapshot(*this, SpreadFire, TEXT("Profession.Sorcerer.YanQiang"), 2, EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererTaskBranch::Fire, Result);
-	TestEqual(TEXT("Fire follows Fire with Burn three"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(SpreadFire, EnemyAId), EGameXXKCardStatus::Burn), 3);
+	TestEqual(TEXT("level-one Fire following Fire generates four Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(SpreadFire, EnemyAId), EGameXXKCardStatus::Burn), 4);
 
 	FGameXXKCardBattleRuntime SpreadIce;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.YanQiang"), 59414, SpreadIce);
 	ResolveAutomaticSnapshot(*this, SpreadIce, TEXT("Profession.Sorcerer.YanQiang"), 2, EGameXXKSorcererCardFamily::Ice, EGameXXKSorcererTaskBranch::Fire, Result);
-	TestEqual(TEXT("non-Fire predecessor keeps Burn one"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(SpreadIce, EnemyAId), EGameXXKCardStatus::Burn), 1);
+	TestEqual(TEXT("level-one non-Fire predecessor keeps coefficient one and generates two Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(SpreadIce, EnemyAId), EGameXXKCardStatus::Burn), 2);
 
 	FGameXXKCardBattleRuntime BurstEarly;
 	BuildSingleCardRuntime(*this, TEXT("Profession.Sorcerer.BaoYanShu"), 59415, BurstEarly);
@@ -265,7 +265,7 @@ bool FGameXXKSorcererPartnerFireRuntimeTest::RunTest(const FString& Parameters)
 	GameXXKCardRules::AddCombatStatus(*FindUnit(BurstLate, EnemyAId), EGameXXKCardStatus::Burn, 3);
 	const int32 BurstLateHp = FindUnit(BurstLate, EnemyAId)->HP;
 	ResolveAutomaticSnapshot(*this, BurstLate, TEXT("Profession.Sorcerer.BaoYanShu"), 3, EGameXXKSorcererCardFamily::Fire, EGameXXKSorcererTaskBranch::Fire, Result);
-	TestEqual(TEXT("late burst adds ten percentage points per Burn"), BurstLateHp - FindUnit(BurstLate, EnemyAId)->HP, 22);
+	TestEqual(TEXT("late burst adds two percentage points per stored Burn"), BurstLateHp - FindUnit(BurstLate, EnemyAId)->HP, 17);
 	TestEqual(TEXT("late burst does not consume Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindUnit(BurstLate, EnemyAId), EGameXXKCardStatus::Burn), 3);
 
 	FGameXXKCardBattleRuntime SearchThird;

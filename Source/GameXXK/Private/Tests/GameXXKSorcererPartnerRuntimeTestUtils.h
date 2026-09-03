@@ -235,14 +235,14 @@ namespace GameXXKSorcererPartnerRuntimeTestUtils
 		}
 		for (int32 Index = 0; Index < 12; ++Index)
 		{
-			AllInstances.Add(MakeCard(TEXT("Route.General.PoJiaTuCi"), 100 + Index));
+			AllInstances.Add(MakeCard(TEXT("Hero.Generic.QingFengYiShi"), 100 + Index, AllyId));
 		}
 		if (!BuildRuntime(
 			Test,
 			AllInstances,
 			{
 				MakeUnit(SorcererId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Sorcerer, 1),
-				MakeUnit(AllyId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 2),
+				MakeUnit(AllyId, EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 2),
 				MakeUnit(EnemyAId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 10),
 				MakeUnit(EnemyBId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 11)
 			},

@@ -448,7 +448,13 @@ enum class EGameXXKCardMagnitudePolicy : uint8
 	PrintedCostArmor = 4,
 	DefensePercent = 5,
 	MedicineCoefficient = 6,
-	DefenseIgnoreCoefficient = 7
+	DefenseIgnoreCoefficient = 7,
+	/** GainManaOverflowToArmor: SecondaryMagnitude is a percentage of current Mana, rounded up. */
+	CurrentManaPercentRecovery = 8,
+	/** AddArmor: a percentage of the recipient's existing Armor, with no quality/level scaling. */
+	CurrentArmorPercent = 9,
+	/** AddArmor: copies the resolved integer named by ResultRef, with no further scaling. */
+	PriorEffectResult = 10
 };
 
 /** Optional, soft gate for an effect. It may also describe status consumption. */

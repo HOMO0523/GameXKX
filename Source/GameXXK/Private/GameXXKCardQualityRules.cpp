@@ -125,6 +125,9 @@ namespace
 		case EGameXXKCardMagnitudePolicy::DefensePercent:
 		case EGameXXKCardMagnitudePolicy::MedicineCoefficient:
 		case EGameXXKCardMagnitudePolicy::DefenseIgnoreCoefficient:
+		case EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery:
+		case EGameXXKCardMagnitudePolicy::CurrentArmorPercent:
+		case EGameXXKCardMagnitudePolicy::PriorEffectResult:
 		default:
 			return BaseMagnitude;
 		}

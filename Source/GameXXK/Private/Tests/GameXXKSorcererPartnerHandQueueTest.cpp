@@ -286,7 +286,7 @@ bool FGameXXKSorcererUniversalStarterOverflowQueueTest::RunTest(const FString& P
 	for (int32 Index = 0; Index < 18; ++Index)
 	{
 		Fillers.Add(MakeCard(
-			TEXT("Route.General.PoJiaTuCi"),
+			TEXT("Hero.Generic.QingFengYiShi"),
 			HeroId,
 			FString::Printf(TEXT("Filler.%02d"), Index),
 			100 + Index));
@@ -383,7 +383,7 @@ bool FGameXXKSorcererSearchOwnerScopeTest::RunTest(const FString& Parameters)
 		TEXT("OtherSorcerer.Card"),
 		20);
 	const FGameXXKCardInstance HeroCard = MakeCard(
-		TEXT("Route.General.PoJiaTuCi"),
+		TEXT("Hero.Generic.QingFengYiShi"),
 		HeroId,
 		TEXT("Hero.Card"),
 		21);

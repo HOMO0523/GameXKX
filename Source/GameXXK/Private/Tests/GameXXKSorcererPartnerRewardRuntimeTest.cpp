@@ -82,8 +82,8 @@ bool FGameXXKSorcererPartnerFireRewardsTest::RunTest(const FString& Parameters)
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Spread, EnemyAId), EGameXXKCardStatus::Burn, 2);
 	GameXXKCardRules::AddCombatStatus(*FindUnit(Spread, EnemyBId), EGameXXKCardStatus::Burn, 5);
 	ResolveCompletedReward(*this, Spread, Result);
-	TestEqual(TEXT("Fire-spread reward fills enemy A to max plus three"), StatusStacks(Spread, EnemyAId, EGameXXKCardStatus::Burn), 8);
-	TestEqual(TEXT("Fire-spread reward adds three to max enemy"), StatusStacks(Spread, EnemyBId, EGameXXKCardStatus::Burn), 8);
+	TestEqual(TEXT("level-one spread equalizes then adds four generated Burn"), StatusStacks(Spread, EnemyAId, EGameXXKCardStatus::Burn), 9);
+	TestEqual(TEXT("level-one spread adds the same four generated Burn to the leader"), StatusStacks(Spread, EnemyBId, EGameXXKCardStatus::Burn), 9);
 
 	FGameXXKCardBattleRuntime Burst;
 	BuildCompletedRewardRuntime(*this, TEXT("Profession.Sorcerer.BaoYanShu"), EGameXXKSorcererTaskBranch::Fire, 59713, Burst);
@@ -99,7 +99,7 @@ bool FGameXXKSorcererPartnerFireRewardsTest::RunTest(const FString& Parameters)
 	BuildCompletedRewardRuntime(*this, TEXT("Profession.Sorcerer.XingHuoLiaoYuan"), EGameXXKSorcererTaskBranch::Fire, 59714, Search);
 	Search.Deck.SharedEnergy = 5;
 	ResolveCompletedReward(*this, Search, Result);
-	TestEqual(TEXT("Fire-search reward applies Burn six"), StatusStacks(Search, EnemyAId, EGameXXKCardStatus::Burn), 6);
+	TestEqual(TEXT("level-one Fire-search coefficient six generates seven Burn"), StatusStacks(Search, EnemyAId, EGameXXKCardStatus::Burn), 7);
 	TestEqual(TEXT("Fire-search reward restores one Energy"), Search.Deck.SharedEnergy, 6);
 	TestEqual(TEXT("Fire-search reward draws two"), Search.Deck.Hand.Num(), 2);
 	return true;
@@ -133,7 +133,7 @@ bool FGameXXKSorcererPartnerIceRewardsTest::RunTest(const FString& Parameters)
 	CurrentMana.Deck.SharedEnergy = 5;
 	ResolveCompletedReward(*this, CurrentMana, Result);
 	TestEqual(TEXT("Ice-current reward consumes owner armor"), FindUnit(CurrentMana, SorcererId)->Armor, 0);
-	TestEqual(TEXT("Ice-current reward deals standard Ice damage"), HealthLost(CurrentMana, EnemyAId), 36);
+	TestEqual(TEXT("standard Ice uses one attack point per consumed Armor"), HealthLost(CurrentMana, EnemyAId), 20);
 	TestEqual(TEXT("Ice-current reward restores one Energy"), CurrentMana.Deck.SharedEnergy, 6);
 	TestEqual(TEXT("Ice-current reward draws one"), CurrentMana.Deck.Hand.Num(), 1);
 
@@ -142,21 +142,21 @@ bool FGameXXKSorcererPartnerIceRewardsTest::RunTest(const FString& Parameters)
 	FindUnit(MaxMana, SorcererId)->Mana = 3;
 	FindUnit(MaxMana, SorcererId)->MaxMana = 10;
 	ResolveCompletedReward(*this, MaxMana, Result);
-	TestEqual(TEXT("Ice-max reward deals standard Ice damage"), HealthLost(MaxMana, EnemyAId), 36);
+	TestEqual(TEXT("capacity starter uses the same standard Ice formula"), HealthLost(MaxMana, EnemyAId), 20);
 	TestEqual(TEXT("Ice-max reward raises maximum Mana by eight"), FindUnit(MaxMana, SorcererId)->MaxMana, 18);
 	TestEqual(TEXT("Ice-max reward fills current Mana"), FindUnit(MaxMana, SorcererId)->Mana, 18);
 
 	FGameXXKCardBattleRuntime Armor;
 	PrepareIce(TEXT("Profession.Sorcerer.LingYanLianDan"), 59723, Armor);
 	ResolveCompletedReward(*this, Armor, Result);
-	TestEqual(TEXT("Ice-armor reward deals standard Ice damage"), HealthLost(Armor, EnemyAId), 36);
-	TestEqual(TEXT("Ice-armor reward gives owner six armor"), FindUnit(Armor, SorcererId)->Armor, 6);
-	TestEqual(TEXT("Ice-armor reward gives ally six armor"), FindUnit(Armor, AllyId)->Armor, 6);
+	TestEqual(TEXT("mirror starter uses the same standard Ice formula"), HealthLost(Armor, EnemyAId), 20);
+	TestEqual(TEXT("mirror refunds one quarter of four consumed Armor to the owner"), FindUnit(Armor, SorcererId)->Armor, 1);
+	TestEqual(TEXT("mirror refunds one quarter of four consumed Armor to the ally"), FindUnit(Armor, AllyId)->Armor, 1);
 
 	FGameXXKCardBattleRuntime Search;
 	PrepareIce(TEXT("Profession.Sorcerer.HuLingMu"), 59724, Search);
 	ResolveCompletedReward(*this, Search, Result);
-	TestEqual(TEXT("Ice-search reward deals standard Ice damage"), HealthLost(Search, EnemyAId), 36);
+	TestEqual(TEXT("search starter uses the same standard Ice formula"), HealthLost(Search, EnemyAId), 20);
 	TestEqual(TEXT("Ice-search reward applies Weak two"), StatusStacks(Search, EnemyAId, EGameXXKCardStatus::Weak), 2);
 	return true;
 }

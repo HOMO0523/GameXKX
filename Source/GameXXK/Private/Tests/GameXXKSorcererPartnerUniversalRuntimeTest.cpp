@@ -150,8 +150,8 @@ bool FGameXXKSorcererPartnerUniversalArmorSearchTest::RunTest(const FString& Par
 		TestEqual(FString::Printf(TEXT("%s determines party armor"), Label), FindUnit(Runtime, AllyId)->Armor, ExpectedAllyArmor);
 		return true;
 	};
-	RunArmorSequence(TEXT("Profession.Sorcerer.SheLingHuo"), 59621, 6, TEXT("non-damaging Ice predecessor"));
-	RunArmorSequence(TEXT("Profession.Sorcerer.LiHuoYin"), 59622, 3, TEXT("direct-damage Fire predecessor"));
+	RunArmorSequence(TEXT("Profession.Sorcerer.SheLingHuo"), 59621, 13, TEXT("non-damaging Ice predecessor"));
+	RunArmorSequence(TEXT("Profession.Sorcerer.LiHuoYin"), 59622, 4, TEXT("direct-damage Fire predecessor"));
 
 	FGameXXKCardPlayResult Result;
 	FGameXXKCardBattleRuntime SearchThird;

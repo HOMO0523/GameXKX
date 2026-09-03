@@ -2,6 +2,7 @@
 
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardPillText.h"
+#include "GameXXKCombatScalingRules.h"
 
 namespace
 {
@@ -849,8 +850,10 @@ namespace
 
 	void AppendSorcererRewardText(
 		const EGameXXKSorcererRewardRule Reward,
+		const EGameXXKCardQuality Quality,
 		TArray<FString>& OutLines)
 	{
+		const auto Scale = [Quality](const int32 Value) { return FGameXXKCombatScalingRules::ScaleContinuousCeil(Value, Quality); };
 		switch (Reward)
 		{
 		case EGameXXKSorcererRewardRule::CoreSearch:
@@ -863,13 +866,13 @@ namespace
 			OutLines.Add(TEXT("阵赏：敌方全体当前灼烧翻倍。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireSpread:
-			OutLines.Add(TEXT("阵赏：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。"));
+			OutLines.Add(TEXT("阵赏：按场上最高灼烧补齐敌方全体，再各获得3点基础灼烧。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireBurst:
 			OutLines.Add(TEXT("阵赏：敌方全体结算2次当前灼烧伤害，均不减层。"));
 			break;
 		case EGameXXKSorcererRewardRule::FireSearch:
-			OutLines.Add(TEXT("阵赏：敌方全体获得6层灼烧；回复1点气力，抽2张牌。"));
+			OutLines.Add(TEXT("阵赏：敌方全体获得6点基础灼烧；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
 			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌。"));
@@ -878,7 +881,7 @@ namespace
 			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceArmorDouble:
-			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；我方全体获得6点护甲。"));
+			OutLines.Add(TEXT("阵赏：标准冰爆；全体友方各获得本次消耗护甲的25%，向下取整。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceSearch:
 			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱。"));
@@ -890,34 +893,34 @@ namespace
 			OutLines.Add(TEXT("阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::LightningMarkHits:
-			OutLines.Add(TEXT("阵赏：敌方全体先获得5层标记，再各触发5次70%落雷。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏：全体敌方先获得5层标记，再各受到5次%d%%的攻击伤害。"), Scale(70)));
 			break;
 		case EGameXXKSorcererRewardRule::LightningStorm:
 			OutLines.Add(TEXT("阵赏：敌方全体先获得3层标记，再各触发3次60%落雷。"));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalScalingAttack:
-			OutLines.Add(TEXT("阵赏·普通：敌方全体造成300%攻击伤害。"));
-			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。"));
-			OutLines.Add(TEXT("阵赏·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。"));
-			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·普通：对全体敌方造成%d%%的攻击伤害。"), Scale(300)));
+			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得3点基础灼烧，再结算1次灼烧且不减层。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·寒冰：消耗全部护甲，对全体敌方造成%d%%的攻击伤害；每点消耗护甲再增加1个百分点。"), Scale(220)));
+			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得3层标记，按各自标记数，每层造成%d%%的攻击伤害。"), Scale(60)));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalDraw:
 			OutLines.Add(TEXT("阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。"));
-			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。"));
+			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得4点基础灼烧；回复1点气力，抽3张牌。"));
 			OutLines.Add(TEXT("阵赏·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。"));
-			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；回复1气，抽2张。"), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalPartyArmor:
-			OutLines.Add(TEXT("阵赏·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。"));
-			OutLines.Add(TEXT("阵赏·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。"));
-			OutLines.Add(TEXT("阵赏·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。"));
-			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·普通：全体友方各获得%d%%防御的护甲；全体敌方获得2层虚弱。"), Scale(80)));
+			OutLines.Add(FString::Printf(TEXT("阵赏·炎法：全体友方各获得%d%%防御的护甲；全体敌方获得4点基础灼烧、1层虚弱。"), Scale(60)));
+			OutLines.Add(TEXT("阵赏·寒冰：标准冰爆；全体友方各获得本次消耗护甲的25%，向下取整。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；全体友方各获得%d%%防御的护甲。"), Scale(30), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalSearch:
 			OutLines.Add(TEXT("阵赏·普通：额外重放第5张记录牌，抽1张牌。"));
-			OutLines.Add(TEXT("阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。"));
+			OutLines.Add(TEXT("阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2点基础灼烧。"));
 			OutLines.Add(TEXT("阵赏·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。"));
-			OutLines.Add(TEXT("阵赏·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，额外重放最后一张雷牌；再按剩余标记数，每层造成%d%%的攻击伤害，抽1张。"), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::None:
 		default:
@@ -928,6 +931,7 @@ namespace
 	FString DescribeSorcererEffects(const FGameXXKCardDefinition& Definition)
 	{
 		TArray<FString> Lines;
+		const auto Scale = [&Definition](const int32 Value) { return FGameXXKCombatScalingRules::ScaleContinuousCeil(Value, Definition.BaseQuality); };
 		const int32 Attack = SorcererMagnitude(Definition, EGameXXKCardEffectType::DamagePercentAttack, 0);
 		const int32 Burn = SorcererMagnitude(
 			Definition,
@@ -940,13 +944,12 @@ namespace
 			0,
 			EGameXXKCardStatus::Mark);
 		const int32 Lightning = SorcererMagnitude(Definition, EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, 0);
-		const int32 Armor = SorcererMagnitude(Definition, EGameXXKCardEffectType::AddArmor, 0);
 		const int32 Draw = SorcererMagnitude(Definition, EGameXXKCardEffectType::DrawCards, 0);
 
 		switch (Definition.SorcererRule.SequenceRule)
 		{
 		case EGameXXKSorcererSequenceRule::CoreSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
 			Lines.Add(TEXT("编序：第1～2位时，检索牌本回合内力消耗-3。"));
 			break;
 		case EGameXXKSorcererSequenceRule::CoreManaEcho:
@@ -954,64 +957,64 @@ namespace
 			Lines.Add(TEXT("编序：再回复此前记录牌实际支付内力总和的50%，向下取整。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireLamp:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害并获得%d层灼烧。"), Attack, Burn));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害并施加%d点基础灼烧。"), Attack, Burn));
 			Lines.Add(TEXT("编序：第1～2位时，灼烧改为4层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireSpread:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体获得%d层灼烧。"), Burn));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体施加%d点基础灼烧。"), Burn));
 			Lines.Add(TEXT("编序：前一张记录牌为炎牌时，灼烧改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireBurst:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害。"), Attack));
-			Lines.Add(TEXT("编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧。"));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害。"), Attack));
+			Lines.Add(TEXT("编序：第3～5位时，每点灼烧使倍率+2个百分点，不消耗灼烧。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
-			Lines.Add(TEXT("编序：第4～5位时，每段改为70%攻击伤害。"));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每段改为%d%%的攻击伤害。"), Scale(70)));
 			break;
 		case EGameXXKSorcererSequenceRule::IceCurrentManaRestore:
-			Lines.Add(TEXT("基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲。"));
+			Lines.Add(TEXT("基础：回复当前内力的10%，向上取整；溢出部分转为护甲。"));
 			break;
 		case EGameXXKSorcererSequenceRule::IceMaxMana:
-			Lines.Add(TEXT("基础：自身内力上限+4并获得4点护甲，当前内力不变。"));
+			Lines.Add(TEXT("基础：本场内力上限+4，当前内力不变；再回复当前内力的10%，向上取整，溢出转甲。"));
 			break;
 		case EGameXXKSorcererSequenceRule::IceArmorDouble:
-			Lines.Add(TEXT("基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99。"));
+			Lines.Add(TEXT("基础：护甲为0时，回复当前内力的10%，向上取整，溢出转甲；已有护甲时翻倍。"));
 			break;
 		case EGameXXKSorcererSequenceRule::IceSearch:
-			Lines.Add(TEXT("基础：自身获得当前内力25%的护甲；检索1张尚未完成的携带法师牌；无合法牌时再获得一次等量护甲。"));
+			Lines.Add(TEXT("基础：回复当前内力的10%，向上取整，溢出转甲；检索1张未完成携带法师牌；无合法目标时，再获得一份本次回复产生的护甲。"));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningMark:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害，伤害后获得%d层标记。"), Attack, Mark));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害，伤害后获得%d层标记。"), Attack, Mark));
 			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌，随后获得%d层标记；无合法牌时再结算一次同等伤害。"), Attack, Mark));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌，随后获得%d层标记；无合法牌时再结算一次同等伤害。"), Attack, Mark));
 			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningMarkHits:
-			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%攻击伤害。"), Lightning));
-			Lines.Add(TEXT("编序：第4～5位时，每次改为65%攻击伤害。"));
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%的攻击伤害。"), Lightning));
+			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每次改为%d%%的攻击伤害。"), Scale(70)));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningStorm:
-			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%攻击伤害。"), Lightning));
-			Lines.Add(TEXT("编序：第4～5位时，每次改为45%攻击伤害。"));
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%的攻击伤害。"), Lightning));
+			Lines.Add(TEXT("编序：第4～5位时，每次改为45%的攻击伤害。"));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalScalingAttack:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害。"), Attack));
-			Lines.Add(TEXT("编序：此前每记录1张牌，倍率+25个百分点；第1～5位依次为60/85/110/135/160%。"));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("编序：第1～5位攻击倍率依次为%d%%、%d%%、%d%%、%d%%、%d%%。"), Scale(60), Scale(85), Scale(110), Scale(135), Scale(160)));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalDraw:
 			Lines.Add(FString::Printf(TEXT("基础：自身抽%d张牌。"), Draw));
-			Lines.Add(TEXT("编序：第3～5位时，额外回复5点内力。"));
+			Lines.Add(FString::Printf(TEXT("编序：第3～5位时，额外回复%d点内力。"), Scale(5)));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalPartyArmor:
-			Lines.Add(FString::Printf(TEXT("基础：我方全体获得%d点护甲。"), Armor));
-			Lines.Add(TEXT("编序：前一张记录牌不含直接伤害时，改为6点护甲。"));
+			Lines.Add(TEXT("基础：仅自身回复8点内力；全体友方各获得本次溢出内力转成的护甲。"));
+			Lines.Add(TEXT("编序：前一张记录牌不含直接伤害时，改为回复16点内力。"));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
-			Lines.Add(TEXT("编序：第4～5位时，每段改为90%攻击伤害。"));
+			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每段改为%d%%的攻击伤害。"), Scale(90)));
 			break;
 		case EGameXXKSorcererSequenceRule::None:
 		default:
@@ -1023,13 +1026,17 @@ namespace
 			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalPartyArmor
 			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalSearch)
 		{
-			Lines.Add(TEXT("标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。"));
+			Lines.Add(FString::Printf(TEXT("标准冰爆：消耗全部护甲，对全体敌方造成%d%%的攻击伤害；每点消耗护甲再增加1个百分点。"), Scale(100)));
 		}
 		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
 		{
 			Lines.Add(TEXT("任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。"));
 		}
-		AppendSorcererRewardText(Definition.SorcererRule.RewardRule, Lines);
+		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
+		{
+			Lines.Add(TEXT("自动入手：作首牌时，基础效果后将其余4张未完成携带法师牌从抽牌/弃牌堆加入手牌；非首牌则在任务开始时自动入手。每场限1次。"));
+		}
+		AppendSorcererRewardText(Definition.SorcererRule.RewardRule, Definition.BaseQuality, Lines);
 		Lines.Add(TEXT("阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。"));
 		return FString::Join(Lines, TEXT("\n"));
 	}
@@ -1485,7 +1492,8 @@ namespace
 			if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal && BranchPrefix)
 			{
 				if (Line.StartsWith(TEXT("阵赏·")) && !Line.StartsWith(BranchPrefix)) continue;
-				if (Line.StartsWith(TEXT("标准寒冰伤害：")) && Context.LockedSpellBranch != EGameXXKSorcererTaskBranch::Ice) continue;
+				if ((Line.StartsWith(TEXT("标准寒冰伤害：")) || Line.StartsWith(TEXT("标准冰爆：")))
+					&& Context.LockedSpellBranch != EGameXXKSorcererTaskBranch::Ice) continue;
 			}
 			if (Line.StartsWith(TEXT("法术任务：")) || Line.StartsWith(TEXT("阵法：携带的5张法师牌")))
 			{

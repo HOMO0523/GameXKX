@@ -21,8 +21,7 @@ namespace
 		{TEXT("药方"), TEXT("首次打出开启本场效果；药方互不触发。")},
 		{TEXT("检索"), TEXT("从抽牌堆或弃牌堆选牌入手。")},
 		{TEXT("毒爆"), TEXT("依次触发流血、中毒、灼烧和蚀伤各一次。")},
-		// The concrete armor conversion belongs to the card's reward, including legacy rewards.
-		{TEXT("冰爆"), TEXT("消耗全部护甲攻击全体敌方。")},
+		{TEXT("冰爆"), TEXT("消耗全部护甲攻击全体敌方；每点护甲增加1个攻击百分点。")},
 		{TEXT("治疗反转"), TEXT("对敌方使用时，将治疗转为等量生命损失。")},
 		{TEXT("无视防御"), TEXT("本次攻击忽略指定数值的防御。")},
 		{TEXT("消耗"), TEXT("打出后，本场不再抽到此牌。"), false},
