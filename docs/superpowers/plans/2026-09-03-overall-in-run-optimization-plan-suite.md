@@ -12,6 +12,8 @@
 
 ## Source of truth
 
+**Execution resumed:** The user's latest “继续” resumes implementation of approved semantics, starting with the existing Plan 2 Task 3 Hero work and its observed failures. Historical pause notes below describe the preceding review phase. Keep unapproved 雷走 Attack coefficients and the separate 引雷 reward proposal as candidates; their pending choice does not prevent independent approved work. Follow the live production pointer for fresh build/test evidence.
+
 - Approved design: `docs/superpowers/specs/2026-09-03-card-monster-progression-rebalance-design.md`
 - Working directory: `D:\UE5 demo\GameXXK`
 - Authorized branch: `codex/overall-in-run-optimization`

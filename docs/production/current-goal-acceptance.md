@@ -1,10 +1,14 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T15:46:58+08:00
-source_commit: 8a78a66499cd2c37f048384c060384aa0f7f7987
-working_tree: Mage Energy fees confirmed and synchronized; Lightning Attack coefficients remain candidates; overall runtime implementation remains paused
+updated_at: 2026-09-03T17:59:09+08:00
+source_commit: 7a9b869bd7cf197b8284d08cf7a65e8f48da0bb5
+working_tree: Plan 2 Task 3 Hero stage committed; proceeding to partner Blade Guard; Lightning Attack coefficients remain candidates
 ---
+
+> **2026-09-03 主角阶段提交完成，继续伙伴阶段**：Plan 2 Task 3提交 `7a9b869`，包含主角36张重平衡、四牌任务、主角法师1/1/1/0气力、寒序防御甲与按等级/品质换算实际溢出、连营下一次真实地势收益2/3/4、归序一次减费，以及旧八牌任务/旧连营/旧归序状态的无副作用迁移。冷UBT与主角＋缩放＋迁移123/123通过，模拟基础/装备矩阵2/2通过，均0失败/0警告；仅提交23个源码与测试文件。验收与证据为 `docs/production/2026-09-03-hero-rebalance-acceptance.md`。扩展的旧QualityResolution仍含青锋140%和固定治疗15旧期望及运行时数值文案缺口，已明确挂到Task 8，未伪称宽回归通过。现在进入Task 4伙伴刀客/守卫；雷走具体倍率仍等待已发出的用户确认，伙伴新气力将在后续相应阶段落地。以下为历史记录。
+
+> **2026-09-03 用户“继续”恢复已确认部分实现**：按原顺序继续Plan 2 Task 3主角36张与遗留语义修复，保留现有未提交工作区；不把此前候选雷走倍率或引雷易伤提案自动冻结。已向用户异步确认雷走具体倍率，其余已批准工作继续。新测试修正费用和等级换算预期、纠正自动目标测试传参后，冷UBT成功，`InRun02_Task03_ResumeConfirmed_RED_v2` 为120项中112通过、8失败，准确覆盖寒序、连营、回春蚀伤清除、归序一次减费及对应卡表。寒序已改为1气、独立40%防御护甲、固定回6内，实际溢出按品质与队伍等级生成护甲；随后冷UBT及 `InRun02_Task03_HeroIce_GREEN` 聚焦验证通过，报告 `Saved/HarnessReports/20260903-165832-ai-production-loop.md`。其余主角缺口继续处理，未宣称Task 3或全项目完成。下方暂停描述记录此前设计讨论阶段，当前执行状态以本条为准。
 
 > **2026-09-03 法师气力费用确认**：用户确认伙伴仅周天、照见0气，其余16张1气；主角炎／寒／雷／归为1／1／1／0气。内力费用和独立效果不变，寒序仍40%防御护甲。新增 `docs/superpowers/specs/2026-09-03-sorcerer-energy-cost-design.md`，同步总规格、速查、雷走设计、冰法账本前提、Plan 2/7和总入口，旧稿加历史费用提示。五张至少先付3气：3气周转、4气专精、5气爆发，阵赏返气在完成后到账。原生四雷＋周天、照见六合冰需4气，斗转四雷／六合冰需5气，主角四牌需3气。原单回合伤害表必须满足新预算，跨回合另算状态。费用已冻结，不代表雷走120/180/220/240或引雷易伤提案获批；运行时代码继续按整体讨论要求暂停。下方旧气力值均为历史。
 

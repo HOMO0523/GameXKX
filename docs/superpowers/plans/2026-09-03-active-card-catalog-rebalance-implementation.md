@@ -1,6 +1,6 @@
 # Active Card Catalog Rebalance Implementation Plan
 
-> **Execution:** Use superpowers:executing-plans in this task. The user prohibits sub-agents. Steps use checkbox (`- [ ]`) syntax for tracking. Runtime implementation remains paused until the current design discussion is confirmed.
+> **Execution:** Use superpowers:executing-plans in this task. The user prohibits sub-agents. Steps use checkbox (`- [ ]`) syntax for tracking. The user's latest “继续” resumes approved implementation from Task 3; unresolved 雷走 numeric candidates remain separate from approved work. Later pause notes retain their earlier review context.
 
 **Goal:** Replace the 198-card legacy catalog with the approved 173-card pool and encode every approved player-card value without CardId-specific runtime branching.
 
@@ -16,7 +16,7 @@
 - Work on `codex/overall-in-run-optimization` in the root checkout.
 - Preserve unrelated dirty assets and never stage them.
 - Use the exact CardIds and values in design sections 3, 4, and 6.
-- The Energy baseline is approved independently of 雷走 Attack candidates: `docs/superpowers/specs/2026-09-03-sorcerer-energy-cost-design.md`. Partner JuLing/LieFu cost 0, the other sixteen cost 1; Hero Mage costs 1/1/1/0. Preserve Mana, explicit Armor coefficients, free replays and post-completion refunds. The overall runtime pause remains.
+- The Energy baseline is approved independently of 雷走 Attack candidates: `docs/superpowers/specs/2026-09-03-sorcerer-energy-cost-design.md`. Partner JuLing/LieFu cost 0, the other sixteen cost 1; Hero Mage costs 1/1/1/0. Preserve Mana, explicit Armor coefficients, free replays and post-completion refunds. Approved work is resumed; remaining numeric candidates stay separate.
 - The latest partner Ice revision in design section 6.3 and Mana-overflow formula in section 4.3.1 supersede the earlier 40%/80%-Defense base grants. Record the user-authored card behavior before resuming Task 6; do not use the first damage projection as current balance evidence.
 
 ## File map
@@ -232,6 +232,8 @@ git commit -m "feat: retire legacy route cards"
 
 ### Task 3: Encode and verify all 36 Hero cards
 
+Completed at `7a9b869`: cold UBT and Hero/CombatScaling/SaveMigration 123/123; simulation foundation 2/2. Scope and the deferred legacy quality-text check are recorded in `docs/production/2026-09-03-hero-rebalance-acceptance.md`.
+
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
@@ -253,10 +255,14 @@ git commit -m "feat: retire legacy route cards"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHeroMageRuntimeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKHeroFormationRuntimeTest.cpp`
 - Create: `Source/GameXXK/Private/Tests/GameXXKHeroTaskResumeMigrationTest.cpp`
+- Modify: `Source/GameXXK/Public/GameXXKCombatScalingRules.h`
+- Modify: `Source/GameXXK/Private/GameXXKCombatScalingRules.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKCardText.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKCombatSimulationFoundationTest.cpp`
 
 Recovery audit refinement: this task must also migrate recognizable v33/early-v34 eight-card Hero tasks to the four equipped Mage requirements before current-state validation. Validate complete old snapshots/deck choices before filtering, preserve existing replay progress and paused manual choices, never execute cards or grant rewards during migration, and keep repeat loads idempotent. A narrow saved marker may retain an already-earned legacy search when it is the manual continuation of a saved replay; it does not change new-card search rules. Cover source versions 33/34, incomplete/full tasks, every replay cursor, forced discard, search, malformed data, and real choice continuation. This compatibility correction does not renumber the planned v35-v38 schemas. See `docs/production/2026-09-03-in-run-optimization-recovery-audit.md` for the reproduced interruption and original RED evidence.
 
-- [ ] **Step 1: Add exact red catalog rows**
+- [x] **Step 1: Add exact red catalog rows**
 
 Create one table-driven expected row for each Hero CardId. Assert Hero Mage Energy 1/1/1/0 and Mana 3/0/3/0. HanXu at zero Energy rejects without granting Armor/Mana; at sufficient Energy it pays one and retains its explicit 40%-Defense Armor. Four active Mage cards pay three Energy, with no repeated payment on replay; GuiXu retains its next-Hero-only one-use discount. The first critical rows are:
 
@@ -283,13 +289,13 @@ const TArray<FExpectedApprovedCard> HeroExpected = {
 
 Fill the remaining exact rows from design section 6.1-6.2; assert all 36 IDs appear exactly once and each effect carries the correct magnitude policy.
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.HeroCards --automation-report InRun02_Task03_RED --json
 ```
 
-- [ ] **Step 3: Update catalog and composite resolution**
+- [x] **Step 3: Update catalog and composite resolution**
 
 Use `Continuous`, `Explicit`, `Dot`, `PrintedArmor`, `DefensePercent`, and `MedicineCoefficient` builders. Implement no new `if (CardId == ...)` branch in `GameXXKCardRules.cpp`; extend generic effect/rule structs when a behavior is missing. In particular:
 
@@ -303,7 +309,7 @@ AddHero(TEXT("Hero.Generic.FengShenBu"), TEXT("风身步"), 0, 0, EGameXXKCardTa
 
 Encode Hero Guard Armor with policies rather than flat points; encode DOT coefficients before level expansion; encode Hero Sorcerer task size 4 and Hero Healer four formula sources exactly as specified.
 
-- [ ] **Step 4: Run Hero green and commit**
+- [x] **Step 4: Run Hero green and commit**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.HeroCards --automation-report InRun02_Task03_GREEN --json
@@ -509,6 +515,8 @@ git commit -m "feat: rebalance npc and boss cards"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardOutcomePreviewWidgetTest.cpp`
 
 - [ ] **Step 1: Write red value-projection and text-parity tests**
+
+The Task 3 extended check found the existing `Source/GameXXK/Private/Tests/GameXXKCardQualityResolutionTest.cpp` still assumes QingFeng base 140% and flat healing 12→Rare15. Update its numeric fixture to approved base 100%→Rare120% (Attack20 against zero Defense leaves target HP476) and Medicine coefficient15 (level1/Rare/Medicine0 resolves19 healing, so ally HP20→39). Keep real text/preview/committed-output equality: implement resolved display values instead of deleting assertions or accepting coefficient-only battle text. The expected coefficient remains15 until owner/quality/level context is applied once.
 
 Verify all 22 Mage printed fees and effective-cost previews use the confirmed prices. Explicit discounts only alter payment. An unaffordable final card stays unavailable even when its prospective task reward returns Energy. Free queued replays do not rewrite printed costs. Regenerate card documentation so the old all-zero Universal rule cannot reappear.
 
