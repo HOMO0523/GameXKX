@@ -367,6 +367,13 @@ namespace
 		return Result;
 	}
 
+	FGameXXKCardEffect WithNestedModifierMagnitudePolicy(
+		FGameXXKCardEffect Result, const EGameXXKCardMagnitudePolicy Policy)
+	{
+		Result.Modifier.MagnitudePolicy = Policy;
+		return Result;
+	}
+
 	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result)
 	{
 		Result.CoefficientReferenceQuality = EGameXXKCardQuality::Common;
@@ -1163,25 +1170,25 @@ namespace
 
 		AddQuestNpcCard(Cards, Tusi, TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), TEXT("寨主号令"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::HighestAttackAlly, 1, EGameXXKCardStatus::Momentum),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 8),
+			 DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 40)),
 			 Reaction(EGameXXKCardEffectTarget::HighestAttackAlly, EGameXXKCardStatus::Block, 1),
 			 WithSource(Attack(100, EGameXXKCardEffectTarget::SelectedTarget), EGameXXKCardEffectSource::HighestAttackAlly)},
 			EGameXXKCharacterRole::Blade,
 			{},
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6)});
+			{DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 20))});
 		AddQuestNpcCard(Cards, Tusi, TEXT("Npc.TusiChief.ShiMenShouShi"), TEXT("石门守势"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Agility),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16),
+			 DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 80)),
 			 Reaction(EGameXXKCardEffectTarget::SelectedTarget, EGameXXKCardStatus::Block, 2)},
 			EGameXXKCharacterRole::Blade,
-			{SharedPlayedModifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::AddArmor, 12, 1, EGameXXKCardStatus::None, EGameXXKCardModifierExpiry::AfterTriggerCount),
+			{WithNestedModifierMagnitudePolicy(SharedPlayedModifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::AddArmor, 40, 1, EGameXXKCardStatus::None, EGameXXKCardModifierExpiry::AfterTriggerCount), EGameXXKCardMagnitudePolicy::DefensePercent),
 			 SharedPlayedModifier(EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::RegisterReaction, 1, 1, EGameXXKCardStatus::Block, EGameXXKCardModifierExpiry::AfterTriggerCount)},
 			{Effect(EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks, EGameXXKCardEffectTarget::SelectedTarget, 1)});
 		AddQuestNpcCard(Cards, Tusi, TEXT("Npc.TusiChief.TuSiJunLing"), TEXT("土司军令"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 8),
+			 DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 40)),
 			 Reaction(EGameXXKCardEffectTarget::HighestAttackAlly, EGameXXKCardStatus::Block, 1),
 			 WithSource(Attack(150, EGameXXKCardEffectTarget::SelectedTarget), EGameXXKCardEffectSource::HighestAttackAlly)},
 			EGameXXKCharacterRole::Blade,
@@ -1189,7 +1196,7 @@ namespace
 			{Effect(EGameXXKCardEffectType::PreserveNextReactionUse, EGameXXKCardEffectTarget::AllAllies, 1)});
 		AddQuestNpcCard(Cards, Tusi, TEXT("Npc.TusiChief.MengZhaiShiYue"), TEXT("盟寨誓约"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllAllies, 1, EGameXXKCardStatus::Momentum),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8),
+			 DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 50)),
 			 Reaction(EGameXXKCardEffectTarget::AllAllies, EGameXXKCardStatus::Block, 1),
 			 Effect(EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, EGameXXKCardEffectTarget::SelectedTarget, 60)},
 			EGameXXKCharacterRole::Blade,
@@ -1210,8 +1217,8 @@ namespace
 			 Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
 			 Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 2)});
 		AddQuestNpcCard(Cards, Song, TEXT("Npc.SongJinBao.ErMuMiBao"), TEXT("耳目密报"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
-			{Effect(EGameXXKCardEffectType::RevealEnemyIntent, EGameXXKCardEffectTarget::CardOwner, 99),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),
+			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Weak),
+			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Mark),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
@@ -1244,55 +1251,55 @@ namespace
 
 		constexpr const TCHAR* YueBai = TEXT("Npc.YueBai");
 		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("青焰点灯"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
-			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Burn),
+			{Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Burn)),
 			 Effect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
-			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn),
+			{Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn)),
 			 Effect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn)});
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), 0, 0, EGameXXKCardTargetMode::SingleEnemy,
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), 0, 0, EGameXXKCardTargetMode::None,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
-			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
+			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
-			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 3)});
+			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 3)});
 		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.YueBaiZhaoYe"), TEXT("月白照夜"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn),
+			 Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn)),
 			 Attack(100, EGameXXKCardEffectTarget::SelectedTarget),
 			 Effect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark),
-			 Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 50, EGameXXKCardStatus::Mark)});
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), 0, 6, EGameXXKCardTargetMode::SingleEnemy,
-			{Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 9),
-			 Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3),
-			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
+			 Continuous(Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 60, EGameXXKCardStatus::Mark))});
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), 0, 6, EGameXXKCardTargetMode::None,
+			{DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 40)),
+			 Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 5),
+			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
-			{EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 0, 20)});
+			{Continuous(EffectWithSecondary(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 100, 1))});
 
 		constexpr const TCHAR* Zhou = TEXT("Npc.ZhouGuangZu");
 		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.YiCaoBianShi"), TEXT("异草辨识"), 0, 0, EGameXXKCardTargetMode::AnyLivingUnit,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 6),
-			 Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1)});
+			 MedicineCoefficient(Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 15)),
+			 Effect(EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::None, 1, TargetIsAlly())});
 		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), 0, 3, EGameXXKCardTargetMode::AllAllies,
 			{Effect(EGameXXKCardEffectType::LoseHealthNonlethal, EGameXXKCardEffectTarget::AllAllies, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6)});
-		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
+			 MedicineCoefficient(Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 15))});
+		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), 0, 3, EGameXXKCardTargetMode::None,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
-			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 2)});
+			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2)});
 		AddQuestNpcCard(Cards, Zhou, TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 11, EGameXXKCardStatus::Poison),
+			 Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 11, EGameXXKCardStatus::Poison)),
 			 Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1)});
 
 		constexpr const TCHAR* JinGui = TEXT("Npc.JinGui");
@@ -1301,10 +1308,10 @@ namespace
 			 Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::HighestAttackAlly, 2, EGameXXKCardStatus::Charge)},
 			EGameXXKCharacterRole::Invalid, {}, {},
-			HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 50, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 0, EGameXXKHeavyArrowLockTiming::AfterBaseEffects));
+			ContinuousHeavyArrow(HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 50, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 0, EGameXXKHeavyArrowLockTiming::AfterBaseEffects)));
 		AddQuestNpcCard(Cards, JinGui, TEXT("Npc.JinGui.QiaoYanZhouXuan"), TEXT("巧言周旋"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability),
-			 Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestArmorAlly, 12),
+			 DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestArmorAlly, 80)),
 			 Reaction(EGameXXKCardEffectTarget::HighestArmorAlly, EGameXXKCardStatus::Block, 2)});
 		AddQuestNpcCard(Cards, JinGui, TEXT("Npc.JinGui.ZaYiChouBei"), TEXT("杂役筹备"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3),
@@ -1312,7 +1319,7 @@ namespace
 			 Effect(EGameXXKCardEffectType::GainEnergy, EGameXXKCardEffectTarget::CardOwner, 1),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::HighestAttackAlly, 3, EGameXXKCardStatus::Charge)},
 			EGameXXKCharacterRole::Invalid, {}, {},
-			HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 40, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 1, EGameXXKHeavyArrowLockTiming::AfterBaseEffects));
+			ContinuousHeavyArrow(HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 40, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 1, EGameXXKHeavyArrowLockTiming::AfterBaseEffects)));
 		AddQuestNpcCard(Cards, JinGui, TEXT("Npc.JinGui.HouXiangTuoShen"), TEXT("后巷脱身"), 2, 6, EGameXXKCardTargetMode::None,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllAllies, 2, EGameXXKCardStatus::Agility),
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::LowestHealthAlly, 2, EGameXXKCardStatus::Mark),
@@ -1325,18 +1332,18 @@ namespace
 			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::HighestAttackAlly, 2, EGameXXKCardStatus::Charge),
 			 Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid, {}, {},
-			HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 50, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 0, EGameXXKHeavyArrowLockTiming::AfterBaseEffects));
+			ContinuousHeavyArrow(HeavyArrow(EGameXXKHeavyArrowKind::ExtraAttackPerCharge, 50, 0, 0, 0, EGameXXKHeavyArrowChargeSource::HighestAttackAlly, 0, EGameXXKHeavyArrowLockTiming::AfterBaseEffects)));
 		AddQuestNpcCard(Cards, Qiong, TEXT("Npc.QiongMeiEr.GuWuMiZong"), TEXT("蛊雾迷踪"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Bleed),
-			 Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison),
+			{Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Bleed)),
+			 Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Poison)),
 			 Effect(EGameXXKCardEffectType::ResolveToxicExplosion, EGameXXKCardEffectTarget::SelectedTarget, 1)});
 		AddQuestNpcCard(Cards, Qiong, TEXT("Npc.QiongMeiEr.YinLingZhenXin"), TEXT("银铃镇心"), 1, 3, EGameXXKCardTargetMode::SingleAlly,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
-			 Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 12)});
+			 Effect(EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget, 1),
+			 MedicineCoefficient(Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 30))});
 		AddQuestNpcCard(Cards, Qiong, TEXT("Npc.QiongMeiEr.ShanGeHuanLing"), TEXT("山歌唤灵"), 2, 6, EGameXXKCardTargetMode::AllAllies,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine),
-			 Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6)});
+			 MedicineCoefficient(Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 25))});
 	}
 
 	void AddBladeCards(TArray<FGameXXKCardDefinition>& Cards)
@@ -1883,13 +1890,13 @@ namespace
 
 		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Boss, EGameXXKCharacterRole::Route, OwnerId, nullptr,
 			TEXT("Route.Boss.XiongPiPiJia"), TEXT("熊罴皮甲"), 2, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 18), Modifier(EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound, EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::Attacker, 50, 1) }, BossFrame, TEXT("Route.Boss.BlackBear"));
+			{ DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 140)), Modifier(EGameXXKCardBattleModifierTrigger::FirstDirectDamageReceivedThisRound, EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::Attacker, 50, 1) }, BossFrame, TEXT("Route.Boss.BlackBear"));
 		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Boss, EGameXXKCharacterRole::Route, OwnerId, nullptr,
 			TEXT("Route.Boss.HanDiYiShi"), TEXT("撼地遗势"), 3, 10, EGameXXKCardTargetMode::SingleEnemy,
-			{ Attack(180, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 10) }, BossFrame, TEXT("Route.Boss.BlackBear"));
+			{ Attack(180, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 5, EGameXXKCardStatus::Vulnerability), DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::CardOwner, 50)) }, BossFrame, TEXT("Route.Boss.BlackBear"));
 		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Boss, EGameXXKCharacterRole::Route, OwnerId, nullptr,
 			TEXT("Route.Boss.HuPoZhenDan"), TEXT("虎魄镇胆"), 2, 8, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 10), Effect(EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::AllAllies, 1) }, BossFrame, TEXT("Route.Boss.Tiger"));
+			{ DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 140)), Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::AllAllies, 1) }, BossFrame, TEXT("Route.Boss.Tiger"));
 		AddCard(Cards, EGameXXKCardOwner::Route, EGameXXKCardRarity::Boss, EGameXXKCharacterRole::Route, OwnerId, nullptr,
 			TEXT("Route.Boss.DuKouLieFeng"), TEXT("渡口猎风"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(140, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::SelectedTarget, 80, EGameXXKCardStatus::None, 1, TargetHasStatus(EGameXXKCardStatus::Mark)) }, BossFrame, TEXT("Route.Boss.Tiger"));

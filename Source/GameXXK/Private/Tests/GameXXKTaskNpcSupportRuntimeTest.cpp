@@ -144,6 +144,7 @@ bool FGameXXKTaskNpcHighestAttackAssistTest::RunTest(const FString& Parameters)
 	using namespace GameXXKTaskNpcSupportRuntimeTest;
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, TEXT("ZhaiZhu"), TEXT("Npc.TusiChief.ZhaiZhuHaoLing"), 58101)) return false;
+	FindUnit(Runtime, NpcUnitId)->Defense = 20;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("ZhaiZhu"), Result, TEXT("寨主号令"))) return true;
 

@@ -429,14 +429,16 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 
 	if (const FGameXXKCardDefinition* SheLingHuo = RequireCard(*this, TEXT("Profession.Sorcerer.SheLingHuo")))
 	{
-		const FGameXXKCardEffect* CurrentManaPlaceholder = SheLingHuo->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
+		const FGameXXKCardEffect* CurrentManaRecovery = SheLingHuo->Effects.FindByPredicate([](const FGameXXKCardEffect& Effect)
 		{
-			return Effect.Type == EGameXXKCardEffectType::GainMana
+			return Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor
 				&& Effect.Target == EGameXXKCardEffectTarget::CardOwner
-				&& Effect.Magnitude == 1;
+				&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery
+				&& Effect.Magnitude == 100
+				&& Effect.SecondaryMagnitude == 10;
 		});
 		TestEqual(TEXT("SheLingHuo is the self-only current-Mana Ice card"), SheLingHuo->TargetSpec.Mode, EGameXXKCardTargetMode::Self);
-		TestNotNull(TEXT("SheLingHuo retains the data placeholder transformed by its Sorcerer sequence rule"), CurrentManaPlaceholder);
+		TestNotNull(TEXT("SheLingHuo stores ceiling ten-percent recovery and overflow conversion directly"), CurrentManaRecovery);
 		TestEqual(TEXT("SheLingHuo uses the current-Mana restore rule"), SheLingHuo->SorcererRule.SequenceRule, EGameXXKSorcererSequenceRule::IceCurrentManaRestore);
 		TestEqual(TEXT("SheLingHuo uses its matching Ice reward"), SheLingHuo->SorcererRule.RewardRule, EGameXXKSorcererRewardRule::IceCurrentManaRestore);
 		TestFalse(TEXT("SheLingHuo no longer consumes Burn"), SheLingHuo->Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
@@ -521,8 +523,14 @@ bool FGameXXKCardCatalogTest::RunTest(const FString& Parameters)
 	TestConsumptionResult(TEXT("Hero.Generic.PoYunYiShan"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectType::DrawCards);
 	if (const FGameXXKCardDefinition* XingHuoHuiShou = RequireCard(*this, TEXT("Profession.Sorcerer.XingHuoHuiShou")))
 	{
-		TestTrue(TEXT("XingHuoHuiShou now grants three party Armor as its base"),
-			HasEffect(*XingHuoHuiShou, EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 3));
+		TestTrue(TEXT("XingHuoHuiShou stores one owner recovery and one copied grant for other allies"),
+			HasEffect(*XingHuoHuiShou, EGameXXKCardEffectType::GainManaOverflowToArmor, EGameXXKCardEffectTarget::CardOwner, 100)
+			&& XingHuoHuiShou->Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == EGameXXKCardEffectType::AddArmor
+					&& Effect.Target == EGameXXKCardEffectTarget::AllOtherAllies
+					&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::PriorEffectResult;
+			}));
 		TestEqual(TEXT("XingHuoHuiShou uses the Universal party-Armor sequence"),
 			XingHuoHuiShou->SorcererRule.SequenceRule,
 			EGameXXKSorcererSequenceRule::UniversalPartyArmor);

@@ -330,6 +330,7 @@ bool FGameXXKTaskNpcRetainArmorTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, {
 		{TEXT("MengZhai"), TEXT("Npc.TusiChief.MengZhaiShiYue"), TusiId}}, 58505)) return false;
+	FindUnit(Runtime, TusiId)->Defense = 16;
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("MengZhai"), EnemyAId, Result, TEXT("盟寨誓约收招候选"))) return true;
 	TestEqual(TEXT("base grants all party members Armor8"), FindUnit(Runtime, HeroId)->Armor, 8);

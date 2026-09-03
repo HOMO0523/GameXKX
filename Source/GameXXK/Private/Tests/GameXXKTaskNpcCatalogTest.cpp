@@ -34,13 +34,13 @@ namespace GameXXKTaskNpcCatalogTest
 
 		{TEXT("Npc.ZhouGuangZu.YiCaoBianShi"), TEXT("异草辨识"), TEXT("Npc.ZhouGuangZu"), 0, 0, EGameXXKCardTargetMode::AnyLivingUnit},
 		{TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"), TEXT("黄山敷治"), TEXT("Npc.ZhouGuangZu"), 0, 3, EGameXXKCardTargetMode::AllAllies},
-		{TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), TEXT("Npc.ZhouGuangZu"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
+		{TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), TEXT("地志摹图"), TEXT("Npc.ZhouGuangZu"), 0, 3, EGameXXKCardTargetMode::None},
 		{TEXT("Npc.ZhouGuangZu.YanFenFengMai"), TEXT("岩粉封脉"), TEXT("Npc.ZhouGuangZu"), 1, 3, EGameXXKCardTargetMode::SingleEnemy},
 
 		{TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("青焰点灯"), TEXT("Npc.YueBai"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
 		{TEXT("Npc.YueBai.YueBaiZhaoYe"), TEXT("月白照夜"), TEXT("Npc.YueBai"), 1, 3, EGameXXKCardTargetMode::SingleEnemy},
-		{TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), TEXT("Npc.YueBai"), 0, 0, EGameXXKCardTargetMode::SingleEnemy},
-		{TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), TEXT("Npc.YueBai"), 0, 6, EGameXXKCardTargetMode::SingleEnemy},
+		{TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), TEXT("Npc.YueBai"), 0, 0, EGameXXKCardTargetMode::None},
+		{TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), TEXT("Npc.YueBai"), 0, 6, EGameXXKCardTargetMode::None},
 
 		{TEXT("Npc.SongJinBao.ShangQianGuWu"), TEXT("赏钱鼓舞"), TEXT("Npc.SongJinBao"), 0, 0, EGameXXKCardTargetMode::SingleAlly},
 		{TEXT("Npc.SongJinBao.ErMuMiBao"), TEXT("耳目密报"), TEXT("Npc.SongJinBao"), 0, 3, EGameXXKCardTargetMode::SingleEnemy},
@@ -171,12 +171,12 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("寨主号令 has four base clauses"), ZhaiZhu->Effects.Num(), 4);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者气势1"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::HighestAttackAlly, 1, EGameXXKCardStatus::Momentum);
-		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者护甲8"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 8);
+		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者护甲40%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 40);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战者格挡1"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::HighestAttackAlly, 1, EGameXXKCardStatus::Block);
 		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->Effects, TEXT("协战100%"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 100, EGameXXKCardStatus::None, EGameXXKCardEffectSource::HighestAttackAlly);
 		TestEqual(TEXT("寨主号令 has no Charge payload after the delayed-replay removal"), ZhaiZhu->ChargeEffects.Num(), 0);
 		TestEqual(TEXT("寨主号令 has one Finish payload"), ZhaiZhu->FinishEffects.Num(), 1);
-		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->FinishEffects, TEXT("收招全队护甲6"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 6);
+		ExpectEffect(*this, ZhaiZhu->Id, ZhaiZhu->FinishEffects, TEXT("收招全队护甲20%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 20);
 	}
 
 	const FGameXXKCardDefinition* ShiMen = Card(TEXT("Npc.TusiChief.ShiMenShouShi"));
@@ -185,10 +185,10 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("石门守势 has four base clauses"), ShiMen->Effects.Num(), 4);
 		ExpectEffect(*this, ShiMen->Id, ShiMen->Effects, TEXT("目标标记2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, ShiMen->Id, ShiMen->Effects, TEXT("目标灵动2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Agility);
-		ExpectEffect(*this, ShiMen->Id, ShiMen->Effects, TEXT("目标护甲16"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16);
+		ExpectEffect(*this, ShiMen->Id, ShiMen->Effects, TEXT("目标护甲80%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 80);
 		ExpectEffect(*this, ShiMen->Id, ShiMen->Effects, TEXT("目标格挡2"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Block);
 		TestEqual(TEXT("石门守势 has two Charge payload clauses"), ShiMen->ChargeEffects.Num(), 2);
-		ExpectModifierEffect(*this, ShiMen->Id, ShiMen->ChargeEffects, TEXT("下一使用者护甲12"), EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::PlayedCard, 12, 1);
+		ExpectModifierEffect(*this, ShiMen->Id, ShiMen->ChargeEffects, TEXT("下一使用者护甲40%"), EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::PlayedCard, 40, 1);
 		ExpectModifierEffect(*this, ShiMen->Id, ShiMen->ChargeEffects, TEXT("下一使用者格挡1"), EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::PlayedCard, 1, 1, EGameXXKCardStatus::Block);
 		TestEqual(TEXT("石门守势 has one Finish payload"), ShiMen->FinishEffects.Num(), 1);
 		ExpectEffect(*this, ShiMen->Id, ShiMen->FinishEffects, TEXT("收招重定向下一敌方单攻"), EGameXXKCardEffectType::RedirectSingleTargetEnemyAttacks, EGameXXKCardEffectTarget::SelectedTarget, 1);
@@ -200,7 +200,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("土司军令 has five base clauses"), TuSi->Effects.Num(), 5);
 		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("目标标记2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("目标破绽3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability);
-		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("协战者护甲8"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 8);
+		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("协战者护甲40%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestAttackAlly, 40);
 		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("协战者格挡1"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::HighestAttackAlly, 1, EGameXXKCardStatus::Block);
 		ExpectEffect(*this, TuSi->Id, TuSi->Effects, TEXT("协战150%"), EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 150, EGameXXKCardStatus::None, EGameXXKCardEffectSource::HighestAttackAlly);
 		ExpectModifierEffect(*this, TuSi->Id, TuSi->ChargeEffects, TEXT("冲锋改单体为同阵营群体"), EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::WidenNextActiveSingleTarget, EGameXXKCardEffectTarget::PlayedCard, 1, 1);
@@ -212,7 +212,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("盟寨誓约 has four base clauses"), MengZhai->Effects.Num(), 4);
 		ExpectEffect(*this, MengZhai->Id, MengZhai->Effects, TEXT("全队气势1"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllAllies, 1, EGameXXKCardStatus::Momentum);
-		ExpectEffect(*this, MengZhai->Id, MengZhai->Effects, TEXT("全队护甲8"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8);
+		ExpectEffect(*this, MengZhai->Id, MengZhai->Effects, TEXT("全队护甲50%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 50);
 		ExpectEffect(*this, MengZhai->Id, MengZhai->Effects, TEXT("全队格挡1"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::AllAllies, 1, EGameXXKCardStatus::Block);
 		ExpectEffect(*this, MengZhai->Id, MengZhai->Effects, TEXT("全队各攻击60%"), EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, EGameXXKCardEffectTarget::SelectedTarget, 60);
 		ExpectModifierEffect(*this, MengZhai->Id, MengZhai->ChargeEffects, TEXT("下一牌气力免费"), EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard, EGameXXKCardEffectType::ModifyEnergyCost, EGameXXKCardEffectTarget::PlayedCard, -99, 1);
@@ -249,7 +249,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("巧言周旋 has three base clauses"), QiaoYan->Effects.Num(), 3);
 		ExpectEffect(*this, QiaoYan->Id, QiaoYan->Effects, TEXT("目标破绽3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Vulnerability);
-		ExpectEffect(*this, QiaoYan->Id, QiaoYan->Effects, TEXT("最高护甲友方护甲12"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestArmorAlly, 12);
+		ExpectEffect(*this, QiaoYan->Id, QiaoYan->Effects, TEXT("最高护甲友方护甲80%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::HighestArmorAlly, 80);
 		ExpectEffect(*this, QiaoYan->Id, QiaoYan->Effects, TEXT("最高护甲友方格挡2"), EGameXXKCardEffectType::RegisterReaction, EGameXXKCardEffectTarget::HighestArmorAlly, 2, EGameXXKCardStatus::Block);
 	}
 
@@ -288,8 +288,8 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("银铃镇心 has Medicine, ally cleanse, and heal"), YinLing->Effects.Num(), 3);
 		ExpectEffect(*this, YinLing->Id, YinLing->Effects, TEXT("药效6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine);
-		ExpectEffect(*this, YinLing->Id, YinLing->Effects, TEXT("友方三DoT全清"), EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1);
-		ExpectEffect(*this, YinLing->Id, YinLing->Effects, TEXT("单体治疗12加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 12);
+		ExpectEffect(*this, YinLing->Id, YinLing->Effects, TEXT("友方流血中毒灼烧全清"), EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, YinLing->Id, YinLing->Effects, TEXT("单体治疗系数30加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 30);
 	}
 
 	const FGameXXKCardDefinition* ShanGe = Card(TEXT("Npc.QiongMeiEr.ShanGeHuanLing"));
@@ -297,7 +297,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("山歌唤灵 has Medicine and group heal"), ShanGe->Effects.Num(), 2);
 		ExpectEffect(*this, ShanGe->Id, ShanGe->Effects, TEXT("药效6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine);
-		ExpectEffect(*this, ShanGe->Id, ShanGe->Effects, TEXT("群体治疗6加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6);
+		ExpectEffect(*this, ShanGe->Id, ShanGe->Effects, TEXT("群体治疗系数25加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 25);
 	}
 
 	const FGameXXKCardDefinition* YiCao = Card(TEXT("Npc.ZhouGuangZu.YiCaoBianShi"));
@@ -305,8 +305,8 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("异草辨识 has Medicine, bidirectional resolution, and ally-only cleanse"), YiCao->Effects.Num(), 3);
 		ExpectEffect(*this, YiCao->Id, YiCao->Effects, TEXT("药效6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine);
-		ExpectEffect(*this, YiCao->Id, YiCao->Effects, TEXT("友方治疗或敌方扣血6加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 6);
-		ExpectEffect(*this, YiCao->Id, YiCao->Effects, TEXT("仅友方清三DoT"), EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, YiCao->Id, YiCao->Effects, TEXT("友方治疗或敌方扣血系数15加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::SelectedTarget, 15);
+		ExpectEffect(*this, YiCao->Id, YiCao->Effects, TEXT("仅友方清流血中毒灼烧"), EGameXXKCardEffectType::Cleanse, EGameXXKCardEffectTarget::SelectedTarget, 1);
 	}
 
 	const FGameXXKCardDefinition* HuangShan = Card(TEXT("Npc.ZhouGuangZu.HuangShanFuZhi"));
@@ -315,7 +315,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("黄山敷治 has nonlethal loss, Medicine, and group heal"), HuangShan->Effects.Num(), 3);
 		ExpectEffect(*this, HuangShan->Id, HuangShan->Effects, TEXT("全队非致死失血1"), EGameXXKCardEffectType::LoseHealthNonlethal, EGameXXKCardEffectTarget::AllAllies, 1);
 		ExpectEffect(*this, HuangShan->Id, HuangShan->Effects, TEXT("药效6"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 6, EGameXXKCardStatus::Medicine);
-		ExpectEffect(*this, HuangShan->Id, HuangShan->Effects, TEXT("群体治疗6加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 6);
+		ExpectEffect(*this, HuangShan->Id, HuangShan->Effects, TEXT("群体治疗系数15加药效"), EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 15);
 	}
 
 	const FGameXXKCardDefinition* DiZhi = Card(TEXT("Npc.ZhouGuangZu.DiZhiMoTu"));
@@ -323,7 +323,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("地志摹图 has draw and two terrain benefits"), DiZhi->Effects.Num(), 2);
 		ExpectEffect(*this, DiZhi->Id, DiZhi->Effects, TEXT("抽2"), EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2);
-		ExpectEffect(*this, DiZhi->Id, DiZhi->Effects, TEXT("地势收益2次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 2);
+		ExpectEffect(*this, DiZhi->Id, DiZhi->Effects, TEXT("地势收益2次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2);
 	}
 
 	const FGameXXKCardDefinition* YanFen = Card(TEXT("Npc.ZhouGuangZu.YanFenFengMai"));
@@ -358,7 +358,7 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("触发灼烧1次"), EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, YueZhao->Id, YueZhao->TaskNpcRewardEffects, TEXT("奖励敌群标记3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark);
-		ExpectEffect(*this, YueZhao->Id, YueZhao->TaskNpcRewardEffects, TEXT("奖励每层标记落雷50%"), EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 50, EGameXXKCardStatus::Mark);
+		ExpectEffect(*this, YueZhao->Id, YueZhao->TaskNpcRewardEffects, TEXT("奖励每层标记落雷60%"), EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 60, EGameXXKCardStatus::Mark);
 	}
 
 	const FGameXXKCardDefinition* CanJuan = Card(TEXT("Npc.YueBai.CanJuanPiZhu"));
@@ -366,20 +366,20 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("残卷批注 base has draw2, terrain, and task search"), CanJuan->Effects.Num(), 3);
 		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("抽2"), EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2);
-		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, CanJuan->Id, CanJuan->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
-		ExpectEffect(*this, CanJuan->Id, CanJuan->TaskNpcRewardEffects, TEXT("奖励地势收益3次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 3);
+		ExpectEffect(*this, CanJuan->Id, CanJuan->TaskNpcRewardEffects, TEXT("奖励地势收益3次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 3);
 	}
 
 	const FGameXXKCardDefinition* ShanHe = Card(TEXT("Npc.YueBai.ShanHeCanTu"));
 	if (ShanHe)
 	{
 		TestEqual(TEXT("山河残图 base has group armor, group Mana, terrain, and task search"), ShanHe->Effects.Num(), 4);
-		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队护甲9"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 9);
-		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队内力3"), EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 3);
-		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1);
+		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队护甲40%"), EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 40);
+		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("全队内力5"), EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 5);
+		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("地势收益1次"), EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, ShanHe->Id, ShanHe->Effects, TEXT("检索未完成月白牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
-		ExpectEffect(*this, ShanHe->Id, ShanHe->TaskNpcRewardEffects, TEXT("奖励每甲20%敌群"), EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 0, EGameXXKCardStatus::None, EGameXXKCardEffectSource::CardOwner, 20);
+		ExpectEffect(*this, ShanHe->Id, ShanHe->TaskNpcRewardEffects, TEXT("奖励基础100%且每甲加1点"), EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor, EGameXXKCardEffectTarget::AllEnemies, 100, EGameXXKCardStatus::None, EGameXXKCardEffectSource::CardOwner, 1);
 	}
 
 	const FGameXXKCardDefinition* ShangQian = Card(TEXT("Npc.SongJinBao.ShangQianGuWu"));
@@ -400,8 +400,8 @@ bool FGameXXKTaskNpcCatalogTest::RunTest(const FString& Parameters)
 	if (ErMu)
 	{
 		TestEqual(TEXT("耳目密报 base has reveal, Mark, and task search"), ErMu->Effects.Num(), 3);
-		ExpectEffect(*this, ErMu->Id, ErMu->Effects, TEXT("显示全部意图"), EGameXXKCardEffectType::RevealEnemyIntent, EGameXXKCardEffectTarget::CardOwner, 99);
-		ExpectEffect(*this, ErMu->Id, ErMu->Effects, TEXT("目标标记2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark);
+		ExpectEffect(*this, ErMu->Id, ErMu->Effects, TEXT("敌群虚弱1"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Weak);
+		ExpectEffect(*this, ErMu->Id, ErMu->Effects, TEXT("敌群标记2"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 2, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, ErMu->Id, ErMu->Effects, TEXT("检索未完成宋金宝牌"), EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1);
 		ExpectEffect(*this, ErMu->Id, ErMu->TaskNpcRewardEffects, TEXT("奖励目标标记3"), EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 3, EGameXXKCardStatus::Mark);
 		ExpectEffect(*this, ErMu->Id, ErMu->TaskNpcRewardEffects, TEXT("奖励全队各攻击100%"), EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget, EGameXXKCardEffectTarget::SelectedTarget, 100);

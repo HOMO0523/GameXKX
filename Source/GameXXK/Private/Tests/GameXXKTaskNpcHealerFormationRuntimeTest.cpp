@@ -157,11 +157,11 @@ bool FGameXXKTaskNpcMedicineTargetSideTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult FriendlyResult;
 	if (Resolve(*this, FriendlyRuntime, TEXT("YiCao.Friendly"), AllyUnitId, FriendlyResult, TEXT("异草辨识友方分支")))
 	{
-		TestEqual(TEXT("level-one friendly branch continuously scales base6 plus Medicine6 to thirteen"), FindUnit(FriendlyRuntime, AllyUnitId)->HP, 33);
+		TestEqual(TEXT("level-one friendly branch scales coefficient15 plus Medicine6 to twenty-two"), FindUnit(FriendlyRuntime, AllyUnitId)->HP, 42);
 		TestEqual(TEXT("friendly branch clears all Bleed"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Bleed), 0);
 		TestEqual(TEXT("friendly branch clears all Poison"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Poison), 0);
 		TestEqual(TEXT("friendly branch clears all Burn"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::Burn), 0);
-		TestEqual(TEXT("friendly all-DOT cleanse also erases Rot"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::DamageOverTime), 0);
+		TestEqual(TEXT("friendly three-DOT cleanse preserves Rot"), Status(FriendlyRuntime, AllyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
 		TestEqual(TEXT("Medicine snapshot is consumed once"), Status(FriendlyRuntime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
 		TestEqual(TEXT("gaining Medicine6 grants Momentum1"), Status(FriendlyRuntime, OwnerUnitId, EGameXXKCardStatus::Momentum), 1);
 	}
@@ -174,7 +174,7 @@ bool FGameXXKTaskNpcMedicineTargetSideTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult EnemyResult;
 	if (Resolve(*this, EnemyRuntime, TEXT("YiCao.Enemy"), EnemyUnitId, EnemyResult, TEXT("异草辨识敌方分支")))
 	{
-		TestEqual(TEXT("level-one enemy branch continuously scales base6 plus Medicine6 to thirteen"), FindUnit(EnemyRuntime, EnemyUnitId)->HP, 1987);
+		TestEqual(TEXT("level-one enemy branch scales coefficient15 plus Medicine6 to twenty-two"), FindUnit(EnemyRuntime, EnemyUnitId)->HP, 1978);
 		TestEqual(TEXT("enemy Bleed is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Bleed), 3);
 		TestEqual(TEXT("enemy Poison is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Poison), 4);
 		TestEqual(TEXT("enemy Burn is not cleansed"), Status(EnemyRuntime, EnemyUnitId, EGameXXKCardStatus::Burn), 5);
@@ -225,9 +225,9 @@ bool FGameXXKTaskNpcGroupMedicineTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult Result;
 	if (!Resolve(*this, Runtime, TEXT("HuangShan"), NAME_None, Result, TEXT("黄山敷治"))) return true;
 
-	TestEqual(TEXT("owner loses one nonlethally then receives the full Epic level-100 healing84"), FindUnit(Runtime, OwnerUnitId)->HP, 85);
-	TestEqual(TEXT("first ally receives the full Epic level-100 healing84"), FindUnit(Runtime, AllyUnitId)->HP, 85);
-	TestEqual(TEXT("second ally receives the full Epic level-100 healing84"), FindUnit(Runtime, SecondAllyUnitId)->HP, 85);
+	TestEqual(TEXT("owner loses one nonlethally then caps after Epic level-100 healing147"), FindUnit(Runtime, OwnerUnitId)->HP, 100);
+	TestEqual(TEXT("first ally caps after Epic level-100 healing147"), FindUnit(Runtime, AllyUnitId)->HP, 100);
+	TestEqual(TEXT("second ally caps after Epic level-100 healing147"), FindUnit(Runtime, SecondAllyUnitId)->HP, 100);
 	TestEqual(TEXT("group heal consumes Medicine only once"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("one Medicine6 grant yields one Momentum"), Status(Runtime, OwnerUnitId, EGameXXKCardStatus::Momentum), 1);
 	TestEqual(TEXT("only the owner produces an actual nonlethal-loss packet"), Result.DamageResults.Num(), 1);
@@ -251,8 +251,8 @@ bool FGameXXKTaskNpcToxicExplosionTest::RunTest(const FString& Parameters)
 	if (!Resolve(*this, Runtime, TEXT("GuWu"), EnemyUnitId, Result, TEXT("蛊雾迷踪"))) return true;
 
 	TestEqual(TEXT("toxic explosion emits Bleed, Poison, Burn, and Rot packets"), Result.DamageResults.Num(), 4);
-	TestEqual(TEXT("Bleed4 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 4);
-	TestEqual(TEXT("Poison6 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 6);
+	TestEqual(TEXT("generated Bleed5 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Bleed), 5);
+	TestEqual(TEXT("generated Poison7 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Poison), 7);
 	TestEqual(TEXT("existing Burn3 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::Burn), 3);
 	TestEqual(TEXT("Rot7 resolves without consuming its reservoir"), Status(Runtime, EnemyUnitId, EGameXXKCardStatus::DamageOverTime), 7);
 	return true;
@@ -296,11 +296,12 @@ bool FGameXXKTaskNpcTerrainTargetingMatrixTest::RunTest(const FString& Parameter
 			}
 			FGameXXKCardPlayResult Result;
 			const FString Context = FString::Printf(TEXT("%s at %s"), Card.CardId, *UEnum::GetValueAsString(Terrain));
-			if (Resolve(*this, Runtime, FName(Card.InstanceId), EnemyUnitId, Result, *Context))
+			const FName SubmittedTarget = FName(Card.CardId) == FName(TEXT("Npc.ZhouGuangZu.DiZhiMoTu")) ? NAME_None : EnemyUnitId;
+			if (Resolve(*this, Runtime, FName(Card.InstanceId), SubmittedTarget, Result, *Context))
 			{
 				TestEqual(*FString::Printf(TEXT("%s keeps the current terrain"), *Context), Runtime.Terrain, Terrain);
-				TestEqual(*FString::Printf(TEXT("%s resolves the selected enemy without a target rollback"), *Context), Runtime.LastActiveCard.OriginalTargetUnitIds.Num(), 1);
-				if (Runtime.LastActiveCard.OriginalTargetUnitIds.Num() == 1)
+				TestEqual(*FString::Printf(TEXT("%s stores only a submitted target"), *Context), Runtime.LastActiveCard.OriginalTargetUnitIds.Num(), SubmittedTarget.IsNone() ? 0 : 1);
+				if (!SubmittedTarget.IsNone() && Runtime.LastActiveCard.OriginalTargetUnitIds.Num() == 1)
 				{
 					TestEqual(*FString::Printf(TEXT("%s keeps the selected enemy identity"), *Context), Runtime.LastActiveCard.OriginalTargetUnitIds[0], EnemyUnitId);
 				}

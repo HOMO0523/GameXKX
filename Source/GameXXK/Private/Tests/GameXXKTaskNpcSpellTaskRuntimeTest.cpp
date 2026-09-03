@@ -179,6 +179,11 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 		{TEXT("ShanHe"), TEXT("Npc.YueBai.ShanHeCanTu"), true}};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildRuntime(*this, Runtime, OwnerUnitId, Cards, 58401)) return false;
+	FindUnit(Runtime, OwnerUnitId)->Defense = 100;
+	for (FGameXXKCardInstance& Card : Runtime.Deck.Hand)
+	{
+		if (Card.CardId == FName(TEXT("Npc.YueBai.ShanHeCanTu"))) Card.CurrentQuality = EGameXXKCardQuality::Epic;
+	}
 
 	FGameXXKCardPlayResult FirstResult;
 	if (!Resolve(*this, Runtime, TEXT("QingYan"), EnemyAId, FirstResult, TEXT("月白任务首牌"))) return true;
@@ -195,7 +200,7 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKCardPlayResult SecondResult;
-	if (!Resolve(*this, Runtime, TEXT("CanJuan"), EnemyBId, SecondResult, TEXT("月白任务次牌"))) return true;
+	if (!Resolve(*this, Runtime, TEXT("CanJuan"), NAME_None, SecondResult, TEXT("月白任务次牌"))) return true;
 	if (Runtime.TaskNpcSpellTasks.Num() != 1)
 	{
 		AddError(TEXT("task state disappeared before the three-card sequence completed"));
@@ -204,16 +209,16 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("two distinct carried cards advance progress to two"), Runtime.TaskNpcSpellTasks[0].CompletedCardIds.Num(), 2);
 
 	FGameXXKCardPlayResult ThirdResult;
-	if (!Resolve(*this, Runtime, TEXT("ShanHe"), EnemyAId, ThirdResult, TEXT("月白任务末牌"))) return true;
+	if (!Resolve(*this, Runtime, TEXT("ShanHe"), NAME_None, ThirdResult, TEXT("月白任务末牌"))) return true;
 	TestEqual(TEXT("task state resets only after three replays and the starter reward"), Runtime.TaskNpcSpellTasks.Num(), 0);
 	TestEqual(TEXT("three real plays remain exactly three active cards"), Runtime.ActiveCardsPlayedThisRound, 3);
 	TestEqual(TEXT("completion audits three base replays plus one reward"), ThirdResult.AutomaticResolutionCount, 4);
 	TestEqual(TEXT("only replayed 青焰 contributes one task-replay damage packet"), CountOrigin(ThirdResult.DamageResults, EGameXXKCardResolutionOrigin::TaskNpcTaskReplay), 1);
 	TestEqual(TEXT("青焰 starter reward contributes one packet per enemy"), CountOrigin(ThirdResult.DamageResults, EGameXXKCardResolutionOrigin::TaskReward), 2);
-	TestEqual(TEXT("山河 base and replay each grant Armor9; its non-starter reward never consumes armor"), FindUnit(Runtime, OwnerUnitId)->Armor, 18);
-	TestEqual(TEXT("ally also receives both Armor9 base resolutions"), FindUnit(Runtime, AllyUnitId)->Armor, 18);
-	TestEqual(TEXT("enemy A Burn reflects ordered base replay then starter group reward"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 19);
-	TestEqual(TEXT("enemy B Burn reflects terrain replays then starter group reward"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 9);
+	TestEqual(TEXT("山河 base and replay each grant the native Epic fifty-six Armor"), FindUnit(Runtime, OwnerUnitId)->Armor, 112);
+	TestEqual(TEXT("ally also receives both full fifty-six Armor grants"), FindUnit(Runtime, AllyUnitId)->Armor, 112);
+	TestEqual(TEXT("enemy A Burn reaches its level-one cap after ordered terrain and starter effects"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 25);
+	TestEqual(TEXT("enemy B receives only the starter's group Burn under the current terrain rules"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 7);
 	return true;
 }
 
