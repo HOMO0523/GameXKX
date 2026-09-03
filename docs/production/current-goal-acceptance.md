@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T20:43:29+08:00
+updated_at: 2026-09-03T20:51:28+08:00
 source_commit: 2e0db810df578590758f842ced2a36c72588a58e
 working_tree: Fixed Mana committed; approved remaining card runtime work continues; pill and tooltip text require user table review before edits
 ---
+
+> **2026-09-03 两种tooltip分工确认**：卡面显示攻击数值；卡牌详述采用“角色攻击（100 × 120% = 120）”，只解释角色/卡牌自身计算。目标防御、状态、护甲吸收和最终损血由随后鼠标移到怪物时的tooltip负责，不混入卡牌详述。文本草案更新为V3，计划加入对应显示边界验收。仍须先审具体逐卡文本表再修改UI，本轮只有文档修正。
+
 
 > **2026-09-03 攻击显示口径纠正**：用户明确卡面攻击也必须显示数字，不能仅显示百分比；取实际攻击来源对象的属性，不默认主角或牌持有者。草案已修正为V2，区分来源计算的攻击伤害与对实际目标的护甲吸收/预计损血，倍率保留在详述解释。具体逐卡文本仍须先审阅后修改，UI代码未改。
 

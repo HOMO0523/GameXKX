@@ -106,7 +106,7 @@ An effect explicitly authored as Defense-derived Armor is calculated from the **
 | 2 | 140% |
 | 3 or more | 200% |
 
-Temporary discounts or free-play effects do not change the armor tier; use the printed base Energy cost. Card faces and combat presentation show only the resolved armor number, not the percentage.
+Temporary discounts or free-play effects do not change the armor tier; use the printed base Energy cost. Card faces and compact tooltips show the resolved Armor number. Per the latest user instruction, expanded CARD text may explain its own calculation (caster Defense, Armor coefficient and applicable generation modifiers); target Defense/status/Armor absorption and final HP loss belong to the separate MONSTER tooltip on hover.
 
 Group armor uses the caster's value and grants the full resolved amount independently to every unique living ally. It is never split. A unit named twice by the same card receives the primary armor once unless an explicit secondary coefficient is part of the approved card semantics.
 
@@ -165,7 +165,7 @@ The cap of each independent DOT reservoir is:
 | 101-125 (future/robustness) | 125 |
 | 126-135 (future/robustness) | 150 |
 
-The reservoir's visible value is the damage value. Never multiply it by level a second time. Applying DOT reports the actual amount that fits below the cap. Cards, status tooltips, previews, and combat logs show resolved values only.
+The reservoir's visible value is the damage value. Never multiply it by level a second time. Applying DOT reports the actual amount that fits below the cap. Compact cards and status values show resolved numbers. Expanded CARD text may explain the source-generation formula; target-specific application limits and outcome accounting remain in the separate target-hover preview and combat log. This display separation does not change DOT generation or damage.
 
 An ordinary "trigger DOT" effect reads the current reservoir and does not consume it. A card consumes DOT only if its approved text explicitly says so. Approved cleanses are all-or-nothing: "remove Bleed" clears the whole Bleed reservoir; "remove all DOT" clears all four reservoirs.
 
