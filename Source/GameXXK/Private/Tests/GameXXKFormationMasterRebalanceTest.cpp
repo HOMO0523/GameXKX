@@ -154,6 +154,8 @@ bool FGameXXKFormationMasterDefinitionsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("town swap removes one/two/three Vulnerability"), FGameXXKCardQualityRules::BuildEffectiveDefinition(*FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.YiWeiZhen")), EGameXXKCardQuality::Epic).Effects[1].Magnitude, 3);
 	TestEqual(TEXT("mountain seal applies two/three/four Vulnerability"), FGameXXKCardQualityRules::BuildEffectiveDefinition(*FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.ShanMenFengSuo")), EGameXXKCardQuality::Epic).Effects[0].Magnitude, 4);
 	TestEqual(TEXT("Epic wind grants two Agility"), FGameXXKCardQualityRules::BuildEffectiveDefinition(*FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.LinFengFuZhen")), EGameXXKCardQuality::Epic).Effects[0].Magnitude, 2);
+	TestEqual(TEXT("Epic wheel draws four before discarding one"), FGameXXKCardQualityRules::BuildEffectiveDefinition(*FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.BaMenLunZhuan")), EGameXXKCardQuality::Epic).Effects[0].Magnitude, 4);
+	TestEqual(TEXT("Epic banner grants twenty-five attack points"), FGameXXKCardQualityRules::BuildEffectiveDefinition(*FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.ZhenQiGuWu")), EGameXXKCardQuality::Epic).Effects[0].Modifier.Magnitude, 25);
 	return true;
 }
 
