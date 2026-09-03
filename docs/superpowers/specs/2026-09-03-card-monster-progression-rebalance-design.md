@@ -409,8 +409,8 @@ At the confirmed 10% rate, the same-round minimum-quality sequence 照见→寒�
 
 - `Profession.Sorcerer.ChiXiaoFenXing`: Rare AoE 60%, Mark 2.
 - `Profession.Sorcerer.FenTianJue`: Epic 98%.
-- `Profession.Sorcerer.NingYanChengRen`: 55%/70% by approved quality.
-- `Profession.Sorcerer.RanLingHuanYuan`: 45%/60%.
+- `Profession.Sorcerer.NingYanChengRen`: base 55% per Mark; recorded positions 4-5 use 70% per Mark, then apply quality once. Its starter reward adds Mark 5 and performs a fixed five 70%-base hits.
+- `Profession.Sorcerer.RanLingHuanYuan` / 雷走八方: the user has confirmed one direct hit per living enemy, with ordinary at-most-one-Mark consumption and the other Marks retained. Common / 0 Energy / 4 Mana remains. Zero Mark still yields a base hit. This replaces its old all-Mark 45%/60% volley identity. The current **numeric candidate**, not a frozen value, is 120% unmarked / 180% marked / 220% marked at recorded positions 3-4; candidate starter reward adds Mark 3 and deals one 240%-base hit. Quality scales the selected attack coefficient once. See `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` for approved direction, candidate boundaries, and full-task projections. The separate proposed 引雷易伤 reward has not been approved and is excluded.
 - `Profession.Sorcerer.YanMuHuTi` Ice reward: base 220% plus Armor conversion.
 - `Profession.Sorcerer.XingHuoHuiShou` / 六合护法: Rare, 0 Energy / 4 Mana. Restore 8 current Mana to the caster only; every unique living ally, including the caster, receives the Armor converted from **this recovery's actual overflow**. If the previous recorded card in this task contains no direct damage, replace recovery 8 with 16. This is current-Mana recovery, not MaxMana growth. The fixed 8/16 is not quality-, level-, or Defense-scaled; only overflow Armor uses section 4.3.1 once.
 

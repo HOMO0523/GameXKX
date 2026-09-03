@@ -401,6 +401,17 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 
 Assert task size 5, Fire conversion 2 points per Burn, Ice base 100 plus one per Armor, `ZhenShaZhen` base 320/Epic 448, and Formation unlock counts 12/14/16/18 at levels 1/5/10/15 with all six switch cards present at level 1.
 
+**雷走 direction amendment:** `docs/superpowers/specs/2026-09-03-lightning-single-hit-design.md` records the user-approved one-hit identity and normal use of at most one Mark per enemy. Keep Common / 0 Energy / 4 Mana and a valid zero-Mark base hit; retire the old all-Mark volley. The 120/180/220 base candidates, positions 3-4 window, and Mark-3-then-one-240 starter reward remain under numeric review. Do not turn those provisional coefficients into a claimed approved catalog gate. 引雷's proposed Vulnerability reward is excluded; its current reward stays unchanged. Runtime execution remains paused for the existing overall review.
+
+Once the candidate numeric package is confirmed, cover the following through actual preview/commit and Universal replay tests, using the final approved coefficients if they change:
+
+- One effect against enemies with Marks 0/1/4 produces one hit per living enemy and leaves Marks 0/0/3 absent phase changes; it never fans out into 1/4 hits. At candidate values, positions 3-4 choose 120/220/220 respectively, while position 5 chooses 120/180/180. Multiply selected Attack coefficients by quality once, then use ordinary hit/Mark resolution.
+- Common/Rare/Epic and recorded positions 1-5 preserve the same hit count. A marked fourth-position Common candidate at Attack 495 versus level-135 Defense 146 produces one potential hit of 705; a following fifth-position 连霆 with three remaining Marks produces three hits of 150. Higher starting Mark count does not add 雷走 hits.
+- An active play pays its actual Mana cost; free task/斗转 replay pays none and retains the card's own original quality and recorded position, while reading current target Marks. Repeated already-recorded active cards do not reacquire sequence bonuses. 雷走 remains a direct-damage predecessor for 六合.
+- Only 雷走 starter reward adds its reward Marks and executes its single reward hit. With the current candidate, initial Marks 0/3 become 2/5 after one 240%-base hit; old three 60% hits are not a valid replacement. A paused/resumed reward cannot seed or hit twice.
+- A 斗转 reward from zero Marks, with a fifth-position Common 雷走 as last Lightning record, adds two Marks, replays one 180%-base hit, then resolves one remaining 56%-Attack Epic 斗转 lightning hit. Candidate tiger damage is 557+98=655. Do not use the 220% fourth-position boost, grant 雷走's own starter reward, or promote the replayed Common card to Epic.
+- A hit that transitions an enemy clears that enemy's Marks before the following card; remaining old-phase Marks cannot feed 连霆 or 斗转. Mixed living/dead targets, Armor absorption, normal Mark consumption, and byte-stable save/resume follow the existing shared pipeline.
+
 Add actual card-preview/commit fixtures for the revised Ice cards, resetting Mana to 34/34, Armor to 0, and TeamMaxLevel to 100 for each independent row:
 
 | Card / quality | Mana recovery | Ending Mana / MaxMana | Generated Armor |
