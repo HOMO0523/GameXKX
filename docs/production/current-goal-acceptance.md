@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T01:07:00+08:00
-source_commit: 0eb0fe7d0695fbdc0fe6fdc886b5d998d57deaa3
-working_tree: Confirmed 17 Sorcerer rules and all fees implemented; Formation Master is next
+updated_at: 2026-09-04T01:29:00+08:00
+source_commit: 92bf1c1
+working_tree: 143/173 card rules complete; NPC and Boss cards are next
 ---
+
+> **2026-09-04 阵师18张完成**：提交64e6fcf与92bf1c1接入六张免选目标切地势、品质回内、12/14/16/18等级解锁及十二张收益牌的确认数值；旧阵师牌池确定性重建并尽量保留当前等级仍合法的选牌。12项范围/品质检查通过。共享地势收益仍归Plan 3，不在单牌中复制公式。见docs/production/2026-09-04-formation-card-rebalance-acceptance.md。当前143/173张最新主要规则完成，余NPC24、Boss5、雷走1。
+
 
 > **2026-09-04 法师已确认规则通过**：提交0eb0fe7完成17张规则与18张费用，四冰10%回内、六合8/16溢出共享、周天累计实付、品质化编序与阵赏、标准冰爆及25%返甲均接入。165项范围/边界检查通过；六套冰法链吻合确认表。雷走只调整费用，重击倍率仍待确认；标记5层上限保持，旧例子3+3后命中应剩4已纠正。见docs/production/2026-09-04-confirmed-sorcerer-rebalance-acceptance.md。当前125/173张最新主要规则已完成，阵师18、NPC24、Boss5和雷走1待续；完整数值简述/增幅详述仍在Task 8。
 

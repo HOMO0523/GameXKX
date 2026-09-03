@@ -416,6 +416,7 @@ git commit -m "feat: rebalance healer and hunter partner cards"
 ### Task 6: Rebalance partner Sorcerer and Formation Master cards
 
 Sorcerer confirmed slice completed at 0eb0fe7:17 rules and all18 fees;164 full-scope tests plus1 resource/refund boundary test passed after cold UBT. LightningStorm numeric package remains unconfirmed and its old attack shape is not counted complete. Formation Master remains pending. Evidence: docs/production/2026-09-04-confirmed-sorcerer-rebalance-acceptance.md.
+Formation Master completed at 64e6fcf plus 92bf1c1:18 definitions, target-free switches, quality recovery,12/14/16/18 unlocks and legacy-pool migration are green. Shared terrain-value scaling remains Plan3. Evidence: docs/production/2026-09-04-formation-card-rebalance-acceptance.md.
 
 Resource prerequisite completed at 2e0db81: Hero30/Sorcerer34 fixed bases, equipment Mana exclusion for all characters, preserved explicit route/battle capacity and current-Mana save state, retired Mana affix generation, consistent previews, and legacy empty-socket normalization. Cold UBT and 316/316 equipment/card/save/simulation regressions passed. Acceptance: docs/production/2026-09-03-fixed-mana-equipment-acceptance.md. The card steps below remain incomplete.
 
