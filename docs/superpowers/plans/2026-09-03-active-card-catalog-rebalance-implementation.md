@@ -506,6 +506,8 @@ git commit -m "feat: rebalance sorcerer and formation cards"
 
 ### Task 7: Rebalance all 24 NPC cards and five Boss cards
 
+Confirmed slice completed at `4d21696`: 23 NPC cards and all five Boss cards are green across 21 scoped tests. `HouXiangTuoShen` remains unchanged pending the explicit target decision. Evidence: `docs/production/2026-09-04-task-npc-boss-card-progress.md`.
+
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
