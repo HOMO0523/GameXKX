@@ -82,14 +82,13 @@ int32 FGameXXKCombatScalingRules::ResolveMedicineHealing(
 	const int32 Medicine,
 	const EGameXXKCardQuality Quality,
 	const int32 TeamMaxLevel,
-	const EGameXXKCardQuality CoefficientReferenceQuality)
+	const EGameXXKCardQuality /*LegacyCoefficientReferenceQuality*/)
 {
-	const int64 ReferencePercent = GetQualityPercent(CoefficientReferenceQuality);
-	// Keep the native-quality coefficient rational until the final ceiling.
-	const int64 CombinedNumerator = static_cast<int64>(FMath::Max(0, BaseCoefficient)) * 100
-		+ static_cast<int64>(FMath::Max(0, Medicine)) * ReferencePercent;
-	return CeilPositiveRatio(CombinedNumerator * GetQualityPercent(Quality)
-		* (FMath::Clamp(TeamMaxLevel, 1, 135) + 25), ReferencePercent * 2500);
+	// Every healing coefficient is a raw value. Native card quality never cancels scaling.
+	const int64 CombinedCoefficient = static_cast<int64>(FMath::Max(0, BaseCoefficient))
+		+ static_cast<int64>(FMath::Max(0, Medicine));
+	return CeilPositiveRatio(CombinedCoefficient * GetQualityPercent(Quality)
+		* (FMath::Clamp(TeamMaxLevel, 1, 135) + 25), 2500);
 }
 
 int32 FGameXXKCombatScalingRules::ResolveDotCap(const int32 TeamMaxLevel)

@@ -10817,7 +10817,7 @@ namespace
 							Effect.Magnitude,
 							MedicineSnapshot,
 							Instance.CurrentQuality,
-							InOutRuntime.TeamMaxLevelSnapshot, Effect.CoefficientReferenceQuality);
+							InOutRuntime.TeamMaxLevelSnapshot);
 					}
 					if (Effect.SecondaryMagnitude > 0)
 					{
@@ -10890,7 +10890,7 @@ namespace
 						Effect.Magnitude,
 						MedicineSnapshot,
 						Instance.CurrentQuality,
-						InOutRuntime.TeamMaxLevelSnapshot, Effect.CoefficientReferenceQuality);
+						InOutRuntime.TeamMaxLevelSnapshot);
 					if (ResolvedAmount <= 0)
 					{
 						OutError = TEXT("Medicine healing or reversal produced an unsupported amount.");
@@ -10934,7 +10934,7 @@ namespace
 					}
 					const int32 ResolvedAmount = Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::MedicineCoefficient
 						? FGameXXKCombatScalingRules::ResolveMedicineHealing(Effect.Magnitude, 0, Instance.CurrentQuality,
-							InOutRuntime.TeamMaxLevelSnapshot, Effect.CoefficientReferenceQuality)
+							InOutRuntime.TeamMaxLevelSnapshot)
 						: Effect.Magnitude;
 					if (Target->Side == Owner->Side)
 					{

@@ -38,4 +38,33 @@ bool FGameXXKCombatScalingArithmeticTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCombatScalingUnifiedHealingTest,
+	"GameXXK.Data.CombatScaling.UnifiedHealing",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCombatScalingUnifiedHealingTest::RunTest(const FString& Parameters)
+{
+	struct FCase { EGameXXKCardQuality Quality; int32 Level; int32 Medicine; int32 Expected; };
+	for (const FCase& Case : {FCase{EGameXXKCardQuality::Common, 100, 0, 125},
+		{EGameXXKCardQuality::Rare, 1, 0, 32}, {EGameXXKCardQuality::Rare, 24, 0, 59},
+		{EGameXXKCardQuality::Rare, 25, 0, 60}, {EGameXXKCardQuality::Rare, 100, 0, 150},
+		{EGameXXKCardQuality::Rare, 100, 5, 180}, {EGameXXKCardQuality::Rare, 135, 0, 192},
+		{EGameXXKCardQuality::Epic, 100, 0, 175}, {EGameXXKCardQuality::Epic, 100, 5, 210}})
+	{
+		for (const EGameXXKCardQuality LegacyReference : {EGameXXKCardQuality::Common,
+			EGameXXKCardQuality::Rare, EGameXXKCardQuality::Epic})
+		{
+			TestEqual(TEXT("all healing coefficients use the same quality and level multiplier, including legacy metadata"),
+				FGameXXKCombatScalingRules::ResolveMedicineHealing(25, Case.Medicine, Case.Quality, Case.Level, LegacyReference), Case.Expected);
+		}
+	}
+	TestEqual(TEXT("heal and DOT share generation at zero Medicine"),
+		FGameXXKCombatScalingRules::ResolveMedicineHealing(6, 0, EGameXXKCardQuality::Rare, 100),
+		FGameXXKCombatScalingRules::ResolveDotAddition(6, EGameXXKCardQuality::Rare, 100));
+	TestEqual(TEXT("combined coefficient addition and generation saturate safely"),
+		FGameXXKCombatScalingRules::ResolveMedicineHealing(MAX_int32, MAX_int32, EGameXXKCardQuality::Epic, 135), MAX_int32);
+	return true;
+}
+
 #endif

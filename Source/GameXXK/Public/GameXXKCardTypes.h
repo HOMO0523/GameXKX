@@ -992,7 +992,7 @@ struct GAMEXXK_API FGameXXKCardEffect
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardEffectSource Source = EGameXXKCardEffectSource::CardOwner;
 
-	/** Quality already included in an authored healing coefficient; preserve through upgrades. */
+	/** Legacy save metadata only. Healing coefficients always use the full current quality multiplier. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardQuality CoefficientReferenceQuality = EGameXXKCardQuality::Common;
 

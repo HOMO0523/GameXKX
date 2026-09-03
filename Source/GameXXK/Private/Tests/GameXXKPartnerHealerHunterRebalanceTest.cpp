@@ -118,7 +118,11 @@ bool FGameXXKPartnerHealerHunterCatalogRebalanceTest::RunTest(const FString& Par
 				&& (Effect.Status == EGameXXKCardStatus::Bleed || Effect.Status == EGameXXKCardStatus::Poison || Effect.Status == EGameXXKCardStatus::Burn))
 				TestEqual(Card.Id.ToString() + TEXT(" DOT policy"), Effect.MagnitudePolicy, EGameXXKCardMagnitudePolicy::DotCoefficient);
 			if (Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine || Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
+			{
 				TestEqual(Card.Id.ToString() + TEXT(" healing coefficient policy"), Effect.MagnitudePolicy, EGameXXKCardMagnitudePolicy::MedicineCoefficient);
+				TestEqual(Card.Id.ToString() + TEXT(" healing coefficients are raw values at every native quality"),
+					Effect.CoefficientReferenceQuality, EGameXXKCardQuality::Common);
+			}
 		}
 		if (bHunter && (Card.HeavyArrow.Kind == EGameXXKHeavyArrowKind::ExtraAttackPerCharge || Card.HeavyArrow.Kind == EGameXXKHeavyArrowKind::AddPrimaryAttackPercentPerCharge))
 			TestEqual(Card.Id.ToString() + TEXT(" Heavy Arrow policy"), Card.HeavyArrow.MagnitudePolicy, EGameXXKCardMagnitudePolicy::ContinuousQuality);
@@ -153,8 +157,8 @@ bool FGameXXKHealerNativeQualityHealingRebalanceTest::RunTest(const FString& Par
 {
 	using namespace GameXXKPartnerHealerHunterRebalanceTest;
 	struct FCase { EGameXXKCardQuality Quality; int32 Medicine; int32 Healing; };
-	for (const FCase& Case : {FCase{EGameXXKCardQuality::Rare, 0, 125}, {EGameXXKCardQuality::Rare, 5, 155},
-		{EGameXXKCardQuality::Epic, 0, 146}, {EGameXXKCardQuality::Epic, 5, 181}})
+	for (const FCase& Case : {FCase{EGameXXKCardQuality::Rare, 0, 150}, {EGameXXKCardQuality::Rare, 5, 180},
+		{EGameXXKCardQuality::Epic, 0, 175}, {EGameXXKCardQuality::Epic, 5, 210}})
 		for (const bool bEnemyTarget : {false, true})
 		{
 			FGameXXKCardBattleRuntime Runtime;
@@ -165,7 +169,7 @@ bool FGameXXKHealerNativeQualityHealingRebalanceTest::RunTest(const FString& Par
 			FGameXXKCardPlayResult Result;
 			if (!Play(*this, Runtime, bEnemyTarget ? TEXT("EnemyA") : TEXT("Hero"), Result)) continue;
 			if (bEnemyTarget)
-				for (const TCHAR* Id : {TEXT("EnemyA"), TEXT("EnemyB")}) TestEqual(TEXT("group reversal uses the same native-quality amount"), 1000000 - Unit(Runtime, Id)->HP, Case.Healing);
+				for (const TCHAR* Id : {TEXT("EnemyA"), TEXT("EnemyB")}) TestEqual(TEXT("group reversal uses the same uniformly scaled amount"), 1000000 - Unit(Runtime, Id)->HP, Case.Healing);
 			else
 				for (const TCHAR* Id : {TEXT("Owner"), TEXT("Hero"), TEXT("Npc")}) TestEqual(TEXT("each ally receives the complete amount"), Unit(Runtime, Id)->HP, 500 + Case.Healing);
 			TestEqual(TEXT("owner Medicine consumed once"), Status(Runtime, TEXT("Owner"), EGameXXKCardStatus::Medicine), 0);
@@ -177,11 +181,16 @@ bool FGameXXKHealerNativeQualityHealingRebalanceTest::RunTest(const FString& Par
 		}
 	FGameXXKCardBattleRuntime LowHealth;
 	if (!Build(*this, LowHealth, TEXT("Profession.Healer.LingZhiXuMing"), EGameXXKCardQuality::Rare, EGameXXKCharacterRole::Healer)) return false;
-	Unit(LowHealth, TEXT("Hero"))->HP = 100;
+	Unit(LowHealth, TEXT("Hero"))->HP = 50;
 	GameXXKCardRules::AddCombatStatus(*Unit(LowHealth, TEXT("Owner")), EGameXXKCardStatus::Medicine, 5);
 	FGameXXKCardPlayResult Result;
 	if (Play(*this, LowHealth, TEXT("Hero"), Result))
-		TestEqual(TEXT("Rare 40 plus Medicine5, then Medicine-free low-health 10"), Unit(LowHealth, TEXT("Hero"))->HP, 380);
+		TestEqual(TEXT("50 HP plus Rare raw40 and Medicine5 healing270, then Medicine-free raw10 healing60"), Unit(LowHealth, TEXT("Hero"))->HP, 380);
+	if (!Build(*this, LowHealth, TEXT("Profession.Healer.LingZhiXuMing"), EGameXXKCardQuality::Rare, EGameXXKCharacterRole::Healer)) return false;
+	Unit(LowHealth, TEXT("Hero"))->HP = 100;
+	GameXXKCardRules::AddCombatStatus(*Unit(LowHealth, TEXT("Owner")), EGameXXKCardStatus::Medicine, 5);
+	if (Play(*this, LowHealth, TEXT("Hero"), Result))
+		TestEqual(TEXT("primary healing above 35 percent does not grant the conditional supplemental heal"), Unit(LowHealth, TEXT("Hero"))->HP, 370);
 	return true;
 }
 

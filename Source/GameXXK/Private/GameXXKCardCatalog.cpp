@@ -359,10 +359,9 @@ namespace
 		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::DefensePercent);
 	}
 
-	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result,
-		const EGameXXKCardQuality ReferenceQuality = EGameXXKCardQuality::Common)
+	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result)
 	{
-		Result.CoefficientReferenceQuality = ReferenceQuality;
+		Result.CoefficientReferenceQuality = EGameXXKCardQuality::Common;
 		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::MedicineCoefficient);
 	}
 
@@ -1504,7 +1503,7 @@ namespace
 				if (CardEffect.Type == EGameXXKCardEffectType::ApplyStatus && IsDotReservoirStatus(CardEffect.Status))
 					CardEffect = Dot(MoveTemp(CardEffect));
 				else if (CardEffect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine || CardEffect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
-					CardEffect = MedicineCoefficient(MoveTemp(CardEffect), FGameXXKCardQualityRules::GetCardBaseQuality(FName(CardId)));
+					CardEffect = MedicineCoefficient(MoveTemp(CardEffect));
 				else if (CardEffect.Type == EGameXXKCardEffectType::AddArmor)
 					CardEffect = DefensePercent(MoveTemp(CardEffect));
 			}

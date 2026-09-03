@@ -195,8 +195,8 @@ bool FGameXXKHealerPartnerYaoWangLethalSideAnchorRuntimeTest::RunTest(const FStr
 	if (!Resolve(*this, Runtime, TEXT("YaoWangLethal"), EnemyAId, Result)) return true;
 	TestFalse(TEXT("Yao Wang defeats the selected enemy even when it is the side anchor"),
 		Unit(Runtime, EnemyAId)->bLiving);
-	TestEqual(TEXT("Yao Wang continues the selected-side reverse heal against the other living enemy"),
-		Unit(Runtime, EnemyBId)->HP, 77);
+	TestEqual(TEXT("Yao Wang continues the selected side with raw coefficient30 at level1/Common, dealing32"),
+		Unit(Runtime, EnemyBId)->HP, 68);
 	return true;
 }
 
