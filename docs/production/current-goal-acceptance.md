@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T17:59:09+08:00
-source_commit: 7a9b869bd7cf197b8284d08cf7a65e8f48da0bb5
-working_tree: Plan 2 Task 3 Hero stage committed; proceeding to partner Blade Guard; Lightning Attack coefficients remain candidates
+updated_at: 2026-09-03T18:31:32+08:00
+source_commit: cda019084892673e59e4a4cab203a7ae7aa1dfa2
+working_tree: Plan 2 Tasks 3 and 4 committed; proceeding to Healer Hunter; Lightning Attack coefficients remain candidates
 ---
+
+> **2026-09-03 伙伴刀客／守卫阶段完成**：Task 4提交 `cda0190`，36张保留原身份和格挡/援护/起收招结构，血刃按已结算流血每点＋2攻击百分点；斩尽基础300%、横云100%、敛息稀有回4/史诗回6、破军额外攻击稀有60%/史诗70%；饮血收招预算改为系数20经品质和等级结算。守卫14项主护甲按打印费用与防御生成，5项副护甲使用独立40%/50%防御系数，镇岳/壁垒为180%/220%基础＋每点消耗护甲1个百分点，一夫全队各一份完整护甲。新增规则测试先RED后GREEN，旧测试按非消耗DOT水库和真实防御重算并保留断言；冷UBT与刀客/守卫/新规则/装备联动57/57通过、0失败/0警告，证据 `Saved/Automation/InRun02_Task04_BladeGuardContracts_GREEN/index.json`。主角前阶段123/123和模拟2/2记录保留；全卡数值文案仍由Task 8补齐。继续Task 5药师／弓手，尚未完成全计划或真实PIE验收。
 
 > **2026-09-03 主角阶段提交完成，继续伙伴阶段**：Plan 2 Task 3提交 `7a9b869`，包含主角36张重平衡、四牌任务、主角法师1/1/1/0气力、寒序防御甲与按等级/品质换算实际溢出、连营下一次真实地势收益2/3/4、归序一次减费，以及旧八牌任务/旧连营/旧归序状态的无副作用迁移。冷UBT与主角＋缩放＋迁移123/123通过，模拟基础/装备矩阵2/2通过，均0失败/0警告；仅提交23个源码与测试文件。验收与证据为 `docs/production/2026-09-03-hero-rebalance-acceptance.md`。扩展的旧QualityResolution仍含青锋140%和固定治疗15旧期望及运行时数值文案缺口，已明确挂到Task 8，未伪称宽回归通过。现在进入Task 4伙伴刀客/守卫；雷走具体倍率仍等待已发出的用户确认，伙伴新气力将在后续相应阶段落地。以下为历史记录。
 

@@ -320,24 +320,34 @@ git commit -m "feat: rebalance hero card catalog"
 
 ### Task 4: Rebalance partner Blade and Guard cards
 
+Completed at `cda0190`: cold UBT and 57/57 scoped Blade, Guard, approved rebalance and equipment-integration checks, zero failures/warnings. Evidence: `Saved/Automation/InRun02_Task04_BladeGuardContracts_GREEN/index.json` and `Saved/HarnessReports/20260903-182736-ai-production-loop.md`. The existing serialized YinXue enum name is retained, while its healing budget now uses coefficient20 with quality/level scaling; prior smaller saved remaining budgets remain valid.
+
 **Files:**
 - Modify: `Source/GameXXK/Private/GameXXKCardCatalog.cpp`
 - Modify: `Source/GameXXK/Private/GameXXKCardRules.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKApprovedCardCatalogTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerCounterflowRuntimeTest.cpp`
 - Modify: `Source/GameXXK/Private/Tests/GameXXKEquipmentBattleIntegrationTest.cpp`
+- Modify: `Source/GameXXK/Private/GameXXKCardText.cpp`
+- Create: `Source/GameXXK/Private/Tests/GameXXKPartnerBladeGuardRebalanceTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerBloodEdgeRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerCoreRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerMomentumRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKBladePartnerCatalogTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKGuardPartnerRuntimeTest.cpp`
+- Modify: `Source/GameXXK/Private/Tests/GameXXKGuardPartnerCatalogTest.cpp`
 
-- [ ] **Step 1: Add red assertions for CardIds 061-096**
+- [x] **Step 1: Add red assertions for CardIds 061-096**
 
 Assert Blood Edge uses 2 points per resolved DOT, `ZhanJin` base 300, `HengYunKaiFeng` base 100, `BaoDaoShouYe` Agility 2, and all Guard primary Armor effects use PrintedCostArmor. Assert `ZhenYueLing` base 180 plus one per Armor and `BiLeiFanGong` base 220 plus one per Armor.
 
-- [ ] **Step 2: Run red**
+- [x] **Step 2: Run red**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards.Blade --automation-report InRun02_Task04_RED --json
 ```
 
-- [ ] **Step 3: Encode the 36 approved definitions**
+- [x] **Step 3: Encode the 36 approved definitions**
 
 Use exact values in design section 6.3. Preserve card ownership, target modes, and existing Charge/Finish behaviors unless overridden. For Armor conversion, store quality-scaled base in `Magnitude` and unscaled `+1 per Armor` in `SecondaryMagnitude=1`.
 
@@ -348,7 +358,7 @@ Effect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
 Effect.SecondaryMagnitude = 1;
 ```
 
-- [ ] **Step 4: Run green and commit**
+- [x] **Step 4: Run green and commit**
 
 ```powershell
 python scripts/ai_production_loop.py --run-ubt --run-automation --automation-tests GameXXK.Data.PartnerCards --automation-report InRun02_Task04_GREEN --json
@@ -515,6 +525,8 @@ git commit -m "feat: rebalance npc and boss cards"
 - Modify: `Source/GameXXK/Private/Tests/GameXXKCardOutcomePreviewWidgetTest.cpp`
 
 - [ ] **Step 1: Write red value-projection and text-parity tests**
+
+The Blade Finish budget text must display the actual coefficient20/quality/TeamMaxLevel result (or current remaining budget in state tooltips), replacing the interim coefficient wording. Blood Edge remains +2 attack-percentage points per resolved Bleed point; no second DOT generation scale is applied to that conversion.
 
 The Task 3 extended check found the existing `Source/GameXXK/Private/Tests/GameXXKCardQualityResolutionTest.cpp` still assumes QingFeng base 140% and flat healing 12→Rare15. Update its numeric fixture to approved base 100%→Rare120% (Attack20 against zero Defense leaves target HP476) and Medicine coefficient15 (level1/Rare/Medicine0 resolves19 healing, so ally HP20→39). Keep real text/preview/committed-output equality: implement resolved display values instead of deleting assertions or accepting coefficient-only battle text. The expected coefficient remains15 until owner/quality/level context is applied once.
 
