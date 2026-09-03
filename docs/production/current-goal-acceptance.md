@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T01:29:00+08:00
-source_commit: 92bf1c1
-working_tree: 143/173 card rules complete; NPC and Boss cards are next
+updated_at: 2026-09-04T01:53:00+08:00
+source_commit: 4d21696bc37d1aa611e3738e6634cb6556c76fe2
+working_tree: 171/173 card rules complete; two explicit user decisions remain
 ---
+
+> **2026-09-04 NPC23张与Boss5张完成**：提交4d21696接入除后巷脱身外的23张NPC牌及全部5张Boss牌，统一护甲防御系数、DOT/治疗增幅、三类/四类净化、任务奖励与重箭品质。21项完整回归通过。后巷脱身保持旧实现并已向用户列出新旧对象选项。见docs/production/2026-09-04-task-npc-boss-card-progress.md。当前171/173张最新主要规则完成；雷走倍率与后巷对象待确认。
+
 
 > **2026-09-04 阵师18张完成**：提交64e6fcf与92bf1c1接入六张免选目标切地势、品质回内、12/14/16/18等级解锁及十二张收益牌的确认数值；旧阵师牌池确定性重建并尽量保留当前等级仍合法的选牌。12项范围/品质检查通过。共享地势收益仍归Plan 3，不在单牌中复制公式。见docs/production/2026-09-04-formation-card-rebalance-acceptance.md。当前143/173张最新主要规则完成，余NPC24、Boss5、雷走1。
 
