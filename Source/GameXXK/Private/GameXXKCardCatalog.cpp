@@ -359,6 +359,14 @@ namespace
 		return WithPolicy(MoveTemp(Result), EGameXXKCardMagnitudePolicy::DefensePercent);
 	}
 
+	FGameXXKCardEffect RationalDefensePercent(
+		const EGameXXKCardEffectTarget Target, const int32 Numerator, const int32 Denominator)
+	{
+		FGameXXKCardEffect Result = DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, Target, Numerator));
+		Result.SecondaryMagnitude = Denominator;
+		return Result;
+	}
+
 	FGameXXKCardEffect MedicineCoefficient(FGameXXKCardEffect Result)
 	{
 		Result.CoefficientReferenceQuality = EGameXXKCardQuality::Common;
@@ -1809,59 +1817,63 @@ namespace
 		constexpr const TCHAR* Frame = TEXT("Style.FormationMaster");
 		constexpr const TCHAR* Pool = TEXT("Pool.Profession.FormationMaster");
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.GuanShi"), TEXT("平野观势"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Plain), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.GuanShi"), TEXT("平野观势"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Plain), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.DingZhen"), TEXT("定阵"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Village), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.DingZhen"), TEXT("定阵"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Village), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.YinShuiHuiYuan"), TEXT("引水回元"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::WaterShore), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.YinShuiHuiYuan"), TEXT("引水回元"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::WaterShore), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.KunZhen"), TEXT("困阵"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Cave), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.KunZhen"), TEXT("困阵"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Cave), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.LinYingMiZong"), TEXT("林影迷踪"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Forest), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.LinYingMiZong"), TEXT("林影迷踪"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Forest), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
-			TEXT("Profession.FormationMaster.JieShanWeiZhang"), TEXT("借山为障"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Cliff), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool);
+			TEXT("Profession.FormationMaster.JieShanWeiZhang"), TEXT("借山为障"), 1, 0, EGameXXKCardTargetMode::None,
+			{ WithTerrain(Effect(EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1), EGameXXKCardTerrain::Cliff), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Explicit(Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner), 2, 4) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.CunZhaiYuanZhen"), TEXT("村寨援阵"), 2, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 12), Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ MedicineCoefficient(Effect(EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 20)), RationalDefensePercent(EGameXXKCardEffectTarget::AllAllies, 125, 3), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.HuiShengZhenSha"), TEXT("回声震杀"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(240, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.YiWeiZhen"), TEXT("易位阵"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility), Explicit(Effect(EGameXXKCardEffectType::RemoveStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Vulnerability), 2, 3), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.BaMenLunZhuan"), TEXT("八门轮转"), 2, 0, EGameXXKCardTargetMode::Self,
-			{ Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::DoubleTerrainBonus, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ Explicit(Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), 3, 4), Effect(EGameXXKCardEffectType::DiscardCards, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1), Effect(EGameXXKCardEffectType::DoubleTerrainBonus, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.ZhenShaZhen"), TEXT("镇煞阵"), 3, 10, EGameXXKCardTargetMode::AllEnemies,
-			{ Attack(320, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ Attack(320, EGameXXKCardEffectTarget::AllEnemies), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 5, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("万象归阵"), 3, 14, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 40), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextTerrainCardFree), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ RationalDefensePercent(EGameXXKCardEffectTarget::AllAllies, 1000, 7), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextTerrainCardFree), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.ShanMenFengSuo"), TEXT("山门封锁"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool);
+			{ Explicit(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability), 3, 4), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.ShuiJingZheGuang"), TEXT("水镜折光"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16), Effect(EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 2), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ RationalDefensePercent(EGameXXKCardEffectTarget::SelectedTarget, 200, 3), Effect(EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.LinFengFuZhen"), TEXT("林风拂阵"), 0, 0, EGameXXKCardTargetMode::SingleAlly,
-			{ Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{ Explicit(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility), 1, 2), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+		FGameXXKCardEffect AttackBoost = Modifier(EGameXXKCardBattleModifierTrigger::OnNextAttack, EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::PlayedCard, 20, 1, 0, FGameXXKCardEffectCondition(), EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::AllAllies, EGameXXKCardEffectTarget::AllAllies);
+		AttackBoost.Modifier.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ExplicitByQuality;
+		AttackBoost.Modifier.RareMagnitude = 20;
+		AttackBoost.Modifier.EpicMagnitude = 25;
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.ZhenQiGuWu"), TEXT("阵旗鼓舞"), 1, 0, EGameXXKCardTargetMode::AllAllies,
-			{ Modifier(EGameXXKCardBattleModifierTrigger::OnNextAttack, EGameXXKCardEffectType::BonusDamagePercent, EGameXXKCardEffectTarget::PlayedCard, 20, 1, 0, FGameXXKCardEffectCondition(), EGameXXKCardStatus::None, EGameXXKCardModifierRecipientScope::AllAllies, EGameXXKCardEffectTarget::AllAllies), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
+			{AttackBoost, Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.DiMaiJieLi"), TEXT("地脉借力"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
 			{ Attack(200, EGameXXKCardEffectTarget::SelectedTarget), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 2) }, Frame, Pool);
 		AddCard(Cards, EGameXXKCardOwner::Profession, EGameXXKCardRarity::Permanent, EGameXXKCharacterRole::FormationMaster, OwnerId, nullptr,
 			TEXT("Profession.FormationMaster.SiXiangLianHuan"), TEXT("四象连环"), 3, 12, EGameXXKCardTargetMode::AllAllies,
-			{ Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 24), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2) }, Frame, Pool);
+			{ RationalDefensePercent(EGameXXKCardEffectTarget::AllAllies, 600, 7), Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3), Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2) }, Frame, Pool);
 	}
 
 	void AddRouteCards(TArray<FGameXXKCardDefinition>& Cards)

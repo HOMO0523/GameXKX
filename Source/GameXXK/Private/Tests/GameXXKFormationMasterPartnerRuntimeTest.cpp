@@ -157,24 +157,30 @@ bool FGameXXKFormationMasterCatalogTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("formation partner catalog contains six switches plus twelve benefits"), Definitions.Num(), 18);
 
 	const TArray<FExpectedCard> Switches = {
-		{TEXT("Profession.FormationMaster.GuanShi"), TEXT("平野观势"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
+		{TEXT("Profession.FormationMaster.GuanShi"), TEXT("平野观势"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::Plain},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1}}},
-		{TEXT("Profession.FormationMaster.JieShanWeiZhang"), TEXT("借山为障"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}},
+		{TEXT("Profession.FormationMaster.JieShanWeiZhang"), TEXT("借山为障"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::Cliff},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1}}},
-		{TEXT("Profession.FormationMaster.LinYingMiZong"), TEXT("林影迷踪"), 1, 0, EGameXXKCardTargetMode::AllAllies,
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}},
+		{TEXT("Profession.FormationMaster.LinYingMiZong"), TEXT("林影迷踪"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::Forest},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}},
-		{TEXT("Profession.FormationMaster.YinShuiHuiYuan"), TEXT("引水回元"), 1, 0, EGameXXKCardTargetMode::AllAllies,
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}},
+		{TEXT("Profession.FormationMaster.YinShuiHuiYuan"), TEXT("引水回元"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::WaterShore},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}},
-		{TEXT("Profession.FormationMaster.DingZhen"), TEXT("定阵"), 1, 0, EGameXXKCardTargetMode::AllAllies,
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}},
+		{TEXT("Profession.FormationMaster.DingZhen"), TEXT("定阵"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::Village},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}},
-		{TEXT("Profession.FormationMaster.KunZhen"), TEXT("困阵"), 1, 0, EGameXXKCardTargetMode::AllAllies,
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}},
+		{TEXT("Profession.FormationMaster.KunZhen"), TEXT("困阵"), 1, 0, EGameXXKCardTargetMode::None,
 			{{EGameXXKCardEffectType::ChangeTerrain, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::None, EGameXXKCardTerrain::Cave},
-			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}}
+			 {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1},
+			 {EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::CardOwner, 0}}}
 	};
 	for (const FExpectedCard& Expected : Switches)
 	{
@@ -185,14 +191,14 @@ bool FGameXXKFormationMasterCatalogTest::RunTest(const FString& Parameters)
 		{TEXT("Profession.FormationMaster.HuiShengZhenSha"), TEXT("回声震杀"), 2, 6, EGameXXKCardTargetMode::SingleEnemy,
 			{{EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 240}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1}}, TEXT("Archetype.Formation.Assault")},
 		{TEXT("Profession.FormationMaster.ZhenShaZhen"), TEXT("镇煞阵"), 3, 10, EGameXXKCardTargetMode::AllEnemies,
-			{{EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::AllEnemies, 320}, {EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Vulnerability}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Assault")},
+			{{EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::AllEnemies, 320}, {EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 5, EGameXXKCardStatus::Vulnerability}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Assault")},
 		{TEXT("Profession.FormationMaster.ShanMenFengSuo"), TEXT("山门封锁"), 1, 0, EGameXXKCardTargetMode::SingleEnemy,
 			{{EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Vulnerability}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 1}}, TEXT("Archetype.Formation.Assault")},
 
 		{TEXT("Profession.FormationMaster.CunZhaiYuanZhen"), TEXT("村寨援阵"), 2, 0, EGameXXKCardTargetMode::AllAllies,
-			{{EGameXXKCardEffectType::Heal, EGameXXKCardEffectTarget::AllAllies, 12}, {EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 8}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Support")},
+			{{EGameXXKCardEffectType::HealOrReverseWithMedicine, EGameXXKCardEffectTarget::AllAllies, 20}, {EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 125}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Support")},
 		{TEXT("Profession.FormationMaster.ShuiJingZheGuang"), TEXT("水镜折光"), 1, 0, EGameXXKCardTargetMode::SingleAlly,
-			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 16}, {EGameXXKCardEffectType::RemoveAnyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 2}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Support")},
+			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::SelectedTarget, 200}, {EGameXXKCardEffectType::CleanseFriendlyDamageOverTime, EGameXXKCardEffectTarget::SelectedTarget, 1}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Support")},
 		{TEXT("Profession.FormationMaster.LinFengFuZhen"), TEXT("林风拂阵"), 0, 0, EGameXXKCardTargetMode::SingleAlly,
 			{{EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Agility}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Support")},
 
@@ -204,11 +210,11 @@ bool FGameXXKFormationMasterCatalogTest::RunTest(const FString& Parameters)
 			{{EGameXXKCardEffectType::ApplyBattleModifier, EGameXXKCardEffectTarget::AllAllies, 0}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Cycle")},
 
 		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("万象归阵"), 3, 14, EGameXXKCardTargetMode::AllAllies,
-			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 40}, {EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3}, {EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextTerrainCardFree}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Convergence")},
+			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 1000}, {EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3}, {EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::CardOwner, 1, EGameXXKCardStatus::NextTerrainCardFree}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1}}, TEXT("Archetype.Formation.Convergence")},
 		{TEXT("Profession.FormationMaster.DiMaiJieLi"), TEXT("地脉借力"), 2, 0, EGameXXKCardTargetMode::SingleEnemy,
 			{{EGameXXKCardEffectType::DamagePercentAttack, EGameXXKCardEffectTarget::SelectedTarget, 200}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::SelectedTarget, 2}}, TEXT("Archetype.Formation.Convergence")},
 		{TEXT("Profession.FormationMaster.SiXiangLianHuan"), TEXT("四象连环"), 3, 12, EGameXXKCardTargetMode::AllAllies,
-			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 24}, {EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2}}, TEXT("Archetype.Formation.Convergence")}
+			{{EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 600}, {EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 3}, {EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 2}}, TEXT("Archetype.Formation.Convergence")}
 	};
 	for (const FExpectedCard& Expected : Benefits)
 	{
@@ -243,12 +249,12 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 		EGameXXKCardTargetMode TargetMode;
 	};
 	const TArray<FSwitchCase> Cases = {
-		{TEXT("Profession.FormationMaster.GuanShi"), EGameXXKCardTerrain::Plain, EGameXXKCardTargetMode::SingleEnemy},
-		{TEXT("Profession.FormationMaster.JieShanWeiZhang"), EGameXXKCardTerrain::Cliff, EGameXXKCardTargetMode::SingleEnemy},
-		{TEXT("Profession.FormationMaster.LinYingMiZong"), EGameXXKCardTerrain::Forest, EGameXXKCardTargetMode::AllAllies},
-		{TEXT("Profession.FormationMaster.YinShuiHuiYuan"), EGameXXKCardTerrain::WaterShore, EGameXXKCardTargetMode::AllAllies},
-		{TEXT("Profession.FormationMaster.DingZhen"), EGameXXKCardTerrain::Village, EGameXXKCardTargetMode::AllAllies},
-		{TEXT("Profession.FormationMaster.KunZhen"), EGameXXKCardTerrain::Cave, EGameXXKCardTargetMode::AllAllies}};
+		{TEXT("Profession.FormationMaster.GuanShi"), EGameXXKCardTerrain::Plain, EGameXXKCardTargetMode::None},
+		{TEXT("Profession.FormationMaster.JieShanWeiZhang"), EGameXXKCardTerrain::Cliff, EGameXXKCardTargetMode::None},
+		{TEXT("Profession.FormationMaster.LinYingMiZong"), EGameXXKCardTerrain::Forest, EGameXXKCardTargetMode::None},
+		{TEXT("Profession.FormationMaster.YinShuiHuiYuan"), EGameXXKCardTerrain::WaterShore, EGameXXKCardTargetMode::None},
+		{TEXT("Profession.FormationMaster.DingZhen"), EGameXXKCardTerrain::Village, EGameXXKCardTargetMode::None},
+		{TEXT("Profession.FormationMaster.KunZhen"), EGameXXKCardTerrain::Cave, EGameXXKCardTargetMode::None}};
 
 	int32 Seed = 64000;
 	for (const FSwitchCase& Case : Cases)
@@ -269,7 +275,7 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 			FString Error;
 			TestTrue(FString::Printf(TEXT("%s builds a preview: %s"), Case.CardId, *Error), GameXXKCardRules::BuildCardPlayPreview(Runtime, PlayedInstanceId, Preview, &Error));
 			TestEqual(FString::Printf(TEXT("%s keeps its fixed target mode"), Case.CardId), Preview.TargetRequest.EffectiveMode, Case.TargetMode);
-			const FName TargetId = Case.TargetMode == EGameXXKCardTargetMode::SingleEnemy ? FName(TEXT("Enemy")) : NAME_None;
+			const FName TargetId = NAME_None;
 			FGameXXKCardPlayResult Result;
 			Error.Reset();
 			const bool bResolved = GameXXKCardRules::ResolveCardPlay(Runtime, PlayedInstanceId, TargetId, Result, &Error);

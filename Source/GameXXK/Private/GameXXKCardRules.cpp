@@ -6387,17 +6387,19 @@ namespace
 	int32 ResolveDefensePercentArmorAmount(
 		const FGameXXKCardCombatUnit& Caster,
 		const int32 DefensePercent,
-		const EGameXXKCardQuality Quality)
+		const EGameXXKCardQuality Quality,
+		const int32 CoefficientDenominator = 1)
 	{
 		const int32 QualityPercent = FGameXXKCombatScalingRules::GetQualityPercent(Quality);
-		if (!Caster.bLiving || Caster.Defense <= 0 || DefensePercent <= 0 || QualityPercent <= 0)
+		if (!Caster.bLiving || Caster.Defense <= 0 || DefensePercent <= 0 || QualityPercent <= 0 || CoefficientDenominator <= 0)
 		{
 			return 0;
 		}
 		const int64 Numerator = static_cast<int64>(Caster.Defense)
 			* static_cast<int64>(DefensePercent)
 			* static_cast<int64>(QualityPercent);
-		return static_cast<int32>(FMath::Min<int64>(MAX_int32, (Numerator + 9999) / 10000));
+		const int64 Denominator = static_cast<int64>(10000) * CoefficientDenominator;
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, (Numerator + Denominator - 1) / Denominator));
 	}
 
 	int32 ResolveCardStatusApplicationAmount(
@@ -10950,7 +10952,8 @@ namespace
 						ArmorAmount = ResolveDefensePercentArmorAmount(
 							*Owner,
 							Effect.Magnitude,
-							Instance.CurrentQuality);
+							Instance.CurrentQuality,
+							Effect.SecondaryMagnitude > 0 ? Effect.SecondaryMagnitude : 1);
 					}
 					else if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentArmorPercent)
 					{

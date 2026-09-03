@@ -431,6 +431,11 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 			return false;
 		}
 
+		if (Fixture.Role == EGameXXKCharacterRole::FormationMaster)
+		{
+			ExpectedBirthPool.Reset();
+			ExpectedBirthPool.Append(ExpectedFullPool.GetData(), 12);
+		}
 		ExpectedBirthPools.Add(ExpectedBirthPool);
 		ExpectedFullPools.Add(ExpectedFullPool);
 		ExpectedSelections.Add(BuildExpectedSelection(LegacySelection, ExpectedBirthPool));
@@ -518,8 +523,8 @@ bool FGameXXKAllRoleCompanionBirthPoolMigrationTest::RunTest(const FString& Para
 			bAllCardsMatchRole);
 		if (Fixture.Role == EGameXXKCharacterRole::FormationMaster)
 		{
-			TestEqual(TEXT("formation migration retains exactly two terrain-switch cards"), FormationSwitchCount, 2);
-			TestEqual(TEXT("formation migration retains exactly four terrain-benefit birth cards"), ExpectedBirthPool.Num() - FormationSwitchCount, 4);
+			TestEqual(TEXT("formation migration unlocks all six terrain-switch cards at level one"), FormationSwitchCount, 6);
+			TestEqual(TEXT("formation migration unlocks six terrain-benefit cards at level one"), ExpectedBirthPool.Num() - FormationSwitchCount, 6);
 		}
 		else
 		{

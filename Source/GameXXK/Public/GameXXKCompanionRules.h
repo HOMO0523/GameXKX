@@ -62,7 +62,7 @@ public:
 		FGameXXKCompanionRecruitResult& OutResult,
 		FString* OutError = nullptr);
 
-	/** Rebuilds the fixed six-card unlock set; level and star never add personal cards. */
+	/** Rebuilds the level-gated unlock prefix; stars never unlock cards. Formation starts with twelve. */
 	static bool RefreshUnlockedPersonalCards(FGameXXKPermanentCompanion& InOutCompanion, FString* OutError = nullptr);
 
 	/** A route configuration must contain exactly five distinct cards from this companion's unlocked pool. */

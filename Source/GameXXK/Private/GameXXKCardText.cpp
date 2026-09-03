@@ -1846,6 +1846,7 @@ FString GameXXKCardText::DescribeTargetHeading(const FGameXXKCardDefinition& Def
 	if (Mode != EGameXXKCardTargetMode::Self && Mode != EGameXXKCardTargetMode::None) AddMode(Mode);
 	for (const FGameXXKCardEffect& Effect : Definition.Effects)
 	{
+		if (Effect.Type == EGameXXKCardEffectType::ChangeTerrain) continue;
 		if (Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor) Labels.AddUnique(TEXT("全体敌方"));
 		if (Effect.Type == EGameXXKCardEffectType::GainMedicineFromPartyHealthLoss)
 		{
@@ -1855,7 +1856,14 @@ FString GameXXKCardText::DescribeTargetHeading(const FGameXXKCardDefinition& Def
 		if (Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit
 			|| (Effect.Type == EGameXXKCardEffectType::ApplyBattleModifier && Effect.Modifier.EffectType == EGameXXKCardEffectType::TriggerTerrainBenefit))
 		{
-			const EGameXXKCardTerrain Terrain = Effect.TerrainOverride;
+			EGameXXKCardTerrain Terrain = Effect.TerrainOverride;
+			if (Terrain == EGameXXKCardTerrain::Invalid)
+			{
+				if (const FGameXXKCardEffect* Change = Definition.Effects.FindByPredicate([](const FGameXXKCardEffect& Candidate)
+				{
+					return Candidate.Type == EGameXXKCardEffectType::ChangeTerrain;
+				})) Terrain = Change->TerrainOverride;
+			}
 			if (Terrain == EGameXXKCardTerrain::Invalid) Labels.AddUnique(TEXT("全体友方"));
 			if (Terrain == EGameXXKCardTerrain::Invalid || Terrain == EGameXXKCardTerrain::Plain || Terrain == EGameXXKCardTerrain::Cliff)
 				Labels.AddUnique(TEXT("全体敌方"));

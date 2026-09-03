@@ -126,6 +126,13 @@ namespace
 
 	int32 GetUnlockedPersonalCardCount(const FGameXXKPermanentCompanion& Companion)
 	{
+		if (Companion.Role == EGameXXKCharacterRole::FormationMaster)
+		{
+			if (Companion.Level >= 15) return 18;
+			if (Companion.Level >= 10) return 16;
+			if (Companion.Level >= 5) return 14;
+			return 12;
+		}
 		if (Companion.Level >= 15) return 18;
 		if (Companion.Level >= 10) return 14;
 		if (Companion.Level >= 5) return 10;
@@ -307,7 +314,6 @@ bool FGameXXKCompanionRules::BuildPersonalCardPool(
 			}
 		}
 	}
-
 	CoreCardIds.Sort(BirthCardLess);
 	CandidateCardIds.Sort(BirthCardLess);
 	FormationSwitchCardIds.Sort(BirthCardLess);
@@ -439,6 +445,19 @@ bool FGameXXKCompanionRules::BuildFullProfessionCardPool(
 		{
 			OutCardIds.Add(Definition.Id);
 		}
+	}
+	if (Role == EGameXXKCharacterRole::FormationMaster)
+	{
+		OutCardIds = {
+			TEXT("Profession.FormationMaster.GuanShi"), TEXT("Profession.FormationMaster.CunZhaiYuanZhen"),
+			TEXT("Profession.FormationMaster.HuiShengZhenSha"), TEXT("Profession.FormationMaster.DingZhen"),
+			TEXT("Profession.FormationMaster.YiWeiZhen"), TEXT("Profession.FormationMaster.YinShuiHuiYuan"),
+			TEXT("Profession.FormationMaster.ShanMenFengSuo"), TEXT("Profession.FormationMaster.KunZhen"),
+			TEXT("Profession.FormationMaster.LinFengFuZhen"), TEXT("Profession.FormationMaster.LinYingMiZong"),
+			TEXT("Profession.FormationMaster.ZhenQiGuWu"), TEXT("Profession.FormationMaster.JieShanWeiZhang"),
+			TEXT("Profession.FormationMaster.BaMenLunZhuan"), TEXT("Profession.FormationMaster.ShuiJingZheGuang"),
+			TEXT("Profession.FormationMaster.DiMaiJieLi"), TEXT("Profession.FormationMaster.SiXiangLianHuan"),
+			TEXT("Profession.FormationMaster.ZhenShaZhen"), TEXT("Profession.FormationMaster.WanXiangGuiZhen")};
 	}
 	if (OutCardIds.Num() != 18)
 	{
