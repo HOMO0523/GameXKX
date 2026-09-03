@@ -1,4 +1,4 @@
-"""Right-button content contains only the pills owned by this card/quality."""
+"""Ctrl-key content contains only the pills owned by this card/quality."""
 GLOSS_BY_NAME={name:text for name,kind,text,example in GLOSSARY if kind!='对象'}
 DOT_PILLS={'流血','中毒','灼烧','蚀伤','毒爆'}
 DOT_NOTE='持续伤害直接损失生命，触发不消耗数值。'
@@ -53,9 +53,9 @@ def prepare_pill_help():
             b['pill_shared_note']=shared_note(b['pill_descriptions'])
 
 def write_pill_help_table():
-    lines=['# 本卡右键pill说明文本','', '[返回总表](README.md)','',
-           '右键说明只列当前卡牌、当前品质具有的pill，按出现顺序去重。通用阵赏未定时包含其可能分支；锁定分支后只保留该分支和基础效果的pill。对象名称是独立的加粗行，不作为效果pill。','',
-           '气力与内力由资源栏介绍；蓄力和重箭同时出现时合并解释。持续伤害共性只在涉及它的卡下补一次。以下把同牌不同品质中相同的说明合并，右键只展示当前品质对应的一份。','']
+    lines=['# 本卡Ctrlpill说明文本','', '[返回总表](README.md)','',
+           'Ctrl说明只列当前卡牌、当前品质具有的pill，按出现顺序去重。通用阵赏未定时包含其可能分支；锁定分支后只保留该分支和基础效果的pill。对象名称是独立的加粗行，不作为效果pill。','',
+           '气力与内力由资源栏介绍；蓄力和重箭同时出现时合并解释。持续伤害共性只在涉及它的卡下补一次。以下把同牌不同品质中相同的说明合并，Ctrl只展示当前品质对应的一份。','']
     for card in CARDS:
         lines += ['## '+card['name'],'', '`'+card['id']+'`','', '| Pill | 说明文本 | 适用品质 |','|---|---|---|']
         rows={}

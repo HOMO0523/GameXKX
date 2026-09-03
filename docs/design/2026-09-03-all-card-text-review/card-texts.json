@@ -29,11 +29,17 @@
       "Profession.Sorcerer.RanLingHuanYuan",
       "Npc.JinGui.HouXiangTuoShen"
     ],
+    "tooltip_typography": {
+      "card_name": "22px heavy",
+      "target_line": "14px bold",
+      "body": "13px"
+    },
     "tooltip_interaction": {
       "default": "compact",
       "shift": "hold_detail",
-      "right_button": "click_toggle_pills",
-      "keep_pills_on_mouseup": true,
+      "control_key": "press_toggle_pills",
+      "keep_pills_on_keyup": true,
+      "ignore_key_repeat": true,
       "pill_scope": "current_card_quality_and_active_branch"
     }
   },
@@ -22174,7 +22180,7 @@
     ],
     [
       "卡牌交互·切换",
-      "默认简述；按住Shift查看详述；右键单击开启本卡pill说明，再次右键关闭；松开鼠标不关闭。",
+      "默认简述；按住Shift查看详述；按一下Ctrl开启本卡pill说明，再按一次Ctrl关闭；松开Ctrl不关闭。",
       "Shift临时查看详述，松开回当前模式；移出卡牌或窗口失焦后收起"
     ],
     [

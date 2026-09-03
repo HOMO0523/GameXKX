@@ -44,10 +44,11 @@
   "tooltip_modes": [
     "compact",
     "shift_detail",
-    "right_button_pill_help"
+    "ctrl_pill_help"
   ],
   "pill_help_click_toggle": true,
-  "pill_help_survives_mouseup": true,
+  "pill_help_survives_keyup": true,
+  "pill_help_ignores_key_repeat": true,
   "pill_help_max_characters": 34,
   "resource_help_at_resource_bars": [
     "气力",

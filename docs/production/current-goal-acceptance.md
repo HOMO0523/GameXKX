@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-03T23:15:06+08:00
-source_commit: 77250368873c92f56c6a71b0eedda754689f6e28
-working_tree: Poison ticks on both sides at either phase end; player-focused pill copy prepared
+updated_at: 2026-09-03T23:47:00+08:00
+source_commit: f31ca578ccc7b57424f2ec4421b6b7b21634156f
+working_tree: Ctrl pill help and larger card titles implemented; full numeric card-copy integration remains pending
 ---
+
+> **2026-09-03 Ctrl说明与卡名字体已接入**：用户最终选定Ctrl开关Pill说明，取代此前的右键/中键方案；Shift临时查看详述并返回原模式。运行时代码提交f31ca57已接入手牌、背包、伙伴/NPC牌组与商店：独立对象行、当前品质/已定分支Pill去重、简短释义与重箭合并、离开/失焦清状态。卡名22号粗体加重，对象名14号加粗，正文13号；审阅页同步。冷UBT及13/13范围回归通过，0非预期警告，见docs/production/2026-09-03-ctrl-card-tooltip-acceptance.md。此处完成交互与排版部分；剩余65张卡、数值预览与逐卡最终正文仍按Plan 2后续任务推进，未宣称全卡实装或实机视觉验收完成。
+
 
 > **2026-09-03 中毒双边回合末与Pill信息分工**：用户确认中毒在任意一方回合末触发，并同意按玩家需要的信息整理其余Pill。代码提交7725036已让双方中毒在每个阵营回合末各触发一次，保持虚弱所属方衰减、护甲时机和胜负优先级；游戏中毒说明同步。冷UBT与252/252范围回归通过，0失败、0警告。文案移除卡内气力/内力释义、合并蓄力/重箭、统一持续伤害共性，将自动入手条件与重箭顺序写回卡牌正文；右键仍单击开关。验收见docs/production/2026-09-03-poison-boundary-and-pill-copy-acceptance.md；整套TooltipUI尚未接入。
 
