@@ -2547,6 +2547,142 @@ bool FGameXXKCardBattleAdapter::BuildCardPlayPreview(
 	return GameXXKCardRules::BuildCardPlayPreview(State.CardRun.ActiveBattle, CardInstanceId, OutPreview, OutError);
 }
 
+bool FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
+	const FGameXXKRuntimeState& State,
+	const FName CharacterId,
+	const FName CardId,
+	const EGameXXKCardQuality Quality,
+	FGameXXKCardPlayPreview& OutPreview,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutPreview = FGameXXKCardPlayPreview();
+	const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
+	if (!Definition || CharacterId.IsNone())
+	{
+		return SetFailure(OutError, TEXT("A reference card preview requires a catalog card and permanent character."));
+	}
+
+	FGameXXKCharacterStats BareStats;
+	FGameXXKEquipmentLoadoutSnapshot Snapshot;
+	EGameXXKCharacterRole Role = EGameXXKCharacterRole::Invalid;
+	int32 CharacterLevel = 1;
+	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId())
+	{
+		Role = EGameXXKCharacterRole::Hero;
+		CharacterLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+		BareStats = FGameXXKCharacterStatRules::GetBareHeroStats(CharacterLevel);
+		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			State.EquipmentCollection,
+			CharacterId,
+			BareStats,
+			Snapshot,
+			OutError))
+		{
+			return false;
+		}
+	}
+	else if (const FGameXXKPermanentCompanion* Companion = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([CharacterId](const FGameXXKPermanentCompanion& Candidate)
+	{
+		return Candidate.InstanceId == CharacterId;
+	}))
+	{
+		Role = Companion->Role;
+		CharacterLevel = FMath::Clamp(Companion->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+		if (!FGameXXKCharacterStatRules::GetBareCompanionStats(
+			Companion->Role,
+			CharacterLevel,
+			Companion->Star,
+			BareStats,
+			OutError)
+			|| !FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+				State.EquipmentCollection,
+				CharacterId,
+				BareStats,
+				Snapshot,
+				OutError))
+		{
+			return false;
+		}
+	}
+	else if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId))
+	{
+		Role = EGameXXKCharacterRole::QuestNpc;
+		const FGameXXKQuestNpcProgression* Progression =
+			State.CardRun.PartySelection.QuestNpcProgressions.Find(CharacterId);
+		CharacterLevel = Progression
+			? FMath::Clamp(Progression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+			: 1;
+		FGameXXKCompanionAttributes Attributes;
+		if (!BuildQuestNpcEquipmentSnapshot(
+			State,
+			CharacterId,
+			CharacterLevel,
+			Attributes,
+			Snapshot,
+			OutError))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		return SetFailure(OutError, TEXT("The selected card owner has no permanent stat projection."));
+	}
+
+	FGameXXKCardCombatUnit SourceUnit;
+	SourceUnit.UnitId = CharacterId;
+	SourceUnit.Side = EGameXXKCardTargetSide::Party;
+	SourceUnit.Role = Role;
+	SourceUnit.MaxHP = FMath::Max(1, Snapshot.AttributesBeforeRoute.MaxHealth);
+	SourceUnit.HP = SourceUnit.MaxHP;
+	SourceUnit.MaxMana = FMath::Max(0, Snapshot.AttributesBeforeRoute.MaxMana);
+	SourceUnit.Mana = SourceUnit.MaxMana;
+	SourceUnit.Attack = FMath::Max(0, Snapshot.AttributesBeforeRoute.Attack);
+	SourceUnit.Defense = FMath::Max(0, Snapshot.AttributesBeforeRoute.Defense);
+	SourceUnit.Speed = FMath::Max(1, Snapshot.AttributesBeforeRoute.Speed);
+	SourceUnit.StableSortOrder = 1;
+	SourceUnit.CombatLevel = CharacterLevel;
+	SourceUnit.bLiving = true;
+
+	TArray<FGameXXKEquipmentBattleEffectRuntime> EquipmentEffects;
+	const auto AppendEffects = [&EquipmentEffects](const TArray<FGameXXKEquipmentActiveEffect>& Effects)
+	{
+		for (const FGameXXKEquipmentActiveEffect& Effect : Effects)
+		{
+			FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = EquipmentEffects.AddDefaulted_GetRef();
+			RuntimeEffect.ActiveEffect = Effect;
+			RuntimeEffect.SourceCharacterId = Effect.SourceCharacterId;
+		}
+	};
+	AppendEffects(Snapshot.ActivePersonalEffects);
+	AppendEffects(Snapshot.CandidateTeamEffects);
+	int32 TeamMaxLevel = FMath::Max(CharacterLevel, FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel));
+	if (const FGameXXKPermanentCompanion* ActiveCompanion = FindActiveCompanion(State.CardRun.CompanionRoster))
+	{
+		TeamMaxLevel = FMath::Max(TeamMaxLevel, ActiveCompanion->Level);
+	}
+	FName ActiveNpcId;
+	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId))
+	{
+		if (const FGameXXKQuestNpcProgression* NpcProgression = State.CardRun.PartySelection.QuestNpcProgressions.Find(ActiveNpcId))
+		{
+			TeamMaxLevel = FMath::Max(TeamMaxLevel, NpcProgression->Level);
+		}
+	}
+	return GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*Definition,
+		Quality,
+		SourceUnit,
+		TeamMaxLevel,
+		EquipmentEffects,
+		OutPreview,
+		OutError);
+}
+
 bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 	FGameXXKRuntimeState& InOutState,
 	const FName CardInstanceId,

@@ -17,10 +17,12 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKCardCatalog.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardText.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Framework/Application/SlateApplication.h"
@@ -1119,10 +1121,21 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 			*FGameXXKCardQualityRules::GetDisplayName(Offer->NextQuality).ToString(),
 			Offer->Price);
 		Context.UnavailableReason = DisabledReason;
+		FGameXXKCardPlayPreview ReferencePreview;
+		const UGameXXKMVPSubsystem* TooltipSubsystem = ResolveMVPSubsystem();
+		const FGameXXKCardPlayPreview* Preview = TooltipSubsystem
+			&& FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
+				TooltipSubsystem->GetRuntimeState(),
+				FGameXXKEquipmentRules::HeroCharacterId(),
+				CardDefinition->Id,
+				Offer->NextQuality,
+				ReferencePreview)
+			? &ReferencePreview
+			: nullptr;
 		CardTooltip->ConfigureCard(
 			*CardDefinition,
 			Offer->NextQuality,
-			nullptr,
+			Preview,
 			Context);
 		DisplayButton->SetToolTipText(FText::GetEmpty());
 		PurchaseButton->SetToolTipText(FText::GetEmpty());

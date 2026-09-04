@@ -345,7 +345,7 @@ namespace
 		const FString HitSuffix = HitCount > 1 ? FString::Printf(TEXT("，共%d段"), HitCount) : FString();
 		switch (Type)
 		{
-		case EGameXXKCardEffectType::DamagePercentAttack: return FString::Printf(TEXT("%s造成%d%%攻击伤害%s"), *Target, Magnitude, *HitSuffix);
+		case EGameXXKCardEffectType::DamagePercentAttack: return FString::Printf(TEXT("造成%d%%的攻击伤害%s"), Magnitude, *HitSuffix);
 		case EGameXXKCardEffectType::DamageFlat: return FString::Printf(TEXT("%s受到%d点直接伤害%s"), *Target, Magnitude, *HitSuffix);
 		case EGameXXKCardEffectType::LoseHealth: return FString::Printf(TEXT("%s失去%d点生命"), *Target, Magnitude);
 		case EGameXXKCardEffectType::Heal:
@@ -423,7 +423,7 @@ namespace
 			}
 			return Text;
 		}
-		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor: return FString::Printf(TEXT("由%s对%s造成%d%%攻击+当前护甲的伤害，不消耗护甲"), *Source, *Target, Magnitude);
+		case EGameXXKCardEffectType::DamagePercentAttackPlusArmor: return FString::Printf(TEXT("造成%d%%的攻击伤害，并加上当前护甲；不消耗护甲"), Magnitude);
 		case EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor: return FString::Printf(TEXT("消耗%s全部护甲，对%s造成（%d%%+每点护甲%d个百分点）攻击伤害"), *Source, *Target, Magnitude, SecondaryMagnitude);
 		case EGameXXKCardEffectType::TriggerTerrainBenefit: return FString::Printf(TEXT("触发当前地势收益%d次"), Magnitude);
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent: return FString::Printf(TEXT("%s获得等于当前内力%d%%的护甲"), *Target, Magnitude);
@@ -1275,9 +1275,159 @@ namespace
 		}
 	}
 
+	TArray<const FGameXXKCardResolvedDisplayValue*> FindResolvedValues(
+		const FGameXXKCardPlayPreview* Preview,
+		const int32 EffectIndex,
+		const EGameXXKCardDisplayValueKind Kind,
+		const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+	{
+		TArray<const FGameXXKCardResolvedDisplayValue*> Values;
+		if (!Preview)
+		{
+			return Values;
+		}
+		for (const FGameXXKCardResolvedDisplayValue& Value : Preview->ResolvedDisplayValues)
+		{
+			if (Value.EffectIndex == EffectIndex
+				&& Value.Kind == Kind
+				&& (Status == EGameXXKCardStatus::None || Value.Status == Status))
+			{
+				Values.Add(&Value);
+			}
+		}
+		return Values;
+	}
+
+	FString DescribeResolvedMagnitudeRange(
+		const TArray<const FGameXXKCardResolvedDisplayValue*>& Values)
+	{
+		TMap<FName, int64> TotalsByTarget;
+		int32 AnonymousOrdinal = 0;
+		for (const FGameXXKCardResolvedDisplayValue* Value : Values)
+		{
+			if (!Value)
+			{
+				continue;
+			}
+			const FName Key = Value->TargetUnitId.IsNone()
+				? FName(*FString::Printf(TEXT("Display.Anonymous.%d"), AnonymousOrdinal++))
+				: Value->TargetUnitId;
+			TotalsByTarget.FindOrAdd(Key) = FMath::Min<int64>(
+				MAX_int32,
+				TotalsByTarget.FindRef(Key) + FMath::Max(0, Value->ResolvedMagnitude));
+		}
+		if (TotalsByTarget.IsEmpty())
+		{
+			return FString();
+		}
+		int32 Minimum = MAX_int32;
+		int32 Maximum = 0;
+		for (const TPair<FName, int64>& Pair : TotalsByTarget)
+		{
+			const int32 Value = static_cast<int32>(Pair.Value);
+			Minimum = FMath::Min(Minimum, Value);
+			Maximum = FMath::Max(Maximum, Value);
+		}
+		return Minimum == Maximum
+			? FString::FromInt(Minimum)
+			: FString::Printf(TEXT("%d–%d"), Minimum, Maximum);
+	}
+
+	FString DescribeResolvedEffect(
+		const FGameXXKCardEffect& Effect,
+		const int32 EffectIndex,
+		const FGameXXKCardPlayPreview* Preview,
+		const bool bCompact,
+		const EGameXXKCardTerrain CurrentTerrain,
+		const EGameXXKCardTerrain PlannedTerrain)
+	{
+		EGameXXKCardDisplayValueKind Kind = EGameXXKCardDisplayValueKind::Invalid;
+		if (Effect.Type == EGameXXKCardEffectType::DamagePercentAttack
+			|| Effect.Type == EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget
+			|| Effect.Type == EGameXXKCardEffectType::DamagePercentAttackPlusArmor
+			|| Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor
+			|| Effect.Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot
+			|| Effect.Type == EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus)
+		{
+			Kind = EGameXXKCardDisplayValueKind::AttackDamage;
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::DamageFlat)
+		{
+			Kind = EGameXXKCardDisplayValueKind::FixedDamage;
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::ApplyStatus
+			&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DotCoefficient)
+		{
+			Kind = EGameXXKCardDisplayValueKind::DamageOverTime;
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::Heal
+			|| Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+			|| Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat)
+		{
+			Kind = EGameXXKCardDisplayValueKind::Healing;
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::AddArmor
+			|| Effect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
+			|| Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor)
+		{
+			Kind = EGameXXKCardDisplayValueKind::Armor;
+		}
+
+		const TArray<const FGameXXKCardResolvedDisplayValue*> Values = FindResolvedValues(
+			Preview,
+			EffectIndex,
+			Kind,
+			Effect.Status);
+		if (Values.IsEmpty())
+		{
+			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		}
+		const FString Resolved = DescribeResolvedMagnitudeRange(Values);
+		const FGameXXKCardResolvedDisplayValue& First = *Values[0];
+		switch (Kind)
+		{
+		case EGameXXKCardDisplayValueKind::AttackDamage:
+			return bCompact
+				? FString::Printf(TEXT("造成%s点伤害。"), *Resolved)
+				: DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		case EGameXXKCardDisplayValueKind::FixedDamage:
+			return FString::Printf(TEXT("造成%s点固定伤害。"), *Resolved);
+		case EGameXXKCardDisplayValueKind::DamageOverTime:
+			return bCompact
+				? FString::Printf(TEXT("施加%s点%s。"), *Resolved, *DescribeStatus(Effect.Status))
+				: FString::Printf(TEXT("%d点%s，%d%%增幅倍率。"), First.BaseMagnitude, *DescribeStatus(Effect.Status), First.AmplificationPercent);
+		case EGameXXKCardDisplayValueKind::Healing:
+			if (bCompact)
+			{
+				return Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+					? FString::Printf(TEXT("%s点治疗或治疗反转，耗尽药效。"), *Resolved)
+					: FString::Printf(TEXT("%s点治疗。"), *Resolved);
+			}
+			return Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::MedicineCoefficient
+				? FString::Printf(TEXT("%d点治疗，%d%%增幅倍率；消耗全部药效，等量增加基础治疗。"), First.BaseMagnitude, First.AmplificationPercent)
+				: DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		case EGameXXKCardDisplayValueKind::Armor:
+			if (bCompact)
+			{
+				return FString::Printf(TEXT("获得%s点护甲。"), *Resolved);
+			}
+			if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::PrintedCostArmor
+				|| Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DefensePercent)
+			{
+				return FString::Printf(TEXT("获得%d%%防御的护甲，%d%%增幅倍率。"), First.BaseMagnitude, First.AmplificationPercent);
+			}
+			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		case EGameXXKCardDisplayValueKind::Invalid:
+		default:
+			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		}
+	}
+
 	FString DescribeEffectsResolved(
 		const FGameXXKCardDefinition& EffectiveDefinition,
-		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid)
+		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid,
+		const FGameXXKCardPlayPreview* Preview = nullptr,
+		const bool bCompact = false)
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
 		{
@@ -1331,7 +1481,7 @@ namespace
 			}
 			else
 			{
-				Lines.Add(DescribeEffect(Effects[EffectIndex], true, CurrentTerrain, PlannedTerrain));
+				Lines.Add(DescribeResolvedEffect(Effects[EffectIndex], EffectIndex, Preview, bCompact, CurrentTerrain, PlannedTerrain));
 				++EffectIndex;
 			}
 		}
@@ -1447,9 +1597,12 @@ namespace
 		Lines.Add(FString::Printf(
 			TEXT("品质：%s"),
 			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
-		Lines.Add(FString::Printf(TEXT("费用：%d 气 / %d 内"), EffectiveDefinition.EnergyCost, EffectiveDefinition.ManaCost));
+		Lines.Add(FString::Printf(
+			TEXT("费用：%d 气 / %d 内"),
+			Preview ? Preview->EffectiveEnergyCost : EffectiveDefinition.EnergyCost,
+			Preview ? Preview->EffectiveManaCost : EffectiveDefinition.ManaCost));
 		Lines.Add(GameXXKCardText::DescribeTarget(EffectiveDefinition.TargetSpec));
-		Lines.Add(FString::Printf(TEXT("效果：\n%s"), *DescribeEffectsResolved(EffectiveDefinition, CurrentTerrain)));
+		Lines.Add(FString::Printf(TEXT("效果：\n%s"), *DescribeEffectsResolved(EffectiveDefinition, CurrentTerrain, Preview, false)));
 		if (Preview)
 		{
 			Lines.Add(DescribePreviewState(*Preview));
@@ -1457,10 +1610,14 @@ namespace
 		return FString::Join(Lines, TEXT("\n"));
 	}
 
-	FString DescribeTooltipRules(const FGameXXKCardDefinition& Definition, const FGameXXKCardTooltipContext& Context)
+	FString DescribeTooltipRules(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardTooltipContext& Context,
+		const FGameXXKCardPlayPreview* Preview = nullptr,
+		const bool bCompact = false)
 	{
 		TArray<FString> RawLines;
-		DescribeEffectsResolved(Definition, Context.CurrentTerrain).ParseIntoArrayLines(RawLines, false);
+		DescribeEffectsResolved(Definition, Context.CurrentTerrain, Preview, bCompact).ParseIntoArrayLines(RawLines, false);
 		TArray<FString> Lines;
 		TArray<FString> TargetLines;
 		GameXXKCardText::DescribeTarget(Definition.TargetSpec).ParseIntoArrayLines(TargetLines, false);
@@ -1711,14 +1868,14 @@ namespace
 			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
 		Lines.Add(FString::Printf(
 			TEXT("费用：%d 气 · %d 内"),
-			EffectiveDefinition.EnergyCost,
-			EffectiveDefinition.ManaCost));
+			Preview ? Preview->EffectiveEnergyCost : EffectiveDefinition.EnergyCost,
+			Preview ? Preview->EffectiveManaCost : EffectiveDefinition.ManaCost));
 		Lines.Add(GameXXKCardText::DescribeTargetHeading(EffectiveDefinition));
 
 		TArray<FString> BaseEffectLines;
 		TArray<FString> KeywordLines;
 		TArray<FString> RawEffectLines;
-		DescribeTooltipRules(EffectiveDefinition, Context).ParseIntoArrayLines(
+		DescribeTooltipRules(EffectiveDefinition, Context, Preview, true).ParseIntoArrayLines(
 			RawEffectLines,
 			false);
 		for (const FString& RawLine : RawEffectLines)
@@ -1794,12 +1951,12 @@ namespace
 			*FGameXXKCardQualityRules::GetDisplayName(ResolvedQuality).ToString()));
 		Lines.Add(FString::Printf(
 			TEXT("费用：%d 气 / %d 内"),
-			EffectiveDefinition.EnergyCost,
-			EffectiveDefinition.ManaCost));
+			Preview ? Preview->EffectiveEnergyCost : EffectiveDefinition.EnergyCost,
+			Preview ? Preview->EffectiveManaCost : EffectiveDefinition.ManaCost));
 		Lines.Add(GameXXKCardText::DescribeTargetHeading(EffectiveDefinition));
 		Lines.Add(FString::Printf(
 			TEXT("效果：\n%s"),
-			*DescribeTooltipRules(EffectiveDefinition, Context)));
+			*DescribeTooltipRules(EffectiveDefinition, Context, Preview, false)));
 		if (Preview)
 		{
 			Lines.Add(DescribePreviewState(*Preview));

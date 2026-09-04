@@ -51,6 +51,7 @@
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UI/GameXXKCardTooltipWidget.h"
 #include "GameXXKCardPillText.h"
+#include "GameXXKEquipmentRules.h"
 #include "UI/GameXXKBattleStatusIconWidget.h"
 #include "UI/GameXXKBattleStatusIconStyle.h"
 #include "UI/GameXXKBattleUnitHudWidget.h"
@@ -8597,6 +8598,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	const FGameXXKCardDefinition* Definition = nullptr;
 	EGameXXKCardQuality TooltipQuality = EGameXXKCardQuality::Invalid;
 	FGameXXKCardTooltipContext Context;
+	TOptional<FGameXXKCardPlayPreview> TooltipPreview;
+	const FGameXXKCardInstance* TooltipInstance = nullptr;
 	/** Non-card reward options write their tooltip text directly instead of a card definition. */
 	TOptional<FText> DirectTooltipText;
 	if (!State)
@@ -8629,8 +8632,22 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		{
 			return Card.InstanceId == CardInstanceId;
 		});
+		TooltipInstance = CardInstance;
 		Definition = CardInstance ? FGameXXKCardCatalog::FindCardDefinition(CardInstance->CardId) : nullptr;
 		TooltipQuality = CardInstance ? CardInstance->CurrentQuality : EGameXXKCardQuality::Invalid;
+		if (CardInstance)
+		{
+			FGameXXKCardPlayPreview LivePreview;
+			FString PreviewError;
+			if (FGameXXKCardBattleAdapter::BuildCardPlayPreview(
+				*State,
+				CardInstance->InstanceId,
+				LivePreview,
+				&PreviewError))
+			{
+				TooltipPreview = MoveTemp(LivePreview);
+			}
+		}
 		SetTaskBranch(CardInstance);
 		break;
 	}
@@ -8643,6 +8660,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 				return Card.InstanceId == HoveredCardTooltipId;
 			})
 			: nullptr;
+		TooltipInstance = Candidate;
 		Definition = Candidate ? FGameXXKCardCatalog::FindCardDefinition(Candidate->CardId) : nullptr;
 		TooltipQuality = Candidate ? Candidate->CurrentQuality : EGameXXKCardQuality::Invalid;
 		SetTaskBranch(Candidate);
@@ -8698,6 +8716,36 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	default:
 		break;
 	}
+	if (Definition && !TooltipPreview.IsSet())
+	{
+		FGameXXKCardPlayPreview ReferencePreview;
+		if (TooltipInstance && State->CardRun.bHasActiveCardBattle)
+		{
+			const FGameXXKCardCombatUnit* SourceUnit = State->CardRun.ActiveBattle.Units.FindByPredicate([TooltipInstance](const FGameXXKCardCombatUnit& Unit)
+			{
+				return Unit.UnitId == TooltipInstance->OwnerUnitId;
+			});
+			if (SourceUnit && GameXXKCardRules::BuildReferenceCardPlayPreview(
+				*Definition,
+				TooltipQuality,
+				*SourceUnit,
+				State->CardRun.ActiveBattle.TeamMaxLevelSnapshot,
+				State->CardRun.ActiveBattle.EquipmentEffects,
+				ReferencePreview))
+			{
+				TooltipPreview = MoveTemp(ReferencePreview);
+			}
+		}
+		else if (FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
+			*State,
+			FGameXXKEquipmentRules::HeroCharacterId(),
+			Definition->Id,
+			TooltipQuality,
+			ReferencePreview))
+		{
+			TooltipPreview = MoveTemp(ReferencePreview);
+		}
+	}
 
 	const FName HoveredInstance = HoveredCardTooltipSource == ECardTooltipSource::Hand && HandCardInstanceIds.IsValidIndex(HoveredHandCardSlot)
 		? HandCardInstanceIds[HoveredHandCardSlot] : HoveredCardTooltipId;
@@ -8730,11 +8778,12 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	else if (Definition)
 	{
 		TooltipTitle = Definition->DisplayName;
+		const FGameXXKCardPlayPreview* Preview = TooltipPreview.IsSet() ? &TooltipPreview.GetValue() : nullptr;
 		if (bCardTooltipExpanded)
 		{
 			const FString ExpandedBody = TooltipQuality == EGameXXKCardQuality::Invalid
-				? GameXXKCardText::DescribeExpandedTooltipBody(*Definition, nullptr, Context)
-				: GameXXKCardText::DescribeExpandedTooltipBody(*Definition, TooltipQuality, nullptr, Context);
+				? GameXXKCardText::DescribeExpandedTooltipBody(*Definition, Preview, Context)
+				: GameXXKCardText::DescribeExpandedTooltipBody(*Definition, TooltipQuality, Preview, Context);
 			TooltipBody = FText::FromString(ExpandedBody);
 		}
 		else if (CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Pills)
@@ -8745,8 +8794,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		{
 			TooltipBody = FText::FromString(
 				TooltipQuality == EGameXXKCardQuality::Invalid
-					? GameXXKCardText::DescribeCompactTooltipBody(*Definition, nullptr, Context)
-					: GameXXKCardText::DescribeCompactTooltipBody(*Definition, TooltipQuality, nullptr, Context));
+					? GameXXKCardText::DescribeCompactTooltipBody(*Definition, Preview, Context)
+					: GameXXKCardText::DescribeCompactTooltipBody(*Definition, TooltipQuality, Preview, Context));
 		}
 	}
 	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())

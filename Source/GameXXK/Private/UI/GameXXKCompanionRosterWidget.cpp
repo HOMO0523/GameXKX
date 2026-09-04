@@ -19,6 +19,7 @@
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameXXKAffixCatalog.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardText.h"
 #include "GameXXKCompanionRules.h"
@@ -2279,6 +2280,7 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 	{
 		return;
 	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 
 	ClearCardTooltipHoverState();
 	const TArray<FName>& VisibleCardIds = bEditingHeroDeck ? VisibleHeroCardIds : VisiblePersonalCardIds;
@@ -2350,6 +2352,19 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 			if (Definition)
 			{
 				FGameXXKCardTooltipContext Context;
+				FGameXXKCardPlayPreview ReferencePreview;
+				const FName PreviewCharacterId = bEditingHeroDeck
+					? FGameXXKEquipmentRules::HeroCharacterId()
+					: SelectedCompanionId;
+				const FGameXXKCardPlayPreview* Preview = Subsystem
+					&& FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
+						Subsystem->GetRuntimeState(),
+						PreviewCharacterId,
+						Definition->Id,
+						Definition->BaseQuality,
+						ReferencePreview)
+					? &ReferencePreview
+					: nullptr;
 				const int32 RequiredDeckSize = bEditingHeroDeck ? 8 : 5;
 				if (bLoadoutReadOnly)
 				{
@@ -2368,7 +2383,7 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 				Tooltip->ConfigureCard(
 					*Definition,
 					Definition->BaseQuality,
-					nullptr,
+					Preview,
 					Context);
 			}
 			else

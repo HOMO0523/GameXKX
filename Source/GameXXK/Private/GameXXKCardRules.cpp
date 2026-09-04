@@ -2388,6 +2388,10 @@ namespace
 		const int32 ResolvedPrimary,
 		const int32 ResolvedSecondary)
 	{
+		if (Runtime.bSuppressEquipmentTriggerAudit)
+		{
+			return;
+		}
 		UE_LOG(
 			LogTemp,
 			Verbose,
@@ -16315,6 +16319,276 @@ bool GameXXKCardRules::SubmitHeroTaskSearchChoice(
 	return true;
 }
 
+namespace
+{
+	bool IsAttackDisplayEffect(const EGameXXKCardEffectType Type)
+	{
+		return Type == EGameXXKCardEffectType::DamagePercentAttack
+			|| Type == EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget
+			|| Type == EGameXXKCardEffectType::DamagePercentAttackPlusArmor
+			|| Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor
+			|| Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot
+			|| Type == EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus;
+	}
+
+	int32 FindDisplayEffectIndex(
+		const FGameXXKCardDefinition& Definition,
+		const EGameXXKCardDisplayValueKind Kind,
+		const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+	{
+		return Definition.Effects.IndexOfByPredicate([Kind, Status](const FGameXXKCardEffect& Effect)
+		{
+			switch (Kind)
+			{
+			case EGameXXKCardDisplayValueKind::AttackDamage:
+				return IsAttackDisplayEffect(Effect.Type);
+			case EGameXXKCardDisplayValueKind::FixedDamage:
+				return Effect.Type == EGameXXKCardEffectType::DamageFlat;
+			case EGameXXKCardDisplayValueKind::DamageOverTime:
+				return Effect.Type == EGameXXKCardEffectType::ApplyStatus
+					&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DotCoefficient
+					&& (Status == EGameXXKCardStatus::None || Effect.Status == Status);
+			case EGameXXKCardDisplayValueKind::Healing:
+				return Effect.Type == EGameXXKCardEffectType::Heal
+					|| Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+					|| Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat;
+			case EGameXXKCardDisplayValueKind::Armor:
+				return Effect.Type == EGameXXKCardEffectType::AddArmor
+					|| Effect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
+					|| Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor;
+			case EGameXXKCardDisplayValueKind::Invalid:
+			default:
+				return false;
+			}
+		});
+	}
+
+	int32 ResolveGenerationAmplificationPercent(
+		const EGameXXKCardQuality Quality,
+		const int32 TeamMaxLevel)
+	{
+		const int64 Numerator = static_cast<int64>(FGameXXKCombatScalingRules::GetQualityPercent(Quality))
+			* (FMath::Clamp(TeamMaxLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel) + 25);
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, (Numerator + 24) / 25));
+	}
+
+	void AddDamageDisplayValues(
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardPlayResult& Result,
+		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
+	{
+		for (const FGameXXKCardDamageResult& Damage : Result.DamageResults)
+		{
+			EGameXXKCardDisplayValueKind Kind = EGameXXKCardDisplayValueKind::Invalid;
+			if (Damage.Cause == EGameXXKCardDamageCause::DirectAttack)
+			{
+				Kind = EGameXXKCardDisplayValueKind::AttackDamage;
+			}
+			else if (Damage.Cause == EGameXXKCardDamageCause::FixedDamage)
+			{
+				Kind = EGameXXKCardDisplayValueKind::FixedDamage;
+			}
+			if (Kind == EGameXXKCardDisplayValueKind::Invalid)
+			{
+				continue;
+			}
+			const int32 EffectIndex = FindDisplayEffectIndex(EffectiveDefinition, Kind);
+			const FGameXXKCardEffect* Effect = EffectiveDefinition.Effects.IsValidIndex(EffectIndex)
+				? &EffectiveDefinition.Effects[EffectIndex]
+				: nullptr;
+			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+			Value.EffectIndex = EffectIndex;
+			Value.Kind = Kind;
+			Value.SourceUnitId = Damage.SourceUnitId;
+			Value.TargetUnitId = Damage.OriginalTargetUnitId;
+			Value.BaseMagnitude = Effect ? Effect->Magnitude : 0;
+			Value.ResolvedMagnitude = Damage.BaseRequestedDamage > 0
+				? Damage.BaseRequestedDamage + Damage.MomentumDamageBonus
+				: Damage.RequestedDamage;
+			Value.ActualMagnitude = Damage.HealthDamage;
+			Value.AmplificationPercent = Kind == EGameXXKCardDisplayValueKind::AttackDamage && Effect
+				? Effect->Magnitude
+				: 100;
+			Value.HitCount = Effect ? FMath::Max(1, Effect->HitCount) : 1;
+		}
+	}
+
+	void AddScaledStatusDisplayValues(
+		const FGameXXKCardBattleRuntime& RuntimeBefore,
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardInstance& Instance,
+		const TArray<FName>& TargetIds,
+		const FGameXXKCardPlayResult& Result,
+		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
+	{
+		const int32 AmplificationPercent = ResolveGenerationAmplificationPercent(
+			Instance.CurrentQuality,
+			RuntimeBefore.TeamMaxLevelSnapshot);
+		for (int32 EffectIndex = 0; EffectIndex < EffectiveDefinition.Effects.Num(); ++EffectIndex)
+		{
+			const FGameXXKCardEffect& Effect = EffectiveDefinition.Effects[EffectIndex];
+			if (Effect.Type != EGameXXKCardEffectType::ApplyStatus
+				|| Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::DotCoefficient)
+			{
+				continue;
+			}
+			const int32 Generated = FGameXXKCombatScalingRules::ResolveDotAddition(
+				Effect.Magnitude,
+				Instance.CurrentQuality,
+				RuntimeBefore.TeamMaxLevelSnapshot);
+			TArray<FName> DisplayTargetIds = TargetIds;
+			if (DisplayTargetIds.IsEmpty())
+			{
+				DisplayTargetIds.Add(NAME_None);
+			}
+			for (const FName TargetId : DisplayTargetIds)
+			{
+				int32 Actual = 0;
+				for (const FGameXXKCardStatusChangeResult& Change : Result.StatusChanges)
+				{
+					if (Change.Status == Effect.Status
+						&& (TargetId.IsNone() || Change.TargetUnitId == TargetId))
+					{
+						Actual = FMath::Max(Actual, Change.AppliedStacks);
+					}
+				}
+				FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+				Value.EffectIndex = EffectIndex;
+				Value.Kind = EGameXXKCardDisplayValueKind::DamageOverTime;
+				Value.SourceUnitId = Instance.OwnerUnitId;
+				Value.TargetUnitId = TargetId;
+				Value.Status = Effect.Status;
+				Value.BaseMagnitude = Effect.Magnitude;
+				Value.ResolvedMagnitude = Generated;
+				Value.ActualMagnitude = Actual;
+				Value.AmplificationPercent = AmplificationPercent;
+				Value.ReservoirCap = FGameXXKCombatScalingRules::ResolveDotCap(RuntimeBefore.TeamMaxLevelSnapshot);
+			}
+		}
+	}
+
+	void AddHealingAndArmorDisplayValues(
+		const FGameXXKCardBattleRuntime& RuntimeBefore,
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardPlayResult& Result,
+		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
+	{
+		const int32 HealingIndex = FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Healing);
+		const FGameXXKCardEffect* HealingEffect = EffectiveDefinition.Effects.IsValidIndex(HealingIndex)
+			? &EffectiveDefinition.Effects[HealingIndex]
+			: nullptr;
+		for (const FGameXXKCardHealingResult& Healing : Result.HealingResults)
+		{
+			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+			Value.EffectIndex = HealingIndex;
+			Value.Kind = EGameXXKCardDisplayValueKind::Healing;
+			Value.SourceUnitId = Healing.SourceUnitId;
+			Value.TargetUnitId = Healing.TargetUnitId;
+			Value.BaseMagnitude = HealingEffect ? HealingEffect->Magnitude : 0;
+			Value.ResolvedMagnitude = Healing.RequestedHealing;
+			Value.ActualMagnitude = Healing.EffectiveHealing;
+			Value.AmplificationPercent = HealingEffect
+				&& HealingEffect->MagnitudePolicy == EGameXXKCardMagnitudePolicy::MedicineCoefficient
+				? ResolveGenerationAmplificationPercent(Instance.CurrentQuality, RuntimeBefore.TeamMaxLevelSnapshot)
+				: 100;
+		}
+
+		const int32 ArmorIndex = FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Armor);
+		const FGameXXKCardEffect* ArmorEffect = EffectiveDefinition.Effects.IsValidIndex(ArmorIndex)
+			? &EffectiveDefinition.Effects[ArmorIndex]
+			: nullptr;
+		for (const FGameXXKCardArmorResult& Armor : Result.ArmorResults)
+		{
+			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+			Value.EffectIndex = ArmorIndex;
+			Value.Kind = EGameXXKCardDisplayValueKind::Armor;
+			Value.SourceUnitId = Armor.SourceUnitId;
+			Value.TargetUnitId = Armor.TargetUnitId;
+			Value.BaseMagnitude = ArmorEffect ? ArmorEffect->Magnitude : 0;
+			Value.ResolvedMagnitude = Armor.RequestedArmor;
+			Value.ActualMagnitude = Armor.EffectiveArmor;
+			Value.AmplificationPercent = ArmorEffect
+				&& (ArmorEffect->MagnitudePolicy == EGameXXKCardMagnitudePolicy::PrintedCostArmor
+					|| ArmorEffect->MagnitudePolicy == EGameXXKCardMagnitudePolicy::DefensePercent)
+				? FGameXXKCombatScalingRules::GetQualityPercent(Instance.CurrentQuality)
+				: 100;
+		}
+	}
+
+	void PopulateResolvedCardDisplayValues(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardPlayPreview& BasePreview,
+		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
+	{
+		OutValues.Reset();
+		TArray<TArray<FName>> TargetSets;
+		if (BasePreview.TargetRequest.bRequiresManualSelection)
+		{
+			for (const FGameXXKCardTargetCandidateView& Candidate : BasePreview.TargetRequest.CandidateViews)
+			{
+				if (Candidate.bCanSelect)
+				{
+					TargetSets.Add({Candidate.UnitId});
+				}
+			}
+		}
+		else
+		{
+			int32 RandomState = Runtime.Deck.CurrentRandomState;
+			TArray<FName> TargetIds;
+			FString IgnoredError;
+			if (GameXXKCardRules::ResolveAutomaticTargetIds(
+				BasePreview.TargetRequest,
+				BuildTargetUnitView(Runtime.Units),
+				RandomState,
+				TargetIds,
+				&IgnoredError))
+			{
+				TargetSets.Add(MoveTemp(TargetIds));
+			}
+		}
+		if (TargetSets.IsEmpty())
+		{
+			TargetSets.AddDefaulted();
+		}
+
+		for (const TArray<FName>& TargetIds : TargetSets)
+		{
+			FGameXXKCardBattleRuntime Simulation = Runtime;
+			Simulation.bSuppressEquipmentTriggerAudit = true;
+			if (FGameXXKCardCombatUnit* SimulatedOwner = FindCombatUnitById(Simulation.Units, Instance.OwnerUnitId))
+			{
+				SimulatedOwner->Mana = FMath::Max(0, SimulatedOwner->Mana - BasePreview.EffectiveManaCost);
+			}
+			FGameXXKResolvedCardSnapshot Snapshot;
+			Snapshot.CardId = Instance.CardId;
+			Snapshot.Quality = Instance.CurrentQuality;
+			Snapshot.OwnerUnitId = Instance.OwnerUnitId;
+			Snapshot.OriginalTargetUnitIds = TargetIds;
+			FGameXXKCardPlayResult Result;
+			Result.CardInstanceId = Instance.InstanceId;
+			FString IgnoredError;
+			if (!ResolveCardEffectsFromSnapshot(
+				Simulation,
+				Snapshot,
+				EGameXXKCardResolutionOrigin::ActivePlay,
+				Result,
+				IgnoredError,
+				0,
+				&EffectiveDefinition))
+			{
+				continue;
+			}
+			AddDamageDisplayValues(EffectiveDefinition, Result, OutValues);
+			AddScaledStatusDisplayValues(Runtime, EffectiveDefinition, Instance, TargetIds, Result, OutValues);
+			AddHealingAndArmorDisplayValues(Runtime, EffectiveDefinition, Instance, Result, OutValues);
+		}
+	}
+}
+
 bool GameXXKCardRules::BuildCardPlayPreview(
 	const FGameXXKCardBattleRuntime& Runtime,
 	const FName CardInstanceId,
@@ -16347,7 +16621,137 @@ bool GameXXKCardRules::BuildCardPlayPreview(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	PopulateResolvedCardDisplayValues(
+		Runtime,
+		*Instance,
+		EffectiveDefinition,
+		NewPreview,
+		NewPreview.ResolvedDisplayValues);
 	OutPreview = MoveTemp(NewPreview);
+	return true;
+}
+
+bool GameXXKCardRules::BuildReferenceCardPlayPreview(
+	const FGameXXKCardDefinition& Definition,
+	const EGameXXKCardQuality Quality,
+	const FGameXXKCardCombatUnit& SourceUnit,
+	const int32 TeamMaxLevel,
+	const TArray<FGameXXKEquipmentBattleEffectRuntime>& EquipmentEffects,
+	FGameXXKCardPlayPreview& OutPreview,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutPreview = FGameXXKCardPlayPreview();
+	const EGameXXKCardQuality ResolvedQuality = IsConcreteCardQuality(Quality)
+		? Quality
+		: IsConcreteCardQuality(Definition.BaseQuality)
+			? Definition.BaseQuality
+			: EGameXXKCardQuality::Common;
+	if (Definition.Id.IsNone()
+		|| SourceUnit.UnitId.IsNone()
+		|| !SourceUnit.bLiving
+		|| SourceUnit.Side != EGameXXKCardTargetSide::Party
+		|| TeamMaxLevel < 1)
+	{
+		return SetFailure(OutError, TEXT("A reference card preview requires a valid card and living party source snapshot."));
+	}
+
+	const int32 ReferenceTeamLevel = FMath::Clamp(
+		TeamMaxLevel,
+		1,
+		FGameXXKCharacterStatRules::MaxCharacterLevel);
+	FGameXXKCardCombatUnit ReferenceSource = SourceUnit;
+	ReferenceSource.Side = EGameXXKCardTargetSide::Party;
+	ReferenceSource.bLiving = true;
+	ReferenceSource.HP = FMath::Clamp(ReferenceSource.HP, 1, FMath::Max(1, ReferenceSource.MaxHP));
+	ReferenceSource.CombatLevel = ReferenceTeamLevel;
+	TArray<FGameXXKCardCombatUnit> ReferenceUnits;
+	ReferenceUnits.Add(ReferenceSource);
+	FGameXXKCardCombatUnit ReferenceAlly = ReferenceSource;
+	ReferenceAlly.UnitId = TEXT("Reference.Display.Ally");
+	if (ReferenceAlly.UnitId == ReferenceSource.UnitId)
+	{
+		ReferenceAlly.UnitId = TEXT("Reference.Display.Ally.2");
+	}
+	ReferenceAlly.StableSortOrder = FMath::Max(0, ReferenceSource.StableSortOrder) + 1;
+	ReferenceUnits.Add(ReferenceAlly);
+	FGameXXKCardCombatUnit ReferenceEnemy;
+	ReferenceEnemy.UnitId = TEXT("Reference.Display.Enemy");
+	ReferenceEnemy.Side = EGameXXKCardTargetSide::Enemy;
+	ReferenceEnemy.Role = EGameXXKCharacterRole::Invalid;
+	ReferenceEnemy.MaxHP = 1000000;
+	ReferenceEnemy.HP = ReferenceEnemy.MaxHP;
+	ReferenceEnemy.Attack = 0;
+	ReferenceEnemy.Defense = 0;
+	ReferenceEnemy.Speed = 1;
+	ReferenceEnemy.StableSortOrder = 100;
+	ReferenceEnemy.CombatLevel = ReferenceTeamLevel;
+	ReferenceEnemy.bLiving = true;
+	ReferenceUnits.Add(ReferenceEnemy);
+
+	TArray<FGameXXKCardInstance> ReferenceCards;
+	constexpr int32 ReferenceDeckCardCount = 5;
+	for (int32 CardIndex = 0; CardIndex < ReferenceDeckCardCount; ++CardIndex)
+	{
+		FGameXXKCardInstance& Card = ReferenceCards.AddDefaulted_GetRef();
+		Card.InstanceId = FName(*FString::Printf(TEXT("Reference.Display.Card.%d"), CardIndex));
+		Card.CardId = Definition.Id;
+		Card.CurrentQuality = ResolvedQuality;
+		Card.OwnerUnitId = ReferenceSource.UnitId;
+		Card.SourceEntryId = FName(*FString::Printf(TEXT("Reference.Display.Source.%d"), CardIndex));
+		Card.AcquisitionOrdinal = CardIndex;
+	}
+	FGameXXKCardBattleRuntime Runtime;
+	FString InitializationError;
+	if (!GameXXKCardRules::InitializeCardBattleRuntime(
+		Runtime,
+		ReferenceCards,
+		ReferenceUnits,
+		EGameXXKCardTerrain::Plain,
+		193705,
+		&InitializationError))
+	{
+		return SetFailure(OutError, InitializationError);
+	}
+	Runtime.bSuppressEquipmentTriggerAudit = true;
+	Runtime.EquipmentEffects = EquipmentEffects;
+	const FGameXXKCardInstance* Instance = Runtime.Deck.Hand.FindByPredicate([&Definition](const FGameXXKCardInstance& Candidate)
+	{
+		return Candidate.CardId == Definition.Id;
+	});
+	if (!Instance)
+	{
+		return SetFailure(OutError, TEXT("A reference card preview could not materialize its card in the initial hand."));
+	}
+	const FGameXXKCardDefinition EffectiveDefinition =
+		FGameXXKCardQualityRules::BuildEffectiveDefinition(Definition, ResolvedQuality);
+	FGameXXKCardPlayPreview Preview;
+	Preview.CardInstanceId = Instance->InstanceId;
+	Preview.CardId = Instance->CardId;
+	Preview.OwnerUnitId = Instance->OwnerUnitId;
+	Preview.EffectiveEnergyCost = EffectiveDefinition.EnergyCost;
+	Preview.EffectiveManaCost = EffectiveDefinition.ManaCost;
+	if (!GameXXKCardRules::BuildTargetRequest(
+		EffectiveDefinition,
+		*Instance,
+		Runtime.Terrain,
+		BuildTargetUnitView(Runtime.Units),
+		Preview.TargetRequest,
+		OutError))
+	{
+		return false;
+	}
+	Preview.bCanPlay = true;
+	PopulateResolvedCardDisplayValues(
+		Runtime,
+		*Instance,
+		EffectiveDefinition,
+		Preview,
+		Preview.ResolvedDisplayValues);
+	OutPreview = MoveTemp(Preview);
 	return true;
 }
 

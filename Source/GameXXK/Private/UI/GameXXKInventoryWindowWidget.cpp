@@ -1,6 +1,7 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
 
 #include "GameXXKAffixCatalog.h"
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardText.h"
 #include "GameXXKEquipmentSetCatalog.h"
 #include "GameXXKGemRules.h"
@@ -3142,6 +3143,16 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 			else
 			{
 				FGameXXKCardTooltipContext Context;
+				FGameXXKCardPlayPreview ReferencePreview;
+				const FGameXXKCardPlayPreview* Preview = Subsystem
+					&& FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
+						Subsystem->GetRuntimeState(),
+						CharacterId,
+						Definition->Id,
+						Definition->BaseQuality,
+						ReferencePreview)
+					? &ReferencePreview
+					: nullptr;
 				if (!bUnlocked)
 				{
 					Context.UnavailableReason = TEXT("此牌尚未解锁。");
@@ -3153,7 +3164,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 				Tooltip->ConfigureCard(
 					*Definition,
 					Definition->BaseQuality,
-					nullptr,
+					Preview,
 					Context);
 			}
 		}

@@ -2326,6 +2326,10 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 EnemyDifficultyDamagePercent = 100;
 
+	/** Transient guard used by copied tooltip simulations so gameplay audit logs stay truthful. */
+	UPROPERTY(Transient)
+	bool bSuppressEquipmentTriggerAudit = false;
+
 	/** Accumulated enemy denial consumed by the next player-round energy refill. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 PendingNextRoundEnergyPenalty = 0;
@@ -2498,6 +2502,61 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	int32 LifeSavingTalismanHealingPercent = 0;
 };
 
+/** Semantic category for one card-owned generated value before target mitigation. */
+UENUM(BlueprintType)
+enum class EGameXXKCardDisplayValueKind : uint8
+{
+	Invalid = 0 UMETA(Hidden),
+	AttackDamage = 1,
+	FixedDamage = 2,
+	DamageOverTime = 3,
+	Healing = 4,
+	Armor = 5
+};
+
+/** Pure card-generation value paired with an optional target outcome from a copied runtime. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardResolvedDisplayValue
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 EffectIndex = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	EGameXXKCardDisplayValueKind Kind = EGameXXKCardDisplayValueKind::Invalid;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName TargetUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 BaseMagnitude = 0;
+
+	/** Card-owned number shown in compact copy, before target mitigation/capacity. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 ResolvedMagnitude = 0;
+
+	/** Optional copied-target result; card text never substitutes this for the generated value. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 ActualMagnitude = 0;
+
+	/** Quality and level folded into one percentage; attacks store their final attack percentage. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 AmplificationPercent = 100;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 ReservoirCap = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 HitCount = 1;
+};
+
 /** Read-only card-check result consumed by the hand UI before it enters the arrow-targeting state. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardPlayPreview
@@ -2522,6 +2581,10 @@ struct GAMEXXK_API FGameXXKCardPlayPreview
 	/** Runtime-only identity of the unused Shanhe four-piece discount selected by the pure preview. */
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FName AppliedShanHeFourPieceEffectId = NAME_None;
+
+	/** Non-mutating card-generation values resolved from the actual battle owner/source stats. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TArray<FGameXXKCardResolvedDisplayValue> ResolvedDisplayValues;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bCanPlay = false;

@@ -191,6 +191,16 @@ namespace GameXXKCardRules
 		FGameXXKCardPlayPreview& OutPreview,
 		FString* OutError = nullptr);
 
+	/** Builds card-generation values from one explicit character-panel snapshot without a live battle. */
+	GAMEXXK_API bool BuildReferenceCardPlayPreview(
+		const FGameXXKCardDefinition& Definition,
+		EGameXXKCardQuality Quality,
+		const FGameXXKCardCombatUnit& SourceUnit,
+		int32 TeamMaxLevel,
+		const TArray<FGameXXKEquipmentBattleEffectRuntime>& EquipmentEffects,
+		FGameXXKCardPlayPreview& OutPreview,
+		FString* OutError = nullptr);
+
 	/**
 	 * Rebuilds card legality immediately before commit, validates the selected stable UnitId when needed,
 	 * then pays resources, moves the exact hand card to discard or exhaust, resolves its data-only effects, and commits atomically.

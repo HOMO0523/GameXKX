@@ -43,6 +43,15 @@ public:
 		FGameXXKCardPlayPreview& OutPreview,
 		FString* OutError = nullptr);
 
+	/** Projects one permanent character's real equipment-panel stats into a non-battle card preview. */
+	static bool BuildReferenceCardPlayPreview(
+		const FGameXXKRuntimeState& State,
+		FName CharacterId,
+		FName CardId,
+		EGameXXKCardQuality Quality,
+		FGameXXKCardPlayPreview& OutPreview,
+		FString* OutError = nullptr);
+
 	/** Revalidates the selected stable target inside the card rules and projects only after a committed card resolution. */
 	static bool ResolveCardPlay(
 		FGameXXKRuntimeState& InOutState,
