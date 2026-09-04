@@ -17,6 +17,7 @@ The live trial exposed a second scale path: the overlay `SWindow` already used `
 Desktop HUD size will no longer depend on screen resolution or monitor work-area size.
 
 - The 100% setting uses scale `1.0` on every monitor.
+- The 75% setting uses scale `0.75` on every monitor.
 - The 50% setting uses scale `0.5` on every monitor.
 - A 100% HUD may extend beyond the monitor work area. This is accepted for the trial.
 - The manually DPI-managed `SWindow`, its Slate content, input, and native region use the same client-coordinate units. Monitor DPI is not applied again to the HUD slot or mouse coordinates.
@@ -34,7 +35,7 @@ At the 100% setting:
 | Native region bounding box with 3-unit edge padding | 1044-1045 x 260-261 after integer rounding |
 | Maximum fixed transparent host | 1820x941 |
 
-At the 50% setting, authored HUD measurements are multiplied by `0.5`. Region padding remains three native client units per edge.
+At the 75% and 50% settings, authored HUD measurements are multiplied by `0.75` and `0.5`. Region padding remains three native client units per edge.
 
 The transparent host is deliberately larger than the collapsed HUD. The native region, hit testing, and visible HUD must agree on the active content origin even though the host does not shrink.
 
@@ -55,7 +56,7 @@ For every active region shape, the native left/top edge may differ from the corr
 
 - Remove the work-area-derived factor from the effective desktop HUD scale.
 - Remove the public automatic-scale helper so future code cannot accidentally restore resolution-based scaling.
-- Keep the existing 100%/50% persisted setting and controls.
+- Keep the persisted manual setting and expose exactly 50%/75%/100% controls.
 - Keep DPI/display-change notifications, fixed-host composition, mouse passthrough, and complex region shapes; remove the duplicate monitor-DPI conversion from the manually managed window.
 - Make the tests compare the HUD slot origin and native region origin through the shared fixed-host offset.
 - Do not change idle-strip artwork, authored dimensions, notification modes, or Tab expansion layout in this trial.
@@ -64,7 +65,7 @@ For every active region shape, the native left/top edge may differ from the corr
 
 The implementation will use test-first verification:
 
-1. Add failing layout tests proving that 1280, 1536, 1920, and 2560-pixel work areas all resolve to scale `1.0` at the 100% setting and `0.5` at the 50% setting.
+1. Add failing layout tests proving that 1280, 1536, 1920, and 2560-pixel work areas resolve to `1.0`, `0.75`, and `0.5` at the 100%, 75%, and 50% settings.
 2. Add a failing alignment test proving the collapsed HUD and native region share the same left/top origin within the three-pixel padding.
 3. Confirm a 125% Windows desktop does not alter the manually managed HUD slot position or size.
 4. Run the focused desktop-workbench automation tests after implementation.
@@ -72,4 +73,4 @@ The implementation will use test-first verification:
 
 ## Accepted Limitation
 
-At 100%, the 1820x941 fixed host does not fit a 1536x816 work area. Windows may place part of that transparent host beyond the right or bottom screen edge. The 50% setting remains the manual fallback when the user wants the complete expanded HUD visible on a smaller display.
+At 100%, the 1820x941 fixed host does not fit a 1536x816 work area. Windows may place part of that transparent host beyond the right or bottom screen edge. The 75% and 50% settings are the manual fallbacks when the user wants a smaller HUD.

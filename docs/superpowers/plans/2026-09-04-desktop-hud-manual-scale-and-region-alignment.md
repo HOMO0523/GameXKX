@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove resolution-derived HUD scaling, preserve only the manual 100%/50% settings, and prove that the rendered HUD and Win32 native region share one physical origin.
+**Goal:** Remove resolution-derived HUD scaling, expose manual 50%/75%/100% settings, and prove that the rendered HUD and Win32 native region share one physical origin.
 
 **Architecture:** `GameXXKDesktopTrainingLayout` remains the single owner of desktop HUD scale and native-region coordinate transforms. Work-area dimensions continue to select and position the host, while manual scale alone determines HUD size. The overlay `SWindow` manually manages DPI, so Slate content, input, and the native region use the same client-coordinate units without another monitor-DPI conversion. The fixed maximum transparent host remains unchanged.
 
@@ -263,3 +263,7 @@ git commit -m "docs: record desktop HUD manual scale trial"
 ```
 
 Expected: only the two acceptance documents and intentional evidence metadata are committed.
+
+### Follow-up: Add the 75% manual setting
+
+The user subsequently requested a third manual scale and removal of the obsolete automatic-adaptation sentence. Commit `27318be` adds the 75% action, button, scale resolution, and persistence while retaining 50% and 100%. Commit `09d9034` verifies that a newly created HUD reloads the persisted 75% value. `DesktopHud75Reload_GREEN` passed 2/2 with no warnings or errors.
