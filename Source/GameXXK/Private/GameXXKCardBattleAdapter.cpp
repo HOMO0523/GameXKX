@@ -2440,6 +2440,14 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	{
 		return false;
 	}
+	FGameXXKCardPlayResult OpeningTerrainResult;
+	if (!GameXXKCardRules::ResolveRoundStartTerrainBenefits(
+		NewRuntime,
+		OpeningTerrainResult,
+		OutError))
+	{
+		return false;
+	}
 	if (!ValidateLivingEnemyIntentPresentation(NewRuntime, OutError))
 	{
 		return false;

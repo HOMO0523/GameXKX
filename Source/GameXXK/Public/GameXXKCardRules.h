@@ -261,6 +261,12 @@ namespace GameXXKCardRules
 		TArray<FGameXXKCardDamageResult>& OutEndPhaseDamageResults,
 		FString* OutError = nullptr);
 
+	/** Resolves the living Formation Master's ordinary current-terrain event after the normal hand refill. */
+	GAMEXXK_API bool ResolveRoundStartTerrainBenefits(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FGameXXKCardPlayResult& OutResult,
+		FString* OutError = nullptr);
+
 	/** Refreshes the terminal phase after one complete combat event queue; simultaneous elimination is a player victory. */
 	GAMEXXK_API void RefreshCombatTerminalPhase(FGameXXKCardBattleRuntime& InOutRuntime);
 

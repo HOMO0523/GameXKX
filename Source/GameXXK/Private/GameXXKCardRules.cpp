@@ -17250,6 +17250,14 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 			return SetFailure(OutError, ValidationError);
 		}
 		NewRuntime.Phase = EGameXXKCardBattlePhase::Player;
+		FGameXXKCardPlayResult RoundStartTerrainResult;
+		if (!GameXXKCardRules::ResolveRoundStartTerrainBenefits(
+			NewRuntime,
+			RoundStartTerrainResult,
+			&ValidationError))
+		{
+			return SetFailure(OutError, ValidationError);
+		}
 		if (!MaterializePendingNextPlayerHandEnergySurcharge(NewRuntime, ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
@@ -17305,3 +17313,61 @@ bool GameXXKCardRules::ResolveTerrainBenefitForTest(
 	return true;
 }
 #endif
+
+bool GameXXKCardRules::ResolveRoundStartTerrainBenefits(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	FGameXXKCardPlayResult& OutResult,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutResult = FGameXXKCardPlayResult();
+	const FGameXXKCardCombatUnit* FormationMaster = nullptr;
+	for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+	{
+		if (!Unit.bLiving
+			|| Unit.Side != EGameXXKCardTargetSide::Party
+			|| Unit.Role != EGameXXKCharacterRole::FormationMaster)
+		{
+			continue;
+		}
+		if (!FormationMaster || IsStableUnitOrderBefore(Unit, *FormationMaster))
+		{
+			FormationMaster = &Unit;
+		}
+	}
+	if (!FormationMaster)
+	{
+		return true;
+	}
+
+	FGameXXKCardInstance SourceInstance;
+	SourceInstance.InstanceId = FName(*FString::Printf(
+		TEXT("Terrain.RoundStart.%s.%d"),
+		*FormationMaster->UnitId.ToString(),
+		InOutRuntime.RoundNumber));
+	SourceInstance.CardId = TEXT("Profession.FormationMaster.GuanShi");
+	SourceInstance.CurrentQuality = EGameXXKCardQuality::Common;
+	SourceInstance.OwnerUnitId = FormationMaster->UnitId;
+	SourceInstance.SourceEntryId = TEXT("Terrain.RoundStart");
+	SourceInstance.AcquisitionOrdinal = InOutRuntime.RoundNumber;
+	OutResult.OwnerUnitId = FormationMaster->UnitId;
+	OutResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+
+	FString Error;
+	if (!ResolveTerrainBenefit(
+		InOutRuntime,
+		SourceInstance,
+		NAME_None,
+		InOutRuntime.Terrain,
+		1,
+		EGameXXKCardResolutionOrigin::Equipment,
+		&OutResult,
+		Error))
+	{
+		return SetFailure(OutError, Error);
+	}
+	return true;
+}

@@ -93,6 +93,41 @@ namespace GameXXKApprovedTerrainPayloadTest
 		Test.TestTrue(FString::Printf(TEXT("terrain %d resolves: %s"), static_cast<int32>(Terrain), *Error), bResolved);
 		return bResolved;
 	}
+
+	bool BuildRoundStartRuntime(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& OutRuntime)
+	{
+		TArray<FGameXXKCardInstance> Cards;
+		for (int32 Index = 0; Index < 8; ++Index)
+		{
+			FGameXXKCardInstance& Card = Cards.AddDefaulted_GetRef();
+			Card.InstanceId = FName(*FString::Printf(TEXT("Terrain.RoundStart.%d"), Index));
+			Card.CardId = TEXT("Profession.FormationMaster.GuanShi");
+			Card.CurrentQuality = EGameXXKCardQuality::Common;
+			Card.OwnerUnitId = SourceId;
+			Card.SourceEntryId = FName(*FString::Printf(TEXT("Terrain.RoundStart.Source.%d"), Index));
+			Card.AcquisitionOrdinal = Index;
+		}
+		TArray<FGameXXKCardCombatUnit> Units = MakeRuntime().Units;
+		for (FGameXXKCardCombatUnit& Unit : Units)
+		{
+			if (Unit.Side == EGameXXKCardTargetSide::Party)
+			{
+				Unit.CombatLevel = 100;
+			}
+		}
+		FString Error;
+		const bool bInitialized = GameXXKCardRules::InitializeCardBattleRuntime(
+			OutRuntime,
+			Cards,
+			Units,
+			EGameXXKCardTerrain::Village,
+			71005,
+			&Error);
+		Test.TestTrue(FString::Printf(TEXT("round-start terrain fixture initializes: %s"), *Error), bInitialized);
+		return bInitialized;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -186,6 +221,63 @@ bool FGameXXKApprovedTerrainPayloadTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKRoundStartTerrainPayloadTest,
+	"GameXXK.Data.Terrain.RoundStart",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKRoundStartTerrainPayloadTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKApprovedTerrainPayloadTest;
+
+	FGameXXKCardBattleRuntime InitialRuntime;
+	if (!BuildRoundStartRuntime(*this, InitialRuntime))
+	{
+		return false;
+	}
+	TestEqual(TEXT("initial hand is five before terrain"), InitialRuntime.Deck.Hand.Num(), 5);
+	FGameXXKCardPlayResult InitialTerrainResult;
+	FString Error;
+	TestTrue(FString::Printf(TEXT("opening terrain event resolves: %s"), *Error),
+		GameXXKCardRules::ResolveRoundStartTerrainBenefits(InitialRuntime, InitialTerrainResult, &Error));
+	TestEqual(TEXT("Village automatic trigger grows the opening hand to six"), InitialRuntime.Deck.Hand.Num(), 6);
+
+	FGameXXKCardBattleRuntime LaterRuntime;
+	if (!BuildRoundStartRuntime(*this, LaterRuntime))
+	{
+		return false;
+	}
+	TArray<FGameXXKCardDamageResult> PlayerBoundaryDamage;
+	TArray<FGameXXKCardDamageResult> EnemyBoundaryDamage;
+	TestTrue(TEXT("round-start fixture ends its first player phase"),
+		GameXXKCardRules::EndPlayerCardPhase(LaterRuntime, PlayerBoundaryDamage, &Error));
+	TestTrue(FString::Printf(TEXT("later player round begins: %s"), *Error),
+		GameXXKCardRules::BeginNextPlayerCardRound(LaterRuntime, EnemyBoundaryDamage, &Error));
+	TestEqual(TEXT("later round refills to five before Village draws one"), LaterRuntime.Deck.Hand.Num(), 6);
+
+	FGameXXKCardBattleRuntime DeadRuntime;
+	if (!BuildRoundStartRuntime(*this, DeadRuntime))
+	{
+		return false;
+	}
+	FGameXXKCardCombatUnit* Formation = DeadRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == SourceId;
+	});
+	if (!TestNotNull(TEXT("dead-source fixture retains the Formation Master"), Formation))
+	{
+		return false;
+	}
+	Formation->HP = 0;
+	Formation->bLiving = false;
+	const int32 HandBeforeDeadSource = DeadRuntime.Deck.Hand.Num();
+	FGameXXKCardPlayResult DeadTerrainResult;
+	TestTrue(TEXT("dead Formation Master produces a successful no-op"),
+		GameXXKCardRules::ResolveRoundStartTerrainBenefits(DeadRuntime, DeadTerrainResult, &Error));
+	TestEqual(TEXT("dead Formation partner disables ordinary automatic terrain"), DeadRuntime.Deck.Hand.Num(), HandBeforeDeadSource);
 	return true;
 }
 
