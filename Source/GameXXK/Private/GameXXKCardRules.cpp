@@ -5151,6 +5151,13 @@ namespace
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
+		const int32 ExpectedDifficultyDamagePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal
+			? 100
+			: Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard
+				? 125
+				: Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hell
+					? 150
+					: 0;
 		const bool bLifeSavingProjectionActive = Runtime.bLifeSavingTalismanArmed
 			|| Runtime.bLifeSavingTalismanConsumptionPending;
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1
@@ -5158,6 +5165,7 @@ namespace
 			|| (Runtime.EnemyDifficultyDamagePercent != 100
 				&& Runtime.EnemyDifficultyDamagePercent != 125
 				&& Runtime.EnemyDifficultyDamagePercent != 150)
+			|| Runtime.EnemyDifficultyDamagePercent != ExpectedDifficultyDamagePercent
 			|| Runtime.PendingNextRoundEnergyPenalty < 0 || Runtime.PendingNextRoundEnergyPenalty > 99
 			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0
 			|| Runtime.NextGeneratedCardOrdinal < 0 || Runtime.NextModifierOrdinal < 0
@@ -15829,6 +15837,11 @@ bool GameXXKCardRules::InitializeCardBattleRuntime(
 		}
 	}
 	NewRuntime.EnemyDifficultyDamagePercent = EnemyDifficultyDamagePercent;
+	NewRuntime.EnemyDifficulty = EnemyDifficultyDamagePercent == 150
+		? EGameXXKEnemyDifficulty::Hell
+		: EnemyDifficultyDamagePercent == 125
+			? EGameXXKEnemyDifficulty::Hard
+			: EGameXXKEnemyDifficulty::Normal;
 	FString ValidationError;
 	if (!ValidateCombatUnits(NewRuntime.Units, ValidationError))
 	{

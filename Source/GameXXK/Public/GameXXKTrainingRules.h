@@ -232,6 +232,18 @@ struct GAMEXXK_API FGameXXKTrainingTravelRuntime
 };
 
 USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingEnemySlotDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName EnemyDefinitionId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName OpeningIntentId = NAME_None;
+};
+
+USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingEncounterDefinition
 {
 	GENERATED_BODY()
@@ -242,6 +254,13 @@ struct GAMEXXK_API FGameXXKTrainingEncounterDefinition
 	/** Shared left-to-right wave formation used by both challenge and Travel. */
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FName> EnemyDefinitionIds;
+
+	/** Authoritative left/center/right identities and opening intent cards. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FGameXXKTrainingEnemySlotDefinition> EnemySlots;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 CombatLevel = 1;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FText DisplayName;
@@ -270,6 +289,9 @@ struct GAMEXXK_API FGameXXKTrainingStageDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 StageNumber = 1;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 CombatLevel = 1;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FText DisplayName;

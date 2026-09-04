@@ -13,6 +13,40 @@ enum class EGameXXKEnemyTier : uint8
 };
 
 UENUM(BlueprintType)
+enum class EGameXXKEnemyDifficulty : uint8
+{
+	Normal = 0,
+	Hard = 1,
+	Hell = 2
+};
+
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKEnemyDifficultyInt
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Normal = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Hard = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 Hell = 0;
+
+	int32 Resolve(const EGameXXKEnemyDifficulty Difficulty) const
+	{
+		switch (Difficulty)
+		{
+		case EGameXXKEnemyDifficulty::Normal: return Normal;
+		case EGameXXKEnemyDifficulty::Hard: return Hard;
+		case EGameXXKEnemyDifficulty::Hell: return Hell;
+		default: return 0;
+		}
+	}
+};
+
+UENUM(BlueprintType)
 enum class EGameXXKEnemyIntentTargetRule : uint8
 {
 	None = 0,
@@ -42,7 +76,14 @@ enum class EGameXXKEnemyIntentEffectType : uint8
 	RemovePositiveStatus = 8,
 	IncreaseNextCardEnergy = 9,
 	SetCounter = 10,
-	SetCharge = 11
+	SetCharge = 11,
+	QueueNextRoundEnergyPenalty = 12,
+	TriggerDamageOverTime = 13,
+	HealMaxHealthPercent = 14,
+	AddArmorDefensePercent = 15,
+	RefreshHealingAmplification = 16,
+	ConsumeWealthForDamage = 17,
+	ConsumeWealthForHealing = 18
 };
 
 UENUM(BlueprintType)
@@ -95,6 +136,23 @@ struct GAMEXXK_API FGameXXKEnemyBattleState
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bPhaseTwo = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 CurrentPhase = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TotalPhases = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PhaseTransitionSerial = 0;
+
+	/** Per-enemy-phase trigger budget used by phase passives such as Compound Interest. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PhasePassiveTriggerCount = 0;
+
+	/** One refresh-only Giant-Toad healing amplification, stored as percentage of MaxHP. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingHealingAmplificationPercent = 0;
 
 	/** One-way baseline stat adjustment committed when a catalog boss first enters phase two. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

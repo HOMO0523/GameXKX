@@ -25,6 +25,10 @@ namespace
 		Effect.HitCount = HitCount;
 		Effect.Status = Status;
 		Effect.StatusStacks = StatusStacks;
+		Effect.AttackPercentByDifficulty = {AttackPercent, AttackPercent, AttackPercent};
+		Effect.StatusAmountByDifficulty = {StatusStacks, StatusStacks, StatusStacks};
+		Effect.DefensePercentByDifficulty = {FlatMagnitude, FlatMagnitude, FlatMagnitude};
+		Effect.ResourceAmountByDifficulty = {FlatMagnitude, FlatMagnitude, FlatMagnitude};
 		return Effect;
 	}
 
@@ -395,6 +399,43 @@ TArray<FName> FGameXXKEnemyCatalog::GetPool(const int32 Chapter, const EGameXXKE
 	return Pool;
 }
 
+int32 FGameXXKEnemyCatalog::ResolveTotalPhases(
+	const EGameXXKEnemyTier Tier,
+	const EGameXXKEnemyDifficulty Difficulty)
+{
+	if (Tier == EGameXXKEnemyTier::Normal)
+	{
+		return 1;
+	}
+	if (Difficulty == EGameXXKEnemyDifficulty::Hell)
+	{
+		return 3;
+	}
+	return Difficulty == EGameXXKEnemyDifficulty::Hard ? 2 : 1;
+}
+
+const FGameXXKEnemyPhaseDefinition* FGameXXKEnemyCatalog::GetPhaseDefinition(
+	const FGameXXKEnemyDefinition& Definition,
+	const int32 PhaseNumber)
+{
+	return Definition.Phases.FindByPredicate([PhaseNumber](const FGameXXKEnemyPhaseDefinition& Phase)
+	{
+		return Phase.PhaseNumber == PhaseNumber;
+	});
+}
+
+const TArray<FGameXXKEnemyIntentDefinition>* FGameXXKEnemyCatalog::GetPhaseIntents(
+	const FGameXXKEnemyDefinition& Definition,
+	const int32 PhaseNumber)
+{
+	if (!Definition.Phases.IsEmpty())
+	{
+		const FGameXXKEnemyPhaseDefinition* Phase = GetPhaseDefinition(Definition, PhaseNumber);
+		return Phase ? &Phase->Intents : nullptr;
+	}
+	return PhaseNumber == 1 ? &Definition.Intents : nullptr;
+}
+
 bool FGameXXKEnemyCatalog::Validate(FString* OutError)
 {
 	if (OutError)
@@ -552,7 +593,8 @@ FGameXXKEnemyComputedStats FGameXXKEnemyCatalog::ComputeStats(const FName Defini
 	{
 		return Stats;
 	}
-	const int32 ClampedLevel = FMath::Clamp(CombatLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
+	constexpr int32 MaxEnemyCombatLevel = 135;
+	const int32 ClampedLevel = FMath::Clamp(CombatLevel, 1, MaxEnemyCombatLevel);
 	const float GrowthSteps = static_cast<float>(ClampedLevel - 1);
 	Stats.MaxHP = FMath::Max(1, Definition->BaseHP + RoundHalfAwayFromZero(Definition->HPPerLevel * GrowthSteps));
 	Stats.Attack = FMath::Max(1, Definition->BaseAttack + RoundHalfAwayFromZero(Definition->AttackPerLevel * GrowthSteps));

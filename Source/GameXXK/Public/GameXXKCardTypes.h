@@ -1666,6 +1666,18 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 SourceEffectIndex = INDEX_NONE;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bTriggeredEnemyPhase = false;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EnemyPhaseBefore = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EnemyPhaseAfter = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 EnemyPhaseHealing = 0;
+
 	/** True only when the permanent talent critical roll amplified this direct party hit. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bTalentCriticalHit = false;
@@ -2312,6 +2324,25 @@ struct GAMEXXK_API FGameXXKSorcererPartnerTaskRuntime
 	TArray<FName> AutoHandedUniversalCardIds;
 };
 
+/** Saved enemy-card identity lock. Forecast refreshes values without rerolling this identity. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKEnemyIntentLock
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName IntentId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PhaseNumber = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 RoundNumber = 0;
+};
+
 /** Complete pure state of an in-progress card battle. It is deliberately independent from widget and scene indexes. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardBattleRuntime
@@ -2341,6 +2372,10 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** Normal/Hard/Hell enemy direct-damage multiplier stored as 100/125/150. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 EnemyDifficultyDamagePercent = 100;
+
+	/** Explicit value/status/deck difficulty; must agree with EnemyDifficultyDamagePercent. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKEnemyDifficulty EnemyDifficulty = EGameXXKEnemyDifficulty::Normal;
 
 	/** Transient guard used by copied tooltip simulations so gameplay audit logs stay truthful. */
 	UPROPERTY(Transient)
@@ -2430,6 +2465,9 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TMap<FName, FGameXXKEnemyBattleState> EnemyStates;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKEnemyIntentLock> LockedEnemyIntents;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKCardGuardLinkRuntime> GuardLinks;

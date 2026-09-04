@@ -118,6 +118,12 @@ struct GAMEXXK_API FGameXXKCardEnemyIntent
 	FString PhaseLabel;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PhaseNumber = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TotalPhases = 1;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FString> TooltipLines;
 };
 

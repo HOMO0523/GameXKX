@@ -31,6 +31,18 @@ struct GAMEXXK_API FGameXXKEnemyIntentEffectDefinition
 	int32 StatusStacks = 0;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FGameXXKEnemyDifficultyInt AttackPercentByDifficulty;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FGameXXKEnemyDifficultyInt StatusAmountByDifficulty;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FGameXXKEnemyDifficultyInt DefensePercentByDifficulty;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FGameXXKEnemyDifficultyInt ResourceAmountByDifficulty;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKCardStatus ConsumedStatus = EGameXXKCardStatus::None;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -101,6 +113,30 @@ struct GAMEXXK_API FGameXXKEnemyIntentDefinition
 };
 
 USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKEnemyPhaseDefinition
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 PhaseNumber = 1;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FText DisplayName;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FGameXXKEnemyIntentDefinition> Intents;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 ArmorRetentionPercent = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 FirstStatusGuardDefensePercent = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 HealMissingHealthPercentOnBleedingPrey = 0;
+};
+
+USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKEnemyComputedStats
 {
 	GENERATED_BODY()
@@ -158,6 +194,10 @@ struct GAMEXXK_API FGameXXKEnemyDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	TArray<FGameXXKEnemyIntentDefinition> Intents;
+
+	/** Authoritative phase decks. Converted definitions leave legacy Intents empty. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TArray<FGameXXKEnemyPhaseDefinition> Phases;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKEnemyPassiveId PassiveId = EGameXXKEnemyPassiveId::None;
@@ -217,6 +257,13 @@ public:
 	static const TArray<FGameXXKEnemyDefinition>& GetAllDefinitions();
 	static const FGameXXKEnemyDefinition* Find(FName DefinitionId);
 	static TArray<FName> GetPool(int32 Chapter, EGameXXKEnemyTier Tier);
+	static int32 ResolveTotalPhases(EGameXXKEnemyTier Tier, EGameXXKEnemyDifficulty Difficulty);
+	static const FGameXXKEnemyPhaseDefinition* GetPhaseDefinition(
+		const FGameXXKEnemyDefinition& Definition,
+		int32 PhaseNumber);
+	static const TArray<FGameXXKEnemyIntentDefinition>* GetPhaseIntents(
+		const FGameXXKEnemyDefinition& Definition,
+		int32 PhaseNumber);
 	static bool Validate(FString* OutError = nullptr);
 	static FGameXXKEnemyComputedStats ComputeStats(FName DefinitionId, int32 CombatLevel);
 };
