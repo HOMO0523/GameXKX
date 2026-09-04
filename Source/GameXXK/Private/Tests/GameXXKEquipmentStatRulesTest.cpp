@@ -412,6 +412,32 @@ bool FGameXXKEquipmentSetAndTeamProjectionTest::RunTest(const FString& Parameter
 	const FGameXXKEquipmentActiveEffect* ShanHe = FindEffect(TeamEffects, TEXT("Set.ShanHe.6"));
 	TestNotNull(TEXT("XuanJia team effect survives deduplication"), XuanJia);
 	TestNotNull(TEXT("different ShanHe team effect coexists"), ShanHe);
+	const FGameXXKEquipmentSetBonusDefinition* Xuan2 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.XuanJia.2"));
+	const FGameXXKEquipmentSetBonusDefinition* Xuan4 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.XuanJia.4"));
+	const FGameXXKEquipmentSetBonusDefinition* Xuan6 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.XuanJia.6"));
+	const FGameXXKEquipmentSetBonusDefinition* Shan2 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.ShanHe.2"));
+	const FGameXXKEquipmentSetBonusDefinition* Shan4 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.ShanHe.4"));
+	const FGameXXKEquipmentSetBonusDefinition* Shan6 = FGameXXKEquipmentSetCatalog::FindDefinition(TEXT("Set.ShanHe.6"));
+	TestNotNull(TEXT("Xuanjia two-piece definition exists"), Xuan2);
+	TestNotNull(TEXT("Xuanjia four-piece definition exists"), Xuan4);
+	TestNotNull(TEXT("Xuanjia six-piece definition exists"), Xuan6);
+	TestNotNull(TEXT("Shanhe two-piece definition exists"), Shan2);
+	TestNotNull(TEXT("Shanhe four-piece definition exists"), Shan4);
+	TestNotNull(TEXT("Shanhe six-piece definition exists"), Shan6);
+	if (Xuan2 && Xuan4 && Xuan6 && Shan2 && Shan4 && Shan6)
+	{
+		TestEqual(TEXT("Xuanjia two-piece uses ten-percent Armor generation"), Xuan2->Value, 1000);
+		TestEqual(TEXT("Xuanjia four-piece retains fifty percent"), Xuan4->Value, 5000);
+		TestEqual(TEXT("Xuanjia four-piece adds eighty-percent attack"), Xuan4->SecondaryValue, 80);
+		TestEqual(TEXT("Xuanjia six-piece grants forty-percent Defense Armor"), Xuan6->Value, 4000);
+		TestEqual(TEXT("Xuanjia six-piece grants one Guard link"), Xuan6->SecondaryValue, 1);
+		TestEqual(TEXT("Shanhe two-piece draws one"), Shan2->Value, 1);
+		TestEqual(TEXT("Shanhe four-piece discounts one"), Shan4->Value, 1);
+		TestEqual(TEXT("Shanhe four-piece restores two Mana"), Shan4->SecondaryValue, 2);
+		TestEqual(TEXT("Shanhe six-piece triggers once"), Shan6->Value, 1);
+		TestEqual(TEXT("Xuanjia two-piece player text"), Xuan2->Description.ToString(), FString(TEXT("穿戴者产生的护甲提高10%。")));
+		TestEqual(TEXT("Shanhe six-piece player text"), Shan6->Description.ToString(), FString(TEXT("全队唯一。每个我方回合开始时，由穿戴者触发1次当前地势。")));
+	}
 	if (XuanJia)
 	{
 		TestEqual(TEXT("score tie uses stable lexical CharacterId"), XuanJia->SourceCharacterId, CompanionA);

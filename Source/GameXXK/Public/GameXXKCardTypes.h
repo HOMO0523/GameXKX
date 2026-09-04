@@ -96,7 +96,8 @@ enum class EGameXXKCardResolutionOrigin : uint8
 	TerrainListener = 6,
 	TaskReward = 7,
 	TaskNpcTaskReplay = 8,
-	PartnerSorcererTaskReplay = 9
+	PartnerSorcererTaskReplay = 9,
+	Equipment = 10
 };
 
 /** Declarative post-base behavior for protagonist Hunter cards. */
@@ -2063,6 +2064,9 @@ struct GAMEXXK_API FGameXXKEquipmentActiveEffect
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
 	int32 Magnitude = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
+	int32 SecondaryMagnitude = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, SaveGame)
 	EGameXXKEquipmentMagnitudeUnit Unit = EGameXXKEquipmentMagnitudeUnit::Invalid;

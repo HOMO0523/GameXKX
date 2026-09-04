@@ -429,6 +429,7 @@ namespace
 		const bool bZhuiFengOpeningDraw =
 			Definition.BonusKind == EGameXXKEquipmentSetBonusKind::ZhuiFengSpeedOpeningDraw;
 		Effect.Magnitude = bZhuiFengOpeningDraw ? 1 : Definition.Value;
+		Effect.SecondaryMagnitude = Definition.SecondaryValue;
 		Effect.Unit = bZhuiFengOpeningDraw
 			? EGameXXKEquipmentMagnitudeUnit::FlatCount
 			: Definition.Unit;
@@ -1545,6 +1546,7 @@ bool FGameXXKEquipmentRules::IsKnownActiveEffect(const FGameXXKEquipmentActiveEf
 			&& Effect.Hook == Definition->Hook
 			&& Effect.ModifierKind == ModifierKindForBonus(Definition->BonusKind)
 			&& Effect.Magnitude == (bZhuiFengOpeningDraw ? 1 : Definition->Value)
+			&& Effect.SecondaryMagnitude == Definition->SecondaryValue
 			&& Effect.Unit == (bZhuiFengOpeningDraw ? EGameXXKEquipmentMagnitudeUnit::FlatCount : Definition->Unit)
 			&& Effect.MaxTriggersPerRound == Definition->TriggersPerRound;
 	}
@@ -1554,6 +1556,7 @@ bool FGameXXKEquipmentRules::IsKnownActiveEffect(const FGameXXKEquipmentActiveEf
 		|| Effect.RequiredPieces != 0
 		|| Effect.Scope != EGameXXKEquipmentSetBonusScope::Owner
 		|| Effect.Hook != EGameXXKEquipmentSetBonusHook::Passive
+		|| Effect.SecondaryMagnitude != 0
 		|| Effect.MaxTriggersPerRound != 0)
 	{
 		return false;

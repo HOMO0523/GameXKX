@@ -110,6 +110,10 @@ struct GAMEXXK_API FGameXXKEquipmentSetBonusDefinition
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 TriggersPerRound = 0;
+
+	/** Optional second semantic value for one approved compound threshold. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 SecondaryValue = 0;
 };
 
 class GAMEXXK_API FGameXXKEquipmentSetCatalog final
