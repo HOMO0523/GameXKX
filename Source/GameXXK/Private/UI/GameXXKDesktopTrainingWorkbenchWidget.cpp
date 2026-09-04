@@ -141,6 +141,14 @@
 		return Hooks;
 	}
 
+	float GetDesktopMonitorDpiScale(HWND WindowHandle)
+	{
+		return WindowHandle
+			? GameXXKDesktopTrainingLayout::ResolveWindowDpiScale(
+				::GetDpiForWindow(WindowHandle))
+			: 1.0f;
+	}
+
 	LRESULT CALLBACK GameXXKDesktopWindowProc(
 		HWND WindowHandle,
 		UINT Message,
@@ -1499,8 +1507,11 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
 		&& InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
-		const FVector2D HostPoint =
-			InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition())
+		const FVector2D HostPointInWindow =
+			GameXXKDesktopTrainingLayout::SlateHostUnitsToPhysicalPixels(
+				InGeometry.AbsoluteToLocal(InMouseEvent.GetScreenSpacePosition()),
+				DesktopInputDpiScale);
+		const FVector2D HostPoint = HostPointInWindow
 			- (bDesktopFixedHostEnabled
 				? DesktopFixedContentOffset
 				: FVector2D::ZeroVector);
@@ -7812,6 +7823,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::InitializeDesktopPresentationHostSi
 		PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow;
 	if (PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport)
 	{
+		DesktopInputDpiScale = 1.0f;
 		DesktopWindowPositionNormalized =
 			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
 				false,
@@ -7842,6 +7854,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::SetPresentationMode(
 	bDesktopResolvedMetricsValid = false;
 	if (PresentationMode == EGameXXKDesktopHudPresentationMode::TownViewport)
 	{
+		DesktopInputDpiScale = 1.0f;
 		DesktopWindowPositionNormalized =
 			GameXXKDesktopTrainingLayout::ResolvePresentationAnchor(
 				false,
@@ -8180,7 +8193,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 			GameXXKDesktopTrainingLayout::ResolveDesktopSlateHostGeometry(
 				DesktopOverlayPlacement,
 				DesktopFixedContentOffset,
-				bDesktopWindow);
+				bDesktopWindow,
+				DesktopInputDpiScale);
 		DesktopHudCanvasSlot->SetPosition(HostGeometry.Position);
 		DesktopHudCanvasSlot->SetSize(HostGeometry.Size);
 	}
@@ -8563,6 +8577,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeWindowLayout(cons
 	const int32 DesiredWidth = FMath::Max(1, MonitorInfo.rcWork.right - MonitorInfo.rcWork.left);
 	const int32 DesiredHeight = FMath::Max(1, MonitorInfo.rcWork.bottom - MonitorInfo.rcWork.top);
 	DesktopWorkAreaOrigin = FIntPoint(MonitorInfo.rcWork.left, MonitorInfo.rcWork.top);
+	DesktopInputDpiScale = FMath::Max(1.0f, GetDesktopMonitorDpiScale(WindowHandle));
 	const FVector2D PhysicalWorkAreaSize(
 		static_cast<float>(DesiredWidth),
 		static_cast<float>(DesiredHeight));
@@ -8702,6 +8717,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseDesktopNativeWindow()
 	bDesktopNativeMousePassthrough = false;
 	bDesktopNativeInputRegionDirty = true;
 	bDesktopNativeInputRegionWasFull = false;
+	DesktopInputDpiScale = 1.0f;
 	bDesktopNativeLayoutDirty = true;
 	DesktopNativeLastHudScalePercent = INDEX_NONE;
 #endif

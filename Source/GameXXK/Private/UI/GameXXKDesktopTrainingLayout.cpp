@@ -119,6 +119,13 @@ namespace GameXXKDesktopTrainingLayout
 		return HudScalePercent <= 75 ? 0.75f : 1.0f;
 	}
 
+	float ResolveWindowDpiScale(const uint32 WindowDpi)
+	{
+		return WindowDpi > 0
+			? FMath::Max(0.01f, static_cast<float>(WindowDpi) / 96.0f)
+			: 1.0f;
+	}
+
 	FDesktopOverlayPlacement ComputeDesktopOverlayPlacement(
 		const FVector2D& HostSize,
 		const FVector2D& NormalizedStripAnchor,
@@ -221,14 +228,30 @@ namespace GameXXKDesktopTrainingLayout
 	FDesktopSlateHostGeometry ResolveDesktopSlateHostGeometry(
 		const FDesktopOverlayPlacement& Placement,
 		const FVector2D& FixedContentOffset,
-		const bool bDesktopWindow)
+		const bool bDesktopWindow,
+		const float WindowDpiScale)
 	{
+		const float HostDpiScale = bDesktopWindow ? WindowDpiScale : 1.0f;
 		FDesktopSlateHostGeometry Result;
 		Result.Position = bDesktopWindow
-			? FixedContentOffset
+			? PhysicalPixelsToSlateHost(FixedContentOffset, HostDpiScale)
 			: Placement.HudTopLeft;
-		Result.Size = Placement.HudSize;
+		Result.Size = PhysicalPixelsToSlateHost(Placement.HudSize, HostDpiScale);
 		return Result;
+	}
+
+	FVector2D PhysicalPixelsToSlateHost(
+		const FVector2D& PhysicalPixels,
+		const float DpiScale)
+	{
+		return PhysicalPixels / FMath::Max(0.01f, DpiScale);
+	}
+
+	FVector2D SlateHostUnitsToPhysicalPixels(
+		const FVector2D& SlateHostUnits,
+		const float DpiScale)
+	{
+		return SlateHostUnits * FMath::Max(0.01f, DpiScale);
 	}
 
 	FVector2D ResolveDesktopHudDragAnchor(

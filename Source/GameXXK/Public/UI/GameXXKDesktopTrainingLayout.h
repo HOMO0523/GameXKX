@@ -108,6 +108,7 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector4 GetTownToggleRect(bool bWarehouseOpen);
 	GAMEXXK_API FVector4 GetStoryQuestRect(bool bWarehouseOpen);
 	GAMEXXK_API float ResolveManualHudScale(int32 HudScalePercent);
+	GAMEXXK_API float ResolveWindowDpiScale(uint32 WindowDpi);
 	GAMEXXK_API FDesktopOverlayPlacement ComputeDesktopOverlayPlacement(
 		const FVector2D& HostSize,
 		const FVector2D& NormalizedStripAnchor,
@@ -132,7 +133,14 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FDesktopSlateHostGeometry ResolveDesktopSlateHostGeometry(
 		const FDesktopOverlayPlacement& Placement,
 		const FVector2D& FixedContentOffset,
-		bool bDesktopWindow);
+		bool bDesktopWindow,
+		float WindowDpiScale);
+	GAMEXXK_API FVector2D PhysicalPixelsToSlateHost(
+		const FVector2D& PhysicalPixels,
+		float DpiScale);
+	GAMEXXK_API FVector2D SlateHostUnitsToPhysicalPixels(
+		const FVector2D& SlateHostUnits,
+		float DpiScale);
 	GAMEXXK_API FVector2D ResolveDesktopHudDragAnchor(
 		const FVector2D& DragStartNormalizedAnchor,
 		const FVector2D& DragStartPointerScreen,

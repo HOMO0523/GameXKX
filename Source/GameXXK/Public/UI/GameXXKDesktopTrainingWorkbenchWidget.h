@@ -1026,6 +1026,7 @@ private:
 	FGameXXKTutorialMapInspectionRequested TutorialMapInspectionRequested;
 	bool bDesktopNativeLastExpanded = false;
 	int32 DesktopNativeLastHudScalePercent = INDEX_NONE;
+	float DesktopInputDpiScale = 1.0f;
 	float UnmutedVolumeMultiplier = 1.0f;
 	bool bExitConfirmationOpen = false;
 	bool bNativeTickActive = false;

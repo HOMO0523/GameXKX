@@ -1653,25 +1653,58 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	FDesktopOverlayPlacement ManualDpiPlacement;
 	ManualDpiPlacement.HudTopLeft = FVector2D(100.0f, 60.0f);
 	ManualDpiPlacement.HudSize = FVector2D(1038.0f, 254.0f);
+	TestTrue(TEXT("a 96-DPI window needs no internal coordinate conversion"),
+		FMath::IsNearlyEqual(ResolveWindowDpiScale(96), 1.0f));
+	TestTrue(TEXT("a 120-DPI window uses a 1.25 coordinate conversion"),
+		FMath::IsNearlyEqual(ResolveWindowDpiScale(120), 1.25f));
+	constexpr float WindowDpiScale = 1.25f;
 	const FDesktopSlateHostGeometry DesktopHostGeometry =
 		ResolveDesktopSlateHostGeometry(
 			ManualDpiPlacement,
 			FVector2D(271.0f, 49.0f),
-			true);
-	TestEqual(TEXT("manual-DPI desktop host keeps the native content offset"),
-		DesktopHostGeometry.Position,
-		FVector2D(271.0f, 49.0f));
-	TestEqual(TEXT("manual-DPI desktop host keeps authored HUD pixels unscaled"),
-		DesktopHostGeometry.Size,
-		FVector2D(1038.0f, 254.0f));
+			true,
+			WindowDpiScale);
+	TestTrue(TEXT("manual-DPI desktop host converts the native offset to Slate units"),
+		DesktopHostGeometry.Position.Equals(FVector2D(216.8f, 39.2f), 0.01f));
+	TestTrue(TEXT("manual-DPI desktop host converts physical HUD size to Slate units"),
+		DesktopHostGeometry.Size.Equals(FVector2D(830.4f, 203.2f), 0.01f));
+	TestTrue(TEXT("Slate output returns to the requested physical HUD size"),
+		SlateHostUnitsToPhysicalPixels(DesktopHostGeometry.Size, WindowDpiScale)
+			.Equals(ManualDpiPlacement.HudSize, 0.01f));
 	const FDesktopSlateHostGeometry TownHostGeometry =
 		ResolveDesktopSlateHostGeometry(
 			ManualDpiPlacement,
 			FVector2D(271.0f, 49.0f),
-			false);
+			false,
+			WindowDpiScale);
 	TestEqual(TEXT("town viewport keeps its resolved HUD top-left"),
 		TownHostGeometry.Position,
 		ManualDpiPlacement.HudTopLeft);
+	static const TCHAR* SettingsSection = TEXT("/Script/GameXXK.DesktopHudSettings");
+	static const TCHAR* ScaleKey = TEXT("HudScalePercent");
+	int32 PreviousScale = 100;
+	const bool bHadPreviousScale = GConfig
+		&& GConfig->GetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+	ON_SCOPE_EXIT
+	{
+		if (GConfig)
+		{
+			if (bHadPreviousScale)
+			{
+				GConfig->SetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+			}
+			else
+			{
+				GConfig->RemoveKey(SettingsSection, ScaleKey, GGameUserSettingsIni);
+			}
+			GConfig->Flush(false, GGameUserSettingsIni);
+		}
+	};
+	if (GConfig)
+	{
+		GConfig->SetInt(SettingsSection, ScaleKey, 100, GGameUserSettingsIni);
+		GConfig->Flush(false, GGameUserSettingsIni);
+	}
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
