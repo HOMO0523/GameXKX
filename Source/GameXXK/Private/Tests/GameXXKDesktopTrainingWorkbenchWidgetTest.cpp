@@ -1493,6 +1493,12 @@ bool FGameXXKDesktopTrainingManualWindowScaleTest::RunTest(const FString& Parame
 				WorkArea.X,
 				WorkArea.Y),
 			FMath::IsNearlyEqual(ResolveDesktopHudMetrics(WorkArea, 50).Scale, 0.5f));
+		TestTrue(
+			*FString::Printf(
+				TEXT("75 percent remains three-quarter size at %.0fx%.0f"),
+				WorkArea.X,
+				WorkArea.Y),
+			FMath::IsNearlyEqual(ResolveDesktopHudMetrics(WorkArea, 75).Scale, 0.75f));
 	}
 	TestEqual(TEXT("collapsed HUD authored size is 1038x202"),
 		GetCollapsedHudLogicalSize(),
@@ -2444,6 +2450,8 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 	Widget->TickForTest(0.0f);
 	TestNotNull(TEXT("Settings opens a HUD settings panel"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("DesktopHudSettingsPanel")) : nullptr);
+	TestNull(TEXT("HUD settings no longer claims automatic display adaptation"),
+		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("HudScaleSettingHint")) : nullptr);
 	UGameXXKDesktopTrainingActionButton* HalfScaleButton = Widget->WidgetTree
 		? Cast<UGameXXKDesktopTrainingActionButton>(
 			Widget->WidgetTree->FindWidget(TEXT("HudScale50Button")))
@@ -2452,15 +2460,23 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
-	HalfScaleButton->OnClicked.Broadcast();
+	UGameXXKDesktopTrainingActionButton* ThreeQuarterScaleButton = Widget->WidgetTree
+		? Cast<UGameXXKDesktopTrainingActionButton>(
+			Widget->WidgetTree->FindWidget(TEXT("HudScale75Button")))
+		: nullptr;
+	if (!TestNotNull(TEXT("HUD settings exposes the approved 75 percent option"), ThreeQuarterScaleButton))
+	{
+		return false;
+	}
+	ThreeQuarterScaleButton->OnClicked.Broadcast();
 	Widget->TickForTest(0.0f);
-	TestEqual(TEXT("50 percent selection updates the live preference"),
+	TestEqual(TEXT("75 percent selection updates the live preference"),
 		Widget->GetHudScalePercentForTest(),
-		50);
+		75);
 	int32 PersistedScale = 0;
 	TestTrue(TEXT("HUD scale preference is written to config"),
 		GConfig->GetInt(SettingsSection, ScaleKey, PersistedScale, GGameUserSettingsIni));
-	TestEqual(TEXT("HUD scale config persists 50 percent"), PersistedScale, 50);
+	TestEqual(TEXT("HUD scale config persists 75 percent"), PersistedScale, 75);
 	return true;
 }
 

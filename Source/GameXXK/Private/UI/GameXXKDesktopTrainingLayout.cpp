@@ -112,7 +112,11 @@ namespace GameXXKDesktopTrainingLayout
 
 	float ResolveManualHudScale(const int32 HudScalePercent)
 	{
-		return HudScalePercent <= 50 ? 0.5f : 1.0f;
+		if (HudScalePercent <= 50)
+		{
+			return 0.5f;
+		}
+		return HudScalePercent <= 75 ? 0.75f : 1.0f;
 	}
 
 	FDesktopOverlayPlacement ComputeDesktopOverlayPlacement(

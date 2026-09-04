@@ -191,6 +191,7 @@
 	constexpr int32 ActionNoticeCategoryFirst = 684;
 	constexpr int32 ActionHudScale100 = 650;
 	constexpr int32 ActionHudScale50 = 651;
+	constexpr int32 ActionHudScale75 = 656;
 	constexpr int32 ActionToggleTown = 652;
 	constexpr int32 ActionIdleStripFold = 653;
 	constexpr int32 ActionStoryQuest = 654;
@@ -235,6 +236,15 @@
 	static constexpr const TCHAR* HudScaleConfigKey = TEXT("HudScalePercent");
 	static constexpr const TCHAR* DesktopWindowPositionXKey = TEXT("WindowPositionX");
 	static constexpr const TCHAR* DesktopWindowPositionYKey = TEXT("WindowPositionY");
+
+	int32 NormalizeHudScalePercent(const int32 Percent)
+	{
+		if (Percent <= 50)
+		{
+			return 50;
+		}
+		return Percent <= 75 ? 75 : 100;
+	}
 	constexpr EGameXXKDesktopNoticeCategory NoticeCategories[] = {
 		EGameXXKDesktopNoticeCategory::ChestAcquired,
 		EGameXXKDesktopNoticeCategory::ChestOpenResult,
@@ -4122,7 +4132,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		14,
 		Ink,
 		TEXT("HudScaleSettingLabel"));
-	AddCanvas(SettingsCanvas, ScaleLabel, FVector2D(4.0f, 38.0f), FVector2D(84.0f, 28.0f));
+	AddCanvas(SettingsCanvas, ScaleLabel, FVector2D(4.0f, 38.0f), FVector2D(58.0f, 28.0f));
 
 	const struct FScaleOption
 	{
@@ -4131,8 +4141,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		const TCHAR* Name;
 		float X;
 	} Options[] = {
-		{100, ActionHudScale100, TEXT("HudScale100Button"), 88.0f},
-		{50, ActionHudScale50, TEXT("HudScale50Button"), 143.0f}};
+		{50, ActionHudScale50, TEXT("HudScale50Button"), 64.0f},
+		{75, ActionHudScale75, TEXT("HudScale75Button"), 108.0f},
+		{100, ActionHudScale100, TEXT("HudScale100Button"), 152.0f}};
 	for (const FScaleOption& Option : Options)
 	{
 		const bool bSelected = HudScalePercent == Option.Percent;
@@ -4143,7 +4154,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		Button->Configure(this, Option.ActionId);
 		Button->SetStyle(MakeTextureButtonStyle(
 			bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-			FVector2D(50.0f, 34.0f),
+			FVector2D(42.0f, 34.0f),
 			FMargin(0.08f)));
 		Button->SetBackgroundColor(FLinearColor::White);
 		Button->SetContent(MakeButtonText(
@@ -4151,16 +4162,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 			FText::FromString(FString::Printf(TEXT("%d%%"), Option.Percent)),
 			12,
 			bSelected ? Gold : Ink));
-		AddCanvas(SettingsCanvas, Button, FVector2D(Option.X, 34.0f), FVector2D(50.0f, 34.0f));
+		AddCanvas(SettingsCanvas, Button, FVector2D(Option.X, 34.0f), FVector2D(42.0f, 34.0f));
 		ActionButtons.Add(Button);
 	}
-	UTextBlock* Hint = MakeText(
-		WidgetTree,
-		FText::FromString(TEXT("按当前显示器工作区自动适配")),
-		11,
-		FLinearColor(0.18f, 0.13f, 0.09f, 0.9f),
-		TEXT("HudScaleSettingHint"));
-	AddCanvas(SettingsCanvas, Hint, FVector2D(4.0f, 82.0f), FVector2D(192.0f, 38.0f));
 
 	ResetCombatGuideButton =
 		WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
@@ -8772,13 +8776,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::LoadHudScaleSetting()
 			SavedPercent,
 			GGameUserSettingsIni);
 	}
-	HudScalePercent = SavedPercent <= 50 ? 50 : 100;
+	HudScalePercent = NormalizeHudScalePercent(SavedPercent);
 	bHudScaleSettingLoaded = true;
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::SetHudScalePercent(const int32 InPercent)
 {
-	const int32 NewPercent = InPercent <= 50 ? 50 : 100;
+	const int32 NewPercent = NormalizeHudScalePercent(InPercent);
 	if (HudScalePercent == NewPercent)
 	{
 		return false;
@@ -9053,9 +9057,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		RefreshLayout();
 		return;
 	}
-	if (ActionId == ActionHudScale100 || ActionId == ActionHudScale50)
+	if (ActionId == ActionHudScale100
+		|| ActionId == ActionHudScale75
+		|| ActionId == ActionHudScale50)
 	{
-		SetHudScalePercent(ActionId == ActionHudScale50 ? 50 : 100);
+		const int32 SelectedPercent = ActionId == ActionHudScale50
+			? 50
+			: (ActionId == ActionHudScale75 ? 75 : 100);
+		SetHudScalePercent(SelectedPercent);
 		return;
 	}
 	if (ActionId == ActionCloseWarehouse)
