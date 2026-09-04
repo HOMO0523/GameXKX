@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the current enemy catalog, intents, phases, and encounter numbers to Excel."""
+"""Export the approved 27-stage, multi-phase monster design from the rebalance specification."""
 
 from __future__ import annotations
 
@@ -13,326 +13,206 @@ from openpyxl import load_workbook
 from export_game_design_tables import add_table, new_book, sha
 
 
-ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs" / "design" / "2026-09-04-project-design-tables"
-CATALOG = ROOT / "Source" / "GameXXK" / "Private" / "GameXXKEnemyCatalog.cpp"
-ENCOUNTER = ROOT / "Source" / "GameXXK" / "Private" / "GameXXKEncounterRules.cpp"
+ROOT=Path(__file__).resolve().parents[1]
+OUT=ROOT/"docs"/"design"/"2026-09-04-project-design-tables"
+SPEC=ROOT/"docs"/"superpowers"/"specs"/"2026-09-03-card-monster-progression-rebalance-design.md"
+CATALOG=ROOT/"Source"/"GameXXK"/"Private"/"GameXXKEnemyCatalog.cpp"
 
-TIER_CN = {"Normal": "普通", "Elite": "精英", "Boss": "首领"}
-TARGET_CN = {
-    "None": "无目标", "Self": "自身", "LowestHealthParty": "最低生命友方",
-    "RandomLivingParty": "随机存活友方", "AllLivingParty": "全体存活友方",
-    "AllEnemyAllies": "全体敌方友军", "LowestHealthEnemyAlly": "最低生命敌方友军",
-    "MarkedParty": "有标记的友方", "PreyTarget": "猎物目标", "MarkedPartyElseRandom": "标记优先，否则稳定随机",
-}
-STATUS_CN = {
-    "None": "无", "Weak": "虚弱", "Mark": "标记", "Bleed": "流血", "Poison": "中毒",
-    "Burn": "灼烧", "Medicine": "药效", "Counter": "反击", "Wealth": "聚财",
-    "Prey": "猎物", "Rage": "怒气", "Agility": "灵动", "ArmorBreak": "破甲",
-}
-EFFECT_CN = {
-    "DirectDamage": "直接伤害", "AddArmor": "获得护甲", "Heal": "治疗", "ApplyStatus": "施加状态",
-    "ConsumeSharedQi": "消耗共享气力", "ModifyAttack": "修改攻击", "ModifyDefense": "修改防御",
-    "ModifySpeed": "修改速度", "RemovePositiveStatus": "移除正面状态", "IncreaseNextCardEnergy": "下一张牌气力+1",
-    "SetCounter": "设置反击", "SetCharge": "设置蓄势",
-}
-PASSIVE_CN = {
-    "None": "无",
-    "IronfeatherFirstHit": "铁羽：每场首次受到直接攻击时，实际生命伤害减半。",
-    "BluehornArmorRetention": "护甲留存：敌方阶段开始时保留上一阶段50%护甲。",
-    "MoneyRatWealth": "聚财：围绕聚财层、扒窃、散财治疗与钱潮增伤。",
-    "PorcupineCounter": "蓄刺反击：通过蓄刺意图建立反击。",
-    "GraymaneMarkedHunt": "标记狩猎：攻击有标记目标时，意图伤害提高20%。",
-    "RedtuskRage": "怒气：每次受到有效生命伤害获得1怒气，最高5；怒獠每层追加20点伤害。",
-    "BlackBearThickHide": "厚皮：受到直接攻击时，生命伤害只保留85%。",
-    "WhiteApeStatusGuard": "状态守势：每个玩家回合首次获得状态时，获得8护甲。",
-    "DeerHealCooldown": "回春冷却：回春意图触发后按目录冷却2个敌方阶段。",
-    "TigerPredator": "捕食者：猎物锁定、虎扑追踪与阶段二流血吸血。",
-}
-PHASE_CN = {"None": "无", "MoneyRatMadHoard": "守财癫狂", "BlackBearEnraged": "狂怒", "TigerDread": "百兽震惶"}
+TIER_CN={"Normal":"普通","Elite":"精英","Boss":"首领"}
+DIFF_CN={"Normal":"普通","Hard":"困难","Hell":"地狱"}
+DIFF_PHASES={"Normal":1,"Hard":2,"Hell":3}
+DIFF_DAMAGE={"Normal":100,"Hard":125,"Hell":150}
+NAME_CN={
+"Rooster":"公鸡","Goat":"山羊","Weasel":"黄鼬","Civet":"狸猫","Ironfeather":"铁羽斗鸡","Bluehorn":"青角羊王","Money Rat":"金钱鼠",
+"Gray Wolf":"灰狼","Boar":"野猪","Macaque":"猕猴","Porcupine":"豪猪","Graymane":"苍鬃狼王","Redtusk":"赤獠猪王","Black Bear":"黑熊",
+"Venom Snake":"毒蛇","Wildcat":"山猫","Vulture":"秃鹫","Giant Toad":"巨蟾","White Ape":"白猿","Spiral-Horn Deer":"盘角鹿","Tiger":"老虎"}
+NAME_CN.update({"Ironfeather Rooster":"铁羽斗鸡","Bluehorn Goat King":"青角羊王","Graymane Wolf King":"苍鬃狼王","Redtusk Boar King":"赤獠猪王"})
+ID_BY_CN={
+"公鸡":"Enemy.Ch1.Rooster","山羊":"Enemy.Ch1.Goat","黄鼬":"Enemy.Ch1.Weasel","狸猫":"Enemy.Ch1.Civet","铁羽斗鸡":"Enemy.Ch1.IronfeatherRooster","青角羊王":"Enemy.Ch1.BluehornGoatKing","金钱鼠":"Enemy.Ch1.MoneyRat",
+"灰狼":"Enemy.Ch2.GrayWolf","野猪":"Enemy.Ch2.Boar","猕猴":"Enemy.Ch2.Macaque","豪猪":"Enemy.Ch2.Porcupine","苍鬃狼王":"Enemy.Ch2.GraymaneWolfKing","赤獠猪王":"Enemy.Ch2.RedtuskBoarKing","黑熊":"Enemy.Ch2.BlackBear",
+"毒蛇":"Enemy.Ch3.VenomSnake","山猫":"Enemy.Ch3.Wildcat","秃鹫":"Enemy.Ch3.Vulture","巨蟾":"Enemy.Ch3.GiantToad","白猿":"Enemy.Ch3.WhiteApe","盘角鹿":"Enemy.Ch3.SpiralHornDeer","老虎":"Enemy.Ch3.Tiger"}
+ALIASES={
+1:{"R":"公鸡","G":"山羊","W":"黄鼬","C":"狸猫","I":"铁羽斗鸡","B":"青角羊王","M":"金钱鼠"},
+2:{"Wf":"灰狼","Bo":"野猪","Ma":"猕猴","P":"豪猪","Gm":"苍鬃狼王","Rt":"赤獠猪王","Bb":"黑熊"},
+3:{"S":"毒蛇","C":"山猫","V":"秃鹫","T":"巨蟾","A":"白猿","D":"盘角鹿","Ti":"老虎"}}
 
 
-def split_top(text: str) -> list[str]:
-    parts, start, stack, quote, escape = [], 0, [], False, False
-    pairs = {"(": ")", "[": "]", "{": "}"}
-    for i, ch in enumerate(text):
-        if quote:
-            if escape: escape = False
-            elif ch == "\\": escape = True
-            elif ch == '"': quote = False
-            continue
-        if ch == '"': quote = True
-        elif ch in pairs: stack.append(pairs[ch])
-        elif stack and ch == stack[-1]: stack.pop()
-        elif ch == "," and not stack:
-            parts.append(text[start:i].strip()); start = i + 1
-    tail = text[start:].strip()
-    if tail: parts.append(tail)
-    return parts
+def split_top(text):
+    out=[];start=0;stack=[];quote=False
+    pairs={"(":")","{":"}","[":"]"}
+    for idx,ch in enumerate(text):
+        if ch=='"': quote=not quote
+        elif not quote and ch in pairs: stack.append(pairs[ch])
+        elif not quote and stack and ch==stack[-1]: stack.pop()
+        elif not quote and not stack and ch==',': out.append(text[start:idx].strip());start=idx+1
+    if text[start:].strip(): out.append(text[start:].strip())
+    return out
 
 
-def calls(text: str, marker: str) -> list[str]:
-    result, offset = [], 0
-    while True:
-        found = text.find(marker, offset)
-        if found < 0: return result
-        start = found + len(marker)
-        depth, quote, escape = 1, False, False
-        i = start
-        while i < len(text):
-            ch = text[i]
-            if quote:
-                if escape: escape = False
-                elif ch == "\\": escape = True
-                elif ch == '"': quote = False
-            else:
-                if ch == '"': quote = True
-                elif ch == "(": depth += 1
-                elif ch == ")":
-                    depth -= 1
-                    if depth == 0: break
-            i += 1
-        if depth != 0: raise ValueError(f"unbalanced call after {marker}")
-        result.append(text[start:i]); offset = i + 1
+def calls(text,marker):
+    out=[];pos=0
+    while (found:=text.find(marker,pos))>=0:
+        start=found+len(marker);depth=1;quote=False;i=start
+        while i<len(text):
+            ch=text[i]
+            if ch=='"': quote=not quote
+            elif not quote and ch=='(': depth+=1
+            elif not quote and ch==')':
+                depth-=1
+                if depth==0: break
+            i+=1
+        out.append(text[start:i]);pos=i+1
+    return out
 
 
-def enum(value: str) -> str:
-    return value.strip().rsplit("::", 1)[-1]
+def tv(arg): return re.search(r'TEXT\("([^"]+)"\)',arg).group(1)
+def en(arg): return arg.rsplit("::",1)[-1].strip()
 
 
-def text_value(value: str) -> str:
-    match = re.search(r'TEXT\("([^"]*)"\)', value)
-    if not match: raise ValueError(f"missing TEXT value: {value}")
-    return match.group(1)
+def base_enemies():
+    rows=[]
+    for raw in calls(CATALOG.read_text(encoding="utf-8"),"Definitions.Add(MakeEnemy("):
+        a=split_top(raw)
+        rows.append({"id":tv(a[0]),"name":tv(a[1]),"chapter":int(a[2]),"tier":en(a[3]),"base_hp":int(a[4]),"hp_per":float(a[5].rstrip('f')),
+                     "base_attack":int(a[6]),"attack_per":float(a[7].rstrip('f')),"base_defense":int(a[8]),"defense_per":float(a[9].rstrip('f')),"speed":int(a[10])})
+    assert len(rows)==21
+    return rows
 
 
-def i(value: str, default=0) -> int:
-    value = value.strip()
-    return int(value) if value else default
+def stat(enemy,level):
+    step=level-1
+    rnd=lambda v: math.floor(v+.5)
+    return {"hp":enemy["base_hp"]+rnd(enemy["hp_per"]*step),"attack":enemy["base_attack"]+rnd(enemy["attack_per"]*step),"defense":enemy["base_defense"]+rnd(enemy["defense_per"]*step),"speed":enemy["speed"]}
 
 
-def b(value: str, default=False) -> bool:
-    value = value.strip()
-    return default if not value else value.lower() == "true"
+def md_cells(line): return [x.strip() for x in line.strip().strip('|').split('|')]
+def body_row(line):
+    cells=md_cells(line)
+    return line.lstrip().startswith('|') and cells and not all(set(x)<=set('-: ') for x in cells) and not any(x in {"Enemy / intent","Intent","Order","Stage"} or x.endswith("intent") for x in cells[:1])
 
 
-def parse_effect(expr: str) -> dict:
-    name, _, rest = expr.strip().partition("(")
-    args = split_top(rest[:-1]) if rest.endswith(")") else []
-    effect = {"helper": name, "type": "", "target": "", "flat": 0, "attack_pct": 0, "hits": 1,
-              "status": "None", "stacks": 0, "consumed": "None", "max_consumed": 0,
-              "per_stack": 0, "per_stack_hp_pct": False, "source_status": "None", "source_flat": 0,
-              "persistent": False, "phase2_fallback": False, "clear_target": False}
-    if name == "Direct":
-        effect.update(type="DirectDamage", attack_pct=i(args[0]), target=enum(args[1]) if len(args)>1 else "MarkedPartyElseRandom",
-                      hits=i(args[2]) if len(args)>2 else 1, status=enum(args[3]) if len(args)>3 else "None",
-                      stacks=i(args[4]) if len(args)>4 else 0)
-    elif name == "DirectWithSourceStatusFlatBonus":
-        effect.update(type="DirectDamage", attack_pct=i(args[0]), source_status=enum(args[1]), source_flat=i(args[2]),
-                      target=enum(args[3]) if len(args)>3 else "MarkedPartyElseRandom")
-    elif name == "Armor":
-        effect.update(type="AddArmor", flat=i(args[0]), target=enum(args[1]) if len(args)>1 else "Self")
-    elif name in {"Status", "PersistentTargetStatus"}:
-        effect.update(type="ApplyStatus", status=enum(args[0]), stacks=i(args[1]), target=enum(args[2]), persistent=name.startswith("Persistent"))
-    elif name == "PersistentTargetDirect":
-        effect.update(type="DirectDamage", attack_pct=i(args[0]), target=enum(args[1]), phase2_fallback=True, clear_target=True)
-    elif name == "HealFromConsumedStatus":
-        effect.update(type="Heal", target="Self", consumed=enum(args[0]), max_consumed=i(args[1]), per_stack=i(args[2]), per_stack_hp_pct=True)
-    elif name == "AttackModifier":
-        effect.update(type="ModifyAttack", flat=i(args[0]), target=enum(args[1]))
-    elif name == "SpeedModifier":
-        effect.update(type="ModifySpeed", flat=i(args[0]), target=enum(args[1]))
-    elif name == "MakeEffect":
-        effect.update(type=enum(args[0]), target=enum(args[1]), flat=i(args[2]) if len(args)>2 else 0,
-                      attack_pct=i(args[3]) if len(args)>3 else 0, hits=i(args[4]) if len(args)>4 else 1,
-                      status=enum(args[5]) if len(args)>5 else "None", stacks=i(args[6]) if len(args)>6 else 0)
-    else:
-        raise ValueError(f"unsupported effect helper: {name}")
-    return effect
+def section(text,start,end): return text.split(start,1)[1].split(end,1)[0]
 
 
-def effect_text(effect: dict) -> str:
-    target = TARGET_CN.get(effect["target"], effect["target"])
-    if effect["type"] == "DirectDamage":
-        text = f"对{target}造成{effect['attack_pct']}%攻击"
-        if effect["hits"] > 1: text += f"×{effect['hits']}段"
-        if effect["source_status"] != "None": text += f"；每点自身{STATUS_CN.get(effect['source_status'],effect['source_status'])}+{effect['source_flat']}固定伤害"
-        if effect["status"] != "None": text += f"；附加{effect['stacks']}点{STATUS_CN.get(effect['status'],effect['status'])}"
-        if effect["persistent"]: text += "；锁定该目标"
-        if effect["phase2_fallback"]: text += "；阶段二目标死亡时改取最低生命目标"
-        return text
-    if effect["type"] == "AddArmor": return f"{target}获得{effect['flat']}护甲"
-    if effect["type"] == "ApplyStatus": return f"对{target}施加{effect['stacks']}点{STATUS_CN.get(effect['status'],effect['status'])}" + ("并锁定目标" if effect["persistent"] else "")
-    if effect["type"] == "Heal" and effect["consumed"] != "None":
-        return f"消耗至多{effect['max_consumed']}点{STATUS_CN.get(effect['consumed'],effect['consumed'])}；每点回复自身最大生命{effect['per_stack']}%"
-    if effect["type"] == "Heal": return f"治疗{target}{effect['flat']}点"
-    if effect["type"] == "ConsumeSharedQi": return f"消耗玩家共享气力{effect['flat']}点"
-    if effect["type"] == "ModifyAttack": return f"{target}攻击+{effect['flat']}"
-    if effect["type"] == "ModifyDefense": return f"{target}防御+{effect['flat']}"
-    if effect["type"] == "ModifySpeed": return f"{target}速度+{effect['flat']}（按敌方阶段时序）"
-    if effect["type"] == "RemovePositiveStatus": return f"移除{target}{effect['flat']}个正面状态"
-    if effect["type"] == "IncreaseNextCardEnergy": return "玩家下一张主动牌气力消耗+1"
-    return f"{EFFECT_CN.get(effect['type'],effect['type'])} {effect['flat']}"
+def parse_intents(text):
+    ordinary=[]
+    for line in section(text,"## 10. Ordinary monster intents","## 11. Elite and Boss phase-one intents").splitlines():
+        if body_row(line):
+            c=md_cells(line)
+            if len(c)==2 and " - " in c[0]:
+                enemy,intent=c[0].split(" - ",1);ordinary.append([NAME_CN[enemy],intent,c[1]])
+    phase1=[];current=None
+    phase1_text=section(text,"## 11. Elite and Boss phase-one intents","## 12. Phase-two and phase-three decks")
+    keys=["Ironfeather","Bluehorn","Money Rat","Graymane","Redtusk","Black Bear","White Ape","Tiger"]
+    for line in phase1_text.splitlines():
+        if line.startswith("| Spiral-Horn Deer intent"): current="Spiral-Horn Deer";continue
+        for key in keys:
+            if line.startswith(f"**{key}"): current=key
+        if current and body_row(line):
+            c=md_cells(line)
+            if len(c)==2 and c[0] not in {"Approved effect"}: phase1.append([NAME_CN[current],c[0],c[1]])
+    phase23=[];current=None;phase=0
+    for line in section(text,"## 12. Phase-two and phase-three decks","## 13. Authored 27-stage formations").splitlines():
+        if line.startswith("#### "): current=line[5:].strip()
+        if line.startswith("Phase two") or line.startswith("Phase-two"): phase=2
+        if line.startswith("Phase three") or line.startswith("Phase-three"): phase=3
+        if current and phase and body_row(line):
+            c=md_cells(line)
+            if len(c)==3 and c[0].isdigit(): phase23.append([NAME_CN[current],phase,int(c[0]),c[1],c[2]])
+    assert len(ordinary)==36 and len(phase1)==42
+    assert sum(1 for x in phase23 if x[1]==2)==39 and sum(1 for x in phase23 if x[1]==3)==39
+    return ordinary,phase1,phase23
 
 
-def parse_catalog() -> list[dict]:
-    source = CATALOG.read_text(encoding="utf-8")
-    enemies = []
-    for raw in calls(source, "Definitions.Add(MakeEnemy("):
-        args = split_top(raw)
-        enemy = {
-            "id": text_value(args[0]), "name": text_value(args[1]), "chapter": i(args[2]), "tier": enum(args[3]),
-            "base_hp": i(args[4]), "hp_per": float(args[5].rstrip("f")), "base_attack": i(args[6]),
-            "attack_per": float(args[7].rstrip("f")), "base_defense": i(args[8]), "defense_per": float(args[9].rstrip("f")),
-            "speed": i(args[10]), "passive": enum(args[12]) if len(args)>12 else "None",
-            "phase": enum(args[13]) if len(args)>13 else "None", "round_status": enum(args[14]) if len(args)>14 else "None",
-            "round_stacks": i(args[15]) if len(args)>15 else 0, "p2_round_stacks": i(args[16]) if len(args)>16 else 0,
-            "p2_direct": i(args[17],100) if len(args)>17 else 100, "p2_attack": i(args[18],100) if len(args)>18 else 100,
-            "p2_defense": i(args[19],100) if len(args)>19 else 100,
-            "p2_extra_hits": re.findall(r'TEXT\("([^"]+)"\)', args[20]) if len(args)>20 else [],
-            "heal_status": enum(args[21]) if len(args)>21 else "None", "heal_missing_pct": i(args[22]) if len(args)>22 else 0,
-            "intents": [],
-        }
-        for intent_raw in calls(args[11], "MakeIntent("):
-            ia = split_top(intent_raw)
-            effects = [parse_effect(e) for e in split_top(ia[2].strip()[1:-1])]
-            enemy["intents"].append({
-                "id": text_value(ia[0]), "name": text_value(ia[1]), "effects": effects,
-                "charge": i(ia[3]) if len(ia)>3 else 0, "p2_only": b(ia[4]) if len(ia)>4 else False,
-                "below_half": b(ia[5]) if len(ia)>5 else False, "required_status": enum(ia[6]) if len(ia)>6 else "None",
-                "cooldown": i(ia[7]) if len(ia)>7 else 0, "p2_direct": i(ia[8],100) if len(ia)>8 else 100,
-            })
-        enemies.append(enemy)
-    return enemies
+def parse_stages(text):
+    rows=[]
+    block=section(text,"## 13. Authored 27-stage formations","## 14. Current implementation conflicts")
+    for line in block.splitlines():
+        if not body_row(line): continue
+        c=md_cells(line)
+        m=re.fullmatch(r'(Normal|Hard|Hell) ([1-3])-([1-3])',c[0] if c else '')
+        if m and len(c)==5:
+            diff,chapter,sub=m.group(1),int(m.group(2)),int(m.group(3))
+            rows.append({"difficulty":diff,"chapter":chapter,"substage":sub,"level":int(c[1]),"ordinary":c[2].split(' / '),"elite":c[3].split(' / '),"end":c[4]})
+    assert len(rows)==27
+    return rows
 
 
-def round_half(value: float) -> int:
-    return math.floor(value + .5) if value >= 0 else math.ceil(value - .5)
+def expand_form(token,chapter): return [ALIASES[chapter][x] for x in token.split('-')]
 
 
-def stats(enemy: dict, level: int) -> dict:
-    level = min(max(level, 1), 100); step = level - 1
-    return {"hp": max(1, enemy["base_hp"] + round_half(enemy["hp_per"] * step)),
-            "attack": max(1, enemy["base_attack"] + round_half(enemy["attack_per"] * step)),
-            "defense": max(0, enemy["base_defense"] + round_half(enemy["defense_per"] * step)), "speed": max(1, enemy["speed"])}
+def phases_for(stage,category,names):
+    count=DIFF_PHASES[stage["difficulty"]]
+    if count==1:return [1,1,1]
+    if category=="ordinary":return [1,1,1]
+    if category=="elite":return [1,count,1]
+    if stage["substage"]==3:return [count,count,count]
+    return [1,count,1]
 
 
-def combat_level(tier: str, route: int) -> int:
-    route = min(max(route, 1), 100)
-    if tier == "Elite": return min(route + 1, 20)
-    if tier == "Boss": return min(route + 2, 20)
-    return route
+def build_design_data():
+    text=SPEC.read_text(encoding="utf-8");enemies=base_enemies();by_name={e["name"]:e for e in enemies}
+    ordinary,p1,p23=parse_intents(text);stages=parse_stages(text)
+    formations=[]
+    for st in stages:
+        for category,tokens in (("ordinary",st["ordinary"]),("elite",st["elite"]),("end",[st["end"]])):
+            for index,token in enumerate(tokens,1):
+                names=expand_form(token,st["chapter"]);pcs=phases_for(st,category,names);units=[]
+                for pos,(name,pc) in enumerate(zip(names,pcs),1):
+                    s=stat(by_name[name],st["level"]);units.append({"position":pos,"name":name,"id":ID_BY_CN[name],"phases":pc,**s})
+                formations.append({**st,"category":category,"index":index,"notation":token,"units":units,"raw_phase_hp":sum(u["hp"]*u["phases"] for u in units)})
+    hell31=[f for f in formations if f["difficulty"]=="Hell" and f["chapter"]==3 and f["substage"]==1]
+    hell33end=next(f for f in formations if f["difficulty"]=="Hell" and f["chapter"]==3 and f["substage"]==3 and f["category"]=="end")
+    assert len(formations)==189 and hell33end["raw_phase_hp"]==33318
+    return {"enemies":enemies,"ordinary_intents":ordinary,"phase1_intents":p1,"phase23_intents":p23,"stages":stages,"formations":formations,"hell31":hell31}
 
 
-def scale(chapter: int, node: str) -> tuple[int,int,int]:
-    if node == "Battle": return 140,250,100
-    if node == "Elite": return 160, (270 if chapter==1 else 170 if chapter==2 else 180), (100 if chapter==1 else 105 if chapter==2 else 110)
-    return (120 if chapter==1 else 100 if chapter==2 else 80), (120 if chapter==1 else 100 if chapter==2 else 90), 100
-
-
-def scaled(value: int, percent: int, minimum: int) -> int:
-    return max(minimum, (value * percent + 50)//100)
-
-
-def build(path: Path) -> dict:
-    enemies = parse_catalog()
-    assert len(enemies) == 21
-    assert sum(len(e["intents"]) for e in enemies) == 78
-    wb = new_book("GameXXK 怪物与阶段数值设计总表")
-    intro = [
-        ["目录规模", "21种：每章4普通、2精英、1首领"],
-        ["意图规模", "普通每只3个、精英4个、首领6个，共78个"],
-        ["阶段", "三个首领在生命≤50%时永久进入第二阶段"],
-        ["属性公式", "基础值+四舍五入(每级成长×(战斗等级−1))；生命/攻击最少1，防御最少0"],
-        ["等级代码口径", "普通=min(路线等级,100)；精英=min(路线等级+1,20)；首领=min(路线等级+2,20)"],
-        ["标准路线快照", "第一章5级、第二章10级、第三章15级，用于本表路线数值预览"],
-        ["节点倍率", "普通140%生命/250%攻击；精英160%生命并按章节调整攻击/防御；首领按章节降低倍率"],
-        ["源文件", f"{CATALOG.relative_to(ROOT)}\n{ENCOUNTER.relative_to(ROOT)}"],
-    ]
-    add_table(wb,"00_说明",["项目","内容"],intro,{"项目":24,"内容":115})
-
+def build(path):
+    d=build_design_data();wb=new_book("GameXXK 新怪物与阶段数值设计总表")
+    add_table(wb,"00_说明",["项目","内容"],[
+        ["权威口径","2026-09-03批准重平衡规格；旧EnemyCatalog意图/阶段与训练池冲突时以规格为准"],
+        ["训练等级","普通5-45、困难50-90、地狱95-135，每关+5；地狱3-1为125级，3-3为135级"],
+        ["难度伤害","普通100%、困难125%、地狱150%；不额外增加生命或防御"],
+        ["阶段","普通额外阶段0；困难精英/首领共2阶段；地狱精英/首领共3阶段；转阶段满血、清负面、换牌组"],
+        ["总验证规模","12普通×3意图×3难度=108；9阶段怪一阶段126；二阶段78；三阶段39；合计351"],
+        ["实现状态","当前代码仍是旧Boss二阶段和旧池；本表是批准设计，不是当前运行时导出"]],{"项目":25,"内容":120})
     enemy_rows=[]
-    for n,e in enumerate(enemies,1):
-        s1,s10,s20=stats(e,1),stats(e,10),stats(e,20)
-        enemy_rows.append([n,e["chapter"],TIER_CN[e["tier"]],e["id"],e["name"],e["base_hp"],e["hp_per"],e["base_attack"],e["attack_per"],e["base_defense"],e["defense_per"],e["speed"],
-                           s10["hp"],s10["attack"],s10["defense"],s20["hp"],s20["attack"],s20["defense"],
-                           e["passive"],PASSIVE_CN[e["passive"]],PHASE_CN[e["phase"]],len(e["intents"]),
-                           f"/Game/GameXXK/UI/Codex/RouteEnemies/V1/T_{e['id'].replace('.','_')}.T_{e['id'].replace('.','_')}"])
-    add_table(wb,"01_怪物总表",["序号","章节","级别","怪物ID","名称","基础生命","生命/级","基础攻击","攻击/级","基础防御","防御/级","速度","L10生命","L10攻击","L10防御","L20生命","L20攻击","L20防御","被动代码","被动说明","第二阶段","意图数","图鉴路径"],enemy_rows,
-              {"怪物ID":34,"名称":18,"被动说明":68,"图鉴路径":78})
-
-    level_rows=[]
-    for e in enemies:
-        for level in (1,5,10,15,20,100):
-            s=stats(e,level); level_rows.append([e["chapter"],TIER_CN[e["tier"]],e["id"],e["name"],level,s["hp"],s["attack"],s["defense"],s["speed"]])
-    add_table(wb,"02_等级属性",["章节","级别","怪物ID","名称","战斗等级","生命","攻击","防御","速度"],level_rows,{"怪物ID":34})
-
-    route_level={1:5,2:10,3:15}; eligible={"Normal":["Battle","Elite"],"Elite":["Elite","Boss"],"Boss":["Boss"]}; node_cn={"Battle":"普通节点","Elite":"精英节点","Boss":"首领节点"}
-    preview=[]
-    for e in enemies:
-        route=route_level[e["chapter"]]; lvl=combat_level(e["tier"],route); base=stats(e,lvl)
-        for node in eligible[e["tier"]]:
-            hp_p,at_p,df_p=scale(e["chapter"],node)
-            preview.append([e["chapter"],node_cn[node],TIER_CN[e["tier"]],e["name"],route,lvl,hp_p,at_p,df_p,
-                            scaled(base["hp"],hp_p,1),scaled(base["attack"],at_p,1),scaled(base["defense"],df_p,0),base["speed"]])
-    add_table(wb,"03_路线标准数值",["章节","节点","怪物级别","怪物","路线等级","战斗等级","生命倍率%","攻击倍率%","防御倍率%","最终生命","最终攻击","最终防御","速度"],preview)
-
-    formation=[]
-    for chapter in (1,2,3):
-        for node in ("Battle","Elite","Boss"):
-            hp,at,df=scale(chapter,node)
-            layout="1P/3P各随机1只不重复普通怪" if node=="Battle" else "1P/3P普通怪，2P随机精英" if node=="Elite" else "1P/3P固定两只精英，2P首领"
-            formation.append([chapter,node_cn[node],layout,"普通=路线等级；精英=min(路线+1,20)；首领=min(路线+2,20)",hp,at,df])
-    add_table(wb,"04_编制与倍率",["章节","节点","三槽编制","等级规则","生命倍率%","攻击倍率%","防御倍率%"],formation,{"三槽编制":55,"等级规则":62})
-
-    phase_rows=[]
-    for e in [x for x in enemies if x["phase"]!="None"]:
-        route=route_level[e["chapter"]]; lvl=combat_level("Boss",route); base=stats(e,lvl); hp_p,at_p,df_p=scale(e["chapter"],"Boss")
-        phase_attack=scaled(base["attack"],at_p,1); phase_def=scaled(base["defense"],df_p,0)
-        phase_rows.append([e["name"],e["id"],PHASE_CN[e["phase"]],50,"生命≤50%后永久生效",STATUS_CN.get(e["round_status"],e["round_status"]),e["round_stacks"],e["p2_round_stacks"],
-                           e["p2_direct"],e["p2_attack"],e["p2_defense"],"、".join(e["p2_extra_hits"]),
-                           STATUS_CN.get(e["heal_status"],e["heal_status"]),e["heal_missing_pct"],phase_attack,phase_attack*e["p2_attack"]//100,phase_def,phase_def*e["p2_defense"]//100])
-    add_table(wb,"05_首领阶段",["首领","怪物ID","阶段名","阈值%","进入规则","回合开始状态","一阶段层数","二阶段层数","全局直接伤害%","阶段二攻击%","阶段二防御%","追加1段的意图","伤害目标状态","按缺失生命治疗%","标准一阶段攻击","标准二阶段攻击","标准一阶段防御","标准二阶段防御"],phase_rows,
-              {"怪物ID":34,"进入规则":35,"追加1段的意图":32})
-
-    intent_rows=[]; effect_rows=[]
-    for e in enemies:
-        for order,intent in enumerate(e["intents"],1):
-            condition=[]
-            if intent["p2_only"]: condition.append("仅第二阶段")
-            if intent["below_half"]: condition.append("来源生命低于50%")
-            if intent["required_status"]!="None": condition.append(f"目标需有{STATUS_CN.get(intent['required_status'],intent['required_status'])}")
-            compact="\n".join(effect_text(x) for x in intent["effects"])
-            combined=e["p2_direct"]*intent["p2_direct"]//100
-            intent_rows.append([e["chapter"],TIER_CN[e["tier"]],e["name"],order,intent["id"],intent["name"],intent["charge"],intent["cooldown"],"；".join(condition) or "常规可用",intent["p2_direct"],e["p2_direct"],combined,"是" if intent["id"] in e["p2_extra_hits"] else "否",compact])
-            for effect_index,effect in enumerate(intent["effects"],1):
-                effect_rows.append([e["chapter"],TIER_CN[e["tier"]],e["name"],intent["id"],intent["name"],effect_index,EFFECT_CN.get(effect["type"],effect["type"]),TARGET_CN.get(effect["target"],effect["target"]),effect["flat"],effect["attack_pct"],effect["hits"],STATUS_CN.get(effect["status"],effect["status"]),effect["stacks"],STATUS_CN.get(effect["consumed"],effect["consumed"]),effect["max_consumed"],effect["per_stack"],STATUS_CN.get(effect["source_status"],effect["source_status"]),effect["source_flat"],effect_text(effect)])
-    add_table(wb,"06_意图总表",["章节","级别","怪物","顺序","意图ID","意图名","蓄势回合","冷却回合","条件","意图阶段二伤害%","怪物阶段二伤害%","合并阶段二伤害%","阶段二追加段数","效果摘要"],intent_rows,
-              {"意图ID":25,"意图名":18,"条件":38,"效果摘要":80})
-    add_table(wb,"07_意图效果明细",["章节","级别","怪物","意图ID","意图名","效果序号","效果类型","目标","固定值","攻击倍率%","段数","状态","状态点数","消耗状态","最多消耗","每点值","读取自身状态","每点固定加成","效果说明"],effect_rows,
-              {"意图ID":25,"效果说明":78})
-
-    passive_rows=[]
-    for e in enemies:
-        if e["passive"]!="None": passive_rows.append([e["chapter"],TIER_CN[e["tier"]],e["name"],e["passive"],PASSIVE_CN[e["passive"]]])
-    add_table(wb,"08_被动机制",["章节","级别","怪物","被动代码","效果"],passive_rows,{"被动代码":32,"效果":90})
-
-    sources=[[str(CATALOG.relative_to(ROOT)),sha(CATALOG)],[str(ENCOUNTER.relative_to(ROOT)),sha(ENCOUNTER)]]
-    add_table(wb,"09_来源校验",["源文件","SHA256"],sources,{"源文件":75,"SHA256":72})
+    for e in d["enemies"]:
+        s100,s125,s135=stat(e,100),stat(e,125),stat(e,135)
+        enemy_rows.append([e["chapter"],TIER_CN[e["tier"]],e["id"],e["name"],e["base_hp"],e["hp_per"],e["base_attack"],e["attack_per"],e["base_defense"],e["defense_per"],e["speed"],
+                           s100["hp"],s100["attack"],s100["defense"],s125["hp"],s125["attack"],s125["defense"],s135["hp"],s135["attack"],s135["defense"]])
+    add_table(wb,"01_怪物属性",["章节","级别","怪物ID","名称","基础生命","生命/级","基础攻击","攻击/级","基础防御","防御/级","速度","L100生命","L100攻击","L100防御","L125生命","L125攻击","L125防御","L135生命","L135攻击","L135防御"],enemy_rows,{"怪物ID":35})
+    stage_rows=[]
+    for s in d["stages"]:
+        stage_rows.append([DIFF_CN[s["difficulty"]],f"{s['chapter']}-{s['substage']}",s["level"],DIFF_DAMAGE[s["difficulty"]],DIFF_PHASES[s["difficulty"]]," / ".join(s["ordinary"])," / ".join(s["elite"]),s["end"]])
+    add_table(wb,"02_27关总表",["难度","关卡","敌人等级","敌方伤害%","精英/首领总阶段","四组普通编制","两组精英编制","关底编制"],stage_rows,{"四组普通编制":62,"两组精英编制":40,"关底编制":22})
+    form_rows=[]
+    for f in d["formations"]:
+        form_rows.append([DIFF_CN[f["difficulty"]],f"{f['chapter']}-{f['substage']}",f["level"],{"ordinary":"普通","elite":"精英","end":"关底"}[f["category"]],f["index"],f["notation"],
+                          " / ".join(u["name"] for u in f["units"])," / ".join(str(u["phases"]) for u in f["units"]),f["raw_phase_hp"]])
+    add_table(wb,"03_189编制",["难度","关卡","等级","类型","序号","记号","左/中/右","阶段数","总原始阶段生命"],form_rows,{"左/中/右":38})
+    h31=[]
+    for f in d["hell31"]:
+        h31.append([{"ordinary":"普通","elite":"精英","end":"关底"}[f["category"]],f["index"],f["notation"],
+                    *[f"{u['name']}｜{u['hp']}HP {u['attack']}攻 {u['defense']}防｜{u['phases']}阶段" for u in f["units"]],f["raw_phase_hp"]])
+    add_table(wb,"04_地狱3-1",["类型","序号","记号","左位125级","中位125级","右位125级","总原始阶段生命"],h31,{"左位125级":34,"中位125级":34,"右位125级":34})
+    add_table(wb,"05_普通怪意图",["怪物","意图","普通/困难/地狱批准效果"],d["ordinary_intents"],{"普通/困难/地狱批准效果":110})
+    add_table(wb,"06_阶段一意图",["怪物","意图","普通/困难/地狱批准效果"],d["phase1_intents"],{"普通/困难/地狱批准效果":110})
+    add_table(wb,"07_阶段二意图",["怪物","阶段","顺序","意图","困难/地狱批准效果"],[x for x in d["phase23_intents"] if x[1]==2],{"困难/地狱批准效果":110})
+    add_table(wb,"08_阶段三意图",["怪物","阶段","顺序","意图","地狱批准效果"],[x for x in d["phase23_intents"] if x[1]==3],{"地狱批准效果":110})
+    add_table(wb,"09_数值换算",["项目","普通","困难","地狱","说明"],[
+        ["敌方伤害倍率","100%","125%","150%","只乘敌方伤害，不乘生命/防御"],["Weak 单体/群体","2/1","3/2","4/3","离散层数"],["Mark 单体/群体","2/1","3/2","5/3","上限5"],["流血系数 单体/群体","3/1","5/3","8/5","100级队伍分别×5生成最终储量"],["中毒系数 单体/群体","3/2","6/4","9/6","100级队伍分别×5"],["灼烧系数 单体/群体","2/1","4/2","6/3","100级队伍分别×5"]],{"说明":72})
+    add_table(wb,"10_实现差异",["项目","当前旧实现","批准设计"],[
+        ["训练等级","使用玩家等级/旧路线夹具","固定5..135关卡等级；地狱3-1=125"],["难度上下文","未完整进入卡牌战斗","普通/困难/地狱伤害100/125/150%"],["阶段模型","Boss专用bPhaseTwo","九名精英/首领数据驱动1/2/3阶段"],["阶段转换","半血标记并可能改属性","伤害包安全截断、满血新阶段、清负面、保正面、换整套牌"],["编制","平行池临时组合","27关×7=189组固定左中右与开场意图"],["意图数值","旧目录78意图","351个难度/阶段解析用例"],["地狱3-1关底","旧第三章路线普通/精英/Boss夹具","125级 秃鹫-白猿-巨蟾，阶段1/3/1，总阶段生命11178"]],{"当前旧实现":62,"批准设计":90})
+    add_table(wb,"11_来源校验",["源文件","SHA256"],[[str(SPEC.relative_to(ROOT)),sha(SPEC)],[str(CATALOG.relative_to(ROOT)),sha(CATALOG)]],{"源文件":88,"SHA256":72})
     wb.save(path)
-    return {"enemies":len(enemies),"intents":len(intent_rows),"effects":len(effect_rows),"phases":len(phase_rows)}
+    return {"enemies":21,"ordinary":36,"phase1":42,"phase2":39,"phase3":39,"formations":189}
 
 
 def main():
-    OUT.mkdir(parents=True,exist_ok=True)
-    path=OUT/"GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx"
-    counts=build(path)
-    wb=load_workbook(path,read_only=True)
-    assert wb["01_怪物总表"].max_row==22
-    assert wb["06_意图总表"].max_row==79
-    assert wb["05_首领阶段"].max_row==4
-    wb.close()
+    OUT.mkdir(parents=True,exist_ok=True);path=OUT/"GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx";counts=build(path)
+    wb=load_workbook(path,read_only=True);assert wb["02_27关总表"].max_row==28;assert wb["03_189编制"].max_row==190;assert wb["04_地狱3-1"].max_row==8;wb.close()
     print(json.dumps({"path":str(path),"counts":counts},ensure_ascii=False,indent=2))
 
 
-if __name__=="__main__": main()
+if __name__=="__main__":main()

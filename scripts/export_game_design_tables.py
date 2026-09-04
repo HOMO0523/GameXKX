@@ -463,10 +463,10 @@ def validate(path: Path, expected: dict[str, int], kind: str):
         assert wb["03_分支效果"].max_row == expected["branches"] + 1
         assert wb["04_Pill逐卡"].max_row == expected["pills"] + 1
     else:
-        assert wb["01_装备总表"].max_row == expected["equipment"] + 1
+        assert wb["03_装备模板"].max_row == expected["equipment"] + 1
         assert wb["04_词缀目录"].max_row == expected["affixes"] + 1
-        assert wb["06_套装效果"].max_row == expected["sets"] + 1
-        assert wb["07_宝石"].max_row == expected["gems"] + 1
+        assert wb["05_套装效果"].max_row == expected["sets"] + 1
+        assert wb["02_宝石总表"].max_row == expected["gems"] + 1
     wb.close()
 
 
@@ -475,10 +475,11 @@ def main():
     card_path = OUT / "GameXXK_卡牌设计总表_2026-09-04.xlsx"
     equipment_path = OUT / "GameXXK_装备设计总表_2026-09-04.xlsx"
     card_counts = build_card_workbook(card_path)
-    equipment_counts = build_equipment_workbook(equipment_path)
+    from export_game_equipment_design_table import build_approved_equipment_workbook
+    equipment_counts = build_approved_equipment_workbook(equipment_path)
     validate(card_path, card_counts, "card")
     validate(equipment_path, equipment_counts, "equipment")
-    readme = f"""# GameXXK 当前设计总表与配队分析\n\n- `GameXXK_卡牌设计总表_2026-09-04.xlsx`：{card_counts['cards']}张卡、{card_counts['variants']}个品质版本、{card_counts['branches']}条分支、{card_counts['pills']}条逐卡Pill说明。\n- `GameXXK_装备设计总表_2026-09-04.xlsx`：{equipment_counts['equipment']}个装备模板、{equipment_counts['affixes']}条词缀、{equipment_counts['sets']}条套装描述、{equipment_counts['gems']}种宝石。\n- `GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx`：21种怪物、78个意图、90条意图效果与3个首领第二阶段。\n- `GameXXK_职业配队与伤害期望分析_2026-09-04.html`：3240场队伍组合模拟与2520场正交模拟的交互分析。\n\n卡牌表保留两项未决：`Profession.Sorcerer.RanLingHuanYuan`倍率与`Npc.JinGui.HouXiangTuoShen`对象语义。装备表将玄甲、山河未完成的战斗消费者显式标为待评审。\n\n重新生成：\n\n- `python scripts/export_game_design_tables.py`\n- `python scripts/export_game_enemy_design_table.py`\n- `python scripts/export_game_analysis_html.py`\n"""
+    readme = f"""# GameXXK 当前设计总表与配队分析\n\n- `GameXXK_卡牌设计总表_2026-09-04.xlsx`：{card_counts['cards']}张卡、{card_counts['variants']}个品质版本、{card_counts['branches']}条分支、{card_counts['pills']}条逐卡Pill说明。\n- `GameXXK_装备设计总表_2026-09-04.xlsx`：新装备预算下的百级最终属性、{equipment_counts['equipment']}个模板、{equipment_counts['affixes']}条词缀、{equipment_counts['sets']}条套装描述和{equipment_counts['gems']}种宝石。\n- `GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx`：批准的27关等级/189编制、21怪物、351个难度/阶段意图用例，并单列125级地狱3-1。\n- `GameXXK_职业配队与伤害期望分析_2026-09-04.html`：100级新装备角色对125级地狱3-1的透明设计期望模型。\n\n卡牌表保留两项未决：`Profession.Sorcerer.RanLingHuanYuan`倍率与`Npc.JinGui.HouXiangTuoShen`对象语义。敌人多阶段、固定编制与新装备曲线仍待运行时迁移，因此分析页不再使用旧运行时胜率。\n\n重新生成：\n\n- `python scripts/export_game_design_tables.py`\n- `python scripts/export_game_enemy_design_table.py`\n- `python scripts/export_game_analysis_html.py`\n"""
     (OUT / "README.md").write_text(readme, encoding="utf-8", newline="\n")
     print(json.dumps({"card": str(card_path), "equipment": str(equipment_path), "card_counts": card_counts, "equipment_counts": equipment_counts}, ensure_ascii=False, indent=2))
 
