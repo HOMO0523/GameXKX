@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-05T00:38:00+08:00
-source_commit: eb5297c
-working_tree: companion profession labels complete; Xuanjia/Shanhe runtime and trigger-aware build analysis active
+updated_at: 2026-09-05T03:41:00+08:00
+source_commit: 67cc19b
+working_tree: Xuanjia/Shanhe runtime complete; card tooltip actual-stat and monster production validation active
 ---
+
+> **2026-09-05 玄甲／山河套装运行时完成**：玄甲2／4／6已接入产甲10%、半甲保留、首次格挡80%攻击追击及攻击失血后的全队40%防御护甲＋逐友方援护；山河2／4／6已接入首张主动地势牌抽1、减1气并给其他友方回2内，以及每回合在普通阵师之后追加当前地势。NPC装备进入战斗快照；平原/山崖改全体敌人，治疗/DOT按等级倍率，村寨/洞窟按触发者防御。v35只规范化旧描述符，不补触发。装备Excel的18档、六条批准文本和两条术语已复读通过；冷UBT、聚焦21/21、装备85/85、相邻108/108、迁移15/15均通过。详见docs/production/2026-09-05-xuanjia-shanhe-runtime-acceptance.md。当前继续卡牌tooltip实际数值与怪物阶段/关卡生产验证，配队分析仍未重做。
 
 > **2026-09-05 永久伙伴职业统称完成**：随机中文姓名池已退役，所有界面统一显示刀客、守卫、药师、弓手、法师、阵师；`NameSeed`继续保存但不再影响显示。名册用职业、等级、星级与出战状态区分同职业实例，商店不再显示“随机名（职业）”。冷UBT通过；职业名1/1、名册1/1、三界面组合3/3、存档往返1/1通过。同步确认当前代码的伙伴牌按等级开放：普通职业6/10/14/18，阵师12/14/16/18，百级完整18选5；旧“终身出生6张”文档及配队模拟规格已纠正。详见docs/production/2026-09-05-companion-role-display-name-acceptance.md。
 
