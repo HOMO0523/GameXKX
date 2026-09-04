@@ -100,10 +100,7 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API float GetExpandedLeftExtension(bool bWarehouseOpen);
 	GAMEXXK_API FVector4 GetTownToggleRect(bool bWarehouseOpen);
 	GAMEXXK_API FVector4 GetStoryQuestRect(bool bWarehouseOpen);
-	GAMEXXK_API float ComputeAutomaticHudScale(const FVector2D& LogicalWorkAreaSize);
-	GAMEXXK_API float ComputeEffectiveHudScale(
-		const FVector2D& LogicalWorkAreaSize,
-		int32 HudScalePercent);
+	GAMEXXK_API float ResolveManualHudScale(int32 HudScalePercent);
 	GAMEXXK_API FDesktopOverlayPlacement ComputeDesktopOverlayPlacement(
 		const FVector2D& HostSize,
 		const FVector2D& NormalizedStripAnchor,

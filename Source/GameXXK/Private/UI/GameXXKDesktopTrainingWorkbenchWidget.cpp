@@ -8286,9 +8286,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayAnchorFromPoint
 	}
 	const float Scale = bDesktopResolvedMetricsValid
 		? DesktopResolvedMetrics.Scale
-		: GameXXKDesktopTrainingLayout::ComputeEffectiveHudScale(
-			HostSize,
-			HudScalePercent);
+		: GameXXKDesktopTrainingLayout::ResolveManualHudScale(HudScalePercent);
 	const FVector2D CollapsedStripSize =
 		GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize() * Scale;
 	DesktopWindowPositionNormalized =

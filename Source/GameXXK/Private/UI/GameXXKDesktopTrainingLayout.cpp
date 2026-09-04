@@ -17,9 +17,6 @@ namespace GameXXKDesktopTrainingLayout
 		constexpr float TownToggleGap = 14.0f;
 		constexpr float StoryQuestVerticalGap = 14.0f;
 		constexpr float OpenWarehouseLeftExtension = 148.0f;
-		const FVector2D BaselineLogicalWorkAreaSize(1920.0f, 1020.0f);
-		constexpr float MaximumAutomaticHudScale = 1.25f;
-		constexpr float WorkAreaSafetyMargin = 16.0f;
 	}
 
 	FVector2D FFitTransform::ApplyPoint(const FVector2D& Point) const
@@ -113,32 +110,9 @@ namespace GameXXKDesktopTrainingLayout
 			TownToggleButtonSize.Y);
 	}
 
-	float ComputeAutomaticHudScale(const FVector2D& LogicalWorkAreaSize)
+	float ResolveManualHudScale(const int32 HudScalePercent)
 	{
-		if (LogicalWorkAreaSize.X <= 0.0f || LogicalWorkAreaSize.Y <= 0.0f)
-		{
-			return 1.0f;
-		}
-		const float ResolutionScale = FMath::Min(
-			LogicalWorkAreaSize.X / BaselineLogicalWorkAreaSize.X,
-			LogicalWorkAreaSize.Y / BaselineLogicalWorkAreaSize.Y);
-		const FVector2D SafeSize(
-			FMath::Max(1.0f, LogicalWorkAreaSize.X - WorkAreaSafetyMargin),
-			FMath::Max(1.0f, LogicalWorkAreaSize.Y - WorkAreaSafetyMargin));
-		const float SafeFitScale = FMath::Min(
-			SafeSize.X / ReferenceCanvasSize.X,
-			SafeSize.Y / ReferenceCanvasSize.Y);
-		return FMath::Max(
-			0.05f,
-			FMath::Min3(ResolutionScale, SafeFitScale, MaximumAutomaticHudScale));
-	}
-
-	float ComputeEffectiveHudScale(
-		const FVector2D& LogicalWorkAreaSize,
-		const int32 HudScalePercent)
-	{
-		const float UserScale = HudScalePercent <= 50 ? 0.5f : 1.0f;
-		return ComputeAutomaticHudScale(LogicalWorkAreaSize) * UserScale;
+		return HudScalePercent <= 50 ? 0.5f : 1.0f;
 	}
 
 	FDesktopOverlayPlacement ComputeDesktopOverlayPlacement(
@@ -167,7 +141,7 @@ namespace GameXXKDesktopTrainingLayout
 		Result.PhysicalWorkAreaSize = FVector2D(
 			FMath::Max(1.0f, PhysicalWorkAreaSize.X),
 			FMath::Max(1.0f, PhysicalWorkAreaSize.Y));
-		Result.Scale = ComputeEffectiveHudScale(Result.PhysicalWorkAreaSize, HudScalePercent);
+		Result.Scale = ResolveManualHudScale(HudScalePercent);
 		return Result;
 	}
 

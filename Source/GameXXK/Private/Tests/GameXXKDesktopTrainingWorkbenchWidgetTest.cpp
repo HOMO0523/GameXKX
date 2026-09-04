@@ -1467,32 +1467,52 @@ bool FGameXXKDesktopTrainingCollapsedResourceHibernateTest::RunTest(const FStrin
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
-	FGameXXKDesktopTrainingAdaptiveWindowScaleTest,
-	"GameXXK.DesktopTraining.Workbench.AdaptiveWindowScaleAndDirection",
+	FGameXXKDesktopTrainingManualWindowScaleTest,
+	"GameXXK.DesktopTraining.Workbench.ManualWindowScaleAndDirection",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
-bool FGameXXKDesktopTrainingAdaptiveWindowScaleTest::RunTest(const FString& Parameters)
+bool FGameXXKDesktopTrainingManualWindowScaleTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKDesktopTrainingLayout;
-	TestTrue(TEXT("1920x1020 logical work area keeps the authored 100 percent scale"),
-		FMath::IsNearlyEqual(ComputeAutomaticHudScale(FVector2D(1920.0f, 1020.0f)), 1.0f));
-	TestTrue(TEXT("1366x728 logical work area scales down proportionally"),
-		FMath::IsNearlyEqual(
-			ComputeAutomaticHudScale(FVector2D(1366.0f, 728.0f)),
-			1366.0f / 1920.0f,
-			0.001f));
-	TestTrue(TEXT("2560x1400 logical work area respects the 125 percent ceiling"),
-		FMath::IsNearlyEqual(ComputeAutomaticHudScale(FVector2D(2560.0f, 1400.0f)), 1.25f));
-	TestTrue(TEXT("the player's 50 percent option halves the automatic scale"),
-		FMath::IsNearlyEqual(
-			ComputeEffectiveHudScale(FVector2D(1920.0f, 1020.0f), 50),
-			0.5f));
+	const FVector2D WorkAreas[] = {
+		FVector2D(1280.0f, 680.0f),
+		FVector2D(1536.0f, 816.0f),
+		FVector2D(1920.0f, 1020.0f),
+		FVector2D(2560.0f, 1400.0f)};
+	for (const FVector2D& WorkArea : WorkAreas)
+	{
+		TestTrue(
+			*FString::Printf(
+				TEXT("100 percent remains authored size at %.0fx%.0f"),
+				WorkArea.X,
+				WorkArea.Y),
+			FMath::IsNearlyEqual(ResolveDesktopHudMetrics(WorkArea, 100).Scale, 1.0f));
+		TestTrue(
+			*FString::Printf(
+				TEXT("50 percent remains half size at %.0fx%.0f"),
+				WorkArea.X,
+				WorkArea.Y),
+			FMath::IsNearlyEqual(ResolveDesktopHudMetrics(WorkArea, 50).Scale, 0.5f));
+	}
 	TestEqual(TEXT("collapsed HUD authored size is 1038x202"),
 		GetCollapsedHudLogicalSize(),
 		FVector2D(1038.0f, 202.0f));
 	TestEqual(TEXT("50 percent collapsed HUD resolves to 519x101"),
-		GetCollapsedHudLogicalSize() * ComputeEffectiveHudScale(FVector2D(1920.0f, 1020.0f), 50),
+		GetCollapsedHudLogicalSize()
+			* ResolveDesktopHudMetrics(FVector2D(1920.0f, 1020.0f), 50).Scale,
 		FVector2D(519.0f, 101.0f));
+	const FDesktopOverlayPlacement SmallWorkAreaMaximumHost =
+		ComputeDesktopOverlayPlacement(
+			FVector2D(1536.0f, 816.0f),
+			FVector2D(0.5f, 0.08f),
+			100,
+			true,
+			false,
+			0.0f,
+			true);
+	TestEqual(TEXT("100 percent maximum host may exceed a small work area"),
+		SmallWorkAreaMaximumHost.HudSize,
+		FVector2D(1820.0f, 941.0f));
 
 	const FVector4 WorkArea(0.0f, 0.0f, 1920.0f, 1020.0f);
 	TestEqual(TEXT("a bottom-docked strip expands upward"),
