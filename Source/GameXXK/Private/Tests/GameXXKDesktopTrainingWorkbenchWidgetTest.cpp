@@ -2477,6 +2477,13 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 	TestTrue(TEXT("HUD scale preference is written to config"),
 		GConfig->GetInt(SettingsSection, ScaleKey, PersistedScale, GGameUserSettingsIni));
 	TestEqual(TEXT("HUD scale config persists 75 percent"), PersistedScale, 75);
+	UGameXXKDesktopTrainingWorkbenchWidget* RestoredWidget =
+		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	RestoredWidget->SetMVPSubsystem(Subsystem);
+	RestoredWidget->ConstructForTest();
+	TestEqual(TEXT("a recreated HUD restores the persisted 75 percent option"),
+		RestoredWidget->GetHudScalePercentForTest(),
+		75);
 	return true;
 }
 
