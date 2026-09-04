@@ -2332,6 +2332,53 @@ namespace
 		return ArmorResult.EffectiveArmor;
 	}
 
+	int32 ResolveGeneratedArmorAmount(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId,
+		const int32 BaseArmor)
+	{
+		if (BaseArmor <= 0 || SourceUnitId.IsNone())
+		{
+			return 0;
+		}
+		int64 BonusBasisPoints = 0;
+		for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Runtime.EquipmentEffects)
+		{
+			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
+			if (EffectRuntime.SourceCharacterId == SourceUnitId
+				&& Effect.SourceCharacterId == SourceUnitId
+				&& Effect.ModifierKind == EGameXXKEquipmentModifierKind::ArmorGain
+				&& Effect.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
+			{
+				BonusBasisPoints = FMath::Min<int64>(MAX_int32, BonusBasisPoints + FMath::Max(0, Effect.Magnitude));
+			}
+		}
+		const int64 Multiplier = 10000 + BonusBasisPoints;
+		if (static_cast<int64>(BaseArmor) > static_cast<int64>(MAX_int32) * 10000 / Multiplier)
+		{
+			return MAX_int32;
+		}
+		return static_cast<int32>(FMath::Min<int64>(
+			MAX_int32,
+			(static_cast<int64>(BaseArmor) * Multiplier + 9999) / 10000));
+	}
+
+	int32 GrantGeneratedArmor(
+		FGameXXKCardBattleRuntime& Runtime,
+		FGameXXKCardPlayResult* Result,
+		const FName SourceUnitId,
+		FGameXXKCardCombatUnit& Target,
+		const int32 BaseArmor,
+		const bool bApplyEquipmentAmplification)
+	{
+		const int32 Requested = bApplyEquipmentAmplification
+			? ResolveGeneratedArmorAmount(Runtime, SourceUnitId, BaseArmor)
+			: FMath::Max(0, BaseArmor);
+		return Result
+			? ApplyAndRecordArmor(*Result, SourceUnitId, Target, Requested)
+			: GameXXKCardRules::AddCombatArmor(Target, Requested);
+	}
+
 	const FGameXXKEnemyDefinition* FindWhiteApeStatusGuardDefinition(const FGameXXKCardCombatUnit& Unit)
 	{
 		if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
@@ -7341,7 +7388,7 @@ namespace
 					{
 						if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party)
 						{
-							ApplyAndRecordArmor(InOutResult, FormulaOwner->UnitId, Ally, ResolveDefensePercentArmorAmount(*FormulaOwner, 20, FormulaQuality));
+							GrantGeneratedArmor(InOutRuntime, &InOutResult, FormulaOwner->UnitId, Ally, ResolveDefensePercentArmorAmount(*FormulaOwner, 20, FormulaQuality), true);
 						}
 					}
 				}
@@ -7368,7 +7415,7 @@ namespace
 					{
 						if (QualifiedTarget->Side == EGameXXKCardTargetSide::Party)
 						{
-							ApplyAndRecordArmor(InOutResult, FormulaOwner->UnitId, *QualifiedTarget, ResolveDefensePercentArmorAmount(*FormulaOwner, 20, FormulaQuality));
+							GrantGeneratedArmor(InOutRuntime, &InOutResult, FormulaOwner->UnitId, *QualifiedTarget, ResolveDefensePercentArmorAmount(*FormulaOwner, 20, FormulaQuality), true);
 						}
 						else if (!GrantStatusFromHealerFormula(InOutRuntime, *QualifiedTarget, EGameXXKCardStatus::Vulnerability, 1, OutError, &InOutResult, FormulaOwner->UnitId)) return false;
 					}
@@ -10089,11 +10136,11 @@ namespace
 							EGameXXKCardQuality::Common);
 						if (InOutResult)
 						{
-							ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, Candidate, Armor);
+							GrantGeneratedArmor(InOutRuntime, InOutResult, SourceInstance.OwnerUnitId, Candidate, Armor, true);
 						}
 						else
 						{
-							GameXXKCardRules::AddCombatArmor(Candidate, Armor);
+							GrantGeneratedArmor(InOutRuntime, nullptr, SourceInstance.OwnerUnitId, Candidate, Armor, true);
 						}
 					}
 				}
@@ -10124,17 +10171,23 @@ namespace
 					}
 					if (InOutResult)
 					{
-						ApplyAndRecordArmor(
-							*InOutResult,
+						GrantGeneratedArmor(
+							InOutRuntime,
+							InOutResult,
 							SourceInstance.OwnerUnitId,
 							*Ally,
-							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common));
+							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common),
+							true);
 					}
 					else
 					{
-						GameXXKCardRules::AddCombatArmor(
+						GrantGeneratedArmor(
+							InOutRuntime,
+							nullptr,
+							SourceInstance.OwnerUnitId,
 							*Ally,
-							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common));
+							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common),
+							true);
 					}
 					if (!RegisterPartyReactionUses(
 						InOutRuntime,
@@ -11063,7 +11116,9 @@ namespace
 					}
 					if (ArmorAmount > 0)
 					{
-						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, ArmorAmount);
+						const bool bGeneratedArmor = Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::CurrentArmorPercent
+							&& Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::PriorEffectResult;
+						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, ArmorAmount, bGeneratedArmor);
 					}
 					break;
 				}
@@ -11093,7 +11148,7 @@ namespace
 					}
 					if (ArmorGain > 0)
 					{
-						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain));
+						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain), true);
 					}
 					break;
 				}
@@ -11126,10 +11181,20 @@ namespace
 						static_cast<int32>(Overflow), Effect.Magnitude,
 						Instance.CurrentQuality, InOutRuntime.TeamMaxLevelSnapshot);
 					Target->Mana = static_cast<int32>(FMath::Min<int64>(Target->MaxMana, RawMana));
-					if (!Effect.ResultGroupId.IsNone()) EffectResults.FindOrAdd(Effect.ResultGroupId) = ArmorGain;
 					if (ArmorGain > 0)
 					{
-						ApplyAndRecordArmor(InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain));
+						const int32 ResolvedArmor = GrantGeneratedArmor(
+							InOutRuntime,
+							&InOutResult,
+							Owner->UnitId,
+							*Target,
+							static_cast<int32>(ArmorGain),
+							true);
+						if (!Effect.ResultGroupId.IsNone()) EffectResults.FindOrAdd(Effect.ResultGroupId) = ResolvedArmor;
+					}
+					else if (!Effect.ResultGroupId.IsNone())
+					{
+						EffectResults.FindOrAdd(Effect.ResultGroupId) = 0;
 					}
 					break;
 				}
@@ -13440,7 +13505,7 @@ namespace
 					OutError = TEXT("A triggered armor grant requires a result recorder.");
 					return false;
 				}
-				ApplyAndRecordArmor(*InOutResult, Modifier.SourceUnitId, *Recipient, Definition.Magnitude);
+				GrantGeneratedArmor(InOutRuntime, InOutResult, Modifier.SourceUnitId, *Recipient, Definition.Magnitude, true);
 			}
 			return true;
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase:

@@ -1,0 +1,252 @@
+#include "GameXXKCardRules.h"
+#include "GameXXKEquipmentRules.h"
+
+#include "Misc/AutomationTest.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+namespace GameXXKXuanJiaSetRuntimeTest
+{
+	const FName WearerId(TEXT("Xuan.Wearer"));
+	const FName AllyId(TEXT("Xuan.Ally"));
+	const FName EnemyId(TEXT("Xuan.Enemy"));
+
+	FGameXXKCardCombatUnit MakeUnit(
+		const FName UnitId,
+		const EGameXXKCardTargetSide Side,
+		const EGameXXKCharacterRole Role,
+		const int32 Defense,
+		const int32 Sort)
+	{
+		FGameXXKCardCombatUnit Unit;
+		Unit.UnitId = UnitId;
+		Unit.Side = Side;
+		Unit.Role = Role;
+		Unit.bLiving = true;
+		Unit.HP = Side == EGameXXKCardTargetSide::Party ? 500 : 5000;
+		Unit.MaxHP = Unit.HP;
+		Unit.Mana = Side == EGameXXKCardTargetSide::Party ? 30 : 0;
+		Unit.MaxMana = Unit.Mana;
+		Unit.Attack = 50;
+		Unit.Defense = Defense;
+		Unit.Speed = 10;
+		Unit.StableSortOrder = Sort;
+		Unit.CombatLevel = Side == EGameXXKCardTargetSide::Party ? 100 : 0;
+		return Unit;
+	}
+
+	FGameXXKCardInstance MakeCard(
+		const FName CardId,
+		const FName OwnerId,
+		const int32 Ordinal)
+	{
+		FGameXXKCardInstance Card;
+		Card.InstanceId = FName(*FString::Printf(TEXT("Xuan.Card.%d"), Ordinal));
+		Card.CardId = CardId;
+		Card.CurrentQuality = EGameXXKCardQuality::Common;
+		Card.OwnerUnitId = OwnerId;
+		Card.SourceEntryId = FName(*FString::Printf(TEXT("Xuan.Source.%d"), Ordinal));
+		Card.AcquisitionOrdinal = Ordinal;
+		return Card;
+	}
+
+	FGameXXKEquipmentActiveEffect MakeXuanTwoEffect()
+	{
+		FGameXXKEquipmentActiveEffect Effect;
+		Effect.EffectId = TEXT("Set.XuanJia.2");
+		Effect.SourceCharacterId = WearerId;
+		Effect.Set = EGameXXKEquipmentSet::XuanJia;
+		Effect.RequiredPieces = 2;
+		Effect.Scope = EGameXXKEquipmentSetBonusScope::Owner;
+		Effect.Hook = EGameXXKEquipmentSetBonusHook::Passive;
+		Effect.ModifierKind = EGameXXKEquipmentModifierKind::ArmorGain;
+		Effect.Magnitude = 1000;
+		Effect.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+		Effect.MaxTriggersPerRound = 0;
+		return Effect;
+	}
+
+	bool BuildRuntime(
+		FAutomationTestBase& Test,
+		const FName CardId,
+		const FName CardOwnerId,
+		FGameXXKCardBattleRuntime& OutRuntime)
+	{
+		TArray<FGameXXKCardInstance> Cards;
+		const bool bSorcererCard = CardId.ToString().StartsWith(TEXT("Profession.Sorcerer."));
+		const TArray<FName> SorcererCardIds = {
+			CardId,
+			TEXT("Profession.Sorcerer.YanMuHuTi"),
+			TEXT("Profession.Sorcerer.LieFu"),
+			TEXT("Profession.Sorcerer.ChiYanFengJie"),
+			TEXT("Profession.Sorcerer.SheLingHuo")};
+		const int32 CardCount = bSorcererCard ? SorcererCardIds.Num() : 8;
+		for (int32 Index = 0; Index < CardCount; ++Index)
+		{
+			Cards.Add(MakeCard(bSorcererCard ? SorcererCardIds[Index] : CardId, CardOwnerId, Index));
+		}
+		const TArray<FGameXXKCardCombatUnit> Units = {
+			MakeUnit(WearerId, EGameXXKCardTargetSide::Party, bSorcererCard && CardOwnerId == WearerId ? EGameXXKCharacterRole::Sorcerer : EGameXXKCharacterRole::Guard, 358, 1),
+			MakeUnit(AllyId, EGameXXKCardTargetSide::Party, bSorcererCard && CardOwnerId == AllyId ? EGameXXKCharacterRole::Sorcerer : EGameXXKCharacterRole::Guard, 100, 2),
+			MakeUnit(EnemyId, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 0, 10)};
+		FString Error;
+		if (!Test.TestTrue(
+			TEXT("Xuanjia runtime initializes"),
+			GameXXKCardRules::InitializeCardBattleRuntime(
+				OutRuntime,
+				Cards,
+				Units,
+				EGameXXKCardTerrain::Plain,
+				72005,
+				&Error)))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		OutRuntime.Deck.SharedEnergy = 10;
+		const int32 PrimaryIndex = OutRuntime.Deck.Hand.IndexOfByPredicate([CardId](const FGameXXKCardInstance& Card)
+		{
+			return Card.CardId == CardId;
+		});
+		if (!Test.TestTrue(TEXT("primary Xuanjia test card is in hand"), PrimaryIndex != INDEX_NONE))
+		{
+			return false;
+		}
+		OutRuntime.Deck.Hand.Swap(0, PrimaryIndex);
+		const FGameXXKEquipmentActiveEffect Effect = MakeXuanTwoEffect();
+		if (!Test.TestTrue(TEXT("Xuanjia two-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
+		{
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = OutRuntime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.ActiveEffect = Effect;
+		RuntimeEffect.SourceCharacterId = WearerId;
+		if (!Test.TestTrue(TEXT("Xuanjia fixture validates"), GameXXKCardRules::ValidateCardBattleRuntime(OutRuntime, &Error)))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		return true;
+	}
+
+	FGameXXKCardCombatUnit* FindUnit(FGameXXKCardBattleRuntime& Runtime, const FName UnitId)
+	{
+		return Runtime.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
+		});
+	}
+
+	const FGameXXKCardArmorResult* FindArmorPacket(
+		const FGameXXKCardPlayResult& Result,
+		const FName TargetUnitId)
+	{
+		return Result.ArmorResults.FindByPredicate([TargetUnitId](const FGameXXKCardArmorResult& Armor)
+		{
+			return Armor.TargetUnitId == TargetUnitId;
+		});
+	}
+
+	bool Resolve(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& Runtime,
+		const FName TargetId,
+		FGameXXKCardPlayResult& OutResult,
+		const TCHAR* Label)
+	{
+		FString Error;
+		const bool bResolved = GameXXKCardRules::ResolveCardPlay(
+			Runtime,
+			Runtime.Deck.Hand[0].InstanceId,
+			TargetId,
+			OutResult,
+			&Error);
+		Test.TestTrue(FString::Printf(TEXT("%s resolves: %s"), Label, *Error), bResolved);
+		return bResolved;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKXuanJiaArmorGenerationTest,
+	"GameXXK.Equipment.XuanJia.ArmorGeneration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaArmorGenerationTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, Runtime)) return false;
+		FGameXXKCardPlayResult Result;
+		if (Resolve(*this, Runtime, WearerId, Result, TEXT("wearer single Armor")))
+		{
+			const FGameXXKCardArmorResult* Armor = FindArmorPacket(Result, WearerId);
+			TestNotNull(TEXT("single Armor result exists"), Armor);
+			if (Armor) TestEqual(TEXT("80 percent source Armor becomes 316"), Armor->RequestedArmor, 316);
+		}
+	}
+
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Guard.LieZhenChengFeng"), WearerId, Runtime)) return false;
+		FGameXXKCardPlayResult Result;
+		if (Resolve(*this, Runtime, NAME_None, Result, TEXT("wearer group Armor")))
+		{
+			const FGameXXKCardArmorResult* Armor = FindArmorPacket(Result, WearerId);
+			TestNotNull(TEXT("group Armor result exists"), Armor);
+			if (Armor) TestEqual(TEXT("140 percent source Armor becomes 553"), Armor->RequestedArmor, 553);
+		}
+	}
+
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), AllyId, Runtime)) return false;
+		FGameXXKCardPlayResult Result;
+		if (Resolve(*this, Runtime, AllyId, Result, TEXT("foreign caster Armor")))
+		{
+			const FGameXXKCardArmorResult* Armor = FindArmorPacket(Result, AllyId);
+			TestNotNull(TEXT("foreign Armor result exists"), Armor);
+			if (Armor) TestEqual(TEXT("another caster's Armor is not amplified"), Armor->RequestedArmor, 80);
+		}
+	}
+
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Profession.Sorcerer.XingHuoHuiShou"), WearerId, Runtime)) return false;
+		FGameXXKCardPlayResult Result;
+		if (Resolve(*this, Runtime, NAME_None, Result, TEXT("resolved Armor copy")))
+		{
+			const FGameXXKCardArmorResult* Original = FindArmorPacket(Result, WearerId);
+			const FGameXXKCardArmorResult* Copy = FindArmorPacket(Result, AllyId);
+			TestNotNull(TEXT("original overflow Armor exists"), Original);
+			TestNotNull(TEXT("copied overflow Armor exists"), Copy);
+			if (Original && Copy)
+			{
+				TestEqual(TEXT("overflow Armor is amplified once"), Original->RequestedArmor, 22);
+				TestEqual(TEXT("PriorEffectResult copy is not amplified twice"), Copy->RequestedArmor, Original->RequestedArmor);
+			}
+		}
+	}
+
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Profession.Sorcerer.LingYanLianDan"), WearerId, Runtime)) return false;
+		FGameXXKCardCombatUnit* Wearer = FindUnit(Runtime, WearerId);
+		if (!TestNotNull(TEXT("current-Armor copy fixture retains wearer"), Wearer)) return false;
+		Wearer->Armor = 100;
+		FGameXXKCardPlayResult Result;
+		if (Resolve(*this, Runtime, NAME_None, Result, TEXT("current Armor copy")))
+		{
+			const FGameXXKCardArmorResult* Copy = FindArmorPacket(Result, WearerId);
+			TestNotNull(TEXT("current Armor copy packet exists"), Copy);
+			if (Copy) TestEqual(TEXT("current-Armor copy is not amplified"), Copy->RequestedArmor, 100);
+			const FGameXXKCardCombatUnit* ResolvedWearer = FindUnit(Runtime, WearerId);
+			TestEqual(TEXT("current Armor doubles exactly"), ResolvedWearer ? ResolvedWearer->Armor : INDEX_NONE, 200);
+		}
+	}
+
+	return true;
+}
+
+#endif
