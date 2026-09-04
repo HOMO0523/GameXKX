@@ -1003,9 +1003,9 @@ bool FGameXXKDesktopTrainingReferenceGeometryTest::RunTest(const FString& Parame
 {
 	using namespace GameXXKDesktopTrainingLayout;
 	TestEqual(TEXT("reference canvas is the approved UI Master size"), GetReferenceCanvasSize(), FVector2D(1672.0f, 941.0f));
-	TestEqual(TEXT("warehouse matches the selected layout"), GetWarehouseRect(), FVector4(10.0f, 17.0f, 363.0f, 908.0f));
+	TestEqual(TEXT("warehouse matches the backpack and navigation height"), GetWarehouseRect(), FVector4(10.0f, 244.0f, 363.0f, 681.0f));
 	TestEqual(TEXT("center shell matches the selected layout"), GetCenterShellRect(), FVector4(386.0f, 17.0f, 970.0f, 908.0f));
-	TestEqual(TEXT("right shell matches the selected layout"), GetRightShellRect(), FVector4(1369.0f, 17.0f, 291.0f, 908.0f));
+	TestEqual(TEXT("right shell matches the backpack and navigation height"), GetRightShellRect(), FVector4(1369.0f, 244.0f, 291.0f, 681.0f));
 	TestEqual(TEXT("expanded idle strip preserves the collapsed dock footprint"), GetIdleStripRect(), FVector4(318.0f, 0.0f, 1038.0f, 202.0f));
 	TestEqual(TEXT("backpack surface matches the selected layout"), GetContentRect(), FVector4(397.0f, 244.0f, 945.0f, 533.0f));
 	TestEqual(TEXT("navigation matches the selected layout"), GetNavigationRect(), FVector4(397.0f, 788.0f, 945.0f, 137.0f));
@@ -1199,10 +1199,10 @@ bool FGameXXKDesktopTrainingWorkbenchInnerGeometryTest::RunTest(const FString& P
 		}
 	};
 
-	TestNamedRect(TEXT("WarehouseSlot_0"), FVector4(30.0f, 142.0f, 68.0f, 68.0f));
+	TestNamedRect(TEXT("WarehouseSlot_0"), FVector4(6.0f, 0.0f, 68.0f, 68.0f));
 	TestNamedRect(TEXT("EmbeddedApprovedBackpack"), FVector4(-311.0f, -173.0f, 1920.0f, 1080.0f));
 	TestNamedRect(TEXT("BackpackGoldIcon"), FVector4(1034.0f, 291.0f, 30.0f, 30.0f));
-	TestNamedRect(TEXT("TrainingNode_1"), FVector4(1473.0f, 194.0f, 82.0f, 82.0f));
+	TestNamedRect(TEXT("TrainingNode_1"), FVector4(1482.0f, 400.0f, 64.0f, 64.0f));
 	TestNamedRect(TEXT("BottomNavigationButton_0"), FVector4(421.0f, 800.0f, 151.0f, 112.0f));
 
 	UButton* NavigationButton = Widget->WidgetTree
@@ -1751,7 +1751,7 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	const FVector2D RuntimeFixedHostSize = Widget->GetDesktopWindowSizeForHost();
 	TestEqual(TEXT("desktop mode reserves one maximum transparent native host"),
 		RuntimeFixedHostSize,
-		FVector2D(1820.0f, 993.0f));
+		PhysicalWorkArea);
 	Widget->HandleActionClicked(60);
 	Widget->TickForTest(0.0f);
 	TestTrue(TEXT("runtime Tab expansion reuses the resolved session scale"),
@@ -1867,12 +1867,10 @@ bool FGameXXKDesktopTrainingTransparentOverlayHostTest::RunTest(const FString& P
 		GetExpandedLeftExtension(true),
 		148.0f);
 	const FVector4 OpenTownRect = GetTownToggleRect(true);
-	const FVector4 ShiftedWarehouseRect = GetWarehouseRect()
-		+ FVector4(GetExpandedLeftExtension(true), 0.0f, 0.0f, 0.0f);
-	TestTrue(TEXT("open-warehouse town button sits immediately left of the shifted warehouse"),
+	TestTrue(TEXT("open-warehouse town button sits immediately left of the root-canvas warehouse"),
 		FMath::IsNearlyEqual(
 			OpenTownRect.X + OpenTownRect.Z + 14.0f,
-			ShiftedWarehouseRect.X));
+			GetWarehouseRect().X));
 	const FDesktopOverlayPlacement ClosedWarehousePlacement = ComputeDesktopOverlayPlacement(
 		HostSize,
 		FVector2D(0.8f, 0.08f),
@@ -4419,8 +4417,16 @@ bool FGameXXKDesktopTrainingCarriedRightClickCancelTest::RunTest(const FString& 
 	Widget->TickForTest(0.0f);
 	TestEqual(TEXT("pickup safe boundary performs exactly one rebuild"),
 		Widget->GetProgrammaticLayoutBuildCountForTest(), BuildCountBeforePickup + 1);
-	TestNotNull(TEXT("pickup rebuild owns a carried visual"),
-		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage")) : nullptr);
+	UWidget* CarriedVisual = Widget->WidgetTree
+		? Widget->WidgetTree->FindWidget(TEXT("DesktopCarriedItemImage"))
+		: nullptr;
+	TestNotNull(TEXT("pickup rebuild owns a carried visual"), CarriedVisual);
+	TestEqual(
+		TEXT("carried visual uses the independent cursor canvas"),
+		CarriedVisual && CarriedVisual->GetParent()
+			? CarriedVisual->GetParent()->GetFName()
+			: NAME_None,
+		FName(TEXT("DesktopCursorCanvas")));
 
 	Embedded = Widget->WidgetTree
 		? Cast<UGameXXKInventoryWindowWidget>(Widget->WidgetTree->FindWidget(TEXT("EmbeddedApprovedBackpack")))

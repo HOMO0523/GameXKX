@@ -14,6 +14,7 @@
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
 #include "Components/ScaleBox.h"
+#include "Components/ScrollBox.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
@@ -1587,7 +1588,7 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonDown(
 					StripPoint.Y * GameXXKDesktopTrainingLayout::GetCollapsedHudLogicalSize().Y
 						/ FMath::Max(1.0f, DesktopOverlayPlacement.StripSize.Y));
 			const float ChestControlLocalX = bBackpackExpanded
-				? GameXXKDesktopTrainingLayout::GetIdleStripRect().Z - 72.0f
+				? GameXXKDesktopTrainingLayout::GetIdleStripChestControlX()
 				: 953.0f;
 			const FVector4 ExpandedControls[] = {
 				FVector4(ChestControlLocalX - 60.0f, 18.0f, 52.0f, 52.0f),
@@ -1637,8 +1638,34 @@ FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnMouseButtonUp(
 	if (bDesktopHudDragging && InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
 		UpdateDesktopOverlayAnchorFromPointer();
+		const FVector2D PreviousBodyOffset = DesktopOverlayPlacement.BodyOffset;
 		bDesktopHudDragging = false;
+		const bool bPreviousExpandUpward = bExpandUpward;
+		if (bBackpackExpanded)
+		{
+			UpdateExpansionDirectionFromNativeWindow();
+		}
 		SaveDesktopNativeWindowPosition();
+		if (bBackpackExpanded
+			&& (bExpandUpward != bPreviousExpandUpward
+				|| !DesktopOverlayPlacement.BodyOffset.Equals(PreviousBodyOffset, 0.01f)))
+		{
+			if (UWorld* World = GetWorld())
+			{
+				World->GetTimerManager().SetTimerForNextTick(
+					[WeakThis = TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget>(this)]()
+					{
+						if (UGameXXKDesktopTrainingWorkbenchWidget* Widget = WeakThis.Get())
+						{
+							Widget->RefreshLayout();
+						}
+					});
+			}
+			else
+			{
+				RefreshLayout();
+			}
+		}
 		return FReply::Handled().ReleaseMouseCapture();
 	}
 	return Super::NativeOnMouseButtonUp(InGeometry, InMouseEvent);
@@ -3252,6 +3279,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
 	{
 		return;
 	}
+	const FVector2D BodyOffset = DesktopOverlayPlacement.BodyOffset;
+	if (BodyOffset.IsNearlyZero())
+	{
+		return;
+	}
 	for (int32 ChildIndex = 0; ChildIndex < RootCanvas->GetChildrenCount(); ++ChildIndex)
 	{
 		UWidget* Child = RootCanvas->GetChildAt(ChildIndex);
@@ -3269,17 +3301,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
 		{
 			continue;
 		}
-		const UCanvasPanelSlot* CanvasSlot = Cast<UCanvasPanelSlot>(Child->Slot);
-		if (!CanvasSlot)
-		{
-			continue;
-		}
-		const FVector2D Position = CanvasSlot->GetPosition();
-		if (GameXXKDesktopTrainingLayout::ShouldOffsetExpandedCenterWidget(Position))
-		{
-			Child->SetRenderTranslation(
-				GameXXKDesktopTrainingLayout::GetUpwardContentOffset());
-		}
+		Child->SetRenderTranslation(BodyOffset);
 	}
 }
 
@@ -3364,8 +3386,14 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 			UCanvasPanel::StaticClass(),
 			TEXT("DesktopTrainingDesignCanvas"));
 	}
+	if (!DesktopCursorCanvas)
+	{
+		DesktopCursorCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+			UCanvasPanel::StaticClass(),
+			TEXT("DesktopCursorCanvas"));
+	}
 	if (!DesktopOverlayRootCanvas || !RootScaleBox || !ReferenceCanvasBox
-		|| !HudDesignCanvas || !RootCanvas)
+		|| !HudDesignCanvas || !RootCanvas || !DesktopCursorCanvas)
 	{
 		return;
 	}
@@ -3373,6 +3401,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	RootScaleBox->SetStretchDirection(EStretchDirection::Both);
 	HudDesignCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	DesktopCursorCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	const FVector2D DesignCanvasSize = GetCurrentDesignCanvasSize();
 	ReferenceCanvasBox->SetWidthOverride(DesignCanvasSize.X);
 	ReferenceCanvasBox->SetHeightOverride(DesignCanvasSize.Y);
@@ -3398,11 +3427,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 		DesktopHudCanvasSlot->SetAnchors(FAnchors(0.0f, 0.0f));
 		DesktopHudCanvasSlot->SetAlignment(FVector2D::ZeroVector);
 		DesktopHudCanvasSlot->SetAutoSize(false);
+		DesktopHudCanvasSlot->SetZOrder(1);
+	}
+	if (DesktopCursorCanvas->GetParent() != DesktopOverlayRootCanvas)
+	{
+		DesktopCursorCanvas->RemoveFromParent();
+		DesktopCursorCanvasSlot = DesktopOverlayRootCanvas->AddChildToCanvas(DesktopCursorCanvas);
+	}
+	else
+	{
+		DesktopCursorCanvasSlot = Cast<UCanvasPanelSlot>(DesktopCursorCanvas->Slot);
+	}
+	if (DesktopCursorCanvasSlot)
+	{
+		DesktopCursorCanvasSlot->SetAnchors(FAnchors(0.0f, 0.0f));
+		DesktopCursorCanvasSlot->SetAlignment(FVector2D::ZeroVector);
+		DesktopCursorCanvasSlot->SetAutoSize(false);
+		DesktopCursorCanvasSlot->SetPosition(FVector2D::ZeroVector);
+		DesktopCursorCanvasSlot->SetZOrder(20);
 	}
 	++ProgrammaticLayoutBuildCount;
 	WidgetTree->RootWidget = DesktopOverlayRootCanvas;
 	UpdateDesktopOverlayPlacement(DesktopOverlayHostSize);
 	HudDesignCanvas->ClearChildren();
+	DesktopCursorCanvas->ClearChildren();
 	RootCanvas->RemoveFromParent();
 	RootCanvasDesignSlot = HudDesignCanvas->AddChildToCanvas(RootCanvas);
 	if (RootCanvasDesignSlot)
@@ -3546,7 +3594,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 		BuildCarriedItemVisual();
 	}
 	BuildNoticeRail();
-	if (bBackpackExpanded && bExpandUpward)
+	if (bBackpackExpanded && !DesktopOverlayPlacement.BodyOffset.IsNearlyZero())
 	{
 		ApplyUpwardExpansionTransforms();
 	}
@@ -3555,7 +3603,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWorkbenchShell()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
 {
-	if (!HudDesignCanvas || !bBackpackExpanded)
+	if (!RootCanvas || !bBackpackExpanded)
 	{
 		return;
 	}
@@ -3576,7 +3624,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
 	TownToggleButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 	TownToggleButton->SetIsEnabled(!bTownMapTravelPending);
 	AddCanvasRect(
-		HudDesignCanvas,
+		RootCanvas,
 		TownToggleButton.Get(),
 		DesktopOverlayPlacement.TownToggleRect);
 	if (UCanvasPanelSlot* TownCanvasSlot =
@@ -3589,7 +3637,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
 {
-	if (!HudDesignCanvas || !bBackpackExpanded)
+	if (!RootCanvas || !bBackpackExpanded)
 	{
 		return;
 	}
@@ -3606,7 +3654,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
 	StoryQuestButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
 	StoryQuestButton->SetIsEnabled(!bTownMapTravelPending);
 	AddCanvasRect(
-		HudDesignCanvas,
+		RootCanvas,
 		StoryQuestButton.Get(),
 		DesktopOverlayPlacement.StoryQuestRect);
 	if (UCanvasPanelSlot* StoryCanvasSlot =
@@ -4527,7 +4575,23 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCarriedItemVisual()
 	CarriedItemImage->SetColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.92f));
 	CarriedItemImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 	CarriedItemImage->SetIsEnabled(false);
-	AddCanvas(RootCanvas, CarriedItemImage.Get(), FVector2D(800.0f, 470.0f), FVector2D(56.0f, 56.0f));
+	if (PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
+		&& DesktopCursorCanvas)
+	{
+		AddCanvas(
+			DesktopCursorCanvas,
+			CarriedItemImage.Get(),
+			FVector2D::ZeroVector,
+			FVector2D(56.0f, 56.0f));
+	}
+	else
+	{
+		AddCanvas(
+			RootCanvas,
+			CarriedItemImage.Get(),
+			FVector2D(800.0f, 470.0f),
+			FVector2D(56.0f, 56.0f));
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
@@ -4811,7 +4875,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	const int32 NormalChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::NormalChest) : 0;
 	const int32 AdvancedChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::AdvancedChest) : 0;
 	const float ChestControlX = bBackpackExpanded
-		? StripRect.X + IdleSummaryTabX
+		? StripRect.X + GameXXKDesktopTrainingLayout::GetIdleStripChestControlX()
 		: 953.0f;
 	const float ChestControlY = bBackpackExpanded ? StripRect.Y : 0.0f;
 	const struct FChestButtonSpec
@@ -5868,9 +5932,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 {
 	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("WarehousePanel"));
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetWarehouseRect());
+	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("WarehouseShelfDivider"));
+	FSlateBrush ShelfDividerBrush;
+	ShelfDividerBrush.DrawAs = ESlateBrushDrawType::Box;
+	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
+	ShelfDivider->SetBrush(ShelfDividerBrush);
+	AddCanvas(RootCanvas, ShelfDivider, FVector2D(20.0f, 786.0f), FVector2D(343.0f, 2.0f));
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("仓库")), 28, Ink);
-	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 34.0f), FVector2D(323.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 30.0f));
+	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 258.0f), FVector2D(323.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 254.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* RuntimeState = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const int32 WarehousePageCount = GetWarehousePageCountForTest();
@@ -5899,10 +5970,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 			PageTabIndex < WarehousePageCount
 				? FString::Printf(TEXT("仓库第 %d 页"), PageTabIndex + 1)
 				: TEXT("需要容量分支的仓库页天赋")));
-		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 50.0f, 84.0f), FVector2D(44.0f, 38.0f));
+		AddCanvas(RootCanvas, PageTab, FVector2D(30.0f + PageTabIndex * 50.0f, 300.0f), FVector2D(44.0f, 38.0f));
 		ActionButtons.Add(PageTab);
 		WarehousePageButtons.Add(PageTab);
 	}
+	UScrollBox* WarehouseScroll = WidgetTree->ConstructWidget<UScrollBox>(
+		UScrollBox::StaticClass(),
+		TEXT("WarehouseSlotScrollBox"));
+	WarehouseScroll->SetOrientation(EOrientation::Orient_Vertical);
+	WarehouseScroll->SetAnimateWheelScrolling(true);
+	WarehouseScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	USizeBox* WarehouseGridReference = WidgetTree->ConstructWidget<USizeBox>(
+		USizeBox::StaticClass(),
+		TEXT("WarehouseSlotGridReference"));
+	WarehouseGridReference->SetWidthOverride(323.0f);
+	WarehouseGridReference->SetHeightOverride(648.0f);
+	UCanvasPanel* WarehouseGridCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
+		UCanvasPanel::StaticClass(),
+		TEXT("WarehouseSlotGridCanvas"));
+	WarehouseGridReference->SetContent(WarehouseGridCanvas);
+	WarehouseScroll->AddChild(WarehouseGridReference);
+	AddCanvas(
+		RootCanvas,
+		WarehouseScroll,
+		FVector2D(20.0f, 342.0f),
+		FVector2D(343.0f, 430.0f));
 	for (int32 SlotIndex = 0; SlotIndex < WarehousePageSize; ++SlotIndex)
 	{
 		const int32 PhysicalSlotIndex = GetWarehousePageIndexForTest() * WarehousePageSize + SlotIndex;
@@ -5919,7 +6011,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		}
 		const int32 Column = SlotIndex % WarehouseColumns;
 		const int32 Row = SlotIndex / WarehouseColumns;
-		const FVector2D CellPosition(30.0f + Column * 78.0f, 142.0f + Row * 72.0f);
+		const FVector2D CellPosition(6.0f + Column * 78.0f, Row * 72.0f);
 		const FVector2D CellSize(68.0f, 68.0f);
 		const FName CellName(*FString::Printf(TEXT("WarehouseSlot_%d"), SlotIndex));
 		UGameXXKDesktopTrainingActionButton* SlotButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
@@ -5970,7 +6062,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 				SlotButton->SetToolTipText(FText::FromString(TEXT("该仓库格尚未由永久天赋解锁")));
 			}
 		}
-		AddCanvas(RootCanvas, SlotButton, CellPosition, CellSize);
+		AddCanvas(WarehouseGridCanvas, SlotButton, CellPosition, CellSize);
 		ActionButtons.Add(SlotButton);
 	}
 	const int32 WarehouseCount = GetWarehouseOccupancyForTest();
@@ -5979,7 +6071,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 		GetWarehousePageIndexForTest() + 1,
 		GetWarehousePageCountForTest(),
 		WarehousePageSize)), 15, Ink, TEXT("WarehousePageSummaryText"));
-	AddCanvas(RootCanvas, WarehousePageText.Get(), FVector2D(30.0f, 806.0f), FVector2D(300.0f, 24.0f));
+	AddCanvas(RootCanvas, WarehousePageText.Get(), FVector2D(30.0f, 792.0f), FVector2D(300.0f, 24.0f));
 	const TSet<FGameXXKDesktopInventoryEntryKey> BatchExclusions = BuildBatchTransferExclusions();
 	FGameXXKDesktopInventoryBatchTransferRequest ToBackpackRequest;
 	ToBackpackRequest.FromContainer = EGameXXKDesktopItemContainer::Warehouse;
@@ -6007,7 +6099,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	WarehouseBatchToBackpackButton->SetIsEnabled(RuntimeState
 		&& FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
 			*RuntimeState, ToBackpackRequest));
-	AddCanvas(RootCanvas, WarehouseBatchToBackpackButton.Get(), FVector2D(30.0f, 842.0f), FVector2D(145.0f, 42.0f));
+	AddCanvas(RootCanvas, WarehouseBatchToBackpackButton.Get(), FVector2D(30.0f, 824.0f), FVector2D(145.0f, 42.0f));
 	ActionButtons.Add(WarehouseBatchToBackpackButton);
 
 	BackpackBatchToWarehouseButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
@@ -6023,13 +6115,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	BackpackBatchToWarehouseButton->SetIsEnabled(RuntimeState
 		&& FGameXXKDesktopInventoryRules::CanBatchTransferCurrentWarehousePage(
 			*RuntimeState, ToWarehouseRequest));
-	AddCanvas(RootCanvas, BackpackBatchToWarehouseButton.Get(), FVector2D(195.0f, 842.0f), FVector2D(145.0f, 42.0f));
+	AddCanvas(RootCanvas, BackpackBatchToWarehouseButton.Get(), FVector2D(195.0f, 824.0f), FVector2D(145.0f, 42.0f));
 	ActionButtons.Add(BackpackBatchToWarehouseButton);
 	WarehouseFooterText = MakeText(WidgetTree, FText::FromString(FString::Printf(
 		TEXT("仓库物品 %d / %d\n不显示角色身份卡"),
 		WarehouseCount,
 		WarehouseCapacity)), 16, Ink, TEXT("WarehouseFooterText"));
-	AddCanvas(RootCanvas, WarehouseFooterText.Get(), FVector2D(30.0f, 888.0f), FVector2D(310.0f, 32.0f));
+	AddCanvas(RootCanvas, WarehouseFooterText.Get(), FVector2D(30.0f, 874.0f), FVector2D(310.0f, 32.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
@@ -6398,9 +6490,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("ToolsPanel"));
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
+	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("ToolsShelfDivider"));
+	FSlateBrush ShelfDividerBrush;
+	ShelfDividerBrush.DrawAs = ESlateBrushDrawType::Box;
+	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
+	ShelfDivider->SetBrush(ShelfDividerBrush);
+	AddCanvas(RootCanvas, ShelfDivider, FVector2D(1379.0f, 786.0f), FVector2D(271.0f, 2.0f));
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
+	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 258.0f), FVector2D(255.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 254.0f));
 	FGameXXKTalentProjection ToolTalentProjection;
 	const bool bToolsUnlocked = Subsystem
 		&& FGameXXKTalentRules::BuildProjection(
@@ -6425,8 +6524,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		AddCanvas(
 			RootCanvas,
 			LockedPanel,
-			FVector2D(1386.0f, 76.0f),
-			FVector2D(258.0f, 810.0f));
+			FVector2D(1386.0f, 300.0f),
+			FVector2D(258.0f, 460.0f));
 		if (UCanvasPanelSlot* LockedSlot = Cast<UCanvasPanelSlot>(LockedPanel->Slot))
 		{
 			LockedSlot->SetZOrder(100);
@@ -6450,7 +6549,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 			FMargin(0.08f)));
 		ToolButton->SetBackgroundColor(FLinearColor::White);
 		ToolButton->SetContent(MakeButtonText(WidgetTree, ToolLabels[ToolIndex], 13, Ink));
-		AddCanvas(RootCanvas, ToolButton, FVector2D(1385.0f + ToolIndex * 52.0f, 84.0f), FVector2D(47.0f, 40.0f));
+		AddCanvas(RootCanvas, ToolButton, FVector2D(1385.0f + ToolIndex * 52.0f, 300.0f), FVector2D(47.0f, 40.0f));
 		ActionButtons.Add(ToolButton);
 	}
 	const FGameXXKToolProgress Progress = Subsystem
@@ -6466,9 +6565,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		15,
 		Ink,
 		TEXT("ToolProgressText"));
-	AddCanvas(RootCanvas, ToolProgressText.Get(), FVector2D(1390.0f, 126.0f), FVector2D(245.0f, 22.0f));
+	AddCanvas(RootCanvas, ToolProgressText.Get(), FVector2D(1390.0f, 342.0f), FVector2D(245.0f, 22.0f));
 	UBorder* GridFrame = MakePanel(WidgetTree, PanelAlt, TEXT("ToolInputGridFrame"));
-	AddCanvas(RootCanvas, GridFrame, FVector2D(1385.0f, 148.0f), FVector2D(260.0f, 360.0f));
+	AddCanvas(RootCanvas, GridFrame, FVector2D(1385.0f, 366.0f), FVector2D(260.0f, 238.0f));
 	for (int32 SlotIndex = 0; SlotIndex < ToolSlotCount; ++SlotIndex)
 	{
 		const int32 Column = SlotIndex % 3;
@@ -6507,7 +6606,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		AddCanvas(
 			RootCanvas,
 			ToolSlotButton,
-			FVector2D(1408.0f + Column * 72.0f, 184.0f + Row * 76.0f),
+			FVector2D(1408.0f + Column * 72.0f, 382.0f + Row * 72.0f),
 			FVector2D(64.0f, 64.0f));
 		ActionButtons.Add(ToolSlotButton);
 	}
@@ -6519,7 +6618,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	ToolConfirmButton->SetBackgroundColor(FLinearColor::White);
 	ToolConfirmButton->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("确定")), 20, Ink));
 	ToolConfirmButton->SetIsEnabled(GetOccupiedToolSlotCountForTest() > 0);
-	AddCanvas(RootCanvas, ToolConfirmButton.Get(), FVector2D(1430.0f, 450.0f), FVector2D(170.0f, 54.0f));
+	AddCanvas(RootCanvas, ToolConfirmButton.Get(), FVector2D(1430.0f, 824.0f), FVector2D(170.0f, 54.0f));
 	ActionButtons.Add(ToolConfirmButton);
 
 	auto AddToolControl = [&](const TCHAR* Name, const int32 ActionId, const FString& Label, const float X, const float Y, const float Width)
@@ -6536,31 +6635,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	if (ActiveToolMode == EGameXXKDesktopToolMode::Combine)
 	{
 		AddToolControl(TEXT("ToolCombineKind"), 310,
-			ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment ? TEXT("装备") : TEXT("宝石"), 1388.0f, 510.0f, 72.0f);
-		AddToolControl(TEXT("ToolAutoFill"), 311, TEXT("自动放置"), 1464.0f, 510.0f, 86.0f);
+			ActiveToolCombineKind == EGameXXKToolCombineKind::Equipment ? TEXT("装备") : TEXT("宝石"), 1388.0f, 700.0f, 72.0f);
+		AddToolControl(TEXT("ToolAutoFill"), 311, TEXT("自动放置"), 1464.0f, 700.0f, 86.0f);
 		const bool bIncludeWarehouse = Subsystem && Subsystem->GetRuntimeState().DesktopInventory.bToolAutoFillIncludesWarehouse;
-		AddToolControl(TEXT("ToolIncludeWarehouse"), 312, bIncludeWarehouse ? TEXT("仓库✓") : TEXT("仓库×"), 1554.0f, 510.0f, 82.0f);
+		AddToolControl(TEXT("ToolIncludeWarehouse"), 312, bIncludeWarehouse ? TEXT("仓库✓") : TEXT("仓库×"), 1554.0f, 700.0f, 82.0f);
 	}
 	if (Subsystem)
 	{
-		AddToolControl(TEXT("ToolCraftLevelDown"), 313, TEXT("-"), 1400.0f, 550.0f, 36.0f);
+		AddToolControl(TEXT("ToolCraftLevelDown"), 313, TEXT("-"), 1400.0f, 738.0f, 36.0f);
 		ToolCraftLevelText = MakeText(
 			WidgetTree,
 			FText::FromString(FString::Printf(TEXT("合成等级 %d"), Progress.SelectedCraftingLevel)),
 			14,
 			Ink,
 			TEXT("ToolCraftLevelText"));
-		AddCanvas(RootCanvas, ToolCraftLevelText.Get(), FVector2D(1442.0f, 556.0f), FVector2D(130.0f, 24.0f));
-		AddToolControl(TEXT("ToolCraftLevelUp"), 314, TEXT("+"), 1590.0f, 550.0f, 36.0f);
+		AddCanvas(RootCanvas, ToolCraftLevelText.Get(), FVector2D(1442.0f, 744.0f), FVector2D(130.0f, 24.0f));
+		AddToolControl(TEXT("ToolCraftLevelUp"), 314, TEXT("+"), 1590.0f, 738.0f, 36.0f);
 		if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge && Subsystem->GetRuntimeState().EquipmentCollection.PendingReforge.bActive)
 		{
-			AddToolControl(TEXT("ToolReforgeAccept"), 315, TEXT("采用新词缀"), 1400.0f, 590.0f, 108.0f);
-			AddToolControl(TEXT("ToolReforgeKeep"), 316, TEXT("保留原词缀"), 1516.0f, 590.0f, 108.0f);
+			AddToolControl(TEXT("ToolReforgeAccept"), 315, TEXT("采用新词缀"), 1400.0f, 700.0f, 108.0f);
+			AddToolControl(TEXT("ToolReforgeKeep"), 316, TEXT("保留原词缀"), 1516.0f, 700.0f, 108.0f);
 		}
 		if (ActiveToolMode == EGameXXKDesktopToolMode::Socket)
 		{
-			AddToolControl(TEXT("ToolSocketPrevious"), 317, TEXT("孔位-"), 1400.0f, 590.0f, 72.0f);
-			AddToolControl(TEXT("ToolSocketNext"), 318, FString::Printf(TEXT("孔位%d +"), SelectedToolSocketIndex + 1), 1480.0f, 590.0f, 96.0f);
+			AddToolControl(TEXT("ToolSocketPrevious"), 317, TEXT("孔位-"), 1400.0f, 700.0f, 72.0f);
+			AddToolControl(TEXT("ToolSocketNext"), 318, FString::Printf(TEXT("孔位%d +"), SelectedToolSocketIndex + 1), 1480.0f, 700.0f, 96.0f);
 		}
 	}
 
@@ -6574,17 +6673,24 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	case EGameXXKDesktopToolMode::Socket: Description = TEXT("镶嵌：格0放装备、格1放宝石；替换会返还原宝石。" ); break;
 	default: break;
 	}
-	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(Description), 16, Ink);
-	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 635.0f), FVector2D(232.0f, 110.0f));
+	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(Description), 14, Ink);
+	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 664.0f), FVector2D(232.0f, 32.0f));
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 {
 	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"));
 	AddCanvasRect(RootCanvas, Map, GameXXKDesktopTrainingLayout::GetRightShellRect());
+	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
+		UBorder::StaticClass(), TEXT("TrainingShelfDivider"));
+	FSlateBrush ShelfDividerBrush;
+	ShelfDividerBrush.DrawAs = ESlateBrushDrawType::Box;
+	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
+	ShelfDivider->SetBrush(ShelfDividerBrush);
+	AddCanvas(RootCanvas, ShelfDivider, FVector2D(1379.0f, 786.0f), FVector2D(271.0f, 2.0f));
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("历练地图")), 28, Gold);
-	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 34.0f), FVector2D(255.0f, 38.0f));
-	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 30.0f));
+	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 258.0f), FVector2D(255.0f, 38.0f));
+	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 254.0f));
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKTrainingProgress Progress = Subsystem
 		? Subsystem->GetTrainingProgressCopy()
@@ -6648,7 +6754,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		FText::FromString(FString::Printf(TEXT("难度：%s  ▼"), *DifficultyLabel(ActiveDifficulty))),
 		18,
 		Ink));
-	AddCanvas(RootCanvas, DifficultyDropdown, FVector2D(1388.0f, 82.0f), FVector2D(238.0f, 42.0f));
+	AddCanvas(RootCanvas, DifficultyDropdown, FVector2D(1388.0f, 300.0f), FVector2D(238.0f, 42.0f));
 	ActionButtons.Add(DifficultyDropdown);
 
 	// Chapters are viewing filters.  They remain visible even when every node in
@@ -6675,19 +6781,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		AddCanvas(
 			RootCanvas,
 			ChapterTab,
-			FVector2D(1388.0f + ChapterIndex * 81.0f, 136.0f),
+			FVector2D(1388.0f + ChapterIndex * 81.0f, 350.0f),
 			FVector2D(76.0f, 36.0f));
 		ActionButtons.Add(ChapterTab);
 	}
 
-	// Draw two short dashed ink connectors behind the three circular nodes.
-	const FVector2D NodeSize(82.0f, 82.0f);
-	const float NodeX = 1473.0f;
-	const float NodeY[3] = {194.0f, 354.0f, 514.0f};
+	// Preserve the authored vertical route while fitting it above the fixed action shelf.
+	const FVector2D NodeSize(64.0f, 64.0f);
+	const float NodeX = 1482.0f;
+	const float NodeY[3] = {400.0f, 500.0f, 600.0f};
 	for (int32 ConnectorIndex = 0; ConnectorIndex < 2; ++ConnectorIndex)
 	{
-		const float StartY = NodeY[ConnectorIndex] + NodeSize.Y + 9.0f;
-		for (int32 DashIndex = 0; DashIndex < 5; ++DashIndex)
+		const float StartY = NodeY[ConnectorIndex] + NodeSize.Y + 6.0f;
+		for (int32 DashIndex = 0; DashIndex < 4; ++DashIndex)
 		{
 			UBorder* Dash = WidgetTree->ConstructWidget<UBorder>(
 				UBorder::StaticClass(),
@@ -6701,8 +6807,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			AddCanvas(
 				RootCanvas,
 				Dash,
-				FVector2D(NodeX + NodeSize.X * 0.5f - 2.0f, StartY + DashIndex * 13.0f),
-				FVector2D(4.0f, 8.0f));
+				FVector2D(NodeX + NodeSize.X * 0.5f - 2.0f, StartY + DashIndex * 7.0f),
+				FVector2D(4.0f, 4.0f));
 		}
 	}
 
@@ -6750,7 +6856,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 				UImage::StaticClass(),
 				*FString::Printf(TEXT("TrainingNodeSelection_%d"), StageNumber));
 			SelectionHalo->SetBrush(MakeCircularBrush(
-				FVector2D(94.0f, 94.0f),
+				FVector2D(74.0f, 74.0f),
 				FLinearColor::Transparent,
 				Accent,
 				4.0f));
@@ -6759,8 +6865,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			AddCanvas(
 				RootCanvas,
 				SelectionHalo,
-				FVector2D(NodeX - 6.0f, NodeY[LocalIndex] - 6.0f),
-				FVector2D(94.0f, 94.0f));
+				FVector2D(NodeX - 5.0f, NodeY[LocalIndex] - 5.0f),
+				FVector2D(74.0f, 74.0f));
 		}
 
 		UGameXXKDesktopTrainingStageButton* Node =
@@ -6827,7 +6933,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		16,
 		Ink,
 		TEXT("TrainingSelectedStageText"));
-	AddCanvas(RootCanvas, SelectedStageText, FVector2D(1388.0f, 690.0f), FVector2D(242.0f, 26.0f));
+	AddCanvas(RootCanvas, SelectedStageText, FVector2D(1388.0f, 674.0f), FVector2D(242.0f, 26.0f));
 	TravelStageText = MakeText(
 		WidgetTree,
 		FText::FromString(FString::Printf(
@@ -6836,7 +6942,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 		17,
 		FLinearColor(0.10f, 0.07f, 0.04f, 1.0f),
 		TEXT("TrainingCurrentTravelStageText"));
-	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 724.0f), FVector2D(242.0f, 56.0f));
+	AddCanvas(RootCanvas, TravelStageText.Get(), FVector2D(1388.0f, 704.0f), FVector2D(242.0f, 56.0f));
 
 	UGameXXKDesktopTrainingActionButton* Challenge = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
@@ -6884,7 +6990,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			PanelAlt,
 			FVector2D(246.0f, 132.0f),
 			TEXT("TrainingDifficultyDropdownPaper"));
-		AddCanvas(RootCanvas, DropdownPaper, FVector2D(1384.0f, 124.0f), FVector2D(246.0f, 132.0f));
+		AddCanvas(RootCanvas, DropdownPaper, FVector2D(1384.0f, 342.0f), FVector2D(246.0f, 132.0f));
 		if (UCanvasPanelSlot* PaperSlot = Cast<UCanvasPanelSlot>(DropdownPaper->Slot))
 		{
 			PaperSlot->SetZOrder(49);
@@ -6919,7 +7025,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			AddCanvas(
 				RootCanvas,
 				Option,
-				FVector2D(1392.0f, 128.0f + DifficultyIndex * 41.0f),
+				FVector2D(1392.0f, 346.0f + DifficultyIndex * 41.0f),
 				FVector2D(230.0f, 38.0f));
 			if (UCanvasPanelSlot* OptionSlot = Cast<UCanvasPanelSlot>(Option->Slot))
 			{
@@ -7783,15 +7889,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateCarriedItemVisualPosition()
 		{
 			return;
 		}
-		ReferencePosition = GameXXKDesktopTrainingLayout::DesktopClientPointToReference(
-			FVector2D(
-				static_cast<double>(CursorPoint.x),
-				static_cast<double>(CursorPoint.y))
-			- (bDesktopFixedHostEnabled
-				? DesktopFixedContentOffset
-				: FVector2D::ZeroVector),
-			DesktopOverlayPlacement.Scale,
-			FVector2D(28.0f, 28.0f));
+		const FVector4 CursorRect =
+			GameXXKDesktopTrainingLayout::ResolveDesktopCursorSlateRect(
+				FVector2D(
+					static_cast<double>(CursorPoint.x),
+					static_cast<double>(CursorPoint.y)),
+				DesktopOverlayPlacement.Scale,
+				DesktopInputDpiScale,
+				FVector2D(56.0f, 56.0f));
+		if (UCanvasPanelSlot* CarriedCanvasSlot = Cast<UCanvasPanelSlot>(CarriedItemImage->Slot))
+		{
+			CarriedCanvasSlot->SetPosition(FVector2D(CursorRect.X, CursorRect.Y));
+			CarriedCanvasSlot->SetSize(FVector2D(CursorRect.Z, CursorRect.W));
+		}
+		return;
 	#else
 		return;
 	#endif
@@ -8160,6 +8271,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 	const FVector2D PreviousFixedHostSize = DesktopFixedHostPlacement.HudSize;
 	const FVector2D PreviousFixedHostTopLeft = DesktopFixedHostPlacement.HudTopLeft;
 	const FVector2D PreviousFixedContentOffset = DesktopFixedContentOffset;
+	const FVector2D PreviousBodyOffset = DesktopOverlayPlacement.BodyOffset;
 	DesktopOverlayHostSize = HostSize;
 	const GameXXKDesktopTrainingLayout::FDesktopHudResolvedMetrics Metrics =
 		bDesktopResolvedMetricsValid
@@ -8174,6 +8286,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 		bExpandUpward,
 		GetNoticePanelLogicalHeight(),
 		bWarehousePanelOpen);
+	if (bBackpackExpanded)
+	{
+		DesktopOverlayPlacement.BodyOffset = bDesktopHudDragging
+			? PreviousBodyOffset
+			: GameXXKDesktopTrainingLayout::ResolveExpandedBodyFitOffset(
+				Metrics.PhysicalWorkAreaSize,
+				DesktopOverlayPlacement.HudTopLeft,
+				DesktopOverlayPlacement.ContentOffset,
+				DesktopOverlayPlacement.Scale,
+				bWarehousePanelOpen,
+				RightPanel != EGameXXKDesktopTrainingRightPanel::None,
+				bExpandUpward);
+	}
 	if (!bBackpackExpanded && bIdleStripFolded)
 	{
 		const FVector2D FoldedLogicalSize = GetCurrentDesignCanvasSize();
@@ -8193,17 +8318,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 		&& PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow)
 	{
 		DesktopFixedHostPlacement =
-			GameXXKDesktopTrainingLayout::ComputeDesktopOverlayPlacementAtScale(
-				Metrics,
-				DesktopWindowPositionNormalized,
-				true,
-				true,
-				GetNoticePanelLogicalHeight(),
-				true,
-				true);
-		DesktopFixedContentOffset =
-			DesktopOverlayPlacement.HudTopLeft
-			- DesktopFixedHostPlacement.HudTopLeft;
+			GameXXKDesktopTrainingLayout::ResolveDesktopWorkAreaHostPlacement(Metrics);
+		DesktopFixedContentOffset = DesktopOverlayPlacement.HudTopLeft;
 	}
 	else
 	{
@@ -8225,6 +8341,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 	{
 		bDesktopNativeInputRegionDirty = true;
 	}
+	if (!DesktopOverlayPlacement.BodyOffset.Equals(PreviousBodyOffset, 0.01f))
+	{
+		bDesktopNativeInputRegionDirty = true;
+	}
 	if (DesktopHudCanvasSlot)
 	{
 		const bool bDesktopWindow =
@@ -8237,6 +8357,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 				DesktopInputDpiScale);
 		DesktopHudCanvasSlot->SetPosition(HostGeometry.Position);
 		DesktopHudCanvasSlot->SetSize(HostGeometry.Size);
+	}
+	if (DesktopCursorCanvasSlot)
+	{
+		DesktopCursorCanvasSlot->SetPosition(FVector2D::ZeroVector);
+		DesktopCursorCanvasSlot->SetSize(
+			GameXXKDesktopTrainingLayout::PhysicalPixelsToSlateHost(
+				DesktopFixedHostPlacement.HudSize,
+				PresentationMode == EGameXXKDesktopHudPresentationMode::DesktopWindow
+					? DesktopInputDpiScale
+					: 1.0f));
 	}
 }
 
@@ -8436,6 +8566,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ShouldDesktopNativeClientPointPassT
 	SurfaceState.NoticeHeight = GetNoticePanelLogicalHeight();
 	SurfaceState.Scale = DesktopOverlayPlacement.Scale;
 	SurfaceState.ContentOffset = DesktopOverlayPlacement.ContentOffset;
+	SurfaceState.BodyOffset = DesktopOverlayPlacement.BodyOffset;
 	SurfaceState.bTownToggleVisible =
 		bBackpackExpanded && DesktopOverlayPlacement.TownToggleRect.Z > 0.0f;
 	SurfaceState.TownToggleRect = DesktopOverlayPlacement.TownToggleRect;
@@ -8510,6 +8641,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeInputRegion()
 		SurfaceState.NoticeHeight = GetNoticePanelLogicalHeight();
 		SurfaceState.Scale = DesktopOverlayPlacement.Scale;
 		SurfaceState.ContentOffset = DesktopOverlayPlacement.ContentOffset;
+		SurfaceState.BodyOffset = DesktopOverlayPlacement.BodyOffset;
 		SurfaceState.bTownToggleVisible =
 			bBackpackExpanded && DesktopOverlayPlacement.TownToggleRect.Z > 0.0f;
 		SurfaceState.TownToggleRect = DesktopOverlayPlacement.TownToggleRect;

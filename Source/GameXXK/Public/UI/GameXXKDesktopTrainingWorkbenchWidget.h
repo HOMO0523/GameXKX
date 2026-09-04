@@ -537,6 +537,14 @@ public:
 	{
 		return DesktopOverlayPlacement.Scale;
 	}
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector2D GetDesktopBodyOffsetForTest() const { return DesktopOverlayPlacement.BodyOffset; }
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector2D GetDesktopHudTopLeftForTest() const { return DesktopOverlayPlacement.HudTopLeft; }
+	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
+	FVector2D GetDesktopStripTopLeftForTest() const { return DesktopOverlayPlacement.StripTopLeft; }
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	void HandleDesktopActionForTest(int32 ActionId) { HandleActionClicked(ActionId); }
 	bool IsTownMapTravelPendingForTest() const { return bTownMapTravelPending; }
 
 	/** Set while a real Slate button callback is executing so layout rebuilds are deferred to the next tick. */
@@ -778,6 +786,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanelSlot> DesktopHudCanvasSlot;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> DesktopCursorCanvas;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanelSlot> DesktopCursorCanvasSlot;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UScaleBox> RootScaleBox;

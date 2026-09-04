@@ -103,10 +103,10 @@ bool FGameXXKDesktopTrainingThreeNodeMapPanelTest::RunTest(const FString& Parame
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TrainingNode_4")) : nullptr);
 	if (NodeSlots.Num() == 3 && NodeSlots[0] && NodeSlots[1] && NodeSlots[2])
 	{
-		TestTrue(TEXT("the three chapter nodes share one vertical route axis"),
+		TestTrue(TEXT("the three compact chapter nodes share one vertical route axis"),
 			FMath::IsNearlyEqual(NodeSlots[0]->GetPosition().X, NodeSlots[1]->GetPosition().X)
 				&& FMath::IsNearlyEqual(NodeSlots[1]->GetPosition().X, NodeSlots[2]->GetPosition().X));
-		TestTrue(TEXT("the route advances from top to bottom"),
+		TestTrue(TEXT("the compact route advances from top to bottom"),
 			NodeSlots[0]->GetPosition().Y < NodeSlots[1]->GetPosition().Y
 				&& NodeSlots[1]->GetPosition().Y < NodeSlots[2]->GetPosition().Y);
 	}

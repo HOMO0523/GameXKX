@@ -106,6 +106,58 @@ bool FGameXXKDesktopHudStableDockPlacementTest::RunTest(const FString& Parameter
 		TEXT("expanded idle strip keeps the collapsed logical footprint"),
 		GetIdleStripRect(),
 		FVector4(318.0f, 0.0f, 1038.0f, 202.0f));
+
+	const FDesktopHudResolvedMetrics FullMetrics = ResolveDesktopHudMetrics(WorkArea, 100);
+	const FDesktopOverlayPlacement WorkAreaHost = ResolveDesktopWorkAreaHostPlacement(FullMetrics);
+	TestEqual(TEXT("desktop native host covers the physical work area"), WorkAreaHost.HudSize, WorkArea);
+	TestEqual(TEXT("desktop native host starts at the work-area origin"), WorkAreaHost.HudTopLeft, FVector2D::ZeroVector);
+
+	const FDesktopOverlayPlacement RightDock = ComputeDesktopOverlayPlacement(
+		WorkArea,
+		FVector2D(1.0f, 0.5f),
+		100,
+		true,
+		false,
+		NoticeHeight,
+		true);
+	TestTrue(
+		TEXT("right-edge warehouse/backpack/training body moves left as one unit"),
+		ResolveExpandedBodyFitOffset(
+			WorkArea,
+			RightDock.HudTopLeft,
+			RightDock.ContentOffset,
+			RightDock.Scale,
+			true,
+			true,
+			false).Equals(FVector2D(-304.0f, 0.0f), 0.01f));
+	const FDesktopOverlayPlacement LeftDock = ComputeDesktopOverlayPlacement(
+		WorkArea,
+		FVector2D(0.0f, 0.5f),
+		100,
+		true,
+		true,
+		NoticeHeight,
+		true);
+	TestTrue(
+		TEXT("left-edge body moves right while retaining the upward body offset"),
+		ResolveExpandedBodyFitOffset(
+			WorkArea,
+			LeftDock.HudTopLeft,
+			LeftDock.ContentOffset,
+			LeftDock.Scale,
+			true,
+			true,
+			true).Equals(FVector2D(466.0f, -210.0f), 0.01f));
+
+	TestTrue(
+		TEXT("50 percent carried icon uses physical client pixels and 120-DPI Slate units"),
+		ResolveDesktopCursorSlateRect(
+			FVector2D(500.0f, 300.0f),
+			0.5f,
+			1.25f,
+			FVector2D(56.0f, 56.0f)).Equals(
+				FVector4(388.8f, 228.8f, 22.4f, 22.4f),
+				0.01f));
 	return true;
 }
 

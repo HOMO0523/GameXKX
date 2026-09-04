@@ -5,15 +5,16 @@ namespace GameXXKDesktopTrainingLayout
 	namespace
 	{
 		const FVector2D ReferenceCanvasSize(1672.0f, 941.0f);
-		const FVector4 WarehouseRect(10.0f, 17.0f, 363.0f, 908.0f);
+		const FVector4 WarehouseRect(10.0f, 244.0f, 363.0f, 681.0f);
 		const FVector4 CenterShellRect(386.0f, 17.0f, 970.0f, 908.0f);
-		const FVector4 RightShellRect(1369.0f, 17.0f, 291.0f, 908.0f);
+		const FVector4 RightShellRect(1369.0f, 244.0f, 291.0f, 681.0f);
 		const FVector4 IdleStripRect(318.0f, 0.0f, 1038.0f, 202.0f);
 		const FVector4 ContentRect(397.0f, 244.0f, 945.0f, 533.0f);
 		const FVector4 NavigationRect(397.0f, 788.0f, 945.0f, 137.0f);
 		const FVector2D CollapsedHudLogicalSize(1038.0f, 202.0f);
 		const FVector2D FoldedHudInteractiveSize(1025.0f, 24.0f);
 		constexpr float UpwardContentShift = 210.0f;
+		constexpr float IdleStripChestControlX = 953.0f;
 		const FVector2D TownToggleButtonSize(144.0f, 144.0f);
 		constexpr float TownToggleGap = 14.0f;
 		constexpr float StoryQuestVerticalGap = 14.0f;
@@ -92,6 +93,11 @@ namespace GameXXKDesktopTrainingLayout
 		return FVector2D(0.0f, -UpwardContentShift);
 	}
 
+	float GetIdleStripChestControlX()
+	{
+		return IdleStripChestControlX;
+	}
+
 	bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position)
 	{
 		return Position.X >= CenterShellRect.X
@@ -132,7 +138,7 @@ namespace GameXXKDesktopTrainingLayout
 	FVector4 GetTownToggleRect(const bool bWarehouseOpen)
 	{
 		const float X = bWarehouseOpen
-			? 0.0f
+			? -OpenWarehouseLeftExtension
 			: CenterShellRect.X - TownToggleGap - TownToggleButtonSize.X;
 		const float Y = ContentRect.Y + (ContentRect.W - TownToggleButtonSize.Y) * 0.5f;
 		return FVector4(X, Y, TownToggleButtonSize.X, TownToggleButtonSize.Y);
@@ -194,6 +200,67 @@ namespace GameXXKDesktopTrainingLayout
 			FMath::Max(1.0f, PhysicalWorkAreaSize.Y));
 		Result.Scale = ResolveManualHudScale(HudScalePercent);
 		return Result;
+	}
+
+	FDesktopOverlayPlacement ResolveDesktopWorkAreaHostPlacement(
+		const FDesktopHudResolvedMetrics& Metrics)
+	{
+		FDesktopOverlayPlacement Result;
+		Result.HostSize = FVector2D(
+			FMath::Max(1.0f, Metrics.PhysicalWorkAreaSize.X),
+			FMath::Max(1.0f, Metrics.PhysicalWorkAreaSize.Y));
+		Result.HudTopLeft = FVector2D::ZeroVector;
+		Result.HudSize = Result.HostSize;
+		Result.Scale = FMath::Max(0.05f, Metrics.Scale);
+		return Result;
+	}
+
+	FVector4 GetExpandedBodyBounds(
+		const bool bWarehouseOpen,
+		const bool bRightPanelOpen)
+	{
+		const float Left = bWarehouseOpen
+			? FMath::Min(WarehouseRect.X, -OpenWarehouseLeftExtension)
+			: FMath::Min(ContentRect.X, CenterShellRect.X - TownToggleGap - TownToggleButtonSize.X);
+		const float Right = bRightPanelOpen
+			? RightShellRect.X + RightShellRect.Z
+			: ContentRect.X + ContentRect.Z;
+		const float Top = FMath::Min(226.0f, ContentRect.Y);
+		const float Bottom = FMath::Max(
+			ContentRect.Y + ContentRect.W,
+			NavigationRect.Y + NavigationRect.W);
+		return FVector4(Left, Top, Right - Left, Bottom - Top);
+	}
+
+	FVector2D ResolveExpandedBodyFitOffset(
+		const FVector2D& PhysicalWorkAreaSize,
+		const FVector2D& HudTopLeft,
+		const FVector2D& ContentOffset,
+		const float HudScale,
+		const bool bWarehouseOpen,
+		const bool bRightPanelOpen,
+		const bool bExpandUpward)
+	{
+		const float Scale = FMath::Max(0.01f, HudScale);
+		const FVector4 Bounds = GetExpandedBodyBounds(bWarehouseOpen, bRightPanelOpen);
+		const float NaturalLeft = HudTopLeft.X + (ContentOffset.X + Bounds.X) * Scale;
+		const float NaturalRight = NaturalLeft + Bounds.Z * Scale;
+		const float HostWidth = FMath::Max(1.0f, PhysicalWorkAreaSize.X);
+		float PhysicalCorrectionX = 0.0f;
+		if (Bounds.Z * Scale <= HostWidth)
+		{
+			if (NaturalLeft < 0.0f)
+			{
+				PhysicalCorrectionX = -NaturalLeft;
+			}
+			else if (NaturalRight > HostWidth)
+			{
+				PhysicalCorrectionX = HostWidth - NaturalRight;
+			}
+		}
+		return FVector2D(
+			PhysicalCorrectionX / Scale,
+			bExpandUpward ? GetUpwardContentOffset().Y : 0.0f);
 	}
 
 	FDesktopOverlayPlacement ComputeDesktopOverlayPlacementAtScale(
@@ -348,6 +415,20 @@ namespace GameXXKDesktopTrainingLayout
 		return ClientPoint / FMath::Max(0.01f, HudScale) - VisualHalfSize;
 	}
 
+	FVector4 ResolveDesktopCursorSlateRect(
+		const FVector2D& ClientPhysicalPoint,
+		const float HudScale,
+		const float WindowDpiScale,
+		const FVector2D& LogicalVisualSize)
+	{
+		const float SafeDpi = FMath::Max(0.01f, WindowDpiScale);
+		const FVector2D PhysicalSize = LogicalVisualSize * FMath::Max(0.01f, HudScale);
+		const FVector2D SlateSize = PhysicalSize / SafeDpi;
+		const FVector2D SlateCenter = ClientPhysicalPoint / SafeDpi;
+		const FVector2D SlateTopLeft = SlateCenter - SlateSize * 0.5f;
+		return FVector4(SlateTopLeft.X, SlateTopLeft.Y, SlateSize.X, SlateSize.Y);
+	}
+
 	TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State)
 	{
@@ -450,41 +531,45 @@ namespace GameXXKDesktopTrainingLayout
 				FVector4(StripRect.X, NoticeY, FoldedHudInteractiveSize.X, 24.0f),
 				State.ContentOffset);
 		}
-		const FVector2D CenterContentOffset = State.ContentOffset
-			+ (State.bExpandUpward ? GetUpwardContentOffset() : FVector2D::ZeroVector);
-		AddLogicalRect(GetContentRect(), CenterContentOffset);
+		FVector2D EffectiveBodyOffset = State.BodyOffset;
+		if (State.bExpandUpward && FMath::IsNearlyZero(EffectiveBodyOffset.Y))
+		{
+			EffectiveBodyOffset.Y = GetUpwardContentOffset().Y;
+		}
+		const FVector2D BodyContentOffset = State.ContentOffset + EffectiveBodyOffset;
+		AddLogicalRect(GetContentRect(), BodyContentOffset);
 		for (int32 NavigationIndex = 0; NavigationIndex < 5; ++NavigationIndex)
 		{
 			AddLogicalRect(
 				FVector4(421.0f + NavigationIndex * 181.0f, 800.0f, 151.0f, 112.0f),
-				CenterContentOffset);
+				BodyContentOffset);
 		}
 		for (int32 ToolbarIndex = 0; ToolbarIndex < 5; ++ToolbarIndex)
 		{
 			AddLogicalRect(
 				FVector4(1092.0f + ToolbarIndex * 47.0f, 226.0f, 42.0f, 36.0f),
-				CenterContentOffset);
+				BodyContentOffset);
 		}
 		if (State.bWarehouseOpen)
 		{
-			AddLogicalRect(GetWarehouseRect(), State.ContentOffset);
+			AddLogicalRect(GetWarehouseRect(), BodyContentOffset);
 		}
 		if (State.bRightPanelOpen)
 		{
-			AddLogicalRect(GetRightShellRect(), State.ContentOffset);
+			AddLogicalRect(GetRightShellRect(), BodyContentOffset);
 		}
 		if (State.bTownToggleVisible)
 		{
 			AddLogicalRect(
 				State.TownToggleRect,
-				FVector2D::ZeroVector,
+				BodyContentOffset,
 				EDesktopNativeRegionShapeType::Ellipse);
 		}
 		if (State.bStoryQuestVisible)
 		{
 			AddLogicalRect(
 				State.StoryQuestRect,
-				FVector2D::ZeroVector,
+				BodyContentOffset,
 				EDesktopNativeRegionShapeType::Ellipse);
 		}
 		return Result;

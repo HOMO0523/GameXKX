@@ -29,6 +29,7 @@ namespace GameXXKDesktopTrainingLayout
 		FVector2D StripTopLeft = FVector2D::ZeroVector;
 		FVector2D StripSize = FVector2D::ZeroVector;
 		FVector2D ContentOffset = FVector2D::ZeroVector;
+		FVector2D BodyOffset = FVector2D::ZeroVector;
 		FVector4 TownToggleRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 		FVector4 StoryQuestRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 		float Scale = 1.0f;
@@ -73,6 +74,7 @@ namespace GameXXKDesktopTrainingLayout
 		float NoticeHeight = 0.0f;
 		float Scale = 1.0f;
 		FVector2D ContentOffset = FVector2D::ZeroVector;
+		FVector2D BodyOffset = FVector2D::ZeroVector;
 		FVector4 TownToggleRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 		FVector4 StoryQuestRect = FVector4(0.0f, 0.0f, 0.0f, 0.0f);
 	};
@@ -105,6 +107,7 @@ namespace GameXXKDesktopTrainingLayout
 		float NoticeHeight);
 	GAMEXXK_API FVector2D GetExpandedNoticeRailPosition(bool bExpandUpward);
 	GAMEXXK_API FVector2D GetUpwardContentOffset();
+	GAMEXXK_API float GetIdleStripChestControlX();
 	GAMEXXK_API bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position);
 	GAMEXXK_API FVector4 GetContentRect();
 	GAMEXXK_API FVector4 GetNavigationRect();
@@ -128,6 +131,19 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FDesktopHudResolvedMetrics ResolveDesktopHudMetrics(
 		const FVector2D& PhysicalWorkAreaSize,
 		int32 HudScalePercent);
+	GAMEXXK_API FDesktopOverlayPlacement ResolveDesktopWorkAreaHostPlacement(
+		const FDesktopHudResolvedMetrics& Metrics);
+	GAMEXXK_API FVector4 GetExpandedBodyBounds(
+		bool bWarehouseOpen,
+		bool bRightPanelOpen);
+	GAMEXXK_API FVector2D ResolveExpandedBodyFitOffset(
+		const FVector2D& PhysicalWorkAreaSize,
+		const FVector2D& HudTopLeft,
+		const FVector2D& ContentOffset,
+		float HudScale,
+		bool bWarehouseOpen,
+		bool bRightPanelOpen,
+		bool bExpandUpward);
 	GAMEXXK_API FDesktopOverlayPlacement ComputeDesktopOverlayPlacementAtScale(
 		const FDesktopHudResolvedMetrics& Metrics,
 		const FVector2D& NormalizedStripAnchor,
@@ -160,6 +176,11 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector2D& ClientPoint,
 		float HudScale,
 		const FVector2D& VisualHalfSize);
+	GAMEXXK_API FVector4 ResolveDesktopCursorSlateRect(
+		const FVector2D& ClientPhysicalPoint,
+		float HudScale,
+		float WindowDpiScale,
+		const FVector2D& LogicalVisualSize);
 	GAMEXXK_API TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State);
 	GAMEXXK_API FVector4 ResolveDesktopNativeRegionRect(
