@@ -557,21 +557,21 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Runtime, 61020, TEXT("Route.General.ZhiXueSan"))) return false;
+		if (!BuildRuntime(*this, Runtime, 61020)) return false;
 		FindUnit(Runtime, AllyUnitId)->HP = 80;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("ordinary Heal"))) return false;
 		if (!TestEqual(TEXT("ordinary Heal emits one packet"), Result.HealingResults.Num(), 1)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 12, 12, TEXT("ordinary Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 26, 20, TEXT("ordinary Heal"));
 	}
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Runtime, 61021, TEXT("Route.General.ZhiXueSan"))) return false;
+		if (!BuildRuntime(*this, Runtime, 61021)) return false;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("full-health positive Heal"))) return false;
 		if (!TestEqual(TEXT("a full-health positive attempt still emits exactly one healing packet"), Result.HealingResults.Num(), 1)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 12, 0, TEXT("full-health positive Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 26, 0, TEXT("full-health positive Heal"));
 	}
 
 	{
@@ -583,7 +583,7 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("Medicine ally Heal"))) return false;
 		if (!TestEqual(TEXT("Medicine ally Heal emits one packet"), Result.HealingResults.Num(), 1)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 15, 15, TEXT("Medicine ally Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 32, 20, TEXT("Medicine ally Heal"));
 	}
 
 	{
@@ -596,8 +596,8 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, NAME_None, Result, TEXT("Medicine party Heal"))) return false;
 		if (!TestEqual(TEXT("Medicine party Heal emits one packet per living ally"), Result.HealingResults.Num(), 2)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 10, 10, TEXT("Medicine party owner Heal"));
-		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 10, 10, TEXT("Medicine party ally Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 25, 20, TEXT("Medicine party owner Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 25, 10, TEXT("Medicine party ally Heal"));
 	}
 
 	{
@@ -607,8 +607,8 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("flat Medicine ally Heal"))) return false;
 		if (!TestEqual(TEXT("flat Medicine ally path emits its base and conditional packets"), Result.HealingResults.Num(), 2)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 10, 10, TEXT("flat Medicine base Heal"));
-		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 2, 2, TEXT("flat Medicine conditional Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, AllyUnitId, 42, 42, TEXT("flat Medicine base Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 11, 11, TEXT("flat Medicine conditional Heal"));
 	}
 
 	{
@@ -633,8 +633,8 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, EnemyAUnitId, Result, TEXT("formula party Heal"))) return false;
 		if (!TestEqual(TEXT("formula party Heal records one packet per living ally"), Result.HealingResults.Num(), 2)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 2, 2, TEXT("formula party owner Heal"));
-		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 2, 2, TEXT("formula party ally Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 11, 11, TEXT("formula party owner Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 11, 11, TEXT("formula party ally Heal"));
 	}
 
 	{
@@ -659,13 +659,14 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, NAME_None, Result, TEXT("Forest terrain Heal"))) return false;
 		if (!TestEqual(TEXT("Forest terrain records one Heal per living ally"), Result.HealingResults.Num(), 2)) return false;
-		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Forest owner Heal"));
-		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 4, 4, TEXT("Forest ally Heal"));
+		TestHealingPacket(*this, Result.HealingResults[0], OwnerUnitId, OwnerUnitId, 11, 11, TEXT("Forest owner Heal"));
+		TestHealingPacket(*this, Result.HealingResults[1], OwnerUnitId, AllyUnitId, 11, 11, TEXT("Forest ally Heal"));
 	}
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, 61029, TEXT("Hero.Generic.HengJianShouShi"))) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("ordinary AddArmor"))) return false;
 		if (!TestEqual(TEXT("ordinary AddArmor emits one packet"), Result.ArmorResults.Num(), 1)) return false;
@@ -675,6 +676,7 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, 61030, TEXT("Hero.Generic.HengJianShouShi"))) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 		FindUnit(Runtime, AllyUnitId)->Armor = 99;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("high-armor positive AddArmor"))) return false;
@@ -686,19 +688,21 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, 61031, TEXT("Hero.Mage.HanXuNingChuan"), EGameXXKCharacterRole::Sorcerer)) return false;
 		FGameXXKCardCombatUnit* Owner = FindUnit(Runtime, OwnerUnitId);
+		Owner->Defense = 12;
 		Owner->Mana = 20;
 		Owner->MaxMana = 20;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, NAME_None, Result, TEXT("current Mana and overflow Armor"))) return false;
 		if (!TestEqual(TEXT("current Mana and real overflow emit two armor packets"), Result.ArmorResults.Num(), 2)) return false;
 		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 5, 5, TEXT("current Mana Armor"));
-		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Mana overflow Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 7, 7, TEXT("Mana overflow Armor"));
 	}
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, 61032, TEXT("Hero.Mage.HanXuNingChuan"), EGameXXKCharacterRole::Sorcerer)) return false;
 		FGameXXKCardCombatUnit* Owner = FindUnit(Runtime, OwnerUnitId);
+		Owner->Defense = 5;
 		Owner->Mana = 10;
 		Owner->MaxMana = 20;
 		FGameXXKCardPlayResult Result;
@@ -713,6 +717,7 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildRuntime(*this, Runtime, 61033 + TerrainCase.Value, TerrainCase.Key, EGameXXKCharacterRole::FormationMaster)) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, NAME_None, Result, TEXT("terrain Armor"))) return false;
 		if (!TestEqual(TEXT("terrain Armor records one packet per living ally"), Result.ArmorResults.Num(), 2)) return false;
@@ -722,8 +727,9 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Runtime, 61042, TEXT("Route.General.ZhiXueSan"), EGameXXKCharacterRole::Healer)
+		if (!BuildRuntime(*this, Runtime, 61042, TEXT("Profession.Healer.ZhiXueCao"), EGameXXKCharacterRole::Healer)
 			|| !InstallFormula(*this, Runtime, TEXT("Profession.Healer.ZhiXueCao"))) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 10;
 		FindUnit(Runtime, AllyUnitId)->HP = 80;
 		TestEqual(TEXT("formula party-Armor fixture adds one Bleed"),
 			GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, AllyUnitId), EGameXXKCardStatus::Bleed, 1), 1);
@@ -736,13 +742,14 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 
 	{
 		FGameXXKCardBattleRuntime Runtime;
-		if (!BuildRuntime(*this, Runtime, 61043, TEXT("Route.General.ZhiXueSan"), EGameXXKCharacterRole::Healer)
+		if (!BuildRuntime(*this, Runtime, 61043, TEXT("Profession.Healer.CaoMuFuZhi"), EGameXXKCharacterRole::Healer)
 			|| !InstallFormula(*this, Runtime, LargeHealingFormulaCardId)) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 		FindUnit(Runtime, AllyUnitId)->HP = 80;
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, AllyUnitId, Result, TEXT("formula target Armor"))) return false;
 		if (!TestEqual(TEXT("formula target Armor emits one packet"), Result.ArmorResults.Num(), 1)) return false;
-		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, AllyUnitId, 4, 4, TEXT("formula target Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, AllyUnitId, 5, 5, TEXT("formula target Armor"));
 	}
 
 	{
@@ -755,8 +762,8 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 			GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, Results, &Error))) return false;
 		if (!TestEqual(TEXT("Ice armor reward emits one aggregated result"), Results.Num(), 1)) return false;
 		if (!TestEqual(TEXT("Ice armor reward records both party armor attempts"), Results[0].ArmorResults.Num(), 2)) return false;
-		TestArmorPacket(*this, Results[0].ArmorResults[0], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Ice reward owner Armor"));
-		TestArmorPacket(*this, Results[0].ArmorResults[1], OwnerUnitId, AllyUnitId, 6, 6, TEXT("Ice reward ally Armor"));
+		TestArmorPacket(*this, Results[0].ArmorResults[0], OwnerUnitId, OwnerUnitId, 1, 1, TEXT("Ice reward owner Armor"));
+		TestArmorPacket(*this, Results[0].ArmorResults[1], OwnerUnitId, AllyUnitId, 1, 1, TEXT("Ice reward ally Armor"));
 	}
 
 	{
@@ -789,21 +796,24 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 	{
 		const TArray<FGameXXKCardInstance> Cards = {
 			MakeNamedCard(TEXT("Outcome.Modifier.LianYing.1"), TEXT("Hero.Formation.LianYingBuShi"), OwnerUnitId, 0),
-			MakeNamedCard(TEXT("Outcome.Modifier.LianYing.2"), TEXT("Hero.Formation.LianYingBuShi"), OwnerUnitId, 1)};
+			MakeNamedCard(TEXT("Outcome.Modifier.GuanShi"), TEXT("Hero.Formation.GuanShiLuoZi"), OwnerUnitId, 1)};
 		FGameXXKCardBattleRuntime Runtime;
 		if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::FormationMaster, 61046)) return false;
+		FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 		Runtime.Terrain = EGameXXKCardTerrain::Village;
 		FGameXXKCardPlayResult Result;
 		FString Error;
 		if (!TestTrue(FString::Printf(TEXT("active terrain listener installs: %s"), *Error),
-			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, EnemyAUnitId, Result, &Error))) return false;
+			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, NAME_None, Result, &Error))) return false;
 		Result = FGameXXKCardPlayResult();
 		Error.Reset();
 		if (!TestTrue(FString::Printf(TEXT("active terrain listener resolves into the current transaction: %s"), *Error),
 			GameXXKCardRules::ResolveCardPlay(Runtime, Cards[1].InstanceId, EnemyAUnitId, Result, &Error))) return false;
-		if (!TestEqual(TEXT("active terrain listener contributes both Village armor packets to its play result"), Result.ArmorResults.Num(), 2)) return false;
+		if (!TestEqual(TEXT("active terrain listener contributes two Village repetitions for both allies"), Result.ArmorResults.Num(), 4)) return false;
 		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("active modifier owner Armor"));
 		TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, AllyUnitId, 4, 4, TEXT("active modifier ally Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[2], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("active modifier second owner Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[3], OwnerUnitId, AllyUnitId, 4, 4, TEXT("active modifier second ally Armor"));
 	}
 
 	{
@@ -934,9 +944,9 @@ bool FGameXXKSorcererNestedArmorMergeAuditTest::RunTest(const FString& Parameter
 	if (!TestTrue(FString::Printf(TEXT("fifth Sorcerer card resolves its full outer transaction: %s"), *Error),
 		GameXXKCardRules::ResolveCardPlay(Runtime, Cards.Last().InstanceId, NAME_None, Result, &Error))) return false;
 	if (!TestEqual(TEXT("Sorcerer queue and nested Universal reward all reach the final armor audit"), Result.ArmorResults.Num(), 3)) return false;
-	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Sorcerer outer queue first Ice Armor"));
-	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 2, 2, TEXT("Sorcerer queue sequence Armor"));
-	TestArmorPacket(*this, Result.ArmorResults[2], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Sorcerer nested reward replay Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 2, 2, TEXT("Sorcerer outer queue first Ice Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 5, 5, TEXT("Sorcerer queue sequence Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[2], OwnerUnitId, OwnerUnitId, 7, 7, TEXT("Sorcerer nested reward replay Armor"));
 	return true;
 }
 
@@ -963,6 +973,7 @@ bool FGameXXKTaskNpcArmorMergeAuditTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::QuestNpc, 61102)) return false;
+	FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 	KeepOnlyLastCardInHand(Runtime, Cards);
 	Runtime.Terrain = EGameXXKCardTerrain::Village;
 
@@ -1005,12 +1016,14 @@ bool FGameXXKHeroTaskArmorMergeAuditTest::RunTest(const FString& Parameters)
 	using namespace GameXXKCardOutcomeAuditTest;
 	const TArray<FName> CardIds = {
 		TEXT("Hero.Mage.HanXuNingChuan"),
+		TEXT("Hero.Mage.YanXuLiaoYuan"),
+		TEXT("Hero.Mage.GuiXuTongXuan"),
+		TEXT("Hero.Mage.LeiXuYinTing")};
+	const TArray<FName> EquippedHeroCardIds = {
+		CardIds[0], CardIds[1], CardIds[2], CardIds[3],
 		TEXT("Hero.Generic.QingFengYiShi"),
 		TEXT("Hero.Generic.HeYuZhan"),
 		TEXT("Hero.Generic.SuiYanJi"),
-		TEXT("Hero.Generic.PoYunYiShan"),
-		TEXT("Hero.Blade.XueLuXiangCheng"),
-		TEXT("Hero.Hunter.LieYuLianShi"),
 		TEXT("Hero.Generic.NingShenTuNa")};
 	TArray<FGameXXKCardInstance> Cards;
 	for (int32 Index = 0; Index < CardIds.Num(); ++Index)
@@ -1024,7 +1037,8 @@ bool FGameXXKHeroTaskArmorMergeAuditTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Hero, 61103)) return false;
 	KeepOnlyLastCardInHand(Runtime, Cards);
-	Runtime.EquippedHeroCardIds = CardIds;
+	FindUnit(Runtime, OwnerUnitId)->Defense = 10;
+	Runtime.EquippedHeroCardIds = EquippedHeroCardIds;
 	Runtime.HeroSpellTask.bActive = true;
 	Runtime.HeroSpellTask.LockedHeroCardIds = CardIds;
 	Runtime.HeroSpellTask.StarterReward = EGameXXKHeroSpellTaskReward::Ice;
@@ -1032,18 +1046,32 @@ bool FGameXXKHeroTaskArmorMergeAuditTest::RunTest(const FString& Parameters)
 	for (int32 Index = 0; Index < CardIds.Num() - 1; ++Index)
 	{
 		Runtime.HeroSpellTask.CompletedHeroCardIds.Add(CardIds[Index]);
-		Runtime.HeroSpellTask.FirstPlayOrder.Add(MakeSnapshot(
-			CardIds[Index],
-			Index == 0 ? TArray<FName>() : TArray<FName>{EnemyAUnitId}));
+		Runtime.HeroSpellTask.FirstPlayOrder.Add(MakeSnapshot(CardIds[Index]));
 	}
 
 	FGameXXKCardPlayResult Result;
 	FString Error;
-	if (!TestTrue(FString::Printf(TEXT("eighth Hero card resolves its replay queue into the outer transaction: %s"), *Error),
+	if (!TestTrue(FString::Printf(TEXT("fourth Hero Mage card starts its replay queue: %s"), *Error),
 		GameXXKCardRules::ResolveCardPlay(Runtime, Cards.Last().InstanceId, NAME_None, Result, &Error))) return false;
-	if (!TestEqual(TEXT("Hero task outer drain preserves both Han Xu armor attempts"), Result.ArmorResults.Num(), 2)) return false;
-	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 5, 5, TEXT("Hero task current Mana Armor"));
-	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 6, 6, TEXT("Hero task overflow Armor"));
+	TestEqual(TEXT("Gui Xu replay pauses on its real forced discard"), Runtime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	if (Runtime.Deck.PendingChoice.Kind != EGameXXKCardPendingChoiceKind::ForcedDiscard
+		|| Runtime.Deck.PendingChoice.Candidates.IsEmpty()) return false;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	if (!TestTrue(FString::Printf(TEXT("forced discard resumes the remaining Hero task queue: %s"), *Error),
+		GameXXKCardRules::SubmitForcedDiscard(
+			Runtime,
+			{Runtime.Deck.PendingChoice.Candidates[0].InstanceId},
+			&Error,
+			&ResumedResults))) return false;
+	TArray<FGameXXKCardArmorResult> ArmorResults = Result.ArmorResults;
+	for (const FGameXXKCardPlayResult& Resumed : ResumedResults)
+	{
+		ArmorResults.Append(Resumed.ArmorResults);
+	}
+	if (!TestEqual(TEXT("replayed Han Xu preserves Defense and overflow Armor packets"), ArmorResults.Num(), 2)) return false;
+	TestArmorPacket(*this, ArmorResults[0], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Hero task replay Defense Armor"));
+	TestArmorPacket(*this, ArmorResults[1], OwnerUnitId, OwnerUnitId, 4, 4, TEXT("Hero task replay overflow Armor"));
+	TestFalse(TEXT("Hero task resets after resumed replay and reward"), Runtime.HeroSpellTask.bActive);
 	return true;
 }
 
@@ -1059,6 +1087,7 @@ bool FGameXXKBladeFinishArmorMergeAuditTest::RunTest(const FString& Parameters)
 		MakeNamedCard(TEXT("Outcome.Merge.BladeFinish"), TEXT("Hero.Guard.JieJiaHuanFeng"), OwnerUnitId, 0)};
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61104)) return false;
+	FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 	TestEqual(TEXT("Blade finish fixture adds Vulnerability"),
 		GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, EnemyAUnitId), EGameXXKCardStatus::Vulnerability, 3), 3);
 	Runtime.PendingBladeFinish.Rule = EGameXXKBladeFinishRule::FreezeVulnerabilityAndReplay;
@@ -1072,8 +1101,8 @@ bool FGameXXKBladeFinishArmorMergeAuditTest::RunTest(const FString& Parameters)
 	if (!TestTrue(FString::Printf(TEXT("Duan Yue finish replay resolves into the outer transaction: %s"), *Error),
 		GameXXKCardRules::ResolveCardPlay(Runtime, Cards[0].InstanceId, EnemyAUnitId, Result, &Error))) return false;
 	if (!TestEqual(TEXT("Blade finish outer drain preserves base and replay armor"), Result.ArmorResults.Num(), 2)) return false;
-	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 10, 10, TEXT("Blade finish active Armor"));
-	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 10, 10, TEXT("Blade finish replay Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, OwnerUnitId, 8, 8, TEXT("Blade finish active Armor"));
+	TestArmorPacket(*this, Result.ArmorResults[1], OwnerUnitId, OwnerUnitId, 8, 8, TEXT("Blade finish replay Armor"));
 	return true;
 }
 
@@ -1090,6 +1119,7 @@ bool FGameXXKPoJunArmorMergeAuditTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime Runtime;
 	if (!BuildExactRuntime(*this, Runtime, Cards, EGameXXKCharacterRole::Blade, 61105)
 		|| !InstallPoJunOpeningReplay(*this, Runtime)) return false;
+	FindUnit(Runtime, OwnerUnitId)->Defense = 20;
 
 	FGameXXKCardPlayResult Result;
 	FString Error;
@@ -1232,7 +1262,8 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	FlatTarget->HP = 30;
+	FlatTarget->HP = 300;
+	FlatTarget->MaxHP = 1000;
 	FlatTarget->Defense = 40;
 	FlatTarget->Armor = 50;
 	TestEqual(
@@ -1244,21 +1275,21 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("flat reverse card emits primary and flat packets"), FlatResult.DamageResults.Num(), 2);
+	TestEqual(TEXT("flat reverse card emits coefficient and conditional flat packets"), FlatResult.DamageResults.Num(), 2);
 	const FGameXXKCardDamageResult* FlatReverse = FlatResult.DamageResults.FindByPredicate([](const FGameXXKCardDamageResult& Result)
 	{
-		return Result.RequestedDamage == 2;
+		return Result.RequestedDamage == 11;
 	});
-	if (!TestNotNull(TEXT("flat reverse emits its real two-point packet"), FlatReverse))
+	if (!TestNotNull(TEXT("flat reverse emits its level-one eleven-point packet"), FlatReverse))
 	{
 		return false;
 	}
 	TestEqual(TEXT("flat reverse has Medicine cause"), FlatReverse->Cause, EGameXXKCardDamageCause::Medicine);
 	TestEqual(TEXT("flat reverse source remains the card owner"), FlatReverse->SourceUnitId, OwnerUnitId);
-	TestEqual(TEXT("flat reverse loses exactly two health"), FlatReverse->HealthDamage, 2);
+	TestEqual(TEXT("flat reverse loses exactly eleven health"), FlatReverse->HealthDamage, 11);
 	TestEqual(TEXT("flat reverse absorbs no Armor"), FlatReverse->ArmorAbsorbed, 0);
 	TestEqual(TEXT("flat reverse keeps enemy Armor"), FindUnit(FlatRuntime, EnemyAUnitId)->Armor, 50);
-	TestEqual(TEXT("flat reverse card loses seventeen total enemy health"), FindUnit(FlatRuntime, EnemyAUnitId)->HP, 13);
+	TestEqual(TEXT("flat reverse card applies forty-seven coefficient damage plus eleven conditional"), FindUnit(FlatRuntime, EnemyAUnitId)->HP, 242);
 	TestEqual(TEXT("flat reverse card consumes the Medicine snapshot once"), Status(FlatRuntime, OwnerUnitId, EGameXXKCardStatus::Medicine), 0);
 
 	FGameXXKCardBattleRuntime FirstFormulaRuntime;
@@ -1327,10 +1358,10 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	const FGameXXKCardDamageResult& BelowThresholdDamage = BelowThresholdResult.DamageResults[0];
-	TestEqual(TEXT("below-threshold reverse requests eight"), BelowThresholdDamage.RequestedDamage, 8);
+	TestEqual(TEXT("coefficient twenty-five resolves to twenty-six"), BelowThresholdDamage.RequestedDamage, 26);
 	TestEqual(TEXT("below-threshold reverse keeps Medicine cause"), BelowThresholdDamage.Cause, EGameXXKCardDamageCause::Medicine);
 	TestEqual(TEXT("below-threshold reverse keeps owner source"), BelowThresholdDamage.SourceUnitId, OwnerUnitId);
-	TestEqual(TEXT("below-threshold reverse grants no Vulnerability"), Status(BelowThresholdRuntime, EnemyAUnitId, EGameXXKCardStatus::Vulnerability), 0);
+	TestEqual(TEXT("coefficient twenty-five clears the formula threshold and grants Vulnerability"), Status(BelowThresholdRuntime, EnemyAUnitId, EGameXXKCardStatus::Vulnerability), 1);
 	const FGameXXKHealerFormulaRuntime* BelowThresholdFormula = FindFormula(
 		BelowThresholdRuntime,
 		EGameXXKHealerFormulaKind::LargeHealingArmorOrVulnerability);
@@ -1338,7 +1369,7 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("below-threshold reverse spends no formula budget"), BelowThresholdFormula->LastTriggeredRound, 0);
+	TestEqual(TEXT("threshold-qualified reverse spends the formula round budget"), BelowThresholdFormula->LastTriggeredRound, BelowThresholdRuntime.RoundNumber);
 
 	FGameXXKCardBattleRuntime BoundaryRuntime;
 	if (!BuildRuntime(*this, BoundaryRuntime, 61008)
@@ -1356,7 +1387,7 @@ bool FGameXXKCardOutcomeDamageAuditTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	const FGameXXKCardDamageResult& BoundaryDamage = BoundaryResult.DamageResults[0];
-	TestEqual(TEXT("ten-point boundary reverse requests ten"), BoundaryDamage.RequestedDamage, 10);
+	TestEqual(TEXT("boundary fixture uses the current coefficient twenty-five result"), BoundaryDamage.RequestedDamage, 26);
 	TestEqual(TEXT("ten-point boundary reverse keeps Medicine cause"), BoundaryDamage.Cause, EGameXXKCardDamageCause::Medicine);
 	TestEqual(TEXT("ten-point boundary reverse keeps owner source"), BoundaryDamage.SourceUnitId, OwnerUnitId);
 	TestEqual(TEXT("ten-point boundary reverse grants Vulnerability1"), Status(BoundaryRuntime, EnemyAUnitId, EGameXXKCardStatus::Vulnerability), 1);
@@ -1549,7 +1580,7 @@ bool FGameXXKRelicLinkedDamageAuditTest::RunTest(const FString& Parameters)
 		{
 			return false;
 		}
-		FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->HP = 15;
+		FindUnit(State.CardRun.ActiveBattle, EnemyAUnitId)->HP = 11;
 		FindUnit(State.CardRun.ActiveBattle, OwnerUnitId)->HP = 90;
 		FindUnit(State.CardRun.ActiveBattle, AllyUnitId)->HP = 90;
 		if (!AcquireRelics(

@@ -214,6 +214,307 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 	const FGameXXKCardResolvedDisplayValue* AdapterAttack = FindValue(AdapterPreview, EGameXXKCardDisplayValueKind::AttackDamage);
 	const int32 ExpectedAdapterAttack = HeroSnapshot.AttributesBeforeRoute.Attack * 120 / 100;
 	TestEqual(TEXT("adapter compact value equals the authoritative equipped Attack"), AdapterAttack ? AdapterAttack->ResolvedMagnitude : INDEX_NONE, ExpectedAdapterAttack);
+
+	FGameXXKCardCombatUnit SorcererSource = MakeUnit(
+		TEXT("Display.Sorcerer"),
+		EGameXXKCardTargetSide::Party,
+		EGameXXKCharacterRole::Sorcerer,
+		137,
+		100,
+		1);
+	SorcererSource.MaxMana = 34;
+	SorcererSource.Mana = 34;
+	const FGameXXKCardDefinition* SorcererAttackDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.LingHuoFu"));
+	FGameXXKCardPlayPreview SorcererAttackPreview;
+	TestTrue(TEXT("special Sorcerer attack builds a panel-aware preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*SorcererAttackDefinition,
+		EGameXXKCardQuality::Common,
+		SorcererSource,
+		100,
+		{},
+		SorcererAttackPreview,
+		&Error));
+	const FGameXXKCardResolvedDisplayValue* SorcererAttack = FindValue(
+		SorcererAttackPreview,
+		EGameXXKCardDisplayValueKind::AttackDamage);
+	TestEqual(TEXT("special Sorcerer attack uses Attack137"), SorcererAttack ? SorcererAttack->ResolvedMagnitude : INDEX_NONE, 95);
+	const FString SorcererAttackCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*SorcererAttackDefinition,
+		EGameXXKCardQuality::Common,
+		&SorcererAttackPreview,
+		Context);
+	const FString SorcererAttackDetail = GameXXKCardText::DescribeExpandedTooltipBody(
+		*SorcererAttackDefinition,
+		EGameXXKCardQuality::Common,
+		&SorcererAttackPreview,
+		Context);
+	TestTrue(TEXT("special Sorcerer compact text shows generated damage"), SorcererAttackCompact.Contains(TEXT("造成95点伤害")));
+	TestTrue(TEXT("special Sorcerer detail keeps only the attack multiplier"), SorcererAttackDetail.Contains(TEXT("造成70%的攻击伤害")));
+	TestFalse(TEXT("special Sorcerer attack sentence omits an inline target"), SorcererAttackDetail.Contains(TEXT("敌方全体造成70%的攻击伤害")));
+
+	const FGameXXKCardDefinition* FireDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.LiHuoYin"));
+	FGameXXKCardPlayPreview FirePreview;
+	TestTrue(TEXT("special Sorcerer fire card builds a panel-aware preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*FireDefinition,
+		EGameXXKCardQuality::Common,
+		SorcererSource,
+		100,
+		{},
+		FirePreview,
+		&Error));
+	const FString FireCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*FireDefinition,
+		EGameXXKCardQuality::Common,
+		&FirePreview,
+		Context);
+	const FString FireDetail = GameXXKCardText::DescribeExpandedTooltipBody(
+		*FireDefinition,
+		EGameXXKCardQuality::Common,
+		&FirePreview,
+		Context);
+	TestTrue(TEXT("special Sorcerer fire compact uses actual Attack"), FireCompact.Contains(TEXT("造成82点伤害")));
+	TestTrue(TEXT("special Sorcerer fire compact uses generated DOT"), FireCompact.Contains(TEXT("10点灼烧")));
+	TestTrue(TEXT("special Sorcerer fire detail combines level and quality"), FireDetail.Contains(TEXT("2点灼烧，500%增幅倍率")));
+
+	FGameXXKCardCombatUnit BladeSource = SorcererSource;
+	BladeSource.UnitId = TEXT("Display.Blade");
+	BladeSource.Role = EGameXXKCharacterRole::Blade;
+	const FGameXXKCardDefinition* BladeDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.LieFengZhan"));
+	FGameXXKCardPlayPreview BladePreview;
+	TestTrue(TEXT("special Blade card builds a panel-aware preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*BladeDefinition,
+		EGameXXKCardQuality::Common,
+		BladeSource,
+		100,
+		{},
+		BladePreview,
+		&Error));
+	const FString BladeCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*BladeDefinition,
+		EGameXXKCardQuality::Common,
+		&BladePreview,
+		Context);
+	const FString BladeDetail = GameXXKCardText::DescribeExpandedTooltipBody(
+		*BladeDefinition,
+		EGameXXKCardQuality::Common,
+		&BladePreview,
+		Context);
+	TestTrue(TEXT("special Blade compact uses actual Attack"), BladeCompact.Contains(TEXT("造成137点伤害")));
+	TestTrue(TEXT("special Blade compact uses generated DOT"), BladeCompact.Contains(TEXT("5点流血")));
+	TestTrue(TEXT("special Blade detail combines DOT level and quality"), BladeDetail.Contains(TEXT("1点流血，500%增幅倍率")));
+	const FGameXXKCardDefinition* MultiHitBladeDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.JiYuLianZhan"));
+	FGameXXKCardPlayPreview MultiHitBladePreview;
+	TestTrue(TEXT("multi-hit Blade card builds a panel-aware preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*MultiHitBladeDefinition,
+		EGameXXKCardQuality::Common,
+		BladeSource,
+		100,
+		{},
+		MultiHitBladePreview,
+		&Error));
+	const FString MultiHitBladeCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*MultiHitBladeDefinition,
+		EGameXXKCardQuality::Common,
+		&MultiHitBladePreview,
+		Context);
+	TestTrue(
+		TEXT("multi-hit compact text shows the generated per-hit value"),
+		MultiHitBladeCompact.Contains(TEXT("攻击3次，每次造成116点伤害")));
+
+	const FGameXXKCardDefinition* IceDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.SheLingHuo"));
+	FGameXXKCardPlayPreview IcePreview;
+	TestTrue(TEXT("Ice overflow card builds a panel-aware preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*IceDefinition,
+		EGameXXKCardQuality::Rare,
+		SorcererSource,
+		100,
+		{},
+		IcePreview,
+		&Error));
+	const FGameXXKCardResolvedDisplayValue* ManaRecovery = FindValue(
+		IcePreview,
+		EGameXXKCardDisplayValueKind::ManaRecovery);
+	TestNotNull(TEXT("Ice preview exposes Mana recovery separately"), ManaRecovery);
+	if (ManaRecovery)
+	{
+		TestEqual(TEXT("Ice preview requests ten percent current Mana rounded up"), ManaRecovery->ResolvedMagnitude, 4);
+		TestEqual(TEXT("full Mana accepts none of the recovery"), ManaRecovery->ActualMagnitude, 0);
+		TestEqual(TEXT("full Mana overflows all four points"), ManaRecovery->OverflowMagnitude, 4);
+		TestEqual(TEXT("Rare level100 overflow uses a combined600 percent amplification"), ManaRecovery->AmplificationPercent, 600);
+	}
+	const FGameXXKCardResolvedDisplayValue* OverflowArmor = FindValue(
+		IcePreview,
+		EGameXXKCardDisplayValueKind::Armor);
+	TestEqual(TEXT("four overflow Mana converts to24 Armor"), OverflowArmor ? OverflowArmor->ResolvedMagnitude : INDEX_NONE, 24);
+	const FString IceCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*IceDefinition,
+		EGameXXKCardQuality::Rare,
+		&IcePreview,
+		Context);
+	const FString IceDetail = GameXXKCardText::DescribeExpandedTooltipBody(
+		*IceDefinition,
+		EGameXXKCardQuality::Rare,
+		&IcePreview,
+		Context);
+	TestTrue(TEXT("Ice compact separates recovery and converted Armor"), IceCompact.Contains(TEXT("回复4点内力")) && IceCompact.Contains(TEXT("24点护甲")));
+	TestTrue(TEXT("Ice detail keeps current-Mana coefficient and combined amplification"), IceDetail.Contains(TEXT("当前内力的10%")) && IceDetail.Contains(TEXT("600%增幅倍率")));
+
+	const FGameXXKCardDefinition* MaxManaIceDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.FenMaiFu"));
+	FGameXXKCardPlayPreview MaxManaIcePreview;
+	TestTrue(TEXT("Max-Mana Ice card builds a staged preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*MaxManaIceDefinition,
+		EGameXXKCardQuality::Common,
+		SorcererSource,
+		100,
+		{},
+		MaxManaIcePreview,
+		&Error));
+	const FGameXXKCardResolvedDisplayValue* MaxManaRecovery = FindValue(
+		MaxManaIcePreview,
+		EGameXXKCardDisplayValueKind::ManaRecovery);
+	TestEqual(TEXT("Max-Mana increase happens before ten-percent recovery"), MaxManaRecovery ? MaxManaRecovery->ResolvedMagnitude : INDEX_NONE, 4);
+	TestEqual(TEXT("expanded cap accepts the complete recovery"), MaxManaRecovery ? MaxManaRecovery->ActualMagnitude : INDEX_NONE, 4);
+	TestEqual(TEXT("expanded cap leaves no overflow"), MaxManaRecovery ? MaxManaRecovery->OverflowMagnitude : INDEX_NONE, 0);
+
+	const FGameXXKCardDefinition* PartyOverflowDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.XingHuoHuiShou"));
+	FGameXXKCardPlayPreview PartyOverflowPreview;
+	TestTrue(TEXT("party overflow card builds a post-cost preview"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*PartyOverflowDefinition,
+		EGameXXKCardQuality::Rare,
+		SorcererSource,
+		100,
+		{},
+		PartyOverflowPreview,
+		&Error));
+	const FGameXXKCardResolvedDisplayValue* PartyManaRecovery = FindValue(
+		PartyOverflowPreview,
+		EGameXXKCardDisplayValueKind::ManaRecovery);
+	TestEqual(TEXT("party overflow generates eight Mana after paying four"), PartyManaRecovery ? PartyManaRecovery->ResolvedMagnitude : INDEX_NONE, 8);
+	TestEqual(TEXT("party overflow restores four Mana to the caster"), PartyManaRecovery ? PartyManaRecovery->ActualMagnitude : INDEX_NONE, 4);
+	TestEqual(TEXT("party overflow converts the remaining four Mana"), PartyManaRecovery ? PartyManaRecovery->OverflowMagnitude : INDEX_NONE, 4);
+	const FString PartyOverflowCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*PartyOverflowDefinition,
+		EGameXXKCardQuality::Rare,
+		&PartyOverflowPreview,
+		Context);
+	TestTrue(
+		TEXT("party overflow compact text reports one shared Armor grant"),
+		PartyOverflowCompact.Contains(TEXT("仅自身回复8点内力"))
+			&& PartyOverflowCompact.Contains(TEXT("全体友方各获得24点护甲")));
+
+	FGameXXKCardCombatUnit HealerSource = SorcererSource;
+	HealerSource.UnitId = TEXT("Display.Healer");
+	HealerSource.Role = EGameXXKCharacterRole::Healer;
+	const FGameXXKCardDefinition* BranchHealingDefinition =
+		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Healer.YaoYin"));
+	FGameXXKCardPlayPreview BranchHealingPreview;
+	TestTrue(TEXT("ally/enemy healing card builds every target branch"), GameXXKCardRules::BuildReferenceCardPlayPreview(
+		*BranchHealingDefinition,
+		EGameXXKCardQuality::Common,
+		HealerSource,
+		100,
+		{},
+		BranchHealingPreview,
+		&Error));
+	const FString BranchHealingCompact = GameXXKCardText::DescribeCompactTooltipBody(
+		*BranchHealingDefinition,
+		EGameXXKCardQuality::Common,
+		&BranchHealingPreview,
+		Context);
+	const FString BranchHealingDetail = GameXXKCardText::DescribeExpandedTooltipBody(
+		*BranchHealingDefinition,
+		EGameXXKCardQuality::Common,
+		&BranchHealingPreview,
+		Context);
+	TestTrue(TEXT("ally branch compact uses generated30-point coefficient healing"), BranchHealingCompact.Contains(TEXT("150点治疗")));
+	TestTrue(TEXT("enemy branch compact uses generated15-point coefficient party healing"), BranchHealingCompact.Contains(TEXT("全体友方各获得75点治疗")));
+	TestFalse(TEXT("compact branch text preserves late effects without hard ellipsis"), BranchHealingCompact.Contains(TEXT("…")));
+	TestTrue(TEXT("ally branch detail combines level and quality"), BranchHealingDetail.Contains(TEXT("30点治疗，500%增幅倍率")));
+	TestTrue(TEXT("enemy branch detail combines level and quality"), BranchHealingDetail.Contains(TEXT("15点治疗，500%增幅倍率")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKAllCardReferenceTextTest,
+	"GameXXK.Data.CardText.All173ReferencePreviews",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKAllCardReferenceTextTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKCardResolvedTextTest;
+	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
+	TestEqual(TEXT("reference-text audit covers the active card catalog"), Definitions.Num(), 173);
+	int32 QualityVersionCount = 0;
+	for (int32 DefinitionIndex = 0; DefinitionIndex < Definitions.Num(); ++DefinitionIndex)
+	{
+		const FGameXXKCardDefinition& Definition = Definitions[DefinitionIndex];
+		const EGameXXKCharacterRole Role = Definition.Owner == EGameXXKCardOwner::Profession
+			? Definition.Role
+			: Definition.Owner == EGameXXKCardOwner::QuestNpc
+				? EGameXXKCharacterRole::QuestNpc
+				: EGameXXKCharacterRole::Hero;
+		FGameXXKCardCombatUnit Source = MakeUnit(
+			FName(*FString::Printf(TEXT("Display.Catalog.%d"), DefinitionIndex)),
+			EGameXXKCardTargetSide::Party,
+			Role,
+			137,
+			113,
+			1);
+		Source.MaxMana = 34;
+		Source.Mana = 34;
+		for (int32 QualityValue = static_cast<int32>(Definition.BaseQuality);
+			QualityValue <= static_cast<int32>(EGameXXKCardQuality::Epic);
+			++QualityValue)
+		{
+			const EGameXXKCardQuality Quality = static_cast<EGameXXKCardQuality>(QualityValue);
+			++QualityVersionCount;
+			FGameXXKCardPlayPreview Preview;
+			FString Error;
+			const FString ContextLabel = FString::Printf(
+				TEXT("%s quality=%d"),
+				*Definition.Id.ToString(),
+				QualityValue);
+			if (!GameXXKCardRules::BuildReferenceCardPlayPreview(
+					Definition,
+					Quality,
+					Source,
+					100,
+					{},
+					Preview,
+					&Error))
+			{
+				AddError(FString::Printf(TEXT("%s reference preview failed: %s"), *ContextLabel, *Error));
+				continue;
+			}
+			const FString Compact = GameXXKCardText::DescribeCompactTooltipBody(
+				Definition,
+				Quality,
+				&Preview,
+				{});
+			const FString Detail = GameXXKCardText::DescribeExpandedTooltipBody(
+				Definition,
+				Quality,
+				&Preview,
+				{});
+			TestFalse(*FString::Printf(TEXT("%s compact text is populated"), *ContextLabel), Compact.IsEmpty());
+			TestFalse(*FString::Printf(TEXT("%s detail text is populated"), *ContextLabel), Detail.IsEmpty());
+			TestFalse(
+				*FString::Printf(TEXT("%s has no unresolved formatter token"), *ContextLabel),
+				Compact.Contains(TEXT("未知")) || Detail.Contains(TEXT("未知"))
+					|| Compact.Contains(TEXT("无效")) || Detail.Contains(TEXT("无效")));
+			TestFalse(
+				*FString::Printf(TEXT("%s compact text has no hard semantic truncation"), *ContextLabel),
+				Compact.Contains(TEXT("…")));
+		}
+	}
+	TestEqual(TEXT("reference-text audit covers all legal quality versions"), QualityVersionCount, 419);
 	return true;
 }
 

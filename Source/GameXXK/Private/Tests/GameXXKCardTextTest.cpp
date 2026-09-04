@@ -15,7 +15,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("the card catalogue remains complete while its player text is generated"), Definitions.Num(), 198);
+	TestEqual(TEXT("the active card catalogue remains complete while its player text is generated"), Definitions.Num(), 173);
 	for (const FGameXXKCardDefinition& Definition : Definitions)
 	{
 		const FString Detail = GameXXKCardText::DescribeDetail(Definition, nullptr);
@@ -32,10 +32,9 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		const TCHAR* ForbiddenToken;
 	};
 	const TArray<FVisibleCardTextCase> VisibleCardTextCases = {
-		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("触发当前地势收益1次"), TEXT("TriggerTerrainBenefit")},
+		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("下一次地势收益改为触发2次"), TEXT("TriggerTerrainBenefit")},
 		{TEXT("Profession.Guard.TieBiRuShan"), TEXT("破绽免疫"), TEXT("CannotReceiveVulnerability")},
-		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")},
-		{TEXT("Route.Terrain.XingJunBuZhen"), TEXT("地形减耗"), TEXT("NextTerrainCardEnergyReduction")}};
+		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")}};
 	for (const FVisibleCardTextCase& TextCase : VisibleCardTextCases)
 	{
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(TextCase.CardId);
@@ -57,7 +56,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* GuiYuan = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.GuiYuanShu"));
 	const FGameXXKCardDefinition* TerrainSwitch = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.YinShuiHuiYuan"));
 	const FGameXXKCardDefinition* Consumption = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Boss.FuHuDuanJiang"));
-	const FGameXXKCardDefinition* DelayedModifier = FGameXXKCardCatalog::FindCardDefinition(TEXT("Route.Rare.TieYiYiJue"));
+	const FGameXXKCardDefinition* DelayedModifier = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Formation.LianYingBuShi"));
 	const FGameXXKCardDefinition* Momentum = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.NingShenTuNa"));
 	const FGameXXKCardDefinition* Blade = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Blade.TongFengYinShi"));
 	const FGameXXKCardDefinition* Medicine = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Healer.HuiChunNiMai"));
@@ -109,7 +108,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Medicine cards expose the exact concise Medicine keyword rule"), MedicineText.Contains(TEXT("药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。")));
 	TestTrue(TEXT("Heavy Arrow cards expose the exact concise Heavy Arrow keyword rule"), HeavyArrowText.Contains(TEXT("重箭：消耗全部蓄力，逐层触发本牌重箭效果。")));
 	TestTrue(TEXT("Heavy Arrow cards retain their data-defined per-layer payload"), HeavyArrowText.Contains(TEXT("每消耗1层")) && HeavyArrowText.Contains(TEXT("抽1张牌")));
-	TestTrue(TEXT("spell-task cards expose the exact concise task rule"), SpellTaskText.Contains(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。")));
+	TestTrue(TEXT("spell-task cards expose the exact concise task rule"), SpellTaskText.Contains(TEXT("法术任务：4张携带主角法师牌各主动打出一次后，依序重放基础效果并触发阵赏。")));
 	TestTrue(TEXT("spell-task cards retain the data-defined reward"), SpellTaskText.Contains(TEXT("阵赏·炎")) && SpellTaskText.Contains(TEXT("8层灼烧")));
 	TestTrue(TEXT("terrain cards expose the exact concise current-terrain rule"), TerrainBenefitText.Contains(TEXT("地势：按当前地势触发对应效果。")));
 	TestTrue(TEXT("terrain cards retain the data-defined terrain payload"), TerrainBenefitText.Contains(TEXT("触发当前地势收益1次")));
@@ -118,9 +117,9 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	PlainTerrainContext.CurrentTerrain = EGameXXKCardTerrain::Plain;
 	const FString CurrentTerrainText = GameXXKCardText::DescribeTooltip(*TerrainBenefit, nullptr, PlainTerrainContext);
 	TestTrue(TEXT("live terrain tooltips show only the current terrain benefit"),
-		CurrentTerrainText.Contains(TEXT("当前平原：敌方目标获得2层灼烧")));
+		CurrentTerrainText.Contains(TEXT("当前平原：全体敌方获得2点基础灼烧")));
 	TestFalse(TEXT("live terrain tooltips do not dump every other terrain"),
-		CurrentTerrainText.Contains(TEXT("山崖=敌方2层破绽")));
+		CurrentTerrainText.Contains(TEXT("山崖=全体敌方2层破绽")));
 
 	const FGameXXKCardDefinition* PlannedTerrainSwitch = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.FormationMaster.GuanShi"));
 	TestNotNull(TEXT("the planned-terrain switch fixture exists"), PlannedTerrainSwitch);
@@ -128,9 +127,9 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	{
 		const FString PlannedTerrainSwitchText = GameXXKCardText::DescribeTooltip(*PlannedTerrainSwitch, nullptr, PlainTerrainContext);
 		TestTrue(TEXT("terrain-switch cards name the destination terrain benefit"),
-			PlannedTerrainSwitchText.Contains(TEXT("切换至平原（平原收益：敌方目标获得2层灼烧）")));
+			PlannedTerrainSwitchText.Contains(TEXT("切换至平原（平原收益：全体敌方获得2点基础灼烧）")));
 		TestTrue(TEXT("terrain-switch cards describe the post-switch trigger using the destination terrain"),
-			PlannedTerrainSwitchText.Contains(TEXT("切换后平原：敌方目标获得2层灼烧")));
+			PlannedTerrainSwitchText.Contains(TEXT("切换后平原：全体敌方获得2点基础灼烧")));
 	}
 
 	const FGameXXKCardDefinition* BladeLieFeng = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.LieFengZhan"));
@@ -155,7 +154,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Blade finish text names its trigger and payload"),
 			LieFengText.Contains(TEXT("收招：此牌是本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。")));
 		TestTrue(TEXT("Blood Edge cards expose the blood-edge keyword"),
-			FengHouText.Contains(TEXT("血势：每层目标流血使本段攻击倍率+10%。")));
+			FengHouText.Contains(TEXT("血势：每点目标流血使本段攻击倍率+2个百分点。")));
 		TestTrue(TEXT("Momentum Break cards expose the momentum keyword"),
 			DuanYueText.Contains(TEXT("乘势：每层自身气势使本段攻击倍率+10%。")));
 		TestTrue(TEXT("Sheathed cards explain storing the charge as a native style"),
@@ -252,7 +251,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("current formatter explains single-target widening"), FormatterCoverageText.Contains(TEXT("扩展为目标所在阵营全体")));
 	TestTrue(TEXT("current formatter explains preserved reaction use"), FormatterCoverageText.Contains(TEXT("反击或格挡")) && FormatterCoverageText.Contains(TEXT("不消耗次数")));
 	TestTrue(TEXT("current formatter explains next-round Armor retention"), FormatterCoverageText.Contains(TEXT("下回合保留当前护甲")));
-	TestTrue(TEXT("current formatter explains ally-only damage-over-time cleansing"), FormatterCoverageText.Contains(TEXT("若所选目标为友方")) && FormatterCoverageText.Contains(TEXT("清除其全部流血、中毒和灼烧")));
+	TestTrue(TEXT("current formatter explains ally-only damage-over-time cleansing"), FormatterCoverageText.Contains(TEXT("若所选目标为友方")) && FormatterCoverageText.Contains(TEXT("清除其全部流血、中毒、灼烧和蚀伤")));
 	TestTrue(TEXT("current formatter explains flat healing reversal"), FormatterCoverageText.Contains(TEXT("恢复2点生命")) && FormatterCoverageText.Contains(TEXT("失去2点生命")));
 	TestTrue(TEXT("current formatter groups ally and enemy gates"), FormatterCoverageText.Contains(TEXT("若目标是友方")) && FormatterCoverageText.Contains(TEXT("若目标是敌方")));
 	TestFalse(TEXT("current enum coverage has no unresolved fallback"), FormatterCoverageText.Contains(TEXT("未知")) || FormatterCoverageText.Contains(TEXT("无效")));
@@ -270,6 +269,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	QualityEffect.Type = EGameXXKCardEffectType::DamagePercentAttack;
 	QualityEffect.Target = EGameXXKCardEffectTarget::SelectedTarget;
 	QualityEffect.Magnitude = 7;
+	QualityEffect.MagnitudePolicy = EGameXXKCardMagnitudePolicy::ContinuousQuality;
 	QualityEffect.HitCount = 2;
 	QualityEffect.Condition.Type = EGameXXKCardEffectConditionType::TargetHealthBelowPercent;
 	QualityEffect.Condition.HealthPercentThreshold = 50.0f;
@@ -282,11 +282,11 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		EGameXXKCardQuality::Epic,
 		nullptr,
 		TooltipContext);
-	TestTrue(TEXT("explicit-quality effects show the effective Epic value"), EpicEffectsText.Contains(TEXT("10%攻击伤害")));
-	TestTrue(TEXT("explicit-quality detail shows the same effective Epic value"), EpicDetailText.Contains(TEXT("10%攻击伤害")));
-	TestTrue(TEXT("explicit-quality tooltip shows the same effective Epic value"), EpicTooltipText.Contains(TEXT("10%攻击伤害")));
-	TestFalse(TEXT("detail does not scale an already-effective value twice"), EpicDetailText.Contains(TEXT("14%攻击伤害")));
-	TestFalse(TEXT("tooltip does not scale an already-effective value twice"), EpicTooltipText.Contains(TEXT("14%攻击伤害")));
+	TestTrue(TEXT("explicit-quality effects show the effective Epic value"), EpicEffectsText.Contains(TEXT("10%的攻击伤害")));
+	TestTrue(TEXT("explicit-quality detail shows the same effective Epic value"), EpicDetailText.Contains(TEXT("10%的攻击伤害")));
+	TestTrue(TEXT("explicit-quality tooltip shows the same effective Epic value"), EpicTooltipText.Contains(TEXT("10%的攻击伤害")));
+	TestFalse(TEXT("detail does not scale an already-effective value twice"), EpicDetailText.Contains(TEXT("14%的攻击伤害")));
+	TestFalse(TEXT("tooltip does not scale an already-effective value twice"), EpicTooltipText.Contains(TEXT("14%的攻击伤害")));
 	TestTrue(TEXT("detail has an independent Epic quality line"), EpicDetailText.Contains(TEXT("品质：史诗")));
 	TestTrue(TEXT("tooltip has an independent Epic quality line"), EpicTooltipText.Contains(TEXT("品质：史诗")));
 	TestTrue(TEXT("legacy rarity remains a separately-labelled acquisition-source semantic"), EpicDetailText.Contains(TEXT("来源：路线临时卡 · 首领")));
@@ -297,14 +297,14 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 
 	const FString DefaultQualityText = GameXXKCardText::DescribeDetail(QualityFixture, nullptr);
 	TestTrue(TEXT("legacy detail signature defaults to definition BaseQuality"),
-		DefaultQualityText.Contains(TEXT("9%攻击伤害")) && DefaultQualityText.Contains(TEXT("品质：稀有")));
+		DefaultQualityText.Contains(TEXT("9%的攻击伤害")) && DefaultQualityText.Contains(TEXT("品质：稀有")));
 	const FString InvalidRequestedQualityText = GameXXKCardText::DescribeDetail(QualityFixture, EGameXXKCardQuality::Invalid, nullptr);
 	TestTrue(TEXT("explicit Invalid quality safely falls back to definition BaseQuality"),
-		InvalidRequestedQualityText.Contains(TEXT("9%攻击伤害")) && InvalidRequestedQualityText.Contains(TEXT("品质：稀有")));
+		InvalidRequestedQualityText.Contains(TEXT("9%的攻击伤害")) && InvalidRequestedQualityText.Contains(TEXT("品质：稀有")));
 	QualityFixture.BaseQuality = EGameXXKCardQuality::Invalid;
 	const FString DoubleInvalidQualityText = GameXXKCardText::DescribeDetail(QualityFixture, nullptr);
 	TestTrue(TEXT("legacy detail safely falls back to Common when BaseQuality is Invalid"),
-		DoubleInvalidQualityText.Contains(TEXT("7%攻击伤害")) && DoubleInvalidQualityText.Contains(TEXT("品质：普通")));
+		DoubleInvalidQualityText.Contains(TEXT("7%的攻击伤害")) && DoubleInvalidQualityText.Contains(TEXT("品质：普通")));
 
 	const FGameXXKCardDefinition* YaoYin = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Healer.YaoYin"));
 	TestNotNull(TEXT("Yin-Yang Medicine formula card exists"), YaoYin);
@@ -334,8 +334,8 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	if (ErMuMiBao)
 	{
 		const FString ErMuText = GameXXKCardText::DescribeEffects(*ErMuMiBao);
-		TestTrue(TEXT("reveal-all sentinel renders as all intents instead of a magic 99"), ErMuText.Contains(TEXT("揭示全部敌方意图")));
-		TestFalse(TEXT("reveal-all sentinel never leaks the magic 99 count"), ErMuText.Contains(TEXT("揭示99个敌方意图")));
+		TestTrue(TEXT("current intelligence card describes its group debuffs"), ErMuText.Contains(TEXT("虚弱")) && ErMuText.Contains(TEXT("标记")));
+		TestFalse(TEXT("retired reveal-all payload is absent"), ErMuText.Contains(TEXT("揭示全部敌方意图")) || ErMuText.Contains(TEXT("揭示99个敌方意图")));
 	}
 	return true;
 }

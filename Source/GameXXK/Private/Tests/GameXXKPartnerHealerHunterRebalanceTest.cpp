@@ -190,7 +190,7 @@ bool FGameXXKHealerNativeQualityHealingRebalanceTest::RunTest(const FString& Par
 	Unit(LowHealth, TEXT("Hero"))->HP = 100;
 	GameXXKCardRules::AddCombatStatus(*Unit(LowHealth, TEXT("Owner")), EGameXXKCardStatus::Medicine, 5);
 	if (Play(*this, LowHealth, TEXT("Hero"), Result))
-		TestEqual(TEXT("primary healing above 35 percent does not grant the conditional supplemental heal"), Unit(LowHealth, TEXT("Hero"))->HP, 370);
+		TestEqual(TEXT("low-health condition is snapshotted before primary healing and still grants the supplemental heal"), Unit(LowHealth, TEXT("Hero"))->HP, 430);
 	return true;
 }
 

@@ -298,8 +298,8 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FString MultiHitError;
 	const bool bResolvedMultiHit = GameXXKCardRules::ResolveCardPlay(MultiHitRuntime, MultiHitRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), MultiHitResult, &MultiHitError);
 	TestTrue(FString::Printf(TEXT("each Ji Yu hit resolves against live Bleed and only landed hits trigger it: %s"), *MultiHitError), bResolvedMultiHit);
-	TestEqual(TEXT("the first Ji Yu hit is avoided while the next two each trigger the full live Bleed reservoir"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 60);
-	TestEqual(TEXT("the two landed Ji Yu hits preserve Bleed"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 3);
+	TestEqual(TEXT("the first Ji Yu hit is avoided while the next two each trigger the generated live Bleed reservoir"), FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy"))->HP, 68);
+	TestEqual(TEXT("the two landed Ji Yu hits preserve the level-one generated Bleed"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(MultiHitRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 4);
 	TestEqual(TEXT("Ji Yu audits three hit attempts and two landed Bleed triggers"), MultiHitResult.DamageResults.Num(), 5);
 
 	TArray<FGameXXKCardCombatUnit> GuardLinkUnits;
@@ -438,7 +438,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		{
 			FGameXXKCardPlayResult AttackModifierAttackResult;
 			TestTrue(TEXT("the next blade attack consumes the registered modifier and resolves"), GameXXKCardRules::ResolveCardPlay(AttackModifierRuntime, AttackModifierAttackInstance->InstanceId, TEXT("Enemy"), AttackModifierAttackResult));
-			TestEqual(TEXT("the next-attack modifier and active Blade sequencing resolve a twenty-five-point packet"), FindRuntimeUnit(AttackModifierRuntime.Units, TEXT("Enemy"))->HP, 75);
+			TestEqual(TEXT("the next-attack modifier and generated Bleed resolve a twenty-six-point action"), FindRuntimeUnit(AttackModifierRuntime.Units, TEXT("Enemy"))->HP, 74);
 			TestEqual(TEXT("the one-trigger next-attack modifier is consumed"), AttackModifierRuntime.Modifiers.Num(), 0);
 		}
 	}
@@ -452,8 +452,8 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult LifestealResult;
 	TestTrue(TEXT("lifesteal card resolves its attack before calculating its recovery"), GameXXKCardRules::ResolveCardPlay(LifestealRuntime, LifestealRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealResult));
 	TestEqual(TEXT("Yin Xue heals exactly the health damage from its triggered Bleed"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Blade"))->HP, 54);
-	TestEqual(TEXT("Yin Xue applies its live-Bleed attack and separate Bleed packet"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy"))->HP, 64);
-	TestEqual(TEXT("Yin Xue preserves four old Bleed then applies two new points"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 6);
+	TestEqual(TEXT("Yin Xue applies its live-Bleed attack and separate Bleed packet"), FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy"))->HP, 71);
+	TestEqual(TEXT("Yin Xue preserves four old Bleed then adds its level-one generated amount"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(LifestealRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Bleed), 7);
 
 	TArray<FGameXXKCardInstance> HealingBonusInstances = MakeRuntimeInstances(TEXT("Profession.Healer.CaoMuFuZhi"), 6, TEXT("Healer"));
 	TArray<FGameXXKCardCombatUnit> HealingBonusUnits;
@@ -476,19 +476,20 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKCardPlayResult HealingBonusHealResult;
 		TestTrue(TEXT("treatment resolves with the card owner's Medicine snapshot"), GameXXKCardRules::ResolveCardPlay(HealingBonusRuntime, HealingBonusHealInstance->InstanceId, TEXT("Healer"), HealingBonusHealResult));
-		TestEqual(TEXT("level-one base eight plus six Medicine continuously scales to healing fifteen"), FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer"))->HP, 65);
+		TestEqual(TEXT("level-one coefficient twenty-five plus six Medicine resolves to thirty-three healing"), FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer"))->HP, 83);
 		TestEqual(TEXT("Medicine is consumed in full by the qualified treatment"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(HealingBonusRuntime.Units, TEXT("Healer")), EGameXXKCardStatus::Medicine), 0);
 		TestEqual(TEXT("Medicine treatment emits one stable healing audit packet"), HealingBonusHealResult.HealingResults.Num(), 1);
 		if (HealingBonusHealResult.HealingResults.Num() == 1)
 		{
-			TestEqual(TEXT("Medicine treatment audit preserves the requested fifteen healing"), HealingBonusHealResult.HealingResults[0].RequestedHealing, 15);
-			TestEqual(TEXT("Medicine treatment audit preserves the effective fifteen healing"), HealingBonusHealResult.HealingResults[0].EffectiveHealing, 15);
+			TestEqual(TEXT("Medicine treatment audit preserves the requested thirty-three healing"), HealingBonusHealResult.HealingResults[0].RequestedHealing, 33);
+			TestEqual(TEXT("Medicine treatment audit preserves the effective thirty-three healing"), HealingBonusHealResult.HealingResults[0].EffectiveHealing, 33);
 		}
 	}
 
 	TArray<FGameXXKCardCombatUnit> ReflectUnits;
 	ReflectUnits.Add(MakeRuntimeUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 100, 100, 20, 10, 10, 1));
 	ReflectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	ReflectUnits[0].Defense = 15;
 	FGameXXKCardBattleRuntime ReflectRuntime;
 	TestTrue(TEXT("Block reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(ReflectRuntime, MakeRuntimeInstances(TEXT("Profession.Guard.FanZhenJia"), 6, TEXT("Guard")), ReflectUnits, EGameXXKCardTerrain::Plain, 787));
 	FGameXXKCardPlayResult ReflectSetupResult;
@@ -513,14 +514,14 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		TEXT("Guard"),
 		ReflectReactionResults));
 	TestEqual(TEXT("armor can absorb the triggering hit while reflection still triggers"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->HP, 100);
-	TestEqual(TEXT("the marked guard takes the amplified eleven-point hit and keeps one Armor"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->Armor, 1);
-	TestEqual(TEXT("Block deals current Attack twenty plus post-hit Armor one"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Enemy"))->HP, 79);
+	TestEqual(TEXT("Defense reduces the marked hit to one and leaves eleven Armor"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard"))->Armor, 11);
+	TestEqual(TEXT("Block deals current Attack twenty plus post-hit Armor eleven"), FindRuntimeUnit(ReflectRuntime.Units, TEXT("Enemy"))->HP, 69);
 	TestEqual(TEXT("one direct hit consumes the guard's one taunt Mark"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Mark), 0);
 	TestEqual(TEXT("the reaction creates one separate stable audit packet"), ReflectReactionResults.Num(), 1);
 	if (ReflectReactionResults.Num() == 1)
 	{
 		TestEqual(TEXT("the reflection audit records the guard as its true source"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("Guard")));
-		TestEqual(TEXT("the reflection audit locks the Attack-plus-Armor request"), ReflectReactionResults[0].BaseRequestedDamage, 21);
+		TestEqual(TEXT("the reflection audit locks the Attack-plus-post-hit-Armor request"), ReflectReactionResults[0].BaseRequestedDamage, 31);
 	}
 	TestEqual(TEXT("one of the card's two Block layers remains after one enemy card"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(ReflectRuntime.Units, TEXT("Guard")), EGameXXKCardStatus::Block), 1);
 
@@ -528,6 +529,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Hero"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Hero, 100, 100, 20, 10, 10, 1));
 	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Guard"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Guard, 100, 100, 16, 10, 10, 2));
 	RedirectUnits.Add(MakeRuntimeUnit(TEXT("Enemy"), EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, 100, 100, 10, 0, 0, 10));
+	RedirectUnits[1].Defense = 14;
 	FGameXXKCardBattleRuntime RedirectRuntime;
 	TestTrue(TEXT("single-target redirect runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(RedirectRuntime, MakeRuntimeInstances(TEXT("Profession.Guard.TieSuoHengJiang"), 6, TEXT("Guard")), RedirectUnits, EGameXXKCardTerrain::Plain, 788));
 	FGameXXKCardPlayResult RedirectSetupResult;
@@ -549,7 +551,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("redirect audit preserves the enemy intent's original selected hero"), RedirectIncomingResult.OriginalTargetUnitId, FName(TEXT("Hero")));
 	TestEqual(TEXT("redirect audit exposes the stable final guard target"), RedirectIncomingResult.ResolvedTargetUnitId, FName(TEXT("Guard")));
 	TestTrue(TEXT("redirect audit flags the interception"), RedirectIncomingResult.bRedirected);
-	TestEqual(TEXT("the guard's twenty Armor receives the amplified eleven-point intercepted packet"), FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard"))->Armor, 9);
+	TestEqual(TEXT("the guard's Defense reduces the intercepted packet to one after generating twenty Armor"), FindRuntimeUnit(RedirectRuntime.Units, TEXT("Guard"))->Armor, 19);
 	TestEqual(TEXT("the consumed guard link remains addressable"), RedirectRuntime.GuardLinks.Num(), 1);
 	if (RedirectRuntime.GuardLinks.Num() == 1)
 	{
@@ -601,22 +603,11 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("Liu He protection pays four Mana and resolves without a selected target: %s"), *XingHuoError), bResolvedXingHuo);
 		if (bResolvedXingHuo)
 		{
-			TestEqual(TEXT("Liu He protection spends its declared four Mana"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Mana, 0);
-			TestEqual(TEXT("Liu He protection grants the Sorcerer three Armor"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Armor, 3);
-			TestEqual(TEXT("Liu He protection grants the other ally three Armor"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Ally"))->Armor, 3);
+			TestEqual(TEXT("Liu He pays four then restores its fixed eight Mana"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Mana, 8);
+			TestEqual(TEXT("Liu He creates no Armor without actual Mana overflow"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Sorcerer"))->Armor, 0);
+			TestEqual(TEXT("Liu He shares no Armor without actual Mana overflow"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Ally"))->Armor, 0);
 			TestEqual(TEXT("Liu He protection has no direct damage packet"), XingHuoResult.DamageResults.Num(), 0);
-			TestEqual(TEXT("Liu He protection emits one Armor packet per living ally"), XingHuoResult.ArmorResults.Num(), 2);
-			if (XingHuoResult.ArmorResults.Num() == 2)
-			{
-				TestEqual(TEXT("Liu He owner Armor packet keeps its source"), XingHuoResult.ArmorResults[0].SourceUnitId, FName(TEXT("Sorcerer")));
-				TestEqual(TEXT("Liu He owner Armor packet keeps its target"), XingHuoResult.ArmorResults[0].TargetUnitId, FName(TEXT("Sorcerer")));
-				TestEqual(TEXT("Liu He owner Armor packet records its request"), XingHuoResult.ArmorResults[0].RequestedArmor, 3);
-				TestEqual(TEXT("Liu He owner Armor packet records its effective gain"), XingHuoResult.ArmorResults[0].EffectiveArmor, 3);
-				TestEqual(TEXT("Liu He ally Armor packet keeps its source"), XingHuoResult.ArmorResults[1].SourceUnitId, FName(TEXT("Sorcerer")));
-				TestEqual(TEXT("Liu He ally Armor packet keeps its target"), XingHuoResult.ArmorResults[1].TargetUnitId, FName(TEXT("Ally")));
-				TestEqual(TEXT("Liu He ally Armor packet records its request"), XingHuoResult.ArmorResults[1].RequestedArmor, 3);
-				TestEqual(TEXT("Liu He ally Armor packet records its effective gain"), XingHuoResult.ArmorResults[1].EffectiveArmor, 3);
-			}
+			TestEqual(TEXT("Liu He emits no Armor packets without overflow"), XingHuoResult.ArmorResults.Num(), 0);
 			TestEqual(TEXT("Liu He protection leaves enemy health unchanged"), FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy"))->HP, 100);
 			TestEqual(TEXT("Liu He protection no longer consumes unrelated Burn"), GameXXKCardRules::GetCombatStatusStacks(*FindRuntimeUnit(XingHuoRuntime.Units, TEXT("Enemy")), EGameXXKCardStatus::Burn), 4);
 		}
@@ -643,7 +634,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult LifestealReflectResult;
 	TestTrue(TEXT("lifesteal resolves through an enemy reflection without rolling back its hit"), GameXXKCardRules::ResolveCardPlay(LifestealReflectRuntime, LifestealReflectRuntime.Deck.Hand[0].InstanceId, TEXT("Enemy"), LifestealReflectResult));
 	TestEqual(TEXT("lifesteal only restores the triggered four-point Bleed before the five-point enemy counter"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Blade"))->HP, 49);
-	TestEqual(TEXT("the enemy receives the live-Bleed-scaled attack and its separate Bleed trigger"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Enemy"))->HP, 64);
+	TestEqual(TEXT("the enemy receives the live-Bleed-scaled attack and its separate Bleed trigger"), FindRuntimeUnit(LifestealReflectRuntime.Units, TEXT("Enemy"))->HP, 71);
 	TestEqual(TEXT("lifesteal audits its one triggered-Bleed healing attempt"), LifestealReflectResult.HealingResults.Num(), 1);
 	if (LifestealReflectResult.HealingResults.Num() == 1)
 	{
@@ -658,7 +649,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the first audit packet belongs to the played blade card"), LifestealReflectResult.DamageResults[0].SourceUnitId, FName(TEXT("Blade")));
 		TestEqual(TEXT("the played-card packet is audited as direct attack damage"),
 			LifestealReflectResult.DamageResults[0].Cause, EGameXXKCardDamageCause::DirectAttack);
-		TestEqual(TEXT("the four live Bleed stacks add forty percent to the direct attack"), LifestealReflectResult.DamageResults[0].RequestedDamage, 32);
+		TestEqual(TEXT("the four live Bleed points add eight percentage points to the direct attack"), LifestealReflectResult.DamageResults[0].RequestedDamage, 25);
 		TestEqual(TEXT("the second audit packet is the triggered Bleed"), LifestealReflectResult.DamageResults[1].Cause, EGameXXKCardDamageCause::Bleed);
 		TestEqual(TEXT("the triggered Bleed deals its full four layers before one layer is consumed"), LifestealReflectResult.DamageResults[1].HealthDamage, 4);
 		TestEqual(TEXT("the third audit packet belongs to the enemy reflection"), LifestealReflectResult.DamageResults[2].SourceUnitId, FName(TEXT("Enemy")));
@@ -685,7 +676,7 @@ bool FGameXXKCardBattleRuntimeTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult DefeatDuringCardResult;
 	TestTrue(TEXT("a lethal counterattack commits the already-resolved card hit instead of rolling it back"), GameXXKCardRules::ResolveCardPlay(DefeatDuringCardRuntime, DefeatCardInstanceId, TEXT("Enemy"), DefeatDuringCardResult));
 	TestEqual(TEXT("a lethal counterattack sets the serializable battle terminal phase"), DefeatDuringCardRuntime.Phase, EGameXXKCardBattlePhase::Defeat);
-	TestEqual(TEXT("the first direct packet and its Bleed trigger remain committed before the card owner falls"), FindRuntimeUnit(DefeatDuringCardRuntime.Units, TEXT("Enemy"))->HP, 80);
+	TestEqual(TEXT("the first direct packet and generated Bleed trigger remain committed before the card owner falls"), FindRuntimeUnit(DefeatDuringCardRuntime.Units, TEXT("Enemy"))->HP, 84);
 	TestEqual(TEXT("the lethal-reflection audit retains direct damage, Bleed, and counter packets"), DefeatDuringCardResult.DamageResults.Num(), 3);
 	if (DefeatDuringCardResult.DamageResults.Num() == 3)
 	{

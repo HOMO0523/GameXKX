@@ -461,7 +461,7 @@ bool FGameXXKMageFormationListenerIntegrationTest::RunTest(const FString& Parame
 		return Modifier.ModifierId == ListenerId;
 	});
 	TestNull(TEXT("an actual automatically replayed terrain benefit consumes the override"), ListenerAfter);
-	TestEqual(TEXT("the single replayed Plain benefit becomes exactly two for Burn4"), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), 4);
+	TestEqual(TEXT("the doubled Plain benefit applies two level-one coefficient-two grants for Burn6"), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), 6);
 	int32 TerrainListenerPackets = 0;
 	for (const FGameXXKCardPlayResult& QueueResult : Results)
 	{

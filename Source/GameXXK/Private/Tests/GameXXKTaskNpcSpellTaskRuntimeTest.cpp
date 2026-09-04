@@ -218,7 +218,7 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("山河 base and replay each grant the native Epic fifty-six Armor"), FindUnit(Runtime, OwnerUnitId)->Armor, 112);
 	TestEqual(TEXT("ally also receives both full fifty-six Armor grants"), FindUnit(Runtime, AllyUnitId)->Armor, 112);
 	TestEqual(TEXT("enemy A Burn reaches its level-one cap after ordered terrain and starter effects"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 25);
-	TestEqual(TEXT("enemy B receives only the starter's group Burn under the current terrain rules"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 7);
+	TestEqual(TEXT("enemy B receives the starter group Burn plus all current Plain group benefits"), Status(Runtime, EnemyBId, EGameXXKCardStatus::Burn), 19);
 	return true;
 }
 

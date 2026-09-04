@@ -1602,6 +1602,10 @@ struct GAMEXXK_API FGameXXKCardDamageContext
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKCardResolutionOrigin ResolutionOrigin = EGameXXKCardResolutionOrigin::Invalid;
 
+	/** Runtime-only card effect index used to project card-generation values into tooltip rows. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 SourceEffectIndex = INDEX_NONE;
+
 	/** Deterministic 0..99 roll supplied by runtime direct-attack entrypoints. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 AgilityRollPercent = 0;
@@ -1657,6 +1661,10 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName ResolvedTargetUnitId = NAME_None;
+
+	/** Runtime-only card effect index; INDEX_NONE for reactions, terrain, enemy, and environmental packets. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 SourceEffectIndex = INDEX_NONE;
 
 	/** True only when the permanent talent critical roll amplified this direct party hit. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -1808,6 +1816,10 @@ struct GAMEXXK_API FGameXXKCardHealingResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName TargetUnitId = NAME_None;
 
+	/** Runtime-only originating card effect index. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 SourceEffectIndex = INDEX_NONE;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RequestedHealing = 0;
 
@@ -1825,6 +1837,10 @@ struct GAMEXXK_API FGameXXKCardArmorResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName TargetUnitId = NAME_None;
+
+	/** Runtime-only originating card effect index. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 SourceEffectIndex = INDEX_NONE;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 RequestedArmor = 0;
@@ -2511,7 +2527,8 @@ enum class EGameXXKCardDisplayValueKind : uint8
 	FixedDamage = 2,
 	DamageOverTime = 3,
 	Healing = 4,
-	Armor = 5
+	Armor = 5,
+	ManaRecovery = 6
 };
 
 /** Pure card-generation value paired with an optional target outcome from a copied runtime. */
@@ -2531,6 +2548,10 @@ struct GAMEXXK_API FGameXXKCardResolvedDisplayValue
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FName TargetUnitId = NAME_None;
+
+	/** Manual target whose branch produced this value; empty for automatic/no-target cards. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName OriginalSelectedTargetUnitId = NAME_None;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	EGameXXKCardStatus Status = EGameXXKCardStatus::None;
@@ -2552,6 +2573,10 @@ struct GAMEXXK_API FGameXXKCardResolvedDisplayValue
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 ReservoirCap = 0;
+
+	/** Portion of a generated Mana recovery that exceeded the current cap before Armor conversion. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 OverflowMagnitude = 0;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 HitCount = 1;

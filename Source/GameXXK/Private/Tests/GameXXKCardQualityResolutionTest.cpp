@@ -225,16 +225,18 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Rare damage keeps the enemy fixture addressable"), RareDamageEnemy);
 	if (RareDamageEnemy)
 	{
-		TestEqual(TEXT("Rare scales the 140-percent attack packet to 168 percent"), RareDamageEnemy->HP, 467);
+		TestEqual(TEXT("Rare scales the approved100-percent attack packet to120 percent"), RareDamageEnemy->HP, 476);
 	}
 	TestEqual(TEXT("Rare damage still spends the catalog's one energy"), RareDamageRuntime.Deck.SharedEnergy, 2);
 
 	// Epic armor and its additive mana effect must both come from one effective definition.
 	FGameXXKCardBattleRuntime EpicArmorRuntime;
+	TArray<FGameXXKCardCombatUnit> EpicArmorUnits = MakeHeroAndEnemyQualityUnits();
+	EpicArmorUnits[0].Defense = 8;
 	if (!TestTrue(TEXT("Epic armor runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		EpicArmorRuntime,
 		MakeQualityTestInstances(TEXT("Profession.Guard.PiJiaXingJun"), 6, EGameXXKCardQuality::Epic),
-		MakeHeroAndEnemyQualityUnits(),
+		EpicArmorUnits,
 		EGameXXKCardTerrain::Plain,
 		9102)))
 	{
@@ -250,7 +252,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Epic armor keeps the hero fixture addressable"), EpicArmorHero);
 	if (EpicArmorHero)
 	{
-		TestEqual(TEXT("Epic scales six armor upward to nine"), EpicArmorHero->Armor, 9);
+		TestEqual(TEXT("Epic applies the80-percent printed tier to Defense8 for nine Armor"), EpicArmorHero->Armor, 9);
 		TestEqual(TEXT("Epic leaves discrete mana at the base six"), EpicArmorHero->Mana, 6);
 	}
 	TestEqual(TEXT("Epic armor still spends the catalog's one energy"), EpicArmorRuntime.Deck.SharedEnergy, 2);
@@ -287,7 +289,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("Rare effective healing scales twelve upward to fifteen"), HealingEffectiveDefinition.Effects[0].Magnitude, 15);
+	TestEqual(TEXT("Rare effective healing preserves the raw coefficient fifteen"), HealingEffectiveDefinition.Effects[0].Magnitude, 15);
 	TestEqual(TEXT("Rare effective full cleanse keeps its unscaled marker"), HealingEffectiveDefinition.Effects[1].Magnitude, 0);
 	TestEqual(TEXT("quality does not change effective energy cost"), HealingEffectiveDefinition.EnergyCost, HealingBaseDefinition->EnergyCost);
 	TestEqual(TEXT("quality does not change effective mana cost"), HealingEffectiveDefinition.ManaCost, HealingBaseDefinition->ManaCost);
@@ -304,7 +306,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 		*HealingBaseDefinition,
 		HealingInstance.CurrentQuality,
 		&HealingPreview);
-	TestTrue(TEXT("quality-aware text shows the same fifteen healing"), HealingText.Contains(TEXT("15点生命")));
+	TestTrue(TEXT("quality-aware text shows coefficient fifteen with one combined multiplier"), HealingText.Contains(TEXT("15点治疗")) && HealingText.Contains(TEXT("125%增幅倍率")));
 	TestTrue(TEXT("quality-aware text shows the full cleanse"), HealingText.Contains(TEXT("清除")) && HealingText.Contains(TEXT("流血")));
 	TestTrue(TEXT("quality-aware text preserves the catalog costs"), HealingText.Contains(TEXT("费用：1 气 / 0 内")));
 
@@ -320,7 +322,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Rare healing keeps the owner fixture addressable"), HealingHero);
 	if (HealedAlly)
 	{
-		TestEqual(TEXT("real resolution heals the same fifteen shown in text"), HealedAlly->HP, 35);
+		TestEqual(TEXT("real resolution applies level-one Rare coefficient healing nineteen"), HealedAlly->HP, 39);
 		TestEqual(TEXT("real resolution removes all Bleed shown in text"),
 			GameXXKCardRules::GetCombatStatusStacks(*HealedAlly, EGameXXKCardStatus::Bleed),
 			0);
@@ -336,7 +338,7 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	FGameXXKCardBattleRuntime RareDrawRuntime;
 	if (!TestTrue(TEXT("Rare draw runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		RareDrawRuntime,
-		MakeQualityTestInstances(TEXT("Npc.ZhouGuangZu.DiZhiMoTu"), 8, EGameXXKCardQuality::Rare),
+		MakeQualityTestInstances(TEXT("Hero.Generic.XingQiHuiHuan"), 8, EGameXXKCardQuality::Rare),
 		MakeHeroAndEnemyQualityUnits(20, 3),
 		EGameXXKCardTerrain::Plain,
 		9104)))
@@ -348,12 +350,12 @@ bool FGameXXKCardQualityResolveCardPlayTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Rare draw card resolves through the real play transaction"), GameXXKCardRules::ResolveCardPlay(
 		RareDrawRuntime,
 		RareDrawRuntime.Deck.Hand[0].InstanceId,
-		TEXT("Enemy"),
+		NAME_None,
 		RareDrawResult));
-	TestEqual(TEXT("Rare draw grows the hand from four to six"), RareDrawRuntime.Deck.Hand.Num(), 6);
-	TestEqual(TEXT("Rare draws two concrete cards from the draw pile"),
+	TestEqual(TEXT("Rare leaves the unscaled three-card draw unchanged"), RareDrawRuntime.Deck.Hand.Num(), 7);
+	TestEqual(TEXT("Rare draws three concrete cards from the draw pile"),
 		RareDrawRuntime.Deck.DrawPile.Num(),
-		RareDrawPileBeforePlay - 2);
+		RareDrawPileBeforePlay - 3);
 	TestEqual(TEXT("draw without a declared discard opens no pending choice below capacity"),
 		RareDrawRuntime.Deck.PendingChoice.Kind,
 		EGameXXKCardPendingChoiceKind::None);
@@ -423,6 +425,7 @@ bool FGameXXKCardQualityTerrainCompositionTest::RunTest(const FString& Parameter
 {
 	TArray<FGameXXKCardCombatUnit> Units = MakeHeroAndEnemyQualityUnits(20, 0, 50);
 	Units[0].HP = 50;
+	Units[0].Defense = 100;
 	Units.Insert(
 		MakeQualityTestUnit(TEXT("Ally"), EGameXXKCardTargetSide::Party, EGameXXKCharacterRole::Healer, 50, 100, 8, 0, 50, 2),
 		1);
@@ -453,8 +456,9 @@ bool FGameXXKCardQualityTerrainCompositionTest::RunTest(const FString& Parameter
 	{
 		return false;
 	}
-	TestEqual(TEXT("Rare scales the group heal from twelve to fifteen"), QualityEffectiveDefinition.Effects[0].Magnitude, 15);
-	TestEqual(TEXT("Rare scales the group Armor from eight to ten"), QualityEffectiveDefinition.Effects[1].Magnitude, 10);
+	TestEqual(TEXT("Rare preserves the raw group-healing coefficient twenty"), QualityEffectiveDefinition.Effects[0].Magnitude, 20);
+	TestEqual(TEXT("Rare preserves the rational Armor numerator for a final fifty-percent factor"), QualityEffectiveDefinition.Effects[1].Magnitude, 125);
+	TestEqual(TEXT("Rare preserves the rational Armor denominator"), QualityEffectiveDefinition.Effects[1].SecondaryMagnitude, 3);
 	TestEqual(TEXT("terrain trigger count remains one"), QualityEffectiveDefinition.Effects[2].Magnitude, 1);
 
 	FGameXXKCardPlayResult Result;
@@ -469,14 +473,14 @@ bool FGameXXKCardQualityTerrainCompositionTest::RunTest(const FString& Parameter
 	TestNotNull(TEXT("resolved quality and terrain composition keeps the ally addressable"), Ally);
 	if (Hero)
 	{
-		TestEqual(TEXT("Rare group heal restores fifteen to the hero"), Hero->HP, 65);
-		TestEqual(TEXT("Rare group Armor grants ten to the hero"), Hero->Armor, 10);
+		TestEqual(TEXT("Rare level-one coefficient twenty heals twenty-five"), Hero->HP, 75);
+		TestEqual(TEXT("Rare group Armor grants fifty from caster Defense100"), Hero->Armor, 50);
 		TestEqual(TEXT("water-shore terrain benefit grants the hero three mana"), Hero->Mana, 3);
 	}
 	if (Ally)
 	{
-		TestEqual(TEXT("Rare group heal restores fifteen to the ally"), Ally->HP, 65);
-		TestEqual(TEXT("Rare group Armor grants ten to the ally"), Ally->Armor, 10);
+		TestEqual(TEXT("Rare level-one coefficient twenty heals the ally by twenty-five"), Ally->HP, 75);
+		TestEqual(TEXT("Rare group Armor grants the caster's full fifty to the ally"), Ally->Armor, 50);
 		TestEqual(TEXT("water-shore terrain benefit grants the ally three mana"), Ally->Mana, 3);
 	}
 	TestEqual(TEXT("quality and terrain composition preserves the catalog's two energy cost"), Runtime.Deck.SharedEnergy, 1);

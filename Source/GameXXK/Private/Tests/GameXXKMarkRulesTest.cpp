@@ -256,8 +256,8 @@ bool FGameXXKMarkEdgeRulesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("end-phase Burn resolves on a marked target"),
 		GameXXKCardRules::ApplyCombatEndPhaseDot(DotUnits, DotLinks, TEXT("Target"), DotHealthDamage));
 	TestEqual(TEXT("Burn deals no owner-end damage under the trigger-on-card rule"), DotHealthDamage, 0);
-	TestEqual(TEXT("owner-end cleanup still removes one Burn stack"),
-		GameXXKCardRules::GetCombatStatusStacks(DotUnits[0], EGameXXKCardStatus::Burn), 0);
+	TestEqual(TEXT("owner-end cleanup preserves the non-consuming Burn reservoir"),
+		GameXXKCardRules::GetCombatStatusStacks(DotUnits[0], EGameXXKCardStatus::Burn), 1);
 	TestEqual(TEXT("end-phase DoT preserves Mark"),
 		GameXXKCardRules::GetCombatStatusStacks(DotUnits[0], EGameXXKCardStatus::Mark), 1);
 

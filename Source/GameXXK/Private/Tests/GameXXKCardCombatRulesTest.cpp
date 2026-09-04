@@ -301,8 +301,8 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("DoT leaves armor untouched"), DotTarget->Armor, 20);
 	TestEqual(TEXT("DoT leaves agility untouched"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Agility), 1);
 	TestEqual(TEXT("bleed does not decay at owner end"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Bleed), 2);
-	TestEqual(TEXT("poison loses one stack after owner-end damage"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Poison), 1);
-	TestEqual(TEXT("burn loses one stack without owner-end damage"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Burn), 0);
+	TestEqual(TEXT("poison remains a non-consuming reservoir after phase-end damage"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Poison), 2);
+	TestEqual(TEXT("burn remains unchanged at the poison phase boundary"), GameXXKCardRules::GetCombatStatusStacks(*DotTarget, EGameXXKCardStatus::Burn), 1);
 
 	TArray<FGameXXKCardCombatUnit> DotSnapshotUnits;
 	DotSnapshotUnits.Add(MakeCombatUnit(
@@ -404,6 +404,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	ReflectUnits.Add(MakeCombatUnit(
 		TEXT("ReflectGuard"), EGameXXKCardTargetSide::Party, 100, 100, 1, EGameXXKCharacterRole::Guard));
 	ReflectUnits.Add(MakeCombatUnit(TEXT("ReflectEnemy"), EGameXXKCardTargetSide::Enemy, 100, 100, 10));
+	ReflectUnits[0].Defense = 15;
 	FGameXXKCardBattleRuntime ReflectRuntime;
 	if (!TestTrue(TEXT("real reflection runtime initializes"), GameXXKCardRules::InitializeCardBattleRuntime(
 		ReflectRuntime,
@@ -449,7 +450,7 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("the marked guard takes the amplified eleven-point hit and keeps one Armor"), ReflectGuardAfterIncoming->Armor, 1);
+	TestEqual(TEXT("Defense reduces the marked hit to one and leaves eleven Armor"), ReflectGuardAfterIncoming->Armor, 11);
 	TArray<FGameXXKCardDamageResult> ReflectReactionResults;
 	if (!TestTrue(TEXT("the completed enemy card opens the reflection boundary"), GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 		ReflectRuntime,
@@ -465,9 +466,9 @@ bool FGameXXKCardCombatRulesTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("real reflection source is the defending guard"), ReflectReactionResults[0].SourceUnitId, FName(TEXT("ReflectGuard")));
 		TestEqual(TEXT("real reflection resolves against the original attacker"), ReflectReactionResults[0].ResolvedTargetUnitId, FName(TEXT("ReflectEnemy")));
-		TestEqual(TEXT("Block deals one hundred percent current Attack plus post-hit Armor"), ReflectReactionResults[0].BaseRequestedDamage, 21);
+		TestEqual(TEXT("Block deals one hundred percent current Attack plus post-hit Armor"), ReflectReactionResults[0].BaseRequestedDamage, 31);
 		TestEqual(TEXT("real reflection snapshots attacker health before retaliation"), ReflectReactionResults[0].TargetHealthBefore, 100);
-		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 79);
+		TestEqual(TEXT("real reflection snapshots attacker health after retaliation"), ReflectReactionResults[0].TargetHealthAfter, 69);
 	}
 
 	return true;

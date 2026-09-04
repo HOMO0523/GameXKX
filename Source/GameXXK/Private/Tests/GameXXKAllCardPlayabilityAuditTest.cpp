@@ -114,11 +114,16 @@ namespace GameXXKAllCardPlayabilityAuditTest
 			TEXT("Hero.Generic.HengJianShouShi"),
 			TEXT("Hero.Generic.NingShenTuNa"),
 			TEXT("Hero.Generic.GuanXi")};
+		const TCHAR* HeroMageCardIds[] = {
+			TEXT("Hero.Mage.YanXuLiaoYuan"),
+			TEXT("Hero.Mage.HanXuNingChuan"),
+			TEXT("Hero.Mage.LeiXuYinTing"),
+			TEXT("Hero.Mage.GuiXuTongXuan")};
 		TArray<const FGameXXKCardDefinition*> HeroDefinitions;
 		for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(DefaultHeroCardIds)); ++Index)
 		{
-			const FName CardId = bUseHeroMageStarter && Index == 0
-				? FName(TEXT("Hero.Mage.YanXuLiaoYuan"))
+			const FName CardId = bUseHeroMageStarter && Index < static_cast<int32>(UE_ARRAY_COUNT(HeroMageCardIds))
+				? FName(HeroMageCardIds[Index])
 				: FName(DefaultHeroCardIds[Index]);
 			const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(CardId);
 			if (!Definition)
@@ -315,14 +320,14 @@ namespace GameXXKAllCardPlayabilityAuditTest
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKAllCardPlayabilityAuditTest,
-	"GameXXK.Data.AllCards.Playability.All198EveryTerrain",
+	"GameXXK.Data.AllCards.Playability.All173EveryTerrain",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKAllCardPlayabilityAuditTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKAllCardPlayabilityAuditTest;
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("all-card audit sees exactly 198 definitions"), Definitions.Num(), 198);
+	TestEqual(TEXT("all-card audit sees exactly 173 active definitions"), Definitions.Num(), 173);
 
 	TMap<FName, int32> SuccessfulTerrainsByCard;
 	int32 SuccessfulResolutionCount = 0;
@@ -454,8 +459,8 @@ bool FGameXXKAllCardPlayabilityAuditTest::RunTest(const FString& Parameters)
 			FullyExecutedIds.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("all 198 stable CardIds execute on every terrain"), FullyExecutedIds.Num(), 198);
-	TestEqual(TEXT("198 cards times seven terrains resolve"), SuccessfulResolutionCount, 198 * EveryTerrain().Num());
+	TestEqual(TEXT("all 173 stable CardIds execute on every terrain"), FullyExecutedIds.Num(), 173);
+	TestEqual(TEXT("173 cards times seven terrains resolve"), SuccessfulResolutionCount, 173 * EveryTerrain().Num());
 	TestTrue(TEXT("the catalog contains cards with a missable condition and an unconditional base"), ConditionMissCandidateCount > 0);
 	TestEqual(TEXT("every missable-condition card still resolves its base"), SuccessfulConditionMissCount, ConditionMissCandidateCount);
 	return true;

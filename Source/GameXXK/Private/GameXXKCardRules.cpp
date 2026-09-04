@@ -17,6 +17,8 @@ namespace
 	{
 		TMap<FName, int32> MarkStacksByUnitId;
 		TMap<FName, int32> MomentumStacksByUnitId;
+		TMap<FName, int32> HealthByUnitId;
+		TMap<FName, int32> MaxHealthByUnitId;
 	};
 
 	FGameXXKCardPlayConditionSnapshot CaptureCardPlayConditionSnapshot(const FGameXXKCardBattleRuntime& Runtime)
@@ -30,6 +32,8 @@ namespace
 			Snapshot.MomentumStacksByUnitId.Add(
 				Unit.UnitId,
 				GameXXKCardRules::GetCombatStatusStacks(Unit, EGameXXKCardStatus::Momentum));
+			Snapshot.HealthByUnitId.Add(Unit.UnitId, Unit.HP);
+			Snapshot.MaxHealthByUnitId.Add(Unit.UnitId, Unit.MaxHP);
 		}
 		return Snapshot;
 	}
@@ -2358,11 +2362,13 @@ namespace
 		FGameXXKCardPlayResult& Result,
 		const FName SourceUnitId,
 		FGameXXKCardCombatUnit& Target,
-		const int32 RequestedHealing)
+		const int32 RequestedHealing,
+		const int32 SourceEffectIndex = INDEX_NONE)
 	{
 		FGameXXKCardHealingResult& HealingResult = Result.HealingResults.AddDefaulted_GetRef();
 		HealingResult.SourceUnitId = SourceUnitId;
 		HealingResult.TargetUnitId = Target.UnitId;
+		HealingResult.SourceEffectIndex = SourceEffectIndex;
 		HealingResult.RequestedHealing = FMath::Max(0, RequestedHealing);
 		HealingResult.EffectiveHealing = GameXXKCardRules::HealCombatUnit(Target, HealingResult.RequestedHealing);
 		return HealingResult.EffectiveHealing;
@@ -2372,11 +2378,13 @@ namespace
 		FGameXXKCardPlayResult& Result,
 		const FName SourceUnitId,
 		FGameXXKCardCombatUnit& Target,
-		const int32 RequestedArmor)
+		const int32 RequestedArmor,
+		const int32 SourceEffectIndex = INDEX_NONE)
 	{
 		FGameXXKCardArmorResult& ArmorResult = Result.ArmorResults.AddDefaulted_GetRef();
 		ArmorResult.SourceUnitId = SourceUnitId;
 		ArmorResult.TargetUnitId = Target.UnitId;
+		ArmorResult.SourceEffectIndex = SourceEffectIndex;
 		ArmorResult.RequestedArmor = FMath::Max(0, RequestedArmor);
 		ArmorResult.EffectiveArmor = GameXXKCardRules::AddCombatArmor(Target, ArmorResult.RequestedArmor);
 		return ArmorResult.EffectiveArmor;
@@ -2451,13 +2459,14 @@ namespace
 		const FName SourceUnitId,
 		FGameXXKCardCombatUnit& Target,
 		const int32 BaseArmor,
-		const bool bApplyEquipmentAmplification)
+		const bool bApplyEquipmentAmplification,
+		const int32 SourceEffectIndex = INDEX_NONE)
 	{
 		const int32 Requested = bApplyEquipmentAmplification
 			? ResolveGeneratedArmorAmount(Runtime, SourceUnitId, BaseArmor)
 			: FMath::Max(0, BaseArmor);
 		return Result
-			? ApplyAndRecordArmor(*Result, SourceUnitId, Target, Requested)
+			? ApplyAndRecordArmor(*Result, SourceUnitId, Target, Requested, SourceEffectIndex)
 			: GameXXKCardRules::AddCombatArmor(Target, Requested);
 	}
 
@@ -3693,6 +3702,7 @@ namespace
 	NewResult.SourceUnitId = Context.SourceUnitId;
 	NewResult.Kind = Context.Kind;
 	NewResult.ResolutionOrigin = Context.ResolutionOrigin;
+	NewResult.SourceEffectIndex = Context.SourceEffectIndex;
 	NewResult.Cause = IsDirectAttackDamageKind(Context.Kind)
 		? EGameXXKCardDamageCause::DirectAttack
 		: IsFixedDamageKind(Context.Kind)
@@ -5778,11 +5788,21 @@ namespace
 			bConditionValue = Owner.Armor >= Condition.MinimumArmor;
 			break;
 		case EGameXXKCardEffectConditionType::OwnerHealthBelowPercent:
-			bConditionValue = static_cast<int64>(Owner.HP) * 100 < static_cast<int64>(Owner.MaxHP) * Condition.HealthPercentThreshold;
+		{
+			const int32 OwnerHealth = Snapshot ? Snapshot->HealthByUnitId.FindRef(Owner.UnitId) : Owner.HP;
+			const int32 OwnerMaxHealth = Snapshot ? Snapshot->MaxHealthByUnitId.FindRef(Owner.UnitId) : Owner.MaxHP;
+			bConditionValue = OwnerMaxHealth > 0
+				&& static_cast<int64>(OwnerHealth) * 100 < static_cast<int64>(OwnerMaxHealth) * Condition.HealthPercentThreshold;
 			break;
+		}
 		case EGameXXKCardEffectConditionType::TargetHealthBelowPercent:
-			bConditionValue = Target && static_cast<int64>(Target->HP) * 100 < static_cast<int64>(Target->MaxHP) * Condition.HealthPercentThreshold;
+		{
+			const int32 TargetHealth = Target && Snapshot ? Snapshot->HealthByUnitId.FindRef(Target->UnitId) : Target ? Target->HP : 0;
+			const int32 TargetMaxHealth = Target && Snapshot ? Snapshot->MaxHealthByUnitId.FindRef(Target->UnitId) : Target ? Target->MaxHP : 0;
+			bConditionValue = Target && TargetMaxHealth > 0
+				&& static_cast<int64>(TargetHealth) * 100 < static_cast<int64>(TargetMaxHealth) * Condition.HealthPercentThreshold;
 			break;
+		}
 		case EGameXXKCardEffectConditionType::TerrainIsAny:
 			bConditionValue = Runtime.Terrain == Condition.Terrain || Runtime.Terrain == Condition.AlternateTerrain;
 			break;
@@ -9289,6 +9309,7 @@ namespace
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = HitSourceUnitId;
 				Context.ResolutionOrigin = Origin;
+				Context.SourceEffectIndex = AttackIndex;
 				Context.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
 					? EGameXXKCardDamageKind::GroupAttack
 					: EGameXXKCardDamageKind::SingleTargetAttack;
@@ -9406,6 +9427,7 @@ namespace
 				FGameXXKCardDamageContext ExtraContext;
 				ExtraContext.SourceUnitId = ExtraHitOwner->UnitId;
 				ExtraContext.ResolutionOrigin = Origin;
+				ExtraContext.SourceEffectIndex = AttackIndex;
 				ExtraContext.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
 					? EGameXXKCardDamageKind::GroupAttack
 					: EGameXXKCardDamageKind::SingleTargetAttack;
@@ -10894,6 +10916,7 @@ namespace
 						? EGameXXKCardDamageKind::GroupAttack
 						: EGameXXKCardDamageKind::SingleTargetAttack;
 					Context.ResolutionOrigin = Origin;
+					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
 						InOutRuntime,
@@ -11172,6 +11195,8 @@ namespace
 						Context.Kind = Effect.Target == EGameXXKCardEffectTarget::AllEnemies
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
+						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 						{
@@ -11220,6 +11245,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
 							InOutRuntime,
@@ -11256,6 +11282,7 @@ namespace
 					Context.SourceUnitId = Owner->UnitId;
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
+					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!ApplyCombatDirectDamageInternal(
 						InOutRuntime.Units,
@@ -11292,6 +11319,7 @@ namespace
 					Context.SourceUnitId = SelfUnitId;
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
+					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!ApplyCombatDirectDamageInternal(
 						InOutRuntime.Units,
@@ -11378,7 +11406,7 @@ namespace
 					const int32 RequestedHealing = static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32));
 					if (RequestedHealing > 0)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, RequestedHealing);
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, RequestedHealing, EffectIndex);
 					}
 					break;
 				}
@@ -11414,7 +11442,7 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount);
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount, EffectIndex);
 					}
 					else
 					{
@@ -11423,6 +11451,7 @@ namespace
 						FGameXXKCardDamageContext Context;
 						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
 						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyCombatDirectDamage(
 							InOutRuntime.Units,
@@ -11454,7 +11483,7 @@ namespace
 						: Effect.Magnitude;
 					if (Target->Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount);
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount, EffectIndex);
 					}
 					else
 					{
@@ -11463,6 +11492,7 @@ namespace
 						FGameXXKCardDamageContext Context;
 						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
 						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyCombatDirectDamage(
 							InOutRuntime.Units,
@@ -11511,7 +11541,7 @@ namespace
 					{
 						const bool bGeneratedArmor = Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::CurrentArmorPercent
 							&& Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::PriorEffectResult;
-						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, ArmorAmount, bGeneratedArmor);
+						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, ArmorAmount, bGeneratedArmor, EffectIndex);
 					}
 					break;
 				}
@@ -11541,7 +11571,7 @@ namespace
 					}
 					if (ArmorGain > 0)
 					{
-						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain), true);
+						GrantGeneratedArmor(InOutRuntime, &InOutResult, Owner->UnitId, *Target, static_cast<int32>(ArmorGain), true, EffectIndex);
 					}
 					break;
 				}
@@ -11582,7 +11612,8 @@ namespace
 							Owner->UnitId,
 							*Target,
 							static_cast<int32>(ArmorGain),
-							true);
+							true,
+							EffectIndex);
 						if (!Effect.ResultGroupId.IsNone()) EffectResults.FindOrAdd(Effect.ResultGroupId) = ResolvedArmor;
 					}
 					else if (!Effect.ResultGroupId.IsNone())
@@ -11866,6 +11897,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
 							InOutRuntime,
@@ -11985,6 +12017,7 @@ namespace
 						Context.SourceUnitId = Source.UnitId;
 						Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
 						{
@@ -16356,6 +16389,8 @@ namespace
 				return Effect.Type == EGameXXKCardEffectType::AddArmor
 					|| Effect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
 					|| Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor;
+			case EGameXXKCardDisplayValueKind::ManaRecovery:
+				return Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor;
 			case EGameXXKCardDisplayValueKind::Invalid:
 			default:
 				return false;
@@ -16375,6 +16410,7 @@ namespace
 	void AddDamageDisplayValues(
 		const FGameXXKCardDefinition& EffectiveDefinition,
 		const FGameXXKCardPlayResult& Result,
+		const FName OriginalSelectedTargetUnitId,
 		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
 	{
 		for (const FGameXXKCardDamageResult& Damage : Result.DamageResults)
@@ -16392,7 +16428,9 @@ namespace
 			{
 				continue;
 			}
-			const int32 EffectIndex = FindDisplayEffectIndex(EffectiveDefinition, Kind);
+			const int32 EffectIndex = EffectiveDefinition.Effects.IsValidIndex(Damage.SourceEffectIndex)
+				? Damage.SourceEffectIndex
+				: FindDisplayEffectIndex(EffectiveDefinition, Kind);
 			const FGameXXKCardEffect* Effect = EffectiveDefinition.Effects.IsValidIndex(EffectIndex)
 				? &EffectiveDefinition.Effects[EffectIndex]
 				: nullptr;
@@ -16401,6 +16439,7 @@ namespace
 			Value.Kind = Kind;
 			Value.SourceUnitId = Damage.SourceUnitId;
 			Value.TargetUnitId = Damage.OriginalTargetUnitId;
+			Value.OriginalSelectedTargetUnitId = OriginalSelectedTargetUnitId;
 			Value.BaseMagnitude = Effect ? Effect->Magnitude : 0;
 			Value.ResolvedMagnitude = Damage.BaseRequestedDamage > 0
 				? Damage.BaseRequestedDamage + Damage.MomentumDamageBonus
@@ -16424,11 +16463,31 @@ namespace
 		const int32 AmplificationPercent = ResolveGenerationAmplificationPercent(
 			Instance.CurrentQuality,
 			RuntimeBefore.TeamMaxLevelSnapshot);
+		const FGameXXKCardCombatUnit* Owner = FindCombatUnitById(RuntimeBefore.Units, Instance.OwnerUnitId);
+		const FGameXXKCardCombatUnit* ConditionTarget = TargetIds.Num() == 1
+			? FindCombatUnitById(RuntimeBefore.Units, TargetIds[0])
+			: nullptr;
+		const FGameXXKCardPlayConditionSnapshot ConditionSnapshot = CaptureCardPlayConditionSnapshot(RuntimeBefore);
 		for (int32 EffectIndex = 0; EffectIndex < EffectiveDefinition.Effects.Num(); ++EffectIndex)
 		{
 			const FGameXXKCardEffect& Effect = EffectiveDefinition.Effects[EffectIndex];
 			if (Effect.Type != EGameXXKCardEffectType::ApplyStatus
 				|| Effect.MagnitudePolicy != EGameXXKCardMagnitudePolicy::DotCoefficient)
+			{
+				continue;
+			}
+			bool bConditionSatisfied = false;
+			FString IgnoredError;
+			if (!Owner
+				|| !IsConditionSatisfied(
+					Effect.Condition,
+					RuntimeBefore,
+					*Owner,
+					ConditionTarget,
+					&ConditionSnapshot,
+					bConditionSatisfied,
+					IgnoredError)
+				|| !bConditionSatisfied)
 			{
 				continue;
 			}
@@ -16457,6 +16516,7 @@ namespace
 				Value.Kind = EGameXXKCardDisplayValueKind::DamageOverTime;
 				Value.SourceUnitId = Instance.OwnerUnitId;
 				Value.TargetUnitId = TargetId;
+				Value.OriginalSelectedTargetUnitId = TargetIds.Num() == 1 ? TargetIds[0] : NAME_None;
 				Value.Status = Effect.Status;
 				Value.BaseMagnitude = Effect.Magnitude;
 				Value.ResolvedMagnitude = Generated;
@@ -16472,19 +16532,23 @@ namespace
 		const FGameXXKCardDefinition& EffectiveDefinition,
 		const FGameXXKCardInstance& Instance,
 		const FGameXXKCardPlayResult& Result,
+		const FName OriginalSelectedTargetUnitId,
 		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
 	{
-		const int32 HealingIndex = FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Healing);
-		const FGameXXKCardEffect* HealingEffect = EffectiveDefinition.Effects.IsValidIndex(HealingIndex)
-			? &EffectiveDefinition.Effects[HealingIndex]
-			: nullptr;
 		for (const FGameXXKCardHealingResult& Healing : Result.HealingResults)
 		{
+			const int32 HealingIndex = EffectiveDefinition.Effects.IsValidIndex(Healing.SourceEffectIndex)
+				? Healing.SourceEffectIndex
+				: FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Healing);
+			const FGameXXKCardEffect* HealingEffect = EffectiveDefinition.Effects.IsValidIndex(HealingIndex)
+				? &EffectiveDefinition.Effects[HealingIndex]
+				: nullptr;
 			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
 			Value.EffectIndex = HealingIndex;
 			Value.Kind = EGameXXKCardDisplayValueKind::Healing;
 			Value.SourceUnitId = Healing.SourceUnitId;
 			Value.TargetUnitId = Healing.TargetUnitId;
+			Value.OriginalSelectedTargetUnitId = OriginalSelectedTargetUnitId;
 			Value.BaseMagnitude = HealingEffect ? HealingEffect->Magnitude : 0;
 			Value.ResolvedMagnitude = Healing.RequestedHealing;
 			Value.ActualMagnitude = Healing.EffectiveHealing;
@@ -16493,18 +16557,47 @@ namespace
 				? ResolveGenerationAmplificationPercent(Instance.CurrentQuality, RuntimeBefore.TeamMaxLevelSnapshot)
 				: 100;
 		}
+		for (const FGameXXKCardDamageResult& Damage : Result.DamageResults)
+		{
+			if (!EffectiveDefinition.Effects.IsValidIndex(Damage.SourceEffectIndex))
+			{
+				continue;
+			}
+			const FGameXXKCardEffect& HealingEffect = EffectiveDefinition.Effects[Damage.SourceEffectIndex];
+			if ((HealingEffect.Type != EGameXXKCardEffectType::HealOrReverseWithMedicine
+					&& HealingEffect.Type != EGameXXKCardEffectType::HealOrReverseFlat)
+				|| Damage.Cause == EGameXXKCardDamageCause::DirectAttack)
+			{
+				continue;
+			}
+			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+			Value.EffectIndex = Damage.SourceEffectIndex;
+			Value.Kind = EGameXXKCardDisplayValueKind::Healing;
+			Value.SourceUnitId = Instance.OwnerUnitId;
+			Value.TargetUnitId = Damage.OriginalTargetUnitId;
+			Value.OriginalSelectedTargetUnitId = OriginalSelectedTargetUnitId;
+			Value.BaseMagnitude = HealingEffect.Magnitude;
+			Value.ResolvedMagnitude = Damage.RequestedDamage;
+			Value.ActualMagnitude = Damage.HealthDamage;
+			Value.AmplificationPercent = HealingEffect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::MedicineCoefficient
+				? ResolveGenerationAmplificationPercent(Instance.CurrentQuality, RuntimeBefore.TeamMaxLevelSnapshot)
+				: 100;
+		}
 
-		const int32 ArmorIndex = FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Armor);
-		const FGameXXKCardEffect* ArmorEffect = EffectiveDefinition.Effects.IsValidIndex(ArmorIndex)
-			? &EffectiveDefinition.Effects[ArmorIndex]
-			: nullptr;
 		for (const FGameXXKCardArmorResult& Armor : Result.ArmorResults)
 		{
+			const int32 ArmorIndex = EffectiveDefinition.Effects.IsValidIndex(Armor.SourceEffectIndex)
+				? Armor.SourceEffectIndex
+				: FindDisplayEffectIndex(EffectiveDefinition, EGameXXKCardDisplayValueKind::Armor);
+			const FGameXXKCardEffect* ArmorEffect = EffectiveDefinition.Effects.IsValidIndex(ArmorIndex)
+				? &EffectiveDefinition.Effects[ArmorIndex]
+				: nullptr;
 			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
 			Value.EffectIndex = ArmorIndex;
 			Value.Kind = EGameXXKCardDisplayValueKind::Armor;
 			Value.SourceUnitId = Armor.SourceUnitId;
 			Value.TargetUnitId = Armor.TargetUnitId;
+			Value.OriginalSelectedTargetUnitId = OriginalSelectedTargetUnitId;
 			Value.BaseMagnitude = ArmorEffect ? ArmorEffect->Magnitude : 0;
 			Value.ResolvedMagnitude = Armor.RequestedArmor;
 			Value.ActualMagnitude = Armor.EffectiveArmor;
@@ -16516,6 +16609,94 @@ namespace
 		}
 	}
 
+	void AddManaRecoveryDisplayValues(
+		const FGameXXKCardBattleRuntime& RuntimeBefore,
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardInstance& Instance,
+		const FGameXXKCardPlayPreview& BasePreview,
+		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
+	{
+		FGameXXKCardBattleRuntime Projection = RuntimeBefore;
+		FGameXXKCardCombatUnit* Owner = FindCombatUnitById(Projection.Units, Instance.OwnerUnitId);
+		if (!Owner || !Owner->bLiving)
+		{
+			return;
+		}
+		Owner->Mana = FMath::Max(0, Owner->Mana - BasePreview.EffectiveManaCost);
+		const FGameXXKCardPlayConditionSnapshot ConditionSnapshot = CaptureCardPlayConditionSnapshot(Projection);
+		for (int32 EffectIndex = 0; EffectIndex < EffectiveDefinition.Effects.Num(); ++EffectIndex)
+		{
+			const FGameXXKCardEffect& Effect = EffectiveDefinition.Effects[EffectIndex];
+			if (Effect.Target != EGameXXKCardEffectTarget::CardOwner
+				|| (Effect.Type != EGameXXKCardEffectType::IncreaseMaxMana
+					&& Effect.Type != EGameXXKCardEffectType::GainMana
+					&& Effect.Type != EGameXXKCardEffectType::GainManaOverflowToArmor))
+			{
+				continue;
+			}
+			Owner = FindCombatUnitById(Projection.Units, Instance.OwnerUnitId);
+			if (!Owner || !Owner->bLiving)
+			{
+				return;
+			}
+			bool bConditionSatisfied = false;
+			FString IgnoredError;
+			if (!IsConditionSatisfied(
+				Effect.Condition,
+				Projection,
+				*Owner,
+				Owner,
+				&ConditionSnapshot,
+				bConditionSatisfied,
+				IgnoredError)
+				|| !bConditionSatisfied)
+			{
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::IncreaseMaxMana)
+			{
+				Owner->MaxMana = static_cast<int32>(FMath::Min<int64>(
+					MAX_int32,
+					static_cast<int64>(Owner->MaxMana) + FMath::Max(0, Effect.Magnitude)));
+				continue;
+			}
+			if (Effect.Type == EGameXXKCardEffectType::GainMana)
+			{
+				Owner->Mana = static_cast<int32>(FMath::Min<int64>(
+					Owner->MaxMana,
+					static_cast<int64>(Owner->Mana) + FMath::Max(0, Effect.Magnitude)));
+				continue;
+			}
+
+			const int32 RequestedRecovery = Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery
+				? static_cast<int32>(FMath::Min<int64>(
+					MAX_int32,
+					(static_cast<int64>(Owner->Mana) * FMath::Max(0, Effect.SecondaryMagnitude) + 99) / 100))
+				: FMath::Max(0, Effect.SecondaryMagnitude);
+			const int64 RawMana = static_cast<int64>(Owner->Mana) + RequestedRecovery;
+			const int32 AcceptedRecovery = static_cast<int32>(FMath::Min<int64>(
+				RequestedRecovery,
+				FMath::Max<int64>(0, static_cast<int64>(Owner->MaxMana) - Owner->Mana)));
+			const int32 Overflow = static_cast<int32>(FMath::Min<int64>(
+				MAX_int32,
+				FMath::Max<int64>(0, RawMana - Owner->MaxMana)));
+			FGameXXKCardResolvedDisplayValue& Value = OutValues.AddDefaulted_GetRef();
+			Value.EffectIndex = EffectIndex;
+			Value.Kind = EGameXXKCardDisplayValueKind::ManaRecovery;
+			Value.SourceUnitId = Instance.OwnerUnitId;
+			Value.TargetUnitId = Instance.OwnerUnitId;
+			Value.BaseMagnitude = Effect.SecondaryMagnitude;
+			Value.ResolvedMagnitude = RequestedRecovery;
+			Value.ActualMagnitude = AcceptedRecovery;
+			Value.OverflowMagnitude = Overflow;
+			Value.AmplificationPercent = ResolveGenerationAmplificationPercent(
+				Instance.CurrentQuality,
+				RuntimeBefore.TeamMaxLevelSnapshot);
+			Value.ReservoirCap = Owner->MaxMana;
+			Owner->Mana = static_cast<int32>(FMath::Min<int64>(Owner->MaxMana, RawMana));
+		}
+	}
+
 	void PopulateResolvedCardDisplayValues(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardInstance& Instance,
@@ -16524,6 +16705,7 @@ namespace
 		TArray<FGameXXKCardResolvedDisplayValue>& OutValues)
 	{
 		OutValues.Reset();
+		AddManaRecoveryDisplayValues(Runtime, EffectiveDefinition, Instance, BasePreview, OutValues);
 		TArray<TArray<FName>> TargetSets;
 		if (BasePreview.TargetRequest.bRequiresManualSelection)
 		{
@@ -16582,9 +16764,16 @@ namespace
 			{
 				continue;
 			}
-			AddDamageDisplayValues(EffectiveDefinition, Result, OutValues);
+			const FName OriginalSelectedTargetUnitId = TargetIds.Num() == 1 ? TargetIds[0] : NAME_None;
+			AddDamageDisplayValues(EffectiveDefinition, Result, OriginalSelectedTargetUnitId, OutValues);
 			AddScaledStatusDisplayValues(Runtime, EffectiveDefinition, Instance, TargetIds, Result, OutValues);
-			AddHealingAndArmorDisplayValues(Runtime, EffectiveDefinition, Instance, Result, OutValues);
+			AddHealingAndArmorDisplayValues(
+				Runtime,
+				EffectiveDefinition,
+				Instance,
+				Result,
+				OriginalSelectedTargetUnitId,
+				OutValues);
 		}
 	}
 }

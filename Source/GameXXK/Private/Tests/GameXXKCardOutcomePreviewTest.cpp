@@ -571,8 +571,8 @@ bool FGameXXKCardOutcomePreviewGroupPositionsTest::RunTest(const FString& Parame
 			OracleThreePBleedDamage += Packet.HealthDamage;
 		}
 	}
-	TestEqual(TEXT("direct adapter oracle records the card's immediate 3P Bleed health damage"),
-		OracleThreePBleedDamage, 3);
+	TestEqual(TEXT("direct adapter oracle records the level-one generated 3P Bleed health damage"),
+		OracleThreePBleedDamage, 4);
 	FGameXXKCardOutcomePreview Preview;
 	FString Error;
 	if (!TestTrue(
@@ -604,7 +604,7 @@ bool FGameXXKCardOutcomePreviewGroupPositionsTest::RunTest(const FString& Parame
 	TestEqual(TEXT("1P row is concise and has no global total"),
 		RenderLine(Preview.EnemyPositionLines[0]), FString(TEXT("1P · 群体伤害 10 · 致死")));
 	TestEqual(TEXT("3P row includes only its own category total"),
-		RenderLine(Preview.EnemyPositionLines[1]), FString(TEXT("3P · 群体伤害 13 · 流血 3 · 联动伤害 1 · 合计 17")));
+		RenderLine(Preview.EnemyPositionLines[1]), FString(TEXT("3P · 群体伤害 13 · 流血 4 · 联动伤害 1 · 合计 18")));
 	TestFalse(TEXT("group output contains no invented 2P row"),
 		RenderLine(Preview.EnemyPositionLines[0]).Contains(TEXT("2P"))
 		|| RenderLine(Preview.EnemyPositionLines[1]).Contains(TEXT("2P")));
@@ -738,13 +738,14 @@ bool FGameXXKCardOutcomePreviewDotToxicMedicineRelicTest::RunTest(const FString&
 		AddError(Error);
 		return false;
 	}
-	TestTrue(TEXT("real Toxic Explosion reports a three-type operation"),
-		ToxicResult.ToxicExplosionDistinctDotTypeCounts.Contains(3));
+	TestTrue(TEXT("real Toxic Explosion reports all four populated DOT reservoirs"),
+		ToxicResult.ToxicExplosionDistinctDotTypeCounts.Contains(4));
 	const int32 ExpectedToxic =
 		SumDamageCause(ToxicResult.DamageResults, EnemyOneUnitId, EGameXXKCardDamageCause::ToxicExplosionBleed)
 		+ SumDamageCause(ToxicResult.DamageResults, EnemyOneUnitId, EGameXXKCardDamageCause::ToxicExplosionPoison)
-		+ SumDamageCause(ToxicResult.DamageResults, EnemyOneUnitId, EGameXXKCardDamageCause::ToxicExplosionBurn);
-	TestEqual(TEXT("three Toxic Explosion packets aggregate into one preview category"),
+		+ SumDamageCause(ToxicResult.DamageResults, EnemyOneUnitId, EGameXXKCardDamageCause::ToxicExplosionBurn)
+		+ SumDamageCause(ToxicResult.DamageResults, EnemyOneUnitId, EGameXXKCardDamageCause::ToxicExplosionRot);
+	TestEqual(TEXT("four Toxic Explosion packets aggregate into one preview category"),
 		ToxicPreview.FocusedTarget->ToxicExplosionDamage, ExpectedToxic);
 	TestEqual(TEXT("ShiGu first explosion preserves live Rot"),
 		Status(ToxicCommitted, EnemyOneUnitId, EGameXXKCardStatus::DamageOverTime), 2);
@@ -854,6 +855,7 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 	{
 		return false;
 	}
+	FindUnit(State, OwnerUnitId)->Defense = 20;
 	FGameXXKCardCombatUnit* Ally = FindUnit(State, AllyUnitId);
 	Ally->HP = 490;
 	Ally->Armor = 93;
@@ -888,6 +890,7 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 	{
 		return false;
 	}
+	FindUnit(ZeroState, OwnerUnitId)->Defense = 20;
 	FindUnit(ZeroState, AllyUnitId)->Armor = 99;
 	FGameXXKCardOutcomePreview ZeroPreview;
 	Error.Reset();
@@ -899,14 +902,14 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 		return false;
 	}
 	TestEqual(TEXT("full-health attempt retains effective healing zero"), ZeroPreview.FocusedTarget->EffectiveHealing, 0);
-	TestEqual(TEXT("armor-cap attempt retains effective armor zero"), ZeroPreview.FocusedTarget->EffectiveArmor, 0);
+	TestEqual(TEXT("existing Armor has no obsolete cap and still gains six"), ZeroPreview.FocusedTarget->EffectiveArmor, 6);
 	TestEqual(TEXT("legal zero attempts still create one row per type"), ZeroPreview.FocusedLines.Num(), 2);
 	if (ZeroPreview.FocusedLines.Num() == 2)
 	{
 		TestEqual(TEXT("legal zero healing text remains explicit"),
 			RenderLine(ZeroPreview.FocusedLines[0]), FString(TEXT("治疗 +0")));
-		TestEqual(TEXT("legal zero armor text remains explicit"),
-			RenderLine(ZeroPreview.FocusedLines[1]), FString(TEXT("护甲 +0")));
+		TestEqual(TEXT("existing Armor still shows the legal gain"),
+			RenderLine(ZeroPreview.FocusedLines[1]), FString(TEXT("护甲 +6")));
 	}
 
 	FGameXXKRuntimeState SelfLossState;
@@ -939,7 +942,7 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 		}
 	}
 	TestEqual(TEXT("real high-energy healer formula emits selected-ally SelfLoss"), AllySelfLoss, 1);
-	TestEqual(TEXT("real card plus formula heals the selected ally"), AllyHealing, 14);
+	TestEqual(TEXT("real coefficient card plus formula heals the selected ally"), AllyHealing, 21);
 	FGameXXKCardOutcomePreview SelfLossPreview;
 	Error.Reset();
 	if (!TestTrue(TEXT("party self-loss plus healing preview succeeds"),
@@ -963,7 +966,7 @@ bool FGameXXKCardOutcomePreviewHealingArmorAndZeroTest::RunTest(const FString& P
 	if (SelfLossPreview.FocusedLines.Num() == 1)
 	{
 		TestEqual(TEXT("party self-loss text contains only healing"),
-			RenderLine(SelfLossPreview.FocusedLines[0]), FString(TEXT("治疗 +14")));
+			RenderLine(SelfLossPreview.FocusedLines[0]), FString(TEXT("治疗 +21")));
 		TestFalse(TEXT("party focus has no linked-damage phrase"),
 			RenderLine(SelfLossPreview.FocusedLines[0]).Contains(TEXT("联动伤害")));
 	}

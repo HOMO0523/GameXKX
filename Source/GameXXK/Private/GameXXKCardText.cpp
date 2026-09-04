@@ -81,13 +81,13 @@ namespace
 	{
 		switch (Terrain)
 		{
-		case EGameXXKCardTerrain::Plain: return TEXT("敌方目标获得2层灼烧");
-		case EGameXXKCardTerrain::Cliff: return TEXT("敌方目标获得2层破绽、1层标记");
-		case EGameXXKCardTerrain::Forest: return TEXT("全体友方恢复4点生命");
+		case EGameXXKCardTerrain::Plain: return TEXT("全体敌方获得2点基础灼烧");
+		case EGameXXKCardTerrain::Cliff: return TEXT("全体敌方获得2层破绽、1层标记");
+		case EGameXXKCardTerrain::Forest: return TEXT("全体友方获得10点基础治疗");
 		case EGameXXKCardTerrain::WaterShore: return TEXT("全体友方获得3点内力");
 		case EGameXXKCardTerrain::Ferry: return TEXT("全体友方获得3点内力");
-		case EGameXXKCardTerrain::Village: return TEXT("抽1张牌，全体友方获得4点护甲");
-		case EGameXXKCardTerrain::Cave: return TEXT("全体友方获得8点护甲并登记1次格挡");
+		case EGameXXKCardTerrain::Village: return TEXT("抽1张牌；全体友方获得20%触发者防御的护甲");
+		case EGameXXKCardTerrain::Cave: return TEXT("全体友方获得40%触发者防御的护甲并获得1层格挡");
 		case EGameXXKCardTerrain::Invalid:
 		default: return FString();
 		}
@@ -686,6 +686,14 @@ namespace
 					: FString::Printf(TEXT("触发当前地势收益%d次"), Effect.Magnitude);
 			}
 		}
+		else if (Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor
+			&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery)
+		{
+			Line = FString::Printf(
+				TEXT("回复当前内力的%d%%，向上取整；仅实际溢出按%d%%转为护甲"),
+				Effect.SecondaryMagnitude,
+				Effect.Magnitude);
+		}
 		else
 		{
 			const EGameXXKCardStatus DescribedStatus = Effect.Status != EGameXXKCardStatus::None
@@ -928,11 +936,31 @@ namespace
 		}
 	}
 
-	FString DescribeSorcererEffects(const FGameXXKCardDefinition& Definition)
+	TArray<const FGameXXKCardResolvedDisplayValue*> FindResolvedValues(
+		const FGameXXKCardPlayPreview* Preview,
+		int32 EffectIndex,
+		EGameXXKCardDisplayValueKind Kind,
+		EGameXXKCardStatus Status,
+		EGameXXKCardTargetSide RequiredSelectedSide = EGameXXKCardTargetSide::Invalid);
+	FString DescribeResolvedMagnitudeRange(
+		const TArray<const FGameXXKCardResolvedDisplayValue*>& Values);
+	FString DescribeResolvedPacketMagnitudeRange(
+		const TArray<const FGameXXKCardResolvedDisplayValue*>& Values);
+	FString DescribeResolvedEffect(
+		const FGameXXKCardEffect& Effect,
+		int32 EffectIndex,
+		const FGameXXKCardPlayPreview* Preview,
+		bool bCompact,
+		EGameXXKCardTerrain CurrentTerrain,
+		EGameXXKCardTerrain PlannedTerrain);
+
+	FString DescribeSorcererEffects(
+		const FGameXXKCardDefinition& Definition,
+		const FGameXXKCardPlayPreview* Preview,
+		const bool bCompact)
 	{
 		TArray<FString> Lines;
 		const auto Scale = [&Definition](const int32 Value) { return FGameXXKCombatScalingRules::ScaleContinuousCeil(Value, Definition.BaseQuality); };
-		const int32 Attack = SorcererMagnitude(Definition, EGameXXKCardEffectType::DamagePercentAttack, 0);
 		const int32 Burn = SorcererMagnitude(
 			Definition,
 			EGameXXKCardEffectType::ApplyStatus,
@@ -943,13 +971,82 @@ namespace
 			EGameXXKCardEffectType::ApplyStatus,
 			0,
 			EGameXXKCardStatus::Mark);
-		const int32 Lightning = SorcererMagnitude(Definition, EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, 0);
 		const int32 Draw = SorcererMagnitude(Definition, EGameXXKCardEffectType::DrawCards, 0);
+		const auto StripTerminalPeriod = [](FString Text)
+		{
+			while (Text.EndsWith(TEXT("。")))
+			{
+				Text.LeftChopInline(1);
+			}
+			return Text;
+		};
+		const auto ResolvedEffectClause = [&](
+			const EGameXXKCardEffectType Type,
+			const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+		{
+			const int32 EffectIndex = Definition.Effects.IndexOfByPredicate([Type, Status](const FGameXXKCardEffect& Effect)
+			{
+				return Effect.Type == Type
+					&& (Status == EGameXXKCardStatus::None || Effect.Status == Status);
+			});
+			if (!Definition.Effects.IsValidIndex(EffectIndex))
+			{
+				return FString();
+			}
+			FString Clause = StripTerminalPeriod(DescribeResolvedEffect(
+				Definition.Effects[EffectIndex],
+				EffectIndex,
+				Preview,
+				bCompact,
+				EGameXXKCardTerrain::Invalid,
+				EGameXXKCardTerrain::Invalid));
+			const FString Condition = DescribeCondition(Definition.Effects[EffectIndex].Condition);
+			if (!Condition.IsEmpty())
+			{
+				Clause.ReplaceInline(*FString::Printf(TEXT("（%s）"), *Condition), TEXT(""));
+			}
+			return Clause;
+		};
+		const FString AttackClause = ResolvedEffectClause(EGameXXKCardEffectType::DamagePercentAttack);
+		const FString BurnClause = Preview
+			? ResolvedEffectClause(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardStatus::Burn)
+			: FString::Printf(TEXT("%d点基础灼烧"), Burn);
+		const int32 LightningEffectIndex = Definition.Effects.IndexOfByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::LightningPerTargetStatusSnapshot;
+		});
+		const TArray<const FGameXXKCardResolvedDisplayValue*> LightningValues = FindResolvedValues(
+			Preview,
+			LightningEffectIndex,
+			EGameXXKCardDisplayValueKind::AttackDamage,
+			EGameXXKCardStatus::None);
+		const int32 LightningPercent = SorcererMagnitude(
+			Definition,
+			EGameXXKCardEffectType::LightningPerTargetStatusSnapshot,
+			0);
+		const FString LightningClause = bCompact && !LightningValues.IsEmpty()
+			? FString::Printf(TEXT("每次造成%s点伤害"), *DescribeResolvedPacketMagnitudeRange(LightningValues))
+			: FString::Printf(TEXT("每次造成%d%%的攻击伤害"), LightningPercent);
+		const FString ManaOverflowClause = ResolvedEffectClause(EGameXXKCardEffectType::GainManaOverflowToArmor);
+		const int32 ManaOverflowEffectIndex = Definition.Effects.IndexOfByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor;
+		});
+		const TArray<const FGameXXKCardResolvedDisplayValue*> ManaOverflowValues = FindResolvedValues(
+			Preview,
+			ManaOverflowEffectIndex,
+			EGameXXKCardDisplayValueKind::ManaRecovery,
+			EGameXXKCardStatus::None);
+		const TArray<const FGameXXKCardResolvedDisplayValue*> ManaOverflowArmorValues = FindResolvedValues(
+			Preview,
+			ManaOverflowEffectIndex,
+			EGameXXKCardDisplayValueKind::Armor,
+			EGameXXKCardStatus::None);
 
 		switch (Definition.SorcererRule.SequenceRule)
 		{
 		case EGameXXKSorcererSequenceRule::CoreSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：%s；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), *AttackClause));
 			Lines.Add(TEXT("编序：第1～2位时，检索牌本回合内力消耗-3。"));
 			break;
 		case EGameXXKSorcererSequenceRule::CoreManaEcho:
@@ -957,51 +1054,51 @@ namespace
 			Lines.Add(TEXT("编序：再回复此前记录牌实际支付内力总和的50%，向下取整。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireLamp:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害并施加%d点基础灼烧。"), Attack, Burn));
+			Lines.Add(FString::Printf(TEXT("基础：%s；全体敌方各获得%s。"), *AttackClause, *BurnClause));
 			Lines.Add(TEXT("编序：第1～2位时，灼烧改为4层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireSpread:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体施加%d点基础灼烧。"), Burn));
+			Lines.Add(FString::Printf(TEXT("基础：全体敌方各获得%s。"), *BurnClause));
 			Lines.Add(TEXT("编序：前一张记录牌为炎牌时，灼烧改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireBurst:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：%s。"), *AttackClause));
 			Lines.Add(TEXT("编序：第3～5位时，每点灼烧使倍率+2个百分点，不消耗灼烧。"));
 			break;
 		case EGameXXKSorcererSequenceRule::FireSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：%s；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), *AttackClause));
 			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每段改为%d%%的攻击伤害。"), Scale(70)));
 			break;
 		case EGameXXKSorcererSequenceRule::IceCurrentManaRestore:
-			Lines.Add(TEXT("基础：回复当前内力的10%，向上取整；溢出部分转为护甲。"));
+			Lines.Add(FString::Printf(TEXT("基础：%s。"), *ManaOverflowClause));
 			break;
 		case EGameXXKSorcererSequenceRule::IceMaxMana:
-			Lines.Add(TEXT("基础：本场内力上限+4，当前内力不变；再回复当前内力的10%，向上取整，溢出转甲。"));
+			Lines.Add(FString::Printf(TEXT("基础：本场内力上限+4，当前内力不变；%s。"), *ManaOverflowClause));
 			break;
 		case EGameXXKSorcererSequenceRule::IceArmorDouble:
-			Lines.Add(TEXT("基础：护甲为0时，回复当前内力的10%，向上取整，溢出转甲；已有护甲时翻倍。"));
+			Lines.Add(FString::Printf(TEXT("基础：护甲为0时，%s；已有护甲时翻倍。"), *ManaOverflowClause));
 			break;
 		case EGameXXKSorcererSequenceRule::IceSearch:
-			Lines.Add(TEXT("基础：回复当前内力的10%，向上取整，溢出转甲；检索1张未完成携带法师牌；无合法目标时，再获得一份本次回复产生的护甲。"));
+			Lines.Add(FString::Printf(TEXT("基础：%s；检索1张未完成携带法师牌；无合法目标时，再获得一份本次回复产生的护甲。"), *ManaOverflowClause));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningMark:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害，伤害后获得%d层标记。"), Attack, Mark));
+			Lines.Add(FString::Printf(TEXT("基础：%s；伤害后全体敌方获得%d层标记。"), *AttackClause, Mark));
 			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌，随后获得%d层标记；无合法牌时再结算一次同等伤害。"), Attack, Mark));
+			Lines.Add(FString::Printf(TEXT("基础：%s；检索1张尚未完成的携带法师牌，随后全体敌方获得%d层标记；无合法牌时再结算一次同等伤害。"), *AttackClause, Mark));
 			Lines.Add(TEXT("编序：第1～2位时，标记改为3层。"));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningMarkHits:
-			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%的攻击伤害。"), Lightning));
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，%s。"), *LightningClause));
 			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每次改为%d%%的攻击伤害。"), Scale(70)));
 			break;
 		case EGameXXKSorcererSequenceRule::LightningStorm:
-			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，每次造成%d%%的攻击伤害。"), Lightning));
+			Lines.Add(FString::Printf(TEXT("基础：按敌方各自标记快照逐层落雷，%s。"), *LightningClause));
 			Lines.Add(TEXT("编序：第4～5位时，每次改为45%的攻击伤害。"));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalScalingAttack:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：%s。"), *AttackClause));
 			Lines.Add(FString::Printf(TEXT("编序：第1～5位攻击倍率依次为%d%%、%d%%、%d%%、%d%%、%d%%。"), Scale(60), Scale(85), Scale(110), Scale(135), Scale(160)));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalDraw:
@@ -1009,11 +1106,30 @@ namespace
 			Lines.Add(FString::Printf(TEXT("编序：第3～5位时，额外回复%d点内力。"), Scale(5)));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalPartyArmor:
-			Lines.Add(TEXT("基础：仅自身回复8点内力；全体友方各获得本次溢出内力转成的护甲。"));
+			if (bCompact && !ManaOverflowValues.IsEmpty())
+			{
+				const FString ArmorAmount = DescribeResolvedMagnitudeRange(ManaOverflowArmorValues);
+				Lines.Add(FString::Printf(
+					TEXT("基础：仅自身回复%d点内力；全体友方各获得%s点护甲。"),
+					ManaOverflowValues[0]->ResolvedMagnitude,
+					ArmorAmount.IsEmpty() ? TEXT("0") : *ArmorAmount));
+			}
+			else if (!bCompact && !ManaOverflowValues.IsEmpty())
+			{
+				Lines.Add(FString::Printf(
+					TEXT("基础：仅自身回复%d点内力；实际溢出按%d%%转为护甲，%d%%增幅倍率；全体友方各获得等量护甲。"),
+					ManaOverflowValues[0]->ResolvedMagnitude,
+					Definition.Effects[ManaOverflowEffectIndex].Magnitude,
+					ManaOverflowValues[0]->AmplificationPercent));
+			}
+			else
+			{
+				Lines.Add(TEXT("基础：仅自身回复8点内力；全体友方各获得本次溢出内力转成的护甲。"));
+			}
 			Lines.Add(TEXT("编序：前一张记录牌不含直接伤害时，改为回复16点内力。"));
 			break;
 		case EGameXXKSorcererSequenceRule::UniversalSearch:
-			Lines.Add(FString::Printf(TEXT("基础：敌方全体造成%d%%的攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), Attack));
+			Lines.Add(FString::Printf(TEXT("基础：%s；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。"), *AttackClause));
 			Lines.Add(FString::Printf(TEXT("编序：第4～5位时，每段改为%d%%的攻击伤害。"), Scale(90)));
 			break;
 		case EGameXXKSorcererSequenceRule::None:
@@ -1133,12 +1249,21 @@ namespace
 		}
 	}
 
-	FString DescribeBladeEffects(const FGameXXKCardDefinition& EffectiveDefinition)
+	FString DescribeBladeEffects(
+		const FGameXXKCardDefinition& EffectiveDefinition,
+		const FGameXXKCardPlayPreview* Preview,
+		const bool bCompact)
 	{
 		TArray<FString> Lines;
-		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
+		for (int32 EffectIndex = 0; EffectIndex < EffectiveDefinition.Effects.Num(); ++EffectIndex)
 		{
-			Lines.Add(DescribeEffect(Effect));
+			Lines.Add(DescribeResolvedEffect(
+				EffectiveDefinition.Effects[EffectIndex],
+				EffectIndex,
+				Preview,
+				bCompact,
+				EGameXXKCardTerrain::Invalid,
+				EGameXXKCardTerrain::Invalid));
 		}
 
 		const FGameXXKBladeSequenceRule& Sequence = EffectiveDefinition.BladeSequence;
@@ -1196,8 +1321,93 @@ namespace
 
 	FString DescribeTargetSideEffect(
 		const FGameXXKCardEffect& Effect,
-		const EGameXXKCardEffectConditionType Gate)
+		const int32 EffectIndex,
+		const EGameXXKCardEffectConditionType Gate,
+		const FGameXXKCardPlayPreview* Preview,
+		const bool bCompact)
 	{
+		const EGameXXKCardTargetSide RequiredSide = Gate == EGameXXKCardEffectConditionType::TargetIsAlly
+			? EGameXXKCardTargetSide::Party
+			: EGameXXKCardTargetSide::Enemy;
+		const bool bMedicineEffect = Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+			|| Effect.Type == EGameXXKCardEffectType::HealOrReverseFlat;
+		if (bMedicineEffect)
+		{
+			const TArray<const FGameXXKCardResolvedDisplayValue*> Values = FindResolvedValues(
+				Preview,
+				EffectIndex,
+				EGameXXKCardDisplayValueKind::Healing,
+				EGameXXKCardStatus::None,
+				RequiredSide);
+			if (!Values.IsEmpty())
+			{
+				const FString Resolved = DescribeResolvedMagnitudeRange(Values);
+				const FGameXXKCardResolvedDisplayValue& First = *Values[0];
+				const bool bReverse = Gate == EGameXXKCardEffectConditionType::TargetIsEnemy
+					&& Effect.Target == EGameXXKCardEffectTarget::SelectedTarget;
+				FString Subject;
+				switch (Effect.Target)
+				{
+				case EGameXXKCardEffectTarget::AllAllies: Subject = TEXT("全体友方各"); break;
+				case EGameXXKCardEffectTarget::AllEnemies: Subject = TEXT("全体敌方各"); break;
+				case EGameXXKCardEffectTarget::SelectedTarget: Subject = TEXT("目标"); break;
+				default: Subject = DescribeEffectTarget(Effect.Target); break;
+				}
+				if (bCompact)
+				{
+					return bReverse
+						? FString::Printf(TEXT("%s受到%s点治疗反转伤害"), *Subject, *Resolved)
+						: FString::Printf(TEXT("%s获得%s点治疗"), *Subject, *Resolved);
+				}
+				const FString MedicineBonus = Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine
+					? TEXT("；每层药效增加1点基础治疗")
+					: FString();
+				return bReverse
+					? FString::Printf(
+						TEXT("%s受到%d点治疗反转，%d%%增幅倍率%s"),
+						*Subject,
+						First.BaseMagnitude,
+						First.AmplificationPercent,
+						*MedicineBonus)
+					: FString::Printf(
+						TEXT("%s获得%d点治疗，%d%%增幅倍率%s"),
+						*Subject,
+						First.BaseMagnitude,
+						First.AmplificationPercent,
+						*MedicineBonus);
+			}
+		}
+		if (Effect.Type == EGameXXKCardEffectType::ApplyStatus
+			&& Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DotCoefficient)
+		{
+			const TArray<const FGameXXKCardResolvedDisplayValue*> Values = FindResolvedValues(
+				Preview,
+				EffectIndex,
+				EGameXXKCardDisplayValueKind::DamageOverTime,
+				Effect.Status,
+				RequiredSide);
+			if (!Values.IsEmpty())
+			{
+				const FString Subject = Effect.Target == EGameXXKCardEffectTarget::AllEnemies
+					? TEXT("全体敌方各")
+					: Effect.Target == EGameXXKCardEffectTarget::AllAllies
+						? TEXT("全体友方各")
+						: TEXT("目标");
+				const FGameXXKCardResolvedDisplayValue& First = *Values[0];
+				return bCompact
+					? FString::Printf(
+						TEXT("%s获得%s点%s"),
+						*Subject,
+						*DescribeResolvedMagnitudeRange(Values),
+						*DescribeStatus(Effect.Status))
+					: FString::Printf(
+						TEXT("%s获得%d点%s，%d%%增幅倍率"),
+						*Subject,
+						First.BaseMagnitude,
+						*DescribeStatus(Effect.Status),
+						First.AmplificationPercent);
+			}
+		}
 		FString Text;
 		if (Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine)
 		{
@@ -1279,7 +1489,8 @@ namespace
 		const FGameXXKCardPlayPreview* Preview,
 		const int32 EffectIndex,
 		const EGameXXKCardDisplayValueKind Kind,
-		const EGameXXKCardStatus Status = EGameXXKCardStatus::None)
+		const EGameXXKCardStatus Status,
+		const EGameXXKCardTargetSide RequiredSelectedSide)
 	{
 		TArray<const FGameXXKCardResolvedDisplayValue*> Values;
 		if (!Preview)
@@ -1288,9 +1499,17 @@ namespace
 		}
 		for (const FGameXXKCardResolvedDisplayValue& Value : Preview->ResolvedDisplayValues)
 		{
+			const FGameXXKCardTargetCandidateView* SelectedCandidate = RequiredSelectedSide == EGameXXKCardTargetSide::Invalid
+				? nullptr
+				: Preview->TargetRequest.CandidateViews.FindByPredicate([&Value](const FGameXXKCardTargetCandidateView& Candidate)
+				{
+					return Candidate.UnitId == Value.OriginalSelectedTargetUnitId;
+				});
 			if (Value.EffectIndex == EffectIndex
 				&& Value.Kind == Kind
-				&& (Status == EGameXXKCardStatus::None || Value.Status == Status))
+				&& (Status == EGameXXKCardStatus::None || Value.Status == Status)
+				&& (RequiredSelectedSide == EGameXXKCardTargetSide::Invalid
+					|| (SelectedCandidate && SelectedCandidate->Side == RequiredSelectedSide)))
 			{
 				Values.Add(&Value);
 			}
@@ -1333,6 +1552,29 @@ namespace
 			: FString::Printf(TEXT("%d–%d"), Minimum, Maximum);
 	}
 
+	FString DescribeResolvedPacketMagnitudeRange(
+		const TArray<const FGameXXKCardResolvedDisplayValue*>& Values)
+	{
+		int32 Minimum = MAX_int32;
+		int32 Maximum = 0;
+		for (const FGameXXKCardResolvedDisplayValue* Value : Values)
+		{
+			if (!Value)
+			{
+				continue;
+			}
+			Minimum = FMath::Min(Minimum, FMath::Max(0, Value->ResolvedMagnitude));
+			Maximum = FMath::Max(Maximum, FMath::Max(0, Value->ResolvedMagnitude));
+		}
+		if (Minimum == MAX_int32)
+		{
+			return FString();
+		}
+		return Minimum == Maximum
+			? FString::FromInt(Minimum)
+			: FString::Printf(TEXT("%d–%d"), Minimum, Maximum);
+	}
+
 	FString DescribeResolvedEffect(
 		const FGameXXKCardEffect& Effect,
 		const int32 EffectIndex,
@@ -1367,10 +1609,13 @@ namespace
 			Kind = EGameXXKCardDisplayValueKind::Healing;
 		}
 		else if (Effect.Type == EGameXXKCardEffectType::AddArmor
-			|| Effect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent
-			|| Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor)
+			|| Effect.Type == EGameXXKCardEffectType::GainArmorFromCurrentManaPercent)
 		{
 			Kind = EGameXXKCardDisplayValueKind::Armor;
+		}
+		else if (Effect.Type == EGameXXKCardEffectType::GainManaOverflowToArmor)
+		{
+			Kind = EGameXXKCardDisplayValueKind::ManaRecovery;
 		}
 
 		const TArray<const FGameXXKCardResolvedDisplayValue*> Values = FindResolvedValues(
@@ -1382,14 +1627,21 @@ namespace
 		{
 			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
 		}
-		const FString Resolved = DescribeResolvedMagnitudeRange(Values);
+		const FString Resolved = Kind == EGameXXKCardDisplayValueKind::AttackDamage
+			|| Kind == EGameXXKCardDisplayValueKind::FixedDamage
+			? DescribeResolvedPacketMagnitudeRange(Values)
+			: DescribeResolvedMagnitudeRange(Values);
 		const FGameXXKCardResolvedDisplayValue& First = *Values[0];
 		switch (Kind)
 		{
 		case EGameXXKCardDisplayValueKind::AttackDamage:
-			return bCompact
-				? FString::Printf(TEXT("造成%s点伤害。"), *Resolved)
-				: DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+			if (!bCompact)
+			{
+				return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+			}
+			return First.HitCount > 1
+				? FString::Printf(TEXT("攻击%d次，每次造成%s点伤害。"), First.HitCount, *Resolved)
+				: FString::Printf(TEXT("造成%s点伤害。"), *Resolved);
 		case EGameXXKCardDisplayValueKind::FixedDamage:
 			return FString::Printf(TEXT("造成%s点固定伤害。"), *Resolved);
 		case EGameXXKCardDisplayValueKind::DamageOverTime:
@@ -1417,6 +1669,33 @@ namespace
 				return FString::Printf(TEXT("获得%d%%防御的护甲，%d%%增幅倍率。"), First.BaseMagnitude, First.AmplificationPercent);
 			}
 			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
+		case EGameXXKCardDisplayValueKind::ManaRecovery:
+		{
+			const TArray<const FGameXXKCardResolvedDisplayValue*> ArmorValues = FindResolvedValues(
+				Preview,
+				EffectIndex,
+				EGameXXKCardDisplayValueKind::Armor,
+				EGameXXKCardStatus::None);
+			const FString ArmorResolved = DescribeResolvedMagnitudeRange(ArmorValues);
+			if (bCompact)
+			{
+				return First.OverflowMagnitude > 0
+					? FString::Printf(
+						TEXT("回复%s点内力；溢出获得%s点护甲。"),
+						*Resolved,
+						ArmorResolved.IsEmpty() ? TEXT("0") : *ArmorResolved)
+					: FString::Printf(TEXT("回复%s点内力。"), *Resolved);
+			}
+			return Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::CurrentManaPercentRecovery
+				? FString::Printf(
+					TEXT("回复当前内力的%d%%，向上取整；仅实际溢出转为护甲，%d%%增幅倍率。"),
+					Effect.SecondaryMagnitude,
+					First.AmplificationPercent)
+				: FString::Printf(
+					TEXT("回复%d点内力；仅实际溢出转为护甲，%d%%增幅倍率。"),
+					Effect.SecondaryMagnitude,
+					First.AmplificationPercent);
+		}
 		case EGameXXKCardDisplayValueKind::Invalid:
 		default:
 			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
@@ -1431,11 +1710,11 @@ namespace
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
 		{
-			return DescribeSorcererEffects(EffectiveDefinition);
+			return DescribeSorcererEffects(EffectiveDefinition, Preview, bCompact);
 		}
 		if (IsBladeProfessionCard(EffectiveDefinition))
 		{
-			return DescribeBladeEffects(EffectiveDefinition);
+			return DescribeBladeEffects(EffectiveDefinition, Preview, bCompact);
 		}
 		EGameXXKCardTerrain PlannedTerrain = EGameXXKCardTerrain::Invalid;
 		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
@@ -1464,7 +1743,7 @@ namespace
 					const FGameXXKCardEffect& Effect = Effects[GroupEnd];
 					bConsumesMedicine = bConsumesMedicine
 						|| Effect.Type == EGameXXKCardEffectType::HealOrReverseWithMedicine;
-					BranchParts.Add(DescribeTargetSideEffect(Effect, Gate));
+					BranchParts.Add(DescribeTargetSideEffect(Effect, GroupEnd, Gate, Preview, bCompact));
 					++GroupEnd;
 				}
 
@@ -1484,6 +1763,13 @@ namespace
 				Lines.Add(DescribeResolvedEffect(Effects[EffectIndex], EffectIndex, Preview, bCompact, CurrentTerrain, PlannedTerrain));
 				++EffectIndex;
 			}
+		}
+		if (Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Target == EGameXXKCardEffectTarget::PriorityEnemy;
+		}))
+		{
+			Lines.AddUnique(TEXT("自动选择标记最高的敌方；同层时选择生命比例最低者。"));
 		}
 
 		if (EffectiveDefinition.bExhaustOnPlay)
@@ -1576,7 +1862,7 @@ namespace
 
 		if (EffectiveDefinition.SpellTaskReward != EGameXXKHeroSpellTaskReward::None)
 		{
-			Lines.Add(TEXT("法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。"));
+			Lines.Add(TEXT("法术任务：4张携带主角法师牌各主动打出一次后，依序重放基础效果并触发阵赏。"));
 			Lines.Add(DescribeSpellTaskReward(EffectiveDefinition.SpellTaskReward));
 		}
 		return FString::Join(Lines, TEXT("\n"));
@@ -1717,42 +2003,10 @@ namespace
 
 	FString EllipsizeCompactTooltipLine(const FString& Value)
 	{
-		const FString Trimmed = Value.TrimStartAndEnd();
-		if (Trimmed.Len() <= CompactTooltipMaximumLineLength)
-		{
-			return Trimmed;
-		}
-		const auto IsDigit = [](const TCHAR Ch)
-		{
-			return Ch >= TEXT('0') && Ch <= TEXT('9');
-		};
-		const auto IsNumericUnit = [](const TCHAR Ch)
-		{
-			return Ch == TEXT('%') || Ch == TEXT('层') || Ch == TEXT('点')
-				|| Ch == TEXT('次') || Ch == TEXT('张') || Ch == TEXT('段');
-		};
-		int32 CutIndex = CompactTooltipMaximumLineLength - 1;
-		if (CutIndex < Trimmed.Len())
-		{
-			const TCHAR Before = Trimmed[CutIndex - 1];
-			const TCHAR After = Trimmed[CutIndex];
-			if ((Before == TEXT('-') || Before == TEXT('+')) && IsDigit(After))
-			{
-				--CutIndex;
-			}
-			else if ((IsDigit(Before) && IsDigit(After)) || (IsDigit(Before) && IsNumericUnit(After)))
-			{
-				while (CutIndex > 0 && IsDigit(Trimmed[CutIndex - 1]))
-				{
-					--CutIndex;
-				}
-				if (CutIndex > 0 && (Trimmed[CutIndex - 1] == TEXT('-') || Trimmed[CutIndex - 1] == TEXT('+')))
-				{
-					--CutIndex;
-				}
-			}
-		}
-		return Trimmed.Left(FMath::Max(1, CutIndex)).TrimEnd() + TEXT("…");
+		// Rendering already measures and wraps each semantic row to the fixed
+		// paper width. Preserve the complete compact rule here so late clauses
+		// such as a branch reward are never discarded behind a hard ellipsis.
+		return Value.TrimStartAndEnd();
 	}
 
 	bool IsCompactTooltipKeywordLine(const FString& Line)

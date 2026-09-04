@@ -73,7 +73,7 @@ namespace GameXXKCardOutcomePreviewCatalogTest
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKCardOutcomePreviewCatalogCoverageTest,
-	"GameXXK.Data.CardOutcomePreview.Catalog.All198ClassifiedAndPlayable",
+	"GameXXK.Data.CardOutcomePreview.Catalog.All173ClassifiedAndPlayable",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Parameters)
@@ -82,7 +82,7 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 	using namespace GameXXKCardOutcomePreviewCatalogTest;
 
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("outcome-preview catalog sees exactly 198 definitions"), Definitions.Num(), 198);
+	TestEqual(TEXT("outcome-preview catalog sees exactly 173 active definitions"), Definitions.Num(), 173);
 	TestEqual(TEXT("outcome-preview catalog sees exactly seven terrains"), EveryTerrain().Num(), 7);
 
 	TSet<FName> UniqueCardIds;
@@ -98,7 +98,7 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 		}
 		UniqueCardIds.Add(Definition.Id);
 	}
-	TestEqual(TEXT("all 198 outcome-preview CardIds are unique"), UniqueCardIds.Num(), 198);
+	TestEqual(TEXT("all 173 outcome-preview CardIds are unique"), UniqueCardIds.Num(), 173);
 
 	TMap<FName, FCardObservation> Observations;
 	TSet<FName> AutomaticNonPreviewGroup;
@@ -301,7 +301,7 @@ bool FGameXXKCardOutcomePreviewCatalogCoverageTest::RunTest(const FString& Param
 		Group.Num(),
 		None.Num(),
 		AutomaticNonPreviewGroup.Num()));
-	TestEqual(TEXT("all catalog cards are classified"), Manual.Num() + Group.Num() + None.Num(), 198);
+	TestEqual(TEXT("all active catalog cards are classified"), Manual.Num() + Group.Num() + None.Num(), 173);
 	TestTrue(TEXT("manual category is exercised"), Manual.Num() > 0);
 	TestTrue(TEXT("group category is exercised"), Group.Num() > 0);
 	TestEqual(TEXT("classification conflicts"), Conflicts.Num(), 0);

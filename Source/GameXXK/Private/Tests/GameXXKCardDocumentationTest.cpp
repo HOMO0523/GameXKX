@@ -769,39 +769,39 @@ namespace GameXXKCardDocumentationTest
 
 		FDocumentBundle Result;
 		Result.Markdown = TEXT(
-			"# GameXXK 全卡牌目录（2026-08-11 当前实现基线）\n\n"
+			"# GameXXK 全卡牌目录（2026-09-05 现役173张实现）\n\n"
 			"> 数据源：`FGameXXKCardCatalog::GetAllCardDefinitions()` 与当前品质解析、卡牌文本格式器。本文档列出当前代码实际登记的全部卡牌，并保留实现签名用于核对。\n\n"
-			"> 数值口径：“完整效果”按卡牌当前基础品质换算为局内实际数值（普通 ×1、稀有伤害/治疗/护甲 ×2、珍稀 ×4；层数类按品质阶数递增）。“实现签名”保留目录中的未缩放底值，供程序核对；两列数值不同不是冲突。\n\n"
+			"> 数值口径：“完整效果”按卡牌基础品质和各效果明确的数值策略换算；连续品质倍率为普通100%、稀有120%、史诗140%，持续伤害与治疗再合并队伍等级倍率。“实现签名”保留目录中的基础值和策略，供程序核对。\n\n"
 			"> 验收边界：卡牌目录、特殊卡牌规则及流血、中毒、灼烧、蚀伤等全局状态触发时点均以当前代码与自动化测试为准；实现签名只用于程序核对，不作为局内 Tooltip 展示。\n\n"
 			"## 核对结论\n\n"
-			"- 当前目录总数：198 张。\n"
-			"- 主角：36 张；永久伙伴：108 张；任务 NPC：24 张；路线临时卡：30 张。\n"
+			"- 当前目录总数：173 张。\n"
+			"- 主角：36 张；永久伙伴：108 张；任务 NPC：24 张；Boss牌：5 张。\n"
 			"- 当前代码没有独立的“剑意”状态。《剑意贯虹》消耗开牌瞬间的全部气势；每层使本段攻击倍率增加 20 个百分点，同时保留该层气势原本的 +1 固定伤害；消耗至少 3 层时回复 1 点气力一次。\n"
 			"- 《剑意贯虹》有 N 层气势时，防御前请求值为：`攻击力 × (260% + 20% × N) + N`；结算后气势归零。\n"
 			"- 冲锋栏只在该牌是本回合第一张主动牌时生效；收招栏在玩家确认结束回合后，由本回合最后一张主动牌触发。\n"
 			"- 重箭先锁定并消耗全部蓄力，再按每层执行牌面重箭收益。\n"
-			"- 主角法术任务要求其装备的 8 张牌各主动打出一次，随后按首次打出顺序重放 8 张基础效果，并只结算首张牌的任务奖励。\n\n"
+			"- 主角法术任务要求4张携带主角法师牌各主动打出一次，随后按首次顺序重放4张基础效果，并只结算首张牌的任务奖励。\n\n"
 			"## 数量分布\n\n"
 			"| 归属 | 数量 |\n"
 			"| --- | ---: |\n");
 		Result.Markdown += FString::Printf(TEXT("| 主角 | %d |\n"), OwnerCounts.FindRef(EGameXXKCardOwner::Hero));
 		Result.Markdown += FString::Printf(TEXT("| 永久伙伴 | %d |\n"), OwnerCounts.FindRef(EGameXXKCardOwner::Profession));
 		Result.Markdown += FString::Printf(TEXT("| 任务 NPC | %d |\n"), OwnerCounts.FindRef(EGameXXKCardOwner::QuestNpc));
-		Result.Markdown += FString::Printf(TEXT("| 路线临时卡 | %d |\n\n"), OwnerCounts.FindRef(EGameXXKCardOwner::Route));
+		Result.Markdown += FString::Printf(TEXT("| Boss牌 | %d |\n\n"), OwnerCounts.FindRef(EGameXXKCardOwner::Route));
 
 		Result.PlainText = TEXT(
-			"GameXXK 全卡牌目录（2026-08-11 当前实现基线）\n"
+			"GameXXK 全卡牌目录（2026-09-05 现役173张实现）\n"
 			"============================================================\n"
 			"数据源：FGameXXKCardCatalog::GetAllCardDefinitions() 与当前品质解析、卡牌文本格式器。\n"
-			"数值口径：完整效果按基础品质换算为局内实际值；实现签名保留未缩放底值。伤害/治疗/护甲为普通×1、稀有×2、珍稀×4，层数类按品质阶数递增。\n"
+			"数值口径：完整效果按基础品质和效果数值策略换算；连续品质倍率为普通100%、稀有120%、史诗140%，持续伤害与治疗再合并队伍等级倍率；实现签名保留基础值和策略。\n"
 			"验收边界：卡牌目录、特殊规则与全局状态触发时点均以当前代码和自动化测试为准；实现签名不作为局内 Tooltip 展示。\n\n"
 			"核对结论\n"
-			"- 总数 198：主角 36 / 永久伙伴 108 / 任务 NPC 24 / 路线临时卡 30。\n"
+			"- 总数 173：主角 36 / 永久伙伴 108 / 任务 NPC 24 / Boss牌 5。\n"
 			"- 当前代码没有独立的“剑意”状态。剑意贯虹消耗全部气势，每层攻击倍率 +20 个百分点，并保留每层气势 +1 固定伤害；消耗至少 3 层时回复 1 点气力一次。\n"
 			"- 剑意贯虹 N 层气势公式：攻击力 × (260% + 20% × N) + N；结算后气势归零。\n"
 			"- 冲锋：本回合第一张主动牌。收招：确认结束回合后结算本回合最后一张主动牌。\n"
 			"- 重箭：锁定并消耗全部蓄力，再逐层执行重箭收益。\n"
-			"- 法术任务：主角装备的 8 张牌各主动打出一次后，依首次打出顺序重放基础效果，只执行首张牌任务奖励。\n");
+			"- 法术任务：4张携带主角法师牌各主动打出一次后，依首次顺序重放基础效果，只执行首张牌任务奖励。\n");
 
 		FString PreviousGroup;
 		TSet<FString> EmittedGroups;
@@ -877,8 +877,8 @@ bool FGameXXKCardDocumentationTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKCardDocumentationTest;
 	const TArray<FGameXXKCardDefinition>& Definitions = FGameXXKCardCatalog::GetAllCardDefinitions();
-	TestEqual(TEXT("documentation exports the complete catalog"), Definitions.Num(), 198);
-	if (Definitions.Num() != 198)
+	TestEqual(TEXT("documentation exports the complete active catalog"), Definitions.Num(), 173);
+	if (Definitions.Num() != 173)
 	{
 		return false;
 	}
@@ -891,10 +891,9 @@ bool FGameXXKCardDocumentationTest::RunTest(const FString& Parameters)
 		const TCHAR* ForbiddenToken;
 	};
 	const TArray<FVisibleCardTextCase> VisibleCardTextCases = {
-		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("触发当前地势收益1次"), TEXT("TriggerTerrainBenefit")},
+		{TEXT("Hero.Formation.LianYingBuShi"), TEXT("下一次地势收益改为触发2次"), TEXT("TriggerTerrainBenefit")},
 		{TEXT("Profession.Guard.TieBiRuShan"), TEXT("破绽免疫"), TEXT("CannotReceiveVulnerability")},
-		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")},
-		{TEXT("Route.Terrain.XingJunBuZhen"), TEXT("地形减耗"), TEXT("NextTerrainCardEnergyReduction")}};
+		{TEXT("Profession.FormationMaster.WanXiangGuiZhen"), TEXT("地形免耗"), TEXT("NextTerrainCardFree")}};
 	for (const FVisibleCardTextCase& TextCase : VisibleCardTextCases)
 	{
 		const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(TextCase.CardId);

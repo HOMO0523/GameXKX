@@ -314,7 +314,7 @@ bool FGameXXKAutomaticReplayDoesNotIncrementActivePlayCountTest::RunTest(const F
 	TestTrue(TEXT("automatic healing replay resolves"),
 		GameXXKCardRules::ResumeAutomaticResolutionQueue(Runtime, HealingResults, &Error));
 	TestEqual(TEXT("automatic replay does not consume active next-healing modifiers"), Runtime.Modifiers.Num(), 2);
-	TestEqual(TEXT("automatic replay ignores the active-only healing bonus"), FindUnit(Runtime, HeroUnitId)->HP, 62);
+	TestEqual(TEXT("automatic replay ignores the active-only bonus while coefficient twenty heals twenty-one at level one"), FindUnit(Runtime, HeroUnitId)->HP, 71);
 	return true;
 }
 

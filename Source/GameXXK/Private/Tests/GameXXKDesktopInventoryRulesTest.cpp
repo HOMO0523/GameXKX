@@ -56,6 +56,8 @@ namespace
 		OutState.EquipmentCollection = FGameXXKEquipmentCollectionState();
 		OutState.EquipmentCollection.CollectionSeed = 0x7315;
 		OutState.DesktopInventory = FGameXXKDesktopInventoryState();
+		OutState.Talents.MinimumBackpackCapacity = FGameXXKDesktopInventoryRules::BackpackCapacity;
+		OutState.Talents.MinimumWarehousePages = 6;
 		const FGameXXKEquipmentDefinition* Definition =
 			FGameXXKEquipmentCatalog::FindDefinition(TEXT("Item.WoodenSword"));
 		if (!Test.TestNotNull(TEXT("legacy-overflow fixture finds Wooden Sword"), Definition))
@@ -600,6 +602,7 @@ bool FGameXXKDesktopInventoryCrossContainerSwapTest::RunTest(const FString& Para
 		SecondEquipmentEntry);
 
 	FGameXXKRuntimeState MixedState = UGameXXKMVPRules::CreateNewGame();
+	MixedState.Talents.MinimumWarehousePages = 2;
 	const FName CrossItemId(TEXT("Item.Test.CrossStack"));
 	MixedState.Inventory.Add(CrossItemId, 37);
 	TestTrue(TEXT("equipment/item fixture normalizes"),
