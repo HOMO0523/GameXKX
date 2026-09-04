@@ -1,12 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T22:14:14+08:00
-source_commit: 3f11796
-working_tree: 171/173 card rules complete; design tables, monster stages, and 36-composition analysis exported
+updated_at: 2026-09-04T22:41:53+08:00
+source_commit: b3db816
+working_tree: 171/173 card rules complete; approved-design tables and level-100 Hell 3-1 projection corrected
 ---
 
-> **2026-09-04 全设计表与配队分析已导出**：提交3f11796新增可复现导出器与三份Excel：173卡/419品质版本/36分支/1498条Pill，49装备/35词缀/18套装/30宝石，以及21怪物/78意图/90效果/3首领阶段；同时生成自包含职业配队与伤害期望HTML。新增3240场直接组合矩阵覆盖标准10级主角×六职业伙伴×六NPC×普通/精英/Boss，1/1通过、0警告；现有2520场正交矩阵成功，唯一warning为Google连通探针超时。当前自动策略综合第一为主角+弓手+宋金宝：90场100%胜、144.6有效友伤/回合、平均6.08回合。弓手与宋金宝均显著领先，追风在固定队伍装备切片中显著领先，已在HTML列作平衡风险而非直接调数结论。三份工作簿重载、Python编译、Node语法和Chrome实渲均通过。详见docs/production/2026-09-04-design-tables-party-analysis-acceptance.md。
+> **2026-09-04 设计表与地狱3-1期望已按新规格纠正**：提交b3db816废止3f11796中错误沿用旧运行时的10级/二章/无装备胜率与Boss专用二阶段表。修正版装备表使用100级、六件至宝、12颗至宝宝石4攻/4防/4血的批准最终属性和新宝石成长；怪物表覆盖27关等级、189固定编制、21怪物以及36普通/42阶段一/39阶段二/39阶段三意图。HTML改为100级角色对125级地狱3-1的透明设计期望：地狱只乘敌伤150%，关底秃鹫-白猿-巨蟾为1/3/1阶段、总阶段生命11178；135级仅用于地狱3-3对照，其三阶段关底总生命33318。由于新阶段/装备运行时尚未迁移，页面不再宣称胜率，只显示共享3气最多5牌的可复算伤害预算并排除两张未决卡。工作簿重载、规格计数、冷UBT、Python/Node及Chrome实渲均通过。详见docs/production/2026-09-04-design-tables-party-analysis-acceptance.md。
 
 > **2026-09-04 桌面HUD展开主体与物品坐标完成**：提交821593b把透明宿主扩为完整工作区，挂机条拖动时整套当前布局刚性跟随，松开左键后才按最终挂机槽位置一次性重算上下方向及水平回收。仓库、背包、导航、历练/工具与任务圆钮共用同一主体偏移；左右贴边时整组回收，挂机条不动。仓库和右侧纸张统一为244..925的681逻辑高度并在786处分隔；历练上半区为标题、难度、章节、三个竖排节点、当前选择和当前游历，下半区保留挑战/游历。物品携带图移入独立光标层，实机中心与(1535,800)鼠标一致。最终冷UBT通过；Workbench 70/74非失败，四项仍为既有InnerGeometry、TravelCombatPresentation和两项Travel图集基线。右边缘、向上及全开截图见Saved/Diagnostics/hud-adaptive-*.png；测试后已恢复75%、X=0.578778505、Y=0.064710319。详见docs/production/2026-09-04-desktop-hud-adaptive-body-and-cursor-acceptance.md。
 
