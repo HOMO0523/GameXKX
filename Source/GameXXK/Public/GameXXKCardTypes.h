@@ -2192,6 +2192,31 @@ struct GAMEXXK_API FGameXXKAutomaticResolutionQueue
 	FName RewardOwnerUnitId = NAME_None;
 };
 
+/** Deferred Shanhe reward that waits for the active card's choices and automatic replays to finish. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKPendingEquipmentRewardRuntime
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName DrawEffectId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ManaEffectId = NAME_None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 TriggerRound = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 DrawCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 OtherAllyMana = 0;
+};
+
 /** Persisted progress and first-play ordering for the protagonist four-card Sorcerer task. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKHeroSpellTaskRuntime
@@ -2431,6 +2456,10 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	/** Equipment snapshots are materialized at battle start; card rules must never recalculate loadouts. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FGameXXKEquipmentBattleEffectRuntime> EquipmentEffects;
+
+	/** Ordered equipment rewards waiting for the current choice/replay chain to finish. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKPendingEquipmentRewardRuntime> PendingEquipmentRewards;
 
 	/** Triggered draws that must wait until the current blocking card choice and replay queue finish. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

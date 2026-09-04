@@ -66,14 +66,44 @@ namespace GameXXKShanHeSetRuntimeTest
 		return Effect;
 	}
 
+	FGameXXKEquipmentActiveEffect MakeShanTwoEffect()
+	{
+		FGameXXKEquipmentActiveEffect Effect;
+		Effect.EffectId = TEXT("Set.ShanHe.2");
+		Effect.SourceCharacterId = WearerId;
+		Effect.Set = EGameXXKEquipmentSet::ShanHe;
+		Effect.RequiredPieces = 2;
+		Effect.Scope = EGameXXKEquipmentSetBonusScope::Owner;
+		Effect.Hook = EGameXXKEquipmentSetBonusHook::TerrainSynergyCard;
+		Effect.ModifierKind = EGameXXKEquipmentModifierKind::TerrainPower;
+		Effect.Magnitude = 1;
+		Effect.Unit = EGameXXKEquipmentMagnitudeUnit::FlatCount;
+		Effect.MaxTriggersPerRound = 1;
+		return Effect;
+	}
+
+	bool AddShanTwoEffect(FAutomationTestBase& Test, FGameXXKCardBattleRuntime& Runtime)
+	{
+		const FGameXXKEquipmentActiveEffect Effect = MakeShanTwoEffect();
+		if (!Test.TestTrue(TEXT("Shanhe two-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
+		{
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.ActiveEffect = Effect;
+		RuntimeEffect.SourceCharacterId = WearerId;
+		return true;
+	}
+
 	bool BuildRuntime(
 		FAutomationTestBase& Test,
 		const FName CardId,
 		FGameXXKCardBattleRuntime& OutRuntime,
-		const EGameXXKCharacterRole WearerRole = EGameXXKCharacterRole::FormationMaster)
+		const EGameXXKCharacterRole WearerRole = EGameXXKCharacterRole::FormationMaster,
+		const int32 CardCount = 5)
 	{
 		TArray<FGameXXKCardInstance> Cards;
-		for (int32 Index = 0; Index < 5; ++Index)
+		for (int32 Index = 0; Index < CardCount; ++Index)
 		{
 			Cards.Add(MakeCard(CardId, Index));
 		}
@@ -183,6 +213,79 @@ bool FGameXXKShanHeTerrainCostTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult FailedResult;
 	TestFalse(TEXT("illegal target rejects terrain play"), GameXXKCardRules::ResolveCardPlay(FailedRuntime, FailedRuntime.Deck.Hand[0].InstanceId, TEXT("Missing.Target"), FailedResult, &Error));
 	TestEqual(TEXT("failed terrain play leaves Shanhe unused"), FindShanFour(FailedRuntime)->CurrentRoundTriggerCount, 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKShanHePostTerrainRewardTest,
+	"GameXXK.Equipment.ShanHe.PostTerrainReward",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKShanHePostTerrainRewardTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKShanHeSetRuntimeTest;
+	FString Error;
+
+	FGameXXKCardBattleRuntime ImmediateRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), ImmediateRuntime, EGameXXKCharacterRole::FormationMaster, 8)
+		|| !AddShanTwoEffect(*this, ImmediateRuntime))
+	{
+		return false;
+	}
+	ImmediateRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana = 10;
+	const int32 ImmediateHandBefore = ImmediateRuntime.Deck.Hand.Num();
+	FGameXXKCardPlayResult ImmediateResult;
+	TestTrue(FString::Printf(TEXT("immediate terrain reward card resolves: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(
+			ImmediateRuntime,
+			ImmediateRuntime.Deck.Hand[0].InstanceId,
+			NAME_None,
+			ImmediateResult,
+			&Error));
+	TestEqual(TEXT("Shanhe two-piece replaces the played card with one draw"), ImmediateRuntime.Deck.Hand.Num(), ImmediateHandBefore);
+	const FGameXXKCardCombatUnit* ImmediateOwner = ImmediateRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == WearerId; });
+	const FGameXXKCardCombatUnit* ImmediateAlly = ImmediateRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; });
+	TestEqual(TEXT("Shanhe four-piece restores two Mana only to other allies"), ImmediateAlly ? ImmediateAlly->Mana : INDEX_NONE, 12);
+	TestEqual(TEXT("Shanhe four-piece does not restore its owner"), ImmediateOwner ? ImmediateOwner->Mana : INDEX_NONE, 50);
+	TestEqual(TEXT("immediate Shanhe two-piece marks one use"), ImmediateRuntime.EquipmentEffects[1].CurrentRoundTriggerCount, 1);
+
+	FGameXXKCardBattleRuntime ChoiceRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.BaMenLunZhuan"), ChoiceRuntime, EGameXXKCharacterRole::FormationMaster, 10)
+		|| !AddShanTwoEffect(*this, ChoiceRuntime))
+	{
+		return false;
+	}
+	ChoiceRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana = 10;
+	FGameXXKCardPlayResult ChoiceResult;
+	TestTrue(FString::Printf(TEXT("choice-opening terrain card resolves: %s"), *Error),
+		GameXXKCardRules::ResolveCardPlay(
+			ChoiceRuntime,
+			ChoiceRuntime.Deck.Hand[0].InstanceId,
+			NAME_None,
+			ChoiceResult,
+			&Error));
+	TestEqual(TEXT("base forced-discard choice opens before Shanhe reward"), ChoiceRuntime.Deck.PendingChoice.Kind, EGameXXKCardPendingChoiceKind::ForcedDiscard);
+	const int32 HandBeforeChoice = ChoiceRuntime.Deck.Hand.Num();
+	TestEqual(TEXT("other ally receives no Mana before base choice resolves"), ChoiceRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana, 10);
+	const FName DiscardId = ChoiceRuntime.Deck.PendingChoice.Candidates[0].InstanceId;
+	TArray<FGameXXKCardPlayResult> ResumedResults;
+	TestTrue(FString::Printf(TEXT("base forced discard resolves: %s"), *Error),
+		GameXXKCardRules::SubmitForcedDiscard(ChoiceRuntime, {DiscardId}, &Error, &ResumedResults));
+	TestEqual(TEXT("Shanhe draw happens after discard and restores the prior hand count"), ChoiceRuntime.Deck.Hand.Num(), HandBeforeChoice);
+	TestEqual(TEXT("Shanhe Mana happens after the base choice"), ChoiceRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana, 12);
+	TestEqual(TEXT("owner still receives no Shanhe Mana after choice"), ChoiceRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == WearerId; })->Mana, 50);
+
+	FGameXXKCardBattleRuntime AutomaticRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), AutomaticRuntime, EGameXXKCharacterRole::FormationMaster, 8)
+		|| !AddShanTwoEffect(*this, AutomaticRuntime))
+	{
+		return false;
+	}
+	AutomaticRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana = 10;
+	FGameXXKCardPlayResult AutomaticTerrainResult;
+	TestTrue(TEXT("automatic round-start terrain resolves"), GameXXKCardRules::ResolveRoundStartTerrainBenefits(AutomaticRuntime, AutomaticTerrainResult, &Error));
+	TestEqual(TEXT("automatic terrain does not consume Shanhe two-piece"), AutomaticRuntime.EquipmentEffects[1].CurrentRoundTriggerCount, 0);
+	TestEqual(TEXT("automatic terrain does not grant Shanhe four-piece Mana"), AutomaticRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana, 10);
 	return true;
 }
 

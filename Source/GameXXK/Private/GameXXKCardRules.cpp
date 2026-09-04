@@ -5388,6 +5388,57 @@ namespace
 			}
 			EquipmentEffectKeys.Add(Key);
 		}
+		if (Runtime.PendingEquipmentRewards.Num() > 8)
+		{
+			OutError = TEXT("Pending equipment rewards must remain within the supported queue bound.");
+			return false;
+		}
+		TSet<FString> PendingEquipmentEffectKeys;
+		for (const FGameXXKPendingEquipmentRewardRuntime& Reward : Runtime.PendingEquipmentRewards)
+		{
+			const FGameXXKCardCombatUnit* Source = FindCombatUnitById(Runtime.Units, Reward.SourceUnitId);
+			const FGameXXKEquipmentBattleEffectRuntime* DrawEffect = Reward.DrawEffectId.IsNone()
+				? nullptr
+				: FindEquipmentEffectById(Runtime, Reward.SourceUnitId, Reward.DrawEffectId);
+			const FGameXXKEquipmentBattleEffectRuntime* ManaEffect = Reward.ManaEffectId.IsNone()
+				? nullptr
+				: FindEquipmentEffectById(Runtime, Reward.SourceUnitId, Reward.ManaEffectId);
+			const FString DrawKey = Reward.DrawEffectId.IsNone()
+				? FString()
+				: Reward.SourceUnitId.ToString() + TEXT("|") + Reward.DrawEffectId.ToString();
+			const FString ManaKey = Reward.ManaEffectId.IsNone()
+				? FString()
+				: Reward.SourceUnitId.ToString() + TEXT("|") + Reward.ManaEffectId.ToString();
+			const int32 DrawUsedThisRound = DrawEffect && DrawEffect->LastTriggerRound == Runtime.RoundNumber
+				? DrawEffect->CurrentRoundTriggerCount
+				: 0;
+			const int32 ManaUsedThisRound = ManaEffect && ManaEffect->LastTriggerRound == Runtime.RoundNumber
+				? ManaEffect->CurrentRoundTriggerCount
+				: 0;
+			if (!Source || Source->Side != EGameXXKCardTargetSide::Party
+				|| Reward.TriggerRound != Runtime.RoundNumber
+				|| (Reward.DrawEffectId.IsNone() && Reward.ManaEffectId.IsNone())
+				|| (Reward.DrawEffectId.IsNone() != (Reward.DrawCount == 0))
+				|| (Reward.ManaEffectId.IsNone() != (Reward.OtherAllyMana == 0))
+				|| (!Reward.DrawEffectId.IsNone()
+					&& (!DrawEffect
+						|| Reward.DrawEffectId != FName(TEXT("Set.ShanHe.2"))
+						|| Reward.DrawCount != DrawEffect->ActiveEffect.Magnitude
+						|| DrawUsedThisRound >= DrawEffect->ActiveEffect.MaxTriggersPerRound
+						|| PendingEquipmentEffectKeys.Contains(DrawKey)))
+				|| (!Reward.ManaEffectId.IsNone()
+					&& (!ManaEffect
+						|| Reward.ManaEffectId != FName(TEXT("Set.ShanHe.4"))
+						|| Reward.OtherAllyMana != ManaEffect->ActiveEffect.SecondaryMagnitude
+						|| ManaUsedThisRound >= ManaEffect->ActiveEffect.MaxTriggersPerRound
+						|| PendingEquipmentEffectKeys.Contains(ManaKey))))
+			{
+				OutError = TEXT("A pending equipment reward contains stale or duplicate Shanhe payload data.");
+				return false;
+			}
+			if (!DrawKey.IsEmpty()) PendingEquipmentEffectKeys.Add(DrawKey);
+			if (!ManaKey.IsEmpty()) PendingEquipmentEffectKeys.Add(ManaKey);
+		}
 		if (!bHasParty || !bHasEnemy)
 		{
 			OutError = TEXT("Card battle runtime must retain at least one party and one enemy record.");
@@ -5422,6 +5473,12 @@ namespace
 		TArray<FName>* OutTerrainFreeUnitIds,
 		TArray<FName>* OutTerrainReductionUnitIds,
 		FName* OutAppliedShanHeFourPieceEffectId,
+		FString& OutError);
+
+	bool TryConsumeEquipmentRoundUse(
+		FGameXXKCardBattleRuntime& Runtime,
+		FGameXXKEquipmentBattleEffectRuntime& Effect,
+		bool& OutConsumed,
 		FString& OutError);
 
 	bool IsHealerFormulaOpen(
@@ -5818,6 +5875,160 @@ namespace
 			? Effect->CurrentRoundTriggerCount
 			: 0;
 		return UsedThisRound < Effect->ActiveEffect.MaxTriggersPerRound ? Effect : nullptr;
+	}
+
+	FName FindUnusedShanHeTwoEffectId(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId)
+	{
+		const FGameXXKEquipmentBattleEffectRuntime* Effect = FindEquipmentEffectById(
+			Runtime,
+			SourceUnitId,
+			TEXT("Set.ShanHe.2"));
+		if (!Effect)
+		{
+			return NAME_None;
+		}
+		const int32 UsedThisRound = Effect->LastTriggerRound == Runtime.RoundNumber
+			? Effect->CurrentRoundTriggerCount
+			: 0;
+		return UsedThisRound < Effect->ActiveEffect.MaxTriggersPerRound
+			? Effect->ActiveEffect.EffectId
+			: NAME_None;
+	}
+
+	bool QueuePendingEquipmentReward(
+		FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKPendingEquipmentRewardRuntime& Reward,
+		FString& OutError)
+	{
+		if (Reward.SourceUnitId.IsNone()
+			|| Reward.TriggerRound != Runtime.RoundNumber
+			|| (Reward.DrawEffectId.IsNone() && Reward.ManaEffectId.IsNone())
+			|| (Reward.DrawEffectId.IsNone() != (Reward.DrawCount == 0))
+			|| (Reward.ManaEffectId.IsNone() != (Reward.OtherAllyMana == 0)))
+		{
+			OutError = TEXT("A pending equipment reward has invalid source, round, effect, or payload data.");
+			return false;
+		}
+		const FGameXXKCardCombatUnit* Source = FindCombatUnitById(Runtime.Units, Reward.SourceUnitId);
+		const FGameXXKEquipmentBattleEffectRuntime* DrawEffect = Reward.DrawEffectId.IsNone()
+			? nullptr
+			: FindEquipmentEffectById(Runtime, Reward.SourceUnitId, Reward.DrawEffectId);
+		const FGameXXKEquipmentBattleEffectRuntime* ManaEffect = Reward.ManaEffectId.IsNone()
+			? nullptr
+			: FindEquipmentEffectById(Runtime, Reward.SourceUnitId, Reward.ManaEffectId);
+		if (!Source || Source->Side != EGameXXKCardTargetSide::Party
+			|| (DrawEffect && (Reward.DrawEffectId != FName(TEXT("Set.ShanHe.2"))
+				|| Reward.DrawCount != DrawEffect->ActiveEffect.Magnitude))
+			|| (!Reward.DrawEffectId.IsNone() && !DrawEffect)
+			|| (ManaEffect && (Reward.ManaEffectId != FName(TEXT("Set.ShanHe.4"))
+				|| Reward.OtherAllyMana != ManaEffect->ActiveEffect.SecondaryMagnitude))
+			|| (!Reward.ManaEffectId.IsNone() && !ManaEffect)
+			|| Runtime.PendingEquipmentRewards.ContainsByPredicate([&Reward](const FGameXXKPendingEquipmentRewardRuntime& Existing)
+			{
+				return Existing.SourceUnitId == Reward.SourceUnitId
+					&& ((!Reward.DrawEffectId.IsNone() && Existing.DrawEffectId == Reward.DrawEffectId)
+						|| (!Reward.ManaEffectId.IsNone() && Existing.ManaEffectId == Reward.ManaEffectId));
+			}))
+		{
+			OutError = TEXT("A pending equipment reward no longer matches its unique Shanhe descriptor.");
+			return false;
+		}
+		Runtime.PendingEquipmentRewards.Add(Reward);
+		return true;
+	}
+
+	bool MaterializePendingEquipmentRewards(
+		FGameXXKCardBattleRuntime& Runtime,
+		FString& OutError)
+	{
+		if (IsActiveChoice(Runtime.Deck.PendingChoice.Kind)
+			|| Runtime.AutomaticResolutionQueue.bActive
+			|| Runtime.PendingTriggeredDrawCount > 0)
+		{
+			return true;
+		}
+		for (const FGameXXKPendingEquipmentRewardRuntime& Reward : Runtime.PendingEquipmentRewards)
+		{
+			if (Reward.DrawCount > 0)
+			{
+				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(Runtime.Deck, Runtime.Units);
+				if (!GameXXKCardRules::DrawCards(Runtime.Deck, Reward.DrawCount, 0, &OutError))
+				{
+					return false;
+				}
+			}
+			if (Reward.OtherAllyMana > 0)
+			{
+				for (FGameXXKCardCombatUnit& Ally : Runtime.Units)
+				{
+					if (Ally.bLiving
+						&& Ally.Side == EGameXXKCardTargetSide::Party
+						&& Ally.UnitId != Reward.SourceUnitId)
+					{
+						Ally.Mana = FMath::Min(Ally.MaxMana, Ally.Mana + Reward.OtherAllyMana);
+					}
+				}
+			}
+			for (const FName EffectId : {Reward.DrawEffectId, Reward.ManaEffectId})
+			{
+				if (EffectId.IsNone())
+				{
+					continue;
+				}
+				FGameXXKEquipmentBattleEffectRuntime* Effect = FindEquipmentEffectById(
+					Runtime,
+					Reward.SourceUnitId,
+					EffectId);
+				bool bConsumed = false;
+				if (!Effect
+					|| !TryConsumeEquipmentRoundUse(Runtime, *Effect, bConsumed, OutError)
+					|| !bConsumed)
+				{
+					if (OutError.IsEmpty())
+					{
+						OutError = TEXT("A pending Shanhe reward lost its unused equipment effect before commit.");
+					}
+					return false;
+				}
+			}
+		}
+		Runtime.PendingEquipmentRewards.Reset();
+		return true;
+	}
+
+	bool ResolveShanHeAfterSuccessfulTerrainActive(
+		FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDefinition& Definition,
+		const FName OwnerUnitId,
+		const FName AppliedFourPieceEffectId,
+		FGameXXKCardPlayResult& Result,
+		FString& OutError)
+	{
+		(void)Result;
+		if (!IsTerrainActiveCard(Definition))
+		{
+			return true;
+		}
+		FGameXXKPendingEquipmentRewardRuntime Reward;
+		Reward.SourceUnitId = OwnerUnitId;
+		Reward.TriggerRound = Runtime.RoundNumber;
+		Reward.DrawEffectId = FindUnusedShanHeTwoEffectId(Runtime, OwnerUnitId);
+		Reward.ManaEffectId = AppliedFourPieceEffectId;
+		if (!Reward.DrawEffectId.IsNone())
+		{
+			const FGameXXKEquipmentBattleEffectRuntime* DrawEffect = FindEquipmentEffectById(Runtime, OwnerUnitId, Reward.DrawEffectId);
+			Reward.DrawCount = DrawEffect ? DrawEffect->ActiveEffect.Magnitude : 0;
+		}
+		if (!Reward.ManaEffectId.IsNone())
+		{
+			const FGameXXKEquipmentBattleEffectRuntime* ManaEffect = FindEquipmentEffectById(Runtime, OwnerUnitId, Reward.ManaEffectId);
+			Reward.OtherAllyMana = ManaEffect ? ManaEffect->ActiveEffect.SecondaryMagnitude : 0;
+		}
+		return Reward.DrawEffectId.IsNone() && Reward.ManaEffectId.IsNone()
+			? true
+			: QueuePendingEquipmentReward(Runtime, Reward, OutError);
 	}
 
 	void CollectTerrainCardCostStatusOwners(
@@ -15781,6 +15992,11 @@ bool GameXXKCardRules::ResumeAutomaticResolutionQueue(
 			CompletedTask->LockedBranch = EGameXXKSorcererTaskBranch::None;
 		}
 	}
+	if (!MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
+		|| !MaterializePendingEquipmentRewards(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	GameXXKCardRules::RefreshCombatTerminalPhase(NewRuntime);
 	if (NewRuntime.Phase == EGameXXKCardBattlePhase::Victory
 		|| NewRuntime.Phase == EGameXXKCardBattlePhase::Defeat)
@@ -16719,6 +16935,18 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!ResolveShanHeAfterSuccessfulTerrainActive(
+		NewRuntime,
+		QualityEffectiveDefinition,
+		CopiedInstance.OwnerUnitId,
+		FreshShanHeFourPieceEffectId,
+		NewResult,
+		ValidationError)
+		|| !MaterializePendingTriggeredDraws(NewRuntime, ValidationError)
+		|| !MaterializePendingEquipmentRewards(NewRuntime, ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!IsActiveChoice(NewRuntime.Deck.PendingChoice.Kind)
 		&& !NewRuntime.AutomaticResolutionQueue.bActive)
 	{
@@ -16744,26 +16972,6 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, TEXT("The resolving-card guard changed before the active card transaction completed."));
 	}
 	NewRuntime.Deck.ResolvingCardInstanceId = NAME_None;
-	if (!FreshShanHeFourPieceEffectId.IsNone())
-	{
-		FGameXXKEquipmentBattleEffectRuntime* ShanHeFour = FindEquipmentEffectById(
-			NewRuntime,
-			CopiedInstance.OwnerUnitId,
-			FreshShanHeFourPieceEffectId);
-		if (!ShanHeFour)
-		{
-			return SetFailure(OutError, TEXT("The selected Shanhe four-piece discount disappeared before commit."));
-		}
-		const int32 UsedThisRound = ShanHeFour->LastTriggerRound == NewRuntime.RoundNumber
-			? ShanHeFour->CurrentRoundTriggerCount
-			: 0;
-		if (UsedThisRound >= ShanHeFour->ActiveEffect.MaxTriggersPerRound)
-		{
-			return SetFailure(OutError, TEXT("The selected Shanhe four-piece discount was already consumed."));
-		}
-		ShanHeFour->LastTriggerRound = NewRuntime.RoundNumber;
-		ShanHeFour->CurrentRoundTriggerCount = UsedThisRound + 1;
-	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
