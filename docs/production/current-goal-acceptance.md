@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T19:29:42+08:00
-source_commit: 821593b
-working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD adaptive body and cursor verified
+updated_at: 2026-09-04T22:14:14+08:00
+source_commit: 3f11796
+working_tree: 171/173 card rules complete; design tables, monster stages, and 36-composition analysis exported
 ---
+
+> **2026-09-04 全设计表与配队分析已导出**：提交3f11796新增可复现导出器与三份Excel：173卡/419品质版本/36分支/1498条Pill，49装备/35词缀/18套装/30宝石，以及21怪物/78意图/90效果/3首领阶段；同时生成自包含职业配队与伤害期望HTML。新增3240场直接组合矩阵覆盖标准10级主角×六职业伙伴×六NPC×普通/精英/Boss，1/1通过、0警告；现有2520场正交矩阵成功，唯一warning为Google连通探针超时。当前自动策略综合第一为主角+弓手+宋金宝：90场100%胜、144.6有效友伤/回合、平均6.08回合。弓手与宋金宝均显著领先，追风在固定队伍装备切片中显著领先，已在HTML列作平衡风险而非直接调数结论。三份工作簿重载、Python编译、Node语法和Chrome实渲均通过。详见docs/production/2026-09-04-design-tables-party-analysis-acceptance.md。
 
 > **2026-09-04 桌面HUD展开主体与物品坐标完成**：提交821593b把透明宿主扩为完整工作区，挂机条拖动时整套当前布局刚性跟随，松开左键后才按最终挂机槽位置一次性重算上下方向及水平回收。仓库、背包、导航、历练/工具与任务圆钮共用同一主体偏移；左右贴边时整组回收，挂机条不动。仓库和右侧纸张统一为244..925的681逻辑高度并在786处分隔；历练上半区为标题、难度、章节、三个竖排节点、当前选择和当前游历，下半区保留挑战/游历。物品携带图移入独立光标层，实机中心与(1535,800)鼠标一致。最终冷UBT通过；Workbench 70/74非失败，四项仍为既有InnerGeometry、TravelCombatPresentation和两项Travel图集基线。右边缘、向上及全开截图见Saved/Diagnostics/hud-adaptive-*.png；测试后已恢复75%、X=0.578778505、Y=0.064710319。详见docs/production/2026-09-04-desktop-hud-adaptive-body-and-cursor-acceptance.md。
 
