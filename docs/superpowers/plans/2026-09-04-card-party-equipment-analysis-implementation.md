@@ -368,7 +368,7 @@ git commit -m "docs: export structured Hell 3-1 fixture"
 
 - [ ] **Step 1: Add RED cardinality tests**
 
-Require six Hero profession packages, six partner roles, six NPCs, and216 direction IDs. For every concrete loadout require8/5/3 unique cards and production validator acceptance.
+Require six Hero profession packages, six partner roles, six NPCs, and216 direction IDs. At level100 require18 unlocked cards and8568 legal five-card combinations for every partner role. For every concrete loadout require8/5/3 unique cards and production validator acceptance.
 
 - [ ] **Step 2: Run and verify RED**
 
@@ -414,9 +414,9 @@ for (EGameXXKCharacterRole Role : SixProfessionRoles)
 
 This yields `6 * C(12,4) = 2970` pre-pruning Hero packages and preserves the approved “six profession packages” meaning.
 
-- [ ] **Step 4: Enumerate partner and NPC loadouts**
+- [ ] **Step 4: Enumerate level-100 partner and NPC loadouts**
 
-Use companion catalog metadata to enumerate every birth-six shape that the production generator can create. Non-Formation roles use core2 + a legal three-card subset of one primary archetype + one distinct free card; Formation uses two of six switch cards + a legal three-card subset of one primary archetype + one distinct remaining benefit card. For every birth six, enumerate all six legal five-card selections and validate them through `ValidateSelectedPersonalCards`. Record the exact birth six, selected five, primary archetype, and whether the recommendation depends on the free card. Generate all four exact `4 choose 3` NPC loadouts and pass each through `ValidateQuestNpcCardSelection`.
+For each partner role, construct a level-100 companion, call `BuildFullProfessionCardPool` and `RefreshUnlockedPersonalCards`, assert18 unique unlocked cards, sort them by CardId, and enumerate all `C(18,5)=8568` five-card selections. Validate every emitted selection through `ValidateSelectedPersonalCards`. Build the pool with two different positive card seeds and assert the sorted18-card set is identical; only order/early unlock prefix may differ at level100. Generate all four exact `4 choose 3` NPC loadouts and pass each through `ValidateQuestNpcCardSelection`.
 
 - [ ] **Step 5: Validate through production setup**
 
@@ -482,9 +482,9 @@ struct FGameXXKBuildMechanicFingerprint
 
 Read structured definitions (`Effects`, `BladeSequence`, `HeavyArrow`, `HealerRule`, spell-task metadata), never compact text.
 
-- [ ] **Step 3: Prune Hero generic selections with a lexicographic tuple**
+- [ ] **Step 3: Prune Hero and partner selections before party combination**
 
-For each party direction, rank candidate eight-card Hero packages by:
+Rank the495 Hero packages per profession and8568 partner packages per role by:
 
 1. count of consumer mechanics with at least one party producer;
 2. count of task/formula requirements fully present;
@@ -492,7 +492,7 @@ For each party direction, rank candidate eight-card Hero packages by:
 4. summed printed direct/DOT coefficients;
 5. sorted CardId tuple.
 
-Keep at most eight packages per direction. Store every rejection reason.
+For each profession/role, take the best four packages in each of five categories—direct, DOT, Armor/reaction, resource, and profession mechanic—then add the best four overall. Deduplicate by sorted CardId tuple and fill from the global order until exactly24 remain or the legal pool is exhausted. For each of216 party directions, combine those retained Hero/partner packages with four NPC loadouts, apply the same producer-consumer tuple across the full party, and keep at most eight complete16-card candidates. Store every rejection reason.
 
 - [ ] **Step 4: Run fingerprint/pruning tests and commit**
 
@@ -767,7 +767,7 @@ For equipment, evaluate each owner's eligible patterns and91 gem splits against 
 
 Treat each NPC `4 choose 3` loadout as a player-selectable candidate. Use the best legal three-card loadout in the primary recommendation and emit the other three omissions as separate sensitivity rows; never average the four loadouts into one DPR.
 
-For partners, primary rows name the exact birth six and selected five. Emit a “free-card dependency” flag whenever the chosen five use the sixth cross-pool card, plus the best five-card alternative that does not use it.
+For partners, primary rows name the exact selected five from the level-100 full18-card pool. Emit the next three legal five-card alternatives and their same-seed marginal changes; do not show an early-level “free-card dependency” in the level-100 report.
 
 - [ ] **Step 3: Select recommendations without an opaque total score**
 
@@ -808,6 +808,8 @@ git commit -m "feat: export Hell 3-1 build analysis"
 - [ ] **Step 1: Add renderer schema assertions**
 
 At startup require schema1,216 direction rows, nonempty six recommendation categories, exact8/5/3 decks, 12 gems per owner, and traceable source IDs. Delete `BUILDS`, `simulate_rounds`, `variant_sequence`, and `cycle_damage`.
+
+Resolve permanent-partner display labels through `FGameXXKCompanionRules::GetCompanionDisplayName`; JSON and HTML must contain the six canonical profession labels and no seed-generated personal names.
 
 - [ ] **Step 2: Render the approved information hierarchy**
 
