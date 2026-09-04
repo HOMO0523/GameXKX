@@ -319,16 +319,8 @@ namespace
 
 	FText GetRoleDisplayName(const EGameXXKCharacterRole Role)
 	{
-		switch (Role)
-		{
-		case EGameXXKCharacterRole::Blade: return NSLOCTEXT("GameXXKCompanionRoster", "RoleBlade", "刀客");
-		case EGameXXKCharacterRole::Guard: return NSLOCTEXT("GameXXKCompanionRoster", "RoleGuard", "护卫");
-		case EGameXXKCharacterRole::Healer: return NSLOCTEXT("GameXXKCompanionRoster", "RoleHealer", "医师");
-		case EGameXXKCharacterRole::Hunter: return NSLOCTEXT("GameXXKCompanionRoster", "RoleHunter", "猎手");
-		case EGameXXKCharacterRole::Sorcerer: return NSLOCTEXT("GameXXKCompanionRoster", "RoleSorcerer", "术士");
-		case EGameXXKCharacterRole::FormationMaster: return NSLOCTEXT("GameXXKCompanionRoster", "RoleFormationMaster", "阵师");
-		default: return NSLOCTEXT("GameXXKCompanionRoster", "RoleUnknown", "未知职业");
-		}
+		const FString Name = FGameXXKCompanionRules::GetCompanionDisplayName(Role, 0);
+		return Name.IsEmpty() ? FText::FromString(TEXT("未知职业")) : FText::FromString(Name);
 	}
 
 	FString ResolveCompanionPortraitResourcePath(const EGameXXKCharacterRole Role, const bool bActive)
@@ -1181,6 +1173,13 @@ TArray<FName> UGameXXKCompanionRosterWidget::GetVisibleRosterSlotInstanceIdsForT
 		}
 	}
 	return Result;
+}
+
+FString UGameXXKCompanionRosterWidget::GetRosterSlotTooltipTextForTest(const int32 VisibleSlotIndex) const
+{
+	return RosterSlotButtons.IsValidIndex(VisibleSlotIndex) && RosterSlotButtons[VisibleSlotIndex]
+		? RosterSlotButtons[VisibleSlotIndex]->GetToolTipText().ToString()
+		: FString();
 }
 
 bool UGameXXKCompanionRosterWidget::GoToNextRosterPageForTest()
@@ -2086,8 +2085,13 @@ void UGameXXKCompanionRosterWidget::RefreshRosterSlots()
 				CompanionRosterSlotSize,
 				SlotFrameMargin));
 			SlotButton->SetIsEnabled(Companion != nullptr);
-			// Page 18 avatar tooltip carries the partner's random display name.
-			SlotButton->SetToolTipText(Companion ? ResolveCompanionDisplayName(Companion->Role, Companion->NameSeed) : FText::GetEmpty());
+			SlotButton->SetToolTipText(Companion
+				? FText::FromString(FString::Printf(
+					TEXT("%s · Lv.%d · ★%d"),
+					*FGameXXKCompanionRules::GetCompanionDisplayName(Companion->Role, Companion->NameSeed),
+					Companion->Level,
+					Companion->Star))
+				: FText::GetEmpty());
 		}
 		if (UTextBlock* Label = RosterSlotLabels.IsValidIndex(SlotIndex) ? RosterSlotLabels[SlotIndex].Get() : nullptr)
 		{

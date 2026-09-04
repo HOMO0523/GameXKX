@@ -95,6 +95,18 @@ bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("widget stores successful purchase result"), PurchaseResult.bPurchased);
 	TestEqual(TEXT("widget purchase debits exact price"), State.PlayerGold, 900);
 
+	Widget->OpenMetaShopForTest();
+	TestTrue(TEXT("player can select the companion pack"), Widget->SelectProductForTest(EGameXXKMetaShopProductId::CompanionPack));
+	TestTrue(TEXT("companion purchase opens confirmation"), Widget->RequestPurchaseForTest());
+	TestTrue(TEXT("companion purchase succeeds"), Widget->ConfirmPurchaseForTest());
+	const FString CompanionResultText = Widget->GetDisplayedPurchaseResultTextForTest().ToString();
+	TestTrue(TEXT("companion result uses the concise profession prefix"), CompanionResultText.StartsWith(TEXT("获得伙伴：")));
+	TestFalse(TEXT("companion result does not repeat the profession in parentheses"), CompanionResultText.Contains(TEXT("（")));
+	for (const TCHAR* RetiredRoleName : {TEXT("护卫"), TEXT("医师"), TEXT("猎手"), TEXT("术士")})
+	{
+		TestFalse(TEXT("companion result contains no retired profession synonym"), CompanionResultText.Contains(RetiredRoleName));
+	}
+
 	State.PlayerGold = 0;
 	Widget->OpenMetaShopForTest();
 	TestTrue(TEXT("player can inspect unaffordable companion pack"), Widget->SelectProductForTest(EGameXXKMetaShopProductId::CompanionPack));

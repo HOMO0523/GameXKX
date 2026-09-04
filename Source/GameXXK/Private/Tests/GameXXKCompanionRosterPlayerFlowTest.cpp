@@ -6,6 +6,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
+#include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -46,6 +47,23 @@ bool FGameXXKCompanionRosterPlayerFlowTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("opening the roster preserves modality by closing the separate codex"), TownHud && !TownHud->IsCompanionCodexOpenForTest());
 	TestTrue(TEXT("the roster becomes visible in town"), RosterWidget && RosterWidget->GetVisibility() != ESlateVisibility::Collapsed);
+	const TArray<FName> VisibleRosterIds = RosterWidget
+		? RosterWidget->GetVisibleRosterSlotInstanceIdsForTest()
+		: TArray<FName>();
+	TestFalse(TEXT("new-game roster exposes at least one visible partner"), VisibleRosterIds.IsEmpty());
+	FGameXXKPermanentCompanion VisibleCompanion;
+	TestTrue(TEXT("visible roster id resolves its stable partner view"),
+		!VisibleRosterIds.IsEmpty()
+		&& Subsystem->TryGetPermanentCompanionView(VisibleRosterIds[0], VisibleCompanion));
+	const FString RosterTooltip = RosterWidget
+		? RosterWidget->GetRosterSlotTooltipTextForTest(0)
+		: FString();
+	const FString CanonicalRoleName = FGameXXKCompanionRules::GetCompanionDisplayName(
+		VisibleCompanion.Role,
+		VisibleCompanion.NameSeed);
+	TestTrue(TEXT("roster tooltip starts with the canonical profession label"), RosterTooltip.StartsWith(CanonicalRoleName));
+	TestTrue(TEXT("same-role roster entries are distinguished by level"), RosterTooltip.Contains(TEXT("Lv.")));
+	TestTrue(TEXT("same-role roster entries are distinguished by star"), RosterTooltip.Contains(TEXT("★")));
 
 	TestTrue(TEXT("Escape closes the roster before any battle or world transition"),
 		PlayerController->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::Escape, IE_Pressed, 1.0f)));

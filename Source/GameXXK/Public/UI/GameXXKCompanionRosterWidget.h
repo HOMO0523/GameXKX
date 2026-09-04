@@ -271,6 +271,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
 	TArray<FName> GetVisibleRosterSlotInstanceIdsForTest() const;
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|CompanionRoster|Test")
+	FString GetRosterSlotTooltipTextForTest(int32 VisibleSlotIndex) const;
+
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|CompanionRoster|Test")
 	bool GoToNextRosterPageForTest();
 

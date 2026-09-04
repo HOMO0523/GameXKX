@@ -93,16 +93,8 @@ namespace
 
 	FText ShopRoleDisplayName(const EGameXXKCharacterRole Role)
 	{
-		switch (Role)
-		{
-		case EGameXXKCharacterRole::Blade: return NSLOCTEXT("GameXXKMetaShop", "RoleBlade", "刀客");
-		case EGameXXKCharacterRole::Guard: return NSLOCTEXT("GameXXKMetaShop", "RoleGuard", "护卫");
-		case EGameXXKCharacterRole::Healer: return NSLOCTEXT("GameXXKMetaShop", "RoleHealer", "医师");
-		case EGameXXKCharacterRole::Hunter: return NSLOCTEXT("GameXXKMetaShop", "RoleHunter", "猎手");
-		case EGameXXKCharacterRole::Sorcerer: return NSLOCTEXT("GameXXKMetaShop", "RoleSorcerer", "术士");
-		case EGameXXKCharacterRole::FormationMaster: return NSLOCTEXT("GameXXKMetaShop", "RoleFormationMaster", "阵师");
-		default: return NSLOCTEXT("GameXXKMetaShop", "RoleUnknown", "未知职业");
-		}
+		const FString Name = FGameXXKCompanionRules::GetCompanionDisplayName(Role, 0);
+		return Name.IsEmpty() ? FText::FromString(TEXT("未知职业")) : FText::FromString(Name);
 	}
 
 	FText ShopEquipmentSlotText(const EGameXXKEquipmentSlot Slot)
@@ -642,9 +634,9 @@ bool UGameXXKMetaShopWidget::ConfirmPurchase()
 			{
 				const FGameXXKPermanentCompanion& Companion = LastPurchaseResult.CompanionResult.Companion;
 				ResultSlotFrame->SetToolTip(BuildResultTooltip(WidgetTree,
-					FText::FromString(FString::Printf(TEXT("%s（%s）"),
-						*FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed),
-						*ShopRoleDisplayName(Companion.Role).ToString()))));
+					FText::FromString(FGameXXKCompanionRules::GetCompanionDisplayName(
+						Companion.Role,
+						Companion.NameSeed))));
 			}
 		}
 	}
@@ -687,9 +679,8 @@ FText UGameXXKMetaShopWidget::BuildPurchaseResultText() const
 	{
 		const FGameXXKPermanentCompanion& Companion = LastPurchaseResult.CompanionResult.Companion;
 		return FText::FromString(FString::Printf(
-			TEXT("获得伙伴：%s（%s）"),
-			*FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed),
-			*ShopRoleDisplayName(Companion.Role).ToString()));
+			TEXT("获得伙伴：%s"),
+			*FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed)));
 	}
 	return FText::FromString(TEXT("购买成功。"));
 }
@@ -756,3 +747,7 @@ bool UGameXXKMetaShopWidget::CancelPurchaseForTest() { return CancelPurchase(); 
 int32 UGameXXKMetaShopWidget::GetProductCardCountForTest() const { return ProductButtons.Num(); }
 FText UGameXXKMetaShopWidget::GetDisabledReasonForTest() const { return DisabledReason; }
 FGameXXKMetaShopPurchaseResult UGameXXKMetaShopWidget::GetLastPurchaseResultForTest() const { return LastPurchaseResult; }
+FText UGameXXKMetaShopWidget::GetDisplayedPurchaseResultTextForTest() const
+{
+	return ResultText ? ResultText->GetText() : BuildPurchaseResultText();
+}

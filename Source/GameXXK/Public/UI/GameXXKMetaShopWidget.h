@@ -73,6 +73,7 @@ public:
 	int32 GetProductCardCountForTest() const;
 	FText GetDisabledReasonForTest() const;
 	FGameXXKMetaShopPurchaseResult GetLastPurchaseResultForTest() const;
+	FText GetDisplayedPurchaseResultTextForTest() const;
 
 private:
 	friend class UGameXXKMetaShopProductButton;
