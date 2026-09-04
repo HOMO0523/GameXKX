@@ -2917,13 +2917,17 @@ static bool ResolveNextEnemyIntentImpl(
 	if (bIntentConsumed && !Intent.bCharging)
 	{
 		FName FinalRecipientUnitId = NAME_None;
+		bool bAnyPartyHealthLostFromCompletedDirectAttack = false;
 		for (const FGameXXKCardDamageResult& DamageResult : OutDamageResults)
 		{
 			if (DamageResult.Cause == EGameXXKCardDamageCause::DirectAttack
 				&& DamageResult.SourceUnitId == Intent.SourceUnitId)
 			{
-				FinalRecipientUnitId = DamageResult.ResolvedTargetUnitId;
-				break;
+				if (FinalRecipientUnitId.IsNone())
+				{
+					FinalRecipientUnitId = DamageResult.ResolvedTargetUnitId;
+				}
+				bAnyPartyHealthLostFromCompletedDirectAttack |= DamageResult.HealthDamage > 0;
 			}
 		}
 		TArray<FGameXXKCardDamageResult> ReactionDamageResults;
@@ -2933,7 +2937,8 @@ static bool ResolveNextEnemyIntentImpl(
 			Intent.Kind,
 			FinalRecipientUnitId,
 			ReactionDamageResults,
-			OutError))
+			OutError,
+			bAnyPartyHealthLostFromCompletedDirectAttack))
 		{
 			return false;
 		}

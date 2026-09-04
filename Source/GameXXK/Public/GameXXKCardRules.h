@@ -250,7 +250,8 @@ namespace GameXXKCardRules
 		EGameXXKCardDamageKind CompletedCardKind,
 		FName FinalRecipientUnitId,
 		TArray<FGameXXKCardDamageResult>& OutReactionDamageResults,
-		FString* OutError = nullptr);
+		FString* OutError = nullptr,
+		bool bAnyPartyHealthLostFromCompletedDirectAttack = false);
 
 	/**
 	 * Completes the enemy phase, applies enemy-side DoT, expires round-bound modifiers, then starts a

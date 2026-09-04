@@ -2875,6 +2875,48 @@ namespace
 		});
 	}
 
+	bool AddOrIncrementGuardLink(
+		FGameXXKCardBattleRuntime& Runtime,
+		const FName GuardianUnitId,
+		const FName ProtectedUnitId,
+		const int32 Uses,
+		FString& OutError)
+	{
+		const FGameXXKCardCombatUnit* Guardian = FindCombatUnitById(Runtime.Units, GuardianUnitId);
+		const FGameXXKCardCombatUnit* Protected = FindCombatUnitById(Runtime.Units, ProtectedUnitId);
+		if (!Guardian || !Guardian->bLiving
+			|| !Protected || !Protected->bLiving
+			|| GuardianUnitId == ProtectedUnitId
+			|| Guardian->Side != Protected->Side
+			|| Uses <= 0)
+		{
+			OutError = TEXT("A Guard link requires two distinct living allies and a positive use count.");
+			return false;
+		}
+		FGameXXKCardGuardLinkRuntime* Existing = Runtime.GuardLinks.FindByPredicate([GuardianUnitId, ProtectedUnitId](const FGameXXKCardGuardLinkRuntime& Link)
+		{
+			return Link.GuardianUnitId == GuardianUnitId
+				&& Link.ProtectedUnitId == ProtectedUnitId
+				&& Link.RedirectPolicy == EGameXXKCardGuardRedirectPolicy::RedirectNextSingleTargetDirectAttackToGuardian;
+		});
+		if (Existing)
+		{
+			if (Existing->Stacks > MAX_int32 - Uses)
+			{
+				OutError = TEXT("Guard-link uses exceed the supported range.");
+				return false;
+			}
+			Existing->Stacks += Uses;
+			return true;
+		}
+		FGameXXKCardGuardLinkRuntime& Link = Runtime.GuardLinks.AddDefaulted_GetRef();
+		Link.GuardianUnitId = GuardianUnitId;
+		Link.ProtectedUnitId = ProtectedUnitId;
+		Link.Stacks = Uses;
+		Link.RedirectPolicy = EGameXXKCardGuardRedirectPolicy::RedirectNextSingleTargetDirectAttackToGuardian;
+		return true;
+	}
+
 	bool IsDirectAttackDamageKind(const EGameXXKCardDamageKind Kind)
 	{
 		return Kind == EGameXXKCardDamageKind::SingleTargetAttack || Kind == EGameXXKCardDamageKind::GroupAttack;
@@ -17091,7 +17133,8 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 	const EGameXXKCardDamageKind CompletedCardKind,
 	const FName FinalRecipientUnitId,
 	TArray<FGameXXKCardDamageResult>& OutReactionDamageResults,
-	FString* OutError)
+	FString* OutError,
+	const bool bAnyPartyHealthLostFromCompletedDirectAttack)
 {
 	if (OutError)
 	{
@@ -17343,6 +17386,66 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 	if (NewRuntime.PendingBladeFinish.Rule == EGameXXKBladeFinishRule::MarkAndPrepareTwoCounters)
 	{
 		NewRuntime.PendingBladeFinish.bTriggeredForCurrentEnemyCard = false;
+	}
+	if (bAnyPartyHealthLostFromCompletedDirectAttack)
+	{
+		FGameXXKEquipmentBattleEffectRuntime* XuanJiaSix = NewRuntime.EquipmentEffects.FindByPredicate([](const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime)
+		{
+			return EffectRuntime.ActiveEffect.EffectId == FName(TEXT("Set.XuanJia.6"))
+				&& EffectRuntime.ActiveEffect.Scope == EGameXXKEquipmentSetBonusScope::Team;
+		});
+		if (XuanJiaSix)
+		{
+			const FName WearerId = XuanJiaSix->SourceCharacterId;
+			const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(NewRuntime.Units, WearerId);
+			const int32 UsedThisRound = XuanJiaSix->LastTriggerRound == NewRuntime.RoundNumber
+				? XuanJiaSix->CurrentRoundTriggerCount
+				: 0;
+			if (Wearer && Wearer->bLiving && Wearer->Side == EGameXXKCardTargetSide::Party
+				&& UsedThisRound < XuanJiaSix->ActiveEffect.MaxTriggersPerRound)
+			{
+				const int64 ArmorNumerator = static_cast<int64>(FMath::Max(0, Wearer->Defense))
+					* XuanJiaSix->ActiveEffect.Magnitude;
+				const int32 BaseArmor = static_cast<int32>(FMath::Min<int64>(
+					MAX_int32,
+					(ArmorNumerator + 9999) / 10000));
+				for (FGameXXKCardCombatUnit& Ally : NewRuntime.Units)
+				{
+					if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party)
+					{
+						GrantGeneratedArmor(NewRuntime, nullptr, WearerId, Ally, BaseArmor, true);
+					}
+				}
+				TArray<FName> ProtectedUnitIds;
+				for (const FGameXXKCardCombatUnit& Ally : NewRuntime.Units)
+				{
+					if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party && Ally.UnitId != WearerId)
+					{
+						ProtectedUnitIds.Add(Ally.UnitId);
+					}
+				}
+				ProtectedUnitIds.Sort([&NewRuntime](const FName LeftId, const FName RightId)
+				{
+					const FGameXXKCardCombatUnit* Left = FindCombatUnitById(NewRuntime.Units, LeftId);
+					const FGameXXKCardCombatUnit* Right = FindCombatUnitById(NewRuntime.Units, RightId);
+					return Left && Right && IsStableUnitOrderBefore(*Left, *Right);
+				});
+				for (const FName ProtectedUnitId : ProtectedUnitIds)
+				{
+					if (!AddOrIncrementGuardLink(
+						NewRuntime,
+						WearerId,
+						ProtectedUnitId,
+						XuanJiaSix->ActiveEffect.SecondaryMagnitude,
+						ValidationError))
+					{
+						return SetFailure(OutError, ValidationError);
+					}
+				}
+				XuanJiaSix->LastTriggerRound = NewRuntime.RoundNumber;
+				XuanJiaSix->CurrentRoundTriggerCount = UsedThisRound + 1;
+			}
+		}
 	}
 	RemoveDefeatedPartyReactions(NewRuntime);
 	if (!EvaluateBossPhaseTransitions(NewRuntime, ValidationError)

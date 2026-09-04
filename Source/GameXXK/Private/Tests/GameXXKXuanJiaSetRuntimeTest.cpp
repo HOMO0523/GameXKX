@@ -1,3 +1,4 @@
+#include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKEquipmentRules.h"
 
@@ -87,6 +88,36 @@ namespace GameXXKXuanJiaSetRuntimeTest
 	{
 		const FGameXXKEquipmentActiveEffect Effect = MakeXuanFourEffect();
 		if (!Test.TestTrue(TEXT("Xuanjia four-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
+		{
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.ActiveEffect = Effect;
+		RuntimeEffect.SourceCharacterId = WearerId;
+		return true;
+	}
+
+	FGameXXKEquipmentActiveEffect MakeXuanSixEffect()
+	{
+		FGameXXKEquipmentActiveEffect Effect;
+		Effect.EffectId = TEXT("Set.XuanJia.6");
+		Effect.SourceCharacterId = WearerId;
+		Effect.Set = EGameXXKEquipmentSet::XuanJia;
+		Effect.RequiredPieces = 6;
+		Effect.Scope = EGameXXKEquipmentSetBonusScope::Team;
+		Effect.Hook = EGameXXKEquipmentSetBonusHook::FirstAllyHealthDamagePerRound;
+		Effect.ModifierKind = EGameXXKEquipmentModifierKind::GuardReduction;
+		Effect.Magnitude = 4000;
+		Effect.SecondaryMagnitude = 1;
+		Effect.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+		Effect.MaxTriggersPerRound = 1;
+		return Effect;
+	}
+
+	bool AddXuanSixEffect(FAutomationTestBase& Test, FGameXXKCardBattleRuntime& Runtime)
+	{
+		const FGameXXKEquipmentActiveEffect Effect = MakeXuanSixEffect();
+		if (!Test.TestTrue(TEXT("Xuanjia six-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
 		{
 			return false;
 		}
@@ -238,7 +269,8 @@ namespace GameXXKXuanJiaSetRuntimeTest
 		FAutomationTestBase& Test,
 		FGameXXKCardBattleRuntime& Runtime,
 		const EGameXXKCardDamageKind Kind,
-		TArray<FGameXXKCardDamageResult>& OutResults)
+		TArray<FGameXXKCardDamageResult>& OutResults,
+		const bool bPartyHealthLost = false)
 	{
 		FString Error;
 		const bool bResolved = GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
@@ -247,7 +279,8 @@ namespace GameXXKXuanJiaSetRuntimeTest
 			Kind,
 			Kind == EGameXXKCardDamageKind::SingleTargetAttack ? WearerId : NAME_None,
 			OutResults,
-			&Error);
+			&Error,
+			bPartyHealthLost);
 		Test.TestTrue(FString::Printf(TEXT("Xuanjia reaction boundary resolves: %s"), *Error), bResolved);
 		return bResolved;
 	}
@@ -258,6 +291,56 @@ namespace GameXXKXuanJiaSetRuntimeTest
 		{
 			return Result.ResolutionOrigin == EGameXXKCardResolutionOrigin::Equipment;
 		}).Num();
+	}
+
+	FGameXXKBattleRuntimeUnit MakeLegacyUnit(const FGameXXKCardCombatUnit& Unit)
+	{
+		FGameXXKBattleRuntimeUnit Legacy;
+		Legacy.Id = Unit.UnitId;
+		Legacy.HP = Unit.HP;
+		Legacy.MaxHP = Unit.MaxHP;
+		Legacy.MP = Unit.Mana;
+		Legacy.MaxMP = Unit.MaxMana;
+		Legacy.Attack = Unit.Attack;
+		Legacy.Defense = Unit.Defense;
+		Legacy.Speed = Unit.Speed;
+		Legacy.Shield = Unit.Armor;
+		Legacy.bEnemy = Unit.Side == EGameXXKCardTargetSide::Enemy;
+		return Legacy;
+	}
+
+	FGameXXKRuntimeState MakeIntentState(
+		FGameXXKCardBattleRuntime Runtime,
+		const int32 Damage,
+		const int32 HitCount)
+	{
+		FGameXXKRuntimeState State;
+		State.bHasActiveBattle = true;
+		State.CardRun.bHasActiveCardBattle = true;
+		State.CardRun.ActiveBattleSourceNodeId = 1;
+		State.CardRun.ActiveBattle = MoveTemp(Runtime);
+		FGameXXKCardEnemyIntent Intent;
+		Intent.CardId = TEXT("Test.XuanJia.MultiHit");
+		Intent.CardDisplayName = TEXT("玄甲多段测试");
+		Intent.SourceUnitId = EnemyId;
+		Intent.SuggestedTargetUnitId = AllyId;
+		Intent.Damage = Damage;
+		Intent.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+		Intent.ResolutionOrder = 0;
+		FGameXXKResolvedEnemyIntentEffect& Effect = Intent.Effects.AddDefaulted_GetRef();
+		Effect.Type = EGameXXKEnemyIntentEffectType::DirectDamage;
+		Effect.TargetUnitIds = {AllyId};
+		Effect.Magnitude = Damage;
+		Effect.BaseMagnitude = Damage;
+		Effect.HitCount = HitCount;
+		Effect.TargetRule = EGameXXKEnemyIntentTargetRule::LowestHealthParty;
+		State.CardRun.EnemyIntents = {MoveTemp(Intent)};
+		for (const FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			(Unit.Side == EGameXXKCardTargetSide::Party ? State.ActiveBattleParty : State.ActiveBattleEnemies)
+				.Add(MakeLegacyUnit(Unit));
+		}
+		return State;
 	}
 }
 
@@ -458,6 +541,150 @@ bool FGameXXKXuanJiaBlockFollowUpTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("next enemy phase rearms Xuanjia"), CountEquipmentPackets(Results), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKXuanJiaTeamRescueTest,
+	"GameXXK.Equipment.XuanJia.TeamRescue",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaTeamRescueTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+
+	for (const EGameXXKCardDamageKind Kind : {
+		EGameXXKCardDamageKind::SingleTargetAttack,
+		EGameXXKCardDamageKind::GroupAttack})
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, Runtime)
+			|| !AddXuanSixEffect(*this, Runtime))
+		{
+			return false;
+		}
+		Runtime.Phase = EGameXXKCardBattlePhase::Enemy;
+		TArray<FGameXXKCardDamageResult> Results;
+		if (!ResolveReactionBoundary(*this, Runtime, Kind, Results, true))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Xuanjia rescue grants amplified forty-percent Defense Armor to wearer"), FindUnit(Runtime, WearerId)->Armor, 159);
+		TestEqual(TEXT("Xuanjia rescue grants the same Armor to every ally"), FindUnit(Runtime, AllyId)->Armor, 159);
+		TestEqual(TEXT("Xuanjia rescue creates one wearer-to-ally Guard link"), Runtime.GuardLinks.Num(), 1);
+		if (Runtime.GuardLinks.Num() == 1)
+		{
+			TestEqual(TEXT("rescue Guard link uses the wearer"), Runtime.GuardLinks[0].GuardianUnitId, WearerId);
+			TestEqual(TEXT("rescue Guard link protects the other ally"), Runtime.GuardLinks[0].ProtectedUnitId, AllyId);
+			TestEqual(TEXT("rescue Guard link has one use"), Runtime.GuardLinks[0].Stacks, 1);
+		}
+
+		Results.Reset();
+		if (!ResolveReactionBoundary(*this, Runtime, Kind, Results, true))
+		{
+			return false;
+		}
+		TestEqual(TEXT("same enemy phase cannot grant rescue Armor twice"), FindUnit(Runtime, WearerId)->Armor, 159);
+		TestEqual(TEXT("same enemy phase cannot add another Guard use"), Runtime.GuardLinks.Num() == 1 ? Runtime.GuardLinks[0].Stacks : INDEX_NONE, 1);
+	}
+
+	FGameXXKCardBattleRuntime NoHealthLossRuntime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, NoHealthLossRuntime)
+		|| !AddXuanSixEffect(*this, NoHealthLossRuntime))
+	{
+		return false;
+	}
+	NoHealthLossRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
+	TArray<FGameXXKCardDamageResult> Results;
+	if (!ResolveReactionBoundary(*this, NoHealthLossRuntime, EGameXXKCardDamageKind::SingleTargetAttack, Results, false))
+	{
+		return false;
+	}
+	TestEqual(TEXT("full Armor absorption, Poison, and self-loss do not trigger rescue"), FindUnit(NoHealthLossRuntime, WearerId)->Armor, 0);
+	TestTrue(TEXT("ineligible health loss creates no Guard link"), NoHealthLossRuntime.GuardLinks.IsEmpty());
+
+	FGameXXKCardBattleRuntime ExistingLinkRuntime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, ExistingLinkRuntime)
+		|| !AddXuanSixEffect(*this, ExistingLinkRuntime))
+	{
+		return false;
+	}
+	ExistingLinkRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
+	FGameXXKCardGuardLinkRuntime& ExistingLink = ExistingLinkRuntime.GuardLinks.AddDefaulted_GetRef();
+	ExistingLink.GuardianUnitId = WearerId;
+	ExistingLink.ProtectedUnitId = AllyId;
+	ExistingLink.Stacks = 2;
+	ExistingLink.RedirectPolicy = EGameXXKCardGuardRedirectPolicy::RedirectNextSingleTargetDirectAttackToGuardian;
+	if (!ResolveReactionBoundary(*this, ExistingLinkRuntime, EGameXXKCardDamageKind::GroupAttack, Results, true))
+	{
+		return false;
+	}
+	TestEqual(TEXT("rescue increments an existing matching Guard link"), ExistingLinkRuntime.GuardLinks.Num(), 1);
+	TestEqual(TEXT("existing Guard link gains exactly one use"), ExistingLinkRuntime.GuardLinks[0].Stacks, 3);
+
+	FGameXXKCardBattleRuntime DeadSourceRuntime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, DeadSourceRuntime)
+		|| !AddXuanSixEffect(*this, DeadSourceRuntime))
+	{
+		return false;
+	}
+	DeadSourceRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
+	FindUnit(DeadSourceRuntime, WearerId)->HP = 0;
+	FindUnit(DeadSourceRuntime, WearerId)->bLiving = false;
+	Results.Reset();
+	if (!ResolveReactionBoundary(*this, DeadSourceRuntime, EGameXXKCardDamageKind::GroupAttack, Results, true))
+	{
+		return false;
+	}
+	TestEqual(TEXT("defeated six-piece source cannot grant Armor"), FindUnit(DeadSourceRuntime, AllyId)->Armor, 0);
+	TestTrue(TEXT("defeated six-piece source cannot create Guard links"), DeadSourceRuntime.GuardLinks.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKXuanJiaIntentIntegrationTest,
+	"GameXXK.Equipment.XuanJia.IntentIntegration",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaIntentIntegrationTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, Runtime)
+		|| !AddXuanSixEffect(*this, Runtime))
+	{
+		return false;
+	}
+	Runtime.Phase = EGameXXKCardBattlePhase::Enemy;
+	FindUnit(Runtime, AllyId)->Defense = 0;
+	FGameXXKRuntimeState State = MakeIntentState(MoveTemp(Runtime), 20, 3);
+	FGameXXKCardEnemyIntent ResolvedIntent;
+	TArray<FGameXXKCardDamageResult> Results;
+	bool bFinished = false;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("multi-hit Xuanjia intent resolves: %s"), *Error),
+		FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(
+			State,
+			ResolvedIntent,
+			Results,
+			bFinished,
+			&Error)))
+	{
+		return false;
+	}
+	int32 DirectHitCount = 0;
+	for (const FGameXXKCardDamageResult& Result : Results)
+	{
+		if (Result.Cause == EGameXXKCardDamageCause::DirectAttack && Result.SourceUnitId == EnemyId)
+		{
+			++DirectHitCount;
+			TestEqual(TEXT("rescue does not redirect any hit inside the completed volley"), Result.ResolvedTargetUnitId, AllyId);
+			TestTrue(TEXT("each multi-hit packet really loses health"), Result.HealthDamage > 0);
+		}
+	}
+	TestEqual(TEXT("adapter reports all three direct hits before rescue"), DirectHitCount, 3);
+	TestEqual(TEXT("adapter triggers rescue once after the complete multi-hit card"), State.CardRun.ActiveBattle.GuardLinks.Num(), 1);
+	TestEqual(TEXT("post-volley rescue grants amplified Armor"), FindUnit(State.CardRun.ActiveBattle, AllyId)->Armor, 159);
 	return true;
 }
 
