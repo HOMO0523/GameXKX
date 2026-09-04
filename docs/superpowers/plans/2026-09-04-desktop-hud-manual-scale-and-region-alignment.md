@@ -246,7 +246,7 @@ native region bounding box = 1044-1045 x 260-261 after integer rounding
 native region left/top = rendered HUD left/top - 3px
 ```
 
-Live execution additionally verified the manual-DPI boundary. Before removing the duplicate 125% conversion, the 1820x941 host and 1044/1045-wide region contained a rendered HUD only about 80% of its authored size. The final implementation removes `DesktopInputDpiScale` and `PhysicalPixelsToSlateHost`, uses `ResolveDesktopSlateHostGeometry` for the UMG slot, and keeps `WM_DPICHANGED`/`WM_DISPLAYCHANGE` only for placement refresh.
+Live execution refined the manual-DPI boundary. The final implementation keeps `PhysicalPixelsToSlateHost` and its inverse at the Slate boundary: 120-DPI windows divide outgoing HUD geometry by `1.25` and multiply Slate-local input by `1.25`; 96-DPI windows use `1.0`. The conversion is selected only from `GetDpiForWindow`, so automation windows that Windows scales as a whole are not compensated twice. `WM_DPICHANGED` and `WM_DISPLAYCHANGE` still refresh placement.
 
 - [ ] **Step 3: Inspect visible behavior**
 
@@ -267,3 +267,5 @@ Expected: only the two acceptance documents and intentional evidence metadata ar
 ### Follow-up: Add the 75% manual setting
 
 The user subsequently requested a third manual scale and removal of the obsolete automatic-adaptation sentence. Commit `27318be` adds the 75% action, button, scale resolution, and persistence while retaining 50% and 100%. Commit `09d9034` verifies that a newly created HUD reloads the persisted 75% value. `DesktopHud75Reload_GREEN` passed 2/2 with no warnings or errors.
+
+Visible editor verification then exposed that `-UserDir=Saved/InteractiveEditorUser` changes `GGameUserSettingsIni`. Commit `c1526be` stores HUD scale in the project-owned `Saved/Config/GameXXKDesktopHudSettings.ini`, reads that file first, and uses launch-specific GameUserSettings paths only for migration. Commit `f06bb17` isolates both legacy and stable files in tests. `DesktopHudStableSettings_GREEN_v2` passed 1/1, `DesktopHudDpiBridgeFinal_GREEN` passed 4/4, and the final broad Workbench run returned the established 68/72 baseline without a new failure.

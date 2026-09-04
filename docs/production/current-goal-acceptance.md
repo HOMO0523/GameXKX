@@ -1,12 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T10:33:31+08:00
-source_commit: 09d9034f95160eb44f35aa697d3fa057c6a789e0
+updated_at: 2026-09-04T13:24:28+08:00
+source_commit: f06bb1742709b191a258a63e2456f95adcd04260
 working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD manual-scale trial complete
 ---
 
-> **2026-09-04 桌面HUD手动倍率与裁切对齐完成**：提交95608c8、1ec8620与930ba5d移除工作区自动倍率，并修正手动DPI窗口再次除以/乘以系统125%造成的内容缩小；27318be与09d9034补齐50%/75%/100%三档、75%保存恢复，并删除设置中的“自动适配”句。三档现在固定为0.5/0.75/1.0；小屏100%允许超出。当前1536x816工作区实测固定宿主1820x941，折叠Region为1044/1045x261，首个非透明像素只保留素材自身约11单位透明边，不再出现40多像素坐标裁切；展开Region 1120x901，透明背景无白块。75%聚焦2/2、原对齐聚焦3/3通过；Workbench全量68/72，四项失败均为本文件已记录的InnerGeometry与旅行图集/动画既有基线。见docs/production/2026-09-04-desktop-hud-manual-scale-trial.md。
+> **2026-09-04 桌面HUD手动倍率、DPI与存档路径对齐完成**：95608c8与1ec8620移除工作区自动倍率并统一Region公式；27318be与09d9034补齐50%/75%/100%三档、保存恢复及删除“自动适配”句。可见PIE随后证明930ba5d移除DPI桥接的中间判断不成立：120-DPI窗口会把画面放大到Region之外。f076d1e最终按`GetDpiForWindow`处理96→1.0、120→1.25，Slate输出除DPI、鼠标输入乘DPI。c1526be把倍率保存到不受`-UserDir`影响的`Saved/Config/GameXXKDesktopHudSettings.ini`并迁移旧值；f06bb17隔离测试配置。可见编辑器连续两次PIE均读取50%，窗口910x471、Region 526x134，非透明画面完全位于Region内。DPI聚焦4/4、稳定存档1/1通过；Workbench全量回到既有68/72，无新增失败。见docs/production/2026-09-04-desktop-hud-manual-scale-trial.md。
 
 
 > **2026-09-04 NPC23张与Boss5张完成**：提交4d21696接入除后巷脱身外的23张NPC牌及全部5张Boss牌，统一护甲防御系数、DOT/治疗增幅、三类/四类净化、任务奖励与重箭品质。21项完整回归通过。后巷脱身保持旧实现并已向用户列出新旧对象选项。见docs/production/2026-09-04-task-npc-boss-card-progress.md。当前171/173张最新主要规则完成；雷走倍率与后巷对象待确认。
