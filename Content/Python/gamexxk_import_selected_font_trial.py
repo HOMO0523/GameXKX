@@ -13,21 +13,17 @@ SOURCE_DIR = PROJECT_ROOT / "Saved" / "FontPreview" / "20260904" / "fonts"
 RESULT_PATH = PROJECT_ROOT / "Saved" / "FontPreview" / "20260904" / "ue-import-result.json"
 DESTINATION = "/Game/GameXXK/UI/Fonts/Trial"
 ZH_FONT_PATH = f"{DESTINATION}/FF_Trial_ZhHans_JiangHuGuFeng_Font"
-EN_FONT_PATH = f"{DESTINATION}/FF_Trial_En_Rancho_Font"
 FALLBACK_FACE_PATH = f"{DESTINATION}/FF_Trial_Fallback_SourceHanSansCN_Regular"
+REJECTED_RANCHO_ASSETS = (
+    f"{DESTINATION}/FF_Trial_En_Rancho_Font",
+    f"{DESTINATION}/FF_Trial_En_Rancho",
+)
 FONT_RECORDS = (
     {
         "culture": "zh-Hans",
         "source": SOURCE_DIR / "ZiKuJiangHuGuFeng.ttf",
         "sha256": "8d1cead1150f42e5ac4d5a454a7897ea34e7ab801e6ea12035acb73e54cf06d4",
         "asset_name": "FF_Trial_ZhHans_JiangHuGuFeng",
-        "create_font": True,
-    },
-    {
-        "culture": "en",
-        "source": SOURCE_DIR / "Rancho-Regular.ttf",
-        "sha256": "d4f86c45ee18805a13de44f5751921588c55500c6c0fb8aa4c3bfedd450f7180",
-        "asset_name": "FF_Trial_En_Rancho",
         "create_font": True,
     },
     {
@@ -188,6 +184,22 @@ def _configure_fallback(font_path: str) -> dict:
     return {"font_path": font_path, "fallback_face_path": fallback_object_path, "saved": saved}
 
 
+def _delete_rejected_rancho_assets() -> list[str]:
+    editor = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
+    deleted = []
+    for asset_path in REJECTED_RANCHO_ASSETS:
+        asset = unreal.EditorAssetLibrary.load_asset(asset_path)
+        if asset is None:
+            continue
+        editor.close_all_editors_for_asset(asset)
+        if not unreal.EditorAssetLibrary.delete_asset(asset_path):
+            raise RuntimeError(f"Could not delete rejected Rancho trial asset: {asset_path}")
+        if unreal.EditorAssetLibrary.does_asset_exist(asset_path):
+            raise RuntimeError(f"Rejected Rancho trial asset still exists: {asset_path}")
+        deleted.append(asset_path)
+    return deleted
+
+
 def main() -> None:
     result: dict = {
         "ok": False,
@@ -197,6 +209,7 @@ def main() -> None:
         "opened_font_editors": False,
     }
     try:
+        result["deleted_rejected_assets"] = _delete_rejected_rancho_assets()
         if not unreal.EditorAssetLibrary.does_directory_exist(DESTINATION):
             unreal.EditorAssetLibrary.make_directory(DESTINATION)
         fonts = []
@@ -205,10 +218,7 @@ def main() -> None:
             result["assets"].append(asset_result)
             if font is not None:
                 fonts.append(font)
-        result["fallbacks"] = [
-            _configure_fallback(ZH_FONT_PATH),
-            _configure_fallback(EN_FONT_PATH),
-        ]
+        result["fallbacks"] = [_configure_fallback(ZH_FONT_PATH)]
         editor = unreal.get_editor_subsystem(unreal.AssetEditorSubsystem)
         for font in fonts:
             editor.close_all_editors_for_asset(font)
