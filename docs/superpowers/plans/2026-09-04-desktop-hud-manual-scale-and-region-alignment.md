@@ -4,7 +4,7 @@
 
 **Goal:** Remove resolution-derived HUD scaling, preserve only the manual 100%/50% settings, and prove that the rendered HUD and Win32 native region share one physical origin.
 
-**Architecture:** `GameXXKDesktopTrainingLayout` remains the single owner of desktop HUD scale and native-region coordinate transforms. Work-area dimensions continue to select and position the host, while manual scale alone determines HUD size; Windows DPI is applied only when physical HUD pixels enter the Slate host. The fixed maximum transparent host remains unchanged.
+**Architecture:** `GameXXKDesktopTrainingLayout` remains the single owner of desktop HUD scale and native-region coordinate transforms. Work-area dimensions continue to select and position the host, while manual scale alone determines HUD size. The overlay `SWindow` manually manages DPI, so Slate content, input, and the native region use the same client-coordinate units without another monitor-DPI conversion. The fixed maximum transparent host remains unchanged.
 
 **Tech Stack:** Unreal Engine 5.8 C++, UMG/Slate, Win32 `SetWindowRgn`, UE Automation Framework, project cold UBT and UE MCP scripts.
 
@@ -230,7 +230,7 @@ Run:
 python scripts/ai_production_loop.py --run-automation --automation-tests GameXXK.DesktopTraining.Workbench --automation-report DesktopHudManualScale_Workbench_GREEN --fail-on-automation-warnings --json
 ```
 
-Expected: every `GameXXK.DesktopTraining.Workbench.*` test passes with no warnings.
+Expected scoped result: the new scale/region/manual-DPI tests pass without warnings. The full current baseline remains 68/72: `InnerGeometry`, `TravelCombatPresentation`, `TravelPartyAtlasAsyncFallback`, and `TravelPartyAtlasFallbackInventory` are pre-existing failures already recorded in `current-goal-acceptance.md`; do not weaken them for this task.
 
 - [ ] **Step 2: Open the canonical presentation and measure the native window**
 
@@ -242,9 +242,11 @@ Expected on the current 1536x816 work area:
 manual scale = 1.0
 fixed transparent host = 1820x941
 collapsed HUD = 1038x254
-native region bounding box = 1044x260
+native region bounding box = 1044-1045 x 260-261 after integer rounding
 native region left/top = rendered HUD left/top - 3px
 ```
+
+Live execution additionally verified the manual-DPI boundary. Before removing the duplicate 125% conversion, the 1820x941 host and 1044/1045-wide region contained a rendered HUD only about 80% of its authored size. The final implementation removes `DesktopInputDpiScale` and `PhysicalPixelsToSlateHost`, uses `ResolveDesktopSlateHostGeometry` for the UMG slot, and keeps `WM_DPICHANGED`/`WM_DISPLAYCHANGE` only for placement refresh.
 
 - [ ] **Step 3: Inspect visible behavior**
 

@@ -1,10 +1,13 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T01:53:00+08:00
-source_commit: 4d21696bc37d1aa611e3738e6634cb6556c76fe2
-working_tree: 171/173 card rules complete; two explicit user decisions remain
+updated_at: 2026-09-04T10:01:43+08:00
+source_commit: 930ba5d247d9fe5489e4034fdb738faebe5c53c8
+working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD manual-scale trial complete
 ---
+
+> **2026-09-04 桌面HUD手动倍率与裁切对齐完成**：提交95608c8、1ec8620与930ba5d移除工作区自动倍率，并修正手动DPI窗口再次除以/乘以系统125%造成的内容缩小。100%/50%现在固定为1.0/0.5；小屏100%允许超出。当前1536x816工作区实测固定宿主1820x941，折叠Region为1044/1045x261，首个非透明像素只保留素材自身约11单位透明边，不再出现40多像素坐标裁切；展开Region 1120x901，透明背景无白块。聚焦3/3通过；Workbench全量68/72，四项失败均为本文件已记录的InnerGeometry与旅行图集/动画既有基线。见docs/production/2026-09-04-desktop-hud-manual-scale-trial.md。
+
 
 > **2026-09-04 NPC23张与Boss5张完成**：提交4d21696接入除后巷脱身外的23张NPC牌及全部5张Boss牌，统一护甲防御系数、DOT/治疗增幅、三类/四类净化、任务奖励与重箭品质。21项完整回归通过。后巷脱身保持旧实现并已向用户列出新旧对象选项。见docs/production/2026-09-04-task-npc-boss-card-progress.md。当前171/173张最新主要规则完成；雷走倍率与后巷对象待确认。
 
