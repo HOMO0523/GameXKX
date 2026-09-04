@@ -30,9 +30,12 @@
 #include "Engine/Texture2D.h"
 #include "HAL/PlatformTime.h"
 #include "HAL/IConsoleManager.h"
+#include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
+#include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "UObject/StrongObjectPtr.h"
 #include "UObject/UnrealType.h"
@@ -2420,9 +2423,17 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 {
 	static const TCHAR* SettingsSection = TEXT("/Script/GameXXK.DesktopHudSettings");
 	static const TCHAR* ScaleKey = TEXT("HudScalePercent");
+	const FString StableSettingsFile = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Saved/Config/GameXXKDesktopHudSettings.ini")));
 	int32 PreviousScale = 100;
 	const bool bHadPreviousScale = GConfig
 		&& GConfig->GetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+	FString PreviousStableContents;
+	const bool bHadStableSettingsFile = FFileHelper::LoadFileToString(
+		PreviousStableContents,
+		*StableSettingsFile);
 	ON_SCOPE_EXIT
 	{
 		if (GConfig)
@@ -2436,6 +2447,16 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 				GConfig->RemoveKey(SettingsSection, ScaleKey, GGameUserSettingsIni);
 			}
 			GConfig->Flush(false, GGameUserSettingsIni);
+			if (bHadStableSettingsFile)
+			{
+				FFileHelper::SaveStringToFile(
+					PreviousStableContents,
+					*StableSettingsFile);
+			}
+			else
+			{
+				IFileManager::Get().Delete(*StableSettingsFile, false, true);
+			}
 		}
 	};
 	if (!GConfig)
@@ -2445,6 +2466,12 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 	}
 	GConfig->SetInt(SettingsSection, ScaleKey, 100, GGameUserSettingsIni);
 	GConfig->Flush(false, GGameUserSettingsIni);
+	IFileManager::Get().MakeDirectory(*FPaths::GetPath(StableSettingsFile), true);
+	FConfigFile StableConfig;
+	StableConfig.Read(StableSettingsFile);
+	StableConfig.SetString(SettingsSection, ScaleKey, TEXT("50"));
+	StableConfig.Dirty = true;
+	StableConfig.Write(StableSettingsFile);
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
@@ -2462,7 +2489,9 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
-	TestEqual(TEXT("HUD scale defaults to 100 percent"), Widget->GetHudScalePercentForTest(), 100);
+	TestEqual(TEXT("stable HUD settings override a launch-specific legacy value"),
+		Widget->GetHudScalePercentForTest(),
+		50);
 	TestNull(TEXT("the unimplemented Shop toolbar button is removed"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TopToolbarShop")) : nullptr);
 	UGameXXKDesktopTrainingActionButton* SettingsButton = Widget->WidgetTree
@@ -2507,9 +2536,16 @@ bool FGameXXKDesktopTrainingHudScaleSettingsTest::RunTest(const FString& Paramet
 		Widget->GetHudScalePercentForTest(),
 		75);
 	int32 PersistedScale = 0;
-	TestTrue(TEXT("HUD scale preference is written to config"),
-		GConfig->GetInt(SettingsSection, ScaleKey, PersistedScale, GGameUserSettingsIni));
-	TestEqual(TEXT("HUD scale config persists 75 percent"), PersistedScale, 75);
+	FConfigFile PersistedStableConfig;
+	PersistedStableConfig.Read(StableSettingsFile);
+	FString PersistedScaleText;
+	TestTrue(TEXT("HUD scale preference is written to the stable settings file"),
+		PersistedStableConfig.GetString(
+			SettingsSection,
+			ScaleKey,
+			PersistedScaleText));
+	PersistedScale = FCString::Atoi(*PersistedScaleText);
+	TestEqual(TEXT("stable HUD scale config persists 75 percent"), PersistedScale, 75);
 	UGameXXKDesktopTrainingWorkbenchWidget* RestoredWidget =
 		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	RestoredWidget->SetMVPSubsystem(Subsystem);

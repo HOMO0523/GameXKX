@@ -24,11 +24,13 @@
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "GenericPlatform/GenericWindow.h"
+#include "HAL/FileManager.h"
 #include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Misc/App.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Misc/Paths.h"
 #include "Rendering/SlateRenderer.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
@@ -244,6 +246,60 @@
 	static constexpr const TCHAR* HudScaleConfigKey = TEXT("HudScalePercent");
 	static constexpr const TCHAR* DesktopWindowPositionXKey = TEXT("WindowPositionX");
 	static constexpr const TCHAR* DesktopWindowPositionYKey = TEXT("WindowPositionY");
+
+	FString GetDesktopHudStableSettingsIni()
+	{
+#if WITH_EDITOR
+		return FPaths::ConvertRelativePathToFull(FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Saved/Config/GameXXKDesktopHudSettings.ini")));
+#else
+		return FPaths::ConvertRelativePathToFull(FPaths::Combine(
+			FPaths::ProjectSavedDir(),
+			TEXT("Config/GameXXKDesktopHudSettings.ini")));
+#endif
+	}
+
+	FString GetDesktopHudCanonicalLegacySettingsIni()
+	{
+#if WITH_EDITOR
+		return FPaths::ConvertRelativePathToFull(FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Saved/Config/WindowsEditor/GameUserSettings.ini")));
+#else
+		return GGameUserSettingsIni;
+#endif
+	}
+
+	bool ReadDesktopHudStableScale(int32& OutScale)
+	{
+		FConfigFile StableConfig;
+		StableConfig.Read(GetDesktopHudStableSettingsIni());
+		FString RawScale;
+		if (!StableConfig.GetString(
+				HudSettingsSection,
+				HudScaleConfigKey,
+				RawScale))
+		{
+			return false;
+		}
+		OutScale = FCString::Atoi(*RawScale);
+		return true;
+	}
+
+	void WriteDesktopHudStableScale(const int32 Scale)
+	{
+		const FString StableSettingsIni = GetDesktopHudStableSettingsIni();
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(StableSettingsIni), true);
+		FConfigFile StableConfig;
+		StableConfig.Read(StableSettingsIni);
+		StableConfig.SetString(
+			HudSettingsSection,
+			HudScaleConfigKey,
+			*FString::FromInt(Scale));
+		StableConfig.Dirty = true;
+		StableConfig.Write(StableSettingsIni);
+	}
 
 	int32 NormalizeHudScalePercent(const int32 Percent)
 	{
@@ -8784,15 +8840,33 @@ void UGameXXKDesktopTrainingWorkbenchWidget::LoadHudScaleSetting()
 		return;
 	}
 	int32 SavedPercent = 100;
+	bool bLoadedScale = ReadDesktopHudStableScale(SavedPercent);
 	if (GConfig)
 	{
-		GConfig->GetInt(
-			HudSettingsSection,
-			HudScaleConfigKey,
-			SavedPercent,
-			GGameUserSettingsIni);
+		if (!bLoadedScale)
+		{
+			bLoadedScale = GConfig->GetInt(
+				HudSettingsSection,
+				HudScaleConfigKey,
+				SavedPercent,
+				GGameUserSettingsIni);
+		}
+		const FString CanonicalLegacySettingsIni =
+			GetDesktopHudCanonicalLegacySettingsIni();
+		if (!bLoadedScale && CanonicalLegacySettingsIni != GGameUserSettingsIni)
+		{
+			bLoadedScale = GConfig->GetInt(
+				HudSettingsSection,
+				HudScaleConfigKey,
+				SavedPercent,
+				CanonicalLegacySettingsIni);
+		}
 	}
 	HudScalePercent = NormalizeHudScalePercent(SavedPercent);
+	if (bLoadedScale)
+	{
+		WriteDesktopHudStableScale(HudScalePercent);
+	}
 	bHudScaleSettingLoaded = true;
 }
 
@@ -8808,6 +8882,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SetHudScalePercent(const int32 InPe
 	bDesktopNativeLayoutDirty = true;
 	if (GConfig)
 	{
+		WriteDesktopHudStableScale(HudScalePercent);
 		GConfig->SetInt(
 			HudSettingsSection,
 			HudScaleConfigKey,
