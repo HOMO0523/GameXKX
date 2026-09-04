@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T13:24:28+08:00
-source_commit: f06bb1742709b191a258a63e2456f95adcd04260
-working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD manual-scale trial complete
+updated_at: 2026-09-04T14:45:23+08:00
+source_commit: b12937b
+working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD fixed Tab dock verified
 ---
+
+> **2026-09-04 桌面HUD固定Tab停靠完成**：提交b12937b把挂机条、通知控制行与Tab统一为固定停靠组；挂机条在收起/向下/向上状态均保持1038×202逻辑尺寸，Tab固定在挂机条相对(953,202)，进度轨不再因展开缩成340。上下展开共用同一屏幕锚点，左右边缘由内容偏移吸收，不再为把透明画布完整塞入屏幕而移动挂机条；Win32固定宿主始终预留1820×993，Tab切换不触发窗口resize。向上中心内容的-210偏移已同步到Region，旧105/157.5/210像素裁切差消失。新增StableDockPlacement和UpwardNativeRegion先RED后GREEN；冷UBT通过，Workbench最终70/74，四项失败仍为既有InnerGeometry及三项Travel图集基线。50%/125% DPI、右下停靠实机中收起/展开窗口物理矩形均为(783,371)-(1921,992)，截图见Saved/Diagnostics/hud-stable-dock-final-collapsed.png与hud-stable-dock-final-expanded-up.png；临时拖动后已恢复用户原WindowPositionY=0.0587708652。详见docs/production/2026-09-04-desktop-hud-stable-tab-dock-acceptance.md。
 
 > **2026-09-04 桌面HUD手动倍率、DPI与存档路径对齐完成**：95608c8与1ec8620移除工作区自动倍率并统一Region公式；27318be与09d9034补齐50%/75%/100%三档、保存恢复及删除“自动适配”句。可见PIE随后证明930ba5d移除DPI桥接的中间判断不成立：120-DPI窗口会把画面放大到Region之外。f076d1e最终按`GetDpiForWindow`处理96→1.0、120→1.25，Slate输出除DPI、鼠标输入乘DPI。c1526be把倍率保存到不受`-UserDir`影响的`Saved/Config/GameXXKDesktopHudSettings.ini`并迁移旧值；f06bb17隔离测试配置。可见编辑器连续两次PIE均读取50%，窗口910x471、Region 526x134，非透明画面完全位于Region内。DPI聚焦4/4、稳定存档1/1通过；Workbench全量回到既有68/72，无新增失败。见docs/production/2026-09-04-desktop-hud-manual-scale-trial.md。
 

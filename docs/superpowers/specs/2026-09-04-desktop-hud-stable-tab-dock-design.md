@@ -27,7 +27,9 @@ For downward expansion the strip starts at local Y `0`. For upward expansion it 
 
 The saved normalized position continues to describe the idle-strip anchor. Before either collapsed or expanded placement is calculated, that anchor is clamped once so the complete fixed dock group fits in the work area. Both states then use this same physical strip anchor.
 
-Changing the backpack state may change the transparent host bounds and content offset, but it must preserve the resulting screen rectangles of the idle strip and Backpack Tab whenever the selected manual scale physically fits.
+The transparent native host always reserves the maximum `1820 × 993` logical bounds, including the upward notice rail. Changing the backpack state changes only the content offset inside that host. It must preserve the resulting screen rectangles of the idle strip and Backpack Tab whenever the selected manual scale physically fits.
+
+At a horizontal work-area edge, the expanded design canvas may extend beyond the fixed host while the visible center shell remains clipped to the work area. The fixed dock wins over forcing every transparent design-canvas pixel on screen. The fixed native host itself remains clamped to the work area.
 
 ## Upward content and native Region
 
@@ -40,4 +42,3 @@ The 210-unit upward offset remains the authored relationship for center content,
 - The expanded idle strip stays `1038 × 202` before manual scaling.
 - Upward content and toolbar points are included in the native Region at their rendered positions; their old unshifted-only points are not required to remain interactive.
 - DPI conversion remains outside the logical layout and continues to use the existing physical-pixel/Slate bridge.
-
