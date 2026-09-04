@@ -1578,6 +1578,28 @@ bool FGameXXKEquipmentRules::IsKnownActiveEffect(const FGameXXKEquipmentActiveEf
 		});
 }
 
+bool FGameXXKEquipmentRules::NormalizeKnownSetEffectDescriptor(
+	FGameXXKEquipmentActiveEffect& InOutEffect,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	const FGameXXKEquipmentSetBonusDefinition* Definition =
+		FGameXXKEquipmentSetCatalog::FindDefinition(InOutEffect.EffectId);
+	if (!Definition || InOutEffect.SourceCharacterId.IsNone())
+	{
+		if (OutError)
+		{
+			*OutError = TEXT("A set descriptor normalization requires a known effect and stable source.");
+		}
+		return false;
+	}
+	InOutEffect = MakeSetEffect(*Definition, InOutEffect.SourceCharacterId);
+	return true;
+}
+
 FGameXXKCharacterStats FGameXXKEquipmentRules::ApplyPostEquipmentModifiers(
 	const FGameXXKCharacterStats& AttributesBeforeRoute,
 	const TMap<EGameXXKEquipmentModifierKind, int32>& BasisPointModifiers,

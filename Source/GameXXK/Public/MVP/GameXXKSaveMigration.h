@@ -67,7 +67,9 @@ public:
 	static constexpr int32 CombatScalingFoundationIntroducedSaveVersion = 33;
 	/** v34: retire 25 run-local route cards while retaining five Boss compatibility IDs. */
 	static constexpr int32 ActiveCardPool173IntroducedSaveVersion = 34;
-	static constexpr int32 CurrentSaveVersion = 34;
+	/** v35: normalize active Xuanjia/Shanhe descriptors and persist deferred Shanhe rewards. */
+	static constexpr int32 EquipmentSetRuntimeSemanticsSaveVersion = 35;
+	static constexpr int32 CurrentSaveVersion = 35;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

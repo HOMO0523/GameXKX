@@ -256,8 +256,9 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(TEXT("equipment effect has a stable source unit"), !EffectRuntime.SourceCharacterId.IsNone());
 		bSawNpcEquipmentEffect |= EffectRuntime.SourceCharacterId == TaskNpc->UnitId;
-		TestEqual(TEXT("new effects begin with no current-round triggers"), EffectRuntime.CurrentRoundTriggerCount, 0);
-		TestEqual(TEXT("new effects have not fired in a battle round"), EffectRuntime.LastTriggerRound, 0);
+		const bool bOpeningShanHeCore = EffectRuntime.ActiveEffect.EffectId == FName(TEXT("Set.ShanHe.6"));
+		TestEqual(TEXT("only the opening Shanhe core has consumed a current-round trigger"), EffectRuntime.CurrentRoundTriggerCount, bOpeningShanHeCore ? 1 : 0);
+		TestEqual(TEXT("only the opening Shanhe core records the first battle round"), EffectRuntime.LastTriggerRound, bOpeningShanHeCore ? 1 : 0);
 		EffectKeys.Add(EffectRuntime.ActiveEffect.EffectId.ToString() + TEXT("|") + EffectRuntime.SourceCharacterId.ToString());
 	}
 	TestTrue(TEXT("battle materializes at least one task-NPC equipment effect"), bSawNpcEquipmentEffect);

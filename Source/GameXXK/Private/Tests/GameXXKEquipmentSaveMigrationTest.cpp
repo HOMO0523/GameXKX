@@ -482,13 +482,124 @@ bool FGameXXKEquipmentSaveMigrationVersionContractTest::RunTest(const FString& P
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKEquipmentSetRuntimeSemanticsMigrationTest,
+	"GameXXK.Equipment.SaveMigration.SetRuntimeSemanticsV35",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKEquipmentSetRuntimeSemanticsMigrationTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("current schema is v35"), FGameXXKSaveMigration::CurrentSaveVersion, 35);
+	FGameXXKSaveState Source = MakeCurrentPendingRewardFixture();
+	if (!TestTrue(TEXT("v34 set-runtime fixture starts with an active battle"), Source.RuntimeState.CardRun.bHasActiveCardBattle))
+	{
+		return false;
+	}
+	Source.SaveVersion = 34;
+	FGameXXKCardBattleRuntime& SourceBattle = Source.RuntimeState.CardRun.ActiveBattle;
+	const FGameXXKCardCombatUnit* PartySource = SourceBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.Side == EGameXXKCardTargetSide::Party;
+	});
+	if (!TestNotNull(TEXT("v34 set-runtime fixture has a party source"), PartySource))
+	{
+		return false;
+	}
+	const FName SourceUnitId = PartySource->UnitId;
+	SourceBattle.EquipmentEffects.Reset();
+	const auto AddLegacyEffect = [&SourceBattle, SourceUnitId](
+		const FName EffectId,
+		const EGameXXKEquipmentSet Set,
+		const int32 RequiredPieces,
+		const EGameXXKEquipmentSetBonusScope Scope,
+		const EGameXXKEquipmentSetBonusHook Hook,
+		const EGameXXKEquipmentModifierKind ModifierKind,
+		const int32 Magnitude)
+	{
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = SourceBattle.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.SourceCharacterId = SourceUnitId;
+		RuntimeEffect.CurrentRoundTriggerCount = 1;
+		RuntimeEffect.LastTriggerRound = SourceBattle.RoundNumber;
+		RuntimeEffect.ActiveEffect.EffectId = EffectId;
+		RuntimeEffect.ActiveEffect.SourceCharacterId = SourceUnitId;
+		RuntimeEffect.ActiveEffect.Set = Set;
+		RuntimeEffect.ActiveEffect.RequiredPieces = RequiredPieces;
+		RuntimeEffect.ActiveEffect.Scope = Scope;
+		RuntimeEffect.ActiveEffect.Hook = Hook;
+		RuntimeEffect.ActiveEffect.ModifierKind = ModifierKind;
+		RuntimeEffect.ActiveEffect.Magnitude = Magnitude;
+		RuntimeEffect.ActiveEffect.SecondaryMagnitude = 0;
+		RuntimeEffect.ActiveEffect.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+		RuntimeEffect.ActiveEffect.MaxTriggersPerRound = 1;
+	};
+	AddLegacyEffect(
+		TEXT("Set.XuanJia.4"),
+		EGameXXKEquipmentSet::XuanJia,
+		4,
+		EGameXXKEquipmentSetBonusScope::Owner,
+		EGameXXKEquipmentSetBonusHook::RoundStart,
+		EGameXXKEquipmentModifierKind::CounterDamage,
+		1200);
+	AddLegacyEffect(
+		TEXT("Set.ShanHe.4"),
+		EGameXXKEquipmentSet::ShanHe,
+		4,
+		EGameXXKEquipmentSetBonusScope::Owner,
+		EGameXXKEquipmentSetBonusHook::TerrainSynergyCard,
+		EGameXXKEquipmentModifierKind::TerrainCostReduction,
+		5);
+	const int32 HandBefore = SourceBattle.Deck.Hand.Num();
+	const int32 ArmorBefore = PartySource->Armor;
+
+	FGameXXKSaveState Migrated;
+	FGameXXKSaveMigrationReport Report;
+	if (!TestTrue(FString::Printf(TEXT("v34 set descriptors migrate: %s"), *Report.Error),
+		FGameXXKSaveMigration::MigrateToCurrent(Source, Migrated, Report)))
+	{
+		return false;
+	}
+	const FGameXXKCardBattleRuntime& Battle = Migrated.RuntimeState.CardRun.ActiveBattle;
+	const FGameXXKEquipmentBattleEffectRuntime* XuanFour = Battle.EquipmentEffects.FindByPredicate([](const FGameXXKEquipmentBattleEffectRuntime& Effect)
+	{
+		return Effect.ActiveEffect.EffectId == FName(TEXT("Set.XuanJia.4"));
+	});
+	const FGameXXKEquipmentBattleEffectRuntime* ShanFour = Battle.EquipmentEffects.FindByPredicate([](const FGameXXKEquipmentBattleEffectRuntime& Effect)
+	{
+		return Effect.ActiveEffect.EffectId == FName(TEXT("Set.ShanHe.4"));
+	});
+	TestNotNull(TEXT("migrated battle keeps Xuanjia four-piece"), XuanFour);
+	TestNotNull(TEXT("migrated battle keeps Shanhe four-piece"), ShanFour);
+	if (XuanFour)
+	{
+		TestEqual(TEXT("Xuan4 retention normalized"), XuanFour->ActiveEffect.Magnitude, 5000);
+		TestEqual(TEXT("Xuan4 attack normalized"), XuanFour->ActiveEffect.SecondaryMagnitude, 80);
+		TestEqual(TEXT("Xuan4 migration does not replay an old trigger"), XuanFour->CurrentRoundTriggerCount, 0);
+		TestEqual(TEXT("Xuan4 migration clears its old trigger round"), XuanFour->LastTriggerRound, 0);
+	}
+	if (ShanFour)
+	{
+		TestEqual(TEXT("Shan4 discount normalized"), ShanFour->ActiveEffect.Magnitude, 1);
+		TestEqual(TEXT("Shan4 Mana normalized"), ShanFour->ActiveEffect.SecondaryMagnitude, 2);
+		TestEqual(TEXT("no past trigger is backfilled"), ShanFour->CurrentRoundTriggerCount, 0);
+		TestEqual(TEXT("Shan4 migration clears its old trigger round"), ShanFour->LastTriggerRound, 0);
+	}
+	const FGameXXKCardCombatUnit* MigratedPartySource = Battle.Units.FindByPredicate([SourceUnitId](const FGameXXKCardCombatUnit& Unit)
+	{
+		return Unit.UnitId == SourceUnitId;
+	});
+	TestEqual(TEXT("migration does not execute a round-start draw"), Battle.Deck.Hand.Num(), HandBefore);
+	TestEqual(TEXT("migration does not execute a round-start Armor grant"), MigratedPartySource ? MigratedPartySource->Armor : INDEX_NONE, ArmorBefore);
+	TestTrue(TEXT("migration creates no pending equipment reward"), Battle.PendingEquipmentRewards.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKEquipmentTenQualitySaveRoundTripTest,
 	"GameXXK.Equipment.SaveMigration.TenQualityV25RoundTrip",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("the active 173-card pool owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("the active 173-card pool owns the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 35);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -678,8 +789,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("the active 173-card pool advances the current save schema to v34"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("equipment-set runtime advances the current save schema to v35"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 35);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -947,7 +1058,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes the active 173-card pool"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("current save schema includes the active 173-card pool"), FGameXXKSaveMigration::CurrentSaveVersion, 35);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());

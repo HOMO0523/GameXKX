@@ -54,8 +54,8 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
 	TestEqual(TEXT("v32 retires the disconnected tutorial narrative"),
 		FGameXXKSaveMigration::RetiredLegacyTutorialNarrativeSaveVersion, 32);
-	TestEqual(TEXT("the active 173-card pool advances the current schema to v34"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("equipment-set runtime advances the current schema to v35"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 35);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);

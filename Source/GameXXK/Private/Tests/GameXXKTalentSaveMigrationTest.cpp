@@ -18,8 +18,8 @@ bool FGameXXKTalentSaveRoundTripTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("permanent talents own save version twenty-six"),
 		FGameXXKSaveMigration::PermanentTalentGraphIntroducedSaveVersion, 26);
-	TestEqual(TEXT("the active card pool advances the current save schema to thirty-four"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("equipment-set runtime advances the current save schema to thirty-five"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 35);
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());

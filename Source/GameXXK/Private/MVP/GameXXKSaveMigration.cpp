@@ -1818,6 +1818,42 @@ namespace
 		}
 	}
 
+	bool MigrateEquipmentSetRuntimeSemantics(
+		FGameXXKRuntimeState& InOutState,
+		FString& OutError)
+	{
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			return true;
+		}
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		Battle.PendingEquipmentRewards.Reset();
+		for (FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Battle.EquipmentEffects)
+		{
+			const FString EffectId = EffectRuntime.ActiveEffect.EffectId.ToString();
+			if (!EffectId.StartsWith(TEXT("Set.XuanJia."))
+				&& !EffectId.StartsWith(TEXT("Set.ShanHe.")))
+			{
+				continue;
+			}
+			if (EffectRuntime.SourceCharacterId.IsNone())
+			{
+				OutError = TEXT("A legacy Xuanjia or Shanhe effect has no stable source.");
+				return false;
+			}
+			EffectRuntime.ActiveEffect.SourceCharacterId = EffectRuntime.SourceCharacterId;
+			if (!FGameXXKEquipmentRules::NormalizeKnownSetEffectDescriptor(
+				EffectRuntime.ActiveEffect,
+				&OutError))
+			{
+				return false;
+			}
+			EffectRuntime.CurrentRoundTriggerCount = 0;
+			EffectRuntime.LastTriggerRound = 0;
+		}
+		return true;
+	}
+
 	bool MigrateLegacyHeroTimedModifiers(FGameXXKRuntimeState& InOutState, FString& OutError)
 	{
 		if (!InOutState.CardRun.bHasActiveCardBattle)
@@ -2091,8 +2127,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		MigrateLegacyTutorialNarrative(Candidate.RuntimeState, OutReport);
 		MigrateCombatScalingFoundation(Candidate.RuntimeState);
 		MigrateRetiredRouteCards(Candidate.RuntimeState);
-		Candidate.SaveVersion = CurrentSaveVersion;
 		FString ValidationError;
+		if (!MigrateEquipmentSetRuntimeSemantics(Candidate.RuntimeState, ValidationError))
+		{
+			Fail(OutReport, ValidationError);
+			return false;
+		}
+		Candidate.SaveVersion = CurrentSaveVersion;
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 			? Candidate.RuntimeState.CardRun.RouteRandomSeed
 			: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
@@ -2323,6 +2364,12 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	if (Source.SaveVersion < ActiveCardPool173IntroducedSaveVersion)
 	{
 		MigrateRetiredRouteCards(Candidate.RuntimeState);
+	}
+	if (Source.SaveVersion < EquipmentSetRuntimeSemanticsSaveVersion
+		&& !MigrateEquipmentSetRuntimeSemantics(Candidate.RuntimeState, MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0

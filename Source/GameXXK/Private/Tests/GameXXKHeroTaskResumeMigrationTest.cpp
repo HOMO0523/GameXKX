@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCombatScalingRules.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveMigration.h"
 
@@ -436,7 +437,13 @@ bool FGameXXKHeroPendingModifierMigrationTest::RunTest(const FString& Parameters
 		if (!TestTrue(TEXT("a real terrain card resumes after loading"),
 			GameXXKCardRules::ResolveCardPlay(Battle, Cards[5].InstanceId, ResumeEnemyId, Played, &Error))) continue;
 		Enemy = Battle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == ResumeEnemyId; });
-		TestEqual(TEXT("the next real Plain benefit runs twice"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 4);
+		TestEqual(
+			TEXT("the next real Plain benefit runs twice"),
+			GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn),
+			2 * FGameXXKCombatScalingRules::ResolveDotAddition(
+				2,
+				EGameXXKCardQuality::Common,
+				Battle.TeamMaxLevelSnapshot));
 		TestEqual(TEXT("the following Hero pays ordinary Energy"), Battle.Deck.SharedEnergy, 8);
 		TestTrue(TEXT("both one-use modifiers finish"), Battle.Modifiers.IsEmpty());
 	}

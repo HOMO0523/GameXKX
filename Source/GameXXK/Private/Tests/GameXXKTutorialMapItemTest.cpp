@@ -18,9 +18,9 @@ bool FGameXXKTutorialMapItemTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("tutorial map item owns v31 boundary"),
 		FGameXXKSaveMigration::TutorialMapItemIntroducedSaveVersion,
 		31);
-	TestEqual(TEXT("current schema advances to active-card-pool v34"),
+	TestEqual(TEXT("current schema advances to equipment-set-runtime v35"),
 		FGameXXKSaveMigration::CurrentSaveVersion,
-		34);
+		35);
 
 	bool bFound = false;
 	const FGameXXKItemDef Definition = UGameXXKMVPRules::GetItemDef(
@@ -150,7 +150,7 @@ bool FGameXXKTutorialMapItemTest::RunTest(const FString& Parameters)
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(FString::Printf(TEXT("v30 migrates through v31-v33 to v34: %s"), *Report.Error),
 		FGameXXKSaveMigration::MigrateToCurrent(V30, Migrated, Report));
-	TestEqual(TEXT("migration reaches v34"), Migrated.SaveVersion, 34);
+	TestEqual(TEXT("migration reaches v34"), Migrated.SaveVersion, 35);
 	TestTrue(TEXT("old saves start with no pending task item"),
 		Migrated.RuntimeState.DesktopInventory.PendingTaskItemIds.IsEmpty());
 

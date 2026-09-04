@@ -256,6 +256,10 @@ public:
 		const TArray<FGameXXKEquipmentLoadoutSnapshot>& Snapshots);
 	/** Verifies that a persisted battle descriptor can only originate from the immutable set/affix catalogs. */
 	static bool IsKnownActiveEffect(const FGameXXKEquipmentActiveEffect& Effect);
+	/** Rebuilds one catalog set descriptor while preserving only its stable source identity. */
+	static bool NormalizeKnownSetEffectDescriptor(
+		FGameXXKEquipmentActiveEffect& InOutEffect,
+		FString* OutError = nullptr);
 	static FGameXXKCharacterStats ApplyPostEquipmentModifiers(
 		const FGameXXKCharacterStats& AttributesBeforeRoute,
 		const TMap<EGameXXKEquipmentModifierKind, int32>& BasisPointModifiers,

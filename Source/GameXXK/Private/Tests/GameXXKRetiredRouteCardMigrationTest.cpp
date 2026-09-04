@@ -189,7 +189,7 @@ bool FGameXXKRetiredRouteCardMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("active 173-card pool owns save version 34"),
 		FGameXXKSaveMigration::ActiveCardPool173IntroducedSaveVersion, 34);
-	TestEqual(TEXT("active 173-card pool is current schema v34"), FGameXXKSaveMigration::CurrentSaveVersion, 34);
+	TestEqual(TEXT("active 173-card pool is current schema v35"), FGameXXKSaveMigration::CurrentSaveVersion, 35);
 
 	const FGameXXKSaveState Source = BuildV33Source();
 	const FGameXXKSaveState SourceBefore = Source;
@@ -203,7 +203,7 @@ bool FGameXXKRetiredRouteCardMigrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("retirement migration does not mutate its source"),
 		FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&Source, &SourceBefore, PPF_None));
 	TestEqual(TEXT("retirement migration reports source v33"), Report.SourceVersion, 33);
-	TestEqual(TEXT("retirement migration writes v34"), Migrated.SaveVersion, 34);
+	TestEqual(TEXT("retirement migration writes v35"), Migrated.SaveVersion, 35);
 	TestTrue(TEXT("battle remains active while its Boss compatibility card survives"), Migrated.RuntimeState.CardRun.bHasActiveCardBattle);
 	const FGameXXKBattleDeckState& Deck = Migrated.RuntimeState.CardRun.ActiveBattle.Deck;
 	TestFalse(TEXT("every retired card is removed from owning and choice zones"), DeckContainsRetiredCard(Deck));
