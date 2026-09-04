@@ -2490,6 +2490,10 @@ struct GAMEXXK_API FGameXXKCardPlayPreview
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 EffectiveManaCost = 0;
 
+	/** Runtime-only identity of the unused Shanhe four-piece discount selected by the pure preview. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName AppliedShanHeFourPieceEffectId = NAME_None;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	bool bCanPlay = false;
 

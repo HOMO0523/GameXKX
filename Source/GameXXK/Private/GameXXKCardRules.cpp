@@ -5421,6 +5421,7 @@ namespace
 		TArray<FName>* OutAppliedModifierIds,
 		TArray<FName>* OutTerrainFreeUnitIds,
 		TArray<FName>* OutTerrainReductionUnitIds,
+		FName* OutAppliedShanHeFourPieceEffectId,
 		FString& OutError);
 
 	bool IsHealerFormulaOpen(
@@ -5613,7 +5614,8 @@ namespace
 			return false;
 		}
 		int32 EffectiveEnergyCost = EffectiveDefinition.EnergyCost;
-		if (!BuildEffectiveCardEnergyCost(Runtime, EffectiveDefinition, *Instance, *Owner, EffectiveEnergyCost, nullptr, nullptr, nullptr, OutError))
+		FName AppliedShanHeFourPieceEffectId;
+		if (!BuildEffectiveCardEnergyCost(Runtime, EffectiveDefinition, *Instance, *Owner, EffectiveEnergyCost, nullptr, nullptr, nullptr, &AppliedShanHeFourPieceEffectId, OutError))
 		{
 			return false;
 		}
@@ -5629,6 +5631,7 @@ namespace
 		NewPreview.OwnerUnitId = Instance->OwnerUnitId;
 		NewPreview.EffectiveEnergyCost = EffectiveEnergyCost;
 		NewPreview.EffectiveManaCost = EffectiveManaCost;
+		NewPreview.AppliedShanHeFourPieceEffectId = AppliedShanHeFourPieceEffectId;
 		if (!GameXXKCardRules::BuildTargetRequest(EffectiveDefinition, *Instance, Runtime.Terrain, BuildTargetUnitView(Runtime.Units), NewPreview.TargetRequest, &OutError))
 		{
 			return false;
@@ -5790,6 +5793,33 @@ namespace
 			&& Definition.AcquisitionKey == TEXT("Route.Terrain");
 	}
 
+	bool IsTerrainActiveCard(const FGameXXKCardDefinition& Definition)
+	{
+		return Definition.Effects.ContainsByPredicate([](const FGameXXKCardEffect& Effect)
+		{
+			return Effect.Type == EGameXXKCardEffectType::ChangeTerrain
+				|| Effect.Type == EGameXXKCardEffectType::TriggerTerrainBenefit;
+		});
+	}
+
+	const FGameXXKEquipmentBattleEffectRuntime* FindUnusedShanHeFourPiece(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId)
+	{
+		const FGameXXKEquipmentBattleEffectRuntime* Effect = FindEquipmentEffectById(
+			Runtime,
+			SourceUnitId,
+			TEXT("Set.ShanHe.4"));
+		if (!Effect)
+		{
+			return nullptr;
+		}
+		const int32 UsedThisRound = Effect->LastTriggerRound == Runtime.RoundNumber
+			? Effect->CurrentRoundTriggerCount
+			: 0;
+		return UsedThisRound < Effect->ActiveEffect.MaxTriggersPerRound ? Effect : nullptr;
+	}
+
 	void CollectTerrainCardCostStatusOwners(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardDefinition& Definition,
@@ -5875,6 +5905,7 @@ namespace
 		TArray<FName>* OutAppliedModifierIds,
 		TArray<FName>* OutTerrainFreeUnitIds,
 		TArray<FName>* OutTerrainReductionUnitIds,
+		FName* OutAppliedShanHeFourPieceEffectId,
 		FString& OutError)
 	{
 		OutError.Reset();
@@ -5886,6 +5917,10 @@ namespace
 		if (OutAppliedModifierIds)
 		{
 			OutAppliedModifierIds->Reset();
+		}
+		if (OutAppliedShanHeFourPieceEffectId)
+		{
+			*OutAppliedShanHeFourPieceEffectId = NAME_None;
 		}
 		TArray<FName> TerrainFreeUnitIds;
 		TArray<FName> TerrainReductionUnitIds;
@@ -5930,14 +5965,24 @@ namespace
 		EffectiveCost -= TerrainReductionUnitIds.Num();
 		EffectiveCost -= Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::LightLoad ? 1 : 0;
 		EffectiveCost -= CountEligibleBladeStyleRules(Runtime, EGameXXKBladeChargeRule::LightLoad);
-		OutEnergyCost = Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::MakeNextActiveEnergyFree
+		int64 FinalCost = Runtime.PendingBladeCharge.Rule == EGameXXKBladeChargeRule::MakeNextActiveEnergyFree
 			|| CountEligibleBladeStyleRules(Runtime, EGameXXKBladeChargeRule::MakeNextActiveEnergyFree) > 0
 			? 0
 			: !TerrainFreeUnitIds.IsEmpty() || EffectiveCost <= 0
 			? 0
-			: EffectiveCost > MAX_int32
-				? MAX_int32
-				: static_cast<int32>(EffectiveCost);
+			: FMath::Min<int64>(MAX_int32, EffectiveCost);
+		if (IsTerrainActiveCard(Definition))
+		{
+			if (const FGameXXKEquipmentBattleEffectRuntime* ShanHeFour = FindUnusedShanHeFourPiece(Runtime, Owner.UnitId))
+			{
+				FinalCost = FMath::Max<int64>(0, FinalCost - ShanHeFour->ActiveEffect.Magnitude);
+				if (OutAppliedShanHeFourPieceEffectId)
+				{
+					*OutAppliedShanHeFourPieceEffectId = ShanHeFour->ActiveEffect.EffectId;
+				}
+			}
+		}
+		OutEnergyCost = static_cast<int32>(FinalCost);
 		return true;
 	}
 
@@ -16109,8 +16154,9 @@ bool GameXXKCardRules::ResolveCardPlay(
 	TArray<FName> AppliedManaCostModifierIds;
 	TArray<FName> TerrainFreeStatusUnitIds;
 	TArray<FName> TerrainReductionStatusUnitIds;
+	FName FreshShanHeFourPieceEffectId;
 	int32 FreshEffectiveEnergyCost = ActiveEffectiveDefinition.EnergyCost;
-	if (!BuildEffectiveCardEnergyCost(NewRuntime, ActiveEffectiveDefinition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedEnergyCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, ValidationError))
+	if (!BuildEffectiveCardEnergyCost(NewRuntime, ActiveEffectiveDefinition, *Instance, *Owner, FreshEffectiveEnergyCost, &AppliedEnergyCostModifierIds, &TerrainFreeStatusUnitIds, &TerrainReductionStatusUnitIds, &FreshShanHeFourPieceEffectId, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
 	}
@@ -16120,6 +16166,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, ValidationError);
 	}
 	if (FreshEffectiveEnergyCost != Preview.EffectiveEnergyCost
+		|| FreshShanHeFourPieceEffectId != Preview.AppliedShanHeFourPieceEffectId
 		|| FreshEffectiveManaCost != Preview.EffectiveManaCost)
 	{
 		return SetFailure(OutError, TEXT("A card-play modifier changed after the preview was built."));
@@ -16697,6 +16744,26 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, TEXT("The resolving-card guard changed before the active card transaction completed."));
 	}
 	NewRuntime.Deck.ResolvingCardInstanceId = NAME_None;
+	if (!FreshShanHeFourPieceEffectId.IsNone())
+	{
+		FGameXXKEquipmentBattleEffectRuntime* ShanHeFour = FindEquipmentEffectById(
+			NewRuntime,
+			CopiedInstance.OwnerUnitId,
+			FreshShanHeFourPieceEffectId);
+		if (!ShanHeFour)
+		{
+			return SetFailure(OutError, TEXT("The selected Shanhe four-piece discount disappeared before commit."));
+		}
+		const int32 UsedThisRound = ShanHeFour->LastTriggerRound == NewRuntime.RoundNumber
+			? ShanHeFour->CurrentRoundTriggerCount
+			: 0;
+		if (UsedThisRound >= ShanHeFour->ActiveEffect.MaxTriggersPerRound)
+		{
+			return SetFailure(OutError, TEXT("The selected Shanhe four-piece discount was already consumed."));
+		}
+		ShanHeFour->LastTriggerRound = NewRuntime.RoundNumber;
+		ShanHeFour->CurrentRoundTriggerCount = UsedThisRound + 1;
+	}
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
 	{
 		return SetFailure(OutError, ValidationError);
