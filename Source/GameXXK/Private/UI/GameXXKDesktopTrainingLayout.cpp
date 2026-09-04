@@ -214,11 +214,17 @@ namespace GameXXKDesktopTrainingLayout
 			FMath::Clamp(PersistedAnchor.Y, 0.0f, 1.0f));
 	}
 
-	FVector2D PhysicalPixelsToSlateHost(
-		const FVector2D& PhysicalPixels,
-		const float DpiScale)
+	FDesktopSlateHostGeometry ResolveDesktopSlateHostGeometry(
+		const FDesktopOverlayPlacement& Placement,
+		const FVector2D& FixedContentOffset,
+		const bool bDesktopWindow)
 	{
-		return PhysicalPixels / FMath::Max(0.01f, DpiScale);
+		FDesktopSlateHostGeometry Result;
+		Result.Position = bDesktopWindow
+			? FixedContentOffset
+			: Placement.HudTopLeft;
+		Result.Size = Placement.HudSize;
+		return Result;
 	}
 
 	FVector2D ResolveDesktopHudDragAnchor(

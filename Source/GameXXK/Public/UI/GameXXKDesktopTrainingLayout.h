@@ -34,6 +34,13 @@ namespace GameXXKDesktopTrainingLayout
 		float Scale = 1.0f;
 	};
 
+	/** Slate slot geometry inside the manually DPI-managed desktop window. */
+	struct GAMEXXK_API FDesktopSlateHostGeometry
+	{
+		FVector2D Position = FVector2D::ZeroVector;
+		FVector2D Size = FVector2D::ZeroVector;
+	};
+
 	/** Physical work-area and the single scale shared by every HUD layout state in one session. */
 	struct GAMEXXK_API FDesktopHudResolvedMetrics
 	{
@@ -122,9 +129,10 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector2D ResolvePresentationAnchor(
 		bool bUsePersistedAnchor,
 		const FVector2D& PersistedAnchor);
-	GAMEXXK_API FVector2D PhysicalPixelsToSlateHost(
-		const FVector2D& PhysicalPixels,
-		float DpiScale);
+	GAMEXXK_API FDesktopSlateHostGeometry ResolveDesktopSlateHostGeometry(
+		const FDesktopOverlayPlacement& Placement,
+		const FVector2D& FixedContentOffset,
+		bool bDesktopWindow);
 	GAMEXXK_API FVector2D ResolveDesktopHudDragAnchor(
 		const FVector2D& DragStartNormalizedAnchor,
 		const FVector2D& DragStartPointerScreen,

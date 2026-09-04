@@ -1644,9 +1644,28 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	TestEqual(TEXT("3D-town presentation always resets the default anchor"),
 		ResolvePresentationAnchor(false, FVector2D(0.35f, 0.45f)),
 		FVector2D(0.5f, 0.08f));
-	TestEqual(TEXT("125-percent Windows DPI converts physical HUD pixels to Slate host units"),
-		PhysicalPixelsToSlateHost(FVector2D(1000.0f, 500.0f), 1.25f),
-		FVector2D(800.0f, 400.0f));
+	FDesktopOverlayPlacement ManualDpiPlacement;
+	ManualDpiPlacement.HudTopLeft = FVector2D(100.0f, 60.0f);
+	ManualDpiPlacement.HudSize = FVector2D(1038.0f, 254.0f);
+	const FDesktopSlateHostGeometry DesktopHostGeometry =
+		ResolveDesktopSlateHostGeometry(
+			ManualDpiPlacement,
+			FVector2D(271.0f, 49.0f),
+			true);
+	TestEqual(TEXT("manual-DPI desktop host keeps the native content offset"),
+		DesktopHostGeometry.Position,
+		FVector2D(271.0f, 49.0f));
+	TestEqual(TEXT("manual-DPI desktop host keeps authored HUD pixels unscaled"),
+		DesktopHostGeometry.Size,
+		FVector2D(1038.0f, 254.0f));
+	const FDesktopSlateHostGeometry TownHostGeometry =
+		ResolveDesktopSlateHostGeometry(
+			ManualDpiPlacement,
+			FVector2D(271.0f, 49.0f),
+			false);
+	TestEqual(TEXT("town viewport keeps its resolved HUD top-left"),
+		TownHostGeometry.Position,
+		ManualDpiPlacement.HudTopLeft);
 
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
