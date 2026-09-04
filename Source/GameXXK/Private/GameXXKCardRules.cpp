@@ -4,6 +4,7 @@
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCombatScalingRules.h"
 #include "GameXXKEnemyCatalog.h"
+#include "GameXXKEnemyPhaseRules.h"
 #include "GameXXKEquipmentRules.h"
 
 namespace
@@ -1018,6 +1019,7 @@ namespace
 		EGameXXKCardTargetSide EndingSide,
 		int32& OutHealthDamage,
 		int32& OutPacketHealthAfter,
+		FGameXXKEnemyPhaseTransitionResult* OutPhaseTransition,
 		FString* OutError);
 	bool TryApplyEffectConditionAndConsumption(
 		const FGameXXKCardEffectCondition& Condition,
@@ -1092,7 +1094,9 @@ namespace
 			}
 
 			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
-			if (!Definition || Definition->PhaseId == EGameXXKEnemyPhaseId::None)
+			if (!Definition
+				|| !Definition->Phases.IsEmpty()
+				|| Definition->PhaseId == EGameXXKEnemyPhaseId::None)
 			{
 				continue;
 			}
@@ -1315,12 +1319,14 @@ namespace
 			const bool bLifeSavingConsumptionPendingBefore = InOutRuntime.bLifeSavingTalismanConsumptionPending;
 			int32 HealthDamage = 0;
 			int32 PacketHealthAfter = TargetHealthBefore;
+			FGameXXKEnemyPhaseTransitionResult PhaseTransition;
 			if (!ApplyCombatEndPhaseDotForRuntime(
 				InOutRuntime,
 				UnitId,
 				EndingSide,
 				HealthDamage,
 				PacketHealthAfter,
+				&PhaseTransition,
 				&OutError))
 			{
 				return false;
@@ -1347,6 +1353,10 @@ namespace
 				Result.TargetArmorBefore = TargetArmorBefore;
 				Result.TargetHealthAfter = PacketHealthAfter;
 				Result.TargetArmorAfter = TargetArmorBefore;
+				Result.bTriggeredEnemyPhase = PhaseTransition.bTransitioned;
+				Result.EnemyPhaseBefore = PhaseTransition.PreviousPhase;
+				Result.EnemyPhaseAfter = PhaseTransition.NewPhase;
+				Result.EnemyPhaseHealing = PhaseTransition.Healing;
 				if (const FGameXXKCardCombatUnit* TargetAfterDot = FindCombatUnitById(InOutRuntime.Units, UnitId))
 				{
 					Result.TargetArmorAfter = TargetAfterDot->Armor;
@@ -3439,13 +3449,17 @@ namespace
 		NewResult.DamageAfterLevelDifference = NewResult.RequestedDamage;
 		NewResult.TargetHealthBefore = Target->HP;
 		NewResult.TargetArmorBefore = Target->Armor;
+		const int32 RequestedHealthDamage = FGameXXKEnemyPhaseRules::ClampHealthDamageForRemainingPhase(
+			InOutRuntime,
+			*Target,
+			NewResult.RequestedDamage);
 		if (!ApplyHealthLossWithLifeSavingTalisman(
 			InOutRuntime.Units,
 			&InOutRuntime.bLifeSavingTalismanArmed,
 			&InOutRuntime.bLifeSavingTalismanConsumptionPending,
 			InOutRuntime.LifeSavingTalismanHealingPercent,
 			*Target,
-			NewResult.RequestedDamage,
+			RequestedHealthDamage,
 			InOutPlayResult,
 			NewResult.HealthDamage,
 			NewResult.TargetHealthAfter,
@@ -3454,6 +3468,24 @@ namespace
 			return false;
 		}
 		NewResult.TargetArmorAfter = Target->Armor;
+		if (NewResult.HealthDamage > 0
+			&& Target->Side == EGameXXKCardTargetSide::Enemy
+			&& InOutRuntime.EnemyStates.Contains(TargetUnitId))
+		{
+			FGameXXKEnemyPhaseTransitionResult Transition;
+			if (!FGameXXKEnemyPhaseRules::ResolveAfterDamagePacket(
+				InOutRuntime,
+				TargetUnitId,
+				Transition,
+				&OutError))
+			{
+				return false;
+			}
+			NewResult.bTriggeredEnemyPhase = Transition.bTransitioned;
+			NewResult.EnemyPhaseBefore = Transition.PreviousPhase;
+			NewResult.EnemyPhaseAfter = Transition.NewPhase;
+			NewResult.EnemyPhaseHealing = Transition.Healing;
+		}
 		RemoveLinksForDefeatedUnits(InOutRuntime.GuardLinks, InOutRuntime.Units);
 		OutResult = MoveTemp(NewResult);
 		return true;
@@ -3511,10 +3543,15 @@ namespace
 		const EGameXXKCardTargetSide EndingSide,
 		int32& OutHealthDamage,
 		int32& OutPacketHealthAfter,
+		FGameXXKEnemyPhaseTransitionResult* OutPhaseTransition,
 		FString* OutError)
 	{
 		OutHealthDamage = 0;
 		OutPacketHealthAfter = 0;
+		if (OutPhaseTransition)
+		{
+			*OutPhaseTransition = FGameXXKEnemyPhaseTransitionResult();
+		}
 		if (OutError)
 		{
 			OutError->Reset();
@@ -3538,19 +3575,41 @@ namespace
 
 		const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
 		const int64 RawDamage = PoisonStacks;
+		const int32 RequestedHealthDamage = FGameXXKEnemyPhaseRules::ClampHealthDamageForRemainingPhase(
+			NewRuntime,
+			*Target,
+			static_cast<int32>(FMath::Min<int64>(MAX_int32, RawDamage)));
 		if (!ApplyHealthLossWithLifeSavingTalisman(
 			NewRuntime.Units,
 			&NewRuntime.bLifeSavingTalismanArmed,
 			&NewRuntime.bLifeSavingTalismanConsumptionPending,
 			NewRuntime.LifeSavingTalismanHealingPercent,
 			*Target,
-			static_cast<int32>(FMath::Min<int64>(MAX_int32, RawDamage)),
+			RequestedHealthDamage,
 			nullptr,
 			OutHealthDamage,
 			OutPacketHealthAfter,
 			ValidationError))
 		{
 			return SetFailure(OutError, ValidationError);
+		}
+		if (OutHealthDamage > 0
+			&& Target->Side == EGameXXKCardTargetSide::Enemy
+			&& NewRuntime.EnemyStates.Contains(TargetUnitId))
+		{
+			FGameXXKEnemyPhaseTransitionResult Transition;
+			if (!FGameXXKEnemyPhaseRules::ResolveAfterDamagePacket(
+				NewRuntime,
+				TargetUnitId,
+				Transition,
+				&ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
+			}
+			if (OutPhaseTransition)
+			{
+				*OutPhaseTransition = MoveTemp(Transition);
+			}
 		}
 		Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
 		if (!Target)
@@ -3918,7 +3977,12 @@ namespace
 				NewResult.HealthDamage = static_cast<int32>(FMath::Min<int64>(MAX_int32, ThickHideReducedHealthDamage));
 			}
 		}
-		NewResult.HealthDamage = FMath::Min(ResolvedTarget->HP, NewResult.HealthDamage);
+		NewResult.HealthDamage = BattleProjection
+			? FGameXXKEnemyPhaseRules::ClampHealthDamageForRemainingPhase(
+				*BattleProjection,
+				*ResolvedTarget,
+				NewResult.HealthDamage)
+			: FMath::Min(ResolvedTarget->HP, NewResult.HealthDamage);
 		if (ResolvedPlayerCardEnemyPassive == EGameXXKEnemyPassiveId::RedtuskRage && NewResult.HealthDamage > 0)
 		{
 			const int32 CurrentRage = GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Rage);
@@ -3970,6 +4034,24 @@ namespace
 	}
 	InOutUnits = MoveTemp(NewUnits);
 	InOutGuardLinks = MoveTemp(NewGuardLinks);
+	if (BattleProjection
+		&& NewResult.HealthDamage > 0
+		&& BattleProjection->EnemyStates.Contains(NewResult.ResolvedTargetUnitId))
+	{
+		FGameXXKEnemyPhaseTransitionResult Transition;
+		if (!FGameXXKEnemyPhaseRules::ResolveAfterDamagePacket(
+			*BattleProjection,
+			NewResult.ResolvedTargetUnitId,
+			Transition,
+			OutError))
+		{
+			return false;
+		}
+		NewResult.bTriggeredEnemyPhase = Transition.bTransitioned;
+		NewResult.EnemyPhaseBefore = Transition.PreviousPhase;
+		NewResult.EnemyPhaseAfter = Transition.NewPhase;
+		NewResult.EnemyPhaseHealing = Transition.Healing;
+	}
 	OutResult = MoveTemp(NewResult);
 	return true;
 }
@@ -18044,7 +18126,7 @@ namespace
 			RequestedDamage,
 			Result,
 			nullptr,
-			nullptr,
+			&Runtime,
 			nullptr,
 			true,
 			&OutError))
@@ -18213,7 +18295,7 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 					static_cast<int32>(RequestedDamage),
 					ReactionResult,
 					nullptr,
-					nullptr,
+					&NewRuntime,
 					nullptr,
 					true,
 					&ValidationError))
