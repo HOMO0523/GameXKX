@@ -216,6 +216,49 @@ namespace GameXXKXuanJiaSetRuntimeTest
 		}
 		return true;
 	}
+
+	void AddReaction(
+		FGameXXKCardBattleRuntime& Runtime,
+		const EGameXXKCardStatus Status,
+		const TCHAR* SourceCardInstanceId)
+	{
+		const int32 Ordinal = Runtime.NextReactionOrdinal++;
+		FGameXXKReactionRuntime& Reaction = Runtime.Reactions.AddDefaulted_GetRef();
+		Reaction.ReactionId = FName(*FString::Printf(TEXT("Reaction.%d"), Ordinal));
+		Reaction.Status = Status;
+		Reaction.RecipientUnitId = WearerId;
+		Reaction.GrantedByUnitId = WearerId;
+		Reaction.SourceCardInstanceId = FName(SourceCardInstanceId);
+		Reaction.RemainingTriggers = 1;
+		Reaction.ExpireBeforePlayerRound = Runtime.RoundNumber + 1;
+		GameXXKCardRules::AddCombatStatus(*FindUnit(Runtime, WearerId), Status, 1);
+	}
+
+	bool ResolveReactionBoundary(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& Runtime,
+		const EGameXXKCardDamageKind Kind,
+		TArray<FGameXXKCardDamageResult>& OutResults)
+	{
+		FString Error;
+		const bool bResolved = GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
+			Runtime,
+			EnemyId,
+			Kind,
+			Kind == EGameXXKCardDamageKind::SingleTargetAttack ? WearerId : NAME_None,
+			OutResults,
+			&Error);
+		Test.TestTrue(FString::Printf(TEXT("Xuanjia reaction boundary resolves: %s"), *Error), bResolved);
+		return bResolved;
+	}
+
+	int32 CountEquipmentPackets(const TArray<FGameXXKCardDamageResult>& Results)
+	{
+		return Results.FilterByPredicate([](const FGameXXKCardDamageResult& Result)
+		{
+			return Result.ResolutionOrigin == EGameXXKCardResolutionOrigin::Equipment;
+		}).Num();
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -344,6 +387,77 @@ bool FGameXXKXuanJiaArmorRetentionTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("explicit full retention wins"), FindUnit(FullRetentionRuntime, WearerId)->Armor, 301);
 	TestTrue(TEXT("explicit retention token is consumed"), FullRetentionRuntime.RetainArmorAtNextPartyPhaseUnitIds.IsEmpty());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKXuanJiaBlockFollowUpTest,
+	"GameXXK.Equipment.XuanJia.BlockFollowUp",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaBlockFollowUpTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+
+	FGameXXKCardBattleRuntime Runtime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, Runtime)
+		|| !AddXuanFourEffect(*this, Runtime))
+	{
+		return false;
+	}
+	Runtime.Phase = EGameXXKCardBattlePhase::Enemy;
+	AddReaction(Runtime, EGameXXKCardStatus::Block, TEXT("Xuan.Block.FirstA"));
+	AddReaction(Runtime, EGameXXKCardStatus::Block, TEXT("Xuan.Block.FirstB"));
+	TArray<FGameXXKCardDamageResult> Results;
+	if (!ResolveReactionBoundary(*this, Runtime, EGameXXKCardDamageKind::SingleTargetAttack, Results))
+	{
+		return false;
+	}
+	TestEqual(TEXT("multiple Block sources still add one Xuanjia packet"), CountEquipmentPackets(Results), 1);
+	const FGameXXKCardDamageResult* EquipmentPacket = Results.FindByPredicate([](const FGameXXKCardDamageResult& Result)
+	{
+		return Result.ResolutionOrigin == EGameXXKCardResolutionOrigin::Equipment;
+	});
+	TestNotNull(TEXT("first blocked card records the Xuanjia packet"), EquipmentPacket);
+	if (EquipmentPacket)
+	{
+		TestEqual(TEXT("Xuanjia packet uses the wearer as source"), EquipmentPacket->SourceUnitId, WearerId);
+		TestEqual(TEXT("Xuanjia packet requests eighty percent of Attack"), EquipmentPacket->BaseRequestedDamage, 40);
+	}
+
+	AddReaction(Runtime, EGameXXKCardStatus::Block, TEXT("Xuan.Block.Second"));
+	Results.Reset();
+	if (!ResolveReactionBoundary(*this, Runtime, EGameXXKCardDamageKind::SingleTargetAttack, Results))
+	{
+		return false;
+	}
+	TestEqual(TEXT("second enemy card adds no second Xuanjia packet"), CountEquipmentPackets(Results), 0);
+
+	AddReaction(Runtime, EGameXXKCardStatus::Block, TEXT("Xuan.Block.Group"));
+	Results.Reset();
+	if (!ResolveReactionBoundary(*this, Runtime, EGameXXKCardDamageKind::GroupAttack, Results))
+	{
+		return false;
+	}
+	TestEqual(TEXT("group enemy card never opens the Xuanjia Block follow-up"), CountEquipmentPackets(Results), 0);
+
+	TArray<FGameXXKCardDamageResult> BoundaryDamage;
+	FString Error;
+	if (!TestTrue(TEXT("Xuanjia Block fixture reaches the next player round"),
+		GameXXKCardRules::BeginNextPlayerCardRound(Runtime, BoundaryDamage, &Error))
+		|| !TestTrue(TEXT("Xuanjia Block fixture enters the next enemy phase"),
+			GameXXKCardRules::EndPlayerCardPhase(Runtime, BoundaryDamage, &Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	AddReaction(Runtime, EGameXXKCardStatus::Block, TEXT("Xuan.Block.NextPhase"));
+	Results.Reset();
+	if (!ResolveReactionBoundary(*this, Runtime, EGameXXKCardDamageKind::SingleTargetAttack, Results))
+	{
+		return false;
+	}
+	TestEqual(TEXT("next enemy phase rearms Xuanjia"), CountEquipmentPackets(Results), 1);
 	return true;
 }
 

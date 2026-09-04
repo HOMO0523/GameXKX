@@ -17011,6 +17011,80 @@ bool GameXXKCardRules::ResolveEnemyDirectAttack(
 	return true;
 }
 
+namespace
+{
+	bool TryConsumeEquipmentRoundUse(
+		FGameXXKCardBattleRuntime& Runtime,
+		FGameXXKEquipmentBattleEffectRuntime& Effect,
+		bool& OutConsumed,
+		FString& OutError)
+	{
+		OutConsumed = false;
+		if (Effect.ActiveEffect.MaxTriggersPerRound <= 0
+			|| Effect.SourceCharacterId != Effect.ActiveEffect.SourceCharacterId
+			|| Runtime.RoundNumber <= 0)
+		{
+			OutError = TEXT("An equipment round use requires an exact source, trigger budget, and battle round.");
+			return false;
+		}
+		const int32 UsedThisRound = Effect.LastTriggerRound == Runtime.RoundNumber
+			? Effect.CurrentRoundTriggerCount
+			: 0;
+		if (UsedThisRound >= Effect.ActiveEffect.MaxTriggersPerRound)
+		{
+			return true;
+		}
+		Effect.LastTriggerRound = Runtime.RoundNumber;
+		Effect.CurrentRoundTriggerCount = UsedThisRound + 1;
+		OutConsumed = true;
+		return true;
+	}
+
+	bool ResolveEquipmentReactionDamage(
+		FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId,
+		const FName TargetUnitId,
+		const int32 RequestedDamage,
+		const FName EffectId,
+		TArray<FGameXXKCardDamageResult>& OutResults,
+		FString& OutError)
+	{
+		const FGameXXKCardCombatUnit* Source = FindCombatUnitById(Runtime.Units, SourceUnitId);
+		const FGameXXKCardCombatUnit* Target = FindCombatUnitById(Runtime.Units, TargetUnitId);
+		if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Party
+			|| !Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Enemy
+			|| RequestedDamage <= 0
+			|| !FindEquipmentEffectById(Runtime, SourceUnitId, EffectId))
+		{
+			OutError = TEXT("Equipment reaction damage requires its living wearer, enemy target, descriptor, and positive damage.");
+			return false;
+		}
+		FGameXXKCardDamageContext Context;
+		Context.SourceUnitId = SourceUnitId;
+		Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+		Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+		FGameXXKCardDamageResult Result;
+		if (!ApplyCombatDirectDamageInternal(
+			Runtime.Units,
+			Runtime.GuardLinks,
+			Context,
+			TargetUnitId,
+			RequestedDamage,
+			Result,
+			nullptr,
+			nullptr,
+			nullptr,
+			true,
+			&OutError))
+		{
+			return false;
+		}
+		Result.Cause = EGameXXKCardDamageCause::DirectAttack;
+		OutResults.Add(MoveTemp(Result));
+		return true;
+	}
+}
+
 bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	const FName EnemySourceUnitId,
@@ -17119,6 +17193,7 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 			}
 		}
 
+		TSet<FName> XuanJiaWearersWhoBlocked;
 		for (const FGameXXKReactionRuntime& Reaction : TriggeredReactions)
 		{
 			const FGameXXKCardCombatUnit* ReactionSource = FindCombatUnitById(NewRuntime.Units, Reaction.RecipientUnitId);
@@ -17175,7 +17250,56 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 				ReactionResult.Cause = Reaction.Status == EGameXXKCardStatus::Block
 					? EGameXXKCardDamageCause::Block
 					: EGameXXKCardDamageCause::Counter;
+				if (Reaction.Status == EGameXXKCardStatus::Block
+					&& FindEquipmentEffectById(NewRuntime, ReactionSourceUnitId, TEXT("Set.XuanJia.4")))
+				{
+					XuanJiaWearersWhoBlocked.Add(ReactionSourceUnitId);
+				}
 				NewResults.Add(MoveTemp(ReactionResult));
+			}
+		}
+
+		TArray<FName> OrderedXuanJiaWearers = XuanJiaWearersWhoBlocked.Array();
+		OrderedXuanJiaWearers.Sort([&NewRuntime](const FName LeftId, const FName RightId)
+		{
+			const FGameXXKCardCombatUnit* Left = FindCombatUnitById(NewRuntime.Units, LeftId);
+			const FGameXXKCardCombatUnit* Right = FindCombatUnitById(NewRuntime.Units, RightId);
+			return Left && Right && IsStableUnitOrderBefore(*Left, *Right);
+		});
+		for (const FName WearerId : OrderedXuanJiaWearers)
+		{
+			FGameXXKEquipmentBattleEffectRuntime* XuanJiaFour = FindEquipmentEffectById(
+				NewRuntime,
+				WearerId,
+				TEXT("Set.XuanJia.4"));
+			const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(NewRuntime.Units, WearerId);
+			const FGameXXKCardCombatUnit* Enemy = FindCombatUnitById(NewRuntime.Units, EnemySourceUnitId);
+			if (!XuanJiaFour || !Wearer || !Wearer->bLiving || !Enemy || !Enemy->bLiving)
+			{
+				continue;
+			}
+			bool bConsumed = false;
+			if (!TryConsumeEquipmentRoundUse(NewRuntime, *XuanJiaFour, bConsumed, ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
+			}
+			if (!bConsumed)
+			{
+				continue;
+			}
+			const int32 RequestedDamage = FGameXXKCombatScalingRules::ScaleByPercentCeil(
+				Wearer->Attack,
+				XuanJiaFour->ActiveEffect.SecondaryMagnitude);
+			if (!ResolveEquipmentReactionDamage(
+				NewRuntime,
+				WearerId,
+				EnemySourceUnitId,
+				RequestedDamage,
+				TEXT("Set.XuanJia.4"),
+				NewResults,
+				ValidationError))
+			{
+				return SetFailure(OutError, ValidationError);
 			}
 		}
 
