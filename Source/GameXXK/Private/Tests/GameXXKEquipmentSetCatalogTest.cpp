@@ -45,29 +45,21 @@ namespace
 		{
 			return static_cast<EGameXXKEquipmentSetBonusHook>(21);
 		}
-		if (Pieces == 2)
+		if (Set == EGameXXKEquipmentSet::XuanJia)
 		{
-			return EGameXXKEquipmentSetBonusHook::Passive;
+			return Pieces == 2
+				? EGameXXKEquipmentSetBonusHook::Passive
+				: Pieces == 4
+					? EGameXXKEquipmentSetBonusHook::RoundStart
+					: EGameXXKEquipmentSetBonusHook::FirstAllyHealthDamagePerRound;
 		}
-		if (Pieces == 4)
+		if (Set == EGameXXKEquipmentSet::ShanHe)
 		{
-			switch (Set)
-			{
-			case EGameXXKEquipmentSet::XuanJia: return EGameXXKEquipmentSetBonusHook::RoundStart;
-			case EGameXXKEquipmentSet::QingNang: return EGameXXKEquipmentSetBonusHook::CleanseOrOverheal;
-			case EGameXXKEquipmentSet::ShiGu: return EGameXXKEquipmentSetBonusHook::MultipleDamageOverTime;
-			case EGameXXKEquipmentSet::ShanHe: return EGameXXKEquipmentSetBonusHook::TerrainSynergyCard;
-			default: return EGameXXKEquipmentSetBonusHook::Invalid;
-			}
+			return Pieces == 6
+				? EGameXXKEquipmentSetBonusHook::RoundStart
+				: EGameXXKEquipmentSetBonusHook::TerrainSynergyCard;
 		}
-		switch (Set)
-		{
-		case EGameXXKEquipmentSet::XuanJia: return EGameXXKEquipmentSetBonusHook::FirstAllyHealthDamagePerRound;
-		case EGameXXKEquipmentSet::QingNang: return EGameXXKEquipmentSetBonusHook::FirstHealPerRound;
-		case EGameXXKEquipmentSet::ShiGu: return EGameXXKEquipmentSetBonusHook::RoundEnd;
-		case EGameXXKEquipmentSet::ShanHe: return EGameXXKEquipmentSetBonusHook::Passive;
-		default: return EGameXXKEquipmentSetBonusHook::Invalid;
-		}
+		return EGameXXKEquipmentSetBonusHook::Invalid;
 	}
 
 	EGameXXKEquipmentSetBonusKind ExpectedPoJunKind(const int32 Pieces)
@@ -182,17 +174,17 @@ bool FGameXXKEquipmentSetCatalogTest::RunTest(const FString& Parameters)
 				TestEqual(TEXT("ZhuiFeng uses one event per successful trigger"), Definition->Value, 1);
 				TestEqual(TEXT("ZhuiFeng exposes the approved concise tooltip"), Definition->Description.ToString(), FString(ExpectedZhuiFengDescription(Pieces)));
 			}
-			else if (Pieces == 2)
+			else if (Set == EGameXXKEquipmentSet::XuanJia)
 			{
-				TestEqual(TEXT("two-piece passives use basis points"), Definition->Unit, EGameXXKEquipmentMagnitudeUnit::BasisPoints);
-				TestEqual(TEXT("two-piece passives begin at 500 BP"), Definition->Value, 500);
+				TestEqual(TEXT("Xuanjia uses basis-point primary values"), Definition->Unit, EGameXXKEquipmentMagnitudeUnit::BasisPoints);
+				TestEqual(TEXT("Xuanjia primary value matches approved tier"), Definition->Value, Pieces == 2 ? 1000 : Pieces == 4 ? 5000 : 4000);
+				TestEqual(TEXT("Xuanjia secondary value matches approved tier"), Definition->SecondaryValue, Pieces == 4 ? 80 : Pieces == 6 ? 1 : 0);
 			}
-			else
+			else if (Set == EGameXXKEquipmentSet::ShanHe)
 			{
-				const int32 PercentageValue = Pieces == 4 ? 800 : 1200;
-				TestTrue(TEXT("four/six-piece values use the frozen percentage or flat seed"),
-					(Definition->Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints && Definition->Value == PercentageValue)
-					|| (Definition->Unit == EGameXXKEquipmentMagnitudeUnit::FlatCount && Definition->Value == 1));
+				TestEqual(TEXT("Shanhe uses one flat operation per tier"), Definition->Unit, EGameXXKEquipmentMagnitudeUnit::FlatCount);
+				TestEqual(TEXT("Shanhe primary operation count is one"), Definition->Value, 1);
+				TestEqual(TEXT("only Shanhe four-piece carries two Mana"), Definition->SecondaryValue, Pieces == 4 ? 2 : 0);
 			}
 			const int32 ExpectedTriggerBudget = (Set == EGameXXKEquipmentSet::ShiGu && Pieces == 2)
 				|| Set == EGameXXKEquipmentSet::ZhuiFeng
