@@ -226,6 +226,19 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	{
 		return false;
 	}
+	const FGameXXKPermanentCompanion* ReloadedFirstRecruit = ReloadedRuntimeState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+		[&FirstTownRecruit](const FGameXXKPermanentCompanion& Companion)
+		{
+			return Companion.InstanceId == FirstTownRecruit.Companion.InstanceId;
+		});
+	TestNotNull(TEXT("restored roster retains the first recruited partner"), ReloadedFirstRecruit);
+	if (ReloadedFirstRecruit)
+	{
+		TestEqual(TEXT("legacy NameSeed remains serialized"), ReloadedFirstRecruit->NameSeed, FirstTownRecruit.Companion.NameSeed);
+		TestEqual(TEXT("restored display ignores NameSeed and uses profession"),
+			FGameXXKCompanionRules::GetCompanionDisplayName(ReloadedFirstRecruit->Role, ReloadedFirstRecruit->NameSeed),
+			FGameXXKCompanionRules::GetCompanionDisplayName(ReloadedFirstRecruit->Role, 0));
+	}
 	ReloadedSubsystem->GetMutableRuntimeState() = MoveTemp(ReloadedRuntimeState);
 	FGameXXKCompanionRecruitResult ContinuedRecruit;
 	TestTrue(TEXT("the restored town facade continues the persisted recruit sequence"), ReloadedSubsystem->StartRandomPermanentCompanionRecruitment(ContinuedRecruit));
