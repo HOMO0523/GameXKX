@@ -95,6 +95,38 @@ namespace GameXXKShanHeSetRuntimeTest
 		return true;
 	}
 
+	FGameXXKEquipmentActiveEffect MakeShanSixEffect(const FName SourceUnitId = WearerId)
+	{
+		FGameXXKEquipmentActiveEffect Effect;
+		Effect.EffectId = TEXT("Set.ShanHe.6");
+		Effect.SourceCharacterId = SourceUnitId;
+		Effect.Set = EGameXXKEquipmentSet::ShanHe;
+		Effect.RequiredPieces = 6;
+		Effect.Scope = EGameXXKEquipmentSetBonusScope::Team;
+		Effect.Hook = EGameXXKEquipmentSetBonusHook::RoundStart;
+		Effect.ModifierKind = EGameXXKEquipmentModifierKind::TeamTerrainPower;
+		Effect.Magnitude = 1;
+		Effect.Unit = EGameXXKEquipmentMagnitudeUnit::FlatCount;
+		Effect.MaxTriggersPerRound = 1;
+		return Effect;
+	}
+
+	bool AddShanSixEffect(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId = WearerId)
+	{
+		const FGameXXKEquipmentActiveEffect Effect = MakeShanSixEffect(SourceUnitId);
+		if (!Test.TestTrue(TEXT("Shanhe six-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
+		{
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.ActiveEffect = Effect;
+		RuntimeEffect.SourceCharacterId = SourceUnitId;
+		return true;
+	}
+
 	bool BuildRuntime(
 		FAutomationTestBase& Test,
 		const FName CardId,
@@ -146,6 +178,14 @@ namespace GameXXKShanHeSetRuntimeTest
 		return Runtime.EquipmentEffects.FindByPredicate([](const FGameXXKEquipmentBattleEffectRuntime& Effect)
 		{
 			return Effect.ActiveEffect.EffectId == FName(TEXT("Set.ShanHe.4"));
+		});
+	}
+
+	FGameXXKCardCombatUnit* FindUnit(FGameXXKCardBattleRuntime& Runtime, const FName UnitId)
+	{
+		return Runtime.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == UnitId;
 		});
 	}
 }
@@ -286,6 +326,77 @@ bool FGameXXKShanHePostTerrainRewardTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("automatic round-start terrain resolves"), GameXXKCardRules::ResolveRoundStartTerrainBenefits(AutomaticRuntime, AutomaticTerrainResult, &Error));
 	TestEqual(TEXT("automatic terrain does not consume Shanhe two-piece"), AutomaticRuntime.EquipmentEffects[1].CurrentRoundTriggerCount, 0);
 	TestEqual(TEXT("automatic terrain does not grant Shanhe four-piece Mana"), AutomaticRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == AllyId; })->Mana, 10);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKShanHeRoundStartCoreTest,
+	"GameXXK.Equipment.ShanHe.RoundStartCore",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKShanHeRoundStartCoreTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKShanHeSetRuntimeTest;
+	FString Error;
+
+	FGameXXKCardBattleRuntime NoFormationRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), NoFormationRuntime, EGameXXKCharacterRole::Guard, 10)
+		|| !AddShanSixEffect(*this, NoFormationRuntime))
+	{
+		return false;
+	}
+	NoFormationRuntime.Terrain = EGameXXKCardTerrain::Village;
+	const int32 InitialHand = NoFormationRuntime.Deck.Hand.Num();
+	FGameXXKCardPlayResult RoundStartResult;
+	TestTrue(FString::Printf(TEXT("Shanhe-only opening terrain resolves: %s"), *Error),
+		GameXXKCardRules::ResolveRoundStartTerrainBenefits(NoFormationRuntime, RoundStartResult, &Error));
+	TestEqual(TEXT("Shanhe six-piece triggers without a Formation partner"), NoFormationRuntime.Deck.Hand.Num(), InitialHand + 1);
+	TestEqual(TEXT("Shanhe Village uses its wearer's Defense"), FindUnit(NoFormationRuntime, WearerId)->Armor, 61);
+
+	TArray<FGameXXKCardDamageResult> BoundaryDamage;
+	TestTrue(TEXT("Shanhe-only fixture enters enemy phase"), GameXXKCardRules::EndPlayerCardPhase(NoFormationRuntime, BoundaryDamage, &Error));
+	TestTrue(TEXT("Shanhe-only fixture enters its next player round"), GameXXKCardRules::BeginNextPlayerCardRound(NoFormationRuntime, BoundaryDamage, &Error));
+	TestEqual(TEXT("later round refills to five before Shanhe Village draws"), NoFormationRuntime.Deck.Hand.Num(), 6);
+
+	FGameXXKCardBattleRuntime OrderedRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), OrderedRuntime, EGameXXKCharacterRole::Guard, 10)
+		|| !AddShanSixEffect(*this, OrderedRuntime))
+	{
+		return false;
+	}
+	FindUnit(OrderedRuntime, AllyId)->Role = EGameXXKCharacterRole::FormationMaster;
+	FindUnit(OrderedRuntime, AllyId)->Defense = 101;
+	OrderedRuntime.Terrain = EGameXXKCardTerrain::Cave;
+	TestTrue(TEXT("ordinary Formation then Shanhe Cave resolves"), GameXXKCardRules::ResolveRoundStartTerrainBenefits(OrderedRuntime, RoundStartResult, &Error));
+	TestEqual(TEXT("Cave uses ordinary Formation Defense then Shanhe wearer Defense"), FindUnit(OrderedRuntime, WearerId)->Armor, 162);
+	TestEqual(TEXT("both Cave sources grant Armor to every ally"), FindUnit(OrderedRuntime, AllyId)->Armor, 162);
+	TestEqual(TEXT("ordinary and Shanhe Cave each register one Block per ally"), OrderedRuntime.Reactions.Num(), 4);
+
+	FGameXXKCardBattleRuntime DeadSourceRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), DeadSourceRuntime, EGameXXKCharacterRole::Guard, 10)
+		|| !AddShanSixEffect(*this, DeadSourceRuntime))
+	{
+		return false;
+	}
+	FindUnit(DeadSourceRuntime, AllyId)->Role = EGameXXKCharacterRole::FormationMaster;
+	FindUnit(DeadSourceRuntime, AllyId)->Defense = 101;
+	FindUnit(DeadSourceRuntime, WearerId)->HP = 0;
+	FindUnit(DeadSourceRuntime, WearerId)->bLiving = false;
+	DeadSourceRuntime.Terrain = EGameXXKCardTerrain::Cave;
+	TestTrue(TEXT("dead Shanhe source leaves ordinary Formation trigger valid"), GameXXKCardRules::ResolveRoundStartTerrainBenefits(DeadSourceRuntime, RoundStartResult, &Error));
+	TestEqual(TEXT("dead Shanhe source adds no second Cave Armor grant"), FindUnit(DeadSourceRuntime, AllyId)->Armor, 41);
+
+	FGameXXKCardBattleRuntime DuplicateRuntime;
+	if (!BuildRuntime(*this, TEXT("Profession.FormationMaster.GuanShi"), DuplicateRuntime, EGameXXKCharacterRole::Guard, 10)
+		|| !AddShanSixEffect(*this, DuplicateRuntime, WearerId)
+		|| !AddShanSixEffect(*this, DuplicateRuntime, AllyId))
+	{
+		return false;
+	}
+	DuplicateRuntime.Terrain = EGameXXKCardTerrain::Village;
+	const int32 DuplicateHandBefore = DuplicateRuntime.Deck.Hand.Num();
+	TestTrue(TEXT("duplicate defensive fixture resolves deterministically"), GameXXKCardRules::ResolveRoundStartTerrainBenefits(DuplicateRuntime, RoundStartResult, &Error));
+	TestEqual(TEXT("duplicate team six-piece descriptors never stack"), DuplicateRuntime.Deck.Hand.Num(), DuplicateHandBefore + 1);
 	return true;
 }
 

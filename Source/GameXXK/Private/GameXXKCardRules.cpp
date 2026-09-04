@@ -17923,6 +17923,55 @@ bool GameXXKCardRules::ResolveTerrainBenefitForTest(
 }
 #endif
 
+namespace
+{
+	const FGameXXKEquipmentBattleEffectRuntime* FindTeamEquipmentEffectById(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName EffectId)
+	{
+		const FGameXXKEquipmentBattleEffectRuntime* Chosen = nullptr;
+		for (const FGameXXKEquipmentBattleEffectRuntime& Candidate : Runtime.EquipmentEffects)
+		{
+			if (Candidate.ActiveEffect.EffectId != EffectId
+				|| Candidate.ActiveEffect.Scope != EGameXXKEquipmentSetBonusScope::Team)
+			{
+				continue;
+			}
+			if (!Chosen)
+			{
+				Chosen = &Candidate;
+				continue;
+			}
+			const FGameXXKCardCombatUnit* CandidateSource = FindCombatUnitById(Runtime.Units, Candidate.SourceCharacterId);
+			const FGameXXKCardCombatUnit* ChosenSource = FindCombatUnitById(Runtime.Units, Chosen->SourceCharacterId);
+			if (CandidateSource && ChosenSource && IsStableUnitOrderBefore(*CandidateSource, *ChosenSource))
+			{
+				Chosen = &Candidate;
+			}
+		}
+		return Chosen;
+	}
+
+	FGameXXKCardInstance MakeRoundStartTerrainSourceInstance(
+		const FName OwnerUnitId,
+		const int32 RoundNumber,
+		const TCHAR* Prefix)
+	{
+		FGameXXKCardInstance SourceInstance;
+		SourceInstance.InstanceId = FName(*FString::Printf(
+			TEXT("%s.%s.%d"),
+			Prefix,
+			*OwnerUnitId.ToString(),
+			RoundNumber));
+		SourceInstance.CardId = TEXT("Profession.FormationMaster.GuanShi");
+		SourceInstance.CurrentQuality = EGameXXKCardQuality::Common;
+		SourceInstance.OwnerUnitId = OwnerUnitId;
+		SourceInstance.SourceEntryId = FName(Prefix);
+		SourceInstance.AcquisitionOrdinal = RoundNumber;
+		return SourceInstance;
+	}
+}
+
 bool GameXXKCardRules::ResolveRoundStartTerrainBenefits(
 	FGameXXKCardBattleRuntime& InOutRuntime,
 	FGameXXKCardPlayResult& OutResult,
@@ -17932,9 +17981,10 @@ bool GameXXKCardRules::ResolveRoundStartTerrainBenefits(
 	{
 		OutError->Reset();
 	}
-	OutResult = FGameXXKCardPlayResult();
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	FGameXXKCardPlayResult NewResult;
 	const FGameXXKCardCombatUnit* FormationMaster = nullptr;
-	for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+	for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
 	{
 		if (!Unit.bLiving
 			|| Unit.Side != EGameXXKCardTargetSide::Party
@@ -17947,36 +17997,76 @@ bool GameXXKCardRules::ResolveRoundStartTerrainBenefits(
 			FormationMaster = &Unit;
 		}
 	}
-	if (!FormationMaster)
-	{
-		return true;
-	}
-
-	FGameXXKCardInstance SourceInstance;
-	SourceInstance.InstanceId = FName(*FString::Printf(
-		TEXT("Terrain.RoundStart.%s.%d"),
-		*FormationMaster->UnitId.ToString(),
-		InOutRuntime.RoundNumber));
-	SourceInstance.CardId = TEXT("Profession.FormationMaster.GuanShi");
-	SourceInstance.CurrentQuality = EGameXXKCardQuality::Common;
-	SourceInstance.OwnerUnitId = FormationMaster->UnitId;
-	SourceInstance.SourceEntryId = TEXT("Terrain.RoundStart");
-	SourceInstance.AcquisitionOrdinal = InOutRuntime.RoundNumber;
-	OutResult.OwnerUnitId = FormationMaster->UnitId;
-	OutResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
-
 	FString Error;
-	if (!ResolveTerrainBenefit(
-		InOutRuntime,
-		SourceInstance,
-		NAME_None,
-		InOutRuntime.Terrain,
-		1,
-		EGameXXKCardResolutionOrigin::Equipment,
-		&OutResult,
-		Error))
+	if (FormationMaster)
 	{
-		return SetFailure(OutError, Error);
+		const FGameXXKCardInstance SourceInstance = MakeRoundStartTerrainSourceInstance(
+			FormationMaster->UnitId,
+			NewRuntime.RoundNumber,
+			TEXT("Terrain.RoundStart"));
+		NewResult.OwnerUnitId = FormationMaster->UnitId;
+		NewResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+		if (!ResolveTerrainBenefit(
+			NewRuntime,
+			SourceInstance,
+			NAME_None,
+			NewRuntime.Terrain,
+			1,
+			EGameXXKCardResolutionOrigin::Equipment,
+			&NewResult,
+			Error))
+		{
+			return SetFailure(OutError, Error);
+		}
 	}
+
+	const FGameXXKEquipmentBattleEffectRuntime* ShanHeSix = FindTeamEquipmentEffectById(
+		NewRuntime,
+		TEXT("Set.ShanHe.6"));
+	if (ShanHeSix)
+	{
+		const FName WearerId = ShanHeSix->SourceCharacterId;
+		const FGameXXKCardCombatUnit* Wearer = FindCombatUnitById(NewRuntime.Units, WearerId);
+		const int32 UsedThisRound = ShanHeSix->LastTriggerRound == NewRuntime.RoundNumber
+			? ShanHeSix->CurrentRoundTriggerCount
+			: 0;
+		if (Wearer && Wearer->bLiving && Wearer->Side == EGameXXKCardTargetSide::Party
+			&& UsedThisRound < ShanHeSix->ActiveEffect.MaxTriggersPerRound)
+		{
+			const FGameXXKCardInstance SourceInstance = MakeRoundStartTerrainSourceInstance(
+				WearerId,
+				NewRuntime.RoundNumber,
+				TEXT("Equipment.Set.ShanHe.6"));
+			NewResult.OwnerUnitId = WearerId;
+			NewResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+			if (!ResolveTerrainBenefit(
+				NewRuntime,
+				SourceInstance,
+				NAME_None,
+				NewRuntime.Terrain,
+				ShanHeSix->ActiveEffect.Magnitude,
+				EGameXXKCardResolutionOrigin::Equipment,
+				&NewResult,
+				Error))
+			{
+				return SetFailure(OutError, Error);
+			}
+			FGameXXKEquipmentBattleEffectRuntime* MutableShanHeSix = FindEquipmentEffectById(
+				NewRuntime,
+				WearerId,
+				TEXT("Set.ShanHe.6"));
+			bool bConsumed = false;
+			if (!MutableShanHeSix
+				|| !TryConsumeEquipmentRoundUse(NewRuntime, *MutableShanHeSix, bConsumed, Error)
+				|| !bConsumed)
+			{
+				return SetFailure(OutError, Error.IsEmpty()
+					? TEXT("Shanhe six-piece could not commit its round-start use.")
+					: Error);
+			}
+		}
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutResult = MoveTemp(NewResult);
 	return true;
 }
