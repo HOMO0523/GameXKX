@@ -2201,6 +2201,19 @@ bool FGameXXKDesktopTrainingNativeWindowRegionTest::RunTest(const FString& Param
 		BuildDesktopNativeRegionShapes(Expanded);
 	TestTrue(TEXT("exit confirmation intentionally owns the complete HUD bounds"),
 		IsPointInsideDesktopNativeRegionShapes(ModalShapes, FVector2D(100.0f, 400.0f)));
+
+	const FVector2D FixedContentOffset(271.0f, 49.0f);
+	constexpr float RegionPadding = 3.0f;
+	const FVector4 PaddedStripRect = ResolveDesktopNativeRegionRect(
+		CollapsedShapes[0],
+		FixedContentOffset,
+		RegionPadding);
+	TestEqual(TEXT("native strip begins exactly three physical pixels before the rendered HUD"),
+		FVector2D(PaddedStripRect.X, PaddedStripRect.Y),
+		FixedContentOffset - FVector2D(RegionPadding, RegionPadding));
+	TestEqual(TEXT("native strip padding expands both physical axes symmetrically"),
+		FVector2D(PaddedStripRect.Z, PaddedStripRect.W),
+		FVector2D(1044.0f, 208.0f));
 	return true;
 }
 

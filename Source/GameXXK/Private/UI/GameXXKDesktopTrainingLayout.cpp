@@ -409,6 +409,19 @@ namespace GameXXKDesktopTrainingLayout
 		return Result;
 	}
 
+	FVector4 ResolveDesktopNativeRegionRect(
+		const FDesktopNativeRegionShape& Shape,
+		const FVector2D& HostOffset,
+		const float Padding)
+	{
+		const float SafePadding = FMath::Max(0.0f, Padding);
+		return FVector4(
+			Shape.Rect.X + HostOffset.X - SafePadding,
+			Shape.Rect.Y + HostOffset.Y - SafePadding,
+			Shape.Rect.Z + SafePadding * 2.0f,
+			Shape.Rect.W + SafePadding * 2.0f);
+	}
+
 	bool IsPointInsideDesktopNativeRegionShapes(
 		const TArray<FDesktopNativeRegionShape>& Shapes,
 		const FVector2D& Point)

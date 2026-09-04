@@ -137,6 +137,10 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector2D& VisualHalfSize);
 	GAMEXXK_API TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State);
+	GAMEXXK_API FVector4 ResolveDesktopNativeRegionRect(
+		const FDesktopNativeRegionShape& Shape,
+		const FVector2D& HostOffset,
+		float Padding);
 	GAMEXXK_API bool IsPointInsideDesktopNativeRegionShapes(
 		const TArray<FDesktopNativeRegionShape>& Shapes,
 		const FVector2D& Point);

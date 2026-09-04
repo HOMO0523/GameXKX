@@ -8535,15 +8535,15 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyDesktopNativeInputRegion()
 		constexpr float RegionPadding = 3.0f;
 		for (const GameXXKDesktopTrainingLayout::FDesktopNativeRegionShape& Surface : Surfaces)
 		{
-			const FVector4 Rect = Surface.Rect + FVector4(
-				HostOffset.X,
-				HostOffset.Y,
-				0.0f,
-				0.0f);
-			const int32 Left = FMath::FloorToInt(Rect.X - RegionPadding);
-			const int32 Top = FMath::FloorToInt(Rect.Y - RegionPadding);
-			const int32 Right = FMath::CeilToInt(Rect.X + Rect.Z + RegionPadding);
-			const int32 Bottom = FMath::CeilToInt(Rect.Y + Rect.W + RegionPadding);
+			const FVector4 Rect =
+				GameXXKDesktopTrainingLayout::ResolveDesktopNativeRegionRect(
+					Surface,
+					HostOffset,
+					RegionPadding);
+			const int32 Left = FMath::FloorToInt(Rect.X);
+			const int32 Top = FMath::FloorToInt(Rect.Y);
+			const int32 Right = FMath::CeilToInt(Rect.X + Rect.Z);
+			const int32 Bottom = FMath::CeilToInt(Rect.Y + Rect.W);
 			HRGN ShapeRegion = Surface.Type
 				== GameXXKDesktopTrainingLayout::EDesktopNativeRegionShapeType::Ellipse
 				? ::CreateEllipticRgn(Left, Top, Right, Bottom)
