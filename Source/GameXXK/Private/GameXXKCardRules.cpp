@@ -1352,6 +1352,12 @@ namespace
 		return true;
 	}
 
+	void LogEquipmentSetTrigger(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKEquipmentBattleEffectRuntime& Effect,
+		int32 ResolvedPrimary,
+		int32 ResolvedSecondary);
+
 	FGameXXKEquipmentBattleEffectRuntime* FindEquipmentEffectById(
 		FGameXXKCardBattleRuntime& Runtime,
 		const FName SourceUnitId,
@@ -1429,11 +1435,13 @@ namespace
 					TEXT("Set.XuanJia.4"));
 				if (XuanJiaFour)
 				{
+					const int32 ArmorBeforeRetention = Unit.Armor;
 					Unit.Armor = static_cast<int32>(FMath::Clamp<int64>(
 						static_cast<int64>(FMath::Max(0, Unit.Armor))
 							* XuanJiaFour->ActiveEffect.Magnitude / 10000,
 						0,
 						MAX_int32));
+					LogEquipmentSetTrigger(InOutRuntime, *XuanJiaFour, Unit.Armor, ArmorBeforeRetention);
 					continue;
 				}
 			}
@@ -2374,6 +2382,23 @@ namespace
 		return ArmorResult.EffectiveArmor;
 	}
 
+	void LogEquipmentSetTrigger(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKEquipmentBattleEffectRuntime& Effect,
+		const int32 ResolvedPrimary,
+		const int32 ResolvedSecondary)
+	{
+		UE_LOG(
+			LogTemp,
+			Verbose,
+			TEXT("[EquipmentSet] effect=%s source=%s round=%d primary=%d secondary=%d"),
+			*Effect.ActiveEffect.EffectId.ToString(),
+			*Effect.SourceCharacterId.ToString(),
+			Runtime.RoundNumber,
+			ResolvedPrimary,
+			ResolvedSecondary);
+	}
+
 	int32 ResolveGeneratedArmorAmount(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FName SourceUnitId,
@@ -2384,6 +2409,7 @@ namespace
 			return 0;
 		}
 		int64 BonusBasisPoints = 0;
+		const FGameXXKEquipmentBattleEffectRuntime* Amplifier = nullptr;
 		for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Runtime.EquipmentEffects)
 		{
 			const FGameXXKEquipmentActiveEffect& Effect = EffectRuntime.ActiveEffect;
@@ -2393,16 +2419,26 @@ namespace
 				&& Effect.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
 			{
 				BonusBasisPoints = FMath::Min<int64>(MAX_int32, BonusBasisPoints + FMath::Max(0, Effect.Magnitude));
+				Amplifier = &EffectRuntime;
 			}
 		}
 		const int64 Multiplier = 10000 + BonusBasisPoints;
+		int32 ResolvedArmor = 0;
 		if (static_cast<int64>(BaseArmor) > static_cast<int64>(MAX_int32) * 10000 / Multiplier)
 		{
-			return MAX_int32;
+			ResolvedArmor = MAX_int32;
 		}
-		return static_cast<int32>(FMath::Min<int64>(
-			MAX_int32,
-			(static_cast<int64>(BaseArmor) * Multiplier + 9999) / 10000));
+		else
+		{
+			ResolvedArmor = static_cast<int32>(FMath::Min<int64>(
+				MAX_int32,
+				(static_cast<int64>(BaseArmor) * Multiplier + 9999) / 10000));
+		}
+		if (Amplifier && BonusBasisPoints > 0)
+		{
+			LogEquipmentSetTrigger(Runtime, *Amplifier, ResolvedArmor, BaseArmor);
+		}
+		return ResolvedArmor;
 	}
 
 	int32 GrantGeneratedArmor(
@@ -5951,13 +5987,17 @@ namespace
 		}
 		for (const FGameXXKPendingEquipmentRewardRuntime& Reward : Runtime.PendingEquipmentRewards)
 		{
+			int32 ResolvedDrawCount = 0;
+			int64 ResolvedOtherAllyMana = 0;
 			if (Reward.DrawCount > 0)
 			{
 				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(Runtime.Deck, Runtime.Units);
+				const int32 HandBeforeDraw = Runtime.Deck.Hand.Num();
 				if (!GameXXKCardRules::DrawCards(Runtime.Deck, Reward.DrawCount, 0, &OutError))
 				{
 					return false;
 				}
+				ResolvedDrawCount = FMath::Max(0, Runtime.Deck.Hand.Num() - HandBeforeDraw);
 			}
 			if (Reward.OtherAllyMana > 0)
 			{
@@ -5967,7 +6007,9 @@ namespace
 						&& Ally.Side == EGameXXKCardTargetSide::Party
 						&& Ally.UnitId != Reward.SourceUnitId)
 					{
+						const int32 ManaBefore = Ally.Mana;
 						Ally.Mana = FMath::Min(Ally.MaxMana, Ally.Mana + Reward.OtherAllyMana);
+						ResolvedOtherAllyMana += Ally.Mana - ManaBefore;
 					}
 				}
 			}
@@ -5992,6 +6034,13 @@ namespace
 					}
 					return false;
 				}
+				LogEquipmentSetTrigger(
+					Runtime,
+					*Effect,
+					EffectId == Reward.DrawEffectId ? ResolvedDrawCount : Effect->ActiveEffect.Magnitude,
+					EffectId == Reward.ManaEffectId
+						? static_cast<int32>(FMath::Min<int64>(MAX_int32, ResolvedOtherAllyMana))
+						: 0);
 			}
 		}
 		Runtime.PendingEquipmentRewards.Reset();
@@ -17619,6 +17668,11 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 			{
 				return SetFailure(OutError, ValidationError);
 			}
+			LogEquipmentSetTrigger(
+				NewRuntime,
+				*XuanJiaFour,
+				RequestedDamage,
+				NewResults.IsEmpty() ? 0 : NewResults.Last().HealthDamage);
 		}
 
 		if (bBladeCounterVolley
@@ -17684,11 +17738,12 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 				const int32 BaseArmor = static_cast<int32>(FMath::Min<int64>(
 					MAX_int32,
 					(ArmorNumerator + 9999) / 10000));
+				int64 TotalGrantedArmor = 0;
 				for (FGameXXKCardCombatUnit& Ally : NewRuntime.Units)
 				{
 					if (Ally.bLiving && Ally.Side == EGameXXKCardTargetSide::Party)
 					{
-						GrantGeneratedArmor(NewRuntime, nullptr, WearerId, Ally, BaseArmor, true);
+						TotalGrantedArmor += GrantGeneratedArmor(NewRuntime, nullptr, WearerId, Ally, BaseArmor, true);
 					}
 				}
 				TArray<FName> ProtectedUnitIds;
@@ -17719,6 +17774,11 @@ bool GameXXKCardRules::ResolvePartyReactionsAfterEnemyCard(
 				}
 				XuanJiaSix->LastTriggerRound = NewRuntime.RoundNumber;
 				XuanJiaSix->CurrentRoundTriggerCount = UsedThisRound + 1;
+				LogEquipmentSetTrigger(
+					NewRuntime,
+					*XuanJiaSix,
+					static_cast<int32>(FMath::Min<int64>(MAX_int32, TotalGrantedArmor)),
+					ProtectedUnitIds.Num());
 			}
 		}
 	}
@@ -18064,6 +18124,11 @@ bool GameXXKCardRules::ResolveRoundStartTerrainBenefits(
 					? TEXT("Shanhe six-piece could not commit its round-start use.")
 					: Error);
 			}
+			LogEquipmentSetTrigger(
+				NewRuntime,
+				*MutableShanHeSix,
+				MutableShanHeSix->ActiveEffect.Magnitude,
+				0);
 		}
 	}
 	InOutRuntime = MoveTemp(NewRuntime);

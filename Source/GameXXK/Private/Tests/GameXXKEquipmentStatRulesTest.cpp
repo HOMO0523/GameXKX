@@ -436,7 +436,20 @@ bool FGameXXKEquipmentSetAndTeamProjectionTest::RunTest(const FString& Parameter
 		TestEqual(TEXT("Shanhe four-piece restores two Mana"), Shan4->SecondaryValue, 2);
 		TestEqual(TEXT("Shanhe six-piece triggers once"), Shan6->Value, 1);
 		TestEqual(TEXT("Xuanjia two-piece player text"), Xuan2->Description.ToString(), FString(TEXT("穿戴者产生的护甲提高10%。")));
+		TestEqual(TEXT("Xuanjia four-piece player text"), Xuan4->Description.ToString(), FString(TEXT("我方回合开始时保留50%护甲；每个敌方回合首次格挡后，追加80%攻击伤害。")));
+		TestEqual(TEXT("Xuanjia six-piece player text"), Xuan6->Description.ToString(), FString(TEXT("全队唯一。敌方回合首次有友方因攻击损失气血后，全体获得穿戴者40%防御的护甲；穿戴者援护其他友方各1次。")));
+		TestEqual(TEXT("Shanhe two-piece player text"), Shan2->Description.ToString(), FString(TEXT("每回合首次打出地势牌后，抽1张。")));
+		TestEqual(TEXT("Shanhe four-piece player text"), Shan4->Description.ToString(), FString(TEXT("每回合首张地势牌少耗1气；结算后，其他友方各回复2内力。")));
 		TestEqual(TEXT("Shanhe six-piece player text"), Shan6->Description.ToString(), FString(TEXT("全队唯一。每个我方回合开始时，由穿戴者触发1次当前地势。")));
+		const FString ApprovedText = Xuan2->Description.ToString()
+			+ Xuan4->Description.ToString()
+			+ Xuan6->Description.ToString()
+			+ Shan2->Description.ToString()
+			+ Shan4->Description.ToString()
+			+ Shan6->Description.ToString();
+		TestFalse(TEXT("approved set text contains no retired five-percent payload"), ApprovedText.Contains(TEXT("5%")));
+		TestFalse(TEXT("approved set text contains no retired twelve-percent payload"), ApprovedText.Contains(TEXT("12%")));
+		TestFalse(TEXT("approved set text contains no retired adjacent-ally wording"), ApprovedText.Contains(TEXT("相邻队友")));
 	}
 	if (XuanJia)
 	{

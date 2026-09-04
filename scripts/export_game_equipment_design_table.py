@@ -8,12 +8,14 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from export_game_design_tables import AFFIXES, MODIFIER_CN, SETS, SET_BONUSES, SLOTS, add_table, new_book, sha
+from export_game_design_tables import AFFIXES, EQUIPMENT_GLOSSARY, MODIFIER_CN, SETS, SET_BONUSES, SLOTS, add_table, new_book, sha
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = ROOT / "docs" / "superpowers" / "specs" / "2026-09-03-card-monster-progression-rebalance-design.md"
+SET_SPEC = ROOT / "docs" / "superpowers" / "specs" / "2026-09-04-xuanjia-shanhe-set-design.md"
 CATALOG = ROOT / "Source" / "GameXXK" / "Private" / "GameXXKEquipmentCatalog.cpp"
+SET_CATALOG = ROOT / "Source" / "GameXXK" / "Private" / "GameXXKEquipmentSetCatalog.cpp"
 
 ROLE_STATS = [
     ("Hero", "主角", 2659, 592, 392), ("Blade", "刀客", 2371, 563, 285),
@@ -39,7 +41,7 @@ def build_approved_equipment_workbook(path: Path) -> dict[str,int]:
         ["内力","任何装备、强化、旧饰品和MaxMana词缀均不增加有效内力"],
         ["高阶宝石","不朽后改为约×1.25并向上取整，不再每阶×2"],
         ["装备等级","100级角色可装备101-135级物品；挂机掉落为上一关等级+1至当前关等级"],
-        ["实现状态","当前运行时代码仍是旧曲线/旧宝石规则；本表是批准设计，不冒充已实装"],
+        ["实现状态","装备基础曲线/宝石仍按差异表追踪；六套2／4／6件效果已实装，玄甲/山河采用v35语义"],
     ]
     add_table(wb,"00_说明",["项目","内容"],intro,{"项目":25,"内容":115})
     add_table(wb,"01_百级最终属性",["角色代码","角色","生命","攻击","防御","装备品质","装备件数","宝石配置","状态"],
@@ -65,6 +67,7 @@ def build_approved_equipment_workbook(path: Path) -> dict[str,int]:
         affix_rows.append([idx,aid,name,owner,kind,MODIFIER_CN[kind],unit,pool,status])
     add_table(wb,"04_词缀目录",["序号","词缀ID","名称","归属","效果族","效果说明","单位","旧池状态","新设计状态"],affix_rows,{"词缀ID":45,"效果说明":34,"新设计状态":58})
     add_table(wb,"05_套装效果",["描述符ID","套装","件数","作用域","触发","效果","状态"],SET_BONUSES,{"效果":85,"状态":50})
+    add_table(wb,"05A_套装术语",["术语","玩家说明"],EQUIPMENT_GLOSSARY,{"术语":18,"玩家说明":60})
     add_table(wb,"06_至宝配装基准",["项目","数量","单件/单颗","合计","是否已计入角色表"],
               [["至宝装备",6,"按新减半曲线与词缀预算","已折入最终角色属性","是"],["攻击至宝宝石",4,"+20攻击","+80攻击","是"],["防御至宝宝石",4,"+20防御","+80防御","是"],["生命至宝宝石",4,"+100生命","+400生命","是"],["有效内力",0,"装备不提供","0","是"]])
     bands=[]
@@ -79,10 +82,11 @@ def build_approved_equipment_workbook(path: Path) -> dict[str,int]:
         ["不朽后成长","当前代码继续×2","新设计约×1.25并向上取整","待实现"],
         ["至宝孔位","当前代码按品质公式得到2孔","新设计至宝整套共12孔，即每件2孔","一致"],
         ["装备内力","旧ID/快照仍可读","有效贡献恒为0","基础规则已冻结"],
+        ["玄甲/山河套装","旧描述符缺少完整消费者","六档批准语义与触发顺序","已实装并迁移至v35"],
         ["百级最终属性","旧运行时投影不同","使用01表批准数值","设计冻结、运行时待迁移"],
     ]
     add_table(wb,"08_实现差异",["项目","当前旧实现","批准新设计","状态"],differences,{"当前旧实现":60,"批准新设计":72,"状态":36})
-    add_table(wb,"09_来源校验",["源文件","SHA256"],[[str(SPEC.relative_to(ROOT)),sha(SPEC)],[str(CATALOG.relative_to(ROOT)),sha(CATALOG)]],{"源文件":85,"SHA256":72})
+    add_table(wb,"09_来源校验",["源文件","SHA256"],[[str(p.relative_to(ROOT)),sha(p)] for p in (SPEC,SET_SPEC,CATALOG,SET_CATALOG)],{"源文件":85,"SHA256":72})
     wb.save(path)
     return {"equipment":len(template_rows),"affixes":len(affix_rows),"sets":len(SET_BONUSES),"gems":len(gem_rows)}
 
