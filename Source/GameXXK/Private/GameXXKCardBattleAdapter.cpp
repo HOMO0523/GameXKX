@@ -285,6 +285,37 @@ namespace
 		return Unit;
 	}
 
+	bool BuildQuestNpcEquipmentSnapshot(
+		const FGameXXKRuntimeState& State,
+		const FName QuestNpcId,
+		const int32 QuestNpcLevel,
+		FGameXXKCompanionAttributes& OutBareAttributes,
+		FGameXXKEquipmentLoadoutSnapshot& OutSnapshot,
+		FString* OutError)
+	{
+		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+			QuestNpcId,
+			QuestNpcLevel,
+			OutBareAttributes,
+			OutError))
+		{
+			return false;
+		}
+
+		FGameXXKCharacterStats BareStats;
+		BareStats.MaxHealth = OutBareAttributes.Health;
+		BareStats.MaxMana = OutBareAttributes.Mana;
+		BareStats.Attack = OutBareAttributes.Attack;
+		BareStats.Defense = OutBareAttributes.Defense;
+		BareStats.Speed = OutBareAttributes.Speed;
+		return FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			State.EquipmentCollection,
+			QuestNpcId,
+			BareStats,
+			OutSnapshot,
+			OutError);
+	}
+
 	bool BuildRoutePartyProjection(FGameXXKRuntimeState& InOutState, FString* OutError)
 	{
 		FGameXXKCardRunState& Run = InOutState.CardRun;
@@ -400,14 +431,22 @@ namespace
 			? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
 			: 1;
 		FGameXXKCompanionAttributes QuestNpcAttributes;
-		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+		FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
+		if (!BuildQuestNpcEquipmentSnapshot(
+			InOutState,
 			QuestNpcId,
 			QuestNpcLevel,
 			QuestNpcAttributes,
+			QuestNpcSnapshot,
 			OutError))
 		{
 			return false;
 		}
+		QuestNpcAttributes.Health = QuestNpcSnapshot.AttributesBeforeRoute.MaxHealth;
+		QuestNpcAttributes.Mana = QuestNpcSnapshot.AttributesBeforeRoute.MaxMana;
+		QuestNpcAttributes.Attack = QuestNpcSnapshot.AttributesBeforeRoute.Attack;
+		QuestNpcAttributes.Defense = QuestNpcSnapshot.AttributesBeforeRoute.Defense;
+		QuestNpcAttributes.Speed = QuestNpcSnapshot.AttributesBeforeRoute.Speed;
 		FGameXXKBattleRuntimeUnit QuestNpc = MakeLegacyProjectionUnit(
 			QuestNpcId,
 			FText::FromString(TEXT("NPC")),
@@ -468,6 +507,30 @@ namespace
 			}
 			Snapshots.Add(MoveTemp(CompanionSnapshot));
 		}
+
+		FName QuestNpcId;
+		if (!FGameXXKPartyFormationRules::ResolveQuestNpcId(InOutState, QuestNpcId, OutError))
+		{
+			return false;
+		}
+		const FGameXXKQuestNpcProgression* QuestNpcProgression =
+			InOutState.CardRun.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
+		const int32 QuestNpcLevel = QuestNpcProgression
+			? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+			: 1;
+		FGameXXKCompanionAttributes QuestNpcAttributes;
+		FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
+		if (!BuildQuestNpcEquipmentSnapshot(
+			InOutState,
+			QuestNpcId,
+			QuestNpcLevel,
+			QuestNpcAttributes,
+			QuestNpcSnapshot,
+			OutError))
+		{
+			return false;
+		}
+		Snapshots.Add(MoveTemp(QuestNpcSnapshot));
 
 		InOutRuntime.EquipmentEffects.Reset();
 		TSet<FString> EffectKeys;

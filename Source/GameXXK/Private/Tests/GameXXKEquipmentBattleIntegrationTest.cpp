@@ -134,7 +134,8 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKPartyFormationRules::ProjectCompatibility(State);
 	if (!AddAndEquipFullSet(*this, State, FGameXXKEquipmentRules::HeroCharacterId(), EGameXXKEquipmentSet::ShanHe)
-		|| !AddAndEquipFullSet(*this, State, RecruitResult.Companion.InstanceId, EGameXXKEquipmentSet::ShanHe))
+		|| !AddAndEquipFullSet(*this, State, RecruitResult.Companion.InstanceId, EGameXXKEquipmentSet::ShanHe)
+		|| !AddAndEquipFullSet(*this, State, TEXT("Npc.TusiChief"), EGameXXKEquipmentSet::XuanJia))
 	{
 		return false;
 	}
@@ -169,15 +170,33 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKCompanionAttributes TaskNpcAttributes;
+	FGameXXKEquipmentLoadoutSnapshot NpcSnapshot;
 	const FGameXXKQuestNpcProgression* TaskNpcProgression =
 		State.CardRun.PartySelection.QuestNpcProgressions.Find(TEXT("Npc.TusiChief"));
-	if (!TestTrue(TEXT("resolves the task NPC from its non-equipment snapshot"),
+	if (!TestTrue(TEXT("resolves the task NPC bare attributes"),
 		TaskNpcProgression
 			&& FGameXXKCompanionRules::GetQuestNpcAttributes(
 				TEXT("Npc.TusiChief"),
 				TaskNpcProgression->Level,
 				TaskNpcAttributes,
 				&Error)))
+	{
+		AddError(Error);
+		return false;
+	}
+	FGameXXKCharacterStats NpcBareStats;
+	NpcBareStats.MaxHealth = TaskNpcAttributes.Health;
+	NpcBareStats.MaxMana = TaskNpcAttributes.Mana;
+	NpcBareStats.Attack = TaskNpcAttributes.Attack;
+	NpcBareStats.Defense = TaskNpcAttributes.Defense;
+	NpcBareStats.Speed = TaskNpcAttributes.Speed;
+	if (!TestTrue(TEXT("builds the authoritative task-NPC equipment snapshot"),
+		FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+			State.EquipmentCollection,
+			TEXT("Npc.TusiChief"),
+			NpcBareStats,
+			NpcSnapshot,
+			&Error)))
 	{
 		AddError(Error);
 		return false;
@@ -219,24 +238,29 @@ bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("companion attack is projected from its independent loadout snapshot"), Companion->Attack, CompanionSnapshot.AttributesBeforeRoute.Attack);
 	TestEqual(TEXT("companion defense is projected from its independent loadout snapshot"), Companion->Defense, CompanionSnapshot.AttributesBeforeRoute.Defense);
 	TestEqual(TEXT("companion speed is present in the card runtime and projected from its loadout"), Companion->Speed, CompanionSnapshot.AttributesBeforeRoute.Speed);
-	TestEqual(TEXT("task NPC max HP ignores player equipment"), TaskNpc->MaxHP, TaskNpcAttributes.Health);
-	TestEqual(TEXT("task NPC max MP ignores player equipment"), TaskNpc->MaxMana, TaskNpcAttributes.Mana);
-	TestEqual(TEXT("task NPC attack ignores player equipment"), TaskNpc->Attack, TaskNpcAttributes.Attack);
-	TestEqual(TEXT("task NPC defense ignores player equipment"), TaskNpc->Defense, TaskNpcAttributes.Defense);
-	TestEqual(TEXT("task NPC speed ignores player equipment"), TaskNpc->Speed, TaskNpcAttributes.Speed);
+	TestEqual(TEXT("task NPC max HP is projected from its independent loadout snapshot"), TaskNpc->MaxHP, NpcSnapshot.AttributesBeforeRoute.MaxHealth);
+	TestEqual(TEXT("task NPC max MP is projected from its independent loadout snapshot"), TaskNpc->MaxMana, NpcSnapshot.AttributesBeforeRoute.MaxMana);
+	TestEqual(TEXT("task NPC attack is projected from its independent loadout snapshot"), TaskNpc->Attack, NpcSnapshot.AttributesBeforeRoute.Attack);
+	TestEqual(TEXT("task NPC defense is projected from its independent loadout snapshot"), TaskNpc->Defense, NpcSnapshot.AttributesBeforeRoute.Defense);
+	TestEqual(TEXT("task NPC speed is projected from its independent loadout snapshot"), TaskNpc->Speed, NpcSnapshot.AttributesBeforeRoute.Speed);
 
-	const TArray<FGameXXKEquipmentActiveEffect> TeamEffects = FGameXXKEquipmentRules::ResolveTeamEffects({HeroSnapshot, CompanionSnapshot});
-	const int32 ExpectedEffectCount = HeroSnapshot.ActivePersonalEffects.Num() + CompanionSnapshot.ActivePersonalEffects.Num() + TeamEffects.Num();
+	const TArray<FGameXXKEquipmentActiveEffect> TeamEffects = FGameXXKEquipmentRules::ResolveTeamEffects({HeroSnapshot, CompanionSnapshot, NpcSnapshot});
+	const int32 ExpectedEffectCount = HeroSnapshot.ActivePersonalEffects.Num()
+		+ CompanionSnapshot.ActivePersonalEffects.Num()
+		+ NpcSnapshot.ActivePersonalEffects.Num()
+		+ TeamEffects.Num();
 	TestEqual(TEXT("battle stores each permanent equipment descriptor exactly once"), State.CardRun.ActiveBattle.EquipmentEffects.Num(), ExpectedEffectCount);
 	TSet<FString> EffectKeys;
+	bool bSawNpcEquipmentEffect = false;
 	for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : State.CardRun.ActiveBattle.EquipmentEffects)
 	{
 		TestTrue(TEXT("equipment effect has a stable source unit"), !EffectRuntime.SourceCharacterId.IsNone());
-		TestTrue(TEXT("equipment effect never uses the task NPC as an equipment owner"), EffectRuntime.SourceCharacterId != TaskNpc->UnitId);
+		bSawNpcEquipmentEffect |= EffectRuntime.SourceCharacterId == TaskNpc->UnitId;
 		TestEqual(TEXT("new effects begin with no current-round triggers"), EffectRuntime.CurrentRoundTriggerCount, 0);
 		TestEqual(TEXT("new effects have not fired in a battle round"), EffectRuntime.LastTriggerRound, 0);
 		EffectKeys.Add(EffectRuntime.ActiveEffect.EffectId.ToString() + TEXT("|") + EffectRuntime.SourceCharacterId.ToString());
 	}
+	TestTrue(TEXT("battle materializes at least one task-NPC equipment effect"), bSawNpcEquipmentEffect);
 	TestEqual(TEXT("battle effects have no duplicate effect-source pair"), EffectKeys.Num(), State.CardRun.ActiveBattle.EquipmentEffects.Num());
 	TestTrue(TEXT("equipment-enriched card runtime passes central validation"), GameXXKCardRules::ValidateCardBattleRuntime(State.CardRun.ActiveBattle, &Error));
 	if (State.CardRun.ActiveBattle.EquipmentEffects.IsEmpty())

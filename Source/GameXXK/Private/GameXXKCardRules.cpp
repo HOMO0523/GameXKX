@@ -5236,7 +5236,6 @@ namespace
 				|| Effect.SourceCharacterId != EffectRuntime.SourceCharacterId
 				|| !Source
 				|| Source->Side != EGameXXKCardTargetSide::Party
-				|| Source->Role == EGameXXKCharacterRole::QuestNpc
 				|| Effect.Set == EGameXXKEquipmentSet::Invalid
 				|| Effect.Scope == EGameXXKEquipmentSetBonusScope::Invalid
 				|| Effect.Hook == EGameXXKEquipmentSetBonusHook::Invalid
