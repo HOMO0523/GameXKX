@@ -1006,7 +1006,7 @@ bool FGameXXKDesktopTrainingReferenceGeometryTest::RunTest(const FString& Parame
 	TestEqual(TEXT("warehouse matches the selected layout"), GetWarehouseRect(), FVector4(10.0f, 17.0f, 363.0f, 908.0f));
 	TestEqual(TEXT("center shell matches the selected layout"), GetCenterShellRect(), FVector4(386.0f, 17.0f, 970.0f, 908.0f));
 	TestEqual(TEXT("right shell matches the selected layout"), GetRightShellRect(), FVector4(1369.0f, 17.0f, 291.0f, 908.0f));
-	TestEqual(TEXT("scaled idle strip aligns with the Backpack content width"), GetIdleStripRect(), FVector4(397.0f, 17.0f, 945.0f, 184.0f));
+	TestEqual(TEXT("expanded idle strip preserves the collapsed dock footprint"), GetIdleStripRect(), FVector4(318.0f, 0.0f, 1038.0f, 202.0f));
 	TestEqual(TEXT("backpack surface matches the selected layout"), GetContentRect(), FVector4(397.0f, 244.0f, 945.0f, 533.0f));
 	TestEqual(TEXT("navigation matches the selected layout"), GetNavigationRect(), FVector4(397.0f, 788.0f, 945.0f, 137.0f));
 
@@ -1751,7 +1751,7 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	const FVector2D RuntimeFixedHostSize = Widget->GetDesktopWindowSizeForHost();
 	TestEqual(TEXT("desktop mode reserves one maximum transparent native host"),
 		RuntimeFixedHostSize,
-		FVector2D(1820.0f, 941.0f));
+		FVector2D(1820.0f, 993.0f));
 	Widget->HandleActionClicked(60);
 	Widget->TickForTest(0.0f);
 	TestTrue(TEXT("runtime Tab expansion reuses the resolved session scale"),
@@ -1844,11 +1844,13 @@ bool FGameXXKDesktopTrainingTransparentOverlayHostTest::RunTest(const FString& P
 		100,
 		true,
 		true,
-		52.0f);
+		52.0f,
+		false,
+		true);
 	TestEqual(TEXT("expansion keeps the full-screen transparent host fixed"),
 		BottomExpandedPlacement.HostSize,
 		HostSize);
-	TestTrue(TEXT("expanded HUD is clamped inside the host"),
+	TestTrue(TEXT("fixed expanded host may explicitly clamp inside the work area"),
 		BottomExpandedPlacement.HudTopLeft.X >= 0.0f
 			&& BottomExpandedPlacement.HudTopLeft.Y >= 0.0f
 			&& BottomExpandedPlacement.HudTopLeft.X + BottomExpandedPlacement.HudSize.X <= HostSize.X + KINDA_SMALL_NUMBER
@@ -2785,12 +2787,12 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("IdleStripFoldButton")) : nullptr);
 	TestNotNull(TEXT("expanded Backpack keeps a shortened wave progress rail"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TrainingWaveProgressPanel")) : nullptr);
-	TestLocalRect(TEXT("IdleStripFoldButton"), FVector2D(837.5f, 210.0f), FVector2D(72.0f, 24.0f));
-	TestLocalRect(TEXT("TrainingWaveProgressPanel"), FVector2D(930.0f, 210.0f), FVector2D(340.0f, 24.0f));
-	TestLocalRect(TEXT("BackpackTabToggleButton"), FVector2D(1270.0f, 210.0f), FVector2D(72.0f, 24.0f));
-	TestLocalRect(TEXT("TrainingNormalChestButton"), FVector2D(1270.0f, 25.0f), FVector2D(72.0f, 72.0f));
-	TestLocalRect(TEXT("TrainingAdvancedChestButton"), FVector2D(1270.0f, 101.0f), FVector2D(72.0f, 72.0f));
-	TestLocalRect(TEXT("TravelRetryButton"), FVector2D(1210.0f, 35.0f), FVector2D(52.0f, 52.0f));
+	TestLocalRect(TEXT("IdleStripFoldButton"), FVector2D(758.5f, 202.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingWaveProgressPanel"), FVector2D(851.0f, 202.0f), FVector2D(420.0f, 24.0f));
+	TestLocalRect(TEXT("BackpackTabToggleButton"), FVector2D(1271.0f, 202.0f), FVector2D(72.0f, 24.0f));
+	TestLocalRect(TEXT("TrainingNormalChestButton"), FVector2D(1271.0f, 8.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TrainingAdvancedChestButton"), FVector2D(1271.0f, 84.0f), FVector2D(72.0f, 72.0f));
+	TestLocalRect(TEXT("TravelRetryButton"), FVector2D(1211.0f, 18.0f), FVector2D(52.0f, 52.0f));
 	TestLocalRect(TEXT("TopToolbarAlwaysOnTop"), FVector2D(1028.0f, 252.0f), FVector2D(42.0f, 36.0f));
 	TestLocalRect(TEXT("TopToolbarExit"), FVector2D(1216.0f, 252.0f), FVector2D(42.0f, 36.0f));
 	TestLocalRect(TEXT("BackpackGoldIcon"), FVector2D(1034.0f, 291.0f), FVector2D(30.0f, 30.0f));

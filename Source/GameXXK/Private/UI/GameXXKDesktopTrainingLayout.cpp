@@ -8,11 +8,12 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector4 WarehouseRect(10.0f, 17.0f, 363.0f, 908.0f);
 		const FVector4 CenterShellRect(386.0f, 17.0f, 970.0f, 908.0f);
 		const FVector4 RightShellRect(1369.0f, 17.0f, 291.0f, 908.0f);
-		const FVector4 IdleStripRect(397.0f, 17.0f, 945.0f, 184.0f);
+		const FVector4 IdleStripRect(318.0f, 0.0f, 1038.0f, 202.0f);
 		const FVector4 ContentRect(397.0f, 244.0f, 945.0f, 533.0f);
 		const FVector4 NavigationRect(397.0f, 788.0f, 945.0f, 137.0f);
 		const FVector2D CollapsedHudLogicalSize(1038.0f, 202.0f);
 		const FVector2D FoldedHudInteractiveSize(1025.0f, 24.0f);
+		constexpr float UpwardContentShift = 210.0f;
 		const FVector2D TownToggleButtonSize(144.0f, 144.0f);
 		constexpr float TownToggleGap = 14.0f;
 		constexpr float StoryQuestVerticalGap = 14.0f;
@@ -59,6 +60,43 @@ namespace GameXXKDesktopTrainingLayout
 	FVector4 GetIdleStripRect()
 	{
 		return IdleStripRect;
+	}
+
+	FVector4 GetExpandedIdleStripRect(const bool bExpandUpward)
+	{
+		FVector4 Result = IdleStripRect;
+		if (bExpandUpward)
+		{
+			Result.Y = ReferenceCanvasSize.Y - Result.W;
+		}
+		return Result;
+	}
+
+	FVector2D GetExpandedReferenceCanvasSize(
+		const bool bExpandUpward,
+		const float NoticeHeight)
+	{
+		return ReferenceCanvasSize + FVector2D(
+			0.0f,
+			bExpandUpward ? FMath::Max(0.0f, NoticeHeight) : 0.0f);
+	}
+
+	FVector2D GetExpandedNoticeRailPosition(const bool bExpandUpward)
+	{
+		const FVector4 StripRect = GetExpandedIdleStripRect(bExpandUpward);
+		return FVector2D(StripRect.X, StripRect.Y + StripRect.W);
+	}
+
+	FVector2D GetUpwardContentOffset()
+	{
+		return FVector2D(0.0f, -UpwardContentShift);
+	}
+
+	bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position)
+	{
+		return Position.X >= CenterShellRect.X
+			&& Position.X < RightShellRect.X
+			&& Position.Y >= UpwardContentShift;
 	}
 
 	FVector4 GetContentRect()
@@ -133,7 +171,8 @@ namespace GameXXKDesktopTrainingLayout
 		const bool bExpanded,
 		const bool bExpandUpward,
 		const float CollapsedNoticeHeight,
-		const bool bWarehouseOpen)
+		const bool bWarehouseOpen,
+		const bool bClampExpandedHudToHost)
 	{
 		return ComputeDesktopOverlayPlacementAtScale(
 			ResolveDesktopHudMetrics(HostSize, HudScalePercent),
@@ -141,7 +180,8 @@ namespace GameXXKDesktopTrainingLayout
 			bExpanded,
 			bExpandUpward,
 			CollapsedNoticeHeight,
-			bWarehouseOpen);
+			bWarehouseOpen,
+			bClampExpandedHudToHost);
 	}
 
 	FDesktopHudResolvedMetrics ResolveDesktopHudMetrics(
@@ -162,7 +202,8 @@ namespace GameXXKDesktopTrainingLayout
 		const bool bExpanded,
 		const bool bExpandUpward,
 		const float CollapsedNoticeHeight,
-		const bool bWarehouseOpen)
+		const bool bWarehouseOpen,
+		const bool bClampExpandedHudToHost)
 	{
 		FDesktopOverlayPlacement Result;
 		Result.HostSize = FVector2D(
@@ -178,6 +219,15 @@ namespace GameXXKDesktopTrainingLayout
 			FMath::Max(0.0f, Result.HostSize.X - CollapsedStripSize.X),
 			FMath::Max(0.0f, Result.HostSize.Y - CollapsedStripSize.Y));
 		const FVector2D DesiredStripAnchor = AnchorTravel * SafeNormalizedAnchor;
+		const FVector2D DockGroupSize(
+			CollapsedHudLogicalSize.X,
+			CollapsedHudLogicalSize.Y + FMath::Max(0.0f, CollapsedNoticeHeight));
+		const FVector2D MaximumStableStripAnchor(
+			FMath::Max(0.0f, Result.HostSize.X - DockGroupSize.X * Result.Scale),
+			FMath::Max(0.0f, Result.HostSize.Y - DockGroupSize.Y * Result.Scale));
+		const FVector2D StableStripAnchor(
+			FMath::Clamp(DesiredStripAnchor.X, 0.0f, MaximumStableStripAnchor.X),
+			FMath::Clamp(DesiredStripAnchor.Y, 0.0f, MaximumStableStripAnchor.Y));
 
 		FVector4 StripRect(0.0f, 0.0f, CollapsedHudLogicalSize.X, CollapsedHudLogicalSize.Y);
 		FVector2D HudDesignSize(
@@ -186,16 +236,14 @@ namespace GameXXKDesktopTrainingLayout
 		if (bExpanded)
 		{
 			const float LeftExtension = GetExpandedLeftExtension(bWarehouseOpen);
-			HudDesignSize = ReferenceCanvasSize + FVector2D(LeftExtension, 0.0f);
-			StripRect = IdleStripRect;
+			HudDesignSize = GetExpandedReferenceCanvasSize(
+				bExpandUpward,
+				CollapsedNoticeHeight) + FVector2D(LeftExtension, 0.0f);
+			StripRect = GetExpandedIdleStripRect(bExpandUpward);
 			StripRect.X += LeftExtension;
 			Result.ContentOffset = FVector2D(LeftExtension, 0.0f);
 			Result.TownToggleRect = GetTownToggleRect(bWarehouseOpen);
 			Result.StoryQuestRect = GetStoryQuestRect(bWarehouseOpen);
-			if (bExpandUpward)
-			{
-				StripRect.Y = ReferenceCanvasSize.Y - StripRect.W - 18.0f;
-			}
 		}
 
 		Result.HudSize = HudDesignSize * Result.Scale;
@@ -203,10 +251,12 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector2D MaximumHudTopLeft(
 			FMath::Max(0.0f, Result.HostSize.X - Result.HudSize.X),
 			FMath::Max(0.0f, Result.HostSize.Y - Result.HudSize.Y));
-		const FVector2D DesiredHudTopLeft = DesiredStripAnchor - StripOffset;
-		Result.HudTopLeft = FVector2D(
-			FMath::Clamp(DesiredHudTopLeft.X, 0.0f, MaximumHudTopLeft.X),
-			FMath::Clamp(DesiredHudTopLeft.Y, 0.0f, MaximumHudTopLeft.Y));
+		const FVector2D DesiredHudTopLeft = StableStripAnchor - StripOffset;
+		Result.HudTopLeft = bExpanded && !bClampExpandedHudToHost
+			? DesiredHudTopLeft
+			: FVector2D(
+				FMath::Clamp(DesiredHudTopLeft.X, 0.0f, MaximumHudTopLeft.X),
+				FMath::Clamp(DesiredHudTopLeft.Y, 0.0f, MaximumHudTopLeft.Y));
 		Result.StripTopLeft = Result.HudTopLeft + StripOffset;
 		Result.StripSize = FVector2D(StripRect.Z, StripRect.W) * Result.Scale;
 		return Result;
@@ -371,7 +421,9 @@ namespace GameXXKDesktopTrainingLayout
 
 		if (State.bExitConfirmationOpen)
 		{
-			const FVector2D ReferenceSize = GetReferenceCanvasSize();
+			const FVector2D ReferenceSize = GetExpandedReferenceCanvasSize(
+				State.bExpandUpward,
+				State.NoticeHeight);
 			AddLogicalRect(
 				FVector4(
 					0.0f,
@@ -382,11 +434,7 @@ namespace GameXXKDesktopTrainingLayout
 			return Result;
 		}
 
-		FVector4 StripRect = GetIdleStripRect();
-		if (State.bExpandUpward)
-		{
-			StripRect.Y = GetReferenceCanvasSize().Y - StripRect.W - 18.0f;
-		}
+		FVector4 StripRect = GetExpandedIdleStripRect(State.bExpandUpward);
 		if (State.bIdleStripFolded)
 		{
 			StripRect.W = 24.0f;
@@ -394,28 +442,28 @@ namespace GameXXKDesktopTrainingLayout
 		AddLogicalRect(StripRect, State.ContentOffset);
 		if (!State.bIdleStripFolded)
 		{
-			const float NoticeY = State.bExpandUpward
-				? StripRect.Y - State.NoticeHeight
-				: 210.0f;
+			const float NoticeY = StripRect.Y + StripRect.W;
 			AddLogicalRect(
-				FVector4(397.0f, NoticeY, 420.0f, State.NoticeHeight),
+				FVector4(StripRect.X, NoticeY, 420.0f, State.NoticeHeight),
 				State.ContentOffset);
 			AddLogicalRect(
-				FVector4(397.0f, NoticeY, GetIdleStripRect().Z, 24.0f),
+				FVector4(StripRect.X, NoticeY, FoldedHudInteractiveSize.X, 24.0f),
 				State.ContentOffset);
 		}
-		AddLogicalRect(GetContentRect(), State.ContentOffset);
+		const FVector2D CenterContentOffset = State.ContentOffset
+			+ (State.bExpandUpward ? GetUpwardContentOffset() : FVector2D::ZeroVector);
+		AddLogicalRect(GetContentRect(), CenterContentOffset);
 		for (int32 NavigationIndex = 0; NavigationIndex < 5; ++NavigationIndex)
 		{
 			AddLogicalRect(
 				FVector4(421.0f + NavigationIndex * 181.0f, 800.0f, 151.0f, 112.0f),
-				State.ContentOffset);
+				CenterContentOffset);
 		}
 		for (int32 ToolbarIndex = 0; ToolbarIndex < 5; ++ToolbarIndex)
 		{
 			AddLogicalRect(
 				FVector4(1092.0f + ToolbarIndex * 47.0f, 226.0f, 42.0f, 36.0f),
-				State.ContentOffset);
+				CenterContentOffset);
 		}
 		if (State.bWarehouseOpen)
 		{

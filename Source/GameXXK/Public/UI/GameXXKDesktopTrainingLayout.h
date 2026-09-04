@@ -99,6 +99,13 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API FVector4 GetCenterShellRect();
 	GAMEXXK_API FVector4 GetRightShellRect();
 	GAMEXXK_API FVector4 GetIdleStripRect();
+	GAMEXXK_API FVector4 GetExpandedIdleStripRect(bool bExpandUpward);
+	GAMEXXK_API FVector2D GetExpandedReferenceCanvasSize(
+		bool bExpandUpward,
+		float NoticeHeight);
+	GAMEXXK_API FVector2D GetExpandedNoticeRailPosition(bool bExpandUpward);
+	GAMEXXK_API FVector2D GetUpwardContentOffset();
+	GAMEXXK_API bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position);
 	GAMEXXK_API FVector4 GetContentRect();
 	GAMEXXK_API FVector4 GetNavigationRect();
 	GAMEXXK_API FVector2D GetCollapsedHudLogicalSize();
@@ -116,7 +123,8 @@ namespace GameXXKDesktopTrainingLayout
 		bool bExpanded,
 		bool bExpandUpward,
 		float CollapsedNoticeHeight,
-		bool bWarehouseOpen = false);
+		bool bWarehouseOpen = false,
+		bool bClampExpandedHudToHost = false);
 	GAMEXXK_API FDesktopHudResolvedMetrics ResolveDesktopHudMetrics(
 		const FVector2D& PhysicalWorkAreaSize,
 		int32 HudScalePercent);
@@ -126,7 +134,8 @@ namespace GameXXKDesktopTrainingLayout
 		bool bExpanded,
 		bool bExpandUpward,
 		float CollapsedNoticeHeight,
-		bool bWarehouseOpen = false);
+		bool bWarehouseOpen = false,
+		bool bClampExpandedHudToHost = false);
 	GAMEXXK_API FVector2D ResolvePresentationAnchor(
 		bool bUsePersistedAnchor,
 		const FVector2D& PersistedAnchor);

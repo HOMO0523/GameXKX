@@ -216,7 +216,6 @@
 		IdleSummaryReportWidth + (IdleSummaryFoldSlotWidth - IdleSummaryFoldButtonWidth) * 0.5f;
 	constexpr float IdleSummaryProgressX = IdleSummaryReportWidth + IdleSummaryFoldSlotWidth;
 	constexpr float IdleSummaryProgressWidth = 420.0f;
-	constexpr float ExpandedIdleSummaryProgressWidth = 340.0f;
 	constexpr float IdleSummaryTabX = IdleSummaryProgressX + IdleSummaryProgressWidth;
 	constexpr float IdleSummaryTabWidth = 72.0f;
 	constexpr float FoldedChestTextWidth = 96.0f;
@@ -227,7 +226,7 @@
 
 	float ResolveIdleSummaryProgressWidth(const bool bExpanded)
 	{
-		return bExpanded ? ExpandedIdleSummaryProgressWidth : IdleSummaryProgressWidth;
+		return IdleSummaryProgressWidth;
 	}
 
 	float ResolveIdleSummaryTabX(const bool bExpanded)
@@ -3231,7 +3230,9 @@ FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetCurrentDesignCanvasSize() c
 {
 	if (bBackpackExpanded)
 	{
-		return GameXXKDesktopTrainingLayout::GetReferenceCanvasSize()
+		return GameXXKDesktopTrainingLayout::GetExpandedReferenceCanvasSize(
+				bExpandUpward,
+				GetNoticePanelLogicalHeight())
 			+ FVector2D(
 				GameXXKDesktopTrainingLayout::GetExpandedLeftExtension(
 					bWarehousePanelOpen),
@@ -3251,10 +3252,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
 	{
 		return;
 	}
-	constexpr float CenterColumnMinX = 386.0f;
-	constexpr float RightPanelMinX = 1369.0f;
-	constexpr float TransformStartY = 210.0f;
-	constexpr float UpwardContentShift = 210.0f;
 	for (int32 ChildIndex = 0; ChildIndex < RootCanvas->GetChildrenCount(); ++ChildIndex)
 	{
 		UWidget* Child = RootCanvas->GetChildAt(ChildIndex);
@@ -3278,11 +3275,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
 			continue;
 		}
 		const FVector2D Position = CanvasSlot->GetPosition();
-		if (Position.X >= CenterColumnMinX
-			&& Position.X < RightPanelMinX
-			&& Position.Y >= TransformStartY)
+		if (GameXXKDesktopTrainingLayout::ShouldOffsetExpandedCenterWidget(Position))
 		{
-			Child->SetRenderTranslation(FVector2D(0.0f, -UpwardContentShift));
+			Child->SetRenderTranslation(
+				GameXXKDesktopTrainingLayout::GetUpwardContentOffset());
 		}
 	}
 }
@@ -3418,7 +3414,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 		RootCanvasDesignSlot->SetPosition(DesktopOverlayPlacement.ContentOffset);
 		RootCanvasDesignSlot->SetSize(
 			bBackpackExpanded
-				? GameXXKDesktopTrainingLayout::GetReferenceCanvasSize()
+				? FVector2D(
+					GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().X,
+					DesignCanvasSize.Y)
 				: DesignCanvasSize);
 	}
 	TravelVisualViewport = nullptr;
@@ -3651,7 +3649,6 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackTabToggle()
 
 FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetNoticeRailLogicalPosition() const
 {
-	FVector2D Position(397.0f, 210.0f);
 	if (!bBackpackExpanded)
 	{
 		return FVector2D(
@@ -3662,24 +3659,11 @@ FVector2D UGameXXKDesktopTrainingWorkbenchWidget::GetNoticeRailLogicalPosition()
 	}
 	if (bIdleStripFolded)
 	{
-		FVector4 StripRect = GameXXKDesktopTrainingLayout::GetIdleStripRect();
-		if (bExpandUpward)
-		{
-			StripRect.Y = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().Y
-				- StripRect.W
-				- 18.0f;
-		}
+		const FVector4 StripRect =
+			GameXXKDesktopTrainingLayout::GetExpandedIdleStripRect(bExpandUpward);
 		return FVector2D(StripRect.X, StripRect.Y);
 	}
-	if (bExpandUpward)
-	{
-		const FVector4 AuthoredStripRect = GameXXKDesktopTrainingLayout::GetIdleStripRect();
-		const float UpwardStripY = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize().Y
-			- AuthoredStripRect.W
-			- 18.0f;
-		Position.Y = UpwardStripY - GetNoticePanelLogicalHeight();
-	}
-	return Position;
+	return GameXXKDesktopTrainingLayout::GetExpandedNoticeRailPosition(bExpandUpward);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildIdleSummaryControls(
@@ -4558,8 +4542,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	}
 	else if (bExpandUpward)
 	{
-		const FVector2D ReferenceSize = GameXXKDesktopTrainingLayout::GetReferenceCanvasSize();
-		StripRect.Y = ReferenceSize.Y - StripRect.W - 18.0f;
+		StripRect = GameXXKDesktopTrainingLayout::GetExpandedIdleStripRect(true);
 	}
 	AddCanvasRect(RootCanvas, Strip, StripRect);
 	if (bIdleStripFolded)
@@ -4828,7 +4811,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 	const int32 NormalChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::NormalChest) : 0;
 	const int32 AdvancedChestCount = Subsystem ? Subsystem->GetTrainingChestCount(EGameXXKTrainingRewardTier::AdvancedChest) : 0;
 	const float ChestControlX = bBackpackExpanded
-		? StripRect.X + StripRect.Z - 72.0f
+		? StripRect.X + IdleSummaryTabX
 		: 953.0f;
 	const float ChestControlY = bBackpackExpanded ? StripRect.Y : 0.0f;
 	const struct FChestButtonSpec
@@ -8214,8 +8197,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateDesktopOverlayPlacement(
 				Metrics,
 				DesktopWindowPositionNormalized,
 				true,
-				bExpandUpward,
-				0.0f,
+				true,
+				GetNoticePanelLogicalHeight(),
+				true,
 				true);
 		DesktopFixedContentOffset =
 			DesktopOverlayPlacement.HudTopLeft
