@@ -1685,9 +1685,17 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 		ManualDpiPlacement.HudTopLeft);
 	static const TCHAR* SettingsSection = TEXT("/Script/GameXXK.DesktopHudSettings");
 	static const TCHAR* ScaleKey = TEXT("HudScalePercent");
+	const FString StableSettingsFile = FPaths::ConvertRelativePathToFull(
+		FPaths::Combine(
+			FPaths::ProjectDir(),
+			TEXT("Saved/Config/GameXXKDesktopHudSettings.ini")));
 	int32 PreviousScale = 100;
 	const bool bHadPreviousScale = GConfig
 		&& GConfig->GetInt(SettingsSection, ScaleKey, PreviousScale, GGameUserSettingsIni);
+	FString PreviousStableContents;
+	const bool bHadStableSettingsFile = FFileHelper::LoadFileToString(
+		PreviousStableContents,
+		*StableSettingsFile);
 	ON_SCOPE_EXIT
 	{
 		if (GConfig)
@@ -1701,12 +1709,28 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 				GConfig->RemoveKey(SettingsSection, ScaleKey, GGameUserSettingsIni);
 			}
 			GConfig->Flush(false, GGameUserSettingsIni);
+			if (bHadStableSettingsFile)
+			{
+				FFileHelper::SaveStringToFile(
+					PreviousStableContents,
+					*StableSettingsFile);
+			}
+			else
+			{
+				IFileManager::Get().Delete(*StableSettingsFile, false, true);
+			}
 		}
 	};
 	if (GConfig)
 	{
 		GConfig->SetInt(SettingsSection, ScaleKey, 100, GGameUserSettingsIni);
 		GConfig->Flush(false, GGameUserSettingsIni);
+		IFileManager::Get().MakeDirectory(*FPaths::GetPath(StableSettingsFile), true);
+		FConfigFile StableConfig;
+		StableConfig.Read(StableSettingsFile);
+		StableConfig.SetString(SettingsSection, ScaleKey, TEXT("100"));
+		StableConfig.Dirty = true;
+		StableConfig.Write(StableSettingsFile);
 	}
 
 	UGameXXKMVPSubsystem* Subsystem =
