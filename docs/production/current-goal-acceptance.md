@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-04T14:45:23+08:00
-source_commit: b12937b
-working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD fixed Tab dock verified
+updated_at: 2026-09-04T19:29:42+08:00
+source_commit: 821593b
+working_tree: 171/173 card rules complete; two explicit user decisions remain; desktop HUD adaptive body and cursor verified
 ---
+
+> **2026-09-04 桌面HUD展开主体与物品坐标完成**：提交821593b把透明宿主扩为完整工作区，挂机条拖动时整套当前布局刚性跟随，松开左键后才按最终挂机槽位置一次性重算上下方向及水平回收。仓库、背包、导航、历练/工具与任务圆钮共用同一主体偏移；左右贴边时整组回收，挂机条不动。仓库和右侧纸张统一为244..925的681逻辑高度并在786处分隔；历练上半区为标题、难度、章节、三个竖排节点、当前选择和当前游历，下半区保留挑战/游历。物品携带图移入独立光标层，实机中心与(1535,800)鼠标一致。最终冷UBT通过；Workbench 70/74非失败，四项仍为既有InnerGeometry、TravelCombatPresentation和两项Travel图集基线。右边缘、向上及全开截图见Saved/Diagnostics/hud-adaptive-*.png；测试后已恢复75%、X=0.578778505、Y=0.064710319。详见docs/production/2026-09-04-desktop-hud-adaptive-body-and-cursor-acceptance.md。
 
 > **2026-09-04 桌面HUD固定Tab停靠完成**：提交b12937b把挂机条、通知控制行与Tab统一为固定停靠组；挂机条在收起/向下/向上状态均保持1038×202逻辑尺寸，Tab固定在挂机条相对(953,202)，进度轨不再因展开缩成340。上下展开共用同一屏幕锚点，左右边缘由内容偏移吸收，不再为把透明画布完整塞入屏幕而移动挂机条；Win32固定宿主始终预留1820×993，Tab切换不触发窗口resize。向上中心内容的-210偏移已同步到Region，旧105/157.5/210像素裁切差消失。新增StableDockPlacement和UpwardNativeRegion先RED后GREEN；冷UBT通过，Workbench最终70/74，四项失败仍为既有InnerGeometry及三项Travel图集基线。50%/125% DPI、右下停靠实机中收起/展开窗口物理矩形均为(783,371)-(1921,992)，截图见Saved/Diagnostics/hud-stable-dock-final-collapsed.png与hud-stable-dock-final-expanded-up.png；临时拖动后已恢复用户原WindowPositionY=0.0587708652。详见docs/production/2026-09-04-desktop-hud-stable-tab-dock-acceptance.md。
 

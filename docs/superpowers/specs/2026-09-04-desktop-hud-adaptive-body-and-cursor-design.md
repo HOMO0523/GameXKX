@@ -28,12 +28,12 @@ At a right-docked 100% layout, the authored right panel exceeds the strip edge b
 
 Auxiliary paper surfaces match the backpack body height:
 
-- downward body: logical Y `244..777`;
-- upward body: logical Y `34..567`, using the shared `-210` body translation.
+- downward body: logical Y `244..925`;
+- upward body: logical Y `34..715`, using the shared `-210` body translation.
 
-Warehouse keeps the existing 36-slot logical page and six talent pages. Its 4×9 grid is placed in a vertical scroll viewport so capacity, save data, batch-transfer ranges, and talent semantics do not change. Training uses three compact horizontal nodes. Tools uses the same body-height shell.
+Each side surface is one continuous 681-unit paper with an internal divider at logical Y `786`. Warehouse keeps the existing 36-slot logical page and six talent pages. Its 4×9 grid is placed in a vertical scroll viewport, while page state, batch transfer, and inventory totals occupy the lower shelf; capacity, save data, batch-transfer ranges, and talent semantics do not change. Training places title, difficulty, chapter, three vertical stage nodes, current selection, and current travel state in the upper area; challenge and travel actions occupy the lower shelf. Tools uses the same shell and places confirmation in the lower shelf.
 
-The full-work-area host removes the false internal clipping edge shown in the recording. While dragging an already-expanded dock, the current direction remains stable so Slate capture is not destroyed by a rebuild. On mouse release, direction is recalculated from the final dock anchor and the body is rebuilt above or below as needed.
+The full-work-area host removes the false internal clipping edge shown in the recording. While dragging an already-expanded dock, the complete current layout follows rigidly and the body-fit translation remains frozen. On mouse release, direction and horizontal body fit are recalculated once from the final dock anchor and the body is rebuilt above or below as needed.
 
 ## Attached controls
 
@@ -61,8 +61,8 @@ UMG render transforms, Win32 Region shapes, drag exclusion rectangles, and test 
 - Left/right/corner dock positions preserve the dock screen rectangle.
 - Any active warehouse/backpack/training/tools union is translated fully into the work area when it physically fits.
 - Downward drag has no internal clipping edge; direction is reselected after release.
-- Warehouse, training, and tools paper heights equal the backpack body height.
+- Warehouse, training, and tools use one continuous `681`-unit paper, matching backpack plus its navigation row.
+- Training keeps title/difficulty/chapter, three vertical nodes, current selection, and current travel state above the divider.
 - Story/town controls remain attached to the body before and after warehouse toggles and upward layout.
 - A carried item remains within two physical pixels of the cursor for 96/120 DPI, every manual scale, both directions, and warehouse closed/open.
 - Backpack slot identity remains unchanged by dock/body translations.
-
