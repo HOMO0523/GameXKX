@@ -66,6 +66,36 @@ namespace GameXXKXuanJiaSetRuntimeTest
 		return Effect;
 	}
 
+	FGameXXKEquipmentActiveEffect MakeXuanFourEffect()
+	{
+		FGameXXKEquipmentActiveEffect Effect;
+		Effect.EffectId = TEXT("Set.XuanJia.4");
+		Effect.SourceCharacterId = WearerId;
+		Effect.Set = EGameXXKEquipmentSet::XuanJia;
+		Effect.RequiredPieces = 4;
+		Effect.Scope = EGameXXKEquipmentSetBonusScope::Owner;
+		Effect.Hook = EGameXXKEquipmentSetBonusHook::RoundStart;
+		Effect.ModifierKind = EGameXXKEquipmentModifierKind::CounterDamage;
+		Effect.Magnitude = 5000;
+		Effect.SecondaryMagnitude = 80;
+		Effect.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
+		Effect.MaxTriggersPerRound = 1;
+		return Effect;
+	}
+
+	bool AddXuanFourEffect(FAutomationTestBase& Test, FGameXXKCardBattleRuntime& Runtime)
+	{
+		const FGameXXKEquipmentActiveEffect Effect = MakeXuanFourEffect();
+		if (!Test.TestTrue(TEXT("Xuanjia four-piece descriptor is authoritative"), FGameXXKEquipmentRules::IsKnownActiveEffect(Effect)))
+		{
+			return false;
+		}
+		FGameXXKEquipmentBattleEffectRuntime& RuntimeEffect = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		RuntimeEffect.ActiveEffect = Effect;
+		RuntimeEffect.SourceCharacterId = WearerId;
+		return true;
+	}
+
 	bool BuildRuntime(
 		FAutomationTestBase& Test,
 		const FName CardId,
@@ -164,6 +194,28 @@ namespace GameXXKXuanJiaSetRuntimeTest
 		Test.TestTrue(FString::Printf(TEXT("%s resolves: %s"), Label, *Error), bResolved);
 		return bResolved;
 	}
+
+	bool AdvanceToNextPlayerRound(
+		FAutomationTestBase& Test,
+		FGameXXKCardBattleRuntime& Runtime)
+	{
+		TArray<FGameXXKCardDamageResult> DamageResults;
+		FString Error;
+		if (!Test.TestTrue(TEXT("Xuanjia fixture ends the player phase"),
+			GameXXKCardRules::EndPlayerCardPhase(Runtime, DamageResults, &Error)))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		DamageResults.Reset();
+		if (!Test.TestTrue(TEXT("Xuanjia fixture begins the next player round"),
+			GameXXKCardRules::BeginNextPlayerCardRound(Runtime, DamageResults, &Error)))
+		{
+			Test.AddError(Error);
+			return false;
+		}
+		return true;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -246,6 +298,52 @@ bool FGameXXKXuanJiaArmorGenerationTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKXuanJiaArmorRetentionTest,
+	"GameXXK.Equipment.XuanJia.ArmorRetention",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaArmorRetentionTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+
+	for (const TPair<int32, int32>& ArmorCase : {
+		TPair<int32, int32>(300, 150),
+		TPair<int32, int32>(301, 150)})
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, Runtime)
+			|| !AddXuanFourEffect(*this, Runtime))
+		{
+			return false;
+		}
+		FindUnit(Runtime, WearerId)->Armor = ArmorCase.Key;
+		FindUnit(Runtime, AllyId)->Armor = 99;
+		if (!AdvanceToNextPlayerRound(*this, Runtime))
+		{
+			return false;
+		}
+		TestEqual(TEXT("Xuanjia four-piece retains exactly half with floor rounding"), FindUnit(Runtime, WearerId)->Armor, ArmorCase.Value);
+		TestEqual(TEXT("non-wearer clears Armor"), FindUnit(Runtime, AllyId)->Armor, 0);
+	}
+
+	FGameXXKCardBattleRuntime FullRetentionRuntime;
+	if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), WearerId, FullRetentionRuntime)
+		|| !AddXuanFourEffect(*this, FullRetentionRuntime))
+	{
+		return false;
+	}
+	FindUnit(FullRetentionRuntime, WearerId)->Armor = 301;
+	FullRetentionRuntime.RetainArmorAtNextPartyPhaseUnitIds.Add(WearerId);
+	if (!AdvanceToNextPlayerRound(*this, FullRetentionRuntime))
+	{
+		return false;
+	}
+	TestEqual(TEXT("explicit full retention wins"), FindUnit(FullRetentionRuntime, WearerId)->Armor, 301);
+	TestTrue(TEXT("explicit retention token is consumed"), FullRetentionRuntime.RetainArmorAtNextPartyPhaseUnitIds.IsEmpty());
 	return true;
 }
 

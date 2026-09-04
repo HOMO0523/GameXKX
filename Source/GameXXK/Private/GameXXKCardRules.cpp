@@ -1352,6 +1352,32 @@ namespace
 		return true;
 	}
 
+	FGameXXKEquipmentBattleEffectRuntime* FindEquipmentEffectById(
+		FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId,
+		const FName EffectId)
+	{
+		return Runtime.EquipmentEffects.FindByPredicate([SourceUnitId, EffectId](const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime)
+		{
+			return EffectRuntime.SourceCharacterId == SourceUnitId
+				&& EffectRuntime.ActiveEffect.SourceCharacterId == SourceUnitId
+				&& EffectRuntime.ActiveEffect.EffectId == EffectId;
+		});
+	}
+
+	const FGameXXKEquipmentBattleEffectRuntime* FindEquipmentEffectById(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FName SourceUnitId,
+		const FName EffectId)
+	{
+		return Runtime.EquipmentEffects.FindByPredicate([SourceUnitId, EffectId](const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime)
+		{
+			return EffectRuntime.SourceCharacterId == SourceUnitId
+				&& EffectRuntime.ActiveEffect.SourceCharacterId == SourceUnitId
+				&& EffectRuntime.ActiveEffect.EffectId == EffectId;
+		});
+	}
+
 	bool ClearArmorAtSidePhaseStart(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const EGameXXKCardTargetSide Side,
@@ -1392,6 +1418,22 @@ namespace
 						return false;
 					}
 					Unit.Armor /= 2;
+					continue;
+				}
+			}
+			if (Side == EGameXXKCardTargetSide::Party)
+			{
+				const FGameXXKEquipmentBattleEffectRuntime* XuanJiaFour = FindEquipmentEffectById(
+					InOutRuntime,
+					Unit.UnitId,
+					TEXT("Set.XuanJia.4"));
+				if (XuanJiaFour)
+				{
+					Unit.Armor = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(FMath::Max(0, Unit.Armor))
+							* XuanJiaFour->ActiveEffect.Magnitude / 10000,
+						0,
+						MAX_int32));
 					continue;
 				}
 			}
