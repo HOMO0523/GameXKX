@@ -369,4 +369,15 @@ namespace GameXXKCardRules
 		int32 RequestedDamage,
 		FGameXXKCardDamageResult& OutResult,
 		FString* OutError = nullptr);
+
+#if WITH_DEV_AUTOMATION_TESTS
+	/** Focused terrain-payload seam; bypasses active-card selection while preserving production resolution. */
+	GAMEXXK_API bool ResolveTerrainBenefitForTest(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName SourceUnitId,
+		EGameXXKCardTerrain Terrain,
+		int32 Repetitions,
+		FGameXXKCardPlayResult& OutResult,
+		FString* OutError = nullptr);
+#endif
 }

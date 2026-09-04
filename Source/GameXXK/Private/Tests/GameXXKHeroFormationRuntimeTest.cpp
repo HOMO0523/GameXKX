@@ -2,6 +2,7 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCardText.h"
+#include "GameXXKCombatScalingRules.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -51,7 +52,7 @@ namespace GameXXKHeroFormationRuntimeTest
 		Unit.HP = Side == EGameXXKCardTargetSide::Party ? (UnitId == HeroId ? 60 : 50) : 5000;
 		Unit.MaxHP = Side == EGameXXKCardTargetSide::Party ? 100 : 5000;
 		Unit.Attack = UnitId == HeroId ? 10 : 8;
-		Unit.Defense = 0;
+		Unit.Defense = UnitId == HeroId ? 20 : 0;
 		Unit.Armor = 0;
 		Unit.Mana = Side == EGameXXKCardTargetSide::Party ? (UnitId == HeroId ? 30 : 20) : 0;
 		Unit.MaxMana = Side == EGameXXKCardTargetSide::Party ? 100 : 0;
@@ -221,11 +222,23 @@ namespace GameXXKHeroFormationRuntimeTest
 			return;
 		}
 
-		Test.TestEqual(FString::Printf(TEXT("%s Plain Burn"), *Context), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), Terrain == EGameXXKCardTerrain::Plain ? 2 * Repetitions : 0);
-		Test.TestEqual(FString::Printf(TEXT("%s Cliff Vulnerability"), *Context), Status(Runtime, EnemyAId, EGameXXKCardStatus::Vulnerability), Terrain == EGameXXKCardTerrain::Cliff ? FMath::Min(5, 2 * Repetitions) : 0);
-		Test.TestEqual(FString::Printf(TEXT("%s Cliff Mark"), *Context), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), Terrain == EGameXXKCardTerrain::Cliff ? FMath::Min(5, Repetitions) : 0);
-		Test.TestEqual(FString::Printf(TEXT("%s Forest Hero healing"), *Context), Hero->HP, 60 + (Terrain == EGameXXKCardTerrain::Forest ? 4 * Repetitions : 0));
-		Test.TestEqual(FString::Printf(TEXT("%s Forest ally healing"), *Context), Ally->HP, 50 + (Terrain == EGameXXKCardTerrain::Forest ? 4 * Repetitions : 0));
+		const int32 BurnPerBenefit = FGameXXKCombatScalingRules::ResolveDotAddition(
+			2,
+			EGameXXKCardQuality::Common,
+			Runtime.TeamMaxLevelSnapshot);
+		const int32 HealingPerBenefit = FGameXXKCombatScalingRules::ResolveMedicineHealing(
+			10,
+			0,
+			EGameXXKCardQuality::Common,
+			Runtime.TeamMaxLevelSnapshot);
+		for (const FName EnemyId : {EnemyAId, EnemyBId})
+		{
+			Test.TestEqual(FString::Printf(TEXT("%s Plain Burn"), *Context), Status(Runtime, EnemyId, EGameXXKCardStatus::Burn), Terrain == EGameXXKCardTerrain::Plain ? BurnPerBenefit * Repetitions : 0);
+			Test.TestEqual(FString::Printf(TEXT("%s Cliff Vulnerability"), *Context), Status(Runtime, EnemyId, EGameXXKCardStatus::Vulnerability), Terrain == EGameXXKCardTerrain::Cliff ? FMath::Min(5, 2 * Repetitions) : 0);
+			Test.TestEqual(FString::Printf(TEXT("%s Cliff Mark"), *Context), Status(Runtime, EnemyId, EGameXXKCardStatus::Mark), Terrain == EGameXXKCardTerrain::Cliff ? FMath::Min(5, Repetitions) : 0);
+		}
+		Test.TestEqual(FString::Printf(TEXT("%s Forest Hero healing"), *Context), Hero->HP, 60 + (Terrain == EGameXXKCardTerrain::Forest ? HealingPerBenefit * Repetitions : 0));
+		Test.TestEqual(FString::Printf(TEXT("%s Forest ally healing"), *Context), Ally->HP, 50 + (Terrain == EGameXXKCardTerrain::Forest ? HealingPerBenefit * Repetitions : 0));
 		const bool bWater = Terrain == EGameXXKCardTerrain::WaterShore || Terrain == EGameXXKCardTerrain::Ferry;
 		Test.TestEqual(FString::Printf(TEXT("%s water Hero Mana"), *Context), Hero->Mana, OwnerManaAfterCost + (bWater ? 3 * Repetitions : 0));
 		Test.TestEqual(FString::Printf(TEXT("%s water ally Mana"), *Context), Ally->Mana, 20 + (bWater ? 3 * Repetitions : 0));
@@ -400,12 +413,14 @@ bool FGameXXKHeroFormationListenerTest::RunTest(const FString& Parameters)
 	}
 	if (Resolve(*this, Runtime, TEXT("Active.1"), EnemyAId, Result, TEXT("first actual terrain benefit")))
 	{
-		TestEqual(TEXT("the next benefit has exactly its quality-authored total count"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2 * (QualityIndex + 2));
+		const int32 BurnPerBenefit = FGameXXKCombatScalingRules::ResolveDotAddition(2, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
+		TestEqual(TEXT("the next benefit has exactly its quality-authored total count"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), BurnPerBenefit * (QualityIndex + 2));
 		TestEqual(TEXT("one terrain benefit consumes the override"), Runtime.Modifiers.Num(), 0);
 	}
 	if (Resolve(*this, Runtime, TEXT("Active.2"), EnemyAId, Result, TEXT("later ordinary terrain benefit")))
 	{
-		TestEqual(TEXT("the following benefit returns to its ordinary one trigger"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2 * (QualityIndex + 3));
+		const int32 BurnPerBenefit = FGameXXKCombatScalingRules::ResolveDotAddition(2, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
+		TestEqual(TEXT("the following benefit returns to its ordinary one trigger"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), BurnPerBenefit * (QualityIndex + 3));
 	}
 	}
 	return true;
@@ -500,11 +515,13 @@ bool FGameXXKHeroFormationLiuHeTest::RunTest(const FString& Parameters)
 	{
 		return true;
 	}
-	TestEqual(TEXT("LiuHe fixed Plain adds Burn2"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), 2);
+	const int32 BurnPerBenefit = FGameXXKCombatScalingRules::ResolveDotAddition(2, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
+	const int32 HealingPerBenefit = FGameXXKCombatScalingRules::ResolveMedicineHealing(10, 0, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
+	TestEqual(TEXT("LiuHe fixed Plain adds its scaled Burn"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Burn), BurnPerBenefit);
 	TestEqual(TEXT("LiuHe fixed Cliff adds Vulnerability2"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Vulnerability), 2);
 	TestEqual(TEXT("LiuHe fixed Cliff adds Mark1"), Status(Runtime, EnemyAId, EGameXXKCardStatus::Mark), 1);
-	TestEqual(TEXT("LiuHe fixed Forest heals Hero4"), FindUnit(Runtime, HeroId)->HP, 64);
-	TestEqual(TEXT("LiuHe fixed Forest heals ally4"), FindUnit(Runtime, AllyId)->HP, 54);
+	TestEqual(TEXT("LiuHe fixed Forest heals the Hero"), FindUnit(Runtime, HeroId)->HP, 60 + HealingPerBenefit);
+	TestEqual(TEXT("LiuHe fixed Forest heals the ally"), FindUnit(Runtime, AllyId)->HP, 50 + HealingPerBenefit);
 	TestEqual(TEXT("LiuHe fixed Water grants Hero Mana3 after cost"), FindUnit(Runtime, HeroId)->Mana, 27);
 	TestEqual(TEXT("LiuHe fixed Water grants ally Mana3"), FindUnit(Runtime, AllyId)->Mana, 23);
 	TestEqual(TEXT("LiuHe Village plus Cave grants Hero Armor12"), FindUnit(Runtime, HeroId)->Armor, 12);

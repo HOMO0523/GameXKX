@@ -6488,6 +6488,55 @@ namespace
 		return true;
 	}
 
+	bool GrantDotCoefficientAndRecord(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName SourceUnitId,
+		FGameXXKCardCombatUnit& InOutTarget,
+		const EGameXXKCardStatus Status,
+		const int32 BaseCoefficient,
+		const EGameXXKCardQuality Quality,
+		FGameXXKCardPlayResult* InOutResult,
+		FString& OutError)
+	{
+		if (!IsDamageOverTimeStatus(Status)
+			|| BaseCoefficient <= 0
+			|| FGameXXKCombatScalingRules::GetQualityPercent(Quality) <= 0)
+		{
+			OutError = TEXT("A terrain DOT payload requires a valid reservoir, coefficient, and quality.");
+			return false;
+		}
+		const int32 Before = GameXXKCardRules::GetCombatStatusStacks(InOutTarget, Status);
+		const int32 Applied = GameXXKCardRules::AddDotFromCoefficient(
+			InOutRuntime,
+			InOutTarget.UnitId,
+			Status,
+			BaseCoefficient,
+			Quality);
+		if (Applied <= 0)
+		{
+			return true;
+		}
+		if (!ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
+			InOutRuntime,
+			InOutTarget,
+			SourceUnitId,
+			InOutResult,
+			&OutError))
+		{
+			return false;
+		}
+		if (InOutResult)
+		{
+			FGameXXKCardStatusChangeResult& Change = InOutResult->StatusChanges.AddDefaulted_GetRef();
+			Change.TargetUnitId = InOutTarget.UnitId;
+			Change.Status = Status;
+			Change.AppliedStacks = FMath::Max(
+				0,
+				GameXXKCardRules::GetCombatStatusStacks(InOutTarget, Status) - Before);
+		}
+		return true;
+	}
+
 	bool GrantStatusFromHealerFormula(
 		FGameXXKCardBattleRuntime& Runtime, FGameXXKCardCombatUnit& Target, EGameXXKCardStatus Status,
 		int32 Magnitude, FString& OutError, FGameXXKCardPlayResult* Result = nullptr, FName SourceUnitId = NAME_None)
@@ -9933,46 +9982,84 @@ namespace
 			{
 			case EGameXXKCardTerrain::Plain:
 			{
-				FGameXXKCardCombatUnit* Target = FindLivingTerrainEnemyAnchor(
-					InOutRuntime,
-					SourceInstance.OwnerUnitId,
-					PreferredEnemyTargetUnitId);
-				if (Target && !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Burn, 2, OutError, InOutResult, SourceInstance.OwnerUnitId))
+				for (FGameXXKCardCombatUnit& Target : InOutRuntime.Units)
 				{
-					return false;
+					if (Target.bLiving
+						&& Target.Side != Owner->Side
+						&& !GrantDotCoefficientAndRecord(
+							InOutRuntime,
+							SourceInstance.OwnerUnitId,
+							Target,
+							EGameXXKCardStatus::Burn,
+							2,
+							EGameXXKCardQuality::Common,
+							InOutResult,
+							OutError))
+					{
+						return false;
+					}
 				}
 				break;
 			}
 			case EGameXXKCardTerrain::Cliff:
 			{
-				FGameXXKCardCombatUnit* Target = FindLivingTerrainEnemyAnchor(
-					InOutRuntime,
-					SourceInstance.OwnerUnitId,
-					PreferredEnemyTargetUnitId);
-				if (Target
-					&& (!GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Vulnerability, 2, OutError, InOutResult, SourceInstance.OwnerUnitId)
-						|| !GrantStatusFromCardEffect(InOutRuntime, *Target, EGameXXKCardStatus::Mark, 1, OutError, InOutResult, SourceInstance.OwnerUnitId)))
+				for (FGameXXKCardCombatUnit& Target : InOutRuntime.Units)
 				{
-					return false;
+					if (!Target.bLiving || Target.Side == Owner->Side)
+					{
+						continue;
+					}
+					for (const TPair<EGameXXKCardStatus, int32>& Payload : {
+						TPair<EGameXXKCardStatus, int32>(EGameXXKCardStatus::Vulnerability, 2),
+						TPair<EGameXXKCardStatus, int32>(EGameXXKCardStatus::Mark, 1)})
+					{
+						const int32 Before = GameXXKCardRules::GetCombatStatusStacks(Target, Payload.Key);
+						if (!GrantStatusFromCardEffect(
+							InOutRuntime,
+							Target,
+							Payload.Key,
+							Payload.Value,
+							OutError,
+							InOutResult,
+							SourceInstance.OwnerUnitId))
+						{
+							return false;
+						}
+						const int32 Applied = GameXXKCardRules::GetCombatStatusStacks(Target, Payload.Key) - Before;
+						if (InOutResult && Applied > 0)
+						{
+							FGameXXKCardStatusChangeResult& Change = InOutResult->StatusChanges.AddDefaulted_GetRef();
+							Change.TargetUnitId = Target.UnitId;
+							Change.Status = Payload.Key;
+							Change.AppliedStacks = Applied;
+						}
+					}
 				}
 				break;
 			}
 			case EGameXXKCardTerrain::Forest:
+			{
+				const int32 Healing = FGameXXKCombatScalingRules::ResolveMedicineHealing(
+					10,
+					0,
+					EGameXXKCardQuality::Common,
+					InOutRuntime.TeamMaxLevelSnapshot);
 				for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
 						if (InOutResult)
 						{
-							ApplyAndRecordHealing(*InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+							ApplyAndRecordHealing(*InOutResult, SourceInstance.OwnerUnitId, Candidate, Healing);
 						}
 						else
 						{
-							GameXXKCardRules::HealCombatUnit(Candidate, 4);
+							GameXXKCardRules::HealCombatUnit(Candidate, Healing);
 						}
 					}
 				}
 				break;
+			}
 			case EGameXXKCardTerrain::WaterShore:
 			case EGameXXKCardTerrain::Ferry:
 				for (FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
@@ -9986,6 +10073,7 @@ namespace
 				}
 				break;
 			case EGameXXKCardTerrain::Village:
+			{
 				GameXXKCardRules::RemoveDefeatedPartyOwnerCards(InOutRuntime.Deck, InOutRuntime.Units);
 				if (!GameXXKCardRules::DrawCards(InOutRuntime.Deck, 1, 0, &OutError))
 				{
@@ -9995,17 +10083,22 @@ namespace
 				{
 					if (Candidate.bLiving && Candidate.Side == Owner->Side)
 					{
+						const int32 Armor = ResolveDefensePercentArmorAmount(
+							*Owner,
+							20,
+							EGameXXKCardQuality::Common);
 						if (InOutResult)
 						{
-							ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, Candidate, 4);
+							ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, Candidate, Armor);
 						}
 						else
 						{
-							GameXXKCardRules::AddCombatArmor(Candidate, 4);
+							GameXXKCardRules::AddCombatArmor(Candidate, Armor);
 						}
 					}
 				}
 				break;
+			}
 			case EGameXXKCardTerrain::Cave:
 			{
 				TArray<FName> AllyUnitIds;
@@ -10031,11 +10124,17 @@ namespace
 					}
 					if (InOutResult)
 					{
-						ApplyAndRecordArmor(*InOutResult, SourceInstance.OwnerUnitId, *Ally, 8);
+						ApplyAndRecordArmor(
+							*InOutResult,
+							SourceInstance.OwnerUnitId,
+							*Ally,
+							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common));
 					}
 					else
 					{
-						GameXXKCardRules::AddCombatArmor(*Ally, 8);
+						GameXXKCardRules::AddCombatArmor(
+							*Ally,
+							ResolveDefensePercentArmorAmount(*Owner, 40, EGameXXKCardQuality::Common));
 					}
 					if (!RegisterPartyReactionUses(
 						InOutRuntime,
@@ -17168,3 +17267,41 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 	OutEndPhaseDamageResults = MoveTemp(NewEndPhaseDamageResults);
 	return true;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+bool GameXXKCardRules::ResolveTerrainBenefitForTest(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FName SourceUnitId,
+	const EGameXXKCardTerrain Terrain,
+	const int32 Repetitions,
+	FGameXXKCardPlayResult& OutResult,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutResult = FGameXXKCardPlayResult();
+	OutResult.OwnerUnitId = SourceUnitId;
+	OutResult.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+	FGameXXKCardInstance SourceInstance;
+	SourceInstance.InstanceId = TEXT("Test.Terrain.Source");
+	SourceInstance.CardId = TEXT("Hero.Formation.GuanShiLuoZi");
+	SourceInstance.CurrentQuality = EGameXXKCardQuality::Common;
+	SourceInstance.OwnerUnitId = SourceUnitId;
+	FString Error;
+	if (!ResolveTerrainBenefit(
+		InOutRuntime,
+		SourceInstance,
+		NAME_None,
+		Terrain,
+		Repetitions,
+		EGameXXKCardResolutionOrigin::Equipment,
+		&OutResult,
+		Error))
+	{
+		return SetFailure(OutError, Error);
+	}
+	return true;
+}
+#endif

@@ -2,6 +2,7 @@
 
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCombatScalingRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -90,6 +91,7 @@ namespace GameXXKFormationMasterPartnerRuntimeTest
 		Unit.HP = HP;
 		Unit.MaxHP = Side == EGameXXKCardTargetSide::Enemy ? 1000 : 100;
 		Unit.Attack = 20;
+		Unit.Defense = Unit.UnitId == FName(TEXT("Formation")) ? 20 : 0;
 		Unit.Mana = Mana;
 		Unit.MaxMana = 100;
 		Unit.StableSortOrder = StableSortOrder;
@@ -296,9 +298,11 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 			FGameXXKCardCombatUnit* Formation = Unit(Runtime, TEXT("Formation"));
 			FGameXXKCardCombatUnit* Ally = Unit(Runtime, TEXT("Ally"));
 			FGameXXKCardCombatUnit* Enemy = Unit(Runtime, TEXT("Enemy"));
+			const int32 BurnPerBenefit = FGameXXKCombatScalingRules::ResolveDotAddition(2, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
+			const int32 HealingPerBenefit = FGameXXKCombatScalingRules::ResolveMedicineHealing(10, 0, EGameXXKCardQuality::Common, Runtime.TeamMaxLevelSnapshot);
 			if (Case.Destination == EGameXXKCardTerrain::Plain)
 			{
-				TestEqual(Context + TEXT(" resolves one Plain Burn benefit"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), 2);
+				TestEqual(Context + TEXT(" resolves one Plain Burn benefit"), GameXXKCardRules::GetCombatStatusStacks(*Enemy, EGameXXKCardStatus::Burn), BurnPerBenefit);
 			}
 			else if (Case.Destination == EGameXXKCardTerrain::Cliff)
 			{
@@ -307,19 +311,19 @@ bool FGameXXKFormationMasterSwitchRuntimeTest::RunTest(const FString& Parameters
 			}
 			else if (Case.Destination == EGameXXKCardTerrain::Forest)
 			{
-				TestEqual(Context + TEXT(" heals the formation owner by four"), Formation->HP, 84);
-				TestEqual(Context + TEXT(" heals every ally by four"), Ally->HP, 84);
+				TestEqual(Context + TEXT(" heals the formation owner"), Formation->HP, 80 + HealingPerBenefit);
+				TestEqual(Context + TEXT(" heals every ally"), Ally->HP, 80 + HealingPerBenefit);
 				TestEqual(Context + TEXT(" audits both Forest healing attempts"), Result.HealingResults.Num(), 2);
 				if (Result.HealingResults.Num() == 2)
 				{
 					TestEqual(Context + TEXT(" keeps the Formation source on its Forest packet"), Result.HealingResults[0].SourceUnitId, FName(TEXT("Formation")));
 					TestEqual(Context + TEXT(" targets the Formation owner in its first Forest packet"), Result.HealingResults[0].TargetUnitId, FName(TEXT("Formation")));
-					TestEqual(Context + TEXT(" requests four healing for the Formation owner"), Result.HealingResults[0].RequestedHealing, 4);
-					TestEqual(Context + TEXT(" restores four health to the Formation owner"), Result.HealingResults[0].EffectiveHealing, 4);
+					TestEqual(Context + TEXT(" requests scaled healing for the Formation owner"), Result.HealingResults[0].RequestedHealing, HealingPerBenefit);
+					TestEqual(Context + TEXT(" restores scaled health to the Formation owner"), Result.HealingResults[0].EffectiveHealing, HealingPerBenefit);
 					TestEqual(Context + TEXT(" keeps the Formation source on the ally Forest packet"), Result.HealingResults[1].SourceUnitId, FName(TEXT("Formation")));
 					TestEqual(Context + TEXT(" targets the ally in its second Forest packet"), Result.HealingResults[1].TargetUnitId, FName(TEXT("Ally")));
-					TestEqual(Context + TEXT(" requests four healing for the ally"), Result.HealingResults[1].RequestedHealing, 4);
-					TestEqual(Context + TEXT(" restores four health to the ally"), Result.HealingResults[1].EffectiveHealing, 4);
+					TestEqual(Context + TEXT(" requests scaled healing for the ally"), Result.HealingResults[1].RequestedHealing, HealingPerBenefit);
+					TestEqual(Context + TEXT(" restores scaled health to the ally"), Result.HealingResults[1].EffectiveHealing, HealingPerBenefit);
 				}
 			}
 			else if (Case.Destination == EGameXXKCardTerrain::WaterShore)
@@ -413,8 +417,12 @@ bool FGameXXKFormationMasterBenefitRuntimeTest::RunTest(const FString& Parameter
 		{
 			continue;
 		}
-		const int32 ExpectedBurn = (CardId == TEXT("Profession.FormationMaster.DiMaiJieLi")
-			|| CardId == TEXT("Profession.FormationMaster.SiXiangLianHuan")) ? 4 : 2;
+		const int32 BenefitCount = (CardId == TEXT("Profession.FormationMaster.DiMaiJieLi")
+			|| CardId == TEXT("Profession.FormationMaster.SiXiangLianHuan")) ? 2 : 1;
+		const int32 ExpectedBurn = FGameXXKCombatScalingRules::ResolveDotAddition(
+			2,
+			EGameXXKCardQuality::Common,
+			Runtime.TeamMaxLevelSnapshot) * BenefitCount;
 		TestEqual(FString::Printf(TEXT("%s resolves its declared Plain benefit count"), *CardId.ToString()),
 			GameXXKCardRules::GetCombatStatusStacks(*Unit(Runtime, TEXT("Enemy")), EGameXXKCardStatus::Burn),
 			ExpectedBurn);
