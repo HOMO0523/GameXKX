@@ -70,9 +70,15 @@ void UGameXXKBattleUnitStatusEffectsWidget::NativeConstruct()
 
 void UGameXXKBattleUnitStatusEffectsWidget::SetStatusEffects(
 	const int32 InArmor,
-	const TArray<FGameXXKCardStatusStack>& InStatuses)
+	const TArray<FGameXXKCardStatusStack>& InStatuses,
+	const int32 CurrentEnemyPhase,
+	const int32 TotalEnemyPhases)
 {
-	TArray<FGameXXKBattleStatusBadgeModel> NextBadgeModels = BuildBadgeModels(InArmor, InStatuses);
+	TArray<FGameXXKBattleStatusBadgeModel> NextBadgeModels = BuildBadgeModels(
+		InArmor,
+		InStatuses,
+		CurrentEnemyPhase,
+		TotalEnemyPhases);
 	if (AreBadgeModelsEqual(CachedBadgeModels, NextBadgeModels))
 	{
 		return;
@@ -115,9 +121,23 @@ FString UGameXXKBattleUnitStatusEffectsWidget::BuildStatusText(const TArray<FGam
 
 TArray<FGameXXKBattleStatusBadgeModel> UGameXXKBattleUnitStatusEffectsWidget::BuildBadgeModels(
 	const int32 InArmor,
-	const TArray<FGameXXKCardStatusStack>& InStatuses)
+	const TArray<FGameXXKCardStatusStack>& InStatuses,
+	const int32 CurrentEnemyPhase,
+	const int32 TotalEnemyPhases)
 {
 	TArray<FGameXXKBattleStatusBadgeModel> Result;
+	for (int32 PhaseNumber = FMath::Clamp(TotalEnemyPhases, 1, 3);
+		PhaseNumber > FMath::Clamp(CurrentEnemyPhase, 1, 3);
+		--PhaseNumber)
+	{
+		FGameXXKBattleStatusBadgeModel& PhaseBadge = Result.AddDefaulted_GetRef();
+		PhaseBadge.Style = FGameXXKBattleStatusIconStyle::ResolveEnemyPhaseIconStyle(PhaseNumber);
+		PhaseBadge.Stacks = PhaseNumber;
+		PhaseBadge.Tooltip = FString::Printf(
+			TEXT("阶段印记 %d\n%s"),
+			PhaseNumber,
+			*PhaseBadge.Style.Tooltip);
+	}
 	if (InArmor > 0)
 	{
 		FGameXXKBattleStatusBadgeModel& ArmorBadge = Result.AddDefaulted_GetRef();

@@ -16,11 +16,19 @@ class GAMEXXK_API UGameXXKBattleUnitStatusEffectsWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	void SetStatusEffects(int32 InArmor, const TArray<FGameXXKCardStatusStack>& InStatuses);
+	void SetStatusEffects(
+		int32 InArmor,
+		const TArray<FGameXXKCardStatusStack>& InStatuses,
+		int32 CurrentEnemyPhase = 1,
+		int32 TotalEnemyPhases = 1);
 	bool PrepareForScreenSpaceEmbedding();
 	bool HasRuntimeWidgetTreeForTest() const;
 	static FString BuildStatusText(const TArray<FGameXXKCardStatusStack>& InStatuses);
-	static TArray<FGameXXKBattleStatusBadgeModel> BuildBadgeModels(int32 InArmor, const TArray<FGameXXKCardStatusStack>& InStatuses);
+	static TArray<FGameXXKBattleStatusBadgeModel> BuildBadgeModels(
+		int32 InArmor,
+		const TArray<FGameXXKCardStatusStack>& InStatuses,
+		int32 CurrentEnemyPhase = 1,
+		int32 TotalEnemyPhases = 1);
 
 	/** Read-only rendered-badge seams used by the real-PIE HUD probe. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))

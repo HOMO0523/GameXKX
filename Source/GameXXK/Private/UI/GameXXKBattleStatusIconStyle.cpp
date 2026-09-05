@@ -85,9 +85,22 @@ FGameXXKBattleStatusIconStyle FGameXXKBattleStatusIconStyle::ResolveArmorIconSty
 	return MakeStyle(
 		TEXT("ArmorShield"),
 		TEXT("护甲"),
-		TEXT("优先抵挡直接攻击伤害；所属阵营回合开始时清空。"),
+		TEXT("优先抵挡直接攻击；所属阵营回合开始时通常清空。"),
 		FLinearColor(0.40f, 0.48f, 0.53f, 1.0f),
 		1000);
+}
+
+FGameXXKBattleStatusIconStyle FGameXXKBattleStatusIconStyle::ResolveEnemyPhaseIconStyle(const int32 PhaseNumber)
+{
+	FGameXXKBattleStatusIconStyle Style;
+	Style.IconId = FName(*FString::Printf(TEXT("EnemyPhase.%d"), PhaseNumber));
+	Style.DisplayName = TEXT("阶段印记");
+	Style.Tooltip = TEXT("生命降至1%时消耗，进入下一阶段并回满生命。");
+	Style.Tint = FLinearColor(0.43f, 0.22f, 0.18f, 1.0f);
+	Style.Priority = 1400 + PhaseNumber;
+	Style.FallbackGlyph = PhaseNumber == 3 ? TEXT("三") : TEXT("二");
+	Style.bUsesPaperInkFallback = true;
+	return Style;
 }
 
 FGameXXKBattleStatusIconStyle FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(const EGameXXKCardStatus Status)
@@ -135,17 +148,17 @@ FGameXXKBattleStatusIconStyle FGameXXKBattleStatusIconStyle::ResolveStatusIconSt
 	case EGameXXKCardStatus::Weak:
 		return MakeStyle(TEXT("WeakBrokenBlade"), TEXT("虚弱"), TEXT("直接攻击伤害降低50%；回合结束减少1层。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 910);
 	case EGameXXKCardStatus::Wealth:
-		return MakeStyle(TEXT("WealthCoin"), TEXT("财富"), TEXT("钱潮冲击每层伤害+15；散财疗伤最多消耗3层，每层回复6%最大生命。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 550);
+		return MakeStyle(TEXT("WealthCoin"), TEXT("财富"), TEXT("金钱鼠的资源，最多8层；部分意图会读取或消耗。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 550);
 	case EGameXXKCardStatus::Rage:
-		return MakeStyle(TEXT("RageFlame"), TEXT("狂怒"), TEXT("受到玩家牌的生命伤害时增加1层；怒獠每层伤害+20。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 890);
+		return MakeStyle(TEXT("RageFlame"), TEXT("狂怒"), TEXT("每张造成生命伤害的玩家牌增加1层，最多5层。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 890);
 	case EGameXXKCardStatus::Prey:
-		return MakeStyle(TEXT("PreyTargetEye"), TEXT("猎物"), TEXT("老虎锁定的目标；虎扑将攻击该单位。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 900);
+		return MakeStyle(TEXT("PreyTargetEye"), TEXT("猎物"), TEXT("老虎锁定的目标；阶段牌优先攻击该单位。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 900);
 	case EGameXXKCardStatus::Charge:
 		return MakeStyle(TEXT("ChargeSpiralHorn"), TEXT("蓄力"), TEXT("层数表示剩余蓄力回合；归零后执行已准备的意图。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 880);
 	case EGameXXKCardStatus::Counter:
-		return MakeStyle(TEXT("CounterHookBlade"), TEXT("反击"), TEXT("敌方单体攻击牌结算后，造成100%攻击并消耗1次。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 870);
+		return MakeStyle(TEXT("CounterHookBlade"), TEXT("反击"), TEXT("受到单体攻击牌后，造成攻击伤害并消耗1层。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 870);
 	case EGameXXKCardStatus::Block:
-		return MakeStyle(TEXT("BlockShield"), TEXT("格挡"), TEXT("敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 860);
+		return MakeStyle(TEXT("BlockShield"), TEXT("格挡"), TEXT("受到单体攻击牌后，造成攻击＋当前护甲伤害并消耗1层。"), FLinearColor(0.39f, 0.48f, 0.50f, 1.0f), 860);
 	case EGameXXKCardStatus::Invalid:
 	case EGameXXKCardStatus::None:
 	default:

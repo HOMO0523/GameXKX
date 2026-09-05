@@ -36,6 +36,8 @@ bool UGameXXKBattleUnitHudWidget::MatchesUnitView(const FGameXXKBattleUnitHudVie
 		|| CachedView.CurrentMana != InView.CurrentMana
 		|| CachedView.MaxMana != InView.MaxMana
 		|| CachedView.Armor != InView.Armor
+		|| CachedView.CurrentEnemyPhase != InView.CurrentEnemyPhase
+		|| CachedView.TotalEnemyPhases != InView.TotalEnemyPhases
 		|| !CachedView.DisplayName.ToString().Equals(InView.DisplayName.ToString(), ESearchCase::CaseSensitive))
 	{
 		return false;
@@ -151,6 +153,10 @@ void UGameXXKBattleUnitHudWidget::RefreshFromView()
 		CachedView.CurrentMana,
 		CachedView.MaxMana,
 		CachedView.bShowMana && CachedView.Side == EGameXXKCardTargetSide::Party);
-	StatusEffectsWidget->SetStatusEffects(CachedView.Armor, CachedView.Statuses);
+	StatusEffectsWidget->SetStatusEffects(
+		CachedView.Armor,
+		CachedView.Statuses,
+		CachedView.CurrentEnemyPhase,
+		CachedView.TotalEnemyPhases);
 	SetVisibility(CachedView.bLiving ? GetRootHitTestVisibilityForTest() : ESlateVisibility::Collapsed);
 }

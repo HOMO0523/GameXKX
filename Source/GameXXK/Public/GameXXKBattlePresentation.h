@@ -26,6 +26,8 @@ struct GAMEXXK_API FGameXXKBattleUnitHudView
 	int32 CurrentMana = 0;
 	int32 MaxMana = 0;
 	int32 Armor = 0;
+	int32 CurrentEnemyPhase = 1;
+	int32 TotalEnemyPhases = 1;
 	TArray<FGameXXKCardStatusStack> Statuses;
 };
 

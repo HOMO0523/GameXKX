@@ -24,6 +24,7 @@ struct GAMEXXK_API FGameXXKBattleStatusIconStyle
 	bool bFallback = false;
 
 	static FGameXXKBattleStatusIconStyle ResolveArmorIconStyle();
+	static FGameXXKBattleStatusIconStyle ResolveEnemyPhaseIconStyle(int32 PhaseNumber);
 	static FGameXXKBattleStatusIconStyle ResolveStatusIconStyle(EGameXXKCardStatus Status);
 	static FString DescribeStatusTooltip(const FGameXXKBattleStatusIconStyle& Style, int32 Stacks);
 };

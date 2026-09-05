@@ -94,6 +94,14 @@ bool FGameXXKBattlePresentation::BuildUnitHudView(
 	OutView.CurrentMana = Unit->Mana;
 	OutView.MaxMana = Unit->MaxMana;
 	OutView.Armor = Unit->Armor;
+	if (Unit->Side == EGameXXKCardTargetSide::Enemy)
+	{
+		if (const FGameXXKEnemyBattleState* EnemyState = Runtime.EnemyStates.Find(Unit->UnitId))
+		{
+			OutView.CurrentEnemyPhase = EnemyState->CurrentPhase;
+			OutView.TotalEnemyPhases = EnemyState->TotalPhases;
+		}
+	}
 	OutView.Statuses = Unit->Statuses;
 	return true;
 }

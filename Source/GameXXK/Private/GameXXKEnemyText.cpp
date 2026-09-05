@@ -3,25 +3,36 @@
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKCardText.h"
+#include "GameXXKCombatScalingRules.h"
 #include "GameXXKMVPRules.h"
 
 namespace
 {
-	FString SourceName(const FGameXXKRuntimeState& State, const FGameXXKCardEnemyIntent& Intent)
-	{
-		const FGameXXKBattleRuntimeUnit* Source = State.ActiveBattleEnemies.FindByPredicate([&Intent](const FGameXXKBattleRuntimeUnit& Unit)
-		{
-			return Unit.Id == Intent.SourceUnitId;
-		});
-		return Source && !Source->DisplayName.IsEmpty() ? Source->DisplayName.ToString() : Intent.SourceUnitId.ToString();
-	}
-
 	FString SkillName(const FGameXXKCardEnemyIntent& Intent)
 	{
 		return Intent.CardDisplayName.IsEmpty() ? TEXT("攻击") : Intent.CardDisplayName;
 	}
 
-	FString TargetLabel(const EGameXXKEnemyIntentTargetRule Rule, const FGameXXKCardEnemyIntent& Intent)
+	FString SlotLabel(
+		const FGameXXKRuntimeState& State,
+		const FName UnitId)
+	{
+		const FGameXXKCardCombatUnit* Unit = State.CardRun.ActiveBattle.Units.FindByPredicate([UnitId](const FGameXXKCardCombatUnit& Candidate)
+		{
+			return Candidate.UnitId == UnitId;
+		});
+		return Unit
+			? FGameXXKBattlePresentation::FormatSlotLabel(
+				Unit->Side,
+				FGameXXKBattlePresentation::GetSlotNumber(State.CardRun.ActiveBattle, UnitId))
+			: FString();
+	}
+
+	FString TargetLabel(
+		const FGameXXKRuntimeState& State,
+		const EGameXXKEnemyIntentTargetRule Rule,
+		const TArray<FName>& TargetUnitIds,
+		const FGameXXKCardEnemyIntent& Intent)
 	{
 		switch (Rule)
 		{
@@ -30,8 +41,11 @@ namespace
 		case EGameXXKEnemyIntentTargetRule::AllEnemyAllies: return TEXT("敌方全体");
 		case EGameXXKEnemyIntentTargetRule::LowestHealthEnemyAlly: return TEXT("生命最低的敌方单位");
 		default:
-			return FGameXXKBattlePresentation::FormatSlotLabel(EGameXXKCardTargetSide::Party, Intent.TargetSlotNumber);
+			break;
 		}
+		const FName TargetId = TargetUnitIds.IsEmpty() ? Intent.SuggestedTargetUnitId : TargetUnitIds[0];
+		const FString ResolvedSlot = SlotLabel(State, TargetId);
+		return ResolvedSlot.IsEmpty() ? TEXT("待定目标") : ResolvedSlot;
 	}
 
 	FString Signed(const int32 Value)
@@ -39,86 +53,175 @@ namespace
 		return Value >= 0 ? FString::Printf(TEXT("+%d"), Value) : FString::FromInt(Value);
 	}
 
-	FString FormatEffect(const FGameXXKResolvedEnemyIntentEffect& Effect, const FGameXXKCardEnemyIntent& Intent)
+	int32 FinalGeneratedDamage(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKResolvedEnemyIntentEffect& Effect)
 	{
-		const FString Target = TargetLabel(Effect.TargetRule, Intent);
+		return FGameXXKCombatScalingRules::ScaleByPercentCeil(
+			Effect.Magnitude,
+			State.CardRun.ActiveBattle.EnemyDifficultyDamagePercent);
+	}
+
+	int32 ResolvedMaximumHealthHealing(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKResolvedEnemyIntentEffect& Effect)
+	{
+		if (Effect.TargetUnitIds.IsEmpty())
+		{
+			return 0;
+		}
+		const FGameXXKCardCombatUnit* Target = State.CardRun.ActiveBattle.Units.FindByPredicate([&Effect](const FGameXXKCardCombatUnit& Unit)
+		{
+			return Unit.UnitId == Effect.TargetUnitIds[0];
+		});
+		return Target
+			? static_cast<int32>((static_cast<int64>(Target->MaxHP) * Effect.Magnitude + 99) / 100)
+			: 0;
+	}
+
+	FString CompactEffect(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKResolvedEnemyIntentEffect& Effect)
+	{
 		switch (Effect.Type)
 		{
 		case EGameXXKEnemyIntentEffectType::DirectDamage:
-			return FString::Printf(TEXT("%s：伤害 %d%s"), *Target, Effect.Magnitude,
-				Effect.HitCount > 1 ? *FString::Printf(TEXT(" × %d"), Effect.HitCount) : TEXT(""));
+		{
+			FString Result = Effect.HitCount > 1
+				? FString::Printf(TEXT("%d伤害 × %d"), FinalGeneratedDamage(State, Effect), Effect.HitCount)
+				: FString::Printf(TEXT("%d伤害"), FinalGeneratedDamage(State, Effect));
+			if (Effect.Status != EGameXXKCardStatus::None && Effect.StatusStacks > 0)
+			{
+				Result += FString::Printf(
+					TEXT("；%s%d"),
+					*GameXXKCardText::DescribeStatusName(Effect.Status),
+					Effect.StatusStacks);
+			}
+			return Result;
+		}
 		case EGameXXKEnemyIntentEffectType::AddArmor:
-			return FString::Printf(TEXT("%s：护甲 %s"), *Target, *Signed(Effect.Magnitude));
+		case EGameXXKEnemyIntentEffectType::AddArmorDefensePercent:
+			return FString::Printf(TEXT("%s护甲"), *Signed(Effect.Magnitude));
 		case EGameXXKEnemyIntentEffectType::Heal:
-			return FString::Printf(TEXT("%s：恢复 %d%% 最大生命"), *Target, Effect.Magnitude);
+		case EGameXXKEnemyIntentEffectType::ConsumeWealthForHealing:
+			return FString::Printf(TEXT("回复%d生命"), Effect.Magnitude);
+		case EGameXXKEnemyIntentEffectType::HealMaxHealthPercent:
+			return FString::Printf(TEXT("回复%d生命"), ResolvedMaximumHealthHealing(State, Effect));
 		case EGameXXKEnemyIntentEffectType::ApplyStatus:
-			return FString::Printf(TEXT("%s：%s %d层"), *Target, *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks);
-		case EGameXXKEnemyIntentEffectType::ConsumeSharedQi:
-			return FString::Printf(TEXT("我方共享内力 %s"), *Signed(-FMath::Abs(Effect.Magnitude)));
-		case EGameXXKEnemyIntentEffectType::ModifyAttack:
-			return FString::Printf(TEXT("%s：攻击 %s（本敌方阶段）"), *Target, *Signed(Effect.Magnitude));
-		case EGameXXKEnemyIntentEffectType::ModifyDefense:
-			return FString::Printf(TEXT("%s：防御 %s"), *Target, *Signed(Effect.Magnitude));
-		case EGameXXKEnemyIntentEffectType::ModifySpeed:
-			return FString::Printf(TEXT("%s：速度 %s（下一敌方阶段）"), *Target, *Signed(Effect.Magnitude));
-		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
-			return FString::Printf(TEXT("%s：移除 %d层正面状态"), *Target, Effect.Magnitude);
+			return FString::Printf(TEXT("%s%d"), *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks);
+		case EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty:
+			return FString::Printf(TEXT("下回合气力-%d"), Effect.Magnitude);
 		case EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy:
-			return FString::Printf(TEXT("我方下一张可用牌费用 %s"), *Signed(Effect.Magnitude));
-		case EGameXXKEnemyIntentEffectType::SetCounter:
-			return FString::Printf(TEXT("%s：反击 %d"), *Target, Effect.Magnitude);
-		case EGameXXKEnemyIntentEffectType::SetCharge:
-			return FString::Printf(TEXT("%s：蓄力 %d回合"), *Target, FMath::Max(1, Effect.Magnitude));
+			return FString::Printf(TEXT("下一张牌气力+%d"), Effect.Magnitude);
+		case EGameXXKEnemyIntentEffectType::ModifyAttack:
+			return FString::Printf(TEXT("攻击%s"), *Signed(Effect.Magnitude));
+		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
+			return FString::Printf(TEXT("移除%d层增益"), Effect.Magnitude);
+		case EGameXXKEnemyIntentEffectType::RemoveNegativeStatus:
+			return FString::Printf(TEXT("移除%d层减益"), Effect.Magnitude);
+		case EGameXXKEnemyIntentEffectType::TriggerDamageOverTime:
+			return FString::Printf(TEXT("触发%s%s"), *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.HitCount > 1 ? *FString::Printf(TEXT(" × %d"), Effect.HitCount) : TEXT(""));
+		case EGameXXKEnemyIntentEffectType::RefreshHealingAmplification:
+			return FString::Printf(TEXT("下次卷舌回复+%d%%最大生命"), Effect.Magnitude);
 		default:
-			return TEXT("未识别效果");
+			return FString();
 		}
 	}
 
-	TArray<FString> EffectLines(const FGameXXKCardEnemyIntent& Intent)
+	FString DetailEffect(
+		const FGameXXKRuntimeState& State,
+		const FGameXXKCardEnemyIntent& Intent,
+		const FGameXXKResolvedEnemyIntentEffect& Effect)
 	{
-		TArray<FString> Lines;
-		for (const FGameXXKResolvedEnemyIntentEffect& Effect : Intent.Effects)
+		const FString Target = TargetLabel(State, Effect.TargetRule, Effect.TargetUnitIds, Intent);
+		FString Payload = Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+			? (Effect.HitCount > 1
+				? FString::Printf(TEXT("%d伤害 × %d"), FinalGeneratedDamage(State, Effect), Effect.HitCount)
+				: FString::Printf(TEXT("%d伤害"), FinalGeneratedDamage(State, Effect)))
+			: CompactEffect(State, Effect);
+		if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+			&& Effect.Status != EGameXXKCardStatus::None
+			&& Effect.StatusStacks > 0)
 		{
-			Lines.Add(FormatEffect(Effect, Intent));
+			Payload += FString::Printf(
+				TEXT("；命中附加%s%d"),
+				*GameXXKCardText::DescribeStatusName(Effect.Status),
+				Effect.StatusStacks);
 		}
-		if (Lines.IsEmpty() && Intent.Damage > 0)
-		{
-			Lines.Add(FString::Printf(TEXT("%s：伤害 %d"), *TargetLabel(Intent.TargetRule, Intent), Intent.Damage));
-		}
-		for (const FGameXXKCardStatusStack& Status : Intent.OnHitStatuses)
-		{
-			Lines.Add(FString::Printf(TEXT("命中附加：%s %d层"), *GameXXKCardText::DescribeStatusName(Status.Status), Status.Stacks));
-		}
-		return Lines;
+		return FString::Printf(TEXT("%s：%s"), *Target, *Payload);
+	}
+
+	FString ConditionalNote(const FName IntentId)
+	{
+		if (IntentId == TEXT("Pursuit")) return TEXT("目标有标记时使用强化伤害。");
+		if (IntentId == TEXT("ToxicPursuit") || IntentId == TEXT("Tongue")) return TEXT("目标中毒时使用强化伤害。");
+		if (IntentId == TEXT("BloodPursuit")
+			|| IntentId == TEXT("MountainShakingSweep")
+			|| IntentId == TEXT("BloodBattleNeverRetreats")
+			|| IntentId == TEXT("GroundedPounce")
+			|| IntentId == TEXT("FatalAmbush")) return TEXT("目标流血时获得强化。");
+		if (IntentId == TEXT("BloodClawRend")
+			|| IntentId == TEXT("BloodBattleThroatRend")
+			|| IntentId == TEXT("CorneredBeastPounce")
+			|| IntentId == TEXT("DeathPounce")) return TEXT("目标虚弱时追加伤害。");
+		return FString();
 	}
 }
 
-FString FGameXXKEnemyText::FormatIntentCard(const FGameXXKRuntimeState& State, const FGameXXKCardEnemyIntent& Intent)
+FString FGameXXKEnemyText::FormatIntentCard(
+	const FGameXXKRuntimeState& State,
+	const FGameXXKCardEnemyIntent& Intent)
 {
-	TArray<FString> Lines = {SourceName(State, Intent), SkillName(Intent)};
-	Lines.Append(EffectLines(Intent));
-	return FString::Join(Lines, TEXT("\n"));
+	TArray<FString> Payloads;
+	for (const FGameXXKResolvedEnemyIntentEffect& Effect : Intent.Effects)
+	{
+		const FString Payload = CompactEffect(State, Effect);
+		if (!Payload.IsEmpty())
+		{
+			Payloads.Add(Payload);
+		}
+	}
+	const FString Target = TargetLabel(State, Intent.TargetRule, {}, Intent);
+	return FString::Printf(
+		TEXT("%s\n【%s】\n%s"),
+		*SkillName(Intent),
+		*Target,
+		*FString::Join(Payloads, TEXT("；")));
 }
 
-FString FGameXXKEnemyText::FormatIntentTooltip(const FGameXXKRuntimeState& State, const FGameXXKCardEnemyIntent& Intent)
+FString FGameXXKEnemyText::FormatIntentTooltip(
+	const FGameXXKRuntimeState& State,
+	const FGameXXKCardEnemyIntent& Intent)
 {
-	const FString SourceSlot = FGameXXKBattlePresentation::FormatSlotLabel(EGameXXKCardTargetSide::Enemy, Intent.SourceSlotNumber);
-	const FString TargetSlot = FGameXXKBattlePresentation::FormatSlotLabel(EGameXXKCardTargetSide::Party, Intent.TargetSlotNumber);
-	TArray<FString> Lines = {
-		FString::Printf(TEXT("攻击者：%s · %s"), *SourceSlot, *SourceName(State, Intent)),
-		FString::Printf(TEXT("技能：%s"), *SkillName(Intent)),
-		FString::Printf(TEXT("实际目标：%s"), *TargetSlot)};
-	const TArray<FString> Effects = EffectLines(Intent);
-	for (const FString& Effect : Effects)
+	TArray<FString> Lines;
+	Lines.Add(SkillName(Intent));
+	if (Intent.TotalPhases > 1)
 	{
-		Lines.Add(FString::Printf(TEXT("效果：%s"), *Effect));
+		Lines.Add(FString::Printf(
+			TEXT("阶段：%d/%d%s"),
+			Intent.PhaseNumber,
+			Intent.TotalPhases,
+			Intent.PhaseLabel.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" · %s"), *Intent.PhaseLabel)));
 	}
-	if (Intent.Damage > 0)
+	Lines.Add(FString::Printf(
+		TEXT("对象：%s"),
+		*TargetLabel(State, Intent.TargetRule, {}, Intent)));
+	for (const FGameXXKResolvedEnemyIntentEffect& Effect : Intent.Effects)
 	{
-		Lines.Add(FString::Printf(TEXT("基础伤害 %d"), Intent.Damage));
-		Lines.Add(TEXT("护甲结算：目标当前护甲先抵扣直接伤害。"));
-		Lines.Add(TEXT("生命伤害：护甲抵扣后的剩余伤害写入目标生命。"));
+		const FString Detail = DetailEffect(State, Intent, Effect);
+		if (!Detail.EndsWith(TEXT("：")))
+		{
+			Lines.Add(Detail);
+		}
 	}
-	Lines.Add(TEXT("触发时机：敌方阶段结算。"));
+	if (Intent.bCharging)
+	{
+		Lines.Add(FString::Printf(TEXT("蓄力：剩余%d回合"), FMath::Max(0, Intent.ChargeRounds)));
+	}
+	const FString Condition = ConditionalNote(Intent.IntentDefinitionId);
+	if (!Condition.IsEmpty())
+	{
+		Lines.Add(Condition);
+	}
 	return FString::Join(Lines, TEXT("\n"));
 }
