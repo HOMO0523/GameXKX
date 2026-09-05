@@ -83,7 +83,8 @@ enum class EGameXXKEnemyIntentEffectType : uint8
 	AddArmorDefensePercent = 15,
 	RefreshHealingAmplification = 16,
 	ConsumeWealthForDamage = 17,
-	ConsumeWealthForHealing = 18
+	ConsumeWealthForHealing = 18,
+	RemoveNegativeStatus = 19
 };
 
 UENUM(BlueprintType)
@@ -153,6 +154,10 @@ struct GAMEXXK_API FGameXXKEnemyBattleState
 	/** One refresh-only Giant-Toad healing amplification, stored as percentage of MaxHP. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 PendingHealingAmplificationPercent = 0;
+
+	/** Refresh-only flat points added to this enemy's next direct intent, then consumed. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingDirectAttackFlatBonus = 0;
 
 	/** One-way baseline stat adjustment committed when a catalog boss first enters phase two. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

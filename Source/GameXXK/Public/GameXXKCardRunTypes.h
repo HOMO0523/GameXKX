@@ -49,6 +49,10 @@ struct GAMEXXK_API FGameXXKResolvedEnemyIntentEffect
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 StatusStacks = 0;
 
+	/** Saved copy of the catalog follow-up requirement. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bRequiresPreviousDirectHit = false;
+
 	/** Source catalog target rule retained so a saved intent can validate a persistent target at execution time. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKEnemyIntentTargetRule TargetRule = EGameXXKEnemyIntentTargetRule::None;

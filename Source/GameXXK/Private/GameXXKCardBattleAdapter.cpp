@@ -6,6 +6,7 @@
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKCombatScalingRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKPartyFormationRules.h"
@@ -13,6 +14,7 @@
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKTalentRules.h"
+#include "GameXXKTrainingRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -1075,6 +1077,16 @@ namespace
 					Result.Add(PreyTarget->UnitId);
 				}
 			}
+			if (Result.IsEmpty())
+			{
+				if (const FGameXXKCardCombatUnit* PreyTarget = FindLowestLivingUnitForSide(
+					Runtime,
+					EGameXXKCardTargetSide::Party,
+					EGameXXKCardStatus::Prey))
+				{
+					Result.Add(PreyTarget->UnitId);
+				}
+			}
 			break;
 		default:
 			break;
@@ -1108,10 +1120,162 @@ namespace
 		return false;
 	}
 
-	int32 ComputeEnemyIntentMagnitude(const FGameXXKCardCombatUnit& Source, const FGameXXKEnemyIntentEffectDefinition& Effect)
+	bool IsEnemyDotStatus(const EGameXXKCardStatus Status)
+	{
+		return Status == EGameXXKCardStatus::Bleed
+			|| Status == EGameXXKCardStatus::Poison
+			|| Status == EGameXXKCardStatus::Burn
+			|| Status == EGameXXKCardStatus::DamageOverTime;
+	}
+
+	int32 ResolveStatusAmount(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKEnemyIntentEffectDefinition& Effect)
+	{
+		const int32 AuthoredAmount = Effect.StatusAmountByDifficulty.Resolve(Runtime.EnemyDifficulty);
+		return IsEnemyDotStatus(Effect.Status)
+			? FGameXXKCombatScalingRules::ResolveDotAddition(
+				AuthoredAmount,
+				EGameXXKCardQuality::Common,
+				Runtime.TeamMaxLevelSnapshot)
+			: AuthoredAmount;
+	}
+
+	int32 ComputeEnemyIntentMagnitude(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Source,
+		const FGameXXKEnemyBattleState& SourceState,
+		const FGameXXKEnemyIntentEffectDefinition& Effect)
+	{
+		int64 Value = 0;
+		switch (Effect.Type)
+		{
+		case EGameXXKEnemyIntentEffectType::DirectDamage:
+		case EGameXXKEnemyIntentEffectType::ModifyAttack:
+		{
+			const int32 AttackPercent = Effect.AttackPercentByDifficulty.Resolve(Runtime.EnemyDifficulty);
+			Value = AttackPercent > 0
+				? FGameXXKCombatScalingRules::ScaleByPercentCeil(Source.Attack, AttackPercent)
+				: Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty);
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage)
+			{
+				Value += FMath::Max(0, SourceState.PendingDirectAttackFlatBonus);
+			}
+			break;
+		}
+		case EGameXXKEnemyIntentEffectType::AddArmorDefensePercent:
+			Value = FGameXXKCombatScalingRules::ScaleByPercentCeil(
+				Source.Defense,
+				Effect.DefensePercentByDifficulty.Resolve(Runtime.EnemyDifficulty));
+			break;
+		case EGameXXKEnemyIntentEffectType::HealMaxHealthPercent:
+		case EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty:
+		case EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy:
+		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
+		case EGameXXKEnemyIntentEffectType::RemoveNegativeStatus:
+		case EGameXXKEnemyIntentEffectType::RefreshHealingAmplification:
+			Value = Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty);
+			break;
+		case EGameXXKEnemyIntentEffectType::ConsumeWealthForHealing:
+		{
+			const int32 Stacks = FMath::Min(
+				Effect.MaxConsumedStacks,
+				GameXXKCardRules::GetCombatStatusStacks(Source, Effect.ConsumedStatus));
+			const int32 PercentPerStack = Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty);
+			Value = static_cast<int64>(Source.MaxHP) * PercentPerStack * Stacks / 100;
+			break;
+		}
+		default:
+			Value = Effect.FlatMagnitude;
+			break;
+		}
+
+		if (Effect.SourceStatusForFlatMagnitude != EGameXXKCardStatus::None)
+		{
+			int32 SourceStacks = GameXXKCardRules::GetCombatStatusStacks(
+				Source,
+				Effect.SourceStatusForFlatMagnitude);
+			if (Effect.MaxConsumedStacks > 0)
+			{
+				SourceStacks = FMath::Min(SourceStacks, Effect.MaxConsumedStacks);
+			}
+			const int32 PerStack = Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty) > 0
+				? Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty)
+				: Effect.FlatMagnitudePerSourceStatusStack;
+			Value += static_cast<int64>(FMath::Max(0, SourceStacks)) * FMath::Max(0, PerStack);
+		}
+		if (Effect.ConsumedStatus != EGameXXKCardStatus::None
+			&& Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage)
+		{
+			const int32 ConsumedStacks = FMath::Min(
+				FMath::Max(0, Effect.MaxConsumedStacks),
+				GameXXKCardRules::GetCombatStatusStacks(Source, Effect.ConsumedStatus));
+			const int32 PerStack = Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty) > 0
+				? Effect.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty)
+				: Effect.MagnitudePerConsumedStack;
+			Value += static_cast<int64>(ConsumedStacks) * FMath::Max(0, PerStack);
+		}
+		return static_cast<int32>(FMath::Clamp<int64>(Value, 0, MAX_int32));
+	}
+
+	int32 ComputeEnemyIntentMagnitude(
+		const FGameXXKCardCombatUnit& Source,
+		const FGameXXKEnemyIntentEffectDefinition& Effect)
 	{
 		const int64 Value = static_cast<int64>(Effect.FlatMagnitude)
 			+ static_cast<int64>(FMath::Max(0, Source.Attack)) * Effect.AttackPercent / 100;
+		return static_cast<int32>(FMath::Clamp<int64>(Value, 0, MAX_int32));
+	}
+
+	int32 ResolveConditionalIntentMagnitude(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardEnemyIntent& Intent,
+		const FGameXXKCardCombatUnit& Source,
+		const FGameXXKCardCombatUnit& Target,
+		const int32 BaseMagnitude)
+	{
+		const auto HasStatus = [&Target](const EGameXXKCardStatus Status)
+		{
+			return GameXXKCardRules::GetCombatStatusStacks(Target, Status) > 0;
+		};
+		const FName Id = Intent.IntentDefinitionId;
+		int32 AlternatePercent = 0;
+		int32 FlatBonus = 0;
+		if (Id == TEXT("Pursuit") && HasStatus(EGameXXKCardStatus::Mark))
+			AlternatePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal ? 220 : Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard ? 310 : 400;
+		else if (Id == TEXT("ToxicPursuit") && HasStatus(EGameXXKCardStatus::Poison))
+			AlternatePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal ? 220 : Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard ? 310 : 400;
+		else if (Id == TEXT("BloodPursuit") && HasStatus(EGameXXKCardStatus::Bleed))
+			AlternatePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal ? 220 : Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard ? 310 : 400;
+		else if (Id == TEXT("Tongue") && HasStatus(EGameXXKCardStatus::Poison))
+			AlternatePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal ? 220 : Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard ? 310 : 400;
+		else if (Id == TEXT("MountainShakingSweep") && HasStatus(EGameXXKCardStatus::Bleed)) AlternatePercent = 160;
+		else if (Id == TEXT("BloodBattleNeverRetreats") && HasStatus(EGameXXKCardStatus::Bleed)) AlternatePercent = 180;
+		else if ((Id == TEXT("BloodClawRend") || Id == TEXT("BloodBattleThroatRend")) && HasStatus(EGameXXKCardStatus::Weak)) FlatBonus = 40;
+		else if ((Id == TEXT("CorneredBeastPounce") || Id == TEXT("DeathPounce")) && HasStatus(EGameXXKCardStatus::Weak)) FlatBonus = 50;
+		else if (Id == TEXT("GroundedPounce") && HasStatus(EGameXXKCardStatus::Bleed)) FlatBonus = 50;
+		else if (Id == TEXT("FatalAmbush") && HasStatus(EGameXXKCardStatus::Bleed)) FlatBonus = 40;
+
+		int64 Value = BaseMagnitude;
+		if (AlternatePercent > 0)
+		{
+			Value = FGameXXKCombatScalingRules::ScaleByPercentCeil(Source.Attack, AlternatePercent);
+			if (const FGameXXKEnemyBattleState* State = Runtime.EnemyStates.Find(Source.UnitId))
+			{
+				Value += FMath::Max(0, State->PendingDirectAttackFlatBonus);
+			}
+		}
+		Value += FlatBonus;
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source.EnemyDefinitionId);
+		if (Definition
+			&& Definition->PassiveId == EGameXXKEnemyPassiveId::GraymaneMarkedHunt
+			&& Intent.TargetRule != EGameXXKEnemyIntentTargetRule::AllLivingParty
+			&& HasStatus(EGameXXKCardStatus::Mark))
+		{
+			Value = FGameXXKCombatScalingRules::ScaleByPercentCeil(
+				static_cast<int32>(FMath::Min<int64>(MAX_int32, Value)),
+				120);
+		}
 		return static_cast<int32>(FMath::Clamp<int64>(Value, 0, MAX_int32));
 	}
 
@@ -1176,7 +1340,310 @@ namespace
 		return Removed;
 	}
 
+	int32 RemoveNonDotNegativeCombatStatusStacks(
+		FGameXXKCardCombatUnit& InOutUnit,
+		const int32 Maximum)
+	{
+		if (Maximum <= 0 || !InOutUnit.bLiving)
+		{
+			return 0;
+		}
+		constexpr EGameXXKCardStatus Priority[] = {
+			EGameXXKCardStatus::Weak,
+			EGameXXKCardStatus::Vulnerability,
+			EGameXXKCardStatus::Mark,
+			EGameXXKCardStatus::Prey};
+		int32 Removed = 0;
+		for (const EGameXXKCardStatus Status : Priority)
+		{
+			Removed += GameXXKCardRules::ConsumeCombatStatus(
+				InOutUnit,
+				Status,
+				Maximum - Removed);
+			if (Removed >= Maximum)
+			{
+				break;
+			}
+		}
+		return Removed;
+	}
+
 	bool BuildCatalogEnemyIntent(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardCombatUnit& Enemy,
+		TMap<FName, FGameXXKEnemyBattleState>& InOutEnemyStates,
+		const int32 ResolutionOrder,
+		const FName ForcedIntentId,
+		FGameXXKCardEnemyIntent& OutIntent,
+		FString* OutError)
+	{
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Enemy.EnemyDefinitionId);
+		if (!Definition)
+		{
+			return false;
+		}
+		FGameXXKEnemyBattleState& EnemyState = InOutEnemyStates.FindOrAdd(Enemy.UnitId);
+		if (EnemyState.DefinitionId.IsNone())
+		{
+			EnemyState.DefinitionId = Definition->Id;
+			EnemyState.CurrentPhase = 1;
+			EnemyState.TotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+				Definition->Tier,
+				Runtime.EnemyDifficulty);
+		}
+		const int32 ExpectedTotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+			Definition->Tier,
+			Runtime.EnemyDifficulty);
+		if (EnemyState.DefinitionId != Definition->Id
+			|| EnemyState.CurrentPhase < 1
+			|| EnemyState.TotalPhases != ExpectedTotalPhases
+			|| EnemyState.CurrentPhase > EnemyState.TotalPhases)
+		{
+			return SetFailure(OutError, TEXT("Enemy catalog state does not match its difficulty-aware phase definition."));
+		}
+		const TArray<FGameXXKEnemyIntentDefinition>* PhaseIntents = FGameXXKEnemyCatalog::GetPhaseIntents(
+			*Definition,
+			EnemyState.CurrentPhase);
+		if (!PhaseIntents || PhaseIntents->IsEmpty())
+		{
+			return SetFailure(OutError, TEXT("Enemy catalog phase has no intent deck."));
+		}
+
+		const FGameXXKEnemyIntentDefinition* Chosen = nullptr;
+		bool bExecutingPendingCharge = false;
+		bool bContinuingCharge = false;
+		if (!EnemyState.PendingChargedIntentId.IsNone())
+		{
+			Chosen = PhaseIntents->FindByPredicate([&EnemyState](const FGameXXKEnemyIntentDefinition& Candidate)
+			{
+				return Candidate.Id == EnemyState.PendingChargedIntentId;
+			});
+			if (!Chosen)
+			{
+				return SetFailure(OutError, TEXT("A saved enemy charge does not exist in its current phase deck."));
+			}
+			bContinuingCharge = EnemyState.ChargeRoundsRemaining > 0;
+			bExecutingPendingCharge = !bContinuingCharge;
+		}
+		else if (!ForcedIntentId.IsNone())
+		{
+			Chosen = PhaseIntents->FindByPredicate([ForcedIntentId](const FGameXXKEnemyIntentDefinition& Candidate)
+			{
+				return Candidate.Id == ForcedIntentId;
+			});
+			if (!Chosen)
+			{
+				return SetFailure(OutError, TEXT("A locked enemy intent does not exist in its saved phase deck."));
+			}
+		}
+		else
+		{
+			for (int32 Offset = 0; Offset < PhaseIntents->Num(); ++Offset)
+			{
+				const FGameXXKEnemyIntentDefinition& Candidate = (*PhaseIntents)[
+					(EnemyState.IntentCursor + Offset) % PhaseIntents->Num()];
+				const bool bBelowHalf = static_cast<int64>(Enemy.HP) * 2 <= Enemy.MaxHP;
+				if (Candidate.CooldownRounds > 0 && EnemyState.HealingCooldownRounds > 0)
+				{
+					const FName FallbackId = EnemyState.CurrentPhase == 1
+						? FName(TEXT("Horn"))
+						: EnemyState.CurrentPhase == 2
+							? FName(TEXT("SpiralHornInterceptsHunt"))
+							: FName(TEXT("SpiralHornBreaksHunt"));
+					Chosen = PhaseIntents->FindByPredicate([FallbackId](const FGameXXKEnemyIntentDefinition& IntentDefinition)
+					{
+						return IntentDefinition.Id == FallbackId;
+					});
+					break;
+				}
+				if ((Candidate.bRequiresSourceBelowHalf && !bBelowHalf)
+					|| !HasRequiredCatalogIntentTargetStatus(Runtime, Enemy, Candidate))
+				{
+					continue;
+				}
+				Chosen = &Candidate;
+				break;
+			}
+		}
+		if (!Chosen)
+		{
+			return SetFailure(OutError, TEXT("No current-phase enemy intent is eligible."));
+		}
+
+		OutIntent = FGameXXKCardEnemyIntent();
+		OutIntent.CardId = FName(*FString::Printf(
+			TEXT("Monster.Intent.%s.P%d.%s"),
+			*Definition->Id.ToString(),
+			EnemyState.CurrentPhase,
+			*Chosen->Id.ToString()));
+		OutIntent.CardDisplayName = Chosen->DisplayName.ToString();
+		OutIntent.SourceUnitId = Enemy.UnitId;
+		OutIntent.SourceSlotNumber = FGameXXKBattlePresentation::GetSlotNumber(Runtime, Enemy.UnitId);
+		OutIntent.IntentDefinitionId = Chosen->Id;
+		OutIntent.ResolutionOrder = ResolutionOrder;
+		OutIntent.PhaseNumber = EnemyState.CurrentPhase;
+		OutIntent.TotalPhases = EnemyState.TotalPhases;
+		if (const FGameXXKEnemyPhaseDefinition* PhaseDefinition = FGameXXKEnemyCatalog::GetPhaseDefinition(
+			*Definition,
+			EnemyState.CurrentPhase))
+		{
+			OutIntent.PhaseLabel = PhaseDefinition->DisplayName.ToString();
+		}
+		const bool bStartingCharge = !bExecutingPendingCharge && !bContinuingCharge && Chosen->ChargeRounds > 0;
+		if (bStartingCharge)
+		{
+			EnemyState.PendingChargedIntentId = Chosen->Id;
+			EnemyState.ChargeRoundsRemaining = Chosen->ChargeRounds;
+			EnemyState.PendingChargeTargetUnitIds.Reset();
+		}
+		OutIntent.bCharging = bStartingCharge || bContinuingCharge;
+		OutIntent.ChargeRounds = Chosen->ChargeRounds;
+		OutIntent.TooltipLines.Add(OutIntent.CardDisplayName);
+
+		TSet<FName> RemainingEnemyIds;
+		if (Chosen->Id == TEXT("Crow")
+			|| Chosen->Id == TEXT("BattleCry")
+			|| Chosen->Id == TEXT("CallPack")
+			|| Chosen->Id == TEXT("PackOrder"))
+		{
+			TArray<const FGameXXKCardCombatUnit*> OrderedEnemies;
+			for (const FGameXXKCardCombatUnit& Unit : Runtime.Units)
+			{
+				if (Unit.bLiving && Unit.Side == EGameXXKCardTargetSide::Enemy)
+				{
+					OrderedEnemies.Add(&Unit);
+				}
+			}
+			OrderedEnemies.Sort([&Runtime](const FGameXXKCardCombatUnit& Left, const FGameXXKCardCombatUnit& Right)
+			{
+				if (Left.Speed != Right.Speed) return Left.Speed > Right.Speed;
+				return FGameXXKBattlePresentation::GetSlotNumber(Runtime, Left.UnitId)
+					< FGameXXKBattlePresentation::GetSlotNumber(Runtime, Right.UnitId);
+			});
+			for (int32 Index = ResolutionOrder + 1; Index < OrderedEnemies.Num(); ++Index)
+			{
+				RemainingEnemyIds.Add(OrderedEnemies[Index]->UnitId);
+			}
+		}
+
+		for (const FGameXXKEnemyIntentEffectDefinition& EffectDefinition : Chosen->Effects)
+		{
+			FGameXXKResolvedEnemyIntentEffect& Effect = OutIntent.Effects.AddDefaulted_GetRef();
+			Effect.Type = EffectDefinition.Type;
+			Effect.TargetRule = EffectDefinition.Target;
+			Effect.bAssignsPersistentTarget = EffectDefinition.bAssignsPersistentTarget;
+			Effect.bPhaseTwoFallbackToLowestHealth = EffectDefinition.bPhaseTwoFallbackToLowestHealth;
+			Effect.bClearsPersistentTargetAfterResolve = EffectDefinition.bClearsPersistentTargetAfterResolve;
+			Effect.bRequiresPreviousDirectHit = EffectDefinition.bRequiresPreviousDirectHit;
+			Effect.TargetUnitIds = ResolveEnemyIntentTargets(Runtime, Enemy, EffectDefinition.Target);
+			if (Effect.TargetUnitIds.IsEmpty() && EffectDefinition.bPhaseTwoFallbackToLowestHealth)
+			{
+				if (const FGameXXKCardCombatUnit* Fallback = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party))
+				{
+					Effect.TargetUnitIds.Add(Fallback->UnitId);
+				}
+			}
+			if (!RemainingEnemyIds.IsEmpty()
+				&& Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack)
+			{
+				Effect.TargetUnitIds.RemoveAll([&RemainingEnemyIds](const FName UnitId)
+				{
+					return !RemainingEnemyIds.Contains(UnitId);
+				});
+			}
+			if (bExecutingPendingCharge && Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage)
+			{
+				Effect.TargetUnitIds = EnemyState.PendingChargeTargetUnitIds;
+				Effect.TargetUnitIds.RemoveAll([&Runtime](const FName UnitId)
+				{
+					const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, UnitId);
+					return !Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party;
+				});
+				if (Effect.TargetUnitIds.IsEmpty())
+				{
+					Effect.TargetUnitIds = ResolveEnemyIntentTargets(Runtime, Enemy, EffectDefinition.Target);
+					if (Effect.TargetUnitIds.IsEmpty() && EffectDefinition.bPhaseTwoFallbackToLowestHealth)
+					{
+						if (const FGameXXKCardCombatUnit* Fallback = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party))
+						{
+							Effect.TargetUnitIds.Add(Fallback->UnitId);
+						}
+					}
+					EnemyState.PendingChargeTargetUnitIds = Effect.TargetUnitIds;
+				}
+			}
+			else if (bStartingCharge
+				&& Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& EnemyState.PendingChargeTargetUnitIds.IsEmpty())
+			{
+				EnemyState.PendingChargeTargetUnitIds = Effect.TargetUnitIds;
+			}
+
+			Effect.Magnitude = ComputeEnemyIntentMagnitude(Runtime, Enemy, EnemyState, EffectDefinition);
+			Effect.BaseMagnitude = Effect.Magnitude;
+			Effect.ConsumedStatus = EffectDefinition.ConsumedStatus;
+			Effect.ConsumedStacks = Effect.ConsumedStatus == EGameXXKCardStatus::None
+				? 0
+				: FMath::Min(
+					FMath::Max(0, EffectDefinition.MaxConsumedStacks),
+					GameXXKCardRules::GetCombatStatusStacks(Enemy, Effect.ConsumedStatus));
+			Effect.MagnitudePerConsumedStack = EffectDefinition.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty) > 0
+				? EffectDefinition.ResourceAmountByDifficulty.Resolve(Runtime.EnemyDifficulty)
+				: FMath::Max(0, EffectDefinition.MagnitudePerConsumedStack);
+			Effect.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent = EffectDefinition.bMagnitudePerConsumedStackUsesTargetMaxHealthPercent;
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& Effect.ConsumedStacks > 0)
+			{
+				Effect.BaseMagnitude = FMath::Max(
+					0,
+					Effect.Magnitude - Effect.ConsumedStacks * Effect.MagnitudePerConsumedStack);
+			}
+			Effect.HitCount = FMath::Max(1, EffectDefinition.HitCount);
+			Effect.Status = EffectDefinition.Status;
+			Effect.StatusStacks = Effect.Status == EGameXXKCardStatus::None
+				? 0
+				: ResolveStatusAmount(Runtime, EffectDefinition);
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
+				&& Effect.TargetUnitIds.Num() == 1)
+			{
+				if (const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, Effect.TargetUnitIds[0]))
+				{
+					Effect.Magnitude = ResolveConditionalIntentMagnitude(Runtime, OutIntent, Enemy, *Target, Effect.Magnitude);
+				}
+			}
+
+			if (OutIntent.TargetRule == EGameXXKEnemyIntentTargetRule::None
+				&& EffectDefinition.Target != EGameXXKEnemyIntentTargetRule::None)
+			{
+				OutIntent.TargetRule = EffectDefinition.Target;
+				OutIntent.SuggestedTargetUnitId = Effect.TargetUnitIds.IsEmpty() ? NAME_None : Effect.TargetUnitIds[0];
+				const FGameXXKCardCombatUnit* Target = FindCardUnit(Runtime.Units, OutIntent.SuggestedTargetUnitId);
+				OutIntent.TargetSlotNumber = Target
+					? FGameXXKBattlePresentation::GetSlotNumber(Runtime, Target->UnitId)
+					: INDEX_NONE;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage && OutIntent.Damage == 0)
+			{
+				OutIntent.Damage = FGameXXKCombatScalingRules::ScaleByPercentCeil(
+					Effect.Magnitude,
+					Runtime.EnemyDifficultyDamagePercent);
+				OutIntent.Kind = Effect.TargetRule == EGameXXKEnemyIntentTargetRule::AllLivingParty
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				if (Effect.Status != EGameXXKCardStatus::None && Effect.StatusStacks > 0)
+				{
+					OutIntent.OnHitStatuses.Add({Effect.Status, Effect.StatusStacks});
+				}
+			}
+			OutIntent.TooltipLines.Add(FString::Printf(
+				TEXT("效果 %d：%d"),
+				static_cast<int32>(Effect.Type),
+				Effect.Magnitude));
+		}
+		return OutIntent.SourceSlotNumber != INDEX_NONE;
+	}
+
+	bool BuildLegacyCatalogEnemyIntent(
 		const FGameXXKCardBattleRuntime& Runtime,
 		const FGameXXKCardCombatUnit& Enemy,
 		TMap<FName, FGameXXKEnemyBattleState>& InOutEnemyStates,
@@ -1404,11 +1871,14 @@ namespace
 		}
 		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source->EnemyDefinitionId);
 		const FGameXXKEnemyBattleState* EnemyState = Runtime.EnemyStates.Find(Intent.SourceUnitId);
-		if (!Definition || !EnemyState || EnemyState->DefinitionId != Definition->Id || Definition->Intents.IsEmpty())
+		const TArray<FGameXXKEnemyIntentDefinition>* PhaseIntents = Definition && EnemyState
+			? FGameXXKEnemyCatalog::GetPhaseIntents(*Definition, EnemyState->CurrentPhase)
+			: nullptr;
+		if (!Definition || !EnemyState || EnemyState->DefinitionId != Definition->Id || !PhaseIntents || PhaseIntents->IsEmpty())
 		{
 			return SetFailure(OutError, TEXT("A catalog enemy intent cannot advance without matching persisted enemy state."));
 		}
-		const int32 ResolvedIntentIndex = Definition->Intents.IndexOfByPredicate([&Intent](const FGameXXKEnemyIntentDefinition& Candidate)
+		const int32 ResolvedIntentIndex = PhaseIntents->IndexOfByPredicate([&Intent](const FGameXXKEnemyIntentDefinition& Candidate)
 		{
 			return Candidate.Id == Intent.IntentDefinitionId;
 		});
@@ -1416,7 +1886,7 @@ namespace
 		{
 			return SetFailure(OutError, TEXT("The saved catalog enemy intent does not exist in its source definition."));
 		}
-		OutNextCursor = (ResolvedIntentIndex + 1) % Definition->Intents.Num();
+		OutNextCursor = (ResolvedIntentIndex + 1) % PhaseIntents->Num();
 		return true;
 	}
 
@@ -1425,10 +1895,13 @@ namespace
 		const FGameXXKCardEnemyIntent& Intent,
 		FString* OutError)
 	{
-		if (Intent.IntentDefinitionId != SpiralHornDeerSpringHealIntentId
+		const bool bDeerHealIntent = Intent.IntentDefinitionId == SpiralHornDeerSpringHealIntentId
+			|| Intent.IntentDefinitionId == TEXT("ForestBreathRejuvenation")
+			|| Intent.IntentDefinitionId == TEXT("PeaksRejuvenation");
+		if (!bDeerHealIntent
 			|| !Intent.Effects.ContainsByPredicate([](const FGameXXKResolvedEnemyIntentEffect& Effect)
 			{
-				return Effect.Type == EGameXXKEnemyIntentEffectType::Heal;
+				return Effect.Type == EGameXXKEnemyIntentEffectType::HealMaxHealthPercent;
 			}))
 		{
 			return true;
@@ -1444,15 +1917,21 @@ namespace
 		{
 			return true;
 		}
-		const FGameXXKEnemyIntentDefinition* SpringHealDefinition = Definition->Intents.FindByPredicate([](const FGameXXKEnemyIntentDefinition& Candidate)
+		const FGameXXKEnemyBattleState* ExistingState = InOutRuntime.EnemyStates.Find(Source->UnitId);
+		const TArray<FGameXXKEnemyIntentDefinition>* PhaseIntents = ExistingState
+			? FGameXXKEnemyCatalog::GetPhaseIntents(*Definition, ExistingState->CurrentPhase)
+			: nullptr;
+		const FGameXXKEnemyIntentDefinition* SpringHealDefinition = PhaseIntents
+			? PhaseIntents->FindByPredicate([&Intent](const FGameXXKEnemyIntentDefinition& Candidate)
 		{
-			return Candidate.Id == SpiralHornDeerSpringHealIntentId;
-		});
+			return Candidate.Id == Intent.IntentDefinitionId;
+		})
+			: nullptr;
 		if (!SpringHealDefinition
 			|| SpringHealDefinition->CooldownRounds <= 0
 			|| !SpringHealDefinition->Effects.ContainsByPredicate([](const FGameXXKEnemyIntentEffectDefinition& Effect)
 			{
-				return Effect.Type == EGameXXKEnemyIntentEffectType::Heal;
+				return Effect.Type == EGameXXKEnemyIntentEffectType::HealMaxHealthPercent;
 			}))
 		{
 			return SetFailure(OutError, TEXT("Spiral Horn Deer Spring Heal is missing its catalog cooldown definition."));
@@ -1478,14 +1957,14 @@ namespace
 		return true;
 	}
 
-	void ApplyEnemyDamagingStatusHealing(
+	bool ApplyEnemyDamagingStatusHealing(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FName SourceUnitId,
 		const FGameXXKCardDamageResult& DamageResult)
 	{
 		if (DamageResult.HealthDamage <= 0)
 		{
-			return;
+			return false;
 		}
 		FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, SourceUnitId);
 		const FGameXXKCardCombatUnit* DamagedTarget = FindCardUnit(
@@ -1495,22 +1974,29 @@ namespace
 			|| !DamagedTarget || DamagedTarget->Side != EGameXXKCardTargetSide::Party
 			|| Source->EnemyDefinitionId.IsNone())
 		{
-			return;
+			return false;
 		}
 		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Source->EnemyDefinitionId);
+		const FGameXXKEnemyBattleState* State = InOutRuntime.EnemyStates.Find(SourceUnitId);
+		const FGameXXKEnemyPhaseDefinition* PhaseDefinition = Definition && State
+			? FGameXXKEnemyCatalog::GetPhaseDefinition(*Definition, State->CurrentPhase)
+			: nullptr;
 		if (!Definition
-			|| Definition->HealOnDamagingTargetStatus == EGameXXKCardStatus::None
-			|| Definition->HealMissingHealthPercentOnDamagingTargetStatus <= 0
-			|| GameXXKCardRules::GetCombatStatusStacks(*DamagedTarget, Definition->HealOnDamagingTargetStatus) <= 0)
+			|| Definition->PassiveId != EGameXXKEnemyPassiveId::TigerPredator
+			|| !PhaseDefinition
+			|| PhaseDefinition->HealMissingHealthPercentOnBleedingPrey <= 0
+			|| GameXXKCardRules::GetCombatStatusStacks(*DamagedTarget, EGameXXKCardStatus::Bleed) <= 0
+			|| !State
+			|| State->PersistentTargetUnitId != DamagedTarget->UnitId)
 		{
-			return;
+			return false;
 		}
 		const int32 MissingHealth = FMath::Max(0, Source->MaxHP - Source->HP);
 		const int32 Healing = static_cast<int32>(FMath::Clamp<int64>(
-			static_cast<int64>(MissingHealth) * Definition->HealMissingHealthPercentOnDamagingTargetStatus / 100,
+			static_cast<int64>(MissingHealth) * PhaseDefinition->HealMissingHealthPercentOnBleedingPrey / 100,
 			0,
 			MAX_int32));
-		GameXXKCardRules::HealCombatUnit(*Source, Healing);
+		return GameXXKCardRules::HealCombatUnit(*Source, Healing) > 0;
 	}
 
 	void ClearExpiredPersistentTargetAfterIntent(
@@ -1524,14 +2010,386 @@ namespace
 		{
 			return;
 		}
-		if (FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId);
-			EnemyState && !EnemyState->bPhaseTwo)
+		if (FGameXXKEnemyBattleState* EnemyState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId))
 		{
 			ClearPersistentTarget(InOutRuntime, *EnemyState);
 		}
 	}
 
 	bool ResolveCatalogIntentEffects(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardEnemyIntent& Intent,
+		TArray<FGameXXKCardDamageResult>& OutDamageResults,
+		FString* OutError)
+	{
+		TMap<FName, FName> PreviousDirectReceiverByDeclaredTarget;
+		TSet<FName> BleedingTargetsDamaged;
+		bool bTigerHealedForCard = false;
+		bool bExecutedDirectEffect = false;
+		for (const FGameXXKResolvedEnemyIntentEffect& Effect : Intent.Effects)
+		{
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage)
+			{
+				PreviousDirectReceiverByDeclaredTarget.Reset();
+			}
+			const auto ResolveFollowUpTarget = [&PreviousDirectReceiverByDeclaredTarget, &Effect](const FName DeclaredTarget)
+			{
+				if (!Effect.bRequiresPreviousDirectHit)
+				{
+					return DeclaredTarget;
+				}
+				const FName* Receiver = PreviousDirectReceiverByDeclaredTarget.Find(DeclaredTarget);
+				return Receiver ? *Receiver : NAME_None;
+			};
+			TArray<FName> ResolvedEffectTargetIds = Effect.TargetUnitIds;
+			if (ResolvedEffectTargetIds.IsEmpty()
+				&& Effect.TargetRule == EGameXXKEnemyIntentTargetRule::PreyTarget)
+			{
+				if (const FGameXXKEnemyBattleState* SourceState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId))
+				{
+					if (const FGameXXKCardCombatUnit* Target = FindLivingPersistentTarget(InOutRuntime, *SourceState))
+					{
+						ResolvedEffectTargetIds.Add(Target->UnitId);
+					}
+				}
+			}
+
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::AddArmor
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::AddArmorDefensePercent)
+			{
+				for (const FName TargetUnitId : ResolvedEffectTargetIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (Target && Target->bLiving)
+					{
+						GameXXKCardRules::AddCombatArmor(*Target, Effect.Magnitude);
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ApplyStatus)
+			{
+				if (Effect.bAssignsPersistentTarget)
+				{
+					FGameXXKEnemyBattleState* SourceState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId);
+					const bool bOnlyWhenAbsent = Intent.IntentDefinitionId == TEXT("BloodHuntLockdown")
+						|| Intent.IntentDefinitionId == TEXT("BloodMoonHundredBeasts");
+					const bool bForceRetarget = Intent.IntentDefinitionId == TEXT("TailSweepChangesPrey");
+					if (SourceState && bForceRetarget)
+					{
+						ClearPersistentTarget(InOutRuntime, *SourceState);
+					}
+					else if (SourceState && bOnlyWhenAbsent && FindLivingPersistentTarget(InOutRuntime, *SourceState))
+					{
+						continue;
+					}
+					for (const FName DeclaredTargetId : ResolvedEffectTargetIds)
+					{
+						const FName TargetUnitId = ResolveFollowUpTarget(DeclaredTargetId);
+						const FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+						if (Target && Target->bLiving && Target->Side == EGameXXKCardTargetSide::Party)
+						{
+							if (!AssignPersistentTarget(
+								InOutRuntime,
+								Intent.SourceUnitId,
+								TargetUnitId,
+								Effect.Status,
+								OutError))
+							{
+								return false;
+							}
+							break;
+						}
+					}
+					continue;
+				}
+				for (const FName DeclaredTargetId : ResolvedEffectTargetIds)
+				{
+					const FName TargetUnitId = ResolveFollowUpTarget(DeclaredTargetId);
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					const bool bNegativeStatus = IsEnemyDotStatus(Effect.Status)
+						|| Effect.Status == EGameXXKCardStatus::Weak
+						|| Effect.Status == EGameXXKCardStatus::Vulnerability
+						|| Effect.Status == EGameXXKCardStatus::Mark
+						|| Effect.Status == EGameXXKCardStatus::Prey;
+					if (GameXXKCardRules::AddCombatStatus(*Target, Effect.Status, Effect.StatusStacks) > 0
+						&& bNegativeStatus
+						&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(InOutRuntime, *Target, OutError))
+					{
+						return false;
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::HealMaxHealthPercent)
+			{
+				int32 HealingPercent = Effect.Magnitude;
+				FGameXXKEnemyBattleState* SourceState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId);
+				if (Intent.IntentDefinitionId == TEXT("Tongue") && SourceState)
+				{
+					HealingPercent += FMath::Max(0, SourceState->PendingHealingAmplificationPercent);
+					SourceState->PendingHealingAmplificationPercent = 0;
+				}
+				for (const FName TargetUnitId : ResolvedEffectTargetIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					const int32 Healing = static_cast<int32>(FMath::Clamp<int64>(
+						(static_cast<int64>(Target->MaxHP) * HealingPercent + 99) / 100,
+						0,
+						MAX_int32));
+					GameXXKCardRules::HealCombatUnit(*Target, Healing);
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ConsumeWealthForHealing)
+			{
+				FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+				if (!Source || !Source->bLiving)
+				{
+					return SetFailure(OutError, TEXT("A Wealth heal lost its living enemy source."));
+				}
+				const int32 Consumed = GameXXKCardRules::ConsumeCombatStatus(
+					*Source,
+					Effect.ConsumedStatus,
+					Effect.ConsumedStacks);
+				const int32 Healing = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Source->MaxHP) * Effect.MagnitudePerConsumedStack * Consumed / 100,
+					0,
+					MAX_int32));
+				GameXXKCardRules::HealCombatUnit(*Source, Healing);
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty)
+			{
+				if (!GameXXKCardRules::QueueNextPlayerRoundEnergyPenalty(InOutRuntime, Effect.Magnitude, OutError))
+				{
+					return false;
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy)
+			{
+				if (!GameXXKCardRules::QueueNextPlayerHandEnergySurcharge(
+					InOutRuntime,
+					Effect.Magnitude,
+					Intent.SourceUnitId,
+					OutError))
+				{
+					return false;
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::RefreshHealingAmplification)
+			{
+				FGameXXKEnemyBattleState* SourceState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId);
+				if (!SourceState)
+				{
+					return SetFailure(OutError, TEXT("A healing-amplification refresh lost its enemy state."));
+				}
+				SourceState->PendingHealingAmplificationPercent = FMath::Max(0, Effect.Magnitude);
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack)
+			{
+				const bool bNextDirectFlatBonus = Intent.IntentDefinitionId == TEXT("TerrainBless");
+				for (const FName TargetUnitId : ResolvedEffectTargetIds)
+				{
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Enemy)
+					{
+						continue;
+					}
+					FGameXXKEnemyBattleState& TargetState = InOutRuntime.EnemyStates.FindOrAdd(TargetUnitId);
+					if (bNextDirectFlatBonus)
+					{
+						TargetState.PendingDirectAttackFlatBonus = FMath::Max(0, Effect.Magnitude);
+						continue;
+					}
+					const int32 OriginalAttack = Target->Attack;
+					Target->Attack = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(Target->Attack) + Effect.Magnitude,
+						0,
+						MAX_int32));
+					TargetState.TemporaryAttackModifier = static_cast<int32>(FMath::Clamp<int64>(
+						static_cast<int64>(TargetState.TemporaryAttackModifier) + Target->Attack - OriginalAttack,
+						MIN_int32,
+						MAX_int32));
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemoveNegativeStatus)
+			{
+				for (const FName DeclaredTargetId : ResolvedEffectTargetIds)
+				{
+					const FName TargetUnitId = ResolveFollowUpTarget(DeclaredTargetId);
+					FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!Target || !Target->bLiving)
+					{
+						continue;
+					}
+					if (Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus)
+					{
+						RemovePositiveCombatStatusStacks(InOutRuntime, *Target, Effect.Magnitude);
+					}
+					else
+					{
+						RemoveNonDotNegativeCombatStatusStacks(*Target, Effect.Magnitude);
+					}
+				}
+				continue;
+			}
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::TriggerDamageOverTime)
+			{
+				for (const FName DeclaredTargetId : ResolvedEffectTargetIds)
+				{
+					const FName TargetUnitId = ResolveFollowUpTarget(DeclaredTargetId);
+					if (TargetUnitId.IsNone())
+					{
+						continue;
+					}
+					TArray<FGameXXKCardDamageResult> TriggerResults;
+					if (!GameXXKCardRules::TriggerCombatDamageOverTime(
+						InOutRuntime,
+						Intent.SourceUnitId,
+						TargetUnitId,
+						Effect.Status,
+						Effect.HitCount,
+						TriggerResults,
+						OutError))
+					{
+						return false;
+					}
+					OutDamageResults.Append(MoveTemp(TriggerResults));
+				}
+				continue;
+			}
+			if (Effect.Type != EGameXXKEnemyIntentEffectType::DirectDamage)
+			{
+				continue;
+			}
+
+			FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+			if (!Source || !Source->bLiving || Source->Side != EGameXXKCardTargetSide::Enemy)
+			{
+				return SetFailure(OutError, TEXT("A direct enemy intent lost its living source."));
+			}
+			int32 DirectMagnitude = Effect.Magnitude;
+			if (Effect.ConsumedStatus != EGameXXKCardStatus::None && Effect.ConsumedStacks > 0)
+			{
+				const int32 ActuallyConsumed = GameXXKCardRules::ConsumeCombatStatus(
+					*Source,
+					Effect.ConsumedStatus,
+					Effect.ConsumedStacks);
+				DirectMagnitude = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Effect.BaseMagnitude)
+						+ static_cast<int64>(Effect.MagnitudePerConsumedStack) * ActuallyConsumed,
+					0,
+					MAX_int32));
+			}
+			for (const FName TargetUnitId : ResolvedEffectTargetIds)
+			{
+				const FGameXXKCardCombatUnit* TargetBefore = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+				if (!TargetBefore || !TargetBefore->bLiving || TargetBefore->Side != EGameXXKCardTargetSide::Party)
+				{
+					continue;
+				}
+				const bool bBleedingBefore = GameXXKCardRules::GetCombatStatusStacks(
+					*TargetBefore,
+					EGameXXKCardStatus::Bleed) > 0;
+				const int32 TargetMagnitude = ResolveConditionalIntentMagnitude(
+					InOutRuntime,
+					Intent,
+					*Source,
+					*TargetBefore,
+					DirectMagnitude);
+				FGameXXKCardDamageContext Context;
+				Context.SourceUnitId = Intent.SourceUnitId;
+				Context.Kind = Effect.TargetRule == EGameXXKEnemyIntentTargetRule::AllLivingParty
+					? EGameXXKCardDamageKind::GroupAttack
+					: EGameXXKCardDamageKind::SingleTargetAttack;
+				if (Effect.Status != EGameXXKCardStatus::None && Effect.StatusStacks > 0)
+				{
+					Context.OnHitStatuses.Add({Effect.Status, Effect.StatusStacks});
+				}
+				for (int32 HitIndex = 0; HitIndex < FMath::Max(1, Effect.HitCount); ++HitIndex)
+				{
+					FGameXXKCardDamageResult DamageResult;
+					TArray<FGameXXKCardDamageResult> ReactiveResults;
+					if (!GameXXKCardRules::ResolveEnemyDirectAttack(
+						InOutRuntime,
+						Context,
+						TargetUnitId,
+						TargetMagnitude,
+						DamageResult,
+						&ReactiveResults,
+						OutError,
+						true))
+					{
+						return false;
+					}
+					if (!DamageResult.bAvoidedByAgility)
+					{
+						PreviousDirectReceiverByDeclaredTarget.Add(TargetUnitId, DamageResult.ResolvedTargetUnitId);
+					}
+					if (bBleedingBefore && DamageResult.HealthDamage > 0)
+					{
+						BleedingTargetsDamaged.Add(DamageResult.ResolvedTargetUnitId);
+					}
+					if (!bTigerHealedForCard)
+					{
+						bTigerHealedForCard = ApplyEnemyDamagingStatusHealing(
+							InOutRuntime,
+							Intent.SourceUnitId,
+							DamageResult);
+					}
+					OutDamageResults.Add(MoveTemp(DamageResult));
+					OutDamageResults.Append(MoveTemp(ReactiveResults));
+					const FGameXXKCardCombatUnit* UpdatedTarget = FindCardUnit(InOutRuntime.Units, TargetUnitId);
+					if (!UpdatedTarget || !UpdatedTarget->bLiving)
+					{
+						break;
+					}
+				}
+			}
+			bExecutedDirectEffect = true;
+		}
+
+		if (FGameXXKEnemyBattleState* SourceState = InOutRuntime.EnemyStates.Find(Intent.SourceUnitId))
+		{
+			if (bExecutedDirectEffect)
+			{
+				SourceState->PendingDirectAttackFlatBonus = 0;
+			}
+			if (Intent.IntentDefinitionId == TEXT("UnfallenIronfeather"))
+			{
+				SourceState->bFirstHitPassiveAvailable = true;
+			}
+		}
+		if (Intent.IntentDefinitionId == TEXT("BloodBattleNeverRetreats") && !BleedingTargetsDamaged.IsEmpty())
+		{
+			FGameXXKCardCombatUnit* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+			if (Source && Source->bLiving)
+			{
+				const int32 HealingPercent = FMath::Min(3, BleedingTargetsDamaged.Num()) * 3;
+				GameXXKCardRules::HealCombatUnit(
+					*Source,
+					static_cast<int32>((static_cast<int64>(Source->MaxHP) * HealingPercent + 99) / 100));
+			}
+		}
+		ClearExpiredPersistentTargetAfterIntent(InOutRuntime, Intent);
+		return true;
+	}
+
+	bool ResolveLegacyCatalogIntentEffects(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardEnemyIntent& Intent,
 		TArray<FGameXXKCardDamageResult>& OutDamageResults,
@@ -1778,6 +2636,56 @@ namespace
 		return true;
 	}
 
+	void ResolveMoneyRatInterestAfterEnemyCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FGameXXKCardEnemyIntent& ResolvedIntent,
+		const TArray<FGameXXKCardDamageResult>& DamageResults)
+	{
+		const bool bQualifiedDamage = DamageResults.ContainsByPredicate([&InOutRuntime, &ResolvedIntent](const FGameXXKCardDamageResult& Damage)
+		{
+			if (Damage.SourceUnitId != ResolvedIntent.SourceUnitId
+				|| Damage.Cause != EGameXXKCardDamageCause::DirectAttack
+				|| Damage.HealthDamage <= 0)
+			{
+				return false;
+			}
+			const FGameXXKCardCombatUnit* Target = FindCardUnit(InOutRuntime.Units, Damage.ResolvedTargetUnitId);
+			return Damage.MarkStacksBeforeHit > 0
+				|| (Target && GameXXKCardRules::GetCombatStatusStacks(*Target, EGameXXKCardStatus::Burn) > 0);
+		});
+		if (!bQualifiedDamage)
+		{
+			return;
+		}
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (!Unit.bLiving
+				|| Unit.Side != EGameXXKCardTargetSide::Enemy
+				|| Unit.UnitId == ResolvedIntent.SourceUnitId)
+			{
+				continue;
+			}
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+			FGameXXKEnemyBattleState* State = InOutRuntime.EnemyStates.Find(Unit.UnitId);
+			if (!Definition
+				|| Definition->PassiveId != EGameXXKEnemyPassiveId::MoneyRatWealth
+				|| !State
+				|| State->CurrentPhase < 2)
+			{
+				continue;
+			}
+			const int32 Limit = State->CurrentPhase >= 3 ? 3 : 2;
+			if (State->PhasePassiveTriggerCount >= Limit)
+			{
+				continue;
+			}
+			if (GameXXKCardRules::AddCombatStatus(Unit, EGameXXKCardStatus::Wealth, 1) > 0)
+			{
+				++State->PhasePassiveTriggerCount;
+			}
+		}
+	}
+
 	void ExpireEnemyPhaseTemporaryModifiers(FGameXXKCardBattleRuntime& InOutRuntime)
 	{
 		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
@@ -1883,33 +2791,32 @@ namespace
 				continue;
 			}
 			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
-			if (!Definition || Definition->RoundStartStatus == EGameXXKCardStatus::None)
+			if (!Definition)
 			{
-				continue;
+				return SetFailure(OutError, TEXT("Enemy round-start state references an unknown definition."));
 			}
 
 			FGameXXKEnemyBattleState& EnemyState = NewRuntime.EnemyStates.FindOrAdd(Unit.UnitId);
 			if (EnemyState.DefinitionId.IsNone())
 			{
 				EnemyState.DefinitionId = Definition->Id;
+				EnemyState.CurrentPhase = 1;
+				EnemyState.TotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+					Definition->Tier,
+					NewRuntime.EnemyDifficulty);
 			}
 			if (EnemyState.DefinitionId != Definition->Id)
 			{
 				return SetFailure(OutError, TEXT("Enemy round-start status found a mismatched persisted enemy definition."));
 			}
-
-			const int32 StatusStacks = EnemyState.bPhaseTwo && Definition->PhaseTwoRoundStartStatusStacks > 0
-				? Definition->PhaseTwoRoundStartStatusStacks
-				: Definition->RoundStartStatusStacks;
-			if (StatusStacks <= 0)
+			EnemyState.PhasePassiveTriggerCount = 0;
+			if (Definition->PassiveId != EGameXXKEnemyPassiveId::MoneyRatWealth
+				|| EnemyState.CurrentPhase != 1)
 			{
 				continue;
 			}
-			if (GameXXKCardRules::AddCombatStatus(Unit, Definition->RoundStartStatus, StatusStacks) > 0
-				&& !GameXXKCardRules::ResolveWhiteApeStatusGuardAfterStatusApplied(NewRuntime, Unit, OutError))
-			{
-				return false;
-			}
+			const int32 Wealth = NewRuntime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hell ? 2 : 1;
+			GameXXKCardRules::AddCombatStatus(Unit, EGameXXKCardStatus::Wealth, Wealth);
 		}
 		InOutRuntime = MoveTemp(NewRuntime);
 		return true;
@@ -1953,23 +2860,79 @@ namespace
 			}
 			return NameLess(Left.UnitId, Right.UnitId);
 		});
-		TMap<FName, FGameXXKEnemyBattleState> NewEnemyStates = NewRuntime.EnemyStates;
+		NewRuntime.LockedEnemyIntents.RemoveAll([&NewRuntime](const FGameXXKEnemyIntentLock& Lock)
+		{
+			const FGameXXKCardCombatUnit* Source = FindCardUnit(NewRuntime.Units, Lock.SourceUnitId);
+			const FGameXXKEnemyBattleState* State = NewRuntime.EnemyStates.Find(Lock.SourceUnitId);
+			return !Source
+				|| !Source->bLiving
+				|| !State
+				|| Lock.RoundNumber != NewRuntime.RoundNumber
+				|| Lock.PhaseNumber != State->CurrentPhase;
+		});
+		TMap<FName, FGameXXKEnemyBattleState> PreparedEnemyStates = NewRuntime.EnemyStates;
+		FGameXXKCardBattleRuntime ForecastRuntime = NewRuntime;
+		ForecastRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
+		ForecastRuntime.bSuppressEquipmentTriggerAudit = true;
 		for (const FGameXXKCardCombatUnit* Enemy : Enemies)
 		{
 			FGameXXKCardEnemyIntent Intent;
 			if (!Enemy->EnemyDefinitionId.IsNone())
 			{
+				const FGameXXKCardCombatUnit* ForecastEnemy = FindCardUnit(ForecastRuntime.Units, Enemy->UnitId);
+				const FGameXXKEnemyBattleState* ForecastState = ForecastRuntime.EnemyStates.Find(Enemy->UnitId);
+				if (!ForecastEnemy || !ForecastState)
+				{
+					return SetFailure(OutError, TEXT("Enemy plan forecast lost a catalog source or phase state."));
+				}
+				const FGameXXKEnemyIntentLock* ExistingLock = NewRuntime.LockedEnemyIntents.FindByPredicate(
+					[&NewRuntime, ForecastState, Enemy](const FGameXXKEnemyIntentLock& Lock)
+					{
+						return Lock.SourceUnitId == Enemy->UnitId
+							&& Lock.RoundNumber == NewRuntime.RoundNumber
+							&& Lock.PhaseNumber == ForecastState->CurrentPhase;
+					});
+				TMap<FName, FGameXXKEnemyBattleState> BuildStates = ForecastRuntime.EnemyStates;
 				if (!BuildCatalogEnemyIntent(
-					NewRuntime,
-					*Enemy,
-					NewEnemyStates,
+					ForecastRuntime,
+					*ForecastEnemy,
+					BuildStates,
 					NewEnemyIntents.Num(),
+					ExistingLock ? ExistingLock->IntentId : NAME_None,
 					Intent,
 					OutError))
 				{
 					return false;
 				}
+				const FGameXXKEnemyBattleState* BuiltState = BuildStates.Find(Enemy->UnitId);
+				FGameXXKEnemyBattleState* PreparedState = PreparedEnemyStates.Find(Enemy->UnitId);
+				if (!BuiltState || !PreparedState)
+				{
+					return SetFailure(OutError, TEXT("Enemy plan preparation lost its source state."));
+				}
+				PreparedState->PendingChargedIntentId = BuiltState->PendingChargedIntentId;
+				PreparedState->ChargeRoundsRemaining = BuiltState->ChargeRoundsRemaining;
+				PreparedState->PendingChargeTargetUnitIds = BuiltState->PendingChargeTargetUnitIds;
+				if (!ExistingLock)
+				{
+					FGameXXKEnemyIntentLock& Lock = NewRuntime.LockedEnemyIntents.AddDefaulted_GetRef();
+					Lock.SourceUnitId = Enemy->UnitId;
+					Lock.IntentId = Intent.IntentDefinitionId;
+					Lock.PhaseNumber = ForecastState->CurrentPhase;
+					Lock.RoundNumber = NewRuntime.RoundNumber;
+				}
 				NewEnemyIntents.Add(MoveTemp(Intent));
+				ForecastRuntime.EnemyStates = MoveTemp(BuildStates);
+				const FGameXXKCardEnemyIntent& ForecastIntent = NewEnemyIntents.Last();
+				if (!ForecastIntent.bCharging)
+				{
+					TArray<FGameXXKCardDamageResult> ForecastDamage;
+					if (!ResolveCatalogIntentEffects(ForecastRuntime, ForecastIntent, ForecastDamage, OutError))
+					{
+						return false;
+					}
+					ResolveMoneyRatInterestAfterEnemyCard(ForecastRuntime, ForecastIntent, ForecastDamage);
+				}
 				continue;
 			}
 
@@ -1993,7 +2956,7 @@ namespace
 			Intent.ResolutionOrder = NewEnemyIntents.Num();
 			NewEnemyIntents.Add(MoveTemp(Intent));
 		}
-		NewRuntime.EnemyStates = MoveTemp(NewEnemyStates);
+		NewRuntime.EnemyStates = MoveTemp(PreparedEnemyStates);
 		InOutRun.ActiveBattle = MoveTemp(NewRuntime);
 		InOutRun.EnemyIntents = MoveTemp(NewEnemyIntents);
 		InOutRun.NextEnemyIntentIndex = 0;
@@ -2397,6 +3360,55 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 		return false;
 	}
 	NewRuntime.SourceNodeKind = CardBattleNodeKind(NodeKind);
+	for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
+	{
+		if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+		{
+			continue;
+		}
+		const FGameXXKEnemyDefinition* EnemyDefinition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+		if (!EnemyDefinition)
+		{
+			return SetFailure(OutError, TEXT("Card battle initialization found an unknown enemy definition."));
+		}
+		FGameXXKEnemyBattleState& EnemyState = NewRuntime.EnemyStates.Add(Unit.UnitId);
+		EnemyState.DefinitionId = EnemyDefinition->Id;
+		EnemyState.CurrentPhase = 1;
+		EnemyState.TotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+			EnemyDefinition->Tier,
+			NewRuntime.EnemyDifficulty);
+	}
+	if (NewState.Training.bChallengeActive
+		&& !NewState.Training.ActiveChallengeStageId.IsNone())
+	{
+		const TArray<FGameXXKTrainingEncounterDefinition> TrainingEncounters =
+			FGameXXKTrainingRules::BuildEncounterSequence(NewState.Training.ActiveChallengeStageId, false);
+		if (!TrainingEncounters.IsValidIndex(NewState.Training.ActiveChallengeEncounterIndex))
+		{
+			return SetFailure(OutError, TEXT("Training battle initialization cannot resolve its authored encounter."));
+		}
+		const FGameXXKTrainingEncounterDefinition& TrainingEncounter =
+			TrainingEncounters[NewState.Training.ActiveChallengeEncounterIndex];
+		for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			const int32 SlotIndex = Unit.BattleSlotNumber - 1;
+			if (!TrainingEncounter.EnemySlots.IsValidIndex(SlotIndex)
+				|| TrainingEncounter.EnemySlots[SlotIndex].EnemyDefinitionId != Unit.EnemyDefinitionId
+				|| TrainingEncounter.EnemySlots[SlotIndex].OpeningIntentId.IsNone())
+			{
+				return SetFailure(OutError, TEXT("Training battle enemy slots do not match the authored opening intents."));
+			}
+			FGameXXKEnemyIntentLock& Lock = NewRuntime.LockedEnemyIntents.AddDefaulted_GetRef();
+			Lock.SourceUnitId = Unit.UnitId;
+			Lock.IntentId = TrainingEncounter.EnemySlots[SlotIndex].OpeningIntentId;
+			Lock.PhaseNumber = 1;
+			Lock.RoundNumber = NewRuntime.RoundNumber;
+		}
+	}
 	FGameXXKTalentProjection TalentProjection;
 	if (!FGameXXKTalentRules::BuildProjection(NewState.Talents, TalentProjection, OutError))
 	{
@@ -2697,23 +3709,9 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 
 	FGameXXKRuntimeState NewState = InOutState;
 	FGameXXKCardPlayResult NewResult;
-	const FGameXXKCardBattleRuntime BeforeCardPlay = NewState.CardRun.ActiveBattle;
 	if (!GameXXKCardRules::ResolveCardPlay(NewState.CardRun.ActiveBattle, CardInstanceId, SelectedTargetUnitId, NewResult, OutError))
 	{
 		return false;
-	}
-
-	// The saved forecast represents the next enemy phase. Rebuild it exactly when a completed
-	// player packet entered a new boss phase, so phase-only actions and tooltip data never lag a turn.
-	if (DidAnyBossEnterPhaseTwo(BeforeCardPlay, NewState.CardRun.ActiveBattle)
-		&& NewState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
-	{
-		NewState.CardRun.EnemyIntents.Reset();
-		NewState.CardRun.NextEnemyIntentIndex = 0;
-		if (!BuildEnemyIntents(NewState.CardRun, OutError))
-		{
-			return false;
-		}
 	}
 
 	const TArray<FGameXXKCardDamageResult> PrimaryDamageResults = NewResult.DamageResults;
@@ -2725,6 +3723,17 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 		OutError))
 	{
 		return false;
+	}
+	// Card identities remain locked for this round, while every source/target value is
+	// re-forecast after the complete active-card and relic transaction.
+	if (NewState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
+	{
+		NewState.CardRun.EnemyIntents.Reset();
+		NewState.CardRun.NextEnemyIntentIndex = 0;
+		if (!BuildEnemyIntents(NewState.CardRun, OutError))
+		{
+			return false;
+		}
 	}
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -2995,19 +4004,30 @@ static bool ResolveNextEnemyIntentImpl(
 		{
 			return Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::AddArmor
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::AddArmorDefensePercent
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ApplyStatus
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::Heal
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::HealMaxHealthPercent
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::ConsumeWealthForHealing
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ConsumeSharedQi
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::TriggerDamageOverTime
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RefreshHealingAmplification
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifySpeed
-				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus;
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemoveNegativeStatus;
 		});
 		if (bHasCatalogResolvedEffect)
 		{
 			if (!Intent.bCharging && !ResolveCatalogIntentEffects(Run.ActiveBattle, Intent, OutDamageResults, OutError))
 			{
 				return false;
+			}
+			if (!Intent.bCharging)
+			{
+				ResolveMoneyRatInterestAfterEnemyCard(Run.ActiveBattle, Intent, OutDamageResults);
 			}
 			bIntentConsumed = true;
 		}

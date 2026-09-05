@@ -361,6 +361,16 @@ namespace GameXXKCardRules
 		TArray<FGameXXKCardDamageResult>& OutResults,
 		FString* OutError = nullptr);
 
+	/** Triggers one selected DOT reservoir without consuming it, once per requested trigger. */
+	GAMEXXK_API bool TriggerCombatDamageOverTime(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName SourceUnitId,
+		FName TargetUnitId,
+		EGameXXKCardStatus Status,
+		int32 TriggerCount,
+		TArray<FGameXXKCardDamageResult>& OutResults,
+		FString* OutError = nullptr);
+
 	/**
 	 * Resolves one positive damage packet by stable UnitId using its explicit damage-context policy.
 	 * Inputs and outputs are committed atomically only when all supplied combat state is valid.

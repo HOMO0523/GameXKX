@@ -42,6 +42,10 @@ struct GAMEXXK_API FGameXXKEnemyIntentEffectDefinition
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	FGameXXKEnemyDifficultyInt ResourceAmountByDifficulty;
 
+	/** This follow-up resolves only for targets reached by the preceding direct-damage effect. */
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	bool bRequiresPreviousDirectHit = false;
+
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKCardStatus ConsumedStatus = EGameXXKCardStatus::None;
 

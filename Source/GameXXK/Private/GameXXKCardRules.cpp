@@ -1030,6 +1030,11 @@ namespace
 		bool& OutSatisfied,
 		int32& OutConsumed,
 		FString& OutError);
+	bool ResolveEnemyPassivesAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		FName ActiveCardOwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError);
 
 	void UpdateBattleTerminalPhase(FGameXXKCardBattleRuntime& InOutRuntime)
 	{
@@ -1437,7 +1442,18 @@ namespace
 						OutError = TEXT("Enemy armor retention found a mismatched persisted enemy definition.");
 						return false;
 					}
-					Unit.Armor /= 2;
+					const FGameXXKEnemyPhaseDefinition* PhaseDefinition = FGameXXKEnemyCatalog::GetPhaseDefinition(
+						*EnemyDefinition,
+						EnemyState.CurrentPhase);
+					if (!PhaseDefinition
+						|| PhaseDefinition->ArmorRetentionPercent < 0
+						|| PhaseDefinition->ArmorRetentionPercent > 100)
+					{
+						OutError = TEXT("Bluehorn armor retention requires its current phase percentage.");
+						return false;
+					}
+					Unit.Armor = static_cast<int32>(
+						static_cast<int64>(Unit.Armor) * PhaseDefinition->ArmorRetentionPercent / 100);
 					continue;
 				}
 			}
@@ -2363,7 +2379,6 @@ bool GameXXKCardRules::IsManualTargetLegal(const FGameXXKCardTargetRequest& Requ
 
 namespace
 {
-	constexpr int32 WhiteApeStatusGuardArmor = 8;
 	constexpr uint32 CombatRandomMultiplier = 196314165u;
 	constexpr uint32 CombatRandomIncrement = 907633515u;
 	constexpr uint32 CombatRandomSalt = 0xA341316Cu;
@@ -2499,8 +2514,28 @@ namespace
 		FGameXXKCardPlayResult* InOutResult,
 		FString* OutError)
 	{
-		const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(InOutStatusTarget);
-		if (!EnemyDefinition)
+		if (!InOutStatusTarget.bLiving || InOutStatusTarget.Side != EGameXXKCardTargetSide::Enemy)
+		{
+			return true;
+		}
+		FGameXXKCardCombatUnit* WhiteApe = InOutRuntime.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
+		{
+			return FindWhiteApeStatusGuardDefinition(Unit) != nullptr;
+		});
+		if (!WhiteApe)
+		{
+			return true;
+		}
+		const FGameXXKEnemyDefinition* WhiteApeDefinition = FindWhiteApeStatusGuardDefinition(*WhiteApe);
+		FGameXXKEnemyBattleState* WhiteApeState = InOutRuntime.EnemyStates.Find(WhiteApe->UnitId);
+		const FGameXXKEnemyPhaseDefinition* PhaseDefinition = WhiteApeDefinition && WhiteApeState
+			? FGameXXKEnemyCatalog::GetPhaseDefinition(*WhiteApeDefinition, WhiteApeState->CurrentPhase)
+			: nullptr;
+		if (!WhiteApeDefinition || !WhiteApeState || !PhaseDefinition)
+		{
+			return SetFailure(OutError, TEXT("White Ape status guard requires its current phase definition."));
+		}
+		if (WhiteApeState->CurrentPhase == 1 && WhiteApe->UnitId != InOutStatusTarget.UnitId)
 		{
 			return true;
 		}
@@ -2512,21 +2547,30 @@ namespace
 		}
 		if (NewEnemyState.DefinitionId.IsNone())
 		{
-			NewEnemyState.DefinitionId = EnemyDefinition->Id;
+			NewEnemyState.DefinitionId = InOutStatusTarget.EnemyDefinitionId;
 		}
-		if (NewEnemyState.DefinitionId != EnemyDefinition->Id)
+		if (NewEnemyState.DefinitionId != InOutStatusTarget.EnemyDefinitionId)
 		{
 			return SetFailure(OutError, TEXT("White Ape status guard found a mismatched persisted enemy definition."));
 		}
 		if (NewEnemyState.bFirstStatusPassiveAvailable)
 		{
+			const int32 GuardPercent = WhiteApeState->CurrentPhase == 1
+				? (InOutRuntime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal
+					? 80
+					: InOutRuntime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard ? 100 : 120)
+				: PhaseDefinition->FirstStatusGuardDefensePercent;
+			const int32 Armor = static_cast<int32>(FMath::Clamp<int64>(
+				static_cast<int64>(WhiteApe->Defense) * GuardPercent / 100,
+				0,
+				MAX_int32));
 			if (InOutResult && !SourceUnitId.IsNone())
 			{
-				ApplyAndRecordArmor(*InOutResult, SourceUnitId, InOutStatusTarget, WhiteApeStatusGuardArmor);
+				ApplyAndRecordArmor(*InOutResult, WhiteApe->UnitId, InOutStatusTarget, Armor);
 			}
 			else
 			{
-				GameXXKCardRules::AddCombatArmor(InOutStatusTarget, WhiteApeStatusGuardArmor);
+				GameXXKCardRules::AddCombatArmor(InOutStatusTarget, Armor);
 			}
 			NewEnemyState.bFirstStatusPassiveAvailable = false;
 		}
@@ -2547,6 +2591,15 @@ namespace
 			|| Status == EGameXXKCardStatus::Poison
 			|| Status == EGameXXKCardStatus::Burn
 			|| Status == EGameXXKCardStatus::DamageOverTime;
+	}
+
+	bool IsNegativeStatusForWhiteApeGuard(const EGameXXKCardStatus Status)
+	{
+		return IsDotReservoirStatus(Status)
+			|| Status == EGameXXKCardStatus::Weak
+			|| Status == EGameXXKCardStatus::Vulnerability
+			|| Status == EGameXXKCardStatus::Mark
+			|| Status == EGameXXKCardStatus::Prey;
 	}
 
 	int32 GetCombatStatusCap(const EGameXXKCardStatus Status)
@@ -2845,6 +2898,7 @@ namespace
 
 	bool ValidateCombatUnits(const TArray<FGameXXKCardCombatUnit>& Units, FString& OutError)
 	{
+		constexpr int32 MaxEnemyCombatLevel = 135;
 		TSet<FName> SeenUnitIds;
 		TSet<int32> SeenExplicitEnemySlots;
 		for (const FGameXXKCardCombatUnit& Unit : Units)
@@ -2868,12 +2922,19 @@ namespace
 					OutError = TEXT("Enemy combat units must use unique explicit 1P, 2P, or 3P presentation slots when a slot is saved.");
 					return false;
 				}
-				if (Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel < 1 || Unit.CombatLevel > FGameXXKCharacterStatRules::MaxCharacterLevel)
+				if (Unit.EnemyDefinitionId.IsNone() || Unit.CombatLevel < 1 || Unit.CombatLevel > MaxEnemyCombatLevel)
 				{
 					OutError = TEXT("An explicitly slotted enemy combat unit requires a catalog identity and a valid route combat level.");
 					return false;
 				}
 				SeenExplicitEnemySlots.Add(Unit.BattleSlotNumber);
+			}
+			else if (Unit.Side == EGameXXKCardTargetSide::Enemy
+				&& !Unit.EnemyDefinitionId.IsNone()
+				&& (Unit.CombatLevel < 1 || Unit.CombatLevel > MaxEnemyCombatLevel))
+			{
+				OutError = TEXT("A catalog enemy combat unit requires a level from 1 through 135.");
+				return false;
 			}
 			else if (Unit.Side != EGameXXKCardTargetSide::Enemy
 				&& (Unit.BattleSlotNumber != INDEX_NONE
@@ -3221,12 +3282,31 @@ bool GameXXKCardRules::ResetWhiteApeStatusGuardsForPlayerRound(
 	FString* OutError)
 {
 	TMap<FName, FGameXXKEnemyBattleState> NewEnemyStates = InOutRuntime.EnemyStates;
+	bool bGuardsWholeEnemySide = false;
+	for (const FGameXXKCardCombatUnit& Candidate : InOutRuntime.Units)
+	{
+		if (FindWhiteApeStatusGuardDefinition(Candidate))
+		{
+			const FGameXXKEnemyBattleState* WhiteApeState = NewEnemyStates.Find(Candidate.UnitId);
+			bGuardsWholeEnemySide |= WhiteApeState && WhiteApeState->CurrentPhase >= 2;
+		}
+	}
 	for (const FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
 	{
 		const FGameXXKEnemyDefinition* EnemyDefinition = FindWhiteApeStatusGuardDefinition(Unit);
-		if (!EnemyDefinition)
+		if (!Unit.bLiving
+			|| Unit.Side != EGameXXKCardTargetSide::Enemy
+			|| (!EnemyDefinition && !bGuardsWholeEnemySide))
 		{
 			continue;
+		}
+		if (!EnemyDefinition)
+		{
+			EnemyDefinition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+		}
+		if (!EnemyDefinition)
+		{
+			return SetFailure(OutError, TEXT("White Ape status guard reset found an unknown allied enemy definition."));
 		}
 
 		FGameXXKEnemyBattleState& EnemyState = NewEnemyStates.FindOrAdd(Unit.UnitId);
@@ -3706,6 +3786,68 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 	return true;
 }
 
+bool GameXXKCardRules::TriggerCombatDamageOverTime(
+	FGameXXKCardBattleRuntime& InOutRuntime,
+	const FName SourceUnitId,
+	const FName TargetUnitId,
+	const EGameXXKCardStatus Status,
+	const int32 TriggerCount,
+	TArray<FGameXXKCardDamageResult>& OutResults,
+	FString* OutError)
+{
+	if (OutError)
+	{
+		OutError->Reset();
+	}
+	OutResults.Reset();
+	EGameXXKCardDamageCause Cause = EGameXXKCardDamageCause::Invalid;
+	switch (Status)
+	{
+	case EGameXXKCardStatus::Bleed: Cause = EGameXXKCardDamageCause::Bleed; break;
+	case EGameXXKCardStatus::Poison: Cause = EGameXXKCardDamageCause::Poison; break;
+	case EGameXXKCardStatus::Burn: Cause = EGameXXKCardDamageCause::Burn; break;
+	case EGameXXKCardStatus::DamageOverTime: Cause = EGameXXKCardDamageCause::Rot; break;
+	default: break;
+	}
+	if (SourceUnitId.IsNone()
+		|| TargetUnitId.IsNone()
+		|| Cause == EGameXXKCardDamageCause::Invalid
+		|| TriggerCount <= 0)
+	{
+		return SetFailure(OutError, TEXT("A selected DOT trigger requires a source, target, DOT status, and positive trigger count."));
+	}
+	const FGameXXKCardCombatUnit* Source = FindCombatUnitById(InOutRuntime.Units, SourceUnitId);
+	if (!Source || !Source->bLiving)
+	{
+		return SetFailure(OutError, TEXT("A selected DOT trigger requires its living source."));
+	}
+
+	FGameXXKCardBattleRuntime NewRuntime = InOutRuntime;
+	TArray<FGameXXKCardDamageResult> NewResults;
+	FString Error;
+	for (int32 TriggerIndex = 0; TriggerIndex < TriggerCount; ++TriggerIndex)
+	{
+		const FGameXXKCardCombatUnit* Target = FindCombatUnitById(NewRuntime.Units, TargetUnitId);
+		const int32 Stacks = Target
+			? GameXXKCardRules::GetCombatStatusStacks(*Target, Status)
+			: 0;
+		if (!Target || !Target->bLiving || Stacks <= 0)
+		{
+			break;
+		}
+		FGameXXKCardDamageResult Result;
+		if (!ApplyStatusHealthLoss(NewRuntime, TargetUnitId, Cause, Stacks, Result, Error))
+		{
+			return SetFailure(OutError, Error);
+		}
+		Result.SourceUnitId = SourceUnitId;
+		NewResults.Add(MoveTemp(Result));
+	}
+	InOutRuntime = MoveTemp(NewRuntime);
+	OutResults = MoveTemp(NewResults);
+	return true;
+}
+
 namespace
 {
 	bool ApplyCombatDirectDamageInternal(
@@ -3938,7 +4080,6 @@ namespace
 			: 0;
 		ResolvedTarget->Armor -= NewResult.ArmorAbsorbed;
 		NewResult.HealthDamage = NewResult.DamageAfterLevelDifference - NewResult.ArmorAbsorbed;
-		EGameXXKEnemyPassiveId ResolvedPlayerCardEnemyPassive = EGameXXKEnemyPassiveId::None;
 		if (PlayerCardRuntime
 			&& ResolvedTarget->Side == EGameXXKCardTargetSide::Enemy
 			&& !ResolvedTarget->EnemyDefinitionId.IsNone())
@@ -3958,8 +4099,6 @@ namespace
 			{
 				return SetFailure(OutError, TEXT("Player-card enemy damage found a mismatched persisted enemy definition."));
 			}
-			ResolvedPlayerCardEnemyPassive = EnemyDefinition->PassiveId;
-
 			if (bDirectAttack
 				&& EnemyDefinition->PassiveId == EGameXXKEnemyPassiveId::IronfeatherFirstHit
 				&& EnemyState.bFirstHitPassiveAvailable)
@@ -3983,14 +4122,6 @@ namespace
 				*ResolvedTarget,
 				NewResult.HealthDamage)
 			: FMath::Min(ResolvedTarget->HP, NewResult.HealthDamage);
-		if (ResolvedPlayerCardEnemyPassive == EGameXXKEnemyPassiveId::RedtuskRage && NewResult.HealthDamage > 0)
-		{
-			const int32 CurrentRage = GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Rage);
-			if (CurrentRage < 5)
-			{
-				GameXXKCardRules::AddCombatStatus(*ResolvedTarget, EGameXXKCardStatus::Rage, 1);
-			}
-		}
 		if (!ApplyHealthLossWithLifeSavingTalisman(
 			NewUnits,
 			BattleProjection ? &bLifeSavingTalismanArmed : nullptr,
@@ -4010,6 +4141,7 @@ namespace
 			for (const FGameXXKCardStatusStack& OnHitStatus : Context.OnHitStatuses)
 			{
 				if (GameXXKCardRules::AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks) > 0
+					&& IsNegativeStatusForWhiteApeGuard(OnHitStatus.Status)
 					&& PlayerCardRuntime
 					&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
 						*PlayerCardRuntime,
@@ -6983,6 +7115,7 @@ namespace
 	{
 		const int32 Applied = GameXXKCardRules::AddCombatStatus(InOutTarget, Status, Magnitude);
 		if (Applied > 0
+			&& IsNegativeStatusForWhiteApeGuard(Status)
 			&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
 				InOutRuntime,
 				InOutTarget,
@@ -17347,6 +17480,14 @@ bool GameXXKCardRules::ResolveCardPlay(
 	{
 		return SetFailure(OutError, ValidationError);
 	}
+	if (!ResolveEnemyPassivesAfterActiveCard(
+		NewRuntime,
+		CopiedInstance.OwnerUnitId,
+		NewResult,
+		ValidationError))
+	{
+		return SetFailure(OutError, ValidationError);
+	}
 	if (!ResolveShiGuAfterActiveDotApplication(
 		NewRuntime,
 		HealerFormulaUnitsBeforeActiveCard,
@@ -18135,6 +18276,96 @@ namespace
 		}
 		Result.Cause = EGameXXKCardDamageCause::DirectAttack;
 		OutResults.Add(MoveTemp(Result));
+		return true;
+	}
+
+	bool ResolveEnemyPassivesAfterActiveCard(
+		FGameXXKCardBattleRuntime& InOutRuntime,
+		const FName ActiveCardOwnerUnitId,
+		FGameXXKCardPlayResult& InOutResult,
+		FString& OutError)
+	{
+		TSet<FName> RedtuskTargets;
+		TSet<FName> PorcupineTargets;
+		for (const FGameXXKCardDamageResult& Damage : InOutResult.DamageResults)
+		{
+			if (Damage.ResolutionOrigin != EGameXXKCardResolutionOrigin::ActivePlay)
+			{
+				continue;
+			}
+			const FGameXXKCardCombatUnit* Target = FindCombatUnitById(
+				InOutRuntime.Units,
+				Damage.ResolvedTargetUnitId);
+			const FGameXXKEnemyDefinition* Definition = Target && Target->Side == EGameXXKCardTargetSide::Enemy
+				? FGameXXKEnemyCatalog::Find(Target->EnemyDefinitionId)
+				: nullptr;
+			if (!Target || !Definition)
+			{
+				continue;
+			}
+			if (Damage.HealthDamage > 0
+				&& Definition->PassiveId == EGameXXKEnemyPassiveId::RedtuskRage)
+			{
+				RedtuskTargets.Add(Target->UnitId);
+			}
+			if (Damage.Kind == EGameXXKCardDamageKind::SingleTargetAttack
+				&& !Damage.bAvoidedByAgility
+				&& Definition->PassiveId == EGameXXKEnemyPassiveId::PorcupineCounter)
+			{
+				PorcupineTargets.Add(Target->UnitId);
+			}
+		}
+		for (const FName RedtuskId : RedtuskTargets)
+		{
+			FGameXXKCardCombatUnit* Redtusk = FindCombatUnitById(InOutRuntime.Units, RedtuskId);
+			if (Redtusk && Redtusk->bLiving)
+			{
+				GameXXKCardRules::AddCombatStatus(*Redtusk, EGameXXKCardStatus::Rage, 1);
+			}
+		}
+
+		for (const FName PorcupineId : PorcupineTargets)
+		{
+			FGameXXKCardCombatUnit* Porcupine = FindCombatUnitById(InOutRuntime.Units, PorcupineId);
+			FGameXXKCardCombatUnit* CardOwner = FindCombatUnitById(InOutRuntime.Units, ActiveCardOwnerUnitId);
+			if (!Porcupine || !Porcupine->bLiving || !CardOwner || !CardOwner->bLiving)
+			{
+				continue;
+			}
+			if (GameXXKCardRules::ConsumeCombatStatus(*Porcupine, EGameXXKCardStatus::Block, 1) != 1)
+			{
+				continue;
+			}
+			const int64 Requested = static_cast<int64>(Porcupine->Attack) + Porcupine->Armor;
+			if (Requested <= 0 || Requested > MAX_int32)
+			{
+				OutError = TEXT("Porcupine Block produced an unsupported damage amount.");
+				return false;
+			}
+			FGameXXKCardDamageContext Context;
+			Context.SourceUnitId = PorcupineId;
+			Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
+			Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::Reaction;
+			Context.AgilityRollPercent = AdvanceCombatRandomRoll(InOutRuntime);
+			FGameXXKCardDamageResult Result;
+			if (!ApplyCombatDirectDamageInternal(
+				InOutRuntime.Units,
+				InOutRuntime.GuardLinks,
+				Context,
+				ActiveCardOwnerUnitId,
+				static_cast<int32>(Requested),
+				Result,
+				nullptr,
+				&InOutRuntime,
+				&InOutResult,
+				false,
+				&OutError))
+			{
+				return false;
+			}
+			Result.Cause = EGameXXKCardDamageCause::Block;
+			InOutResult.DamageResults.Add(MoveTemp(Result));
+		}
 		return true;
 	}
 }
