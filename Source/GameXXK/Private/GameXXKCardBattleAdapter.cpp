@@ -2875,12 +2875,44 @@ namespace
 		FGameXXKCardBattleRuntime ForecastRuntime = NewRuntime;
 		ForecastRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
 		ForecastRuntime.bSuppressEquipmentTriggerAudit = true;
+		// A player-phase forecast must not execute or validate deferred Blade/PoJun
+		// payloads whose real trigger boundary has not arrived yet. Enemy effects are
+		// simulated on this throwaway copy only to propagate ordered enemy setup.
+		ForecastRuntime.PendingBladeCharge = FGameXXKBladeChargeRuntime();
+		ForecastRuntime.PendingBladeDelayedCard = FGameXXKBladeDelayedCardRuntime();
+		ForecastRuntime.PendingBladeFinish = FGameXXKBladeFinishRuntime();
+		ForecastRuntime.PendingBladeNativeStyle = FGameXXKBladeStyleRuntime();
+		ForecastRuntime.PendingBladeResidualStyle = FGameXXKBladeStyleRuntime();
+		ForecastRuntime.BladeRetainedHandCardInstanceIds.Reset();
+		for (FGameXXKEquipmentBattleEffectRuntime& EquipmentEffect : ForecastRuntime.EquipmentEffects)
+		{
+			EquipmentEffect.PendingPoJunStyle = FGameXXKPoJunStoredStyleRuntime();
+			EquipmentEffect.PoJunChargeProgressRound = 0;
+			EquipmentEffect.bPoJunChargeConsumedThisRound = false;
+			EquipmentEffect.PendingPoJunReplayPlayerRound = 0;
+		}
 		for (const FGameXXKCardCombatUnit* Enemy : Enemies)
 		{
 			FGameXXKCardEnemyIntent Intent;
 			if (!Enemy->EnemyDefinitionId.IsNone())
 			{
 				const FGameXXKCardCombatUnit* ForecastEnemy = FindCardUnit(ForecastRuntime.Units, Enemy->UnitId);
+				if (!ForecastRuntime.EnemyStates.Contains(Enemy->UnitId))
+				{
+					const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Enemy->EnemyDefinitionId);
+					if (!Definition)
+					{
+						return SetFailure(OutError, TEXT("Enemy plan forecast found an unknown catalog source."));
+					}
+					FGameXXKEnemyBattleState InitialState;
+					InitialState.DefinitionId = Definition->Id;
+					InitialState.CurrentPhase = 1;
+					InitialState.TotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+						Definition->Tier,
+						ForecastRuntime.EnemyDifficulty);
+					ForecastRuntime.EnemyStates.Add(Enemy->UnitId, InitialState);
+					PreparedEnemyStates.Add(Enemy->UnitId, MoveTemp(InitialState));
+				}
 				const FGameXXKEnemyBattleState* ForecastState = ForecastRuntime.EnemyStates.Find(Enemy->UnitId);
 				if (!ForecastEnemy || !ForecastState)
 				{

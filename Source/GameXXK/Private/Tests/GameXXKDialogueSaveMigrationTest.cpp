@@ -50,9 +50,9 @@ bool FGameXXKDialogueSaveMigrationV28Test::RunTest(const FString& Parameters)
 	TestEqual(TEXT("dialogue runtime owns save version 28"),
 		FGameXXKSaveMigration::DialogueRuntimeIntroducedSaveVersion,
 		28);
-	TestEqual(TEXT("equipment-set runtime supersedes dialogue as current save version"),
+	TestEqual(TEXT("enemy-phase runtime supersedes dialogue as current save version"),
 		FGameXXKSaveMigration::CurrentSaveVersion,
-		35);
+		36);
 
 	const FGameXXKSaveState Source = MakeVersionTwentySevenSave();
 	FGameXXKSaveState Migrated;

@@ -328,7 +328,7 @@ bool FGameXXKBattleSceneActorTest::RunTest(const FString& Parameters)
 	TestEqual(
 		TEXT("armor tooltip uses the one approved concise rule"),
 		ArmorStyle.Tooltip,
-		FString(TEXT("优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
+		FString(TEXT("优先抵挡直接攻击；所属阵营回合开始时通常清空。")));
 	TestTrue(TEXT("armor keeps a native paper-ink fallback when its texture is absent"), ArmorStyle.bUsesPaperInkFallback);
 
 	const TArray<EGameXXKCardStatus> RequiredStatusIcons = {

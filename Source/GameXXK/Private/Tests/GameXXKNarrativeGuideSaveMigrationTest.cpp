@@ -54,8 +54,8 @@ bool FGameXXKNarrativeGuideSaveMigrationV29Test::RunTest(const FString& Paramete
 		FGameXXKSaveMigration::NarrativeStageGuideIntroducedSaveVersion, 29);
 	TestEqual(TEXT("v32 retires the disconnected tutorial narrative"),
 		FGameXXKSaveMigration::RetiredLegacyTutorialNarrativeSaveVersion, 32);
-	TestEqual(TEXT("equipment-set runtime advances the current schema to v35"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 35);
+	TestEqual(TEXT("enemy-phase runtime advances the current schema to v36"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 36);
 
 	FGameXXKSaveState OrdinaryV28 = MakeSave(28, EGameXXKTutorialQuestState::NotStarted);
 	FillDialogue(OrdinaryV28.RuntimeState.DialogueSession);

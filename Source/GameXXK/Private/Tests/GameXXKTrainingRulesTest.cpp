@@ -110,22 +110,25 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	FGameXXKTrainingStageDefinition Definition;
 	TestTrue(TEXT("1-1 definition exists"), FGameXXKTrainingRules::TryGetStageDefinition(StageOne, Definition));
-	TestEqual(TEXT("1-1 ordinary pool contains rooster and civet only"), Definition.NormalEnemyPool.Num(), 2);
+	TestEqual(TEXT("1-1 ordinary pool contains all four chapter-one ordinary monsters"), Definition.NormalEnemyPool.Num(), 4);
 	TestTrue(TEXT("1-1 ordinary pool contains rooster"), Definition.NormalEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Rooster"))));
+	TestTrue(TEXT("1-1 ordinary pool contains goat"), Definition.NormalEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Goat"))));
+	TestTrue(TEXT("1-1 ordinary pool contains weasel"), Definition.NormalEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Weasel"))));
 	TestTrue(TEXT("1-1 ordinary pool contains civet"), Definition.NormalEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Civet"))));
 	TestEqual(TEXT("1-1 has two sub-elite entries"), Definition.EliteEnemyPool.Num(), 2);
-	TestTrue(TEXT("1-1 elite pool contains goat"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Goat"))));
-	TestTrue(TEXT("1-1 elite pool contains weasel"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.Weasel"))));
+	TestTrue(TEXT("1-1 elite pool contains Ironfeather"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.IronfeatherRooster"))));
+	TestTrue(TEXT("1-1 elite pool contains Bluehorn"), Definition.EliteEnemyPool.Contains(FName(TEXT("Enemy.Ch1.BluehornGoatKing"))));
+	TestEqual(TEXT("Normal 1-1 combat level is five"), Definition.CombatLevel, 5);
 	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, false);
 	const TArray<FGameXXKTrainingEncounterDefinition> TravelEncounters = FGameXXKTrainingRules::BuildEncounterSequence(StageOne, true);
 	TestEqual(TEXT("one stage keeps four normal waves, two elite waves and one boss wave"), Encounters.Num(), 7);
 	const EGameXXKTrainingEncounterKind ExpectedWaveKinds[] = {
 		EGameXXKTrainingEncounterKind::Normal,
 		EGameXXKTrainingEncounterKind::Normal,
-		EGameXXKTrainingEncounterKind::Elite,
+		EGameXXKTrainingEncounterKind::Normal,
 		EGameXXKTrainingEncounterKind::Normal,
 		EGameXXKTrainingEncounterKind::Elite,
-		EGameXXKTrainingEncounterKind::Normal,
+		EGameXXKTrainingEncounterKind::Elite,
 		EGameXXKTrainingEncounterKind::Boss};
 	for (int32 WaveIndex = 0; WaveIndex < UE_ARRAY_COUNT(ExpectedWaveKinds); ++WaveIndex)
 	{
@@ -136,61 +139,34 @@ bool FGameXXKTrainingChapterOneCompositionTest::RunTest(const FString& Parameter
 				: EGameXXKTrainingEncounterKind::Boss,
 			ExpectedWaveKinds[WaveIndex]);
 	}
-	int32 EliteCount = 0;
 	for (const FGameXXKTrainingEncounterDefinition& Encounter : Encounters)
 	{
 		TestFalse(TEXT("every authored formation has a primary enemy"), Encounter.EnemyDefinitionId.IsNone());
 		TestFalse(TEXT("no formation contains a missing enemy identity"), Encounter.EnemyDefinitionIds.Contains(NAME_None));
-		if (Encounter.Kind == EGameXXKTrainingEncounterKind::Normal)
-		{
-			TestEqual(TEXT("ordinary waves contain two enemies"), Encounter.EnemyDefinitionIds.Num(), 2);
-			if (Encounter.EnemyDefinitionIds.Num() == 2)
-			{
-				TestEqual(TEXT("ordinary wave left slot is rooster"), Encounter.EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
-				TestEqual(TEXT("ordinary wave right slot is civet"), Encounter.EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.Civet")));
-			}
-		}
-		else if (Encounter.Kind == EGameXXKTrainingEncounterKind::Elite)
-		{
-			++EliteCount;
-			TestEqual(TEXT("elite waves fill all three enemy slots"), Encounter.EnemyDefinitionIds.Num(), 3);
-			if (Encounter.EnemyDefinitionIds.Num() == 3)
-			{
-				TestEqual(TEXT("elite wave keeps rooster on the left flank"), Encounter.EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
-				TestEqual(TEXT("elite wave primary enemy occupies the center"), Encounter.EnemyDefinitionIds[1], Encounter.EnemyDefinitionId);
-				TestEqual(TEXT("elite wave keeps civet on the right flank"), Encounter.EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Civet")));
-			}
-		}
+		TestEqual(TEXT("every authored encounter fills left, center, and right"), Encounter.EnemyDefinitionIds.Num(), 3);
+		TestEqual(TEXT("every authored encounter carries three opening intents"), Encounter.EnemySlots.Num(), 3);
+		TestEqual(TEXT("encounter uses the fixed stage level"), Encounter.CombatLevel, 5);
 	}
-	TestEqual(TEXT("route exposes two sub-elite encounters"), EliteCount, 2);
 	TestTrue(TEXT("route ends with a boss encounter"), Encounters.Last().Kind == EGameXXKTrainingEncounterKind::Boss);
-	TestEqual(TEXT("the 1-1 elite-as-boss wave fills all three slots"), Encounters.Last().EnemyDefinitionIds.Num(), 3);
-	if (Encounters.Last().EnemyDefinitionIds.Num() == 3)
-	{
-		TestEqual(TEXT("the 1-1 boss wave keeps rooster on the left"), Encounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Rooster")));
-		TestEqual(TEXT("the 1-1 goat boss occupies the center"), Encounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.Goat")));
-		TestEqual(TEXT("the 1-1 boss wave keeps civet on the right"), Encounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Civet")));
-	}
+	TestEqual(TEXT("1-1 boss wave left is Weasel"), Encounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Weasel")));
+	TestEqual(TEXT("1-1 stage core is Ironfeather"), Encounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.IronfeatherRooster")));
+	TestEqual(TEXT("1-1 boss wave right is Civet"), Encounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Civet")));
 	TestTrue(TEXT("challenge 1-1 keeps normal combat health"), Encounters[0].BaseHealth > 1);
 	TestEqual(TEXT("travel 1-1 normal health matches the challenge encounter"), TravelEncounters[0].BaseHealth, Encounters[0].BaseHealth);
 	TestEqual(TEXT("travel 1-1 boss health matches the challenge encounter"), TravelEncounters.Last().BaseHealth, Encounters.Last().BaseHealth);
-	TestEqual(TEXT("1-1 boss tooltip identity is goat boss"), Definition.BossEnemyId, FName(TEXT("Enemy.Ch1.Goat")));
+	TestEqual(TEXT("1-1 boss tooltip identity is Ironfeather"), Definition.BossEnemyId, FName(TEXT("Enemy.Ch1.IronfeatherRooster")));
 	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	const FName StageThree = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 3);
 	FGameXXKTrainingStageDefinition StageTwoDefinition;
 	FGameXXKTrainingStageDefinition StageThreeDefinition;
 	TestTrue(TEXT("1-2 definition exists"), FGameXXKTrainingRules::TryGetStageDefinition(StageTwo, StageTwoDefinition));
 	TestTrue(TEXT("1-3 definition exists"), FGameXXKTrainingRules::TryGetStageDefinition(StageThree, StageThreeDefinition));
-	TestEqual(TEXT("1-2 reuses the weasel as the boss"), StageTwoDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.Weasel")));
-	TestEqual(TEXT("1-3 uses the first-chapter boss identity"), StageThreeDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
+	TestEqual(TEXT("1-2 stage core is Bluehorn"), StageTwoDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
+	TestEqual(TEXT("1-3 stage core is Money Rat"), StageThreeDefinition.BossEnemyId, FName(TEXT("Enemy.Ch1.MoneyRat")));
 	const TArray<FGameXXKTrainingEncounterDefinition> StageThreeEncounters = FGameXXKTrainingRules::BuildEncounterSequence(StageThree, false);
-	TestEqual(TEXT("the true chapter-one boss wave fills all three slots"), StageThreeEncounters.Last().EnemyDefinitionIds.Num(), 3);
-	if (StageThreeEncounters.Last().EnemyDefinitionIds.Num() == 3)
-	{
-		TestEqual(TEXT("bluehorn boss wave left flank is goat"), StageThreeEncounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.Goat")));
-		TestEqual(TEXT("bluehorn boss occupies the center"), StageThreeEncounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
-		TestEqual(TEXT("bluehorn boss wave right flank is weasel"), StageThreeEncounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.Weasel")));
-	}
+	TestEqual(TEXT("1-3 stage end left is Ironfeather"), StageThreeEncounters.Last().EnemyDefinitionIds[0], FName(TEXT("Enemy.Ch1.IronfeatherRooster")));
+	TestEqual(TEXT("1-3 stage end center is Money Rat"), StageThreeEncounters.Last().EnemyDefinitionIds[1], FName(TEXT("Enemy.Ch1.MoneyRat")));
+	TestEqual(TEXT("1-3 stage end right is Bluehorn"), StageThreeEncounters.Last().EnemyDefinitionIds[2], FName(TEXT("Enemy.Ch1.BluehornGoatKing")));
 	const FString Tooltip = FGameXXKTrainingRules::BuildStageTooltip(Progress, StageOne).ToString();
 	TestTrue(TEXT("boss tooltip includes the authored boss name"), Tooltip.Contains(Definition.BossDisplayName.ToString()));
 	TestEqual(TEXT("base travel reward leaves chest resolution to the encounter resolver"), FGameXXKTrainingRules::BuildTravelReward(StageOne).ChestTier, EGameXXKTrainingRewardTier::None);
@@ -235,7 +211,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		StageOne,
 		EGameXXKTrainingEncounterKind::Boss,
 		Seed,
-		1.0f);
+		3.0f);
 	TestTrue(TEXT("a fully clamped one chance always rolls a boss chest"), BossChest.bChestRolled);
 	TestEqual(TEXT("a boss roll resolves to the advanced chest tier"), BossChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 
@@ -243,7 +219,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		StageOne,
 		EGameXXKTrainingEncounterKind::Elite,
 		Seed,
-		1.0f);
+		3.0f);
 	TestEqual(TEXT("an elite roll resolves to the advanced chest tier"), EliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 
 	const FGameXXKTrainingReward TravelNormalChest = FGameXXKTrainingRules::ResolveTravelReward(
@@ -252,7 +228,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		0,
-		1.0f);
+		3.0f);
 	TestTrue(TEXT("Travel can roll a normal chest when its cooldown is ready"), TravelNormalChest.bChestRolled);
 	TestEqual(TEXT("Travel normal encounters use the normal chest tier"), TravelNormalChest.ChestTier, EGameXXKTrainingRewardTier::NormalChest);
 	TestEqual(TEXT("normal chest resolves to the canonical inventory item"), TravelNormalChest.ChestItemId, FName(TEXT("Item.TrainingNormalChest")));
@@ -265,7 +241,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		0,
-		1.0f);
+		3.0f);
 	TestTrue(TEXT("1-1 Travel uses the ordinary guaranteed chest path"), TravelOneOneNormal.bChestRolled);
 	TestEqual(TEXT("1-1 ordinary Travel resolves a normal chest"), TravelOneOneNormal.ChestTier, EGameXXKTrainingRewardTier::NormalChest);
 	const FGameXXKTrainingReward TravelOneOneElite = FGameXXKTrainingRules::ResolveTravelReward(
@@ -274,7 +250,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		0,
-		1.0f);
+		3.0f);
 	TestTrue(TEXT("1-1 elite Travel uses the guaranteed advanced chest path"), TravelOneOneElite.bChestRolled);
 	TestEqual(TEXT("1-1 elite Travel resolves an advanced chest"), TravelOneOneElite.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 	const FGameXXKTrainingReward TravelOneOneBoss = FGameXXKTrainingRules::ResolveTravelReward(
@@ -283,7 +259,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		0,
-		1.0f,
+		3.0f,
 		true);
 	TestTrue(TEXT("1-1 boss Travel uses the guaranteed advanced chest path"), TravelOneOneBoss.bChestRolled);
 	TestEqual(TEXT("1-1 boss Travel resolves an advanced chest"), TravelOneOneBoss.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
@@ -294,7 +270,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		FGameXXKTrainingRules::TravelNormalChestCooldownSeconds,
 		0,
-		1.0f);
+		3.0f);
 	TestFalse(TEXT("Travel normal chest cooldown blocks an otherwise guaranteed roll"), TravelNormalOnCooldown.bChestRolled);
 
 	const FGameXXKTrainingReward TravelEliteChest = FGameXXKTrainingRules::ResolveTravelReward(
@@ -303,7 +279,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		0,
-		1.0f);
+		3.0f);
 	TestTrue(TEXT("Travel can roll an advanced elite chest when its cooldown is ready"), TravelEliteChest.bChestRolled);
 	TestEqual(TEXT("Travel elite encounters use the advanced chest tier"), TravelEliteChest.ChestTier, EGameXXKTrainingRewardTier::AdvancedChest);
 	TestEqual(TEXT("advanced chest resolves to the canonical inventory item"), TravelEliteChest.ChestItemId, FName(TEXT("Item.TrainingAdvancedChest")));
@@ -346,7 +322,7 @@ bool FGameXXKTrainingRewardResolverTest::RunTest(const FString& Parameters)
 		Seed,
 		0,
 		FGameXXKTrainingRules::TravelAdvancedChestCooldownSeconds,
-		1.0f);
+		3.0f);
 	TestFalse(TEXT("Travel advanced chest cooldown blocks an otherwise guaranteed roll"), TravelEliteOnCooldown.bChestRolled);
 	TestEqual(TEXT("normal chest cooldown is four minutes"),
 		FGameXXKTrainingRules::TravelChestCooldownSeconds(EGameXXKTrainingRewardTier::NormalChest),
@@ -557,7 +533,7 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	FGameXXKTrainingTravelRuntime Runner;
 	TestTrue(TEXT("the new-game travel runner initializes"), FGameXXKTrainingRules::InitializeTravelRunner(Progress, Runner, 100, 100, 100));
 	TestEqual(TEXT("runner starts in walking phase"), Runner.Phase, EGameXXKTrainingTravelPhase::Walking);
-	TestEqual(TEXT("ordinary travel runner begins with the two-enemy formation"), Runner.Enemies.Num(), 2);
+	TestEqual(TEXT("ordinary travel runner begins with the three-enemy formation"), Runner.Enemies.Num(), 3);
 	TestEqual(TEXT("ordinary travel runner targets the first living slot"), Runner.ActiveEnemyIndex, 0);
 
 	bool bEncounterCompleted = false;
@@ -612,13 +588,15 @@ bool FGameXXKTrainingTravelRunnerLoopTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("travel runner continues walking after settlement"), Runner.Phase == EGameXXKTrainingTravelPhase::Walking);
 	TestEqual(TEXT("runner remains on the selected stage"), Runner.StageId, StageOne);
 	TestEqual(TEXT("completed stage runtime loops to encounter zero"), Runner.EncounterIndex, 0);
-	TestEqual(TEXT("completed stage rematerializes the first two-enemy formation"), Runner.Enemies.Num(), 2);
-	if (Runner.Enemies.Num() == 2)
+	TestEqual(TEXT("completed stage rematerializes the first three-enemy formation"), Runner.Enemies.Num(), 3);
+	if (Runner.Enemies.Num() == 3)
 	{
 		TestEqual(TEXT("looped first formation starts with rooster"),
 			Runner.Enemies[0].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Rooster")));
-		TestEqual(TEXT("looped first formation continues with civet"),
-			Runner.Enemies[1].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Civet")));
+		TestEqual(TEXT("looped first formation continues with goat"),
+			Runner.Enemies[1].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Goat")));
+		TestEqual(TEXT("looped first formation ends with civet"),
+			Runner.Enemies[2].EnemyDefinitionId, FName(TEXT("Enemy.Ch1.Civet")));
 	}
 	for (const FGameXXKTrainingTravelPartyUnitRuntime& PartyUnit : Runner.PartyUnits)
 	{
@@ -937,14 +915,28 @@ bool FGameXXKTrainingRealCardBattleBridgeTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("the battle node maps to an authored encounter"),
 		EncounterSequence.IsValidIndex(EncounterIndex));
 	const int32 EnemyCount = Subsystem->GetRuntimeState().ActiveBattleEnemies.Num();
-	TestEqual(TEXT("the first authored challenge wave contains two enemies"), EnemyCount, 2);
-	if (EnemyCount != 2)
+	TestEqual(TEXT("the authored challenge wave contains three enemies"), EnemyCount, 3);
+	if (EnemyCount != 3)
 	{
 		return false;
 	}
 	const TArray<FName> ExpectedFormation = EncounterSequence[EncounterIndex].EnemyDefinitionIds;
 	TestEqual(TEXT("training battle uses the authored left enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[0].EnemyDefinitionId, ExpectedFormation[0]);
-	TestEqual(TEXT("training battle uses the authored right enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[1].EnemyDefinitionId, ExpectedFormation[1]);
+	TestEqual(TEXT("training battle uses the authored center enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[1].EnemyDefinitionId, ExpectedFormation[1]);
+	TestEqual(TEXT("training battle uses the authored right enemy"), Subsystem->GetRuntimeState().ActiveBattleEnemies[2].EnemyDefinitionId, ExpectedFormation[2]);
+	for (const FGameXXKBattleRuntimeUnit& Enemy : Subsystem->GetRuntimeState().ActiveBattleEnemies)
+	{
+		TestEqual(TEXT("Normal 1-2 battle uses fixed level ten"), Enemy.CombatLevel, 10);
+	}
+	TestEqual(TEXT("Normal battle stores normal difficulty"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.EnemyDifficulty,
+		EGameXXKEnemyDifficulty::Normal);
+	TestEqual(TEXT("Normal battle stores 100 percent enemy damage"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.EnemyDifficultyDamagePercent,
+		100);
+	TestEqual(TEXT("three authored openings are locked"),
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.LockedEnemyIntents.Num(),
+		3);
 
 	bool bStageCompleted = false;
 	FGameXXKTrainingReward Reward;
@@ -1376,6 +1368,8 @@ bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Pa
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	Subsystem->GetMutableRuntimeState().PlayerLevel = 1;
 	Subsystem->GetMutableRuntimeState().PlayerXP = 95;
+	Subsystem->GetMutableRuntimeState().Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
+	Subsystem->GetMutableRuntimeState().Talents.NodeRanks.Add(TEXT("Talent.Entry.IdleOffline"), 1);
 	TestTrue(TEXT("offline travel bridge starts 1-1"), Subsystem->StartTrainingTravel(StageOne));
 	FGameXXKTrainingOfflineReward SimulatedReward;
 	TestTrue(TEXT("offline travel bridge simulates a full-health 1-1 window"),

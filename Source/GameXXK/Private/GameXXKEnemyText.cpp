@@ -108,13 +108,20 @@ namespace
 		case EGameXXKEnemyIntentEffectType::HealMaxHealthPercent:
 			return FString::Printf(TEXT("回复%d生命"), ResolvedMaximumHealthHealing(State, Effect));
 		case EGameXXKEnemyIntentEffectType::ApplyStatus:
-			return FString::Printf(TEXT("%s%d"), *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks);
+			return Effect.Status == EGameXXKCardStatus::Bleed
+				|| Effect.Status == EGameXXKCardStatus::Poison
+				|| Effect.Status == EGameXXKCardStatus::Burn
+				|| Effect.Status == EGameXXKCardStatus::DamageOverTime
+				? FString::Printf(TEXT("%s%d"), *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks)
+				: FString::Printf(TEXT("%s %d层"), *GameXXKCardText::DescribeStatusName(Effect.Status), Effect.StatusStacks);
 		case EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty:
 			return FString::Printf(TEXT("下回合气力-%d"), Effect.Magnitude);
 		case EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy:
 			return FString::Printf(TEXT("下一张牌气力+%d"), Effect.Magnitude);
 		case EGameXXKEnemyIntentEffectType::ModifyAttack:
 			return FString::Printf(TEXT("攻击%s"), *Signed(Effect.Magnitude));
+		case EGameXXKEnemyIntentEffectType::ModifySpeed:
+			return FString::Printf(TEXT("速度%s"), *Signed(Effect.Magnitude));
 		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
 			return FString::Printf(TEXT("移除%d层增益"), Effect.Magnitude);
 		case EGameXXKEnemyIntentEffectType::RemoveNegativeStatus:
@@ -181,6 +188,20 @@ FString FGameXXKEnemyText::FormatIntentCard(
 			Payloads.Add(Payload);
 		}
 	}
+	for (const FGameXXKCardStatusStack& Status : Intent.OnHitStatuses)
+	{
+		const bool bAlreadyShown = Intent.Effects.ContainsByPredicate([&Status](const FGameXXKResolvedEnemyIntentEffect& Effect)
+		{
+			return Effect.Status == Status.Status && Effect.StatusStacks == Status.Stacks;
+		});
+		if (!bAlreadyShown && Status.Status != EGameXXKCardStatus::None && Status.Stacks > 0)
+		{
+			Payloads.Add(FString::Printf(
+				TEXT("%s %d层"),
+				*GameXXKCardText::DescribeStatusName(Status.Status),
+				Status.Stacks));
+		}
+	}
 	const FString Target = TargetLabel(State, Intent.TargetRule, {}, Intent);
 	return FString::Printf(
 		TEXT("%s\n【%s】\n%s"),
@@ -212,6 +233,20 @@ FString FGameXXKEnemyText::FormatIntentTooltip(
 		if (!Detail.EndsWith(TEXT("：")))
 		{
 			Lines.Add(Detail);
+		}
+	}
+	for (const FGameXXKCardStatusStack& Status : Intent.OnHitStatuses)
+	{
+		const bool bAlreadyShown = Intent.Effects.ContainsByPredicate([&Status](const FGameXXKResolvedEnemyIntentEffect& Effect)
+		{
+			return Effect.Status == Status.Status && Effect.StatusStacks == Status.Stacks;
+		});
+		if (!bAlreadyShown && Status.Status != EGameXXKCardStatus::None && Status.Stacks > 0)
+		{
+			Lines.Add(FString::Printf(
+				TEXT("命中附加：%s %d层"),
+				*GameXXKCardText::DescribeStatusName(Status.Status),
+				Status.Stacks));
 		}
 	}
 	if (Intent.bCharging)

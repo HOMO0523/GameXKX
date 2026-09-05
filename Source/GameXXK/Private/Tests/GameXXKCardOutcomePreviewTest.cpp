@@ -1094,6 +1094,7 @@ bool FGameXXKCardOutcomePreviewHeavyArrowPassiveAndLethalTest::RunTest(const FSt
 	}
 	FGameXXKCardCombatUnit* WhiteApe = FindUnit(WhiteApeState, EnemyOneUnitId);
 	WhiteApe->EnemyDefinitionId = TEXT("Enemy.Ch3.WhiteApe");
+	WhiteApe->Defense = 10;
 	WhiteApeState.CardRun.ActiveBattle.EnemyStates.Reset();
 	FGameXXKEnemyBattleState& WhiteApeRuntimeState =
 		WhiteApeState.CardRun.ActiveBattle.EnemyStates.FindOrAdd(EnemyOneUnitId);

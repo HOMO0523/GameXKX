@@ -147,7 +147,7 @@ bool FGameXXKPermanentNpcV30SaveMigrationTest::RunTest(const FString& Parameters
 		TestEqual(TEXT("recovery order selects the approved identity"), ResolvedNpcId, Recovery.ExpectedNpcId);
 		TestTrue(TEXT("legacy temporary field is cleared"),
 			Migrated.RuntimeState.CardRun.ActiveTemporaryQuestNpcId.IsNone());
-		TestEqual(TEXT("migration targets current v35"), Migrated.SaveVersion, 35);
+		TestEqual(TEXT("migration targets current v36"), Migrated.SaveVersion, 36);
 	}
 
 	const FLegacyEncounterCase EncounterCases[] = {

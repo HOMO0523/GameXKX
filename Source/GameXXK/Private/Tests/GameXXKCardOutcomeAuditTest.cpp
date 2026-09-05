@@ -772,6 +772,7 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardCombatUnit* WhiteApe = FindUnit(Runtime, EnemyAUnitId);
 		WhiteApe->EnemyDefinitionId = WhiteApeDefinitionId;
 		WhiteApe->CombatLevel = 1;
+		WhiteApe->Defense = 10;
 		FGameXXKEnemyBattleState& EnemyState = Runtime.EnemyStates.FindOrAdd(EnemyAUnitId);
 		EnemyState.DefinitionId = WhiteApeDefinitionId;
 		EnemyState.bFirstStatusPassiveAvailable = true;
@@ -781,7 +782,7 @@ bool FGameXXKCardOutcomePositiveAuditTest::RunTest(const FString& Parameters)
 		FGameXXKCardPlayResult Result;
 		if (!ResolveCard(*this, Runtime, EnemyAUnitId, Result, TEXT("White Ape first negative status"))) return false;
 		if (!TestEqual(TEXT("White Ape first negative status emits one enemy armor packet"), Result.ArmorResults.Num(), 1)) return false;
-		TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, EnemyAUnitId, 8, 8, TEXT("White Ape status guard Armor"));
+		TestArmorPacket(*this, Result.ArmorResults[0], EnemyAUnitId, EnemyAUnitId, 8, 8, TEXT("White Ape status guard Armor"));
 	}
 
 	{
@@ -874,6 +875,7 @@ bool FGameXXKWhiteApeOnHitArmorAuditTest::RunTest(const FString& Parameters)
 	if (!TestNotNull(TEXT("Sui Yan Ji White Ape target exists"), WhiteApe)) return false;
 	WhiteApe->EnemyDefinitionId = WhiteApeDefinitionId;
 	WhiteApe->CombatLevel = 1;
+	WhiteApe->Defense = 10;
 	FGameXXKEnemyBattleState& EnemyState = Runtime.EnemyStates.FindOrAdd(EnemyAUnitId);
 	EnemyState.DefinitionId = WhiteApeDefinitionId;
 	EnemyState.bFirstStatusPassiveAvailable = true;
@@ -889,7 +891,7 @@ bool FGameXXKWhiteApeOnHitArmorAuditTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Sui Yan Ji applies its attached Vulnerability"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Vulnerability), 3);
 	TestEqual(TEXT("Sui Yan Ji applies its attached Mark"), Status(Runtime, EnemyAUnitId, EGameXXKCardStatus::Mark), 1);
 	if (!TestEqual(TEXT("two attack-attached statuses emit one White Ape armor packet"), Result.ArmorResults.Num(), 1)) return false;
-	return TestArmorPacket(*this, Result.ArmorResults[0], OwnerUnitId, EnemyAUnitId, 8, 8, TEXT("Sui Yan Ji White Ape Armor"));
+	return TestArmorPacket(*this, Result.ArmorResults[0], EnemyAUnitId, EnemyAUnitId, 8, 8, TEXT("Sui Yan Ji White Ape Armor"));
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(

@@ -17,9 +17,9 @@ bool FGameXXKRetiredLegacyNarrativeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("legacy narrative retirement owns v32 boundary"),
 		FGameXXKSaveMigration::RetiredLegacyTutorialNarrativeSaveVersion,
 		32);
-	TestEqual(TEXT("equipment-set runtime is current save boundary"),
+	TestEqual(TEXT("enemy-phase runtime is current save boundary"),
 		FGameXXKSaveMigration::CurrentSaveVersion,
-		35);
+		36);
 	TestNull(TEXT("retired Xu Xiake story is absent"),
 		FGameXXKStoryCatalog::FindStory(TEXT("Story.Main.XuXiakeTreasure")));
 	TestNull(TEXT("retired Xu Xiake task is absent"),
@@ -60,7 +60,7 @@ bool FGameXXKRetiredLegacyNarrativeTest::RunTest(const FString& Parameters)
 	FGameXXKSaveMigrationReport Report;
 	TestTrue(FString::Printf(TEXT("v31 retires legacy narrative: %s"), *Report.Error),
 		FGameXXKSaveMigration::MigrateToCurrent(V31, Migrated, Report));
-	TestEqual(TEXT("migration reaches current v35"), Migrated.SaveVersion, 35);
+	TestEqual(TEXT("migration reaches current v36"), Migrated.SaveVersion, 36);
 	TestFalse(TEXT("retired story progress is removed"),
 		Migrated.RuntimeState.NarrativeProgress.StoryProgressById.Contains(StoryId));
 	TestFalse(TEXT("retired task progress is removed"),

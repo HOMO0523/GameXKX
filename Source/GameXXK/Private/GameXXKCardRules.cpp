@@ -2929,13 +2929,6 @@ namespace
 				}
 				SeenExplicitEnemySlots.Add(Unit.BattleSlotNumber);
 			}
-			else if (Unit.Side == EGameXXKCardTargetSide::Enemy
-				&& !Unit.EnemyDefinitionId.IsNone()
-				&& (Unit.CombatLevel < 1 || Unit.CombatLevel > MaxEnemyCombatLevel))
-			{
-				OutError = TEXT("A catalog enemy combat unit requires a level from 1 through 135.");
-				return false;
-			}
 			else if (Unit.Side != EGameXXKCardTargetSide::Enemy
 				&& (Unit.BattleSlotNumber != INDEX_NONE
 					|| !Unit.EnemyDefinitionId.IsNone()
@@ -4105,7 +4098,8 @@ namespace
 			{
 				const int32 PassiveReducedHealthDamage = NewResult.HealthDamage / 2;
 				NewResult.HealthDamage = PassiveReducedHealthDamage;
-				if (PassiveReducedHealthDamage > 0)
+				if (PassiveReducedHealthDamage > 0
+					&& PlayerCardRuntime->Deck.ResolvingCardInstanceId.IsNone())
 				{
 					EnemyState.bFirstHitPassiveAvailable = false;
 				}
@@ -18287,6 +18281,7 @@ namespace
 	{
 		TSet<FName> RedtuskTargets;
 		TSet<FName> PorcupineTargets;
+		TSet<FName> IronfeatherTargets;
 		for (const FGameXXKCardDamageResult& Damage : InOutResult.DamageResults)
 		{
 			if (Damage.ResolutionOrigin != EGameXXKCardResolutionOrigin::ActivePlay)
@@ -18308,6 +18303,12 @@ namespace
 			{
 				RedtuskTargets.Add(Target->UnitId);
 			}
+			if (Damage.HealthDamage > 0
+				&& !Damage.bTriggeredEnemyPhase
+				&& Definition->PassiveId == EGameXXKEnemyPassiveId::IronfeatherFirstHit)
+			{
+				IronfeatherTargets.Add(Target->UnitId);
+			}
 			if (Damage.Kind == EGameXXKCardDamageKind::SingleTargetAttack
 				&& !Damage.bAvoidedByAgility
 				&& Definition->PassiveId == EGameXXKEnemyPassiveId::PorcupineCounter)
@@ -18321,6 +18322,13 @@ namespace
 			if (Redtusk && Redtusk->bLiving)
 			{
 				GameXXKCardRules::AddCombatStatus(*Redtusk, EGameXXKCardStatus::Rage, 1);
+			}
+		}
+		for (const FName IronfeatherId : IronfeatherTargets)
+		{
+			if (FGameXXKEnemyBattleState* State = InOutRuntime.EnemyStates.Find(IronfeatherId))
+			{
+				State->bFirstHitPassiveAvailable = false;
 			}
 		}
 

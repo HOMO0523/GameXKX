@@ -261,21 +261,21 @@ bool FGameXXKBattleStatusTooltipsTest::RunTest(const FString& Parameters)
 		{EGameXXKCardStatus::TerrainBonusDoubleThisRound, TEXT("本回合地形双效"), TEXT("本回合队伍下一张地形牌的地形条件效果额外结算1次；使用或回合结束时清除。"), TEXT("TerrainAndRedirect")},
 		{EGameXXKCardStatus::Medicine, TEXT("药效"), TEXT("下一次治疗或治疗反转每层+1；结算时全部消耗。"), TEXT("MedicineHerbs")},
 		{EGameXXKCardStatus::Weak, TEXT("虚弱"), TEXT("直接攻击伤害降低50%；回合结束减少1层。"), TEXT("WeakBrokenBlade")},
-		{EGameXXKCardStatus::Wealth, TEXT("财富"), TEXT("钱潮冲击每层伤害+15；散财疗伤最多消耗3层，每层回复6%最大生命。"), TEXT("WealthCoin")},
-		{EGameXXKCardStatus::Rage, TEXT("狂怒"), TEXT("受到玩家牌的生命伤害时增加1层；怒獠每层伤害+20。"), TEXT("RageFlame")},
-		{EGameXXKCardStatus::Prey, TEXT("猎物"), TEXT("老虎锁定的目标；虎扑将攻击该单位。"), TEXT("PreyTargetEye")},
+		{EGameXXKCardStatus::Wealth, TEXT("财富"), TEXT("金钱鼠的资源，最多8层；部分意图会读取或消耗。"), TEXT("WealthCoin")},
+		{EGameXXKCardStatus::Rage, TEXT("狂怒"), TEXT("每张造成生命伤害的玩家牌增加1层，最多5层。"), TEXT("RageFlame")},
+		{EGameXXKCardStatus::Prey, TEXT("猎物"), TEXT("老虎锁定的目标；阶段牌优先攻击该单位。"), TEXT("PreyTargetEye")},
 		{EGameXXKCardStatus::Charge, TEXT("蓄力"), TEXT("层数表示剩余蓄力回合；归零后执行已准备的意图。"), TEXT("ChargeSpiralHorn")},
-		{EGameXXKCardStatus::Counter, TEXT("反击"), TEXT("敌方单体攻击牌结算后，造成100%攻击并消耗1次。"), TEXT("CounterHookBlade")},
-		{EGameXXKCardStatus::Block, TEXT("格挡"), TEXT("敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。"), TEXT("BlockShield")},
+		{EGameXXKCardStatus::Counter, TEXT("反击"), TEXT("受到单体攻击牌后，造成攻击伤害并消耗1层。"), TEXT("CounterHookBlade")},
+		{EGameXXKCardStatus::Block, TEXT("格挡"), TEXT("受到单体攻击牌后，造成攻击＋当前护甲伤害并消耗1层。"), TEXT("BlockShield")},
 	};
 
 	const FGameXXKBattleStatusIconStyle ArmorStyle = FGameXXKBattleStatusIconStyle::ResolveArmorIconStyle();
 	TestEqual(TEXT("armor uses the approved display name"), ArmorStyle.DisplayName, FString(TEXT("护甲")));
-	TestEqual(TEXT("armor uses one concise rule"), ArmorStyle.Tooltip, FString(TEXT("优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
+	TestEqual(TEXT("armor uses one concise rule"), ArmorStyle.Tooltip, FString(TEXT("优先抵挡直接攻击；所属阵营回合开始时通常清空。")));
 	TestEqual(
 		TEXT("armor tooltip keeps the full real value and exactly one rule line"),
 		FGameXXKBattleStatusIconStyle::DescribeStatusTooltip(ArmorStyle, 128),
-		FString(TEXT("护甲\n层数：128\n优先抵挡直接攻击伤害；所属阵营回合开始时清空。")));
+		FString(TEXT("护甲\n层数：128\n优先抵挡直接攻击；所属阵营回合开始时通常清空。")));
 
 	for (const FExpectedStatusTooltip& Expected : ExpectedStatuses)
 	{
@@ -377,7 +377,7 @@ bool FGameXXKBattleStatusEffectsWidgetTest::RunTest(const FString& Parameters)
 		const FString PoisonTooltip = GetStatusIconTooltipText(PoisonIcon);
 		TestEqual(TEXT("poison tooltip uses the approved owner-end rule"),
 			PoisonTooltip,
-			FString(TEXT("中毒\n层数：2\n回合结束时，失去等同层数的生命并减少1层。")));
+			FString(TEXT("中毒\n层数：2\n任意一方回合结束时，失去等同中毒值的生命。")));
 	}
 	UHorizontalBox* StatusIconRow = Cast<UHorizontalBox>(EffectsWidget->GetWidgetFromName(TEXT("BattleUnitStatusEffectsRow")));
 	TestNotNull(TEXT("effects widget exposes its live status icon row"), StatusIconRow);

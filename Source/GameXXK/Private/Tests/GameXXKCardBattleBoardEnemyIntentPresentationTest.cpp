@@ -20,7 +20,8 @@ namespace
 	FGameXXKBattleRuntimeUnit MakeEnemyIntentTestEnemy(
 		const TCHAR* Id,
 		const TCHAR* DisplayName,
-		const TCHAR* EnemyDefinitionId)
+		const TCHAR* EnemyDefinitionId,
+		const int32 BattleSlotNumber)
 	{
 		FGameXXKBattleRuntimeUnit Unit;
 		Unit.Id = FName(Id);
@@ -31,6 +32,8 @@ namespace
 		Unit.Attack = 8;
 		Unit.Defense = 0;
 		Unit.Speed = 8;
+		Unit.BattleSlotNumber = BattleSlotNumber;
+		Unit.CombatLevel = 100;
 		Unit.bEnemy = true;
 		return Unit;
 	}
@@ -54,9 +57,9 @@ namespace
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 41;
 		State.ActiveBattleEnemies = {
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.One"), TEXT("意图敌一"), TEXT("Enemy.Ch1.Rooster")),
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Two"), TEXT("意图敌二"), TEXT("Enemy.Ch2.BlackBear")),
-			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Three"), TEXT("意图敌三"), TEXT("Enemy.Ch3.Tiger"))};
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.One"), TEXT("意图敌一"), TEXT("Enemy.Ch1.Rooster"), 1),
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Two"), TEXT("意图敌二"), TEXT("Enemy.Ch2.BlackBear"), 2),
+			MakeEnemyIntentTestEnemy(TEXT("IntentEnemy.Three"), TEXT("意图敌三"), TEXT("Enemy.Ch3.Tiger"), 3)};
 
 		return FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &OutError)
 			&& FGameXXKCardBattleAdapter::BeginCardBattle(
@@ -190,7 +193,7 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	Board->RefreshFromState();
 	const FString EscapeBody = FirstIntentBody ? FirstIntentBody->GetText().ToString() : FString();
 	TestTrue(TEXT("non-damage intent card lists its saved speed and armor effects"),
-		EscapeBody.Contains(TEXT("速度 +1")) && EscapeBody.Contains(TEXT("护甲 +5")));
+		EscapeBody.Contains(TEXT("速度+1")) && EscapeBody.Contains(TEXT("+5护甲")));
 	TestFalse(TEXT("non-damage intent card never claims zero damage"), EscapeBody.Contains(TEXT("伤害 0")));
 
 	RichIntent = OriginalIntent;
@@ -206,7 +209,7 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	RichIntent.Effects.Add(MultiHitEffect);
 	Board->RefreshFromState();
 	const FString DoublePeckBody = FirstIntentBody ? FirstIntentBody->GetText().ToString() : FString();
-	TestTrue(TEXT("multi-hit intent card shows the saved per-hit magnitude and hit count"), DoublePeckBody.Contains(TEXT("37 × 2")));
+	TestTrue(TEXT("multi-hit intent card shows the saved per-hit magnitude and hit count"), DoublePeckBody.Contains(TEXT("37伤害 × 2")));
 
 	RichIntent = OriginalIntent;
 	RichIntent.CardDisplayName = TEXT("毒牙突袭");
@@ -214,18 +217,21 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	PoisonStatus.Status = EGameXXKCardStatus::Poison;
 	PoisonStatus.Stacks = 2;
 	RichIntent.OnHitStatuses = {PoisonStatus};
+	if (!RichIntent.Effects.IsEmpty())
+	{
+		RichIntent.Effects[0].Magnitude = 8;
+		RichIntent.Effects[0].Status = EGameXXKCardStatus::Poison;
+		RichIntent.Effects[0].StatusStacks = 2;
+	}
 	Board->RefreshFromState();
 	const FString FirstIntentTooltip = Board->GetEnemyIntentTooltipForTest(0);
-	TestTrue(TEXT("the pending intent tooltip identifies its attacker P slot"), FirstIntentTooltip.Contains(TEXT("攻击者：敌 1P")));
-	TestTrue(TEXT("the pending intent tooltip keeps the authoritative source display label"), FirstIntentTooltip.Contains(TEXT("意图敌一")));
-	TestTrue(TEXT("the pending intent tooltip uses its persisted display skill"), FirstIntentTooltip.Contains(TEXT("技能：毒牙突袭")));
+	TestTrue(TEXT("the pending intent tooltip starts with its saved skill"), FirstIntentTooltip.StartsWith(TEXT("毒牙突袭")));
 	TestTrue(TEXT("the pending intent tooltip uses its saved central hero P label"), FirstIntentTooltip.Contains(TEXT("我 2P")));
-	TestTrue(TEXT("the pending intent tooltip identifies its actual central hero target"), FirstIntentTooltip.Contains(TEXT("实际目标：我 2P")));
-	TestTrue(TEXT("the pending intent tooltip uses its saved damage"), FirstIntentTooltip.Contains(TEXT("基础伤害 8")));
-	TestTrue(TEXT("the pending intent tooltip explains armor resolution without inventing a result"), FirstIntentTooltip.Contains(TEXT("护甲结算")));
-	TestTrue(TEXT("the pending intent tooltip explains health damage without inventing a result"), FirstIntentTooltip.Contains(TEXT("生命伤害")));
-	TestTrue(TEXT("the pending intent tooltip preserves direct saved status layers"), FirstIntentTooltip.Contains(TEXT("中毒 2层")));
-	TestTrue(TEXT("the pending intent tooltip states the enemy-phase trigger timing"), FirstIntentTooltip.Contains(TEXT("触发时机")));
+	TestTrue(TEXT("the pending intent tooltip identifies its target on a dedicated row"), FirstIntentTooltip.Contains(TEXT("对象：我 2P")));
+	TestTrue(TEXT("the pending intent tooltip uses its resolved damage"), FirstIntentTooltip.Contains(TEXT("8伤害")));
+	TestTrue(TEXT("the pending intent tooltip preserves direct saved status"), FirstIntentTooltip.Contains(TEXT("命中附加中毒2")));
+	TestFalse(TEXT("target armor settlement stays in the unit tooltip"), FirstIntentTooltip.Contains(TEXT("护甲结算")));
+	TestFalse(TEXT("the intent tooltip does not repeat its visible source card"), FirstIntentTooltip.Contains(TEXT("攻击者：")));
 	UButton* FirstHandCard = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleHandCard_00"))) : nullptr;
 	UButton* EndTurnButton = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleEndTurnButton"))) : nullptr;
 	TestTrue(TEXT("the player hand remains enabled while the player reads the forecast"), FirstHandCard && FirstHandCard->GetIsEnabled());
