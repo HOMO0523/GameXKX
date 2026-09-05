@@ -37,6 +37,9 @@ public:
 	/** Copies HP/MP/attributes/defeat state from card authority to existing scene/widget-facing battle arrays. */
 	static bool SyncCardBattleToLegacyProjection(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 
+	/** Rebuilds values from saved intent identities without advancing combat; used after migration and UI-relevant player changes. */
+	static bool RefreshEnemyIntentForecast(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
+
 	static bool BuildCardPlayPreview(
 		const FGameXXKRuntimeState& State,
 		FName CardInstanceId,

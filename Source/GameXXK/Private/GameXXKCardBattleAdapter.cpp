@@ -1396,7 +1396,8 @@ namespace
 			Runtime.EnemyDifficulty);
 		if (EnemyState.DefinitionId != Definition->Id
 			|| EnemyState.CurrentPhase < 1
-			|| EnemyState.TotalPhases != ExpectedTotalPhases
+			|| EnemyState.TotalPhases < ExpectedTotalPhases
+			|| EnemyState.TotalPhases > Definition->Phases.Num()
 			|| EnemyState.CurrentPhase > EnemyState.TotalPhases)
 		{
 			return SetFailure(OutError, TEXT("Enemy catalog state does not match its difficulty-aware phase definition."));
@@ -3543,6 +3544,28 @@ bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntime
 			0, Hero->MaxMana));
 		InOutState.PlayerMP = FMath::Clamp(Hero->Mana, 0, SurfaceManaCap);
 	}
+	return true;
+}
+
+bool FGameXXKCardBattleAdapter::RefreshEnemyIntentForecast(
+	FGameXXKRuntimeState& InOutState,
+	FString* OutError)
+{
+	if (!InOutState.CardRun.bHasActiveCardBattle
+		|| (InOutState.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Player
+			&& InOutState.CardRun.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy))
+	{
+		return SetFailure(OutError, TEXT("Enemy intent forecast refresh requires an active non-terminal card battle."));
+	}
+	FGameXXKRuntimeState Candidate = InOutState;
+	Candidate.CardRun.EnemyIntents.Reset();
+	Candidate.CardRun.NextEnemyIntentIndex = 0;
+	if (!BuildEnemyIntents(Candidate.CardRun, OutError)
+		|| !SyncCardBattleToLegacyProjection(Candidate, OutError))
+	{
+		return false;
+	}
+	InOutState = MoveTemp(Candidate);
 	return true;
 }
 

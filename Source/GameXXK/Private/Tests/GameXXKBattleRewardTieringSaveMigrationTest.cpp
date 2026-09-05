@@ -11,8 +11,8 @@ static_assert(
 	FGameXXKSaveMigration::BattleRewardTieringIntroducedSaveVersion == 16,
 	"Battle reward tiering persistence requires save version 16.");
 static_assert(
-	FGameXXKSaveMigration::CurrentSaveVersion == 35,
-	"Equipment-set runtime advances the current save version to thirty-five.");
+	FGameXXKSaveMigration::CurrentSaveVersion == 36,
+	"Enemy phases and Training formations advance the current save version to thirty-six.");
 
 namespace
 {

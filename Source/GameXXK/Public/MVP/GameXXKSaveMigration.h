@@ -69,7 +69,9 @@ public:
 	static constexpr int32 ActiveCardPool173IntroducedSaveVersion = 34;
 	/** v35: normalize active Xuanjia/Shanhe descriptors and persist deferred Shanhe rewards. */
 	static constexpr int32 EquipmentSetRuntimeSemanticsSaveVersion = 35;
-	static constexpr int32 CurrentSaveVersion = 35;
+	/** v36: replace legacy Boss half-health state with difficulty-aware one/two/three-phase enemy state. */
+	static constexpr int32 EnemyPhaseAndTrainingFormationIntroducedSaveVersion = 36;
+	static constexpr int32 CurrentSaveVersion = 36;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

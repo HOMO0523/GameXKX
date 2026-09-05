@@ -13,6 +13,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEquipmentToolRules.h"
 #include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKEnemyCatalog.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicCatalog.h"
@@ -1645,6 +1646,150 @@ namespace
 		Battle.PendingNextRoundEnergyPenalty = 0;
 	}
 
+	bool MigrateEnemyPhaseAndFormationRuntime(
+		FGameXXKRuntimeState& InOutState,
+		FString& OutError)
+	{
+		if (!InOutState.CardRun.bHasActiveCardBattle)
+		{
+			return true;
+		}
+		FGameXXKCardBattleRuntime& Battle = InOutState.CardRun.ActiveBattle;
+		Battle.EnemyDifficulty = Battle.EnemyDifficultyDamagePercent == 150
+			? EGameXXKEnemyDifficulty::Hell
+			: Battle.EnemyDifficultyDamagePercent == 125
+				? EGameXXKEnemyDifficulty::Hard
+				: EGameXXKEnemyDifficulty::Normal;
+		TSet<FName> LivingEnemyIds;
+		bool bHasMigratedCatalogEnemy = false;
+		bool bCanReforecastCatalogEnemies = true;
+		TSet<int32> SeenEnemySlots;
+		for (FGameXXKCardCombatUnit& Unit : Battle.Units)
+		{
+			if (Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
+			{
+				continue;
+			}
+			const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(Unit.EnemyDefinitionId);
+			if (!Definition)
+			{
+				OutError = TEXT("Enemy-phase migration found an unknown catalog enemy.");
+				return false;
+			}
+			bHasMigratedCatalogEnemy = true;
+			if (Unit.bLiving
+				&& (Unit.BattleSlotNumber < 1
+					|| Unit.BattleSlotNumber > 3
+					|| SeenEnemySlots.Contains(Unit.BattleSlotNumber)))
+			{
+				bCanReforecastCatalogEnemies = false;
+			}
+			if (Unit.bLiving && Unit.BattleSlotNumber >= 1 && Unit.BattleSlotNumber <= 3)
+			{
+				SeenEnemySlots.Add(Unit.BattleSlotNumber);
+			}
+			LivingEnemyIds.Add(Unit.UnitId);
+			FGameXXKEnemyBattleState& State = Battle.EnemyStates.FindOrAdd(Unit.UnitId);
+			if (!State.DefinitionId.IsNone() && State.DefinitionId != Definition->Id)
+			{
+				OutError = TEXT("Enemy-phase migration found a mismatched saved enemy definition.");
+				return false;
+			}
+			State.DefinitionId = Definition->Id;
+			int32 TotalPhases = FGameXXKEnemyCatalog::ResolveTotalPhases(
+				Definition->Tier,
+				Battle.EnemyDifficulty);
+			if (!InOutState.Training.bChallengeActive
+				&& Definition->Tier == EGameXXKEnemyTier::Boss)
+			{
+				TotalPhases = FMath::Max(TotalPhases, 2);
+			}
+			State.TotalPhases = FMath::Clamp(TotalPhases, 1, Definition->Phases.Num());
+			State.CurrentPhase = State.bPhaseTwo
+				? FMath::Min(2, State.TotalPhases)
+				: 1;
+			State.bPhaseTwo = State.CurrentPhase >= 2;
+			State.PhaseTransitionSerial = FMath::Max(State.PhaseTransitionSerial, State.CurrentPhase - 1);
+			if (State.bPhaseStatModifiersApplied
+				|| State.PhaseAttackModifier != 0
+				|| State.PhaseDefenseModifier != 0)
+			{
+				Unit.Attack = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Unit.Attack) - State.PhaseAttackModifier,
+					0,
+					MAX_int32));
+				Unit.Defense = static_cast<int32>(FMath::Clamp<int64>(
+					static_cast<int64>(Unit.Defense) - State.PhaseDefenseModifier,
+					0,
+					MAX_int32));
+			}
+			State.bPhaseStatModifiersApplied = false;
+			State.PhaseAttackModifier = 0;
+			State.PhaseDefenseModifier = 0;
+			State.PhasePassiveTriggerCount = 0;
+			State.PendingHealingAmplificationPercent = 0;
+			State.PendingDirectAttackFlatBonus = 0;
+			const TArray<FGameXXKEnemyIntentDefinition>* CurrentDeck =
+				FGameXXKEnemyCatalog::GetPhaseIntents(*Definition, State.CurrentPhase);
+			if (!State.PendingChargedIntentId.IsNone()
+				&& (!CurrentDeck || !CurrentDeck->ContainsByPredicate([&State](const FGameXXKEnemyIntentDefinition& Intent)
+				{
+					return Intent.Id == State.PendingChargedIntentId;
+				})))
+			{
+				State.PendingChargedIntentId = NAME_None;
+				State.ChargeRoundsRemaining = 0;
+				State.PendingChargeTargetUnitIds.Reset();
+			}
+		}
+		TArray<FName> StaleEnemyStateIds;
+		for (const TPair<FName, FGameXXKEnemyBattleState>& Pair : Battle.EnemyStates)
+		{
+			if (!LivingEnemyIds.Contains(Pair.Key))
+			{
+				StaleEnemyStateIds.Add(Pair.Key);
+			}
+		}
+		for (const FName UnitId : StaleEnemyStateIds)
+		{
+			Battle.EnemyStates.Remove(UnitId);
+		}
+		if (bHasMigratedCatalogEnemy && bCanReforecastCatalogEnemies)
+		{
+			Battle.LockedEnemyIntents.Reset();
+			InOutState.CardRun.EnemyIntents.Reset();
+			InOutState.CardRun.NextEnemyIntentIndex = 0;
+		}
+		return true;
+	}
+
+	bool CanRefreshMigratedEnemyIntentForecast(const FGameXXKRuntimeState& State)
+	{
+		if (!State.CardRun.bHasActiveCardBattle)
+		{
+			return false;
+		}
+		TSet<int32> SeenSlots;
+		bool bHasLivingEnemy = false;
+		for (const FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
+		{
+			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
+			{
+				continue;
+			}
+			bHasLivingEnemy = true;
+			if (Unit.EnemyDefinitionId.IsNone()
+				|| Unit.BattleSlotNumber < 1
+				|| Unit.BattleSlotNumber > 3
+				|| SeenSlots.Contains(Unit.BattleSlotNumber))
+			{
+				return false;
+			}
+			SeenSlots.Add(Unit.BattleSlotNumber);
+		}
+		return bHasLivingEnemy;
+	}
+
 	bool IsRetiredRouteCard(const FName CardId)
 	{
 		const FString Id = CardId.ToString();
@@ -2371,6 +2516,12 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
+	if (Source.SaveVersion < EnemyPhaseAndTrainingFormationIntroducedSaveVersion
+		&& !MigrateEnemyPhaseAndFormationRuntime(Candidate.RuntimeState, MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
@@ -2385,8 +2536,22 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, MigrationError)
 		|| !MigrateRetiredNpcEncounter(Candidate.RuntimeState, MigrationError)
 		|| !MigrateLegacyHeroSpellTask(Candidate.RuntimeState, MigrationError)
-		|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, MigrationError)
-		|| !ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
+		|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
+	}
+	if (Candidate.RuntimeState.CardRun.bHasActiveCardBattle
+		&& (Candidate.RuntimeState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player
+			|| Candidate.RuntimeState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Enemy)
+		&& Candidate.RuntimeState.CardRun.EnemyIntents.IsEmpty()
+		&& CanRefreshMigratedEnemyIntentForecast(Candidate.RuntimeState)
+		&& !FGameXXKCardBattleAdapter::RefreshEnemyIntentForecast(Candidate.RuntimeState, &MigrationError))
+	{
+		Fail(OutReport, MigrationError);
+		return false;
+	}
+	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
 		Fail(OutReport, MigrationError);
 		return false;
@@ -2679,6 +2844,15 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		if (Pair.Key.IsNone()
 			|| EnemyState.DefinitionId.IsNone()
 			|| EnemyState.IntentCursor < 0
+			|| EnemyState.CurrentPhase < 1
+			|| EnemyState.TotalPhases < 1
+			|| EnemyState.TotalPhases > 3
+			|| EnemyState.CurrentPhase > EnemyState.TotalPhases
+			|| EnemyState.bPhaseTwo != (EnemyState.CurrentPhase >= 2)
+			|| EnemyState.PhaseTransitionSerial < 0
+			|| EnemyState.PhasePassiveTriggerCount < 0
+			|| EnemyState.PendingHealingAmplificationPercent < 0
+			|| EnemyState.PendingDirectAttackFlatBonus < 0
 			|| EnemyState.ChargeRoundsRemaining < 0
 			|| EnemyState.HealingCooldownRounds < 0
 			|| EnemyState.InitiativeBonus < 0)
