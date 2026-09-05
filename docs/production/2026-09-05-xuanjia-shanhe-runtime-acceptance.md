@@ -31,7 +31,7 @@ working_tree: Xuanjia/Shanhe runtime complete; card tooltip and monster producti
 
 ## 存档与文档
 
-- 当前存档版本为v35；v34及更早的活跃战斗只规范化玄甲／山河描述符并清零旧触发计数，不补执行回合事件，也不改破军、青囊、追风、蚀骨的进行中状态。
+- 玄甲／山河套装运行时由v35引入；当前v36继续保留这条迁移语义，并在其后追加怪物阶段迁移。v34及更早的活跃战斗只规范化玄甲／山河描述符并清零旧触发计数，不补执行回合事件，也不改破军、青囊、追风、蚀骨的进行中状态。
 - 装备总表含18条套装阈值和“地势牌／全队唯一”术语表；玄甲／山河六条均标记为“已批准；消费者已实装”。
 - 运行时成功触发写入统一`[EquipmentSet]` Verbose审计，记录效果ID、来源、回合及已结算主／次数据；纯预览不记成功日志。
 
@@ -45,4 +45,4 @@ working_tree: Xuanjia/Shanhe runtime complete; card tooltip and monster producti
 - 描述与运行日志聚焦：`Saved/Automation/SetDocsAndLogs_GREEN/index.json`，12/12通过。
 - Excel使用Codex工作区自带Python/openpyxl重建并复读：18条套装阈值、6条批准文本、2条术语均通过断言。
 
-本验收完成装备套装与其直接依赖；卡牌tooltip的实际来源数值、全卡旧测试期望、怪物阶段与关卡等级仍按当前总任务继续处理。
+本验收完成装备套装与其直接依赖；后续卡牌Tooltip、怪物阶段、关卡等级与配队分析结果见`2026-09-05-enemy-phase-training-analysis-acceptance.md`。

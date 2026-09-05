@@ -1,19 +1,30 @@
 {
   "meta": {
-    "model": "批准设计期望模型（非旧运行时胜率）",
+    "stage": "地狱3-1",
     "party_level": 100,
     "enemy_level": 125,
-    "stage": "地狱3-1",
-    "enemy_damage_multiplier": 150,
-    "stage_end_phase_hp": 11178,
-    "level_damage_multiplier": 75,
-    "cards": 173,
+    "deck": "8主角+5伙伴+3NPC=16张；起手5；每回合补至5；共享3气；角色回2内",
+    "stage_end_hp": 11178,
+    "samples_per_npc_loadout": 4000,
     "pending": [
-      "Profession.Sorcerer.RanLingHuanYuan",
-      "Npc.JinGui.HouXiangTuoShen"
+      "Npc.JinGui.HouXiangTuoShen",
+      "Profession.Sorcerer.RanLingHuanYuan"
+    ],
+    "card_count": 173,
+    "intent_cases": 351,
+    "formations": 189,
+    "save_version": 36,
+    "damage_label": "防御、25级差和逐伤害包阶段截断后，阶段护甲预算前",
+    "conservative_label": "再扣白猿/巨蟾阶段护甲预算",
+    "limitations": [
+      "每个攻击／DOT包按1%阶段阈值独立截断；同一多段牌的后续段可继续攻击新阶段。",
+      "NPC面板使用双职业平均至宝词缀预算；NPC逐条最终词缀尚未单独冻结。",
+      "敌方伤害压力使用已实装阶段牌系数、150%地狱倍率和25级差；未模拟灵动、援护与每次实际目标转移。",
+      "破军6的次回合首张主动牌重放依赖下一循环实际首牌，本表不把该包加入刀客核心伤害，因此刀客DPR是下界。",
+      "每个合法NPC三牌组合用4000次确定性洗牌测算核心循环；不是胜率，也不替代最终PIE自动战斗采样。"
     ]
   },
-  "role_stats": {
+  "stats": {
     "Hero": {
       "name": "主角",
       "hp": 2659,
@@ -61,1629 +72,2956 @@
     "Npc.TusiChief": {
       "name": "土司首领",
       "roles": "刀客＋守卫",
-      "naked": {
-        "hp": 1204,
-        "attack": 152,
-        "defense": 109
-      },
-      "projected": {
-        "hp": 2644,
-        "attack": 484,
-        "defense": 328
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2644,
+      "attack": 484,
+      "defense": 328,
+      "mana": 123,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     },
     "Npc.SongJinBao": {
       "name": "宋金宝",
       "roles": "法师＋刀客",
-      "naked": {
-        "hp": 880,
-        "attack": 109,
-        "defense": 66
-      },
-      "projected": {
-        "hp": 2234,
-        "attack": 449,
-        "defense": 272
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2234,
+      "attack": 449,
+      "defense": 272,
+      "mana": 228,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     },
     "Npc.YueBai": {
       "name": "月白",
       "roles": "阵师＋法师",
-      "naked": {
-        "hp": 876,
-        "attack": 163,
-        "defense": 55
-      },
-      "projected": {
-        "hp": 2231,
-        "attack": 490,
-        "defense": 263
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2231,
+      "attack": 490,
+      "defense": 263,
+      "mana": 232,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     },
     "Npc.ZhouGuangZu": {
       "name": "周光祖",
       "roles": "药师＋阵师",
-      "naked": {
-        "hp": 882,
-        "attack": 130,
-        "defense": 76
-      },
-      "projected": {
-        "hp": 2254,
-        "attack": 448,
-        "defense": 288
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2254,
+      "attack": 448,
+      "defense": 288,
+      "mana": 230,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     },
     "Npc.JinGui": {
       "name": "金贵",
       "roles": "守卫＋弓手",
-      "naked": {
-        "hp": 983,
-        "attack": 120,
-        "defense": 87
-      },
-      "projected": {
-        "hp": 2406,
-        "attack": 452,
-        "defense": 305
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2406,
+      "attack": 452,
+      "defense": 305,
+      "mana": 226,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     },
     "Npc.QiongMeiEr": {
       "name": "琼么儿",
       "roles": "弓手＋药师",
-      "naked": {
-        "hp": 987,
-        "attack": 141,
-        "defense": 87
-      },
-      "projected": {
-        "hp": 2342,
-        "attack": 472,
-        "defense": 295
-      },
-      "note": "按NPC百级裸属性，加双职业平均新装备预算；非冻结NPC最终基准"
+      "hp": 2342,
+      "attack": 472,
+      "defense": 295,
+      "mana": 228,
+      "note": "双职业平均至宝装备预算投影；NPC最终词缀尚未单独冻结"
     }
   },
-  "hero_package": {
-    "cards": [
-      {
-        "id": "Hero.Guard.XuanJiaZhenYue",
-        "name": "玄甲镇岳",
-        "quality": "史诗",
-        "energy": 2,
-        "compact": "消耗目标全部〔护甲〕，对全体敌方造成280点伤害；每消耗1〔护甲〕增加1点伤害。",
-        "immediate": 3574,
-        "dot": 0,
-        "packets": 3,
-        "total": 3574,
-        "setup_required": true
+  "builds": [
+    {
+      "id": "guard_release",
+      "name": "玄甲释甲连爆",
+      "role": "Guard",
+      "npc": "Npc.TusiChief",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Guard.TieBiTongShou",
+        "Hero.Guard.JieJiaHuanFeng",
+        "Hero.Guard.LieZhenChengFeng",
+        "Hero.Guard.XuanJiaZhenYue"
+      ],
+      "partner": [
+        "Profession.Guard.TieBi",
+        "Profession.Guard.HuZhu",
+        "Profession.Guard.PiJiaXingJun",
+        "Profession.Guard.ZhenYueLing",
+        "Profession.Guard.BiLeiFanGong"
+      ],
+      "npc_cards": [
+        "Npc.TusiChief.ZhaiZhuHaoLing",
+        "Npc.TusiChief.TuSiJunLing",
+        "Npc.TusiChief.MengZhaiShiYue"
+      ],
+      "sequence": [
+        "Profession.Guard.PiJiaXingJun",
+        "Profession.Guard.BiLeiFanGong",
+        "Hero.Guard.XuanJiaZhenYue",
+        "Npc.TusiChief.ZhaiZhuHaoLing"
+      ],
+      "sets": {
+        "hero": "追风6",
+        "partner": "玄甲6",
+        "npc": "青囊6"
       },
-      {
-        "id": "Hero.Mage.YanXuLiaoYuan",
-        "name": "炎序燎原",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "对全体敌方造成140点伤害。\n全体敌方各获得28点〔灼烧〕。\n〔检索〕1张未完成的主角法师牌。\n〔阵赏〕全体敌方各获得42点〔灼烧〕，再触发〔灼烧〕1次。",
-        "immediate": 1708,
-        "dot": 84,
-        "packets": 3,
-        "total": 1792,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Generic.JianYiGuanHong",
-        "name": "剑意贯虹",
-        "quality": "史诗",
-        "energy": 2,
-        "compact": "造成364点伤害。\n消耗全部〔气势〕，每层使本段伤害增加20点；消耗至少3层时回复1点气力。",
-        "immediate": 1550,
-        "dot": 0,
-        "packets": 1,
-        "total": 1550,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Generic.PoYunYiShan",
-        "name": "破云一闪",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "造成224点伤害。\n有〔灵动〕时，消耗1层，追加140点伤害并抽1张。",
-        "immediate": 1484,
-        "dot": 0,
-        "packets": 2,
-        "total": 1484,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Hunter.LieYuLianShi",
-        "name": "裂羽连矢",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "造成196点伤害。\n施加56点〔流血〕。\n〔重箭〕每消耗1点〔蓄力〕，追加1次70点伤害。",
-        "immediate": 1049,
-        "dot": 56,
-        "packets": 2,
-        "total": 1105,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Generic.HeYuZhan",
-        "name": "鹤羽斩",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "造成224点伤害。\n触发目标数值最高的〔流血〕、〔中毒〕或〔灼烧〕1次。",
-        "immediate": 929,
-        "dot": 0,
-        "packets": 1,
-        "total": 929,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Blade.XueLuXiangCheng",
-        "name": "血路相承",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "造成210点伤害。\n施加42点〔流血〕。\n〔冲锋〕下一次主动攻击〔流血〕目标时，额外触发1次〔流血〕。\n〔收招〕下回合首次主动攻击〔流血〕目标时，抽2张并回复1点气力。",
-        "immediate": 867,
-        "dot": 42,
-        "packets": 1,
-        "total": 909,
-        "setup_required": false
-      },
-      {
-        "id": "Hero.Generic.SuiYanJi",
-        "name": "碎岩击",
-        "quality": "史诗",
-        "energy": 1,
-        "compact": "造成210点伤害。\n施加3层〔破绽〕、1层〔标记〕。",
-        "immediate": 867,
-        "dot": 0,
-        "packets": 1,
-        "total": 867,
-        "setup_required": false
-      }
-    ],
-    "immediate": 12028,
-    "dot": 182,
-    "total": 12210
-  },
-  "role_packages": {
-    "Blade": {
-      "cards": [
+      "gear": "主角追风6；守卫玄甲6堆防御；土司青囊6补高费抽牌与气力",
+      "set_synergy": "玄甲提高守卫产甲10%，保留半甲并在首次格挡后追加80%攻击；六件在敌方首次打穿护甲时补全队护甲与援护。",
+      "fallback": "若出生缺壁垒反攻，用镇岳令；若NPC缺寨主号令，用土司军令补标记/破绽。",
+      "role_cn": "守卫",
+      "npc_cn": "土司首领",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "铁壁同守",
+        "借甲还锋",
+        "列阵承锋",
+        "玄甲镇岳"
+      ],
+      "partner_names": [
+        "铁壁",
+        "护主",
+        "披甲行军",
+        "镇岳令",
+        "壁垒反攻"
+      ],
+      "npc_names": [
+        "石门守势",
+        "土司军令",
+        "盟寨誓约"
+      ],
+      "hero_cards": [
         {
-          "id": "Profession.Blade.ZhanJin",
-          "name": "斩尽",
-          "quality": "史诗",
-          "energy": 3,
-          "compact": "造成420点伤害。\n本牌完成击杀时，返还全部实际支付的气力和内力，抽1张。\n〔乘势〕每层〔气势〕使本段伤害增加10点。\n〔冲锋〕下一张主动牌在出牌数与套装门槛中计为2张。\n〔收招〕下回合首张完成击杀的主动牌结算后，将其0费〔临时复制〕加入手牌。",
-          "immediate": 1707,
-          "dot": 0,
-          "packets": 1,
-          "total": 1707,
-          "setup_required": false
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
         },
         {
-          "id": "Profession.Blade.HengYunKaiFeng",
-          "name": "横云开锋",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "对全体敌方造成140点伤害。\n〔冲锋〕下一张主动牌结算后抽2张。\n〔收招〕将本牌冲锋效果保存为〔藏式〕，下回合首张主动牌使用；回合末仍未使用则失效。\n〔开锋〕本牌使用藏式时，将其复制为〔余式〕，作用于本回合下一张主动牌；余式不再复制。",
-          "immediate": 1618,
-          "dot": 0,
-          "packets": 3,
-          "total": 1618,
-          "setup_required": false
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
         },
         {
-          "id": "Profession.Blade.JingHongChuQiao",
-          "name": "惊鸿出鞘",
-          "quality": "史诗",
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
           "energy": 1,
-          "compact": "造成126点伤害。\n〔冲锋〕下一张主动牌气力消耗−1，结算后抽1张。\n〔收招〕将本牌冲锋效果保存为〔藏式〕，下回合首张主动牌使用；回合末仍未使用则失效。\n〔开锋〕本牌使用藏式时，追加1次126点伤害。",
-          "immediate": 932,
-          "dot": 0,
-          "packets": 2,
-          "total": 932,
-          "setup_required": false
+          "mana": 0
         },
         {
-          "id": "Profession.Blade.PoJun",
-          "name": "破军",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成182点伤害。\n消耗至多3层〔破绽〕，每层追加1次70点伤害。\n〔乘势〕每层〔气势〕使本段伤害增加10点。\n〔冲锋〕下一张主动牌不消耗内力。\n〔收招〕下回合首张消耗敌方状态的主动牌结算后，将其0费〔临时复制〕加入手牌。",
-          "immediate": 932,
-          "dot": 0,
-          "packets": 2,
-          "total": 932,
-          "setup_required": false
+          "id": "Hero.Guard.TieBiTongShou",
+          "name": "铁壁同守",
+          "energy": 1,
+          "mana": 0
         },
         {
-          "id": "Profession.Blade.YiShiDuanJiang",
-          "name": "一式断江",
-          "quality": "史诗",
+          "id": "Hero.Guard.JieJiaHuanFeng",
+          "name": "借甲还锋",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Guard.LieZhenChengFeng",
+          "name": "列阵承锋",
           "energy": 2,
-          "compact": "造成224点伤害。\n获得1次〔反击〕。\n〔冲锋〕下一张主动牌结算后，保留其余手牌至下回合。\n〔收招〕首次〔反击〕齐射改为每个〔反击〕来源对全体敌方各〔反击〕1次。",
-          "immediate": 880,
-          "dot": 0,
-          "packets": 1,
-          "total": 880,
-          "setup_required": false
+          "mana": 0
+        },
+        {
+          "id": "Hero.Guard.XuanJiaZhenYue",
+          "name": "玄甲镇岳",
+          "energy": 2,
+          "mana": 6
         }
       ],
-      "immediate": 6069,
-      "dot": 0,
-      "total": 6069
-    },
-    "Guard": {
-      "cards": [
+      "partner_cards": [
         {
-          "id": "Profession.Guard.BiLeiFanGong",
-          "name": "壁垒反攻",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "消耗全部〔护甲〕，对全体敌方造成308点伤害；每消耗1〔护甲〕增加1点伤害。\n获得70点〔护甲〕。\n获得1次〔格挡〕。\n自身获得1层〔标记〕。",
-          "immediate": 2788,
-          "dot": 0,
-          "packets": 3,
-          "total": 2788,
-          "setup_required": false
+          "id": "Profession.Guard.TieBi",
+          "name": "铁壁",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Guard.HuZhu",
+          "name": "护主",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Guard.PiJiaXingJun",
+          "name": "披甲行军",
+          "energy": 1,
+          "mana": 0
         },
         {
           "id": "Profession.Guard.ZhenYueLing",
           "name": "镇岳令",
-          "quality": "史诗",
           "energy": 2,
-          "compact": "消耗全部〔护甲〕，对全体敌方造成252点伤害；每消耗1〔护甲〕增加1点伤害。\n全体友方各获得70点〔护甲〕。\n全体友方各获得1次〔格挡〕。\n自身获得1层〔标记〕。",
-          "immediate": 2254,
-          "dot": 0,
-          "packets": 3,
-          "total": 2254,
-          "setup_required": false
+          "mana": 6
         },
         {
-          "id": "Profession.Guard.SuiJiaHuiJi",
-          "name": "碎甲回击",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "造成140点伤害，另加当前〔护甲〕等量伤害，〔护甲〕保留。\n获得1次〔格挡〕；当前〔护甲〕至少12时，抽1张。",
-          "immediate": 380,
-          "dot": 0,
-          "packets": 1,
-          "total": 380,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Guard.ZhenDun",
-          "name": "震盾",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "造成140点伤害，另加当前〔护甲〕等量伤害，〔护甲〕保留。\n获得56点〔护甲〕。\n自身获得1层〔标记〕。",
-          "immediate": 380,
-          "dot": 0,
-          "packets": 1,
-          "total": 380,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Guard.DunZhenTuiJin",
-          "name": "盾阵推进",
-          "quality": "史诗",
+          "id": "Profession.Guard.BiLeiFanGong",
+          "name": "壁垒反攻",
           "energy": 2,
-          "compact": "造成140点伤害，另加当前〔护甲〕等量伤害，〔护甲〕保留。\n全体友方各获得56点〔护甲〕。\n自身获得1层〔标记〕。",
-          "immediate": 380,
-          "dot": 0,
-          "packets": 1,
-          "total": 380,
-          "setup_required": false
+          "mana": 6
         }
       ],
-      "immediate": 6182,
-      "dot": 0,
-      "total": 6182
-    },
-    "Healer": {
-      "cards": [
+      "npc_cards_detail": [
         {
-          "id": "Profession.Healer.YaoNangFeiTou",
-          "name": "药囊飞投",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "对全体敌方造成63点伤害。\n全体敌方各获得21点〔流血〕。\n全体敌方各获得7点〔中毒〕。\n〔药方〕每回合首次在一次行动中直接伤害至少2名敌人时，回复1点气力。",
-          "immediate": 445,
-          "dot": 84,
-          "packets": 3,
-          "total": 529,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Healer.YaoJiuWenShen",
-          "name": "红花透骨",
-          "quality": "史诗",
+          "id": "Npc.TusiChief.ShiMenShouShi",
+          "name": "石门守势",
           "energy": 1,
-          "compact": "造成98点伤害。\n施加56点〔流血〕。\n〔药方〕每累计2笔实际〔流血〕伤害，获得1点〔药效〕；不足2笔的进度保留。",
-          "immediate": 245,
-          "dot": 56,
-          "packets": 1,
-          "total": 301,
-          "setup_required": false
+          "mana": 0
         },
-        {
-          "id": "Profession.Healer.FuGuSan",
-          "name": "腐骨散",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成84点伤害。\n施加42点〔流血〕。\n施加28点〔中毒〕。\n施加1层〔破绽〕。\n〔药方〕敌人被施加负面状态后，同时具有〔流血〕和〔中毒〕时，施加1层〔标记〕；每名敌人每回合最多1次。",
-          "immediate": 201,
-          "dot": 70,
-          "packets": 1,
-          "total": 271,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Healer.KuShenMaSan",
-          "name": "苦参麻散",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "施加56点〔中毒〕。\n施加2层〔破绽〕。\n〔药方〕每回合首次向行动开始前已经〔中毒〕的敌人施加〔破绽〕时，获得1点〔药效〕，抽1张。",
-          "immediate": 0,
-          "dot": 56,
-          "packets": 0,
-          "total": 56,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Healer.BaiCaoDu",
-          "name": "百草毒",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "施加42点〔中毒〕。\n〔药方〕每笔实际〔中毒〕伤害，获得1点〔药效〕。",
-          "immediate": 0,
-          "dot": 42,
-          "packets": 0,
-          "total": 42,
-          "setup_required": false
-        }
-      ],
-      "immediate": 891,
-      "dot": 308,
-      "total": 1199
-    },
-    "Hunter": {
-      "cards": [
-        {
-          "id": "Profession.Hunter.BaiBuChuanYang",
-          "name": "百步穿杨",
-          "quality": "史诗",
-          "energy": 3,
-          "compact": "造成294点伤害。\n目标至少有5层〔标记〕时，抽2张。\n〔重箭〕每消耗1点〔蓄力〕，本段伤害增加56点，抽1张。",
-          "immediate": 1173,
-          "dot": 0,
-          "packets": 1,
-          "total": 1173,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Hunter.YingLuo",
-          "name": "鹰落",
-          "quality": "史诗",
-          "energy": 3,
-          "compact": "造成280点伤害。\n目标生命低于35%时，本段伤害增加100点。\n〔重箭〕每消耗1点〔蓄力〕，本段伤害增加84点，上述生命门槛提高5个百分点。",
-          "immediate": 1114,
-          "dot": 0,
-          "packets": 1,
-          "total": 1114,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Hunter.ChuanYang",
-          "name": "穿杨",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成210点伤害。\n本段无视42点防御。\n〔重箭〕每消耗1点〔蓄力〕，本段伤害增加70点，额外无视14点防御。",
-          "immediate": 819,
-          "dot": 0,
-          "packets": 1,
-          "total": 819,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Hunter.ShouHun",
-          "name": "狩魂",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成210点伤害。\n目标每有1层〔标记〕，本段伤害增加20点。\n〔重箭〕每消耗1点〔蓄力〕，本段伤害增加49点，再施加1层〔标记〕。",
-          "immediate": 819,
-          "dot": 0,
-          "packets": 1,
-          "total": 819,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Hunter.DuanMaiShi",
-          "name": "断脉矢",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "造成140点伤害。\n施加56点〔流血〕。\n〔重箭〕每消耗1点〔蓄力〕，本段伤害增加42点，额外触发1次〔流血〕。",
-          "immediate": 524,
-          "dot": 56,
-          "packets": 1,
-          "total": 580,
-          "setup_required": false
-        }
-      ],
-      "immediate": 4449,
-      "dot": 56,
-      "total": 4505
-    },
-    "Sorcerer": {
-      "cards": [
-        {
-          "id": "Profession.Sorcerer.BaoYanShu",
-          "name": "焚脉爆炎",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "对全体敌方造成112点伤害。\n〔编序〕第3～5位：每点目标〔灼烧〕使本段伤害增加2点，不消耗〔灼烧〕。\n〔阵赏〕依次触发全体敌方的〔灼烧〕2次。",
-          "immediate": 1093,
-          "dot": 0,
-          "packets": 3,
-          "total": 1093,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Sorcerer.FenTianJue",
-          "name": "雷符索敌",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "对全体敌方造成98点伤害。\n〔检索〕1张未完成的携带法师牌；失败则再攻击1次。\n最后，全体敌方各获得1层〔标记〕。\n〔编序〕第1～2位：〔标记〕改为3层。\n〔阵赏〕全体敌方各获得3层〔标记〕；回复1气，抽2张。",
-          "immediate": 937,
-          "dot": 0,
-          "packets": 3,
-          "total": 937,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Sorcerer.LingHuoFu",
-          "name": "灵枢引法",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "对全体敌方造成98点伤害。\n〔检索〕1张未完成的携带法师牌。\n检索失败：再对全体敌方造成98点伤害。\n〔编序〕第1～2位：检索到的牌本回合内力消耗−3。\n〔阵赏〕回复1气、8内力，抽2张。",
-          "immediate": 937,
-          "dot": 0,
-          "packets": 3,
-          "total": 937,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Sorcerer.ChiYanFengJie",
-          "name": "斗转星移",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "对全体敌方造成91点伤害。\n〔检索〕1张未完成的携带法师牌；失败则再攻击1次。\n〔编序〕第4～5位：每次伤害改为126点。\n〔阵赏〕第二张记录牌决定普通、火、冰或雷阵赏。\n〔自动入手〕首牌使其余任务牌入手；非首牌随任务开启入手。每张每场1次。",
-          "immediate": 859,
-          "dot": 0,
-          "packets": 3,
-          "total": 859,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.Sorcerer.LiHuoYin",
-          "name": "灵火点灯",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "对全体敌方造成84点伤害。\n全体敌方各获得14点〔灼烧〕。\n〔编序〕第1～2位：本次施加改为28点〔灼烧〕。\n〔阵赏〕所有敌人当前〔灼烧〕翻倍，仍受储量上限限制。",
-          "immediate": 780,
-          "dot": 42,
-          "packets": 3,
-          "total": 822,
-          "setup_required": false
-        }
-      ],
-      "immediate": 4606,
-      "dot": 42,
-      "total": 4648
-    },
-    "FormationMaster": {
-      "cards": [
-        {
-          "id": "Profession.FormationMaster.ZhenShaZhen",
-          "name": "镇煞阵",
-          "quality": "史诗",
-          "energy": 3,
-          "compact": "对全体敌方造成448点伤害。\n全体敌方各获得5层〔破绽〕。\n触发当前〔地势〕收益1次。",
-          "immediate": 4399,
-          "dot": 0,
-          "packets": 3,
-          "total": 4399,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.FormationMaster.HuiShengZhenSha",
-          "name": "回声震杀",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成336点伤害。\n触发当前〔地势〕收益1次。",
-          "immediate": 1073,
-          "dot": 0,
-          "packets": 1,
-          "total": 1073,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.FormationMaster.DiMaiJieLi",
-          "name": "地脉借力",
-          "quality": "史诗",
-          "energy": 2,
-          "compact": "造成280点伤害。\n触发当前〔地势〕收益2次。",
-          "immediate": 883,
-          "dot": 0,
-          "packets": 1,
-          "total": 883,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.FormationMaster.GuanShi",
-          "name": "平野观势",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "切换至〔平原〕并触发1次收益：全体敌方各获得10点〔灼烧〕。\n自身回复4点内力。",
-          "immediate": 0,
-          "dot": 30,
-          "packets": 0,
-          "total": 30,
-          "setup_required": false
-        },
-        {
-          "id": "Profession.FormationMaster.LinFengFuZhen",
-          "name": "林风拂阵",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "目标获得2层〔灵动〕。\n触发当前〔地势〕收益1次。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
-        }
-      ],
-      "immediate": 6355,
-      "dot": 30,
-      "total": 6385
-    }
-  },
-  "npc_packages": {
-    "Npc.TusiChief": {
-      "cards": [
         {
           "id": "Npc.TusiChief.TuSiJunLing",
           "name": "土司军令",
-          "quality": "史诗",
           "energy": 1,
-          "compact": "施加2层〔标记〕、3层〔破绽〕。\n攻击最高的友方获得56点〔护甲〕。\n该友方获得1次〔格挡〕。\n造成210点伤害。\n〔冲锋〕下一张单体主动牌改为作用于目标所在一方全体。\n〔收招〕全队下一次〔反击〕或〔格挡〕不消耗次数。",
-          "immediate": 696,
-          "dot": 0,
-          "packets": 1,
-          "total": 696,
-          "setup_required": false
-        },
-        {
-          "id": "Npc.TusiChief.ZhaiZhuHaoLing",
-          "name": "寨主号令",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "攻击最高的友方获得1层〔气势〕、1次〔格挡〕。\n该友方获得56点〔护甲〕。\n造成140点伤害。\n〔收招〕全体友方各获得28点〔护甲〕。",
-          "immediate": 442,
-          "dot": 0,
-          "packets": 1,
-          "total": 442,
-          "setup_required": false
+          "mana": 3
         },
         {
           "id": "Npc.TusiChief.MengZhaiShiYue",
           "name": "盟寨誓约",
-          "quality": "史诗",
           "energy": 2,
-          "compact": "全体友方各获得1层〔气势〕、1次〔格挡〕。\n全体友方各获得70点〔护甲〕。\n攻击次数等于存活友方数，每次造成84点伤害。\n〔冲锋〕下一张主动牌免费。\n〔收招〕全体友方下回合保留〔护甲〕。",
-          "immediate": 239,
-          "dot": 0,
-          "packets": 1,
-          "total": 239,
-          "setup_required": false
+          "mana": 6
         }
       ],
-      "immediate": 1377,
-      "dot": 0,
-      "total": 1377
+      "sequence_names": [
+        "披甲行军",
+        "壁垒反攻",
+        "玄甲镇岳",
+        "土司军令"
+      ],
+      "timing": {
+        "completion": 1.0,
+        "avg": 1.67525,
+        "median": 1.0,
+        "p90": 3,
+        "avg_cards": 6.262,
+        "mana_floor_pct": 80.0,
+        "resource_blocks": 17,
+        "qingnang_triggers": 1.081,
+        "shanhe_triggers": 0.0
+      },
+      "steps": [
+        {
+          "name": "披甲行军",
+          "rule": "玄甲2将守卫产甲放大至442",
+          "damage": 0,
+          "raw_damage": 0,
+          "phase_waste": 0
+        },
+        {
+          "name": "壁垒反攻",
+          "rule": "消耗442甲，攻击倍率750%并回补277甲",
+          "damage": 5097,
+          "raw_damage": 7017,
+          "phase_waste": 1920
+        },
+        {
+          "name": "玄甲镇岳",
+          "rule": "消耗守卫现有277甲，攻击倍率557%",
+          "damage": 476,
+          "raw_damage": 7264,
+          "phase_waste": 6788
+        },
+        {
+          "name": "土司军令",
+          "rule": "210%单攻并补防御链",
+          "damage": 696,
+          "raw_damage": 696,
+          "phase_waste": 0
+        },
+        {
+          "name": "敌方阶段格挡／玄甲追击",
+          "rule": "2次格挡与本回合首次80%攻击追击",
+          "damage": 1109,
+          "raw_damage": 1109,
+          "phase_waste": 0
+        }
+      ],
+      "cycle_damage": 7378,
+      "raw_cycle_damage": 16086,
+      "phase_waste": 8708,
+      "dpr": 4404.118788240561,
+      "armor_tax": 276,
+      "conservative_dpr": 4128.118788240561,
+      "npc_variant_average_dpr": 4007.2810371435235,
+      "dpr_min": 3967.0017867778442,
+      "dpr_max": 4128.118788240561,
+      "phase_hp_ratio": 0.6600465199499016,
+      "ten_round_damage": 41281,
+      "turns_to_stage_end": 2.7077709177947753,
+      "pressure": [
+        {
+          "phase": 1,
+          "incoming_before_armor": 1421,
+          "party_hp_ratio": 0.17541651240281378,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
+        },
+        {
+          "phase": 2,
+          "incoming_before_armor": 1381,
+          "party_hp_ratio": 0.17045538689374307,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
+        },
+        {
+          "phase": 3,
+          "incoming_before_armor": 1552,
+          "party_hp_ratio": 0.19155868196964088,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
+        }
+      ],
+      "party_hp": 8103,
+      "survival_rounds_before_armor": 5.221005154639175,
+      "purpose": "最高群体爆发与最稳护甲反击；适合自动战斗容错。",
+      "npc_variants": [
+        {
+          "missing": "寨主号令",
+          "selected": [
+            "石门守势",
+            "土司军令",
+            "盟寨誓约"
+          ],
+          "sequence": [
+            "披甲行军",
+            "壁垒反攻",
+            "玄甲镇岳",
+            "土司军令"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.67525,
+            "median": 1.0,
+            "p90": 3,
+            "avg_cards": 6.262,
+            "mana_floor_pct": 80.0,
+            "resource_blocks": 17,
+            "qingnang_triggers": 1.081,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "披甲行军",
+              "rule": "玄甲2将守卫产甲放大至442",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "壁垒反攻",
+              "rule": "消耗442甲，攻击倍率750%并回补277甲",
+              "damage": 5097,
+              "raw_damage": 7017,
+              "phase_waste": 1920
+            },
+            {
+              "name": "玄甲镇岳",
+              "rule": "消耗守卫现有277甲，攻击倍率557%",
+              "damage": 476,
+              "raw_damage": 7264,
+              "phase_waste": 6788
+            },
+            {
+              "name": "土司军令",
+              "rule": "210%单攻并补防御链",
+              "damage": 696,
+              "raw_damage": 696,
+              "phase_waste": 0
+            },
+            {
+              "name": "敌方阶段格挡／玄甲追击",
+              "rule": "2次格挡与本回合首次80%攻击追击",
+              "damage": 1109,
+              "raw_damage": 1109,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 7378,
+          "raw_cycle_damage": 16086,
+          "phase_waste": 8708,
+          "dpr": 4404.118788240561,
+          "armor_tax": 276,
+          "conservative_dpr": 4128.118788240561
+        },
+        {
+          "missing": "石门守势",
+          "selected": [
+            "寨主号令",
+            "土司军令",
+            "盟寨誓约"
+          ],
+          "sequence": [
+            "披甲行军",
+            "壁垒反攻",
+            "玄甲镇岳",
+            "寨主号令"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.679,
+            "median": 1.0,
+            "p90": 3,
+            "avg_cards": 6.23775,
+            "mana_floor_pct": 80.0,
+            "resource_blocks": 0,
+            "qingnang_triggers": 1.081,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "披甲行军",
+              "rule": "玄甲2将守卫产甲放大至442",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "壁垒反攻",
+              "rule": "消耗442甲，攻击倍率750%并回补277甲",
+              "damage": 5097,
+              "raw_damage": 7017,
+              "phase_waste": 1920
+            },
+            {
+              "name": "玄甲镇岳",
+              "rule": "消耗守卫现有277甲，攻击倍率557%",
+              "damage": 476,
+              "raw_damage": 7264,
+              "phase_waste": 6788
+            },
+            {
+              "name": "寨主号令",
+              "rule": "140%单攻并补防御链",
+              "damage": 442,
+              "raw_damage": 442,
+              "phase_waste": 0
+            },
+            {
+              "name": "敌方阶段格挡／玄甲追击",
+              "rule": "2次格挡与本回合首次80%攻击追击",
+              "damage": 1109,
+              "raw_damage": 1109,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 7124,
+          "raw_cycle_damage": 15832,
+          "phase_waste": 8708,
+          "dpr": 4243.001786777844,
+          "armor_tax": 276,
+          "conservative_dpr": 3967.0017867778442
+        },
+        {
+          "missing": "土司军令",
+          "selected": [
+            "寨主号令",
+            "石门守势",
+            "盟寨誓约"
+          ],
+          "sequence": [
+            "披甲行军",
+            "壁垒反攻",
+            "玄甲镇岳",
+            "寨主号令"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.679,
+            "median": 1.0,
+            "p90": 3,
+            "avg_cards": 6.23775,
+            "mana_floor_pct": 80.0,
+            "resource_blocks": 0,
+            "qingnang_triggers": 1.081,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "披甲行军",
+              "rule": "玄甲2将守卫产甲放大至442",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "壁垒反攻",
+              "rule": "消耗442甲，攻击倍率750%并回补277甲",
+              "damage": 5097,
+              "raw_damage": 7017,
+              "phase_waste": 1920
+            },
+            {
+              "name": "玄甲镇岳",
+              "rule": "消耗守卫现有277甲，攻击倍率557%",
+              "damage": 476,
+              "raw_damage": 7264,
+              "phase_waste": 6788
+            },
+            {
+              "name": "寨主号令",
+              "rule": "140%单攻并补防御链",
+              "damage": 442,
+              "raw_damage": 442,
+              "phase_waste": 0
+            },
+            {
+              "name": "敌方阶段格挡／玄甲追击",
+              "rule": "2次格挡与本回合首次80%攻击追击",
+              "damage": 1109,
+              "raw_damage": 1109,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 7124,
+          "raw_cycle_damage": 15832,
+          "phase_waste": 8708,
+          "dpr": 4243.001786777844,
+          "armor_tax": 276,
+          "conservative_dpr": 3967.0017867778442
+        },
+        {
+          "missing": "盟寨誓约",
+          "selected": [
+            "寨主号令",
+            "石门守势",
+            "土司军令"
+          ],
+          "sequence": [
+            "披甲行军",
+            "壁垒反攻",
+            "玄甲镇岳",
+            "寨主号令"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.679,
+            "median": 1.0,
+            "p90": 3,
+            "avg_cards": 6.23775,
+            "mana_floor_pct": 80.0,
+            "resource_blocks": 0,
+            "qingnang_triggers": 1.081,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "披甲行军",
+              "rule": "玄甲2将守卫产甲放大至442",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "壁垒反攻",
+              "rule": "消耗442甲，攻击倍率750%并回补277甲",
+              "damage": 5097,
+              "raw_damage": 7017,
+              "phase_waste": 1920
+            },
+            {
+              "name": "玄甲镇岳",
+              "rule": "消耗守卫现有277甲，攻击倍率557%",
+              "damage": 476,
+              "raw_damage": 7264,
+              "phase_waste": 6788
+            },
+            {
+              "name": "寨主号令",
+              "rule": "140%单攻并补防御链",
+              "damage": 442,
+              "raw_damage": 442,
+              "phase_waste": 0
+            },
+            {
+              "name": "敌方阶段格挡／玄甲追击",
+              "rule": "2次格挡与本回合首次80%攻击追击",
+              "damage": 1109,
+              "raw_damage": 1109,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 7124,
+          "raw_cycle_damage": 15832,
+          "phase_waste": 8708,
+          "dpr": 4243.001786777844,
+          "armor_tax": 276,
+          "conservative_dpr": 3967.0017867778442
+        }
+      ],
+      "rank": 1
     },
-    "Npc.SongJinBao": {
-      "cards": [
+    {
+      "id": "sorcerer_fire",
+      "name": "五牌炎序任务",
+      "role": "Sorcerer",
+      "npc": "Npc.YueBai",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Mage.YanXuLiaoYuan",
+        "Hero.Mage.HanXuNingChuan",
+        "Hero.Mage.LeiXuYinTing",
+        "Hero.Mage.GuiXuTongXuan"
+      ],
+      "partner": [
+        "Profession.Sorcerer.LingHuoFu",
+        "Profession.Sorcerer.JuLing",
+        "Profession.Sorcerer.LiHuoYin",
+        "Profession.Sorcerer.YanQiang",
+        "Profession.Sorcerer.BaoYanShu"
+      ],
+      "npc_cards": [
+        "Npc.YueBai.QingYanDianDeng",
+        "Npc.YueBai.CanJuanPiZhu",
+        "Npc.YueBai.YueBaiZhaoYe"
+      ],
+      "sequence": [
+        "Profession.Sorcerer.LingHuoFu",
+        "Profession.Sorcerer.LiHuoYin",
+        "Profession.Sorcerer.YanQiang",
+        "Profession.Sorcerer.BaoYanShu",
+        "Profession.Sorcerer.JuLing",
+        "Npc.YueBai.QingYanDianDeng",
+        "Npc.YueBai.CanJuanPiZhu",
+        "Npc.YueBai.YueBaiZhaoYe"
+      ],
+      "sets": {
+        "hero": "追风6",
+        "partner": "蚀骨6",
+        "npc": "山河6"
+      },
+      "gear": "主角追风6；法师蚀骨6；月白山河6",
+      "set_synergy": "炎法用蚀骨保留首次毒爆/灼烧储量；月白山河每回合额外触发当前地势并给首张地势牌减费抽牌。",
+      "fallback": "伙伴出生缺爆炎时换燎原寻诀；月白缺任一牌仍能由剩余三牌完成其确定性任务。",
+      "role_cn": "法师",
+      "npc_cn": "月白",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "炎序燎原",
+        "寒序凝川",
+        "雷序引霆",
+        "归序通玄"
+      ],
+      "partner_names": [
+        "灵枢引法",
+        "周天归元",
+        "灵火点灯",
+        "流焰传薪",
+        "焚脉爆炎"
+      ],
+      "npc_names": [
+        "青焰点灯",
+        "月白照夜",
+        "山河残图"
+      ],
+      "hero_cards": [
+        {
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Mage.YanXuLiaoYuan",
+          "name": "炎序燎原",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Mage.HanXuNingChuan",
+          "name": "寒序凝川",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Mage.LeiXuYinTing",
+          "name": "雷序引霆",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Mage.GuiXuTongXuan",
+          "name": "归序通玄",
+          "energy": 0,
+          "mana": 0
+        }
+      ],
+      "partner_cards": [
+        {
+          "id": "Profession.Sorcerer.LingHuoFu",
+          "name": "灵枢引法",
+          "energy": 1,
+          "mana": 2
+        },
+        {
+          "id": "Profession.Sorcerer.JuLing",
+          "name": "周天归元",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Sorcerer.LiHuoYin",
+          "name": "灵火点灯",
+          "energy": 1,
+          "mana": 1
+        },
+        {
+          "id": "Profession.Sorcerer.YanQiang",
+          "name": "流焰传薪",
+          "energy": 1,
+          "mana": 2
+        },
+        {
+          "id": "Profession.Sorcerer.BaoYanShu",
+          "name": "焚脉爆炎",
+          "energy": 1,
+          "mana": 4
+        }
+      ],
+      "npc_cards_detail": [
+        {
+          "id": "Npc.YueBai.QingYanDianDeng",
+          "name": "青焰点灯",
+          "energy": 0,
+          "mana": 3
+        },
+        {
+          "id": "Npc.YueBai.YueBaiZhaoYe",
+          "name": "月白照夜",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Npc.YueBai.ShanHeCanTu",
+          "name": "山河残图",
+          "energy": 0,
+          "mana": 6
+        }
+      ],
+      "sequence_names": [
+        "灵枢引法",
+        "灵火点灯",
+        "流焰传薪",
+        "焚脉爆炎",
+        "周天归元",
+        "青焰点灯",
+        "月白照夜",
+        "山河残图"
+      ],
+      "timing": {
+        "completion": 1.0,
+        "avg": 1.29025,
+        "median": 1.0,
+        "p90": 2,
+        "avg_cards": 10.54275,
+        "mana_floor_pct": 73.98014705882353,
+        "resource_blocks": 0,
+        "qingnang_triggers": 0.0,
+        "shanhe_triggers": 1.0
+      },
+      "steps": [
+        {
+          "name": "伙伴五牌主动",
+          "rule": "灵枢98%＋灵火84%＋爆炎112%；三张群攻独立跨阶段",
+          "damage": 2810,
+          "raw_damage": 2810,
+          "phase_waste": 0
+        },
+        {
+          "name": "伙伴任务重放",
+          "rule": "三张群攻重放；启动阵赏触发一次100灼烧",
+          "damage": 1850,
+          "raw_damage": 3110,
+          "phase_waste": 1260
+        },
+        {
+          "name": "月白三牌任务",
+          "rule": "按4选3完成基础重放与启动奖励",
+          "damage": 1096,
+          "raw_damage": 1096,
+          "phase_waste": 0
+        }
+      ],
+      "cycle_damage": 5756,
+      "raw_cycle_damage": 7016,
+      "phase_waste": 1260,
+      "dpr": 4461.150939740361,
+      "armor_tax": 387,
+      "conservative_dpr": 4074.1509397403606,
+      "npc_variant_average_dpr": 3877.28986630498,
+      "dpr_min": 3379.711877543112,
+      "dpr_max": 4074.1509397403606,
+      "phase_hp_ratio": 0.5149400608337806,
+      "ten_round_damage": 40742,
+      "turns_to_stage_end": 2.743639144776594,
+      "pressure": [
+        {
+          "phase": 1,
+          "incoming_before_armor": 1696,
+          "party_hp_ratio": 0.24285032455135547,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
+        },
+        {
+          "phase": 2,
+          "incoming_before_armor": 1656,
+          "party_hp_ratio": 0.237094310805651,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
+        },
+        {
+          "phase": 3,
+          "incoming_before_armor": 1827,
+          "party_hp_ratio": 0.2616074837724322,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
+        }
+      ],
+      "party_hp": 6984,
+      "survival_rounds_before_armor": 3.8226600985221677,
+      "purpose": "全体同步压阶段，任务重放后爆发集中。",
+      "npc_variants": [
+        {
+          "missing": "青焰点灯",
+          "selected": [
+            "残卷批注",
+            "月白照夜",
+            "山河残图"
+          ],
+          "sequence": [
+            "灵枢引法",
+            "灵火点灯",
+            "流焰传薪",
+            "焚脉爆炎",
+            "周天归元",
+            "残卷批注",
+            "月白照夜",
+            "山河残图"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.29025,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 10.54275,
+            "mana_floor_pct": 73.98014705882353,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "伙伴五牌主动",
+              "rule": "灵枢98%＋灵火84%＋爆炎112%；三张群攻独立跨阶段",
+              "damage": 2810,
+              "raw_damage": 2810,
+              "phase_waste": 0
+            },
+            {
+              "name": "伙伴任务重放",
+              "rule": "三张群攻重放；启动阵赏触发一次100灼烧",
+              "damage": 1850,
+              "raw_damage": 3110,
+              "phase_waste": 1260
+            },
+            {
+              "name": "月白三牌任务",
+              "rule": "按4选3完成基础重放与启动奖励",
+              "damage": 976,
+              "raw_damage": 976,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5636,
+          "raw_cycle_damage": 6896,
+          "phase_waste": 1260,
+          "dpr": 4368.145708196086,
+          "armor_tax": 387,
+          "conservative_dpr": 3981.145708196086
+        },
+        {
+          "missing": "残卷批注",
+          "selected": [
+            "青焰点灯",
+            "月白照夜",
+            "山河残图"
+          ],
+          "sequence": [
+            "灵枢引法",
+            "灵火点灯",
+            "流焰传薪",
+            "焚脉爆炎",
+            "周天归元",
+            "青焰点灯",
+            "月白照夜",
+            "山河残图"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.29025,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 10.54275,
+            "mana_floor_pct": 73.98014705882353,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "伙伴五牌主动",
+              "rule": "灵枢98%＋灵火84%＋爆炎112%；三张群攻独立跨阶段",
+              "damage": 2810,
+              "raw_damage": 2810,
+              "phase_waste": 0
+            },
+            {
+              "name": "伙伴任务重放",
+              "rule": "三张群攻重放；启动阵赏触发一次100灼烧",
+              "damage": 1850,
+              "raw_damage": 3110,
+              "phase_waste": 1260
+            },
+            {
+              "name": "月白三牌任务",
+              "rule": "按4选3完成基础重放与启动奖励",
+              "damage": 1096,
+              "raw_damage": 1096,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5756,
+          "raw_cycle_damage": 7016,
+          "phase_waste": 1260,
+          "dpr": 4461.150939740361,
+          "armor_tax": 387,
+          "conservative_dpr": 4074.1509397403606
+        },
+        {
+          "missing": "月白照夜",
+          "selected": [
+            "青焰点灯",
+            "残卷批注",
+            "山河残图"
+          ],
+          "sequence": [
+            "灵枢引法",
+            "灵火点灯",
+            "流焰传薪",
+            "焚脉爆炎",
+            "周天归元",
+            "青焰点灯",
+            "残卷批注",
+            "山河残图"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.29025,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 10.54275,
+            "mana_floor_pct": 73.98014705882353,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "伙伴五牌主动",
+              "rule": "灵枢98%＋灵火84%＋爆炎112%；三张群攻独立跨阶段",
+              "damage": 2810,
+              "raw_damage": 2810,
+              "phase_waste": 0
+            },
+            {
+              "name": "伙伴任务重放",
+              "rule": "三张群攻重放；启动阵赏触发一次100灼烧",
+              "damage": 1850,
+              "raw_damage": 3110,
+              "phase_waste": 1260
+            },
+            {
+              "name": "月白三牌任务",
+              "rule": "按4选3完成基础重放与启动奖励",
+              "damage": 200,
+              "raw_damage": 200,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 4860,
+          "raw_cycle_damage": 6120,
+          "phase_waste": 1260,
+          "dpr": 3766.711877543112,
+          "armor_tax": 387,
+          "conservative_dpr": 3379.711877543112
+        },
+        {
+          "missing": "山河残图",
+          "selected": [
+            "青焰点灯",
+            "残卷批注",
+            "月白照夜"
+          ],
+          "sequence": [
+            "灵枢引法",
+            "灵火点灯",
+            "流焰传薪",
+            "焚脉爆炎",
+            "周天归元",
+            "青焰点灯",
+            "残卷批注",
+            "月白照夜"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.29025,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 10.54275,
+            "mana_floor_pct": 73.98014705882353,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "伙伴五牌主动",
+              "rule": "灵枢98%＋灵火84%＋爆炎112%；三张群攻独立跨阶段",
+              "damage": 2810,
+              "raw_damage": 2810,
+              "phase_waste": 0
+            },
+            {
+              "name": "伙伴任务重放",
+              "rule": "三张群攻重放；启动阵赏触发一次100灼烧",
+              "damage": 1850,
+              "raw_damage": 3110,
+              "phase_waste": 1260
+            },
+            {
+              "name": "月白三牌任务",
+              "rule": "按4选3完成基础重放与启动奖励",
+              "damage": 1096,
+              "raw_damage": 1096,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5756,
+          "raw_cycle_damage": 7016,
+          "phase_waste": 1260,
+          "dpr": 4461.150939740361,
+          "armor_tax": 387,
+          "conservative_dpr": 4074.1509397403606
+        }
+      ],
+      "rank": 2
+    },
+    {
+      "id": "blade_momentum",
+      "name": "气势断岳破军",
+      "role": "Blade",
+      "npc": "Npc.SongJinBao",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Blade.TongFengYinShi",
+        "Hero.Blade.XueLuXiangCheng",
+        "Hero.Blade.YingFengHuanBu",
+        "Hero.Blade.TongPaoJuShi"
+      ],
+      "partner": [
+        "Profession.Blade.LieFengZhan",
+        "Profession.Blade.HuiFengJiaShi",
+        "Profession.Blade.DuanYue",
+        "Profession.Blade.PoJun",
+        "Profession.Blade.ZhanYiFeiTeng"
+      ],
+      "npc_cards": [
+        "Npc.SongJinBao.ShangQianGuWu",
+        "Npc.SongJinBao.ErMuMiBao",
+        "Npc.SongJinBao.YiNuoQianJin"
+      ],
+      "sequence": [
+        "Npc.SongJinBao.ShangQianGuWu",
+        "Profession.Blade.ZhanYiFeiTeng",
+        "Profession.Blade.DuanYue",
+        "Profession.Blade.PoJun"
+      ],
+      "energy_overrides": {
+        "Profession.Blade.DuanYue": 0,
+        "Profession.Blade.PoJun": 0
+      },
+      "sets": {
+        "hero": "追风6",
+        "partner": "破军6",
+        "npc": "玄甲6"
+      },
+      "gear": "主角追风6；刀客破军6堆攻击；宋金宝玄甲6堆防御",
+      "set_synergy": "破军在冲锋消费时抽牌，保存收招为藏式，并让下一回合首张主动牌重放基础效果；核心牌实付0～1气，玄甲比无法稳定触发的青囊更适合宋金宝。",
+      "fallback": "缺赏钱鼓舞时用主角同锋引式供气势；缺一诺千金不影响核心爆发。",
+      "role_cn": "刀客",
+      "npc_cn": "宋金宝",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "同锋引式",
+        "血路相承",
+        "迎锋换步",
+        "同袍聚势"
+      ],
+      "partner_names": [
+        "裂风斩",
+        "回锋架势",
+        "断岳",
+        "破军",
+        "战意沸腾"
+      ],
+      "npc_names": [
+        "赏钱鼓舞",
+        "贵客令",
+        "一诺千金"
+      ],
+      "hero_cards": [
+        {
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Blade.TongFengYinShi",
+          "name": "同锋引式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Blade.XueLuXiangCheng",
+          "name": "血路相承",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Blade.YingFengHuanBu",
+          "name": "迎锋换步",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Blade.TongPaoJuShi",
+          "name": "同袍聚势",
+          "energy": 1,
+          "mana": 0
+        }
+      ],
+      "partner_cards": [
+        {
+          "id": "Profession.Blade.LieFengZhan",
+          "name": "裂风斩",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Blade.HuiFengJiaShi",
+          "name": "回锋架势",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Blade.DuanYue",
+          "name": "断岳",
+          "energy": 2,
+          "mana": 5
+        },
+        {
+          "id": "Profession.Blade.PoJun",
+          "name": "破军",
+          "energy": 2,
+          "mana": 6
+        },
+        {
+          "id": "Profession.Blade.ZhanYiFeiTeng",
+          "name": "战意沸腾",
+          "energy": 1,
+          "mana": 0
+        }
+      ],
+      "npc_cards_detail": [
         {
           "id": "Npc.SongJinBao.ShangQianGuWu",
           "name": "赏钱鼓舞",
-          "quality": "史诗",
           "energy": 0,
-          "compact": "目标获得2层〔气势〕，回复6点内力。\n对优先敌人造成140点伤害。\n〔冲锋〕下一张主动牌的基础效果重放1次。\n〔收招〕下回合首张主动牌结算后，重放本牌基础效果。\n〔阵赏〕全体友方各获得2层〔气势〕；抽2张，回复2气。",
-          "immediate": 405,
-          "dot": 0,
-          "packets": 1,
-          "total": 405,
-          "setup_required": false
-        },
-        {
-          "id": "Npc.SongJinBao.ErMuMiBao",
-          "name": "耳目密报",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "施加1层〔虚弱〕、2层〔标记〕。\n〔检索〕1张未完成的宋金宝任务牌。\n〔阵赏〕目标获得3层〔标记〕；攻击次数等于存活友方数，每次140点伤害。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "mana": 0
         },
         {
           "id": "Npc.SongJinBao.GuiKeLing",
           "name": "贵客令",
-          "quality": "史诗",
           "energy": 1,
-          "compact": "基础效果仅作用于自身。\n获得2层〔标记〕、2层〔灵动〕、1次〔反击〕；抽1张。\n〔冲锋〕下一张主动牌结算前，获得2层〔灵动〕、1次〔反击〕。\n〔收招〕下回合开始时，获得2层〔标记〕、2次〔反击〕。\n〔阵赏〕获得3层〔标记〕、4层〔灵动〕、3次〔反击〕。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "mana": 0
+        },
+        {
+          "id": "Npc.SongJinBao.YiNuoQianJin",
+          "name": "一诺千金",
+          "energy": 1,
+          "mana": 6
         }
       ],
-      "immediate": 405,
-      "dot": 0,
-      "total": 405
-    },
-    "Npc.YueBai": {
-      "cards": [
+      "sequence_names": [
+        "赏钱鼓舞",
+        "战意沸腾",
+        "断岳",
+        "破军"
+      ],
+      "timing": {
+        "completion": 1.0,
+        "avg": 1.10875,
+        "median": 1.0,
+        "p90": 2,
+        "avg_cards": 6.42525,
+        "mana_floor_pct": 90.64992424242423,
+        "resource_blocks": 0,
+        "qingnang_triggers": 0.0,
+        "shanhe_triggers": 0.0
+      },
+      "steps": [
         {
-          "id": "Npc.YueBai.YueBaiZhaoYe",
-          "name": "月白照夜",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "施加2层〔标记〕。\n施加28点〔灼烧〕。\n造成140点伤害。\n触发1次〔灼烧〕。\n〔检索〕1张未完成的月白任务牌。\n〔阵赏〕全体敌方各获得3层〔标记〕，再按各自〔标记〕数攻击，每次84点伤害。",
-          "immediate": 448,
-          "dot": 28,
-          "packets": 1,
-          "total": 476,
-          "setup_required": false
+          "name": "赏钱鼓舞",
+          "rule": "给刀客气势并准备冲锋重放",
+          "damage": 405,
+          "raw_damage": 405,
+          "phase_waste": 0
         },
         {
-          "id": "Npc.YueBai.QingYanDianDeng",
-          "name": "青焰点灯",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "施加42点〔灼烧〕。\n触发1次〔灼烧〕。\n〔检索〕1张未完成的月白任务牌。\n〔阵赏〕全体敌方各获得42点〔灼烧〕。再触发〔灼烧〕1次。",
-          "immediate": 0,
-          "dot": 42,
-          "packets": 0,
-          "total": 42,
-          "setup_required": false
+          "name": "战意沸腾",
+          "rule": "再得2气势并返还下一牌费用",
+          "damage": 0,
+          "raw_damage": 0,
+          "phase_waste": 0
         },
         {
-          "id": "Npc.YueBai.CanJuanPiZhu",
-          "name": "残卷批注",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "地势收益的对象由生效时的地势决定。\n抽2张；触发当前〔地势〕收益1次。\n〔检索〕1张未完成的月白任务牌。\n〔阵赏〕触发当前地势收益3次。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "name": "断岳",
+          "rule": "4气势使攻击倍率变为236%，随后施加3破绽",
+          "damage": 930,
+          "raw_damage": 930,
+          "phase_waste": 0
+        },
+        {
+          "name": "破军",
+          "rule": "1层新气势强化首段；消耗3破绽追加3段70%",
+          "damage": 1466,
+          "raw_damage": 1657,
+          "phase_waste": 191
         }
       ],
-      "immediate": 448,
-      "dot": 70,
-      "total": 518
-    },
-    "Npc.ZhouGuangZu": {
-      "cards": [
+      "cycle_damage": 2801,
+      "raw_cycle_damage": 2992,
+      "phase_waste": 191,
+      "dpr": 2526.2683201803834,
+      "armor_tax": 164,
+      "conservative_dpr": 2362.2683201803834,
+      "npc_variant_average_dpr": 2263.426407867626,
+      "dpr_min": 2141.9331175836032,
+      "dpr_max": 2362.2683201803834,
+      "phase_hp_ratio": 0.2505814993737699,
+      "ten_round_damage": 23623,
+      "turns_to_stage_end": 4.731892606994977,
+      "pressure": [
         {
-          "id": "Npc.ZhouGuangZu.YanFenFengMai",
-          "name": "岩粉封脉",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "触发当前〔地势〕收益1次；施加3层〔破绽〕。\n施加77点〔中毒〕。\n触发1次〔毒爆〕。",
-          "immediate": 0,
-          "dot": 77,
-          "packets": 0,
-          "total": 77,
-          "setup_required": false
+          "phase": 1,
+          "incoming_before_armor": 1636,
+          "party_hp_ratio": 0.2252110866372981,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
         },
         {
-          "id": "Npc.ZhouGuangZu.DiZhiMoTu",
-          "name": "地志摹图",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "地势收益的对象由生效时的地势决定。\n抽2张；触发当前〔地势〕收益2次。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "phase": 2,
+          "incoming_before_armor": 1596,
+          "party_hp_ratio": 0.21967694566813506,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
         },
         {
-          "id": "Npc.ZhouGuangZu.HuangShanFuZhi",
-          "name": "黄山敷治",
-          "quality": "史诗",
-          "energy": 0,
-          "compact": "全体友方各失去1点生命，最低保留1点；获得6点〔药效〕。\n全体友方各恢复147点生命，消耗全部〔药效〕。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "phase": 3,
+          "incoming_before_armor": 1767,
+          "party_hp_ratio": 0.24321769456681347,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
         }
       ],
-      "immediate": 0,
-      "dot": 77,
-      "total": 77
+      "party_hp": 7264,
+      "survival_rounds_before_armor": 4.11092246745897,
+      "purpose": "单体阶段压缩强，依赖冲锋/收招顺序。",
+      "npc_variants": [
+        {
+          "missing": "赏钱鼓舞",
+          "selected": [
+            "耳目密报",
+            "贵客令",
+            "一诺千金"
+          ],
+          "sequence": [
+            "同锋引式",
+            "战意沸腾",
+            "断岳",
+            "破军"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.15875,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 6.20525,
+            "mana_floor_pct": 90.67628787878787,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "同锋引式",
+              "rule": "给刀客气势并准备冲锋重放",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "战意沸腾",
+              "rule": "再得2气势并返还下一牌费用",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "断岳",
+              "rule": "6气势使攻击倍率变为256%，随后施加3破绽",
+              "damage": 1015,
+              "raw_damage": 1015,
+              "phase_waste": 0
+            },
+            {
+              "name": "破军",
+              "rule": "1层新气势强化首段；消耗3破绽追加3段70%",
+              "damage": 1657,
+              "raw_damage": 1657,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 2672,
+          "raw_cycle_damage": 2672,
+          "phase_waste": 0,
+          "dpr": 2305.9331175836032,
+          "armor_tax": 164,
+          "conservative_dpr": 2141.9331175836032
+        },
+        {
+          "missing": "耳目密报",
+          "selected": [
+            "赏钱鼓舞",
+            "贵客令",
+            "一诺千金"
+          ],
+          "sequence": [
+            "赏钱鼓舞",
+            "战意沸腾",
+            "断岳",
+            "破军"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.10875,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 6.42525,
+            "mana_floor_pct": 90.64992424242423,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "赏钱鼓舞",
+              "rule": "给刀客气势并准备冲锋重放",
+              "damage": 405,
+              "raw_damage": 405,
+              "phase_waste": 0
+            },
+            {
+              "name": "战意沸腾",
+              "rule": "再得2气势并返还下一牌费用",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "断岳",
+              "rule": "4气势使攻击倍率变为236%，随后施加3破绽",
+              "damage": 930,
+              "raw_damage": 930,
+              "phase_waste": 0
+            },
+            {
+              "name": "破军",
+              "rule": "1层新气势强化首段；消耗3破绽追加3段70%",
+              "damage": 1466,
+              "raw_damage": 1657,
+              "phase_waste": 191
+            }
+          ],
+          "cycle_damage": 2801,
+          "raw_cycle_damage": 2992,
+          "phase_waste": 191,
+          "dpr": 2526.2683201803834,
+          "armor_tax": 164,
+          "conservative_dpr": 2362.2683201803834
+        },
+        {
+          "missing": "贵客令",
+          "selected": [
+            "赏钱鼓舞",
+            "耳目密报",
+            "一诺千金"
+          ],
+          "sequence": [
+            "赏钱鼓舞",
+            "战意沸腾",
+            "断岳",
+            "破军"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.18275,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 6.35575,
+            "mana_floor_pct": 90.64901515151516,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "赏钱鼓舞",
+              "rule": "给刀客气势并准备冲锋重放",
+              "damage": 405,
+              "raw_damage": 405,
+              "phase_waste": 0
+            },
+            {
+              "name": "战意沸腾",
+              "rule": "再得2气势并返还下一牌费用",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "断岳",
+              "rule": "4气势使攻击倍率变为236%，随后施加3破绽",
+              "damage": 930,
+              "raw_damage": 930,
+              "phase_waste": 0
+            },
+            {
+              "name": "破军",
+              "rule": "1层新气势强化首段；消耗3破绽追加3段70%",
+              "damage": 1466,
+              "raw_damage": 1657,
+              "phase_waste": 191
+            }
+          ],
+          "cycle_damage": 2801,
+          "raw_cycle_damage": 2992,
+          "phase_waste": 191,
+          "dpr": 2368.2096808285773,
+          "armor_tax": 164,
+          "conservative_dpr": 2204.2096808285773
+        },
+        {
+          "missing": "一诺千金",
+          "selected": [
+            "赏钱鼓舞",
+            "耳目密报",
+            "贵客令"
+          ],
+          "sequence": [
+            "赏钱鼓舞",
+            "战意沸腾",
+            "断岳",
+            "破军"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.11625,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 6.4185,
+            "mana_floor_pct": 90.65575757575756,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "赏钱鼓舞",
+              "rule": "给刀客气势并准备冲锋重放",
+              "damage": 405,
+              "raw_damage": 405,
+              "phase_waste": 0
+            },
+            {
+              "name": "战意沸腾",
+              "rule": "再得2气势并返还下一牌费用",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "断岳",
+              "rule": "4气势使攻击倍率变为236%，随后施加3破绽",
+              "damage": 930,
+              "raw_damage": 930,
+              "phase_waste": 0
+            },
+            {
+              "name": "破军",
+              "rule": "1层新气势强化首段；消耗3破绽追加3段70%",
+              "damage": 1466,
+              "raw_damage": 1657,
+              "phase_waste": 191
+            }
+          ],
+          "cycle_damage": 2801,
+          "raw_cycle_damage": 2992,
+          "phase_waste": 191,
+          "dpr": 2509.2945128779397,
+          "armor_tax": 164,
+          "conservative_dpr": 2345.2945128779397
+        }
+      ],
+      "rank": 3
     },
-    "Npc.JinGui": {
-      "cards": [
+    {
+      "id": "hunter_heavy",
+      "name": "双重箭蓄力重箭",
+      "role": "Hunter",
+      "npc": "Npc.JinGui",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Hunter.FengYanDingXian",
+        "Hero.Hunter.LieYuLianShi",
+        "Hero.Hunter.CuiDuChuanXin",
+        "Hero.Hunter.HuiFengGuanRi"
+      ],
+      "partner": [
+        "Profession.Hunter.YingYan",
+        "Profession.Hunter.LianZhuJian",
+        "Profession.Hunter.LieWang",
+        "Profession.Hunter.ChuanYang",
+        "Profession.Hunter.ShouHun"
+      ],
+      "npc_cards": [
+        "Npc.JinGui.ShiJingErMu",
+        "Npc.JinGui.QiaoYanZhouXuan",
+        "Npc.JinGui.ZaYiChouBei"
+      ],
+      "sequence": [
+        "Hero.Hunter.FengYanDingXian",
+        "Hero.Hunter.LieYuLianShi",
+        "Npc.JinGui.ShiJingErMu",
+        "Profession.Hunter.YingYan",
+        "Profession.Hunter.ChuanYang"
+      ],
+      "sets": {
+        "hero": "蚀骨6",
+        "partner": "追风6",
+        "npc": "玄甲6"
+      },
+      "gear": "主角蚀骨6堆攻击；弓手追风6；金贵玄甲6堆防御",
+      "set_synergy": "主角亲自施加流血/中毒，因此由主角蚀骨完成自动毒爆与首次保留；伙伴追风提供全队抽牌回气，金贵玄甲承担单体压力。",
+      "fallback": "缺市井耳目时由杂役筹备供3蓄力；伙伴缺穿杨时改狩魂。",
+      "role_cn": "弓手",
+      "npc_cn": "金贵",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "风眼定弦",
+        "裂羽连矢",
+        "淬毒穿心",
+        "回风贯日"
+      ],
+      "partner_names": [
+        "锐意感知",
+        "连珠箭",
+        "猎网",
+        "穿杨",
+        "狩魂"
+      ],
+      "npc_names": [
+        "市井耳目",
+        "巧言周旋",
+        "杂役筹备"
+      ],
+      "hero_cards": [
+        {
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Hunter.FengYanDingXian",
+          "name": "风眼定弦",
+          "energy": 0,
+          "mana": 1
+        },
+        {
+          "id": "Hero.Hunter.LieYuLianShi",
+          "name": "裂羽连矢",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Hunter.CuiDuChuanXin",
+          "name": "淬毒穿心",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Hunter.HuiFengGuanRi",
+          "name": "回风贯日",
+          "energy": 1,
+          "mana": 6
+        }
+      ],
+      "partner_cards": [
+        {
+          "id": "Profession.Hunter.YingYan",
+          "name": "锐意感知",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Hunter.LianZhuJian",
+          "name": "连珠箭",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Profession.Hunter.LieWang",
+          "name": "猎网",
+          "energy": 1,
+          "mana": 1
+        },
+        {
+          "id": "Profession.Hunter.ChuanYang",
+          "name": "穿杨",
+          "energy": 2,
+          "mana": 6
+        },
+        {
+          "id": "Profession.Hunter.ShouHun",
+          "name": "狩魂",
+          "energy": 2,
+          "mana": 8
+        }
+      ],
+      "npc_cards_detail": [
         {
           "id": "Npc.JinGui.ShiJingErMu",
           "name": "市井耳目",
-          "quality": "史诗",
           "energy": 0,
-          "compact": "全体敌方各获得2层〔标记〕；抽2张；攻击最高的友方获得2点〔蓄力〕。\n〔重箭〕随后消耗全部〔蓄力〕，每点造成1次70点伤害。",
-          "immediate": 171,
-          "dot": 0,
-          "packets": 1,
-          "total": 171,
-          "setup_required": false
-        },
-        {
-          "id": "Npc.JinGui.ZaYiChouBei",
-          "name": "杂役筹备",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "抽3张，弃1张，回复1气；攻击最高的友方获得3点〔蓄力〕。\n〔重箭〕随后消耗全部〔蓄力〕，每点造成1次56点伤害，并回复1点内力。",
-          "immediate": 124,
-          "dot": 0,
-          "packets": 1,
-          "total": 124,
-          "setup_required": false
+          "mana": 3
         },
         {
           "id": "Npc.JinGui.QiaoYanZhouXuan",
           "name": "巧言周旋",
-          "quality": "史诗",
           "energy": 1,
-          "compact": "施加3层〔破绽〕。\n〔护甲〕最高的友方获得112点〔护甲〕。\n该友方获得2次〔格挡〕。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "mana": 0
+        },
+        {
+          "id": "Npc.JinGui.ZaYiChouBei",
+          "name": "杂役筹备",
+          "energy": 1,
+          "mana": 3
         }
       ],
-      "immediate": 295,
-      "dot": 0,
-      "total": 295
+      "sequence_names": [
+        "风眼定弦",
+        "裂羽连矢",
+        "市井耳目",
+        "锐意感知",
+        "穿杨"
+      ],
+      "timing": {
+        "completion": 1.0,
+        "avg": 1.15375,
+        "median": 1.0,
+        "p90": 2,
+        "avg_cards": 7.308,
+        "mana_floor_pct": 84.49916666666667,
+        "resource_blocks": 0,
+        "qingnang_triggers": 0.0,
+        "shanhe_triggers": 0.0
+      },
+      "steps": [
+        {
+          "name": "风眼→裂羽",
+          "rule": "3蓄力：196%＋3段70%；每段重箭后触发当时流血",
+          "damage": 1704,
+          "raw_damage": 1704,
+          "phase_waste": 0
+        },
+        {
+          "name": "市井耳目",
+          "rule": "给最高攻友方2蓄力并立即2段70%重箭",
+          "damage": 595,
+          "raw_damage": 595,
+          "phase_waste": 0
+        },
+        {
+          "name": "锐意→穿杨",
+          "rule": "3蓄力：攻击倍率420%，合计无视84防御",
+          "damage": 502,
+          "raw_damage": 1767,
+          "phase_waste": 1265
+        }
+      ],
+      "cycle_damage": 2801,
+      "raw_cycle_damage": 4066,
+      "phase_waste": 1265,
+      "dpr": 2427.735644637053,
+      "armor_tax": 204,
+      "conservative_dpr": 2223.735644637053,
+      "npc_variant_average_dpr": 2223.735644637053,
+      "dpr_min": 2223.735644637053,
+      "dpr_max": 2223.735644637053,
+      "phase_hp_ratio": 0.2505814993737699,
+      "ten_round_damage": 22237,
+      "turns_to_stage_end": 5.026676631711058,
+      "pressure": [
+        {
+          "phase": 1,
+          "incoming_before_armor": 1614,
+          "party_hp_ratio": 0.22122333379014203,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
+        },
+        {
+          "phase": 2,
+          "incoming_before_armor": 1574,
+          "party_hp_ratio": 0.2157142204558951,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
+        },
+        {
+          "phase": 3,
+          "incoming_before_armor": 1745,
+          "party_hp_ratio": 0.23914850851948288,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
+        }
+      ],
+      "party_hp": 7297,
+      "survival_rounds_before_armor": 4.1816618911174785,
+      "purpose": "最快完成短循环；适合优先击破白猿阶段。",
+      "npc_variants": [
+        {
+          "missing": "后巷脱身",
+          "selected": [
+            "市井耳目",
+            "巧言周旋",
+            "杂役筹备"
+          ],
+          "sequence": [
+            "风眼定弦",
+            "裂羽连矢",
+            "市井耳目",
+            "锐意感知",
+            "穿杨"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.15375,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 7.308,
+            "mana_floor_pct": 84.49916666666667,
+            "resource_blocks": 0,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "风眼→裂羽",
+              "rule": "3蓄力：196%＋3段70%；每段重箭后触发当时流血",
+              "damage": 1704,
+              "raw_damage": 1704,
+              "phase_waste": 0
+            },
+            {
+              "name": "市井耳目",
+              "rule": "给最高攻友方2蓄力并立即2段70%重箭",
+              "damage": 595,
+              "raw_damage": 595,
+              "phase_waste": 0
+            },
+            {
+              "name": "锐意→穿杨",
+              "rule": "3蓄力：攻击倍率420%，合计无视84防御",
+              "damage": 502,
+              "raw_damage": 1767,
+              "phase_waste": 1265
+            }
+          ],
+          "cycle_damage": 2801,
+          "raw_cycle_damage": 4066,
+          "phase_waste": 1265,
+          "dpr": 2427.735644637053,
+          "armor_tax": 204,
+          "conservative_dpr": 2223.735644637053
+        }
+      ],
+      "rank": 4
     },
-    "Npc.QiongMeiEr": {
-      "cards": [
+    {
+      "id": "formation_assault",
+      "name": "断崖破绽镇煞",
+      "role": "FormationMaster",
+      "npc": "Npc.YueBai",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Formation.GuanShiLuoZi",
+        "Hero.Formation.YiZhenHuiXiang",
+        "Hero.Formation.LianYingBuShi",
+        "Hero.Formation.LiuHeGuiYi"
+      ],
+      "partner": [
+        "Profession.FormationMaster.JieShanWeiZhang",
+        "Profession.FormationMaster.GuanShi",
+        "Profession.FormationMaster.HuiShengZhenSha",
+        "Profession.FormationMaster.ZhenShaZhen",
+        "Profession.FormationMaster.ShanMenFengSuo"
+      ],
+      "npc_cards": [
+        "Npc.YueBai.QingYanDianDeng",
+        "Npc.YueBai.CanJuanPiZhu",
+        "Npc.YueBai.YueBaiZhaoYe"
+      ],
+      "sequence": [
+        "Profession.FormationMaster.JieShanWeiZhang",
+        "Hero.Formation.LianYingBuShi",
+        "Profession.FormationMaster.ShanMenFengSuo",
+        "Profession.FormationMaster.HuiShengZhenSha",
+        "Profession.FormationMaster.ZhenShaZhen",
+        "Npc.YueBai.CanJuanPiZhu"
+      ],
+      "sets": {
+        "hero": "追风6",
+        "partner": "山河6",
+        "npc": "蚀骨6"
+      },
+      "gear": "主角追风6；阵师山河6堆防御；月白蚀骨6堆攻击",
+      "set_synergy": "山河首张地势牌减1气并抽1张、给队友回内；每回合开始再由阵师触发一次当前地势。",
+      "fallback": "出生缺借山为障时用观势落子切平原；缺镇煞阵时以地脉借力替换爆发位。",
+      "role_cn": "阵师",
+      "npc_cn": "月白",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "观势落子",
+        "移阵回响",
+        "连营布势",
+        "六合归一"
+      ],
+      "partner_names": [
+        "借山为障",
+        "平野观势",
+        "回声震杀",
+        "镇煞阵",
+        "山门封锁"
+      ],
+      "npc_names": [
+        "青焰点灯",
+        "月白照夜",
+        "山河残图"
+      ],
+      "hero_cards": [
+        {
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Formation.GuanShiLuoZi",
+          "name": "观势落子",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Formation.YiZhenHuiXiang",
+          "name": "移阵回响",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Formation.LianYingBuShi",
+          "name": "连营布势",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Formation.LiuHeGuiYi",
+          "name": "六合归一",
+          "energy": 2,
+          "mana": 6
+        }
+      ],
+      "partner_cards": [
+        {
+          "id": "Profession.FormationMaster.JieShanWeiZhang",
+          "name": "借山为障",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.FormationMaster.GuanShi",
+          "name": "平野观势",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Profession.FormationMaster.HuiShengZhenSha",
+          "name": "回声震杀",
+          "energy": 2,
+          "mana": 6
+        },
+        {
+          "id": "Profession.FormationMaster.ZhenShaZhen",
+          "name": "镇煞阵",
+          "energy": 3,
+          "mana": 10
+        },
+        {
+          "id": "Profession.FormationMaster.ShanMenFengSuo",
+          "name": "山门封锁",
+          "energy": 1,
+          "mana": 0
+        }
+      ],
+      "npc_cards_detail": [
+        {
+          "id": "Npc.YueBai.QingYanDianDeng",
+          "name": "青焰点灯",
+          "energy": 0,
+          "mana": 3
+        },
+        {
+          "id": "Npc.YueBai.YueBaiZhaoYe",
+          "name": "月白照夜",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Npc.YueBai.ShanHeCanTu",
+          "name": "山河残图",
+          "energy": 0,
+          "mana": 6
+        }
+      ],
+      "sequence_names": [
+        "借山为障",
+        "连营布势",
+        "山门封锁",
+        "回声震杀",
+        "镇煞阵",
+        "青焰点灯"
+      ],
+      "timing": {
+        "completion": 1.0,
+        "avg": 4.16825,
+        "median": 4.0,
+        "p90": 6,
+        "avg_cards": 11.2115,
+        "mana_floor_pct": 83.01320175438597,
+        "resource_blocks": 4117,
+        "qingnang_triggers": 0.0,
+        "shanhe_triggers": 1.0
+      },
+      "steps": [
+        {
+          "name": "借山为障",
+          "rule": "山河4令首张地势牌0气；断崖建立破绽/标记",
+          "damage": 0,
+          "raw_damage": 0,
+          "phase_waste": 0
+        },
+        {
+          "name": "山河6＋连营布势→山门封锁",
+          "rule": "回合开始额外地势；下一次收益四触发",
+          "damage": 0,
+          "raw_damage": 0,
+          "phase_waste": 0
+        },
+        {
+          "name": "回声震杀",
+          "rule": "336%单攻，按标记与3破绽约1.45放大",
+          "damage": 1555,
+          "raw_damage": 1555,
+          "phase_waste": 0
+        },
+        {
+          "name": "镇煞阵",
+          "rule": "448%群攻，按标记/破绽约1.65放大",
+          "damage": 4018,
+          "raw_damage": 7259,
+          "phase_waste": 3241
+        },
+        {
+          "name": "青焰点灯",
+          "rule": "补抽牌与地势，或补灼烧并触发",
+          "damage": 84,
+          "raw_damage": 84,
+          "phase_waste": 0
+        }
+      ],
+      "cycle_damage": 5657,
+      "raw_cycle_damage": 8898,
+      "phase_waste": 3241,
+      "dpr": 1357.1642775745217,
+      "armor_tax": 348,
+      "conservative_dpr": 1009.1642775745217,
+      "npc_variant_average_dpr": 995.2952850828597,
+      "dpr_min": 989.0119354645237,
+      "dpr_max": 1009.1642775745217,
+      "phase_hp_ratio": 0.5060833780640543,
+      "ten_round_damage": 10092,
+      "turns_to_stage_end": 11.07649195318902,
+      "pressure": [
+        {
+          "phase": 1,
+          "incoming_before_armor": 1640,
+          "party_hp_ratio": 0.22582599118942734,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
+        },
+        {
+          "phase": 2,
+          "incoming_before_armor": 1600,
+          "party_hp_ratio": 0.22026431718061673,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
+        },
+        {
+          "phase": 3,
+          "incoming_before_armor": 1771,
+          "party_hp_ratio": 0.24386013215859031,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
+        }
+      ],
+      "party_hp": 7264,
+      "survival_rounds_before_armor": 4.10163749294184,
+      "purpose": "控制与防御兼顾，断崖状态让后续大招稳定增幅。",
+      "npc_variants": [
+        {
+          "missing": "青焰点灯",
+          "selected": [
+            "残卷批注",
+            "月白照夜",
+            "山河残图"
+          ],
+          "sequence": [
+            "借山为障",
+            "连营布势",
+            "山门封锁",
+            "回声震杀",
+            "镇煞阵",
+            "残卷批注"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 4.16825,
+            "median": 4.0,
+            "p90": 6,
+            "avg_cards": 11.2115,
+            "mana_floor_pct": 83.01320175438597,
+            "resource_blocks": 4117,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "借山为障",
+              "rule": "山河4令首张地势牌0气；断崖建立破绽/标记",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "山河6＋连营布势→山门封锁",
+              "rule": "回合开始额外地势；下一次收益四触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "回声震杀",
+              "rule": "336%单攻，按标记与3破绽约1.45放大",
+              "damage": 1555,
+              "raw_damage": 1555,
+              "phase_waste": 0
+            },
+            {
+              "name": "镇煞阵",
+              "rule": "448%群攻，按标记/破绽约1.65放大",
+              "damage": 4018,
+              "raw_damage": 7259,
+              "phase_waste": 3241
+            },
+            {
+              "name": "残卷批注",
+              "rule": "补抽牌与地势，或补灼烧并触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5573,
+          "raw_cycle_damage": 8814,
+          "phase_waste": 3241,
+          "dpr": 1337.0119354645237,
+          "armor_tax": 348,
+          "conservative_dpr": 989.0119354645237
+        },
+        {
+          "missing": "残卷批注",
+          "selected": [
+            "青焰点灯",
+            "月白照夜",
+            "山河残图"
+          ],
+          "sequence": [
+            "借山为障",
+            "连营布势",
+            "山门封锁",
+            "回声震杀",
+            "镇煞阵",
+            "青焰点灯"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 4.16825,
+            "median": 4.0,
+            "p90": 6,
+            "avg_cards": 11.2115,
+            "mana_floor_pct": 83.01320175438597,
+            "resource_blocks": 4117,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "借山为障",
+              "rule": "山河4令首张地势牌0气；断崖建立破绽/标记",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "山河6＋连营布势→山门封锁",
+              "rule": "回合开始额外地势；下一次收益四触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "回声震杀",
+              "rule": "336%单攻，按标记与3破绽约1.45放大",
+              "damage": 1555,
+              "raw_damage": 1555,
+              "phase_waste": 0
+            },
+            {
+              "name": "镇煞阵",
+              "rule": "448%群攻，按标记/破绽约1.65放大",
+              "damage": 4018,
+              "raw_damage": 7259,
+              "phase_waste": 3241
+            },
+            {
+              "name": "青焰点灯",
+              "rule": "补抽牌与地势，或补灼烧并触发",
+              "damage": 84,
+              "raw_damage": 84,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5657,
+          "raw_cycle_damage": 8898,
+          "phase_waste": 3241,
+          "dpr": 1357.1642775745217,
+          "armor_tax": 348,
+          "conservative_dpr": 1009.1642775745217
+        },
+        {
+          "missing": "月白照夜",
+          "selected": [
+            "青焰点灯",
+            "残卷批注",
+            "山河残图"
+          ],
+          "sequence": [
+            "借山为障",
+            "连营布势",
+            "山门封锁",
+            "回声震杀",
+            "镇煞阵",
+            "残卷批注"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 4.1605,
+            "median": 4.0,
+            "p90": 6,
+            "avg_cards": 11.217,
+            "mana_floor_pct": 83.02412280701755,
+            "resource_blocks": 4117,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "借山为障",
+              "rule": "山河4令首张地势牌0气；断崖建立破绽/标记",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "山河6＋连营布势→山门封锁",
+              "rule": "回合开始额外地势；下一次收益四触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "回声震杀",
+              "rule": "336%单攻，按标记与3破绽约1.45放大",
+              "damage": 1555,
+              "raw_damage": 1555,
+              "phase_waste": 0
+            },
+            {
+              "name": "镇煞阵",
+              "rule": "448%群攻，按标记/破绽约1.65放大",
+              "damage": 4018,
+              "raw_damage": 7259,
+              "phase_waste": 3241
+            },
+            {
+              "name": "残卷批注",
+              "rule": "补抽牌与地势，或补灼烧并触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5573,
+          "raw_cycle_damage": 8814,
+          "phase_waste": 3241,
+          "dpr": 1339.5024636461965,
+          "armor_tax": 348,
+          "conservative_dpr": 991.5024636461965
+        },
+        {
+          "missing": "山河残图",
+          "selected": [
+            "青焰点灯",
+            "残卷批注",
+            "月白照夜"
+          ],
+          "sequence": [
+            "借山为障",
+            "连营布势",
+            "山门封锁",
+            "回声震杀",
+            "镇煞阵",
+            "残卷批注"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 4.1605,
+            "median": 4.0,
+            "p90": 6,
+            "avg_cards": 11.217,
+            "mana_floor_pct": 83.02412280701755,
+            "resource_blocks": 4117,
+            "qingnang_triggers": 0.0,
+            "shanhe_triggers": 1.0
+          },
+          "steps": [
+            {
+              "name": "借山为障",
+              "rule": "山河4令首张地势牌0气；断崖建立破绽/标记",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "山河6＋连营布势→山门封锁",
+              "rule": "回合开始额外地势；下一次收益四触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "回声震杀",
+              "rule": "336%单攻，按标记与3破绽约1.45放大",
+              "damage": 1555,
+              "raw_damage": 1555,
+              "phase_waste": 0
+            },
+            {
+              "name": "镇煞阵",
+              "rule": "448%群攻，按标记/破绽约1.65放大",
+              "damage": 4018,
+              "raw_damage": 7259,
+              "phase_waste": 3241
+            },
+            {
+              "name": "残卷批注",
+              "rule": "补抽牌与地势，或补灼烧并触发",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 5573,
+          "raw_cycle_damage": 8814,
+          "phase_waste": 3241,
+          "dpr": 1339.5024636461965,
+          "armor_tax": 348,
+          "conservative_dpr": 991.5024636461965
+        }
+      ],
+      "rank": 5
+    },
+    {
+      "id": "healer_toxic",
+      "name": "双DoT毒爆药方",
+      "role": "Healer",
+      "npc": "Npc.QiongMeiEr",
+      "hero": [
+        "Hero.Generic.FengShenBu",
+        "Hero.Generic.GuanXi",
+        "Hero.Generic.XingQiHuiHuan",
+        "Hero.Generic.QingFengYiShi",
+        "Hero.Healer.YiXueCuiFang",
+        "Hero.Healer.HuiChunNiMai",
+        "Hero.Healer.DuHuoTongLu",
+        "Hero.Healer.BaiCaoJiZhen"
+      ],
+      "partner": [
+        "Profession.Healer.YaoYin",
+        "Profession.Healer.XingQiZhen",
+        "Profession.Healer.BaiCaoDu",
+        "Profession.Healer.FuGuSan",
+        "Profession.Healer.LianQiaoJieDu"
+      ],
+      "npc_cards": [
+        "Npc.QiongMeiEr.TengQiaoFeiDu",
+        "Npc.QiongMeiEr.GuWuMiZong",
+        "Npc.QiongMeiEr.YinLingZhenXin"
+      ],
+      "sequence": [
+        "Npc.QiongMeiEr.GuWuMiZong",
+        "Profession.Healer.BaiCaoDu",
+        "Profession.Healer.FuGuSan",
+        "Profession.Healer.LianQiaoJieDu"
+      ],
+      "sets": {
+        "hero": "追风6",
+        "partner": "蚀骨6",
+        "npc": "青囊6"
+      },
+      "gear": "主角追风6；药师蚀骨6；琼么儿青囊6",
+      "set_synergy": "蚀骨让首次双DoT立即毒爆且首次毒爆保留储量；青囊把第一张高费药方变成抽牌、回血与回气节点。",
+      "fallback": "缺蛊雾迷踪时用毒火同炉先建立两种DoT；缺连翘引毒时用主角毒火同炉触发毒爆。",
+      "role_cn": "药师",
+      "npc_cn": "琼么儿",
+      "hero_names": [
+        "风身步",
+        "观隙",
+        "行气回环",
+        "青锋一式",
+        "以血催方",
+        "回春逆脉",
+        "毒火同炉",
+        "百草济阵"
+      ],
+      "partner_names": [
+        "阴阳药引",
+        "行气活血",
+        "百草毒",
+        "腐骨散",
+        "连翘引毒"
+      ],
+      "npc_names": [
+        "藤桥飞渡",
+        "银铃镇心",
+        "山歌唤灵"
+      ],
+      "hero_cards": [
+        {
+          "id": "Hero.Generic.FengShenBu",
+          "name": "风身步",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.GuanXi",
+          "name": "观隙",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.XingQiHuiHuan",
+          "name": "行气回环",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Generic.QingFengYiShi",
+          "name": "青锋一式",
+          "energy": 1,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Healer.YiXueCuiFang",
+          "name": "以血催方",
+          "energy": 0,
+          "mana": 0
+        },
+        {
+          "id": "Hero.Healer.HuiChunNiMai",
+          "name": "回春逆脉",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Healer.DuHuoTongLu",
+          "name": "毒火同炉",
+          "energy": 1,
+          "mana": 3
+        },
+        {
+          "id": "Hero.Healer.BaiCaoJiZhen",
+          "name": "百草济阵",
+          "energy": 2,
+          "mana": 6
+        }
+      ],
+      "partner_cards": [
+        {
+          "id": "Profession.Healer.YaoYin",
+          "name": "阴阳药引",
+          "energy": 2,
+          "mana": 0
+        },
+        {
+          "id": "Profession.Healer.XingQiZhen",
+          "name": "行气活血",
+          "energy": 2,
+          "mana": 3
+        },
+        {
+          "id": "Profession.Healer.BaiCaoDu",
+          "name": "百草毒",
+          "energy": 1,
+          "mana": 2
+        },
+        {
+          "id": "Profession.Healer.FuGuSan",
+          "name": "腐骨散",
+          "energy": 2,
+          "mana": 5
+        },
+        {
+          "id": "Profession.Healer.LianQiaoJieDu",
+          "name": "连翘引毒",
+          "energy": 1,
+          "mana": 3
+        }
+      ],
+      "npc_cards_detail": [
         {
           "id": "Npc.QiongMeiEr.TengQiaoFeiDu",
           "name": "藤桥飞渡",
-          "quality": "史诗",
           "energy": 0,
-          "compact": "攻击最高的友方获得2层〔灵动〕、2点〔蓄力〕；抽1张。\n〔重箭〕随后消耗全部〔蓄力〕，每点造成1次70点伤害。",
-          "immediate": 182,
-          "dot": 0,
-          "packets": 1,
-          "total": 182,
-          "setup_required": false
-        },
-        {
-          "id": "Npc.QiongMeiEr.GuWuMiZong",
-          "name": "蛊雾迷踪",
-          "quality": "史诗",
-          "energy": 1,
-          "compact": "施加28点〔流血〕。\n施加42点〔中毒〕。\n触发1次〔毒爆〕。",
-          "immediate": 0,
-          "dot": 70,
-          "packets": 0,
-          "total": 70,
-          "setup_required": false
+          "mana": 3
         },
         {
           "id": "Npc.QiongMeiEr.YinLingZhenXin",
           "name": "银铃镇心",
-          "quality": "史诗",
           "energy": 1,
-          "compact": "获得6点〔药效〕；清除目标全部〔流血〕、〔中毒〕和〔灼烧〕。\n目标恢复252点生命，消耗全部〔药效〕。",
-          "immediate": 0,
-          "dot": 0,
-          "packets": 0,
-          "total": 0,
-          "setup_required": false
+          "mana": 3
+        },
+        {
+          "id": "Npc.QiongMeiEr.ShanGeHuanLing",
+          "name": "山歌唤灵",
+          "energy": 2,
+          "mana": 6
         }
       ],
-      "immediate": 182,
-      "dot": 70,
-      "total": 252
-    }
-  },
-  "compositions": [
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋守卫＋土司首领",
-      "immediate": 4938,
-      "dot": 84,
-      "cycle": 5022,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻",
-        "寨主号令"
+      "sequence_names": [
+        "毒火同炉",
+        "百草毒",
+        "腐骨散",
+        "连翘引毒"
       ],
-      "baseline100": 927,
-      "clear_ratio": 0.4492753623188406,
-      "cycles": 2.225806451612903,
-      "synergy": "护甲与格挡同源",
-      "rank": 1
-    },
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋守卫＋宋金宝",
-      "immediate": 4901,
-      "dot": 84,
-      "cycle": 4985,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻",
-        "赏钱鼓舞"
+      "timing": {
+        "completion": 1.0,
+        "avg": 1.2625,
+        "median": 1.0,
+        "p90": 2,
+        "avg_cards": 8.93625,
+        "mana_floor_pct": 88.60916666666667,
+        "resource_blocks": 73,
+        "qingnang_triggers": 1.08225,
+        "shanhe_triggers": 0.0
+      },
+      "steps": [
+        {
+          "name": "毒火同炉",
+          "rule": "182%攻击；毒42＋灼烧14的两次毒爆",
+          "damage": 854,
+          "raw_damage": 854,
+          "phase_waste": 0
+        },
+        {
+          "name": "百草毒",
+          "rule": "中毒继续累积，为后续毒爆与边界伤害准备",
+          "damage": 0,
+          "raw_damage": 0,
+          "phase_waste": 0
+        },
+        {
+          "name": "腐骨散",
+          "rule": "84%攻击后触发既有0流血，再补流血/中毒",
+          "damage": 201,
+          "raw_damage": 201,
+          "phase_waste": 0
+        },
+        {
+          "name": "连翘引毒",
+          "rule": "补毒并以流血70／中毒100分包毒爆",
+          "damage": 170,
+          "raw_damage": 170,
+          "phase_waste": 0
+        },
+        {
+          "name": "中毒边界",
+          "rule": "按1.26回合、每回合2个边界，折算2.52次触发",
+          "damage": 252,
+          "raw_damage": 252,
+          "phase_waste": 0
+        }
       ],
-      "baseline100": 900,
-      "clear_ratio": 0.44596528896045806,
-      "cycles": 2.2423269809428286,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 2
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋阵师＋土司首领",
-      "immediate": 4841,
-      "dot": 0,
-      "cycle": 4841,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵",
-        "寨主号令"
+      "cycle_damage": 1477,
+      "raw_cycle_damage": 1477,
+      "phase_waste": 0,
+      "dpr": 1169.90099009901,
+      "armor_tax": 191,
+      "conservative_dpr": 978.90099009901,
+      "npc_variant_average_dpr": 562.6178489301876,
+      "dpr_min": 394.1044829433828,
+      "dpr_max": 978.90099009901,
+      "phase_hp_ratio": 0.13213455000894614,
+      "ten_round_damage": 9789,
+      "turns_to_stage_end": 11.41892807654573,
+      "pressure": [
+        {
+          "phase": 1,
+          "incoming_before_armor": 1591,
+          "party_hp_ratio": 0.21980015655937743,
+          "threat": "标记、灼烧、下张牌+1气；白猿首个减益给自身护甲"
+        },
+        {
+          "phase": 2,
+          "incoming_before_armor": 1551,
+          "party_hp_ratio": 0.21424690334760788,
+          "threat": "虚弱、驱散、下张牌+1气；白猿为各敌首个减益护甲"
+        },
+        {
+          "phase": 3,
+          "incoming_before_armor": 1722,
+          "party_hp_ratio": 0.23786895059170235,
+          "threat": "群体虚弱、群体驱散、连续流血触发；白猿护甲系数160%"
+        }
       ],
-      "baseline100": 948,
-      "clear_ratio": 0.4330828412954017,
-      "cycles": 2.309027060524685,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 3
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋刀客＋土司首领",
-      "immediate": 4683,
-      "dot": 140,
-      "cycle": 4823,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "寨主号令"
+      "party_hp": 7239,
+      "survival_rounds_before_armor": 4.20383275261324,
+      "purpose": "启动较慢但持续伤害稳定，适合长战与高护甲阶段。",
+      "npc_variants": [
+        {
+          "missing": "藤桥飞渡",
+          "selected": [
+            "蛊雾迷踪",
+            "银铃镇心",
+            "山歌唤灵"
+          ],
+          "sequence": [
+            "蛊雾迷踪",
+            "百草毒",
+            "腐骨散",
+            "连翘引毒"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.39975,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 8.635,
+            "mana_floor_pct": 94.23802631578948,
+            "resource_blocks": 210,
+            "qingnang_triggers": 1.1045,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "蛊雾迷踪",
+              "rule": "流血28＋中毒42；显式毒爆与蚀骨自动毒爆分包结算",
+              "damage": 140,
+              "raw_damage": 140,
+              "phase_waste": 0
+            },
+            {
+              "name": "百草毒",
+              "rule": "中毒继续累积，为后续毒爆与边界伤害准备",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "腐骨散",
+              "rule": "84%攻击后触发既有28流血，再补流血/中毒",
+              "damage": 229,
+              "raw_damage": 229,
+              "phase_waste": 0
+            },
+            {
+              "name": "连翘引毒",
+              "rule": "补毒并以流血70／中毒100分包毒爆",
+              "damage": 170,
+              "raw_damage": 170,
+              "phase_waste": 0
+            },
+            {
+              "name": "中毒边界",
+              "rule": "按1.40回合、每回合2个边界，折算2.80次触发",
+              "damage": 280,
+              "raw_damage": 280,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 819,
+          "raw_cycle_damage": 819,
+          "phase_waste": 0,
+          "dpr": 585.1044829433828,
+          "armor_tax": 191,
+          "conservative_dpr": 394.1044829433828
+        },
+        {
+          "missing": "蛊雾迷踪",
+          "selected": [
+            "藤桥飞渡",
+            "银铃镇心",
+            "山歌唤灵"
+          ],
+          "sequence": [
+            "毒火同炉",
+            "百草毒",
+            "腐骨散",
+            "连翘引毒"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.2625,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 8.93625,
+            "mana_floor_pct": 88.60916666666667,
+            "resource_blocks": 73,
+            "qingnang_triggers": 1.08225,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "毒火同炉",
+              "rule": "182%攻击；毒42＋灼烧14的两次毒爆",
+              "damage": 854,
+              "raw_damage": 854,
+              "phase_waste": 0
+            },
+            {
+              "name": "百草毒",
+              "rule": "中毒继续累积，为后续毒爆与边界伤害准备",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "腐骨散",
+              "rule": "84%攻击后触发既有0流血，再补流血/中毒",
+              "damage": 201,
+              "raw_damage": 201,
+              "phase_waste": 0
+            },
+            {
+              "name": "连翘引毒",
+              "rule": "补毒并以流血70／中毒100分包毒爆",
+              "damage": 170,
+              "raw_damage": 170,
+              "phase_waste": 0
+            },
+            {
+              "name": "中毒边界",
+              "rule": "按1.26回合、每回合2个边界，折算2.52次触发",
+              "damage": 252,
+              "raw_damage": 252,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 1477,
+          "raw_cycle_damage": 1477,
+          "phase_waste": 0,
+          "dpr": 1169.90099009901,
+          "armor_tax": 191,
+          "conservative_dpr": 978.90099009901
+        },
+        {
+          "missing": "银铃镇心",
+          "selected": [
+            "藤桥飞渡",
+            "蛊雾迷踪",
+            "山歌唤灵"
+          ],
+          "sequence": [
+            "蛊雾迷踪",
+            "百草毒",
+            "腐骨散",
+            "连翘引毒"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.2545,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 8.68675,
+            "mana_floor_pct": 94.64087719298246,
+            "resource_blocks": 44,
+            "qingnang_triggers": 1.0605,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "蛊雾迷踪",
+              "rule": "流血28＋中毒42；显式毒爆与蚀骨自动毒爆分包结算",
+              "damage": 140,
+              "raw_damage": 140,
+              "phase_waste": 0
+            },
+            {
+              "name": "百草毒",
+              "rule": "中毒继续累积，为后续毒爆与边界伤害准备",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "腐骨散",
+              "rule": "84%攻击后触发既有28流血，再补流血/中毒",
+              "damage": 229,
+              "raw_damage": 229,
+              "phase_waste": 0
+            },
+            {
+              "name": "连翘引毒",
+              "rule": "补毒并以流血70／中毒100分包毒爆",
+              "damage": 170,
+              "raw_damage": 170,
+              "phase_waste": 0
+            },
+            {
+              "name": "中毒边界",
+              "rule": "按1.25回合、每回合2个边界，折算2.51次触发",
+              "damage": 251,
+              "raw_damage": 251,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 790,
+          "raw_cycle_damage": 790,
+          "phase_waste": 0,
+          "dpr": 629.7329613391789,
+          "armor_tax": 191,
+          "conservative_dpr": 438.7329613391789
+        },
+        {
+          "missing": "山歌唤灵",
+          "selected": [
+            "藤桥飞渡",
+            "蛊雾迷踪",
+            "银铃镇心"
+          ],
+          "sequence": [
+            "蛊雾迷踪",
+            "百草毒",
+            "腐骨散",
+            "连翘引毒"
+          ],
+          "timing": {
+            "completion": 1.0,
+            "avg": 1.2545,
+            "median": 1.0,
+            "p90": 2,
+            "avg_cards": 8.68675,
+            "mana_floor_pct": 94.64087719298246,
+            "resource_blocks": 44,
+            "qingnang_triggers": 1.0605,
+            "shanhe_triggers": 0.0
+          },
+          "steps": [
+            {
+              "name": "蛊雾迷踪",
+              "rule": "流血28＋中毒42；显式毒爆与蚀骨自动毒爆分包结算",
+              "damage": 140,
+              "raw_damage": 140,
+              "phase_waste": 0
+            },
+            {
+              "name": "百草毒",
+              "rule": "中毒继续累积，为后续毒爆与边界伤害准备",
+              "damage": 0,
+              "raw_damage": 0,
+              "phase_waste": 0
+            },
+            {
+              "name": "腐骨散",
+              "rule": "84%攻击后触发既有28流血，再补流血/中毒",
+              "damage": 229,
+              "raw_damage": 229,
+              "phase_waste": 0
+            },
+            {
+              "name": "连翘引毒",
+              "rule": "补毒并以流血70／中毒100分包毒爆",
+              "damage": 170,
+              "raw_damage": 170,
+              "phase_waste": 0
+            },
+            {
+              "name": "中毒边界",
+              "rule": "按1.25回合、每回合2个边界，折算2.51次触发",
+              "damage": 251,
+              "raw_damage": 251,
+              "phase_waste": 0
+            }
+          ],
+          "cycle_damage": 790,
+          "raw_cycle_damage": 790,
+          "phase_waste": 0,
+          "dpr": 629.7329613391789,
+          "armor_tax": 191,
+          "conservative_dpr": 438.7329613391789
+        }
       ],
-      "baseline100": 1031,
-      "clear_ratio": 0.43147253533726965,
-      "cycles": 2.317644619531412,
-      "synergy": "气势、护甲、格挡与协战",
-      "rank": 4
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋弓手＋土司首领",
-      "immediate": 4683,
-      "dot": 140,
-      "cycle": 4823,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "寨主号令"
-      ],
-      "baseline100": 1030,
-      "clear_ratio": 0.43147253533726965,
-      "cycles": 2.317644619531412,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 5
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋法师＋土司首领",
-      "immediate": 4683,
-      "dot": 140,
-      "cycle": 4823,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "寨主号令"
-      ],
-      "baseline100": 980,
-      "clear_ratio": 0.43147253533726965,
-      "cycles": 2.317644619531412,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
       "rank": 6
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.TusiChief",
-      "npc_cn": "土司首领",
-      "name": "主角＋药师＋土司首领",
-      "immediate": 4683,
-      "dot": 140,
-      "cycle": 4823,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "寨主号令"
-      ],
-      "baseline100": 926,
-      "clear_ratio": 0.43147253533726965,
-      "cycles": 2.317644619531412,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 7
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋阵师＋宋金宝",
-      "immediate": 4804,
-      "dot": 0,
-      "cycle": 4804,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵",
-        "赏钱鼓舞"
-      ],
-      "baseline100": 921,
-      "clear_ratio": 0.42977276793701913,
-      "cycles": 2.3268109908409658,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 8
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋刀客＋宋金宝",
-      "immediate": 4646,
-      "dot": 140,
-      "cycle": 4786,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "赏钱鼓舞"
-      ],
-      "baseline100": 1004,
-      "clear_ratio": 0.4281624619788871,
-      "cycles": 2.335562055996657,
-      "synergy": "冲锋、收招、气势与检索闭环",
-      "rank": 9
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋弓手＋宋金宝",
-      "immediate": 4646,
-      "dot": 140,
-      "cycle": 4786,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "赏钱鼓舞"
-      ],
-      "baseline100": 1003,
-      "clear_ratio": 0.4281624619788871,
-      "cycles": 2.335562055996657,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 10
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋法师＋宋金宝",
-      "immediate": 4646,
-      "dot": 140,
-      "cycle": 4786,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "赏钱鼓舞"
-      ],
-      "baseline100": 953,
-      "clear_ratio": 0.4281624619788871,
-      "cycles": 2.335562055996657,
-      "synergy": "法术小任务、气势与零费检索",
-      "rank": 11
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.SongJinBao",
-      "npc_cn": "宋金宝",
-      "name": "主角＋药师＋宋金宝",
-      "immediate": 4646,
-      "dot": 140,
-      "cycle": 4786,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "赏钱鼓舞"
-      ],
-      "baseline100": 899,
-      "clear_ratio": 0.4281624619788871,
-      "cycles": 2.335562055996657,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 12
-    },
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋守卫＋琼么儿",
-      "immediate": 4678,
-      "dot": 84,
-      "cycle": 4762,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻",
-        "藤桥飞渡"
-      ],
-      "baseline100": 918,
-      "clear_ratio": 0.4260153873680444,
-      "cycles": 2.347333053338933,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 13
-    },
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋守卫＋金贵",
-      "immediate": 4667,
-      "dot": 84,
-      "cycle": 4751,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻",
-        "市井耳目"
-      ],
-      "baseline100": 903,
-      "clear_ratio": 0.42503131150474144,
-      "cycles": 2.352767838349821,
-      "synergy": "护甲保护、标记与过牌",
-      "rank": 14
-    },
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋守卫＋月白",
-      "immediate": 4496,
-      "dot": 126,
-      "cycle": 4622,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻",
-        "青焰点灯"
-      ],
-      "baseline100": 931,
-      "clear_ratio": 0.4134907854714618,
-      "cycles": 2.41843357853743,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 15
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋阵师＋琼么儿",
-      "immediate": 4581,
-      "dot": 0,
-      "cycle": 4581,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵",
-        "藤桥飞渡"
-      ],
-      "baseline100": 939,
-      "clear_ratio": 0.40982286634460546,
-      "cycles": 2.4400785854616895,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 16
-    },
-    {
-      "role": "Guard",
-      "role_cn": "守卫",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋守卫＋周光祖",
-      "immediate": 4496,
-      "dot": 84,
-      "cycle": 4580,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "壁垒反攻"
-      ],
-      "baseline100": 900,
-      "clear_ratio": 0.40973340490248705,
-      "cycles": 2.4406113537117906,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 17
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋阵师＋金贵",
-      "immediate": 4570,
-      "dot": 0,
-      "cycle": 4570,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵",
-        "市井耳目"
-      ],
-      "baseline100": 924,
-      "clear_ratio": 0.40883879048130256,
-      "cycles": 2.4459518599562364,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 18
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋刀客＋琼么儿",
-      "immediate": 4423,
-      "dot": 140,
-      "cycle": 4563,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "藤桥飞渡"
-      ],
-      "baseline100": 1022,
-      "clear_ratio": 0.4082125603864734,
-      "cycles": 2.4497041420118344,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 19
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋弓手＋琼么儿",
-      "immediate": 4423,
-      "dot": 140,
-      "cycle": 4563,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "藤桥飞渡"
-      ],
-      "baseline100": 1021,
-      "clear_ratio": 0.4082125603864734,
-      "cycles": 2.4497041420118344,
-      "synergy": "蓄力、流血/中毒与重箭",
-      "rank": 20
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋法师＋琼么儿",
-      "immediate": 4423,
-      "dot": 140,
-      "cycle": 4563,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "藤桥飞渡"
-      ],
-      "baseline100": 971,
-      "clear_ratio": 0.4082125603864734,
-      "cycles": 2.4497041420118344,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 21
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.QiongMeiEr",
-      "npc_cn": "琼么儿",
-      "name": "主角＋药师＋琼么儿",
-      "immediate": 4423,
-      "dot": 140,
-      "cycle": 4563,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "藤桥飞渡"
-      ],
-      "baseline100": 917,
-      "clear_ratio": 0.4082125603864734,
-      "cycles": 2.4497041420118344,
-      "synergy": "药效、三DoT和毒爆",
-      "rank": 22
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋刀客＋金贵",
-      "immediate": 4412,
-      "dot": 140,
-      "cycle": 4552,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "市井耳目"
-      ],
-      "baseline100": 1007,
-      "clear_ratio": 0.4072284845231705,
-      "cycles": 2.4556239015817223,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 23
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋弓手＋金贵",
-      "immediate": 4412,
-      "dot": 140,
-      "cycle": 4552,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "市井耳目"
-      ],
-      "baseline100": 1006,
-      "clear_ratio": 0.4072284845231705,
-      "cycles": 2.4556239015817223,
-      "synergy": "蓄力、标记、过牌与保护",
-      "rank": 24
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋法师＋金贵",
-      "immediate": 4412,
-      "dot": 140,
-      "cycle": 4552,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "市井耳目"
-      ],
-      "baseline100": 956,
-      "clear_ratio": 0.4072284845231705,
-      "cycles": 2.4556239015817223,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 25
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.JinGui",
-      "npc_cn": "金贵",
-      "name": "主角＋药师＋金贵",
-      "immediate": 4412,
-      "dot": 140,
-      "cycle": 4552,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "市井耳目"
-      ],
-      "baseline100": 902,
-      "clear_ratio": 0.4072284845231705,
-      "cycles": 2.4556239015817223,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 26
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋阵师＋月白",
-      "immediate": 4399,
-      "dot": 42,
-      "cycle": 4441,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵",
-        "青焰点灯"
-      ],
-      "baseline100": 952,
-      "clear_ratio": 0.3972982644480229,
-      "cycles": 2.517000675523531,
-      "synergy": "地势、法术任务与群体收益",
-      "rank": 27
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋刀客＋月白",
-      "immediate": 4241,
-      "dot": 182,
-      "cycle": 4423,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "青焰点灯"
-      ],
-      "baseline100": 1035,
-      "clear_ratio": 0.39568795848989086,
-      "cycles": 2.5272439520687318,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 28
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋弓手＋月白",
-      "immediate": 4241,
-      "dot": 182,
-      "cycle": 4423,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "青焰点灯"
-      ],
-      "baseline100": 1034,
-      "clear_ratio": 0.39568795848989086,
-      "cycles": 2.5272439520687318,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 29
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋法师＋月白",
-      "immediate": 4241,
-      "dot": 182,
-      "cycle": 4423,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "青焰点灯"
-      ],
-      "baseline100": 984,
-      "clear_ratio": 0.39568795848989086,
-      "cycles": 2.5272439520687318,
-      "synergy": "法术任务、灼烧、标记与检索",
-      "rank": 30
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.YueBai",
-      "npc_cn": "月白",
-      "name": "主角＋药师＋月白",
-      "immediate": 4241,
-      "dot": 182,
-      "cycle": 4423,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢",
-        "青焰点灯"
-      ],
-      "baseline100": 930,
-      "clear_ratio": 0.39568795848989086,
-      "cycles": 2.5272439520687318,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 31
-    },
-    {
-      "role": "FormationMaster",
-      "role_cn": "阵师",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋阵师＋周光祖",
-      "immediate": 4399,
-      "dot": 0,
-      "cycle": 4399,
-      "burst_energy": 3,
-      "burst_cards": [
-        "镇煞阵"
-      ],
-      "baseline100": 921,
-      "clear_ratio": 0.3935408838790481,
-      "cycles": 2.541032052739259,
-      "synergy": "地势双触发、治疗与毒爆",
-      "rank": 32
-    },
-    {
-      "role": "Blade",
-      "role_cn": "刀客",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋刀客＋周光祖",
-      "immediate": 4241,
-      "dot": 140,
-      "cycle": 4381,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢"
-      ],
-      "baseline100": 1004,
-      "clear_ratio": 0.39193057792091607,
-      "cycles": 2.551472266605798,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 33
-    },
-    {
-      "role": "Hunter",
-      "role_cn": "弓手",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋弓手＋周光祖",
-      "immediate": 4241,
-      "dot": 140,
-      "cycle": 4381,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢"
-      ],
-      "baseline100": 1003,
-      "clear_ratio": 0.39193057792091607,
-      "cycles": 2.551472266605798,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 34
-    },
-    {
-      "role": "Sorcerer",
-      "role_cn": "法师",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋法师＋周光祖",
-      "immediate": 4241,
-      "dot": 140,
-      "cycle": 4381,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢"
-      ],
-      "baseline100": 953,
-      "clear_ratio": 0.39193057792091607,
-      "cycles": 2.551472266605798,
-      "synergy": "无直接双机制闭环；主要提供泛用资源或补足生存",
-      "rank": 35
-    },
-    {
-      "role": "Healer",
-      "role_cn": "药师",
-      "npc": "Npc.ZhouGuangZu",
-      "npc_cn": "周光祖",
-      "name": "主角＋药师＋周光祖",
-      "immediate": 4241,
-      "dot": 140,
-      "cycle": 4381,
-      "burst_energy": 3,
-      "burst_cards": [
-        "炎序燎原",
-        "破云一闪",
-        "裂羽连矢"
-      ],
-      "baseline100": 899,
-      "clear_ratio": 0.39193057792091607,
-      "cycles": 2.551472266605798,
-      "synergy": "药效、治疗、毒爆与地势",
-      "rank": 36
     }
   ],
   "hell31": [

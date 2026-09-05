@@ -1,4 +1,14 @@
+---
+status: superseded
+owner: codex
+updated_at: 2026-09-05T10:34:00+08:00
+source_commit: b3db816
+superseded_by: docs/production/2026-09-05-enemy-phase-training-analysis-acceptance.md
+---
+
 # Design Tables and Party Analysis Acceptance
+
+> 本文记录2026-09-04阶段的设计投影，已由2026-09-05运行时验收和新版循环模拟取代。下方“仍待运行时迁移”和“五牌伤害预算”只用于解释旧稿，不代表当前项目状态。
 
 ## Corrected authority
 

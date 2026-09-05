@@ -2,13 +2,13 @@
 
 [返回总表](README.md) · [Pill与状态说明](10-shared-tooltip-text.md)
 
-所有数字均为总表注明的统一示例。表内覆盖全部合法品质；未修改游戏代码。
+所有数字均为总表注明的统一示例。表内覆盖全部合法品质；171张已接入运行时，明确待确认项仍单列。
 
 ## 平野观势
 
 `Profession.FormationMaster.GuanShi`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔平原〕 → 〔灼烧〕
 
@@ -27,7 +27,7 @@ Pill顺序：〔平原〕 → 〔灼烧〕
 
 `Profession.FormationMaster.DingZhen`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔村镇〕 → 〔护甲〕
 
@@ -46,7 +46,7 @@ Pill顺序：〔村镇〕 → 〔护甲〕
 
 `Profession.FormationMaster.YinShuiHuiYuan`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔水岸〕
 
@@ -65,7 +65,7 @@ Pill顺序：〔水岸〕
 
 `Profession.FormationMaster.KunZhen`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔洞窟〕 → 〔护甲〕 → 〔格挡〕
 
@@ -84,7 +84,7 @@ Pill顺序：〔洞窟〕 → 〔护甲〕 → 〔格挡〕
 
 `Profession.FormationMaster.LinYingMiZong`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔山林〕
 
@@ -103,7 +103,7 @@ Pill顺序：〔山林〕
 
 `Profession.FormationMaster.JieShanWeiZhang`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：无需选择。
 Pill顺序：〔断崖〕 → 〔破绽〕 → 〔标记〕
 
@@ -122,7 +122,7 @@ Pill顺序：〔断崖〕 → 〔破绽〕 → 〔标记〕
 
 `Profession.FormationMaster.CunZhaiYuanZhen`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：全体友方（直接施放）。
 Pill顺序：〔药效〕 → 〔护甲〕 → 〔地势〕
 
@@ -140,7 +140,7 @@ Pill顺序：〔药效〕 → 〔护甲〕 → 〔地势〕
 
 `Profession.FormationMaster.HuiShengZhenSha`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：单体敌方（点击后选择目标）。
 Pill顺序：〔地势〕
 
@@ -157,7 +157,7 @@ Pill顺序：〔地势〕
 
 `Profession.FormationMaster.YiWeiZhen`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：单体友方（点击后选择目标）。
 Pill顺序：〔灵动〕 → 〔破绽〕 → 〔地势〕
 
@@ -175,7 +175,7 @@ Pill顺序：〔灵动〕 → 〔破绽〕 → 〔地势〕
 
 `Profession.FormationMaster.BaMenLunZhuan`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：自身（直接施放）。
 Pill顺序：〔地势〕
 
@@ -192,7 +192,7 @@ Pill顺序：〔地势〕
 
 `Profession.FormationMaster.ZhenShaZhen`
 
-原生品质：史诗。状态：文案待审。
+原生品质：史诗。状态：已核对。
 目标入口：全体敌方（直接施放）。
 Pill顺序：〔破绽〕 → 〔地势〕
 
@@ -208,7 +208,7 @@ Pill顺序：〔破绽〕 → 〔地势〕
 
 `Profession.FormationMaster.WanXiangGuiZhen`
 
-原生品质：史诗。状态：文案待审。
+原生品质：史诗。状态：已核对。
 目标入口：全体友方（直接施放）。
 Pill顺序：〔护甲〕 → 〔地势〕
 
@@ -225,7 +225,7 @@ Pill顺序：〔护甲〕 → 〔地势〕
 
 `Profession.FormationMaster.ShanMenFengSuo`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：单体敌方（点击后选择目标）。
 Pill顺序：〔破绽〕 → 〔地势〕
 
@@ -243,7 +243,7 @@ Pill顺序：〔破绽〕 → 〔地势〕
 
 `Profession.FormationMaster.ShuiJingZheGuang`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：单体友方（点击后选择目标）。
 Pill顺序：〔护甲〕 → 〔流血〕 → 〔中毒〕 → 〔灼烧〕 → 〔蚀伤〕 → 〔地势〕
 
@@ -261,7 +261,7 @@ Pill顺序：〔护甲〕 → 〔流血〕 → 〔中毒〕 → 〔灼烧〕 →
 
 `Profession.FormationMaster.LinFengFuZhen`
 
-原生品质：普通。状态：文案待审。
+原生品质：普通。状态：已核对。
 目标入口：单体友方（点击后选择目标）。
 Pill顺序：〔灵动〕 → 〔地势〕
 
@@ -279,7 +279,7 @@ Pill顺序：〔灵动〕 → 〔地势〕
 
 `Profession.FormationMaster.ZhenQiGuWu`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：全体友方（直接施放）。
 Pill顺序：〔地势〕
 
@@ -296,7 +296,7 @@ Pill顺序：〔地势〕
 
 `Profession.FormationMaster.DiMaiJieLi`
 
-原生品质：稀有。状态：文案待审。
+原生品质：稀有。状态：已核对。
 目标入口：单体敌方（点击后选择目标）。
 Pill顺序：〔地势〕
 
@@ -313,7 +313,7 @@ Pill顺序：〔地势〕
 
 `Profession.FormationMaster.SiXiangLianHuan`
 
-原生品质：史诗。状态：文案待审。
+原生品质：史诗。状态：已核对。
 目标入口：全体友方（直接施放）。
 Pill顺序：〔护甲〕 → 〔地势〕
 

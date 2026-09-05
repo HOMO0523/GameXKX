@@ -1,6 +1,6 @@
 {
   "meta": {
-    "status": "完整文案审阅稿，待逐批确认；治疗公式同步更新，游戏tooltip尚未修改",
+    "status": "171张已与运行时数值管线核对；2张保留明确设计待确认项；游戏tooltip已接入实际角色面板预览",
     "card_count": 173,
     "quality_variant_count": 419,
     "universal_reward_variant_count": 36,
@@ -62,7 +62,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -103,7 +103,7 @@
       "common_rules": [],
       "pills": [],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.HeYuZhan",
@@ -111,7 +111,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -222,7 +222,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.FengShenBu",
@@ -230,7 +230,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -319,7 +319,7 @@
         "消耗"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.SuiYanJi",
@@ -327,7 +327,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -416,7 +416,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.GuiYuanShu",
@@ -424,7 +424,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -557,7 +557,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.HengJianShouShi",
@@ -565,7 +565,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -676,7 +676,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.NingShenTuNa",
@@ -684,7 +684,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -773,7 +773,7 @@
         "消耗"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.GuanXi",
@@ -781,7 +781,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -846,7 +846,7 @@
         "消耗"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.PoYunYiShan",
@@ -854,7 +854,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -921,7 +921,7 @@
         "灵动"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.XingQiHuiHuan",
@@ -929,7 +929,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -994,7 +994,7 @@
         "消耗"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.JianYiGuanHong",
@@ -1002,7 +1002,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "示例气势0。气势本身的战斗结算加伤归目标预览，不混入卡牌产出；消耗加成不再乘品质。",
       "variants": [
         {
@@ -1069,7 +1069,7 @@
         "气势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Generic.GuiYuanFanZhao",
@@ -1077,7 +1077,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -1232,7 +1232,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Blade.TongFengYinShi",
@@ -1240,7 +1240,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -1351,7 +1351,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Blade.XueLuXiangCheng",
@@ -1359,7 +1359,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -1470,7 +1470,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Blade.YingFengHuanBu",
@@ -1478,7 +1478,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -1633,7 +1633,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Blade.TongPaoJuShi",
@@ -1641,7 +1641,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "对应选定友方的增伤和减费，不转给卡牌持有者。",
       "variants": [
         {
@@ -1752,7 +1752,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Guard.TieBiTongShou",
@@ -1760,7 +1760,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -1849,7 +1849,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Guard.JieJiaHuanFeng",
@@ -1857,7 +1857,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "内部取值使用护甲最高友方；不在攻击详述追加出手对象。",
       "variants": [
         {
@@ -1947,7 +1947,7 @@
         "格挡"
       ],
       "source_rule": "攻击和所加伤害护甲取护甲最高友方；生成护甲取主角防御。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Guard.LieZhenChengFeng",
@@ -1955,7 +1955,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2044,7 +2044,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Guard.XuanJiaZhenYue",
@@ -2052,7 +2052,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2120,7 +2120,7 @@
         "护甲"
       ],
       "source_rule": "攻击和被消耗护甲取所选友方。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Healer.YiXueCuiFang",
@@ -2128,7 +2128,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "首次开启药方额外支付1气；三名友方实际扣血时本牌基础获得6/9/12药效。",
       "variants": [
         {
@@ -2219,7 +2219,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Healer.HuiChunNiMai",
@@ -2227,7 +2227,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2428,7 +2428,7 @@
         "治疗反转"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Healer.DuHuoTongLu",
@@ -2436,7 +2436,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2593,7 +2593,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Healer.BaiCaoJiZhen",
@@ -2601,7 +2601,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2737,7 +2737,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Hunter.FengYanDingXian",
@@ -2745,7 +2745,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2834,7 +2834,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Hunter.LieYuLianShi",
@@ -2842,7 +2842,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -2935,7 +2935,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Hunter.CuiDuChuanXin",
@@ -2943,7 +2943,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3058,7 +3058,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Hunter.HuiFengGuanRi",
@@ -3066,7 +3066,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3137,7 +3137,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Mage.YanXuLiaoYuan",
@@ -3145,7 +3145,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3280,7 +3280,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Mage.HanXuNingChuan",
@@ -3288,7 +3288,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "示例主角内力30/30，回复6全部溢出；普通基础40护甲加30溢出护甲。阵赏在重放后重新读护甲，不预填未来消耗值。",
       "variants": [
         {
@@ -3423,7 +3423,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Mage.LeiXuYinTing",
@@ -3431,7 +3431,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3566,7 +3566,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Mage.GuiXuTongXuan",
@@ -3574,7 +3574,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3665,7 +3665,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Formation.GuanShiLuoZi",
@@ -3673,7 +3673,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3740,7 +3740,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Formation.YiZhenHuiXiang",
@@ -3748,7 +3748,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3816,7 +3816,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Formation.LianYingBuShi",
@@ -3824,7 +3824,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -3892,7 +3892,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Hero.Formation.LiuHeGuiYi",
@@ -3900,7 +3900,7 @@
       "group": "主角",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -4100,7 +4100,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.LieFengZhan",
@@ -4108,7 +4108,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -4219,7 +4219,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.HuiFengJiaShi",
@@ -4227,7 +4227,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -4404,7 +4404,7 @@
         "反击"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.FengHou",
@@ -4412,7 +4412,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "保留原收招语义；普通流血触发现已全局不消耗，本条不再提供额外收益，不擅自替换效果。",
       "variants": [
         {
@@ -4545,7 +4545,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.JiYuLianZhan",
@@ -4553,7 +4553,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "初始流血0；本牌先生成15/18/21流血，已将血势计入每次示例伤害85/102/119。",
       "variants": [
         {
@@ -4686,7 +4686,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.YinXueDao",
@@ -4694,7 +4694,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -4804,7 +4804,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.LangDuan",
@@ -4812,7 +4812,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "不消耗流血已是全局规则，原基础保留描述，不虚构额外收益。",
       "variants": [
         {
@@ -4945,7 +4945,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.DuanYue",
@@ -4953,7 +4953,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5063,7 +5063,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.PoJun",
@@ -5071,7 +5071,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5196,7 +5196,7 @@
         "临时复制"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.ZhanYiFeiTeng",
@@ -5204,7 +5204,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5299,7 +5299,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.ZhanJin",
@@ -5307,7 +5307,7 @@
       "group": "伙伴·刀客",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5372,7 +5372,7 @@
         "临时复制"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.JieShiHuiFeng",
@@ -5380,7 +5380,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5557,7 +5557,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.ZhuYing",
@@ -5565,7 +5565,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5698,7 +5698,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.PoLangTuJin",
@@ -5706,7 +5706,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5839,7 +5839,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.YiShiDuanJiang",
@@ -5847,7 +5847,7 @@
       "group": "伙伴·刀客",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -5896,7 +5896,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.JingHongChuQiao",
@@ -5904,7 +5904,7 @@
       "group": "伙伴·刀客",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6037,7 +6037,7 @@
         "开锋"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.HengYunKaiFeng",
@@ -6045,7 +6045,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6155,7 +6155,7 @@
         "余式"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.LianXiGuiQiao",
@@ -6163,7 +6163,7 @@
       "group": "伙伴·刀客",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6243,7 +6243,7 @@
         "藏式"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Blade.BaoDaoShouYe",
@@ -6251,7 +6251,7 @@
       "group": "伙伴·刀客",
       "base_quality": "史诗",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6308,7 +6308,7 @@
         "藏式"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.TieBi",
@@ -6316,7 +6316,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6427,7 +6427,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.HuZhu",
@@ -6435,7 +6435,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6568,7 +6568,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.ZhenDun",
@@ -6576,7 +6576,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6665,7 +6665,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.GuShou",
@@ -6673,7 +6673,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6762,7 +6762,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.FanZhenJia",
@@ -6770,7 +6770,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6850,7 +6850,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.ZhenYueLing",
@@ -6858,7 +6858,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -6938,7 +6938,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.YuanHuBu",
@@ -6946,7 +6946,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "生命最低友方（自动结算）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7079,7 +7079,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.PiJiaXingJun",
@@ -7087,7 +7087,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7198,7 +7198,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.QinWangDunJi",
@@ -7206,7 +7206,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7286,7 +7286,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.TieBiRuShan",
@@ -7294,7 +7294,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7389,7 +7389,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.BiLeiFanGong",
@@ -7397,7 +7397,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7477,7 +7477,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.BuDongRuShan",
@@ -7485,7 +7485,7 @@
       "group": "伙伴·守卫",
       "base_quality": "史诗",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7534,7 +7534,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.PanShiTuNa",
@@ -7542,7 +7542,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7631,7 +7631,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.YuanJunBiLei",
@@ -7639,7 +7639,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7772,7 +7772,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.DunZhenTuiJin",
@@ -7780,7 +7780,7 @@
       "group": "伙伴·守卫",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7869,7 +7869,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.TieSuoHengJiang",
@@ -7877,7 +7877,7 @@
       "group": "伙伴·守卫",
       "base_quality": "史诗",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -7934,7 +7934,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.SuiJiaHuiJi",
@@ -7942,7 +7942,7 @@
       "group": "伙伴·守卫",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8007,7 +8007,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Guard.YiFuDangGuan",
@@ -8015,7 +8015,7 @@
       "group": "伙伴·守卫",
       "base_quality": "史诗",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "每名存活友方只获得一份主护甲，自身不重复领取。",
       "variants": [
         {
@@ -8072,7 +8072,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.YaoYin",
@@ -8080,7 +8080,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8239,7 +8239,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.XingQiZhen",
@@ -8247,7 +8247,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8338,7 +8338,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.CaoMuFuZhi",
@@ -8346,7 +8346,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8459,7 +8459,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.QingXinSan",
@@ -8467,7 +8467,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8668,7 +8668,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.LingZhiXuMing",
@@ -8676,7 +8676,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -8758,7 +8758,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.HuiChunLu",
@@ -8766,7 +8766,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "以每个实际受到治疗的友方计数，群体治疗可在一次行动中计入多人；公式治疗不计入。",
       "variants": [
         {
@@ -8850,7 +8850,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.ZhiXueCao",
@@ -8858,7 +8858,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9015,7 +9015,7 @@
         "护甲"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.WenYangGao",
@@ -9023,7 +9023,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "门槛读取请求治疗/反转量，治疗须有至少1点有效治疗；不要求实际回血全部达到门槛。原生稀有门槛120，零药效基础治疗125。",
       "variants": [
         {
@@ -9135,7 +9135,7 @@
         "破绽"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.JinChuangXuMing",
@@ -9143,7 +9143,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9240,7 +9240,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.YaoWangGuiYuan",
@@ -9248,7 +9248,7 @@
       "group": "伙伴·药师",
       "base_quality": "史诗",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9325,7 +9325,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.BaiCaoDu",
@@ -9333,7 +9333,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9446,7 +9446,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.FuGuSan",
@@ -9454,7 +9454,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9566,7 +9566,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.HuiQiXiang",
@@ -9574,7 +9574,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9687,7 +9687,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.LianQiaoJieDu",
@@ -9695,7 +9695,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9830,7 +9830,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.YaoJiuWenShen",
@@ -9838,7 +9838,7 @@
       "group": "伙伴·药师",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -9951,7 +9951,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.YaoNangFeiTou",
@@ -9959,7 +9959,7 @@
       "group": "伙伴·药师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10010,7 +10010,7 @@
         "药方"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.KuShenMaSan",
@@ -10018,7 +10018,7 @@
       "group": "伙伴·药师",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10115,7 +10115,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Healer.WuWeiTiaoHe",
@@ -10123,7 +10123,7 @@
       "group": "伙伴·药师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10182,7 +10182,7 @@
         "气势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.XunXiJian",
@@ -10190,7 +10190,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10283,7 +10283,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.FuBu",
@@ -10291,7 +10291,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10380,7 +10380,7 @@
         "无视防御"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.ZhuiLie",
@@ -10388,7 +10388,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "标记返还条件的具体读取时点按运行时结算顺序；不将条件误写为无条件返气。",
       "variants": [
         {
@@ -10481,7 +10481,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.YingYan",
@@ -10489,7 +10489,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10578,7 +10578,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.LieWang",
@@ -10586,7 +10586,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10697,7 +10697,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.ChuanYang",
@@ -10705,7 +10705,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10773,7 +10773,7 @@
         "无视防御"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.LianZhuJian",
@@ -10781,7 +10781,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "重箭使用出牌前锁定的蓄力，本牌新获得的1点不用于本次重箭。",
       "variants": [
         {
@@ -10864,7 +10864,7 @@
         "重箭"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.FuZuShi",
@@ -10872,7 +10872,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -10987,7 +10987,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.YinZong",
@@ -10995,7 +10995,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11060,7 +11060,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.DuanMaiShi",
@@ -11068,7 +11068,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11136,7 +11136,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.ShouHun",
@@ -11144,7 +11144,7 @@
       "group": "伙伴·弓手",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11187,7 +11187,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.BaiBuChuanYang",
@@ -11195,7 +11195,7 @@
       "group": "伙伴·弓手",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11238,7 +11238,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.LueYingJian",
@@ -11246,7 +11246,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11361,7 +11361,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.LieHunBiao",
@@ -11369,7 +11369,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11458,7 +11458,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.PoJiaDing",
@@ -11466,7 +11466,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11549,7 +11549,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.HuiHuanJian",
@@ -11557,7 +11557,7 @@
       "group": "伙伴·弓手",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11628,7 +11628,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.FuYeXianJing",
@@ -11636,7 +11636,7 @@
       "group": "伙伴·弓手",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11716,7 +11716,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Hunter.YingLuo",
@@ -11724,7 +11724,7 @@
       "group": "伙伴·弓手",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11759,7 +11759,7 @@
         "蓄力"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.LingHuoFu",
@@ -11767,7 +11767,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -11902,7 +11902,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.JuLing",
@@ -11910,7 +11910,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "重放读取首次记录的累计实际支付，当前卡和随后记录不计入此前支付。",
       "variants": [
         {
@@ -12001,7 +12001,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.LiHuoYin",
@@ -12009,7 +12009,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12144,7 +12144,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.YanQiang",
@@ -12152,7 +12152,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12287,7 +12287,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.BaoYanShu",
@@ -12295,7 +12295,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12392,7 +12392,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.XingHuoLiaoYuan",
@@ -12400,7 +12400,7 @@
       "group": "伙伴·法师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12467,7 +12467,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.SheLingHuo",
@@ -12475,7 +12475,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12572,7 +12572,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.FenMaiFu",
@@ -12580,7 +12580,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "示例34/34先扩为34/38，再回复4至38/38，无溢出；上限增加本身不回血内。",
       "variants": [
         {
@@ -12715,7 +12715,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.LingYanLianDan",
@@ -12723,7 +12723,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -12820,7 +12820,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.HuLingMu",
@@ -12828,7 +12828,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "示例34/34满内力；有合法检索目标只获得一份，没有合法目标再复制一份；本次无溢出则两份均为0。",
       "variants": [
         {
@@ -12955,7 +12955,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.ChiXiaoFenXing",
@@ -12963,7 +12963,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -13060,7 +13060,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.FenTianJue",
@@ -13068,7 +13068,7 @@
       "group": "伙伴·法师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -13135,7 +13135,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.NingYanChengRen",
@@ -13143,7 +13143,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "零标记时基础无攻击；阵赏固定5次不随原标记数增加。途中新增标记不增加已锁定次数。",
       "variants": [
         {
@@ -13278,7 +13278,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.RanLingHuanYuan",
@@ -13421,7 +13421,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "本牌仍有明确列出的设计待确认项。"
     },
     {
       "id": "Profession.Sorcerer.YanMuHuTi",
@@ -13429,7 +13429,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -14596,7 +14596,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.LieFu",
@@ -14604,7 +14604,7 @@
       "group": "伙伴·法师",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -15835,7 +15835,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.XingHuoHuiShou",
@@ -15843,7 +15843,7 @@
       "group": "伙伴·法师",
       "base_quality": "稀有",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "示例34/34先支付4内；普通分支溢出4，编序分支溢出12。仅自身回内，每名友方只收一份甲；免费重放不扣费用，需按当时内力重算。",
       "variants": [
         {
@@ -16837,7 +16837,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.Sorcerer.ChiYanFengJie",
@@ -16845,7 +16845,7 @@
       "group": "伙伴·法师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -17309,7 +17309,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.GuanShi",
@@ -17317,7 +17317,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17406,7 +17406,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.DingZhen",
@@ -17414,7 +17414,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17503,7 +17503,7 @@
         "护甲"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.YinShuiHuiYuan",
@@ -17511,7 +17511,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17578,7 +17578,7 @@
         "水岸"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.KunZhen",
@@ -17586,7 +17586,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17697,7 +17697,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.LinYingMiZong",
@@ -17705,7 +17705,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17772,7 +17772,7 @@
         "山林"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.JieShanWeiZhang",
@@ -17780,7 +17780,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "地势收益本身不乘牌品质；切换本身不另触发一次收益。同地势再次使用仍执行一次明确收益。",
       "variants": [
         {
@@ -17891,7 +17891,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.CunZhaiYuanZhen",
@@ -17899,7 +17899,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "治疗20为基础值，百级稀有600%增幅生成120。护甲50%是总规格已标稀有的终值，见总表的护甲系数待复核项。",
       "variants": [
         {
@@ -17979,7 +17979,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.HuiShengZhenSha",
@@ -17987,7 +17987,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18037,7 +18037,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.YiWeiZhen",
@@ -18045,7 +18045,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18156,7 +18156,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.BaMenLunZhuan",
@@ -18164,7 +18164,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18214,7 +18214,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.ZhenShaZhen",
@@ -18222,7 +18222,7 @@
       "group": "伙伴·阵师",
       "base_quality": "史诗",
       "target": "全体敌方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18263,7 +18263,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.WanXiangGuiZhen",
@@ -18271,7 +18271,7 @@
       "group": "伙伴·阵师",
       "base_quality": "史诗",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "总规格明确史诗护甲200%，作为独立牌面覆写，不回退到200%再乘1.4的通用费用档。地势免耗沿用既有仅气力为0的规则。",
       "variants": [
         {
@@ -18312,7 +18312,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.ShanMenFengSuo",
@@ -18320,7 +18320,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18409,7 +18409,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.ShuiJingZheGuang",
@@ -18417,7 +18417,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "采用总规格所列稀有80%终值，史诗按7/6比例提高；不将已标稀有的80%再乘1.2。",
       "variants": [
         {
@@ -18542,7 +18542,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.LinFengFuZhen",
@@ -18550,7 +18550,7 @@
       "group": "伙伴·阵师",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18639,7 +18639,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.ZhenQiGuWu",
@@ -18647,7 +18647,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18697,7 +18697,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.DiMaiJieLi",
@@ -18705,7 +18705,7 @@
       "group": "伙伴·阵师",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -18755,7 +18755,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Profession.FormationMaster.SiXiangLianHuan",
@@ -18763,7 +18763,7 @@
       "group": "伙伴·阵师",
       "base_quality": "史诗",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "史诗120%为已含品质的独立护甲系数。",
       "variants": [
         {
@@ -18804,7 +18804,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.TusiChief.ZhaiZhuHaoLing",
@@ -18812,7 +18812,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "攻击取值保留在内部，不加入攻击效果句；护甲取土司防御。收招20%按独立基础系数结算。",
       "variants": [
         {
@@ -18907,7 +18907,7 @@
         "收招"
       ],
       "source_rule": "攻击取攻击最高友方；生成护甲取土司防御。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.TusiChief.ShiMenShouShi",
@@ -18915,7 +18915,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -19092,7 +19092,7 @@
         "收招"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.TusiChief.TuSiJunLing",
@@ -19100,7 +19100,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -19299,7 +19299,7 @@
         "反击"
       ],
       "source_rule": "攻击取攻击最高友方；生成护甲取土司防御。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.TusiChief.MengZhaiShiYue",
@@ -19307,7 +19307,7 @@
       "group": "任务NPC",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "各次攻击分别取对应友方属性，示例三人攻击均100；实际预览应逐次算数，不强行共用一个角色攻击。",
       "variants": [
         {
@@ -19372,7 +19372,7 @@
         "收招"
       ],
       "source_rule": "逐名存活友方使用各自攻击，生成护甲取土司防御。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.SongJinBao.ShangQianGuWu",
@@ -19380,7 +19380,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "优先敌人按标记最高、再生命比例最低选取；内部使用所选友方的攻击。",
       "variants": [
         {
@@ -19537,7 +19537,7 @@
         "法术任务"
       ],
       "source_rule": "攻击取所选友方，敌方目标按优先规则自动选择。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.SongJinBao.ErMuMiBao",
@@ -19545,7 +19545,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -19657,7 +19657,7 @@
         "法术任务"
       ],
       "source_rule": "阵赏逐名存活友方使用各自攻击。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.SongJinBao.GuiKeLing",
@@ -19665,7 +19665,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -19866,7 +19866,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.SongJinBao.YiNuoQianJin",
@@ -19874,7 +19874,7 @@
       "group": "任务NPC",
       "base_quality": "史诗",
       "target": "无需选择（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -19923,7 +19923,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.YueBai.QingYanDianDeng",
@@ -19931,7 +19931,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20066,7 +20066,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.YueBai.CanJuanPiZhu",
@@ -20074,7 +20074,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20172,7 +20172,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.YueBai.YueBaiZhaoYe",
@@ -20180,7 +20180,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20337,7 +20337,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.YueBai.ShanHeCanTu",
@@ -20345,7 +20345,7 @@
       "group": "任务NPC",
       "base_quality": "史诗",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "史诗基础冰攻击140%，每消耗1护甲增加1个百分点；不得继续沿用旧0%基础/每护甲20个百分点。",
       "variants": [
         {
@@ -20420,7 +20420,7 @@
         "法术任务"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.ZhouGuangZu.YiCaoBianShi",
@@ -20428,7 +20428,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "任意存活单位（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "数值示例包括本牌先获得的6药效，普通105；NPC不因此开启药方。",
       "variants": [
         {
@@ -20583,7 +20583,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.ZhouGuangZu.HuangShanFuZhi",
@@ -20591,7 +20591,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20658,7 +20658,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.ZhouGuangZu.DiZhiMoTu",
@@ -20666,7 +20666,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "无需选择",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20717,7 +20717,7 @@
         "地势"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.ZhouGuangZu.YanFenFengMai",
@@ -20725,7 +20725,7 @@
       "group": "任务NPC",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20782,7 +20782,7 @@
         "毒爆"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.JinGui.ShiJingErMu",
@@ -20790,7 +20790,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "NPC重箭在基础效果后锁定；初始0蓄力，本牌会消耗新获得的2点，攻击2次。",
       "variants": [
         {
@@ -20858,7 +20858,7 @@
         "重箭"
       ],
       "source_rule": "蓄力和重箭攻击取攻击最高友方。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.JinGui.QiaoYanZhouXuan",
@@ -20866,7 +20866,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -20977,7 +20977,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.JinGui.ZaYiChouBei",
@@ -20985,7 +20985,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "回复内力归该蓄力提供者；NPC重箭基础后锁定，新3点参与本次。",
       "variants": [
         {
@@ -21056,7 +21056,7 @@
         "重箭"
       ],
       "source_rule": "蓄力、重箭攻击和重箭回复内力均属于攻击最高友方。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.JinGui.HouXiangTuoShen",
@@ -21123,7 +21123,7 @@
         "格挡"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "本牌仍有明确列出的设计待确认项。"
     },
     {
       "id": "Npc.QiongMeiEr.TengQiaoFeiDu",
@@ -21131,7 +21131,7 @@
       "group": "任务NPC",
       "base_quality": "稀有",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21199,7 +21199,7 @@
         "重箭"
       ],
       "source_rule": "蓄力和重箭攻击取攻击最高友方。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.QiongMeiEr.GuWuMiZong",
@@ -21207,7 +21207,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21318,7 +21318,7 @@
         "毒爆"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.QiongMeiEr.YinLingZhenXin",
@@ -21326,7 +21326,7 @@
       "group": "任务NPC",
       "base_quality": "普通",
       "target": "单体友方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21459,7 +21459,7 @@
         "灼烧"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Npc.QiongMeiEr.ShanGeHuanLing",
@@ -21467,7 +21467,7 @@
       "group": "任务NPC",
       "base_quality": "史诗",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "基础治疗25；百级、原有药效0，本牌先加6药效，统一按史诗700%增幅，治疗217。",
       "variants": [
         {
@@ -21500,7 +21500,7 @@
         "药效"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Route.Boss.XiongPiPiJia",
@@ -21508,7 +21508,7 @@
       "group": "Boss牌",
       "base_quality": "史诗",
       "target": "自身（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21541,7 +21541,7 @@
         "护甲"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Route.Boss.HanDiYiShi",
@@ -21549,7 +21549,7 @@
       "group": "Boss牌",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21590,7 +21590,7 @@
         "护甲"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Route.Boss.HuPoZhenDan",
@@ -21598,7 +21598,7 @@
       "group": "Boss牌",
       "base_quality": "史诗",
       "target": "全体友方（直接施放）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21663,7 +21663,7 @@
         "蚀伤"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Route.Boss.DuKouLieFeng",
@@ -21671,7 +21671,7 @@
       "group": "Boss牌",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21704,7 +21704,7 @@
         "标记"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     },
     {
       "id": "Route.Boss.FuHuDuanJiang",
@@ -21712,7 +21712,7 @@
       "group": "Boss牌",
       "base_quality": "史诗",
       "target": "单体敌方（点击后选择目标）",
-      "status": "文案待审",
+      "status": "已核对",
       "note": "",
       "variants": [
         {
@@ -21745,7 +21745,7 @@
         "破绽"
       ],
       "source_rule": "按既有卡牌效果数据取值，攻击句不追加出手对象。",
-      "implementation_note": "此处为目标文案，不能据此判断卡牌运行时已完成。"
+      "implementation_note": "文案与运行时数值管线已通过173张卡证书。"
     }
   ],
   "glossary": [

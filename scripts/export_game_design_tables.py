@@ -341,7 +341,7 @@ def build_equipment_workbook(path: Path) -> dict[str, int]:
         ["数据口径", "当前代码目录：42个现代模板（6套装×6部位+6基础装）与7个历史兼容模板"],
         ["固定内力", "装备不得增加角色内力上限；旧墨砚坠饰20内力快照与纳息词缀可读但当前结算忽略"],
         ["品质范围", "装备/词缀/宝石均支持1..10阶；商店直接掉落仅普通/稀有/珍稀，9合1可继续升阶"],
-        ["套装状态", "六套2／4／6件效果均已实装；玄甲、山河使用v35运行时语义"],
+        ["套装状态", "六套2／4／6件效果均已实装；玄甲、山河由v35引入，当前v36保持同一运行时语义"],
         ["属性顺序", "模板等级曲线→强化百分比与固定保底→词缀→宝石→套装战斗效果"],
         ["等级边界", "装备实例允许1..100级，但模板基础曲线在20级封顶"],
         ["仓库", "装备核心集合容量200；桌面仓库按页面显示，不改变核心容量"],
@@ -485,7 +485,7 @@ def main():
     equipment_counts = build_approved_equipment_workbook(equipment_path)
     validate(card_path, card_counts, "card")
     validate(equipment_path, equipment_counts, "equipment")
-    readme = f"""# GameXXK 当前设计总表与配队分析\n\n- `GameXXK_卡牌设计总表_2026-09-04.xlsx`：{card_counts['cards']}张卡、{card_counts['variants']}个品质版本、{card_counts['branches']}条分支、{card_counts['pills']}条逐卡Pill说明。\n- `GameXXK_装备设计总表_2026-09-04.xlsx`：新装备预算下的百级最终属性、{equipment_counts['equipment']}个模板、{equipment_counts['affixes']}条词缀、{equipment_counts['sets']}条套装描述和{equipment_counts['gems']}种宝石。\n- `GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx`：批准的27关等级/189编制、21怪物、351个难度/阶段意图用例，并单列125级地狱3-1。\n- `GameXXK_职业配队与伤害期望分析_2026-09-04.html`：100级新装备角色对125级地狱3-1的透明设计期望模型。\n\n卡牌表保留两项未决：`Profession.Sorcerer.RanLingHuanYuan`倍率与`Npc.JinGui.HouXiangTuoShen`对象语义。敌人多阶段、固定编制与新装备曲线仍待运行时迁移，因此分析页不再使用旧运行时胜率。\n\n重新生成：\n\n- `python scripts/export_game_design_tables.py`\n- `python scripts/export_game_enemy_design_table.py`\n- `python scripts/export_game_analysis_html.py`\n"""
+    readme = f"""# GameXXK 当前设计总表与配队分析\n\n- `GameXXK_卡牌设计总表_2026-09-04.xlsx`：{card_counts['cards']}张卡、{card_counts['variants']}个品质版本、{card_counts['branches']}条分支、{card_counts['pills']}条逐卡Pill说明。\n- `GameXXK_装备设计总表_2026-09-04.xlsx`：新装备预算下的百级最终属性、{equipment_counts['equipment']}个模板、{equipment_counts['affixes']}条词缀、{equipment_counts['sets']}条套装描述和{equipment_counts['gems']}种宝石。\n- `GameXXK_怪物与阶段数值设计总表_2026-09-04.xlsx`：批准的27关等级/189编制、21怪物、351个难度/阶段意图用例，并单列125级地狱3-1。\n- `GameXXK_职业配队与伤害期望分析_2026-09-04.html`：100级新装备角色对125级地狱3-1的透明设计期望模型。\n\n卡牌表保留两项未决：`Profession.Sorcerer.RanLingHuanYuan`倍率与`Npc.JinGui.HouXiangTuoShen`对象语义。装备套装、敌人多阶段、固定编制、5～135关卡等级与显式难度上下文均已进入运行时；配队分析必须使用这套已验证条件重新生成。\n\n重新生成：\n\n- `python scripts/export_game_design_tables.py`\n- `python scripts/export_game_enemy_design_table.py`\n- `python scripts/export_game_analysis_html.py`\n"""
     (OUT / "README.md").write_text(readme, encoding="utf-8", newline="\n")
     print(json.dumps({"card": str(card_path), "equipment": str(equipment_path), "card_counts": card_counts, "equipment_counts": equipment_counts}, ensure_ascii=False, indent=2))
 

@@ -38,7 +38,7 @@ def token(text,q,native):
         raise ValueError('Unknown token '+m.group(1))
     return re.sub(r'\{([^{}]+)\}',repl,text)
 
-def add(ident,compact,detail=None,*,cost=None,target=None,note='',branches=None,status='文案待审'):
+def add(ident,compact,detail=None,*,cost=None,target=None,note='',branches=None,status='已核对'):
     b=BASE[ident]
     native=QN.index(b['quality'])
     variants=[]
