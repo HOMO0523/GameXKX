@@ -55,17 +55,19 @@ namespace
 	{
 		if (Chapter == 1)
 		{
-			// Training deliberately reuses the existing first-chapter pool while
-			// assigning the user-frozen identities to the three stage bosses.
-			if (StageNumber == 1) return TEXT("Enemy.Ch1.Goat");
-			if (StageNumber == 2) return TEXT("Enemy.Ch1.Weasel");
-			return TEXT("Enemy.Ch1.BluehornGoatKing");
+			if (StageNumber == 1) return TEXT("Enemy.Ch1.IronfeatherRooster");
+			if (StageNumber == 2) return TEXT("Enemy.Ch1.BluehornGoatKing");
+			return TEXT("Enemy.Ch1.MoneyRat");
 		}
 		if (Chapter == 2)
 		{
-			return StageNumber == 3 ? TEXT("Enemy.Ch2.BlackBear") : TEXT("Enemy.Ch2.RedtuskBoarKing");
+			if (StageNumber == 1) return TEXT("Enemy.Ch2.GraymaneWolfKing");
+			if (StageNumber == 2) return TEXT("Enemy.Ch2.RedtuskBoarKing");
+			return TEXT("Enemy.Ch2.BlackBear");
 		}
-		return StageNumber == 3 ? TEXT("Enemy.Ch3.Tiger") : TEXT("Enemy.Ch3.SpiralHornDeer");
+		if (StageNumber == 1) return TEXT("Enemy.Ch3.WhiteApe");
+		if (StageNumber == 2) return TEXT("Enemy.Ch3.SpiralHornDeer");
+		return TEXT("Enemy.Ch3.Tiger");
 	}
 
 	TArray<FName> NormalPoolForChapter(const int32 Chapter)
@@ -91,6 +93,7 @@ namespace
 				Stage.Difficulty = Difficulty;
 				Stage.Chapter = ((StageNumber - 1) / 3) + 1;
 				Stage.StageNumber = StageNumber;
+				Stage.CombatLevel = (DifficultyIndexValue * FGameXXKTrainingRules::StagesPerDifficulty + StageNumber) * 5;
 				Stage.StageId = FGameXXKTrainingRules::MakeStageId(Difficulty, StageNumber);
 				Stage.DisplayName = FText::FromString(FString::Printf(
 					TEXT("%s %d-%d"),
@@ -98,19 +101,8 @@ namespace
 						: Difficulty == EGameXXKTrainingDifficulty::Hard ? TEXT("困难") : TEXT("地狱"),
 					Stage.Chapter,
 					((StageNumber - 1) % 3) + 1));
-				if (Stage.Chapter == 1)
-				{
-					// Four first-chapter enemy identities are split into two ordinary
-					// candidates and two sub-elites. The ordinary encounters repeat
-					// those two candidates; the elite slots stay deterministic.
-					Stage.NormalEnemyPool = {FName(TEXT("Enemy.Ch1.Rooster")), FName(TEXT("Enemy.Ch1.Civet"))};
-					Stage.EliteEnemyPool = {FName(TEXT("Enemy.Ch1.Goat")), FName(TEXT("Enemy.Ch1.Weasel"))};
-				}
-				else
-				{
-					Stage.NormalEnemyPool = NormalPoolForChapter(Stage.Chapter);
-					Stage.EliteEnemyPool = ElitePoolForChapter(Stage.Chapter);
-				}
+				Stage.NormalEnemyPool = NormalPoolForChapter(Stage.Chapter);
+				Stage.EliteEnemyPool = ElitePoolForChapter(Stage.Chapter);
 				Stage.BossEnemyId = BossForChapter(Stage.Chapter, ((StageNumber - 1) % 3) + 1);
 				Stage.BossDisplayName = EnemyName(Stage.BossEnemyId);
 				const int32 TierScale = DifficultyIndexValue + 1;
@@ -174,6 +166,133 @@ namespace
 			AppendFormationEnemy(Formation, FlankPool[1]);
 		}
 		return Formation;
+	}
+
+	const TCHAR* const ApprovedFormationRows[27][7] = {
+		{TEXT("R-G-C"), TEXT("W-R-G"), TEXT("W-C-R"), TEXT("G-W-C"), TEXT("R-B-G"), TEXT("W-B-C"), TEXT("W-I-C")},
+		{TEXT("W-R-C"), TEXT("R-G-R"), TEXT("C-G-W"), TEXT("W-G-R"), TEXT("R-I-C"), TEXT("W-I-G"), TEXT("W-B-C")},
+		{TEXT("W-R-G"), TEXT("C-R-G"), TEXT("W-C-R"), TEXT("R-G-C"), TEXT("W-I-R"), TEXT("C-B-G"), TEXT("I-M-B")},
+		{TEXT("Ma-Wf-Bo"), TEXT("Wf-P-Bo"), TEXT("Ma-P-Bo"), TEXT("Ma-Wf-P"), TEXT("Ma-Rt-Bo"), TEXT("Wf-Rt-P"), TEXT("Wf-Gm-P")},
+		{TEXT("Ma-Wf-P"), TEXT("Wf-Bo-P"), TEXT("Ma-Wf-Bo"), TEXT("Ma-Bo-P"), TEXT("Ma-Gm-P"), TEXT("Wf-Gm-Bo"), TEXT("Wf-Rt-P")},
+		{TEXT("Wf-Wf-P"), TEXT("Ma-Bo-P"), TEXT("Ma-Wf-Bo"), TEXT("Wf-Bo-Bo"), TEXT("Ma-Gm-P"), TEXT("Wf-Rt-Bo"), TEXT("Gm-Bb-Rt")},
+		{TEXT("S-C-T"), TEXT("V-C-T"), TEXT("V-S-T"), TEXT("V-S-C"), TEXT("S-D-T"), TEXT("V-D-C"), TEXT("V-A-T")},
+		{TEXT("V-C-T"), TEXT("S-S-T"), TEXT("C-C-V"), TEXT("V-S-C"), TEXT("V-A-C"), TEXT("S-A-T"), TEXT("S-D-C")},
+		{TEXT("V-S-C"), TEXT("S-C-T"), TEXT("V-S-T"), TEXT("V-C-T"), TEXT("V-A-C"), TEXT("S-D-T"), TEXT("A-Ti-D")},
+
+		{TEXT("W-R-R"), TEXT("C-R-G"), TEXT("W-G-C"), TEXT("R-G-R"), TEXT("W-B-R"), TEXT("C-B-G"), TEXT("W-I-G")},
+		{TEXT("W-R-C"), TEXT("C-G-G"), TEXT("W-G-R"), TEXT("C-R-R"), TEXT("W-I-R"), TEXT("C-I-G"), TEXT("C-B-W")},
+		{TEXT("W-R-G"), TEXT("C-R-G"), TEXT("W-C-R"), TEXT("W-C-G"), TEXT("W-I-C"), TEXT("R-B-G"), TEXT("I-M-B")},
+		{TEXT("Ma-Wf-P"), TEXT("Wf-Wf-Bo"), TEXT("Ma-Bo-P"), TEXT("Wf-Bo-P"), TEXT("Ma-Rt-P"), TEXT("Wf-Rt-Bo"), TEXT("Ma-Gm-P")},
+		{TEXT("Ma-Wf-Bo"), TEXT("Wf-Wf-P"), TEXT("Ma-Wf-P"), TEXT("Ma-Bo-Bo"), TEXT("Ma-Gm-P"), TEXT("Wf-Gm-Bo"), TEXT("Wf-Rt-P")},
+		{TEXT("Ma-Wf-P"), TEXT("Wf-Bo-P"), TEXT("Ma-Wf-Bo"), TEXT("Wf-Bo-Bo"), TEXT("Ma-Gm-P"), TEXT("Wf-Rt-P"), TEXT("Gm-Bb-Rt")},
+		{TEXT("V-C-T"), TEXT("S-C-T"), TEXT("V-S-C"), TEXT("S-S-T"), TEXT("V-D-T"), TEXT("S-D-C"), TEXT("V-A-T")},
+		{TEXT("V-S-T"), TEXT("C-C-V"), TEXT("S-C-T"), TEXT("V-S-C"), TEXT("V-A-C"), TEXT("S-A-T"), TEXT("S-D-C")},
+		{TEXT("V-S-C"), TEXT("S-C-T"), TEXT("V-C-T"), TEXT("V-S-T"), TEXT("V-A-C"), TEXT("S-D-T"), TEXT("A-Ti-D")},
+
+		{TEXT("W-R-R"), TEXT("C-R-R"), TEXT("W-G-R"), TEXT("C-G-R"), TEXT("W-B-R"), TEXT("C-B-G"), TEXT("W-I-C")},
+		{TEXT("W-G-G"), TEXT("C-G-G"), TEXT("W-R-C"), TEXT("W-G-C"), TEXT("W-I-R"), TEXT("C-I-G"), TEXT("C-B-W")},
+		{TEXT("W-R-G"), TEXT("C-R-G"), TEXT("W-C-R"), TEXT("W-C-G"), TEXT("W-I-C"), TEXT("C-B-G"), TEXT("I-M-B")},
+		{TEXT("Wf-Wf-P"), TEXT("Ma-Wf-P"), TEXT("Wf-Bo-P"), TEXT("Ma-Bo-Bo"), TEXT("Ma-Rt-P"), TEXT("Wf-Rt-Bo"), TEXT("Ma-Gm-P")},
+		{TEXT("Ma-Wf-Bo"), TEXT("Wf-Wf-P"), TEXT("Ma-Wf-P"), TEXT("Wf-Bo-Bo"), TEXT("Ma-Gm-P"), TEXT("Wf-Gm-Bo"), TEXT("Wf-Rt-P")},
+		{TEXT("Ma-Wf-P"), TEXT("Wf-Bo-P"), TEXT("Ma-Wf-Bo"), TEXT("Wf-Wf-Bo"), TEXT("Ma-Gm-P"), TEXT("Wf-Rt-P"), TEXT("Gm-Bb-Rt")},
+		{TEXT("V-C-T"), TEXT("S-S-T"), TEXT("V-S-C"), TEXT("S-C-T"), TEXT("V-D-C"), TEXT("S-D-T"), TEXT("V-A-T")},
+		{TEXT("V-S-T"), TEXT("C-C-V"), TEXT("S-C-T"), TEXT("V-S-C"), TEXT("V-A-C"), TEXT("S-A-T"), TEXT("S-D-C")},
+		{TEXT("V-S-C"), TEXT("S-C-T"), TEXT("V-C-T"), TEXT("V-S-T"), TEXT("V-A-C"), TEXT("S-D-T"), TEXT("A-Ti-D")}
+	};
+
+	FName ResolveFormationToken(const int32 Chapter, const FString& Token)
+	{
+		if (Chapter == 1)
+		{
+			if (Token == TEXT("R")) return TEXT("Enemy.Ch1.Rooster");
+			if (Token == TEXT("G")) return TEXT("Enemy.Ch1.Goat");
+			if (Token == TEXT("W")) return TEXT("Enemy.Ch1.Weasel");
+			if (Token == TEXT("C")) return TEXT("Enemy.Ch1.Civet");
+			if (Token == TEXT("I")) return TEXT("Enemy.Ch1.IronfeatherRooster");
+			if (Token == TEXT("B")) return TEXT("Enemy.Ch1.BluehornGoatKing");
+			if (Token == TEXT("M")) return TEXT("Enemy.Ch1.MoneyRat");
+		}
+		else if (Chapter == 2)
+		{
+			if (Token == TEXT("Wf")) return TEXT("Enemy.Ch2.GrayWolf");
+			if (Token == TEXT("Bo")) return TEXT("Enemy.Ch2.Boar");
+			if (Token == TEXT("Ma")) return TEXT("Enemy.Ch2.Macaque");
+			if (Token == TEXT("P")) return TEXT("Enemy.Ch2.Porcupine");
+			if (Token == TEXT("Gm")) return TEXT("Enemy.Ch2.GraymaneWolfKing");
+			if (Token == TEXT("Rt")) return TEXT("Enemy.Ch2.RedtuskBoarKing");
+			if (Token == TEXT("Bb")) return TEXT("Enemy.Ch2.BlackBear");
+		}
+		else if (Chapter == 3)
+		{
+			if (Token == TEXT("S")) return TEXT("Enemy.Ch3.VenomSnake");
+			if (Token == TEXT("C")) return TEXT("Enemy.Ch3.Wildcat");
+			if (Token == TEXT("V")) return TEXT("Enemy.Ch3.Vulture");
+			if (Token == TEXT("T")) return TEXT("Enemy.Ch3.GiantToad");
+			if (Token == TEXT("A")) return TEXT("Enemy.Ch3.WhiteApe");
+			if (Token == TEXT("D")) return TEXT("Enemy.Ch3.SpiralHornDeer");
+			if (Token == TEXT("Ti")) return TEXT("Enemy.Ch3.Tiger");
+		}
+		return NAME_None;
+	}
+
+	TArray<FName> ParseApprovedFormation(const int32 Chapter, const TCHAR* Notation)
+	{
+		TArray<FString> Tokens;
+		FString(Notation).ParseIntoArray(Tokens, TEXT("-"), true);
+		TArray<FName> Formation;
+		for (const FString& Token : Tokens)
+		{
+			Formation.Add(ResolveFormationToken(Chapter, Token));
+		}
+		return Formation;
+	}
+
+	FName ResolveOpeningIntent(
+		const TArray<FName>& Formation,
+		const int32 SlotIndex)
+	{
+		const FName EnemyId = Formation.IsValidIndex(SlotIndex) ? Formation[SlotIndex] : NAME_None;
+		int32 TotalCopies = 0;
+		for (const FName CandidateId : Formation)
+		{
+			TotalCopies += CandidateId == EnemyId ? 1 : 0;
+		}
+		int32 EarlierCopies = 0;
+		for (int32 Index = 0; Index < SlotIndex; ++Index)
+		{
+			EarlierCopies += Formation[Index] == EnemyId ? 1 : 0;
+		}
+		if (EnemyId == TEXT("Enemy.Ch1.Rooster"))
+		{
+			if (TotalCopies > 1 && EarlierCopies == 0) return TEXT("Crow");
+			return Formation.Contains(TEXT("Enemy.Ch1.Weasel")) ? FName(TEXT("DoublePeck")) : FName(TEXT("Peck"));
+		}
+		if (EnemyId == TEXT("Enemy.Ch1.Goat")) return TotalCopies > 1 && EarlierCopies > 0 ? FName(TEXT("Stomp")) : FName(TEXT("Horn"));
+		if (EnemyId == TEXT("Enemy.Ch1.Weasel")) return TEXT("Harass");
+		if (EnemyId == TEXT("Enemy.Ch1.Civet")) return TEXT("Feint");
+		if (EnemyId == TEXT("Enemy.Ch1.IronfeatherRooster")) return TEXT("RapidPeck");
+		if (EnemyId == TEXT("Enemy.Ch1.BluehornGoatKing")) return TEXT("Pierce");
+		if (EnemyId == TEXT("Enemy.Ch1.MoneyRat")) return TEXT("GreedyMark");
+		if (EnemyId == TEXT("Enemy.Ch2.GrayWolf")) return TotalCopies > 1 && EarlierCopies == 0 ? FName(TEXT("CallPack")) : FName(TEXT("Bite"));
+		if (EnemyId == TEXT("Enemy.Ch2.Boar"))
+		{
+			if (TotalCopies > 1 && EarlierCopies > 0) return TEXT("Bristle");
+			return Formation.Contains(TEXT("Enemy.Ch2.GrayWolf")) || Formation.Contains(TEXT("Enemy.Ch2.GraymaneWolfKing"))
+				? FName(TEXT("ArmorBreakCharge")) : FName(TEXT("Tusk"));
+		}
+		if (EnemyId == TEXT("Enemy.Ch2.Macaque")) return TEXT("Snatch");
+		if (EnemyId == TEXT("Enemy.Ch2.Porcupine")) return TEXT("Quill");
+		if (EnemyId == TEXT("Enemy.Ch2.GraymaneWolfKing")) return TEXT("HuntMark");
+		if (EnemyId == TEXT("Enemy.Ch2.RedtuskBoarKing")) return TEXT("Earthquake");
+		if (EnemyId == TEXT("Enemy.Ch2.BlackBear")) return TEXT("Rend");
+		if (EnemyId == TEXT("Enemy.Ch3.VenomSnake")) return TotalCopies > 1 && EarlierCopies > 0 ? FName(TEXT("Coil")) : FName(TEXT("VenomBite"));
+		if (EnemyId == TEXT("Enemy.Ch3.Wildcat")) return TotalCopies > 1 && EarlierCopies == 0 ? FName(TEXT("Stalk")) : FName(TEXT("Rake"));
+		if (EnemyId == TEXT("Enemy.Ch3.Vulture")) return TEXT("Gaze");
+		if (EnemyId == TEXT("Enemy.Ch3.GiantToad")) return TEXT("PoisonFog");
+		if (EnemyId == TEXT("Enemy.Ch3.WhiteApe")) return TEXT("ThrowRock");
+		if (EnemyId == TEXT("Enemy.Ch3.SpiralHornDeer")) return TEXT("TerrainBless");
+		if (EnemyId == TEXT("Enemy.Ch3.Tiger")) return TEXT("MarkPrey");
+		return NAME_None;
 	}
 
 	int32 FindNextLivingTravelEnemy(
@@ -408,46 +527,45 @@ TArray<FGameXXKTrainingEncounterDefinition> FGameXXKTrainingRules::BuildEncounte
 	{
 		return Encounters;
 	}
-
-	// Travel and active challenge intentionally share the exact authored
-	// encounter health. The only Normal 1-1 exception is progression: it starts
-	// cleared so a new player may Travel immediately.
 	(void)bTravelMode;
-	const TArray<FName> NormalFormation = BuildNormalFormation(Stage);
-	for (int32 NormalIndex = 0; NormalIndex < 4; ++NormalIndex)
+	const int32 RowIndex = DifficultyIndex(Stage.Difficulty) * StagesPerDifficulty + Stage.StageNumber - 1;
+	if (RowIndex < 0 || RowIndex >= UE_ARRAY_COUNT(ApprovedFormationRows))
+	{
+		return Encounters;
+	}
+	Encounters.Reserve(7);
+	for (int32 EncounterIndex = 0; EncounterIndex < 7; ++EncounterIndex)
 	{
 		FGameXXKTrainingEncounterDefinition Encounter;
-		Encounter.EnemyDefinitionIds = NormalFormation;
-		Encounter.EnemyDefinitionId = NormalFormation.Num() > 0 ? NormalFormation[0] : NAME_None;
-		Encounter.DisplayName = FText::FromString(JoinNames(Encounter.EnemyDefinitionIds));
-		Encounter.Kind = EGameXXKTrainingEncounterKind::Normal;
-		Encounter.BaseHealth = FMath::Max(1, 20 + Stage.Chapter * 10 + Stage.StageNumber * 3);
-		Encounters.Add(MoveTemp(Encounter));
-		if (NormalIndex == 1 || NormalIndex == 2)
+		Encounter.Kind = EncounterIndex < 4
+			? EGameXXKTrainingEncounterKind::Normal
+			: EncounterIndex < 6
+				? EGameXXKTrainingEncounterKind::Elite
+				: EGameXXKTrainingEncounterKind::Boss;
+		Encounter.CombatLevel = Stage.CombatLevel;
+		Encounter.EnemyDefinitionIds = ParseApprovedFormation(
+			Stage.Chapter,
+			ApprovedFormationRows[RowIndex][EncounterIndex]);
+		if (Encounter.EnemyDefinitionIds.Num() != 3
+			|| Encounter.EnemyDefinitionIds.Contains(NAME_None))
 		{
-			const int32 EliteIndex = NormalIndex == 1 ? 0 : 1;
-			FGameXXKTrainingEncounterDefinition Elite;
-			Elite.EnemyDefinitionId = Stage.EliteEnemyPool.IsValidIndex(EliteIndex) ? Stage.EliteEnemyPool[EliteIndex] : NAME_None;
-			Elite.EnemyDefinitionIds = BuildCoreFormation(Stage.NormalEnemyPool, Elite.EnemyDefinitionId);
-			Elite.DisplayName = FText::FromString(JoinNames(Elite.EnemyDefinitionIds));
-			Elite.Kind = EGameXXKTrainingEncounterKind::Elite;
-			Elite.BaseHealth = FMath::Max(1, 55 + Stage.Chapter * 20 + Stage.StageNumber * 5);
-			Encounters.Add(MoveTemp(Elite));
+			return {};
 		}
+		Encounter.EnemyDefinitionId = Encounter.EnemyDefinitionIds[1];
+		Encounter.DisplayName = FText::FromString(JoinNames(Encounter.EnemyDefinitionIds));
+		int64 FirstPhaseHealth = 0;
+		for (int32 SlotIndex = 0; SlotIndex < Encounter.EnemyDefinitionIds.Num(); ++SlotIndex)
+		{
+			FGameXXKTrainingEnemySlotDefinition& Slot = Encounter.EnemySlots.AddDefaulted_GetRef();
+			Slot.EnemyDefinitionId = Encounter.EnemyDefinitionIds[SlotIndex];
+			Slot.OpeningIntentId = ResolveOpeningIntent(Encounter.EnemyDefinitionIds, SlotIndex);
+			FirstPhaseHealth += FGameXXKEnemyCatalog::ComputeStats(
+				Slot.EnemyDefinitionId,
+				Stage.CombatLevel).MaxHP;
+		}
+		Encounter.BaseHealth = static_cast<int32>(FMath::Clamp<int64>(FirstPhaseHealth, 1, MAX_int32));
+		Encounters.Add(MoveTemp(Encounter));
 	}
-
-	FGameXXKTrainingEncounterDefinition Boss;
-	Boss.EnemyDefinitionId = Stage.BossEnemyId;
-	// 1-1/1-2 reuse an elite as the stage boss, so they keep the ordinary
-	// rooster/civet flanks. A true chapter boss uses the two elite flanks.
-	const TArray<FName>& BossFlankPool = Stage.EliteEnemyPool.Contains(Stage.BossEnemyId)
-		? Stage.NormalEnemyPool
-		: Stage.EliteEnemyPool;
-	Boss.EnemyDefinitionIds = BuildCoreFormation(BossFlankPool, Boss.EnemyDefinitionId);
-	Boss.DisplayName = FText::FromString(JoinNames(Boss.EnemyDefinitionIds));
-	Boss.Kind = EGameXXKTrainingEncounterKind::Boss;
-	Boss.BaseHealth = FMath::Max(1, 120 + Stage.Chapter * 50 + Stage.StageNumber * 10);
-	Encounters.Add(MoveTemp(Boss));
 	return Encounters;
 }
 
@@ -733,6 +851,16 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	}
 
 	const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[Progress.ActiveTravelEncounterIndex];
+	FGameXXKTrainingStageDefinition Stage;
+	if (!TryGetStageDefinition(Progress.CurrentTravelStageId, Stage))
+	{
+		return false;
+	}
+	const EGameXXKEnemyDifficulty EnemyDifficulty = Stage.Difficulty == EGameXXKTrainingDifficulty::Hell
+		? EGameXXKEnemyDifficulty::Hell
+		: Stage.Difficulty == EGameXXKTrainingDifficulty::Hard
+			? EGameXXKEnemyDifficulty::Hard
+			: EGameXXKEnemyDifficulty::Normal;
 	OutRuntime.StageId = Progress.CurrentTravelStageId;
 	OutRuntime.EncounterIndex = Progress.ActiveTravelEncounterIndex;
 	OutRuntime.EncounterKind = Encounter.Kind;
@@ -763,22 +891,28 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 	OutRuntime.ActivePartyIndex = FindNextLivingTravelPartyUnit(OutRuntime, 0);
 	OutRuntime.NextEnemyTargetPartyIndex = 0;
 	SynchronizeTravelPartyCompatibility(OutRuntime);
-	TArray<FName> Formation = Encounter.EnemyDefinitionIds;
-	if (Formation.IsEmpty())
+	for (const FGameXXKTrainingEnemySlotDefinition& Slot : Encounter.EnemySlots)
 	{
-		Formation.Add(Encounter.EnemyDefinitionId);
-	}
-	for (const FName EnemyId : Formation)
-	{
+		const FName EnemyId = Slot.EnemyDefinitionId;
 		if (EnemyId.IsNone() || OutRuntime.Enemies.Num() >= 3)
 		{
 			continue;
 		}
 		FGameXXKTrainingTravelEnemyRuntime Enemy;
 		Enemy.EnemyDefinitionId = EnemyId;
-		Enemy.MaxHP = FMath::Max(1, Encounter.BaseHealth);
+		const FGameXXKEnemyComputedStats Stats = FGameXXKEnemyCatalog::ComputeStats(
+			EnemyId,
+			Encounter.CombatLevel);
+		const FGameXXKEnemyDefinition* Definition = FGameXXKEnemyCatalog::Find(EnemyId);
+		const int32 TotalPhases = Definition
+			? FGameXXKEnemyCatalog::ResolveTotalPhases(Definition->Tier, EnemyDifficulty)
+			: 1;
+		Enemy.MaxHP = static_cast<int32>(FMath::Clamp<int64>(
+			static_cast<int64>(FMath::Max(1, Stats.MaxHP)) * TotalPhases,
+			1,
+			MAX_int32));
 		Enemy.HP = Enemy.MaxHP;
-		Enemy.Attack = TravelEnemyAttack(Encounter.Kind);
+		Enemy.Attack = FMath::Max(1, Stats.Attack);
 		OutRuntime.Enemies.Add(MoveTemp(Enemy));
 	}
 	OutRuntime.ActiveEnemyIndex = FindNextLivingTravelEnemy(OutRuntime, 0);

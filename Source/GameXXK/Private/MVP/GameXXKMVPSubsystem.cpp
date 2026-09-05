@@ -647,11 +647,16 @@ namespace
 		}
 
 		const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[EncounterIndex];
-		TArray<FName> Formation = Encounter.EnemyDefinitionIds;
-		if (Formation.IsEmpty())
+		FGameXXKTrainingStageDefinition Stage;
+		if (!FGameXXKTrainingRules::TryGetStageDefinition(StageId, Stage))
 		{
-			Formation.Add(Encounter.EnemyDefinitionId);
+			if (OutError)
+			{
+				*OutError = TEXT("Training challenge stage definition is missing.");
+			}
+			return false;
 		}
+		const TArray<FName>& Formation = Encounter.EnemyDefinitionIds;
 		if (Formation.IsEmpty() || Formation.Num() > 3)
 		{
 			if (OutError)
@@ -667,7 +672,7 @@ namespace
 			FGameXXKBattleRuntimeUnit Enemy;
 			if (!BuildTrainingEnemyProjection(
 				Formation[FormationSlotIndex],
-				InOutState.PlayerLevel,
+				Encounter.CombatLevel,
 				FormationSlotIndex,
 				Enemy,
 				OutError))
@@ -688,6 +693,9 @@ namespace
 		InOutState.TownPanelMode = EGameXXKTownPanelMode::None;
 
 		const EGameXXKNodeKind NodeKind = TrainingNodeKind(Encounter.Kind);
+		const int32 EnemyDifficultyDamagePercent = Stage.Difficulty == EGameXXKTrainingDifficulty::Hell
+			? 150
+			: Stage.Difficulty == EGameXXKTrainingDifficulty::Hard ? 125 : 100;
 		const int32 BattleSeed = FGameXXKCardBattleAdapter::MixBattleSeed(
 			InOutState.RouteSeed != 0 ? InOutState.RouteSeed : 0x13579BDF,
 			InOutState.ActiveBattleNodeId);
@@ -696,7 +704,8 @@ namespace
 			NodeKind,
 			NodeKind == EGameXXKNodeKind::Boss ? EGameXXKCardTerrain::Cave : EGameXXKCardTerrain::Plain,
 			BattleSeed,
-			OutError))
+			OutError,
+			EnemyDifficultyDamagePercent))
 		{
 			InOutState.bHasActiveBattle = false;
 			InOutState.ActiveBattleNodeId = INDEX_NONE;
