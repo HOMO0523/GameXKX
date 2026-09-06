@@ -1615,6 +1615,64 @@ bool FGameXXKDesktopTrainingStableDragAnchorTest::RunTest(const FString& Paramet
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopTrainingWorkbenchSelectedRuntimeFontTest,
+	"GameXXK.DesktopTraining.Workbench.SelectedRuntimeFont",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopTrainingWorkbenchSelectedRuntimeFontTest::RunTest(const FString& Parameters)
+{
+	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	TestNotNull(TEXT("workbench widget exists for selected-font verification"), Widget);
+	if (!Widget)
+	{
+		return false;
+	}
+
+	Widget->TakeWidget();
+	TestNotNull(TEXT("selected-font verification has a WidgetTree"), Widget->WidgetTree.Get());
+	if (!Widget->WidgetTree)
+	{
+		return false;
+	}
+
+	const FString ExpectedFontPath = TEXT(
+		"/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font."
+		"FF_Trial_ZhHans_JiangHuGuFeng_Font");
+	int32 TextBlockCount = 0;
+	TArray<FString> Mismatches;
+	Widget->WidgetTree->ForEachWidgetAndDescendants([&](UWidget* Child)
+	{
+		const UTextBlock* TextBlock = Cast<UTextBlock>(Child);
+		if (!TextBlock)
+		{
+			return;
+		}
+		++TextBlockCount;
+		const UObject* FontObject = TextBlock->GetFont().FontObject.Get();
+		const FString ActualFontPath = FontObject ? FontObject->GetPathName() : TEXT("None");
+		if (ActualFontPath != ExpectedFontPath
+			&& ActualFontPath != TEXT("/Game/GameXXK/UI/Fonts/Readability/F_ReadableCJK.F_ReadableCJK"))
+		{
+			Mismatches.Add(FString::Printf(
+				TEXT("%s -> %s"),
+				*TextBlock->GetName(),
+				*ActualFontPath));
+		}
+	});
+
+	TestTrue(TEXT("workbench creates text blocks for selected-font verification"), TextBlockCount > 0);
+	if (Mismatches.Num() > 0)
+	{
+		AddError(FString::Printf(
+			TEXT("%d/%d workbench text blocks do not use the selected Runtime Font; first: %s"),
+			Mismatches.Num(),
+			TextBlockCount,
+			*Mismatches[0]));
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingStablePresentationScaleTest,
 	"GameXXK.DesktopTraining.Workbench.StablePresentationScale",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -4762,8 +4820,8 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	{
 		const UObject* HeroTabTexture = HeroRosterButton->GetStyle().Normal.GetResourceObject();
 		const UObject* CompanionTabTexture = CompanionRosterButton->GetStyle().Normal.GetResourceObject();
-		TestTrue(TEXT("reopen keeps the folded hero roster tab unselected until its member row is expanded"),
-			HeroTabTexture && HeroTabTexture->GetPathName().Contains(TEXT("003_tab_1")));
+		TestTrue(TEXT("reopen marks the currently viewed hero category"),
+			HeroTabTexture && HeroTabTexture->GetPathName().Contains(TEXT("004_tab_2")));
 		TestTrue(TEXT("reopen does not retain the companion roster selection"),
 			CompanionTabTexture && CompanionTabTexture->GetPathName().Contains(TEXT("003_tab_1")));
 	}
@@ -6302,19 +6360,15 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		UWidget* Button = Widget->WidgetTree ? Widget->WidgetTree->FindWidget(RosterButtonNames[Index]) : nullptr;
 		const UButton* RosterButton = Cast<UButton>(Button);
 		TestTrue(
-			*FString::Printf(TEXT("collapsed roster button %d uses the approved normal state"), Index),
-			GetButtonNormalResourcePath(RosterButton).Contains(TEXT("003_tab_1")));
+			*FString::Printf(TEXT("text roster button %d identifies the active viewing category"), Index),
+			GetButtonNormalResourcePath(RosterButton).Contains(Index==0 ? TEXT("004_tab_2") : TEXT("003_tab_1")));
 		const UCanvasPanelSlot* Slot = Button ? Cast<UCanvasPanelSlot>(Button->Slot) : nullptr;
 		if (TestNotNull(*FString::Printf(TEXT("roster button %d is placed on the reference canvas"), Index), Slot))
 		{
-			TestEqual(
-				*FString::Printf(TEXT("roster button %d is fixed to the lower-left row"), Index),
-				Slot->GetPosition(),
-				FVector2D(414.0f + Index * 113.0f, 706.0f));
-			TestEqual(
-				*FString::Printf(TEXT("roster button %d keeps the compact portrait size"), Index),
-				Slot->GetSize(),
-				FVector2D(105.0f, 62.0f));
+			TestTrue(TEXT("text switches form a centred row under the character art"),
+				FMath::IsNearlyEqual(Slot->GetPosition().X + 53.0 - (Index-1)*118.0,682.0,2.0)
+				&& Slot->GetPosition().Y>=650.0 && Slot->GetPosition().Y<=700.0);
+			TestTrue(TEXT("text switches keep a readable button target"),Slot->GetSize().X>=100.0 && Slot->GetSize().Y>=36.0);
 			TestTrue(
 				*FString::Printf(TEXT("roster button %d remains above bottom navigation"), Index),
 				Slot->GetPosition().Y + Slot->GetSize().Y < GameXXKDesktopTrainingLayout::GetNavigationRect().Y);
@@ -6326,16 +6380,9 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterRepresentativePortrait_1")) : nullptr);
 	const UImage* NpcRepresentative = Cast<UImage>(
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterRepresentativePortrait_2")) : nullptr);
-	TestEqual(
-		TEXT("hero roster entry uses the real hero portrait"),
-		GetImageResourcePath(HeroRepresentative),
-		FString(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Hero.T_CardPortrait_Hero")));
-	TestTrue(
-		TEXT("partner roster entry uses a real profession portrait"),
-		GetImageResourcePath(CompanionRepresentative).Contains(TEXT("/T_CardPortrait_Role_")));
-	TestTrue(
-		TEXT("NPC roster entry uses a real named-NPC portrait"),
-		GetImageResourcePath(NpcRepresentative).Contains(TEXT("/T_CardPortrait_Npc_")));
+	TestNull(TEXT("hero switch is text only"),HeroRepresentative);
+	TestNull(TEXT("partner switch is text only"),CompanionRepresentative);
+	TestNull(TEXT("NPC switch is text only"),NpcRepresentative);
 
 	const TArray<FName> CompanionIds = Widget->GetCompanionCharacterIdsForTest();
 	const TArray<FName> NpcIds = Widget->GetNpcCharacterIdsForTest();
@@ -6859,6 +6906,7 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest::RunTe
 	}
 	for (int32 Index = 0; Index < CompanionIds.Num(); ++Index)
 	{
+		if (Index>0 && !RouteVisibleButtonDelegateAndFlush(*this,Widget,FindWorkbenchActionButton(Widget,TEXT("CharacterRosterCompanionButton")),TEXT("reopen partner picker"))) return false;
 		if (!RouteVisibleButtonDelegateAndFlush(
 			*this,
 			Widget,
@@ -6881,6 +6929,7 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest::RunTe
 	}
 	for (int32 Index = 0; Index < NpcIds.Num(); ++Index)
 	{
+		if (Index>0 && !RouteVisibleButtonDelegateAndFlush(*this,Widget,FindWorkbenchActionButton(Widget,TEXT("CharacterRosterNpcButton")),TEXT("reopen NPC picker"))) return false;
 		if (!RouteVisibleButtonDelegateAndFlush(
 			*this,
 			Widget,
@@ -6959,7 +7008,7 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest::RunTe
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest,
-	"GameXXK.DesktopTraining.Workbench.CharacterRoster.CategorySelectsStableRepresentative",
+	"GameXXK.DesktopTraining.Workbench.CharacterRoster.CategoryOpensExplicitPicker",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
@@ -7068,7 +7117,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 		&TravelBefore,
 		&Slots](const FName ExpectedOwnerId) -> bool
 	{
-		TestEqual(TEXT("category delegate immediately updates the active Backpack owner"),
+		TestEqual(TEXT("explicit member selection updates the active Backpack owner"),
 			Widget->GetActiveBackpackCharacterIdForTest(), ExpectedOwnerId);
 		UGameXXKInventoryWindowWidget* Embedded = FindEmbeddedInventory(Widget);
 		if (!TestNotNull(TEXT("category delegate owns a rebuilt embedded Backpack"),
@@ -7077,7 +7126,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 			return false;
 		}
 		const FName EmbeddedOwnerId = Embedded->GetConfiguredCharacterIdForTest();
-		TestEqual(TEXT("category delegate immediately configures the embedded owner"),
+		TestEqual(TEXT("explicit member selection configures the embedded owner"),
 			EmbeddedOwnerId, ExpectedOwnerId);
 		FGameXXKEquipmentLoadoutSnapshot Snapshot;
 		if (!TestTrue(TEXT("embedded category owner resolves a loadout snapshot"),
@@ -7161,6 +7210,9 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 		Widget->HasDesktopCarriedEntry());
 	TestEqual(TEXT("partner category switch rebuilds exactly once"),
 		Widget->GetProgrammaticLayoutBuildCountForTest(), PartnerBuildCount + 1);
+	TestEqual(TEXT("opening the partner page keeps the prior viewed owner"),Widget->GetActiveBackpackCharacterIdForTest(),FGameXXKEquipmentRules::HeroCharacterId());
+	if (!RouteVisibleButtonDelegateAndFlush(*this,Widget,FindWorkbenchActionButton(Widget,
+		*FString::Printf(TEXT("CharacterRosterPortraitButton_1_%d"),CompanionIds.IndexOfByKey(ExpectedCompanionId))),TEXT("choose exact partner"))) return false;
 	if (!VerifyRepresentative(ExpectedCompanionId))
 	{
 		return false;
@@ -7185,6 +7237,9 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 		Widget->HasDesktopCarriedEntry());
 	TestEqual(TEXT("NPC category switch rebuilds exactly once"),
 		Widget->GetProgrammaticLayoutBuildCountForTest(), NpcBuildCount + 1);
+	TestEqual(TEXT("opening the NPC page keeps the selected companion"),Widget->GetActiveBackpackCharacterIdForTest(),ExpectedCompanionId);
+	if (!RouteVisibleButtonDelegateAndFlush(*this,Widget,FindWorkbenchActionButton(Widget,
+		*FString::Printf(TEXT("CharacterRosterPortraitButton_2_%d"),NpcIds.IndexOfByKey(ExpectedNpcId))),TEXT("choose exact NPC"))) return false;
 	return VerifyRepresentative(ExpectedNpcId);
 }
 
@@ -7231,7 +7286,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	TestTrue(TEXT("opening the Hero category uses its selected texture"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
 			Widget, TEXT("CharacterRosterHeroButton"))).Contains(TEXT("004_tab_2")));
-	TestNotNull(TEXT("opening the Hero category reveals its current member layer"),
+	TestNull(TEXT("the hero text switch returns directly without a one-card popup"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_0_0"))
 			: nullptr);
@@ -7245,7 +7300,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	}
 	TestTrue(TEXT("collapsing the Hero category restores its normal texture"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
-			Widget, TEXT("CharacterRosterHeroButton"))).Contains(TEXT("003_tab_1")));
+			Widget, TEXT("CharacterRosterHeroButton"))).Contains(TEXT("004_tab_2")));
 	TestNull(TEXT("collapsing the Hero category hides its member layer"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_0_0"))
@@ -7282,7 +7337,7 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	}
 	TestEqual(TEXT("member click selects the exact companion owner"),
 		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
-	TestNotNull(TEXT("selecting a partner keeps the member layer open"),
+	TestNull(TEXT("choosing a partner closes the full-page picker"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
 			: nullptr);
@@ -7291,33 +7346,33 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 		*this,
 		Widget,
 		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
-		TEXT("selected partner category collapse")))
+		TEXT("selected partner category open")))
 	{
 		return false;
 	}
-	TestNull(TEXT("clicking the selected partner category hides only its member layer"),
+	TestNotNull(TEXT("clicking the selected partner category opens its full-page picker"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
 			: nullptr);
 	TestEqual(TEXT("collapsing the member layer preserves the selected companion"),
 		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
-	TestTrue(TEXT("collapsed partner category returns to its normal texture"),
+	TestTrue(TEXT("open partner picker shows the selected category"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
-			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("003_tab_1")));
+			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("004_tab_2")));
 
 	if (!RouteVisibleButtonDelegateAndFlush(
 		*this,
 		Widget,
 		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterCompanionButton")),
-		TEXT("selected partner category reopen")))
+		TEXT("selected partner category cancel")))
 	{
 		return false;
 	}
-	TestNotNull(TEXT("clicking the selected partner category again restores its member layer"),
+	TestNull(TEXT("clicking the selected partner category again cancels the picker"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_1_0"))
 			: nullptr);
-	TestTrue(TEXT("reopened partner category uses its selected texture"),
+	TestTrue(TEXT("the viewed partner category stays selected after cancel"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
 			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("004_tab_2")));
 	TestEqual(TEXT("reopening the member layer still preserves the selected companion"),
@@ -7415,11 +7470,11 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 		*this,
 		Widget,
 		FindWorkbenchActionButton(Widget, TEXT("CharacterRosterNpcButton")),
-		TEXT("selected NPC category collapse")))
+		TEXT("selected NPC category open")))
 	{
 		return false;
 	}
-	TestNull(TEXT("clicking the selected NPC category hides its six member tabs"),
+	TestNotNull(TEXT("clicking the selected NPC category opens its six cards"),
 		Widget->WidgetTree
 			? Widget->WidgetTree->FindWidget(TEXT("CharacterRosterPortraitButton_2_0"))
 			: nullptr);
@@ -7434,14 +7489,17 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	{
 		return false;
 	}
-	TestEqual(TEXT("returning to partners restores the last explicit companion"),
-		Widget->GetActiveBackpackCharacterIdForTest(), SelectedCompanionId);
+	TestEqual(TEXT("browsing partners keeps the prior NPC view until a card is chosen"),
+		Widget->GetActiveBackpackCharacterIdForTest(), SelectedNpcId);
 	TestTrue(TEXT("partner category is selected after returning"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
 			Widget, TEXT("CharacterRosterCompanionButton"))).Contains(TEXT("004_tab_2")));
 	TestTrue(TEXT("NPC category becomes unselected after returning to partners"),
 		GetButtonNormalResourcePath(FindWorkbenchActionButton(
 			Widget, TEXT("CharacterRosterNpcButton"))).Contains(TEXT("003_tab_1")));
+	if (!RouteVisibleButtonDelegateAndFlush(*this,Widget,FindWorkbenchActionButton(Widget,
+		*FString::Printf(TEXT("CharacterRosterPortraitButton_1_%d"),CompanionIndex)),TEXT("choose remembered partner"))) return false;
+	TestEqual(TEXT("explicit choice restores the remembered partner view"),Widget->GetActiveBackpackCharacterIdForTest(),SelectedCompanionId);
 	return true;
 }
 

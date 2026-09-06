@@ -3,6 +3,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKRelicRules.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/GameViewportSubsystem.h"
 #include "Blueprint/WidgetTree.h"
@@ -22,6 +23,7 @@
 #include "UI/GameXXKMainMenuWidget.h"
 #include "UI/GameXXKMetaShopWidget.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UI/GameXXKRelicBarWidget.h"
 #include "UI/GameXXKTownHudWidget.h"
 #include "UI/GameXXKTownOverlayWidget.h"
 #include "UI/GameXXKWorldMapWidget.h"
@@ -316,6 +318,43 @@ bool FGameXXKDesktopTrainingLazyBootTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("explicit request creates the shop"), PlayerController->GetMetaShopWidgetForTest());
 	TestNull(TEXT("shop request does not create the route map"), PlayerController->GetRouteMapWidgetForTest());
 	TestNull(TEXT("shop request does not create the old inventory"), PlayerController->GetInventoryWindowWidgetForTest());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKDesktopRelicPromotionTest,
+	"GameXXK.MVP.UI.DesktopRelicPromotion",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKDesktopRelicPromotionTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	Subsystem->GetMutableRuntimeState() = GameXXKPermanentPartyTestFixtures::MakeStartedState();
+	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
+	AGameXXKMVPPlayerController* Controller = NewObject<AGameXXKMVPPlayerController>();
+	Controller->SetMVPSubsystemForTest(Subsystem);
+	Controller->SetDesktopTrainingBootProfileForTest(true);
+	TestTrue(TEXT("desktop starts without escalating the full UI"), Controller->EnsureDesktopTrainingWidgetsForTest());
+	TestNull(TEXT("no relic inventory is allocated for an empty desktop"), Controller->GetRelicBarWidgetForTest());
+	if (!TestTrue(TEXT("challenge enters the current route"), Subsystem->StartTrainingChallenge(TEXT("Training.Normal.1-1")))) return false;
+	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+	TestTrue(TEXT("a real run relic is acquired"), FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.AncientCoin")));
+	Controller->RefreshPlayerFlowWidgetsForTest();
+	UGameXXKRelicBarWidget* Bar = Controller->GetRelicBarWidgetForTest();
+	if (!TestNotNull(TEXT("the desktop route promotes its acquired-relic HUD"), Bar)) return false;
+	TestEqual(TEXT("the acquired relic is projected"), Bar->GetRenderedRelicCountForTest(), 1);
+	const FGameXXKRouteMapNode* BattleNode = State.RouteMapNodes.FindByPredicate([&State](const FGameXXKRouteMapNode& Node)
+	{
+		return Node.NodeKind == EGameXXKNodeKind::Battle && State.ReachableRouteNodeIds.Contains(Node.NodeId);
+	});
+	if (!TestNotNull(TEXT("current route has a reachable battle"), BattleNode)) return false;
+	TestTrue(TEXT("entering the battle succeeds"), Subsystem->SelectRouteNodeById(BattleNode->NodeId));
+	Controller->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("battle reuses the same relic inventory"), Controller->GetRelicBarWidgetForTest(), Bar);
+	TestEqual(TEXT("battle keeps the relic visible without blocking the board"), Bar->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+	TestTrue(TEXT("abandon returns to the workbench"), Subsystem->CancelTrainingChallengeToWorkbench());
+	Controller->RefreshPlayerFlowWidgetsForTest();
+	TestEqual(TEXT("the route relic bar closes outside the run"), Bar->GetVisibility(), ESlateVisibility::Collapsed);
 	return true;
 }
 

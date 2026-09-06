@@ -210,8 +210,8 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("merchant root is self-hit-test-invisible"), Widget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 	TestEqual(TEXT("merchant design width targets 1920"), Widget->GetDesignResolutionForTest().X, 1920.0);
 	TestEqual(TEXT("merchant design height targets 1080"), Widget->GetDesignResolutionForTest().Y, 1080.0);
-	TestTrue(TEXT("left merchant column uses about twenty-three percent"), FMath::IsNearlyEqual(Widget->GetMerchantColumnFractionForTest(), 0.23f, 0.01f));
-	TestTrue(TEXT("right offers column uses about seventy-seven percent"), FMath::IsNearlyEqual(Widget->GetOffersColumnFractionForTest(), 0.77f, 0.01f));
+	TestTrue(TEXT("no empty merchant placeholder column"), FMath::IsNearlyEqual(Widget->GetMerchantColumnFractionForTest(), 0.0f, 0.01f));
+	TestTrue(TEXT("offers use the full content area"), FMath::IsNearlyEqual(Widget->GetOffersColumnFractionForTest(), 1.0f, 0.01f));
 	TestTrue(TEXT("programmatic root contains a safe-area widget"), FindWidget<USafeZone>(Widget, TEXT("RouteMerchantSafeArea")) != nullptr);
 
 	UHorizontalBox* CardRow = FindWidget<UHorizontalBox>(Widget, TEXT("RouteMerchantCardRow"));
@@ -223,14 +223,14 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("read model renders exactly four card offers"), Widget->GetRenderedCardOfferCountForTest(), 4);
 	TestEqual(TEXT("read model renders exactly four relic offers"), Widget->GetRenderedRelicOfferCountForTest(), 4);
 	TestTrue(TEXT("card offer frames are portrait-shaped"), Widget->GetCardFrameSizeForTest().Y > Widget->GetCardFrameSizeForTest().X);
-	TestTrue(TEXT("card offer frames are reduced for the two-row page"),
-		Widget->GetCardFrameSizeForTest().X <= 200.0f && Widget->GetCardFrameSizeForTest().Y <= 280.0f);
+	TestTrue(TEXT("card offer frames leave space for a larger readable title"),
+		Widget->GetCardFrameSizeForTest().X >= 200.0f && Widget->GetCardFrameSizeForTest().Y >= 280.0f);
 	USizeBox* RelicVisual = FindWidget<USizeBox>(Widget, TEXT("RouteMerchantOfferVisualSize4"));
-	TestTrue(TEXT("relic offer uses a compact square visual"),
+	TestTrue(TEXT("relic offer uses a shallow contained visual"),
 		RelicVisual
-		&& FMath::IsNearlyEqual(RelicVisual->GetWidthOverride(), RelicVisual->GetHeightOverride())
-		&& RelicVisual->GetWidthOverride() <= 200.0f);
-	TestTrue(TEXT("card row reuses the approved PSD057 frame"), Widget->GetCardFrameResourcePathForTest().Contains(TEXT("T_CardFrame_PSD057")));
+		&& RelicVisual->GetWidthOverride() > RelicVisual->GetHeightOverride()
+		&& RelicVisual->GetWidthOverride() <= 310.0f);
+	TestTrue(TEXT("card row reuses the shared approved MasterV2 frame"), Widget->GetCardFrameResourcePathForTest().Contains(TEXT("T_MasterV2_CardFrame")));
 	TestEqual(TEXT("all eight offer bodies expose tooltips"), Widget->GetOfferTooltipCountForTest(), 8);
 	TestTrue(TEXT("only buttons remain hit-testable in the merchant tree"), Widget->HasOnlyButtonHitTargetsForTest());
 
@@ -344,6 +344,9 @@ bool FGameXXKRouteMerchantWidgetMixedOwnerLabelsTest::RunTest(const FString& Par
 		{
 			++QuestNpcOwnerCount;
 			TestTrue(TEXT("quest NPC offer uses the friendly catalog label"), OwnerText.Contains(QuestNpcName));
+			const auto* Art = FindWidget<UImage>(Widget,*FString::Printf(TEXT("RouteMerchantOfferArt%d"),Index));
+			TestTrue(TEXT("quest NPC offers reuse the existing battle card portrait"),Art && Art->GetBrush().GetResourceObject()
+				&& Art->GetBrush().GetResourceObject()->GetPathName().Contains(TEXT("T_CardPortrait_Npc_")));
 		}
 	}
 	TestEqual(TEXT("mixed stock contains one hero-owned card"), HeroOwnerCount, 1);

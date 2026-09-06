@@ -394,6 +394,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveBattleVictory(bool bBossBattle);
 
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	bool HasPendingTrainingSettlement() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
+	FGameXXKTrainingSettlementReceipt GetPendingTrainingSettlementCopy() const;
+
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
+	bool ConfirmTrainingSettlement(FGuid ReceiptId);
+
+	static FString GetTrainingCheckpointSlotName();
+
 	/** Commits one tiered battle reward option through the rules, then the victory gate advances the route. */
 	bool ResolvePendingBattleRewardChoiceAndFinish(
 		int32 OptionIndex,
@@ -642,6 +653,9 @@ public:
 	TArray<FName> BuildTurnOrder(bool bBossBattle) const;
 
 private:
+	bool PersistTrainingCheckpoint(const FGameXXKRuntimeState& Candidate);
+	bool IsTrainingCheckpointWorld() const;
+	bool bRecoveringTrainingCheckpoint = false;
 	bool WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, int32 UserIndex);
 	bool BuildTrainingTravelRuntimeForState(
 		const FGameXXKRuntimeState& State,

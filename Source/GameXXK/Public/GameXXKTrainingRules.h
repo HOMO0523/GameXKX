@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameXXKTrainingSettlementTypes.h"
 #include "GameXXKTrainingRules.generated.h"
 
 struct FGameXXKRuntimeState;
@@ -346,6 +347,12 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingProgress
 {
 	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKTrainingSettlementReceipt PendingSettlement;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGuid LastAppliedSettlementId;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TSet<FName> ClearedStageIds;

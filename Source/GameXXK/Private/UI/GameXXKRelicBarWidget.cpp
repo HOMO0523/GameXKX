@@ -7,6 +7,8 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
+#include "Components/ScrollBox.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
@@ -16,7 +18,7 @@
 
 namespace
 {
-	constexpr float IconSize = 72.0f;
+	constexpr float IconSize = 52.0f;
 	constexpr float SlotGap = 6.0f;
 	constexpr int32 ColumnCount = 6;
 }
@@ -48,12 +50,16 @@ void UGameXXKRelicBarWidget::EnsureWidgetTree()
 	WidgetTree->RootWidget = RootCanvas;
 	RelicGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("RelicBarSixColumnGrid"));
 	RelicGrid->SetSlotPadding(FMargin(SlotGap * 0.5f));
-	if (UCanvasPanelSlot* GridCanvasSlot = RootCanvas->AddChildToCanvas(RelicGrid))
+	UScrollBox* Scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("RelicBarOverflow"));
+	Scroll->SetOrientation(Orient_Vertical); Scroll->SetScrollbarThickness(FVector2D(3,3));
+	Scroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	Scroll->AddChild(RelicGrid);
+	if (UCanvasPanelSlot* GridCanvasSlot = RootCanvas->AddChildToCanvas(Scroll))
 	{
-		GridCanvasSlot->SetAnchors(FAnchors(1.0f, 0.0f));
-		GridCanvasSlot->SetAlignment(FVector2D(1.0f, 0.0f));
-		GridCanvasSlot->SetPosition(FVector2D(-24.0f, 24.0f));
-		GridCanvasSlot->SetAutoSize(true);
+		GridCanvasSlot->SetAnchors(FAnchors(1.0f,0.0f));
+		GridCanvasSlot->SetAlignment(FVector2D(1.0f,0.0f));
+		GridCanvasSlot->SetPosition(FVector2D(-24.0f,175.0f));
+		GridCanvasSlot->SetSize(FVector2D(354.0f,116.0f));
 		GridCanvasSlot->SetZOrder(1);
 	}
 	SetVisibility(ESlateVisibility::Collapsed);
@@ -108,8 +114,7 @@ void UGameXXKRelicBarWidget::RefreshFromState()
 			UTextBlock* StackText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			StackText->SetText(FText::AsNumber(Instance.Stacks));
 			StackText->SetColorAndOpacity(FSlateColor(FLinearColor(0.10f, 0.08f, 0.05f, 1.0f)));
-			FSlateFontInfo Font = StackText->GetFont();
-			Font.Size = 18;
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(18, false, true);
 			StackText->SetFont(Font);
 			StackText->SetVisibility(ESlateVisibility::HitTestInvisible);
 			if (UOverlaySlot* TextSlot = Overlay->AddChildToOverlay(StackText))
@@ -121,6 +126,10 @@ void UGameXXKRelicBarWidget::RefreshFromState()
 		}
 		RelicGrid->AddChildToUniformGrid(IconBox, Index / ColumnCount, Index % ColumnCount);
 		++RenderedRelicCount;
+	}
+	if (auto* Overflow = Cast<UScrollBox>(WidgetTree->FindWidget(TEXT("RelicBarOverflow"))))
+	{
+		Overflow->SetScrollBarVisibility(RenderedRelicCount > 12 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 	SetVisibility(RenderedRelicCount > 0 ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 }

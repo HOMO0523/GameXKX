@@ -1,7 +1,9 @@
 #include "UI/GameXXKRouteMerchantWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
+#include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
@@ -32,15 +34,15 @@
 namespace
 {
 	const FVector2D MerchantDesignResolution(1920.0f, 1080.0f);
-	const FVector2D MerchantCardFrameSize(170.0f, 238.0f);
-	const FVector2D MerchantRelicFrameSize(170.0f, 170.0f);
-	constexpr float MerchantColumnFraction = 0.23f;
-	constexpr float OffersColumnFraction = 0.77f;
+	const FVector2D MerchantCardFrameSize(206.0f, 285.0f);
+	const FVector2D MerchantRelicFrameSize(300.0f, 104.0f);
+	constexpr float MerchantColumnFraction = 0.0f;
+	constexpr float OffersColumnFraction = 1.0f;
 	constexpr int32 MerchantCardSlotCount = 4;
 	constexpr int32 MerchantRelicSlotCount = 4;
 	constexpr int32 MerchantOfferSlotCount = MerchantCardSlotCount + MerchantRelicSlotCount;
 
-	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/Cards/Textures/T_CardFrame_PSD057.T_CardFrame_PSD057");
+	static constexpr const TCHAR* CardFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardFrame.T_MasterV2_CardFrame");
 	static constexpr const TCHAR* RelicFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 	static constexpr const TCHAR* PanelFrameTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame");
 	static constexpr const TCHAR* ActionButtonTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/Controls/T_TownPsd_ButtonPrimary.T_TownPsd_ButtonPrimary");
@@ -108,8 +110,7 @@ namespace
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
 		TextBlock->SetAutoWrapText(true);
 		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
-		FSlateFontInfo Font = TextBlock->GetFont();
-		Font.Size = FontSize;
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize, true, FontSize >= 20);
 		TextBlock->SetFont(Font);
 		return TextBlock;
 	}
@@ -138,6 +139,15 @@ namespace
 		if (Definition.Owner == EGameXXKCardOwner::Hero)
 		{
 			return HeroPortraitTexturePath;
+		}
+		if (Definition.Owner == EGameXXKCardOwner::QuestNpc)
+		{
+			const FName NpcId = Definition.NpcId.IsNone() ? Definition.OwnerId : Definition.NpcId;
+			if (FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId))
+			{
+				const FString Suffix = NpcId.ToString().RightChop(4);
+				return FString::Printf(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_%s.T_CardPortrait_Npc_%s"),*Suffix,*Suffix);
+			}
 		}
 		if (Definition.Owner != EGameXXKCardOwner::Profession)
 		{
@@ -481,197 +491,70 @@ void UGameXXKRouteMerchantWidget::RegisterGuideTargets()
 
 void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 {
-	if (!WidgetTree)
-	{
-		WidgetTree = NewObject<UWidgetTree>(this, TEXT("RouteMerchantWidgetTree"));
-	}
-	if (!WidgetTree || RootSafeArea)
-	{
-		return;
-	}
-
+	if (!WidgetTree) WidgetTree = NewObject<UWidgetTree>(this, TEXT("RouteMerchantWidgetTree"));
+	if (!WidgetTree || RootSafeArea) return;
 	RootSafeArea = WidgetTree->ConstructWidget<USafeZone>(USafeZone::StaticClass(), TEXT("RouteMerchantSafeArea"));
-	RootSafeArea->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	WidgetTree->RootWidget = RootSafeArea;
-
+	RootSafeArea->SetVisibility(ESlateVisibility::SelfHitTestInvisible); WidgetTree->RootWidget = RootSafeArea;
 	ResponsiveScaleBox = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("RouteMerchantResponsiveScale"));
-	ResponsiveScaleBox->SetStretch(EStretch::ScaleToFit);
-	ResponsiveScaleBox->SetStretchDirection(EStretchDirection::Both);
+	ResponsiveScaleBox->SetStretch(EStretch::ScaleToFit); ResponsiveScaleBox->SetStretchDirection(EStretchDirection::Both);
 	ResponsiveScaleBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	RootSafeArea->AddChild(ResponsiveScaleBox);
-
+	UOverlay* ViewportLayers = WidgetTree->ConstructWidget<UOverlay>();
+	ViewportLayers->SetVisibility(ESlateVisibility::SelfHitTestInvisible); RootSafeArea->AddChild(ViewportLayers);
+	auto* FullBackdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("RouteMerchantBackdrop"));
+	FullBackdrop->SetBrushColor(FLinearColor(.022f,.027f,.021f,.97f)); FullBackdrop->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (auto* BackdropSlot = ViewportLayers->AddChildToOverlay(FullBackdrop)) { BackdropSlot->SetHorizontalAlignment(HAlign_Fill); BackdropSlot->SetVerticalAlignment(VAlign_Fill); }
+	if (auto* ScaleSlot = ViewportLayers->AddChildToOverlay(ResponsiveScaleBox)) { ScaleSlot->SetHorizontalAlignment(HAlign_Fill); ScaleSlot->SetVerticalAlignment(VAlign_Fill); }
 	DesignSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RouteMerchantDesign1920x1080"));
-	DesignSizeBox->SetWidthOverride(MerchantDesignResolution.X);
-	DesignSizeBox->SetHeightOverride(MerchantDesignResolution.Y);
-	DesignSizeBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	ResponsiveScaleBox->AddChild(DesignSizeBox);
-
+	DesignSizeBox->SetWidthOverride(1920); DesignSizeBox->SetHeightOverride(1080);
+	DesignSizeBox->SetVisibility(ESlateVisibility::SelfHitTestInvisible); ResponsiveScaleBox->AddChild(DesignSizeBox);
 	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteMerchantRootCanvas"));
-	RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	DesignSizeBox->AddChild(RootCanvas);
+	RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible); DesignSizeBox->AddChild(RootCanvas);
 
-	UBorder* Backdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantBackdrop"));
-	Backdrop->SetBrushColor(FLinearColor(0.055f, 0.047f, 0.035f, 0.96f));
-	Backdrop->SetVisibility(ESlateVisibility::HitTestInvisible);
-	AddCanvasChild(RootCanvas, Backdrop, FVector2D::ZeroVector, MerchantDesignResolution, 0);
-
-	const float MerchantColumnWidth = MerchantDesignResolution.X * MerchantColumnFraction;
-	const float OffersColumnWidth = MerchantDesignResolution.X * OffersColumnFraction;
-	UBorder* MerchantPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantLeftPanel"));
-	MerchantPanel->SetBrush(MakeTextureBrush(PanelFrameTexturePath, FVector2D(MerchantColumnWidth - 46.0f, 982.0f), ESlateBrushDrawType::Box));
-	MerchantPanel->SetBrushColor(FLinearColor::White);
-	MerchantPanel->SetPadding(FMargin(36.0f, 44.0f));
-	MerchantPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddCanvasChild(RootCanvas, MerchantPanel, FVector2D(24.0f, 48.0f), FVector2D(MerchantColumnWidth - 48.0f, 984.0f), 1);
-
-	UVerticalBox* MerchantCopy = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("RouteMerchantLeftCopy"));
-	MerchantCopy->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	MerchantPanel->SetContent(MerchantCopy);
-	UTextBlock* MerchantTitle = MakeText(WidgetTree, NSLOCTEXT("GameXXKRouteMerchant", "MerchantTitle", "山路行商"), 38, FLinearColor(0.12f, 0.08f, 0.04f, 1.0f));
-	MerchantTitle->SetJustification(ETextJustify::Center);
-	if (UVerticalBoxSlot* ChildSlot = MerchantCopy->AddChildToVerticalBox(MerchantTitle))
-	{
-		ChildSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 32.0f));
-	}
-
-	UBorder* MerchantPlaceholder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantPortraitPlaceholder"));
-	MerchantPlaceholder->SetBrushColor(FLinearColor(0.76f, 0.67f, 0.49f, 0.34f));
-	MerchantPlaceholder->SetPadding(FMargin(22.0f));
-	MerchantPlaceholder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	UTextBlock* PlaceholderCopy = MakeText(
-		WidgetTree,
-		NSLOCTEXT("GameXXKRouteMerchant", "MerchantPlaceholder", "行商立绘待接入\n\n山高路远，货随缘来。"),
-		20,
-		FLinearColor(0.24f, 0.16f, 0.08f, 1.0f));
-	PlaceholderCopy->SetJustification(ETextJustify::Center);
-	MerchantPlaceholder->SetVerticalAlignment(VAlign_Center);
-	MerchantPlaceholder->SetContent(PlaceholderCopy);
-	if (UVerticalBoxSlot* ChildSlot = MerchantCopy->AddChildToVerticalBox(MerchantPlaceholder))
-	{
-		ChildSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-		ChildSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 30.0f));
-	}
-
-	UTextBlock* MerchantExplanation = MakeText(
-		WidgetTree,
-		NSLOCTEXT("GameXXKRouteMerchant", "MerchantExplanation", "上排：当前队伍携带卡牌强化。\n下排：本局可购买遗物。\n全部使用普通金币；已购商品不会被刷新。"),
-		21,
-		FLinearColor(0.19f, 0.13f, 0.075f, 1.0f));
-	MerchantExplanation->SetJustification(ETextJustify::Center);
-	if (UVerticalBoxSlot* ChildSlot = MerchantCopy->AddChildToVerticalBox(MerchantExplanation))
-	{
-		ChildSlot->SetPadding(FMargin(6.0f, 12.0f));
-	}
-
-	LastActionErrorText = MakeText(
-		WidgetTree,
-		FText::GetEmpty(),
-		18,
-		FLinearColor(0.62f, 0.075f, 0.035f, 1.0f),
-		TEXT("RouteMerchantLastActionError"));
-	LastActionErrorText->SetJustification(ETextJustify::Center);
-	LastActionErrorText->SetVisibility(ESlateVisibility::Collapsed);
-	if (UVerticalBoxSlot* ChildSlot = MerchantCopy->AddChildToVerticalBox(LastActionErrorText))
-	{
-		ChildSlot->SetPadding(FMargin(6.0f, 8.0f));
-	}
-
-	UCanvasPanel* OffersCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteMerchantOffersCanvas"));
-	OffersCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddCanvasChild(RootCanvas, OffersCanvas, FVector2D(MerchantColumnWidth, 0.0f), FVector2D(OffersColumnWidth, MerchantDesignResolution.Y), 2);
-
-	UTextBlock* Header = MakeText(WidgetTree, NSLOCTEXT("GameXXKRouteMerchant", "StockHeader", "途中货栈"), 34, FLinearColor(0.94f, 0.84f, 0.62f, 1.0f));
-	AddCanvasChild(OffersCanvas, Header, FVector2D(58.0f, 24.0f), FVector2D(360.0f, 52.0f));
-	OrdinaryGoldText = MakeText(WidgetTree, FText::GetEmpty(), 30, FLinearColor(0.94f, 0.84f, 0.62f, 1.0f), TEXT("RouteMerchantOrdinaryGold"));
-	OrdinaryGoldText->SetJustification(ETextJustify::Right);
-	AddCanvasChild(OffersCanvas, OrdinaryGoldText, FVector2D(OffersColumnWidth - 430.0f, 24.0f), FVector2D(350.0f, 52.0f));
-
-	UTextBlock* CardRowHeader = MakeText(
-		WidgetTree,
-		NSLOCTEXT("GameXXKRouteMerchant", "CardRowHeader", "卡牌强化"),
-		20,
-		FLinearColor(0.94f, 0.84f, 0.62f, 1.0f),
-		TEXT("RouteMerchantCardRowHeader"));
-	AddCanvasChild(OffersCanvas, CardRowHeader, FVector2D(32.0f, 76.0f), FVector2D(240.0f, 32.0f));
+	auto* Paper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantPaper"));
+	Paper->SetBrush(FGameXXKInRunUiStyle::Paper({1736, 980})); Paper->SetBrushColor(FLinearColor::White);
+	Paper->SetVisibility(ESlateVisibility::HitTestInvisible); AddCanvasChild(RootCanvas, Paper, {92, 48}, {1736, 980}, 1);
+	auto* Title = MakeText(WidgetTree, FText::FromString(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
+	AddCanvasChild(RootCanvas, Title, {163, 91}, {990, 76}, 2);
+	OrdinaryGoldText = MakeText(WidgetTree, FText::GetEmpty(), 29, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantOrdinaryGold"));
+	OrdinaryGoldText->SetJustification(ETextJustify::Right); AddCanvasChild(RootCanvas, OrdinaryGoldText, {1390, 117}, {350, 50}, 2);
+	auto* CardHeader = MakeText(WidgetTree, FText::FromString(TEXT("卡牌强化")), 23, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantCardRowHeader"));
+	AddCanvasChild(RootCanvas, CardHeader, {161, 193}, {620, 41}, 2);
 	CardOfferRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("RouteMerchantCardRow"));
-	CardOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddCanvasChild(OffersCanvas, CardOfferRow, FVector2D(24.0f, 108.0f), FVector2D(OffersColumnWidth - 48.0f, 392.0f));
-	for (int32 CardIndex = 0; CardIndex < MerchantCardSlotCount; ++CardIndex)
+	CardOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible); AddCanvasChild(RootCanvas, CardOfferRow, {145, 234}, {1630, 432}, 2);
+	for (int32 I = 0; I < MerchantCardSlotCount; ++I)
 	{
-		if (USizeBox* Cell = BuildOfferCell(EGameXXKRouteMerchantOfferKind::Card, CardIndex))
+		if (auto* Cell = BuildOfferCell(EGameXXKRouteMerchantOfferKind::Card, I))
 		{
-			if (UHorizontalBoxSlot* ChildSlot = CardOfferRow->AddChildToHorizontalBox(Cell))
-			{
-				ChildSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-				ChildSlot->SetHorizontalAlignment(HAlign_Center);
-				ChildSlot->SetPadding(FMargin(6.0f, 0.0f));
-			}
+			auto* LayoutSlot = CardOfferRow->AddChildToHorizontalBox(Cell); LayoutSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			LayoutSlot->SetHorizontalAlignment(HAlign_Center); LayoutSlot->SetPadding(FMargin(8, 0));
 		}
 	}
-
-	UTextBlock* RelicRowHeader = MakeText(
-		WidgetTree,
-		NSLOCTEXT("GameXXKRouteMerchant", "RelicRowHeader", "遗物"),
-		20,
-		FLinearColor(0.94f, 0.84f, 0.62f, 1.0f),
-		TEXT("RouteMerchantRelicRowHeader"));
-	AddCanvasChild(OffersCanvas, RelicRowHeader, FVector2D(32.0f, 500.0f), FVector2D(240.0f, 32.0f));
+	AddCanvasChild(RootCanvas, MakeText(WidgetTree, FText::FromString(TEXT("随身遗物")), 25, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantRelicRowHeader")), {161, 671}, {700, 38}, 2);
 	RelicOfferRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("RouteMerchantRelicRow"));
-	RelicOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddCanvasChild(OffersCanvas, RelicOfferRow, FVector2D(24.0f, 532.0f), FVector2D(OffersColumnWidth - 48.0f, 392.0f));
-	for (int32 RelicIndex = 0; RelicIndex < MerchantRelicSlotCount; ++RelicIndex)
+	RelicOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible); AddCanvasChild(RootCanvas, RelicOfferRow, {145, 719}, {1630, 215}, 2);
+	for (int32 I = 0; I < MerchantRelicSlotCount; ++I)
 	{
-		const int32 GlobalIndex = MerchantCardSlotCount + RelicIndex;
-		if (USizeBox* Cell = BuildOfferCell(EGameXXKRouteMerchantOfferKind::Relic, GlobalIndex))
+		if (auto* Cell = BuildOfferCell(EGameXXKRouteMerchantOfferKind::Relic, MerchantCardSlotCount + I))
 		{
-			if (UHorizontalBoxSlot* ChildSlot = RelicOfferRow->AddChildToHorizontalBox(Cell))
-			{
-				ChildSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-				ChildSlot->SetHorizontalAlignment(HAlign_Center);
-				ChildSlot->SetPadding(FMargin(6.0f, 0.0f));
-			}
+			auto* LayoutSlot = RelicOfferRow->AddChildToHorizontalBox(Cell); LayoutSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			LayoutSlot->SetHorizontalAlignment(HAlign_Center); LayoutSlot->SetPadding(FMargin(8, 0));
 		}
 	}
-
-	UHorizontalBox* BottomActions = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("RouteMerchantBottomActions"));
-	BottomActions->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-	AddCanvasChild(OffersCanvas, BottomActions, FVector2D(OffersColumnWidth - 650.0f, 972.0f), FVector2D(570.0f, 64.0f), 5);
-
-	auto AddActionButton = [this, BottomActions](UButton*& OutButton, UTextBlock*& OutLabel, const FName Name, const FName LabelName, const FText& InitialText)
-	{
-		OutButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
-		OutButton->SetStyle(MakeTextureButtonStyle(ActionButtonTexturePath, FVector2D(250.0f, 58.0f), true, FMargin(5.0f / 73.0f, 5.0f / 31.0f)));
-		OutLabel = MakeText(WidgetTree, InitialText, 21, FLinearColor(0.96f, 0.86f, 0.64f, 1.0f), LabelName);
-		OutLabel->SetJustification(ETextJustify::Center);
-		OutLabel->SetAutoWrapText(false);
-		FSlateFontInfo ActionFont = OutLabel->GetFont();
-		ActionFont.TypefaceFontName = TEXT("Bold");
-		OutLabel->SetFont(ActionFont);
-		OutButton->SetContent(OutLabel);
-		if (UHorizontalBoxSlot* ChildSlot = BottomActions->AddChildToHorizontalBox(OutButton))
-		{
-			ChildSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
-			ChildSlot->SetPadding(FMargin(10.0f, 2.0f));
-		}
-	};
-
-	UButton* RefreshRaw = nullptr;
-	UTextBlock* RefreshLabelRaw = nullptr;
-	AddActionButton(RefreshRaw, RefreshLabelRaw, TEXT("RouteMerchantRefreshButton"), TEXT("RouteMerchantRefreshLabel"), FText::GetEmpty());
-	RefreshButton = RefreshRaw;
-	RefreshButtonText = RefreshLabelRaw;
-	RefreshButton->OnClicked.AddDynamic(this, &UGameXXKRouteMerchantWidget::HandleRefreshClicked);
-
-	UButton* LeaveRaw = nullptr;
-	UTextBlock* LeaveLabelRaw = nullptr;
-	AddActionButton(LeaveRaw, LeaveLabelRaw, TEXT("RouteMerchantLeaveButton"), TEXT("RouteMerchantLeaveLabel"), NSLOCTEXT("GameXXKRouteMerchant", "Leave", "离开商店"));
-	LeaveButton = LeaveRaw;
-	LeaveButtonText = LeaveLabelRaw;
-	LeaveButton->OnClicked.AddDynamic(this, &UGameXXKRouteMerchantWidget::HandleLeaveClicked);
-
-	RenderedOfferIds.SetNum(MerchantOfferSlotCount);
-	OfferTooltips.SetNum(MerchantOfferSlotCount);
-	OfferDisabledReasons.SetNum(MerchantOfferSlotCount);
+	LastActionErrorText = MakeText(WidgetTree, FText::GetEmpty(), 18, FGameXXKInRunUiStyle::Vermilion(), TEXT("RouteMerchantLastActionError"));
+	LastActionErrorText->SetVisibility(ESlateVisibility::Collapsed); AddCanvasChild(RootCanvas, LastActionErrorText, {164, 956}, {886, 52}, 3);
+	RefreshButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("RouteMerchantRefreshButton"));
+	RefreshButton->SetStyle(FGameXXKInRunUiStyle::Action({316, 59}, false));
+	RefreshButtonText = MakeText(WidgetTree, FText::GetEmpty(), 22, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantRefreshLabel"));
+	RefreshButtonText->SetAutoWrapText(false); RefreshButtonText->SetJustification(ETextJustify::Center);
+	RefreshButton->SetContent(RefreshButtonText); RefreshButton->OnClicked.AddDynamic(this, &UGameXXKRouteMerchantWidget::HandleRefreshClicked);
+	AddCanvasChild(RootCanvas, RefreshButton, {1114, 952}, {316, 59}, 3);
+	LeaveButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("RouteMerchantLeaveButton"));
+	LeaveButton->SetStyle(FGameXXKInRunUiStyle::Action({280, 59}));
+	LeaveButtonText = MakeText(WidgetTree, FText::FromString(TEXT("离开商店")), 23, FLinearColor::White, TEXT("RouteMerchantLeaveLabel"));
+	LeaveButtonText->SetAutoWrapText(false); LeaveButtonText->SetJustification(ETextJustify::Center);
+	LeaveButton->SetContent(LeaveButtonText); LeaveButton->OnClicked.AddDynamic(this, &UGameXXKRouteMerchantWidget::HandleLeaveClicked);
+	AddCanvasChild(RootCanvas, LeaveButton, {1460, 952}, {280, 59}, 3);
+	RenderedOfferIds.SetNum(MerchantOfferSlotCount); OfferTooltips.SetNum(MerchantOfferSlotCount); OfferDisabledReasons.SetNum(MerchantOfferSlotCount);
 	SetVisibility(ESlateVisibility::Collapsed);
 }
 
@@ -687,8 +570,8 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	const FVector2D VisualSize = bCard ? MerchantCardFrameSize : MerchantRelicFrameSize;
 
 	USizeBox* Cell = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferCell%d"), GlobalOfferIndex));
-	Cell->SetWidthOverride(300.0f);
-	Cell->SetHeightOverride(390.0f);
+	Cell->SetWidthOverride(338.0f);
+	Cell->SetHeightOverride(bCard ? 432.0f : 215.0f);
 	Cell->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	UVerticalBox* Stack = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferStack%d"), GlobalOfferIndex));
 	Stack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
@@ -697,11 +580,12 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	UTextBlock* OwnerText = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
-		14,
-		FLinearColor(0.94f, 0.84f, 0.62f, 1.0f),
+		18,
+		FGameXXKInRunUiStyle::Ink(),
 		*FString::Printf(TEXT("RouteMerchantOfferOwner%d"), GlobalOfferIndex));
 	OwnerText->SetJustification(ETextJustify::Center);
 	OwnerText->SetAutoWrapText(false);
+	if (!bCard) OwnerText->SetVisibility(ESlateVisibility::Collapsed);
 	if (UVerticalBoxSlot* ChildSlot = Stack->AddChildToVerticalBox(OwnerText))
 	{
 		ChildSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 4.0f));
@@ -722,7 +606,7 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 		*FString::Printf(TEXT("RouteMerchantOfferDisplay%d"), GlobalOfferIndex));
 	DisplayButton->SetStyle(bCard
 		? MakeTextureButtonStyle(CardFrameTexturePath, VisualSize, false)
-		: MakeTextureButtonStyle(RelicFrameTexturePath, VisualSize, false));
+		: FGameXXKInRunUiStyle::Choice(VisualSize));
 	DisplayButton->Configure(this, NAME_None, false);
 	VisualBox->AddChild(DisplayButton);
 	OfferDisplayButtons.Add(DisplayButton);
@@ -730,14 +614,19 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	UOverlay* Face = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferFace%d"), GlobalOfferIndex));
 	Face->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	DisplayButton->SetContent(Face);
+	if (auto* FaceSlot = Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
 
 	UImage* Art = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferArt%d"), GlobalOfferIndex));
 	Art->SetVisibility(ESlateVisibility::Collapsed);
-	if (UOverlaySlot* ChildSlot = Face->AddChildToOverlay(Art))
+	UScaleBox* ArtScale = WidgetTree->ConstructWidget<UScaleBox>();
+	ArtScale->SetStretch(EStretch::ScaleToFit);
+	ArtScale->SetVisibility(ESlateVisibility::HitTestInvisible);
+	ArtScale->SetContent(Art);
+	if (UOverlaySlot* ChildSlot = Face->AddChildToOverlay(ArtScale))
 	{
 		ChildSlot->SetHorizontalAlignment(HAlign_Fill);
 		ChildSlot->SetVerticalAlignment(VAlign_Fill);
-		ChildSlot->SetPadding(bCard ? FMargin(24.0f, 24.0f, 24.0f, 64.0f) : FMargin(24.0f));
+		ChildSlot->SetPadding(bCard ? FMargin(8.0f, 48.0f, 8.0f, 9.0f) : FMargin(10.0f, 10.0f, 196.0f, 10.0f));
 	}
 	OfferArtImages.Add(Art);
 
@@ -758,32 +647,39 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	OfferArtUnavailableTexts.Add(ArtUnavailableText);
 
 	UBorder* TitleBar = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferTitleBar%d"), GlobalOfferIndex));
-	TitleBar->SetPadding(FMargin(7.0f, 5.0f));
+	TitleBar->SetPadding(FMargin(0.0f));
+	FSlateBrush NoNameBacking; NoNameBacking.DrawAs = ESlateBrushDrawType::NoDrawType; TitleBar->SetBrush(NoNameBacking);
 	TitleBar->SetBrushColor(FLinearColor(0.70f, 0.62f, 0.46f, 0.94f));
 	TitleBar->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	if (UOverlaySlot* ChildSlot = Face->AddChildToOverlay(TitleBar))
 	{
 		ChildSlot->SetHorizontalAlignment(HAlign_Fill);
-		ChildSlot->SetVerticalAlignment(VAlign_Bottom);
-		ChildSlot->SetPadding(bCard ? FMargin(18.0f, 0.0f, 18.0f, 16.0f) : FMargin(14.0f, 0.0f, 14.0f, 12.0f));
+		ChildSlot->SetVerticalAlignment(bCard ? VAlign_Top : VAlign_Center);
+		ChildSlot->SetPadding(bCard ? FMargin(8.0f, 14.0f, 8.0f, 0.0f) : FMargin(110.0f, 0.0f, 14.0f, 0.0f));
 	}
 	OfferTitleBars.Add(TitleBar);
 	UTextBlock* NameText = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
-		14,
-		FLinearColor(0.09f, 0.065f, 0.035f, 1.0f),
+		(bCard ? 22 : 20),
+		FGameXXKInRunUiStyle::Ink(),
 		*FString::Printf(TEXT("RouteMerchantOfferName%d"), GlobalOfferIndex));
 	NameText->SetJustification(ETextJustify::Center);
-	NameText->SetAutoWrapText(false);
+	NameText->SetAutoWrapText(true);
 	TitleBar->SetContent(NameText);
 	OfferNameTexts.Add(NameText);
+	if (bCard)
+	{
+		auto* Cost = MakeText(WidgetTree,FText::GetEmpty(),22,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteMerchantCardCost%d"),GlobalOfferIndex));
+		Cost->SetAutoWrapText(false);
+		if (auto* CostSlot = Face->AddChildToOverlay(Cost)) { CostSlot->SetHorizontalAlignment(HAlign_Left); CostSlot->SetVerticalAlignment(VAlign_Top); CostSlot->SetPadding(FMargin(13,78,0,0)); }
+	}
 
 	UTextBlock* QualityText = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
-		13,
-		FLinearColor(0.92f, 0.80f, 0.55f, 1.0f),
+		16,
+		FGameXXKInRunUiStyle::MutedInk(),
 		*FString::Printf(TEXT("RouteMerchantOfferQuality%d"), GlobalOfferIndex));
 	QualityText->SetJustification(ETextJustify::Center);
 	QualityText->SetAutoWrapText(false);
@@ -813,8 +709,8 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	UTextBlock* PriceText = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
-		14,
-		FLinearColor(0.94f, 0.84f, 0.62f, 1.0f),
+		20,
+		FGameXXKInRunUiStyle::Ink(),
 		*FString::Printf(TEXT("RouteMerchantOfferPrice%d"), GlobalOfferIndex));
 	PriceText->SetJustification(ETextJustify::Center);
 	PriceText->SetAutoWrapText(false);
@@ -841,13 +737,13 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	UGameXXKRouteMerchantOfferButton* PurchaseButton = WidgetTree->ConstructWidget<UGameXXKRouteMerchantOfferButton>(
 		UGameXXKRouteMerchantOfferButton::StaticClass(),
 		*FString::Printf(TEXT("RouteMerchantOfferBuy%d"), GlobalOfferIndex));
-	PurchaseButton->SetStyle(MakeTextureButtonStyle(ActionButtonTexturePath, FVector2D(170.0f, 44.0f), true, FMargin(5.0f / 73.0f, 5.0f / 31.0f)));
+	PurchaseButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(208.0f, 46.0f)));
 	PurchaseButton->Configure(this, NAME_None, true);
 	UTextBlock* PurchaseText = MakeText(
 		WidgetTree,
 		NSLOCTEXT("GameXXKRouteMerchant", "Buy", "强化"),
-		16,
-		FLinearColor(0.96f, 0.86f, 0.64f, 1.0f),
+		20,
+		FLinearColor::White,
 		*FString::Printf(TEXT("RouteMerchantOfferBuyLabel%d"), GlobalOfferIndex));
 	PurchaseText->SetJustification(ETextJustify::Center);
 	PurchaseText->SetAutoWrapText(false);
@@ -858,8 +754,8 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	USizeBox* PurchaseSize = WidgetTree->ConstructWidget<USizeBox>(
 		USizeBox::StaticClass(),
 		*FString::Printf(TEXT("RouteMerchantOfferBuySize%d"), GlobalOfferIndex));
-	PurchaseSize->SetWidthOverride(170.0f);
-	PurchaseSize->SetHeightOverride(44.0f);
+	PurchaseSize->SetWidthOverride(208.0f);
+	PurchaseSize->SetHeightOverride(46.0f);
 	PurchaseSize->AddChild(PurchaseButton);
 	if (UVerticalBoxSlot* ChildSlot = Stack->AddChildToVerticalBox(PurchaseSize))
 	{
@@ -998,11 +894,13 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	}
 
 	OfferNameTexts[GlobalOfferIndex]->SetText(FText::FromString(DisplayName));
+	if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*FString::Printf(TEXT("RouteMerchantCardCost%d"),GlobalOfferIndex))))
+		Cost->SetText(CardDefinition ? FText::FromString(FString::Printf(TEXT("%d气\n%d内"),CardDefinition->EnergyCost,CardDefinition->ManaCost)) : FText::GetEmpty());
 	OfferOwnerTexts[GlobalOfferIndex]->SetText(bCard
 		? (bUnavailable
-			? NSLOCTEXT("GameXXKRouteMerchant", "NoOwner", "持有者：--")
+			? NSLOCTEXT("GameXXKRouteMerchant", "NoOwnerCompact", "暂无持牌角色")
 			: FText::Format(
-				NSLOCTEXT("GameXXKRouteMerchant", "Owner", "持有者：{0}"),
+				NSLOCTEXT("GameXXKRouteMerchant", "OwnerCompact", "{0}"),
 				ResolveOwnerLabel(Offer->OwnerMemberId)))
 		: NSLOCTEXT("GameXXKRouteMerchant", "RelicOwner", "遗物"));
 	OfferQualityTexts[GlobalOfferIndex]->SetText(bUnavailable

@@ -88,7 +88,7 @@ bool FGameXXKEnemyPhaseSaveMigrationTest::RunTest(const FString& Parameters)
 		AddError(Report.Error);
 		return false;
 	}
-	TestEqual(TEXT("migration writes version 36"), Migrated.SaveVersion, 36);
+	TestEqual(TEXT("migration writes the current version"), Migrated.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	const FGameXXKCardBattleRuntime& Battle = Migrated.RuntimeState.CardRun.ActiveBattle;
 	TestEqual(TEXT("difficulty enum is restored from 125 percent"), Battle.EnemyDifficulty, EGameXXKEnemyDifficulty::Hard);
 	const FGameXXKEnemyBattleState& NewState = Battle.EnemyStates.FindChecked(TEXT("BlackBear"));

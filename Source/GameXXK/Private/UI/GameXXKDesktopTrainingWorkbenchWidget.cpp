@@ -1,4 +1,7 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKDesktopPaperStyle.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/ScaleBoxSlot.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateColorBrush.h"
@@ -22,6 +25,7 @@
 #include "Engine/Texture2D.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/Font.h"
 #include "Engine/World.h"
 #include "TimerManager.h"
 #include "GenericPlatform/GenericWindow.h"
@@ -72,6 +76,43 @@
 
 	namespace
 {
+	constexpr const TCHAR* SelectedRuntimeFontPath =
+		TEXT("/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font."
+			"FF_Trial_ZhHans_JiangHuGuFeng_Font");
+
+	UFont* ResolveSelectedRuntimeFont()
+	{
+		static TWeakObjectPtr<UFont> CachedFont;
+		if (!CachedFont.IsValid())
+		{
+			CachedFont = LoadObject<UFont>(nullptr, SelectedRuntimeFontPath);
+		}
+		return CachedFont.Get();
+	}
+
+	void ApplySelectedRuntimeFont(UWidgetTree* Tree)
+	{
+		UFont* SelectedFont = ResolveSelectedRuntimeFont();
+		if (!Tree || !SelectedFont)
+		{
+			return;
+		}
+		Tree->ForEachWidgetAndDescendants([SelectedFont](UWidget* Child)
+		{
+			UTextBlock* TextBlock = Cast<UTextBlock>(Child);
+			if (!TextBlock)
+			{
+				return;
+			}
+			FSlateFontInfo FontInfo = TextBlock->GetFont();
+			// Card titles and effect prose carry a deliberate readable font of their own.
+			if (FontInfo.FontObject && FontInfo.FontObject->GetPathName().Contains(TEXT("/Fonts/Readability/"))) return;
+			FontInfo.FontObject = SelectedFont;
+			FontInfo.TypefaceFontName = TEXT("Default");
+			TextBlock->SetFont(FontInfo);
+		});
+	}
+
 	struct FScopedActionCallbackGuard
 	{
 		bool& bFlag;
@@ -203,6 +244,9 @@
 	constexpr int32 ActionHudScale100 = 650;
 	constexpr int32 ActionHudScale50 = 651;
 	constexpr int32 ActionHudScale75 = 656;
+	constexpr int32 ActionCloseCharacterPicker = 657;
+	constexpr int32 ActionCharacterPickerPrevious = 658;
+	constexpr int32 ActionCharacterPickerNext = 659;
 	constexpr int32 ActionToggleTown = 652;
 	constexpr int32 ActionIdleStripFold = 653;
 	constexpr int32 ActionStoryQuest = 654;
@@ -820,20 +864,12 @@
 		return Result;
 	}
 
-	UBorder* MakePanel(UWidgetTree* Tree, const FLinearColor& Color, const FName Name = NAME_None)
+	UBorder* MakePanel(UWidgetTree* Tree, const FLinearColor& Color, const FName Name = NAME_None,
+		const bool bUseBackpackEdges = false)
 	{
-		UBorder* Result = Tree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
-		const FSlateBrush Brush = MakeBoxTextureBrush(PanelLargeTexturePath, FVector2D(320.0f, 180.0f));
-		if (Brush.GetResourceObject())
-		{
-			Result->SetBrush(Brush);
-			Result->SetBrushColor(FLinearColor::White);
-		}
-		else
-		{
-			Result->SetBrushColor(Color);
-		}
-		return Result;
+		const FVector4 ContentRect = GameXXKDesktopTrainingLayout::GetContentRect();
+		return GameXXKDesktopPaperStyle::MakePanel(Tree, Name,
+			FVector2D(ContentRect.Z, ContentRect.W), Color, bUseBackpackEdges);
 	}
 
 	UBorder* MakeTransparentPanel(UWidgetTree* Tree, const FName Name)
@@ -1392,7 +1428,9 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 		AbortTransientInventoryInteraction(true, false);
 		BuildProgrammaticLayout();
 	}
-	return Super::RebuildWidget();
+	TSharedRef<SWidget> RebuiltWidget = Super::RebuildWidget();
+	ApplySelectedRuntimeFont(WidgetTree);
+	return RebuiltWidget;
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
@@ -1809,6 +1847,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 		&& GetVisibility() != ESlateVisibility::Hidden;
 	CancelCollapsedResourceUnload();
 	bHasSavedEmbeddedInventorySession = false;
+	CharacterBackpackSessions.Reset();
 	AbortTransientInventoryInteraction(true, false);
 	bSettingsPanelOpen = false;
 	bBackpackExpanded = false;
@@ -2181,25 +2220,17 @@ FName UGameXXKDesktopTrainingWorkbenchWidget::ResolveRememberedBackpackCharacter
 		: ResolveRosterRepresentativeCharacterId(Roster);
 }
 
-void UGameXXKDesktopTrainingWorkbenchWidget::PreserveEmbeddedSessionForCharacter(
-	const FName CharacterId)
+void UGameXXKDesktopTrainingWorkbenchWidget::PreserveEmbeddedSessionForCharacter(const FName CharacterId)
 {
-	const FName PreviousCharacterId = EmbeddedInventoryWidget
-		? EmbeddedInventoryWidget->GetConfiguredCharacterIdForTest()
-		: SavedEmbeddedInventorySession.CharacterId;
 	if (EmbeddedInventoryWidget)
 	{
 		SavedEmbeddedInventorySession = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+		if (!SavedEmbeddedInventorySession.CharacterId.IsNone()) CharacterBackpackSessions.Add(SavedEmbeddedInventorySession.CharacterId,SavedEmbeddedInventorySession);
 	}
-	else if (!bHasSavedEmbeddedInventorySession)
-	{
-		SavedEmbeddedInventorySession = FGameXXKEmbeddedInventorySessionState();
-	}
+	else if (!bHasSavedEmbeddedInventorySession) SavedEmbeddedInventorySession = FGameXXKEmbeddedInventorySessionState();
+	if (const auto* Remembered = CharacterBackpackSessions.Find(CharacterId)) SavedEmbeddedInventorySession = *Remembered;
+	else if (SavedEmbeddedInventorySession.CharacterId != CharacterId) SavedEmbeddedInventorySession.PendingDeckIds.Reset();
 	SavedEmbeddedInventorySession.CharacterId = CharacterId;
-	if (PreviousCharacterId != CharacterId)
-	{
-		SavedEmbeddedInventorySession.PendingDeckIds.Reset();
-	}
 	bHasSavedEmbeddedInventorySession = true;
 }
 
@@ -2244,6 +2275,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectBackpackCharacterForTest(cons
 		return false;
 	}
 	PreserveEmbeddedSessionForCharacter(CharacterId);
+	bCharacterRosterMembersExpanded = false;
 	ActiveBackpackCharacterId = CharacterId;
 	ActiveCharacterRoster = bHero
 		? EGameXXKDesktopTrainingCharacterRoster::Hero
@@ -3533,7 +3565,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	RootCanvas->ClearChildren();
 	StageButtons.Reset();
 	ActionButtons.Reset();
+	LockedToolControls.Reset();
 	BuildWorkbenchShell();
+	ApplySelectedRuntimeFont(WidgetTree);
 	bDesktopNativeInputRegionDirty = true;
 	UpdateTownPresentationInputLock();
 }
@@ -4208,7 +4242,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 		WidgetTree,
 		PanelAlt,
 		TEXT("DesktopHudSettingsPanel"));
-	SettingsPanel->SetPadding(FMargin(12.0f));
+	SettingsPanel->SetPadding(FMargin(0.0f));
 	AddCanvas(RootCanvas, SettingsPanel, FVector2D(1115.0f, 270.0f), FVector2D(220.0f, 184.0f));
 	if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(SettingsPanel->Slot))
 	{
@@ -4218,7 +4252,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 	UCanvasPanel* SettingsCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(),
 		TEXT("DesktopHudSettingsCanvas"));
-	SettingsPanel->SetContent(SettingsCanvas);
+	GameXXKDesktopPaperStyle::SetPanelContent(SettingsPanel, SettingsCanvas, FMargin(12));
 	UTextBlock* Title = MakeButtonText(
 		WidgetTree,
 		FText::FromString(TEXT("设置")),
@@ -4227,10 +4261,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
 	AddCanvas(SettingsCanvas, Title, FVector2D(0.0f, 0.0f), FVector2D(196.0f, 26.0f));
 	UTextBlock* ScaleLabel = MakeText(
 		WidgetTree,
-		FText::FromString(TEXT("HUD缩放")),
+		FText::FromString(TEXT("缩放")),
 		14,
 		Ink,
 		TEXT("HudScaleSettingLabel"));
+	ScaleLabel->SetAutoWrapText(false);
 	AddCanvas(SettingsCanvas, ScaleLabel, FVector2D(4.0f, 38.0f), FVector2D(58.0f, 28.0f));
 
 	const struct FScaleOption
@@ -5930,7 +5965,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseTravelAtlasSession()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("WarehousePanel"));
+	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("WarehousePanel"), true);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetWarehouseRect());
 	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("WarehouseShelfDivider"));
@@ -6131,17 +6166,21 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 	TransparentBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
 	PanelBorder->SetBrush(TransparentBrush);
 	PanelBorder->SetPadding(FMargin(0.0f));
-	PanelBorder->SetClipping(EWidgetClipping::ClipToBounds);
+	PanelBorder->SetClipping(EWidgetClipping::Inherit);
+	PanelBorder->SetVisibility(bCharacterRosterMembersExpanded ? ESlateVisibility::Hidden : ESlateVisibility::SelfHitTestInvisible);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 
 	UScaleBox* EmbeddedScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("EmbeddedBackpackScale"));
 	EmbeddedScale->SetStretch(EStretch::ScaleToFit);
 	EmbeddedScale->SetStretchDirection(EStretchDirection::Both);
 	USizeBox* ApprovedPaperReference = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("EmbeddedBackpackPaperReference"));
-	ApprovedPaperReference->SetWidthOverride(1450.0f);
-	ApprovedPaperReference->SetHeightOverride(849.0f);
+	ApprovedPaperReference->SetWidthOverride(GameXXKDesktopPaperStyle::BackpackReferenceSize.X);
+	ApprovedPaperReference->SetHeightOverride(GameXXKDesktopPaperStyle::BackpackReferenceSize.Y);
 	UCanvasPanel* CropCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("EmbeddedBackpackCropCanvas"));
-	CropCanvas->SetClipping(EWidgetClipping::ClipToBounds);
+	// The paper extends beyond this fit reference by 36.25 px at each side
+	// and 21.225 px above it. Let the original feathered edges draw freely;
+	// the inventory and deck scroll boxes own their content clipping.
+	CropCanvas->SetClipping(EWidgetClipping::Inherit);
 
 	EmbeddedInventoryWidget = WidgetTree->ConstructWidget<UGameXXKInventoryWindowWidget>(
 		UGameXXKInventoryWindowWidget::StaticClass(),
@@ -6158,7 +6197,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 			EmbeddedInventoryWidget->RestoreEmbeddedSessionState(SavedEmbeddedInventorySession);
 			bHasSavedEmbeddedInventorySession = false;
 		}
-		AddCanvas(CropCanvas, EmbeddedInventoryWidget.Get(), FVector2D(-311.0f, -173.0f), FVector2D(1920.0f, 1080.0f));
+		AddCanvas(CropCanvas, EmbeddedInventoryWidget.Get(), GameXXKDesktopPaperStyle::BackpackWidgetOffset, FVector2D(1920.0f, 1080.0f));
 	}
 	ApprovedPaperReference->SetContent(CropCanvas);
 	EmbeddedScale->SetContent(ApprovedPaperReference);
@@ -6168,6 +6207,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel()
 		UGameXXKDesktopTrainingActionButton::StaticClass(),
 		TEXT("BackpackSortButton"));
 	Sort->Configure(this, 61);
+	Sort->SetVisibility(bCharacterRosterMembersExpanded ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	Sort->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath, FVector2D(100.0f, 44.0f), FMargin(0.08f)));
 	Sort->SetBackgroundColor(FLinearColor::White);
 	Sort->SetContent(MakeButtonText(WidgetTree, FText::FromString(TEXT("排序")), 17, Ink));
@@ -6212,113 +6252,127 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildSharedGoldIndicator()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 {
-	struct FRosterTabSpec
+	const auto* Subsystem = ResolveMVPSubsystem();
+	const FVector4 Area = GameXXKDesktopTrainingLayout::GetContentRect();
+	const bool bPicker = bCharacterRosterMembersExpanded;
+	const EGameXXKDesktopTrainingCharacterRoster Category = bPicker ? CharacterPickerRoster : ActiveCharacterRoster;
+	if (bPicker)
 	{
-		EGameXXKDesktopTrainingCharacterRoster Roster;
-		int32 ActionId;
-		const TCHAR* Name;
-		const TCHAR* Label;
-	};
-	const FRosterTabSpec Tabs[] = {
-		{EGameXXKDesktopTrainingCharacterRoster::Hero, 80, TEXT("CharacterRosterHeroButton"), TEXT("主角")},
-		{EGameXXKDesktopTrainingCharacterRoster::Companions, 81, TEXT("CharacterRosterCompanionButton"), TEXT("伙伴")},
-		{EGameXXKDesktopTrainingCharacterRoster::Npcs, 82, TEXT("CharacterRosterNpcButton"), TEXT("NPC")}};
-	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	for (int32 Index = 0; Index < UE_ARRAY_COUNT(Tabs); ++Index)
+		auto* Paper = MakePanel(WidgetTree, Panel, TEXT("CharacterPickerPage"), true);
+		AddCanvasRect(RootCanvas, Paper, Area);
+		const TCHAR* CategoryTitle = CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs ? TEXT("选择同行角色") : TEXT("选择伙伴");
+		AddCanvas(RootCanvas, MakeText(WidgetTree,FText::FromString(CategoryTitle),30,Ink,TEXT("CharacterPickerTitle")), FVector2D(Area.X+32,Area.Y+17), FVector2D(500,43));
+		auto* Back = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass(),TEXT("CharacterPickerBack"));
+		Back->Configure(this,ActionCloseCharacterPicker);
+		Back->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath,FVector2D(128,37)));
+		Back->SetContent(MakeButtonText(WidgetTree,FText::FromString(TEXT("返回背包")),18,Ink));
+		AddCanvas(RootCanvas,Back,FVector2D(Area.X+Area.Z-168,Area.Y+64),FVector2D(128,37));
+		ActionButtons.Add(Back);
+	}
+	const TCHAR* Labels[] = {TEXT("主角"),TEXT("伙伴"),TEXT("NPC")};
+	const TCHAR* Names[] = {TEXT("CharacterRosterHeroButton"),TEXT("CharacterRosterCompanionButton"),TEXT("CharacterRosterNpcButton")};
+	// The embedded art's centre is (737,...) in its authored canvas, offset by
+	// (-311,-173). Use that same fit to centre the textual switch under the art.
+	const float PaperScale = Area.W / 849.0f;
+	const float PortraitCentreX = Area.X + (Area.Z - 1450.0f*PaperScale)*0.5f + (737.0f-311.0f)*PaperScale;
+	const float SwitchX = bPicker ? Area.X+32 : PortraitCentreX-171.0f;
+	const float SwitchY = bPicker ? Area.Y+62 : 666.0f;
+	for (int32 I=0; I<3; ++I)
 	{
-		const bool bSelected = bCharacterRosterMembersExpanded
-			&& ActiveCharacterRoster == Tabs[Index].Roster;
-		const FName RepresentativeId = ResolveRememberedBackpackCharacterId(Tabs[Index].Roster);
-		const FString PortraitPath = CharacterRosterPortraitPath(Subsystem, RepresentativeId);
-		UGameXXKDesktopTrainingActionButton* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
-			UGameXXKDesktopTrainingActionButton::StaticClass(),
-			Tabs[Index].Name);
-		Button->Configure(this, Tabs[Index].ActionId);
-		Button->SetStyle(MakeTextureButtonStyle(
-			bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-			FVector2D(105.0f, 62.0f),
-			FMargin(0.08f)));
-		Button->SetBackgroundColor(FLinearColor::White);
-		Button->SetContent(MakeCharacterPortraitContent(
-			WidgetTree,
-			PortraitPath,
-			FText::FromString(Tabs[Index].Label),
-			FVector2D(38.0f, 38.0f),
-			*FString::Printf(TEXT("CharacterRosterRepresentativePortrait_%d"), Index),
-			bSelected ? Accent : Ink));
-		const FString RosterTooltip = bSelected
-			? FString::Printf(TEXT("收起%s角色页签；当前查看对象保持不变"), Tabs[Index].Label)
-			: FString::Printf(TEXT("展开%s角色页签；这里只切换查看对象，不会改变编队"), Tabs[Index].Label);
-		Button->SetToolTipText(FText::FromString(RosterTooltip));
-		AddCanvas(RootCanvas, Button, FVector2D(414.0f + Index * 113.0f, 706.0f), FVector2D(105.0f, 62.0f));
+		auto* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass(),Names[I]);
+		Button->Configure(this,80+I);
+		const bool Selected = static_cast<int32>(Category)==I;
+		Button->SetStyle(MakeTextureButtonStyle(Selected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,FVector2D(106,42)));
+		Button->SetContent(MakeButtonText(WidgetTree,FText::FromString(Labels[I]),20,Ink));
+		Button->SetToolTipText(FText::FromString(TEXT("切换查看角色；出战成员在编队中调整。")));
+		AddCanvas(RootCanvas,Button,FVector2D(SwitchX+I*118,SwitchY),FVector2D(106,42));
 		ActionButtons.Add(Button);
 	}
-
-	if (!bCharacterRosterMembersExpanded)
+	if (!bPicker || !Subsystem) return;
+	const TArray<FName> Characters = CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs ? GetNpcCharacterIdsForTest() : GetCompanionCharacterIdsForTest();
+	const int32 PageCount = FMath::Max(1,FMath::DivideAndRoundUp(Characters.Num(),6));
+	CharacterPickerPageIndex = FMath::Clamp(CharacterPickerPageIndex,0,PageCount-1);
+	const int32 FirstAction = CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs ? 420 : 400;
+	const float CardWidth = (Area.Z-56.0f-32.0f)/3.0f;
+	const float CardHeight = (Area.W-112.0f-16.0f-(PageCount>1 ? 42.0f : 14.0f))/2.0f;
+	const auto& State = Subsystem->GetRuntimeState();
+	for (int32 I=0; I<6; ++I)
 	{
-		return;
+		const int32 Index = CharacterPickerPageIndex*6+I;
+		if (!Characters.IsValidIndex(Index)) break;
+		const FName CharacterId = Characters[Index];
+		int32 Level = 1;
+		FString Name;
+		FString PortraitSuffix;
+		if (CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs)
+		{
+			Name = QuestNpcDisplayName(CharacterId);
+			PortraitSuffix = TEXT("Npc_")+CharacterId.ToString().RightChop(4);
+			if (const auto* Progress = State.CardRun.PartySelection.QuestNpcProgressions.Find(CharacterId)) Level=Progress->Level;
+		}
+		else
+		{
+			FGameXXKPermanentCompanion Companion;
+			if (!Subsystem->TryGetPermanentCompanionView(CharacterId,Companion)) continue;
+			Name = FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role,Companion.NameSeed); Level=Companion.Level;
+			switch (Companion.Role)
+			{
+			case EGameXXKCharacterRole::Blade: PortraitSuffix=TEXT("Role_Blade"); break;
+			case EGameXXKCharacterRole::Guard: PortraitSuffix=TEXT("Role_Guard"); break;
+			case EGameXXKCharacterRole::Healer: PortraitSuffix=TEXT("Role_Healer"); break;
+			case EGameXXKCharacterRole::Hunter: PortraitSuffix=TEXT("Role_Hunter"); break;
+			case EGameXXKCharacterRole::Sorcerer: PortraitSuffix=TEXT("Role_Sorcerer"); break;
+			case EGameXXKCharacterRole::FormationMaster: PortraitSuffix=TEXT("Role_FormationMaster"); break;
+			default: break;
+			}
+		}
+		const bool bViewed = CharacterId==ActiveBackpackCharacterId;
+		const bool bDeployed = CharacterId==State.CardRun.PartySelection.ActivePermanentCompanionInstanceId || CharacterId==State.CardRun.PartySelection.QuestNpc.NpcId;
+		auto* Button=WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass(),*FString::Printf(TEXT("CharacterRosterPortraitButton_%d_%d"),static_cast<int32>(CharacterPickerRoster),I));
+		Button->Configure(this,FirstAction+I); Button->SetStyle(FGameXXKInRunUiStyle::Choice(FVector2D(CardWidth,CardHeight),bViewed));
+		auto* Face=WidgetTree->ConstructWidget<UCanvasPanel>(); Button->SetContent(Face);
+		if (auto* FaceSlot=Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
+		auto* Portrait=WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),*FString::Printf(TEXT("CharacterRosterMemberPortrait_%d_%d"),static_cast<int32>(CharacterPickerRoster),I));
+		const FString PortraitPath=FString::Printf(TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_%s.T_CardPortrait_%s"),*PortraitSuffix,*PortraitSuffix);
+		const float ArtHeight = FMath::Min(152.0f,CardHeight-74.0f);
+		const float ArtWidth = ArtHeight*(171.0f/205.0f);
+		Portrait->SetBrush(MakeTextureBrush(*PortraitPath,FVector2D(ArtWidth,ArtHeight))); Portrait->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvas(Face,Portrait,FVector2D(CardWidth-ArtWidth-16,CardHeight-ArtHeight-16),FVector2D(ArtWidth,ArtHeight));
+		auto* Title=MakeText(WidgetTree,FText::FromString(Name),26,Ink); Title->SetVisibility(ESlateVisibility::HitTestInvisible); Title->SetJustification(ETextJustify::Center);
+		AddCanvas(Face,Title,FVector2D(24,18),FVector2D(CardWidth-48,43));
+		auto* Caption=MakeText(WidgetTree,FText::FromString(TEXT("等级")),16,FGameXXKInRunUiStyle::MutedInk()); Caption->SetVisibility(ESlateVisibility::HitTestInvisible);
+		const float CompactBodyOffset = FMath::Max(0.0f,195.5f-CardHeight);
+		AddCanvas(Face,Caption,FVector2D(32,72-CompactBodyOffset),FVector2D(100,28));
+		auto* Value=MakeText(WidgetTree,FText::AsNumber(Level),32,Ink); Value->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvas(Face,Value,FVector2D(32,99-CompactBodyOffset),FVector2D(100,55));
+		if (bViewed || bDeployed)
+		{
+			auto* Status=MakeText(WidgetTree,FText::FromString(bViewed ? TEXT("正在查看") : TEXT("出战中")),16,FGameXXKInRunUiStyle::Jade()); Status->SetVisibility(ESlateVisibility::HitTestInvisible);
+			AddCanvas(Face,Status,FVector2D(32,CardHeight-56),FVector2D(112,29));
+		}
+		Button->SetToolTipText(FText::FromString(FString::Printf(TEXT("查看%s · 等级%d\n属性、装备与卡组"),*Name,Level)));
+		AddCanvas(RootCanvas,Button,FVector2D(Area.X+28+(I%3)*(CardWidth+16),Area.Y+112+(I/3)*(CardHeight+16)),FVector2D(CardWidth,CardHeight));
+		ActionButtons.Add(Button);
 	}
-
-	TArray<FName> VisibleCharacters;
-	int32 FirstActionId = INDEX_NONE;
-	if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Hero)
+	if (PageCount>1)
 	{
-		VisibleCharacters.Add(FGameXXKEquipmentRules::HeroCharacterId());
-		FirstActionId = 20;
-	}
-	else if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Companions)
-	{
-		VisibleCharacters = GetCompanionCharacterIdsForTest();
-		FirstActionId = 400;
-	}
-	else if (ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs)
-	{
-		VisibleCharacters = GetNpcCharacterIdsForTest();
-		FirstActionId = 420;
-	}
-	if (FirstActionId == INDEX_NONE)
-	{
-		return;
-	}
-
-	for (int32 Index = 0; Index < VisibleCharacters.Num() && Index < 6; ++Index)
-	{
-		const FName CharacterId = VisibleCharacters[Index];
-		const bool bSelected = CharacterId == ActiveBackpackCharacterId;
-		UGameXXKDesktopTrainingActionButton* PortraitButton = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(
-			UGameXXKDesktopTrainingActionButton::StaticClass(),
-			*FString::Printf(TEXT("CharacterRosterPortraitButton_%d_%d"), static_cast<int32>(ActiveCharacterRoster), Index));
-		PortraitButton->Configure(this, FirstActionId + Index);
-		PortraitButton->SetStyle(MakeTextureButtonStyle(
-			bSelected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,
-			FVector2D(105.0f, 62.0f),
-			FMargin(0.08f)));
-		PortraitButton->SetBackgroundColor(FLinearColor::White);
-		const FString PortraitPath = CharacterRosterPortraitPath(Subsystem, CharacterId);
-		const FString Label = ActiveCharacterRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs
-			? QuestNpcDisplayName(CharacterId)
-			: BackpackCharacterDisplayName(Subsystem, CharacterId);
-		PortraitButton->SetContent(MakeCharacterPortraitContent(
-			WidgetTree,
-			PortraitPath,
-			FText::FromString(Label),
-			FVector2D(38.0f, 38.0f),
-			*FString::Printf(TEXT("CharacterRosterMemberPortrait_%d_%d"), static_cast<int32>(ActiveCharacterRoster), Index),
-			bSelected ? Accent : Ink));
-		PortraitButton->SetToolTipText(FText::FromString(TEXT("查看该角色的属性、装备与卡组；不会改变编队")));
-		AddCanvas(
-			RootCanvas,
-			PortraitButton,
-			FVector2D(414.0f + (Index % 3) * 113.0f, 566.0f + (Index / 3) * 66.0f),
-			FVector2D(105.0f, 62.0f));
-		ActionButtons.Add(PortraitButton);
+		for (int32 I=0; I<2; ++I)
+		{
+			auto* Button=WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(); Button->Configure(this,I==0 ? ActionCharacterPickerPrevious : ActionCharacterPickerNext);
+			Button->SetStyle(MakeTextureButtonStyle(CharacterTabNormalTexturePath,FVector2D(96,30)));
+			Button->SetContent(MakeButtonText(WidgetTree,FText::FromString(I==0 ? TEXT("上一页") : TEXT("下一页")),17,Ink));
+			Button->SetIsEnabled(I==0 ? CharacterPickerPageIndex>0 : CharacterPickerPageIndex+1<PageCount);
+			AddCanvas(RootCanvas,Button,FVector2D(Area.X+Area.Z/2-154+I*212,Area.Y+Area.W-36),FVector2D(96,30)); ActionButtons.Add(Button);
+		}
+		AddCanvas(RootCanvas,MakeButtonText(WidgetTree,FText::FromString(FString::Printf(TEXT("%d / %d"),CharacterPickerPageIndex+1,PageCount)),17,Ink),FVector2D(Area.X+Area.Z/2-40,Area.Y+Area.W-33),FVector2D(80,27));
 	}
 }
+
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 {
 	EnsureFormationCandidate();
-	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("FormationPanel"));
+	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("FormationPanel"), true);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
 	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("编队")), 30, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(421.0f, 258.0f), FVector2D(180.0f, 40.0f));
@@ -6461,16 +6515,16 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 {
-	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("TalentsPanel"));
+	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("TalentsPanel"), true);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("永久天赋  ·  全队共享")), 25, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("永久天赋  ·  全队共享")), 25, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 254.0f), FVector2D(700.0f, 36.0f));
 	BuildPanelCloseButton(TEXT("TalentsCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Notice = MakeText(
 		WidgetTree,
 		FText::FromString(TEXT("从中心向四个 45° 分区展开 · 滚轮纵向浏览，Shift+滚轮横向浏览 · 每个普通节点可点 5 次")),
 		12,
-		FLinearColor(0.82f, 0.74f, 0.62f, 1.0f));
+		FGameXXKInRunUiStyle::MutedInk());
 	AddCanvas(RootCanvas, Notice, FVector2D(420.0f, 292.0f), FVector2D(850.0f, 24.0f));
 	UGameXXKTalentTreeWidget* TalentTree =
 		WidgetTree->ConstructWidget<UGameXXKTalentTreeWidget>(
@@ -6488,7 +6542,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 {
 	ToolSlots.SetNum(ToolSlotCount);
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
-	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("ToolsPanel"));
+	UBorder* PanelBorder = MakePanel(WidgetTree, Panel, TEXT("ToolsPanel"), true);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("ToolsShelfDivider"));
@@ -6497,7 +6551,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
 	ShelfDivider->SetBrush(ShelfDividerBrush);
 	AddCanvas(RootCanvas, ShelfDivider, FVector2D(1379.0f, 786.0f), FVector2D(271.0f, 2.0f));
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("工具")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 258.0f), FVector2D(255.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 254.0f));
 	FGameXXKTalentProjection ToolTalentProjection;
@@ -6508,11 +6562,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		&& ToolTalentProjection.bToolsUnlocked;
 	if (!bToolsUnlocked)
 	{
-		UBorder* LockedPanel = MakePanel(WidgetTree, PanelAlt, TEXT("ToolsTalentLockedPanel"));
-		const FSlateColorBrush LockedPaperBrush(FLinearColor(0.91f, 0.84f, 0.69f, 1.0f));
-		LockedPanel->SetBrush(LockedPaperBrush);
-		LockedPanel->SetClipping(EWidgetClipping::ClipToBounds);
-		LockedPanel->SetPadding(FMargin(16.0f, 58.0f, 16.0f, 20.0f));
+		UBorder* LockedPanel = MakeTransparentPanel(WidgetTree, TEXT("ToolsTalentLockedPanel"));
+
 		UTextBlock* LockedText = MakeText(
 			WidgetTree,
 			FText::FromString(TEXT("工具功能尚未解锁\n\n在永久天赋中点亮：\n行旅根基 → 百工开物\n\n一次开放：\n分解 / 合成 / 强化\n洗炼 / 镶嵌\n\n工具经验与金币加成也在该分支继续提升。")),
@@ -6520,6 +6571,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 			Ink);
 		LockedText->SetJustification(ETextJustify::Center);
 		LockedText->SetWrapTextAt(210.0f);
+		LockedPanel->SetPadding(FMargin(16.0f, 58.0f, 16.0f, 20.0f));
 		LockedPanel->SetContent(LockedText);
 		AddCanvas(
 			RootCanvas,
@@ -6531,6 +6583,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 			LockedSlot->SetZOrder(100);
 		}
 	}
+	const int32 ToolContentStart = RootCanvas->GetChildrenCount();
 	const TArray<FText> ToolLabels = {
 		FText::FromString(TEXT("分解")),
 		FText::FromString(TEXT("合成")),
@@ -6675,11 +6728,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	}
 	UTextBlock* Hint = MakeText(WidgetTree, FText::FromString(Description), 14, Ink);
 	AddCanvas(RootCanvas, Hint, FVector2D(1398.0f, 664.0f), FVector2D(232.0f, 32.0f));
+	if (!bToolsUnlocked)
+	{
+		for (int32 Index = ToolContentStart; Index < RootCanvas->GetChildrenCount(); ++Index)
+		{
+			UWidget* Control = RootCanvas->GetChildAt(Index);
+			LockedToolControls.Emplace(TWeakObjectPtr<UWidget>(Control), Control->GetVisibility());
+			Control->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 {
-	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"));
+	UBorder* Map = MakePanel(WidgetTree, Panel, TEXT("TrainingMapPanel"), true);
 	AddCanvasRect(RootCanvas, Map, GameXXKDesktopTrainingLayout::GetRightShellRect());
 	UBorder* ShelfDivider = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(), TEXT("TrainingShelfDivider"));
@@ -6688,7 +6750,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
 	ShelfDivider->SetBrush(ShelfDividerBrush);
 	AddCanvas(RootCanvas, ShelfDivider, FVector2D(1379.0f, 786.0f), FVector2D(271.0f, 2.0f));
-	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("历练地图")), 28, Gold);
+	UTextBlock* Title = MakeText(WidgetTree, FText::FromString(TEXT("历练地图")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 258.0f), FVector2D(255.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 254.0f));
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -6896,32 +6958,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			IconSlot->SetHorizontalAlignment(HAlign_Center);
 			IconSlot->SetVerticalAlignment(VAlign_Center);
 		}
-		UTextBlock* StageLabel = MakeButtonText(
+		UTextBlock* StageLabel = MakeText(
 			WidgetTree,
-			FText::FromString(FString::Printf(
-				TEXT("%d-%d"),
-				Definition.Chapter,
+			FText::FromString(FString::Printf(TEXT("%d-%d"), Definition.Chapter,
 				((Definition.StageNumber - 1) % 3) + 1)),
-			15,
-			Ink);
-		StageLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 15));
-		if (UOverlaySlot* LabelSlot = NodeFace->AddChildToOverlay(StageLabel))
-		{
-			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
-			LabelSlot->SetVerticalAlignment(VAlign_Top);
-			LabelSlot->SetPadding(FMargin(4.0f, 3.0f, 4.0f, 0.0f));
-		}
-		UTextBlock* StatusLabel = MakeButtonText(
-			WidgetTree,
-			FText::FromString(StateText),
-			12,
-			StateColor);
-		if (UOverlaySlot* StatusSlot = NodeFace->AddChildToOverlay(StatusLabel))
-		{
-			StatusSlot->SetHorizontalAlignment(HAlign_Fill);
-			StatusSlot->SetVerticalAlignment(VAlign_Bottom);
-			StatusSlot->SetPadding(FMargin(3.0f, 0.0f, 3.0f, 4.0f));
-		}
+			20, Ink, *FString::Printf(TEXT("TrainingNodeLabel_%d"), StageNumber));
+		StageLabel->SetAutoWrapText(false);
+		StageLabel->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvas(RootCanvas, StageLabel, FVector2D(NodeX + NodeSize.X + 14.0f, NodeY[LocalIndex] + 6.0f), FVector2D(88.0f, 28.0f));
+		UTextBlock* StatusLabel = MakeText(WidgetTree, FText::FromString(StateText), 16,
+			StateColor, *FString::Printf(TEXT("TrainingNodeState_%d"), StageNumber));
+		StatusLabel->SetAutoWrapText(false);
+		StatusLabel->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvas(RootCanvas, StatusLabel, FVector2D(NodeX + NodeSize.X + 14.0f, NodeY[LocalIndex] + 34.0f), FVector2D(88.0f, 24.0f));
 		Node->SetContent(NodeFace);
 		AddCanvas(RootCanvas, Node, FVector2D(NodeX, NodeY[LocalIndex]), NodeSize);
 		StageButtons.Add(Node);
@@ -7174,6 +7223,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CaptureExpandedSessionState()
 		return;
 	}
 	SavedEmbeddedInventorySession = EmbeddedInventoryWidget->CaptureEmbeddedSessionState();
+	if (!SavedEmbeddedInventorySession.CharacterId.IsNone()) CharacterBackpackSessions.Add(SavedEmbeddedInventorySession.CharacterId,SavedEmbeddedInventorySession);
 	bHasSavedEmbeddedInventorySession = true;
 }
 
@@ -7792,6 +7842,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::CloseRightPanelToParent()
 
 void UGameXXKDesktopTrainingWorkbenchWidget::ResetWorkbenchChildrenForGlobalClose()
 {
+	CharacterBackpackSessions.Reset();
 	CancelCarryForStructuralChange();
 	ReturnAllToolEntries();
 	bWarehousePanelOpen = false;
@@ -7833,12 +7884,18 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleApplicationActivationChanged(
 bool UGameXXKDesktopTrainingWorkbenchWidget::HandleWorkbenchRightMouseCancel()
 {
 	FScopedActionCallbackGuard CallbackGuard(bInActionCallback);
-	if (!CarriedEntry.IsValid())
+	if (CarriedEntry.IsValid()) { AbortTransientInventoryInteraction(false,true); return true; }
+	if (bCharacterRosterMembersExpanded) { CaptureExpandedSessionState(); bCharacterRosterMembersExpanded=false; RefreshLayout(); return true; }
+	return false;
+}
+
+FReply UGameXXKDesktopTrainingWorkbenchWidget::NativeOnKeyDown(const FGeometry& InGeometry,const FKeyEvent& InKeyEvent)
+{
+	if (InKeyEvent.GetKey()==EKeys::Escape && bCharacterRosterMembersExpanded)
 	{
-		return false;
+		CaptureExpandedSessionState(); bCharacterRosterMembersExpanded=false; RefreshLayout(); return FReply::Handled();
 	}
-	AbortTransientInventoryInteraction(false, true);
-	return true;
+	return Super::NativeOnKeyDown(InGeometry,InKeyEvent);
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::HandlePersistenceBoundary()
@@ -7867,6 +7924,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::HandleTalentPurchaseCommitted()
 		{
 			LockedPanel->SetVisibility(ESlateVisibility::Collapsed);
 		}
+		for (const auto& Entry : LockedToolControls)
+		{
+			if (UWidget* Control = Entry.Key.Get()) Control->SetVisibility(Entry.Value);
+		}
+		LockedToolControls.Reset();
 	}
 }
 
@@ -9296,6 +9358,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (ActionId >= 0 && ActionId <= 4)
 	{
+		if (bCharacterRosterMembersExpanded) CaptureExpandedSessionState();
+		bCharacterRosterMembersExpanded=false;
 		CancelCarryForStructuralChange();
 		bBackpackExpanded = true;
 		bSettingsPanelOpen = false;
@@ -9375,25 +9439,32 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		SelectBackpackCharacterForTest(GetBackpackCharacterIdsForTest()[ActionId - 20]);
 		return;
 	}
-	if (ActionId >= 80 && ActionId <= 82)
+	if (ActionId == ActionCloseCharacterPicker)
 	{
-		const EGameXXKDesktopTrainingCharacterRoster RequestedRoster =
-			static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId - 80);
-		if (RequestedRoster == ActiveCharacterRoster)
+		CaptureExpandedSessionState(); bCharacterRosterMembersExpanded=false; RefreshLayout(); return;
+	}
+	if (ActionId == ActionCharacterPickerPrevious || ActionId == ActionCharacterPickerNext)
+	{
+		if (bCharacterRosterMembersExpanded)
 		{
-			PreserveEmbeddedSessionForCharacter(ActiveBackpackCharacterId);
-			CancelCarryForStructuralChange();
-			bCharacterRosterMembersExpanded = !bCharacterRosterMembersExpanded;
+			CaptureExpandedSessionState();
+			const int32 Count = CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs ? GetNpcCharacterIdsForTest().Num() : GetCompanionCharacterIdsForTest().Num();
+			CharacterPickerPageIndex=FMath::Clamp(CharacterPickerPageIndex+(ActionId==ActionCharacterPickerNext ? 1 : -1),0,FMath::Max(0,FMath::DivideAndRoundUp(Count,6)-1));
 			RefreshLayout();
-		}
-		else
-		{
-			bCharacterRosterMembersExpanded = true;
-			SelectBackpackCharacterForTest(
-				ResolveRememberedBackpackCharacterId(RequestedRoster));
 		}
 		return;
 	}
+	if (ActionId >= 80 && ActionId <= 82)
+	{
+		CancelCarryForStructuralChange();
+		const auto Requested = static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId-80);
+		if (Requested == EGameXXKDesktopTrainingCharacterRoster::Hero) { SelectBackpackCharacterForTest(FGameXXKEquipmentRules::HeroCharacterId()); return; }
+		CaptureExpandedSessionState();
+		if (bCharacterRosterMembersExpanded && CharacterPickerRoster==Requested) bCharacterRosterMembersExpanded=false;
+		else { CharacterPickerRoster=Requested; CharacterPickerPageIndex=0; bCharacterRosterMembersExpanded=true; }
+		RefreshLayout(); return;
+	}
+
 	if (ActionId == 83 || ActionId == 84)
 	{
 		CancelCarryForStructuralChange();
@@ -9413,7 +9484,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	if (ActionId >= 400 && ActionId < 406)
 	{
 		const TArray<FName> CompanionIds = GetCompanionCharacterIdsForTest();
-		const int32 Index = ActionId - 400;
+		const int32 Index = ActionId - 400 + (bCharacterRosterMembersExpanded && CharacterPickerRoster==EGameXXKDesktopTrainingCharacterRoster::Companions ? CharacterPickerPageIndex*6 : 0);
 		if (CompanionIds.IsValidIndex(Index))
 		{
 			SelectBackpackCharacterForTest(CompanionIds[Index]);
@@ -9423,7 +9494,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	if (ActionId >= 420 && ActionId < 426)
 	{
 		const TArray<FName> NpcIds = GetNpcCharacterIdsForTest();
-		const int32 Index = ActionId - 420;
+		const int32 Index = ActionId - 420 + (bCharacterRosterMembersExpanded && CharacterPickerRoster==EGameXXKDesktopTrainingCharacterRoster::Npcs ? CharacterPickerPageIndex*6 : 0);
 		if (NpcIds.IsValidIndex(Index))
 		{
 			SelectBackpackCharacterForTest(NpcIds[Index]);

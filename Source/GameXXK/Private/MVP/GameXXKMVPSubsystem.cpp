@@ -19,6 +19,7 @@
 #include "GameXXKRouteSettlementRules.h"
 #include "GameXXKTalentRules.h"
 #include "GameXXKTrainingChestRules.h"
+#include "GameXXKTrainingSettlementRules.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -1833,6 +1834,7 @@ bool UGameXXKMVPSubsystem::SelectTrainingStage(const FName StageId)
 
 bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
 {
+	if (HasPendingTrainingSettlement()) return false;
 	if (RuntimeState.CardRun.bHasActiveCardBattle)
 	{
 		return false;
@@ -2155,8 +2157,16 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 			{
 				return false;
 			}
+			if (!PersistTrainingCheckpoint(Candidate))
+			{
+				bOutStageCompleted = false;
+				OutReward = FGameXXKTrainingReward();
+				return false;
+			}
 			BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 			RuntimeState = MoveTemp(Candidate);
+			TrainingTravelRuntime = FGameXXKTrainingTravelRuntime();
+			LastSaveLoadError = FText::GetEmpty();
 			return true;
 		}
 
@@ -2397,6 +2407,7 @@ bool UGameXXKMVPSubsystem::SettleTrainingChallengeBossNode(
 	InOutState.CurrentRouteNodeId = RouteNodeId;
 	InOutState.PendingRouteNodeId = INDEX_NONE;
 	InOutState.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
+	const FGameXXKRuntimeState BeforeBossRewards = InOutState;
 
 	OutReward = FGameXXKTrainingRules::ResolveChallengeReward(
 		StageId,
@@ -2444,14 +2455,8 @@ bool UGameXXKMVPSubsystem::SettleTrainingChallengeBossNode(
 	InOutState.CurrentRouteNodeId = INDEX_NONE;
 	InOutState.PendingRouteNodeId = INDEX_NONE;
 	ReturnTrainingToWorkbench(InOutState);
-	FGameXXKTrainingTravelRuntime RestartedTravelRuntime;
-	if (!bOutStageCompleted
-		|| !PrepareFreshTrainingTravelRuntime(InOutState, RestartedTravelRuntime))
-	{
-		return false;
-	}
-	TrainingTravelRuntime = MoveTemp(RestartedTravelRuntime);
-	return true;
+	return bOutStageCompleted
+		&& FGameXXKTrainingSettlementRules::CaptureAppliedResult(BeforeBossRewards, InOutState, OutReward, OutError);
 }
 
 bool UGameXXKMVPSubsystem::SetTrainingChallengeAutoBattle(const bool bEnabled)
@@ -2467,6 +2472,7 @@ bool UGameXXKMVPSubsystem::SetTrainingChallengeAutoBattle(const bool bEnabled)
 
 bool UGameXXKMVPSubsystem::StartTrainingTravel(const FName StageId)
 {
+	if (HasPendingTrainingSettlement()) return false;
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	if (!FGameXXKTrainingRules::StartTravel(Candidate.Training, StageId))
 	{
@@ -3273,8 +3279,8 @@ bool UGameXXKMVPSubsystem::ApplyRouteEncounterAcceptanceFixtureForTest(const boo
 	if (!bCamp)
 	{
 		Candidate.CardRun.PendingEvent.SourceNodeId = SourceNodeId;
-		Candidate.CardRun.PendingEvent.EventNpcId = TEXT("Npc.YueBai");
-		Candidate.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.YueBai");
+		Candidate.CardRun.PendingEvent.EventNpcId = TEXT("Event.Attribute.MountainSpring");
+		Candidate.CardRun.PendingEvent.EncounterId = TEXT("Encounter.Event.MountainSpring");
 	}
 
 	RouteEncounterAcceptanceFixtureBackup.Emplace(RuntimeState);
@@ -3488,6 +3494,12 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 		return false;
 	}
 #endif
+	if (IsTrainingCheckpointWorld() && UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)
+		&& !UGameplayStatics::DeleteGameInSlot(GetTrainingCheckpointSlotName(), 0))
+	{
+		LastSaveLoadError = FText::FromString(TEXT("无法清除上次历练恢复点，新游戏尚未开始。"));
+		return false;
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	LastSaveLoadError = FText::GetEmpty();
 	RuntimeState = MoveTemp(Candidate);
@@ -3540,6 +3552,12 @@ bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 		return false;
 	}
 	RuntimeState = MoveTemp(Candidate);
+	if (IsTrainingCheckpointWorld() && !bRecoveringTrainingCheckpoint
+		&& (HasPendingTrainingSettlement() || UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)))
+	{
+		if (!PersistTrainingCheckpoint(RuntimeState))
+			UE_LOG(LogGameXXKMVPSubsystem, Warning, TEXT("Manual save succeeded, but the desktop recovery checkpoint could not be refreshed."));
+	}
 	return true;
 }
 
@@ -3593,6 +3611,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 		TrainingTravelRuntime = MoveTemp(LoadedTravelRuntime);
+		if (IsTrainingCheckpointWorld() && !bRecoveringTrainingCheckpoint) PersistTrainingCheckpoint(RuntimeState);
 		return true;
 	}
 
@@ -3738,6 +3757,7 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 	TrainingTravelRuntime = MoveTemp(MigratedTravelRuntime);
+	if (IsTrainingCheckpointWorld() && !bRecoveringTrainingCheckpoint) PersistTrainingCheckpoint(RuntimeState);
 	return true;
 }
 
@@ -4460,8 +4480,14 @@ bool UGameXXKMVPSubsystem::EnsureQingshanTownRuntimeForDirectMap()
 
 bool UGameXXKMVPSubsystem::EnsureDesktopTrainingRuntimeForDirectMap()
 {
+	if (HasPendingTrainingSettlement()) return true;
 	if (RuntimeState.Screen == EGameXXKScreen::MainMenu)
 	{
+		if (IsTrainingCheckpointWorld() && UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0))
+		{
+			TGuardValue<bool> RecoveryGuard(bRecoveringTrainingCheckpoint, true);
+			return LoadGameFromSlot(GetTrainingCheckpointSlotName(), 0);
+		}
 		// The isolated HUD map is itself a playable entry surface. A fresh direct
 		// launch therefore needs the full new-game initialization (starter roster,
 		// active party projection, card run, and Training runtime), not the lighter
@@ -4550,6 +4576,73 @@ bool UGameXXKMVPSubsystem::ResolveBattleVictory(bool bBossBattle)
 	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	return UGameXXKMVPRules::ResolveBattleVictory(RuntimeState, bBossBattle);
+}
+
+bool UGameXXKMVPSubsystem::HasPendingTrainingSettlement() const
+{
+	return RuntimeState.Training.PendingSettlement.ReceiptId.IsValid();
+}
+
+FGameXXKTrainingSettlementReceipt UGameXXKMVPSubsystem::GetPendingTrainingSettlementCopy() const
+{
+	return RuntimeState.Training.PendingSettlement;
+}
+
+bool UGameXXKMVPSubsystem::ConfirmTrainingSettlement(FGuid ReceiptId)
+{
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	FString Error;
+	if (!FGameXXKTrainingSettlementRules::Acknowledge(Candidate, ReceiptId, &Error)
+		|| !FGameXXKTrainingRules::StartTravel(Candidate.Training, Candidate.Training.CurrentTravelStageId))
+	{
+		LastSaveLoadError = FText::FromString(Error.IsEmpty() ? TEXT("无法恢复历练，请重试。") : Error);
+		return false;
+	}
+	FGameXXKTrainingTravelRuntime ResumedTravel;
+	if (!PrepareFreshTrainingTravelRuntime(Candidate, ResumedTravel)) return false;
+	Candidate.Training.TravelLastUpdatedUnixSeconds = GetCurrentTravelUnixSeconds();
+	if (!PersistTrainingCheckpoint(Candidate)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(ResumedTravel);
+	LastSaveLoadError = FText::GetEmpty();
+	return true;
+}
+
+FString UGameXXKMVPSubsystem::GetTrainingCheckpointSlotName()
+{
+	return TEXT("GameXXK_DesktopTraining_Checkpoint");
+}
+
+bool UGameXXKMVPSubsystem::IsTrainingCheckpointWorld() const
+{
+	const UWorld* World = GetWorld();
+	return World && World->IsGameWorld() && !IsRunningCommandlet() && !GIsAutomationTesting
+		&& World->GetOutermost()->GetName().Contains(TEXT("L_DesktopTrainingHUD"));
+}
+
+bool UGameXXKMVPSubsystem::PersistTrainingCheckpoint(const FGameXXKRuntimeState& Candidate)
+{
+	bool bShouldWrite = IsTrainingCheckpointWorld();
+#if WITH_DEV_AUTOMATION_TESTS
+	bShouldWrite |= SaveSlotWriteDelegateForTest.IsBound();
+#endif
+	if (!bShouldWrite) return true;
+	FString Error;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
+	{
+		LastSaveLoadError = FText::FromString(Error);
+		return false;
+	}
+	UGameXXKSaveGame* Save = Cast<UGameXXKSaveGame>(UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));
+	if (!Save) return false;
+	Save->SaveState = UGameXXKMVPRules::MakeSaveState(Candidate);
+	if (!WriteSaveGameToSlot(Save, GetTrainingCheckpointSlotName(), 0))
+	{
+		LastSaveLoadError = FText::FromString(TEXT("通关恢复点保存失败，请重试；奖励尚未重复发放。"));
+		return false;
+	}
+	return true;
 }
 
 bool UGameXXKMVPSubsystem::ResolvePendingBattleRewardChoiceAndFinish(

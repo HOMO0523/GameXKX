@@ -1,8 +1,14 @@
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/ScaleBox.h"
+#include "Components/SizeBox.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
+#include "Components/ButtonSlot.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
@@ -17,18 +23,18 @@
 
 namespace
 {
-	const FVector2D EncounterPanelSize(900.0f, 520.0f);
-	const FVector2D EncounterActionSize(226.0f, 56.0f);
-	const FVector2D EncounterChoiceCardSize(226.0f, 250.0f);
+	const FVector2D EncounterPanelSize(1520.0f, 840.0f);
+	const FVector2D EncounterActionSize(320.0f, 76.0f);
+	const FVector2D EncounterChoiceCardSize(300.0f, 454.0f);
 	const FVector2D EncounterSelectionInkSize(54.0f, 54.0f);
-	const FVector2D EncounterSelectionInkPosition(164.0f, 8.0f);
-	const FVector2D EncounterCloseSize(74.0f, 74.0f);
+	const FVector2D EncounterSelectionInkPosition(240.0f, 8.0f);
+	const FVector2D EncounterCloseSize(56.0f, 56.0f);
 	const FMargin WindowFrameMargin(0.065f);
 	const FMargin ActionFrameMargin(5.0f / 73.0f, 5.0f / 31.0f, 5.0f / 73.0f, 5.0f / 31.0f);
 	const FString BackpackTextureRoot(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/"));
-	const FString WindowFrameTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_WindowFrame.T_TownBackpack_WindowFrame"));
-	const FString HeaderTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_Header.T_TownBackpack_Header"));
-	const FString ActionTexturePath(BackpackTextureRoot + TEXT("T_TownBackpack_ActionBlank.T_TownBackpack_ActionBlank"));
+	const FString WindowFrameTexturePath(FGameXXKInRunUiStyle::PaperPath);
+	const FString HeaderTexturePath;
+	const FString ActionTexturePath(TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase"));
 	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
 	const FString CardFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardFrame.T_MasterV2_CardFrame"));
 	const FString CloseInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
@@ -80,12 +86,7 @@ namespace
 
 	FButtonStyle MakeActionButtonStyle()
 	{
-		FButtonStyle Style;
-		Style.SetNormal(MakeTextureBrush(ActionTexturePath, EncounterActionSize, ESlateBrushDrawType::Box, ActionFrameMargin));
-		Style.SetHovered(MakeTextureBrush(ActionTexturePath, EncounterActionSize, ESlateBrushDrawType::Box, ActionFrameMargin));
-		Style.SetPressed(MakeTextureBrush(ActionTexturePath, EncounterActionSize, ESlateBrushDrawType::Box, ActionFrameMargin));
-		Style.SetDisabled(MakeTextureBrush(ActionTexturePath, EncounterActionSize, ESlateBrushDrawType::Box, ActionFrameMargin));
-		return Style;
+		return FGameXXKInRunUiStyle::Action(EncounterActionSize);
 	}
 
 	FButtonStyle MakeImageButtonStyle(const FString& TexturePath, const FVector2D& ImageSize)
@@ -110,12 +111,12 @@ namespace
 		{
 			return;
 		}
-		if (UCanvasPanelSlot* Slot = Canvas->AddChildToCanvas(Child))
+		if (UCanvasPanelSlot* LayoutSlot = Canvas->AddChildToCanvas(Child))
 		{
-			Slot->SetAnchors(Anchors);
-			Slot->SetAlignment(Alignment);
-			Slot->SetPosition(Position);
-			Slot->SetSize(Size);
+			LayoutSlot->SetAnchors(Anchors);
+			LayoutSlot->SetAlignment(Alignment);
+			LayoutSlot->SetPosition(Position);
+			LayoutSlot->SetSize(Size);
 		}
 	}
 
@@ -134,8 +135,8 @@ namespace
 		TextBlock->SetText(Text);
 		TextBlock->SetColorAndOpacity(FSlateColor(Ink));
 		TextBlock->SetAutoWrapText(true);
-		FSlateFontInfo Font = TextBlock->GetFont();
-		Font.Size = FontSize;
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize, true, FontSize >= 28);
+		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 		TextBlock->SetFont(Font);
 		return TextBlock;
 	}
@@ -391,169 +392,89 @@ int32 UGameXXKRouteEncounterPanelWidget::GetRenderedChoiceCardCountForTest() con
 void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 {
 	SetIsFocusable(true);
-	if (!WidgetTree)
-	{
-		WidgetTree = NewObject<UWidgetTree>(this, TEXT("RouteEncounterPanelWidgetTree"));
-	}
-	if (!WidgetTree || RootCanvas)
-	{
-		return;
-	}
-
-	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteEncounterPanelRoot"));
+	if (!WidgetTree) WidgetTree = NewObject<UWidgetTree>(this, TEXT("RouteEncounterWidgetTree"));
+	if (!WidgetTree || RootCanvas) return;
+	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteEncounterRoot"));
 	WidgetTree->RootWidget = RootCanvas;
-
-	ModalBackdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteEncounterModalBackdrop"));
-	ModalBackdrop->SetBrushColor(FLinearColor(0.015f, 0.018f, 0.022f, 0.53f));
-	AddCanvasChild(RootCanvas, ModalBackdrop, FVector2D::ZeroVector, FVector2D::ZeroVector, FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
-
-	WindowFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteEncounterPaperWindow"));
-	WindowFrame->SetBrush(MakeTextureBrush(WindowFrameTexturePath, EncounterPanelSize, ESlateBrushDrawType::Box));
-	WindowFrame->SetBrushColor(FLinearColor::White);
-	WindowFrame->SetPadding(FMargin(38.0f, 34.0f, 38.0f, 34.0f));
-	AddCanvasChild(RootCanvas, WindowFrame, FVector2D::ZeroVector, EncounterPanelSize, FAnchors(0.5f, 0.5f), FVector2D(0.5f, 0.5f));
-
+	UBorder* Shade = WidgetTree->ConstructWidget<UBorder>();
+	Shade->SetBrushColor(FLinearColor(0.016f, 0.012f, 0.009f, 0.76f));
+	Shade->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (auto* LayoutSlot = RootCanvas->AddChildToCanvas(Shade)) { LayoutSlot->SetAnchors(FAnchors(0,0,1,1)); LayoutSlot->SetOffsets(FMargin(0)); }
+	UScaleBox* Scale = WidgetTree->ConstructWidget<UScaleBox>();
+	Scale->SetStretch(EStretch::ScaleToFit);
+	if (auto* LayoutSlot = RootCanvas->AddChildToCanvas(Scale)) { LayoutSlot->SetAnchors(FAnchors(0,0,1,1)); LayoutSlot->SetOffsets(FMargin(48,36,48,36)); }
+	USizeBox* Size = WidgetTree->ConstructWidget<USizeBox>();
+	Size->SetWidthOverride(EncounterPanelSize.X); Size->SetHeightOverride(EncounterPanelSize.Y);
+	Scale->SetContent(Size);
+	UOverlay* Page = WidgetTree->ConstructWidget<UOverlay>(); Size->SetContent(Page);
+	UImage* Paper = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteEncounterPaper"));
+	Paper->SetBrush(FGameXXKInRunUiStyle::Paper(EncounterPanelSize)); Paper->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (auto* LayoutSlot = Page->AddChildToOverlay(Paper)) { LayoutSlot->SetHorizontalAlignment(HAlign_Fill); LayoutSlot->SetVerticalAlignment(VAlign_Fill); }
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteEncounterPaperContent"));
-	WindowFrame->SetContent(FrameCanvas);
-
-	HeaderImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteEncounterHeaderStrip"));
-	HeaderImage->SetBrush(MakeTextureBrush(HeaderTexturePath, FVector2D(126.0f, 38.0f)));
-	AddCanvasChild(FrameCanvas, HeaderImage, FVector2D(0.0f, 0.0f), FVector2D(126.0f, 38.0f));
-
-	TitleTextBlock = MakeInkText(WidgetTree, NSLOCTEXT("GameXXKRouteEncounter", "DefaultTitle", "路线遭遇"), 25);
-	if (TitleTextBlock)
+	if (auto* LayoutSlot = Page->AddChildToOverlay(FrameCanvas)) { LayoutSlot->SetHorizontalAlignment(HAlign_Fill); LayoutSlot->SetVerticalAlignment(VAlign_Fill); LayoutSlot->SetPadding(FMargin(54,38)); }
+	TitleTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 44);
+	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(8,8), FVector2D(1100,70));
+	auto* Divider = WidgetTree->ConstructWidget<UBorder>(); Divider->SetBrushColor(FGameXXKInRunUiStyle::MutedInk() * FLinearColor(1,1,1,0.25f)); Divider->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AddCanvasChild(FrameCanvas, Divider, FVector2D(12,99), FVector2D(1380,1));
+	SpeakerTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 32, FGameXXKInRunUiStyle::Jade());
+	AddCanvasChild(FrameCanvas, SpeakerTextBlock, FVector2D(16,154), FVector2D(338,58));
+	BodyTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 24, FGameXXKInRunUiStyle::MutedInk());
+	BodyTextBlock->SetLineHeightPercentage(1.3f);
+	AddCanvasChild(FrameCanvas, BodyTextBlock, FVector2D(16,233), FVector2D(338,360));
+	for (int32 Index = 0; Index < 3; ++Index)
 	{
-		TitleTextBlock->SetJustification(ETextJustify::Center);
-		AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(18.0f, 1.0f), FVector2D(270.0f, 38.0f));
-	}
-
-	SpeakerTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 28, FLinearColor(0.08f, 0.12f, 0.11f, 1.0f));
-	AddCanvasChild(FrameCanvas, SpeakerTextBlock, FVector2D(12.0f, 74.0f), FVector2D(800.0f, 42.0f));
-
-	BodyTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.20f, 0.15f, 0.10f, 1.0f));
-	AddCanvasChild(FrameCanvas, BodyTextBlock, FVector2D(12.0f, 132.0f), FVector2D(800.0f, 162.0f));
-
-	ChoiceCardButtons.Reserve(3);
-	ChoiceArtImages.Reserve(3);
-	ChoiceNameTexts.Reserve(3);
-	ChoiceDescriptionTexts.Reserve(3);
-	ChoiceDisabledReasonTexts.Reserve(3);
-	ChoiceSelectionInks.Reserve(3);
-	for (int32 ChoiceIndex = 0; ChoiceIndex < 3; ++ChoiceIndex)
-	{
-		UGameXXKRouteEncounterActionButton* ChoiceButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(
-			UGameXXKRouteEncounterActionButton::StaticClass(),
-			*FString::Printf(TEXT("RouteEncounterChoiceCard%d"), ChoiceIndex));
-		ChoiceButton->SetStyle(MakeImageButtonStyle(CardFrameTexturePath, EncounterChoiceCardSize));
-		ChoiceButton->ConfigureChoice(this, ChoiceIndex);
-		ChoiceButton->SetVisibility(ESlateVisibility::Collapsed);
-
-		UCanvasPanel* Face = WidgetTree->ConstructWidget<UCanvasPanel>(
-			UCanvasPanel::StaticClass(),
-			*FString::Printf(TEXT("RouteEncounterChoiceFace%d"), ChoiceIndex));
-		ChoiceButton->SetContent(Face);
-
-		UImage* Art = WidgetTree->ConstructWidget<UImage>(
-			UImage::StaticClass(),
-			*FString::Printf(TEXT("RouteEncounterChoiceArt%d"), ChoiceIndex));
-		Art->SetBrush(MakeTextureBrush(RewardIconTexturePath, FVector2D(104.0f, 82.0f)));
+		auto* Button = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), *FString::Printf(TEXT("RouteEncounterChoiceCard%d"),Index));
+		Button->SetStyle(FGameXXKInRunUiStyle::Choice(EncounterChoiceCardSize)); Button->ConfigureChoice(this,Index);
+		auto* Face = WidgetTree->ConstructWidget<UCanvasPanel>(); Button->SetContent(Face);
+		if (auto* FaceSlot = Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
+		auto* Art = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("RouteEncounterChoiceArt%d"),Index));
 		Art->SetVisibility(ESlateVisibility::HitTestInvisible);
-		AddCanvasChild(Face, Art, FVector2D(61.0f, 27.0f), FVector2D(104.0f, 82.0f));
-
-		UTextBlock* Name = MakeInkText(
-			WidgetTree,
-			FText::GetEmpty(),
-			17,
-			FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
-			*FString::Printf(TEXT("RouteEncounterChoiceName%d"), ChoiceIndex));
-		Name->SetJustification(ETextJustify::Center);
-		AddCanvasChild(Face, Name, FVector2D(20.0f, 118.0f), FVector2D(186.0f, 32.0f));
-
-		UTextBlock* Description = MakeInkText(
-			WidgetTree,
-			FText::GetEmpty(),
-			13,
-			FLinearColor(0.20f, 0.15f, 0.10f, 1.0f),
-			*FString::Printf(TEXT("RouteEncounterChoiceDescription%d"), ChoiceIndex));
-		Description->SetJustification(ETextJustify::Center);
-		AddCanvasChild(Face, Description, FVector2D(17.0f, 153.0f), FVector2D(192.0f, 54.0f));
-
-		UTextBlock* DisabledReason = MakeInkText(
-			WidgetTree,
-			FText::GetEmpty(),
-			12,
-			FLinearColor(0.48f, 0.12f, 0.08f, 1.0f),
-			*FString::Printf(TEXT("RouteEncounterChoiceDisabledReason%d"), ChoiceIndex));
-		DisabledReason->SetJustification(ETextJustify::Center);
-		DisabledReason->SetVisibility(ESlateVisibility::Collapsed);
-		AddCanvasChild(Face, DisabledReason, FVector2D(17.0f, 211.0f), FVector2D(192.0f, 28.0f));
-
-		UImage* SelectionInk = WidgetTree->ConstructWidget<UImage>(
-			UImage::StaticClass(),
-			*FString::Printf(TEXT("RouteEncounterChoiceSelectionInk%d"), ChoiceIndex));
-		SelectionInk->SetBrush(MakeTextureBrush(SelectionInkTexturePath, EncounterSelectionInkSize));
-		SelectionInk->SetVisibility(ESlateVisibility::Collapsed);
-		AddCanvasChild(Face, SelectionInk, EncounterSelectionInkPosition, EncounterSelectionInkSize);
-
-		ChoiceCardButtons.Add(ChoiceButton);
-		ChoiceArtImages.Add(Art);
-		ChoiceNameTexts.Add(Name);
-		ChoiceDescriptionTexts.Add(Description);
-		ChoiceDisabledReasonTexts.Add(DisabledReason);
-		ChoiceSelectionInks.Add(SelectionInk);
-		AddCanvasChild(FrameCanvas, ChoiceButton, FVector2D(58.0f + 260.0f * ChoiceIndex, 145.0f), EncounterChoiceCardSize);
+		AddCanvasChild(Face,Art,FVector2D(95,35),FVector2D(110,110));
+		auto* Sigil = MakeInkText(WidgetTree,FText::GetEmpty(),64,FGameXXKInRunUiStyle::Jade(),*FString::Printf(TEXT("RouteEncounterChoiceSigil%d"),Index));
+		Sigil->SetJustification(ETextJustify::Center);
+		AddCanvasChild(Face,Sigil,FVector2D(94,34),FVector2D(112,112));
+		auto* Name = MakeInkText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteEncounterChoiceName%d"),Index));
+		Name->SetJustification(ETextJustify::Center); AddCanvasChild(Face,Name,FVector2D(24,161),FVector2D(252,80));
+		auto* Description = MakeInkText(WidgetTree,FText::GetEmpty(),22,FGameXXKInRunUiStyle::MutedInk(),*FString::Printf(TEXT("RouteEncounterChoiceDescription%d"),Index));
+		Description->SetWrapTextAt(220.0f); Description->SetLineHeightPercentage(1.16f); Description->SetJustification(ETextJustify::Center);
+		AddCanvasChild(Face,Description,FVector2D(25,247),FVector2D(250,170));
+		auto* Disabled = MakeInkText(WidgetTree,FText::GetEmpty(),18,FGameXXKInRunUiStyle::Vermilion(),*FString::Printf(TEXT("RouteEncounterChoiceDisabledReason%d"),Index));
+		Disabled->SetJustification(ETextJustify::Center); Disabled->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(Face,Disabled,FVector2D(25,386),FVector2D(250,54));
+		auto* Ink = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),*FString::Printf(TEXT("RouteEncounterChoiceSelectionInk%d"),Index));
+		Ink->SetBrush(MakeTextureBrush(SelectionInkTexturePath,EncounterSelectionInkSize)); Ink->SetVisibility(ESlateVisibility::Collapsed);
+		AddCanvasChild(Face,Ink,EncounterSelectionInkPosition,EncounterSelectionInkSize);
+		ChoiceCardButtons.Add(Button); ChoiceArtImages.Add(Art); ChoiceNameTexts.Add(Name); ChoiceDescriptionTexts.Add(Description); ChoiceDisabledReasonTexts.Add(Disabled); ChoiceSelectionInks.Add(Ink);
+		AddCanvasChild(FrameCanvas,Button,FVector2D(414+326*Index,144),EncounterChoiceCardSize);
 	}
-
 	ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("RouteEncounterConfirmAction"));
-	ConfirmButton->SetStyle(MakeActionButtonStyle());
-	ConfirmButton->OnClicked.AddDynamic(this, &UGameXXKRouteEncounterPanelWidget::HandleConfirmClicked);
-	ConfirmTextBlock = MakeInkText(WidgetTree, NSLOCTEXT("GameXXKRouteEncounter", "ConfirmChoice", "确认选择"), 18);
-	if (ConfirmTextBlock)
+	ConfirmButton->SetStyle(MakeActionButtonStyle()); ConfirmButton->OnClicked.AddDynamic(this,&UGameXXKRouteEncounterPanelWidget::HandleConfirmClicked);
+	ConfirmTextBlock = MakeInkText(WidgetTree,NSLOCTEXT("GameXXKRouteEncounter","ConfirmChoice","确认选择"),26,FLinearColor::White);
+	ConfirmTextBlock->SetAutoWrapText(false); ConfirmTextBlock->SetJustification(ETextJustify::Center); ConfirmButton->SetContent(ConfirmTextBlock);
+	AddCanvasChild(FrameCanvas,ConfirmButton,FVector2D(733,650),EncounterActionSize);
+	auto AddAction = [this](const FName Name, UGameXXKRouteEncounterActionButton*& Button, UTextBlock*& Label, const FVector2D& Position)
 	{
-		ConfirmTextBlock->SetJustification(ETextJustify::Center);
-		ConfirmButton->SetContent(ConfirmTextBlock);
-	}
-	ConfirmButton->SetVisibility(ESlateVisibility::Collapsed);
-	AddCanvasChild(FrameCanvas, ConfirmButton, FVector2D(318.0f, 405.0f), EncounterActionSize);
-
-	PrimaryActionButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterPrimaryAction"));
-	PrimaryActionButton->SetStyle(MakeActionButtonStyle());
-	PrimaryActionTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 18);
-	if (PrimaryActionTextBlock)
-	{
-		PrimaryActionTextBlock->SetJustification(ETextJustify::Center);
-		PrimaryActionButton->SetContent(PrimaryActionTextBlock);
-	}
-	AddCanvasChild(FrameCanvas, PrimaryActionButton, FVector2D(58.0f, 358.0f), EncounterActionSize);
-
-	SecondaryActionButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterSecondaryAction"));
-	SecondaryActionButton->SetStyle(MakeActionButtonStyle());
-	SecondaryActionTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 18);
-	if (SecondaryActionTextBlock)
-	{
-		SecondaryActionTextBlock->SetJustification(ETextJustify::Center);
-		SecondaryActionButton->SetContent(SecondaryActionTextBlock);
-	}
-	AddCanvasChild(FrameCanvas, SecondaryActionButton, FVector2D(318.0f, 358.0f), EncounterActionSize);
-
-	TertiaryActionButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterTertiaryAction"));
-	TertiaryActionButton->SetStyle(MakeActionButtonStyle());
-	TertiaryActionTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 18);
-	if (TertiaryActionTextBlock)
-	{
-		TertiaryActionTextBlock->SetJustification(ETextJustify::Center);
-		TertiaryActionButton->SetContent(TertiaryActionTextBlock);
-	}
-	AddCanvasChild(FrameCanvas, TertiaryActionButton, FVector2D(578.0f, 358.0f), EncounterActionSize);
-
-	CloseButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(), TEXT("RouteEncounterCloseAction"));
-	CloseButton->SetStyle(MakeImageButtonStyle(CloseInkTexturePath, EncounterCloseSize));
-	CloseButton->Configure(this, EGameXXKRouteEncounterAction::ClosePanel);
-	CloseButton->SetToolTipText(NSLOCTEXT("GameXXKRouteEncounter", "ReturnToRouteMap", "返回路线图（本节点不会结算）"));
-	AddCanvasChild(FrameCanvas, CloseButton, FVector2D(738.0f, -8.0f), EncounterCloseSize);
-
+		Button = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(),Name);
+		Button->SetStyle(MakeActionButtonStyle()); Label = MakeInkText(WidgetTree,FText::GetEmpty(),24,FLinearColor::White);
+		Label->SetAutoWrapText(false); Label->SetJustification(ETextJustify::Center); Button->SetContent(Label);
+		AddCanvasChild(FrameCanvas,Button,Position,FVector2D(388,92));
+	};
+	UGameXXKRouteEncounterActionButton* Primary=nullptr; UTextBlock* PrimaryText=nullptr;
+	UGameXXKRouteEncounterActionButton* Secondary=nullptr; UTextBlock* SecondaryText=nullptr;
+	UGameXXKRouteEncounterActionButton* Tertiary=nullptr; UTextBlock* TertiaryText=nullptr;
+	AddAction(TEXT("RouteEncounterPrimaryAction"),Primary,PrimaryText,FVector2D(474,249)); PrimaryActionButton=Primary; PrimaryActionTextBlock=PrimaryText;
+	AddAction(TEXT("RouteEncounterSecondaryAction"),Secondary,SecondaryText,FVector2D(948,249)); SecondaryActionButton=Secondary; SecondaryActionTextBlock=SecondaryText;
+	AddAction(TEXT("RouteEncounterTertiaryAction"),Tertiary,TertiaryText,FVector2D(711,445)); TertiaryActionButton=Tertiary; TertiaryActionTextBlock=TertiaryText;
+	auto* CampHint = MakeInkText(WidgetTree,NSLOCTEXT("GameXXKRouteEncounter","CampHint","稍作休整，再赴前路。\n选择后继续本次历练。"),24,FGameXXKInRunUiStyle::MutedInk(),TEXT("RouteCampHint"));
+	CampHint->SetJustification(ETextJustify::Center); CampHint->SetLineHeightPercentage(1.4f);
+	AddCanvasChild(FrameCanvas,CampHint,FVector2D(474,410),FVector2D(862,140));
+	CloseButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(),TEXT("RouteEncounterCloseAction"));
+	CloseButton->SetStyle(MakeImageButtonStyle(CloseInkTexturePath,EncounterCloseSize)); CloseButton->Configure(this,EGameXXKRouteEncounterAction::ClosePanel);
+	CloseButton->SetToolTipText(NSLOCTEXT("GameXXKRouteEncounter","ReturnToRouteMap","返回路线图（本节点不会结算）"));
+	AddCanvasChild(FrameCanvas,CloseButton,FVector2D(1338,6),EncounterCloseSize);
 	SetVisibility(ESlateVisibility::Collapsed);
 }
+
 
 bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 {
@@ -728,11 +649,9 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 	const FText ChoiceLabels[] = {Presentation.PrimaryLabel, Presentation.SecondaryLabel, Presentation.TertiaryLabel};
 	const FText ChoiceDescriptions[] = {Presentation.PrimaryTooltip, Presentation.SecondaryTooltip, Presentation.TertiaryTooltip};
 	const bool ChoiceEnabled[] = {Presentation.bPrimaryEnabled, Presentation.bSecondaryEnabled, Presentation.bTertiaryEnabled};
-	if (UCanvasPanelSlot* BodySlot = BodyTextBlock ? Cast<UCanvasPanelSlot>(BodyTextBlock->Slot) : nullptr)
-	{
-		BodySlot->SetPosition(bThreeCardMode ? FVector2D(12.0f, 100.0f) : FVector2D(12.0f, 132.0f));
-		BodySlot->SetSize(bThreeCardMode ? FVector2D(800.0f, 44.0f) : FVector2D(800.0f, 162.0f));
-	}
+	if (auto* CampHint = WidgetTree->FindWidget(TEXT("RouteCampHint")))
+		CampHint->SetVisibility(State.Screen == EGameXXKScreen::RouteCamp ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+
 	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceCardButtons.Num(); ++ChoiceIndex)
 	{
 		UGameXXKRouteEncounterActionButton* ChoiceButton = ChoiceCardButtons[ChoiceIndex];
@@ -745,16 +664,15 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 			ChoiceButton->SetIsEnabled(bVisibleChoice && ChoiceEnabled[ChoiceIndex]);
 			ChoiceButton->SetToolTipText(ChoiceDescriptions[ChoiceIndex]);
 		}
-		if (ChoiceNameTexts.IsValidIndex(ChoiceIndex) && ChoiceNameTexts[ChoiceIndex])
-		{
-			ChoiceNameTexts[ChoiceIndex]->SetText(ChoiceLabels[ChoiceIndex]);
-		}
-		if (ChoiceDescriptionTexts.IsValidIndex(ChoiceIndex) && ChoiceDescriptionTexts[ChoiceIndex])
-		{
-			ChoiceDescriptionTexts[ChoiceIndex]->SetText(ChoiceEnabled[ChoiceIndex]
-				? ChoiceDescriptions[ChoiceIndex]
-				: ChoiceLabels[ChoiceIndex]);
-		}
+		FString ShortName = ChoiceLabels[ChoiceIndex].ToString();
+		FString Detail = ChoiceDescriptions[ChoiceIndex].ToString();
+		ShortName.RemoveFromStart(TEXT("选择 · "));
+		FString Effect, ParsedName;
+		if (ShortName.Split(TEXT("："), &ParsedName, &Effect)) { ShortName = ParsedName; Detail = Effect; }
+		else Detail.RemoveFromStart(ShortName + TEXT("\n"));
+		if (ChoiceNameTexts.IsValidIndex(ChoiceIndex)) ChoiceNameTexts[ChoiceIndex]->SetText(FText::FromString(ShortName));
+		if (ChoiceDescriptionTexts.IsValidIndex(ChoiceIndex)) ChoiceDescriptionTexts[ChoiceIndex]->SetText(FText::FromString(Detail));
+
 		if (ChoiceDisabledReasonTexts.IsValidIndex(ChoiceIndex) && ChoiceDisabledReasonTexts[ChoiceIndex])
 		{
 			ChoiceDisabledReasonTexts[ChoiceIndex]->SetText(ChoiceEnabled[ChoiceIndex] ? FText::GetEmpty() : ChoiceDescriptions[ChoiceIndex]);
@@ -763,7 +681,7 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 		}
 		if (ChoiceArtImages.IsValidIndex(ChoiceIndex) && ChoiceArtImages[ChoiceIndex])
 		{
-			FString ArtPath = RewardIconTexturePath;
+			FString ArtPath;
 			if (State.CardRun.PendingRelicOffer.RelicIds.IsValidIndex(ChoiceIndex))
 			{
 				if (const FGameXXKRelicDefinition* Relic = FGameXXKRelicCatalog::FindDefinition(State.CardRun.PendingRelicOffer.RelicIds[ChoiceIndex]))
@@ -774,7 +692,15 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 					}
 				}
 			}
-			ChoiceArtImages[ChoiceIndex]->SetBrush(MakeTextureBrush(ArtPath, FVector2D(104.0f, 82.0f)));
+			ChoiceArtImages[ChoiceIndex]->SetBrush(MakeTextureBrush(ArtPath, FVector2D(110.0f, 110.0f)));
+			ChoiceArtImages[ChoiceIndex]->SetVisibility(ArtPath.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			// Environmental gains use a readable calligraphic mark, never an unavailable-card lock.
+			if (auto* Sigil = Cast<UTextBlock>(WidgetTree->FindWidget(*FString::Printf(TEXT("RouteEncounterChoiceSigil%d"),ChoiceIndex))))
+			{
+				const TCHAR* Marks[] = {TEXT("血"),TEXT("气"),TEXT("根")};
+				Sigil->SetText(FText::FromString(Marks[ChoiceIndex]));
+				Sigil->SetVisibility(ArtPath.IsEmpty() ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+			}
 		}
 	}
 	if (PrimaryActionButton) PrimaryActionButton->SetVisibility(bThreeCardMode ? ESlateVisibility::Collapsed : PrimaryActionButton->GetVisibility());
@@ -826,6 +752,7 @@ void UGameXXKRouteEncounterPanelWidget::RefreshChoiceCardStates()
 {
 	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceSelectionInks.Num(); ++ChoiceIndex)
 	{
+		if (ChoiceCardButtons.IsValidIndex(ChoiceIndex)) ChoiceCardButtons[ChoiceIndex]->SetStyle(FGameXXKInRunUiStyle::Choice(EncounterChoiceCardSize, ChoiceIndex == SelectedChoiceIndex));
 		if (ChoiceSelectionInks[ChoiceIndex])
 		{
 			ChoiceSelectionInks[ChoiceIndex]->SetVisibility(
@@ -972,7 +899,7 @@ void UGameXXKRouteEncounterPanelWidget::ApplyActionButton(
 	if (Label)
 	{
 		Label->SetText(Text);
-		Label->SetColorAndOpacity(FSlateColor(bEnabled ? FLinearColor(0.10f, 0.075f, 0.045f, 1.0f) : FLinearColor(0.32f, 0.29f, 0.24f, 0.72f)));
+		Label->SetColorAndOpacity(FSlateColor(bEnabled ? FLinearColor::White : FLinearColor(.72f,.69f,.63f,1.f)));
 	}
 	if (Button)
 	{

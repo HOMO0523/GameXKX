@@ -211,6 +211,9 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 		FText::FromString(TEXT("9876")));
 	TalentTree->RebuildForTest();
 
+	UWidget* ToolModeButton = Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0"));
+	TestTrue(TEXT("locked tool controls do not show through the shared paper"),
+		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Collapsed);
 	TestTrue(TEXT("real root button purchases"), TalentTree->ClickPurchaseButtonForTest());
 	TalentTree->TickForTest(0.0f);
 	TestTrue(TEXT("tools entry can be selected after root refresh"),
@@ -223,6 +226,8 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 	TestEqual(TEXT("tools-entry purchase collapses the lock overlay in place"),
 		LockedToolsPanel->GetVisibility(),
 		ESlateVisibility::Collapsed);
+	TestTrue(TEXT("unlocking tools restores the existing controls without rebuilding the talent graph"),
+		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Visible);
 	TestNotNull(TEXT("five-mode tool controls remain ready behind the overlay"),
 		Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0")));
 	return true;

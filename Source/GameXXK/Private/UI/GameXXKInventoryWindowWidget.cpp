@@ -1,4 +1,7 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UI/GameXXKDesktopPaperStyle.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/ScaleBox.h"
 
 #include "GameXXKAffixCatalog.h"
 #include "GameXXKCardBattleAdapter.h"
@@ -163,8 +166,8 @@ namespace
 	// are a 4x5 window into the 200-slot warehouse.
 	// The parchment alone grows five percent around its original center.  Every
 	// interactive control remains on the fixed 1920x1080 authored coordinates.
-	const FVector2D InventoryPaperPos(274.75f, 151.775f);
-	const FVector2D InventoryPaperSize(1522.5f, 891.45f);
+	const FVector2D InventoryPaperPos = GameXXKDesktopPaperStyle::BackpackPaperPosition;
+	const FVector2D InventoryPaperSize = GameXXKDesktopPaperStyle::BackpackPaperSize;
 	const FVector2D BackpackViewportPos(1135.0f, 300.0f);
 	const FVector2D BackpackViewportSize(550.0f, 600.0f);       // 520 content + 30 interactive ink scrollbar
 	const FMargin BackpackSlotPadding(8.0f, 3.0f);
@@ -197,7 +200,7 @@ namespace
 	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
 	const FString SelectionInkTexturePath;
 	const FString SquareSelectedTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_SquareSelected.T_MasterV2_SquareSelected"));
-	const FString WindowFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
+	const FString WindowFrameTexturePath(GameXXKDesktopPaperStyle::TexturePath);
 	const FString PanelFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_PanelLarge.T_MasterV2_PanelLarge"));
 	const FString ConfirmationDialogTexturePath(PanelFrameTexturePath);
 	const FString CloseButtonTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
@@ -2055,7 +2058,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	AddCanvasChild(RootCanvas, ModalBackdrop, FVector2D::ZeroVector, FVector2D::ZeroVector, FAnchors(0.0f, 0.0f, 1.0f, 1.0f));
 
 	WindowFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("InventoryWindowFrame"));
-	WindowFrame->SetBrush(MakeBoxTextureBrush(WindowFrameTexturePath, InventoryPaperSize));
+	WindowFrame->SetBrush(GameXXKDesktopPaperStyle::MakeBrush(InventoryPaperSize));
 	WindowFrame->SetBrushColor(FLinearColor::White);
 	WindowFrame->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 0.0f));
 	AddCanvasChild(RootCanvas, WindowFrame, InventoryPaperPos, InventoryPaperSize);
@@ -2397,7 +2400,9 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		UOverlay* CardOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		UImage* CardPortrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckPortrait_%02d"), CardIndex));
 		CardPortrait->SetBrush(MakeTextureBrush(HeroCardPortraitTexturePath, HeroDeckPortraitSize));
-		if (UOverlaySlot* PortraitSlot = CardOverlay->AddChildToOverlay(CardPortrait))
+		UScaleBox* PortraitScale = WidgetTree->ConstructWidget<UScaleBox>();
+		PortraitScale->SetStretch(EStretch::ScaleToFit); PortraitScale->SetVisibility(ESlateVisibility::HitTestInvisible); PortraitScale->SetContent(CardPortrait);
+		if (UOverlaySlot* PortraitSlot = CardOverlay->AddChildToOverlay(PortraitScale))
 		{
 			PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
 			PortraitSlot->SetVerticalAlignment(VAlign_Fill);
@@ -2414,7 +2419,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			InkSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CardLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13));
+		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(16, true));
 		CardLabel->SetJustification(ETextJustify::Center);
 		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
 		{
@@ -2424,20 +2429,22 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		}
 		// Cost summary: second line "x气", third line "x内", left-aligned.
 		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 50.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 57.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 68.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 80.0f, 0.0f, 0.0f));
 		}
 		UGameXXKCardTooltipWidget* CardTooltip = WidgetTree->ConstructWidget<UGameXXKCardTooltipWidget>(
 			UGameXXKCardTooltipWidget::StaticClass(),

@@ -1,0 +1,21 @@
+{
+  "assets": [
+    {
+      "asset": "Content/GameXXK/UI/Fonts/Trial/FF_Trial_Fallback_SourceHanSansCN_Regular.uasset",
+      "sha256": "b65f8368be8222e2cee0cec8c5906c446874d83197347f0ab8c4fc55ead67a64",
+      "existing_user_asset": true
+    },
+    {
+      "asset": "Content/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng.uasset",
+      "sha256": "86d5a0b60d71b6d2c3dfb2c8d9000f7e906468c43d7e16181c2bcab0714c8025",
+      "existing_user_asset": true
+    },
+    {
+      "asset": "Content/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font.uasset",
+      "sha256": "3650530f5b93dbca52ebaf9641c449ec0e29a8c26c9ddff672517d4de7ac03a6",
+      "existing_user_asset": true
+    }
+  ],
+  "source_manifest": "Saved/FontPreview/20260904/font-manifest.json",
+  "notes": "Existing JiangHu display Font, its FontFace and SourceHan fallback are required by the workbench and in-run UI. Imported assets are preserved without reimport. Original accompanying notices are retained."
+}

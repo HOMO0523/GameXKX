@@ -729,8 +729,8 @@ bool FGameXXKRouteEncounterDesktopTrainingContextTest::RunTest(const FString& Pa
 		CampPrimaryButton->OnClicked.Broadcast();
 	}
 	TestEqual(TEXT("canonical camp action resolves back to route map"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::DungeonMap);
-	TestEqual(TEXT("canonical camp charm action never heals directly"), Subsystem->GetRuntimeState().PlayerHP, 33);
-	TestTrue(TEXT("canonical camp action acquires the life-saving talisman"),
+	TestEqual(TEXT("canonical camp restores thirty percent health"), Subsystem->GetRuntimeState().PlayerHP, 63);
+	TestFalse(TEXT("canonical camp does not grant the retired charm reward"),
 		Subsystem->GetRuntimeState().CardRun.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Relic)
 		{
 			return Relic.RelicId == TEXT("Relic.LifeSavingTalisman");
@@ -1241,12 +1241,12 @@ bool FGameXXKRouteEncounterPanelEventTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("opening the pure HUD keeps the event screen active"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::RouteEvent);
 	TestEqual(TEXT("opening the pure HUD grants no automatic event reward"), Subsystem->GetRuntimeState().PlayerGold, GoldBeforeOpen);
 	TestEqual(TEXT("opening the pure HUD preserves the event NPC identity"), Subsystem->GetRuntimeState().CardRun.PendingEvent.EventNpcId, PendingNpcBeforeOpen);
-	TestTrue(TEXT("route encounter panel uses the approved backpack paper window frame"),
-		Panel && Panel->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_WindowFrame")));
-	TestTrue(TEXT("route encounter panel uses the approved backpack header strip"),
-		Panel && Panel->GetHeaderResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_Header")));
-	TestTrue(TEXT("route encounter panel uses the approved backpack action blank"),
-		Panel && Panel->GetActionResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/Town/Textures/Backpack/T_TownBackpack_ActionBlank")));
+	TestTrue(TEXT("route encounter panel uses the shared MasterV2 paper window frame"),
+		Panel && Panel->GetWindowFrameResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge")));
+	TestTrue(TEXT("route encounter panel does not reuse a baked backpack title"),
+		Panel && Panel->GetHeaderResourcePathForTest().IsEmpty());
+	TestTrue(TEXT("route encounter panel uses the shared ink action"),
+		Panel && Panel->GetActionResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase")));
 	TestEqual(TEXT("environment event shows the Mountain Spring identity"), Panel ? Panel->GetSpeakerTextForTest().ToString() : FString(), FString(TEXT("无名山泉")));
 	TestEqual(TEXT("event primary choice selects its first route attribute"), Panel ? Panel->GetPrimaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice0);
 	TestEqual(TEXT("event alternative selects its second route attribute"), Panel ? Panel->GetSecondaryActionForTest() : EGameXXKRouteEncounterAction::None, EGameXXKRouteEncounterAction::SelectChoice1);
@@ -1356,8 +1356,8 @@ bool FGameXXKRouteEncounterPanelResolutionTest::RunTest(const FString& Parameter
 	Subsystem->GetMutableRuntimeState().PlayerHP = 33;
 	TestTrue(TEXT("camp charm is shown before player state changes"), PlayerController->OpenRouteEncounterPanel());
 	TestTrue(TEXT("camp charm resolves from the explicit panel click"), Panel && Panel->TriggerPrimaryActionForTest());
-	TestEqual(TEXT("camp charm never heals directly"), Subsystem->GetRuntimeState().PlayerHP, 33);
-	TestTrue(TEXT("camp charm click grants the life-saving talisman"),
+	TestEqual(TEXT("camp restores thirty percent health"), Subsystem->GetRuntimeState().PlayerHP, 63);
+	TestFalse(TEXT("camp does not grant the retired charm reward"),
 		Subsystem->GetRuntimeState().CardRun.Relics.ContainsByPredicate([](const FGameXXKRelicInstance& Relic)
 		{
 			return Relic.RelicId == TEXT("Relic.LifeSavingTalisman");

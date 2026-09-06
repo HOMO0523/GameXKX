@@ -1,4 +1,5 @@
 #include "UI/GameXXKTalentTreeWidget.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "GameXXKTalentCatalog.h"
 #include "GameXXKTalentRules.h"
@@ -475,7 +476,12 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 	GraphFrame = WidgetTree->ConstructWidget<UBorder>(
 		UBorder::StaticClass(),
 		TEXT("TalentGraphFrame"));
-	GraphFrame->SetBrushColor(FLinearColor(0.12f, 0.105f, 0.08f, 0.86f));
+	// Preserve a clear node-workspace boundary against the paper detail area.
+	const FSlateRoundedBoxBrush GraphBackground(
+		FLinearColor(0.12f, 0.105f, 0.08f, 0.16f), 2.0f,
+		FLinearColor(0.20f, 0.17f, 0.12f, 0.34f), 1.0f);
+	GraphFrame->SetBrush(GraphBackground);
+	GraphFrame->SetBrushColor(FLinearColor::White);
 	GraphFrame->SetPadding(FMargin(3.0f));
 	GraphFrame->SetClipping(EWidgetClipping::ClipToBounds);
 	AddCanvas(RootCanvas, GraphFrame, FVector2D::ZeroVector, FVector2D(GraphViewportWidth, WidgetHeight));
@@ -539,7 +545,7 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		UVerticalBox::StaticClass(),
 		TEXT("TalentDetailColumn"));
 	DetailFrame->SetContent(DetailColumn);
-	DetailNameText = MakeText(WidgetTree, FText::GetEmpty(), 21, Gold, TEXT("TalentDetailName"));
+	DetailNameText = MakeText(WidgetTree, FText::GetEmpty(), 21, Ink, TEXT("TalentDetailName"));
 	DetailColumn->AddChildToVerticalBox(DetailNameText)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
 	DetailBodyText = MakeText(WidgetTree, FText::GetEmpty(), 14, Ink, TEXT("TalentDetailBody"));
 	UVerticalBoxSlot* BodySlot = DetailColumn->AddChildToVerticalBox(DetailBodyText);
@@ -561,12 +567,11 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		FVector2D(190.0f, 54.0f)));
 	PurchaseButton->SetBackgroundColor(FLinearColor::White);
 	PurchaseButton->OnClicked.AddDynamic(this, &UGameXXKTalentTreeWidget::HandlePurchaseClicked);
-	PurchaseButton->SetContent(MakeText(
-		WidgetTree,
-		FText::FromString(TEXT("升级")),
-		17,
-		Ink,
-		TEXT("TalentPurchaseLabel")));
+	UTextBlock* PurchaseLabel = MakeText(WidgetTree, FText::FromString(TEXT("升级")),
+		17, Ink, TEXT("TalentPurchaseLabel"));
+	PurchaseLabel->SetAutoWrapText(false);
+	PurchaseLabel->SetJustification(ETextJustify::Center);
+	PurchaseButton->SetContent(PurchaseLabel);
 	DetailColumn->AddChildToVerticalBox(PurchaseButton)->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
 
 	const TArray<FGameXXKTalentNodeView> Views = MVPSubsystem
@@ -844,7 +849,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			16,
 			View.State == EGameXXKTalentNodeState::Locked
 				? FLinearColor(0.48f, 0.46f, 0.41f, 1.0f)
-				: FLinearColor(0.90f, 0.82f, 0.63f, 1.0f));
+				: Ink);
 		NameText->SetJustification(ETextJustify::Center);
 		NameText->SetAutoWrapText(false);
 		UScaleBox* NameScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
@@ -864,7 +869,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			14,
 			View.State == EGameXXKTalentNodeState::Locked
 				? FLinearColor(0.48f, 0.46f, 0.41f, 1.0f)
-				: FLinearColor(0.90f, 0.82f, 0.63f, 1.0f));
+				: Ink);
 		Rank->SetJustification(ETextJustify::Center);
 		Rank->SetAutoWrapText(false);
 		AddCanvas(

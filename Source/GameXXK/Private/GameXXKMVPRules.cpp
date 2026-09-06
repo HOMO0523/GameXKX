@@ -2296,7 +2296,6 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 			NodeKind == EGameXXKNodeKind::Elite
 				? GameXXKMVP::ElitePermanentCompanionBattleExperience
 				: GameXXKMVP::NormalPermanentCompanionBattleExperience);
-		AddItem(Candidate, ItemHealingPowder(), 1);
 		if (!GameXXKMVP::SettleGeneratedRouteNode(
 			Candidate,
 			BeforeOneTimeRewards,
@@ -2342,7 +2341,6 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 	const FGameXXKRuntimeState BeforeOneTimeRewards = Candidate;
 	GameXXKMVP::ApplyXP(Candidate, 80);
 	GameXXKMVP::AwardActivePermanentCompanionBattleExperience(Candidate, GameXXKMVP::NormalPermanentCompanionBattleExperience);
-	AddItem(Candidate, ItemHealingPowder(), 1);
 	if (!GameXXKMVP::SettleFixedRouteNode(
 		Candidate,
 		BeforeOneTimeRewards,

@@ -334,6 +334,10 @@ void FGameXXKRelicRules::ClearRouteRelics(FGameXXKRuntimeState& InOutState)
 	InOutState.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
 	InOutState.CardRun.NextRelicAcquisitionOrdinal = 0;
 	InOutState.CardRun.RouteAttributeBonuses = FGameXXKRouteAttributeBonuses();
+	// Route-only maxima disappear with their modifiers; retain damage without
+	// leaving persistent resources above the permanent character limits.
+	InOutState.PlayerHP = FMath::Clamp(InOutState.PlayerHP,0,InOutState.PlayerMaxHP);
+	InOutState.PlayerMP = FMath::Clamp(InOutState.PlayerMP,0,InOutState.PlayerMaxMP);
 }
 
 void FGameXXKRelicRules::ApplyBattleStart(FGameXXKRuntimeState& InOutState)

@@ -2516,7 +2516,7 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("task NPC lower information strip uses near-black"), Board->GetCardInfoStripTintForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FLinearColor(0.145f, 0.137f, 0.129f, 1.0f));
 	TestEqual(TEXT("hero card name band uses black ink"), Board->GetCardInfoInkTintForTest(TEXT("Hero.Generic.QingFengYiShi")), FLinearColor(0.137f, 0.118f, 0.098f, 1.0f));
 	TestEqual(TEXT("companion card name band shares the hero black ink"), Board->GetCardInfoInkTintForTest(TEXT("Profession.Blade.LieFengZhan")), FLinearColor(0.137f, 0.118f, 0.098f, 1.0f));
-	TestEqual(TEXT("task NPC name band keeps the pale stone ink"), Board->GetCardInfoInkTintForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FLinearColor(0.722f, 0.706f, 0.671f, 1.0f));
+	TestEqual(TEXT("task NPC name stays dark on the shared parchment face"), Board->GetCardInfoInkTintForTest(TEXT("Npc.TusiChief.ZhaiZhuHaoLing")), FLinearColor(0.137f, 0.118f, 0.098f, 1.0f));
 	TestTrue(TEXT("card battle board exposes the active five-card hand"), Board->GetVisibleHandCardCountForTest() > 0);
 	USizeBox* FirstHandCardSize = Board->WidgetTree ? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattleHandCardSize_00"))) : nullptr;
 	USizeBox* FirstIntentCardSize = Board->WidgetTree ? Cast<USizeBox>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCardSize_00"))) : nullptr;

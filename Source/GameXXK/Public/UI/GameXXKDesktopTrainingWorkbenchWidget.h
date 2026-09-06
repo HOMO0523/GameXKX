@@ -559,6 +559,7 @@ protected:
 	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
 	virtual void NativeOnFocusLost(const FFocusEvent& InFocusEvent) override;
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	virtual void NativeDestruct() override;
 
 private:
@@ -982,7 +983,10 @@ private:
 		EGameXXKDesktopHudPresentationMode::DesktopWindow;
 	EGameXXKToolCombineKind ActiveToolCombineKind = EGameXXKToolCombineKind::Equipment;
 	int32 SelectedToolSocketIndex = 0;
+	TArray<TPair<TWeakObjectPtr<UWidget>, ESlateVisibility>> LockedToolControls;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
+	EGameXXKDesktopTrainingCharacterRoster CharacterPickerRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
+	int32 CharacterPickerPageIndex = 0;
 	EGameXXKDesktopTrainingCharacterRoster ActiveFormationRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	FName SelectedStageId = NAME_None;
 	int32 ActiveTrainingDifficultyIndex = 0;
@@ -1056,6 +1060,7 @@ private:
 	bool bCollapsedResourcesReleased = false;
 	bool bHasSavedEmbeddedInventorySession = false;
 	FGameXXKEmbeddedInventorySessionState SavedEmbeddedInventorySession;
+	TMap<FName, FGameXXKEmbeddedInventorySessionState> CharacterBackpackSessions;
 	TArray<FDesktopToolEntry> ToolSlots;
 	FDesktopCarriedEntry CarriedEntry;
 	FText LastNotice;

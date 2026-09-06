@@ -1,4 +1,5 @@
 #include "MVP/GameXXKSaveMigration.h"
+#include "GameXXKTrainingSettlementRules.h"
 
 #include "GameXXKCardRules.h"
 #include "GameXXKCardCatalog.h"
@@ -2522,6 +2523,29 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
+	if (Source.SaveVersion < TrainingSettlementIntroducedSaveVersion)
+	{
+		Candidate.RuntimeState.Training.PendingSettlement = FGameXXKTrainingSettlementReceipt();
+		Candidate.RuntimeState.Training.LastAppliedSettlementId.Invalidate();
+		auto& Battle = Candidate.RuntimeState.CardRun.ActiveBattle;
+		Battle.SessionStats = FGameXXKBattleSessionStats();
+		Battle.SessionStats.bComplete = !Candidate.RuntimeState.CardRun.bHasActiveCardBattle;
+		// An unclaimed legacy training Boss offer resumes at the terminal settlement.
+		// It does not become an ordinary card choice and grants nothing during migration.
+		auto& State = Candidate.RuntimeState;
+		const auto* Node = State.RouteMapNodes.FindByPredicate([&State](const auto& N){return N.NodeId == State.PendingRouteNodeId;});
+		if (State.Training.bChallengeActive && State.Screen == EGameXXKScreen::Battle
+			&& Node && Node->NodeKind == EGameXXKNodeKind::Boss
+			&& State.CardRun.bHasActiveCardBattle && Battle.Phase == EGameXXKCardBattlePhase::Victory
+			&& State.CardRun.PendingReward.SourceNodeId == Node->NodeId)
+		{
+			State.CardRun.PendingReward = FGameXXKPendingRouteCardReward();
+		}
+		for (auto& Unit : Battle.Units)
+		{
+			Unit.SettlementHealthLost = Unit.SettlementHealingReceived = Unit.SettlementArmorGenerated = 0;
+		}
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
@@ -2752,6 +2776,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	{
 		return false;
 	}
+	if (!FGameXXKTrainingSettlementRules::ValidatePending(State, &OutError)) return false;
 	FGameXXKTrainingStageDefinition TrainingDefinition;
 	if (!State.Training.UnlockedDifficultyIds.Contains(FGameXXKTrainingRules::DifficultyId(EGameXXKTrainingDifficulty::Normal))
 		|| !FGameXXKTrainingRules::TryGetStageDefinition(State.Training.CurrentTravelStageId, TrainingDefinition)
@@ -2814,9 +2839,13 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	}
 	if (RouteProgress.SchemaVersion == 0)
 	{
+		// Training owns one generated map and uses chapter 1 for one-time node
+		// receipts without activating the retired three-chapter progression.
+		const bool bSingleMapTraining = State.Training.bChallengeActive
+			&& State.bDungeonActive && State.bHasGeneratedRouteMap;
 		if (RouteProgress.RootSeed != 0
 			|| !RouteProgress.ChapterSeeds.IsEmpty()
-			|| RouteProgress.CurrentChapter != 0
+			|| RouteProgress.CurrentChapter != (bSingleMapTraining ? 1 : 0)
 			|| RouteProgress.RouteCombatLevel != 0
 			|| RouteProgress.ActualRouteCardAcquisitionCount != 0)
 		{

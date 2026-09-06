@@ -185,23 +185,23 @@ namespace
 		switch (RoomType)
 		{
 		case EGameXXKOneGameRouteRoomType::Start:
-			return FText::FromString(TEXT("Start"));
+			return FText::FromString(TEXT("起程"));
 		case EGameXXKOneGameRouteRoomType::SmallEnemy:
-			return FText::FromString(TEXT("Battle"));
+			return FText::FromString(TEXT("战斗"));
 		case EGameXXKOneGameRouteRoomType::EliteEnemy:
-			return FText::FromString(TEXT("Elite"));
+			return FText::FromString(TEXT("精英"));
 		case EGameXXKOneGameRouteRoomType::Camp:
-			return FText::FromString(TEXT("Camp"));
+			return FText::FromString(TEXT("篝火"));
 		case EGameXXKOneGameRouteRoomType::Chest:
-			return FText::FromString(TEXT("Chest"));
+			return FText::FromString(TEXT("宝匣"));
 		case EGameXXKOneGameRouteRoomType::Merchant:
-			return FText::FromString(TEXT("Merchant"));
+			return FText::FromString(TEXT("行商"));
 		case EGameXXKOneGameRouteRoomType::RandomEvent:
-			return FText::FromString(TEXT("Event"));
+			return FText::FromString(TEXT("奇遇"));
 		case EGameXXKOneGameRouteRoomType::Boss:
 			return FText::FromString(TEXT("Boss"));
 		default:
-			return FText::FromString(TEXT("Node"));
+			return FText::FromString(TEXT("节点"));
 		}
 	}
 
@@ -907,6 +907,10 @@ TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNode
 		FGameXXKOneGameRouteNode AdapterNode;
 		AdapterNode.CommandName = RouteNode.CommandName;
 		AdapterNode.Label = RouteNode.Label.IsEmpty() ? RoomTypeLabel(MapRoomType(RouteNode.NodeKind)) : RouteNode.Label;
+		const FString OldLabel = AdapterNode.Label.ToString();
+		if (OldLabel == TEXT("Start") || OldLabel == TEXT("Battle") || OldLabel == TEXT("Elite")
+			|| OldLabel == TEXT("Camp") || OldLabel == TEXT("Chest") || OldLabel == TEXT("Merchant") || OldLabel == TEXT("Event"))
+			AdapterNode.Label = RoomTypeLabel(MapRoomType(RouteNode.NodeKind));
 		AdapterNode.NodeKind = RouteNode.NodeKind;
 		AdapterNode.RoomType = MapRoomType(RouteNode.NodeKind);
 		AdapterNode.NodeIndex = RouteNode.NodeIndex;

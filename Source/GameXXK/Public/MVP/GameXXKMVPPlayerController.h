@@ -29,6 +29,7 @@ class UGameXXKQuestDialogWidget;
 class UGameXXKRouteEncounterPanelWidget;
 class UGameXXKRouteMerchantWidget;
 class UGameXXKRelicBarWidget;
+class UGameXXKTrainingSettlementWidget;
 class UGameXXKTaskPanelWidget;
 class UGameXXKTutorial01ResultWidget;
 class UGameXXKTutorial01SessionSubsystem;
@@ -200,6 +201,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	UGameXXKRelicBarWidget* GetRelicBarWidgetForTest() const { return RelicBarWidget; }
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
+	UGameXXKTrainingSettlementWidget* GetTrainingSettlementWidgetForTest() const { return TrainingSettlementWidget; }
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|PlayerFlow|Test")
 	UGameXXKTownHudWidget* GetTownHudWidgetForTest() const;
@@ -450,6 +454,7 @@ private:
 	UGameXXKRouteEncounterPanelWidget* EnsureRouteEncounterPanelWidget();
 	UGameXXKRouteMerchantWidget* EnsureRouteMerchantWidget();
 	UGameXXKRelicBarWidget* EnsureRelicBarWidget();
+	UGameXXKTrainingSettlementWidget* EnsureTrainingSettlementWidget();
 	UGameXXKTaskPanelWidget* EnsureTaskPanelWidget();
 	UGameXXKTownHudWidget* EnsureTownHudWidget();
 	UGameXXKDesktopTrainingWorkbenchWidget* EnsureDesktopTrainingWorkbenchWidget();
@@ -588,6 +593,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKRelicBarWidget> RelicBarWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKTrainingSettlementWidget> TrainingSettlementWidget;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKTaskPanelWidget> TaskPanelWidget;

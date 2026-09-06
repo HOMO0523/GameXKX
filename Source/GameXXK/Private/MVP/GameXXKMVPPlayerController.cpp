@@ -48,6 +48,7 @@
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "UI/GameXXKRouteMerchantWidget.h"
 #include "UI/GameXXKRelicBarWidget.h"
+#include "UI/GameXXKTrainingSettlementWidget.h"
 #include "UI/GameXXKSpeechBubbleWidget.h"
 #include "UI/GameXXKTaskPanelWidget.h"
 #include "UI/GameXXKTutorial01ResultWidget.h"
@@ -3310,6 +3311,28 @@ UGameXXKRelicBarWidget* AGameXXKMVPPlayerController::EnsureRelicBarWidget()
 	return RelicBarWidget;
 }
 
+UGameXXKTrainingSettlementWidget* AGameXXKMVPPlayerController::EnsureTrainingSettlementWidget()
+{
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->HasPendingTrainingSettlement()) return nullptr;
+	const bool bCanShow = CanAddPlayerWidgetsToViewport();
+	if (!TrainingSettlementWidget)
+	{
+		TrainingSettlementWidget = bCanShow ? CreateWidget<UGameXXKTrainingSettlementWidget>(this) : nullptr;
+		if (!TrainingSettlementWidget) TrainingSettlementWidget = NewObject<UGameXXKTrainingSettlementWidget>(this);
+	}
+	TrainingSettlementWidget->SetMVPSubsystem(Subsystem);
+	TrainingSettlementWidget->SetReceipt(Subsystem->GetPendingTrainingSettlementCopy());
+	ConfigureFullscreenTaskPanelSlot(TrainingSettlementWidget);
+	if (bCanShow && !TrainingSettlementWidget->IsInViewport())
+	{
+		TrainingSettlementWidget->AddToViewport(190);
+		ConfigureFullscreenTaskPanelSlot(TrainingSettlementWidget);
+	}
+	TrainingSettlementWidget->SetVisibility(ESlateVisibility::Visible);
+	return TrainingSettlementWidget;
+}
+
 UGameXXKTaskPanelWidget* AGameXXKMVPPlayerController::EnsureTaskPanelWidget()
 {
 	const bool bCanAddToViewport = CanAddPlayerWidgetsToViewport();
@@ -4014,6 +4037,16 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 		EnsureRouteMapWidget();
 		EnsureBattleBoardWidget();
 	}
+	const FGameXXKRuntimeState& RelicState = Subsystem->GetRuntimeState();
+	const bool bRunRelicSurface = RelicState.bDungeonActive
+		&& (ActiveScreen == EGameXXKScreen::DungeonMap
+			|| IsGenericRouteEncounterScreen(ActiveScreen)
+			|| ActiveScreen == EGameXXKScreen::RouteMerchant
+			|| ActiveScreen == EGameXXKScreen::Battle);
+	if (bRunRelicSurface && !RelicBarWidget && !RelicState.CardRun.Relics.IsEmpty())
+	{
+		EnsureRelicBarWidget();
+	}
 	if (ActiveScreen == EGameXXKScreen::Battle)
 	{
 		// Close every off-screen owner of an input-ignore increment first, but
@@ -4044,7 +4077,7 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	if (bEnableDesktopTrainingWorkbench)
 	{
 		UGameXXKDesktopTrainingWorkbenchWidget* Workbench = EnsureDesktopTrainingWorkbenchWidget();
-		if (Workbench && ActiveScreen == EGameXXKScreen::Town)
+		if (Workbench && ActiveScreen == EGameXXKScreen::Town && !Subsystem->HasPendingTrainingSettlement())
 		{
 			Workbench->SetMVPSubsystem(Subsystem);
 			// Return-to-Town restores the pure-2D shell only when a non-Town screen
@@ -4057,7 +4090,7 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 				OpenDesktopTrainingWorkbench();
 			}
 		}
-		else if (Workbench && ActiveScreen != EGameXXKScreen::Town)
+		else if (Workbench && (ActiveScreen != EGameXXKScreen::Town || Subsystem->HasPendingTrainingSettlement()))
 		{
 			// The workbench is a Town-owned shell. Close it before entering route or
 			// battle screens so it cannot retain input or cover gameplay. Record
@@ -4131,6 +4164,16 @@ void AGameXXKMVPPlayerController::RefreshPlayerFlowWidgets()
 	{
 		RelicBarWidget->SetMVPSubsystem(Subsystem);
 		RelicBarWidget->RefreshFromState();
+	}
+	if (Subsystem->HasPendingTrainingSettlement())
+	{
+		EnsureTrainingSettlementWidget();
+		if (TownHudWidget) TownHudWidget->SetVisibility(ESlateVisibility::Collapsed);
+		if (TownOverlayWidget) TownOverlayWidget->SetVisibility(ESlateVisibility::Collapsed);
+	}
+	else if (TrainingSettlementWidget)
+	{
+		TrainingSettlementWidget->SetVisibility(ESlateVisibility::Collapsed);
 	}
 	if (!Subsystem || !IsGenericRouteEncounterScreen(Subsystem->GetRuntimeState().Screen))
 	{
@@ -4220,7 +4263,11 @@ void AGameXXKMVPPlayerController::ApplyPlayerFlowInputMode()
 	const EGameXXKScreen ActiveScreen = Subsystem ? Subsystem->GetRuntimeState().Screen : EGameXXKScreen::MainMenu;
 
 	UWidget* WidgetToFocus = nullptr;
-	if (ActiveScreen == EGameXXKScreen::MainMenu && MainMenuWidget)
+	if (Subsystem->HasPendingTrainingSettlement() && TrainingSettlementWidget)
+	{
+		WidgetToFocus = TrainingSettlementWidget;
+	}
+	else if (ActiveScreen == EGameXXKScreen::MainMenu && MainMenuWidget)
 	{
 		WidgetToFocus = MainMenuWidget;
 	}

@@ -1,0 +1,12 @@
+{
+  "cold_build": "Succeeded",
+  "tests": 79,
+  "passed": 75,
+  "known_baseline_failures": [
+    "GameXXK.DesktopTraining.Workbench.InnerGeometry",
+    "GameXXK.DesktopTraining.Workbench.TravelCombatPresentation",
+    "GameXXK.DesktopTraining.Workbench.TravelPartyAtlasAsyncFallback",
+    "GameXXK.DesktopTraining.Workbench.TravelPartyAtlasFallbackInventory"
+  ],
+  "source_report": "Saved/Automation/TabPaperUnity_Release_20260906/index.json"
+}

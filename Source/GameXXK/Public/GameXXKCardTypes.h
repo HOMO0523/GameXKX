@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameXXKEnemyTypes.h"
 #include "GameXXKEquipmentSetCatalog.h"
+#include "GameXXKTrainingSettlementTypes.h"
 #include "GameXXKCardTypes.generated.h"
 
 /** Card-data enum values are serialized contract values. Append new values; never renumber existing values. */
@@ -1490,6 +1491,10 @@ struct GAMEXXK_API FGameXXKCardCombatUnit
 {
 	GENERATED_BODY()
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementHealthLost = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementHealingReceived = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementArmorGenerated = 0;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName UnitId = NAME_None;
 
@@ -2348,6 +2353,9 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardBattleRuntime
 {
 	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKBattleSessionStats SessionStats;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKCardBattlePhase Phase = EGameXXKCardBattlePhase::Invalid;

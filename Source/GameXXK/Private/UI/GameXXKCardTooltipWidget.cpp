@@ -1,4 +1,5 @@
 #include "UI/GameXXKCardTooltipWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -21,7 +22,7 @@
 
 namespace
 {
-	constexpr float CardTooltipWidth = 360.0f;
+	constexpr float CardTooltipWidth = 420.0f;
 	constexpr const TCHAR* TooltipPaperTexturePath =
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 
@@ -319,8 +320,7 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 		TEXT("CardTooltipTitle"));
 	TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	TitleText->SetJustification(ETextJustify::Left);
-	FSlateFontInfo TitleFont = TitleText->GetFont();
-	TitleFont.Size = 22;
+	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(26, false, true);
 	TitleFont.TypefaceFontName = TEXT("Bold");
 	TitleFont.OutlineSettings.OutlineSize = 1;
 	TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);

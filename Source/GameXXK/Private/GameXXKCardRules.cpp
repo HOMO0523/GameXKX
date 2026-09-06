@@ -2383,6 +2383,12 @@ namespace
 	constexpr uint32 CombatRandomIncrement = 907633515u;
 	constexpr uint32 CombatRandomSalt = 0xA341316Cu;
 
+	void AddSettlementCounter(int64& Counter, const int32 Amount)
+	{
+		Counter = FMath::Max<int64>(0, Counter);
+		Counter += FMath::Min<int64>(FMath::Max(0, Amount), MAX_int64 - Counter);
+	}
+
 	int32 ApplyAndRecordHealing(
 		FGameXXKCardPlayResult& Result,
 		const FName SourceUnitId,
@@ -2909,6 +2915,7 @@ namespace
 				|| Unit.MaxMana < 0 || Unit.Mana < 0 || Unit.Mana > Unit.MaxMana
 				|| Unit.Attack < 0 || Unit.Defense < 0 || Unit.Speed < 1
 				|| Unit.Armor < 0
+				|| Unit.SettlementHealthLost < 0 || Unit.SettlementHealingReceived < 0 || Unit.SettlementArmorGenerated < 0
 				|| Unit.StableSortOrder == INDEX_NONE || Unit.StableSortOrder < 0
 				|| Unit.bLiving != (Unit.HP > 0))
 			{
@@ -3347,6 +3354,7 @@ int32 GameXXKCardRules::AddCombatArmor(FGameXXKCardCombatUnit& InOutUnit, const 
 	const int32 OriginalArmor = FMath::Max(0, InOutUnit.Armor);
 	const int64 RequestedArmor = static_cast<int64>(OriginalArmor) + static_cast<int64>(Amount);
 	InOutUnit.Armor = static_cast<int32>(FMath::Min<int64>(MAX_int32, RequestedArmor));
+	AddSettlementCounter(InOutUnit.SettlementArmorGenerated, InOutUnit.Armor - OriginalArmor);
 	return InOutUnit.Armor - OriginalArmor;
 }
 
@@ -3375,6 +3383,7 @@ int32 GameXXKCardRules::HealCombatUnit(FGameXXKCardCombatUnit& InOutUnit, const 
 	const int32 OriginalHealth = FMath::Clamp(InOutUnit.HP, 0, MaximumHealth);
 	const int64 RequestedHealth = static_cast<int64>(OriginalHealth) + static_cast<int64>(Amount);
 	InOutUnit.HP = static_cast<int32>(FMath::Min<int64>(MaximumHealth, RequestedHealth));
+	AddSettlementCounter(InOutUnit.SettlementHealingReceived, InOutUnit.HP - OriginalHealth);
 	return InOutUnit.HP - OriginalHealth;
 }
 
@@ -3453,6 +3462,7 @@ namespace
 		}
 
 		Target.HP = OutPacketHealthAfter;
+		AddSettlementCounter(Target.SettlementHealthLost, OutHealthDamage);
 		Target.bLiving = Target.HP > 0;
 		if (!bTriggersLifeSavingTalisman)
 		{
@@ -5375,7 +5385,7 @@ namespace
 				&& Runtime.EnemyDifficultyDamagePercent != 150)
 			|| Runtime.EnemyDifficultyDamagePercent != ExpectedDifficultyDamagePercent
 			|| Runtime.PendingNextRoundEnergyPenalty < 0 || Runtime.PendingNextRoundEnergyPenalty > 99
-			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0
+			|| Runtime.ActiveCardsPlayedThisRound < 0 || Runtime.NextReactionOrdinal < 0 || Runtime.SessionStats.ActiveCardsPlayed < 0
 			|| Runtime.NextGeneratedCardOrdinal < 0 || Runtime.NextModifierOrdinal < 0
 			|| Runtime.PendingTriggeredDrawCount < 0
 			|| Runtime.RevealedEnemyIntentCount < 0 || Runtime.RevealedEnemyIntentCount > MaxCardBattleEnergy
@@ -17673,6 +17683,8 @@ bool GameXXKCardRules::ResolveCardPlay(
 		return SetFailure(OutError, TEXT("The active-card counter has exhausted the supported range."));
 	}
 	NewRuntime.ActiveCardsPlayedThisRound += ActiveCardCountIncrement;
+	NewRuntime.SessionStats.ActiveCardsPlayed = static_cast<int32>(FMath::Min<int64>(MAX_int32,
+		static_cast<int64>(NewRuntime.SessionStats.ActiveCardsPlayed) + ActiveCardCountIncrement));
 	if (!bPreserveFinishCandidate)
 	{
 		NewRuntime.LastActiveCard = ActiveSnapshot;

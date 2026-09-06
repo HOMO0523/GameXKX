@@ -1,4 +1,5 @@
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 
@@ -172,7 +173,7 @@ namespace
 	static const FVector2D RewardCardSize(206.0f, 285.0f);
 	static const FVector2D EnemyIntentRailSize(600.0f, 171.0f);
 	static const FVector2D EnemyIntentTooltipSize(460.0f, 256.0f);
-	static const FVector2D HandCardDetailPanelSize(360.0f, 252.0f);
+	static const FVector2D HandCardDetailPanelSize(420.0f, 320.0f);
 	static const FLinearColor BattleStatusInkColor(0.12f, 0.09f, 0.06f, 1.0f);
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
@@ -415,12 +416,7 @@ namespace
 		{
 			return FLinearColor(0.137f, 0.118f, 0.098f, 1.0f);
 		}
-		// Task NPC cards use the locked black + light-gray pair rather than a
-		// profession accent: black information strip with a pale stone nameplate.
-		if (Definition.Owner == EGameXXKCardOwner::QuestNpc)
-		{
-			return FLinearColor(0.722f, 0.706f, 0.671f, 1.0f);
-		}
+
 		// Companion cards read like the hero: black ink on the parchment frame.
 		// The previous near-white ink was too light against the light frame.
 		return FLinearColor(0.137f, 0.118f, 0.098f, 1.0f);
@@ -720,7 +716,7 @@ namespace
 			// would feed wrapped desired sizes back into row layout.
 			TextBlock->SetAutoWrapText(false);
 			TextBlock->SetJustification(ETextJustify::Left);
-			FSlateFontInfo Font = TextBlock->GetFont();
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize));
 			Font.Size = static_cast<int32>(FontSize);
 			if (bBold)
 			{
@@ -741,8 +737,7 @@ namespace
 			PillText->SetText(FText::FromString(Content));
 			PillText->SetColorAndOpacity(FSlateColor(PillInk));
 			PillText->SetJustification(ETextJustify::Center);
-			FSlateFontInfo Font = PillText->GetFont();
-			Font.Size = static_cast<int32>(FontSize);
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), false, true);
 			Font.TypefaceFontName = TEXT("Bold");
 			PillText->SetFont(Font);
 			PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -755,7 +750,7 @@ namespace
 		// generous per-character estimate when Slate has no renderer (e.g.
 		// headless commandlets).
 		UTextBlock* FontProbe = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-		const FSlateFontInfo BodyBaseFont = FontProbe->GetFont();
+		const FSlateFontInfo BodyBaseFont = FGameXXKInRunUiStyle::Font(16);
 		const auto MeasureText = [BodyBaseFont](const FString& Content, const float FontSize, const bool bBold) -> float
 		{
 			if (Content.IsEmpty())
@@ -7279,8 +7274,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	HandCardDetailPanel->SetContent(TooltipBox);
 	HandCardDetailTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailTitle"));
 	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
-	FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
-	TitleFont.Size = 18;
+	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(26, false, true);
 	HandCardDetailTitle->SetFont(TitleFont);
 	TooltipBox->AddChildToVerticalBox(HandCardDetailTitle);
 	HandCardDetailBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleHandCardDetailBody"));
@@ -8110,7 +8104,9 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 			const FString DisplayName = Definition ? Definition->DisplayName.ToString() : CardInstanceId.ToString();
 			const int32 Energy = bPreviewBuilt ? Preview.EffectiveEnergyCost : (Definition ? Definition->EnergyCost : 0);
 			const int32 Mana = bPreviewBuilt ? Preview.EffectiveManaCost : (Definition ? Definition->ManaCost : 0);
-			CardLabel->SetText(FText::FromString(FString::Printf(TEXT("%s\n%d 气 / %d 内"), *DisplayName, Energy, Mana)));
+			CardLabel->SetText(FText::FromString(DisplayName));
+			if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*(CardLabel->GetName()+TEXT("Cost")))))
+				Cost->SetText(FText::FromString(FString::Printf(TEXT("%d气\n%d内"),Energy,Mana)));
 		}
 	}
 }
@@ -8818,7 +8814,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			: FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
 		HandCardDetailTitle->SetColorAndOpacity(FSlateColor(TitleColor));
 		FSlateFontInfo TitleFont = HandCardDetailTitle->GetFont();
-		TitleFont.Size = 22;
+		TitleFont.Size = 26;
 		TitleFont.TypefaceFontName = TEXT("Bold");
 		TitleFont.OutlineSettings.OutlineSize = 1;
 		TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
@@ -9996,22 +9992,22 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 		*FString::Printf(TEXT("%sFace"), *NamePrefix));
 	CardButton->AddChild(FaceCanvas);
 
-	// Page-18 card face layout shared with the out-of-battle deck pages:
-	// bold name band on top, 127x152 portrait below it, no bottom strip.
+	// Reserve a real two-line band for title and costs at reduced HUD sizes.
 	UTextBlock* Label = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		*FString::Printf(TEXT("%sLabel"), *NamePrefix));
 	Label->SetJustification(ETextJustify::Center);
-	Label->SetAutoWrapText(false);
+	Label->SetAutoWrapText(true);
 	// Ink card text: all in-battle card faces use black text on the parchment frame.
 	Label->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.18f));
 	Label->SetShadowOffset(FVector2D(0.5f, 0.5f));
-	Label->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 20));
+	Label->SetFont(FGameXXKInRunUiStyle::Font(24, true));
 	Label->SetColorAndOpacity(FSlateColor(ResolveCardFaceLabelColor()));
 	if (UCanvasPanelSlot* LabelSlot = FaceCanvas->AddChildToCanvas(Label))
 	{
-		LabelSlot->SetOffsets(FMargin(0.0f, 12.0f, 206.0f, 33.0f));
+		LabelSlot->SetOffsets(FMargin(8.0f, 10.0f, 190.0f, 84.0f));
 		LabelSlot->SetAlignment(FVector2D::ZeroVector);
+		LabelSlot->SetZOrder(2);
 	}
 
 	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
@@ -10020,10 +10016,15 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 	Portrait->SetVisibility(ESlateVisibility::Collapsed);
 	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
 	{
-		// Page-18 portrait cut: 127x152 upright, never squeezed.
+		// Preserve the source portrait aspect ratio under the larger text band.
 		PortraitSlot->SetOffsets(FMargin(8.0f, 48.0f, 190.0f, 228.0f));
 		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
 	}
+
+	UTextBlock* Cost = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*FString::Printf(TEXT("%sLabelCost"),*NamePrefix));
+	Cost->SetFont(FGameXXKInRunUiStyle::Font(22,true)); Cost->SetColorAndOpacity(FSlateColor(ResolveCardFaceLabelColor()));
+	Cost->SetVisibility(ESlateVisibility::HitTestInvisible); Cost->SetAutoWrapText(false);
+	if (auto* CostSlot = FaceCanvas->AddChildToCanvas(Cost)) { CostSlot->SetOffsets(FMargin(13,78,70,95)); CostSlot->SetZOrder(3); }
 
 	// No bottom color strip: the page-18 card face is frame + portrait + name only.
 	OutLabel = Label;

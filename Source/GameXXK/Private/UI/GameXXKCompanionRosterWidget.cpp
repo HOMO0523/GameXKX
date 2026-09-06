@@ -1,4 +1,6 @@
 #include "UI/GameXXKCompanionRosterWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/ScaleBox.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -1805,11 +1807,13 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		UOverlay* CardOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		UImage* CardPortrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardPortrait_%02d"), CardIndex));
 		CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
-		if (UOverlaySlot* PortraitSlot = CardOverlay->AddChildToOverlay(CardPortrait))
+		UScaleBox* PortraitScale = WidgetTree->ConstructWidget<UScaleBox>();
+		PortraitScale->SetStretch(EStretch::ScaleToFit); PortraitScale->SetVisibility(ESlateVisibility::HitTestInvisible); PortraitScale->SetContent(CardPortrait);
+		if (UOverlaySlot* PortraitSlot = CardOverlay->AddChildToOverlay(PortraitScale))
 		{
-			PortraitSlot->SetHorizontalAlignment(HAlign_Center);
-			PortraitSlot->SetVerticalAlignment(VAlign_Center);
-			PortraitSlot->SetPadding(FMargin(0.0f));
+			PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
+			PortraitSlot->SetVerticalAlignment(VAlign_Fill);
+			PortraitSlot->SetPadding(FMargin(5.0f, 32.0f, 5.0f, 6.0f));
 		}
 
 		// Selection ink sits at the card top so the selected card name stays visible.
@@ -1826,7 +1830,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		}
 
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CardLabel->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 13));
+		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(16, true));
 		CardLabel->SetJustification(ETextJustify::Center);
 		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
 		{
@@ -1836,21 +1840,23 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		}
 
 		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 50.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 57.0f, 0.0f, 0.0f));
 		}
 
 		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 68.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(10.0f, 80.0f, 0.0f, 0.0f));
 		}
 
 		UImage* LockedIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardLock_%02d"), CardIndex));

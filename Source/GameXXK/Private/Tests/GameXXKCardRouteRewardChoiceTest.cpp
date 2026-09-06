@@ -61,6 +61,7 @@ bool FGameXXKCardRouteRewardChoiceTest::RunTest(const FString& Parameters)
 	const EGameXXKCardQuality QualityBefore = FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, UpgradedCardId);
 	TestTrue(TEXT("the upgrade candidate is below maximum quality"), QualityBefore < EGameXXKCardQuality::Epic);
 	const int32 AcquisitionCountBefore = State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount;
+	const int32 MedicineBefore = UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder());
 	TestTrue(TEXT("an explicit option choice commits the saved offer and finishes the victory"),
 		UGameXXKMVPRules::ResolvePendingBattleRewardChoiceAndFinish(State, UpgradeOptionIndex, NAME_None));
 	TestEqual(TEXT("the chosen deck card records its one-step quality upgrade"),
@@ -70,6 +71,8 @@ bool FGameXXKCardRouteRewardChoiceTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the completed reward advances back to the route map"), State.Screen, EGameXXKScreen::DungeonMap);
 	TestEqual(TEXT("a deck-card upgrade never advances acquisition history"), State.CardRun.RouteProgress.ActualRouteCardAcquisitionCount, AcquisitionCountBefore);
 	TestFalse(TEXT("the completed battle clears only its active card-combat session"), State.CardRun.bHasActiveCardBattle);
+	TestEqual(TEXT("reward confirmation never grants retired medicine"),
+		UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()), MedicineBefore);
 	return true;
 }
 

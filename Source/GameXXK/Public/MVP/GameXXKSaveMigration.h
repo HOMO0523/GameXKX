@@ -71,7 +71,9 @@ public:
 	static constexpr int32 EquipmentSetRuntimeSemanticsSaveVersion = 35;
 	/** v36: replace legacy Boss half-health state with difficulty-aware one/two/three-phase enemy state. */
 	static constexpr int32 EnemyPhaseAndTrainingFormationIntroducedSaveVersion = 36;
-	static constexpr int32 CurrentSaveVersion = 36;
+	/** v37 retains an already-applied Training Boss receipt until explicit acknowledgement. */
+	static constexpr int32 TrainingSettlementIntroducedSaveVersion = 37;
+	static constexpr int32 CurrentSaveVersion = 37;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

@@ -31,6 +31,7 @@ bool FGameXXKCardRouteRewardGateTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State;
 	TestTrue(TEXT("the reward gate begins from a real card battle"), BeginLinearCardBattle(State));
+	const int32 MedicineBefore = UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder());
 	for (FGameXXKCardCombatUnit& Unit : State.CardRun.ActiveBattle.Units)
 	{
 		if (Unit.Side == EGameXXKCardTargetSide::Enemy)
@@ -73,6 +74,9 @@ bool FGameXXKCardRouteRewardGateTest::RunTest(const FString& Parameters)
 				}));
 		}
 	}
+	TestTrue(TEXT("an ordinary reward can be explicitly skipped"), UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(State));
+	TestEqual(TEXT("skipping a reward never grants retired medicine"),
+		UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()), MedicineBefore);
 	return true;
 }
 
