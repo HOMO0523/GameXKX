@@ -19,6 +19,7 @@ class UButton;
 class UCanvasPanel;
 class UCanvasPanelSlot;
 class UImage;
+class UGameXXKInkScrollBar;
 class UOverlay;
 class UProgressBar;
 class UScaleBox;
@@ -245,6 +246,10 @@ public:
 	/** Explicitly commits the selected permanent-partner or owned-NPC candidate. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool ApplyFormationCandidateForTest();
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	bool OpenFormationDeckForTest(FName CharacterId);
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
+	void CloseFormationDeckForTest();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsWorkbenchVisibleForTest() const;
@@ -485,6 +490,7 @@ public:
 	EGameXXKCharacterBackpackTab GetEmbeddedBackpackTabForTest() const;
 	TArray<FName> GetEmbeddedPendingDeckIdsForTest() const;
 
+	void RefreshBackpackFooterVisibility();
 	void HandleStageClicked(FName StageId);
 	void HandleActionClicked(int32 ActionId);
 	bool HandleActionAltClicked(int32 ActionId);
@@ -598,7 +604,7 @@ private:
 	void BuildExitConfirmation();
 	void BuildCarriedItemVisual();
 	void BuildWarehousePanel();
-	void BuildBackpackPanel();
+	void BuildBackpackPanel(bool bFormationDeck = false);
 	void BuildSharedGoldIndicator();
 	void BuildCharacterRosterTabs();
 	void BuildFormationPanel();
@@ -984,6 +990,8 @@ private:
 	EGameXXKToolCombineKind ActiveToolCombineKind = EGameXXKToolCombineKind::Equipment;
 	int32 SelectedToolSocketIndex = 0;
 	TArray<TPair<TWeakObjectPtr<UWidget>, ESlateVisibility>> LockedToolControls;
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInkScrollBar> WarehouseInkScrollbar;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
 	EGameXXKDesktopTrainingCharacterRoster CharacterPickerRoster = EGameXXKDesktopTrainingCharacterRoster::Companions;
 	int32 CharacterPickerPageIndex = 0;
@@ -995,6 +1003,9 @@ private:
 	FName LastCompanionBackpackCharacterId = NAME_None;
 	FName LastNpcBackpackCharacterId = NAME_None;
 	FName FormationCandidateCharacterId = NAME_None;
+	FName FormationDeckCharacterId = NAME_None;
+	bool bFormationPickerOpen = false;
+	int32 FormationPickerPageIndex = 0;
 	int32 WarehousePageIndex = 0;
 	float TravelAccumulator = 0.0f;
 	float LivePresentationAccumulator = 0.0f;

@@ -110,6 +110,8 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API float GetIdleStripChestControlX();
 	GAMEXXK_API bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position);
 	GAMEXXK_API FVector4 GetContentRect();
+	GAMEXXK_API FVector4 GetBackpackCharacterSelectorRect(int32 Index);
+	GAMEXXK_API FVector4 GetEmbeddedCharacterTabRect(int32 Index);
 	GAMEXXK_API FVector4 GetNavigationRect();
 	GAMEXXK_API FVector2D GetCollapsedHudLogicalSize();
 	GAMEXXK_API FVector2D GetTownToggleButtonSize();

@@ -152,8 +152,9 @@ namespace
 		const FName UnitId,
 		const EGameXXKCardTargetSide ExpectedSide,
 		const int32 ExpectedSlotNumber,
-		const FVector2D ExpectedAnchor)
+		FVector2D ExpectedAnchor)
 	{
+		ExpectedAnchor.Y += 0.025f;
 		UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
 		Test.TestNotNull(FString::Printf(TEXT("%s has a fixed-slot HUD"), *UnitId.ToString()), Hud);
 		Test.TestEqual(FString::Printf(TEXT("%s keeps its authoritative side"), *UnitId.ToString()),

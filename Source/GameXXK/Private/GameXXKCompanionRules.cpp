@@ -1174,7 +1174,7 @@ bool FGameXXKCompanionRules::GetQuestNpcAttributes(
 	OutAttributes.Health = ComputeNpcAttribute(Definition->BaseAttributes.Health, Definition->GrowthPerLevel.Health, HeroLevel);
 	OutAttributes.Attack = ComputeNpcAttribute(Definition->BaseAttributes.Attack, Definition->GrowthPerLevel.Attack, HeroLevel);
 	OutAttributes.Defense = ComputeNpcAttribute(Definition->BaseAttributes.Defense, Definition->GrowthPerLevel.Defense, HeroLevel);
-	OutAttributes.Mana = ComputeNpcAttribute(Definition->BaseAttributes.Mana, Definition->GrowthPerLevel.Mana, HeroLevel);
+	OutAttributes.Mana = Definition->BaseAttributes.Mana;
 	OutAttributes.Speed = Definition->BaseAttributes.Speed;
 	return true;
 }

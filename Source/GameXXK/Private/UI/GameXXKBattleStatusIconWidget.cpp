@@ -272,7 +272,7 @@ void UGameXXKBattleStatusIconWidget::RefreshDisplay()
 	if (GlyphText)
 	{
 		const FString Glyph = bIsOverflowBadge
-			? TEXT("⋯")
+			? TEXT("+")
 			: (CachedBadgeModel.Style.FallbackGlyph.IsEmpty() ? TEXT("?") : CachedBadgeModel.Style.FallbackGlyph);
 		GlyphText->SetText(FText::FromString(Glyph));
 		GlyphText->SetColorAndOpacity(FSlateColor(CachedBadgeModel.Style.Tint));

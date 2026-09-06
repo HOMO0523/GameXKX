@@ -8,12 +8,12 @@ class UWidgetTree;
 /** Shared readable sizing for card Tooltip prose and keyword/status Pills. */
 struct GAMEXXK_API FGameXXKCardTooltipPresentationStyle
 {
-	float WrapWidth = 388.0f;
-	float RowHeight = 27.0f;
-	float BodyFontSize = 16.0f;
-	float TargetFontSize = 18.0f;
-	float KeywordPillFontSize = 15.0f;
-	float StatusPillFontSize = 14.0f;
+	float WrapWidth = 448.0f;
+	float RowHeight = 30.0f;
+	float BodyFontSize = 18.0f;
+	float TargetFontSize = 20.0f;
+	float KeywordPillFontSize = 17.0f;
+	float StatusPillFontSize = 16.0f;
 	FMargin PillPadding = FMargin(5.0f, 2.0f, 5.0f, 2.0f);
 	/** Explanations keep their body as prose instead of creating a second set of nested pills. */
 	bool bPillHelp = false;

@@ -1,4 +1,5 @@
 #include "GameXXKCombatSimulationRules.h"
+#include "GameXXKTrainingSettlementRules.h"
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
@@ -421,7 +422,7 @@ namespace
 			{
 				const int32 DamagePastArmor = FMath::Max(
 					0,
-					Damage.DamageAfterVulnerability - Damage.ArmorAbsorbed);
+					Damage.DamageAfterLevelDifference - Damage.ArmorAbsorbed);
 				InOutMetrics.OverkillDamage += FMath::Max(0, DamagePastArmor - Damage.HealthDamage);
 			}
 		}
@@ -432,10 +433,8 @@ namespace
 			InOutMetrics.Overhealing += FMath::Max(0, Healing.RequestedHealing - Healing.EffectiveHealing);
 		}
 
-		AddMetric(
-			InOutMetrics.ArmorByCardId,
-			PlayResult.CardId,
-			CountPositivePartyArmorDelta(Before, After));
+		for(const auto& Armor:PlayResult.ArmorResults)
+		{const auto* Target=FindUnit(After.Units,Armor.TargetUnitId);if(Target&&Target->Side==EGameXXKCardTargetSide::Party)AddMetric(InOutMetrics.ArmorByCardId,PlayResult.CardId,Armor.EffectiveArmor);}
 	}
 
 	static bool InitializeScenarioIdentity(
@@ -550,14 +549,15 @@ namespace
 		}
 	}
 
-	static void RecordDamageMetrics(
-		const TArray<FGameXXKCardDamageResult>& DamageResults,
-		FGameXXKSimulationMetrics& InOutMetrics)
+	static void RecordDamageMetrics(const FGameXXKCardBattleRuntime& Before,const FGameXXKCardBattleRuntime& After,
+		const TArray<FGameXXKCardDamageResult>& DamageResults,FGameXXKSimulationMetrics& M)
 	{
-		for (const FGameXXKCardDamageResult& Damage : DamageResults)
+		for(const auto& D:DamageResults)
 		{
-			AddMetric(InOutMetrics.DamageBySource, Damage.SourceUnitId, Damage.HealthDamage);
-			AddMetric(InOutMetrics.DamageByOrigin, DamageOriginMetricKey(Damage), Damage.HealthDamage);
+			const auto* Target=FindUnit(After.Units,D.ResolvedTargetUnitId);if(!Target)Target=FindUnit(Before.Units,D.ResolvedTargetUnitId);
+			if(!Target||Target->Side!=EGameXXKCardTargetSide::Enemy)continue;
+			AddMetric(M.DamageBySource,D.SourceUnitId,D.HealthDamage);AddMetric(M.DamageByOrigin,DamageOriginMetricKey(D),D.HealthDamage);
+			M.DamageLedgerDifference-=D.HealthDamage;
 		}
 	}
 
@@ -582,16 +582,25 @@ namespace
 		const int32 ManaDelta = SumMana(After) - SumMana(Before);
 		const int32 ArmorDelta = SumArmor(After) - SumArmor(Before);
 		const int32 EnergyDelta = After.Deck.SharedEnergy - Before.Deck.SharedEnergy;
-		if (PartyHealthDelta > 0)
+		const auto LedgerBefore=FGameXXKTrainingSettlementRules::CaptureBattleStats(Before);
+		const auto LedgerAfter=FGameXXKTrainingSettlementRules::CaptureBattleStats(After);
+		const int64 Dealt=LedgerAfter.PartyDamageDealt-LedgerBefore.PartyDamageDealt;
+		const int64 Taken=LedgerAfter.PartyDamageTaken-LedgerBefore.PartyDamageTaken;
+		const int64 Healing=LedgerAfter.HealingDone-LedgerBefore.HealingDone;
+		const int64 GeneratedArmor=LedgerAfter.ArmorGenerated-LedgerBefore.ArmorGenerated;
+		InOutMetrics.DamageDealt+=Dealt;InOutMetrics.DamageTaken+=Taken;InOutMetrics.DamageLedgerDifference+=Dealt;
+		InOutMetrics.HealingGenerated+=Healing;InOutMetrics.ArmorGenerated+=GeneratedArmor;
+		int64 AttributedHealing=0,AttributedArmor=0;
+		if(ActivePlayResult)
 		{
-			AddMetric(InOutMetrics.HealingBySource, SourceUnitId, PartyHealthDelta);
-			InOutMetrics.HealingGenerated += PartyHealthDelta;
+			for(const auto& H:ActivePlayResult->HealingResults)
+			{const auto* T=FindUnit(After.Units,H.TargetUnitId);if(T&&T->Side==EGameXXKCardTargetSide::Party){AddMetric(InOutMetrics.HealingBySource,H.SourceUnitId,H.EffectiveHealing);AttributedHealing+=H.EffectiveHealing;}}
+			for(const auto& A:ActivePlayResult->ArmorResults)
+			{const auto* T=FindUnit(After.Units,A.TargetUnitId);if(T&&T->Side==EGameXXKCardTargetSide::Party){AddMetric(InOutMetrics.ArmorBySource,A.SourceUnitId,A.EffectiveArmor);AttributedArmor+=A.EffectiveArmor;}}
 		}
-		if (ArmorDelta > 0)
-		{
-			AddMetric(InOutMetrics.ArmorBySource, SourceUnitId, ArmorDelta);
-			InOutMetrics.ArmorGenerated += ArmorDelta;
-		}
+		// Ledger-only effects keep an explicit unattributed bucket; never invent an owner.
+		AddMetric(InOutMetrics.HealingBySource,TEXT("Unattributed"),FMath::Max<int64>(0,Healing-AttributedHealing));
+		AddMetric(InOutMetrics.ArmorBySource,TEXT("Unattributed"),FMath::Max<int64>(0,GeneratedArmor-AttributedArmor));
 		const int32 ResidualEnergyDelta = EnergyDelta + ExplicitEnergySpent;
 		const int32 ResidualManaDelta = ManaDelta + ExplicitManaSpent;
 		InOutMetrics.EnergySpent += ExplicitEnergySpent + FMath::Max(0, -ResidualEnergyDelta);
@@ -599,7 +608,7 @@ namespace
 		InOutMetrics.ManaSpent += ExplicitManaSpent + FMath::Max(0, -ResidualManaDelta);
 		InOutMetrics.ManaGained += FMath::Max(0, ResidualManaDelta);
 		InOutMetrics.AutomaticResolutionCount += FMath::Max(0, AutomaticResolutionCount);
-		RecordDamageMetrics(DamageResults, InOutMetrics);
+		RecordDamageMetrics(Before, After, DamageResults, InOutMetrics);
 		RecordStatusDeltas(Before, After, InOutMetrics);
 		RecordNewHandCardsAsSeen(Before, After, InOutMetrics);
 		if (ActivePlayResult)
@@ -610,7 +619,13 @@ namespace
 		RecordRuntimeHighWaterMarks(After, InOutMetrics, AdditionalQueueDepth);
 
 		FGameXXKSimulationTraceEntry Trace;
-		Trace.Round = After.RoundNumber;
+		Trace.Round = Before.RoundNumber;
+		Trace.EnergyBefore=Before.Deck.SharedEnergy;Trace.EnergyAfter=After.Deck.SharedEnergy;Trace.EnergyPaid=ExplicitEnergySpent;Trace.ManaPaid=ExplicitManaSpent;
+		Trace.EffectiveDamage=Dealt;Trace.DamageTaken=Taken;Trace.EffectiveHealing=Healing;Trace.GeneratedArmor=GeneratedArmor;Trace.DamagePackets=DamageResults;
+		if(ActivePlayResult){Trace.HealingPackets=ActivePlayResult->HealingResults;Trace.ArmorPackets=ActivePlayResult->ArmorResults;Trace.StatusChanges=ActivePlayResult->StatusChanges;}
+		auto Capture=[](const FGameXXKCardBattleRuntime& R,TArray<FGameXXKSimulationUnitSnapshot>& Out)
+		{for(const auto& U:R.Units){auto& V=Out.AddDefaulted_GetRef();V.UnitId=U.UnitId;V.Side=U.Side;V.HP=U.HP;V.Armor=U.Armor;V.Mana=U.Mana;V.Statuses=U.Statuses;}};
+		Capture(Before,Trace.UnitsBefore);Capture(After,Trace.UnitsAfter);
 		Trace.Action = Action;
 		Trace.SourceUnitId = SourceUnitId;
 		Trace.CardOrIntentId = CardOrIntentId;
@@ -634,7 +649,7 @@ namespace
 		for (const FGameXXKCardCombatUnit& BeforeUnit : Before.Units)
 		{
 			const FGameXXKCardCombatUnit* AfterUnit = FindUnit(After.Units, BeforeUnit.UnitId);
-			if (BeforeUnit.bLiving && AfterUnit && !AfterUnit->bLiving && !InOutCountedDefeats.Contains(BeforeUnit.UnitId))
+			if (BeforeUnit.Side == EGameXXKCardTargetSide::Party && BeforeUnit.bLiving && AfterUnit && !AfterUnit->bLiving && !InOutCountedDefeats.Contains(BeforeUnit.UnitId))
 			{
 				InOutCountedDefeats.Add(BeforeUnit.UnitId);
 				++InOutMetrics.FirstRoundDeaths;
@@ -1027,7 +1042,7 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 
 	FGameXXKRuntimeState State = Scenario.InitialRuntimeState;
 	FString AdapterError;
-	if (!FGameXXKCardBattleAdapter::BeginCardBattle(
+	if (!Scenario.bResumeActiveBattle && !FGameXXKCardBattleAdapter::BeginCardBattle(
 		State,
 		Scenario.NodeKind,
 		Scenario.Terrain,
@@ -1036,6 +1051,8 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 	{
 		return SetFailure(OutMetrics, OutError, TEXT("Simulation.BeginCardBattleFailed"), AdapterError);
 	}
+	if (Scenario.bResumeActiveBattle && !State.CardRun.bHasActiveCardBattle)
+		return SetFailure(OutMetrics, OutError, TEXT("Simulation.NoActiveBattle"), TEXT("There is no active battle to continue."));
 	if (!ValidateRuntimeBounds(State, &AdapterError))
 	{
 		return SetFailure(OutMetrics, OutError, TEXT("Simulation.InvalidInitialRuntime"), AdapterError);
@@ -1056,6 +1073,7 @@ bool FGameXXKCombatSimulationRules::RunScenario(
 	while (!FGameXXKCardBattleAdapter::IsCardBattleTerminal(State))
 	{
 		const FGameXXKCardBattleRuntime& CurrentRuntime = State.CardRun.ActiveBattle;
+		OutMetrics.Rounds=CurrentRuntime.RoundNumber;OutMetrics.RemainingPartyHealth=SumPartyHealth(CurrentRuntime);
 		if (CurrentRuntime.RoundNumber > Scenario.MaxRounds)
 		{
 			return SetFailure(OutMetrics, OutError, TEXT("Simulation.MaxRounds"), TEXT("Simulation reached MaxRounds before a terminal result."));

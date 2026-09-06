@@ -176,4 +176,21 @@ bool FGameXXKEnemyIntentPhaseDeckForecastTest::RunTest(const FString& Parameters
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKEnemyPoisonPhaseForecastTest,
+	"GameXXK.Battle.EnemyIntentPlan.PoisonBoundaryReplacesOldDeck", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKEnemyPoisonPhaseForecastTest::RunTest(const FString&)
+{
+	FGameXXKRuntimeState State;FString Error;
+	if(!BeginPlanBattle(State,{PlanEnemy(TEXT("Ironfeather"),TEXT("Enemy.Ch1.IronfeatherRooster"),1,100,50,0,11,95)},150,Error)){AddError(Error);return false;}
+	const auto OldIntent=State.CardRun.EnemyIntents[0].IntentDefinitionId;
+	auto* Enemy=State.CardRun.ActiveBattle.Units.FindByPredicate([](const auto& U){return U.UnitId==TEXT("Ironfeather");});
+	GameXXKCardRules::AddCombatStatus(*Enemy,EGameXXKCardStatus::Poison,100);
+	TArray<FGameXXKCardDamageResult> Damage;
+	if(!FGameXXKCardBattleAdapter::EndPlayerCardPhase(State,Damage,&Error)){AddError(Error);return false;}
+	TestEqual(TEXT("end-of-player-phase poison consumes phase one"),State.CardRun.ActiveBattle.EnemyStates[TEXT("Ironfeather")].CurrentPhase,2);
+	TestTrue(TEXT("the existing forecast is replaced by the new phase deck"),State.CardRun.EnemyIntents.Num()==1&&State.CardRun.EnemyIntents[0].IntentDefinitionId!=OldIntent);
+	FGameXXKCardEnemyIntent Resolved;bool Finished=false;
+	TestTrue(FString::Printf(TEXT("first new-phase intent resolves: %s"),*Error),FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(State,Resolved,Damage,Finished,&Error));
+	return true;
+}
 #endif

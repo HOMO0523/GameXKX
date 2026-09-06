@@ -22,7 +22,7 @@
 
 namespace
 {
-	constexpr float CardTooltipWidth = 420.0f;
+	constexpr float CardTooltipWidth = 480.0f;
 	constexpr const TCHAR* TooltipPaperTexturePath =
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 
@@ -320,8 +320,7 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 		TEXT("CardTooltipTitle"));
 	TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	TitleText->SetJustification(ETextJustify::Left);
-	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(26, false, true);
-	TitleFont.TypefaceFontName = TEXT("Bold");
+	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28,true);
 	TitleFont.OutlineSettings.OutlineSize = 1;
 	TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 	TitleText->SetFont(TitleFont);

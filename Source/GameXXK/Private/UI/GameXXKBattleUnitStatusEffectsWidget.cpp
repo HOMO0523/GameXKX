@@ -48,7 +48,7 @@ namespace
 		OverflowBadge.Style.IconId = TEXT("MoreStatuses");
 		OverflowBadge.Style.DisplayName = TEXT("更多状态");
 		OverflowBadge.Style.Tint = FLinearColor(0.28f, 0.20f, 0.13f, 1.0f);
-		OverflowBadge.Style.FallbackGlyph = TEXT("⋯");
+		OverflowBadge.Style.FallbackGlyph = TEXT("+");
 		OverflowBadge.Stacks = BadgeModels.Num() - VisibleCount;
 		TArray<FString> OmittedEntries;
 		for (int32 BadgeIndex = VisibleCount; BadgeIndex < BadgeModels.Num(); ++BadgeIndex)

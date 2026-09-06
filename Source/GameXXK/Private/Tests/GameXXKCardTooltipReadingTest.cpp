@@ -197,4 +197,20 @@ bool FGameXXKCardTooltipTargetConstraintsTest::RunTest(const FString& Parameters
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipSemanticSummaryTest,
+	"GameXXK.UI.CardTooltip.SemanticSummary", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipSemanticSummaryTest::RunTest(const FString&)
+{
+	const auto* Order=FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.TusiChief.TuSiJunLing"));
+	FGameXXKCardTooltipContext Context;Context.UnavailableReason=TEXT("测试内力不足");
+	const FString Text=GameXXKCardText::DescribeCompactTooltipBody(*Order,Order->BaseQuality,nullptr,Context);
+	TestTrue(TEXT("compact preserves charge"),Text.Contains(TEXT("冲锋：")));TestTrue(TEXT("compact preserves finish after three base rows"),Text.Contains(TEXT("收招：")));
+	TestTrue(TEXT("unavailable reason cannot be truncated"),Text.Contains(Context.UnavailableReason));TestFalse(TEXT("joined clauses have no double punctuation"),Text.Contains(TEXT("。；")));
+	FGameXXKCardPlayPreview Preview;Preview.bCanPlay=true;Preview.TargetRequest.bRequiresManualSelection=true;
+	for(int32 I=0;I<3;++I){auto& V=Preview.TargetRequest.CandidateViews.AddDefaulted_GetRef();V.bCanSelect=true;}
+	const FString Selection=GameXXKCardText::DescribeCompactTooltipBody(*Order,Order->BaseQuality,&Preview,{});
+	TestTrue(TEXT("multiple candidates still require exactly one choice"),Selection.Contains(TEXT("选择一名高亮目标")));
+	TestFalse(TEXT("candidate count is not selection count"),Selection.Contains(TEXT("请选择 3 个")));
+	return true;
+}
 #endif

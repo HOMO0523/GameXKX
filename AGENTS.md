@@ -4,6 +4,7 @@
 
 ### Canonical Workflow
 - Work in the root project on `main`; do not create or use git worktrees for this project unless the user explicitly reverses this rule.
+- If the current branch is not `main`, continue read-only review but identify the branch conflict before writing. Do not automatically checkout, stash, reset, or move existing changes. Obtain one task-specific decision to restore `main` or explicitly allow the current branch; reuse that decision for this task without asking again. Permission for one task does not change the default for later tasks.
 - Keep repository scans targeted. Prefer `rg`/specific file reads over whole-project enumeration because UE assets make the working tree large.
 - Do not use UnrealBridge for this project. Use UE 5.8 MCP, UBT, command-line scripts, Visual Studio tooling, or focused editor Python through MCP.
 - Do not revert or overwrite user-tuned assets, especially character sprites, PaperZD assets, placed levels, camera transforms, and manually adjusted HD2D plane values.
@@ -35,6 +36,13 @@
 - The desktop `挑战` action is directly clickable for an unlocked/replayable stage, leaves the quest state unchanged, and displays the existing full-screen `UGameXXKBattleBoardWidget` on the same map.
 - Leaving that training battle restores the 2D workbench without loading a 3D map.
 - Legacy `L_Main`/Qingshan town, NPC `F`, north-gate and route-map flows remain explicit regression surfaces only; run them when the user or the scoped task specifically requests 3D/legacy verification.
+
+## Task Scope and Verification
+
+- Read navigation resources only when relevant to the current task; this index is not a mandatory read list. Consult current-goal acceptance when changing gameplay semantics or assessing goal completion.
+- Scale checks to the change. Documentation-only edits need text/diff checks, not UBT or PIE. Runtime changes still require the applicable compile and behavior checks below.
+- Reuse passing evidence while relevant code and environment remain unchanged. Repeat or broaden checks after changes, failures, or unresolved concerns.
+- Resolve routine failures caused by the requested change and continue to its acceptance criteria. Ask only for a necessary user decision or an action outside existing authorization.
 
 ## Navigation
 

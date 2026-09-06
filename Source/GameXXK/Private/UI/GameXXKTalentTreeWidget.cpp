@@ -1,4 +1,6 @@
 #include "UI/GameXXKTalentTreeWidget.h"
+#include "UI/GameXXKPartyDeckUiStyle.h"
+#include "UI/GameXXKInkScrollBar.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "GameXXKTalentCatalog.h"
@@ -444,6 +446,8 @@ void UGameXXKTalentTreeWidget::NativeTick(
 	const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if (VerticalInkScrollbar) VerticalInkScrollbar->RefreshFromTarget();
+	if (HorizontalInkScrollbar) HorizontalInkScrollbar->RefreshFromTarget();
 	if (!bSlateRebuildPending)
 	{
 		return;
@@ -482,7 +486,7 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		FLinearColor(0.20f, 0.17f, 0.12f, 0.34f), 1.0f);
 	GraphFrame->SetBrush(GraphBackground);
 	GraphFrame->SetBrushColor(FLinearColor::White);
-	GraphFrame->SetPadding(FMargin(3.0f));
+	GraphFrame->SetPadding(FMargin(3.0f,3.0f,21.0f,21.0f));
 	GraphFrame->SetClipping(EWidgetClipping::ClipToBounds);
 	AddCanvas(RootCanvas, GraphFrame, FVector2D::ZeroVector, FVector2D(GraphViewportWidth, WidgetHeight));
 
@@ -490,7 +494,9 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		UScrollBox::StaticClass(),
 		TEXT("TalentHorizontalScroll"));
 	HorizontalScroll->SetOrientation(Orient_Horizontal);
+	FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(HorizontalScroll,14.0f,60.0f);
 	HorizontalScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+
 	HorizontalScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
 	HorizontalScroll->OnUserScrolled.AddDynamic(
 		this,
@@ -501,14 +507,16 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		USizeBox::StaticClass(),
 		TEXT("TalentHorizontalExtent"));
 	HorizontalExtent->SetWidthOverride(GraphCanvasExtent);
-	HorizontalExtent->SetHeightOverride(WidgetHeight - 6.0f);
+	HorizontalExtent->SetHeightOverride(WidgetHeight - 24.0f);
 	HorizontalScroll->AddChild(HorizontalExtent);
 
 	VerticalScroll = WidgetTree->ConstructWidget<UScrollBox>(
 		UScrollBox::StaticClass(),
 		TEXT("TalentVerticalScroll"));
 	VerticalScroll->SetOrientation(Orient_Vertical);
+	FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(VerticalScroll,14.0f,60.0f);
 	VerticalScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+
 	VerticalScroll->SetConsumeMouseWheel(EConsumeMouseWheel::Always);
 	VerticalScroll->OnUserScrolled.AddDynamic(
 		this,
@@ -521,6 +529,12 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 	VerticalExtent->SetWidthOverride(GraphCanvasExtent);
 	VerticalExtent->SetHeightOverride(GraphCanvasExtent);
 	VerticalScroll->AddChild(VerticalExtent);
+	VerticalInkScrollbar=WidgetTree->ConstructWidget<UGameXXKInkScrollBar>(UGameXXKInkScrollBar::StaticClass(),TEXT("TalentVerticalInkScrollbar"));
+	VerticalInkScrollbar->Configure(VerticalScroll,80.0f);
+	AddCanvas(RootCanvas,VerticalInkScrollbar,FVector2D(GraphViewportWidth-18.0f,3.0f),FVector2D(14.0f,WidgetHeight-24.0f));
+	HorizontalInkScrollbar=WidgetTree->ConstructWidget<UGameXXKInkScrollBar>(UGameXXKInkScrollBar::StaticClass(),TEXT("TalentHorizontalInkScrollbar"));
+	HorizontalInkScrollbar->Configure(HorizontalScroll,80.0f);
+	AddCanvas(RootCanvas,HorizontalInkScrollbar,FVector2D(3.0f,WidgetHeight-18.0f),FVector2D(GraphViewportWidth-24.0f,14.0f));
 
 	GraphCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(
 		UCanvasPanel::StaticClass(),

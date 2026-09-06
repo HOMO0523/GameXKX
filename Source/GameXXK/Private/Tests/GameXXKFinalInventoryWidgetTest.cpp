@@ -109,7 +109,7 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 		Inventory->GetCloseButtonResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk")));
 	TestTrue(
 		TEXT("final hero inventory uses the approved right scrollbar"),
-		Inventory->GetScrollbarResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_BackpackScrollbarRight")));
+		Inventory->GetScrollbarResourcePathForTest().Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button")));
 	TestTrue(
 		TEXT("rejected shared selection ink is no longer bound"),
 		Inventory->GetSelectionInkResourcePathForTest().IsEmpty());
@@ -254,7 +254,8 @@ bool FGameXXKInventoryTitleAndCompanionPortraitTest::RunTest(const FString& Para
 	}
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Town;
 
-	const TArray<FGameXXKPermanentCompanion>& Companions =
+	// Opening the inventory can normalize and replace the runtime roster.
+	const TArray<FGameXXKPermanentCompanion> Companions =
 		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions;
 	if (!TestEqual(TEXT("portrait fixture owns all six profession companions"),
 		Companions.Num(), 6))
@@ -420,8 +421,8 @@ bool FGameXXKFinalInventoryLockOverlayTest::RunTest(const FString& Parameters)
 			CountSlot
 			&& CountSlot->GetHorizontalAlignment() == HAlign_Right
 			&& CountSlot->GetVerticalAlignment() == VAlign_Bottom
-			&& CountSlot->GetPadding().Right <= 3.0f
-			&& CountSlot->GetPadding().Bottom <= 2.0f);
+			&& FMath::IsNearlyEqual(CountSlot->GetPadding().Right,6.0f)
+			&& FMath::IsNearlyEqual(CountSlot->GetPadding().Bottom,6.0f));
 	}
 	UImage* BackpackLockedIcon = Inventory->WidgetTree
 		? Cast<UImage>(Inventory->WidgetTree->FindWidget(
@@ -860,6 +861,7 @@ bool FGameXXKFinalInventoryLegacyOwnerIsolationTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+	const FName GuardId = Guard->InstanceId;
 
 	UGameXXKInventoryWindowWidget* Inventory =
 		NewObject<UGameXXKInventoryWindowWidget>();
@@ -896,7 +898,7 @@ bool FGameXXKFinalInventoryLegacyOwnerIsolationTest::RunTest(const FString& Para
 	TestEqual(TEXT("Hero legacy weapon icon is visible"),
 		WeaponIcon->GetVisibility(), ESlateVisibility::HitTestInvisible);
 
-	Inventory->ConfigureDesktopTrainingCharacter(Guard->InstanceId);
+	Inventory->ConfigureDesktopTrainingCharacter(GuardId);
 	TestEqual(TEXT("Guard keeps an empty weapon-slot label"),
 		WeaponLabel->GetText().ToString(), FString(TEXT("武器")));
 	TestEqual(TEXT("Guard empty weapon slot hides its icon"),

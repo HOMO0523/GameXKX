@@ -382,8 +382,11 @@ FGameXXKBattleAnimationClipPair FGameXXKBattleAnimationPresentation::ResolveComp
 	const EGameXXKBattleAnimationAction Action)
 {
 	FGameXXKBattleAnimationClipPair Pair;
-	Pair.Preferred = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT(".1K")), bEnemy, Action);
-	Pair.Fallback = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT("")), bEnemy, Action);
+	// Hit/death and the Gray Wolf's retired attack are procedural poses on Idle.
+	const auto DisplayAction=(Action==EGameXXKBattleAnimationAction::Hit||Action==EGameXXKBattleAnimationAction::Death
+		|| (bEnemy&&Action==EGameXXKBattleAnimationAction::Attack&&ResolveUnitAssetId(RuntimeUnitId,true).Contains(TEXT("enemy_07_graywolf"))))?EGameXXKBattleAnimationAction::Idle:Action;
+	Pair.Preferred = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT(".1K")), bEnemy, DisplayAction);
+	Pair.Fallback = ResolveClip(MakeResolutionUnitId(RuntimeUnitId, TEXT("")), bEnemy, DisplayAction);
 	return Pair;
 }
 

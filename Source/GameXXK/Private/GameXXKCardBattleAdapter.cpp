@@ -2875,6 +2875,19 @@ namespace
 		FGameXXKCardBattleRuntime ForecastRuntime = NewRuntime;
 		ForecastRuntime.Phase = EGameXXKCardBattlePhase::Enemy;
 		ForecastRuntime.bSuppressEquipmentTriggerAudit = true;
+		// Hand-bound surcharges/discounts belong to the real player hand. This
+		// throwaway enemy forecast never plays that hand and must not validate its
+		// player-only cost bindings as if they existed during an enemy phase.
+		ForecastRuntime.Modifiers.RemoveAll([](const FGameXXKCardBattleModifierRuntime& Modifier)
+		{
+			return !Modifier.RequiredPlayedCardInstanceId.IsNone();
+		});
+		TSet<FName> ForecastTemporaryIds;
+		for(auto* Zone:{&ForecastRuntime.Deck.Hand,&ForecastRuntime.Deck.DrawPile,&ForecastRuntime.Deck.DiscardPile,&ForecastRuntime.Deck.ExhaustPile,&ForecastRuntime.Deck.PendingAutomaticHandCards})
+			Zone->RemoveAll([&ForecastTemporaryIds](const FGameXXKCardInstance& Card){if(Card.bTemporary)ForecastTemporaryIds.Add(Card.InstanceId);return Card.bTemporary;});
+		ForecastRuntime.Deck.ActiveInstanceIds.RemoveAll([&ForecastTemporaryIds](FName Id){return ForecastTemporaryIds.Contains(Id);});
+		ForecastRuntime.Deck.PendingChoice=FGameXXKPendingCardChoice();
+		ForecastRuntime.Deck.PendingChoice.Kind=EGameXXKCardPendingChoiceKind::None;
 		// A player-phase forecast must not execute or validate deferred Blade/PoJun
 		// payloads whose real trigger boundary has not arrived yet. Enemy effects are
 		// simulated on this throwaway copy only to propagate ordered enemy setup.
@@ -3129,14 +3142,14 @@ namespace
 		return true;
 	}
 
-	bool DidAnyBossEnterPhaseTwo(
+	bool DidAnyEnemyChangePhase(
 		const FGameXXKCardBattleRuntime& Before,
 		const FGameXXKCardBattleRuntime& After)
 	{
 		for (const TPair<FName, FGameXXKEnemyBattleState>& Pair : After.EnemyStates)
 		{
 			const FGameXXKEnemyBattleState* BeforeState = Before.EnemyStates.Find(Pair.Key);
-			if (Pair.Value.bPhaseTwo && (!BeforeState || !BeforeState->bPhaseTwo))
+			if (!BeforeState || Pair.Value.CurrentPhase != BeforeState->CurrentPhase)
 			{
 				return true;
 			}
@@ -3823,6 +3836,7 @@ bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
 	{
 		return false;
 	}
+	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
@@ -3857,6 +3871,7 @@ bool FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
 	{
 		return false;
 	}
+	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
@@ -3887,6 +3902,7 @@ bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 	{
 		return false;
 	}
+	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
@@ -3915,6 +3931,7 @@ bool FGameXXKCardBattleAdapter::CancelInsight(
 	{
 		return false;
 	}
+	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
@@ -3945,6 +3962,7 @@ bool FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(
 			NewState.CardRun.ActiveBattle,
 			NewResults,
 			OutError)
+		|| (NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))
 		|| !FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
 	{
@@ -3996,7 +4014,9 @@ bool FGameXXKCardBattleAdapter::EndPlayerCardPhase(
 		// Reuse the forecast created at player-phase start. Only a legacy/recovery state without one
 		// may create a new list here. Defeated sources are removed before presentation can show them.
 		PruneUnexecutableEnemyIntents(Run);
-		if (Run.EnemyIntents.IsEmpty() && !BuildEnemyIntents(Run, OutError))
+		const bool bPhaseChanged=DidAnyEnemyChangePhase(InOutState.CardRun.ActiveBattle,Run.ActiveBattle)
+			|| Run.EnemyIntents.ContainsByPredicate([&Run](const FGameXXKCardEnemyIntent& Intent){const auto* Source=Run.ActiveBattle.EnemyStates.Find(Intent.SourceUnitId);return Source&&Intent.PhaseNumber>0&&Intent.PhaseNumber!=Source->CurrentPhase;});
+		if ((bPhaseChanged || Run.EnemyIntents.IsEmpty()) && !BuildEnemyIntents(Run, OutError))
 		{
 			return false;
 		}
@@ -4164,7 +4184,9 @@ static bool ResolveNextEnemyIntentImpl(
 			{
 				return SetFailure(OutError, TEXT("A resolved catalog enemy intent lost its persisted enemy state."));
 			}
-			EnemyState->IntentCursor = NextCatalogIntentCursor;
+			// A counter may have consumed this enemy's phase after its card.
+			// Keep the new phase's reset cursor instead of applying an old-deck index.
+			if(EnemyState->CurrentPhase==Intent.PhaseNumber)EnemyState->IntentCursor = NextCatalogIntentCursor;
 		}
 		if (!Intent.bCharging)
 		{
@@ -4217,6 +4239,15 @@ bool FGameXXKCardBattleAdapter::ResolveNextEnemyIntent(
 		return false;
 	}
 
+	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Enemy && DidAnyEnemyChangePhase(InOutState.CardRun.ActiveBattle,NewState.CardRun.ActiveBattle))
+	{
+		TSet<FName> CompletedSources;
+		for(int32 I=0;I<NewState.CardRun.NextEnemyIntentIndex;++I)CompletedSources.Add(NewState.CardRun.EnemyIntents[I].SourceUnitId);
+		if(!BuildEnemyIntents(NewState.CardRun,OutError))return false;
+		NewState.CardRun.EnemyIntents.RemoveAll([&CompletedSources](const auto& I){return CompletedSources.Contains(I.SourceUnitId);});
+		NewState.CardRun.NextEnemyIntentIndex=0;bNewIntentsFinished=NewState.CardRun.EnemyIntents.IsEmpty();
+		if(!SyncCardBattleToLegacyProjection(NewState,OutError))return false;
+	}
 	InOutState = MoveTemp(NewState);
 	OutResolvedIntent = MoveTemp(NewResolvedIntent);
 	OutDamageResults = MoveTemp(NewDamageResults);

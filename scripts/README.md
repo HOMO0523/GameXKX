@@ -7,6 +7,8 @@
 | 脚本 | 作用 |
 |---|---|
 | `ue_mcp_client.py` | UE 5.8 内置 MCP 客户端(HTTP JSON-RPC 2.0 + SSE),封装 connect/call_tool/PIE 生命周期/日志采集 |
+| `gamexxk_dev_client.py` | F10开发手札的运行时客户端：物品/配装/快照、场景模拟与同种子A/B；默认本机文件协议，编辑器可用`--via mcp`。见`docs/design/dev-workbench.md` |
+| `gamexxk_balance_report.py` | 构造可复用阵容矩阵、运行真实战斗并生成离线HTML/JSON/CSV；提供DPR、热力图、逐牌与装备/NPC换卡对照，不使用另建的近似数值模型 |
 | `ue_mcp_smoke.py` | MCP 服务冒烟测试(校验必需 toolset) |
 | `ue_paths.py` | 解析 UE 安装根目录(GAMEXXK_UE_ROOT → 候选 → 注册表) |
 | `ue_tdd_pipeline.py` | TDD 冷编译→启动 MCP 编辑器→PIE→[TDD] 日志断言全流程(禁 Live Coding) |

@@ -11,6 +11,7 @@ class UBorder;
 class UGameXXKMVPSubsystem;
 class UImage;
 class UScrollBox;
+class UGameXXKInkScrollBar;
 class UTextBlock;
 class UTexture2D;
 class UGameXXKTalentTreeWidget;
@@ -117,6 +118,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UScrollBox> VerticalScroll;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInkScrollBar> VerticalInkScrollbar;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInkScrollBar> HorizontalInkScrollbar;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> DetailNameText;

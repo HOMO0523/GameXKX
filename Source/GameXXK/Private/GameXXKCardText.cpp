@@ -616,7 +616,7 @@ namespace
 			{
 				LegalCount += Candidate.bCanSelect ? 1 : 0;
 			}
-			return FString::Printf(TEXT("请选择 %d 个高亮合法目标，箭头会跟随鼠标"), LegalCount);
+			return LegalCount > 0 ? TEXT("选择一名高亮目标后施放。") : TEXT("当前没有可选目标。");
 		}
 		if (Preview.TargetRequest.bRequiresRandomResolution)
 		{
@@ -1575,7 +1575,7 @@ namespace
 			: FString::Printf(TEXT("%d–%d"), Minimum, Maximum);
 	}
 
-	FString DescribeResolvedEffect(
+	FString DescribeResolvedEffectValue(
 		const FGameXXKCardEffect& Effect,
 		const int32 EffectIndex,
 		const FGameXXKCardPlayPreview* Preview,
@@ -1666,7 +1666,7 @@ namespace
 			if (Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::PrintedCostArmor
 				|| Effect.MagnitudePolicy == EGameXXKCardMagnitudePolicy::DefensePercent)
 			{
-				return FString::Printf(TEXT("获得%d%%防御的护甲，%d%%增幅倍率。"), First.BaseMagnitude, First.AmplificationPercent);
+				return FString::Printf(TEXT("获得出牌者%d%%防御的护甲，%d%%增幅倍率。"), First.BaseMagnitude, First.AmplificationPercent);
 			}
 			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
 		case EGameXXKCardDisplayValueKind::ManaRecovery:
@@ -1700,6 +1700,35 @@ namespace
 		default:
 			return DescribeEffect(Effect, true, CurrentTerrain, PlannedTerrain);
 		}
+	}
+
+	FString DescribeResolvedEffect(const FGameXXKCardEffect& Effect,const int32 EffectIndex,const FGameXXKCardPlayPreview* Preview,
+		const bool bCompact,const EGameXXKCardTerrain CurrentTerrain,const EGameXXKCardTerrain PlannedTerrain)
+	{
+		const FString Full=DescribeEffect(Effect,true,CurrentTerrain,PlannedTerrain);
+		FString Value=DescribeResolvedEffectValue(Effect,EffectIndex,Preview,bCompact,CurrentTerrain,PlannedTerrain);
+		if(Value==Full)return Value;
+		// A resolved number replaces only the magnitude, never its receiver,
+		// armor cost, condition or dependency on a preceding effect.
+		if(Effect.Type==EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor)
+		{
+			const FString Source=Effect.Source==EGameXXKCardEffectSource::SelectedTarget?TEXT("所选友方"):Effect.Source==EGameXXKCardEffectSource::HighestArmorAlly?TEXT("护甲最高友方"):TEXT("出牌者");
+			Value=TEXT("消耗")+Source+TEXT("全部护甲；")+DescribeEffectTarget(Effect.Target)+TEXT("，")+Value;
+		}
+		else
+		{
+			const FString Target=DescribeEffectTarget(Effect.Target);
+			if(Value.StartsWith(TEXT("造成"))||Value.StartsWith(TEXT("攻击"))||Value.StartsWith(TEXT("施加")))Value=TEXT("对")+Target+Value;
+			else if(Value.StartsWith(TEXT("获得"))||Value.StartsWith(TEXT("回复")))Value=Target+Value;
+			else Value=TEXT("为")+Target+TEXT("提供")+Value;
+			if(Effect.Type==EGameXXKCardEffectType::DamagePercentAttackPlusArmor)Value+=TEXT("伤害已计入当前护甲，不消耗护甲。");
+			if(Effect.Type==EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget)Value=TEXT("每名存活友方分别攻击；")+Value;
+		}
+		const FString Condition=DescribeCondition(Effect.Condition);
+		if(!Condition.IsEmpty())Value=Condition+TEXT("：")+Value;
+		if(!Effect.ResultRef.IsNone())Value+=TEXT("仅当前述结果成功时生效。");
+		if(!Effect.ConsumedStackResultRef.IsNone())Value+=TEXT("仅当前述消耗成功时生效。");
+		return Value;
 	}
 
 	FString DescribeEffectsResolved(
@@ -1998,8 +2027,6 @@ namespace
 	}
 
 	constexpr int32 CompactTooltipMaximumLineLength = 48;
-	constexpr int32 CompactTooltipMaximumEffectLines = 3;
-	constexpr int32 CompactTooltipMaximumTotalLines = 7;
 
 	FString EllipsizeCompactTooltipLine(const FString& Value)
 	{
@@ -2146,6 +2173,7 @@ namespace
 			else if (!BaseEffectLines.IsEmpty()
 				&& BaseEffectLines.Last().Len() + CompactLine.Len() + 1 <= CompactTooltipMaximumLineLength)
 			{
+				BaseEffectLines.Last().RemoveFromEnd(TEXT("。"));
 				BaseEffectLines.Last() += TEXT("；") + CompactLine;
 			}
 			else
@@ -2156,18 +2184,10 @@ namespace
 
 		for (const FString& BaseLine : BaseEffectLines)
 		{
-			if (Lines.Num() - 3 >= CompactTooltipMaximumEffectLines)
-			{
-				break;
-			}
 			Lines.Add(EllipsizeCompactTooltipLine(BaseLine));
 		}
 		for (const FString& KeywordLine : KeywordLines)
 		{
-			if (Lines.Num() - 3 >= CompactTooltipMaximumEffectLines)
-			{
-				break;
-			}
 			Lines.Add(EllipsizeCompactTooltipLine(KeywordLine));
 		}
 
@@ -2185,11 +2205,7 @@ namespace
 			Lines.Add(EllipsizeCompactTooltipLine(DescribePreviewState(*Preview)));
 		}
 
-		while (Lines.Num() >= CompactTooltipMaximumTotalLines)
-		{
-			Lines.RemoveAt(Lines.Num() - 1);
-		}
-		Lines.Add(TEXT("Shift：详述 · Ctrl：Pill说明"));
+		Lines.Add(TEXT("Shift：详述 · Ctrl：术语说明"));
 		return FString::Join(Lines, TEXT("\n"));
 	}
 

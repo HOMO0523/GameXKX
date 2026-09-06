@@ -1,4 +1,5 @@
 #include "UI/GameXXKBattlePartyQiWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateColorBrush.h"
@@ -14,7 +15,7 @@
 namespace
 {
 	const FSoftObjectPath PartyQiSoulIconTexturePath(TEXT("/Game/GameXXK/UI/Battle/PartyQi/T_BattlePartyQi_SoulOrb.T_BattlePartyQi_SoulOrb"));
-	const FVector2D PartyQiIconSize(104.0f, 104.0f);
+	const FVector2D PartyQiIconSize(140.0f, 140.0f);
 	const FLinearColor SoulFallbackColor(0.26f, 0.31f, 0.30f, 0.84f);
 	const FLinearColor PartyQiInkColor(0.12f, 0.10f, 0.075f, 1.0f);
 
@@ -42,7 +43,7 @@ namespace
 			return;
 		}
 
-		FSlateFontInfo Font = TextBlock->GetFont();
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,true);
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
 		TextBlock->SetColorAndOpacity(FSlateColor(PartyQiInkColor));
@@ -144,7 +145,7 @@ void UGameXXKBattlePartyQiWidget::EnsureWidgetTree()
 	}
 
 	QiText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattlePartyQiText"));
-	ConfigureInkText(QiText, 38);
+	ConfigureInkText(QiText, 56);
 	if (UOverlaySlot* QiSlot = IconOverlay->AddChildToOverlay(QiText))
 	{
 		QiSlot->SetHorizontalAlignment(HAlign_Center);

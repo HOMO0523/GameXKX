@@ -1,4 +1,5 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKEnemyCatalog.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
@@ -279,6 +280,13 @@ namespace
 	template struct TTravelPrivateMemberAccessor<
 		FTravelLoadedAtlasTexturesTag,
 		&UGameXXKDesktopTrainingWorkbenchWidget::TravelLoadedAtlasTextures>;
+
+	struct FTravelRequestedAtlasPathsTag
+	{
+		using Type=TSet<FSoftObjectPath> UGameXXKDesktopTrainingWorkbenchWidget::*;
+		friend Type GetTravelPrivateMember(FTravelRequestedAtlasPathsTag);
+	};
+	template struct TTravelPrivateMemberAccessor<FTravelRequestedAtlasPathsTag,&UGameXXKDesktopTrainingWorkbenchWidget::TravelRequestedAtlasPaths>;
 
 	struct FApplyTravelClipPairTag
 	{
@@ -1238,7 +1246,7 @@ bool FGameXXKDesktopTrainingWorkbenchInnerGeometryTest::RunTest(const FString& P
 		};
 		TestEmbeddedRect(TEXT("InventoryCentralHeroIdle"), FVector4(478.0f, 304.0f, 518.0f, 518.0f));
 		TestEmbeddedRect(TEXT("InventoryEquipmentSlot_Weapon"), FVector4(420.0f, 340.0f, 118.0f, 124.0f));
-		TestEmbeddedRect(TEXT("InventoryCharacterTab_0"), FVector4(514.0f, 220.0f, 105.0f, 62.0f));
+		TestEmbeddedRect(TEXT("InventoryCharacterTab_0"), GameXXKDesktopTrainingLayout::GetEmbeddedCharacterTabRect(0));
 		UWidget* RemovedTalentTab = EmbeddedBackpack->WidgetTree ? EmbeddedBackpack->WidgetTree->FindWidget(TEXT("InventoryCharacterTab_3")) : nullptr;
 		UWidget* RemovedTitleTab = EmbeddedBackpack->WidgetTree ? EmbeddedBackpack->WidgetTree->FindWidget(TEXT("InventoryCharacterTab_4")) : nullptr;
 		TestTrue(TEXT("embedded mode removes the top talent tab"), RemovedTalentTab && RemovedTalentTab->GetVisibility() == ESlateVisibility::Collapsed);
@@ -2408,9 +2416,13 @@ bool FGameXXKDesktopTrainingTransparentSlateWindowContractTest::RunTest(const FS
 		AGameXXKMVPPlayerController::BuildDesktopTrainingOverlayWindowForTest(
 			WindowPosition,
 			WindowSize);
-	TestEqual(TEXT("desktop HUD requests per-pixel Slate output"),
+	TestEqual(TEXT("desktop HUD requests target-supported Slate transparency"),
 		Window->GetTransparencySupport(),
+#if ALPHA_BLENDED_WINDOWS
 		EWindowTransparency::PerPixel);
+#else
+		EWindowTransparency::None);
+#endif
 	TestEqual(TEXT("desktop overlay uses its unique provider tag"),
 		Window->GetTitle().ToString(),
 		FString(TEXT("GameXXKDesktopOverlay")));
@@ -5125,7 +5137,7 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasFallbackInventoryTest::RunT
 		{TEXT("Companion_FormationMaster_Test"), false},
 		{TEXT("Npc.TusiChief"), true},
 		{TEXT("Npc.SongJinBao"), false},
-		{TEXT("Npc.YueBai"), false},
+		{TEXT("Npc.YueBai"), true},
 		{TEXT("Npc.ZhouGuangZu"), false},
 		{TEXT("Npc.JinGui"), false},
 		{TEXT("Npc.QiongMeiEr"), false}};
@@ -5256,9 +5268,7 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(
 	};
 	const EGameXXKBattleAnimationAction WrapperActions[] = {
 		EGameXXKBattleAnimationAction::Idle,
-		EGameXXKBattleAnimationAction::Attack,
-		EGameXXKBattleAnimationAction::Hit,
-		EGameXXKBattleAnimationAction::Death};
+		EGameXXKBattleAnimationAction::Attack};
 	for (const EGameXXKBattleAnimationAction Action : WrapperActions)
 	{
 		const FGameXXKBattleAnimationClipPair HeroPair =
@@ -5306,8 +5316,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(
 		Loader->CompleteMissing(EnemyIdlePair.Preferred.TexturePath));
 	TestEqual(TEXT("failed Hero single-clip wrapper still has no fallback request"),
 		Loader->RequestCount(HeroIdlePair.Fallback.TexturePath), 0);
-	TestEqual(TEXT("failed Enemy single-clip wrapper still has no fallback request"),
-		Loader->RequestCount(EnemyIdlePair.Fallback.TexturePath), 0);
+	TestEqual(TEXT("missing Enemy Idle dispatches the available 2K fallback"),
+		Loader->RequestCount(EnemyIdlePair.Fallback.TexturePath), 1);
 	TestEqual(TEXT("failed Hero wrapper never retries its preferred request"),
 		Loader->RequestCount(HeroIdlePair.Preferred.TexturePath), 1);
 	TestEqual(TEXT("failed Enemy wrapper never retries its preferred request"),
@@ -5690,6 +5700,14 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasSelectionRulesTest::RunTest
 	TestTrue(TEXT("invalid pair hides the image"), FMath::IsNearlyZero(Image->GetRenderOpacity()));
 	TestTrue(TEXT("invalid pair resets the applied path"), AppliedPath.IsNull());
 	TestEqual(TEXT("invalid pair resets the applied frame"), AppliedFrame, INDEX_NONE);
+	// A death fade and a freshly recreated widget can reuse the same clip/frame.
+	AppliedPath=Pair.Preferred.TexturePath;AppliedFrame=0;Image->SetRenderOpacity(0);
+	TestTrue(TEXT("same-frame respawn applies"),(Widget->*ApplyClipPair)(Image,Pair,true,AppliedPath,AppliedFrame));
+	TestEqual(TEXT("same-frame respawn restores 100 percent opacity"),Image->GetRenderOpacity(),1.0f);
+	UImage* Recreated=NewObject<UImage>(Widget);Recreated->SetRenderOpacity(0);
+	TestTrue(TEXT("recreated image applies despite retained path/frame cache"),(Widget->*ApplyClipPair)(Recreated,Pair,true,AppliedPath,AppliedFrame));
+	TestEqual(TEXT("recreated image restores full opacity"),Recreated->GetRenderOpacity(),1.0f);
+	TestTrue(TEXT("recreated image owns the real brush resource"),Recreated->GetBrush().GetResourceObject()==PreferredTexture.Get());
 	return true;
 }
 
@@ -6052,13 +6070,13 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		TestEqual(TEXT("ordinary encounter shows its first enemy slot"), EnemyImage->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 		TestEqual(TEXT("ordinary encounter shows its second enemy slot"), SecondEnemyImage->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
-		TestEqual(TEXT("ordinary encounter leaves its third enemy slot empty"), ThirdEnemyImage->GetVisibility(), ESlateVisibility::Collapsed);
+		TestEqual(TEXT("the approved formation exposes its third enemy slot"), ThirdEnemyImage->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 	}
 	if (EnemyHealth && SecondEnemyHealth && ThirdEnemyHealth)
 	{
 		TestTrue(TEXT("the first enemy HP bar becomes visible at spawn"), FMath::IsNearlyEqual(EnemyHealth->GetRenderOpacity(), 1.0f));
 		TestTrue(TEXT("the second enemy HP bar becomes visible at spawn"), FMath::IsNearlyEqual(SecondEnemyHealth->GetRenderOpacity(), 1.0f));
-		TestTrue(TEXT("the unused third enemy HP bar remains visually hidden"), FMath::IsNearlyZero(ThirdEnemyHealth->GetRenderOpacity()));
+		TestTrue(TEXT("the third authored enemy HP bar is visible"), FMath::IsNearlyEqual(ThirdEnemyHealth->GetRenderOpacity(),1.0f));
 	}
 	TestEqual(TEXT("encounter idle retains the first authored enemy"), Widget->GetTravelVisualEnemyDefinitionIdForTest(), FirstEnemyId);
 	TestEqual(TEXT("standing hero uses the battle idle action"), Widget->GetTravelVisualHeroActionForTest(), EGameXXKBattleAnimationAction::Idle);
@@ -6113,8 +6131,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			TEXT("battle idle uses a uniform content normalization scale"),
 			FMath::IsNearlyEqual(IdleScale.X, IdleScale.Y, 0.001f));
 		TestTrue(
-			TEXT("battle idle normalizes its 81.2 percent alpha height to the 90.6 percent walk height"),
-			FMath::IsNearlyEqual(IdleScale.Y, 1.116f, 0.01f));
+			TEXT("battle idle normalizes its corrected alpha height to the 90.6 percent walk height"),
+			FMath::IsNearlyEqual(IdleScale.Y, 1.094f, 0.01f));
 	}
 	if (EnemyImage)
 	{
@@ -6127,7 +6145,7 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			FMath::IsNearlyEqual(EnemyIdleScale.X, EnemyIdleScale.Y, 0.001f));
 		TestTrue(
 			TEXT("enemy idle is enlarged to approximately the normalized hero height"),
-			EnemyIdleScale.Y >= 1.11f);
+			EnemyIdleScale.Y >= 1.09f);
 	}
 	if (PermanentCompanionImage && QuestCompanionImage && PermanentCompanionHealth && QuestCompanionHealth)
 	{
@@ -6169,8 +6187,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			TEXT("hero attack keeps its authored left-facing direction"),
 			AttackScale.X > 0.0f);
 		TestTrue(
-			TEXT("hero attack normalizes its 59.8 percent alpha height to the 90.6 percent walk height"),
-			FMath::IsNearlyEqual(AttackScale.Y, 1.516f, 0.01f));
+			TEXT("hero attack normalizes its corrected attack alpha height to the 90.6 percent walk height"),
+			FMath::IsNearlyEqual(AttackScale.Y, 1.160f, 0.01f));
 	}
 	Widget->TickForTest(0.5f);
 	Widget->TickForTest(0.5f);
@@ -6191,8 +6209,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			EnemyHitScale.X > 0.0f
 			&& FMath::IsNearlyEqual(EnemyHitScale.X, EnemyHitScale.Y, 0.001f));
 		TestTrue(
-			TEXT("enemy hit compensates its tighter transparent bounds instead of shrinking"),
-			EnemyHitScale.Y > EnemyIdleScale);
+			TEXT("procedural enemy hit retains its Idle body size"),
+			FMath::IsNearlyEqual(EnemyHitScale.Y,EnemyIdleScale));
 
 		for (int32 SettlementGuard = 0;
 			SettlementGuard < 128
@@ -7968,6 +7986,39 @@ bool FGameXXKDesktopTrainingWarehouseBatchPartialTest::RunTest(const FString& Pa
 		FGameXXKDesktopInventoryRules::GetOccupiedSlotCount(
 			State, EGameXXKDesktopItemContainer::Warehouse), 36);
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTravelEnemyAssetCoverageTest,
+ "GameXXK.DesktopTraining.Workbench.TravelAllEnemyAtlasCoverage",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKTravelEnemyAssetCoverageTest::RunTest(const FString&)
+{
+ int32 Checked=0;
+ for(const auto& E:FGameXXKEnemyCatalog::GetAllDefinitions())for(auto Action:{EGameXXKBattleAnimationAction::Idle,EGameXXKBattleAnimationAction::Attack})
+ {
+  const auto Pair=FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(E.Id,true,Action);
+  const bool Preferred=FPackageName::DoesPackageExist(Pair.Preferred.TexturePath.GetLongPackageName());
+  const bool Fallback=FPackageName::DoesPackageExist(Pair.Fallback.TexturePath.GetLongPackageName());
+  TestTrue(E.Id.ToString()+TEXT(" has an existing preferred or fallback atlas"),Preferred||Fallback);++Checked;
+ }
+ TestEqual(TEXT("all 21 monsters have Idle and Attack coverage"),Checked,42);return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTravelRetiredMissingAtlasTest,
+ "GameXXK.DesktopTraining.Workbench.TravelRetiredMissingAtlasReentry",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKTravelRetiredMissingAtlasTest::RunTest(const FString&)
+{
+ const auto Loader=MakeShared<FTravelFallbackAtlasLoader>();FTravelAtlasWidgetFixture Fixture;FString Error;
+ if(!BuildTravelAtlasWidgetFixture(TEXT("CompanionInstance.Companion_Blade_01.Reentry"),TEXT("Npc.TusiChief"),MakeUnique<FGameXXKBattleAtlasCache>(Loader,[](){return 0.0;}),Fixture,Error)){AddError(Error);return false;}
+ const FName GuardId=TEXT("CompanionInstance.Companion_Guard_01.Reentry");const auto Pair=FGameXXKBattleAnimationPresentation::ResolveCompactTravelClipPair(GuardId,false,EGameXXKBattleAnimationAction::Idle);
+ auto& Requested=Fixture.Widget->*GetTravelPrivateMember(FTravelRequestedAtlasPathsTag());Requested.Add(Pair.Preferred.TexturePath);
+ Fixture.Widget->TickForTest(0.01f);TestFalse(TEXT("retired missing path loses its failed request marker"),Requested.Contains(Pair.Preferred.TexturePath));
+ auto& State=Fixture.Subsystem->GetMutableRuntimeState();auto* Active=State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([](const auto& C){return C.bIsActive;});if(!Active)return false;const FName Previous=Active->InstanceId;Active->InstanceId=GuardId;
+ for(auto& Ref:State.CardRun.OrderedFormation.Members)if(Ref.MemberId==Previous)Ref.MemberId=GuardId;FGameXXKPartyFormationRules::ProjectCompatibility(State);
+ TestTrue(TEXT("reenter travel with the retired identity"),Fixture.Subsystem->StartTrainingTravel(TEXT("Training.Normal.1-1")));Fixture.Widget->TickForTest(0.01f);
+ TestTrue(TEXT("reentry requests the previously failed preferred path again"),Loader->Requested(Pair.Preferred.TexturePath));TestTrue(TEXT("missing preferred resolves"),Loader->CompleteMissing(Pair.Preferred.TexturePath));
+ auto* Texture=Loader->CompleteLoaded(Pair.Fallback.TexturePath);TestNotNull(TEXT("fallback reentry completes"),Texture);
+ TestTrue(TEXT("reentry restores its texture"),Fixture.PermanentImage->GetBrush().GetResourceObject()==Texture);TestEqual(TEXT("reentry restores 100 percent opacity"),Fixture.PermanentImage->GetRenderOpacity(),1.0f);
+ return true;
 }
 
 #endif

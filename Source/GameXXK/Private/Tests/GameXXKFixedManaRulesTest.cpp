@@ -4,6 +4,7 @@
 #include "GameXXKCardRules.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionRules.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
@@ -42,9 +43,9 @@ bool FGameXXKFixedManaBaseStatsTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKCharacterStats Blade;
 	FGameXXKCharacterStatRules::GetBareCompanionStats(EGameXXKCharacterRole::Blade, 100, 1, Blade);
-	TestEqual(TEXT("this Mage prerequisite preserves other partner progression"), Blade.MaxMana, 121);
+	TestEqual(TEXT("all partner Mana uses the level-one base"), Blade.MaxMana, 22);
 	if (TestTrue(TEXT("non-Mage legacy facade remains available"), FGameXXKCompanionRules::GetCompanionAttributes(EGameXXKCharacterRole::Blade, 100, 1, Equipment, Actual)))
-		TestEqual(TEXT("equipment cannot add Mana to any profession"), Actual.Mana, 121);
+		TestEqual(TEXT("equipment cannot add Mana to any profession"), Actual.Mana, 22);
 	return true;
 }
 
@@ -257,6 +258,20 @@ bool FGameXXKNoEquipmentManaCatalogTest::RunTest(const FString& Parameters)
 	FName Id;
 	TestFalse(TEXT("a request without enough distinct active affixes rejects safely"), FGameXXKEquipmentRules::CreateRolledInstance(Collection, Request, Id, &Error));
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKFixedManaAllCharactersTest,
+ "GameXXK.Equipment.FixedMana.AllCharacters",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKFixedManaAllCharactersTest::RunTest(const FString&)
+{
+ for(auto Role:{EGameXXKCharacterRole::Blade,EGameXXKCharacterRole::Guard,EGameXXKCharacterRole::Healer,EGameXXKCharacterRole::Hunter,EGameXXKCharacterRole::Sorcerer,EGameXXKCharacterRole::FormationMaster})
+ {
+  FGameXXKCharacterStats Base;FGameXXKCharacterStatRules::GetBareCompanionStats(Role,1,1,Base);
+  for(int32 Level:{1,20,50,100})for(int32 Star:{1,3,5}){FGameXXKCharacterStats Current;TestTrue(TEXT("valid progressed stats"),FGameXXKCharacterStatRules::GetBareCompanionStats(Role,Level,Star,Current));TestEqual(TEXT("level and stars never increase Mana"),Current.MaxMana,Base.MaxMana);}
+ }
+ for(const auto& N:FGameXXKCompanionCatalog::GetQuestNpcDefinitions())for(int32 Level:{1,50,100})
+ {FGameXXKCompanionAttributes A;TestTrue(TEXT("NPC stats resolve"),FGameXXKCompanionRules::GetQuestNpcAttributes(N.NpcId,Level,A));TestEqual(TEXT("NPC level never increases Mana"),A.Mana,N.BaseAttributes.Mana);}
+ return true;
 }
 
 #endif

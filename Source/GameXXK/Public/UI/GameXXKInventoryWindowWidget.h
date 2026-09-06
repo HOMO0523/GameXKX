@@ -65,7 +65,11 @@ struct FGameXXKEmbeddedInventorySessionState
 	bool bBackpackSorted = false;
 	float BackpackScrollOffset = 0.0f;
 	float HeroDeckScrollOffset = 0.0f;
+	float CompactDeckScrollOffset = 0.0f;
 	TArray<FName> PendingDeckIds;
+	int32 DeckColumns = 2;
+	bool bDeckExpanded = false;
+	bool bDeckDraftInitialized = false;
 };
 
 UCLASS()
@@ -399,6 +403,13 @@ public:
 	TArray<FName> GetPendingHeroDeckIdsForTest() const;
 	bool ToggleHeroDeckCardForTest(FName CardId);
 	bool ApplyHeroDeckForTest();
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
+	void ToggleDeckDensity();
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
+	void SetDeckExpanded(bool bExpanded);
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	bool IsDeckExpandedForTest() const { return bDeckExpanded; }
+	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 	FString GetHeroCardFrameResourcePathForTest() const;
 	FString GetHeroLockedCardIconResourcePathForTest() const;
 
@@ -430,9 +441,11 @@ private:
 	void UpdateBackpackScrollbarThumb();
 	UScrollBox* ResolveActiveInkScrollbar() const;
 	float ResolveActiveInkScrollbarMaximumOffset() const;
+	float ResolveHeroDeckFallbackMaximumOffset() const;
 	float ResolveActiveInkScrollbarThumbTravel() const;
 	FVector2D ResolveActiveInkScrollbarThumbTop() const;
 	void RefreshHeroDeckCards();
+	void RefreshHeroDeckLayout();
 	FName ResolveInventoryCharacterId() const;
 	FGameXXKBattleAnimationClipDescriptor ResolveCentralCharacterIdleClip() const;
 	void ClearCentralCharacterPresentation();
@@ -495,6 +508,10 @@ private:
 
 	UFUNCTION()
 	void HandleApplyHeroDeckClicked();
+	UFUNCTION()
+	void HandleExpandDeckClicked();
+	UFUNCTION()
+	void HandleCollapseDeckClicked();
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
@@ -521,6 +538,21 @@ private:
 	TObjectPtr<UTextBlock> CharacterTabBodyText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> CharacterAttributeDetails;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CharacterLevelText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> CharacterIdentityText;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> CharacterAttributeValues;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UProgressBar>> CharacterResourceBars;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> CharacterExperienceText;
 
 	UPROPERTY(Transient)
@@ -528,6 +560,18 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> HeroDeckPanel;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> DeckExpandedBackdrop;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DeckDensityButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DeckExpandButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UButton> DeckCollapseButton;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> DeckExpandedTitle;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USizeBox>> HeroDeckCardCells;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HeroDeckCaptionText;
@@ -739,6 +783,13 @@ private:
 	bool bBackpackSorted = false;
 	float DeferredBackpackScrollOffset = 0.0f;
 	float DeferredHeroDeckScrollOffset = 0.0f;
+	float CompactDeckScrollOffset = 0.0f;
+	int32 DeckColumns = 2;
+	int32 ResolvedDeckColumns = 2;
+	FVector2D ResolvedDeckCardSize = FVector2D(206.0f, 285.0f);
+	float ResolvedDeckViewportHeight = 486.0f;
+	bool bDeckExpanded = false;
+	bool bDeckDraftInitialized = false;
 	bool bBackpackScrollbarThumbDragging = false;
 	bool bBackpackScrollbarDragTargetsHeroDeck = false;
 	bool bCardTooltipShiftExpanded = false;

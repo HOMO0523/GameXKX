@@ -1,4 +1,7 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/Overlay.h"
+#include "Components/OverlaySlot.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBox.h"
@@ -31,7 +34,7 @@ namespace
 	const FName FillBottomParameter(TEXT("FillBottom"));
 	// Match the previously approved PSD bar span. The mask trims the fill inside
 	// this fixed footprint; it must not shrink the whole rail a second time.
-	const FVector2D ResourceBarLogicalSize(252.0f, 20.0f);
+	const FVector2D ResourceBarLogicalSize(252.0f, 34.0f);
 
 	FSlateBrush MakeResourceBrush(const FString& TexturePath)
 	{
@@ -118,10 +121,10 @@ namespace
 			return;
 		}
 
-		FSlateFontInfo Font = TextBlock->GetFont();
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,false,true);
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
-		TextBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0.18f, 0.12f, 0.07f, 1.0f)));
+		TextBlock->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
 
@@ -294,7 +297,8 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	RootBox->SetVisibility(GetRootHitTestVisibilityForTest());
 
 	IdentityText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("IdentityText"));
-	ConfigureReadableText(IdentityText, 15);
+	ConfigureReadableText(IdentityText, 18);
+	IdentityText->SetFont(FGameXXKInRunUiStyle::Font(18,true));
 	IdentityText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const IdentitySlot = RootBox->AddChildToVerticalBox(IdentityText))
 	{
@@ -307,7 +311,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	UVerticalBox* const HealthContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("HealthContentBox"));
 	HealthContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	HealthText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HealthText"));
-	ConfigureReadableText(HealthText, 14);
+	ConfigureReadableText(HealthText, 16);
 	HealthText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const HealthTextSlot = HealthContentBox->AddChildToVerticalBox(HealthText))
 	{
@@ -330,7 +334,13 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	// source margins, which is why the fill appeared centered instead of being
 	// consumed from the left edge.  Keep the progress bar as a test seam, but
 	// use the mask image for the actual HUD.
-	HealthBarSizeBox->SetContent(HealthBar);
+	HealthText->RemoveFromParent();
+	UOverlay* HealthOverlay=WidgetTree->ConstructWidget<UOverlay>();
+	HealthOverlay->SetVisibility(ESlateVisibility::HitTestInvisible);
+	auto* HealthImageSlot=HealthOverlay->AddChildToOverlay(HealthBar);HealthImageSlot->SetHorizontalAlignment(HAlign_Fill);HealthImageSlot->SetVerticalAlignment(VAlign_Fill);
+	auto* HealthNumberSlot=HealthOverlay->AddChildToOverlay(HealthText);HealthNumberSlot->SetHorizontalAlignment(HAlign_Center);HealthNumberSlot->SetVerticalAlignment(VAlign_Center);
+	FSlateFontInfo HealthFont=HealthText->GetFont();HealthFont.OutlineSettings.OutlineSize=1;HealthFont.OutlineSettings.OutlineColor=FLinearColor(0.06f,0.04f,0.02f,1);HealthText->SetFont(HealthFont);HealthText->SetColorAndOpacity(FSlateColor(FLinearColor(1,0.97f,0.88f,1)));
+	HealthBarSizeBox->SetContent(HealthOverlay);
 	if (UVerticalBoxSlot* const HealthBarSlot = HealthContentBox->AddChildToVerticalBox(HealthBarSizeBox))
 	{
 		HealthBarSlot->SetHorizontalAlignment(HAlign_Center);
@@ -351,7 +361,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	UVerticalBox* const ManaContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ManaContentBox"));
 	ManaContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	ManaText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ManaText"));
-	ConfigureReadableText(ManaText, 14);
+	ConfigureReadableText(ManaText, 16);
 	ManaText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const ManaTextSlot = ManaContentBox->AddChildToVerticalBox(ManaText))
 	{
@@ -369,7 +379,13 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	ManaTrackTexture = LoadObject<UTexture2D>(nullptr, *ManaTrackTexturePath);
 	ManaFullTexture = LoadObject<UTexture2D>(nullptr, *ManaFullTexturePath);
 	ManaMaskMaterial = CreateResourceMaskMaterial(this);
-	ManaBarSizeBox->SetContent(ManaBar);
+	ManaText->RemoveFromParent();
+	UOverlay* ManaOverlay=WidgetTree->ConstructWidget<UOverlay>();
+	ManaOverlay->SetVisibility(ESlateVisibility::HitTestInvisible);
+	auto* ManaImageSlot=ManaOverlay->AddChildToOverlay(ManaBar);ManaImageSlot->SetHorizontalAlignment(HAlign_Fill);ManaImageSlot->SetVerticalAlignment(VAlign_Fill);
+	auto* ManaNumberSlot=ManaOverlay->AddChildToOverlay(ManaText);ManaNumberSlot->SetHorizontalAlignment(HAlign_Center);ManaNumberSlot->SetVerticalAlignment(VAlign_Center);
+	FSlateFontInfo ManaFont=ManaText->GetFont();ManaFont.OutlineSettings.OutlineSize=1;ManaFont.OutlineSettings.OutlineColor=FLinearColor(0.06f,0.04f,0.02f,1);ManaText->SetFont(ManaFont);ManaText->SetColorAndOpacity(FSlateColor(FLinearColor(1,0.97f,0.88f,1)));
+	ManaBarSizeBox->SetContent(ManaOverlay);
 	if (UVerticalBoxSlot* const ManaBarSlot = ManaContentBox->AddChildToVerticalBox(ManaBarSizeBox))
 	{
 		ManaBarSlot->SetHorizontalAlignment(HAlign_Center);

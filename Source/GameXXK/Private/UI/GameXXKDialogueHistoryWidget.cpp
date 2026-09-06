@@ -1,4 +1,5 @@
 #include "UI/GameXXKDialogueHistoryWidget.h"
+#include "UI/GameXXKPartyDeckUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -68,7 +69,7 @@ void UGameXXKDialogueHistoryWidget::PresentHistory(
 			}
 		}
 	}
-	SetVisibility(ESlateVisibility::HitTestInvisible);
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 }
 
 void UGameXXKDialogueHistoryWidget::HideHistory()
@@ -106,11 +107,12 @@ void UGameXXKDialogueHistoryWidget::BuildProgrammaticLayout()
 	PaperFrame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("DialogueHistoryPaper"));
 	PaperFrame->SetBrush(GameXXKDialogueHistoryPrivate::PaperBrush());
 	PaperFrame->SetPadding(FMargin(28.0f));
-	PaperFrame->SetVisibility(ESlateVisibility::HitTestInvisible);
+	PaperFrame->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	WidgetTree->RootWidget = PaperFrame;
 	HistoryScroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("DialogueHistoryScroll"));
-	HistoryScroll->SetConsumeMouseWheel(EConsumeMouseWheel::Never);
-	HistoryScroll->SetVisibility(ESlateVisibility::HitTestInvisible);
+	FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(HistoryScroll);
+	HistoryScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	HistoryScroll->SetVisibility(ESlateVisibility::Visible);
 	PaperFrame->SetContent(HistoryScroll);
 	HistoryRows = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("DialogueHistoryRows"));
 	HistoryRows->SetVisibility(ESlateVisibility::HitTestInvisible);

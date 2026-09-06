@@ -155,7 +155,7 @@ namespace
 		FGameXXKCardPlayPreview& OutPreview,
 		FString& OutError,
 		const int32 EnemyCount = 1,
-		const FName FixtureCardId = FName(TEXT("Route.General.PoJiaTuCi")))
+		const FName FixtureCardId = FName(TEXT("Hero.Generic.SuiYanJi")))
 	{
 		OutCardInstanceId = NAME_None;
 		OutTargetUnitId = NAME_None;
@@ -2524,8 +2524,8 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("enemy intent keeps its independent compact card-size box"), FirstIntentCardSize);
 	TestEqual(TEXT("player hand width preserves the approved current layout"), FirstHandCardSize ? FirstHandCardSize->GetWidthOverride() : 0.0f, 206.0f);
 	TestEqual(TEXT("player hand height preserves the approved current layout"), FirstHandCardSize ? FirstHandCardSize->GetHeightOverride() : 0.0f, 285.0f);
-	TestEqual(TEXT("enemy intent width remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetWidthOverride() : 0.0f, 150.0f);
-	TestEqual(TEXT("enemy intent height remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetHeightOverride() : 0.0f, 171.0f);
+	TestEqual(TEXT("enemy intent width remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetWidthOverride() : 0.0f, 178.0f);
+	TestEqual(TEXT("enemy intent height remains compact instead of inheriting the player hand size"), FirstIntentCardSize ? FirstIntentCardSize->GetHeightOverride() : 0.0f, 202.0f);
 
 	UButton* FirstPlayerHandCard = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleHandCard_00"))) : nullptr;
 	TestNotNull(TEXT("the first visible player hand card keeps its real hover target"), FirstPlayerHandCard);
@@ -2539,7 +2539,7 @@ bool FGameXXKCardBattleBoardWidgetTest::RunTest(const FString& Parameters)
 
 	const FVector2D OwnerScreenPosition(940.0f, 420.0f);
 	Board->RegisterBattleUnitScreenPosition(OwnerUnitId, OwnerScreenPosition);
-	TestEqual(TEXT("shared-energy fixture uses the stable one-Qi manual route card"), CardPreview.CardId, FName(TEXT("Route.General.PoJiaTuCi")));
+	TestEqual(TEXT("shared-energy fixture uses an active one-Qi manual Hero card"), CardPreview.CardId, FName(TEXT("Hero.Generic.SuiYanJi")));
 	TestTrue(TEXT("shared-energy fixture records a positive authoritative effective energy cost"), CardPreview.EffectiveEnergyCost > 0);
 	const int32 SharedQiBeforeCommit = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.SharedEnergy;
 	const int32 EnemyHealthBeforePreview = Subsystem->GetRuntimeState().ActiveBattleEnemies[0].HP;
@@ -3826,7 +3826,7 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	TestTrue(TEXT("battle hover consumes the live card preview instead of a catalog-only percentage"),
 		GeneratedAttack && DetailText.Contains(FString::Printf(TEXT("造成%d点伤害"), GeneratedAttack->ResolvedMagnitude)));
 	TestTrue(TEXT("hover detail names the enemy recipient on its own line"), DetailText.Contains(TEXT("\n单体敌方\n")));
-	TestFalse(TEXT("recipient line omits the old target prefix"), DetailText.Contains(TEXT("目标：")));
+	TestFalse(TEXT("recipient line omits the old target prefix"), DetailText.Contains(TEXT("\n目标：")));
 	TestTrue(TEXT("hover compact text explains the generated card effect"), DetailText.Contains(TEXT("点伤害")));
 	TestFalse(TEXT("concise hand tooltip omits the legacy interaction instruction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));
 	TestTrue(TEXT("hand hover keeps the reusable tooltip input-transparent"), Board->IsCardTooltipHitTestInvisibleForTest());

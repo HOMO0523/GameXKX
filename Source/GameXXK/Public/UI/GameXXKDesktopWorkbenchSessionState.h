@@ -98,6 +98,9 @@ struct GAMEXXK_API FGameXXKDesktopWorkbenchSessionState
 	FName LastCompanionBackpackCharacterId = NAME_None;
 	FName LastNpcBackpackCharacterId = NAME_None;
 	FName FormationCandidateCharacterId = NAME_None;
+	FName FormationDeckCharacterId = NAME_None;
+	bool bFormationPickerOpen = false;
+	int32 FormationPickerPageIndex = 0;
 	bool bCharacterRosterMembersExpanded = false;
 	bool bSettingsPanelOpen = false;
 	FGameXXKEmbeddedInventorySessionState EmbeddedInventory;
@@ -123,12 +126,18 @@ struct GAMEXXK_API FGameXXKDesktopWorkbenchSessionState
 			&& LastCompanionBackpackCharacterId == Other.LastCompanionBackpackCharacterId
 			&& LastNpcBackpackCharacterId == Other.LastNpcBackpackCharacterId
 			&& FormationCandidateCharacterId == Other.FormationCandidateCharacterId
+			&& FormationDeckCharacterId == Other.FormationDeckCharacterId
+			&& bFormationPickerOpen == Other.bFormationPickerOpen
+			&& FormationPickerPageIndex == Other.FormationPickerPageIndex
 			&& bCharacterRosterMembersExpanded == Other.bCharacterRosterMembersExpanded
 			&& bSettingsPanelOpen == Other.bSettingsPanelOpen
 			&& EmbeddedInventory.CharacterId == Other.EmbeddedInventory.CharacterId
 			&& EmbeddedInventory.ActiveInventoryFilter == Other.EmbeddedInventory.ActiveInventoryFilter
 			&& EmbeddedInventory.ActiveCharacterTab == Other.EmbeddedInventory.ActiveCharacterTab
 			&& EmbeddedInventory.bBackpackSorted == Other.EmbeddedInventory.bBackpackSorted
+			&& EmbeddedInventory.DeckColumns == Other.EmbeddedInventory.DeckColumns
+			&& EmbeddedInventory.bDeckExpanded == Other.EmbeddedInventory.bDeckExpanded
+			&& EmbeddedInventory.bDeckDraftInitialized == Other.EmbeddedInventory.bDeckDraftInitialized
 			&& FMath::IsNearlyEqual(
 				EmbeddedInventory.BackpackScrollOffset,
 				Other.EmbeddedInventory.BackpackScrollOffset)

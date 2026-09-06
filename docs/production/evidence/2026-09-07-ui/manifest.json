@@ -1,0 +1,42 @@
+[
+  {
+    "file": "formation.png",
+    "source": "Saved/Codex/FormationDeck-20260907/formation-final-100.png",
+    "sha256": "52cb1bb1595cabbbf200c1db77d8c7fc0838a6b68106d58b7ddd7d6898d9408e"
+  },
+  {
+    "file": "deck-overview.png",
+    "source": "Saved/Codex/FormationDeck-20260907/hero-overview-release.png",
+    "sha256": "55e7bb71397b8c85c1fb060d889195f4d5e9e28f01bb9effcd28e7fa5ca00922"
+  },
+  {
+    "file": "npc-deck.png",
+    "source": "Saved/Codex/FormationDeck-20260907/npc-four-cards-release.png",
+    "sha256": "89d30b153c04e727ed3eb66c0c6aec0f3bd3848ee9fec9e17d0afe4050f31700"
+  },
+  {
+    "file": "npc-picker.png",
+    "source": "Saved/Codex/FormationDeck-20260907/npc-picker-final.png",
+    "sha256": "237560c241cf0380f4e0dfcb00c578383fa81928688c9f0ad9bc34f25428aed9"
+  },
+  {
+    "file": "card-tooltip.png",
+    "source": "Saved/Codex/FormationDeck-20260907/card-tooltip-release.png",
+    "sha256": "b436ab86ea18fb12f9cbe1d366936e3a8561b5c94f4418ef2f146946b1824d77"
+  },
+  {
+    "file": "battle-layout.png",
+    "source": "Saved/Codex/DevRecommended-20260906/battle-final-layout.png",
+    "sha256": "bf137ecb9e78978f12d9ec13b265798fda3e7fb5fc4d2606d56c0cb62770a1b2"
+  },
+  {
+    "file": "dev-home.png",
+    "source": "Saved/Codex/DevRecommended-20260906/dev-final-home.png",
+    "sha256": "e1dcbac834e5b4ce1c024541ac0525968d75205bda6dc46a2a0d00a554fa1e9f"
+  },
+  {
+    "file": "travel-reentry.png",
+    "source": "Saved/Codex/DevRecommended-20260906/idle-final-snapshot_reload_2.png",
+    "sha256": "74c6b017a37a30ae50637940144dd8593420122a55fb2624b367740c836d3ab6"
+  }
+]

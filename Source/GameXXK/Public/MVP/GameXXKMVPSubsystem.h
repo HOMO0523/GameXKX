@@ -32,6 +32,16 @@ public:
 	const FGameXXKRuntimeState& GetRuntimeState() const;
 	FGameXXKRuntimeState& GetMutableRuntimeState();
 
+#if !UE_BUILD_SHIPPING
+	/** Dev sessions reuse normal transactions while suppressing all player-slot writes. */
+	void SetDevelopmentWritesSuppressed(bool bSuppressed) { bDevelopmentWritesSuppressed = bSuppressed; }
+	bool AreDevelopmentWritesSuppressed() const { return bDevelopmentWritesSuppressed; }
+	bool ApplyDevelopmentState(const FGameXXKRuntimeState& State, FString& OutError,
+		const FGameXXKTrainingTravelRuntime* ExactTravel = nullptr);
+	static bool BuildDevelopmentTrainingBattle(FGameXXKRuntimeState& State, FName StageId,
+		int32 EncounterIndex, int32 Seed, FString& OutError);
+#endif
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|MVP")
 	FGameXXKRuntimeState GetRuntimeStateCopy() const;
 
@@ -653,6 +663,9 @@ public:
 	TArray<FName> BuildTurnOrder(bool bBossBattle) const;
 
 private:
+#if !UE_BUILD_SHIPPING
+	bool bDevelopmentWritesSuppressed = false;
+#endif
 	bool PersistTrainingCheckpoint(const FGameXXKRuntimeState& Candidate);
 	bool IsTrainingCheckpointWorld() const;
 	bool bRecoveringTrainingCheckpoint = false;

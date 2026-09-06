@@ -221,6 +221,8 @@ void UGameXXKBattleUnitVisualWidget::ConfigureUnit(
 	FormationAnchor = InFormationAnchor;
 	CurrentAnchor = FormationAnchor;
 	IdlePlaybackClip = IdleClip;
+	BuildProgrammaticLayout();
+	if(UnitImage){const float Scale=IdleClip.AssetId.Contains(TEXT("enemy_16_toad"))?0.80f:1.0f;UnitImage->SetRenderTransformPivot(FVector2D(0.5f,0.70f));UnitImage->SetRenderScale(FVector2D(Scale,Scale));}
 	bConfigured = !ConfiguredUnitId.IsNone();
 	ResetProceduralPresentation();
 	SetPlaybackClip(IdlePlaybackClip, true);

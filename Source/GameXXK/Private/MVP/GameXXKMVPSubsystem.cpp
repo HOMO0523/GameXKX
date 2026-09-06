@@ -1800,6 +1800,84 @@ FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 	return GetRuntimeState();
 }
 
+#if !UE_BUILD_SHIPPING
+bool UGameXXKMVPSubsystem::ApplyDevelopmentState(const FGameXXKRuntimeState& State,
+	FString& OutError, const FGameXXKTrainingTravelRuntime* ExactTravel)
+{
+	if (!bDevelopmentWritesSuppressed) { OutError = TEXT("请先开始临时测试会话。"); return false; }
+	FGameXXKRuntimeState Candidate = State;
+	if (!FGameXXKDesktopInventoryRules::Normalize(Candidate, &OutError)
+		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, OutError)) return false;
+	FGameXXKTrainingTravelRuntime Travel;
+	if (ExactTravel) Travel = *ExactTravel;
+	else if (Candidate.Training.bTravelActive && !Candidate.Training.bChallengeActive)
+	{
+		if (!BuildTrainingTravelRuntimeForState(Candidate, Travel)) { OutError = TEXT("无法刷新游历队伍快照。"); return false; }
+		if (TrainingTravelRuntime.StageId==Travel.StageId && TrainingTravelRuntime.EncounterIndex==Travel.EncounterIndex)
+		{
+			auto Party=Travel.PartyUnits;
+			for (auto& U:Party) if (const auto* Old=TrainingTravelRuntime.PartyUnits.FindByPredicate([&U](const auto& V){return V.UnitId==U.UnitId;})) U.HP=FMath::Clamp(Old->HP,0,U.MaxHP);
+			Travel=TrainingTravelRuntime;Travel.PartyUnits=MoveTemp(Party);
+			if (!Travel.PartyUnits.IsEmpty()) { Travel.PlayerHP=Travel.PartyUnits[0].HP;Travel.PlayerMaxHP=Travel.PartyUnits[0].MaxHP;Travel.PlayerAttack=Travel.PartyUnits[0].Attack; }
+		}
+	}
+	PersistenceBoundaryDelegate.Broadcast();
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	TrainingTravelRuntime = MoveTemp(Travel);
+	LastSaveLoadError = FText::GetEmpty();
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::BuildDevelopmentTrainingBattle(FGameXXKRuntimeState& State,
+	FName StageId, int32 EncounterIndex, int32 Seed, FString& OutError)
+{
+	const auto Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageId);
+	if (!Encounters.IsValidIndex(EncounterIndex))
+	{ OutError = TEXT("关卡或场次不存在。"); return false; }
+	FGameXXKRuntimeState Candidate = State;
+	ClearTrainingBattleProjection(Candidate);
+	Candidate.Training.PendingSettlement = FGameXXKTrainingSettlementReceipt();
+	Candidate.Training.bTravelActive = false;
+	Candidate.Training.ActiveTravelEncounterIndex = INDEX_NONE;
+	Candidate.Training.bTravelPausedAtDefeat = false;
+	Candidate.Training.bChallengeActive = true;
+	Candidate.Training.bChallengeAutoBattle = false;
+	Candidate.Training.ActiveChallengeStageId = StageId;
+	Candidate.Training.ActiveChallengeEncounterIndex = EncounterIndex;
+	Candidate.Training.SelectedStageId = StageId;
+	FGameXXKTrainingRules::GenerateChallengeRouteMap(Candidate, StageId, Seed);
+	int32 NodeId = MAX_int32;
+	for (const auto& Pair : Candidate.Training.ChallengeRouteNodeEncounterIndices)
+		if (Pair.Value == EncounterIndex) NodeId = FMath::Min(NodeId, Pair.Key);
+	if (NodeId == MAX_int32) { OutError = TEXT("无法找到该场次的路线节点。"); return false; }
+	// Skip along an authored path, then use the normal battle and reward handlers.
+	TArray<int32> Path;
+	int32 Cursor = NodeId;
+	while (Cursor != INDEX_NONE && !Path.Contains(Cursor))
+	{
+		Path.Insert(Cursor, 0);
+		int32 Parent = MAX_int32;
+		for (const auto& Edge : Candidate.RouteMapEdges)
+			if (Edge.ToNodeId == Cursor) Parent = FMath::Min(Parent, Edge.FromNodeId);
+		Cursor = Parent == MAX_int32 ? INDEX_NONE : Parent;
+	}
+	Candidate.VisitedRouteNodeIds = Path;
+	Candidate.VisitedRouteNodeIds.Remove(NodeId);
+	Candidate.ReachableRouteNodeIds = {NodeId};
+	Candidate.CurrentRouteNodeId = NodeId;
+	Candidate.Training.ActiveChallengeRouteNodeId = NodeId;
+	if (!BeginTrainingEncounterBattle(Candidate, StageId, EncounterIndex, &OutError)) return false;
+	Candidate.bDungeonActive = true;
+	Candidate.PendingRouteNodeId = NodeId;
+	Candidate.CardRun.bLoadoutLockedForRoute = true;
+	Candidate.CardRun.ActiveBattleSourceNodeId = NodeId;
+	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, OutError)) return false;
+	State = MoveTemp(Candidate);
+	return true;
+}
+#endif
+
 FGameXXKTrainingProgress UGameXXKMVPSubsystem::GetTrainingProgressCopy() const
 {
 	return GetRuntimeState().Training;
@@ -3494,7 +3572,11 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 		return false;
 	}
 #endif
-	if (IsTrainingCheckpointWorld() && UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)
+	if (IsTrainingCheckpointWorld()
+#if !UE_BUILD_SHIPPING
+		&& !bDevelopmentWritesSuppressed
+#endif
+		&& UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)
 		&& !UGameplayStatics::DeleteGameInSlot(GetTrainingCheckpointSlotName(), 0))
 	{
 		LastSaveLoadError = FText::FromString(TEXT("无法清除上次历练恢复点，新游戏尚未开始。"));
@@ -3568,6 +3650,9 @@ bool UGameXXKMVPSubsystem::DoesSaveGameExist(FString SlotName, int32 UserIndex) 
 
 bool UGameXXKMVPSubsystem::DeleteSaveGame(FString SlotName, int32 UserIndex)
 {
+#if !UE_BUILD_SHIPPING
+	if (bDevelopmentWritesSuppressed) return false;
+#endif
 	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
 	return UGameplayStatics::DoesSaveGameExist(ResolvedSlotName, UserIndex)
 		&& UGameplayStatics::DeleteGameInSlot(ResolvedSlotName, UserIndex);
@@ -4381,6 +4466,9 @@ bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
 
 bool UGameXXKMVPSubsystem::WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, const int32 UserIndex)
 {
+#if !UE_BUILD_SHIPPING
+	if (bDevelopmentWritesSuppressed) return true;
+#endif
 #if WITH_DEV_AUTOMATION_TESTS
 	if (SaveSlotWriteDelegateForTest.IsBound())
 	{

@@ -39,6 +39,10 @@ struct GAMEXXK_API FGameXXKSimulationScenario
 
 	UPROPERTY(SaveGame)
 	int32 MaxDecisions = 2000;
+
+	/** Continue an authored opening/current battle without rebuilding its hand or difficulty. */
+	UPROPERTY(SaveGame)
+	bool bResumeActiveBattle = false;
 };
 
 /** A resolved policy choice using stable card and unit identifiers only. */
@@ -57,7 +61,19 @@ struct GAMEXXK_API FGameXXKSimulationDecision
 	bool bEndPlayerPhase = false;
 };
 
-/** Compact source-of-truth audit for one successfully committed adapter action. */
+USTRUCT()
+struct GAMEXXK_API FGameXXKSimulationUnitSnapshot
+{
+	GENERATED_BODY()
+	UPROPERTY(SaveGame) FName UnitId = NAME_None;
+	UPROPERTY(SaveGame) EGameXXKCardTargetSide Side = EGameXXKCardTargetSide::Invalid;
+	UPROPERTY(SaveGame) int32 HP = 0;
+	UPROPERTY(SaveGame) int32 Armor = 0;
+	UPROPERTY(SaveGame) int32 Mana = 0;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardStatusStack> Statuses;
+};
+
+/** Source-of-truth audit for one successfully committed adapter action. */
 USTRUCT()
 struct GAMEXXK_API FGameXXKSimulationTraceEntry
 {
@@ -86,6 +102,21 @@ struct GAMEXXK_API FGameXXKSimulationTraceEntry
 
 	UPROPERTY(SaveGame)
 	int32 ArmorDelta = 0;
+
+	UPROPERTY(SaveGame) int32 EnergyBefore = 0;
+	UPROPERTY(SaveGame) int32 EnergyAfter = 0;
+	UPROPERTY(SaveGame) int32 EnergyPaid = 0;
+	UPROPERTY(SaveGame) int32 ManaPaid = 0;
+	UPROPERTY(SaveGame) int64 EffectiveDamage = 0;
+	UPROPERTY(SaveGame) int64 DamageTaken = 0;
+	UPROPERTY(SaveGame) int64 EffectiveHealing = 0;
+	UPROPERTY(SaveGame) int64 GeneratedArmor = 0;
+	UPROPERTY(SaveGame) TArray<FGameXXKSimulationUnitSnapshot> UnitsBefore;
+	UPROPERTY(SaveGame) TArray<FGameXXKSimulationUnitSnapshot> UnitsAfter;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardDamageResult> DamagePackets;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardHealingResult> HealingPackets;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardArmorResult> ArmorPackets;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardStatusChangeResult> StatusChanges;
 };
 
 /** Raw metrics intentionally avoid balancing judgments; later tuning owns aggregation and targets. */
@@ -124,6 +155,12 @@ struct GAMEXXK_API FGameXXKSimulationMetrics
 
 	UPROPERTY(SaveGame)
 	int32 Rounds = 0;
+
+	/** Effective health loss from the same per-unit ledger used by Boss settlement. */
+	UPROPERTY(SaveGame) int64 DamageDealt = 0;
+	UPROPERTY(SaveGame) int64 DamageTaken = 0;
+	/** Explicit audit: ledger outgoing damage minus all exported outgoing packets. */
+	UPROPERTY(SaveGame) int64 DamageLedgerDifference = 0;
 
 	UPROPERTY(SaveGame)
 	int32 RemainingPartyHealth = 0;

@@ -60,3 +60,31 @@ FString FGameXXKPartyDeckUiStyle::GetInkThumbResourcePath()
 {
 	return InkThumbTexturePath;
 }
+
+FString FGameXXKPartyDeckUiStyle::GetBackpackInkThumbResourcePath()
+{
+	return TEXT("/Game/GameXXK/UI/MasterV2/Approved/inventory_scrollbar_Button.inventory_scrollbar_Button");
+}
+
+void FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(UScrollBox* ScrollBox, const float Thickness, const float MinimumThumbLength)
+{
+	if (!ScrollBox) return;
+	UTexture2D* Ink = LoadObject<UTexture2D>(nullptr, *GetBackpackInkThumbResourcePath());
+	if (!Ink) return;
+	const FVector2D ThumbSize = ScrollBox->GetOrientation() == Orient_Horizontal
+		? FVector2D(MinimumThumbLength, Thickness) : FVector2D(Thickness, MinimumThumbLength);
+	FSlateBrush Invisible;
+	Invisible.DrawAs = ESlateBrushDrawType::NoDrawType;
+	FScrollBarStyle Style;
+	Style.SetHorizontalBackgroundImage(Invisible).SetHorizontalTopSlotImage(Invisible).SetHorizontalBottomSlotImage(Invisible)
+		.SetVerticalBackgroundImage(Invisible).SetVerticalTopSlotImage(Invisible).SetVerticalBottomSlotImage(Invisible)
+		.SetNormalThumbImage(MakeScrollBrush(Ink, ThumbSize, FLinearColor::White))
+		.SetHoveredThumbImage(MakeScrollBrush(Ink, ThumbSize, FLinearColor(1.12f, 1.08f, 1.0f)))
+		.SetDraggedThumbImage(MakeScrollBrush(Ink, ThumbSize, FLinearColor(0.75f, 0.72f, 0.68f)))
+		.SetThickness(Thickness);
+	ScrollBox->SetWidgetBarStyle(Style);
+	ScrollBox->SetScrollbarThickness(ThumbSize);
+	ScrollBox->SetScrollbarPadding(FMargin(2.0f));
+	ScrollBox->SetAlwaysShowScrollbar(false);
+	ScrollBox->SetScrollBarVisibility(ESlateVisibility::Visible);
+}

@@ -488,7 +488,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentSetRuntimeSemanticsMigrationTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("current schema is v36"), FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestEqual(TEXT("current schema includes v37 Boss settlement receipts"), FGameXXKSaveMigration::CurrentSaveVersion, 37);
 	FGameXXKSaveState Source = MakeCurrentPendingRewardFixture();
 	if (!TestTrue(TEXT("v34 set-runtime fixture starts with an active battle"), Source.RuntimeState.CardRun.bHasActiveCardBattle))
 	{
@@ -599,7 +599,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("enemy phases own the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestEqual(TEXT("enemy phases own the current save version"), FGameXXKSaveMigration::CurrentSaveVersion, 37);
 	const EGameXXKEquipmentQuality Qualities[] = {
 		EGameXXKEquipmentQuality::Common,
 		EGameXXKEquipmentQuality::Rare,
@@ -789,8 +789,8 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("inventory locks claim the append-only v25 boundary"),
 		FGameXXKSaveMigration::EquipmentToolsAndChestWalletIntroducedSaveVersion, 25);
-	TestEqual(TEXT("enemy-phase runtime advances the current save schema to v36"),
-		FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestEqual(TEXT("enemy-phase runtime advances the current save schema to v37"),
+		FGameXXKSaveMigration::CurrentSaveVersion, 37);
 
 	UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("v24 fixture starts with a saveable ordered party"),
@@ -1058,7 +1058,7 @@ bool FGameXXKMetaShopSaveMigrationTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("NPC equipment ownership has an explicit schema gate"),
 		FGameXXKSaveMigration::QuestNpcEquipmentOwnerIntroducedSaveVersion, 22);
-	TestEqual(TEXT("current save schema includes enemy phases"), FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestEqual(TEXT("current save schema includes enemy phases"), FGameXXKSaveMigration::CurrentSaveVersion, 37);
 	TestEqual(TEXT("meta shop has an explicit schema gate"), FGameXXKSaveMigration::MetaShopIntroducedSaveVersion, 11);
 
 	const FGameXXKSaveState NewGame = UGameXXKMVPRules::MakeSaveState(UGameXXKMVPRules::CreateNewGame());
@@ -1270,6 +1270,9 @@ bool FGameXXKEquipmentSaveMigrationDeterminismTest::RunTest(const FString& Param
 	TestEqual(TEXT("route random seed survives"), State.CardRun.RouteRandomSeed, 0x1234567);
 	TestTrue(TEXT("source fixture contains a validated active card battle"), SourceState.CardRun.bHasActiveCardBattle);
 	FGameXXKCardRunState ExpectedCardRun = SourceState.CardRun;
+	// A pre-v37 active fight has no complete historical settlement ledger.
+	ExpectedCardRun.ActiveBattle.SessionStats.bComplete=false;
+	for(auto& Unit:ExpectedCardRun.ActiveBattle.Units){Unit.SettlementHealthLost=0;Unit.SettlementHealingReceived=0;Unit.SettlementArmorGenerated=0;}
 	ExpectedCardRun.RouteProgress.SchemaVersion = 1;
 	ExpectedCardRun.RouteProgress.RootSeed = SourceState.RouteSeed;
 	ExpectedCardRun.RouteProgress.ChapterSeeds = {

@@ -1,4 +1,5 @@
 #include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKDesktopPaperStyle.h"
 
 namespace GameXXKDesktopTrainingLayout
 {
@@ -108,6 +109,22 @@ namespace GameXXKDesktopTrainingLayout
 	FVector4 GetContentRect()
 	{
 		return ContentRect;
+	}
+
+	FVector4 GetBackpackCharacterSelectorRect(const int32 Index)
+	{
+		const FVector2D HostSize(ContentRect.Z, ContentRect.W);
+		const float Scale = GameXXKDesktopPaperStyle::GetBackpackScale(HostSize);
+		const float CenterX = ContentRect.X
+			+ (ContentRect.Z - GameXXKDesktopPaperStyle::BackpackReferenceSize.X * Scale) * 0.5f
+			+ (737.0f + GameXXKDesktopPaperStyle::BackpackWidgetOffset.X) * Scale;
+		return FVector4(CenterX - 171.0f + Index * 118.0f, 666.0f, 106.0f, 42.0f);
+	}
+
+	FVector4 GetEmbeddedCharacterTabRect(const int32 Index)
+	{
+		const float Scale = GameXXKDesktopPaperStyle::GetBackpackScale(FVector2D(ContentRect.Z, ContentRect.W));
+		return FVector4(737.0f + (-171.0f + Index * 118.0f) / Scale, 220.0f, 106.0f / Scale, 42.0f / Scale);
 	}
 
 	FVector4 GetNavigationRect()

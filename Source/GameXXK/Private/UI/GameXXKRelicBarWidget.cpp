@@ -1,4 +1,5 @@
 #include "UI/GameXXKRelicBarWidget.h"
+#include "UI/GameXXKPartyDeckUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/CanvasPanel.h"
@@ -51,7 +52,7 @@ void UGameXXKRelicBarWidget::EnsureWidgetTree()
 	RelicGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("RelicBarSixColumnGrid"));
 	RelicGrid->SetSlotPadding(FMargin(SlotGap * 0.5f));
 	UScrollBox* Scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("RelicBarOverflow"));
-	Scroll->SetOrientation(Orient_Vertical); Scroll->SetScrollbarThickness(FVector2D(3,3));
+	Scroll->SetOrientation(Orient_Vertical); FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(Scroll,12.0f,36.0f);
 	Scroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
 	Scroll->AddChild(RelicGrid);
 	if (UCanvasPanelSlot* GridCanvasSlot = RootCanvas->AddChildToCanvas(Scroll))
@@ -59,7 +60,7 @@ void UGameXXKRelicBarWidget::EnsureWidgetTree()
 		GridCanvasSlot->SetAnchors(FAnchors(1.0f,0.0f));
 		GridCanvasSlot->SetAlignment(FVector2D(1.0f,0.0f));
 		GridCanvasSlot->SetPosition(FVector2D(-24.0f,175.0f));
-		GridCanvasSlot->SetSize(FVector2D(354.0f,116.0f));
+		GridCanvasSlot->SetSize(FVector2D(ColumnCount*(IconSize+SlotGap)+20.0f,116.0f));
 		GridCanvasSlot->SetZOrder(1);
 	}
 	SetVisibility(ESlateVisibility::Collapsed);

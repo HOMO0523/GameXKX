@@ -31,13 +31,19 @@ bool FGameXXKBackpackPickerDeferredSelectionTest::RunTest(const FString& Paramet
 	Widget->HandleActionClicked(81);
 	TestEqual(TEXT("opening partner candidates does not prematurely switch the viewed owner"),Widget->GetActiveBackpackCharacterIdForTest(),Hero);
 	int32 Cards=0;
+	double RowY=0.0;
 	for (int32 I=0; I<6; ++I)
 	{
 		const auto* Card=Widget->WidgetTree->FindWidget(*FString::Printf(TEXT("CharacterRosterPortraitButton_1_%d"),I));
 		if (!Card) continue;
 		++Cards;
 		const auto* CardSlot=Cast<UCanvasPanelSlot>(Card->Slot);
-		TestTrue(TEXT("candidate cards use the backpack area instead of thumbnail dropdowns"),CardSlot && CardSlot->GetSize().X>=240 && CardSlot->GetSize().Y>=170);
+		TestTrue(TEXT("candidate cards keep a readable portrait-card aspect ratio"),CardSlot && CardSlot->GetSize().X>=130 && CardSlot->GetSize().Y>CardSlot->GetSize().X*1.3f);
+		if(CardSlot)
+		{
+			if(I==0)RowY=CardSlot->GetPosition().Y;
+			TestEqual(TEXT("all six cards stay in one horizontal row"),CardSlot->GetPosition().Y,RowY);
+		}
 	}
 	TestEqual(TEXT("one partner page exposes six selectable characters"),Cards,6);
 	Widget->HandleActionClicked(657);

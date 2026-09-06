@@ -5579,7 +5579,8 @@ namespace
 					|| ModifierCondition.bNegate;
 				if (bMalformedCommonState || (!bEnergySurcharge && !bSorcererManaDiscount))
 				{
-					OutError = TEXT("A hand-bound card-cost modifier is malformed or no longer bound to its exact current hand instance.");
+					OutError = FString::Printf(TEXT("A hand-bound card-cost modifier is malformed or no longer bound to its exact current hand instance. id=%s card=%s source=%s phase=%d in_hand=%d source_matches=%d energy=%d mana=%d magnitude=%d"),
+						*Modifier.ModifierId.ToString(),*Modifier.RequiredPlayedCardInstanceId.ToString(),*Modifier.SourceUnitId.ToString(),static_cast<int32>(Runtime.Phase),IsCurrentHandInstance(Runtime.Deck,Modifier.RequiredPlayedCardInstanceId),Modifier.SourceCardInstanceId==Modifier.RequiredPlayedCardInstanceId,bEnergySurcharge,bSorcererManaDiscount,Modifier.Definition.Magnitude);
 					return false;
 				}
 				if (bEnergySurcharge && ++HandBoundEnergySurchargeCount > 1)

@@ -1,5 +1,7 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "UI/GameXXKDesktopPaperStyle.h"
+#include "UI/GameXXKDesktopTrainingLayout.h"
+#include "UI/GameXXKCharacterUiPresentation.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "Components/ScaleBox.h"
 
@@ -151,12 +153,12 @@ namespace
 	const FVector2D EquipmentIconSize(77.0f, 77.0f);
 	const FVector2D ActionButtonSize(206.0f, 64.0f);
 	const FVector2D CharacterTabSize(105.0f, 62.0f);
-	// Page 18 hero deck cards are 137x190 in a 3-column grid.
-	const FVector2D HeroDeckCardSize(137.0f, 190.0f);
+	// Two larger columns preserve the battle-card aspect ratio and readable text.
+	const FVector2D HeroDeckCardSize(206.0f, 285.0f);
 	// The battle-card portrait cut is 190x228 inside a 206x285 card.  The
-	// inventory card is exactly two-thirds scale, so preserve that inset here
+	// inventory card uses the same authored size, so preserve that inset here
 	// instead of stretching the portrait over the shared parchment frame.
-	const FVector2D HeroDeckPortraitSize(127.0f, 152.0f);
+	const FVector2D HeroDeckPortraitSize(190.0f, 228.0f);
 	const int32 BackpackViewportSlotCount = 20;
 	const int32 BackpackStorageCapacity = FGameXXKEquipmentRules::WarehouseCapacity;
 	const int32 BackpackColumns = 4;
@@ -176,12 +178,11 @@ namespace
 	const FVector2D InventoryScrollbarThumbTop(1652.0f, 312.0f);
 	const FVector2D InventoryScrollbarThumbSize(30.0f, 126.0f);
 	constexpr float InventoryScrollbarThumbTravel = 450.0f;
-	const FVector2D HeroDeckScrollbarThumbTop(1652.0f, 346.0f);
-	constexpr float HeroDeckScrollbarThumbTravel = 350.0f;
-	constexpr float HeroDeckFallbackMaximumScrollOffset = 1900.0f;
+	const FVector2D HeroDeckScrollbarThumbTop(1652.0f, 368.0f);
+	constexpr float HeroDeckScrollbarThumbTravel = 360.0f;
 	const FVector2D BackpackSelectionInkPos(1128.0f, 284.0f);
 	const FVector2D BackpackSelectionInkSize(126.0f, 42.0f);
-	const FVector2D CardSelectionInkSize(126.0f, 30.0f);
+	const FVector2D CardSelectionInkSize(196.0f, 36.0f);
 	const FVector2D BackpackFilterRowPos(1142.0f, 240.0f);
 	const float BackpackFilterRowPitch = 80.0f;
 	const FVector2D BackpackFilterRowSize(80.0f, 26.0f);
@@ -926,6 +927,8 @@ void UGameXXKInventoryWindowWidget::ConfigureDesktopTrainingCharacter(const FNam
 	if (ConfiguredDesktopTrainingCharacterId != CharacterId)
 	{
 		PendingHeroDeckIds.Reset();
+		bDeckDraftInitialized = false;
+		bDeckExpanded = false;
 	}
 	ConfiguredDesktopTrainingCharacterId = CharacterId;
 	if (RootCanvas)
@@ -1108,7 +1111,11 @@ FGameXXKEmbeddedInventorySessionState UGameXXKInventoryWindowWidget::CaptureEmbe
 	State.bBackpackSorted = bBackpackSorted;
 	State.BackpackScrollOffset = DeferredBackpackScrollOffset;
 	State.HeroDeckScrollOffset = DeferredHeroDeckScrollOffset;
+	State.CompactDeckScrollOffset = CompactDeckScrollOffset;
 	State.PendingDeckIds = PendingHeroDeckIds;
+	State.DeckColumns = DeckColumns;
+	State.bDeckExpanded = bDeckExpanded;
+	State.bDeckDraftInitialized = bDeckDraftInitialized;
 	return State;
 }
 
@@ -1120,7 +1127,11 @@ void UGameXXKInventoryWindowWidget::RestoreEmbeddedSessionState(const FGameXXKEm
 	bBackpackSorted = State.bBackpackSorted;
 	DeferredBackpackScrollOffset = FMath::Max(0.0f, State.BackpackScrollOffset);
 	DeferredHeroDeckScrollOffset = FMath::Max(0.0f, State.HeroDeckScrollOffset);
+	CompactDeckScrollOffset = FMath::Max(0.0f, State.CompactDeckScrollOffset);
 	PendingHeroDeckIds = State.PendingDeckIds;
+	DeckColumns = State.DeckColumns == 4 ? 4 : 2;
+	bDeckExpanded = State.bDeckExpanded && State.ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck;
+	bDeckDraftInitialized = State.bDeckDraftInitialized || !PendingHeroDeckIds.IsEmpty();
 	RefreshProgrammaticLayout();
 	if (BackpackScrollBox)
 	{
@@ -1187,6 +1198,11 @@ UScrollBox* UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbar() const
 	return nullptr;
 }
 
+float UGameXXKInventoryWindowWidget::ResolveHeroDeckFallbackMaximumOffset() const
+{
+	return FMath::Max(0.0f,FMath::DivideAndRoundUp(HeroCardBackpackIds.Num(),ResolvedDeckColumns)*(ResolvedDeckCardSize.Y+10.0f)-ResolvedDeckViewportHeight);
+}
+
 float UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbarMaximumOffset() const
 {
 	UScrollBox* Target = ResolveActiveInkScrollbar();
@@ -1200,7 +1216,7 @@ float UGameXXKInventoryWindowWidget::ResolveActiveInkScrollbarMaximumOffset() co
 		return ReportedMaximum;
 	}
 	return Target == HeroDeckScrollBox
-		? HeroDeckFallbackMaximumScrollOffset
+		? ResolveHeroDeckFallbackMaximumOffset()
 		: FMath::Max(0.0f, BackpackGridSize.Y - BackpackViewportSize.Y);
 }
 
@@ -1243,7 +1259,7 @@ void UGameXXKInventoryWindowWidget::UpdateBackpackScrollbarThumbDrag(const float
 	}
 	const float ReportedMaximum = Target->GetScrollOffsetOfEnd();
 	const float FallbackMaximum = bBackpackScrollbarDragTargetsHeroDeck
-		? HeroDeckFallbackMaximumScrollOffset
+		? ResolveHeroDeckFallbackMaximumOffset()
 		: FMath::Max(0.0f, BackpackGridSize.Y - BackpackViewportSize.Y);
 	const float MaximumScrollOffset = ReportedMaximum > 0.0f
 		? ReportedMaximum
@@ -1742,14 +1758,10 @@ bool UGameXXKInventoryWindowWidget::OpenCharacterBackpackTabForTest(const EGameX
 	{
 		return false;
 	}
-	const EGameXXKCharacterBackpackTab PreviousTab = ActiveCharacterTab;
 	ActiveCharacterTab = Tab;
+	if (Tab != EGameXXKCharacterBackpackTab::Deck) bDeckExpanded = false;
 	if (Tab == EGameXXKCharacterBackpackTab::Deck)
 	{
-		if (PreviousTab != EGameXXKCharacterBackpackTab::Deck)
-		{
-			PendingHeroDeckIds.Reset();
-		}
 		RefreshHeroDeckCards();
 	}
 	RefreshCharacterTabs();
@@ -1761,7 +1773,15 @@ bool UGameXXKInventoryWindowWidget::OpenCharacterBackpackTabForTest(const EGameX
 
 FText UGameXXKInventoryWindowWidget::GetCharacterTabBodyTextForTest() const
 {
-	return CharacterTabBodyText ? CharacterTabBodyText->GetText() : FText::GetEmpty();
+	if (!CharacterTabBodyText) return FText::GetEmpty();
+	FString Body=CharacterTabBodyText->GetText().ToString();
+	if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes)
+	{
+		if(CharacterLevelText)Body+=TEXT("\n")+CharacterLevelText->GetText().ToString();
+		const TCHAR* Labels[]={TEXT("气血"),TEXT("内力"),TEXT("攻击"),TEXT("防御"),TEXT("速度")};
+		for(int32 I=0;I<CharacterAttributeValues.Num();++I)Body+=FString::Printf(TEXT("\n%s %s"),Labels[I],*CharacterAttributeValues[I]->GetText().ToString());
+	}
+	return FText::FromString(Body);
 }
 
 TArray<FName> UGameXXKInventoryWindowWidget::GetHeroCardBackpackIdsForTest() const
@@ -1853,6 +1873,101 @@ void UGameXXKInventoryWindowWidget::HandleCharacterBackpackTabClicked(const EGam
 void UGameXXKInventoryWindowWidget::HandleHeroDeckCardClicked(const FName CardId)
 {
 	ToggleHeroDeckCardForTest(CardId);
+}
+
+void UGameXXKInventoryWindowWidget::ToggleDeckDensity()
+{
+	if (ActiveCharacterTab != EGameXXKCharacterBackpackTab::Deck) return;
+	DeckColumns = DeckColumns == 2 ? 4 : 2;
+	DeferredHeroDeckScrollOffset = 0.0f;
+	RefreshHeroDeckLayout();
+}
+
+void UGameXXKInventoryWindowWidget::SetDeckExpanded(const bool bExpanded)
+{
+	if (ActiveCharacterTab != EGameXXKCharacterBackpackTab::Deck || bDeckExpanded == bExpanded) return;
+	if (bExpanded) CompactDeckScrollOffset = DeferredHeroDeckScrollOffset;
+	bDeckExpanded = bExpanded;
+	DeferredHeroDeckScrollOffset = bExpanded ? 0.0f : CompactDeckScrollOffset;
+	RefreshHeroDeckLayout();
+	if (DesktopTrainingHost) DesktopTrainingHost->RefreshBackpackFooterVisibility();
+}
+
+void UGameXXKInventoryWindowWidget::HandleExpandDeckClicked() { SetDeckExpanded(true); }
+void UGameXXKInventoryWindowWidget::HandleCollapseDeckClicked() { SetDeckExpanded(false); }
+
+FReply UGameXXKInventoryWindowWidget::NativeOnKeyDown(const FGeometry& Geometry, const FKeyEvent& Event)
+{
+	if (bDeckExpanded && Event.GetKey() == EKeys::Escape)
+	{
+		SetDeckExpanded(false);
+		return FReply::Handled();
+	}
+	return Super::NativeOnKeyDown(Geometry, Event);
+}
+
+void UGameXXKInventoryWindowWidget::RefreshHeroDeckLayout()
+{
+	if (!HeroDeckPanel || !HeroDeckScrollBox || !HeroDeckGrid) return;
+	const bool Expanded = bDeckExpanded && ActiveCharacterTab == EGameXXKCharacterBackpackTab::Deck;
+	// The card layer stays attached to the same Slate parent across both modes.
+	// Reparenting a live panel can leave its old draw cache behind in the desktop host.
+	FrameCanvas->SetRenderOpacity(Expanded ? 0.24f : 1.0f);
+	WindowFrame->SetBrushColor(Expanded ? FLinearColor(0.50f,0.45f,0.36f,0.72f) : FLinearColor::White);
+	const FVector2D ViewSize = Expanded ? FVector2D(1320,600) : FVector2D(470,486);
+	ResolvedDeckViewportHeight = ViewSize.Y;
+	ResolvedDeckColumns = DeckColumns;
+	ResolvedDeckCardSize = DeckColumns == 2 ? HeroDeckCardSize : FVector2D(107.5f,107.5f*285.0f/206.0f);
+	if (Expanded)
+	{
+		float BestWidth = 0;
+		const int32 Count = FMath::Max(1,HeroCardBackpackIds.Num());
+		for (int32 Columns=1;Columns<=FMath::Min(12,Count);++Columns)
+		{
+			const int32 Rows = FMath::DivideAndRoundUp(Count,Columns);
+			const float Width = FMath::Min3<double>(340.0,ViewSize.X/Columns-10.0,(ViewSize.Y/Rows-10.0)*206.0/285.0);
+			if (Width>BestWidth)
+			{
+				BestWidth=Width; ResolvedDeckColumns=Columns;
+			}
+		}
+		ResolvedDeckCardSize=FVector2D(BestWidth,BestWidth*285.0f/206.0f);
+	}
+	auto Place = [](UWidget* Widget, const FVector2D Position, const FVector2D Size)
+	{
+		if (auto* Slot=Widget ? Cast<UCanvasPanelSlot>(Widget->Slot) : nullptr) { Slot->SetPosition(Position); Slot->SetSize(Size); }
+	};
+	Place(HeroDeckPanel,Expanded ? FVector2D(343,207) : FVector2D(1135,300),Expanded ? FVector2D(1376,775) : FVector2D(488,650));
+	Cast<UCanvasPanelSlot>(HeroDeckPanel->Slot)->SetZOrder(Expanded ? 101 : 1);
+	Place(HeroDeckScrollBox,FVector2D(0,Expanded ? 62 : 48),ViewSize);
+	Place(ApplyHeroDeckButton,FVector2D(0,Expanded ? 682 : 550),FVector2D(172,50));
+	Place(HeroDeckCaptionText,FVector2D(188,Expanded ? 678 : 548),FVector2D(282,26));
+	Place(HeroDeckCountText,FVector2D(188,Expanded ? 707 : 577),FVector2D(282,30));
+	Place(DeckCollapseButton,FVector2D(1146,682),FVector2D(174,50));
+	DeckDensityButton->SetVisibility(Expanded ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	DeckExpandButton->SetVisibility(Expanded ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	DeckCollapseButton->SetVisibility(Expanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	DeckExpandedTitle->SetVisibility(Expanded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	DeckExpandedBackdrop->SetVisibility(Expanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	DeckExpandedTitle->SetText(FText::FromString(GameXXKCharacterUiPresentation::GetDisplayName(ResolveMVPSubsystem(),ResolveInventoryCharacterId())+TEXT(" · 挑选卡牌")));
+	Cast<UTextBlock>(DeckDensityButton->GetContent())->SetText(FText::FromString(DeckColumns==2 ? TEXT("缩小 · 4列") : TEXT("放大 · 2列")));
+	const FLinearColor TextColor=Expanded ? FLinearColor(0.96f,0.91f,0.80f,1.0f) : FGameXXKInRunUiStyle::Ink();
+	HeroDeckCountText->SetColorAndOpacity(TextColor); HeroDeckCaptionText->SetColorAndOpacity(TextColor);
+	HeroDeckGrid->SetMinDesiredSlotWidth(ResolvedDeckCardSize.X+10.0f);
+	HeroDeckGrid->SetMinDesiredSlotHeight(ResolvedDeckCardSize.Y+10.0f);
+	for (int32 I=0;I<HeroDeckCardCells.Num();++I)
+	{
+		auto* Cell=HeroDeckCardCells[I].Get();
+		Cell->SetWidthOverride(ResolvedDeckCardSize.X); Cell->SetHeightOverride(ResolvedDeckCardSize.Y);
+		if(auto* GridSlot=Cast<UUniformGridSlot>(Cell->Slot)) { GridSlot->SetRow(I/ResolvedDeckColumns); GridSlot->SetColumn(I%ResolvedDeckColumns); }
+		HeroDeckCardLabels[I]->SetFont(FGameXXKInRunUiStyle::Font(Expanded ? 30 : 24,true));
+		FSlateBrush SelectionBrush=HeroDeckSelectedInks[I]->GetBrush();
+		SelectionBrush.ImageSize=FVector2D(196,Expanded ? 44 : 36);
+		HeroDeckSelectedInks[I]->SetBrush(SelectionBrush);
+	}
+	HeroDeckScrollBox->SetScrollOffset(DeferredHeroDeckScrollOffset);
+	if (InventoryScrollbarThumb) InventoryScrollbarThumb->SetVisibility(Expanded ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	UpdateBackpackScrollbarThumb();
 }
 
 void UGameXXKInventoryWindowWidget::HandleConfiguredSlotClicked(EGameXXKInventorySlotSource Source, int32 SlotIndex, FName EquipmentSlotId)
@@ -2110,10 +2225,15 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		UTextBlock* TabText = MakeText(
 			WidgetTree,
 			CharacterTabLabels[TabIndex],
-			bDesktopTrainingEmbeddedMode ? 28 : 14);
+			bDesktopTrainingEmbeddedMode ? 32 : 14);
 		TabText->SetJustification(ETextJustify::Center);
 		TabButton->AddChild(TabText);
-		AddCanvasChild(FrameCanvas, TabButton, CharacterTabPositions[TabIndex], CharacterTabSize);
+		if (bDesktopTrainingEmbeddedMode && TabIndex < 3)
+		{
+			const FVector4 Rect = GameXXKDesktopTrainingLayout::GetEmbeddedCharacterTabRect(TabIndex);
+			AddCanvasChild(FrameCanvas, TabButton, FVector2D(Rect.X,Rect.Y), FVector2D(Rect.Z,Rect.W));
+		}
+		else AddCanvasChild(FrameCanvas, TabButton, CharacterTabPositions[TabIndex], CharacterTabSize);
 		CharacterTabButtons.Add(TabButton);
 	}
 
@@ -2317,32 +2437,65 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		CharacterTabBodyPanel->SetBrush(Transparent);
 	}
 	CharacterTabBodyPanel->SetPadding(FMargin(24.0f, 20.0f));
-	UVerticalBox* CharacterBodyStack = WidgetTree->ConstructWidget<UVerticalBox>(
-		UVerticalBox::StaticClass(),
-		TEXT("InventoryCharacterTabBodyStack"));
-	CharacterTabBodyText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-	if (UVerticalBoxSlot* BodySlot = CharacterBodyStack->AddChildToVerticalBox(CharacterTabBodyText))
+	UCanvasPanel* CharacterBodyCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(),TEXT("InventoryCharacterBodyCanvas"));
+	CharacterTabBodyPanel->SetContent(CharacterBodyCanvas);
+	CharacterTabBodyText = MakeText(WidgetTree,FText::GetEmpty(),30,FGameXXKInRunUiStyle::Ink(),TEXT("InventoryCharacterAttributeTitle"));
+	CharacterTabBodyText->SetAutoWrapText(false);
+	AddCanvasChild(CharacterBodyCanvas,CharacterTabBodyText,FVector2D::ZeroVector,FVector2D(290,46));
+	CharacterAttributeDetails = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(),TEXT("InventoryCharacterAttributeDetails"));
+	AddCanvasChild(CharacterBodyCanvas,CharacterAttributeDetails,FVector2D::ZeroVector,FVector2D(440,610));
+	CharacterLevelText = MakeText(WidgetTree,FText::GetEmpty(),24,FGameXXKInRunUiStyle::Ink(),TEXT("InventoryCharacterLevelText"));
+	CharacterLevelText->SetAutoWrapText(false); CharacterLevelText->SetJustification(ETextJustify::Right);
+	AddCanvasChild(CharacterAttributeDetails,CharacterLevelText,FVector2D(290,4),FVector2D(150,38));
+	CharacterIdentityText = MakeText(WidgetTree,FText::GetEmpty(),18,FGameXXKInRunUiStyle::MutedInk(),TEXT("InventoryCharacterIdentityText"));
+	CharacterIdentityText->SetAutoWrapText(false);
+	AddCanvasChild(CharacterAttributeDetails,CharacterIdentityText,FVector2D(0,48),FVector2D(440,30));
+	auto AddRule = [this](const FVector2D Position,const FVector2D Size)
 	{
-		BodySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+		auto* Rule=WidgetTree->ConstructWidget<UBorder>(); FSlateBrush Brush;
+		Brush.DrawAs=ESlateBrushDrawType::Box; Brush.TintColor=FSlateColor(FLinearColor(0.22f,0.18f,0.12f,0.20f));
+		Rule->SetBrush(Brush); Rule->SetVisibility(ESlateVisibility::HitTestInvisible);
+		AddCanvasChild(CharacterAttributeDetails,Rule,Position,Size);
+	};
+	AddRule(FVector2D(0,88),FVector2D(440,1));
+	FSlateBrush TrackBrush; TrackBrush.DrawAs=ESlateBrushDrawType::Box; TrackBrush.TintColor=FSlateColor(FLinearColor(0.20f,0.16f,0.10f,0.12f));
+	FSlateBrush FillBrush; FillBrush.DrawAs=ESlateBrushDrawType::Box; FillBrush.TintColor=FSlateColor(FLinearColor::White);
+	FProgressBarStyle ResourceStyle; ResourceStyle.SetBackgroundImage(TrackBrush).SetFillImage(FillBrush).SetMarqueeImage(FillBrush);
+	CharacterAttributeValues.Reset(); CharacterResourceBars.Reset();
+	const TCHAR* ResourceLabels[]={TEXT("气血"),TEXT("内力")};
+	for(int32 I=0;I<2;++I)
+	{
+		const float Y=110.0f+I*94.0f;
+		auto* Label=MakeText(WidgetTree,FText::FromString(ResourceLabels[I]),22,FGameXXKInRunUiStyle::MutedInk());
+		Label->SetAutoWrapText(false); AddCanvasChild(CharacterAttributeDetails,Label,FVector2D(0,Y),FVector2D(100,34));
+		auto* Value=MakeText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("InventoryCharacterAttributeValue_%d"),I));
+		Value->SetJustification(ETextJustify::Right); Value->SetAutoWrapText(false);
+		AddCanvasChild(CharacterAttributeDetails,Value,FVector2D(112,Y-4),FVector2D(328,40)); CharacterAttributeValues.Add(Value);
+		auto* Bar=WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(),*FString::Printf(TEXT("InventoryCharacterResourceBar_%d"),I));
+		Bar->SetWidgetStyle(ResourceStyle); Bar->SetFillColorAndOpacity(I==0 ? FGameXXKInRunUiStyle::Vermilion() : FGameXXKInRunUiStyle::Jade());
+		AddCanvasChild(CharacterAttributeDetails,Bar,FVector2D(0,Y+44),FVector2D(440,10)); CharacterResourceBars.Add(Bar);
 	}
-	CharacterExperienceText = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(),
-		TEXT("InventoryCharacterExperienceText"));
-	CharacterExperienceText->SetText(FText::GetEmpty());
-	CharacterExperienceText->SetColorAndOpacity(FSlateColor(FLinearColor(0.10f, 0.07f, 0.04f, 1.0f)));
+	AddRule(FVector2D(0,284),FVector2D(440,1));
+	const TCHAR* StatLabels[]={TEXT("攻击"),TEXT("防御"),TEXT("速度")};
+	for(int32 I=0;I<3;++I)
+	{
+		const float X=I*151.0f;
+		auto* Label=MakeText(WidgetTree,FText::FromString(StatLabels[I]),20,FGameXXKInRunUiStyle::MutedInk());
+		Label->SetJustification(ETextJustify::Center); Label->SetAutoWrapText(false);
+		AddCanvasChild(CharacterAttributeDetails,Label,FVector2D(X,310),FVector2D(138,34));
+		auto* Value=MakeText(WidgetTree,FText::GetEmpty(),32,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("InventoryCharacterAttributeValue_%d"),I+2));
+		Value->SetJustification(ETextJustify::Center); Value->SetAutoWrapText(false);
+		AddCanvasChild(CharacterAttributeDetails,Value,FVector2D(X,354),FVector2D(138,48)); CharacterAttributeValues.Add(Value);
+		if(I<2)AddRule(FVector2D(X+145,313),FVector2D(1,88));
+	}
+	CharacterExperienceText=MakeText(WidgetTree,FText::GetEmpty(),20,FGameXXKInRunUiStyle::MutedInk(),TEXT("InventoryCharacterExperienceText"));
 	CharacterExperienceText->SetAutoWrapText(false);
-	CharacterExperienceText->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), 17));
-	if (UVerticalBoxSlot* ExperienceTextSlot = CharacterBodyStack->AddChildToVerticalBox(CharacterExperienceText))
-	{
-		ExperienceTextSlot->SetPadding(FMargin(0.0f, 8.0f, 0.0f, 5.0f));
-	}
-	CharacterExperienceBar = WidgetTree->ConstructWidget<UProgressBar>(
-		UProgressBar::StaticClass(),
-		TEXT("InventoryCharacterExperienceBar"));
-	CharacterExperienceBar->SetPercent(0.0f);
-	CharacterExperienceBar->SetFillColorAndOpacity(FLinearColor(0.78f, 0.46f, 0.12f, 1.0f));
-	CharacterBodyStack->AddChildToVerticalBox(CharacterExperienceBar);
-	CharacterTabBodyPanel->SetContent(CharacterBodyStack);
+	AddCanvasChild(CharacterAttributeDetails,CharacterExperienceText,FVector2D(0,452),FVector2D(440,34));
+	CharacterExperienceBar=WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(),TEXT("InventoryCharacterExperienceBar"));
+	CharacterExperienceBar->SetWidgetStyle(ResourceStyle); CharacterExperienceBar->SetFillColorAndOpacity(FGameXXKInRunUiStyle::Jade());
+	AddCanvasChild(CharacterAttributeDetails,CharacterExperienceBar,FVector2D(0,500),FVector2D(440,12));
+	auto* AttributeHint=MakeText(WidgetTree,FText::FromString(TEXT("当前装备已计入 · 不含本局临时加成")),16,FGameXXKInRunUiStyle::MutedInk());
+	AddCanvasChild(CharacterAttributeDetails,AttributeHint,FVector2D(0,540),FVector2D(440,44));
 	AddCanvasChild(FrameCanvas, CharacterTabBodyPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
 
 	// Deck body occupies the backpack grid area without a paper back.
@@ -2353,15 +2506,42 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		HeroDeckPanel->SetBrush(Transparent);
 	}
 	HeroDeckPanel->SetPadding(FMargin(24.0f, 20.0f));
-	AddCanvasChild(FrameCanvas, HeroDeckPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
+	AddCanvasChild(RootCanvas, HeroDeckPanel, FVector2D(1135.0f, 300.0f), FVector2D(488.0f, 650.0f));
 	UCanvasPanel* HeroDeckCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("InventoryHeroDeckCanvas"));
 	HeroDeckPanel->SetContent(HeroDeckCanvas);
+	auto MakeDeckControl = [&](const TCHAR* Name, const TCHAR* Label)
+	{
+		auto* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
+		Button->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath,FVector2D(168,40),FMargin(0.08f)));
+		auto* Text = MakeText(WidgetTree,FText::FromString(Label),20);
+		Text->SetAutoWrapText(false); Text->SetJustification(ETextJustify::Center);
+		Button->SetContent(Text);
+		return Button;
+	};
+	DeckDensityButton = MakeDeckControl(TEXT("InventoryDeckDensityButton"),TEXT("缩小 · 4列"));
+	DeckDensityButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::ToggleDeckDensity);
+	AddCanvasChild(HeroDeckCanvas,DeckDensityButton,FVector2D(0,0),FVector2D(168,40));
+	DeckExpandButton = MakeDeckControl(TEXT("InventoryDeckExpandButton"),TEXT("展开选牌"));
+	DeckExpandButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::HandleExpandDeckClicked);
+	AddCanvasChild(HeroDeckCanvas,DeckExpandButton,FVector2D(182,0),FVector2D(168,40));
+	DeckCollapseButton = MakeDeckControl(TEXT("InventoryDeckCollapseButton"),TEXT("返回卡组"));
+	DeckCollapseButton->SetBackgroundColor(FGameXXKInRunUiStyle::Vermilion());
+	Cast<UTextBlock>(DeckCollapseButton->GetContent())->SetColorAndOpacity(FLinearColor::White);
+	DeckCollapseButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::HandleCollapseDeckClicked);
+	AddCanvasChild(HeroDeckCanvas,DeckCollapseButton,FVector2D(1160,680),FVector2D(174,48));
+	DeckExpandedTitle = MakeText(WidgetTree,FText::GetEmpty(),30,FLinearColor(0.96f,0.91f,0.80f,1.0f),TEXT("InventoryExpandedDeckTitle"));
+	DeckExpandedTitle->SetAutoWrapText(false);
+	AddCanvasChild(HeroDeckCanvas,DeckExpandedTitle,FVector2D::ZeroVector,FVector2D(980,48));
+	DeckExpandedBackdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("InventoryDeckExpandedBackdrop"));
+	FSlateBrush ClearDeckGuard; ClearDeckGuard.DrawAs=ESlateBrushDrawType::NoDrawType;
+	DeckExpandedBackdrop->SetBrush(ClearDeckGuard);
+	AddCanvasChild(RootCanvas,DeckExpandedBackdrop,FVector2D(311,173),FVector2D(1450,849));
+	Cast<UCanvasPanelSlot>(DeckExpandedBackdrop->Slot)->SetZOrder(100);
 	HeroDeckCaptionText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "HeroDeckCaption", "卡组背包 36 张 · 角色卡组 8 张"), 17);
-	AddCanvasChild(HeroDeckCanvas, HeroDeckCaptionText.Get(), FVector2D::ZeroVector, FVector2D(470.0f, 28.0f));
+	AddCanvasChild(HeroDeckCanvas, HeroDeckCaptionText.Get(), FVector2D(188.0f, 548.0f), FVector2D(282.0f, 26.0f));
 	HeroDeckGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("InventoryHeroDeckGrid"));
 	HeroDeckGrid->SetSlotPadding(FMargin(5.0f));
-	// Keep the approved three-column viewport; all thirty-six cards are reached
-	// through the existing vertical scroll box without moving surrounding UI.
+	// Larger two-column cards scroll inside the same approved backpack region.
 	HeroDeckScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("InventoryHeroDeckScrollBox"));
 	HeroDeckScrollBox->SetOrientation(EOrientation::Orient_Vertical);
 	HeroDeckScrollBox->SetAlwaysShowScrollbar(false);
@@ -2372,18 +2552,22 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		&UGameXXKInventoryWindowWidget::HandleHeroDeckScrolled);
 	HeroDeckScrollBox->SetScrollOffset(DeferredHeroDeckScrollOffset);
 	HeroDeckScrollBox->AddChild(HeroDeckGrid);
-	AddCanvasChild(HeroDeckCanvas, HeroDeckScrollBox, FVector2D(0.0f, 34.0f), FVector2D(470.0f, 500.0f));
-	// Apply button centered below the deck grid, with a (x/8) pick counter.
+	AddCanvasChild(HeroDeckCanvas, HeroDeckScrollBox, FVector2D(0,48), FVector2D(470.0f, 486.0f));
+	// Keep confirmation and its selection summary together on one footer row.
 	ApplyHeroDeckButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("InventoryApplyHeroDeckButton"));
-	ApplyHeroDeckButton->SetStyle(MakeTextureButtonStyle(BackpackDisassembleTexturePath, FVector2D(120.0f, 42.0f)));
+	ApplyHeroDeckButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(172.0f,50.0f),true));
 	ApplyHeroDeckButton->OnClicked.AddDynamic(this, &UGameXXKInventoryWindowWidget::HandleApplyHeroDeckClicked);
-	UTextBlock* ApplyHeroDeckText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "ApplyHeroDeck", "应用卡组"), 14);
+	UTextBlock* ApplyHeroDeckText = MakeText(WidgetTree, NSLOCTEXT("GameXXKInventoryWindow", "ApplyHeroDeck", "应用卡组"), 20);
+	ApplyHeroDeckText->SetColorAndOpacity(FLinearColor::White);
 	ApplyHeroDeckText->SetJustification(ETextJustify::Center);
+	ApplyHeroDeckText->SetAutoWrapText(false);
 	ApplyHeroDeckButton->AddChild(ApplyHeroDeckText);
-	AddCanvasChild(HeroDeckCanvas, ApplyHeroDeckButton, FVector2D(175.0f, 550.0f), FVector2D(120.0f, 42.0f));
-	HeroDeckCountText = MakeText(WidgetTree, FText::GetEmpty(), 14, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-	HeroDeckCountText->SetJustification(ETextJustify::Center);
-	AddCanvasChild(HeroDeckCanvas, HeroDeckCountText, FVector2D(175.0f, 596.0f), FVector2D(120.0f, 22.0f));
+	AddCanvasChild(HeroDeckCanvas, ApplyHeroDeckButton, FVector2D(0.0f, 550.0f), FVector2D(172.0f, 50.0f));
+	HeroDeckCountText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
+	HeroDeckCountText->SetJustification(ETextJustify::Left);
+	HeroDeckCountText->SetAutoWrapText(false);
+	HeroDeckCaptionText->SetAutoWrapText(false);
+	AddCanvasChild(HeroDeckCanvas, HeroDeckCountText, FVector2D(188.0f, 577.0f), FVector2D(282.0f, 30.0f));
 	for (int32 CardIndex = 0; CardIndex < 36; ++CardIndex)
 	{
 		UGameXXKHeroDeckCardButton* CardButton = WidgetTree->ConstructWidget<UGameXXKHeroDeckCardButton>(
@@ -2406,7 +2590,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		{
 			PortraitSlot->SetHorizontalAlignment(HAlign_Fill);
 			PortraitSlot->SetVerticalAlignment(VAlign_Fill);
-			PortraitSlot->SetPadding(FMargin(5.0f, 32.0f, 5.0f, 6.0f));
+			PortraitSlot->SetPadding(FMargin(8.0f, 48.0f, 8.0f, 10.0f));
 		}
 		// Selection ink sits under the name so the selected card name stays visible.
 		UImage* SelectedInk = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("InventoryHeroDeckSelectedInk_%02d"), CardIndex));
@@ -2416,35 +2600,38 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		{
 			InkSlot->SetHorizontalAlignment(HAlign_Center);
 			InkSlot->SetVerticalAlignment(VAlign_Top);
-			InkSlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
+			InkSlot->SetPadding(FMargin(0.0f, 14.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(16, true));
+		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(24, true));
+		CardLabel->SetAutoWrapText(false);
 		CardLabel->SetJustification(ETextJustify::Center);
 		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
 		{
 			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
 			LabelSlot->SetVerticalAlignment(VAlign_Top);
-			LabelSlot->SetPadding(FMargin(5.0f, 15.0f, 5.0f, 0.0f));
+			LabelSlot->SetPadding(FMargin(8.0f, 20.0f, 8.0f, 0.0f));
 		}
 		// Cost summary: second line "x气", third line "x内", left-aligned.
 		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
+		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(22, true));
+		CostQiLabel->SetAutoWrapText(false);
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 57.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(14.0f, 84.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
+		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(22, true));
+		CostManaLabel->SetAutoWrapText(false);
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{
 			CostSlot->SetHorizontalAlignment(HAlign_Left);
 			CostSlot->SetVerticalAlignment(VAlign_Top);
-			CostSlot->SetPadding(FMargin(10.0f, 80.0f, 0.0f, 0.0f));
+			CostSlot->SetPadding(FMargin(14.0f, 116.0f, 0.0f, 0.0f));
 		}
 		UGameXXKCardTooltipWidget* CardTooltip = WidgetTree->ConstructWidget<UGameXXKCardTooltipWidget>(
 			UGameXXKCardTooltipWidget::StaticClass(),
@@ -2478,7 +2665,13 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		CardSize->SetWidthOverride(HeroDeckCardSize.X);
 		CardSize->SetHeightOverride(HeroDeckCardSize.Y);
 		CardSize->AddChild(CardButton);
-		if (UUniformGridSlot* CardSlot = HeroDeckGrid->AddChildToUniformGrid(CardSize, CardIndex / 3, CardIndex % 3))
+		auto* Fit = WidgetTree->ConstructWidget<UScaleBox>();
+		Fit->SetStretch(EStretch::ScaleToFit); Fit->SetStretchDirection(EStretchDirection::Both);
+		Fit->SetContent(CardSize);
+		auto* Cell = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(),*FString::Printf(TEXT("InventoryHeroDeckCell_%02d"),CardIndex));
+		Cell->SetWidthOverride(HeroDeckCardSize.X); Cell->SetHeightOverride(HeroDeckCardSize.Y); Cell->SetContent(Fit);
+		HeroDeckCardCells.Add(Cell);
+		if (UUniformGridSlot* CardSlot = HeroDeckGrid->AddChildToUniformGrid(Cell, CardIndex / 2, CardIndex % 2))
 		{
 			CardSlot->SetHorizontalAlignment(HAlign_Center);
 			CardSlot->SetVerticalAlignment(VAlign_Center);
@@ -2924,12 +3117,15 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 	{
 		HeroDeckPanel->SetVisibility(bShowDeck ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
+	if (DeckExpandedBackdrop) DeckExpandedBackdrop->SetVisibility(bShowDeck && bDeckExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	if (bShowDeck) RefreshHeroDeckLayout();
 	if (CharacterTabBodyPanel)
 	{
 		CharacterTabBodyPanel->SetVisibility(bShowBody ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 	const bool bShowExperience = bShowBody
 		&& ActiveCharacterTab == EGameXXKCharacterBackpackTab::Attributes;
+	if (CharacterAttributeDetails) CharacterAttributeDetails->SetVisibility(bShowExperience ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 	if (CharacterExperienceText)
 	{
 		CharacterExperienceText->SetVisibility(bShowExperience
@@ -2957,9 +3153,9 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 					const bool bHero = CharacterId == FGameXXKEquipmentRules::HeroCharacterId();
 					const bool bQuestNpc =
 						FGameXXKCompanionCatalog::FindQuestNpcDefinition(CharacterId) != nullptr;
-					const FString CharacterLabel = bHero ? TEXT("主角") : CharacterId.ToString();
-					int32 CharacterLevel = State.PlayerLevel;
-					int32 CharacterExperience = State.PlayerXP;
+					const FString CharacterLabel = GameXXKCharacterUiPresentation::GetDisplayName(Subsystem, CharacterId);
+					int32 CharacterLevel = bHero ? State.PlayerLevel : 1;
+					int32 CharacterExperience = bHero ? State.PlayerXP : 0;
 					int32 RequiredExperience =
 						UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(CharacterLevel);
 					if (bQuestNpc)
@@ -2984,17 +3180,20 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 								FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(CharacterLevel);
 						}
 					}
-					CharacterTabBodyText->SetText(FText::FromString(FString::Printf(
-						TEXT("%s属性\n\n等级  %d\n生命  %d / %d\n内力  %d / %d\n攻击  %d\n防御  %d\n速度  %d"),
-						*CharacterLabel,
-						CharacterLevel,
-						bHero ? State.PlayerHP : Stats.MaxHealth,
-						Stats.MaxHealth,
-						bHero ? State.PlayerMP : Stats.MaxMana,
-						Stats.MaxMana,
-						Stats.Attack,
-						Stats.Defense,
-						Stats.Speed)));
+					CharacterTabBodyText->SetText(FText::FromString(CharacterLabel+TEXT(" · 属性")));
+					if (CharacterLevelText) CharacterLevelText->SetText(FText::FromString(FString::Printf(TEXT("等级 %d"),CharacterLevel)));
+					const bool bDeployed=bHero || CharacterId==State.CardRun.PartySelection.ActivePermanentCompanionInstanceId || CharacterId==State.CardRun.PartySelection.QuestNpc.NpcId;
+					if (CharacterIdentityText) CharacterIdentityText->SetText(FText::FromString(FString::Printf(TEXT("%s · %s"),bHero ? TEXT("主角") : bQuestNpc ? TEXT("同行角色") : TEXT("伙伴"),bDeployed ? TEXT("已出战") : TEXT("未出战"))));
+					const int32 Values[]={bHero ? State.PlayerHP : Stats.MaxHealth,bHero ? State.PlayerMP : Stats.MaxMana,Stats.Attack,Stats.Defense,Stats.Speed};
+					for(int32 I=0;I<CharacterAttributeValues.Num();++I)
+					{
+						CharacterAttributeValues[I]->SetText(I<2 ? FText::FromString(FString::Printf(TEXT("%d / %d"),Values[I],I==0 ? Stats.MaxHealth : Stats.MaxMana)) : FText::AsNumber(Values[I]));
+					}
+					for(int32 I=0;I<CharacterResourceBars.Num();++I)
+					{
+						const int32 Maximum=I==0 ? Stats.MaxHealth : Stats.MaxMana;
+						CharacterResourceBars[I]->SetPercent(Maximum>0 ? FMath::Clamp(static_cast<float>(Values[I])/Maximum,0.0f,1.0f) : 0.0f);
+					}
 					if (CharacterExperienceText)
 					{
 						CharacterExperienceText->SetText(RequiredExperience > 0
@@ -3034,6 +3233,7 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 		}
 	}
 	UpdateBackpackScrollbarThumb();
+	if (DesktopTrainingHost) DesktopTrainingHost->RefreshBackpackFooterVisibility();
 }
 
 void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
@@ -3056,7 +3256,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 		if (Subsystem)
 		{
 			UnlockedHeroCardIds = Subsystem->GetRuntimeState().CardRun.HeroUnlockedCardIds;
-			if (PendingHeroDeckIds.IsEmpty())
+			if (!bDeckDraftInitialized)
 			{
 				PendingHeroDeckIds = Subsystem->GetHeroCardLoadout();
 			}
@@ -3067,7 +3267,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 	{
 		HeroCardBackpackIds = NpcDefinition->FixedCardIds;
 		UnlockedHeroCardIds = HeroCardBackpackIds;
-		if (Subsystem && PendingHeroDeckIds.IsEmpty())
+		if (Subsystem && !bDeckDraftInitialized)
 		{
 			if (const FGameXXKQuestNpcOwnedCardLoadout* Loadout =
 				Subsystem->GetRuntimeState().CardRun.PartySelection.QuestNpcCardLoadouts.Find(CharacterId))
@@ -3084,18 +3284,18 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 			CompanionLevel = Companion.Level;
 			HeroCardBackpackIds = Companion.PersonalCardIds;
 			UnlockedHeroCardIds = Companion.UnlockedPersonalCardIds;
-			if (PendingHeroDeckIds.IsEmpty())
+			if (!bDeckDraftInitialized)
 			{
 				PendingHeroDeckIds = Companion.SelectedCardIds;
 			}
 		}
 	}
+	if (Subsystem) bDeckDraftInitialized = true;
 	if (HeroDeckCaptionText)
 	{
 		HeroDeckCaptionText->SetText(FText::FromString(FString::Printf(
-			TEXT("卡组背包 %d 张 · 角色卡组 %d 张"),
-			HeroCardBackpackIds.Num(),
-			RequiredCount)));
+			TEXT("卡池 %d 张"),
+			HeroCardBackpackIds.Num())));
 	}
 
 	const bool bMutationLocked = !Subsystem || Subsystem->IsCompanionLoadoutMutationLocked();
@@ -3109,6 +3309,8 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 		{
 			Button->Configure(this, CardId);
 			Button->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+			if (UWidget* Cell=Button->GetParent()) Cell->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+			if (HeroDeckCardCells.IsValidIndex(Index)) HeroDeckCardCells[Index]->SetVisibility(CardId.IsNone() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 			Button->SetIsEnabled(bUnlocked && !bMutationLocked);
 			// The button owns the shared parchment frame; selection is a separate
 			// ink overlay and therefore never replaces the card base.
@@ -3223,8 +3425,9 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 	}
 	if (HeroDeckCountText)
 	{
-		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("(%d / %d)"), PendingHeroDeckIds.Num(), RequiredCount)));
+		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("已选 %d / %d"), PendingHeroDeckIds.Num(), RequiredCount)));
 	}
+	RefreshHeroDeckLayout();
 }
 
 void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
@@ -3567,6 +3770,11 @@ void UGameXXKInventoryWindowWidget::UpdateBackpackScrollbarThumb()
 {
 	if (!InventoryScrollbarThumb)
 	{
+		return;
+	}
+	if(bDeckExpanded && ActiveCharacterTab==EGameXXKCharacterBackpackTab::Deck)
+	{
+		InventoryScrollbarThumb->SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
 	UScrollBox* Target = ResolveActiveInkScrollbar();
