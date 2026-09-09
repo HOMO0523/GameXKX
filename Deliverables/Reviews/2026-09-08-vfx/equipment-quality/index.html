@@ -1,0 +1,54 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>装备十档品质色板</title>
+<style>
+@font-face{font-family:jh;src:url(assets/jianghu.ttf);font-display:swap}*{box-sizing:border-box}body{margin:0;background:#302c25;color:#e9dfcd;font:16px system-ui}main{max-width:1080px;margin:auto;padding:28px}header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}h1{font:32px jh;margin:0}button{background:#e4d7bd;color:#33291f;border:1px solid #806e53;padding:8px 16px;cursor:pointer;border-radius:3px}button[aria-pressed=true]{background:#bca16e}small{color:#c5baa5}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:22px 16px}.sample{text-align:center}.label{margin-bottom:10px;color:#ded3bc;font-size:14px}.stage{height:calc(206px * var(--size,1));display:flex;justify-content:center;align-items:flex-start}.item{position:relative;overflow:hidden;width:164px;height:200px;padding:20px 10px;background:#e6d7b8 url(assets/paper.png) center/100% 100%;color:var(--name);transform:scale(var(--size,1));transform-origin:top center;border-radius:8px;isolation:isolate}.item:before{content:"";position:absolute;inset:6px;background:linear-gradient(150deg,var(--ground-hi),var(--ground-mid) 60%,var(--ground-lo));opacity:.78;mix-blend-mode:multiply;border-radius:6px;z-index:-1}.outline{position:absolute;inset:3px;pointer-events:none;width:158px;height:194px;fill:none;stroke:var(--c);stroke-width:3}.name{display:block;width:144px;height:36px;position:relative;z-index:2;overflow:visible}.art-stage{position:relative;width:104px;height:104px;margin:6px auto 0}.art{display:block;width:104px;height:104px;object-fit:contain;margin:0;position:relative;z-index:2}.rank{font:20px jh;margin-top:4px}.platinum .outline{filter:drop-shadow(0 1px 0 #45546480)}.rank{color:#51473b}.facets{position:absolute;inset:6px;width:152px;height:188px;pointer-events:none;z-index:0}.art,.rank{position:relative;z-index:1}.paused *{animation-play-state:paused!important}@keyframes glint{from{background-position:150% 150%}to{background-position:-90% -90%}}footer{margin-top:20px;color:#c5baa5;line-height:1.7}@media(max-width:950px){.grid{grid-template-columns:repeat(4,1fr)}}@media(max-width:720px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:540px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+.item:after{content:"";position:absolute;inset:7px;background:linear-gradient(#fff8e93b,transparent 38%,#342a2712);border-radius:5px;pointer-events:none;z-index:-1}
+.equipment-glow{position:absolute;inset:calc(-1px * var(--spread));z-index:0;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse at 52% 54%,rgb(var(--glow) / .96),rgb(var(--glow) / .55) 30%,rgb(var(--glow) / .17) 52%,transparent 74%);filter:blur(3px);opacity:var(--power);animation:equipment-breathe 5s ease-in-out infinite;mix-blend-mode:screen}
+.equipment-glow:after{content:"";position:absolute;inset:15%;border-radius:50%;background:radial-gradient(ellipse at 46% 44%,#fff8e19c,transparent 67%);opacity:.36}
+.platinum .equipment-glow:after{background:radial-gradient(ellipse at 46% 44%,#f9fdffc9,transparent 67%);opacity:.48}
+.no-equipment-glow .equipment-glow{display:none}
+@keyframes equipment-breathe{0%,100%{opacity:calc(var(--power) * .82);transform:scale(.98)}50%{opacity:var(--power);transform:scale(1.04)}}
+
+.prismatic-film{position:absolute;inset:7px;border-radius:5px;z-index:0;pointer-events:none;opacity:.62;background:linear-gradient(135deg,transparent 26%,#64e4ed40 38%,#9e9eff4a 44%,#e8afff55 49%,#f5fcff70 52%,#ffc7df50 56%,#fff0ad42 62%,#a9ecd630 68%,transparent 78%);background-size:280% 280%;animation:platinum-film 7s linear infinite;mix-blend-mode:screen}
+.facet .prismatic-film{opacity:.84}
+.platinum .equipment-glow{background:radial-gradient(ellipse at 30% 42%,#6adaef99,transparent 57%),radial-gradient(ellipse at 72% 56%,#dc9ce799,transparent 58%),radial-gradient(ellipse at 50% 52%,#f1fbffef,transparent 72%)}
+@keyframes platinum-film{from{background-position:130% 130%}to{background-position:-100% -100%}}
+.half-preview .grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:18px 10px}@media(max-width:520px){.half-preview .grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+</style><main><header><h1>装备十档品质色板</h1><small>待确认 · 使用项目字体与装备图</small><button id="full" aria-pressed="true">100%</button><button id="half" aria-pressed="false">50%</button><button id="motion" aria-pressed="true">动态：开</button><button id="aura" aria-pressed="true">装备柔光：开</button></header><div class="grid" id="grid"></div><footer>比较卡底配色与装备柔光：第1–5档无装备柔光，第6–10档逐级增强。第9档看铂金基底上的镭射反光，第10档额外看等边三角切面。字内保持稳定，流光只走描边与边框。这里只确认色彩与材质方向，尚未替换游戏中的品质样式。</footer></main>
+<script>
+const rows=[['普通','灰','#7a7770','#56534d'],['稀有','绿','#51835b','#c5eed2'],['珍稀','蓝','#4d84b8','#cce6ff'],['传奇','蓝紫','#8067b2','#e3d7ff'],['不朽','金黄','#cba43b','#fff0b8'],['至宝','金橙','#d28a38','#ffe2b8'],['超凡','金红','#c25836','#ffd8bd'],['天界','金红粉','#c47283','#ffe1eb'],['登神','铂金璀璨','#8398aa','#f3f8fc'],['宇宙','铂金钻石切面','#7f94a8','#f8fcff']];
+
+function platinumGradient(id,duration=5){return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="-90" y1="-90" x2="90" y2="90" spreadMethod="reflect"><stop stop-color="#63798c"/><stop offset=".24" stop-color="#bfcfdd"/><stop offset=".32" stop-color="#64e4ed"/><stop offset=".40" stop-color="#8e9eff"/><stop offset=".46" stop-color="#e0a4ff"/><stop offset=".50" stop-color="#ffffff"/><stop offset=".55" stop-color="#ffb2d1"/><stop offset=".62" stop-color="#ffe5a0"/><stop offset=".68" stop-color="#91e5c6"/><stop offset=".77" stop-color="#bdcddc"/><stop offset="1" stop-color="#63798c"/><animateTransform attributeName="gradientTransform" type="translate" from="-140 -140" to="140 140" dur="${duration}s" repeatCount="indefinite"/></linearGradient>`;}
+function nameSvg(r,i){
+  const attrs='x="72" y="27" text-anchor="middle" font-family="jh" font-size="25"';
+  if(i===0)return `<svg class="name" viewBox="0 0 144 36" aria-label="破军长刃"><text ${attrs} fill="${r[3]}">破军长刃</text></svg>`;
+  const gradient=i>=8?platinumGradient(`name-flow-${i}`):`<linearGradient id="name-flow-${i}" gradientUnits="userSpaceOnUse" x1="-90" y1="-90" x2="90" y2="90" spreadMethod="reflect"><stop stop-color="${r[2]}"/><stop offset=".42" stop-color="${r[2]}"/><stop offset=".49" stop-color="#fff4cf"/><stop offset=".53" stop-color="#fff4cf"/><stop offset=".60" stop-color="${r[2]}"/><stop offset="1" stop-color="${r[2]}"/><animateTransform attributeName="gradientTransform" type="translate" from="-140 -140" to="140 140" dur="5s" repeatCount="indefinite"/></linearGradient>`;
+  const rim=i>=8?`<text ${attrs} fill="none" stroke="#536779" stroke-width="3" stroke-linejoin="round" opacity=".86">破军长刃</text>`:'';
+  return `<svg class="name" viewBox="0 0 144 36" aria-label="破军长刃"><defs>${gradient}</defs>${rim}<text ${attrs} fill="${r[3]}" stroke="url(#name-flow-${i})" stroke-width="1.8" paint-order="stroke fill" stroke-linejoin="round">破军长刃</text></svg>`;
+}
+function frameSvg(i){
+ const shape='M9 6 Q5 7 6 15 L5 180 Q5 187 12 188 L147 189 Q153 188 152 180 L153 14 Q153 5 145 6 Z';
+ const platinum=i>=8;
+ return `<svg class="outline" viewBox="0 0 158 194" aria-hidden="true">${platinum?`<defs>${platinumGradient(`frame-flow-${i}`,6)}</defs><path d="${shape}" stroke="#526474" stroke-width="4.5" opacity=".8"/>`:''}<path d="${shape}" ${platinum?`stroke="url(#frame-flow-${i})"`:''}/><path opacity=".5" stroke-width="1" d="M11 9 L148 9 L149 183 L9 185 Z"/></svg>`;
+}
+function facetMesh(){
+ const side=24,h=side*Math.sqrt(3)/2;let faces='';
+ for(let row=0;row<10;row++){const y=row*h,shift=row%2?side/2:0;
+  for(let col=-2;col<8;col++){const x=col*side+shift;
+   faces+=`<polygon points="${x},${y} ${x+side},${y} ${x+side/2},${y+h}" fill="${(row+col)%3===0?'#fbfdff2e':'#d8e5ef16'}"/><polygon points="${x+side},${y} ${x+side*1.5},${y+h} ${x+side/2},${y+h}" fill="#607a9415"/>`;
+  }
+ }
+ const glints=[[12,h*3],[132,h*5],[24,h*8]].map(([x,y],i)=>`<path d="M${x-3.5} ${y}L${x+3.5} ${y}M${x} ${y-3.5}L${x} ${y+3.5}" stroke="#fff" stroke-width=".85" opacity=".12"><animate attributeName="opacity" values=".04;.08;.7;.08;.04" dur="6s" begin="-${i*1.7}s" repeatCount="indefinite"/></path>`).join('');
+ return `<svg class="facets" viewBox="0 0 152 188" aria-hidden="true"><g stroke="#607a9424" stroke-width=".45">${faces}</g>${glints}</svg>`;
+}
+
+
+const grounds=[['#eeeae3','#d7d3cb','#bcb8b0'],['#edf2df','#bfd3b8','#97b098'],['#eaf3f7','#bed2df','#90adc5'],['#f0eafa','#d3c2e5','#aa94c6'],['#fff5d9','#e8d293','#c5a653'],['#fff0d8','#e6bb7b','#c58d47'],['#fcebdc','#dfb299','#bc785e'],['#fbeaf0','#e1b9c5','#bc839c'],['#f5f9fc','#d5e0e8','#a8becf'],['#fbfdff','#e2ebf1','#b4c9d9']];
+const auras=[null,null,null,null,null,{rgb:'255 199 113',power:.24,spread:4},{rgb:'255 157 104',power:.32,spread:7},{rgb:'255 183 205',power:.40,spread:10},{rgb:'217 239 255',power:.50,spread:12},{rgb:'239 249 255',power:.62,spread:15}];
+function groundVars(i){const g=grounds[i],a=auras[i];return `--ground-hi:${g[0]};--ground-mid:${g[1]};--ground-lo:${g[2]};${a?`--glow:${a.rgb};--power:${a.power};--spread:${a.spread};`:''}`;}
+function equipmentArt(i){return `<div class="art-stage">${auras[i]?'<div class="equipment-glow" aria-hidden="true"></div>':''}<img class="art" src="assets/item.png" alt="项目装备图"></div>`;}
+
+document.getElementById('grid').innerHTML=rows.map((r,i)=>`<section class="sample"><div class="label">${i+1} · ${r[1]}</div><div class="stage"><div class="item ${i>=8?'platinum':''} ${i===9?'facet':''}" style="--c:${r[2]};--name:${r[3]};${groundVars(i)}">${frameSvg(i)}${i>=8?'<div class="prismatic-film" aria-hidden="true"></div>':''}${i===9?facetMesh():''}${nameSvg(r,i)}${equipmentArt(i)}<div class="rank">${r[0]}</div></div></div></section>`).join('');
+function size(n){document.body.classList.toggle("half-preview",n===.5);document.documentElement.style.setProperty('--size',n);document.getElementById('full').setAttribute('aria-pressed',n===1);document.getElementById('half').setAttribute('aria-pressed',n===.5)}document.getElementById('full').onclick=()=>size(1);document.getElementById('half').onclick=()=>size(.5);document.getElementById('motion').onclick=function(){const p=document.body.classList.toggle('paused');this.textContent=p?'动态：关':'动态：开';this.setAttribute('aria-pressed',!p);document.querySelectorAll('svg').forEach(s=>p?s.pauseAnimations():s.unpauseAnimations())};
+document.getElementById('aura').onclick=function(){const off=document.body.classList.toggle('no-equipment-glow');this.textContent=off?'装备柔光：关':'装备柔光：开';this.setAttribute('aria-pressed',!off)};
+</script></html>
