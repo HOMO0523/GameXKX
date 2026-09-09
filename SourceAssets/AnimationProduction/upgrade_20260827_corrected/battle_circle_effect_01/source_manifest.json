@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "battle_circle_effect_01",
+  "sourceRelativePath": "画圈-1.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\msg\\file\\2026-08\\画圈-1\\画圈-1.mov",
+  "sourceVideoSha256": "dc9f684ec0815c4ec562474b3d379fac8907c6e055677ed990fca7a0e00c3b40",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/battle_circle_effect_01/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 1.72,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 52
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/battle_circle_effect_01/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

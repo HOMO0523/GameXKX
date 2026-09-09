@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "enemy_03_weasel_attack_candidate",
+  "sourceRelativePath": "怪物们/黄鼠狼攻击.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\黄鼠狼攻击.mov",
+  "sourceVideoSha256": "ab8acdce4e2285deeb0121b572f17b22e30f3dc6f802dfb0e46809b5981f709d",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_03_weasel_attack_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "enemy_03_weasel_attack",
+  "sourceMetadata": {
+    "size": [
+      2674,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 1.44,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 43
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_03_weasel_attack_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

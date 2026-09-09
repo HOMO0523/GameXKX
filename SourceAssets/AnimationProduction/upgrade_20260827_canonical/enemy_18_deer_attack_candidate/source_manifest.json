@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "enemy_18_deer_attack_candidate",
+  "sourceRelativePath": "怪物们/鹿攻击.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\怪物们\\鹿攻击.mov",
+  "sourceVideoSha256": "ae26d979167fef40cad85f37aff7451b9facf819cc6a53f5dfb2c6d9704ee1dd",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/enemy_18_deer_attack_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "enemy_18_deer_attack",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 5.07,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 152
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/enemy_18_deer_attack_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

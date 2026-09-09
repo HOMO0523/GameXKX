@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_horse_idle",
+  "sourceRelativePath": "马和马车/马待机.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\马和马车\\马待机.mov",
+  "sourceVideoSha256": "a040e5f69c891d85cae4cfd9a1a374af1fb05bfe7be2e8aa9f456f488418f29a",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/cinematic_horse_idle/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 6.0,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 180
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/cinematic_horse_idle/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "enemy_07_graywolf_attack_candidate",
+  "sourceRelativePath": "怪物们/狼攻击.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\怪物们\\狼攻击.mov",
+  "sourceVideoSha256": "d951d8f3e4878ee05b180694c2d6237a745f3ca25ae621ac33df16bb605bba9b",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/enemy_07_graywolf_attack_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "enemy_07_graywolf_attack",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 1.95,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 58
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/enemy_07_graywolf_attack_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

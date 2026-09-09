@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_carriage_run_stop",
+  "sourceRelativePath": "马和马车/马车奔跑急停.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\马和马车\\马车奔跑急停.mov",
+  "sourceVideoSha256": "25f78f0b112523357c80b49a96deaf2054cded2b3c5b650edfa54589d90a9f78",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/cinematic_carriage_run_stop/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 4.04,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 121
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/cinematic_carriage_run_stop/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

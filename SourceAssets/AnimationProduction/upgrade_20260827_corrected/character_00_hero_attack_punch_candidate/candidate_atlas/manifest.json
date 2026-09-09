@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate_review_only",
+  "candidateId": "character_00_hero_attack_punch_candidate",
+  "replacementTargetSuggestion": "character_00_hero_attack",
+  "sourceManifest": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_punch_candidate/source_manifest.json",
+  "matting": {
+    "mode": "black_background_color_signal_with_outline_dilation",
+    "signalThreshold": 12,
+    "outlineExpansionPixelsAt1440": 2,
+    "featherRadiusAt1440": 0.85
+  },
+  "fps": 46.15384615384615,
+  "durationSeconds": 1.3,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "sourceMetadata": {
+    "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+    "codec": "hevc",
+    "pix_fmt": "yuv420p(tv, bt709, progressive)",
+    "audio_codec": "aac",
+    "fps": 30.0,
+    "source_size": [
+      2674,
+      1440
+    ],
+    "size": [
+      2674,
+      1440
+    ],
+    "rotate": 0,
+    "duration": 1.3,
+    "estimatedSourceFrameCount": 39,
+    "selectedSourceFrameIndices": [
+      0,
+      1,
+      1,
+      2,
+      3,
+      3,
+      4,
+      5,
+      5,
+      6,
+      6,
+      7,
+      8,
+      8,
+      9,
+      10,
+      10,
+      11,
+      12,
+      12,
+      13,
+      14,
+      14,
+      15,
+      15,
+      16,
+      17,
+      17,
+      18,
+      19,
+      19,
+      20,
+      21,
+      21,
+      22,
+      23,
+      23,
+      24,
+      24,
+      25,
+      26,
+      26,
+      27,
+      28,
+      28,
+      29,
+      30,
+      30,
+      31,
+      32,
+      32,
+      33,
+      33,
+      34,
+      35,
+      35,
+      36,
+      37,
+      37,
+      38
+    ]
+  },
+  "placement": {
+    "sourceUnionBounds": [
+      739,
+      51,
+      1810,
+      1380
+    ],
+    "scale": 0.3235515425131678,
+    "contentSize": [
+      347,
+      430
+    ],
+    "canvasSize": 512,
+    "anchor": "bottom_center",
+    "bottomMargin": 41
+  },
+  "framesDirectory": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_punch_candidate/candidate_atlas/frames",
+  "contactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_attack_punch_candidate/candidate_alpha_contact_sheet.png",
+  "comparisonSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_attack_punch_candidate/old_new_alpha_comparison.png",
+  "atlases": {
+    "2K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_punch_candidate/candidate_atlas/atlas_2K/character_00_hero_attack_punch_candidate_atlas.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "cellSize": 256,
+      "sha256": "ece36bce818924a8ec29461eec11ca0f2eaa7cca2c7fdb1e0644e614cb51bea7"
+    },
+    "1K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_punch_candidate/candidate_atlas/atlas_1K/character_00_hero_attack_punch_candidate_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "cellSize": 128,
+      "sha256": "d9c00ebe23b5c4910a3f91b57aff1d2dc798b497ed26a8c2bc31208b653a1972"
+    }
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  },
+  "firstLastMeanAbsoluteDifference": 1.2305,
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_hero_deep_breath",
+  "sourceRelativePath": "主角状态机/主角呼吸状态机/主角深呼吸.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\主角状态机\\主角呼吸状态机\\主角深呼吸.mov",
+  "sourceVideoSha256": "34f5e9f62d996337ea0950ac2e499707b5b007807578a8b5681f072a86ddd879",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/cinematic_hero_deep_breath/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 5.07,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 152
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/cinematic_hero_deep_breath/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

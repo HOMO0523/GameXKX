@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate_review_only",
+  "candidateId": "character_00_hero_walk_stop_candidate",
+  "replacementTargetSuggestion": "hero_town_walk_stop_left",
+  "sourceManifest": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_stop_candidate/source_manifest.json",
+  "matting": {
+    "mode": "black_background_color_signal_with_outline_dilation",
+    "signalThreshold": 12,
+    "outlineExpansionPixelsAt1440": 2,
+    "featherRadiusAt1440": 0.85
+  },
+  "fps": 162.16216216216216,
+  "durationSeconds": 0.37,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "sourceMetadata": {
+    "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+    "codec": "hevc",
+    "pix_fmt": "yuv420p(tv, bt709, progressive)",
+    "audio_codec": "aac",
+    "fps": 30.0,
+    "source_size": [
+      1440,
+      1440
+    ],
+    "size": [
+      1440,
+      1440
+    ],
+    "rotate": 0,
+    "duration": 0.37,
+    "estimatedSourceFrameCount": 11,
+    "selectedSourceFrameIndices": [
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      4,
+      4,
+      4,
+      4,
+      4,
+      4,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      6,
+      6,
+      6,
+      6,
+      6,
+      6,
+      7,
+      7,
+      7,
+      7,
+      7,
+      7,
+      8,
+      8,
+      8,
+      8,
+      8,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      9,
+      10,
+      10,
+      10
+    ]
+  },
+  "placement": {
+    "sourceUnionBounds": [
+      302,
+      59,
+      1209,
+      1377
+    ],
+    "scale": 0.3262518968133536,
+    "contentSize": [
+      296,
+      430
+    ],
+    "canvasSize": 512,
+    "anchor": "bottom_center",
+    "bottomMargin": 41
+  },
+  "framesDirectory": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_stop_candidate/candidate_atlas/frames",
+  "contactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_walk_stop_candidate/candidate_alpha_contact_sheet.png",
+  "comparisonSheet": null,
+  "atlases": {
+    "2K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_stop_candidate/candidate_atlas/atlas_2K/character_00_hero_walk_stop_candidate_atlas.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "cellSize": 256,
+      "sha256": "9bb404b0a2a2f2add13562cf718e050b468424266df80077eb8d1e1e24e4861f"
+    },
+    "1K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_stop_candidate/candidate_atlas/atlas_1K/character_00_hero_walk_stop_candidate_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "cellSize": 128,
+      "sha256": "c019909ec6d69e31e4b40da9f3e0cbf96f38bdf63109df77dad8b4e6b4f633b5"
+    }
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  },
+  "firstLastMeanAbsoluteDifference": 17.6348,
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_horse_start_run_stop",
+  "sourceRelativePath": "马和马车/马起跑奔跑急停.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\马和马车\\马起跑奔跑急停.mov",
+  "sourceVideoSha256": "eac84e2b2b9a262f85662bd85747efeb03a64992ce261b421c3711aa79ab983d",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/cinematic_horse_start_run_stop/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 5.6,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 168
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/cinematic_horse_start_run_stop/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

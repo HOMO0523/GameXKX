@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "character_00_hero_state_idle_candidate",
+  "sourceRelativePath": "主角状态机/基础状态机/主角待机.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角待机.mov",
+  "sourceVideoSha256": "b359f6f2f44eca9ba32324062ba49388b06723156cc8671f66e382bda75638b6",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_state_idle_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "hero_town_idle_left",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 2.02,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 61
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_state_idle_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_hero_collect_item_with_ui",
+  "sourceRelativePath": "主角状态机/角色采集物品需要弹出物品UI-1.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\主角状态机\\角色采集物品需要弹出物品UI-1.mov",
+  "sourceVideoSha256": "f8b20e8ec9946f367c79679dde082021162af8090b76e77ede00ce6b71b31029",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/cinematic_hero_collect_item_with_ui/raw/source.mov",
+  "replacementTargetSuggestion": null,
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 2.72,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 82
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/cinematic_hero_collect_item_with_ui/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

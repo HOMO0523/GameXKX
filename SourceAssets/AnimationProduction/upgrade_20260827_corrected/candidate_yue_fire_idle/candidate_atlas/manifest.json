@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "status": "candidate_review_only",
+  "candidateId": "candidate_yue_fire_idle",
+  "replacementTargetSuggestion": "character_09_yue_bai_idle",
+  "sourceManifest": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/source_manifest.json",
+  "matting": {
+    "mode": "black_background_color_signal_with_outline_dilation",
+    "signalThreshold": 12,
+    "outlineExpansionPixelsAt1440": 2,
+    "featherRadiusAt1440": 0.85
+  },
+  "fps": 14.74201474201474,
+  "durationSeconds": 4.07,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "sourceMetadata": {
+    "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+    "codec": "hevc",
+    "pix_fmt": "yuv420p(tv, bt709, progressive)",
+    "audio_codec": "aac",
+    "fps": 30.0,
+    "source_size": [
+      1440,
+      1440
+    ],
+    "size": [
+      1440,
+      1440
+    ],
+    "rotate": 0,
+    "duration": 4.07,
+    "estimatedSourceFrameCount": 122,
+    "selectedSourceFrameIndices": [
+      0,
+      2,
+      4,
+      6,
+      8,
+      10,
+      12,
+      14,
+      16,
+      18,
+      21,
+      23,
+      25,
+      27,
+      29,
+      31,
+      33,
+      35,
+      37,
+      39,
+      41,
+      43,
+      45,
+      47,
+      49,
+      51,
+      53,
+      55,
+      57,
+      59,
+      62,
+      64,
+      66,
+      68,
+      70,
+      72,
+      74,
+      76,
+      78,
+      80,
+      82,
+      84,
+      86,
+      88,
+      90,
+      92,
+      94,
+      96,
+      98,
+      100,
+      103,
+      105,
+      107,
+      109,
+      111,
+      113,
+      115,
+      117,
+      119,
+      121
+    ]
+  },
+  "placement": {
+    "sourceUnionBounds": [
+      214,
+      22,
+      1264,
+      1433
+    ],
+    "scale": 0.30474840538625086,
+    "contentSize": [
+      320,
+      430
+    ],
+    "canvasSize": 512,
+    "anchor": "bottom_center",
+    "bottomMargin": 41
+  },
+  "framesDirectory": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/candidate_atlas/frames",
+  "contactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/candidate_yue_fire_idle/candidate_alpha_contact_sheet.png",
+  "comparisonSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/candidate_yue_fire_idle/old_new_alpha_comparison.png",
+  "atlases": {
+    "2K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/candidate_atlas/atlas_2K/candidate_yue_fire_idle_atlas.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "cellSize": 256,
+      "sha256": "9c3df5428035dc0acb9d2eeed48f642f943630cd078afd0938ec0770bc32e2f2"
+    },
+    "1K": {
+      "atlas": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/candidate_atlas/atlas_1K/candidate_yue_fire_idle_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "cellSize": 128,
+      "sha256": "45f69a741f335ae401798f3b6edf334615fbb7cde7ec8b747178183758ae5ba9"
+    }
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  },
+  "firstLastMeanAbsoluteDifference": 6.5011,
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "cinematic_hero_adjust_backpack",
+  "sourceRelativePath": "主角状态机/主角随机播放呼吸状态机/主角调整背包.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角随机播放呼吸状态机\\主角调整背包.mov",
+  "sourceVideoSha256": "c1b45a6c23bdf278575fd9acb8c2f1f7e62beb21e9bbfeebb2ef3ddc18ea659e",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_hero_adjust_backpack/raw/source.mov",
+  "replacementTargetSuggestion": "hero_town_adjust_backpack",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 5.04,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 151
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_hero_adjust_backpack/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}
