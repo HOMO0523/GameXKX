@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "orientation": "preserve",
+  "matting": {
+    "mode": "chroma",
+    "backgroundSamples": [
+      {
+        "r": 255,
+        "g": 0,
+        "b": 255
+      },
+      {
+        "r": 255,
+        "g": 39,
+        "b": 239
+      },
+      {
+        "r": 255,
+        "g": 37,
+        "b": 243
+      }
+    ],
+    "tolerance": 50,
+    "feather": 15,
+    "spillSuppress": true,
+    "spillStrength": 60,
+    "colorSpace": "rgb",
+    "alphaBlur": 2,
+    "alphaContrast": 0.3,
+    "sampleFrameCorners": true
+  },
+  "output": {
+    "fps": 12,
+    "durationSeconds": 5,
+    "frameCount": 60,
+    "canvasSize": 512,
+    "anchor": "bottom_center",
+    "paddingRatio": 0.08,
+    "temporalAlphaWindow": 3,
+    "removeSmallEdgeComponents": true
+  }
+}
