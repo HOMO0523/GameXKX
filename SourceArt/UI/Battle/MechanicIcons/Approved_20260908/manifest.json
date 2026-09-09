@@ -1,0 +1,37 @@
+[
+  {
+    "key": "Lightning",
+    "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_lightning-draft-v4.png",
+    "preserved_copy": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Approved_20260908\\lightning.png",
+    "sha256": "c2d7c07f7882e74989daa155dce48d641e18bb99df8acf414f226de28c56a6f5",
+    "remove_neutral_checker_in_material": false
+  },
+  {
+    "key": "Fire",
+    "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_fire-draft-v4.png",
+    "preserved_copy": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Approved_20260908\\fire.png",
+    "sha256": "c8dc4d6565a14ebd5a60753467b70f52775f174184b5ddb3a9a8600800863e7a",
+    "remove_neutral_checker_in_material": true
+  },
+  {
+    "key": "Ice",
+    "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_ice_snowflake-draft-v7.png",
+    "preserved_copy": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Approved_20260908\\ice.png",
+    "sha256": "ccca6cf4061992a2cfbc002b25a46d74c13334a1603b24b21fdadbdf7d7f621c",
+    "remove_neutral_checker_in_material": true
+  },
+  {
+    "key": "Universal",
+    "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_universal-draft-v4.png",
+    "preserved_copy": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Approved_20260908\\universal.png",
+    "sha256": "76dd2b3012adb543652725eb2dde2871733a59603bd9319b248fd440a1fee82b",
+    "remove_neutral_checker_in_material": true
+  },
+  {
+    "key": "Formula",
+    "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\healer_formula-draft-v4.png",
+    "preserved_copy": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Approved_20260908\\formula.png",
+    "sha256": "98003a7243c2ebbf5be79a708815a74d181fd99a1f8e314a219e13c4bd0a9950",
+    "remove_neutral_checker_in_material": true
+  }
+]

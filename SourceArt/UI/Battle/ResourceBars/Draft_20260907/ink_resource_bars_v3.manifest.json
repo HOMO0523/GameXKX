@@ -1,0 +1,29 @@
+{
+  "source": "SourceArt\\UI\\Battle\\ResourceBars\\Draft_20260907\\ink_resource_bars_v3.png",
+  "size": [
+    1536,
+    1024
+  ],
+  "regions": [
+    [
+      75,
+      179,
+      1459,
+      319
+    ],
+    [
+      76,
+      445,
+      1459,
+      588
+    ],
+    [
+      75,
+      717,
+      1459,
+      858
+    ]
+  ],
+  "sha256": "a72601823f0bfe28deb3aa06b50feb3ce4f4ef8a16a706bc63be98290a6d3ae8",
+  "stage": "opaque style proof; no game replacement"
+}

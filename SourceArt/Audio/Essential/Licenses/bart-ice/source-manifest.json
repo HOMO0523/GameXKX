@@ -1,0 +1,23 @@
+{
+  "id": "bart-ice",
+  "author": "bart; source recording credited to Stephan / pdsounds",
+  "source": "https://opengameart.org/content/ice-spells",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "license_choice": "CC0 selected; page may also offer other licenses",
+  "source_page_sha256": "d659a2f688449fbdc0e56a91676175cf71298f16899caabcd9f785e359f09118",
+  "downloads": [
+    {
+      "url": "https://opengameart.org/sites/default/files/icespells.zip",
+      "file": "icespells.zip",
+      "bytes": 269661,
+      "sha256": "45f02a204fc7cc896a17487080376c521ac2e564fe3da4d24cffa0086f8d6a54"
+    }
+  ],
+  "audio_count": 2,
+  "audio": [
+    "extracted/coldsnap.wav",
+    "extracted/ice.wav"
+  ],
+  "license_files": []
+}

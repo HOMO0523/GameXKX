@@ -1,0 +1,144 @@
+[
+  {
+    "id": "mage_lightning",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_lightning-draft-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      43,
+      13,
+      1194,
+      1233
+    ],
+    "sha256": "2cbeddf9082e5191a81613562c48cd638e30e9471bd481feeff5641b784b5de0"
+  },
+  {
+    "id": "mage_fire",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_fire-draft-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      101,
+      43,
+      1134,
+      1224
+    ],
+    "sha256": "f441a3f30f1a35f471e3bb624d22201a8e925c9d1ef9a978131da97848513868"
+  },
+  {
+    "id": "mage_ice",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_ice-draft-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      43,
+      38,
+      1216,
+      1228
+    ],
+    "sha256": "b713ea80ed1843541713e56af9e238d355db707bb92264cb6f36444395672b55"
+  },
+  {
+    "id": "mage_universal",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_universal-draft-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      0,
+      23,
+      1218,
+      1254
+    ],
+    "sha256": "fa7561be01c20c9b4c6a94d59c6436066f5a815d8e0fd35052f67d0b38c575d8"
+  },
+  {
+    "id": "healer_formula",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\healer_formula-draft-v1.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      0,
+      21,
+      1234,
+      1228
+    ],
+    "sha256": "2c4686738235bc3432c06b51db9ee2cd0808b6acf2522aa21730a1d62042fc98"
+  },
+  {
+    "id": "healer_formula_v2",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\healer_formula-draft-v2.png",
+    "size": [
+      1312,
+      1199
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      81,
+      20,
+      1276,
+      1199
+    ],
+    "sha256": "c47b32c3b49d006d68bc523ca03ddea6044a0cdbed41e197b81498dfffac10a8",
+    "review": "recommended draft; powder simplified"
+  },
+  {
+    "id": "mage_fire_meteor_v2",
+    "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\MechanicIcons\\Draft_20260907\\mage_fire_meteor-draft-v2.png",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "alpha_bbox": [
+      41,
+      53,
+      1224,
+      1198
+    ],
+    "sha256": "82dfc782b2b27934fb0861074794c341b6cc36d64b0c6cd3347bcc16f8b86c14",
+    "review": "supersedes upright flame for fire task; clean silhouette direction"
+  }
+]

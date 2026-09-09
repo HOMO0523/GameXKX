@@ -1,0 +1,62 @@
+{
+  "source": {
+    "health": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\PSDSource\\psd_character_mana_full.png",
+    "mana": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\PSDSource\\psd_character_health_full.png"
+  },
+  "output": {
+    "health_track": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_health_track.png",
+    "health_fill": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_health_fill.png",
+    "health_full": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_health_full.png",
+    "mana_track": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_mana_track.png",
+    "mana_fill": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_mana_fill.png",
+    "mana_full": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_psd_mana_full.png"
+  },
+  "preview": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\ResourceBars\\battle_resource_bar_cut_preview.png",
+  "bar_size": [
+    420,
+    32
+  ],
+  "resource_specs": {
+    "health": {
+      "inner_rect": [
+        8,
+        11,
+        407,
+        19
+      ],
+      "fill_sample_rect": [
+        8,
+        11,
+        407,
+        19
+      ],
+      "empty_sample_rect": [
+        323,
+        11,
+        408,
+        19
+      ]
+    },
+    "mana": {
+      "inner_rect": [
+        13,
+        11,
+        408,
+        19
+      ],
+      "fill_sample_rect": [
+        13,
+        11,
+        323,
+        19
+      ],
+      "empty_sample_rect": [
+        323,
+        11,
+        408,
+        19
+      ]
+    }
+  },
+  "note": "All color, paper, and ink pixels are sampled from the approved PSD 049/050 cuts."
+}

@@ -1,0 +1,30 @@
+{
+  "source": "SourceArt/UI/Battle/ResourceBars/Draft_20260907/ink_resource_bars_v2.png",
+  "size": [
+    1536,
+    1024
+  ],
+  "mode": "RGB",
+  "regions": [
+    [
+      80,
+      182,
+      1455,
+      301
+    ],
+    [
+      80,
+      449,
+      1455,
+      569
+    ],
+    [
+      80,
+      722,
+      1455,
+      840
+    ]
+  ],
+  "sha256": "30f36d3d0fb0742a3af74215a94fb83a60d0419f56f3bd2dcd5050b3e449b292",
+  "status": "visual review only; opaque proof background has not been removed"
+}

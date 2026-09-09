@@ -1,0 +1,305 @@
+{
+  "key": "firewrath",
+  "url": "https://opengameart.org/sites/default/files/Fire%20Wrath%20-%20Magic%20Effect.zip",
+  "page": "https://opengameart.org/content/fire-wrath-magic-effect",
+  "archive_sha256": "d21ddd244ba1d0b5f2fa50d74d1427dd20695481b24a40dbdd517b8f96ceaf07",
+  "files": [
+    {
+      "name": "SD/1/Fire-Wrath__01.png",
+      "bytes": 15915,
+      "sha256": "015b38192bc7f1f7b298f8651926716af20682d1f37edd2b8e1a6b70839266c8",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/1/Fire-Wrath__02.png",
+      "bytes": 19488,
+      "sha256": "eae21ecf977098430b55dea00c79e452a23ca15bae8dbe390b6e3f8185686a61",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/1/Fire-Wrath__03.png",
+      "bytes": 27045,
+      "sha256": "06a8d33a8dc59a1175df117b316bb6aaf7e1d3c770ca8f18cfb66923fae99db0",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/1/Fire-Wrath__04.png",
+      "bytes": 23381,
+      "sha256": "1d3793c8e6da02b360f00cb0697ab04a490ebd40aaa822fa2f7154c34c9eb4ee",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/1/Fire-Wrath__05.png",
+      "bytes": 34360,
+      "sha256": "bcfb4183ab2e18d5910605508b7c5b3581f860e5ae0aff99c4d0c73cca262499",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/2/Fire-Wrath__06.png",
+      "bytes": 23446,
+      "sha256": "15f2ac5ba6d70409cad35fa2b96fbd6336f054924e83c29ba6112146cbde1c14",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/2/Fire-Wrath__07.png",
+      "bytes": 29372,
+      "sha256": "0dc1f414bc704f45b007fa6e904f30f4bb0a599d887e768618c07bf392deda14",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/2/Fire-Wrath__08.png",
+      "bytes": 32552,
+      "sha256": "ca87713cea072e17a726cf271c093f5b953e301300ed1e42b6e50e94e8c8cf5b",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/2/Fire-Wrath__09.png",
+      "bytes": 32216,
+      "sha256": "d6770c3cc39728c71045566db956ca6c03eb5d22754074c6c21fe045ae89b2d1",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/2/Fire-Wrath__10.png",
+      "bytes": 31729,
+      "sha256": "4395fb66b797079f7dff3110f8d13ccee1d17658700c8f4e3e961bb8b438f2e4",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/3/Fire-Wrath__11.png",
+      "bytes": 14237,
+      "sha256": "e736b86a8bcfa04d48efe510dc477a634385b2526e0bbae792fc5c336a7e069e",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/3/Fire-Wrath__12.png",
+      "bytes": 21413,
+      "sha256": "33baf6abc634fd0f5df2b8fde753e5d5edca57b4c5a3d2e1eba525014837484d",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/3/Fire-Wrath__13.png",
+      "bytes": 27109,
+      "sha256": "41d7a9be03c05f54ca15167516718e7e4780e0fe55ab4953ee42c6c37416190a",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/3/Fire-Wrath__14.png",
+      "bytes": 30298,
+      "sha256": "59592d3f3ccc854eef9d9efe5aab82c0db323d0525b557ea7632b71414abd10c",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/3/Fire-Wrath__15.png",
+      "bytes": 15419,
+      "sha256": "e11c67a0aad99d388931f1fc686f8984e1ef3eb07825712f483305ad8c45a612",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/4/Fire-Wrath__16.png",
+      "bytes": 24264,
+      "sha256": "e37b92286765fbb1de462a30b2292e9cd4766a2647703331a808aac2fc08e008",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/4/Fire-Wrath__17.png",
+      "bytes": 25481,
+      "sha256": "9aef1bd1f549e93231130954660b0ceda69a31a8d94c9da7d07b6fd0dffd1e07",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/4/Fire-Wrath__18.png",
+      "bytes": 34678,
+      "sha256": "9b74bf6dce535941b4836eccc01663996e03c9ec74951841fdb034ebb672568b",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/4/Fire-Wrath__19.png",
+      "bytes": 37627,
+      "sha256": "ca9b3a6651479af71c1db096ea316b56e428b95e925e153c98578f175f3bcc72",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/4/Fire-Wrath__20.png",
+      "bytes": 36581,
+      "sha256": "53d9d4f8094f531dc1ec0fd4f8abc02cc5da21ee9e9794871374dd451547db29",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/5/Fire-Wrath__21.png",
+      "bytes": 17016,
+      "sha256": "4f9a576ebb30074c4c4f26c0250078da06f8309468071d11ec918cf107f1df7a",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/5/Fire-Wrath__22.png",
+      "bytes": 26860,
+      "sha256": "eeb6aa126caf3ef5d1de7c51b7a0325821c3d1a77272307d8580e42093419a30",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/5/Fire-Wrath__23.png",
+      "bytes": 32149,
+      "sha256": "1a0fe9873f3f0732ef2db76a50003744434eb5fe0b8d85a3564f845ddc794072",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/5/Fire-Wrath__24.png",
+      "bytes": 28783,
+      "sha256": "fae6eda5c6fbd6323f04c41e7864993c2e40ef4f4a3ca0158d96f9e68f431d93",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/5/Fire-Wrath__25.png",
+      "bytes": 20005,
+      "sha256": "a8c1747062ffec01942e7c82eda034e571a50f2a4fd6af1fd87e3c98177b41db",
+      "size": [
+        200,
+        200
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/Preview_1.png",
+      "bytes": 400183,
+      "sha256": "877065ba6139658d934d1c6690921c5e23574d6a68224b84083222a7925a8d78",
+      "size": [
+        1000,
+        1000
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "SD/SD.png",
+      "bytes": 615038,
+      "sha256": "fa37051351aa92af1660b640749071682a64bba9050aed0be08961ce3c9dc6a4",
+      "size": [
+        1000,
+        1000
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    }
+  ]
+}

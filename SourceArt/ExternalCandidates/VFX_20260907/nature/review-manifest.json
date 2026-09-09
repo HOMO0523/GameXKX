@@ -1,0 +1,283 @@
+{
+  "key": "nature",
+  "url": "https://opengameart.org/sites/default/files/Nature%20Magic%20Effect.zip",
+  "page": "https://opengameart.org/content/nature-magic-effect",
+  "archive_sha256": "46f44a30d38b65d55ed1101ce8dc8907e31043958abaf9e2b1894508438815f8",
+  "files": [
+    {
+      "name": "0-1.png",
+      "bytes": 9194,
+      "sha256": "a51af334da74ac89de400c2f273720dd4b306f6df8bcdabad3ed25d9e0c653c3",
+      "size": [
+        192,
+        115
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "0-2.png",
+      "bytes": 12317,
+      "sha256": "46dfc9ea4220b672cf06d6e6274b3b55d21d37e79aa940c9cc40aa1b2e7e7ef2",
+      "size": [
+        196,
+        114
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "0-3.png",
+      "bytes": 18018,
+      "sha256": "ec24048191364572b418dd697c2a94b24114c162f7ef46ef07cf3cdd7b532983",
+      "size": [
+        209,
+        115
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "0-4.png",
+      "bytes": 26475,
+      "sha256": "6024b42b84844835312644cc9ae4f69cd1fae47434983c1ad256fa6327d86463",
+      "size": [
+        268,
+        134
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "0-5.png",
+      "bytes": 35403,
+      "sha256": "cdfe177ed0b03ebbe475a7d92a3a76e3005413d926bb3ac4ad11217c4d79be0a",
+      "size": [
+        280,
+        143
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-1.png",
+      "bytes": 7705,
+      "sha256": "aa19c2bb6c82060734dc76310f8bc2d5b71772ba3ad77a30853fd99026c5fd36",
+      "size": [
+        118,
+        61
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-2.png",
+      "bytes": 9205,
+      "sha256": "487d57800eb43136f507d94aecd24aa0c490f9c676931fbcdd04813328434aa1",
+      "size": [
+        124,
+        77
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-3.png",
+      "bytes": 14297,
+      "sha256": "3786004502f8d9ef1be12d3b4e95001e6a2caead2f8c810694a812e7d0c0b0d7",
+      "size": [
+        217,
+        77
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-4.png",
+      "bytes": 19730,
+      "sha256": "e203bf3323efd14017c3a5873aa368ec714dbe820627e870054af5414104402c",
+      "size": [
+        218,
+        121
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-5.png",
+      "bytes": 26810,
+      "sha256": "c881c67b318aaa49fa3c148b06c00633bf1f8d2918a939a9236ffbb16971157b",
+      "size": [
+        217,
+        120
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-6.png",
+      "bytes": 27617,
+      "sha256": "f4756e8a97eabcd26351de7fc44581a73102015328baebb4a5266ed86533f3b8",
+      "size": [
+        217,
+        120
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "1-7.png",
+      "bytes": 30102,
+      "sha256": "586a9a4cb5ab2e617b0afa7710982922aa6ba7ac4d2b122a7a4f1d1296c8f23c",
+      "size": [
+        218,
+        121
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-1.png",
+      "bytes": 9624,
+      "sha256": "51024c5bc9f0ddee8b60f76d2595148ed3032cbc3a0106ae34fecb8c8195cd61",
+      "size": [
+        133,
+        70
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-2.png",
+      "bytes": 12978,
+      "sha256": "3e7a428c018dc8ff52923fc5c2e1ce5493b1181a3023309968d32aa9d27d4b32",
+      "size": [
+        133,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-3.png",
+      "bytes": 14024,
+      "sha256": "86e4ada5f368fa0d55a8c241820615d789305c8605231f2046675a13cbf2bb52",
+      "size": [
+        133,
+        111
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-4.png",
+      "bytes": 16495,
+      "sha256": "b2bb4501c487e3e37d4830e3728dd7c18797d1568153ba9145b1db8ca3b23eac",
+      "size": [
+        133,
+        126
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-5.png",
+      "bytes": 17274,
+      "sha256": "47a0cdc5655d9c3dd1591b7c013a0b19a6bb7263e9334659aed0d0cec56ea0c0",
+      "size": [
+        133,
+        136
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-6.png",
+      "bytes": 19056,
+      "sha256": "6e0e4c37211f598a49c3d0187e74da65f0e1b026c9334adab497947499a8d2f9",
+      "size": [
+        133,
+        126
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "2-7.png",
+      "bytes": 21844,
+      "sha256": "89a0678f0cc212f3bc9cd1cadfeb556ea6f4d3bc94be0a2ef82bc6c1cab3b8f8",
+      "size": [
+        133,
+        137
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "3-1.png",
+      "bytes": 9962,
+      "sha256": "bbe43be73a9a23ebe771b6a9397171ea45fa3ca34bcbf2aa21f63c8731691b99",
+      "size": [
+        75,
+        127
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "3-2.png",
+      "bytes": 10413,
+      "sha256": "1b8e5d84d485533f16c5f2875aba98352f0f3412b539afe294a442863c775d0a",
+      "size": [
+        75,
+        127
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "3-3.png",
+      "bytes": 13109,
+      "sha256": "3e0beb06778d47e9981d48d4123f85fe5f9b9053c7a13cf33f32a982f2a40d3e",
+      "size": [
+        75,
+        147
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "3-4.png",
+      "bytes": 14435,
+      "sha256": "f61b0b58b80dca46144e24cc820a8da2b246ca00dfc4e7d97fc9111b9dc071cb",
+      "size": [
+        80,
+        164
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "3-5.png",
+      "bytes": 14730,
+      "sha256": "628ac32a72e8f4c0bf9e990d3d9ecdc9fabc49ed00605224cd503b792aa82548",
+      "size": [
+        83,
+        191
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Preview.png",
+      "bytes": 353036,
+      "sha256": "78aa6299d5022e1e593565db41eb4c46f74cc835897841228794f4a48bcf459c",
+      "size": [
+        1000,
+        1000
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    }
+  ]
+}

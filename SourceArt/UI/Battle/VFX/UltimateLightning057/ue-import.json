@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "textures": [
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_01.T_UltimateLightning057_Atlas_01",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_01.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_02.T_UltimateLightning057_Atlas_02",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_02.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_03.T_UltimateLightning057_Atlas_03",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_03.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_04.T_UltimateLightning057_Atlas_04",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_04.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_05.T_UltimateLightning057_Atlas_05",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_05.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_06.T_UltimateLightning057_Atlas_06",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_06.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    },
+    {
+      "texture": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_07.T_UltimateLightning057_Atlas_07",
+      "source": "..\\..\\..\\..\\UE5 demo\\GameXXK\\SourceArt\\UI\\Battle\\VFX\\UltimateLightning057\\Atlases\\T_UltimateLightning057_Atlas_07.png",
+      "source_size": [
+        2592,
+        736
+      ]
+    }
+  ],
+  "material": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/M_UltimateLightning057.M_UltimateLightning057",
+  "instances": [
+    "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/MI_UltimateLightning057_Friendly.MI_UltimateLightning057_Friendly",
+    "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/MI_UltimateLightning057_Canonical.MI_UltimateLightning057_Canonical"
+  ],
+  "frame_count": 56,
+  "friendly_flip_x": 1,
+  "hooked_to_battle": false
+}

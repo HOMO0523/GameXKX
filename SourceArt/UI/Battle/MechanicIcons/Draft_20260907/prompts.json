@@ -1,0 +1,32 @@
+{
+  "mage_lightning": {
+    "mode": "built-in image_gen",
+    "prompt": "Create one production-style 2D status icon for a Chinese wuxia ink-and-parchment card game. It must match a restrained hand-painted flat ink silhouette system: broad simple shapes, slightly rough brush edges, very subtle pigment grain, one main accent color, highly legible at 28 pixels. Center the icon, fill about 76 percent of a square canvas, with safe transparent margins. Truly transparent alpha background. No square badge, no surrounding frame, no text, no numbers, no labels, no 3D, no glossy lighting, no bloom, no decorative scene. Output a single isolated icon on a 512x512 transparent PNG. A bold yellow-gold lightning bolt, a single energetic angular brush stroke with one small branching tip; dark ochre ink edging, golden yellow body, compact strong silhouette.",
+    "status": "draft for review; not imported"
+  },
+  "mage_fire": {
+    "mode": "built-in image_gen",
+    "prompt": "Create one production-style 2D status icon for a Chinese wuxia ink-and-parchment card game. It must match a restrained hand-painted flat ink silhouette system: broad simple shapes, slightly rough brush edges, very subtle pigment grain, one main accent color, highly legible at 28 pixels. Center the icon, fill about 76 percent of a square canvas, with safe transparent margins. Truly transparent alpha background. No square badge, no surrounding frame, no text, no numbers, no labels, no 3D, no glossy lighting, no bloom, no decorative scene. Output a single isolated icon on a 512x512 transparent PNG. A simple red flame with three broad tapered tongues, warm vermilion red body and subtle dark brick-red ink edges; a compact graphic flame, distinct from an orange burning-debuff icon.",
+    "status": "draft for review; not imported"
+  },
+  "mage_ice": {
+    "mode": "built-in image_gen",
+    "prompt": "Create one production-style 2D status icon for a Chinese wuxia ink-and-parchment card game. It must match a restrained hand-painted flat ink silhouette system: broad simple shapes, slightly rough brush edges, very subtle pigment grain, one main accent color, highly legible at 28 pixels. Center the icon, fill about 76 percent of a square canvas, with safe transparent margins. Truly transparent alpha background. No square badge, no surrounding frame, no text, no numbers, no labels, no 3D, no glossy lighting, no bloom, no decorative scene. Output a single isolated icon on a 512x512 transparent PNG. A single blue diamond-shaped ice crystal: one tall rhombus with four clean tapered points, pale icy blue body, one simple darker blue facet, subtle dark blue ink edges. Minimal facets, strong clean silhouette.",
+    "status": "draft for review; not imported"
+  },
+  "mage_universal": {
+    "mode": "built-in image_gen",
+    "prompt": "Create one production-style 2D status icon for a Chinese wuxia ink-and-parchment card game. It must match a restrained hand-painted flat ink silhouette system: broad simple shapes, slightly rough brush edges, very subtle pigment grain, one main accent color, highly legible at 28 pixels. Center the icon, fill about 76 percent of a square canvas, with safe transparent margins. Truly transparent alpha background. No square badge, no surrounding frame, no text, no numbers, no labels, no 3D, no glossy lighting, no bloom, no decorative scene. Output a single isolated icon on a 512x512 transparent PNG. A pale green gaseous qi symbol made from two broad curled vapor strokes forming a compact open spiral. Light sage-green pigment with muted olive ink accents and brush-tapered ends. Airy flowing qi, not leaves, not a plant, not a solid orb.",
+    "status": "draft for review; not imported"
+  },
+  "healer_formula": {
+    "mode": "built-in image_gen",
+    "prompt": "Create one production-style 2D status icon for a Chinese wuxia ink-and-parchment card game. It must match a restrained hand-painted flat ink silhouette system: broad simple shapes, slightly rough brush edges, very subtle pigment grain, one main accent color, highly legible at 28 pixels. Center the icon, fill about 76 percent of a square canvas, with safe transparent margins. Truly transparent alpha background. No square badge, no surrounding frame, no text, no numbers, no labels, no 3D, no glossy lighting, no bloom, no decorative scene. Output a single isolated icon on a 512x512 transparent PNG. A small roughly square sheet of traditional medicine wrapping paper viewed almost from above, warm cream parchment with two subtly folded corners and a small mound of muted brown-green medicinal powder in the center, plus three coarse dust specks. Thin rough brown ink contour. A very simple readable icon, no writing, no seal, no herbs, no bowl.",
+    "status": "draft for review; not imported"
+  },
+  "healer_formula_v2": {
+    "mode": "built-in image_gen edit",
+    "source": "healer_formula-draft-v1.png",
+    "change": "Flatten paper and replace powder heap with three small dust patches; keep transparent background and no baked numbers."
+  }
+}

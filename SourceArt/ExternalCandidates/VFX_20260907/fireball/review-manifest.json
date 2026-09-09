@@ -1,0 +1,316 @@
+{
+  "key": "fireball",
+  "url": "https://opengameart.org/sites/default/files/Fireball%20-%20Effect.zip",
+  "page": "https://opengameart.org/content/fireball-effect",
+  "archive_sha256": "87019874dd86a3e933efb73e1c0b44e898ee5898407289c2b247f634dbc573bc",
+  "files": [
+    {
+      "name": "Effects_Fire_0_01.png",
+      "bytes": 17968,
+      "sha256": "fac434141cb47acd19b18c489bad86be3d13aad0aec23d57069cb9bffa9a8c0b",
+      "size": [
+        188,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_02.png",
+      "bytes": 20190,
+      "sha256": "9211400a7a8beeb816b8d63c49ad2e68662a6d08c705b2868441983029d00858",
+      "size": [
+        187,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_03.png",
+      "bytes": 19240,
+      "sha256": "8ade7acd2a6559ffb8e895c9e7147eaf8832145947313c464883904ad9b9d6a3",
+      "size": [
+        188,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_04.png",
+      "bytes": 18557,
+      "sha256": "3353a2102fcbc34895333e24a47d26a8955e3062ecbfcda132404f7aecf50181",
+      "size": [
+        187,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_05.png",
+      "bytes": 17125,
+      "sha256": "3c0c0e0f516aa2c3a64be2cbe7b0c47b4251f139e2e2c3296604199a61234ab6",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_06.png",
+      "bytes": 19966,
+      "sha256": "35132b65b7cbb18d69dfe86050677be8c123e6e21771734f15e26aecda68b72c",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_07.png",
+      "bytes": 18708,
+      "sha256": "ee998c226ab7664e5fd8d9ab7899248e3c8f48694473b1194d0f3a8c74907353",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_08.png",
+      "bytes": 18278,
+      "sha256": "49a6fee35f7c5f36a18def647243a7d305ce93834e523c8777f88fa616fe772d",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_09.png",
+      "bytes": 21490,
+      "sha256": "e3a05704035538a148d1e76043b29c9d5bd8e51d625badf9f7b1980fa5da4a13",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_10.png",
+      "bytes": 25205,
+      "sha256": "aa51bc867dd1c45f3cb1e58864bac6ca496b388da9a6957f75c2795dbc952d45",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_11.png",
+      "bytes": 23524,
+      "sha256": "1efd5ad735694d1de5c14670d5c6a14a473f57a695551a45dfbca54b510e001a",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_12.png",
+      "bytes": 23109,
+      "sha256": "70971eb8358de6187b1c586ac93b16eff4470e21f58322614a1ff8ba7c225cc6",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_13.png",
+      "bytes": 18357,
+      "sha256": "43fde3e3853dcd5420ee527d82da26450f23c45a1fa83deeb3fe300c8edd0a17",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_14.png",
+      "bytes": 21054,
+      "sha256": "c77813a02aabcdcb6f438deb1c9b6a869b8051453cf3396be17a4c35141406b5",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_15.png",
+      "bytes": 19484,
+      "sha256": "76708441a70ae516dd6f119b9a01cffe7900be08a9cb6e546ffca77d57686855",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_16.png",
+      "bytes": 19878,
+      "sha256": "db618f4d1d6ad88c4b0a93f76b523e1092c2ee3bc9fbfcaa423193fc2caef622",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_17.png",
+      "bytes": 19200,
+      "sha256": "de2f179ec3050a58bd1de77941ab21577622462ec9ec83bce148253af1c5d7eb",
+      "size": [
+        188,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_18.png",
+      "bytes": 22518,
+      "sha256": "228610d232a3144d6fcbf5263c1e173da8aaa5338e8717d362832cbcaf9dede3",
+      "size": [
+        187,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_19.png",
+      "bytes": 20624,
+      "sha256": "7369027c4274d956204a7fd1cf53546624d8d6b5efda2d7941ca86bd3282a553",
+      "size": [
+        188,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_20.png",
+      "bytes": 20868,
+      "sha256": "45ecb9d63df9b0d13abdb79b7b0b758d7e45e9789e628d53f1e365a66dcb9f9c",
+      "size": [
+        187,
+        108
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_21.png",
+      "bytes": 19626,
+      "sha256": "f94b46dcc1b17c96d03cd10a234a78803f9119bb6b1cba04f19839e5127efc52",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_22.png",
+      "bytes": 22731,
+      "sha256": "0a219770f00bce38710084b18f43723727581f9bb2ff530c9225dd0938576ae4",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_23.png",
+      "bytes": 20948,
+      "sha256": "7e3e4dab31668ce0aba9d8a02e0f6288f35e5e29bd05fafc398d4a7c0c3b9b89",
+      "size": [
+        188,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_24.png",
+      "bytes": 21096,
+      "sha256": "53ea6dbfb4666faa46ac3b891dc6d8d422e63c005b16892ec067786271c7a753",
+      "size": [
+        187,
+        107
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_25.png",
+      "bytes": 16247,
+      "sha256": "4e989064d47e38f78b225ec305fa3d272909cbc61df2581ad15870e07ad9e27b",
+      "size": [
+        188,
+        106
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_26.png",
+      "bytes": 19060,
+      "sha256": "766ecefbb8b479b111edbd9aa4a68be3c7e227704b294ea5966e5c2eea232294",
+      "size": [
+        187,
+        106
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_27.png",
+      "bytes": 17684,
+      "sha256": "952e471f0b18f3550bf78b59c942e55e9a07de62ba88cf3b5652fe6a6102b4cb",
+      "size": [
+        188,
+        106
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    },
+    {
+      "name": "Effects_Fire_0_28.png",
+      "bytes": 17491,
+      "sha256": "47b606af63b6d72b72a6ff9cd8e6505b539ab9f7d926128fd552c82e6c235a84",
+      "size": [
+        187,
+        106
+      ],
+      "mode": "RGBA",
+      "frames": 1
+    }
+  ]
+}

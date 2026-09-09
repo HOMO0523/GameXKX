@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "textures": [
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_01.T_UltimateLightning057_Atlas_01",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_02.T_UltimateLightning057_Atlas_02",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_03.T_UltimateLightning057_Atlas_03",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_04.T_UltimateLightning057_Atlas_04",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_05.T_UltimateLightning057_Atlas_05",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_06.T_UltimateLightning057_Atlas_06",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    },
+    {
+      "path": "/Game/GameXXK/UI/Battle/VFX/UltimateLightning057/T_UltimateLightning057_Atlas_07.T_UltimateLightning057_Atlas_07",
+      "size": [
+        2592,
+        736
+      ],
+      "alpha_compression_preserved": true
+    }
+  ],
+  "friendly_flip_x": 1,
+  "canonical_flip_x": 0,
+  "hooked_to_battle": false
+}

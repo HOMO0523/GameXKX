@@ -1,0 +1,36 @@
+{
+  "id": "brandon-spells",
+  "author": "Augmentality (Brandon Morris), submitted by HaelDB",
+  "source": "https://opengameart.org/content/spell-sounds",
+  "license": "CC0-1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "license_choice": "CC0 selected; page may also offer other licenses",
+  "source_page_sha256": "5e288c5ad94ec46e2173dfc00f5a4455476dc63a7daa8fe8cde74c5bf2d71d8a",
+  "downloads": [
+    {
+      "url": "https://opengameart.org/sites/default/files/healing.ogg",
+      "file": "healing.ogg",
+      "bytes": 91152,
+      "sha256": "4600822379d18992e9f526b718395dc752821b6218ca5728fb2d5ea9cf774c6d"
+    },
+    {
+      "url": "https://opengameart.org/sites/default/files/electricspell.ogg",
+      "file": "electricspell.ogg",
+      "bytes": 341572,
+      "sha256": "c1c3fa48c7c209f8b8abc7423b3bd3f17dc489af3c4a92eb1fa20fe2adc447dc"
+    },
+    {
+      "url": "https://opengameart.org/sites/default/files/electricspell2.ogg",
+      "file": "electricspell2.ogg",
+      "bytes": 215995,
+      "sha256": "5fcb8824064d9dba2e3880d439a44b798ecdc2a58041cd028f094d774302a9a1"
+    }
+  ],
+  "audio_count": 3,
+  "audio": [
+    "electricspell.ogg",
+    "electricspell2.ogg",
+    "healing.ogg"
+  ],
+  "license_files": []
+}

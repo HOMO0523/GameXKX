@@ -1,0 +1,17 @@
+{
+  "frames": 56,
+  "rgba_frames": 56,
+  "atlases": 7,
+  "dimensions": [
+    640,
+    360
+  ],
+  "atlas_dimensions": [
+    2592,
+    736
+  ],
+  "source_atlas_rects_match": true,
+  "all_gutters_transparent": true,
+  "all_frames_have_transparency": true,
+  "friendly_flip_inside_frame": true
+}
