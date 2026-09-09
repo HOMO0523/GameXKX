@@ -36,7 +36,7 @@
     },
     {
       "characterId": "Npc.YueBai",
-      "displayName": "月白",
+      "displayName": "幽白",
       "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai",
       "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_09_yue_bai_idle_atlas.T_character_09_yue_bai_idle_atlas",
       "actions": ["Narrative.Idle", "Narrative.Appear", "Narrative.Advance", "Narrative.Exit", "Battle.Idle", "Battle.Attack"],
@@ -60,7 +60,7 @@
     },
     {
       "characterId": "Npc.QiongMeiEr",
-      "displayName": "琼梅儿",
+      "displayName": "琼幺儿",
       "portraitPath": "/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_QiongMeiEr.T_CardPortrait_Npc_QiongMeiEr",
       "animationLibraryPath": "/Game/GameXXK/BattleAnimations/Atlases/T_character_12_qiong_mei_er_idle_atlas.T_character_12_qiong_mei_er_idle_atlas",
       "actions": ["Narrative.Idle", "Battle.Idle", "Battle.Attack"],

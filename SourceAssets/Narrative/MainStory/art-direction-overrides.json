@@ -1,0 +1,81 @@
+{
+  "S01-03": {
+    "cast": [
+      "you_bai",
+      "hero",
+      "hunter"
+    ]
+  },
+  "S05-01": {
+    "key_moment": "豪言未出口，幽白先被山风吹成一面小旗，主角拢紧衣领沿旧道进寨。",
+    "camera": "Low uphill rear three-quarter view: large quiet foreground path sweeps toward a small distant porch, hero glances sideways at wind-flattened spirit.",
+    "scene": "At the foot of Cangshan the exact hero takes one well-planted uphill step on a broad old trail, firmly tucking his crossed collar with one hand. His basket tilts naturally with his turning shoulder. Beside him Youbai attempts a dignified face while its flame tip streams horizontally in the same wind as the hero's head ribbon. Closed map safely tucked at belt, not held open. Two very faint mountain planes and a small village roof give depth and a distant snowline; no snow emergency or summit yet.",
+    "mood": "Brisk comic arrival, the enormous mountain gently punctures their bravado."
+  },
+  "S05-02": {
+    "key_moment": "幽白朝着近在眼前的雪峰昂首，琼幺儿用铃柄把视线轻轻引回真正的山路。",
+    "camera": "From inside a village doorway, Qiong foreground in three-quarter profile, hero outside at lower step, small spirit turning between snow peak and curving road.",
+    "scene": "At the open mountain village porch, Qiong Yaoer has just lifted her small bell HANDLE to point past Youbai toward a winding old road around the slope. The bell does not touch the spirit. Hero stands one step lower outside, one hand on his basket strap, amusedly watching the spirit turn from the apparently close snowy peak to the actually usable path. Qiong leans lightly on the porch post, confident dry humor, no equipment handover. One broad doorway shape frames different depths, two faint landmark silhouettes, no active blizzard."
+  },
+  "S05-03": {
+    "key_moment": "风刚松口，琼幺儿掀开挡风帘确认石阶；主角仍捂着手，幽白的‘以静制动’还没说完。",
+    "camera": "Shelter interior looking diagonally out under one lifted cloth edge; warm compact group against a wide cool band of clearing weather.",
+    "scene": "All three remain safely inside a sturdy village porch as the worst gust passes. Qiong lifts one edge of a plain hanging wind cloth with her left hand to inspect the reappearing old stone path. Hero sits farther back on a simple wooden bench warming his hands, shoulders tucked, looking toward the opening; his intact folded-open map is firmly weighted under one small stone beside him. Youbai hovers upright near his cheek, trying to look strategic. Sparse large snow streaks outside only, no shower of dots, visible firm stairs, no rushing into a blizzard."
+  },
+  "S05-04": {
+    "key_moment": "主角蹲低把岩角、老松与旧道对成一线，琼幺儿顺着这条真路线领走，幽白只好告别那块‘很像鹰’的孤石。",
+    "camera": "Low sightline along a secure curving stone path beneath one broad overhang; main cast at staggered distances, a faint isolated wrong rock far away.",
+    "scene": "Hero crouches securely on the broad old stone trail, one knee down, using the straight bamboo pole as a low sightline toward the outward projecting rock and a bent pine beside its base. He is NOT aiming a weapon. Qiong a few paces farther along looks back while indicating the continuous trail with her open hand. Youbai turns away from a faint disconnected birdlike boulder across the valley. Show the correct rock overhang, bent pine and connected old path as three clear simple shapes. Firm ground, no cliff leap; map rolled away."
+  },
+  "S05-05": {
+    "key_moment": "幽白顺着直线飘，两个有脚的人沿石岸绕；转弯处的动静让轻松的队伍同时停住。",
+    "camera": "High oblique view, a single broad C-shaped bank wraps calm tarn, near hero larger, Qiong farther along, spirit above water edge.",
+    "scene": "A broad curved stone bank creates a strong C around calm pale tarn water. Hero pauses midway through a well-planted step on the verified path, brush and notebook tucked away, suddenly turning his head toward a hidden bend. Qiong farther along has stopped and raised one compact wait gesture; Youbai, which had floated a straighter line just over the bank, also turns sharply. Thin snow only off the firm route, not a hazardous snow crossing. No visible attacking animals or rescue outcome yet. Clear wide water shape, one large bank mass, no granular foam."
+  },
+  "S05-06": {
+    "key_moment": "主角稳住横竿清开窄道，琼幺儿守住落脚点并伸手接应，两人互相搭把手而不是单向救美。",
+    "camera": "Low oblique diagonal across a short stone-path narrowing: hero anchors lower foreground, Qiong braced one step up, cleared path recedes behind them.",
+    "scene": "The decisive cooperative rescue moment by the tarn: hero has both feet planted on a broad firm stone, front knee aligned with foot, sweeping his bamboo pole low and sideways to keep one project gray wolf and one project porcupine retreating toward open ground away from the party. No striking bodies, gore or new weapon. Qiong stands securely one step higher on the continuous old path, knees softly braced, reaching her free hand down ready to help hero negotiate that short step after the animals retreat; her other hand keeps her bell close. Their hands need not already connect. Youbai provides a small distracting flare from the opposite side. Everyone supported, no cliff dangling, no falling rocks, no balancing on an isolated pinnacle. Focus on coordinated action and alert eyelines, broad calm rock planes, actual route clear behind them.",
+    "mood": "Resourceful mutual rescue with a lively comic edge, credible balance and support.",
+    "monster_references": [
+      "SourceAssets/RouteEnemies/final_selected_v1/07_graywolf.png",
+      "SourceAssets/RouteEnemies/final_selected_v1/10_porcupine.png"
+    ]
+  },
+  "S05-07": {
+    "key_moment": "主角收好图，踏上亲自核实的下一阶；琼幺儿领先半步回望，幽白这次跟着真路走。",
+    "camera": "Ascending rear three-quarter long shot with one near planted shoe and basket silhouette, gentle diagonal trail opening into pale summit air.",
+    "scene": "After rescue, hero deliberately places his cloth shoe on the NEXT broad secure old stone step, knee naturally bent, bamboo pole planted beside him, closed map safely tucked into basket. Qiong leads only half a pace and looks back with a quiet approving smile. Youbai floats low beside the visible trail rather than racing toward shortcuts. Keep hero face visible in partial turning profile. Wide ivory mountain air and two soft peaks; steady resolve, no charge, leap or dangerous drop."
+  },
+  "S05-08": {
+    "key_moment": "嘴硬的大侠先坐下缓口气，琼幺儿把脚步也慢下来，幽白不好意思地飘回身边。",
+    "camera": "Intimate near eye-level side shot under one broad shelter rock; hero seated lower, Qiong crouched at conversational height, spirit returning from open side.",
+    "scene": "At a safe sheltered rest rock after rescue, hero sits supported with both shoes flat on the ground and hands loosely resting on knees, giving a rueful embarrassed half-smile. Qiong has crouched comfortably beside him at eye level, patient and warm, no consoling head-pat or forced embrace. Youbai returns close from the open side with an unusually sheepish tilted face. Intact map folded on basket, not displayed between them. Large shelter shadow and soft empty mountain air; honest fear settling into readiness, no abandonment or permanent retreat.",
+    "mood": "Quiet human warmth with self-deprecating humor, a necessary breath after action."
+  },
+  "S05-09": {
+    "key_moment": "幽白主动挪开，给主角落笔订正留出位置：守旧图的人终于肯让新墨落下。",
+    "camera": "Close oblique viewpoint along the low writing surface, pen hand foreground, flame face near center, Qiong attentive but smaller behind.",
+    "scene": "On a broad safe upper-mountain ledge, hero kneels comfortably beside a flat stone and lowers his brush toward a blank CORRECTION margin of the intact map. Youbai visibly moves aside from that exact spot, face unusually sincere with a stubborn little smile, providing soft local light without touching or burning paper. Qiong sits farther back with bell quiet in her lap, watching the exchange. Only three simple pictorial rivers/mountains on paper and a generous blank margin; no legible writing, no magic runes, no human transformation, no death or fading-away symbolism. Hero and spirit make direct eye contact just before the stroke.",
+    "mood": "Small sincere gesture of trust; warm with an affectionate comic undercurrent."
+  },
+  "S05-10": {
+    "key_moment": "最后一笔落下又留白，三人面向云海歇肩；幽白的长篇感言被一阵山风轻轻打短。",
+    "camera": "Wide summit panorama seen from slightly behind and beside seated travelers, large quiet foreground map corner leads into expansive cloud sea.",
+    "scene": "At the broad SAFE summit, hero sits comfortably on a low flat rock and has just closed his brush after completing the last correction. The map rests securely across his lap with one generous blank end retained for later journeys, not held up for a group photo. Qiong sits on a separate lower stone facing the open cloud sea, turns her head toward the hero with earned quiet joy. Youbai beside them speaks proudly while its flame tip and Qiong's scarf are gently lifted by the same breeze, affectionate light comedy. Faces visible in three-quarter profile, no character at a precipice edge. One plain squat weathered stele nearby, no readable lettering. Broad pale cloud band, two ink peak silhouettes and warm ivory space; everyone alive and together.",
+    "mood": "Earned quiet accomplishment, expansive breathing room, affectionate light ending."
+  },
+  "S05-11": {
+    "key_moment": "琼幺儿轻摇小铃，幽白停在半句，主角笑着把注意力从嘴上转回脚下的路。",
+    "camera": "Close comic triangular staging from below porch rail, bell foreground normal scale, Qiong on one side and interrupted spirit on other, hero one depth behind.",
+    "scene": "At the mountain village porch before rescue, Qiong gives a tiny casual shake of her bronze hand bell near shoulder height while leaning lightly against a timber post. Youbai immediately pauses with mouth half open and offended eyebrows, looking at the bell; hero farther behind laughs over one raised shoulder, hand on basket strap. Only one very small motion accent beside bell, no magical blast or spell. Preserve Qiong's original beaded cream cap, braid, red-orange jacket, ochre skirt and cream/red scarf; new natural pose. Warm blank backdrop with one porch post and a faint old path, not a crowded inn."
+  },
+  "S03-10": {
+    "scene": "At the decisive moment of a forest ambush, the hero stands in the FRONT RIGHT defending the party against one exact project gray wolf with a horizontal bamboo pole. Jin Gui stays CLOSE beside and just behind the hero's basket, cradling the hero's map pouch against his own chest with ONE forearm; TWO rolled map ends visibly protrude so its contents are clear. A short SLACK safety cord still connects the pouch to hero's basket. Jin Gui's other hand is raised open toward the porter in a firm stop gesture. On the LEFT the porter has reached toward the maps, but his outstretched hand remains visibly EMPTY and blocked by Jin Gui's protective position. No hand-to-hand wrestling, no ropes under tension, no transfer between enemies. Jin Gui's long bamboo pipe is safely tucked at his belt, not used as a hook or weapon. Clear alliance: hero faces beasts, Jin Gui faces thief, the two friends back each other up; porter is the outsider. Naturally planted feet, exactly two arms each, separated hands, clean readable negative spaces, one broad tree behind porter. No extra enemies in this close framing.",
+    "camera": "Clear three-quarter layered staging: thief at left reaching empty-handed, Jin Gui in middle shielding map pouch beside hero's basket, hero front-right facing exact gray wolf. Map rolls make the threatened object readable; no pipe-hook tug of war.",
+    "monster_references": [
+      "SourceAssets/RouteEnemies/final_selected_v1/07_graywolf.png"
+    ],
+    "key_moment": "主角横竿挡兽，金贵贴近背篓护住露出卷轴的图袋，脚夫伸手抓空；一眼看清两位同伴分工护人护图。"
+  }
+}

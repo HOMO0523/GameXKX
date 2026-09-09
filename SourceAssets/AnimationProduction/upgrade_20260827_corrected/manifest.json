@@ -1,0 +1,931 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "sourceRoot": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧",
+  "candidateCount": 27,
+  "ignoredSources": [
+    "怪物们/鹿鞠躬.mov"
+  ],
+  "globalContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/all_candidates_contact_sheet.png",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation",
+  "candidates": [
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_combat_idle_candidate",
+      "sourceRelativePath": "主角状态机/主角攻击/主角战斗待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角攻击\\主角战斗待机.mov",
+      "sourceVideoSha256": "611f8a60f4e6480678b3c2925ab6dbe4ff8cbc0e562da4297b7dd06c09a4098f",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_combat_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "character_00_hero_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 2.02,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 61
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_combat_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_attack_punch_candidate",
+      "sourceRelativePath": "主角状态机/主角攻击/主角打拳.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角攻击\\主角打拳.mov",
+      "sourceVideoSha256": "eb73fb995f54d35849a20b76a696da3851f2b32a0b9aaf2ad023d1a808b4461b",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_punch_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "character_00_hero_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.3,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 39
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_attack_punch_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_attack_kick_candidate",
+      "sourceRelativePath": "主角状态机/主角攻击/主角踢腿.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角攻击\\主角踢腿.mov",
+      "sourceVideoSha256": "11f5f4820bb55e1053cfc6e9469cef59ce3afc13a1dbeac647d55fcad183491c",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_attack_kick_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "character_00_hero_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.3,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 39
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_attack_kick_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_hero_deep_breath",
+      "sourceRelativePath": "主角状态机/主角随机播放呼吸状态机/主角深呼吸.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角随机播放呼吸状态机\\主角深呼吸.mov",
+      "sourceVideoSha256": "34f5e9f62d996337ea0950ac2e499707b5b007807578a8b5681f072a86ddd879",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_hero_deep_breath/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_deep_breath",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 152
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_hero_deep_breath/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_hero_adjust_backpack",
+      "sourceRelativePath": "主角状态机/主角随机播放呼吸状态机/主角调整背包.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\主角随机播放呼吸状态机\\主角调整背包.mov",
+      "sourceVideoSha256": "c1b45a6c23bdf278575fd9acb8c2f1f7e62beb21e9bbfeebb2ef3ddc18ea659e",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_hero_adjust_backpack/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_adjust_backpack",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 151
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_hero_adjust_backpack/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_walk_start_candidate",
+      "sourceRelativePath": "主角状态机/基础状态机/主角开始行走.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角开始行走.mov",
+      "sourceVideoSha256": "cf89784adb62b7ead70d8439c426a3d946f45546404c694d6525b49ffa07eb49",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_start_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_walk_start_left",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 0.88,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 26
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_walk_start_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_state_idle_candidate",
+      "sourceRelativePath": "主角状态机/基础状态机/主角待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角待机.mov",
+      "sourceVideoSha256": "b359f6f2f44eca9ba32324062ba49388b06723156cc8671f66e382bda75638b6",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_state_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_idle_left",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 2.02,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 61
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_state_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_walk_stop_candidate",
+      "sourceRelativePath": "主角状态机/基础状态机/主角急停.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角急停.mov",
+      "sourceVideoSha256": "146dab5578f2b48037649603086383a3e6c394614d7811c2425239d6379c377b",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_stop_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_walk_stop_left",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 0.37,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 11
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_walk_stop_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "character_00_hero_walk_loop_candidate",
+      "sourceRelativePath": "主角状态机/基础状态机/主角行走中.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角行走中.mov",
+      "sourceVideoSha256": "bbaad715c1638546f33e64e3392045b224a1e0ff20f5b60bcf55d613617c533a",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/character_00_hero_walk_loop_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_walk_loop_left",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.27,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 38
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/character_00_hero_walk_loop_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_hero_collect_item_with_ui",
+      "sourceRelativePath": "主角状态机/角色采集物品需要弹出物品UI-1.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\角色采集物品需要弹出物品UI-1.mov",
+      "sourceVideoSha256": "f8b20e8ec9946f367c79679dde082021162af8090b76e77ede00ce6b71b31029",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_hero_collect_item_with_ui/raw/source.mov",
+      "replacementTargetSuggestion": "hero_town_collect_item",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 2.72,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 82
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_hero_collect_item_with_ui/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_16_toad_idle_candidate",
+      "sourceRelativePath": "怪物们/大青蛙动一动.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\大青蛙动一动.mov",
+      "sourceVideoSha256": "f5fbf192af6370a0df827a9664004eff75e807b8256a6e1d6ffabc07d219577d",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_16_toad_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_16_toad_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 151
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_16_toad_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_07_graywolf_idle_candidate",
+      "sourceRelativePath": "怪物们/狼待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\狼待机.mov",
+      "sourceVideoSha256": "3516667188baa579bdaac2fd89630cb926987bbab80581df8b48d29d707b9f4c",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_07_graywolf_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_07_graywolf_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 4.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 122
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_07_graywolf_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_11_graymane_attack_candidate",
+      "sourceRelativePath": "怪物们/狼王攻击.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\狼王攻击.mov",
+      "sourceVideoSha256": "7c8100c834908198e92c1c2ffa161475ffd10c382ca224dd062876ec5d66a447",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_11_graymane_attack_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_11_graymane_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.42,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 43
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_11_graymane_attack_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_05_ironfeather_idle_candidate",
+      "sourceRelativePath": "怪物们/铁公鸡待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\铁公鸡待机.mov",
+      "sourceVideoSha256": "fbbd4d6d6ad47b9034a0d5e07db5087795682d574199d109af8e646aad61d30f",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_05_ironfeather_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_05_ironfeather_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 151
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_05_ironfeather_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_01_rooster_idle_candidate",
+      "sourceRelativePath": "怪物们/鸡待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\鸡待机.mov",
+      "sourceVideoSha256": "41d67f08261acd0f606363ee84d2731273bf532461cc0eb4ae264b85774cd0be",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_01_rooster_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_01_rooster_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 4.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 122
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_01_rooster_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_01_rooster_attack_candidate",
+      "sourceRelativePath": "怪物们/鸡攻击.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\鸡攻击.mov",
+      "sourceVideoSha256": "374eeab8c3943430fed52e129dc53a24e2cef4a72c497ef3812c05c729b06a08",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_01_rooster_attack_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_01_rooster_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.3,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 39
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_01_rooster_attack_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_18_deer_idle_candidate",
+      "sourceRelativePath": "怪物们/鹿待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\鹿待机.mov",
+      "sourceVideoSha256": "ccba0b59e7114414b70b6cc2717c6e1eccc6c7a24b71320fd912030cdf687bdd",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_18_deer_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_18_deer_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 151
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_18_deer_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_18_deer_attack_candidate",
+      "sourceRelativePath": "怪物们/鹿攻击.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\鹿攻击.mov",
+      "sourceVideoSha256": "b8ffa825b69575aff9d0e9ad838f38a548a32d0c56b450826e39828b39cdff5f",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_18_deer_attack_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_18_deer_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.35,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 40
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_18_deer_attack_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_03_weasel_idle_candidate",
+      "sourceRelativePath": "怪物们/黄鼠狼待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\黄鼠狼待机.mov",
+      "sourceVideoSha256": "5d006ef1d72266dfe311703b7d03b02889dc85bf531cfd4459ab24da22871efc",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_03_weasel_idle_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_03_weasel_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 2.9,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 87
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_03_weasel_idle_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "enemy_03_weasel_attack_candidate",
+      "sourceRelativePath": "怪物们/黄鼠狼攻击.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\怪物们\\黄鼠狼攻击.mov",
+      "sourceVideoSha256": "ab8acdce4e2285deeb0121b572f17b22e30f3dc6f802dfb0e46809b5981f709d",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_03_weasel_attack_candidate/raw/source.mov",
+      "replacementTargetSuggestion": "enemy_03_weasel_attack",
+      "sourceMetadata": {
+        "size": [
+          2674,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.44,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 43
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/enemy_03_weasel_attack_candidate/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "candidate_yue_fire_idle",
+      "sourceRelativePath": "月火/月火idle.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\月火\\月火idle.mov",
+      "sourceVideoSha256": "055696e2599bddec8d669b38cd9bbd5e8dd2011d569ea7a99fbd8b10a2214971",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/raw/source.mov",
+      "replacementTargetSuggestion": "character_09_yue_bai_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 4.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 122
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/candidate_yue_fire_idle/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "candidate_yue_fire_intro",
+      "sourceRelativePath": "月火/月火出场.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\月火\\月火出场.mov",
+      "sourceVideoSha256": "ee00d3b71f07ca82b42162790ce85289414e72b66a1fbd7768431f6a82c2139c",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_intro/raw/source.mov",
+      "replacementTargetSuggestion": "character_09_yue_bai_intro",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 32
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/candidate_yue_fire_intro/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "candidate_yue_fire_outro",
+      "sourceRelativePath": "月火/月火离场.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\月火\\月火离场.mov",
+      "sourceVideoSha256": "568d080200cfd91d90bfc6172708afa2a8c703c3923f6c57343143d989a824d8",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_outro/raw/source.mov",
+      "replacementTargetSuggestion": "character_09_yue_bai_outro",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 1.07,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 32
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/candidate_yue_fire_outro/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_horse_idle",
+      "sourceRelativePath": "马和马车/马待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\马和马车\\马待机.mov",
+      "sourceVideoSha256": "a040e5f69c891d85cae4cfd9a1a374af1fb05bfe7be2e8aa9f456f488418f29a",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_horse_idle/raw/source.mov",
+      "replacementTargetSuggestion": "cinematic_horse_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 6.0,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 180
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_horse_idle/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_horse_start_run_stop",
+      "sourceRelativePath": "马和马车/马起跑奔跑急停.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\马和马车\\马起跑奔跑急停.mov",
+      "sourceVideoSha256": "eac84e2b2b9a262f85662bd85747efeb03a64992ce261b421c3711aa79ab983d",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_horse_start_run_stop/raw/source.mov",
+      "replacementTargetSuggestion": "cinematic_horse_start_run_stop",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 5.6,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 168
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_horse_start_run_stop/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_carriage_run_stop",
+      "sourceRelativePath": "马和马车/马车奔跑急停.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\马和马车\\马车奔跑急停.mov",
+      "sourceVideoSha256": "25f78f0b112523357c80b49a96deaf2054cded2b3c5b650edfa54589d90a9f78",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_carriage_run_stop/raw/source.mov",
+      "replacementTargetSuggestion": "cinematic_carriage_run_stop",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 4.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 121
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_carriage_run_stop/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    },
+    {
+      "schemaVersion": 1,
+      "status": "review_pending",
+      "candidateId": "cinematic_carriage_post_stop_idle",
+      "sourceRelativePath": "马和马车/马车急停后待机.mov",
+      "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\马和马车\\马车急停后待机.mov",
+      "sourceVideoSha256": "4f13b3519fbcdcbce99f6d38387be440c99a46df97fd8143c1a141ec0a9c6d78",
+      "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/cinematic_carriage_post_stop_idle/raw/source.mov",
+      "replacementTargetSuggestion": "cinematic_carriage_post_stop_idle",
+      "sourceMetadata": {
+        "size": [
+          1440,
+          1440
+        ],
+        "fps": 30.0,
+        "duration": 4.04,
+        "codec": "hevc",
+        "audioCodec": "aac",
+        "estimatedSourceFrameCount": 121
+      },
+      "background": {
+        "cornerMedianRgb": [
+          0,
+          0,
+          0
+        ],
+        "cornerMaximumDeviation": 0.0,
+        "classification": "black",
+        "mattingStatus": "pending_visual_review"
+      },
+      "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-corrected/cinematic_carriage_post_stop_idle/source_contact_sheet.png",
+      "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+      "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "id": "S04",
+  "title": "土司寨·信任不靠嗓门大",
+  "summary": "幽白的老面子没能直接开门，一道看反的旧刻痕才让对话继续。牛、旧渠和羊皮图牵出寨子的变迁，也让宋金宝露出花哨衣裳下肯干事的一面。",
+  "nodes": {
+    "S04-01": {
+      "summary": "幽白摆足老相识的架子，土司首领却把门杖横得更稳：曾有人拿着‘祖传宝图’，骗走了寨里的修渠钱。",
+      "lines": "you_bai|老朋友，本座来了！这位少侠随我入寨——\nnarrator|木杖横过门前。首领看一眼幽白，又看一眼你的图袋，没有让开。\ntusi|上回来的人，也说自己是老朋友。还带了张祖传宝图。\nhero|后来呢？\ntusi|钱跟人走了，渠替他留下来干着。你说我该先认脸，还是先问事？\nyou_bai|本座……明白了。我们来核对旧路与羊皮图，不来收钱。\nhero|不急着开门。我们带了永州碑记的线索，请您先听听。\ntusi|愿意把话说实，就站这儿慢慢说。",
+      "key_moment": "幽白的熟人姿态被横杖截住，首领的戒备有具体旧伤而非无理刁难。",
+      "camera": "Low frontal-oblique threshold shot, chief's horizontal staff creates a strong dividing bar, hero pauses one step back while spirit floats too far forward.",
+      "scene": "At the simple mountain-village gate, the broad Tusi chief holds his fork-topped wooden staff horizontally across the entrance, firmly but without attacking. Youbai has floated just ahead in overconfident greeting and stops short above the barrier; hero behind raises one open calm hand and leaves his map pouch closed. Exact chief's broad angular straw hat, white curled mustache, orange cape. The staff is the bold composition line; no guards crowd, no drawn weapons, no early welcoming banquet.",
+      "mood": "Tense comic interruption with understandable caution."
+    },
+    "S04-02": {
+      "summary": "幽白描述的刻痕怎么也对不上，直到你把纸转了半圈。它当年飘在水槽上方，看见的原来一直是反的。",
+      "lines": "you_bai|旧水槽三道刻痕，上宽下窄，旁边还有个缺角。\ntusi|上窄下宽。你连这都记反，还说来过？\nhero|等一下。幽白，你当年从哪边看水槽？\nyou_bai|就在槽上飘着，低头一看……\nnarrator|你把拓样转了半圈，刻痕和缺角一齐对上。首领紧绷的眉毛终于松动。\nhero|它的记性未必差，视角实在不太落地。\ntusi|原来是你。旧毛病也跟着来了。进去吧，图的事还得继续核实。\nyou_bai|这回本座照路。朝向由有脚的负责。",
+      "key_moment": "把拓样转半圈才对上旧水槽，幽白的悬浮视角成为既合理又好笑的破局点。",
+      "camera": "Overhead-leaning close-medium view of hero rotating the rubbing beside the actual trough; chief leans in from one edge and spirit peers upside-down from above.",
+      "scene": "Beside the old village water trough, hero rotates a small rubbing sheet half a turn between his hands to align a simple three-notch shape with the trough's chipped rim. The chief bends in from the opposite corner, stern brow easing in recognition. Youbai hovers upside-down directly above the trough, suddenly understanding his old viewing error. One strong circular gesture, simple solid stone form, no readable text, no ceremonial map display.",
+      "mood": "A clever visual click and a barrier lowering."
+    },
+    "S04-03": {
+      "summary": "迎客酒端到面前，你却把满碗往回推了半寸。首领要听的不是豪言，是你敢不敢坦白自己酒量差。",
+      "lines": "tusi|入寨喝迎客酒。一步一碗，你敢不敢？\nhero|敢讲实话。我酒量浅，喝倒了还得劳烦你们抬。\nyou_bai|少侠，这气势是不是略显——\nhero|清醒。咱们来认水路，不是给水路添个醉鬼。\nnarrator|你把满碗轻轻推回，只留一小口。首领看了片刻，自己先笑出了声。\ntusi|上回那位连喝三碗，连自己姓什么都编得响亮。你肯说不能，反倒好。\nhero|礼领了，酒少些。等事情办妥，再好好致谢。\ntusi|成。清醒进寨，清醒办事。",
+      "key_moment": "主角坦然推回满碗，首领由审视转为大笑，信任来自承认能力边界。",
+      "camera": "Low table-rim close shot, hero's fingertip gently slides a large cup away; chief's open laughing posture rises behind it while hero stays composed in profile.",
+      "scene": "At a modest village entry table, hero gently slides a brimming small earthen wine bowl back across the surface with two fingers, keeping only a tiny tasting cup. Across him the Tusi chief breaks into a broad surprised laugh, orange cape opening with his shoulders. Youbai hovers beside the hero with a halted pompous expression. The visual action is an honest refusal respected, not drinking intoxication. Only two bowls, no banquet clutter, no coin exchange.",
+      "mood": "Warm release after a social test, confident rather than boastful."
+    },
+    "S04-04": {
+      "summary": "宋金宝来求找牛，村民来催找水。两件急事撞在一处，你低头一看：新蹄印和旧渠，偏偏朝着同一个方向。",
+      "lines": "song_jin_bao|少侠，先找牛！牛回不来，我家明天就只剩我能拉犁了。\ntusi|田里也断着水。你们查旧道，顺道把渠看清。\nhero|先别争顺序。牛最后往哪走，水又在哪儿停？\nnarrator|湿地上有新牛蹄印，低处旧渠里还传来水声。两条线都指向寨外同一片洼地。\nyou_bai|一个有蹄，一个没脚，倒比咱们先约上了。\nsong_jin_bao|那快走！\nhero|先认准线索。追高处干沟，牛和水都不会陪我们爬坡。\ntusi|带人从低处巡查。找到什么说什么，别急着给谁定罪。",
+      "key_moment": "找牛与查水两拨手势相撞，主角把两人的注意力一起引到同向的牛迹与旧渠。",
+      "camera": "Three-quarter overhead at a path fork; chief and Song point across each other at the top while hero kneels below placing his pole along converging hoofprints and channel.",
+      "scene": "At the village edge before the investigation, Song Jinbao and the Tusi chief point in competing directions over the hero's shoulders. Hero kneels and lays his bamboo pole along fresh broad hoofprints beside a low old irrigation channel, revealing BOTH tracks go toward the same hollow. Youbai looks down at the convergence. No cow visible yet, no restored water, no excavation. Clear triangular blocking and two simple directional ground shapes, exact distinct red-orange costumes for Song and chief.",
+      "mood": "Busy comic urgency becoming a focused shared plan."
+    },
+    "S04-05": {
+      "summary": "宋金宝把失牛想得凄惨，牛却在渠边吃得从容。它抬头嚼了一口，旁边真正堵水的竹篱这才露出来。",
+      "lines": "song_jin_bao|我牛呢？不会叫水冲走了吧！\nnarrator|低岸草丛里，牛慢悠悠抬起头，嘴边还挂着一束草。宋金宝的急话噎在了喉咙里。\nhero|它这顿饭，吃得比咱们稳。先别惊它。\nyou_bai|牛找到了。水口那团东西又是什么？\nnarrator|牛身旁的渠口卡着倒下的竹篱与杂物，水被挡在后面；干岸就在近侧。\nsong_jin_bao|我还以为它堵着水……原来它是来吃席的。\nhero|把牛慢慢牵到干岸，再看清篱笆怎么卡住。别把绳和渠缠在一起。\nsong_jin_bao|成。牛先安稳，我再腾手帮忙。",
+      "key_moment": "焦急找牛的人急刹在悠闲咀嚼的牛面前，牛让开视线后暴露真正的堵水物。",
+      "camera": "Cow's broad head in near foreground chewing across the frame, Song skids to a halt behind it, hero looks past its shoulder toward the lodged fence.",
+      "scene": "At the low canal bank, one calm sturdy brown village cow lifts its head with a single big tuft of grass in its mouth. Song Jinbao in exact pointed hat and red coat stops abruptly, leaning back with both palms open in astonishment at how unconcerned it is. Hero reaches calmly toward the loose lead rope while looking past the cow at ONE lodged bamboo fence panel blocking the inlet. Youbai observes the contrast. Cow on stable bank, no distress or drowning, no water restored yet.",
+      "mood": "Anxious expectation punctured by the animal's magnificent indifference."
+    },
+    "S04-06": {
+      "summary": "宋金宝挽起袖子，准备挖一条惊天暗河。你拦住第一锄：真正该开的出口，就藏在脚边这块旧篱笆下面。",
+      "lines": "song_jin_bao|我想好了！从上面劈开一道新渠，名儿都想好了，就叫——\nhero|先别命名。你脚边的旧出口，还堵着。\nnarrator|高处土干，低处有旧水痕。倒下的竹篱横卡在出口，后面的水正找缝隙往外挤。\nyou_bai|你的暗河大计，可能输给一抬手。\nsong_jin_bao|那也得抬得漂亮。\nhero|漂亮不如站稳。沿原坡度清开，别乱挖坏渠岸。\nsong_jin_bao|行，我扶篱笆，你看水。牛在旁边那片干草地，也没跑远。\nhero|人、水、牛都有着落，再下手。",
+      "key_moment": "宏大的挖河计划被脚边旧出口打断；清开篱笆时一股水泼湿宋金宝的花哨衣摆。",
+      "camera": "Low diagonal action across the opened inlet; hero steadies the fence panel while Song jerks his coat hem away from one broad splash.",
+      "scene": "At the instant the old low water outlet is successfully cleared, hero lifts one simple bamboo fence panel while Song Jinbao braces its other side. A controlled broad ribbon of water runs through along the original slope and splashes Song's fancy red-orange coat hem; he comically pulls the hem up with his spare hand, still helping. Youbai watches with a dry amused look; one calm cow is a small distinct shape on the adjacent dry grassy bank. No huge excavation, no flood, no dense spray particles.",
+      "mood": "Practical work defeats grand talk, with a harmless splash of comeuppance."
+    },
+    "S04-07": {
+      "summary": "牛回寨，水也回田。宋金宝正想先把自己藏起来，牛却循着首领手里的青草，把他连人带绳推到了跟前。",
+      "lines": "narrator|失牛牵回寨中，旧渠也已通水。大家把沿途查到的堵口和牛迹一一对上，消息终于落了实。\ntusi|牛回了，田里也见水了。宋金宝，人怎么还往后躲？\nsong_jin_bao|我站后头，显得功劳谦虚些。\nnarrator|牛闻到首领手中的青草，轻轻顶着宋金宝的背，把他推到了众人面前。\nyou_bai|这牛对你的谦虚，另有安排。\nsong_jin_bao|我认，我先前顾着着急，没把渠口查清。欠下的活，我接着干。\nhero|线索查清了，往后常看旧入口。牛吃草，渠通水，各归各的正经路。\ntusi|好。话说到这份上，羊皮卷可以拿出来了。",
+      "key_moment": "想躲开首领的宋金宝，被牛顶着背送到首领面前，动物自然行为造成喜剧转折。",
+      "camera": "Lateral comic procession: cow behind, bent-forward Song in the middle, chief holding grass ahead; hero holds the slack lead rope from the lower side.",
+      "scene": "Back in the village after cow and water problems are solved, a calm brown cow nudges Song Jinbao gently in the back with its forehead as it reaches for a tuft of grass held by the chief ahead. Song shuffles forward off-balance, pointed hat tilted, trying to preserve dignity; hero to the side manages the slack rope with an amused attentive expression, Youbai laughs above. Strong single left-to-right movement, not a posed return-the-cow photo. No dangerous butting, no injuries, one cow only.",
+      "mood": "An affectionate physical punchline that brings accountability into the open."
+    },
+    "S04-08": {
+      "summary": "羊皮卷上的怪兽让幽白精神一振，首领却把卷子翻了面：正经的水路在背后，前面那只是先人闲时画的牛。",
+      "lines": "you_bai|这角，这阵势！莫非是什么镇寨异兽图？\ntusi|我祖父画的牛。小时候画得有些用力。\nhero|那寨道和水路呢？\nnarrator|首领把羊皮卷翻过来，背面露出清楚的渠线、寨道与几处修补记号。\ntusi|在这面。前头叫你记得住，后头才叫你走得明白。\nyou_bai|本座方才只是鉴赏画风。\nhero|我按刚查过的水口核对，把路线抄进自己的图。原卷仍留寨里。\ntusi|正是。祖传不等于不让改，也不等于让人带走。",
+      "key_moment": "被当成神秘异兽的夸张牛画翻过去，背面才是真正实用的寨道水图。",
+      "camera": "Bold scroll-flip close composition, one curled edge reveals the plain canal drawing while a small exaggerated cow doodle folds away; chief's wrist turn drives the action.",
+      "scene": "The Tusi chief flips a flexible sheep-hide sheet in one broad motion: its curling front bears a simple comically exaggerated cow pictogram, while the turning back reveals a few practical river and path lines. Youbai's excited face freezes in recognition; hero leans back to let the rolling sheet pass, brush poised over his own separate notebook. No readable writing, no glowing runes, no magical beast materializing. Keep the sheepskin in the chief's hands, original stays in the village.",
+      "mood": "A compact visual reversal, fond of ancestors without treating every mark as sacred."
+    },
+    "S04-09": {
+      "summary": "旧图说寨门在山北，如今的炊烟却在山南。首领没有替图辩解，只说了一句：人搬家，图也得跟着搬。",
+      "lines": "hero|永州碑记记的是北边旧址，羊皮卷也从那儿起笔。可咱们一路进的是南寨。\ntusi|水口变了，人就跟着挪。祖先留的地方，不一定够后人一直住。\nyou_bai|难怪那只旧水槽也不在原处。\nnarrator|首领用木杖指过北坡旧墙，再转向南边升起的一缕炊烟。两处相隔不远，却是两代人的日子。\nhero|那我把旧址与现寨分别标清，注明迁移。不能让赶路人对着空门敲半天。\ntusi|苍山方向也照如今能走的旧道记，别抄那条荒了的山线。\nyou_bai|听明白了。图得跟着人过日子。\nhero|接上了。下一程，苍山。",
+      "key_moment": "首领的杖从废旧寨墙划向新寨炊烟，空间里同时看见过去与现在。",
+      "camera": "Expansive rear three-quarter overlook, figures small on the lower edge, chief's staff bridges an empty ruined wall at one side and a single village roof-and-smoke silhouette at the other.",
+      "scene": "From a broad safe overlook, the Tusi chief sweeps his forked staff from one abandoned low wall on the north slope toward a small inhabited village roof with ONE curling smoke shape on the south. Hero in rear three-quarter profile follows the gesture, notebook tucked under an arm; Youbai stays near the old-wall side, reflecting. Spacious ivory valley, only two essential landscape masses. The contrast of old site and living settlement is the story, not detailed scenery or a row of map readers.",
+      "mood": "Reflective perspective, acknowledging change without tragedy."
+    },
+    "S04-10": {
+      "summary": "送别酒刚举起，牛便冲你篓边的青草伸长了脖子。你护图，宋金宝护绳，首领笑着把祝词缩成了两个字：拿稳。",
+      "lines": "tusi|临行一口，祝你们山路——\nnarrator|牛闻见行篓旁的一撮青草，伸长脖子。你立刻护住图袋，宋金宝忙把牵绳收稳。\nsong_jin_bao|别吃！人家这是去苍山，不是送草到家！\nhero|前辈，你的祝词先等等，我这儿有位听众比较饿。\ntusi|那便说短些：拿稳。路上拿稳，心里也拿稳。\nyou_bai|这回少说几句，倒句句在路上。\nhero|图记清了，人也记住了。以后有新的变动，烦请留个口信。\ntusi|好。下回进寨，仍得问来意。不过，门杖可以先放一边。",
+      "key_moment": "庄重祝词被牛的胃口打断，众人各护其物，却已完全没有初入寨时的隔阂。",
+      "camera": "Loose diagonal farewell action, hero rotating basket away from reaching cow nose, Song gathers rope low in foreground, chief holds one small cup high with a laugh.",
+      "scene": "At the open village gate, the hero turns his bamboo basket away from a curious cow's reaching nose to protect his closed map pouch. Song Jinbao gathers the loose lead rope while the Tusi chief pauses a toast, laughing over a tiny earthen cup; Youbai floats clear of the commotion. ONE tuft of grass tied outside the basket explains the cow's interest. Friendly spontaneous movement and an open doorway, no banquet tables, no giant reward piles, no animal violence.",
+      "mood": "Relaxed communal comedy, an earned opposite to the tense arrival."
+    },
+    "S04-11": {
+      "summary": "首领讲起从前受骗，没把丢脸的部分省掉。那张骗钱宝图如今垫在短桌腿下，至少终于有了一点实用价值。",
+      "lines": "hero|门前那番盘问，看来真有旧事。\ntusi|有。我当年也信过说得响的人，还夸人家见识广。\nyou_bai|后来那张宝图呢？\nnarrator|首领抬了抬一张矮桌，桌腿下露出折得厚厚的一角纸。\ntusi|在这儿。认路不行，垫桌倒稳。修渠钱追回了一部分，剩下的教训我自己记着。\nhero|肯把受骗的事说出来，也算给后来的人留个提醒。\ntusi|所以我问证据，也给人解释的机会。不能受过一次骗，就把所有来客都当贼。\nyou_bai|这份分寸，比嗓门难学。",
+      "key_moment": "首领掀桌露出垫脚的假宝图，自嘲把先前强硬背后的经验与分寸说开。",
+      "camera": "Very low comic reveal beneath the table, folded fake map under one short leg; chief's large hand lifts the corner while hero bends to see, spirit peeks from floor level.",
+      "scene": "In a modest village porch, the chief lifts one corner of a small uneven table to show a tightly folded old fake map being used to level the short leg. Hero bends from one side with a surprised half-smile, Youbai peers at almost floor height. The chief is amused at his own past mistake, not raging. Paper shows a few non-text pictorial lines only. Strong low reveal, mostly plain floor and ivory space, no treasury scene.",
+      "mood": "Self-deprecating honesty and thoughtful trust."
+    },
+    "S04-12": {
+      "summary": "宋金宝一身讲究，却肯把最漂亮的衣边拆来补牵牛绳。那头牛不只是家产，也拴着家里明年的饭。",
+      "lines": "song_jin_bao|我平时说话有点花，这次是真没招了。牛丢了，家里的地怎么办？\nhero|你手里剪的是什么？\nnarrator|宋金宝拆下一截漂亮衣边，仔细缠住磨损的牵绳，借着牙齿咬紧绳结。\nsong_jin_bao|绳老了，早该换。总想着再省一天，这下省出大事了。\nyou_bai|衣裳倒舍得拆。\nsong_jin_bao|衣裳少一边，还能见人。家里少了牛，明年饭都得见底。\nhero|先说最后的牛迹。沿旧渠那片低地，我们一起查。\nsong_jin_bao|好。找回来，我换根结实的。这截花边，算我先认错。",
+      "key_moment": "花哨的宋金宝咬紧绳结，把华服的一角拆给牵牛绳，表明他真正看重什么。",
+      "camera": "Tight oblique seated-working shot, Song leans forward with rope clenched carefully in teeth and hands twisting cloth, hero crouches at a different angle to listen.",
+      "scene": "At a simple village step, Song Jinbao leans forward repairing a worn cattle lead with a strip removed from the decorative hem of his own red-orange coat. He holds the rope end lightly between his teeth while both hands tighten the knot, focused rather than posing. Hero crouches lower at his side listening; Youbai looks at the newly missing coat trim with surprise. No cow present yet, no returned-animal celebration, no piles of debt slips. One practical action reveals care beneath vanity.",
+      "mood": "Human and slightly awkward, showing responsibility through a small sacrifice."
+    }
+  }
+}

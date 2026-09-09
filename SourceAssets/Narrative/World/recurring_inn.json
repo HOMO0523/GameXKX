@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "status": "user_confirmed_world_rule",
+  "rule": "每座城镇都有外观相同的客栈和长相相同的掌柜，只有四字招牌名称不同。",
+  "name_character_count": 4,
+  "names_unique_per_settlement": true,
+  "keeper_appearance_shared": true,
+  "architecture_shared": true,
+  "identity_explanation": "unrevealed",
+  "keeper_character_key": "innkeeper",
+  "keeper_reference": "SourceArt/UI/StoryPortraits/Raw/innkeeper_v2.png",
+  "keeper_portrait": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_innkeeper.T_StoryPortrait_innkeeper",
+  "interior_reference": "SourceArt/UI/StoryNodes/Redraw/S00/s00_07_1536.png",
+  "exterior_reference": null,
+  "first_establishment": {"region": "天台山脚", "sign_name": "傍山客栈", "task_node": "S00-07", "task_title": "客栈"},
+  "candidate_sign_names": ["听松客栈", "临江客栈", "柳岸客栈", "歇马客栈", "望雪客栈"],
+  "art_rules": ["固定建筑和掌柜造型，只替换招牌文字层", "按当前剧情重新设计镜头、动作和人物关系", "不为每个城镇重新生成不同掌柜或不同客栈房屋"],
+  "runtime_system_added": false
+}

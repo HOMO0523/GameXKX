@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generation_mode": "built_in_imagegen_terrain_set",
+  "asset_key": "BattleArena.Terrain.GeneratedV2",
+  "source_alpha_policy": "opaque_background",
+  "style_reference": {
+    "path": "outputs/江湖行分层PSD/clean_assets_v2/000.png",
+    "role": "visual style reference only; no original artwork is overwritten"
+  },
+  "terrain_textures": [
+    {
+      "terrain": "Plain",
+      "source_image": "terrain-v2/battle_arena_plain_source_v2.png",
+      "source_sha256": "c25c2fd55c2045f6c660ccee3aa83b6ba5fbcd60e576471bff8df8f7350a69d3",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Plain_GeneratedV2"
+    },
+    {
+      "terrain": "Cliff",
+      "source_image": "terrain-v2/battle_arena_cliff_source_v2.png",
+      "source_sha256": "67a7e54a05d5d2a8027cad1da1a4ba5b9800aa3a5b25a0458786474d7774ef05",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Cliff_GeneratedV2"
+    },
+    {
+      "terrain": "Forest",
+      "source_image": "terrain-v2/battle_arena_forest_source_v2.png",
+      "source_sha256": "d7e4ffe0aee0a7ee6763f3e67a03e0448bbc31e3335070a7636eed4bc5b34ac3",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Forest_GeneratedV2"
+    },
+    {
+      "terrain": "WaterShore",
+      "source_image": "terrain-v2/battle_arena_watershore_source_v2.png",
+      "source_sha256": "3d7fd65710622a3e50859984c77a0c412853b9d9497eed0db74f38c8ce1e2898",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_WaterShore_GeneratedV2"
+    },
+    {
+      "terrain": "Ferry",
+      "source_image": "terrain-v2/battle_arena_ferry_source_v2.png",
+      "source_sha256": "5a37a77fd2ae91a897e9f2bbdf2632efd114828a8fe68ebe9791d224cb5d3024",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Ferry_GeneratedV2"
+    },
+    {
+      "terrain": "Village",
+      "source_image": "terrain-v2/battle_arena_village_source_v2.png",
+      "source_sha256": "bdfb0584f5bac4396a1b915680b4f84352465f27d3380b5ff0adb3d4096fc40b",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Village_GeneratedV2"
+    },
+    {
+      "terrain": "Cave",
+      "source_image": "terrain-v2/battle_arena_cave_source_v2.png",
+      "source_sha256": "794cfe7d0f98acd63267b73752093402bdd40bb4c55d5efcaec8357595de2f27",
+      "source_size": [1672, 941],
+      "unreal_asset": "/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Cave_GeneratedV2"
+    }
+  ]
+}
