@@ -1,0 +1,25 @@
+{
+  "changed_frames": [
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56
+  ],
+  "unchanged_count": 45,
+  "total_frames": 56,
+  "registered_canvas": [
+    640,
+    360
+  ],
+  "timing": "approved 3x with prior anticipation/impact timing retained",
+  "direction": "friendly mirrored as accepted in PIE",
+  "generator": "built-in imagegen",
+  "scope": "Only ground-plane repair in 11 poses; 45 RGBA poses byte-identical"
+}

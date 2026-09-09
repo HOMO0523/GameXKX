@@ -1,0 +1,26 @@
+[
+  {
+    "id": "044",
+    "original_frames": [
+      190,
+      270
+    ],
+    "gif_fps": 15,
+    "file": "B02-044-ending.gif",
+    "decoded_frames": 41,
+    "duration_ms": 2740,
+    "mb": 1.88
+  },
+  {
+    "id": "043",
+    "original_frames": [
+      191,
+      325
+    ],
+    "gif_fps": 15,
+    "file": "B02-043-ending.gif",
+    "decoded_frames": 68,
+    "duration_ms": 4540,
+    "mb": 2.58
+  }
+]

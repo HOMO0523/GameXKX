@@ -1,0 +1,15 @@
+{
+  "painted_keys": 56,
+  "default_friendly_mirror": true,
+  "playback": true,
+  "source_mapping": [
+    222,
+    223,
+    267
+  ],
+  "paused_uses_exact_png": true,
+  "canonical_switch": true,
+  "original_time_version": true,
+  "narrow_overflow": false,
+  "errors": []
+}

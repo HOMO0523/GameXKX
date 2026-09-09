@@ -1,0 +1,14 @@
+{
+  "defaultCloudThunder": "044",
+  "sources": [
+    "044",
+    "057",
+    "043"
+  ],
+  "actualVideoPlayback": true,
+  "frameStep": true,
+  "halfSpeed": true,
+  "iceSourceSwitch": true,
+  "narrowOverflow": false,
+  "errors": []
+}

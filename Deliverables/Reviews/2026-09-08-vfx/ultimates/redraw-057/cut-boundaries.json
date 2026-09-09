@@ -1,0 +1,16 @@
+{
+  "revision": "cut-v2-alpha-v1",
+  "native_size": [1182, 1330],
+  "x_edges": [0, 591, 1182],
+  "guard_pixels": 3,
+  "rows_by_batch": {
+    "01": [0, 332, 663, 992, 1330],
+    "02": [0, 333, 665, 990, 1330],
+    "03": [0, 356, 705, 1010, 1330],
+    "04": [0, 353, 705, 1027, 1330],
+    "05": [0, 346, 686, 1013, 1330],
+    "06": [0, 333, 665, 998, 1330],
+    "07": [0, 348, 691, 1022, 1330]
+  },
+  "note": "Measured and visually reviewed painted panel boundaries; do not use equal quarters. Guard excludes cross-panel boundary filtering."
+}

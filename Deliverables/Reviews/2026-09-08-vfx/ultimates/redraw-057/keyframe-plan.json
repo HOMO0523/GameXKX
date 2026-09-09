@@ -1,0 +1,662 @@
+{
+  "source": "B02/057",
+  "source_frames": 296,
+  "selected_key_count": 56,
+  "keys": [
+    {
+      "key": 1,
+      "original_frame": 1,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_000.png",
+      "sha256": "22f32e3cfdee40f427eb2c7d85ae5a8885b8dadafc0cbabeb3e72d46fe5591c1",
+      "reference": "reference-frames/057-001.png",
+      "duration_original_seconds": 0.3333333333333333
+    },
+    {
+      "key": 2,
+      "original_frame": 11,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_010.png",
+      "sha256": "f7aa6a03acb63e8d5c2a82a6beb7712dfe84a4d4ca7fd66772509f299f71a569",
+      "reference": "reference-frames/057-011.png",
+      "duration_original_seconds": 0.3333333333333333
+    },
+    {
+      "key": 3,
+      "original_frame": 21,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_020.png",
+      "sha256": "99e64340d2aab51cc27858939c7aee9f9d7f398eba9b03636e4047f80192dd6d",
+      "reference": "reference-frames/057-021.png",
+      "duration_original_seconds": 0.23333333333333334
+    },
+    {
+      "key": 4,
+      "original_frame": 28,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_027.png",
+      "sha256": "f1eab00993c9ef64efc1e6dfd4c95ad518105f3c8f30938b9c1105ea0044027a",
+      "reference": "reference-frames/057-028.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 5,
+      "original_frame": 33,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_032.png",
+      "sha256": "63270a422595720c4bb0783592f87beb896c09881418263935ea5cb0c4cb4853",
+      "reference": "reference-frames/057-033.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 6,
+      "original_frame": 35,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_034.png",
+      "sha256": "f52c6c9817449c1e092726315708f1ebea9a9b2022fcde9c0b0d02b570e2beab",
+      "reference": "reference-frames/057-035.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 7,
+      "original_frame": 37,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_036.png",
+      "sha256": "10e74f33d0154f9ff75bc6fd02a4c51b02e567cb5e09e2c46cc803fc7db1b198",
+      "reference": "reference-frames/057-037.png",
+      "duration_original_seconds": 0.1
+    },
+    {
+      "key": 8,
+      "original_frame": 40,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_039.png",
+      "sha256": "a66105da5f6537f78d70119ba6d70a5f8404ea53ef3e3ca47b243307e8def2d6",
+      "reference": "reference-frames/057-040.png",
+      "duration_original_seconds": 0.03333333333333333
+    },
+    {
+      "key": 9,
+      "original_frame": 41,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_040.png",
+      "sha256": "2b2c00f9fd23faa67c04595bf9e75f80a8ac64f89adde707f7d32c4972c87e79",
+      "reference": "reference-frames/057-041.png",
+      "duration_original_seconds": 0.3
+    },
+    {
+      "key": 10,
+      "original_frame": 50,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_049.png",
+      "sha256": "f4183ca94d70382dd9f8ecdcbeaedefde2cda80267c7476aff00a3a46f4b6068",
+      "reference": "reference-frames/057-050.png",
+      "duration_original_seconds": 0.4
+    },
+    {
+      "key": 11,
+      "original_frame": 62,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_061.png",
+      "sha256": "664347be4a331fa737e54bdb382800a4e1a97273451c414ad06e1851ce10cf16",
+      "reference": "reference-frames/057-062.png",
+      "duration_original_seconds": 0.23333333333333334
+    },
+    {
+      "key": 12,
+      "original_frame": 69,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_068.png",
+      "sha256": "06825c79b954051621bc59af40e4d98dabd511b1ec38d3cff268b4b2cd4505c7",
+      "reference": "reference-frames/057-069.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 13,
+      "original_frame": 73,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_072.png",
+      "sha256": "1242aab8e2ec7369f315d70750ede3e27b5c93bafa0954b8291ca4e0f5004b48",
+      "reference": "reference-frames/057-073.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 14,
+      "original_frame": 75,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_074.png",
+      "sha256": "a80dd00a93450253fc8137ebf639c0e4bad3da66211c480d5a6105b5822e4a84",
+      "reference": "reference-frames/057-075.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 15,
+      "original_frame": 77,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_076.png",
+      "sha256": "0fe977da2a7100b0626a11a482863f77991be78b6819ce429f109a83ee21609a",
+      "reference": "reference-frames/057-077.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 16,
+      "original_frame": 82,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_081.png",
+      "sha256": "bc82d59007ff68c8c613a4f1c94162a129dcc79ed71306a5f0e5eae2ab199508",
+      "reference": "reference-frames/057-082.png",
+      "duration_original_seconds": 0.1
+    },
+    {
+      "key": 17,
+      "original_frame": 85,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_084.png",
+      "sha256": "bb3e50bbb70994f25260b2bf80ff7348b0db9a81a78c24d0fbed16f4096f98f5",
+      "reference": "reference-frames/057-085.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 18,
+      "original_frame": 89,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_088.png",
+      "sha256": "5f4a16911262c406f2e686463c3b463aacf09069935f0aaf171a9f659388437a",
+      "reference": "reference-frames/057-089.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 19,
+      "original_frame": 93,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_092.png",
+      "sha256": "e00455bb3d66a63b5dbdd5ccb243b1f8d4290eb5564d0d3aa823b6b06c704d81",
+      "reference": "reference-frames/057-093.png",
+      "duration_original_seconds": 0.1
+    },
+    {
+      "key": 20,
+      "original_frame": 96,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_095.png",
+      "sha256": "edb6a2ad13a8b8070a16521efb6e17aa31d496274d4fc6134b1859b4c715732e",
+      "reference": "reference-frames/057-096.png",
+      "duration_original_seconds": 0.03333333333333333
+    },
+    {
+      "key": 21,
+      "original_frame": 97,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_096.png",
+      "sha256": "68fdae52e0d0d4b97523370f9c5ed16639021e978942ce262803df2e3928764c",
+      "reference": "reference-frames/057-097.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 22,
+      "original_frame": 103,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_102.png",
+      "sha256": "2552001816c4e68f67ad23a120c4872a2bb81f143fee695f92418ac00e88ae73",
+      "reference": "reference-frames/057-103.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 23,
+      "original_frame": 108,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_107.png",
+      "sha256": "94e29fd2723418dc9ba3165412cc35c64e4930d89b52b38640b79b36447f069c",
+      "reference": "reference-frames/057-108.png",
+      "duration_original_seconds": 0.23333333333333334
+    },
+    {
+      "key": 24,
+      "original_frame": 115,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_114.png",
+      "sha256": "4623b531d0f927e330200d553e536c6c6296ce22c0af9ce8eeb5707abf148164",
+      "reference": "reference-frames/057-115.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 25,
+      "original_frame": 120,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_119.png",
+      "sha256": "2ba95bc11f0b58dbfcfa95c0e3a36a34bc4551275d44278a70649d20d3e15861",
+      "reference": "reference-frames/057-120.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 26,
+      "original_frame": 125,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_124.png",
+      "sha256": "d0ce9ed2e534372c07f7b605dff9e6a9699f6c50fb484377d671bd9094056645",
+      "reference": "reference-frames/057-125.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 27,
+      "original_frame": 130,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_129.png",
+      "sha256": "dcc5e7f1761cd5d6b7388737d8b0b0c267be32d7a42af947eabca73dd3ca7903",
+      "reference": "reference-frames/057-130.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 28,
+      "original_frame": 136,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_135.png",
+      "sha256": "d32cf24b2583b1f462b68023b649cc129f15b465018c6e5dd1987a3c9e9a17a7",
+      "reference": "reference-frames/057-136.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 29,
+      "original_frame": 140,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_139.png",
+      "sha256": "86d4892ad97458281901ecdde764332c7c4f0bfb9f1037704690f606d749173f",
+      "reference": "reference-frames/057-140.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 30,
+      "original_frame": 142,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_141.png",
+      "sha256": "c11a9059a4badb32637e06c3f22bb39b8fc93399c7bd6398450bb89189fe02f5",
+      "reference": "reference-frames/057-142.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 31,
+      "original_frame": 148,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_147.png",
+      "sha256": "b504e31aaacc940a34b540c129366daed25784196f2494f10965b9d343ace52e",
+      "reference": "reference-frames/057-148.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 32,
+      "original_frame": 154,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_153.png",
+      "sha256": "8b2b294a0f443603347fcfa6bfc87f99631c300b5bf3e765e2942d10cf925c55",
+      "reference": "reference-frames/057-154.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 33,
+      "original_frame": 159,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_158.png",
+      "sha256": "44bc6d65940d06339b4702b3b5eaf7dc4fa4a2ad2bbf171f8b6edea4449c2103",
+      "reference": "reference-frames/057-159.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 34,
+      "original_frame": 164,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_163.png",
+      "sha256": "0c64278960eb3890e2c61eaee0c1eb0cc7770726d2c9a9fe042781a08b1d06ef",
+      "reference": "reference-frames/057-164.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 35,
+      "original_frame": 166,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_165.png",
+      "sha256": "6eb5b7dd64aa788a679abf6d3293101db81e90d2ecc4ee17e8e3c3ba6806f08b",
+      "reference": "reference-frames/057-166.png",
+      "duration_original_seconds": 0.3333333333333333
+    },
+    {
+      "key": 36,
+      "original_frame": 176,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_175.png",
+      "sha256": "c61356a58cc12bd189f8906247556d9699057c20fa3d48eddcf34a93846dba6f",
+      "reference": "reference-frames/057-176.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 37,
+      "original_frame": 181,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_180.png",
+      "sha256": "5822767be0444e9b7da0ce99624d1790f9717ae2234cbe62d62e7cfaa3c86535",
+      "reference": "reference-frames/057-181.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 38,
+      "original_frame": 185,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_184.png",
+      "sha256": "8705da4928f457f9c68d57860adb8d488532d837f6c27e3f9d4c7a7e88db8ee5",
+      "reference": "reference-frames/057-185.png",
+      "duration_original_seconds": 0.16666666666666666
+    },
+    {
+      "key": 39,
+      "original_frame": 190,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_189.png",
+      "sha256": "2238d61d27ae66111759a176cbfa8e25174af0495742536329b92c43ea13d143",
+      "reference": "reference-frames/057-190.png",
+      "duration_original_seconds": 0.23333333333333334
+    },
+    {
+      "key": 40,
+      "original_frame": 197,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_196.png",
+      "sha256": "101c271da0c062fe888cf8a26da6be749ebca46211f1b344751500355922ee43",
+      "reference": "reference-frames/057-197.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 41,
+      "original_frame": 201,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_200.png",
+      "sha256": "8cc8502980a62c58cf944fb72ae6511e4e7cfd10c7d2b7cbb673d8d9ae68cd39",
+      "reference": "reference-frames/057-201.png",
+      "duration_original_seconds": 0.26666666666666666
+    },
+    {
+      "key": 42,
+      "original_frame": 209,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_208.png",
+      "sha256": "bcdd5b8b48587bfd30cc5e97dc813db760ae02397087cc011128ec6e84cf6ba4",
+      "reference": "reference-frames/057-209.png",
+      "duration_original_seconds": 0.3
+    },
+    {
+      "key": 43,
+      "original_frame": 218,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_217.png",
+      "sha256": "cfe9d06f46254bdd0b301098ca4a7790567f86ea7457c1ae56013b0ca0d8847e",
+      "reference": "reference-frames/057-218.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 44,
+      "original_frame": 220,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_219.png",
+      "sha256": "feb828ddf534f0e08485bbb4f647ac2c03e237c4779e3b31961695a6249025e2",
+      "reference": "reference-frames/057-220.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 45,
+      "original_frame": 222,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_221.png",
+      "sha256": "795d1694f3fbddd2c6c22454b54b209c5210196d1cc3d98c0625a98df75ba89c",
+      "reference": "reference-frames/057-222.png",
+      "duration_original_seconds": 0.03333333333333333
+    },
+    {
+      "key": 46,
+      "original_frame": 223,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_222.png",
+      "sha256": "ce768ab6e17d0c9db6fcbae521e21f8f45fb150170cb355ffeedce8a401ca706",
+      "reference": "reference-frames/057-223.png",
+      "duration_original_seconds": 0.06666666666666667
+    },
+    {
+      "key": 47,
+      "original_frame": 225,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_224.png",
+      "sha256": "474b2ec989b16a024ceff0363c00e66dfbb0a83345d0e36393ad251c08b5a10b",
+      "reference": "reference-frames/057-225.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 48,
+      "original_frame": 231,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_230.png",
+      "sha256": "cbf0f1d90e5efd18b10a8abdc19385b60a566ee6172fa0f2057caf555ba2b38c",
+      "reference": "reference-frames/057-231.png",
+      "duration_original_seconds": 0.5666666666666667
+    },
+    {
+      "key": 49,
+      "original_frame": 248,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_247.png",
+      "sha256": "ecf39041c9d6a2df2ae42e54d1d3e236c04558eda26636df3642151e90036eeb",
+      "reference": "reference-frames/057-248.png",
+      "duration_original_seconds": 0.4
+    },
+    {
+      "key": 50,
+      "original_frame": 260,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_259.png",
+      "sha256": "ade5a64757e80ec07c0138cc9d5bc63719fe7d984a20ba98e938ac9f4ae39bd9",
+      "reference": "reference-frames/057-260.png",
+      "duration_original_seconds": 0.13333333333333333
+    },
+    {
+      "key": 51,
+      "original_frame": 264,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_263.png",
+      "sha256": "eeffcded2d7e51e9fb61274b01704c04fa245103fd06f801d324dca3e993d672",
+      "reference": "reference-frames/057-264.png",
+      "duration_original_seconds": 0.1
+    },
+    {
+      "key": 52,
+      "original_frame": 267,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_266.png",
+      "sha256": "84572b207a849078fdd00bc2a70a97942044a7afbe8976af12154ec1853cbfda",
+      "reference": "reference-frames/057-267.png",
+      "duration_original_seconds": 0.03333333333333333
+    },
+    {
+      "key": 53,
+      "original_frame": 268,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_267.png",
+      "sha256": "7d21572b300091dcda162f049a705ae9a4efcbb1381335f08e6357d534c5c35a",
+      "reference": "reference-frames/057-268.png",
+      "duration_original_seconds": 0.2
+    },
+    {
+      "key": 54,
+      "original_frame": 274,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_273.png",
+      "sha256": "daa8499698b0c91e3e0def8b75b8b826445226d4bf0603062ac8c15eb39bb320",
+      "reference": "reference-frames/057-274.png",
+      "duration_original_seconds": 0.4
+    },
+    {
+      "key": 55,
+      "original_frame": 286,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_285.png",
+      "sha256": "2f1f989722df22ea5a1e74e7a7bd25ee1d7da43093aa8902d47586df5840e993",
+      "reference": "reference-frames/057-286.png",
+      "duration_original_seconds": 0.3333333333333333
+    },
+    {
+      "key": 56,
+      "original_frame": 296,
+      "original_member": "【第二期】满屏技能大招【spine特效】【序列】/057/057_295.png",
+      "sha256": "a2a10b06f922ce0cd28b91ec94268d804f9ebff08bc794b8139d1b21036829c8",
+      "reference": "reference-frames/057-296.png",
+      "duration_original_seconds": 0.03333333333333333
+    }
+  ],
+  "batches": [
+    [
+      1,
+      11,
+      21,
+      28,
+      33,
+      35,
+      37,
+      40
+    ],
+    [
+      41,
+      50,
+      62,
+      69,
+      73,
+      75,
+      77,
+      82
+    ],
+    [
+      85,
+      89,
+      93,
+      96,
+      97,
+      103,
+      108,
+      115
+    ],
+    [
+      120,
+      125,
+      130,
+      136,
+      140,
+      142,
+      148,
+      154
+    ],
+    [
+      159,
+      164,
+      166,
+      176,
+      181,
+      185,
+      190,
+      197
+    ],
+    [
+      201,
+      209,
+      218,
+      220,
+      222,
+      223,
+      225,
+      231
+    ],
+    [
+      248,
+      260,
+      264,
+      267,
+      268,
+      274,
+      286,
+      296
+    ]
+  ],
+  "phases": [
+    {
+      "name": "雷云蓄势",
+      "range": [
+        1,
+        33
+      ],
+      "important": [
+        1,
+        33
+      ],
+      "note": "上方雷云与中央雷核闪动，暂未进入主穿梭。"
+    },
+    {
+      "name": "预放电与雷核成形",
+      "range": [
+        34,
+        73
+      ],
+      "important": [
+        35,
+        37,
+        40,
+        73
+      ],
+      "note": "35出现纵向放电，37有短促罩形爆发，随后雷核悬停；36的白闪不充当造型主帧。"
+    },
+    {
+      "name": "起射与远去",
+      "range": [
+        74,
+        96
+      ],
+      "important": [
+        77,
+        82,
+        96
+      ],
+      "note": "先扩张，再向画面右上方快速伸出并远去，不是始终保持同一大小横移。"
+    },
+    {
+      "name": "远点迎面推进",
+      "range": [
+        97,
+        142
+      ],
+      "important": [
+        97,
+        108,
+        125,
+        142
+      ],
+      "note": "镜头／尺度明显变化，雷核从远方小点逼近，折线和方向持续变化。"
+    },
+    {
+      "name": "近景掠过",
+      "range": [
+        143,
+        164
+      ],
+      "important": [
+        148,
+        164
+      ],
+      "note": "143附近闪白后切到贴近镜头的大雷团，再掠出；需要保留前后转折。"
+    },
+    {
+      "name": "拉远后俯冲",
+      "range": [
+        165,
+        208
+      ],
+      "important": [
+        166,
+        185,
+        197,
+        201
+      ],
+      "note": "先拉远看见雷头，再斜向推进，近景云掠过；203–208是冲镜／擦屏过渡。"
+    },
+    {
+      "name": "空拍与落点预备",
+      "range": [
+        209,
+        222
+      ],
+      "important": [
+        209,
+        218,
+        222
+      ],
+      "note": "209先空出落地区域，218开始出现雷尖，222仍未触地。"
+    },
+    {
+      "name": "触地与第一圈扩散",
+      "range": [
+        223,
+        231
+      ],
+      "important": [
+        223,
+        225,
+        231
+      ],
+      "note": "223才是末段首次触地，225出现地面冲击造型，之后第一圈扩散退去。"
+    },
+    {
+      "name": "雷柱持续与第二次扩散",
+      "range": [
+        232,
+        274
+      ],
+      "important": [
+        264,
+        267,
+        268,
+        274
+      ],
+      "note": "雷柱先持续；265后再次卷起扩散，268放大，274切回清楚的余波环，不能漏掉第二次冲击。"
+    },
+    {
+      "name": "余电衰减",
+      "range": [
+        275,
+        296
+      ],
+      "important": [
+        296
+      ],
+      "note": "亮度与电弧逐步减弱；原片末尾仍留细雷线，最终游戏清场需另做收尾。"
+    }
+  ],
+  "timing": "retains original frame intervals at the assumed review FPS of 30; not equally held poses",
+  "friendly_flip_x": true,
+  "art_redrawn": false
+}

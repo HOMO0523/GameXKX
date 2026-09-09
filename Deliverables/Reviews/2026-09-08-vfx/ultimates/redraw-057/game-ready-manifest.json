@@ -1,0 +1,1617 @@
+{
+  "name": "UltimateLightning057",
+  "revision": "cut-v2-alpha-v1",
+  "frame_count": 56,
+  "frame_size": [
+    640,
+    360
+  ],
+  "alpha": "straight RGBA, paper matte removed, bright painted core retained, hidden RGB edge bleed",
+  "canonical_orientation": true,
+  "friendly_flip_x": true,
+  "mirror_inside_frame_uv_only": true,
+  "original_fps_assumed": 30,
+  "source_duration_seconds": 9.866666666666667,
+  "recommended_preview_speed": 2,
+  "texture_settings": {
+    "texture_group": "UI",
+    "mipmaps": "NoMipmaps",
+    "filter": "Bilinear",
+    "address_x": "Clamp",
+    "address_y": "Clamp",
+    "sRGB": true
+  },
+  "frames": [
+    {
+      "index": 0,
+      "source_frame": 1,
+      "file": "Frames/T_UltimateLightning057_001.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "91199db261021d06a691a1a961f6536a761c7f417614bb809c8a43bff358afdf",
+      "transparent_pixels": 92815,
+      "partial_alpha_pixels": 137124,
+      "opaque_pixels": 461,
+      "alpha_levels": 217,
+      "bright_core_pixels": 322,
+      "atlas_index": 0,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 1,
+      "source_frame": 11,
+      "file": "Frames/T_UltimateLightning057_002.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "a3ce2fb45708e7514f67eebe89222a77282f2ee409dab6c3a898512f2c8bcc92",
+      "transparent_pixels": 93048,
+      "partial_alpha_pixels": 136698,
+      "opaque_pixels": 654,
+      "alpha_levels": 211,
+      "bright_core_pixels": 511,
+      "atlas_index": 0,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 2,
+      "source_frame": 21,
+      "file": "Frames/T_UltimateLightning057_003.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "97087cd118d646da53c42baf1c106d2459376186dca609da9ad67ca2e656ec04",
+      "transparent_pixels": 91609,
+      "partial_alpha_pixels": 138503,
+      "opaque_pixels": 288,
+      "alpha_levels": 212,
+      "bright_core_pixels": 223,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 3,
+      "source_frame": 28,
+      "file": "Frames/T_UltimateLightning057_004.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "2ec6319b6abf4b6f44f5cf4ab22f199f7aafefafc1c4b0ab8e712522018f0d85",
+      "transparent_pixels": 94929,
+      "partial_alpha_pixels": 135252,
+      "opaque_pixels": 219,
+      "alpha_levels": 214,
+      "bright_core_pixels": 183,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 4,
+      "source_frame": 33,
+      "file": "Frames/T_UltimateLightning057_005.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "d5d4b51129bf557a86f3a04dba7048e311939fc6c7d3ae235f4514be78591e73",
+      "transparent_pixels": 95598,
+      "partial_alpha_pixels": 134680,
+      "opaque_pixels": 122,
+      "alpha_levels": 209,
+      "bright_core_pixels": 87,
+      "atlas_index": 0,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 5,
+      "source_frame": 35,
+      "file": "Frames/T_UltimateLightning057_006.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "d256a27c830f576ed74ed93e25925625cfec0e2ea776b4c01ed49fbcbe91a27f",
+      "transparent_pixels": 89814,
+      "partial_alpha_pixels": 139805,
+      "opaque_pixels": 781,
+      "alpha_levels": 209,
+      "bright_core_pixels": 636,
+      "atlas_index": 0,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 6,
+      "source_frame": 37,
+      "file": "Frames/T_UltimateLightning057_007.png",
+      "duration_seconds": 0.1,
+      "sha256": "24edf8c1b7c041d10cf1bc337ad901aa9d01e7775b9f628cad8371149d8356df",
+      "transparent_pixels": 77750,
+      "partial_alpha_pixels": 149873,
+      "opaque_pixels": 2777,
+      "alpha_levels": 209,
+      "bright_core_pixels": 2241,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 7,
+      "source_frame": 40,
+      "file": "Frames/T_UltimateLightning057_008.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "184b36a62e2f5f125e9d5680c2c77b31db73a67c23695f26e6c8c3881f73d7a7",
+      "transparent_pixels": 191695,
+      "partial_alpha_pixels": 37531,
+      "opaque_pixels": 1174,
+      "alpha_levels": 209,
+      "bright_core_pixels": 973,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 8,
+      "source_frame": 41,
+      "file": "Frames/T_UltimateLightning057_009.png",
+      "duration_seconds": 0.3,
+      "sha256": "7f4ee6b333eb35768c66fdcce70baa22e893de899e87f9088b6fe23f7a3e1877",
+      "transparent_pixels": 184298,
+      "partial_alpha_pixels": 44200,
+      "opaque_pixels": 1902,
+      "alpha_levels": 194,
+      "bright_core_pixels": 1522,
+      "atlas_index": 1,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 9,
+      "source_frame": 50,
+      "file": "Frames/T_UltimateLightning057_010.png",
+      "duration_seconds": 0.4,
+      "sha256": "3df235bc9050718df6e001acc911ed28a6344c7dbbbbec35aa4b134a71ffd069",
+      "transparent_pixels": 210924,
+      "partial_alpha_pixels": 18058,
+      "opaque_pixels": 1418,
+      "alpha_levels": 190,
+      "bright_core_pixels": 1197,
+      "atlas_index": 1,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 10,
+      "source_frame": 62,
+      "file": "Frames/T_UltimateLightning057_011.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "2654a62129ef4044f3fb50487b6a7ecc0f46050a0e5370e8f3089c4e499c7e82",
+      "transparent_pixels": 200803,
+      "partial_alpha_pixels": 27590,
+      "opaque_pixels": 2007,
+      "alpha_levels": 189,
+      "bright_core_pixels": 1742,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 11,
+      "source_frame": 69,
+      "file": "Frames/T_UltimateLightning057_012.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "051707f4b5e0695a4cfaf89d429589e8fcc8fec3f0d10a5d6f6acbf93fe35796",
+      "transparent_pixels": 201946,
+      "partial_alpha_pixels": 26478,
+      "opaque_pixels": 1976,
+      "alpha_levels": 194,
+      "bright_core_pixels": 1574,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 12,
+      "source_frame": 73,
+      "file": "Frames/T_UltimateLightning057_013.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "468b0f1134578dc603b65f854e01ece24246224c6f79dfcd297ea34ab1636db4",
+      "transparent_pixels": 196378,
+      "partial_alpha_pixels": 31915,
+      "opaque_pixels": 2107,
+      "alpha_levels": 189,
+      "bright_core_pixels": 1806,
+      "atlas_index": 1,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 13,
+      "source_frame": 75,
+      "file": "Frames/T_UltimateLightning057_014.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "a90b8856a8114e6b4fe8a8c2322db7ecdc7ba859b857eedff683d26affc764c7",
+      "transparent_pixels": 143020,
+      "partial_alpha_pixels": 80772,
+      "opaque_pixels": 6608,
+      "alpha_levels": 193,
+      "bright_core_pixels": 5742,
+      "atlas_index": 1,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 14,
+      "source_frame": 77,
+      "file": "Frames/T_UltimateLightning057_015.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "0dbe62c0c2d15b3b49222103e3d84febcab69809741d59782a8a6649da17c427",
+      "transparent_pixels": 91250,
+      "partial_alpha_pixels": 119474,
+      "opaque_pixels": 19676,
+      "alpha_levels": 193,
+      "bright_core_pixels": 16471,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 15,
+      "source_frame": 82,
+      "file": "Frames/T_UltimateLightning057_016.png",
+      "duration_seconds": 0.1,
+      "sha256": "10c5890d5cf36e88f1309a8242de268297971bc5de14ee3c10873cd32719b9e1",
+      "transparent_pixels": 68773,
+      "partial_alpha_pixels": 153870,
+      "opaque_pixels": 7757,
+      "alpha_levels": 214,
+      "bright_core_pixels": 7185,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 16,
+      "source_frame": 85,
+      "file": "Frames/T_UltimateLightning057_017.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "126e4e0aa57ca321b9349297434f3b5c8a40bba39006bc46d0acb385185a4a6c",
+      "transparent_pixels": 59182,
+      "partial_alpha_pixels": 167291,
+      "opaque_pixels": 3927,
+      "alpha_levels": 224,
+      "bright_core_pixels": 3172,
+      "atlas_index": 2,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 17,
+      "source_frame": 89,
+      "file": "Frames/T_UltimateLightning057_018.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "0ea8de8022eea54e1eaded23f0d1cd58cbbf51b7974f34c9fc1eb96615d98801",
+      "transparent_pixels": 71902,
+      "partial_alpha_pixels": 157504,
+      "opaque_pixels": 994,
+      "alpha_levels": 218,
+      "bright_core_pixels": 778,
+      "atlas_index": 2,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 18,
+      "source_frame": 93,
+      "file": "Frames/T_UltimateLightning057_019.png",
+      "duration_seconds": 0.1,
+      "sha256": "09fb96df704794e341e235ed6dbd9df70fcb6d2301d719aa78aa6103a48d4c95",
+      "transparent_pixels": 63040,
+      "partial_alpha_pixels": 167256,
+      "opaque_pixels": 104,
+      "alpha_levels": 214,
+      "bright_core_pixels": 81,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 19,
+      "source_frame": 96,
+      "file": "Frames/T_UltimateLightning057_020.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "2bd58474274f1ae963e143108e5b345d090233d4bf0c5993f7b10f4847c73b8f",
+      "transparent_pixels": 56028,
+      "partial_alpha_pixels": 174350,
+      "opaque_pixels": 22,
+      "alpha_levels": 203,
+      "bright_core_pixels": 21,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 20,
+      "source_frame": 97,
+      "file": "Frames/T_UltimateLightning057_021.png",
+      "duration_seconds": 0.2,
+      "sha256": "2255b01bcaf7fb44d7125cfbf3dcd3408746dc19e045ecb34407e026e201f9d2",
+      "transparent_pixels": 107186,
+      "partial_alpha_pixels": 123207,
+      "opaque_pixels": 7,
+      "alpha_levels": 212,
+      "bright_core_pixels": 4,
+      "atlas_index": 2,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 21,
+      "source_frame": 103,
+      "file": "Frames/T_UltimateLightning057_022.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "beb746625536afe01126783d4a87901a83ed09f9e55b3cc9c8a199f5643737d5",
+      "transparent_pixels": 130447,
+      "partial_alpha_pixels": 99940,
+      "opaque_pixels": 13,
+      "alpha_levels": 199,
+      "bright_core_pixels": 6,
+      "atlas_index": 2,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 22,
+      "source_frame": 108,
+      "file": "Frames/T_UltimateLightning057_023.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "71f559702e6783771c26870b0040ff983690063556de96796c8f72231591a738",
+      "transparent_pixels": 98656,
+      "partial_alpha_pixels": 131535,
+      "opaque_pixels": 209,
+      "alpha_levels": 206,
+      "bright_core_pixels": 158,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 23,
+      "source_frame": 115,
+      "file": "Frames/T_UltimateLightning057_024.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "65f4421c9a0f694cec8faa72107013f2ca033e87600b5d4e69165a7a6267926a",
+      "transparent_pixels": 77479,
+      "partial_alpha_pixels": 148702,
+      "opaque_pixels": 4219,
+      "alpha_levels": 200,
+      "bright_core_pixels": 3906,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 24,
+      "source_frame": 120,
+      "file": "Frames/T_UltimateLightning057_025.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "31b6ecf4bbdf444521633ad504611e3ca70a2696d8b6e5a09ee4e865ed7a6d3b",
+      "transparent_pixels": 179372,
+      "partial_alpha_pixels": 44667,
+      "opaque_pixels": 6361,
+      "alpha_levels": 234,
+      "bright_core_pixels": 3727,
+      "atlas_index": 3,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 25,
+      "source_frame": 125,
+      "file": "Frames/T_UltimateLightning057_026.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "afb40202e8abb5c9b1949c31b9d79c19a2708ccdcd564cb1c5cdda8891ee5dc5",
+      "transparent_pixels": 152131,
+      "partial_alpha_pixels": 68650,
+      "opaque_pixels": 9619,
+      "alpha_levels": 234,
+      "bright_core_pixels": 6277,
+      "atlas_index": 3,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 26,
+      "source_frame": 130,
+      "file": "Frames/T_UltimateLightning057_027.png",
+      "duration_seconds": 0.2,
+      "sha256": "6495f737117ac8fc334cd7b008bcdb4de7b36226973efe2bb030823fd63b6612",
+      "transparent_pixels": 180770,
+      "partial_alpha_pixels": 44917,
+      "opaque_pixels": 4713,
+      "alpha_levels": 234,
+      "bright_core_pixels": 3228,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 27,
+      "source_frame": 136,
+      "file": "Frames/T_UltimateLightning057_028.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "5c8b8b1b39bacb6abfaa2adf6d045cababf88e68ffcab000eb700bb911d04024",
+      "transparent_pixels": 168088,
+      "partial_alpha_pixels": 57656,
+      "opaque_pixels": 4656,
+      "alpha_levels": 235,
+      "bright_core_pixels": 1668,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 28,
+      "source_frame": 140,
+      "file": "Frames/T_UltimateLightning057_029.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "8ec39e566c5332b8a7207081862b5661b2c038117f7dfcb48e0c51ac239f8386",
+      "transparent_pixels": 159184,
+      "partial_alpha_pixels": 64689,
+      "opaque_pixels": 6527,
+      "alpha_levels": 240,
+      "bright_core_pixels": 3307,
+      "atlas_index": 3,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 29,
+      "source_frame": 142,
+      "file": "Frames/T_UltimateLightning057_030.png",
+      "duration_seconds": 0.2,
+      "sha256": "8e2e6763e90c26671b7c8eec18996ec658f81a3940c752291722f3e66ad940cc",
+      "transparent_pixels": 182096,
+      "partial_alpha_pixels": 43936,
+      "opaque_pixels": 4368,
+      "alpha_levels": 235,
+      "bright_core_pixels": 3050,
+      "atlas_index": 3,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 30,
+      "source_frame": 148,
+      "file": "Frames/T_UltimateLightning057_031.png",
+      "duration_seconds": 0.2,
+      "sha256": "28188b49079f8b82fa4d3b18aa8d097504eb147b2e170f81a5437e073f6a33be",
+      "transparent_pixels": 118276,
+      "partial_alpha_pixels": 101507,
+      "opaque_pixels": 10617,
+      "alpha_levels": 237,
+      "bright_core_pixels": 7572,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 31,
+      "source_frame": 154,
+      "file": "Frames/T_UltimateLightning057_032.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "8e9c3732cf1dcbac2253cdc9947dbd25259267ae008a5f4c184c3aa457a98e16",
+      "transparent_pixels": 86920,
+      "partial_alpha_pixels": 131130,
+      "opaque_pixels": 12350,
+      "alpha_levels": 236,
+      "bright_core_pixels": 10436,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 32,
+      "source_frame": 159,
+      "file": "Frames/T_UltimateLightning057_033.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "9213525d5ca9dd2a44fc8b41680707f0738f994fa68d40f9aaf49261c89d8f2a",
+      "transparent_pixels": 129101,
+      "partial_alpha_pixels": 92449,
+      "opaque_pixels": 8850,
+      "alpha_levels": 228,
+      "bright_core_pixels": 7664,
+      "atlas_index": 4,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 33,
+      "source_frame": 164,
+      "file": "Frames/T_UltimateLightning057_034.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "755131945b6c05450a904e2fd6a52ee2a800961556ad6b4f27f697d4fc6e820f",
+      "transparent_pixels": 98618,
+      "partial_alpha_pixels": 129576,
+      "opaque_pixels": 2206,
+      "alpha_levels": 239,
+      "bright_core_pixels": 1897,
+      "atlas_index": 4,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 34,
+      "source_frame": 166,
+      "file": "Frames/T_UltimateLightning057_035.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "085479093cea829deafee8db99a2cee22af7a479e97b52cbae1f1dceae369796",
+      "transparent_pixels": 185522,
+      "partial_alpha_pixels": 41470,
+      "opaque_pixels": 3408,
+      "alpha_levels": 232,
+      "bright_core_pixels": 2795,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 35,
+      "source_frame": 176,
+      "file": "Frames/T_UltimateLightning057_036.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "249f6ed7f364fa71cd9ce0e88c03623f0d24619617121fb702aa1766b2e56f45",
+      "transparent_pixels": 199121,
+      "partial_alpha_pixels": 30519,
+      "opaque_pixels": 760,
+      "alpha_levels": 227,
+      "bright_core_pixels": 629,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 36,
+      "source_frame": 181,
+      "file": "Frames/T_UltimateLightning057_037.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "1b2ae998e4b02850559e83ea00a10ec2d437d7bcbf9bc6de9aab3cf37e9a9091",
+      "transparent_pixels": 108197,
+      "partial_alpha_pixels": 120232,
+      "opaque_pixels": 1971,
+      "alpha_levels": 238,
+      "bright_core_pixels": 1560,
+      "atlas_index": 4,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 37,
+      "source_frame": 185,
+      "file": "Frames/T_UltimateLightning057_038.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "9bdd873d4026fcbc44e8463c1c432cc07d4a86b46cc08e90a3a7c2f4f4150ebe",
+      "transparent_pixels": 161518,
+      "partial_alpha_pixels": 68094,
+      "opaque_pixels": 788,
+      "alpha_levels": 232,
+      "bright_core_pixels": 641,
+      "atlas_index": 4,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 38,
+      "source_frame": 190,
+      "file": "Frames/T_UltimateLightning057_039.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "7ba30b2a169747b71c823d42cd755065ac5af6fdbf773d5c1ff0561dfcd929a7",
+      "transparent_pixels": 172774,
+      "partial_alpha_pixels": 54117,
+      "opaque_pixels": 3509,
+      "alpha_levels": 231,
+      "bright_core_pixels": 2746,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 39,
+      "source_frame": 197,
+      "file": "Frames/T_UltimateLightning057_040.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "c69ea97f25b9615f2784d9ad3917fca07d3c57f945c8b4ce71a2978d8847f33e",
+      "transparent_pixels": 69384,
+      "partial_alpha_pixels": 155132,
+      "opaque_pixels": 5884,
+      "alpha_levels": 226,
+      "bright_core_pixels": 5010,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 40,
+      "source_frame": 201,
+      "file": "Frames/T_UltimateLightning057_041.png",
+      "duration_seconds": 0.26666666666666666,
+      "sha256": "dc724d68a46de95d37791d30f91819d0791cba2672f148a2166e8284c0af8fe3",
+      "transparent_pixels": 43998,
+      "partial_alpha_pixels": 164787,
+      "opaque_pixels": 21615,
+      "alpha_levels": 231,
+      "bright_core_pixels": 18379,
+      "atlas_index": 5,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 41,
+      "source_frame": 209,
+      "file": "Frames/T_UltimateLightning057_042.png",
+      "duration_seconds": 0.3,
+      "sha256": "eda2dc761d81239c06841c609b00fb9ddab99b90fa7b53a59d172965c5684183",
+      "transparent_pixels": 162395,
+      "partial_alpha_pixels": 68000,
+      "opaque_pixels": 5,
+      "alpha_levels": 204,
+      "bright_core_pixels": 0,
+      "atlas_index": 5,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 42,
+      "source_frame": 218,
+      "file": "Frames/T_UltimateLightning057_043.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "ea99746c4fa03afcb6d234c45d8ac2ff28210d897ba80719099731a90960d87c",
+      "transparent_pixels": 156807,
+      "partial_alpha_pixels": 73362,
+      "opaque_pixels": 231,
+      "alpha_levels": 238,
+      "bright_core_pixels": 155,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 43,
+      "source_frame": 220,
+      "file": "Frames/T_UltimateLightning057_044.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "393431c9d2ab170e066985742f956b05e0dd153d98a82ae31b40da7cf1b321dd",
+      "transparent_pixels": 155831,
+      "partial_alpha_pixels": 73341,
+      "opaque_pixels": 1228,
+      "alpha_levels": 233,
+      "bright_core_pixels": 689,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 44,
+      "source_frame": 222,
+      "file": "Frames/T_UltimateLightning057_045.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "62133388eef5cc7a69d8c7e2cc4f601d0d6e834e295d81a65d0318314b4a27ef",
+      "transparent_pixels": 148726,
+      "partial_alpha_pixels": 79958,
+      "opaque_pixels": 1716,
+      "alpha_levels": 236,
+      "bright_core_pixels": 958,
+      "atlas_index": 5,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 45,
+      "source_frame": 223,
+      "file": "Frames/T_UltimateLightning057_046.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "7348cb8f4b890722f56847fafff19d2aad29fec109f5247c4016565e6632fa66",
+      "transparent_pixels": 129161,
+      "partial_alpha_pixels": 97163,
+      "opaque_pixels": 4076,
+      "alpha_levels": 233,
+      "bright_core_pixels": 3013,
+      "atlas_index": 5,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 46,
+      "source_frame": 225,
+      "file": "Frames/T_UltimateLightning057_047.png",
+      "duration_seconds": 0.2,
+      "sha256": "17d2596575e2a5993216899959dda6516adf241f4c7f850a14229ee22386f522",
+      "transparent_pixels": 90398,
+      "partial_alpha_pixels": 134886,
+      "opaque_pixels": 5116,
+      "alpha_levels": 240,
+      "bright_core_pixels": 3274,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 47,
+      "source_frame": 231,
+      "file": "Frames/T_UltimateLightning057_048.png",
+      "duration_seconds": 0.5666666666666667,
+      "sha256": "bca299d883aedb15ff8a58e754c72fe9b2ecae8db0705fd92f85b3b881a730eb",
+      "transparent_pixels": 111803,
+      "partial_alpha_pixels": 116694,
+      "opaque_pixels": 1903,
+      "alpha_levels": 236,
+      "bright_core_pixels": 1067,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 48,
+      "source_frame": 248,
+      "file": "Frames/T_UltimateLightning057_049.png",
+      "duration_seconds": 0.4,
+      "sha256": "6b85494c7f9005a599ea08429cda98f4a778ac840375d767529497303fd0171e",
+      "transparent_pixels": 126246,
+      "partial_alpha_pixels": 100825,
+      "opaque_pixels": 3329,
+      "alpha_levels": 226,
+      "bright_core_pixels": 1835,
+      "atlas_index": 6,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 49,
+      "source_frame": 260,
+      "file": "Frames/T_UltimateLightning057_050.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "9a0aa88b9229bac269b10692aaa9f308fbeb8dcc5ded10081966de2caff5390e",
+      "transparent_pixels": 135104,
+      "partial_alpha_pixels": 90971,
+      "opaque_pixels": 4325,
+      "alpha_levels": 222,
+      "bright_core_pixels": 2567,
+      "atlas_index": 6,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 50,
+      "source_frame": 264,
+      "file": "Frames/T_UltimateLightning057_051.png",
+      "duration_seconds": 0.1,
+      "sha256": "56483d86a3b572138bf387bb363fecd961a8517b3d91322ecf35fd6b1e618faa",
+      "transparent_pixels": 140302,
+      "partial_alpha_pixels": 87636,
+      "opaque_pixels": 2462,
+      "alpha_levels": 218,
+      "bright_core_pixels": 1549,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 51,
+      "source_frame": 267,
+      "file": "Frames/T_UltimateLightning057_052.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "8882c9e73135f6158ee6118d10594198191702c52b1a1e5f869e33950703a4a2",
+      "transparent_pixels": 115582,
+      "partial_alpha_pixels": 111752,
+      "opaque_pixels": 3066,
+      "alpha_levels": 222,
+      "bright_core_pixels": 1871,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ]
+    },
+    {
+      "index": 52,
+      "source_frame": 268,
+      "file": "Frames/T_UltimateLightning057_053.png",
+      "duration_seconds": 0.2,
+      "sha256": "2b04b966d74b1bfbe5f899055818504c816ce1c66ea1d990562e9ddb57c160ab",
+      "transparent_pixels": 59306,
+      "partial_alpha_pixels": 163806,
+      "opaque_pixels": 7288,
+      "alpha_levels": 238,
+      "bright_core_pixels": 4778,
+      "atlas_index": 6,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 53,
+      "source_frame": 274,
+      "file": "Frames/T_UltimateLightning057_054.png",
+      "duration_seconds": 0.4,
+      "sha256": "076ea7dca3071aebd4eb2547c826453c92d804eee8cd9127957d4ed86134543b",
+      "transparent_pixels": 160180,
+      "partial_alpha_pixels": 69273,
+      "opaque_pixels": 947,
+      "alpha_levels": 218,
+      "bright_core_pixels": 552,
+      "atlas_index": 6,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 54,
+      "source_frame": 286,
+      "file": "Frames/T_UltimateLightning057_055.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "8b81f8eddfc755d2d20f12fc00547fb7c1c7b96dd8aed7ec39de73b96034d23c",
+      "transparent_pixels": 146146,
+      "partial_alpha_pixels": 83653,
+      "opaque_pixels": 601,
+      "alpha_levels": 226,
+      "bright_core_pixels": 275,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ]
+    },
+    {
+      "index": 55,
+      "source_frame": 296,
+      "file": "Frames/T_UltimateLightning057_056.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "fe07f1542ce8c69fa603dad835856b3d2324fa8db118fa4bbfbee2f673918883",
+      "transparent_pixels": 145188,
+      "partial_alpha_pixels": 85083,
+      "opaque_pixels": 129,
+      "alpha_levels": 219,
+      "bright_core_pixels": 19,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ]
+    }
+  ],
+  "atlases": [
+    {
+      "index": 0,
+      "file": "Atlases/T_UltimateLightning057_Atlas_01.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "b7437d5b309ff01a869099cfe1d66d6529a66efe714bc62137f5fef8293f243c"
+    },
+    {
+      "index": 1,
+      "file": "Atlases/T_UltimateLightning057_Atlas_02.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "d2c5619f114e92f01dcab02a9fd2e2f32ba3c057f663518dccb4dda94be48d24"
+    },
+    {
+      "index": 2,
+      "file": "Atlases/T_UltimateLightning057_Atlas_03.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "4e9cce873c73a2ab6ccdc45df305902aa27fc667492a7cf716e6cd3380bb2e52"
+    },
+    {
+      "index": 3,
+      "file": "Atlases/T_UltimateLightning057_Atlas_04.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "330cf4dbdcd649d7756212fcd6859400a0a82441e307c530511d70bfc5e402c3"
+    },
+    {
+      "index": 4,
+      "file": "Atlases/T_UltimateLightning057_Atlas_05.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "27c038871262161694bd04ec672a5a381cae30dec267d204a359ba1fc5b5c28e"
+    },
+    {
+      "index": 5,
+      "file": "Atlases/T_UltimateLightning057_Atlas_06.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "73b7ecdbcb07bc2f0dfeb340ac4aa6731652e5eea94ac99d0cb431b745ee265f"
+    },
+    {
+      "index": 6,
+      "file": "Atlases/T_UltimateLightning057_Atlas_07.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "07164051977a38db411bd3fabca7948aec4b33a647f9151fe4299e843d26eff2"
+    }
+  ]
+}

@@ -1,0 +1,506 @@
+[
+  {
+    "key": 1,
+    "source_frame": 1,
+    "start_seconds": 0,
+    "duration_ms": 88.9,
+    "action": "保留",
+    "issue": "云层和小雷核建立气氛；横贯的灰线叠到场景里像额外地平线。",
+    "recommendation": "保留气势，清理画进特效的地面线。"
+  },
+  {
+    "key": 2,
+    "source_frame": 11,
+    "start_seconds": 0.0889,
+    "duration_ms": 88.9,
+    "action": "保留",
+    "issue": "雷核略放大，和前帧方向一致。",
+    "recommendation": "保持雷核位置。"
+  },
+  {
+    "key": 3,
+    "source_frame": 21,
+    "start_seconds": 0.1778,
+    "duration_ms": 62.2,
+    "action": "微调",
+    "issue": "雷核突然变细，蓄力强度回落。",
+    "recommendation": "让雷核收缩有对应蓄力节奏。"
+  },
+  {
+    "key": 4,
+    "source_frame": 28,
+    "start_seconds": 0.24,
+    "duration_ms": 44.4,
+    "action": "微调",
+    "issue": "亮核进一步缩小，轮廓与上一帧变化较大。",
+    "recommendation": "延续同一雷核轮廓。"
+  },
+  {
+    "key": 5,
+    "source_frame": 33,
+    "start_seconds": 0.2844,
+    "duration_ms": 17.8,
+    "action": "保留",
+    "issue": "小雷核作为第一次爆发前的压缩点有效。",
+    "recommendation": "可作为蓄力停顿。"
+  },
+  {
+    "key": 6,
+    "source_frame": 35,
+    "start_seconds": 0.3022,
+    "duration_ms": 22.2,
+    "action": "补过渡",
+    "issue": "突然出现贯穿云层的细竖雷，落点接近但过渡很短。",
+    "recommendation": "与下一帧穹顶衔接。"
+  },
+  {
+    "key": 7,
+    "source_frame": 37,
+    "start_seconds": 0.3244,
+    "duration_ms": 33.3,
+    "action": "保留",
+    "issue": "第一次大爆发明确，具备原版冲击力。",
+    "recommendation": "保留，避免后面连续使用同等贴脸峰值。"
+  },
+  {
+    "key": 8,
+    "source_frame": 40,
+    "start_seconds": 0.3578,
+    "duration_ms": 11.1,
+    "action": "补过渡",
+    "issue": "穹顶突然变成孤立雷团，云层消失，且仅约11毫秒。",
+    "recommendation": "补收缩过程，或并入下一帧。"
+  },
+  {
+    "key": 9,
+    "source_frame": 41,
+    "start_seconds": 0.3689,
+    "duration_ms": 100.0,
+    "action": "保留",
+    "issue": "独立雷团延续上一形态。",
+    "recommendation": "承接上一帧，保持尺度。"
+  },
+  {
+    "key": 10,
+    "source_frame": 50,
+    "start_seconds": 0.4689,
+    "duration_ms": 133.3,
+    "action": "微调",
+    "issue": "雷团骤缩为小亮点，空间参照减少。",
+    "recommendation": "维持亮核运动方向。"
+  },
+  {
+    "key": 11,
+    "source_frame": 62,
+    "start_seconds": 0.6022,
+    "duration_ms": 77.8,
+    "action": "保留",
+    "issue": "能量重新聚集，轮廓可读。",
+    "recommendation": "保留为发射准备。"
+  },
+  {
+    "key": 12,
+    "source_frame": 69,
+    "start_seconds": 0.68,
+    "duration_ms": 44.4,
+    "action": "保留",
+    "issue": "星形亮核有明确发射前姿态。",
+    "recommendation": "与前后亮核统一中心。"
+  },
+  {
+    "key": 13,
+    "source_frame": 73,
+    "start_seconds": 0.7244,
+    "duration_ms": 22.2,
+    "action": "微调",
+    "issue": "相近亮核再次出现，和前帧重复较多。",
+    "recommendation": "合并重复停留，把时间让给关键过渡。"
+  },
+  {
+    "key": 14,
+    "source_frame": 75,
+    "start_seconds": 0.7467,
+    "duration_ms": 16.0,
+    "action": "补过渡",
+    "issue": "星形突然放大并带局部裁边，约16毫秒。",
+    "recommendation": "保留短促爆发，但应有可见前导。"
+  },
+  {
+    "key": 15,
+    "source_frame": 77,
+    "start_seconds": 0.7627,
+    "duration_ms": 40.0,
+    "action": "缩远",
+    "issue": "星形与分支占满画面，多个方向撞边。",
+    "recommendation": "补全画外轮廓后适度拉远；不要只缩小已裁断图片。"
+  },
+  {
+    "key": 16,
+    "source_frame": 82,
+    "start_seconds": 0.8027,
+    "duration_ms": 24.0,
+    "action": "补过渡",
+    "issue": "从正面星形跳成侧向雷浪，镜头方向突然改变。",
+    "recommendation": "统一发射方向与云层流向。"
+  },
+  {
+    "key": 17,
+    "source_frame": 85,
+    "start_seconds": 0.8267,
+    "duration_ms": 32.0,
+    "action": "保留",
+    "issue": "雷浪向侧方推进，力度好。",
+    "recommendation": "保留为主穿梭段。"
+  },
+  {
+    "key": 18,
+    "source_frame": 89,
+    "start_seconds": 0.8587,
+    "duration_ms": 32.0,
+    "action": "保留",
+    "issue": "雷束收拢并向远处离开。",
+    "recommendation": "保持与17帧的轨迹。"
+  },
+  {
+    "key": 19,
+    "source_frame": 93,
+    "start_seconds": 0.8907,
+    "duration_ms": 24.0,
+    "action": "微调",
+    "issue": "主雷进一步变细，运动延续。",
+    "recommendation": "可缩短但不跳过轨迹。"
+  },
+  {
+    "key": 20,
+    "source_frame": 96,
+    "start_seconds": 0.9147,
+    "duration_ms": 8.0,
+    "action": "时序错误",
+    "issue": "消失帧只有约8毫秒，很难稳定显示。",
+    "recommendation": "提高到至少1–2个显示帧，或明确合并。"
+  },
+  {
+    "key": 21,
+    "source_frame": 97,
+    "start_seconds": 0.9227,
+    "duration_ms": 48.0,
+    "action": "补过渡",
+    "issue": "云层布局完全换成两个弧团，雷核重新出现在远处。",
+    "recommendation": "需要明确的转场或保持同一空间。"
+  },
+  {
+    "key": 22,
+    "source_frame": 103,
+    "start_seconds": 0.9707,
+    "duration_ms": 40.0,
+    "action": "微调",
+    "issue": "远处雷核变化小。",
+    "recommendation": "合并重复，让视线有落点。"
+  },
+  {
+    "key": 23,
+    "source_frame": 108,
+    "start_seconds": 1.0107,
+    "duration_ms": 56.0,
+    "action": "保留",
+    "issue": "远处雷核变亮，是靠近的合理起点。",
+    "recommendation": "保留。"
+  },
+  {
+    "key": 24,
+    "source_frame": 115,
+    "start_seconds": 1.0667,
+    "duration_ms": 40.0,
+    "action": "缩远",
+    "issue": "从远处小核直接跳成大雷束，近景开始。",
+    "recommendation": "补中景，统一靠近速度。"
+  },
+  {
+    "key": 25,
+    "source_frame": 120,
+    "start_seconds": 1.1067,
+    "duration_ms": 40.0,
+    "action": "重画局部",
+    "issue": "雷束同时碰到上边、左边，不能完整读出形体。",
+    "recommendation": "扩大原绘图视野，保留雷束厚度。"
+  },
+  {
+    "key": 26,
+    "source_frame": 125,
+    "start_seconds": 1.1467,
+    "duration_ms": 40.0,
+    "action": "缩远",
+    "issue": "主雷横跨大半画面，细碎分支增多。",
+    "recommendation": "缩远并统一轮廓，不降低整体透明度。"
+  },
+  {
+    "key": 27,
+    "source_frame": 130,
+    "start_seconds": 1.1867,
+    "duration_ms": 48.0,
+    "action": "补过渡",
+    "issue": "粗雷突然变成细长Z形，体积连续性断开。",
+    "recommendation": "保留粗细趋势，减少无因变形。"
+  },
+  {
+    "key": 28,
+    "source_frame": 136,
+    "start_seconds": 1.2347,
+    "duration_ms": 32.0,
+    "action": "补过渡",
+    "issue": "雷束走向从上一帧再次翻折。",
+    "recommendation": "保持一条明确运动路径。"
+  },
+  {
+    "key": 29,
+    "source_frame": 140,
+    "start_seconds": 1.2667,
+    "duration_ms": 16.0,
+    "action": "重画局部",
+    "issue": "右侧主雷已出画，贴脸感明显。",
+    "recommendation": "补全画外部分后统一镜头距离。"
+  },
+  {
+    "key": 30,
+    "source_frame": 142,
+    "start_seconds": 1.2827,
+    "duration_ms": 48.0,
+    "action": "补过渡",
+    "issue": "主体又缩成小Z形，形成忽大忽小。",
+    "recommendation": "以同一雷束的运动替代尺寸跳变。"
+  },
+  {
+    "key": 31,
+    "source_frame": 148,
+    "start_seconds": 1.3307,
+    "duration_ms": 48.0,
+    "action": "缩远",
+    "issue": "突然变成巨大的实心楔形，像切到另一组镜头。",
+    "recommendation": "保留一次强近景，前后补形态过渡。"
+  },
+  {
+    "key": 32,
+    "source_frame": 154,
+    "start_seconds": 1.3787,
+    "duration_ms": 40.0,
+    "action": "缩远",
+    "issue": "巨型楔形延续，几乎只剩雷束表面。",
+    "recommendation": "减少此类近景持续占比。"
+  },
+  {
+    "key": 33,
+    "source_frame": 159,
+    "start_seconds": 1.4187,
+    "duration_ms": 40.0,
+    "action": "重画局部",
+    "issue": "雷束在上边被切掉，形体与前帧不完整。",
+    "recommendation": "补画边外轮廓，统一离场方向。"
+  },
+  {
+    "key": 34,
+    "source_frame": 164,
+    "start_seconds": 1.4587,
+    "duration_ms": 16.0,
+    "action": "补过渡",
+    "issue": "黑云突然横挡主体，约16毫秒。",
+    "recommendation": "把云作为明确遮挡转场，不能随机盖住。"
+  },
+  {
+    "key": 35,
+    "source_frame": 166,
+    "start_seconds": 1.4747,
+    "duration_ms": 80.0,
+    "action": "缩远",
+    "issue": "雷尖只剩上方一角，视线失去主体。",
+    "recommendation": "与上一帧合并为清楚的离场。"
+  },
+  {
+    "key": 36,
+    "source_frame": 176,
+    "start_seconds": 1.5547,
+    "duration_ms": 40.0,
+    "action": "微调",
+    "issue": "几乎空场，只剩上边雷尖。",
+    "recommendation": "减少空场；把时间用于接近最终落点。"
+  },
+  {
+    "key": 37,
+    "source_frame": 181,
+    "start_seconds": 1.5947,
+    "duration_ms": 32.0,
+    "action": "补过渡",
+    "issue": "小雷尖再次向下出现，同时斜黑云抢视线。",
+    "recommendation": "保持主雷和云的前后层次。"
+  },
+  {
+    "key": 38,
+    "source_frame": 185,
+    "start_seconds": 1.6267,
+    "duration_ms": 40.0,
+    "action": "补过渡",
+    "issue": "雷尖位置、尺寸又回摆。",
+    "recommendation": "锁定连续下降轨迹。"
+  },
+  {
+    "key": 39,
+    "source_frame": 190,
+    "start_seconds": 1.6667,
+    "duration_ms": 56.0,
+    "action": "保留",
+    "issue": "向最终方向冲出的长雷束有气势。",
+    "recommendation": "保留，但减少前面的反复折返。"
+  },
+  {
+    "key": 40,
+    "source_frame": 197,
+    "start_seconds": 1.7227,
+    "duration_ms": 32.0,
+    "action": "缩远",
+    "issue": "巨大主雷再次出现，黑云在中间切断。",
+    "recommendation": "不再追加新的镜头距离峰值。"
+  },
+  {
+    "key": 41,
+    "source_frame": 201,
+    "start_seconds": 1.7547,
+    "duration_ms": 64.0,
+    "action": "缩远",
+    "issue": "最近的一帧，金色面与黑云占据大部分画面。",
+    "recommendation": "降低持续时间和尺度，保留爆发而非覆盖整屏。"
+  },
+  {
+    "key": 42,
+    "source_frame": 209,
+    "start_seconds": 1.8187,
+    "duration_ms": 100.0,
+    "action": "补过渡",
+    "issue": "突然完全退到只有云的远景。",
+    "recommendation": "必须接上离场/落场过渡。"
+  },
+  {
+    "key": 43,
+    "source_frame": 218,
+    "start_seconds": 1.9187,
+    "duration_ms": 22.2,
+    "action": "保留",
+    "issue": "雷尖从云后出现，最终落场开始。",
+    "recommendation": "保留这条明确的下降线。"
+  },
+  {
+    "key": 44,
+    "source_frame": 220,
+    "start_seconds": 1.9409,
+    "duration_ms": 22.2,
+    "action": "保留",
+    "issue": "雷尖继续下降。",
+    "recommendation": "与43、45统一轴线。"
+  },
+  {
+    "key": 45,
+    "source_frame": 222,
+    "start_seconds": 1.9631,
+    "duration_ms": 11.1,
+    "action": "保留",
+    "issue": "触地前一帧，动作可读。",
+    "recommendation": "给足触地前的可见时长。"
+  },
+  {
+    "key": 46,
+    "source_frame": 223,
+    "start_seconds": 1.9742,
+    "duration_ms": 22.2,
+    "action": "微调",
+    "issue": "首次触地已修平，但只有约22毫秒。",
+    "recommendation": "延长少量，让人看清命中位置。"
+  },
+  {
+    "key": 47,
+    "source_frame": 225,
+    "start_seconds": 1.9964,
+    "duration_ms": 156.7,
+    "action": "重点保留",
+    "issue": "大爆发最有冲击力，修正后的地面圈明确。",
+    "recommendation": "作为全段主要力量峰值，保持规模。"
+  },
+  {
+    "key": 48,
+    "source_frame": 231,
+    "start_seconds": 2.1531,
+    "duration_ms": 188.9,
+    "action": "重点保留",
+    "issue": "向上翻卷的墨浪很有气势。",
+    "recommendation": "保留，承接落地爆发。"
+  },
+  {
+    "key": 49,
+    "source_frame": 248,
+    "start_seconds": 2.342,
+    "duration_ms": 133.3,
+    "action": "补过渡",
+    "issue": "爆发突然塌成较小平面电池，尺度回落较快。",
+    "recommendation": "补一帧收束，避免瞬间泄力。"
+  },
+  {
+    "key": 50,
+    "source_frame": 260,
+    "start_seconds": 2.4753,
+    "duration_ms": 44.4,
+    "action": "保留",
+    "issue": "持续落雷和分支有连贯性。",
+    "recommendation": "保持同一落点。"
+  },
+  {
+    "key": 51,
+    "source_frame": 264,
+    "start_seconds": 2.5198,
+    "duration_ms": 33.3,
+    "action": "时序微调",
+    "issue": "与50相近，但只停约33毫秒。",
+    "recommendation": "合并重复或让第二次冲击有预备。"
+  },
+  {
+    "key": 52,
+    "source_frame": 267,
+    "start_seconds": 2.5531,
+    "duration_ms": 11.1,
+    "action": "制作/时序错误",
+    "issue": "第二冲击刚出现但只停约11毫秒；白波抠图偏蓝。",
+    "recommendation": "修白波颜色边缘，延长可读过渡。"
+  },
+  {
+    "key": 53,
+    "source_frame": 268,
+    "start_seconds": 2.5642,
+    "duration_ms": 126.7,
+    "action": "制作错误",
+    "issue": "大冲击应保留，但底部混入下一帧小雷段；白波边缘发蓝。",
+    "recommendation": "重测切帧分界，清理串帧并修白色区域抠图。"
+  },
+  {
+    "key": 54,
+    "source_frame": 274,
+    "start_seconds": 2.6909,
+    "duration_ms": 100.0,
+    "action": "补过渡",
+    "issue": "大穹顶突然变成黑墨圈，云层消失。",
+    "recommendation": "用短暂消散衔接，保留墨圈气势。"
+  },
+  {
+    "key": 55,
+    "source_frame": 286,
+    "start_seconds": 2.7909,
+    "duration_ms": 83.3,
+    "action": "保留",
+    "issue": "收尾雷束变细，方向稳定。",
+    "recommendation": "保持落点，不再旋转地面。"
+  },
+  {
+    "key": 56,
+    "source_frame": 296,
+    "start_seconds": 2.8742,
+    "duration_ms": 8.3,
+    "action": "时序错误",
+    "issue": "最后残电仅约8毫秒，随后程序淡出。",
+    "recommendation": "用明确的末帧停留/淡出，避免尾端一闪。"
+  }
+]
