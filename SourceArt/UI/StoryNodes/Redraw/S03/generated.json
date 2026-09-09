@@ -1,0 +1,419 @@
+{
+  "S03-01": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v3.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-61a95ffe-a202-4eb4-9a7e-200583a78e19.png",
+    "sha256": "b0160371db69260dea7bbc2533b9b7a4dd600bd3651de0595584c36751266847",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 3,
+    "contract_sha256": "60ecd937b84c15f0b2d397118eb9ba65eb51bca7762353869a6d7bc3503e5166",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v3_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-1ba39cab-3f4c-4e3c-9df3-ae39b346b4af.png",
+        "sha256": "23474fcfd7324c704ed07c5a6ac3d5d9baf3b3ffad9ba12282e0c6e430470d9c",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "60ecd937b84c15f0b2d397118eb9ba65eb51bca7762353869a6d7bc3503e5166",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v1_prompt.txt",
+        "visual_review": "pending"
+      },
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v2.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-4e0628d5-bd4d-4827-8cab-047075821449.png",
+        "sha256": "03aa1db1854e372c687aa3583e3f6e97b9f3ea668ed03f18be8bf583354d70d4",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 2,
+        "contract_sha256": "60ecd937b84c15f0b2d397118eb9ba65eb51bca7762353869a6d7bc3503e5166",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v2_prompt.txt",
+        "visual_review": "pass",
+        "user_approved": false
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-02": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-699ce27f-1409-460c-a68d-49d9bdc2cdc3.png",
+    "sha256": "798a6707ea1c61ee882734546c4df624a44bf088a4dcd68a5a8b955598120934",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "c05463b9a4b32b6a154b909d993e8c3a1495fc1a4a5436946008efc5c6494c8e",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-402c970e-8efb-4b41-8c3d-28ee5b100327.png",
+        "sha256": "ea5d6c5537aaae1f055902c16332f16bc758a886c1b204197e85b1a2ffcfbbe1",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "c05463b9a4b32b6a154b909d993e8c3a1495fc1a4a5436946008efc5c6494c8e",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-03": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-82c9f3d7-7738-4984-8e72-86fa09b065ea.png",
+    "sha256": "79268edf54c63b4cb3025e9a7107400d163469536586c245517a8b864e6e93e4",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "604e539097fd2c822c05c87c189474170d5a0b527b856de49f5f7a58281e6cef",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-28ed3f31-5a4c-4fcf-9e2b-218fab5587c6.png",
+        "sha256": "ee5a70ec4255c471121eaf36a3e28316532d20f7dad7b5ac8771861ca6f9a6ab",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "604e539097fd2c822c05c87c189474170d5a0b527b856de49f5f7a58281e6cef",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-04": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-ae229388-4d09-4f7a-9a15-978313c49fab.png",
+    "sha256": "8c01dffca69171a74a120db33a9abbf977845367387a2377d2660e4efffad174",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "57939e38297c113e7fdc0598e4edded00d5cbc957dc18de0ff01be20c859f7f6",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-24f97591-dbcc-4015-9e32-9642dee5b296.png",
+        "sha256": "75ab69f498cbcd1f5555bac7e472be117126b0e7c20fc353e10556e7dae3ad4f",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "57939e38297c113e7fdc0598e4edded00d5cbc957dc18de0ff01be20c859f7f6",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-05": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v3.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-eead08c8-a1e1-40d9-8725-77ea507e0972.png",
+    "sha256": "40bded53cf902a9071f5721f0fe2fbc40f0fe2e7b66e2c1f3a7a8fd30f4bb772",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 3,
+    "contract_sha256": "ae7d921f45514f0c0705571a91563229791f48c18948b3d37cf1f6f1a32f6f96",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v3_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-d1ccbfaa-0376-43a4-8f09-2f3c92046d50.png",
+        "sha256": "00366d08a29f8c65e2df4041b0d612a59ff6c43ddc46f1085741d3182e467c3c",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "ae7d921f45514f0c0705571a91563229791f48c18948b3d37cf1f6f1a32f6f96",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v1_prompt.txt",
+        "visual_review": "pending"
+      },
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v2.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-10b65bf9-5de5-4dfd-b290-154eceed7d9d.png",
+        "sha256": "e2c1e5257f3f3d5464dbc4a5af56cb383fcd36b2c931a3de7c1494bda9835df4",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 2,
+        "contract_sha256": "ae7d921f45514f0c0705571a91563229791f48c18948b3d37cf1f6f1a32f6f96",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v2_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-06": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v3.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-cf7ca7f8-9945-480b-ab37-0c3b69156cd7.png",
+    "sha256": "eb52513dd86c5933754e390eadfee34e1e6d9b052a6761cb9549a11f14ef870c",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 3,
+    "contract_sha256": "a44aacbfa6abc0702440f9c8b9316dd3f58b8ca4281fbcafb2d7fb25d65361aa",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v3_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-1af48403-5c71-4aba-ad6e-3d654e2f4ee2.png",
+        "sha256": "f8bbce164ea4d0ecb3a1e705b0da437c97d8a14dddc1f2772d9def5149316197",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "a44aacbfa6abc0702440f9c8b9316dd3f58b8ca4281fbcafb2d7fb25d65361aa",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v1_prompt.txt",
+        "visual_review": "pending"
+      },
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v2.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-3d969c20-5015-4181-8437-30e61c54072d.png",
+        "sha256": "79613148ae9e7535176c660e8294b84b100c62ff3f8ee780f86fe2e55e211ff3",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 2,
+        "contract_sha256": "a44aacbfa6abc0702440f9c8b9316dd3f58b8ca4281fbcafb2d7fb25d65361aa",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v2_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-07": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-a6b91f4b-f34d-4429-9dd8-c7f41aebb1c6.png",
+    "sha256": "87bac4f580c271331488349a4b995140e1cddbd73568b09d6de4c7736ecc243d",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "3f6570dff7c0b34344b46dea5af80945a4c0d32946a5ace80120230a6e5945e3",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-993f197e-ffd4-45a2-a1d5-4e32c0375abe.png",
+        "sha256": "a1174acab94f4f9af57da686f761c0fb658fa4c7ed0ff317340dc9d82661f1f6",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "3f6570dff7c0b34344b46dea5af80945a4c0d32946a5ace80120230a6e5945e3",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-08": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-7e324674-7823-4a34-8ee4-b39dc45ea285.png",
+    "sha256": "983ee361e2461fe0935543ee2a0db222a60137d1efaed6197724db38079a0084",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "66471e21ce4e2453e7e49b2ade961891e403ba4bfc2643f80aa13fcb0491bad9",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-101818f6-edb1-4d69-9f9e-77f4d47980d5.png",
+        "sha256": "aebc33b0f48e263d8820184c8c20f1baae82cd7d695999b4c42197541f03bce3",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "66471e21ce4e2453e7e49b2ade961891e403ba4bfc2643f80aa13fcb0491bad9",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-09": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-b33d533a-af4e-4f9f-bbec-1fc175d4575e.png",
+    "sha256": "550b55ef771f933337d62852b19ce9247f0418d2039708813a659970851aaae5",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "bb318b92b707791da9d0b29d5c986dde8c5e1af5d5b4284f67080c2a94348484",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-4758d689-6e03-4bc7-bd7b-2d7b8003d0ba.png",
+        "sha256": "f5801c269e04c2b6d27e56db8ef37a912fa792d8d06f6c86af3da8f37d89c53f",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "bb318b92b707791da9d0b29d5c986dde8c5e1af5d5b4284f67080c2a94348484",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-10": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-49c8bba9-4ace-42c5-bb96-0e6295738d64.png",
+    "sha256": "5596fd0e193e4ea115b70f752e24b8508544806c7ddaa1d013864f56ea82d270",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "e412c8e224eaf3cf1a2b03235e219029d0ea87267192531f68515b326781de65",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-ba2f02be-9c58-4e3e-a79f-d9fe3df03777.png",
+        "sha256": "10f0718f3777e14c6523e33c6e1c54d0b175e50c16f4be589de4d295d34760d2",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "280fda212449f1cc99eb6f555a57d919468382c24516b1cd8c36b614020b48b0",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-11": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-e7962dd7-cf41-41f7-bdd3-1241137b93f5.png",
+    "sha256": "db3aa38d16ba2896a96b190f79054b2ead87c96767b02b810333a8390dc4ef11",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "e77519bb62a6237320a2191670ad846109dc11b8283f3d0170273b7fc1f3525a",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-5d2fe3a6-e02d-4cb9-acb6-1cda04817085.png",
+        "sha256": "6c0b51ae4fd27e2ac3e7a42d500b6647bdd9392740d2f1a1ab6d87ce39410880",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "e77519bb62a6237320a2191670ad846109dc11b8283f3d0170273b7fc1f3525a",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-12": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-682d86d0-fcb1-4384-bc7c-a853a11635c4.png",
+    "sha256": "08f7c9e58d195751d91909bdb3ba82a6513e429a58f5fc875e618b91df3cb254",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "eccabb2f0eccf7e682706e0e9cf6eca729e2773b6a3a9ef5f7c00702af304e14",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-2458fdaf-98d4-42c8-a049-773670be2d93.png",
+        "sha256": "996c042e8972b48f30f01b0647186e0005b787a02d4be071c4adbf4b7e9489f7",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "eccabb2f0eccf7e682706e0e9cf6eca729e2773b6a3a9ef5f7c00702af304e14",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  },
+  "S03-13": {
+    "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v2.png",
+    "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-5b0c7aa4-c2d1-4a4f-8e29-8c857977790f.png",
+    "sha256": "08d5f8575550aed78eabce125dec13e56aa2cbffc8a182d15a17ff677e1c0b17",
+    "source_size": [
+      2172,
+      724
+    ],
+    "revision": 2,
+    "contract_sha256": "c7f977cd509ffb7e8d517f70de251caa9f0da939deda627c35b2714877dd5f90",
+    "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v2_prompt.txt",
+    "visual_review": "pass",
+    "history": [
+      {
+        "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v1.png",
+        "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-cb032f41-46f8-4eeb-98dc-c0660df6feec.png",
+        "sha256": "8e7e9a0be88894f943aa2d510e95b1cb73e475faa6d1f61e4c49c74a865c27ed",
+        "source_size": [
+          2172,
+          724
+        ],
+        "revision": 1,
+        "contract_sha256": "c7f977cd509ffb7e8d517f70de251caa9f0da939deda627c35b2714877dd5f90",
+        "prompt": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v1_prompt.txt",
+        "visual_review": "pending"
+      }
+    ],
+    "user_approved": true
+  }
+}

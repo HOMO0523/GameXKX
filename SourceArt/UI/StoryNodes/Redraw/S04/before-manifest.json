@@ -1,0 +1,293 @@
+{
+  "S04-01": {
+    "file": "SourceArt/UI/StoryNodes/s04_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-dd662e5b-4c20-46fb-8216-eb894c7dc3d5.png",
+    "sha256": "893cb35f3a61caee8862f1e8ab6f0e2b92320ed878bd877e67a05a0112699a28",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_01.T_Story_S04_01",
+    "cast": [
+      "tusi",
+      "hero",
+      "you_bai"
+    ],
+    "result": "说清求证舆图的来意，土司首领愿意听取幽白的旧事。",
+    "display_phase": "completed",
+    "contract_sha256": "734a4fbfbfc603c6caf853cd3272e59cf804425e21c9d588588ec9df57924169",
+    "visual_review": "pass",
+    "reviewed_sha256": "893cb35f3a61caee8862f1e8ab6f0e2b92320ed878bd877e67a05a0112699a28",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-02": {
+    "file": "SourceArt/UI/StoryNodes/s04_02_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-2fab014d-9d82-48d8-96a2-3ccf7d8de4e1.png",
+    "sha256": "efdd37b19138d2413a08534bc98a17de34fc6e9bb5f8e1c340ca4a51bc758946",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_02.T_Story_S04_02",
+    "cast": [
+      "you_bai",
+      "tusi",
+      "hero"
+    ],
+    "result": "以旧水槽与刻痕为旁证取得入寨许可。",
+    "display_phase": "completed",
+    "contract_sha256": "99f7c185c0cdb40c9d07fa46b28540a0bd1bdecd203cde9c9b6f12b0a371032e",
+    "visual_review": "pass",
+    "reviewed_sha256": "efdd37b19138d2413a08534bc98a17de34fc6e9bb5f8e1c340ca4a51bc758946",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-03": {
+    "file": "SourceArt/UI/StoryNodes/s04_03_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-af88b6b2-91c6-4f37-9278-5a528a5208a0.png",
+    "sha256": "8f33db8b99dfcc64580a1d5cf0776abe25fae4b9e465e260f8063677be59fe99",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_03.T_Story_S04_03",
+    "cast": [
+      "tusi",
+      "hero",
+      "you_bai"
+    ],
+    "result": "完成迎客礼，清醒入寨，得以继续调查旧图。",
+    "display_phase": "completed",
+    "contract_sha256": "612df944487b3265d8b7e191424b6aacf6c78f7bcbdd5c0c4393982249a95f16",
+    "visual_review": "pass",
+    "reviewed_sha256": "8f33db8b99dfcc64580a1d5cf0776abe25fae4b9e465e260f8063677be59fe99",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-04": {
+    "file": "SourceArt/UI/StoryNodes/s04_04_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-41e1c113-af7b-40f9-b65c-0cf3e92d178d.png",
+    "sha256": "bb9dd225b36ec3202458912b98a578155b90f0818b0e264ca8888a52d0a78c74",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_04.T_Story_S04_04",
+    "cast": [
+      "song_jin_bao",
+      "hero",
+      "tusi",
+      "you_bai"
+    ],
+    "result": "寨外巡查完成，确认牛迹与旧水渠通往同一片低洼处，寻牛和查水分支开放。",
+    "display_phase": "completed",
+    "contract_sha256": "3383846d5c8787659bf9581a58bff0a268b3fc7fcc3f7a0dd9399b36d409a657",
+    "visual_review": "pass",
+    "reviewed_sha256": "bb9dd225b36ec3202458912b98a578155b90f0818b0e264ca8888a52d0a78c74",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-05": {
+    "file": "SourceArt/UI/StoryNodes/s04_05_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-10db3490-1e43-46fa-a1ef-4c0ada61cba2.png",
+    "sha256": "3125ef7e9faef7c82e0a9360b8a5d61fdba2043fa3e79225e3f3fa1daff95529",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_05.T_Story_S04_05",
+    "cast": [
+      "song_jin_bao",
+      "hero",
+      "you_bai"
+    ],
+    "result": "沿牛迹找到失牛，确认真正堵水的是竹篱与杂物，牛被安全牵回干岸。",
+    "display_phase": "completed",
+    "contract_sha256": "3466e47b1c7b4f50ed8a66ea3eb974a66931e93c69aad7c89479f339cc9896f6",
+    "visual_review": "pass",
+    "reviewed_sha256": "3125ef7e9faef7c82e0a9360b8a5d61fdba2043fa3e79225e3f3fa1daff95529",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-06": {
+    "file": "SourceArt/UI/StoryNodes/s04_06_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-7782896d-ef4a-4808-8b5b-143c587eed8d.png",
+    "sha256": "0df855695b223ec7c0eb2eb008b9f562fc57a48dfb3997805918c5e7155d8e9c",
+    "size": [
+      2169,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_06.T_Story_S04_06",
+    "cast": [
+      "hero",
+      "song_jin_bao",
+      "you_bai"
+    ],
+    "result": "恢复低处旧引水口，确认水与牛的去向，农田重新得到水。",
+    "display_phase": "completed",
+    "contract_sha256": "04db1f505f88a13620fdfd214f40a4f99ac40d80583d64ef2e896e03fe496338",
+    "visual_review": "pass",
+    "reviewed_sha256": "0df855695b223ec7c0eb2eb008b9f562fc57a48dfb3997805918c5e7155d8e9c",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：脚夫空袋未装赃物、失牛棕白花纹连续、洗马潭没有新增求救者；人物与剧情阶段一致。"
+  },
+  "S04-07": {
+    "file": "SourceArt/UI/StoryNodes/s04_07_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-2710b2c0-b3ce-448e-8d12-b47f29c72cfd.png",
+    "sha256": "ea09f910e8d65a1790778656be83b421dc31cbaa07d4aabe31098c718cc6e1a2",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_07.T_Story_S04_07",
+    "cast": [
+      "song_jin_bao",
+      "hero",
+      "you_bai",
+      "tusi"
+    ],
+    "result": "失牛安全回寨，旧水道恢复，寨中确认调查结果。",
+    "display_phase": "completed",
+    "contract_sha256": "5b3ea102a4cf1c166385537c886bede3cee38071c937f3ef04905494c80d3745",
+    "visual_review": "pass",
+    "reviewed_sha256": "ea09f910e8d65a1790778656be83b421dc31cbaa07d4aabe31098c718cc6e1a2",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-08": {
+    "file": "SourceArt/UI/StoryNodes/s04_08_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-73ec96e1-8098-42b6-afbc-219a9f4b9429.png",
+    "sha256": "5d713a6bcafa60c92b6d5da8568fd7806c7085e9160b1b306086171926483685",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_08.T_Story_S04_08",
+    "cast": [
+      "tusi",
+      "hero",
+      "you_bai"
+    ],
+    "result": "获得羊皮卷的核对记录，将寨道与引水资料抄入自己的舆图。",
+    "display_phase": "completed",
+    "contract_sha256": "8c1ebdc7e2f14ed5f0575c10ad3b11121852d05e353147fb5b97dea3ac7b077e",
+    "visual_review": "pass",
+    "reviewed_sha256": "5d713a6bcafa60c92b6d5da8568fd7806c7085e9160b1b306086171926483685",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-09": {
+    "file": "SourceArt/UI/StoryNodes/s04_09_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-20c8a4ea-3631-4f82-a318-0e0ca33e960b.png",
+    "sha256": "96ff9add7d25dd9db98889b31e86c6c42442cb1f6b6fc75666bdb4bd641f9ce2",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_09.T_Story_S04_09",
+    "cast": [
+      "hero",
+      "you_bai",
+      "tusi"
+    ],
+    "result": "寨地与前章碑记相互印证，获得前往苍山的明确线索。",
+    "display_phase": "completed",
+    "contract_sha256": "9f07aba8e217803c0f9ac69c94a11dbe8cdc61ec4e53908578cfd8b9f2d14def",
+    "visual_review": "pass",
+    "reviewed_sha256": "96ff9add7d25dd9db98889b31e86c6c42442cb1f6b6fc75666bdb4bd641f9ce2",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-10": {
+    "file": "SourceArt/UI/StoryNodes/s04_10_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-13cc6ef2-f8e9-4189-800b-7eb56a380881.png",
+    "sha256": "b157c305a10a506b23998e58f2cf37e220253138f721c196542368fb26af77d9",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_10.T_Story_S04_10",
+    "cast": [
+      "tusi",
+      "hero",
+      "song_jin_bao",
+      "you_bai"
+    ],
+    "result": "完成寨中送别，土司寨主干结束，启程前往苍山。",
+    "display_phase": "completed",
+    "contract_sha256": "5a032f7dd47627797967798efff0a7b10eda30ddf1fafc3f2b8b1901d2d11cdc",
+    "visual_review": "pass",
+    "reviewed_sha256": "b157c305a10a506b23998e58f2cf37e220253138f721c196542368fb26af77d9",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-11": {
+    "file": "SourceArt/UI/StoryNodes/s04_11_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-00c1b699-6488-435c-b050-b2f91823a030.png",
+    "sha256": "ab14fdd3b8bb0cb6953e0f3d57500d9844ffdb4b952bf812b3adceac722c7511",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_11.T_Story_S04_11",
+    "cast": [
+      "tusi",
+      "hero",
+      "you_bai"
+    ],
+    "result": "理解寨中盘问的缘由，记下以证据建立信任的经验。",
+    "display_phase": "completed",
+    "contract_sha256": "fc372a9a649f38427a163be44a7ab658ca79ccea3924037583bb3ec5d8d3a045",
+    "visual_review": "pass",
+    "reviewed_sha256": "ab14fdd3b8bb0cb6953e0f3d57500d9844ffdb4b952bf812b3adceac722c7511",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S04-12": {
+    "file": "SourceArt/UI/StoryNodes/s04_12_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-ee384c60-3a49-4ec0-bab1-10539d999233.png",
+    "sha256": "72e3f24fc7f76acca6d1e61b474cff216fe4898e9ad541d4063aa32e1c6fbb9b",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_12.T_Story_S04_12",
+    "cast": [
+      "song_jin_bao",
+      "hero",
+      "you_bai"
+    ],
+    "result": "了解宋金宝的处境与牛沿旧渠离开的线索，约定共同调查。",
+    "display_phase": "completed",
+    "contract_sha256": "75d60575ab0875bf478047622ec804d848716bc5ee10a39986e452303fbe3e15",
+    "visual_review": "pass",
+    "reviewed_sha256": "72e3f24fc7f76acca6d1e61b474cff216fe4898e9ad541d4063aa32e1c6fbb9b",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "status": "awaiting_user_confirmation_before_one_generation",
+  "node_id": "S02-02",
+  "style_approved_by_user": true,
+  "identity_approved_by_user": false,
+  "referenced_image_paths": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Review/user_approved_painterly_style.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/00_hero.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png"
+  ],
+  "prompt": "Precise identity-preserving correction of image 1. Image 1 is the approved story composition AND painterly rendering style; images 2 and 3 are the sole authority for the hero's character design, with image 3 the actual current in-game sprite. Ignore magenta/transparent character-reference backgrounds. Correct ONLY the left foreground traveler to be the exact project hero: short compact rounded cheek/jaw, short chin, large distinctive black-and-white eyes under thick upward-angled black eyebrows, clean swept-back hair mass with tied rear topknot and brown ribbons, the same head-to-neck proportions and short brown jacket/grey-blue collar design shown in images 2 and 3. Do NOT elongate the face, sharpen the chin, shrink the eyes, invent long loose bangs or reinterpret him as a differently aged anime character. Render that same canonical hero from the current rear three-quarter/over-shoulder angle, looking at the boatman's offered muddy palm. Preserve the hero's surprised restrained reaction and lowered bargaining finger. Keep boatman, spirit, muddy-palm reversal, their positions, camera, light, sparse river mark, boat edge, color palette, broad matte brush texture, variable dark ink contours and warm ivory paper-space composition unchanged. This user-approved painterly style must not be flattened into glossy vector/anime fills or filled with extra background scenery. No letters, captions, punctuation ornaments, new people or props. Same approximately 3:1 banner. Generate only this ONE image after explicit confirmation; display it and ask for remaining issues. File-size optimization is a separate encoding/export step, not a reason to repaint the approved style."
+}

@@ -1,0 +1,41 @@
+[
+  {
+    "node_id": "S05-04",
+    "revision": 2,
+    "prompt": "Precise character pose edit. Image ONE target, image TWO exact Qiong identity. Correct only Qiong Yaoer's BODY TURN. The existing face looks backward while shoulders/waist still face forward, causing excessive neck rotation. Preserve her exact face, cap, braid, outfit and scale from reference TWO. She has PAUSED and turns her SHOULDERS, CHEST, WAIST AND HIPS toward the hero together. Show the cream crossed front collar directly BELOW her chin, not a backward-facing red back panel below a front-facing head. Head rotates no more than about 20 degrees relative to chest. Pivot her feet naturally so knee, hip and torso bearings agree; both shoes planted, no twisted knee. Her expression is a small confident conversational smile. Keep each arm coming from its own shoulder, simple natural five-finger hands and clean silhouette. The pose should look like a person turning their body to explain, not an owl turning its head. Keep her at the same spot on the broad stone path, now in a natural three-quarter FRONT/SIDE stance toward the hero on the left. One hand holds the green bell low beside her hip, the other open palm indicates the stone path just beside her feet, without stretching behind her body. Preserve the hero's current pose, spirit, landmark rocks, pine, path, palette, perspective and entire 3:1 frame. Change only Qiong's coherent full-body orientation and resulting garment folds, not scenery or other cast.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_04_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/12_qiong_mei_er.png"
+    ]
+  },
+  {
+    "node_id": "S05-06",
+    "revision": 2,
+    "prompt": "RECOMPOSE this wuxia encounter so there is a STRONG CLEAR FACE-TO-FACE STANDOFF, not animals running away while heroes chat. Image ONE target gives the painterly style and original blue flame. Image TWO Qiong identity, THREE hero identity, FOUR exact project gray wolf, FIVE exact project porcupine. Preserve these designs exactly. Show the tense TURNING POINT just before the heroes drive the animals away, with everyone safely supported.\nHeroes grouped on LEFT, enemies on RIGHT, opposing diagonal intentions meet across a NARROW CLEAR CENTRAL GAP. Hero's FACE, EYES, CHEST, PELVIS and KNEES all face RIGHT toward gray wolf. A believable wide but moderate martial stance, front knee aligned with front foot, both soles planted on the same broad firm stone ledge. BOTH hands naturally grip a straight bamboo pole and aim its blunt end toward the approaching wolf without stabbing or physical contact. No head turned back to Qiong. Do not use backwards torso or extreme splits.\nOn RIGHT the gray wolf faces LEFT directly at the hero: lowered head, ears alert, front paws braced, shoulders forward, wary aggressive stance, NOT a running-away side profile. The exact compact project porcupine is just behind/to its side also FACING LEFT toward heroes, its broad stylized quills raised. No squirrel/civet or other species, no extra legs. Keep near eye lines between hero and wolf obvious. Reduce space between pole tip and enemy group enough to feel like the narrow route is blocked.\nQiong stands on a broad stable step immediately BEHIND LEFT of hero; her shoulders and face also orient RIGHT toward enemies, focused composed expression, no friendly grin at the viewer. ONE hand steadies the hero's OUTER BASKET SHOULDER STRAP near his back shoulder, with a short natural reach, the other keeps her bronze bell close at her own chest. Her two arms clearly traceable and not merged with hero's arms. This shows mutual support without dangling or tangled grabbing. Youbai is a SINGLE bodiless blue-purple flame, about two-thirds of hero's HEAD size, hovering over pole near heroes, eyes aimed at the wolf, not camera; no arms/legs or huge ornamental flame.\nLow three-quarter camera, coherent foreground/middle depth, one firm old path beside tarn, sparse highland snow on remote rocks only. One strong confrontation triangle and restrained serious alertness with wuxia cartoon charm. Calm broad earth/pale water/ivory sky, sparse detail, no debris or speed-line confetti, no gore. No text/UI. 3:1 panorama.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_06_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/12_qiong_mei_er.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/00_hero.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/RouteEnemies/final_selected_v1/07_graywolf.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/RouteEnemies/final_selected_v1/10_porcupine.png"
+    ]
+  },
+  {
+    "node_id": "S05-05",
+    "revision": 2,
+    "prompt": "Local pose correction to Qiong farther up the tarn path ONLY. Reference TWO exact Qiong design. Correct only Qiong Yaoer's BODY TURN. The existing face looks backward while shoulders/waist still face forward, causing excessive neck rotation. Preserve her exact face, cap, braid, outfit and scale from reference TWO. She has PAUSED and turns her SHOULDERS, CHEST, WAIST AND HIPS toward the hero together. Show the cream crossed front collar directly BELOW her chin, not a backward-facing red back panel below a front-facing head. Head rotates no more than about 20 degrees relative to chest. Pivot her feet naturally so knee, hip and torso bearings agree; both shoes planted, no twisted knee. Her expression is a small confident conversational smile. Keep each arm coming from its own shoulder, simple natural five-finger hands and clean silhouette. The pose should look like a person turning their body to explain, not an owl turning its head. She is paused on the curve facing back diagonally toward hero, with ONE raised open wait gesture at chest height and the other hand holding her bell at hip. Her feet pivot together toward hero on the safe path, head stays aligned with chest, do not retain a back-facing torso below a front-facing head. Keep the hero, blue spirit, broad curving stone bank, water, snow, sizes, camera and all other content exactly unchanged. Same 3:1 banner.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_05_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/12_qiong_mei_er.png"
+    ]
+  },
+  {
+    "node_id": "S05-07",
+    "revision": 2,
+    "prompt": "Local pose correction to Qiong on the upper stair ONLY. Reference TWO is exact character. Correct only Qiong Yaoer's BODY TURN. The existing face looks backward while shoulders/waist still face forward, causing excessive neck rotation. Preserve her exact face, cap, braid, outfit and scale from reference TWO. She has PAUSED and turns her SHOULDERS, CHEST, WAIST AND HIPS toward the hero together. Show the cream crossed front collar directly BELOW her chin, not a backward-facing red back panel below a front-facing head. Head rotates no more than about 20 degrees relative to chest. Pivot her feet naturally so knee, hip and torso bearings agree; both shoes planted, no twisted knee. Her expression is a small confident conversational smile. Keep each arm coming from its own shoulder, simple natural five-finger hands and clean silhouette. The pose should look like a person turning their body to explain, not an owl turning its head. She has paused one broad step above hero to wait for him, turned her WHOLE torso three-quarter toward the hero below-left, with a small approving smile. Her cream crossing collar is visible directly beneath her chin; skirt, waist sash and shoulders follow the same turn. One shoe on upper step, other on lower step but both knees naturally point with their toes, stable supported stance. Keep her bell held low in one hand, other arm relaxed, no new outstretched hand. Preserve hero's correct rear three-quarter climbing pose, all hero hands/feet, Youbai, stairs, setting, composition, palette and 3:1 dimensions. Do not merely rotate her head farther.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_07_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/12_qiong_mei_er.png"
+    ]
+  }
+]

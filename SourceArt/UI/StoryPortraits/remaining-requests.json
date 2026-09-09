@@ -1,0 +1,67 @@
+[
+  {
+    "id": "woodcutter",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Stocky middle-aged Chinese woodcutter. Broad pear-shaped head tapering toward a short flat hairline, massive friendly rounded lower jaw, tiny triangular nose, two short horizontal dark brows, small smiling eyes and two separated square upper teeth. Short black hair and plain charcoal cloth headband. Grey-brown patched short jacket crossed over beige undershirt. Carry exactly THREE large bundled firewood logs behind one shoulder, resting one hand on their rope strap; other open hand makes a relaxed low explanatory gesture. Small blunt axe safely tucked behind bundle, not swung. Warm grounded personality, no mustache, no cap, no scholar beard. Form dominated by a wide stable trapezoid.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "hunter",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Lean adult mountain hunter with a DISTINCT elongated diamond face, high cheek corners, tapered squared chin, long wedge nose, thin asymmetric dark eyebrows, narrow alert eyes, slight sheepish lopsided smile. Plain brown forehead band tied over short black hair, no cap, no beard. Olive-brown short coat with cream crossed collar, dark sash. Modest bow curves behind shoulder, only three broad arrow fletch shapes. One hand holds a closed small notebook to chest, other grips food-pouch cord away from neck. Warm dignified comic outdoorsman, not handsome anime hero, not the woodcutter or the straw-hat reference characters.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "willow_scholar",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Thin elderly willow scholar. Long soft OVAL head with high forehead, drooping long white comma eyebrows and small downward smiling mouth framed by a short neat white rounded beard. Large narrow hookless straight nose, half-closed calm eyes. Plain dark soft low cap, pale grey long robe with grey-green trim. One hand delicately holds a single long willow-twig brush near shoulder, other supports a small plain closed notebook across lower torso. Bent relaxed silhouette, dry humor. NO tall pointed beard, no sharp ear spikes, no ochre coat or broad straw hat. Face and proportions should be deliberately graphic like references.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "boatman",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Identity reference THREE is the approved boatman scene: preserve exactly its middle-aged boatman's face, round straw hat, chunky arched black brows, short black moustache, rounded rectangular warm face, blue-grey rolled-sleeve work robe and cream crossed collar. Render him as a clean designed waist-up dialogue portrait in the more graphic shape style of references ONE/TWO, without realistic fine wrinkles. One hand holds long bamboo pole upright at outer edge, the other rests casually at his belt. Knowing friendly smile, slightly turned to viewer. No boat, no hero or blue spirit. Do not reuse the extended foreshortened muddy palm pose.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png",
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Review/s02_02_hero_identity_v1_master.png"
+    ]
+  },
+  {
+    "id": "villager",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Friendly adult male Jiangwan farmer. Compact bean-shaped face with ONE broad rounded cheek, short blunt upturned nose, wide open grin and two small front teeth, slightly jug-like ears, short dark crescent eyebrows with one lifted. Dark charcoal headcloth tied low and leaning sideways, short sideburns, clean-shaven. Tan-grey homespun rolled sleeves and muted olive waist sash. Both hands casually hold a wooden bucket handle at waist, top of bucket visible. Lean forward a little with lively conversational warmth. Broad simple wood shapes, no tiny basket-weave or ornamental pattern.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "elder",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Small elderly Jiangwan village elder. Short angular octagonal face, large round ears, small rectangular nose, two straight WHITE block eyebrows, shrewd small eyes, short WHITE squared-off beard. Low ochre cloth cap with simple folded edge, modest warm brown robe with grey crossing collar. Thin crooked but sturdy body. Right hand gently closes a carefully wrapped oilcloth map packet against chest, left hand supports plain rounded wooden cane vertically. Calm guarded trust. Distinct from a round bald monk and a long thin scholar. No ornate staff, hat or jewelry.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "poor_traveler",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Poor elderly traveler, dignified kind humor. Narrow gently curved face with long rounded drooping nose, lowered WHITE eyebrows, tired kind crescent eyes, sparse grey side hair below a soft grey cap, no big beard, only a tiny soft grey moustache. Slightly bowed shoulders. Faded muted BLUE patched robe with two large clearly sewn patches, pale crossed collar. Gently holds a small cloth food bag with both hands low across torso. Simple reserved hopeful smile, no tears or pity caricature. Broad graphic shapes and very few lines, no photographic wrinkles.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  },
+  {
+    "id": "porter",
+    "prompt": "Use case: stylized-concept. Create ONE new wuxia NPC dialogue WAIST-UP portrait, square format, entire head and both forearms inside frame, no legs. Reference images give PROJECT ART STYLE only, not character identity unless explicitly said. Strong designed silhouette, graphic caricature shapes, thick variable dark-brown brush contours, broad muted matte painted planes, sparse restrained pigment variation. Very few large folds, no tiny texture, no realistic portrait anatomy or wrinkles, no generic anime face. Warm ochre skin. Memorable eyebrows/nose/jaw. Simple natural hands. Isolated on perfectly solid pure MAGENTA #ff00ff for the user-requested cutout workflow; no shadow, floor, checkerboard, letters or frame. Stocky adult porter, strongly designed head like a short upside-down TRAPEZOID, very wide temples narrowing to short jaw; large uneven square brows, small close-set eyes, bulbous short orange nose, short black HORIZONTAL moustache, small round guilty mouth. Brown cloth headwrap with knot at SIDE. Grey-brown short tunic, dusty blue shoulder strap and rope belt. One elbow clutches cloth shoulder bag under arm while other palm is half raised in a caught-out wait-a-moment gesture. Mild awkward comic expression; no straw hat, green robe or smoking pipe, no abacus. Different from the broad square coachman.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/08_song_jin_bao.png"
+    ]
+  }
+]

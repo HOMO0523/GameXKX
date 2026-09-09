@@ -1,0 +1,18 @@
+[
+  {
+    "node_id": "S03-06",
+    "revision": 2,
+    "prompt": "Small background correction ONLY. This is Liuzi memorial reading hall, so replace the seated Buddhist idol/picture in the dark BACK LEFT alcove with a plain small wooden shelf holding three ordinary closed thread-bound books. Remove the incense vessel and candle on that background shelf. Keep the quiet doorway, hero, Jin Gui, their exact hands passing the book, all poses, clothes, basket, spirit and warm light completely unchanged. Plain scholarly reading hall, no religious statue or new writing. Same 3:1 panorama.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v1.png"
+    ]
+  },
+  {
+    "node_id": "S03-07",
+    "revision": 2,
+    "prompt": "Correct two specific elements only. FIRST Youbai must be ONE entirely BODILESS BLUE-PURPLE FLAME with eyes and face. Completely remove the little ARM and HAND currently reaching from its lower right toward the paper, and any little limb on its left; keep a smooth tapered flame curl instead. It illuminates the paper simply by hovering nearby; no touching or pointing hand. SECOND replace the six large coffin-like block symbols on the paper with a SIMPLE STONE-RUBBING OF A CANAL: two broad irregular parallel banks, one small wrongly placed U-shaped notch in one bank and a faint disconnected continuation to be corrected. A small blue glow from the spirit naturally catches that notch, NO UI exclamation rays and no writing. Keep hero's exact face, natural seated posture, hands packing the rolled rubbing, all clothing, existing board, rocks, pale scene and composition unchanged. No other edits, same 3:1 banner.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v1.png"
+    ]
+  }
+]

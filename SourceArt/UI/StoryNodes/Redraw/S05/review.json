@@ -1,0 +1,139 @@
+{
+  "chapter": "S05",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S05-01",
+      "title": "苍山脚下",
+      "highlight": "豪言未出口，幽白先被山风吹成一面小旗，主角拢紧衣领沿旧道进寨。",
+      "result": "确认先沿旧道到古寨问路，准备应对高处风雪。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_01_1536.webp",
+      "webp_bytes": 145280,
+      "sha256": "35c1743fa0e3c9369a4b19fb380a301ad3573aca78542c6fbc9b0bdcbdf9cba0",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_01_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-02",
+      "title": "苗族古寨",
+      "highlight": "幽白朝着近在眼前的雪峰昂首，琼幺儿用铃柄把视线轻轻引回真正的山路。",
+      "result": "结识琼幺儿，得到等待风雪减弱与核对鹰喙岩的指引。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_02_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_02_1536.webp",
+      "webp_bytes": 168690,
+      "sha256": "9267e5f617a292f83a7f69fb12a011544252e3e848d885bb2dd4b224eb0aff1e",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_02_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-03",
+      "title": "暴风避雪",
+      "highlight": "风刚松口，琼幺儿掀开挡风帘确认石阶；主角仍捂着手，幽白的‘以静制动’还没说完。",
+      "result": "安全避过骤紧风雪，在旧道可辨后继续行程。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_03_1536.webp",
+      "webp_bytes": 184782,
+      "sha256": "dad23c3c12f64e7a19d3420b4fc33eaac7cee9d9bf860216d151fd3ed8741f6a",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_03_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-04",
+      "title": "定位鹰喙岩",
+      "highlight": "主角蹲低把岩角、老松与旧道对成一线，琼幺儿顺着这条真路线领走，幽白只好告别那块‘很像鹰’的孤石。",
+      "result": "认出连接旧道与老松的鹰喙岩，安全定位后续路线。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_04_1536.webp",
+      "webp_bytes": 160794,
+      "sha256": "9b10c4f7caf03917a1e534b3cd4559ee4a3cd7e9baf187daac52f6518f5b6bc8",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_04_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-05",
+      "title": "洗马潭",
+      "highlight": "幽白顺着直线飘，两个有脚的人沿石岸绕；转弯处的动静让轻松的队伍同时停住。",
+      "result": "修正潭边绕行路线，发现前方有需要处理的险情。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_05_1536.webp",
+      "webp_bytes": 143984,
+      "sha256": "6f59c507ec0a5cd8387b7417ca9bf6ed5bef1db519b6780f94be1bee1329fea8",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_05_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-06",
+      "title": "英雄救美",
+      "highlight": "主角稳住横竿清开窄道，琼幺儿守住落脚点并伸手接应，两人互相搭把手而不是单向救美。",
+      "result": "兽群被击退，主角与琼幺儿互相照应安全脱险，前路恢复通行。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_06_1536.webp",
+      "webp_bytes": 190882,
+      "sha256": "30181749116deb2353b465d643641b92d63189cb521d001ec96b239fec4c3b74",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_06_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-07",
+      "title": "坚持前行",
+      "highlight": "主角收好图，踏上亲自核实的下一阶；琼幺儿领先半步回望，幽白这次跟着真路走。",
+      "result": "确定沿已核实的安全旧道继续登顶。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_07_1536.webp",
+      "webp_bytes": 147666,
+      "sha256": "9c7ba377eb9359a8000475eab80e6e81385c2625cd932b93472cf284ff9b03f3",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_07_v3.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-08",
+      "title": "暗生悔意",
+      "highlight": "嘴硬的大侠先坐下缓口气，琼幺儿把脚步也慢下来，幽白不好意思地飘回身边。",
+      "result": "承认并平复险后的害怕，选择以更稳妥的步调继续前行。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_08_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_08_1536.webp",
+      "webp_bytes": 161314,
+      "sha256": "155b78b70ebb3c2fc6659b9c3f4525d3b6447010dd1e74da268a4af910b77641",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_08_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-09",
+      "title": "幽白释疑",
+      "highlight": "幽白主动挪开，给主角落笔订正留出位置：守旧图的人终于肯让新墨落下。",
+      "result": "明白幽白守图的心愿，将六章证据统一为可继续订正的舆图。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_09_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_09_1536.webp",
+      "webp_bytes": 147146,
+      "sha256": "3e5aa28b2d52bfb338de3943cbbe0cab08510ff9372ab74835c4543664021804",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_09_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-10",
+      "title": "苍山之巅",
+      "highlight": "最后一笔落下又留白，三人面向云海歇肩；幽白的长篇感言被一阵山风轻轻打短。",
+      "result": "苍山末段订正完成，六章主线收束，舆图留下继续求证的余白。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_10_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_10_1536.webp",
+      "webp_bytes": 147010,
+      "sha256": "4c69a31f16b0a53e0bc7b86c13c3bc731fd2b898be50602cde68d0b3d2c7400c",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_10_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S05-11",
+      "title": "苗家姑娘",
+      "highlight": "琼幺儿轻摇小铃，幽白停在半句，主角笑着把注意力从嘴上转回脚下的路。",
+      "result": "听取琼幺儿的识路经验，建立同行默契。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S05/s05_11_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S05/s05_11_1536.webp",
+      "webp_bytes": 169150,
+      "sha256": "d80160a6cc98c09484a6bfd25a83a5f5dff8b16b1b8817320b483a7667726227",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_11_v1.png",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": []
+}

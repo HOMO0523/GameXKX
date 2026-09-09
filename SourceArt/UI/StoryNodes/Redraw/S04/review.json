@@ -1,0 +1,151 @@
+{
+  "chapter": "S04",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S04-01",
+      "title": "寨门对峙",
+      "highlight": "幽白的熟人姿态被横杖截住，首领的戒备有具体旧伤而非无理刁难。",
+      "result": "说清求证舆图的来意，土司首领愿意听取幽白的旧事。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_01_1536.webp",
+      "webp_bytes": 161588,
+      "sha256": "ec1f15e2ee60cf186f56039c757b9d0715a628fbfe758ae404d3f8418a65c973",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_01_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-02",
+      "title": "破局入寨",
+      "highlight": "把拓样转半圈才对上旧水槽，幽白的悬浮视角成为既合理又好笑的破局点。",
+      "result": "以旧水槽与刻痕为旁证取得入寨许可。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_02_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_02_1536.webp",
+      "webp_bytes": 159888,
+      "sha256": "b0fd33aadf1a4886a4cbfc8b796008195cbb97bccfec5129d5ff2325b295bc21",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_02_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-03",
+      "title": "一步一酒入寨门",
+      "highlight": "主角坦然推回满碗，首领由审视转为大笑，信任来自承认能力边界。",
+      "result": "完成迎客礼，清醒入寨，得以继续调查旧图。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_03_1536.webp",
+      "webp_bytes": 168646,
+      "sha256": "8f3fb51bfaa76937df9799ebc229ff7050c496057b4294802d76219bc5bfdd68",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_03_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-04",
+      "title": "逛逛寨子",
+      "highlight": "找牛与查水两拨手势相撞，主角把两人的注意力一起引到同向的牛迹与旧渠。",
+      "result": "寨外巡查完成，确认牛迹与旧水渠通往同一片低洼处，寻牛和查水分支开放。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_04_1536.webp",
+      "webp_bytes": 182980,
+      "sha256": "cb4c3fc3488faf69d0e136bc43e7b4a10de275ecd4466c9ffdfc2bc03987c99a",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_04_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-05",
+      "title": "牛牛去哪／枯田引流",
+      "highlight": "焦急找牛的人急刹在悠闲咀嚼的牛面前，牛让开视线后暴露真正的堵水物。",
+      "result": "沿牛迹找到失牛，确认真正堵水的是竹篱与杂物，牛被安全牵回干岸。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_05_1536.webp",
+      "webp_bytes": 183350,
+      "sha256": "00fd5221c9cdff7bf5c1eb5a5dde57ef4e07181409a205835617dac6c7e07fd3",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_05_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-06",
+      "title": "流向推演／暗河开凿",
+      "highlight": "宏大的挖河计划被脚边旧出口打断；清开篱笆时一股水泼湿宋金宝的花哨衣摆。",
+      "result": "恢复低处旧引水口，确认水与牛的去向，农田重新得到水。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_06_1536.webp",
+      "webp_bytes": 157510,
+      "sha256": "29950f69633eb670a6a9f0f027afbde4811507ab48688aabfda79678ece392c0",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_06_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-07",
+      "title": "牛来",
+      "highlight": "想躲开首领的宋金宝，被牛顶着背送到首领面前，动物自然行为造成喜剧转折。",
+      "result": "失牛安全回寨，旧水道恢复，寨中确认调查结果。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_07_1536.webp",
+      "webp_bytes": 165724,
+      "sha256": "1d581761ae14c92585ad2fc519bf626e2b1d57f4595014c1186360e403728185",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_07_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-08",
+      "title": "土司羊皮卷",
+      "highlight": "被当成神秘异兽的夸张牛画翻过去，背面才是真正实用的寨道水图。",
+      "result": "获得羊皮卷的核对记录，将寨道与引水资料抄入自己的舆图。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_08_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_08_1536.webp",
+      "webp_bytes": 158340,
+      "sha256": "90983a33979eb9b679aef68f9bdf9fb1270aa9c06a2b0b85db364f1863446cf4",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_08_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-09",
+      "title": "土司寨遗痕",
+      "highlight": "首领的杖从废旧寨墙划向新寨炊烟，空间里同时看见过去与现在。",
+      "result": "寨地与前章碑记相互印证，获得前往苍山的明确线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_09_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_09_1536.webp",
+      "webp_bytes": 150862,
+      "sha256": "4238ac422e01084579b1efa1399e5e5a8ccbe6358c0915786aa06d243a257b60",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_09_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-10",
+      "title": "祝酒送别",
+      "highlight": "庄重祝词被牛的胃口打断，众人各护其物，却已完全没有初入寨时的隔阂。",
+      "result": "完成寨中送别，土司寨主干结束，启程前往苍山。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_10_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_10_1536.webp",
+      "webp_bytes": 224158,
+      "sha256": "57750f15eb398f4c0f3a8cc7df42fdab28bfa44a2c16cd2915554eae53e915d1",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_10_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-11",
+      "title": "寨前受挟",
+      "highlight": "首领掀桌露出垫脚的假宝图，自嘲把先前强硬背后的经验与分寸说开。",
+      "result": "理解寨中盘问的缘由，记下以证据建立信任的经验。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_11_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_11_1536.webp",
+      "webp_bytes": 159598,
+      "sha256": "ce60701fa9ea78704a26d1309058ec5562e101052b1efd2952920ef571ed8082",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_11_v3.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S04-12",
+      "title": "寨中风雨",
+      "highlight": "花哨的宋金宝咬紧绳结，把华服的一角拆给牵牛绳，表明他真正看重什么。",
+      "result": "了解宋金宝的处境与牛沿旧渠离开的线索，约定共同调查。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S04/s04_12_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S04/s04_12_1536.webp",
+      "webp_bytes": 154882,
+      "sha256": "21b0692f6821b4aac8c6485b23273e4b4e9eca0cc28f62669192b59ada8b72b2",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_12_v1.png",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": []
+}

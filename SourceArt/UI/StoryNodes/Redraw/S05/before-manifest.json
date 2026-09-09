@@ -1,0 +1,265 @@
+{
+  "S05-01": {
+    "file": "SourceArt/UI/StoryNodes/s05_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-8500e9be-1aca-4f7e-a67e-7d4c2c7eab1e.png",
+    "sha256": "60e32957c5ed485251d7faf62b4ebed82e9984a98548c5c6d7208ee1885b041d",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_01.T_Story_S05_01",
+    "cast": [
+      "hero",
+      "you_bai"
+    ],
+    "result": "确认先沿旧道到古寨问路，准备应对高处风雪。",
+    "display_phase": "completed",
+    "contract_sha256": "09aeab9d7e44942d8f7ee917ac8d2ce1f1ca3e50f160eb6999eb403275f1731c",
+    "visual_review": "pass",
+    "reviewed_sha256": "60e32957c5ed485251d7faf62b4ebed82e9984a98548c5c6d7208ee1885b041d",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-02": {
+    "file": "SourceArt/UI/StoryNodes/s05_02_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-77c06e4f-4dcc-4bfe-bb20-10a49cd9a710.png",
+    "sha256": "ec784ef06b4a092049ce64cdc016b13fcd0f1c1ed1e84554c1c2d538c9e8a375",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_02.T_Story_S05_02",
+    "cast": [
+      "qiong_yao_er",
+      "you_bai",
+      "hero"
+    ],
+    "result": "结识琼幺儿，得到等待风雪减弱与核对鹰喙岩的指引。",
+    "display_phase": "completed",
+    "contract_sha256": "595c1294a797696d0385cbbb576134db02e56046a9f8bf040c3b96f0d49627fd",
+    "visual_review": "pass",
+    "reviewed_sha256": "ec784ef06b4a092049ce64cdc016b13fcd0f1c1ed1e84554c1c2d538c9e8a375",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-03": {
+    "file": "SourceArt/UI/StoryNodes/s05_03_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-7df48e67-aae5-4032-9caf-33f9f8fc5a2e.png",
+    "sha256": "ca4e501214eff4051b71917d666647737f4db4e3be1f930358ca8bbae55df623",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_03.T_Story_S05_03",
+    "cast": [
+      "you_bai",
+      "hero",
+      "qiong_yao_er"
+    ],
+    "result": "安全避过骤紧风雪，在旧道可辨后继续行程。",
+    "display_phase": "completed",
+    "contract_sha256": "402f812c3ee06fb06638cf244f455ea414b2587e82652e16a73c628703b86c68",
+    "visual_review": "pass",
+    "reviewed_sha256": "ca4e501214eff4051b71917d666647737f4db4e3be1f930358ca8bbae55df623",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-04": {
+    "file": "SourceArt/UI/StoryNodes/s05_04_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-6874cdad-dad5-4283-870e-381849264498.png",
+    "sha256": "0aba6b2a6f75e8feaebac7ba5e4ec78061a0d73278c02cd777f85872f3c3b168",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_04.T_Story_S05_04",
+    "cast": [
+      "qiong_yao_er",
+      "you_bai",
+      "hero"
+    ],
+    "result": "认出连接旧道与老松的鹰喙岩，安全定位后续路线。",
+    "display_phase": "completed",
+    "contract_sha256": "d7783652ffcbe7ee3afae13b73488bec5d923a9a97f12b0385404aae8a1c8e25",
+    "visual_review": "pass",
+    "reviewed_sha256": "0aba6b2a6f75e8feaebac7ba5e4ec78061a0d73278c02cd777f85872f3c3b168",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-05": {
+    "file": "SourceArt/UI/StoryNodes/s05_05_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-6103f4da-d6b6-40df-aa85-52f17bb22e03.png",
+    "sha256": "cbad8c8e8088703952434675b9de593827b72c365a0981b1934d154970490d43",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_05.T_Story_S05_05",
+    "cast": [
+      "hero",
+      "qiong_yao_er",
+      "you_bai"
+    ],
+    "result": "修正潭边绕行路线，发现前方有需要处理的险情。",
+    "display_phase": "completed",
+    "contract_sha256": "ffcb1e78c6836704d81edbfd554e8b64ac730fb518cf8240b93bd2c7ff49ea81",
+    "visual_review": "pass",
+    "reviewed_sha256": "cbad8c8e8088703952434675b9de593827b72c365a0981b1934d154970490d43",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：脚夫空袋未装赃物、失牛棕白花纹连续、洗马潭没有新增求救者；人物与剧情阶段一致。"
+  },
+  "S05-06": {
+    "file": "SourceArt/UI/StoryNodes/s05_06_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-bc160d3a-b75f-45c5-b545-d53758a0558d.png",
+    "sha256": "1a2ec3eeb912083b2ea680e83ba44f479d01c0aa2451780ae4a06d2f79b40b11",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_06.T_Story_S05_06",
+    "cast": [
+      "qiong_yao_er",
+      "hero",
+      "you_bai"
+    ],
+    "result": "兽群被击退，主角与琼幺儿互相照应安全脱险，前路恢复通行。",
+    "display_phase": "completed",
+    "contract_sha256": "89d02cc11a788a5b24616c21afbb26885db9d40b9dde23324d5a94ae646b4be6",
+    "visual_review": "pass",
+    "reviewed_sha256": "1a2ec3eeb912083b2ea680e83ba44f479d01c0aa2451780ae4a06d2f79b40b11",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-07": {
+    "file": "SourceArt/UI/StoryNodes/s05_07_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-d8484afd-542d-43c2-8073-6a1386fe9a8a.png",
+    "sha256": "a79d9014393fe15f907573c76c99674553c5111410c6b1f6853244a348d09f99",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_07.T_Story_S05_07",
+    "cast": [
+      "hero",
+      "you_bai",
+      "qiong_yao_er"
+    ],
+    "result": "确定沿已核实的安全旧道继续登顶。",
+    "display_phase": "completed",
+    "contract_sha256": "9a1c10a03caef6fe54a45ec2989dee40d5c30ed00601b5457a14c1aadb0b84eb",
+    "visual_review": "pass",
+    "reviewed_sha256": "a79d9014393fe15f907573c76c99674553c5111410c6b1f6853244a348d09f99",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-08": {
+    "file": "SourceArt/UI/StoryNodes/s05_08_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-f0e60252-b47f-4a0a-9d23-111865749004.png",
+    "sha256": "d94c17aa4f9bf3f7f83c3c71ef295123b268d850ac4a9616ee265e7327cd695f",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_08.T_Story_S05_08",
+    "cast": [
+      "hero",
+      "you_bai",
+      "qiong_yao_er"
+    ],
+    "result": "承认并平复险后的害怕，选择以更稳妥的步调继续前行。",
+    "display_phase": "completed",
+    "contract_sha256": "b99e152e6faf5706a58483f1177a0465ad46ce432a01438366fbedbe9cac942c",
+    "visual_review": "pass",
+    "reviewed_sha256": "d94c17aa4f9bf3f7f83c3c71ef295123b268d850ac4a9616ee265e7327cd695f",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-09": {
+    "file": "SourceArt/UI/StoryNodes/s05_09_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-582386db-46a6-4605-b372-3c25bd7cf00c.png",
+    "sha256": "693f151970362afb17083b69b0ea9f5e5cbdc2378460811769fab1ff6ed298c0",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_09.T_Story_S05_09",
+    "cast": [
+      "hero",
+      "you_bai",
+      "qiong_yao_er"
+    ],
+    "result": "明白幽白守图的心愿，将六章证据统一为可继续订正的舆图。",
+    "display_phase": "completed",
+    "contract_sha256": "467cc2387bd3baeaf70b39a2ef4a57b50c9ee1c0ccfd4692a16cbc6a4e215887",
+    "visual_review": "pass",
+    "reviewed_sha256": "693f151970362afb17083b69b0ea9f5e5cbdc2378460811769fab1ff6ed298c0",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S05-10": {
+    "file": "SourceArt/UI/StoryNodes/s05_10_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-337ebb59-7cca-45b6-a51f-9ff236b43049.png",
+    "sha256": "4bef26585bae5e4664c35b33448a816c55cac4ab0bd99c23cf09f8e5d4e57562",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_10.T_Story_S05_10",
+    "cast": [
+      "hero",
+      "qiong_yao_er",
+      "you_bai"
+    ],
+    "result": "苍山末段订正完成，六章主线收束，舆图留下继续求证的余白。",
+    "display_phase": "completed",
+    "contract_sha256": "61fb7d49f5f425d3e3b67a1896ba8214248c4a899cf560dd74a6f6c169489976",
+    "visual_review": "pass",
+    "reviewed_sha256": "4bef26585bae5e4664c35b33448a816c55cac4ab0bd99c23cf09f8e5d4e57562",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：提桶双手自然连接、兽群退场后只留空手逃跑脚夫、终章去除多余手掌；剧情结果和角色一致。"
+  },
+  "S05-11": {
+    "file": "SourceArt/UI/StoryNodes/s05_11_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-07ff4be5-e2b9-4e9f-8263-80f0cb2923bd.png",
+    "sha256": "2e78fcf984be7a679d65e27d1bdf81877a0af79dc7008b127acc105aaf9b5f86",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_11.T_Story_S05_11",
+    "cast": [
+      "you_bai",
+      "qiong_yao_er",
+      "hero"
+    ],
+    "result": "听取琼幺儿的识路经验，建立同行默契。",
+    "display_phase": "completed",
+    "contract_sha256": "89f09ca62926eca92841663c2e37e1247dcb26d88b2d8b7a82f7f15879985433",
+    "visual_review": "pass",
+    "reviewed_sha256": "2e78fcf984be7a679d65e27d1bdf81877a0af79dc7008b127acc105aaf9b5f86",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

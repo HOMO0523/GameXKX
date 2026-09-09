@@ -1,0 +1,555 @@
+{
+  "schema": 1,
+  "characters": {
+    "driver": {
+      "file": "SourceArt/UI/StoryPortraits/driver_bust_v2.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/driver_v2.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-dfb0200a-49f2-4a3b-b922-661f76a72b4e.png",
+      "sha256": "34415ef03cfa9ed905f424a9b869baa00e243ae3a362d0f370564f24a02a1565",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        30,
+        48,
+        1225,
+        1209
+      ],
+      "alpha_bbox": [
+        16,
+        30,
+        496,
+        496
+      ],
+      "transparent_pixels": 117293,
+      "soft_edge_pixels": 8067,
+      "bytes": 316447,
+      "key": "magenta",
+      "revision": 2,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_driver.T_StoryPortrait_driver"
+    },
+    "mountain_man": {
+      "file": "SourceArt/UI/StoryPortraits/mountain_man_bust_v2.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/mountain_man_v2.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-9fb21753-a088-4d5d-bf3b-8e5063d56e5e.png",
+      "sha256": "6431a079d89cdb366f587455d5ddd7965d82007bba9bd7f97cbbd980abcccb0f",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        193,
+        31,
+        960,
+        1232
+      ],
+      "alpha_bbox": [
+        102,
+        16,
+        409,
+        496
+      ],
+      "transparent_pixels": 161858,
+      "soft_edge_pixels": 6105,
+      "bytes": 247692,
+      "key": "magenta",
+      "revision": 2,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_mountain_man.T_StoryPortrait_mountain_man"
+    },
+    "abbot": {
+      "file": "SourceArt/UI/StoryPortraits/abbot_bust_v4.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/abbot_v4.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-49d05149-7415-4222-a5b0-904ac40ff847.png",
+      "sha256": "dd6b8ac9dbd06af7dbc74f9d820887a4ac94290ba719fc86f6bb84050c57f7c7",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        87,
+        81,
+        1170,
+        1227
+      ],
+      "alpha_bbox": [
+        29,
+        16,
+        483,
+        496
+      ],
+      "transparent_pixels": 111197,
+      "soft_edge_pixels": 5101,
+      "bytes": 311558,
+      "key": "magenta",
+      "revision": 4,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_abbot.T_StoryPortrait_abbot"
+    },
+    "innkeeper": {
+      "file": "SourceArt/UI/StoryPortraits/innkeeper_bust_v2.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/innkeeper_v2.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-1773fcea-b360-406f-8649-60c62b399163.png",
+      "sha256": "58d655415d8d57143811a95aacdbd2e9aa1d57492a8804adacb49331e9913a5a",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        133,
+        25,
+        1098,
+        1234
+      ],
+      "alpha_bbox": [
+        64,
+        16,
+        447,
+        496
+      ],
+      "transparent_pixels": 152456,
+      "soft_edge_pixels": 8290,
+      "bytes": 268637,
+      "key": "magenta",
+      "revision": 2,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_innkeeper.T_StoryPortrait_innkeeper"
+    },
+    "woodcutter": {
+      "file": "SourceArt/UI/StoryPortraits/woodcutter_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/woodcutter_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-278a4889-e7f5-4a54-99c0-98eb2c874f87.png",
+      "sha256": "0e7a07f798a1a01a8b6169b637aa9fd877070bf5650cada3244f1fb5e9123eab",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        27,
+        127,
+        1244,
+        1215
+      ],
+      "alpha_bbox": [
+        16,
+        67,
+        496,
+        496
+      ],
+      "transparent_pixels": 123561,
+      "soft_edge_pixels": 6264,
+      "bytes": 299662,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_woodcutter.T_StoryPortrait_woodcutter"
+    },
+    "hunter": {
+      "file": "SourceArt/UI/StoryPortraits/hunter_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/hunter_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-537c34a6-fce4-4007-b122-d35ccdbf5bce.png",
+      "sha256": "cbf77526be63000d41905cfc45f68cf965ea4732d60b5ff835e4264d4752a786",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        105,
+        23,
+        1164,
+        1227
+      ],
+      "alpha_bbox": [
+        45,
+        16,
+        467,
+        496
+      ],
+      "transparent_pixels": 142020,
+      "soft_edge_pixels": 10988,
+      "bytes": 279915,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_hunter.T_StoryPortrait_hunter"
+    },
+    "willow_scholar": {
+      "file": "SourceArt/UI/StoryPortraits/willow_scholar_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/willow_scholar_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-639bada9-1b5b-4377-b262-833fd00ea477.png",
+      "sha256": "cd6fc50eccd1eb7e6c0729565bd9f71cd75286efe77043509e83ec6b8ecb3a0b",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        174,
+        58,
+        1093,
+        1223
+      ],
+      "alpha_bbox": [
+        66,
+        16,
+        445,
+        496
+      ],
+      "transparent_pixels": 153238,
+      "soft_edge_pixels": 9810,
+      "bytes": 265267,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_willow_scholar.T_StoryPortrait_willow_scholar"
+    },
+    "boatman": {
+      "file": "SourceArt/UI/StoryPortraits/boatman_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/boatman_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-5e34bf8d-6f83-49f9-8db3-509d98777c0d.png",
+      "sha256": "1d108d6b35734b1fbf68eea44d79e26d8f8cc147833812e1d76ac5ca84038cf5",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        59,
+        0,
+        1206,
+        1254
+      ],
+      "alpha_bbox": [
+        36,
+        16,
+        475,
+        496
+      ],
+      "transparent_pixels": 140454,
+      "soft_edge_pixels": 9063,
+      "bytes": 287155,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_boatman.T_StoryPortrait_boatman"
+    },
+    "villager": {
+      "file": "SourceArt/UI/StoryPortraits/villager_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/villager_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-221587ab-0484-4d57-8ba3-5b2ba978d382.png",
+      "sha256": "2292f3f225038ba3365140332a3491f272498418b599e4cdfef03c986383f81a",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        175,
+        23,
+        1143,
+        1254
+      ],
+      "alpha_bbox": [
+        67,
+        16,
+        444,
+        496
+      ],
+      "transparent_pixels": 141006,
+      "soft_edge_pixels": 5926,
+      "bytes": 271695,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_villager.T_StoryPortrait_villager"
+    },
+    "elder": {
+      "file": "SourceArt/UI/StoryPortraits/elder_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/elder_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-cc42178a-6095-40b0-88bb-925bcfa620fc.png",
+      "sha256": "8a259db3c63a6bdec1ac7398380af69264d040dcbaf5b503c6ac39b822a43be7",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        136,
+        31,
+        1101,
+        1229
+      ],
+      "alpha_bbox": [
+        62,
+        16,
+        449,
+        496
+      ],
+      "transparent_pixels": 147322,
+      "soft_edge_pixels": 5959,
+      "bytes": 256887,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_elder.T_StoryPortrait_elder"
+    },
+    "poor_traveler": {
+      "file": "SourceArt/UI/StoryPortraits/poor_traveler_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/poor_traveler_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-8bd4e86c-30c2-4b7b-957d-9886e813c959.png",
+      "sha256": "5d488c14881f55fec5fce84b05ee6ec40d4623f17294a407bfd9349397f07d2f",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        180,
+        58,
+        1117,
+        1232
+      ],
+      "alpha_bbox": [
+        64,
+        16,
+        447,
+        496
+      ],
+      "transparent_pixels": 143463,
+      "soft_edge_pixels": 5852,
+      "bytes": 269203,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_poor_traveler.T_StoryPortrait_poor_traveler"
+    },
+    "porter": {
+      "file": "SourceArt/UI/StoryPortraits/porter_bust_v1.png",
+      "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/porter_v1.png",
+      "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-9629fd9c-e42e-46cf-b258-90ca0dbb4e5f.png",
+      "sha256": "2a314a79d4cde517e188b2e2ea3c30143ff13f081ff4ae65ef64f4635acd0a7b",
+      "size": [
+        512,
+        512
+      ],
+      "source_crop": [
+        47,
+        87,
+        1207,
+        1192
+      ],
+      "alpha_bbox": [
+        16,
+        39,
+        496,
+        496
+      ],
+      "transparent_pixels": 123401,
+      "soft_edge_pixels": 6859,
+      "bytes": 320743,
+      "key": "magenta",
+      "revision": 1,
+      "review": "user_approved",
+      "imported": true,
+      "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_porter.T_StoryPortrait_porter"
+    }
+  },
+  "history": {
+    "driver": [
+      {
+        "file": "SourceArt/UI/StoryPortraits/driver_bust_v1.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/driver_v1.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-3876cfba-1fb4-469d-8d5b-856c78013fed.png",
+        "sha256": "6989235fc03d566187e9188907f4aeba5c9e4ecd1a6e9d8ff5407c6c13b2772c",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "alpha_bbox": [
+          16,
+          16,
+          496,
+          496
+        ],
+        "transparent_pixels": 31744,
+        "soft_edge_pixels": 0,
+        "bytes": 468932,
+        "key": "neutral",
+        "review": "rejected_by_user",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_driver.T_StoryPortrait_driver",
+        "rejection": "Faces too similar and rendering does not match project NPCs; redesign with distinct geometric silhouettes."
+      }
+    ],
+    "mountain_man": [
+      {
+        "file": "SourceArt/UI/StoryPortraits/mountain_man_bust_v1.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/mountain_man_v1.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-5e8bcfda-bd77-4d5c-bd66-dd18dbe9d557.png",
+        "sha256": "a176c22335936f651377c18fb4fd9fc34c81c3262b0b224ba644a89e8e5760ae",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "alpha_bbox": [
+          16,
+          16,
+          496,
+          496
+        ],
+        "transparent_pixels": 31744,
+        "soft_edge_pixels": 0,
+        "bytes": 475256,
+        "key": "neutral",
+        "review": "rejected_by_user",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_mountain_man.T_StoryPortrait_mountain_man",
+        "rejection": "Faces too similar and rendering does not match project NPCs; redesign with distinct geometric silhouettes."
+      }
+    ],
+    "abbot": [
+      {
+        "file": "SourceArt/UI/StoryPortraits/abbot_bust_v1.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/abbot_v1.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-4783bec4-06d4-434e-862d-3cc8a747bb98.png",
+        "sha256": "d96f007d9fe4f57410d78420fb5d69aa3fb33faacb485677989d07f2b2630bbb",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "alpha_bbox": [
+          16,
+          16,
+          496,
+          496
+        ],
+        "transparent_pixels": 31744,
+        "soft_edge_pixels": 0,
+        "bytes": 407402,
+        "key": "magenta",
+        "review": "rejected_by_user",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_abbot.T_StoryPortrait_abbot",
+        "rejection": "Faces too similar and rendering does not match project NPCs; redesign with distinct geometric silhouettes."
+      },
+      {
+        "file": "SourceArt/UI/StoryPortraits/abbot_bust_v2.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/abbot_v2.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-98d394c4-5ee5-491e-8271-861517d05078.png",
+        "sha256": "505f6b20354db526fea45661bebc0cee5f226a0957cbe0d3319fbbd537d03b9b",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          86,
+          81,
+          1170,
+          1227
+        ],
+        "alpha_bbox": [
+          29,
+          16,
+          483,
+          496
+        ],
+        "transparent_pixels": 111298,
+        "soft_edge_pixels": 5121,
+        "bytes": 325917,
+        "key": "magenta",
+        "revision": 2,
+        "review": "chapter_review_pending",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_abbot.T_StoryPortrait_abbot"
+      },
+      {
+        "file": "SourceArt/UI/StoryPortraits/abbot_bust_v3.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/abbot_v3.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-18a27810-b505-4b9e-ad55-14c51d38e49e.png",
+        "sha256": "c3c0077d91b9cf6a985808e3537742db5985194373b7f750ba4a89ded64cc794",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          87,
+          81,
+          1170,
+          1227
+        ],
+        "alpha_bbox": [
+          29,
+          16,
+          483,
+          496
+        ],
+        "transparent_pixels": 111177,
+        "soft_edge_pixels": 5085,
+        "bytes": 320671,
+        "key": "magenta",
+        "revision": 3,
+        "review": "chapter_review_pending",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_abbot.T_StoryPortrait_abbot"
+      }
+    ],
+    "innkeeper": [
+      {
+        "file": "SourceArt/UI/StoryPortraits/innkeeper_bust_v1.png",
+        "reference_for_story": "SourceArt/UI/StoryPortraits/Raw/innkeeper_v1.png",
+        "source_generated": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-a247d0ea-984d-4816-87c9-00408a038ddc.png",
+        "sha256": "e2af4d0787bf19ddaa02f03907d22073b06080d1a9e65dcffef10da4229dec82",
+        "size": [
+          512,
+          512
+        ],
+        "source_crop": [
+          0,
+          0,
+          1254,
+          1254
+        ],
+        "alpha_bbox": [
+          16,
+          16,
+          496,
+          496
+        ],
+        "transparent_pixels": 31744,
+        "soft_edge_pixels": 0,
+        "bytes": 403502,
+        "key": "magenta",
+        "review": "rejected_by_user",
+        "imported": false,
+        "texture": "/Game/GameXXK/UI/StoryPortraits/T_StoryPortrait_innkeeper.T_StoryPortrait_innkeeper",
+        "rejection": "Faces too similar and rendering does not match project NPCs; redesign with distinct geometric silhouettes."
+      }
+    ]
+  }
+}

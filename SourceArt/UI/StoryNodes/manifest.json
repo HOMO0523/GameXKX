@@ -1,0 +1,1664 @@
+{
+  "schema_version": 1,
+  "expected_count": 61,
+  "style_reference": "SourceArt/UI/RouteCamp/campfire_rest_banner_v3.png",
+  "nodes": {
+    "S00-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_01_v5.png",
+      "sha256": "034a1c9a7a6c6185324346cce830469823e66b62cdb7a23ea539e855d6c34b95",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_01.T_Story_S00_01",
+      "cast": [
+        "driver",
+        "hero"
+      ],
+      "result": "已问清沿溪上山的方向，旧图被风吹向浅溪。",
+      "display_phase": "completed",
+      "visual_review": "pass",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "reviewed_sha256": "034a1c9a7a6c6185324346cce830469823e66b62cdb7a23ea539e855d6c34b95",
+      "contract_sha256": "a24f4e5c23b346e123ebb6d09061d597e93deceedb930d5b9ad938b976cc458a",
+      "contract_recorded_after_visual_review": true,
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S00-02": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_02_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_02_v4.png",
+      "sha256": "7518133257b2f736d2072b3814d3e156ef8a8e23f7d81f40365e0a55fb0dc544",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_02.T_Story_S00_02",
+      "cast": [
+        "hero",
+        "you_bai"
+      ],
+      "result": "卷轴已拾回，幽白现身同行，决定前往国清寺核对旧路。",
+      "display_phase": "completed",
+      "visual_review": "pass",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "reviewed_sha256": "7518133257b2f736d2072b3814d3e156ef8a8e23f7d81f40365e0a55fb0dc544",
+      "contract_sha256": "a14b9c20e8032d208f3cf8ea4dbbc4b4eabca9bf3a5d1b937cdf6495cd4eb8dd",
+      "contract_recorded_after_visual_review": true,
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S00-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_03_v5.png",
+      "sha256": "f2724732c378948f2bb9609dcb029ff791f3a5f00e9a569dacd5937ccaa6d304",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_03.T_Story_S00_03",
+      "cast": [
+        "you_bai",
+        "hero"
+      ],
+      "result": "沿有新脚印的松根石阶安全越过山肩，记下断桥与绕行路。",
+      "display_phase": "story_preview_and_result",
+      "style_version": "clean_ink_v2",
+      "contract_sha256": "22d131dee52045517323df64d435e732a0959873f4b7eeff1dfba30e6a66f8e5",
+      "visual_review": "pass",
+      "reviewed_sha256": "f2724732c378948f2bb9609dcb029ff791f3a5f00e9a569dacd5937ccaa6d304",
+      "reviewer": "user",
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。"
+    },
+    "S00-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_04_v3.png",
+      "sha256": "87a19af2b2446c671416aec9eaa6e6902ae5f571f43c18338adec738b96b9d60",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 4,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_04.T_Story_S00_04",
+      "cast": [
+        "mountain_man",
+        "hero",
+        "you_bai"
+      ],
+      "result": "拦路兽群被击退，山客与手稿平安，获知国清寺仍存旧路记录。",
+      "display_phase": "story_preview_and_result",
+      "style_version": "clean_ink_v2",
+      "contract_sha256": "f55b69e7dca8aa12b875521f105bf35a64127dfa9b32d17fa3b84f4c0c5b8664",
+      "visual_review": "pass",
+      "reviewed_sha256": "87a19af2b2446c671416aec9eaa6e6902ae5f571f43c18338adec738b96b9d60",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S00-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_05_v3.png",
+      "sha256": "d0ce48b6978e96ed9096f9ddd14ec88bc8a64b86ff1e1712684156d231770ad8",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_05.T_Story_S00_05",
+      "cast": [
+        "abbot",
+        "hero",
+        "you_bai"
+      ],
+      "result": "住持确认旧桥已毁、新路已成，允许以实地证据补注抄图。",
+      "display_phase": "completed",
+      "contract_sha256": "e62f48e6979767e92b8263251cb6774d9b00ae80ec6c2b8c723a4bf50340d2de",
+      "visual_review": "pass",
+      "reviewed_sha256": "d0ce48b6978e96ed9096f9ddd14ec88bc8a64b86ff1e1712684156d231770ad8",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S00-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_06_v3.png",
+      "sha256": "69266fe814917b31cc7d82ac7ffefdeffdf56bde5dd331e1e0865854e0bd141f",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_06.T_Story_S00_06",
+      "cast": [
+        "hero",
+        "you_bai",
+        "abbot"
+      ],
+      "result": "天台山简图已补全，取得黄山暗溪的后续线索。",
+      "display_phase": "completed",
+      "visual_review": "pass",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "reviewed_sha256": "69266fe814917b31cc7d82ac7ffefdeffdf56bde5dd331e1e0865854e0bd141f",
+      "contract_sha256": "9383f030f58175793baacadd4125e84aecdeb218d9cb18d23b44179eb7ad435b",
+      "contract_recorded_after_visual_review": true,
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S00-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S00/s00_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_07_v3.png",
+      "sha256": "d98250643fb45b2441f921baffae0d38d1866b62517acf290c6d0361dc23d65c",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 4,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_07.T_Story_S00_07",
+      "cast": [
+        "innkeeper",
+        "hero",
+        "you_bai"
+      ],
+      "result": "从掌柜处核实改道传闻，学会把传闻和实地证据分开记。",
+      "display_phase": "completed",
+      "contract_sha256": "4d8a18f8abe5b4876a6a597660934f950359fd131ff2891f1325388c4cf47ea9",
+      "visual_review": "pass",
+      "reviewed_sha256": "d98250643fb45b2441f921baffae0d38d1866b62517acf290c6d0361dc23d65c",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "user_review": "approved",
+      "review_batch": "S00",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_01_v1.png",
+      "sha256": "cf36970efcd618b2cc95325ea28a9e75d7d71346a567e1d9c24f95eba102bbba",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_01.T_Story_S01_01",
+      "cast": [
+        "you_bai",
+        "hero",
+        "woodcutter"
+      ],
+      "result": "找到樵夫，确认应先核对山路和暗溪线索。",
+      "display_phase": "completed",
+      "contract_sha256": "29f1071c7b036c07734de361386a98fc4f33e1a1a87edc596cb72e230746e659",
+      "visual_review": "pass",
+      "reviewed_sha256": "cf36970efcd618b2cc95325ea28a9e75d7d71346a567e1d9c24f95eba102bbba",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-02": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_02_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_02_v1.png",
+      "sha256": "cfd99ba7d7a735eefdeae199b4a1443eb991fef4692477dbfc9d76a0cf2945b6",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_02.T_Story_S01_02",
+      "cast": [
+        "woodcutter",
+        "hero",
+        "you_bai"
+      ],
+      "result": "得到脚印、旧石阶和溪声三条辨路线索。",
+      "display_phase": "completed",
+      "contract_sha256": "6815374c5ce19147965f71fe858733788b249ef2f3b5857de2cd4fb7e2dfe6a1",
+      "visual_review": "pass",
+      "reviewed_sha256": "cfd99ba7d7a735eefdeae199b4a1443eb991fef4692477dbfc9d76a0cf2945b6",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_04_v1.png",
+      "sha256": "9ba3acc2afda22b5fab8c47b3ba525045b5ec7eb1b99f30bf961249ffa191ebb",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_04.T_Story_S01_04",
+      "cast": [
+        "hunter",
+        "hero",
+        "you_bai"
+      ],
+      "result": "完成黄山山路草图，标出暗溪入口与待核实的下坡水路。",
+      "display_phase": "completed",
+      "contract_sha256": "e655c9ede976312b233e577d048c7bceef2e07c4e192663c19698cf971fa47d9",
+      "visual_review": "pass",
+      "reviewed_sha256": "9ba3acc2afda22b5fab8c47b3ba525045b5ec7eb1b99f30bf961249ffa191ebb",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_03_v4.png",
+      "sha256": "d7bfa914cd923954ca5741fbe72b3be6d7e895f6c5d58e41575037a261e97aee",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_03.T_Story_S01_03",
+      "cast": [
+        "you_bai",
+        "hero"
+      ],
+      "result": "循左侧旧石阶穿过迷雾，听见猎人在前方求助。",
+      "display_phase": "completed",
+      "contract_sha256": "0da7715fda9301efa0db7f0a2bde56a3add39e7edd88002c0264b20d78a8518e",
+      "visual_review": "pass",
+      "reviewed_sha256": "d7bfa914cd923954ca5741fbe72b3be6d7e895f6c5d58e41575037a261e97aee",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_05_v1.png",
+      "sha256": "540bc87afa8a932459ac01d57858bcba9101929de6ce11365b0ed18fd2bb7577",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_05.T_Story_S01_05",
+      "cast": [
+        "hero",
+        "you_bai",
+        "hunter"
+      ],
+      "result": "暗溪按左下方低处出口补全，黄山草图完成。",
+      "display_phase": "completed",
+      "contract_sha256": "6dfdc48d20561a8aabc9adf578f07e354b8b4ec50b5df39bab727bc2ca81942d",
+      "visual_review": "pass",
+      "reviewed_sha256": "540bc87afa8a932459ac01d57858bcba9101929de6ce11365b0ed18fd2bb7577",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_06_v1.png",
+      "sha256": "a299732acb657ffafc484ddda15729a4d5cce000d389f8d332682294687879bf",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_06.T_Story_S01_06",
+      "cast": [
+        "woodcutter",
+        "you_bai",
+        "hero"
+      ],
+      "result": "记下雾天辨路经验，得到对山路传闻的补充说明。",
+      "display_phase": "completed",
+      "contract_sha256": "f53debfd057fe81d636443982b8f27e5fa3088decf610b32ad03ac4d5df6e996",
+      "visual_review": "pass",
+      "reviewed_sha256": "a299732acb657ffafc484ddda15729a4d5cce000d389f8d332682294687879bf",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_07_v2.png",
+      "sha256": "56884b5e2e62201912b2b5219a0d97989499fe29aa138c48c56359581926da7f",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_07.T_Story_S01_07",
+      "cast": [
+        "hunter",
+        "hero",
+        "you_bai"
+      ],
+      "result": "兽群被击退，猎人与手记获救，取得暗溪入口的可靠线索。",
+      "display_phase": "completed",
+      "contract_sha256": "4345688ebbae26b8ae2bd8192ab1cc9194e3c273409eaa1e217781118921fd77",
+      "visual_review": "pass",
+      "reviewed_sha256": "56884b5e2e62201912b2b5219a0d97989499fe29aa138c48c56359581926da7f",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-08": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_08_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_08_v1.png",
+      "sha256": "7ec06f73e83142cd22bcfa4fe90f5ca98138471c2b33e7a94bad18703bd17d24",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_08.T_Story_S01_08",
+      "cast": [
+        "hunter",
+        "hero",
+        "you_bai"
+      ],
+      "result": "听完猎人的防身与整备经验，不额外购买或消耗物品。",
+      "display_phase": "completed",
+      "contract_sha256": "b3a068cd9479f8b08e4249a5a08f876a5c40d24a56e1c7b95ea951f433734a39",
+      "visual_review": "pass",
+      "reviewed_sha256": "7ec06f73e83142cd22bcfa4fe90f5ca98138471c2b33e7a94bad18703bd17d24",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-09": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_09_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_09_v1.png",
+      "sha256": "51f3b4f82be45ea16c715bcc745aca6ff927a8dc94248ef3a25d2a15b7e5334c",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_09.T_Story_S01_09",
+      "cast": [
+        "zhou_guang_zu",
+        "hero",
+        "you_bai"
+      ],
+      "result": "从周光祖处取得新旧水痕的旁证，完善草木观察记录。",
+      "display_phase": "completed",
+      "contract_sha256": "a52eced49f630f0180294377f909a40050f81e5adeb7fabafb494937708c9d3f",
+      "visual_review": "pass",
+      "reviewed_sha256": "51f3b4f82be45ea16c715bcc745aca6ff927a8dc94248ef3a25d2a15b7e5334c",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S01-10": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S01/s01_10_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_10_v1.png",
+      "sha256": "acf1494e6855c5cca32289225c45ac65c2e00d675f04b91ccaafcbaeb82e1c58",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_10.T_Story_S01_10",
+      "cast": [
+        "willow_scholar",
+        "hero",
+        "you_bai"
+      ],
+      "result": "确认暗溪与柳湾是同一段水路的地方称呼，补上旁注。",
+      "display_phase": "completed",
+      "contract_sha256": "d5ae2731e85d573db37da45e6e1677f8e880ea61c6a592d00428347c15335b0a",
+      "visual_review": "pass",
+      "reviewed_sha256": "acf1494e6855c5cca32289225c45ac65c2e00d675f04b91ccaafcbaeb82e1c58",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S01",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_01_v1.png",
+      "sha256": "aab0b234b5c6431561dd42d6b9d3bd52445f8a13d8d104554a2a3e721d10fda4",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_01.T_Story_S02_01",
+      "cast": [
+        "boatman",
+        "hero",
+        "you_bai"
+      ],
+      "result": "确认江湾村有水陆两种走法，并听闻水道异常。",
+      "display_phase": "completed",
+      "contract_sha256": "d568e17fcfaa9383092f29353283430f4681cddcf7a462b9465d29dab74a95b3",
+      "visual_review": "pass",
+      "reviewed_sha256": "aab0b234b5c6431561dd42d6b9d3bd52445f8a13d8d104554a2a3e721d10fda4",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-02": {
+      "file": "SourceArt/UI/StoryNodes/Review/s02_02_hero_identity_v1_1536.png",
+      "generated_source": "C:/Users/shxuw/.codex/generated_images/01a08172-043d-75e0-a149-f8895de07b04/exec-645cfe2c-c8d3-45a5-9db0-d9c4d41e4ea8.png",
+      "sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_02.T_Story_S02_02",
+      "cast": [
+        "boatman",
+        "hero",
+        "you_bai"
+      ],
+      "result": "船夫讲清两条路线，水路与陆路分支均可体验。",
+      "display_phase": "story_preview_and_result",
+      "style_version": "clean_ink_v2",
+      "contract_sha256": "5d364eddd6d26fec73ce944ad7b2038f0f1120b36f422b57332f9e38b587b9e2",
+      "visual_review": "pass",
+      "reviewed_sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136",
+      "reviewer": "user",
+      "review_notes": "用户在六章总览中确认都通过；当前哈希锁定。",
+      "user_review": "approved"
+    },
+    "S02-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_03_v2.png",
+      "sha256": "d90074231120ffd5022853367d34f3b1cfdb91c89d89dfa3ca02107ad2dd8878",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_03.T_Story_S02_03",
+      "cast": [
+        "poor_traveler",
+        "hero",
+        "you_bai",
+        "boatman"
+      ],
+      "result": "老行人得到帮助，得知支渠堵塞而非整条河断流。",
+      "display_phase": "completed",
+      "contract_sha256": "55827af7e41c14259b9a5130dfcf18733ef10454e9c39b35af019567fc3d946e",
+      "visual_review": "pass",
+      "reviewed_sha256": "d90074231120ffd5022853367d34f3b1cfdb91c89d89dfa3ca02107ad2dd8878",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_04_v2.png",
+      "sha256": "a408402e2ed63a5fe8e8d74fb7a44c7c210ed6ecb36b4694398980038e43e243",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_04.T_Story_S02_04",
+      "cast": [
+        "villager",
+        "hero",
+        "you_bai"
+      ],
+      "result": "从陆路村头确认支渠入口与杂物淤堵的线索。",
+      "display_phase": "completed",
+      "contract_sha256": "05a3c4a0dfdd5dbfd953c322a4faa6023a32da781d3f47a4d725601cf93fcce6",
+      "visual_review": "pass",
+      "reviewed_sha256": "a408402e2ed63a5fe8e8d74fb7a44c7c210ed6ecb36b4694398980038e43e243",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_05_v2.png",
+      "sha256": "ba3a245739478b726dd29ef0fb0957d7b8faca3b302d02b2a5954cdec6353de8",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_05.T_Story_S02_05",
+      "cast": [
+        "hero",
+        "you_bai",
+        "villager",
+        "elder"
+      ],
+      "result": "支渠入口被疏通，水重新流向农田；村长闻讯赶来查看，治水目标达成。",
+      "display_phase": "story_preview_and_result",
+      "style_version": "clean_ink_v2",
+      "contract_sha256": "8c11490312a2f5af83d6e39b3430df80aec8bba84246f2cb53209b4e270f6fa3",
+      "visual_review": "pass",
+      "reviewed_sha256": "ba3a245739478b726dd29ef0fb0957d7b8faca3b302d02b2a5954cdec6353de8",
+      "reviewer": "user",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3",
+      "review_notes": "用户明确通过并锁定当前版本。"
+    },
+    "S02-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_06_v1.png",
+      "sha256": "618a65b3cdea82c03fe95d6f352c8f6a332274e1d152d54c0c9b5a65016aab57",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_06.T_Story_S02_06",
+      "cast": [
+        "elder",
+        "hero",
+        "you_bai"
+      ],
+      "result": "潇水古图已核对补注，取得永州柳子庙的后续线索。",
+      "display_phase": "completed",
+      "contract_sha256": "a4f61ccc0f19d4ee12ebaef6f5b7f773040d0c11233d918c8d990452f0feb6e8",
+      "visual_review": "pass",
+      "reviewed_sha256": "618a65b3cdea82c03fe95d6f352c8f6a332274e1d152d54c0c9b5a65016aab57",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_07_v1.png",
+      "sha256": "589a0f464ce611fdc1c399af47b87e4f283fb6c9db6114ecf44a4a1bc5a66628",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_07.T_Story_S02_07",
+      "cast": [
+        "villager",
+        "hero",
+        "you_bai"
+      ],
+      "result": "与村民互致谢意，将共同疏渠的经历记入行旅笔记。",
+      "display_phase": "completed",
+      "contract_sha256": "a643b571d4e4a7a88c1f139c177b6e9ccec23e363f70cd7a721fe060268b80e3",
+      "visual_review": "pass",
+      "reviewed_sha256": "589a0f464ce611fdc1c399af47b87e4f283fb6c9db6114ecf44a4a1bc5a66628",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S02-08": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S02/s02_08_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_08_v1.png",
+      "sha256": "d4d1e24026664ae90c164176d04a011c2a8235b490438564ce16ba30bf86133a",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_08.T_Story_S02_08",
+      "cast": [
+        "elder",
+        "hero",
+        "you_bai"
+      ],
+      "result": "补记古图的来源与作图者口述，完善证据记录。",
+      "display_phase": "completed",
+      "contract_sha256": "41ce7dfaa17f9abb6deb8a30222dc383cd7a12513132d58888d335c089d6e857",
+      "visual_review": "pass",
+      "reviewed_sha256": "d4d1e24026664ae90c164176d04a011c2a8235b490438564ce16ba30bf86133a",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S02",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v3.png",
+      "sha256": "328a2df06d6b5b18848197f597b2d6abf8c68c452a615dd2fd9ce5ecef7a7bd6",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_01.T_Story_S03_01",
+      "cast": [
+        "villager",
+        "hero",
+        "you_bai"
+      ],
+      "result": "与江湾村民告别，沿已确认的旧道前往永州。",
+      "display_phase": "completed",
+      "contract_sha256": "60ecd937b84c15f0b2d397118eb9ba65eb51bca7762353869a6d7bc3503e5166",
+      "visual_review": "pass",
+      "reviewed_sha256": "328a2df06d6b5b18848197f597b2d6abf8c68c452a615dd2fd9ce5ecef7a7bd6",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-02": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_02_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v2.png",
+      "sha256": "32082989df65c2e3d715631c2ae29d7ee5f1363631b3608d2f3b716d6f8d8e13",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_02.T_Story_S03_02",
+      "cast": [
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "与金贵重逢，三人结伴前往柳子庙。",
+      "display_phase": "completed",
+      "contract_sha256": "c05463b9a4b32b6a154b909d993e8c3a1495fc1a4a5436946008efc5c6494c8e",
+      "visual_review": "pass",
+      "reviewed_sha256": "32082989df65c2e3d715631c2ae29d7ee5f1363631b3608d2f3b716d6f8d8e13",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v2.png",
+      "sha256": "1c30d64fd459fa491a719e599b8f52ca80340d6ee7e4296cdab633a71980e3e7",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_03.T_Story_S03_03",
+      "cast": [
+        "porter",
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "发现肉干与兽足印，识破近道有诈，准备应对密林遭遇。",
+      "display_phase": "completed",
+      "contract_sha256": "604e539097fd2c822c05c87c189474170d5a0b527b856de49f5f7a58281e6cef",
+      "visual_review": "pass",
+      "reviewed_sha256": "1c30d64fd459fa491a719e599b8f52ca80340d6ee7e4296cdab633a71980e3e7",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v2.png",
+      "sha256": "841ee29437376151f6c23d7fd630480b9d4f4fe180f83147de2ad50ec3ee968a",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_04.T_Story_S03_04",
+      "cast": [
+        "hero",
+        "jin_gui",
+        "you_bai"
+      ],
+      "result": "在柳子庙找到旧志线索，并察觉堂后有异常动静。",
+      "display_phase": "completed",
+      "contract_sha256": "57939e38297c113e7fdc0598e4edded00d5cbc957dc18de0ff01be20c859f7f6",
+      "visual_review": "pass",
+      "reviewed_sha256": "841ee29437376151f6c23d7fd630480b9d4f4fe180f83147de2ad50ec3ee968a",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v3.png",
+      "sha256": "c67f119f7f6d86ece7fb88aa025ceca620c3e70cadfe5d4097816b6df1b54f2b",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_05.T_Story_S03_05",
+      "cast": [
+        "hero",
+        "porter",
+        "jin_gui",
+        "you_bai"
+      ],
+      "result": "众人安全，火险得到控制，关键旧志与舆图记录被护住。",
+      "display_phase": "completed",
+      "contract_sha256": "ae7d921f45514f0c0705571a91563229791f48c18948b3d37cf1f6f1a32f6f96",
+      "visual_review": "pass",
+      "reviewed_sha256": "c67f119f7f6d86ece7fb88aa025ceca620c3e70cadfe5d4097816b6df1b54f2b",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v3.png",
+      "sha256": "3fd2dfc034f71b171f3c03f1e0de84722cf7ca5d67d1272aabb0f2261151d49d",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_06.T_Story_S03_06",
+      "cast": [
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "永州简图已补齐，与金贵暂别，留下西南寨地碑记线索。",
+      "display_phase": "completed",
+      "contract_sha256": "a44aacbfa6abc0702440f9c8b9316dd3f58b8ca4281fbcafb2d7fb25d65361aa",
+      "visual_review": "pass",
+      "reviewed_sha256": "3fd2dfc034f71b171f3c03f1e0de84722cf7ca5d67d1272aabb0f2261151d49d",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v2.png",
+      "sha256": "2c1438f149e3b6c32724ebe38d7329042bdea1f02a2339005a15c19431b7b0bf",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_07.T_Story_S03_07",
+      "cast": [
+        "hero",
+        "you_bai"
+      ],
+      "result": "确认土司寨与羊皮图的线索，永州主干完成。",
+      "display_phase": "completed",
+      "contract_sha256": "3f6570dff7c0b34344b46dea5af80945a4c0d32946a5ace80120230a6e5945e3",
+      "visual_review": "pass",
+      "reviewed_sha256": "2c1438f149e3b6c32724ebe38d7329042bdea1f02a2339005a15c19431b7b0bf",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-08": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_08_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v2.png",
+      "sha256": "44e77439efce990492768dd30d2f49c3540cfaf32abbc8ec5a61a57900742661",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_08.T_Story_S03_08",
+      "cast": [
+        "hero",
+        "jin_gui",
+        "you_bai"
+      ],
+      "result": "了解金贵重返旅途的心愿，加深旧识情谊。",
+      "display_phase": "completed",
+      "contract_sha256": "66471e21ce4e2453e7e49b2ade961891e403ba4bfc2643f80aa13fcb0491bad9",
+      "visual_review": "pass",
+      "reviewed_sha256": "44e77439efce990492768dd30d2f49c3540cfaf32abbc8ec5a61a57900742661",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-09": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_09_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v2.png",
+      "sha256": "63f4aea4482d18adfad77a9dceac893b78369985c220f5ba94ade436db8e09a7",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_09.T_Story_S03_09",
+      "cast": [
+        "porter",
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "识破脚夫回避路况、只盯贵重行李的破绽，保留警惕。",
+      "display_phase": "completed",
+      "contract_sha256": "bb318b92b707791da9d0b29d5c986dde8c5e1af5d5b4284f67080c2a94348484",
+      "visual_review": "pass",
+      "reviewed_sha256": "63f4aea4482d18adfad77a9dceac893b78369985c220f5ba94ade436db8e09a7",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-11": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_11_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v2.png",
+      "sha256": "d64b4db2924a1a2beccc57196fa98cc4e88b5afb51f7dac8314792fbb2ff3ae1",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_11.T_Story_S03_11",
+      "cast": [
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "从布带和脚印确认脚夫逃向庙后，补充防备线索。",
+      "display_phase": "completed",
+      "contract_sha256": "e77519bb62a6237320a2191670ad846109dc11b8283f3d0170273b7fc1f3525a",
+      "visual_review": "pass",
+      "reviewed_sha256": "d64b4db2924a1a2beccc57196fa98cc4e88b5afb51f7dac8314792fbb2ff3ae1",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-10": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_10_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v2.png",
+      "sha256": "26d38db0d61545afcf8f33b77f1f36ae2e7cd0171c80f230948753e7c9f9edbf",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_10.T_Story_S03_10",
+      "cast": [
+        "porter",
+        "jin_gui",
+        "hero",
+        "you_bai"
+      ],
+      "result": "兽群被击退，人和舆图保住；脚夫劫掠失手后逃走。",
+      "display_phase": "completed",
+      "contract_sha256": "e412c8e224eaf3cf1a2b03235e219029d0ea87267192531f68515b326781de65",
+      "visual_review": "pass",
+      "reviewed_sha256": "26d38db0d61545afcf8f33b77f1f36ae2e7cd0171c80f230948753e7c9f9edbf",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-12": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_12_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v2.png",
+      "sha256": "2850d4d8179d4f4747e3bdebf7d24891178b24dd1c3b5ff8891638b712f15965",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_12.T_Story_S03_12",
+      "cast": [
+        "hero",
+        "porter",
+        "jin_gui",
+        "you_bai"
+      ],
+      "result": "识破脚夫纵火夺财的企图，众人开始有序控制火险。",
+      "display_phase": "completed",
+      "contract_sha256": "eccabb2f0eccf7e682706e0e9cf6eca729e2773b6a3a9ef5f7c00702af304e14",
+      "visual_review": "pass",
+      "reviewed_sha256": "2850d4d8179d4f4747e3bdebf7d24891178b24dd1c3b5ff8891638b712f15965",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S03-13": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S03/s03_13_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v2.png",
+      "sha256": "9cd1d8f7b1bcd483fa38857350931ef43fd568ae9c253caeb32f448d8cb80097",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_13.T_Story_S03_13",
+      "cast": [
+        "porter",
+        "hero",
+        "jin_gui",
+        "you_bai"
+      ],
+      "result": "脚夫归还物品并留下整理书卷，以实际行动补救。",
+      "display_phase": "completed",
+      "contract_sha256": "c7f977cd509ffb7e8d517f70de251caa9f0da939deda627c35b2714877dd5f90",
+      "visual_review": "pass",
+      "reviewed_sha256": "9cd1d8f7b1bcd483fa38857350931ef43fd568ae9c253caeb32f448d8cb80097",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S03",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_01_v1.png",
+      "sha256": "ec1f15e2ee60cf186f56039c757b9d0715a628fbfe758ae404d3f8418a65c973",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_01.T_Story_S04_01",
+      "cast": [
+        "tusi",
+        "hero",
+        "you_bai"
+      ],
+      "result": "说清求证舆图的来意，土司首领愿意听取幽白的旧事。",
+      "display_phase": "completed",
+      "contract_sha256": "ab73b6e8fcb2dcaf1ff60a8c63b7f2bb339e943832fd1f13da4beca55bdb9828",
+      "visual_review": "pass",
+      "reviewed_sha256": "ec1f15e2ee60cf186f56039c757b9d0715a628fbfe758ae404d3f8418a65c973",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-02": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_02_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_02_v2.png",
+      "sha256": "b0fd33aadf1a4886a4cbfc8b796008195cbb97bccfec5129d5ff2325b295bc21",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_02.T_Story_S04_02",
+      "cast": [
+        "you_bai",
+        "tusi",
+        "hero"
+      ],
+      "result": "以旧水槽与刻痕为旁证取得入寨许可。",
+      "display_phase": "completed",
+      "contract_sha256": "2c34a47f53722c275120b14a28c0166c10f68ebd7c673fb3a34baee23f75945f",
+      "visual_review": "pass",
+      "reviewed_sha256": "b0fd33aadf1a4886a4cbfc8b796008195cbb97bccfec5129d5ff2325b295bc21",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_03_v1.png",
+      "sha256": "8f3fb51bfaa76937df9799ebc229ff7050c496057b4294802d76219bc5bfdd68",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_03.T_Story_S04_03",
+      "cast": [
+        "tusi",
+        "hero",
+        "you_bai"
+      ],
+      "result": "完成迎客礼，清醒入寨，得以继续调查旧图。",
+      "display_phase": "completed",
+      "contract_sha256": "099dff6171d711f7aadd9e9fc148b9d207d3321fbca65092f7787f9aedb0b9af",
+      "visual_review": "pass",
+      "reviewed_sha256": "8f3fb51bfaa76937df9799ebc229ff7050c496057b4294802d76219bc5bfdd68",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_04_v1.png",
+      "sha256": "cb4c3fc3488faf69d0e136bc43e7b4a10de275ecd4466c9ffdfc2bc03987c99a",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_04.T_Story_S04_04",
+      "cast": [
+        "song_jin_bao",
+        "hero",
+        "tusi",
+        "you_bai"
+      ],
+      "result": "寨外巡查完成，确认牛迹与旧水渠通往同一片低洼处，寻牛和查水分支开放。",
+      "display_phase": "completed",
+      "contract_sha256": "a1688a5363152c2abde4e185c2ea0e0a3c7a89909bfc5299f86561b67fcbf69b",
+      "visual_review": "pass",
+      "reviewed_sha256": "cb4c3fc3488faf69d0e136bc43e7b4a10de275ecd4466c9ffdfc2bc03987c99a",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_05_v1.png",
+      "sha256": "00fd5221c9cdff7bf5c1eb5a5dde57ef4e07181409a205835617dac6c7e07fd3",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_05.T_Story_S04_05",
+      "cast": [
+        "song_jin_bao",
+        "hero",
+        "you_bai"
+      ],
+      "result": "沿牛迹找到失牛，确认真正堵水的是竹篱与杂物，牛被安全牵回干岸。",
+      "display_phase": "completed",
+      "contract_sha256": "e2de82265ecfa755f97ea3769bb42571dd4fcf85b3fb9ce445c6f4f5c39c28b8",
+      "visual_review": "pass",
+      "reviewed_sha256": "00fd5221c9cdff7bf5c1eb5a5dde57ef4e07181409a205835617dac6c7e07fd3",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_06_v1.png",
+      "sha256": "29950f69633eb670a6a9f0f027afbde4811507ab48688aabfda79678ece392c0",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_06.T_Story_S04_06",
+      "cast": [
+        "hero",
+        "song_jin_bao",
+        "you_bai"
+      ],
+      "result": "恢复低处旧引水口，确认水与牛的去向，农田重新得到水。",
+      "display_phase": "completed",
+      "contract_sha256": "7f78086e0b9294436cb4b51ff365417d73ab4b1380b83b38d8ee2501c8cf972a",
+      "visual_review": "pass",
+      "reviewed_sha256": "29950f69633eb670a6a9f0f027afbde4811507ab48688aabfda79678ece392c0",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_07_v2.png",
+      "sha256": "1d581761ae14c92585ad2fc519bf626e2b1d57f4595014c1186360e403728185",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_07.T_Story_S04_07",
+      "cast": [
+        "song_jin_bao",
+        "hero",
+        "you_bai",
+        "tusi"
+      ],
+      "result": "失牛安全回寨，旧水道恢复，寨中确认调查结果。",
+      "display_phase": "completed",
+      "contract_sha256": "aec29f57bbb737ece975918923dae417679ee9c341e01a522bdcbef80c90fdde",
+      "visual_review": "pass",
+      "reviewed_sha256": "1d581761ae14c92585ad2fc519bf626e2b1d57f4595014c1186360e403728185",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-08": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_08_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_08_v1.png",
+      "sha256": "90983a33979eb9b679aef68f9bdf9fb1270aa9c06a2b0b85db364f1863446cf4",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_08.T_Story_S04_08",
+      "cast": [
+        "tusi",
+        "hero",
+        "you_bai"
+      ],
+      "result": "获得羊皮卷的核对记录，将寨道与引水资料抄入自己的舆图。",
+      "display_phase": "completed",
+      "contract_sha256": "0bcc1f7db15df9a41972e3854bbe0edb560dc1f7301b181abbaef19d4325e92d",
+      "visual_review": "pass",
+      "reviewed_sha256": "90983a33979eb9b679aef68f9bdf9fb1270aa9c06a2b0b85db364f1863446cf4",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-09": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_09_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_09_v1.png",
+      "sha256": "4238ac422e01084579b1efa1399e5e5a8ccbe6358c0915786aa06d243a257b60",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_09.T_Story_S04_09",
+      "cast": [
+        "hero",
+        "you_bai",
+        "tusi"
+      ],
+      "result": "寨地与前章碑记相互印证，获得前往苍山的明确线索。",
+      "display_phase": "completed",
+      "contract_sha256": "e42c9fe027efd51470a74bce4d8febb26ea5a076737a2d168c15afd6982538bf",
+      "visual_review": "pass",
+      "reviewed_sha256": "4238ac422e01084579b1efa1399e5e5a8ccbe6358c0915786aa06d243a257b60",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-10": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_10_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_10_v2.png",
+      "sha256": "57750f15eb398f4c0f3a8cc7df42fdab28bfa44a2c16cd2915554eae53e915d1",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_10.T_Story_S04_10",
+      "cast": [
+        "tusi",
+        "hero",
+        "song_jin_bao",
+        "you_bai"
+      ],
+      "result": "完成寨中送别，土司寨主干结束，启程前往苍山。",
+      "display_phase": "completed",
+      "contract_sha256": "9baf7f6cdba787ff2f366175fc4001bf039cc535d110caa47f31b8ea4750a279",
+      "visual_review": "pass",
+      "reviewed_sha256": "57750f15eb398f4c0f3a8cc7df42fdab28bfa44a2c16cd2915554eae53e915d1",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-11": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_11_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_11_v3.png",
+      "sha256": "ce60701fa9ea78704a26d1309058ec5562e101052b1efd2952920ef571ed8082",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_11.T_Story_S04_11",
+      "cast": [
+        "tusi",
+        "hero",
+        "you_bai"
+      ],
+      "result": "理解寨中盘问的缘由，记下以证据建立信任的经验。",
+      "display_phase": "completed",
+      "contract_sha256": "3dc8bbceb592bb1d6c056b81eee7396c14a23e06d56448f088feda1a423eee8c",
+      "visual_review": "pass",
+      "reviewed_sha256": "ce60701fa9ea78704a26d1309058ec5562e101052b1efd2952920ef571ed8082",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S04-12": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S04/s04_12_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_12_v1.png",
+      "sha256": "21b0692f6821b4aac8c6485b23273e4b4e9eca0cc28f62669192b59ada8b72b2",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S04_12.T_Story_S04_12",
+      "cast": [
+        "song_jin_bao",
+        "hero",
+        "you_bai"
+      ],
+      "result": "了解宋金宝的处境与牛沿旧渠离开的线索，约定共同调查。",
+      "display_phase": "completed",
+      "contract_sha256": "96a8441287f539b0ce966b9fac0e28cef99bb09974871ac25685e27715f28969",
+      "visual_review": "pass",
+      "reviewed_sha256": "21b0692f6821b4aac8c6485b23273e4b4e9eca0cc28f62669192b59ada8b72b2",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S04",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-01": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_01_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_01_v2.png",
+      "sha256": "35c1743fa0e3c9369a4b19fb380a301ad3573aca78542c6fbc9b0bdcbdf9cba0",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_01.T_Story_S05_01",
+      "cast": [
+        "hero",
+        "you_bai"
+      ],
+      "result": "确认先沿旧道到古寨问路，准备应对高处风雪。",
+      "display_phase": "completed",
+      "contract_sha256": "ef4a0ac8957bbd4b47cb35ef9fc6090f5c8e247fff63098ff5963223e7367c78",
+      "visual_review": "pass",
+      "reviewed_sha256": "35c1743fa0e3c9369a4b19fb380a301ad3573aca78542c6fbc9b0bdcbdf9cba0",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-02": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_02_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_02_v1.png",
+      "sha256": "9267e5f617a292f83a7f69fb12a011544252e3e848d885bb2dd4b224eb0aff1e",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_02.T_Story_S05_02",
+      "cast": [
+        "qiong_yao_er",
+        "you_bai",
+        "hero"
+      ],
+      "result": "结识琼幺儿，得到等待风雪减弱与核对鹰喙岩的指引。",
+      "display_phase": "completed",
+      "contract_sha256": "4643cb2761cbd29c78ad2a2b7f489243813c350e7055fec231848d6a7d5c279b",
+      "visual_review": "pass",
+      "reviewed_sha256": "9267e5f617a292f83a7f69fb12a011544252e3e848d885bb2dd4b224eb0aff1e",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-03": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_03_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_03_v1.png",
+      "sha256": "dad23c3c12f64e7a19d3420b4fc33eaac7cee9d9bf860216d151fd3ed8741f6a",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_03.T_Story_S05_03",
+      "cast": [
+        "you_bai",
+        "hero",
+        "qiong_yao_er"
+      ],
+      "result": "安全避过骤紧风雪，在旧道可辨后继续行程。",
+      "display_phase": "completed",
+      "contract_sha256": "52aaf21ed2df3eac4e875240196cf2ca8593bda7727c1f844ff85e215cf14bb1",
+      "visual_review": "pass",
+      "reviewed_sha256": "dad23c3c12f64e7a19d3420b4fc33eaac7cee9d9bf860216d151fd3ed8741f6a",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-04": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_04_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_04_v2.png",
+      "sha256": "9b10c4f7caf03917a1e534b3cd4559ee4a3cd7e9baf187daac52f6518f5b6bc8",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_04.T_Story_S05_04",
+      "cast": [
+        "qiong_yao_er",
+        "you_bai",
+        "hero"
+      ],
+      "result": "认出连接旧道与老松的鹰喙岩，安全定位后续路线。",
+      "display_phase": "completed",
+      "contract_sha256": "1321da1d121e378b223279f9bf569ea5ff855ce377ead43c0f7466fdbc80638c",
+      "visual_review": "pass",
+      "reviewed_sha256": "9b10c4f7caf03917a1e534b3cd4559ee4a3cd7e9baf187daac52f6518f5b6bc8",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-05": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_05_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_05_v2.png",
+      "sha256": "6f59c507ec0a5cd8387b7417ca9bf6ed5bef1db519b6780f94be1bee1329fea8",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_05.T_Story_S05_05",
+      "cast": [
+        "hero",
+        "qiong_yao_er",
+        "you_bai"
+      ],
+      "result": "修正潭边绕行路线，发现前方有需要处理的险情。",
+      "display_phase": "completed",
+      "contract_sha256": "3d7c0ed452067d71ee803fc4c9d6636e912ebefbc58ad9902c763b6eccde8a63",
+      "visual_review": "pass",
+      "reviewed_sha256": "6f59c507ec0a5cd8387b7417ca9bf6ed5bef1db519b6780f94be1bee1329fea8",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-06": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_06_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_06_v2.png",
+      "sha256": "30181749116deb2353b465d643641b92d63189cb521d001ec96b239fec4c3b74",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_06.T_Story_S05_06",
+      "cast": [
+        "qiong_yao_er",
+        "hero",
+        "you_bai"
+      ],
+      "result": "兽群被击退，主角与琼幺儿互相照应安全脱险，前路恢复通行。",
+      "display_phase": "completed",
+      "contract_sha256": "4e35beba3ca4628eb3822df6dffcf818da4a8aa8b5dc996acaac6db0063a49a9",
+      "visual_review": "pass",
+      "reviewed_sha256": "30181749116deb2353b465d643641b92d63189cb521d001ec96b239fec4c3b74",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-07": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_07_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_07_v3.png",
+      "sha256": "9c7ba377eb9359a8000475eab80e6e81385c2625cd932b93472cf284ff9b03f3",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_07.T_Story_S05_07",
+      "cast": [
+        "hero",
+        "you_bai",
+        "qiong_yao_er"
+      ],
+      "result": "确定沿已核实的安全旧道继续登顶。",
+      "display_phase": "completed",
+      "contract_sha256": "792e55f34e97afae8e66f2f3a76b80c4f0f332a5ee61f7a29495ba79e59b4b24",
+      "visual_review": "pass",
+      "reviewed_sha256": "9c7ba377eb9359a8000475eab80e6e81385c2625cd932b93472cf284ff9b03f3",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-08": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_08_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_08_v1.png",
+      "sha256": "155b78b70ebb3c2fc6659b9c3f4525d3b6447010dd1e74da268a4af910b77641",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_08.T_Story_S05_08",
+      "cast": [
+        "hero",
+        "you_bai",
+        "qiong_yao_er"
+      ],
+      "result": "承认并平复险后的害怕，选择以更稳妥的步调继续前行。",
+      "display_phase": "completed",
+      "contract_sha256": "6cfdb9449640cc2b487a5b81c2431bcc0c32e8ad4a90ceb672724a562eb8a2cd",
+      "visual_review": "pass",
+      "reviewed_sha256": "155b78b70ebb3c2fc6659b9c3f4525d3b6447010dd1e74da268a4af910b77641",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-09": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_09_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_09_v2.png",
+      "sha256": "3e5aa28b2d52bfb338de3943cbbe0cab08510ff9372ab74835c4543664021804",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_09.T_Story_S05_09",
+      "cast": [
+        "hero",
+        "you_bai",
+        "qiong_yao_er"
+      ],
+      "result": "明白幽白守图的心愿，将六章证据统一为可继续订正的舆图。",
+      "display_phase": "completed",
+      "contract_sha256": "fc5cdc84c43483c3979e9145a29f513db08c193767bbcc348e45ec4e6a8715de",
+      "visual_review": "pass",
+      "reviewed_sha256": "3e5aa28b2d52bfb338de3943cbbe0cab08510ff9372ab74835c4543664021804",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-10": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_10_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_10_v1.png",
+      "sha256": "4c69a31f16b0a53e0bc7b86c13c3bc731fd2b898be50602cde68d0b3d2c7400c",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 3,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_10.T_Story_S05_10",
+      "cast": [
+        "hero",
+        "qiong_yao_er",
+        "you_bai"
+      ],
+      "result": "苍山末段订正完成，六章主线收束，舆图留下继续求证的余白。",
+      "display_phase": "completed",
+      "contract_sha256": "162722c4fbce1d85bb6eeb7f8bb8e9b73c1cb7c183da73a9cd962e466df43d3e",
+      "visual_review": "pass",
+      "reviewed_sha256": "4c69a31f16b0a53e0bc7b86c13c3bc731fd2b898be50602cde68d0b3d2c7400c",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    },
+    "S05-11": {
+      "file": "SourceArt/UI/StoryNodes/Redraw/S05/s05_11_1536.png",
+      "generated_source": "SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_11_v1.png",
+      "sha256": "d80160a6cc98c09484a6bfd25a83a5f5dff8b16b1b8817320b483a7667726227",
+      "size": [
+        1536,
+        512
+      ],
+      "mode": "RGB",
+      "revision": 2,
+      "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S05_11.T_Story_S05_11",
+      "cast": [
+        "you_bai",
+        "qiong_yao_er",
+        "hero"
+      ],
+      "result": "听取琼幺儿的识路经验，建立同行默契。",
+      "display_phase": "completed",
+      "contract_sha256": "4c311549fe10fa1073ec40035e494e96bd488b555716ce278371607e02e42cec",
+      "visual_review": "pass",
+      "reviewed_sha256": "d80160a6cc98c09484a6bfd25a83a5f5dff8b16b1b8817320b483a7667726227",
+      "reviewer": "user",
+      "review_notes": "用户明确通过并锁定当前版本。",
+      "user_review": "approved",
+      "review_batch": "S05",
+      "visual_style": "project_graphic_painterly_v3"
+    }
+  }
+}

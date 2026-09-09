@@ -1,0 +1,166 @@
+{
+  "chapter": "S03",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S03-01",
+      "title": "江湾村头",
+      "highlight": "转身护住新塞的青菜，主角和背带拧成一团；为后面的‘贵重行李’误会埋伏笔。",
+      "result": "与江湾村民告别，沿已确认的旧道前往永州。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_01_1536.webp",
+      "webp_bytes": 168094,
+      "sha256": "328a2df06d6b5b18848197f597b2d6abf8c68c452a615dd2fd9ce5ecef7a7bd6",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_01_v3.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-02",
+      "title": "前往永州",
+      "highlight": "重逢先由烟杆托住滑落菜篮发生，随后揭出金贵是特意绕路来完成自己的心愿。",
+      "result": "与金贵重逢，三人结伴前往柳子庙。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_02_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_02_1536.webp",
+      "webp_bytes": 146342,
+      "sha256": "32082989df65c2e3d715631c2ae29d7ee5f1363631b3608d2f3b716d6f8d8e13",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_02_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-03",
+      "title": "参天古柏密林",
+      "highlight": "金贵挑起肉干，脚夫下意识捂住同样漏油的袋口，动作直接出卖他。",
+      "result": "发现肉干与兽足印，识破近道有诈，准备应对密林遭遇。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_03_1536.webp",
+      "webp_bytes": 205004,
+      "sha256": "1c30d64fd459fa491a719e599b8f52ca80340d6ee7e4296cdab633a71980e3e7",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_03_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-04",
+      "title": "柳子庙",
+      "highlight": "金贵本想安心看书，却用凳子卡住后门；人物愿望与眼前警戒形成张力。",
+      "result": "在柳子庙找到旧志线索，并察觉堂后有异常动静。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_04_1536.webp",
+      "webp_bytes": 134076,
+      "sha256": "841ee29437376151f6c23d7fd630480b9d4f4fe180f83147de2ad50ec3ee968a",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_04_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-05",
+      "title": "火险抢救",
+      "highlight": "金贵拉回抢书的主角，主角反手稳住金贵；两人互救，而非主角独自逞英雄。",
+      "result": "众人安全，火险得到控制，关键旧志与舆图记录被护住。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_05_1536.webp",
+      "webp_bytes": 185434,
+      "sha256": "c67f119f7f6d86ece7fb88aa025ceca620c3e70cadfe5d4097816b6df1b54f2b",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_05_v3.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-06",
+      "title": "永州简图",
+      "highlight": "门槛两侧一递一接，金贵放下行囊主动留下，回收最初‘终于能坐一坐’的心愿。",
+      "result": "永州简图已补齐，与金贵暂别，留下西南寨地碑记线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_06_1536.webp",
+      "webp_bytes": 144886,
+      "sha256": "3fd2dfc034f71b171f3c03f1e0de84722cf7ca5d67d1272aabb0f2261151d49d",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_06_v3.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-07",
+      "title": "土司寨遗痕",
+      "highlight": "幽白不再遮住错处，而是主动照亮自己曾催抄的错误，延续第一章的成长。",
+      "result": "确认土司寨与羊皮图的线索，永州主干完成。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_07_1536.webp",
+      "webp_bytes": 161636,
+      "sha256": "2c1438f149e3b6c32724ebe38d7329042bdea1f02a2339005a15c19431b7b0bf",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_07_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-08",
+      "title": "偶遇旧佣",
+      "highlight": "旧佣人拿出只属于自己的小小行程，第一次不需要替谁赶时间。",
+      "result": "了解金贵重返旅途的心愿，加深旧识情谊。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_08_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_08_1536.webp",
+      "webp_bytes": 120588,
+      "sha256": "44e77439efce990492768dd30d2f49c3540cfaf32abbc8ec5a61a57900742661",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_08_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-09",
+      "title": "假意相助",
+      "highlight": "伸手接包的姿势在萝卜露头时急转弯，贪念变成可读的身体动作。",
+      "result": "识破脚夫回避路况、只盯贵重行李的破绽，保留警惕。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_09_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_09_1536.webp",
+      "webp_bytes": 179866,
+      "sha256": "63f4aea4482d18adfad77a9dceac893b78369985c220f5ba94ade436db8e09a7",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_09_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-10",
+      "title": "密林遇劫",
+      "highlight": "主角横竿挡兽，金贵贴近背篓护住露出卷轴的图袋，脚夫伸手抓空；一眼看清两位同伴分工护人护图。",
+      "result": "兽群被击退，人和舆图保住；脚夫劫掠失手后逃走。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_10_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_10_1536.webp",
+      "webp_bytes": 194610,
+      "sha256": "26d38db0d61545afcf8f33b77f1f36ae2e7cd0171c80f230948753e7c9f9edbf",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_10_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-11",
+      "title": "侥幸脱逃",
+      "highlight": "倒退脚印试图掩饰方向，挂在低枝上的布带却指出真实逃路。",
+      "result": "从布带和脚印确认脚夫逃向庙后，补充防备线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_11_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_11_1536.webp",
+      "webp_bytes": 166628,
+      "sha256": "d64b4db2924a1a2beccc57196fa98cc4e88b5afb51f7dac8314792fbb2ff3ae1",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_11_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-12",
+      "title": "揽财纵火",
+      "highlight": "偷错菜袋的脚夫被当场塞入水桶，犯罪的借口转成必须实际承担的救火动作。",
+      "result": "识破脚夫纵火夺财的企图，众人开始有序控制火险。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_12_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_12_1536.webp",
+      "webp_bytes": 154268,
+      "sha256": "2850d4d8179d4f4747e3bdebf7d24891178b24dd1c3b5ff8891638b712f15965",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_12_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S03-13",
+      "title": "余善尚存",
+      "highlight": "急着认错的人被迫慢下来，小心托住一页湿纸；用动作表达尚未完成的补救。",
+      "result": "脚夫归还物品并留下整理书卷，以实际行动补救。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S03/s03_13_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S03/s03_13_1536.webp",
+      "webp_bytes": 171240,
+      "sha256": "9cd1d8f7b1bcd483fa38857350931ef43fd568ae9c253caeb32f448d8cb80097",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S03/Raw/s03_13_v2.png",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": [
+    "villager",
+    "porter"
+  ]
+}

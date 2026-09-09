@@ -1,0 +1,319 @@
+{
+  "S03-01": {
+    "file": "SourceArt/UI/StoryNodes/s03_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-a5ae15fb-dd2c-4d85-832a-68830341302c.png",
+    "sha256": "908893fd3044816c78176831d8dacca1bb1b3083b2b8ff80d8692ef7c20e7b35",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_01.T_Story_S03_01",
+    "cast": [
+      "villager",
+      "hero",
+      "you_bai"
+    ],
+    "result": "与江湾村民告别，沿已确认的旧道前往永州。",
+    "display_phase": "completed",
+    "contract_sha256": "54932c7d7e7b4f3d63c236f9f3c52fbad28245ab8d30202cdd4f1d43becf4ebd",
+    "visual_review": "pass",
+    "reviewed_sha256": "908893fd3044816c78176831d8dacca1bb1b3083b2b8ff80d8692ef7c20e7b35",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-02": {
+    "file": "SourceArt/UI/StoryNodes/s03_02_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-87359a72-ca66-494a-8399-139fe27fb301.png",
+    "sha256": "f40863bbe5f2953d40d4190d0419be483623bf43b485e27a3f5361400f2affd7",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_02.T_Story_S03_02",
+    "cast": [
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "与金贵重逢，三人结伴前往柳子庙。",
+    "display_phase": "completed",
+    "contract_sha256": "654d7eaca3dff55d969c252e7690dcdfb45fe8d5e44dea3cf3b29aa7e4ef403b",
+    "visual_review": "pass",
+    "reviewed_sha256": "f40863bbe5f2953d40d4190d0419be483623bf43b485e27a3f5361400f2affd7",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-03": {
+    "file": "SourceArt/UI/StoryNodes/s03_03_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-eed4edef-11f1-49a4-adc0-57e7068de30f.png",
+    "sha256": "f2ad0d8b25ff7c741d658041f7feb0952fe3aaa3638ed4265f2d27c84d050d12",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_03.T_Story_S03_03",
+    "cast": [
+      "porter",
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "发现肉干与兽足印，识破近道有诈，准备应对密林遭遇。",
+    "display_phase": "completed",
+    "contract_sha256": "abb7e8fd5c0bac2786899ad96625785ce7819a487305eb6d2f65019e15a0215b",
+    "visual_review": "pass",
+    "reviewed_sha256": "f2ad0d8b25ff7c741d658041f7feb0952fe3aaa3638ed4265f2d27c84d050d12",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-04": {
+    "file": "SourceArt/UI/StoryNodes/s03_04_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-c4dd82e8-7445-4de8-8298-d26ec57deaff.png",
+    "sha256": "3ae3118485aaf86fe47286df1927fe301d7feec279a5ffa35dc2b74ca91924f5",
+    "size": [
+      2169,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_04.T_Story_S03_04",
+    "cast": [
+      "hero",
+      "jin_gui",
+      "you_bai"
+    ],
+    "result": "在柳子庙找到旧志线索，并察觉堂后有异常动静。",
+    "display_phase": "completed",
+    "contract_sha256": "2381ba088df9edc80b067450f12ab10b4b819081604a4c4be85ea9be6da38933",
+    "visual_review": "pass",
+    "reviewed_sha256": "3ae3118485aaf86fe47286df1927fe301d7feec279a5ffa35dc2b74ca91924f5",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-05": {
+    "file": "SourceArt/UI/StoryNodes/s03_05_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-abc1d396-0511-4fc5-8255-95060a8dd219.png",
+    "sha256": "8270854596af7bc8dba52883ef248756df7e72bc4a45cc796f65feabc471f12c",
+    "size": [
+      2169,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_05.T_Story_S03_05",
+    "cast": [
+      "hero",
+      "porter",
+      "jin_gui",
+      "you_bai"
+    ],
+    "result": "众人安全，火险得到控制，关键旧志与舆图记录被护住。",
+    "display_phase": "completed",
+    "contract_sha256": "a7c951b3ff13e5c1000b9facfe1074b9f2c04863bc7ae5b8537480c570c78caa",
+    "visual_review": "pass",
+    "reviewed_sha256": "8270854596af7bc8dba52883ef248756df7e72bc4a45cc796f65feabc471f12c",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：提桶双手自然连接、兽群退场后只留空手逃跑脚夫、终章去除多余手掌；剧情结果和角色一致。"
+  },
+  "S03-06": {
+    "file": "SourceArt/UI/StoryNodes/s03_06_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-e677787c-6479-4bb9-be52-b165808da8c3.png",
+    "sha256": "429b7d4b0f65b1d707bfc4aaac9a5846b1af82f36ce5062ab16ece00237a1402",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_06.T_Story_S03_06",
+    "cast": [
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "永州简图已补齐，与金贵暂别，留下西南寨地碑记线索。",
+    "display_phase": "completed",
+    "contract_sha256": "d414d0ab421b1301df47ab6846cece8b2e9402e606dd19843c671efbf7052e50",
+    "visual_review": "pass",
+    "reviewed_sha256": "429b7d4b0f65b1d707bfc4aaac9a5846b1af82f36ce5062ab16ece00237a1402",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-07": {
+    "file": "SourceArt/UI/StoryNodes/s03_07_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-6d6aec4f-fbd0-4e9e-8996-d387fcc441bc.png",
+    "sha256": "c072bb6960a55e34699f15f20f13ed606fdf6cb7292fd5ddc2f3561eb1b206a3",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_07.T_Story_S03_07",
+    "cast": [
+      "hero",
+      "you_bai"
+    ],
+    "result": "确认土司寨与羊皮图的线索，永州主干完成。",
+    "display_phase": "completed",
+    "contract_sha256": "c21eae24283a8b310aa09da2b5fe5425a457645506988709a74e8cdda1d6fb72",
+    "visual_review": "pass",
+    "reviewed_sha256": "c072bb6960a55e34699f15f20f13ed606fdf6cb7292fd5ddc2f3561eb1b206a3",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-08": {
+    "file": "SourceArt/UI/StoryNodes/s03_08_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-07f97eea-8e22-443d-bb0c-dc8d6c3c9225.png",
+    "sha256": "7973c3d15490aeefe1b7fc320727a308466aeebe5b30a5d0880cf881ba935481",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_08.T_Story_S03_08",
+    "cast": [
+      "hero",
+      "jin_gui",
+      "you_bai"
+    ],
+    "result": "了解金贵重返旅途的心愿，加深旧识情谊。",
+    "display_phase": "completed",
+    "contract_sha256": "6eca06f40a110f6f3cc94b50a5e41db66c40460ad8a07dc86ed9ab40f0ba567e",
+    "visual_review": "pass",
+    "reviewed_sha256": "7973c3d15490aeefe1b7fc320727a308466aeebe5b30a5d0880cf881ba935481",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-09": {
+    "file": "SourceArt/UI/StoryNodes/s03_09_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-f9f32081-1a89-4fe7-8b6c-943ea5898a0f.png",
+    "sha256": "399cb1605a21bc7213cce9bc35ff4a4c21559a7a7bada03d35f54a78ad8caa65",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_09.T_Story_S03_09",
+    "cast": [
+      "porter",
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "识破脚夫回避路况、只盯贵重行李的破绽，保留警惕。",
+    "display_phase": "completed",
+    "contract_sha256": "e376c2ddc96e8b1d5069ec461181fdbbb10bac3f997deafea43159ef0731577b",
+    "visual_review": "pass",
+    "reviewed_sha256": "399cb1605a21bc7213cce9bc35ff4a4c21559a7a7bada03d35f54a78ad8caa65",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-10": {
+    "file": "SourceArt/UI/StoryNodes/s03_10_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-50ca797f-58f2-4d95-b32c-78006418d4fa.png",
+    "sha256": "747a9fe52f26ca6bacab0d8d3e834ca106015ec92dfd32bce8757c20336e2c6b",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_10.T_Story_S03_10",
+    "cast": [
+      "porter",
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "兽群被击退，人和舆图保住；脚夫劫掠失手后逃走。",
+    "display_phase": "completed",
+    "contract_sha256": "29b7af417d656dfed9cf7fc5a4c02f94b36b4e003e79e586f95a19432e5ba638",
+    "visual_review": "pass",
+    "reviewed_sha256": "747a9fe52f26ca6bacab0d8d3e834ca106015ec92dfd32bce8757c20336e2c6b",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：提桶双手自然连接、兽群退场后只留空手逃跑脚夫、终章去除多余手掌；剧情结果和角色一致。"
+  },
+  "S03-11": {
+    "file": "SourceArt/UI/StoryNodes/s03_11_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-8362391a-2526-4a43-b6cf-283bcd78302c.png",
+    "sha256": "4d1c2c7e174d02a60bb09fd2b6f8528bb18ec7570e300bccbcebc3c3c0345eb9",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_11.T_Story_S03_11",
+    "cast": [
+      "jin_gui",
+      "hero",
+      "you_bai"
+    ],
+    "result": "从布带和脚印确认脚夫逃向庙后，补充防备线索。",
+    "display_phase": "completed",
+    "contract_sha256": "4e753bde0599d1c6beae5154faf3b4f0a695afc17d22e3b8f5b469ecd807c03e",
+    "visual_review": "pass",
+    "reviewed_sha256": "4d1c2c7e174d02a60bb09fd2b6f8528bb18ec7570e300bccbcebc3c3c0345eb9",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S03-12": {
+    "file": "SourceArt/UI/StoryNodes/s03_12_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-074c5a89-e503-431e-9445-461705314e35.png",
+    "sha256": "1a4ea0ec38c81b0ca6fecdb103f189ed214e8b807d55d0669ac2cba6de71caed",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_12.T_Story_S03_12",
+    "cast": [
+      "hero",
+      "porter",
+      "jin_gui",
+      "you_bai"
+    ],
+    "result": "识破脚夫纵火夺财的企图，众人开始有序控制火险。",
+    "display_phase": "completed",
+    "contract_sha256": "5a245460ddb9955e96498c86211f89dd38ada8761f968d570aeac4bd39784e86",
+    "visual_review": "pass",
+    "reviewed_sha256": "1a4ea0ec38c81b0ca6fecdb103f189ed214e8b807d55d0669ac2cba6de71caed",
+    "reviewer": "agent",
+    "review_notes": "局部修订已复核：脚夫空袋未装赃物、失牛棕白花纹连续、洗马潭没有新增求救者；人物与剧情阶段一致。"
+  },
+  "S03-13": {
+    "file": "SourceArt/UI/StoryNodes/s03_13_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-dd37f4ed-7b9b-49cf-93d8-ae8ffbf0cf76.png",
+    "sha256": "a51a4480d96867504db291ca58224dd32d12117f8742d046ed51b81b612dfb08",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S03_13.T_Story_S03_13",
+    "cast": [
+      "porter",
+      "hero",
+      "jin_gui",
+      "you_bai"
+    ],
+    "result": "脚夫归还物品并留下整理书卷，以实际行动补救。",
+    "display_phase": "completed",
+    "contract_sha256": "522cd2a50190fb06da67cadfb21450368afefb37e282fecf165733f74d923a67",
+    "visual_review": "pass",
+    "reviewed_sha256": "a51a4480d96867504db291ca58224dd32d12117f8742d046ed51b81b612dfb08",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

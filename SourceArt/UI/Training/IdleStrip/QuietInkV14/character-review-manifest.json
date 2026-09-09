@@ -1,0 +1,41 @@
+{
+  "kind": "offline-source-frame-composite",
+  "actors": [
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\enemy_01_rooster_idle\\frames\\frame_0000.png",
+      "sha256": "29d7b94d5faf6aa131f90fa10180d78c04a3be6c6b29d433684b56ebe3cf5b6d",
+      "review_center_x": 70,
+      "review_foot_y": 173
+    },
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\enemy_02_goat_idle\\frames\\frame_0000.png",
+      "sha256": "12480e47540971c299dd3800774c58046815c646d54efcb13a4a4eadedc01cdc",
+      "review_center_x": 200,
+      "review_foot_y": 173
+    },
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\enemy_04_civet_idle\\frames\\frame_0000.png",
+      "sha256": "ae1e7689b240f5c225b6370f4a647ec529d04ca89cf6aecca89199a27caedbc1",
+      "review_center_x": 330,
+      "review_foot_y": 173
+    },
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\character_00_hero_idle\\frames\\frame_0000.png",
+      "sha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
+      "review_center_x": 590,
+      "review_foot_y": 173
+    },
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\character_01_blade_idle\\frames\\frame_0000.png",
+      "sha256": "e0035c4c48be57c9d5229c542c1f6ac3dc29c94d8948dee1f1d3196c8bb45140",
+      "review_center_x": 720,
+      "review_foot_y": 173
+    },
+    {
+      "source": "SourceAssets\\AnimationProcessing\\Production\\character_07_tusi_chief_idle\\frames\\frame_0000.png",
+      "sha256": "b7ff042ca3b6c6289ae117b898a607d53223e6aea4cc01dced5fd553f01aa00f",
+      "review_center_x": 850,
+      "review_foot_y": 173
+    }
+  ]
+}

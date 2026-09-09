@@ -1,0 +1,45 @@
+{
+  "node": "S02-02",
+  "status": "user_approved_imported_verified",
+  "generator": "built-in image_gen",
+  "changed": "Restore hero identity from the canonical project character; preserve approved scene and painterly style.",
+  "imported_to_ue": true,
+  "files": [
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\StoryNodes\\Review\\s02_02_hero_identity_v1_master.png",
+      "dimensions": [
+        2172,
+        724
+      ],
+      "bytes": 2405965,
+      "sha256": "fc3b84af825dacb0beb1e80bec941ae664b43fe33105d99a506936fad0db4ff0"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\StoryNodes\\Review\\s02_02_hero_identity_v1_1536.png",
+      "dimensions": [
+        1536,
+        512
+      ],
+      "bytes": 1240872,
+      "sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\StoryNodes\\Review\\s02_02_hero_identity_v1_1536.webp",
+      "dimensions": [
+        1536,
+        512
+      ],
+      "bytes": 154156,
+      "sha256": "9a8fba5440459dfdc93e9dd5c8abbd09c7d104a5db1c0ecb37d531b3b27cf0db"
+    }
+  ],
+  "presentation": "Campfire-style four-sided edge feather, keeping central subjects sharp.",
+  "ue_texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_02.T_Story_S02_02",
+  "ue_format": "BC7",
+  "ue_resource_bytes": 786432,
+  "edge_material": "/Game/GameXXK/UI/StoryNodes/M_StoryIllustrationSoftEdge",
+  "screenshots": [
+    "Saved/StorySystem/s02-02-soft-edge-tree.png",
+    "Saved/StorySystem/s02-02-soft-edge-detail.png"
+  ]
+}
