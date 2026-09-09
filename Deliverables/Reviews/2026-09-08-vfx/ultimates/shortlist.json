@@ -1,0 +1,292 @@
+[
+  {
+    "id": "044",
+    "source_archive": "D:\\BaiduNetdiskDownload\\413-spine全屏大招特效动画 png技能特效序列帧 游戏视频动画通用素材\\B02.【第二期】满屏技能大招【spine特效】【序列】.zip",
+    "source_group": "【第二期】满屏技能大招【spine特效】【序列】/044",
+    "source_first": "【第二期】满屏技能大招【spine特效】【序列】/044/044_000.png",
+    "source_last": "【第二期】满屏技能大招【spine特效】【序列】/044/044_269.png",
+    "frame_count": 270,
+    "source_dimensions": [
+      [
+        1920,
+        1080
+      ]
+    ],
+    "preview_fps": 30,
+    "fps_is_assumed": true,
+    "seconds": 9.0,
+    "video": "B02-044-full.mp4",
+    "decoded_frames": 270,
+    "source_sequence_sha256": "e7ead0070f76da527e935bd97de0df1952f54530f50c4a23209d2a62e63c6b3b",
+    "samples": [
+      {
+        "frame": 12,
+        "path": "B02-044-sample-00.png"
+      },
+      {
+        "frame": 35,
+        "path": "B02-044-sample-01.png"
+      },
+      {
+        "frame": 57,
+        "path": "B02-044-sample-02.png"
+      },
+      {
+        "frame": 79,
+        "path": "B02-044-sample-03.png"
+      },
+      {
+        "frame": 102,
+        "path": "B02-044-sample-04.png"
+      },
+      {
+        "frame": 124,
+        "path": "B02-044-sample-05.png"
+      },
+      {
+        "frame": 147,
+        "path": "B02-044-sample-06.png"
+      },
+      {
+        "frame": 169,
+        "path": "B02-044-sample-07.png"
+      },
+      {
+        "frame": 192,
+        "path": "B02-044-sample-08.png"
+      },
+      {
+        "frame": 214,
+        "path": "B02-044-sample-09.png"
+      },
+      {
+        "frame": 236,
+        "path": "B02-044-sample-10.png"
+      },
+      {
+        "frame": 259,
+        "path": "B02-044-sample-11.png"
+      }
+    ],
+    "title": "乌云落金雷",
+    "badge": "匹配你记得的特征",
+    "note": "乌云铺开，云中金电蓄势，最后金雷向下劈落并在落点扩散。这组最符合“乌云落金色闪电”的描述。",
+    "poster": "B02-044-sample-10.png",
+    "segments": [
+      [
+        "乌云与蓄雷",
+        25,
+        210
+      ],
+      [
+        "金雷落下",
+        215,
+        270
+      ]
+    ],
+    "gif": "B02-044-full.gif",
+    "gif_check": {
+      "size": [
+        640,
+        360
+      ],
+      "frames": 270,
+      "duration_ms": 9000
+    }
+  },
+  {
+    "id": "057",
+    "source_archive": "D:\\BaiduNetdiskDownload\\413-spine全屏大招特效动画 png技能特效序列帧 游戏视频动画通用素材\\B02.【第二期】满屏技能大招【spine特效】【序列】.zip",
+    "source_group": "【第二期】满屏技能大招【spine特效】【序列】/057",
+    "source_first": "【第二期】满屏技能大招【spine特效】【序列】/057/057_000.png",
+    "source_last": "【第二期】满屏技能大招【spine特效】【序列】/057/057_295.png",
+    "frame_count": 296,
+    "source_dimensions": [
+      [
+        1920,
+        1080
+      ]
+    ],
+    "preview_fps": 30,
+    "fps_is_assumed": true,
+    "seconds": 9.866666666666667,
+    "video": "B02-057-full.mp4",
+    "decoded_frames": 296,
+    "source_sequence_sha256": "5cd5d2d96e793be8944280bd048db2ae119bb512505a16856f48fe0edecd6873",
+    "samples": [
+      {
+        "frame": 13,
+        "path": "B02-057-sample-00.png"
+      },
+      {
+        "frame": 38,
+        "path": "B02-057-sample-01.png"
+      },
+      {
+        "frame": 62,
+        "path": "B02-057-sample-02.png"
+      },
+      {
+        "frame": 87,
+        "path": "B02-057-sample-03.png"
+      },
+      {
+        "frame": 112,
+        "path": "B02-057-sample-04.png"
+      },
+      {
+        "frame": 136,
+        "path": "B02-057-sample-05.png"
+      },
+      {
+        "frame": 161,
+        "path": "B02-057-sample-06.png"
+      },
+      {
+        "frame": 185,
+        "path": "B02-057-sample-07.png"
+      },
+      {
+        "frame": 210,
+        "path": "B02-057-sample-08.png"
+      },
+      {
+        "frame": 235,
+        "path": "B02-057-sample-09.png"
+      },
+      {
+        "frame": 259,
+        "path": "B02-057-sample-10.png"
+      },
+      {
+        "frame": 284,
+        "path": "B02-057-sample-11.png"
+      }
+    ],
+    "title": "雷云与粗雷穿梭",
+    "badge": "相似雷系备选",
+    "note": "开头有雷云和金电，中段粗雷束穿梭，最后重击落地。相比044，它的移动、特写与冲击过程更多。",
+    "poster": "B02-057-sample-09.png",
+    "segments": [
+      [
+        "雷云起势",
+        1,
+        65
+      ],
+      [
+        "粗雷穿梭",
+        66,
+        185
+      ],
+      [
+        "落地收束",
+        215,
+        296
+      ]
+    ],
+    "gif": "B02-057-full.gif",
+    "gif_check": {
+      "size": [
+        640,
+        360
+      ],
+      "frames": 296,
+      "duration_ms": 9860
+    }
+  },
+  {
+    "id": "043",
+    "source_archive": "D:\\BaiduNetdiskDownload\\413-spine全屏大招特效动画 png技能特效序列帧 游戏视频动画通用素材\\B02.【第二期】满屏技能大招【spine特效】【序列】.zip",
+    "source_group": "【第二期】满屏技能大招【spine特效】【序列】/043",
+    "source_first": "【第二期】满屏技能大招【spine特效】【序列】/043/043_000.png",
+    "source_last": "【第二期】满屏技能大招【spine特效】【序列】/043/043_324.png",
+    "frame_count": 325,
+    "source_dimensions": [
+      [
+        1920,
+        1080
+      ]
+    ],
+    "preview_fps": 30,
+    "fps_is_assumed": true,
+    "seconds": 10.833333333333334,
+    "video": "B02-043-full.mp4",
+    "decoded_frames": 325,
+    "source_sequence_sha256": "11f5ad11e30aa88b412bf330178c977fc3edba15ea172c596b227a08446bba82",
+    "samples": [
+      {
+        "frame": 15,
+        "path": "B02-043-sample-00.png"
+      },
+      {
+        "frame": 41,
+        "path": "B02-043-sample-01.png"
+      },
+      {
+        "frame": 69,
+        "path": "B02-043-sample-02.png"
+      },
+      {
+        "frame": 95,
+        "path": "B02-043-sample-03.png"
+      },
+      {
+        "frame": 123,
+        "path": "B02-043-sample-04.png"
+      },
+      {
+        "frame": 149,
+        "path": "B02-043-sample-05.png"
+      },
+      {
+        "frame": 177,
+        "path": "B02-043-sample-06.png"
+      },
+      {
+        "frame": 203,
+        "path": "B02-043-sample-07.png"
+      },
+      {
+        "frame": 231,
+        "path": "B02-043-sample-08.png"
+      },
+      {
+        "frame": 257,
+        "path": "B02-043-sample-09.png"
+      },
+      {
+        "frame": 285,
+        "path": "B02-043-sample-10.png"
+      },
+      {
+        "frame": 311,
+        "path": "B02-043-sample-11.png"
+      }
+    ],
+    "title": "风卷聚冰与巨冰坠落",
+    "badge": "冰霜任务已选",
+    "note": "已按你的选择作为冰霜任务大招的动作参考：风卷聚冰，巨冰从云中坠下，再以地面冰刺爆开收尾。后续按你提供的冰晶笔刷画风重绘。",
+    "poster": "B02-043-sample-10.png",
+    "segments": [
+      [
+        "风卷起势",
+        1,
+        190
+      ],
+      [
+        "聚冰坠落",
+        191,
+        325
+      ]
+    ],
+    "gif": "B02-043-full.gif",
+    "gif_check": {
+      "size": [
+        640,
+        360
+      ],
+      "frames": 325,
+      "duration_ms": 10830
+    }
+  }
+]

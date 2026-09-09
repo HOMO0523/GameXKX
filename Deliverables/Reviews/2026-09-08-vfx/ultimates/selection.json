@@ -1,0 +1,27 @@
+{
+  "ice": {
+    "source": "B02/043",
+    "purpose": "冰霜任务大招",
+    "status": "用户认可作为动作参考",
+    "motion": ["风卷聚冰", "巨冰坠落", "冰刺爆开"],
+    "redrawn": false,
+    "integrated_in_ue": false
+  },
+  "thunder": {
+    "request": "乌云落金色闪电",
+    "selected_source": "B02/057",
+    "related_source": "B02/044",
+    "status": "用户选定057；56个定位帧重绘预览已完成，待视觉验收",
+    "redrawn": true,
+    "redrawn_stage": "56独立透明RGBA帧与7安全图集已整理并导入UE；非296帧全量重绘",
+    "assets_imported_in_ue": true,
+    "friendly_flip_x": true,
+    "preview": "redraw-057/index.html",
+    "integrated_in_ue": false
+  },
+  "approved_small_lightning_style": {
+    "reference": "../redraws/yellow-thunder-keyframes-v3.png",
+    "appearance": "粗主干、深赭笔刷外缘、金黄层次、浅金雷芯",
+    "status": "用户认可画风；关键帧GIF试播"
+  }
+}

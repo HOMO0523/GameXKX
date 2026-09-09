@@ -1,0 +1,192 @@
+ffconcat version 1.0
+file 'painted-frames/key-001-src-001.png'
+option framerate 100
+duration 0.33333333
+file 'painted-frames/key-002-src-011.png'
+option framerate 100
+duration 0.33333333
+file 'painted-frames/key-003-src-021.png'
+option framerate 100
+duration 0.23333333
+file 'painted-frames/key-004-src-028.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-005-src-033.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-006-src-035.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-007-src-037.png'
+option framerate 100
+duration 0.10000000
+file 'painted-frames/key-008-src-040.png'
+option framerate 100
+duration 0.03333333
+file 'painted-frames/key-009-src-041.png'
+option framerate 100
+duration 0.30000000
+file 'painted-frames/key-010-src-050.png'
+option framerate 100
+duration 0.40000000
+file 'painted-frames/key-011-src-062.png'
+option framerate 100
+duration 0.23333333
+file 'painted-frames/key-012-src-069.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-013-src-073.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-014-src-075.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-015-src-077.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-016-src-082.png'
+option framerate 100
+duration 0.10000000
+file 'painted-frames/key-017-src-085.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-018-src-089.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-019-src-093.png'
+option framerate 100
+duration 0.10000000
+file 'painted-frames/key-020-src-096.png'
+option framerate 100
+duration 0.03333333
+file 'painted-frames/key-021-src-097.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-022-src-103.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-023-src-108.png'
+option framerate 100
+duration 0.23333333
+file 'painted-frames/key-024-src-115.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-025-src-120.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-026-src-125.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-027-src-130.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-028-src-136.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-029-src-140.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-030-src-142.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-031-src-148.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-032-src-154.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-033-src-159.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-034-src-164.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-035-src-166.png'
+option framerate 100
+duration 0.33333333
+file 'painted-frames/key-036-src-176.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-037-src-181.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-038-src-185.png'
+option framerate 100
+duration 0.16666667
+file 'painted-frames/key-039-src-190.png'
+option framerate 100
+duration 0.23333333
+file 'painted-frames/key-040-src-197.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-041-src-201.png'
+option framerate 100
+duration 0.26666667
+file 'painted-frames/key-042-src-209.png'
+option framerate 100
+duration 0.30000000
+file 'painted-frames/key-043-src-218.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-044-src-220.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-045-src-222.png'
+option framerate 100
+duration 0.03333333
+file 'painted-frames/key-046-src-223.png'
+option framerate 100
+duration 0.06666667
+file 'painted-frames/key-047-src-225.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-048-src-231.png'
+option framerate 100
+duration 0.56666667
+file 'painted-frames/key-049-src-248.png'
+option framerate 100
+duration 0.40000000
+file 'painted-frames/key-050-src-260.png'
+option framerate 100
+duration 0.13333333
+file 'painted-frames/key-051-src-264.png'
+option framerate 100
+duration 0.10000000
+file 'painted-frames/key-052-src-267.png'
+option framerate 100
+duration 0.03333333
+file 'painted-frames/key-053-src-268.png'
+option framerate 100
+duration 0.20000000
+file 'painted-frames/key-054-src-274.png'
+option framerate 100
+duration 0.40000000
+file 'painted-frames/key-055-src-286.png'
+option framerate 100
+duration 0.33333333
+file 'painted-frames/key-056-src-296.png'
+option framerate 100
+duration 0.03333333
+file 'tail/fade-01.png'
+option framerate 100
+duration 0.04
+file 'tail/fade-02.png'
+option framerate 100
+duration 0.04
+file 'tail/fade-03.png'
+option framerate 100
+duration 0.04
+file 'tail/fade-04.png'
+option framerate 100
+duration 0.04
+file 'tail/fade-05.png'
+option framerate 100
+duration 0.04
+file 'tail/fade-06.png'
+option framerate 100
+duration 0.04
+file 'tail/blank.png'
+option framerate 100
+duration 0.60
+file 'tail/blank.png'
+option framerate 100
