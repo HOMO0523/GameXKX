@@ -1,0 +1,162 @@
+{
+  "ok": true,
+  "top_level_screens": 18,
+  "terrain_screens": 7,
+  "manifest_texture_rows": 1158,
+  "screens": [
+    {
+      "screen": "01_DesktopTrainingWorkbench_Default",
+      "assets": 38,
+      "screenshot_sha256": "1b98503d1ff0ea91308b7f196c2c62aa28566aec87c4b03fcf36ab22c5ecee5b",
+      "guides": 1
+    },
+    {
+      "screen": "02_DesktopWorkbench_Collapsed",
+      "assets": 80,
+      "screenshot_sha256": "fc525e83c6091cb133ca51ca995c6dbfcae6cb7452b447a2843bd0178d4bc4c6",
+      "guides": 1
+    },
+    {
+      "screen": "03_DesktopWorkbench_Warehouse",
+      "assets": 39,
+      "screenshot_sha256": "8a5a39391ac9d2361870c5722b5a64ee5aa3803abb163f4e87807ffbc134f484",
+      "guides": 1
+    },
+    {
+      "screen": "04_DesktopWorkbench_Formation",
+      "assets": 54,
+      "screenshot_sha256": "e42ff995e20b316f1354d75e19e98be14ec4c54f51a22d2ca6a0e50aea9eec31",
+      "guides": 1
+    },
+    {
+      "screen": "05_DesktopWorkbench_Talents",
+      "assets": 50,
+      "screenshot_sha256": "681ca1766ed697366530c63cdb87f4d41248d530483729ce9f47124c8d1e0724",
+      "guides": 1
+    },
+    {
+      "screen": "06_DesktopWorkbench_Tools",
+      "assets": 40,
+      "screenshot_sha256": "4029c5821188f72de8e0e57362e18b92c2ccf916929d3b04ead6b918e91c3cc1",
+      "guides": 1
+    },
+    {
+      "screen": "07_DesktopWorkbench_TrainingMap",
+      "assets": 42,
+      "screenshot_sha256": "2dc1c228427fe8666c7ab2eee8ecf0014ba6fcca31de1d66df5f0a4c19f5b1dc",
+      "guides": 1
+    },
+    {
+      "screen": "08_DesktopWorkbench_Settings",
+      "assets": 38,
+      "screenshot_sha256": "2573c096112ea952876d394f6c2f8bc03cf3c0ad246967adbfb6fb08346e6f52",
+      "guides": 1
+    },
+    {
+      "screen": "09_DesktopWorkbench_ExitConfirm",
+      "assets": 38,
+      "screenshot_sha256": "c7dfd7019174276e31f7d9833e3ea291613c6d423d4d2f1f54f871107982b96e",
+      "guides": 1
+    },
+    {
+      "screen": "10_ChallengeRouteMap",
+      "assets": 27,
+      "screenshot_sha256": "618fcb24466d97d27a759435f3c42c90b33b0d46508c8733b46215e27ef6f5b5",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard",
+      "assets": 139,
+      "screenshot_sha256": "b49c3277521130b3861d10f9cc7b8f29c5a6254aa7a5f32af7c4daa385180121",
+      "guides": 1
+    },
+    {
+      "screen": "12_BattleReward",
+      "assets": 170,
+      "screenshot_sha256": "fb371ce926095e64eb7a0c197f1926246ffd27c598a0f228000104867f434ba7",
+      "guides": 1
+    },
+    {
+      "screen": "13_RouteEventChoice",
+      "assets": 64,
+      "screenshot_sha256": "052d0c21f5c65d592afa351272aa10bbb1cf9c0f0b6ffd64f879de81f55320d4",
+      "guides": 1
+    },
+    {
+      "screen": "14_RouteCamp",
+      "assets": 64,
+      "screenshot_sha256": "bb659515849f2fc13df755775652997fa6c135de425563b086afa764a5372124",
+      "guides": 1
+    },
+    {
+      "screen": "15_RouteMerchant",
+      "assets": 75,
+      "screenshot_sha256": "86cbcd5e502449fe853f10d8668e0814b4b6fdab70fd966bfb542d738823b48c",
+      "guides": 1
+    },
+    {
+      "screen": "16_RouteAbandonConfirm",
+      "assets": 27,
+      "screenshot_sha256": "a1d0c552b6941a014da6d25bab7a5aa84612c5928af813d4cbd6d8927711114e",
+      "guides": 1
+    },
+    {
+      "screen": "17_BattleRetreatConfirm",
+      "assets": 139,
+      "screenshot_sha256": "39935969fa08c04db47664029903cdadff7a3de118c523ce84a4e35777ea7d23",
+      "guides": 1
+    },
+    {
+      "screen": "18_RouteSettlement",
+      "assets": 27,
+      "screenshot_sha256": "52441d8a8120f60f98091e938ac2e811d130f26a17650a11cfeeb60f39cdc9ec",
+      "guides": 1
+    }
+  ],
+  "terrains": [
+    {
+      "screen": "11_BattleBoard/Terrains/01_Plain_平原",
+      "assets": 1,
+      "screenshot_sha256": "3a50008cd572a0818ca74a9d7c42ff40abd7cc5cf933a12c5c7805ac5b107861",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/02_Cliff_断崖",
+      "assets": 1,
+      "screenshot_sha256": "31458643b9cd42be419669229cefdc5d989c5cf896adc3ef62b8f24b810390c3",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/03_Forest_山林",
+      "assets": 1,
+      "screenshot_sha256": "43abf5c58680cce179fec25dedc3c17938ba3f2bd37028f5dbdf3ba4d325e642",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/04_WaterShore_水岸",
+      "assets": 1,
+      "screenshot_sha256": "44d9d9e7798b23f31522d9a8c85e1bf1331141704a30645320211dc13337cb34",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/05_Ferry_渡口",
+      "assets": 1,
+      "screenshot_sha256": "f1cc629722aea8358105273438c5293fb671f6acc9d3a6889eb9dc7b0cb4a99a",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/06_Village_村镇",
+      "assets": 1,
+      "screenshot_sha256": "bac4136ac4e5fad2ff02a613a8fde6c684a7d6da309b7a27d90bea69b56bde77",
+      "guides": 1
+    },
+    {
+      "screen": "11_BattleBoard/Terrains/07_Cave_洞窟",
+      "assets": 1,
+      "screenshot_sha256": "aa748117892d50cb63087d76bcccd96731c5c524bdc20f1f7f3771470c4cdac7",
+      "guides": 1
+    }
+  ],
+  "continuous_background_repeat_count": 3,
+  "luna": "PASS"
+}

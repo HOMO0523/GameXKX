@@ -1,0 +1,3 @@
+﻿region_id,screen_name,asset_filename,asset_relative_path,ue_asset_path,source_art_path,width,height,color_mode,has_alpha,shared,usage,notes,sha256
+R01_background,11_BattleBoard/Terrains/03_Forest_山林,T_BattleArena_Forest_GeneratedV2.png,T_BattleArena_Forest_GeneratedV2.png,/Game/GameXXK/UI/Battle/Textures/T_BattleArena_Forest_GeneratedV2.T_BattleArena_Forest_GeneratedV2,,1672,941,RGBA,true,true,战场/场景背景,"Exported from current UE Texture2D; preserve filename, canvas size, and alpha.",8d77728d5e1eb3a9fbdce0a3e7433e4e1fd8ef0b3e99b4dfa60bec0da9586050
+C01,11_BattleBoard/Terrains/03_Forest_山林,CODE_DRAWN,,,,,,,,true,文字、数值、纯色块与程序边框,No replacement PNG.,

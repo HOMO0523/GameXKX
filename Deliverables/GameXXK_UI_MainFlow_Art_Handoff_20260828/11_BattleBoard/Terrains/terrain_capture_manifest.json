@@ -1,0 +1,267 @@
+{
+  "ok": true,
+  "method": "Formation Master cards in live battle; Ferry is initial node-8 terrain",
+  "terrains": [
+    {
+      "terrain": "Ferry",
+      "card_id": "INITIAL_ROUTE_NODE_8",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\05_Ferry_渡口\\01_Runtime_Screenshot\\Terrain_05_Ferry_Runtime.png",
+      "size": [
+        1538,
+        826
+      ]
+    },
+    {
+      "terrain": "Plain",
+      "card_id": "Profession.FormationMaster.GuanShi",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\01_Plain_平原\\01_Runtime_Screenshot\\Terrain_01_Plain_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.PLAIN: 1>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 6,
+        "pending_reward_card_ids": []
+      }
+    },
+    {
+      "terrain": "Cliff",
+      "card_id": "Profession.FormationMaster.JieShanWeiZhang",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\02_Cliff_断崖\\01_Runtime_Screenshot\\Terrain_02_Cliff_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.CLIFF: 2>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 6,
+        "pending_reward_card_ids": []
+      }
+    },
+    {
+      "terrain": "Forest",
+      "card_id": "Profession.FormationMaster.LinYingMiZong",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\03_Forest_山林\\01_Runtime_Screenshot\\Terrain_03_Forest_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.FOREST: 3>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 6,
+        "pending_reward_card_ids": []
+      }
+    },
+    {
+      "terrain": "WaterShore",
+      "card_id": "Profession.FormationMaster.YinShuiHuiYuan",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\04_WaterShore_水岸\\01_Runtime_Screenshot\\Terrain_04_WaterShore_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.WATER_SHORE: 4>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 6,
+        "pending_reward_card_ids": []
+      }
+    },
+    {
+      "terrain": "Village",
+      "card_id": "Profession.FormationMaster.DingZhen",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\06_Village_村镇\\01_Runtime_Screenshot\\Terrain_06_Village_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.VILLAGE: 6>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 7,
+        "pending_reward_card_ids": []
+      }
+    },
+    {
+      "terrain": "Cave",
+      "card_id": "Profession.FormationMaster.KunZhen",
+      "owner_unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+      "screenshot": "D:\\UE5 demo\\GameXXK\\Deliverables\\GameXXK_UI_MainFlow_Art_Handoff_20260828\\11_BattleBoard\\Terrains\\07_Cave_洞窟\\01_Runtime_Screenshot\\Terrain_07_Cave_Runtime.png",
+      "size": [
+        1538,
+        826
+      ],
+      "runtime": {
+        "ok": true,
+        "action": "battle_state",
+        "screen": "<GameXXKScreen.BATTLE: 7>",
+        "b_has_active_card_battle": true,
+        "phase": "<GameXXKCardBattlePhase.PLAYER: 1>",
+        "terrain": "<GameXXKCardTerrain.CAVE: 7>",
+        "units": [
+          {
+            "unit_id": "Player",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "CompanionInstance.Companion_FormationMaster_01.00006643",
+            "side": "<GameXXKCardTargetSide.PARTY: 1>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Rooster.P1",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          },
+          {
+            "unit_id": "Enemy.Goat.P3",
+            "side": "<GameXXKCardTargetSide.ENEMY: 2>",
+            "b_living": true
+          }
+        ],
+        "hand_count": 6,
+        "pending_reward_card_ids": []
+      }
+    }
+  ]
+}

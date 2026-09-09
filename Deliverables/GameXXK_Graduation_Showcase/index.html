@@ -1,0 +1,2071 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GameXXK 毕业设计｜水墨作战图鉴</title>
+<style>
+:root{--charcoal:#24221d;--paper:#e8d9be;--paper-hi:#f3e8d2;--ink:#2d2a24;--muted:#776f63;--wood:#6b4a2d;--gold:#b7862b;--red:#a74635;--pine:#526e65;--rule:#b5a58d;--serif:"Noto Serif SC","Source Han Serif SC",SimSun,serif;--sans:"Microsoft YaHei","Noto Sans SC",sans-serif}
+*{box-sizing:border-box} html{scroll-behavior:smooth} body{margin:0;background:var(--charcoal);color:var(--ink);font:16px/1.8 var(--sans)}
+a{color:inherit} .page{width:min(1500px,calc(100% - 32px));margin:24px auto;background:var(--paper);box-shadow:0 20px 60px #0008;border:8px solid var(--wood)}
+.hero{min-height:620px;padding:72px clamp(28px,6vw,96px);position:relative;overflow:hidden;background:linear-gradient(100deg,#f3e8d2f5 0 48%,#e8d9bed8 75%),url('assets/card-battle.png') center/cover}
+.seal{position:absolute;right:48px;top:48px;border:3px solid var(--red);color:var(--red);padding:9px;line-height:1.1;font-weight:800} .eyebrow,.chapter-kicker{letter-spacing:.16em;color:var(--muted);font-size:13px;font-weight:700}
+h1,h2,h3{font-family:var(--serif);line-height:1.25} h1{font-size:clamp(48px,8vw,92px);margin:15px 0 0} .hero h2{font-size:clamp(24px,4vw,42px);color:var(--wood);margin:0 0 22px}
+.hero-lead{max-width:790px;font-size:19px} .hero-stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px} .hero-stats span{background:var(--ink);color:var(--paper-hi);padding:10px 15px;border-radius:4px}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr)} .toc{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:24px 18px;background:var(--ink);color:var(--paper);display:flex;flex-direction:column;gap:4px}
+.toc strong{color:var(--gold);font-family:var(--serif);font-size:20px;margin-bottom:8px} .toc a{text-decoration:none;padding:4px 8px;border-left:2px solid transparent} .toc a:hover,.toc a:focus{border-color:var(--gold);color:#fff}
+main{min-width:0} .chapter{padding:58px clamp(22px,4vw,64px);border-bottom:1px solid var(--rule);scroll-margin-top:20px} .chapter>h2{font-size:clamp(32px,5vw,52px);margin:5px 0} .tagline{font-family:var(--serif);font-size:22px;color:var(--wood);margin-top:0}
+.pillars,.role-grid,.tech-grid,.metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px} .pillars article,.role-grid article,.tech-grid article,.metric{background:var(--paper-hi);border-top:4px solid var(--pine);padding:20px;border-radius:5px}
+.pillars article:nth-child(2){border-color:var(--red)} .pillars article:nth-child(3){border-color:var(--gold)} .flow{display:flex;gap:10px;align-items:stretch;margin:24px 0;flex-wrap:wrap} .flow span{flex:1;min-width:160px;background:var(--ink);color:var(--paper);padding:15px;text-align:center} .flow b{display:grid;place-items:center;color:var(--gold);font-size:24px}
+.gallery{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:24px} figure{margin:0;background:var(--ink);padding:8px} figure img{width:100%;height:280px;display:block;object-fit:cover} figcaption{color:var(--paper);font-size:13px;padding:8px}
+.architecture{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch} .architecture div{min-width:0;overflow-wrap:anywhere;background:var(--paper-hi);border:1px solid var(--rule);padding:18px} .architecture b{display:grid;place-items:center;color:var(--red);font-size:24px}
+.metric-grid{grid-template-columns:repeat(4,1fr)} .metric strong{display:block;font:700 34px/1 var(--serif);color:var(--red)} .note{border-left:5px solid var(--gold);padding:14px 18px;background:#f3e8d2;margin:20px 0}
+.searchbar{position:sticky;top:0;z-index:8;background:#e8d9bef5;border-bottom:1px solid var(--rule);padding:12px clamp(22px,4vw,64px);display:flex;gap:10px;align-items:center;flex-wrap:wrap} .searchbar input,.searchbar select{font:inherit;padding:9px 11px;border:1px solid var(--rule);background:var(--paper-hi)} .searchbar input{flex:1;min-width:260px} #visibleCount{font-weight:800;color:var(--red)}
+.keyword-line{display:inline-block;background:var(--ink);color:var(--paper);padding:7px 12px;margin:6px 0 18px} .role-grid{grid-template-columns:repeat(2,1fr)} .role-grid article:nth-child(2){border-color:var(--red)} .role-grid article:nth-child(3){border-color:var(--gold)} .role-grid article:nth-child(4){border-color:var(--wood)}
+.table-wrap{overflow:auto;margin-top:24px;border:1px solid var(--rule)} table{width:100%;border-collapse:collapse} .card-table{min-width:1320px;font-size:13px;line-height:1.6} caption{text-align:left;background:var(--wood);color:#fff;padding:12px;font:700 18px var(--serif)} th{position:sticky;top:0;background:var(--ink);color:#fff;text-align:left;padding:9px} td{vertical-align:top;padding:10px;border-bottom:1px solid #d0c1a8} tbody tr:nth-child(even){background:#f3e8d280} code{display:block;color:var(--muted);font-size:11px;overflow-wrap:anywhere} .num,.cost{white-space:nowrap;font-variant-numeric:tabular-nums} .effect{min-width:360px} .design-note{min-width:280px;color:#493a2c} .quality{padding:3px 7px;border:1px solid var(--rule);white-space:nowrap} .q-稀有{color:#245d87;border-color:#245d87} .q-珍稀{color:#8b4a14;border-color:var(--gold)}
+.sources li{margin:7px 0} footer{padding:24px 40px;background:var(--ink);color:var(--paper);text-align:center}
+@media(max-width:1050px){.page{width:100%;margin:0;border-width:0}.layout{display:block}.toc{position:relative;height:auto;display:block}.toc a{display:inline-block;margin:2px}.pillars,.tech-grid,.metric-grid{grid-template-columns:1fr 1fr}.architecture{grid-template-columns:1fr}.architecture b{transform:rotate(90deg)}}
+@media(max-width:680px){.pillars,.role-grid,.tech-grid,.metric-grid,.gallery{grid-template-columns:1fr}.hero{min-height:auto;padding:50px 24px}figure img{height:220px}}
+@media print{body{background:#fff}.page{width:100%;margin:0;border:0;box-shadow:none}.toc,.searchbar{display:none}.layout{display:block}.chapter{break-before:page;padding:24px}.hero{min-height:auto;background:var(--paper-hi)}.table-wrap{overflow:visible}.card-table{min-width:0;font-size:9px}th{position:static}tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="page">
+<header class="hero" id="top"><div class="seal">毕业<br>设计</div><div class="eyebrow">GAME DESIGN ARCHIVE · 2026</div><h1>GameXXK</h1><h2>城镇有故事，局内有策略，桌面有成长</h2><p class="hero-lead">一款融合HD2D城镇探索、类《杀戮尖塔》路线卡牌挑战与桌面放置刷宝提升的队伍构筑单机RPG。主角、永久伙伴与任务NPC的卡牌进入同一副共享牌组，让“组队”直接变成可规划、可组合的出牌语言。</p><div class="hero-stats"><span>3大核心支柱</span><span>173张现役卡</span><span>14个角色/奖励分类</span><span>2400+2520场模拟矩阵</span></div></header>
+<div class="layout"><nav class="toc"><strong>目录</strong><a href="#core">游戏主心骨</a><a href="#loop">完整循环</a><a href="#slate">Slate设计</a><a href="#numbers">数值测试体系</a><a href="#rules">卡牌公共规则</a><a href="#role-hero">主角</a>
+<a href="#role-partner-blade">刀客</a>
+<a href="#role-partner-guard">守卫</a>
+<a href="#role-partner-healer">药师</a>
+<a href="#role-partner-hunter">弓手</a>
+<a href="#role-partner-sorcerer">法师</a>
+<a href="#role-partner-formation">阵师</a>
+<a href="#role-npc-tusi">土司首领</a>
+<a href="#role-npc-song">宋金宝</a>
+<a href="#role-npc-yue">月白</a>
+<a href="#role-npc-zhou">周光祖</a>
+<a href="#role-npc-jin">金贵</a>
+<a href="#role-npc-qiong">琼么儿</a>
+<a href="#role-boss">首领奖励牌</a><a href="#synergy">跨角色构筑</a><a href="#sources">资料与口径</a></nav>
+<main>
+<section class="chapter" id="core"><div class="chapter-kicker">01 · 游戏定位</div><h2>三大主心骨</h2><div class="pillars"><article><h3>HD2D城镇探索</h3><p>像素角色置于具有空间、光照与景深的城镇环境中。移动、NPC对话、任务、招募与商店为角色和卡牌提供人物、地点与叙事来源。</p></article><article><h3>类《杀戮尖塔》局内卡牌战斗</h3><p>路线节点、敌方意图、普通/精英/首领战构成主动挑战。主角8张、伙伴5张、NPC3张共同组成共享牌组，并可加入最多3张首领牌。</p></article><article><h3>桌面放置刷宝提升</h3><p>常驻工作台承载游历挂机、仓库、背包、装备、编队、天赋与工具。挑战负责解锁，游历负责在已通关关卡低耗刷取。</p></article></div><div class="gallery"><figure><img src="assets/hd2d-town.png" alt="GameXXK HD2D青山镇实机画面"><figcaption>HD2D城镇：移动、NPC与任务空间</figcaption></figure><figure><img src="assets/desktop-workbench.png" alt="GameXXK桌面历练工作台实机画面"><figcaption>桌面工作台：挂机、仓库、角色与装备管理</figcaption></figure><figure><img src="assets/challenge-route.png" alt="GameXXK挑战路线图实机画面"><figcaption>挑战路线：节点选择与风险规划</figcaption></figure><figure><img src="assets/card-battle.png" alt="GameXXK全屏卡牌战斗实机画面"><figcaption>局内战斗：敌方意图、共享手牌与角色协作</figcaption></figure></div></section>
+<section class="chapter" id="loop"><div class="chapter-kicker">02 · META LOOP</div><h2>探索、挑战、刷宝与成长</h2><div class="flow"><span>城镇：任务 / 角色 / 世界 / 解锁</span><b>→</b><span>挑战：路线 / 意图 / 出牌 / 首领</span><b>→</b><span>工作台：刷宝 / 装备 / 编队 / 再构筑</span></div><p>城镇提供任务与角色，主动挑战检验构筑并给出高价值奖励，工作台游历持续积累装备与成长资源，成长后的队伍再回到更高难度的探索与挑战。当前默认演示路径是<strong>2D工作台 → 挑战路线图 → 全屏BattleBoard → 结算后返回路线或工作台</strong>。</p></section>
+<section class="chapter" id="slate"><div class="chapter-kicker">03 · TECHNICAL DESIGN</div><h2>整体Slate/UMG设计</h2><p>GameXXK采用C++驱动的Slate/UMG体系。权威状态与界面表现分离，PlayerController统一管理屏幕生命周期、ZOrder、焦点和输入模式，关键WidgetTree使用稳定名称与稳定几何，便于自动化核对。</p><div class="architecture"><div><h3>UGameXXKMVPSubsystem</h3><p>运行时状态、存档、卡牌战斗与历练数据</p></div><b>→</b><div><h3>AGameXXKMVPPlayerController</h3><p>屏幕协调、懒创建、层级、焦点与返回栈</p></div><b>→</b><div><h3>三大界面</h3><p>DesktopTrainingWorkbench / RouteMap / BattleBoard</p></div><b>→</b><div><h3>Slate绘制</h3><p>WidgetTree、RebuildWidget、NativePaint与纹理缓存</p></div></div><div class="tech-grid"><article><h3>确定性几何</h3><p>以1920×1080为设计基准，通过ScaleToFit安全舞台统一桌面工作台与战斗HUD。</p></article><article><h3>SafeStage局部坐标</h3><p>指针使用viewport-client本地DPI坐标，经Offset/Scale进入stage；NativePaint只画Board-local坐标，避免浮动窗口桌面原点污染。</p></article><article><h3>懒生命周期</h3><p>HUD-only启动只创建当前必需表面；折叠后保留游历和轻量状态，重页面与Atlas按需加载和释放。</p></article></div><div class="note"><strong>箭头错位案例：</strong>方向向量只用于旋转和法线，不参与位置平移；贴图可见箭尖采用明确hotspot。这个问题最终被固化为几何合同和水平/垂直/对角自动化，而不是继续凭截图盲调。</div></section>
+<section class="chapter" id="numbers"><div class="chapter-kicker">04 · BALANCE ENGINEERING</div><h2>数值校验工具与模拟对战体系</h2><p>卡牌数值不是只靠手感填写，而是经过“目录合同 → 逐卡执行 → 规则集成 → 确定性模拟 → 锁定矩阵 → 正交矩阵 → 统计建议 → 真实PIE”的八层验证。</p><div class="metric-grid"><div class="metric"><strong>198×7</strong><span>全部目录定义跨七代码地势，共1386次结算</span></div><div class="metric"><strong>2400</strong><span>八个cohort × 三节点类型 × 100稳定种子</span></div><div class="metric"><strong>2520</strong><span>职业、套装、NPC、地势、成长档正交矩阵</span></div><div class="metric"><strong>Schema 3</strong><span>CSV记录资源、伤害、治疗、状态与队列指标</span></div></div><h3>模拟对战记录什么</h3><p>每场记录胜负、回合数、剩余生命、首回合死亡、主动出牌与自动结算、气力/内力消耗和闲置、按来源与CardId统计的伤害/治疗/护甲、状态生产与消费、过杀、过量治疗、目标失效、最大手牌与自动队列深度。</p><h3>两套矩阵的职责</h3><div class="tech-grid"><article><h3>锁定矩阵</h3><p>回答“当前正式构筑在普通、精英、首领节点的整体结果如何”。</p></article><article><h3>正交矩阵</h3><p>每次只改变职业、装备套装、任务NPC、地势或成长档中的一个变量，控制其他seed和身份不变。</p></article><article><h3>有界建议</h3><p>Wilson 95%区间定位偏差；建议上限为攻击倍率±15个百分点、固定值±2、气力±1、内力±3、敌方倍率±10%。建议不自动改代码，必须人工评审。</p></article></div><div class="note"><strong>历史证据（2026-08-11）：</strong>FullMatrix 2400场全部终局，0个MaxRounds，2118胜、282负，总胜率88.25%。该结果只证明当时版本的终局率和总体表现；当前greedy/skilled策略偏向即时收益，会低估蓄力、药方、法术任务和地势铺垫，因此不能把模拟胜率冒充“最终平衡已证明”。</div></section>
+<section class="chapter" id="rules"><div class="chapter-kicker">05 · CARD LANGUAGE</div><h2>卡牌公共规则与数值口径</h2><div class="tech-grid"><article><h3>共享牌组</h3><p>卡牌共享手牌与气力，但保留来源角色、职业标签和所有者；自动重放、协战、反击、格挡与DoT不计主动出牌。</p></article><article><h3>品质换算</h3><p>完整效果按卡牌当前基础品质展示：普通×1，稀有伤害/治疗/护甲×2，珍稀×4；层数类按品质阶数递增。实现签名保留未缩放底值。</p></article><article><h3>状态与目标</h3><p>条件不满足时仍保留基础效果；目标模式在预览与确认时一致，资源不足或目标失效不得产生半结算。</p></article></div></section>
+<div class="searchbar"><input id="cardSearch" type="search" placeholder="搜索卡名、CardId、效果、数值或设计定位"><select id="roleFilter"><option value="">全部角色</option><option value="hero">主角</option>
+<option value="partner-blade">刀客</option>
+<option value="partner-guard">守卫</option>
+<option value="partner-healer">药师</option>
+<option value="partner-hunter">弓手</option>
+<option value="partner-sorcerer">法师</option>
+<option value="partner-formation">阵师</option>
+<option value="npc-tusi">土司首领</option>
+<option value="npc-song">宋金宝</option>
+<option value="npc-yue">月白</option>
+<option value="npc-zhou">周光祖</option>
+<option value="npc-jin">金贵</option>
+<option value="npc-qiong">琼么儿</option>
+<option value="boss">首领奖励牌</option></select><span id="visibleCount">173 / 173</span></div>
+
+<section class="chapter role-section" id="role-hero">
+  <div class="chapter-kicker">主角牌组 · 36张现役卡</div>
+  <h2>主角</h2>
+  <p class="tagline">泛用工具与六职业联动的队伍中枢</p>
+  <div class="keyword-line">泛用工具 · 六职业联动 · 八牌法术任务</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>主角的设计重点不是复制某个伙伴，而是在八张配置里补足队伍缺口，并用联动牌读取伙伴已经建立的状态与资源。</p></article>
+    <article><h3>设计思路</h3><p>12张泛用牌提供攻击、治疗、护甲、过牌和费用桥接；其余24张按六职业各四张建立跨角色接口，使换伙伴不仅改变数值，也改变主角的出牌方式。</p></article>
+    <article><h3>核心循环</h3><p>泛用牌稳定开局 → 伙伴建立职业资源 → 主角联动牌放大 → 高等级泛用牌收束</p></article>
+    <article><h3>数值边界</h3><p>泛用牌以0–2气为主；5/10/15/20级各解锁1张；剑意贯虹按攻击力×(260%+20%×气势层数)+气势层数结算。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>主角全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="hero">
+  <td class="num">001</td>
+  <td><strong>青锋一式</strong><code>Hero.Generic.QingFengYiShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成140%攻击伤害；持续效果：打出牌时，本次打出的牌气力消耗-1；仅主动出牌触发；不作用于效果来源单位；触发1次后失效</td>
+  <td class="design-note">直接输出牌。以1 气 / 0 内换取关键数值140%、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">002</td>
+  <td><strong>鹤羽斩</strong><code>Hero.Generic.HeYuZhan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成160%攻击伤害；触发所选目标层数最高的流血、中毒或灼烧1次，并减少对应状态1层</td>
+  <td class="design-note">状态伤害兑现牌。以1 气 / 3 内换取关键数值160%、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">003</td>
+  <td><strong>风身步</strong><code>Hero.Generic.FengShenBu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标获得2层灵动；出牌者抽2张牌；出牌者弃置1张牌；消耗：打出后进入本局消耗区。</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值2、2、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">004</td>
+  <td><strong>碎岩击</strong><code>Hero.Generic.SuiYanJi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成150%攻击伤害；所选目标获得3层破绽；所选目标获得1层标记</td>
+  <td class="design-note">直接输出牌。以1 气 / 3 内换取关键数值150%、3、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">005</td>
+  <td><strong>归元术</strong><code>Hero.Generic.GuiYuanShu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标恢复12点生命；清除所选目标的全部流血、中毒和灼烧；持续效果：打出牌时，本次打出的牌气力消耗-1；仅主动出牌触发；触发1次后失效</td>
+  <td class="design-note">状态伤害兑现牌。以1 气 / 0 内换取关键数值12、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">006</td>
+  <td><strong>横剑守势</strong><code>Hero.Generic.HengJianShouShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标获得2层标记；所选目标获得16点护甲；所选目标登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值2、16、1、100%、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">007</td>
+  <td><strong>凝神吐纳</strong><code>Hero.Generic.NingShenTuNa</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者获得2层气势；出牌者获得10点内力；消耗：打出后进入本局消耗区。</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值2、10；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">008</td>
+  <td><strong>观隙</strong><code>Hero.Generic.GuanXi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者抽3张牌；出牌者弃置1张牌；消耗：打出后进入本局消耗区。</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值3、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">009</td>
+  <td><strong>破云一闪</strong><code>Hero.Generic.PoYunYiShan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>主角 Lv.5 解锁</td>
+  <td class="effect">基础：所选目标造成160%攻击伤害；所选目标造成100%攻击伤害（当出牌者具有灵动；消耗至多1层灵动；数值按消耗层数结算）；出牌者抽1张牌（仅当前述消耗成功时）</td>
+  <td class="design-note">资源循环牌。以1 气 / 3 内换取关键数值160%、100%、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">010</td>
+  <td><strong>行气回环</strong><code>Hero.Generic.XingQiHuiHuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>主角 Lv.10 解锁</td>
+  <td class="effect">基础：出牌者抽2张牌；出牌者回复1点气力；消耗：打出后进入本局消耗区。</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值2、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">011</td>
+  <td><strong>剑意贯虹</strong><code>Hero.Generic.JianYiGuanHong</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>主角 Lv.15 解锁</td>
+  <td class="effect">基础：所选目标造成260%攻击伤害；每消耗1层状态，本段攻击倍率+20个百分点（当出牌者具有气势；消耗全部气势；数值按消耗层数结算）；出牌者回复1点气力（前述消耗至少3层时，仅结算一次）</td>
+  <td class="design-note">资源循环牌。以2 气 / 6 内换取关键数值260%、1、20、1、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">012</td>
+  <td><strong>归元返照</strong><code>Hero.Generic.GuiYuanFanZhao</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>主角 Lv.20 解锁</td>
+  <td class="effect">基础：全体友方恢复6点生命；全体友方获得12点护甲；清除全体友方的全部流血、中毒和灼烧；出牌者抽2张牌</td>
+  <td class="design-note">资源循环牌。以2 气 / 6 内换取关键数值6、12、2；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">013</td>
+  <td><strong>同锋引式</strong><code>Hero.Blade.TongFengYinShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者抽1张牌；所选目标获得2层气势；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效</td>
+  <td class="design-note">顺序编排牌。以0 气 / 0 内换取关键数值1、2、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">014</td>
+  <td><strong>血路相承</strong><code>Hero.Blade.XueLuXiangCheng</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成150%攻击伤害；所选目标获得8层流血；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下次攻击时，触发所选目标的流血1次；每次按当前层数造成生命伤害并减少1层；仅主动出牌触发；触发状态伤害时不减层；触发1次后失效；当所选目标具有流血；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者抽2张牌；仅主动出牌触发；触发1次后失效；当所选目标具有流血；持续效果：下个玩家回合首次主动攻击指定状态目标时，出牌者回复1点气力；仅主动出牌触发；触发1次后失效；当所选目标具有流血</td>
+  <td class="design-note">顺序编排牌。以1 气 / 3 内换取关键数值150%、8、1、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">015</td>
+  <td><strong>迎锋换步</strong><code>Hero.Blade.YingFengHuanBu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者获得2层标记；出牌者获得3层灵动；出牌者登记2次反击；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合开始时，出牌者获得2层标记；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；触发1次后失效；反击：敌方单体攻击牌结算后，造成100%攻击并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值2、3、2、2、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">016</td>
+  <td><strong>同袍聚势</strong><code>Hero.Blade.TongPaoJuShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标获得3层气势；持续效果：下次攻击时，每消耗1层气势，本段攻击倍率+10个百分点；仅主动出牌触发；触发状态伤害时不减层；触发1次后失效；当出牌者具有气势；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得3层气势；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算前，本次打出的牌气力消耗改为0；仅主动出牌触发；触发1次后失效</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值3、1、10、1、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">017</td>
+  <td><strong>铁壁同守</strong><code>Hero.Guard.TieBiTongShou</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标获得18点护甲；所选目标登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值18、2、100%、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">018</td>
+  <td><strong>借甲还锋</strong><code>Hero.Guard.JieJiaHuanFeng</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：由护甲最高友方对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；护甲最高友方获得10点护甲；护甲最高友方登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 3 内换取关键数值100%、10、1、100%、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">019</td>
+  <td><strong>列阵承锋</strong><code>Hero.Guard.LieZhenChengFeng</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：全体友方获得8点护甲；全体友方登记1次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 0 内换取关键数值8、1、100%、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">020</td>
+  <td><strong>玄甲镇岳</strong><code>Hero.Guard.XuanJiaZhenYue</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：消耗所选目标全部护甲，对全体敌方造成（100%+每点护甲20个百分点）攻击伤害</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 6 内换取关键数值100%、20；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">021</td>
+  <td><strong>以血催方</strong><code>Hero.Healer.YiXueCuiFang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得2层药效；本次获得至少6层时再获得1层气势；出牌者抽1张牌；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以0 气 / 0 内换取关键数值1、1、1、2、6；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">022</td>
+  <td><strong>回春逆脉</strong><code>Hero.Healer.HuiChunNiMai</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；清除所选目标的全部流血、中毒和灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值10、10、1、6、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">023</td>
+  <td><strong>毒火同炉</strong><code>Hero.Healer.DuHuoTongLu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；所选目标获得2层灼烧；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；出牌者获得6层药效；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值130%、6、2、1、6；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">024</td>
+  <td><strong>百草济阵</strong><code>Hero.Healer.BaiCaoJiZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：消耗出牌者全部药效；全体友方恢复6+药效层数生命；全体敌方获得1层中毒；全体敌方获得1层灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 6 内换取关键数值6、1、1、1、6；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">025</td>
+  <td><strong>风眼定弦</strong><code>Hero.Hunter.FengYanDingXian</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者抽2张牌；出牌者弃置1张牌；出牌者获得2层灵动；出牌者获得3层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以0 气 / 3 内换取关键数值2、1、2、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">026</td>
+  <td><strong>裂羽连矢</strong><code>Hero.Hunter.LieYuLianShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成140%攻击伤害；所选目标获得8层流血；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 3 内换取关键数值140%、8、1、1、50%；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">027</td>
+  <td><strong>淬毒穿心</strong><code>Hero.Hunter.CuiDuChuanXin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成130%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，再触发1次毒爆。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 3 内换取关键数值130%、6、1、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">028</td>
+  <td><strong>回风贯日</strong><code>Hero.Hunter.HuiFengGuanRi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成150%攻击伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌；消耗至少3层时回复1点气力一次。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 6 内换取关键数值150%、1、40、1、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">029</td>
+  <td><strong>炎序燎原</strong><code>Hero.Mage.YanXuLiaoYuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：全体敌方造成100%攻击伤害；全体敌方获得4层灼烧；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 3 内换取关键数值100%、4、1、8、8；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">030</td>
+  <td><strong>寒序凝川</strong><code>Hero.Mage.HanXuNingChuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者获得等于当前内力25%的护甲；出牌者回复6点内力；溢出内力按100%转为护甲；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 0 内换取关键数值25%、6、100%、8、20%；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">031</td>
+  <td><strong>雷序引霆</strong><code>Hero.Mage.LeiXuYinTing</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：全体敌方获得3层标记；按全体敌方当前标记层数，逐层造成30%攻击伤害；从抽牌堆或弃牌堆检索1张尚未完成的主角法术任务牌加入手牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 3 内换取关键数值3、30%、1、8、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">032</td>
+  <td><strong>归序通玄</strong><code>Hero.Mage.GuiXuTongXuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：出牌者抽2张牌；出牌者弃置1张牌；法术任务：主角8张装备牌各主动打出一次后，依序重放基础效果并触发阵赏。；阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。</td>
+  <td class="design-note">检索与任务推进牌。以0 气 / 0 内换取关键数值2、1、8、4、2；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">033</td>
+  <td><strong>观势落子</strong><code>Hero.Formation.GuanShiLuoZi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：所选目标造成80%攻击伤害；触发当前地势收益1次；出牌者抽1张牌；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以0 气 / 3 内换取关键数值80%、1、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">034</td>
+  <td><strong>移阵回响</strong><code>Hero.Formation.YiZhenHuiXiang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：触发当前地势收益2次；若本回合已实际换场，改为3次；出牌者回复1点气力（仅当前述结果成功时）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 3 内换取关键数值2、3、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">035</td>
+  <td><strong>连营布势</strong><code>Hero.Formation.LianYingBuShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：持续效果：每张主动牌结算后，触发当前地势收益1次；仅主动出牌触发；触发3次后失效</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值1、3；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="hero">
+  <td class="num">036</td>
+  <td><strong>六合归一</strong><code>Hero.Formation.LiuHeGuiYi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>初始解锁</td>
+  <td class="effect">基础：触发平原收益1次（敌方目标获得2层灼烧）；触发断崖收益1次（敌方目标获得2层破绽、1层标记）；触发山林收益1次（全体友方恢复4点生命）；触发水岸收益1次（全体友方获得3点内力）；触发村镇收益1次（抽1张牌，全体友方获得4点护甲）；触发洞窟收益1次（全体友方获得8点护甲并登记1次格挡）；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以2 气 / 6 内换取关键数值1、2、1、2、1；在主角体系中主要负责补位、桥接并把伙伴机制转成主角的回合收益。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-blade">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>刀客</h2>
+  <p class="tagline">用首牌与末牌编排整回合的刀法职业</p>
+  <div class="keyword-line">冲锋 · 收招 · 气势 · 流血 · 反击 · 藏式</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>刀客要求玩家关注牌的顺序，而不只是单张强度。首张主动牌触发冲锋，结束回合前的最后一张主动牌成为收招。</p></article>
+    <article><h3>设计思路</h3><p>两张固定核心保证任何出生卡组都能开始循环；血刃、断势、游刃、藏锋四条路线分别经营流血、气势、反击和延迟留式。</p></article>
+    <article><h3>核心循环</h3><p>冲锋起手 → 中段铺状态或反击 → 收招保存 → 下回合延续</p></article>
+    <article><h3>数值边界</h3><p>反击为100%攻击且按独立来源结算；自动重放不计主动出牌，避免偷触发冲锋、收招与套装张数。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>刀客全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">061</td>
+  <td><strong>裂风斩</strong><code>Profession.Blade.LieFengZhan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：所选目标造成100%攻击伤害；所选目标获得1层流血；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌基础效果再结算一次。；收招：此牌是本回合最后一张主动牌时，返还本回合首张主动牌至手牌（原费用）。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值100%、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">062</td>
+  <td><strong>回锋架势</strong><code>Profession.Blade.HuiFengJiaShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：出牌者获得1层灵动；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，加入其0费临时复制。；收招：此牌是本回合最后一张主动牌时，获得2层标记；下个敌方阶段最先以你为目标的2张攻击牌结算前，各获得2层灵动并反击1次。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值1、0、2、2、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">063</td>
+  <td><strong>封喉</strong><code>Profession.Blade.FengHou</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成100%攻击伤害；所选目标获得5层流血；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后返回手牌一次。；收招：此牌是本回合最后一张主动牌时，下回合结束前最先2次流血不减层。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 2 内换取关键数值100%、5、10%、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">064</td>
+  <td><strong>疾雨连斩</strong><code>Profession.Blade.JiYuLianZhan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 5 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得3层流血；所选目标造成55%攻击伤害，共3段；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，记录下一张主动牌，下回合自动重放其基础效果。；收招：此牌是本回合最后一张主动牌时，下回合最先3次流血各抽1张。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 5 内换取关键数值3、55%、3、10%、3；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">065</td>
+  <td><strong>饮血刀</strong><code>Profession.Blade.YinXueDao</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 4 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成240%攻击伤害；所选目标获得3层流血；回复本次命中所触发的流血伤害。；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌的状态/护甲消耗，结算后恢复。；收招：此牌是本回合最后一张主动牌时，下回合结束前刀客触发的流血回复等量生命（累计上限12）。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 4 内换取关键数值240%、3、10%、12；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">066</td>
+  <td><strong>浪断</strong><code>Profession.Blade.LangDuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成100%攻击伤害；本次命中所触发的流血不减层。；血势：每层目标流血使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张单体牌同时作用于另一合法目标；否则抽2张。；收招：此牌是本回合最后一张主动牌时，下回合首张以流血敌人为目标的牌结算后返回手牌。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 3 内换取关键数值100%、10%、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">067</td>
+  <td><strong>断岳</strong><code>Profession.Blade.DuanYue</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 5 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成280%攻击伤害；所选目标获得4层破绽；出牌者获得2层气势；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌气力消耗为0。；收招：此牌是本回合最后一张主动牌时，下回合结束前破绽不减不清；下回合首张以破绽敌人为目标的牌额外重放。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 5 内换取关键数值280%、4、2、10%、0；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">068</td>
+  <td><strong>破军</strong><code>Profession.Blade.PoJun</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成260%攻击伤害；消耗至多3层破绽，每层追加1段50%攻击。；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌内力消耗为0。；收招：此牌是本回合最后一张主动牌时，下回合首张消耗敌方状态的牌结算后，生成0费临时复制。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 6 内换取关键数值260%、3、1、50%、10%；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">069</td>
+  <td><strong>战意沸腾</strong><code>Profession.Blade.ZhanYiFeiTeng</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得3层气势；出牌者获得6点内力；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，全额返还气力与内力。；收招：此牌是本回合最后一张主动牌时，下回合首张基础气力≥2的牌返还气力并抽2张。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值3、6、10%、2、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">070</td>
+  <td><strong>斩尽</strong><code>Profession.Blade.ZhanJin</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 12 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成800%攻击伤害；若本牌完成击杀，返还全部费用并抽1张。；乘势：每层自身气势使本段攻击倍率+10%。；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌在出牌数与套装门槛中计为2张。；收招：此牌是本回合最后一张主动牌时，下回合首张完成击杀的牌结算后，生成0费临时复制。</td>
+  <td class="design-note">顺序编排牌。以3 气 / 12 内换取关键数值800%、1、10%、2、0；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">071</td>
+  <td><strong>借势回锋</strong><code>Profession.Blade.JieShiHuiFeng</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得1层灵动；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，记录下一张主动牌，下回合加入其0费临时复制。；收招：此牌是本回合最后一张主动牌时，获得2层标记；下个敌方阶段首次反击齐射后，重新登记全部反击来源。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值1、1、0、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">072</td>
+  <td><strong>逐影</strong><code>Profession.Blade.ZhuYing</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成90%攻击伤害；出牌者获得2层灵动；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌不弃牌，下回合按原费用返回手牌。；收招：此牌是本回合最后一张主动牌时，下个敌方阶段最先2次成功闪避不消耗灵动。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 2 内换取关键数值90%、2、1、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">073</td>
+  <td><strong>破浪突进</strong><code>Profession.Blade.PoLangTuJin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成110%攻击伤害；出牌者获得2层标记；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌不替换收招候选。；收招：此牌是本回合最后一张主动牌时，反击齐射前把标记转移给攻击者（≤待结算反击数），反击获得标记加成。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 3 内换取关键数值110%、2、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">074</td>
+  <td><strong>一式断江</strong><code>Profession.Blade.YiShiDuanJiang</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 7 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成640%攻击伤害；出牌者登记1次反击；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，保留其余手牌至下回合。；收招：此牌是本回合最后一张主动牌时，首次反击齐射中，每个反击来源对全体敌人各反击一次。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 7 内换取关键数值640%、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">075</td>
+  <td><strong>惊鸿出鞘</strong><code>Profession.Blade.JingHongChuQiao</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成90%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌气力-1（最低0），结算后抽1张。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。；开锋：本牌消耗藏式时，追加1段90%攻击。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 3 内换取关键数值90%、1、0、1、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">076</td>
+  <td><strong>横云开锋</strong><code>Profession.Blade.HengYunKaiFeng</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体敌方造成140%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后抽2张。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。；开锋：本牌消耗藏式时，将该藏式复制为「余式」，继续作用于本回合下一张主动牌；余式不再产生余式。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 6 内换取关键数值140%、2；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">077</td>
+  <td><strong>敛息归鞘</strong><code>Profession.Blade.LianXiGuiQiao</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得5点内力；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，抽1张同角色牌（无则普通抽1张）。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。</td>
+  <td class="design-note">顺序编排牌。以0 气 / 0 内换取关键数值5、1、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-blade">
+  <td class="num">078</td>
+  <td><strong>抱刀守夜</strong><code>Profession.Blade.BaoDaoShouYe</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得4层灵动；冲锋：此牌是本回合第一张主动牌打出时，下一张主动牌结算后，抽1张其他角色牌（无则普通抽1张）。；收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。；藏式：下回合第一张主动牌消耗；未消耗则回合末失效。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值4、1、1；在刀客体系中主要负责承担顺序编排、延迟收益与状态连击。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-guard">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>守卫</h2>
+  <p class="tagline">保护队友的动作同时建立反击输出</p>
+  <div class="keyword-line">护甲 · 援护 · 格挡 · 标记 · 全耗甲</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>守卫不是被动堆甲，而是主动决定保护谁、何时承伤，以及何时把护甲兑现成伤害。</p></article>
+    <article><h3>设计思路</h3><p>护甲同时是生存资源、格挡伤害加值和群体终结技燃料；援护把坦克职责变成可选择的卡牌动作。</p></article>
+    <article><h3>核心循环</h3><p>加甲 → 援护承伤 → 格挡反击 → 保甲续航或全耗甲群攻</p></article>
+    <article><h3>数值边界</h3><p>格挡=100%攻击+当前护甲且不耗甲；全耗甲群攻每消耗1点护甲增加20个百分点倍率。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>守卫全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">079</td>
+  <td><strong>铁壁</strong><code>Profession.Guard.TieBi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：出牌者获得14点护甲；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值14、1、1、100%、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">080</td>
+  <td><strong>护主</strong><code>Profession.Guard.HuZhu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：所选目标获得8点护甲；出牌者获得8点护甲；由出牌者援护所选目标，转移1次下一次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值8、8、1、1、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">081</td>
+  <td><strong>震盾</strong><code>Profession.Guard.ZhenDun</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者获得6点护甲；出牌者获得1层标记</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值100%、6、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">082</td>
+  <td><strong>固守</strong><code>Profession.Guard.GuShou</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得6点护甲；出牌者获得2点内力；出牌者获得1层标记</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值6、2、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">083</td>
+  <td><strong>反震甲</strong><code>Profession.Guard.FanZhenJia</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得24点护甲；出牌者登记2次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值24、2、2、100%、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">084</td>
+  <td><strong>镇岳令</strong><code>Profession.Guard.ZhenYueLing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部护甲，对全体敌方造成（80%+每点护甲20个百分点）攻击伤害；全体友方获得16点护甲；全体友方登记1次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 6 内换取关键数值80%、20、16、1、2；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">085</td>
+  <td><strong>援护步</strong><code>Profession.Guard.YuanHuBu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>生命最低友方（自动结算）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：生命最低友方获得6点护甲；出牌者获得6点护甲；由出牌者援护生命最低友方，转移1次下一次单体直接攻击；出牌者登记1次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 0 内换取关键数值6、6、1、1、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">086</td>
+  <td><strong>披甲行军</strong><code>Profession.Guard.PiJiaXingJun</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体友方获得6点护甲；全体友方登记1次格挡；出牌者获得6点内力；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值6、1、6、1、100%；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">087</td>
+  <td><strong>擒王盾击</strong><code>Profession.Guard.QinWangDunJi</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 5 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；所选目标获得4层破绽；所选目标获得2层标记</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 5 内换取关键数值100%、4、2；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">088</td>
+  <td><strong>铁壁如山</strong><code>Profession.Guard.TieBiRuShan</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得48点护甲；出牌者获得2层破绽免疫；出牌者登记2次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 0 内换取关键数值48、2、2、2、100%；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">089</td>
+  <td><strong>壁垒反攻</strong><code>Profession.Guard.BiLeiFanGong</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部护甲，对全体敌方造成（120%+每点护甲20个百分点）攻击伤害；出牌者获得20点护甲；出牌者登记1次格挡；出牌者获得2层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 6 内换取关键数值120%、20、20、1、2；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">090</td>
+  <td><strong>不动如山</strong><code>Profession.Guard.BuDongRuShan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 10 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得144点护甲；出牌者登记3次格挡；出牌者下回合保留当前护甲；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以3 气 / 10 内换取关键数值144、3、3、100%、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">091</td>
+  <td><strong>磐石吐纳</strong><code>Profession.Guard.PanShiTuNa</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得5点内力（当出牌者护甲不少于8）；出牌者抽1张牌（当出牌者护甲不少于8）；出牌者获得6点护甲（当出牌者护甲不少于8不成立）；出牌者获得1层标记</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值5、8、1、8、6；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">092</td>
+  <td><strong>援军壁垒</strong><code>Profession.Guard.YuanJunBiLei</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得16点护甲；出牌者获得10点护甲；由出牌者援护所选目标，转移2次下一次单体直接攻击；出牌者登记2次格挡；出牌者获得1层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值16、10、2、2、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">093</td>
+  <td><strong>盾阵推进</strong><code>Profession.Guard.DunZhenTuiJin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；全体友方获得6点护甲；出牌者获得1层标记</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 0 内换取关键数值100%、6、1；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">094</td>
+  <td><strong>铁锁横江</strong><code>Profession.Guard.TieSuoHengJiang</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得80点护甲；由出牌者援护其他全体友方，转移2次下一次单体直接攻击；出牌者登记2次格挡；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 6 内换取关键数值80、2、2、3、100%；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">095</td>
+  <td><strong>碎甲回击</strong><code>Profession.Guard.SuiJiaHuiJi</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：由出牌者对所选目标造成100%攻击+当前护甲的伤害，不消耗护甲；出牌者登记1次格挡；出牌者抽2张牌（当出牌者护甲不少于12）；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值100%、1、2、12、100%；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-guard">
+  <td class="num">096</td>
+  <td><strong>一夫当关</strong><code>Profession.Guard.YiFuDangGuan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 12 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体友方获得40点护甲；出牌者获得80点护甲；由出牌者援护其他全体友方，转移2次下一次单体直接攻击；出牌者登记3次格挡；出牌者获得3层标记；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以3 气 / 12 内换取关键数值40、80、2、3、3；在守卫体系中主要负责建立防线、转移单体攻击并把护甲转为进攻。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-healer">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>药师</h2>
+  <p class="tagline">用生命变化同时驱动治疗和状态伤害</p>
+  <div class="keyword-line">药效 · 药方 · 治疗 · 反向治疗 · 中毒 · 灼烧</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>药师围绕药效和药方经营生命变化，对友方治疗，对敌方则把同一治疗值转成直接失去生命。</p></article>
+    <article><h3>设计思路</h3><p>药方首次使用增加费用，随后成为整场监听器；终端生命变化禁止递归，既保留组合感又避免无限循环。</p></article>
+    <article><h3>核心循环</h3><p>获得药效 → 制造生命变化 → 药方监听 → 治疗或毒爆兑现</p></article>
+    <article><h3>数值边界</h3><p>单体基础治疗不超过12、群体不超过6；药效每层+1；药方首次打出在基础气力上+1。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>药师全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">097</td>
+  <td><strong>阴阳药引</strong><code>Profession.Healer.YaoYin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：若目标是友方：消耗出牌者全部药效；所选目标恢复8+药效层数生命；全体敌方获得1层中毒；全体敌方获得1层灼烧；若目标是敌方：消耗出牌者全部药效；所选目标获得2层中毒；所选目标获得2层灼烧；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；全体友方恢复4+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；任一敌我单位实际生命变化时，药师获得等量层数药效（每笔伤害或治疗各计1层）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 0 内换取关键数值8、1、1、2、2；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">098</td>
+  <td><strong>行气活血</strong><code>Profession.Healer.XingQiZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">2 气 / 3 内</td>
+  <td>自身（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：全体友方失去1点生命，最低保留1点；本牌每实际扣血1名友方，出牌者获得1层药效；出牌者抽1张牌；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次打出当前气力消耗至少2的牌时，全体友方失去1点生命（最低保留1点）再恢复2点；每回合累计获得至少6层药效时，回复1点气力（每回合1次；敌方回合触发则下回合开始到账）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 3 内换取关键数值1、1、1、1、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">099</td>
+  <td><strong>草木敷治</strong><code>Profession.Healer.CaoMuFuZhi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；若所选目标为友方，恢复8+药效层数生命；若为敌方，失去8+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次完成实际治疗或药效反向伤害时，药师获得2层药效。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 2 内换取关键数值8、8、1、2、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">100</td>
+  <td><strong>清心散</strong><code>Profession.Healer.QingXinSan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：若目标是友方：移除所选目标1层流血；移除所选目标1层中毒；移除所选目标1层灼烧；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；友方被清除的流血、中毒、灼烧每累计3层，药师获得1层药效（余数保留）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值1、1、1、6、6；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">101</td>
+  <td><strong>灵芝续命</strong><code>Profession.Healer.LingZhiXuMing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；若所选目标为友方，恢复2点生命；若为敌方，失去2点生命（当所选目标生命低于35%）；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次有友方从生命不低于35%降到低于35%时，药师获得3层药效。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 6 内换取关键数值10、10、2、2、35%；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">102</td>
+  <td><strong>回春露</strong><code>Profession.Healer.HuiChunLu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 5 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；所选目标同阵营全体：若为友方，恢复5+药效层数生命；若为敌方，失去5+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合每完成3次有效友方治疗，抽1张牌（每回合最多2张）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 5 内换取关键数值5、5、1、3、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">103</td>
+  <td><strong>止血草</strong><code>Profession.Healer.ZhiXueCao</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 2 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：若目标是友方：移除所选目标3层流血；消耗出牌者全部药效；若所选目标为友方，恢复4+药效层数生命；若为敌方，失去4+药效层数生命；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次清除友方流血时，全体友方获得2点护甲。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以0 气 / 2 内换取关键数值3、4、4、1、2；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">104</td>
+  <td><strong>温养膏</strong><code>Profession.Healer.WenYangGao</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；若所选目标为友方，恢复10+药效层数生命；若为敌方，失去10+药效层数生命；若目标是友方：所选目标获得12点护甲；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次完成至少10点治疗或药效反向伤害时：对友方目标额外获得4点护甲，对敌方目标施加1层破绽。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值10、10、12、1、10；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">105</td>
+  <td><strong>金疮续命</strong><code>Profession.Healer.JinChuangXuMing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 8 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命；若为敌方，失去12+药效层数生命；若目标是友方：所选目标获得2层灵动；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次有友方从生命不低于30%降到低于30%时，该友方获得2层灵动。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 8 内换取关键数值12、12、2、1、30%；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">106</td>
+  <td><strong>药王归元</strong><code>Profession.Healer.YaoWangGuiYuan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 12 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：消耗出牌者全部药效；所选目标同阵营全体：若为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；若目标是友方：移除所选目标同阵营全体3层流血；移除所选目标同阵营全体3层中毒；移除所选目标同阵营全体3层灼烧；所选目标同阵营全体获得7点内力；药方：首次打出本牌时气力+1并激活，本局持续；同一次结算中至少3个不同单位实际生命变化时，抽1张牌，全体友方获得2点内力（每回合1次）。；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 12 内换取关键数值6、6、3、3、3；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">107</td>
+  <td><strong>百草毒</strong><code>Profession.Healer.BaiCaoDu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得6层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每笔中毒伤害生效时，药师获得1层药效。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 2 内换取关键数值6、1、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">108</td>
+  <td><strong>腐骨散</strong><code>Profession.Healer.FuGuSan</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 5 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成120%攻击伤害；所选目标获得7层流血；所选目标获得5层中毒；所选目标获得2层破绽；药方：首次打出本牌时气力+1并激活，本局持续；每回合每名同时具有流血和中毒的敌方，获得1层标记。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 5 内换取关键数值120%、7、5、2、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">109</td>
+  <td><strong>蚀心香</strong><code>Profession.Healer.HuiQiXiang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 4 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体敌方获得1层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次使至少2名敌方获得中毒时，药师获得2层药效并抽1张牌。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 4 内换取关键数值1、1、2、2、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">110</td>
+  <td><strong>连翘引毒</strong><code>Profession.Healer.LianQiaoJieDu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得5层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；药方：首次打出本牌时气力+1并激活，本局持续；每次毒爆包含至少2类持续伤害时，药师获得2层药效。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值5、1、1、2、2；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">111</td>
+  <td><strong>红花透骨</strong><code>Profession.Healer.YaoJiuWenShen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成70%攻击伤害；所选目标获得8层流血；药方：首次打出本牌时气力+1并激活，本局持续；每2笔流血伤害生效，药师获得1层药效（余数保留）。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 2 内换取关键数值70%、8、1、2、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">112</td>
+  <td><strong>药囊飞投</strong><code>Profession.Healer.YaoNangFeiTou</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体敌方造成180%攻击伤害；全体敌方获得5层流血；全体敌方获得3层中毒；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次直接攻击命中至少2名敌方时，回复1点气力。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 6 内换取关键数值180%、5、3、1、2；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">113</td>
+  <td><strong>苦参麻散</strong><code>Profession.Healer.KuShenMaSan</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 4 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得9层中毒；所选目标获得3层破绽；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次给已具有中毒的敌方施加破绽时，药师获得1层药效并抽1张牌。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 4 内换取关键数值9、3、1、1、1；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-healer">
+  <td class="num">114</td>
+  <td><strong>五毒调和</strong><code>Profession.Healer.WuWeiTiaoHe</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 10 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体敌方获得3层中毒；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；对全体敌方毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；药方：首次打出本牌时气力+1并激活，本局持续；每回合首次毒爆包含流血、中毒、灼烧3类时，药师获得1层气势并抽1张牌。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 10 内换取关键数值3、1、1、1、3；在药师体系中主要负责承担续航、DoT铺设、毒爆兑现和生命变化引擎。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-hunter">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>弓手</h2>
+  <p class="tagline">积蓄蓄力后用重箭一次性释放</p>
+  <div class="keyword-line">流血 · 多段 · 蓄力 · 重箭 · 灵动 · 过牌</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>弓手的基础效果始终可用，蓄力则决定重箭追加多少段数、抽牌、毒爆或资源收益。</p></article>
+    <article><h3>设计思路</h3><p>重箭先锁定并消耗全部蓄力，再按当前牌的每层条款结算，迫使玩家选择最佳释放窗口。</p></article>
+    <article><h3>核心循环</h3><p>基础攻击 → 获得蓄力 → 选择重箭 → 多段或资源收益</p></article>
+    <article><h3>数值边界</h3><p>连珠箭铺流血8、中毒6；锐意感知提供蓄力3；不同重箭按每层50%攻击、毒爆或等量抽牌兑现。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>弓手全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">115</td>
+  <td><strong>寻隙箭</strong><code>Profession.Hunter.XunXiJian</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成80%攻击伤害；所选目标获得2层标记；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点；所选目标获得1层标记。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值80%、2、1、25、1；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">116</td>
+  <td><strong>鹰眼</strong><code>Profession.Hunter.FuBu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得3层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 0 内换取关键数值3；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">117</td>
+  <td><strong>追猎</strong><code>Profession.Hunter.ZhuiLie</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成75%攻击伤害；出牌者抽1张牌（当所选目标具有标记）；出牌者回复1点气力（当所选目标具有标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值75%、1、1、1、25；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">118</td>
+  <td><strong>锐意感知</strong><code>Profession.Hunter.YingYan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：出牌者抽2张牌；出牌者回复1点气力；出牌者获得2层灵动；出牌者获得3层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 0 内换取关键数值2、1、2、3；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">119</td>
+  <td><strong>猎网</strong><code>Profession.Hunter.LieWang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得4层标记；所选目标获得1层破绽；出牌者获得1层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 3 内换取关键数值4、1、1；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">120</td>
+  <td><strong>穿杨</strong><code>Profession.Hunter.ChuanYang</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成300%攻击伤害；所选目标本段伤害无视6点防御；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+50个百分点。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以2 气 / 6 内换取关键数值300%、6、1、50；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">121</td>
+  <td><strong>连珠箭</strong><code>Profession.Hunter.LianZhuJian</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：所选目标获得9层流血；所选目标获得7层中毒；所选目标造成100%攻击伤害；出牌者获得2层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 3 内换取关键数值9、7、100%、2、1；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">122</td>
+  <td><strong>淬毒矢</strong><code>Profession.Hunter.FuZuShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成70%攻击伤害；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，再触发1次毒爆。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值70%、6、1、1、1；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">123</td>
+  <td><strong>隐踪</strong><code>Profession.Hunter.YinZong</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者获得3层灵动；出牌者获得2层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 0 内换取关键数值3、2；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">124</td>
+  <td><strong>断脉矢</strong><code>Profession.Hunter.DuanMaiShi</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 4 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成200%攻击伤害；所选目标获得9层流血；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+30个百分点。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 4 内换取关键数值200%、9、1、30；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">125</td>
+  <td><strong>狩魂</strong><code>Profession.Hunter.ShouHun</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 8 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成600%攻击伤害；目标每有1层标记，本段攻击倍率+20个百分点；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+35个百分点；所选目标获得1层标记。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以2 气 / 8 内换取关键数值600%、1、20、1、35；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">126</td>
+  <td><strong>百步穿杨</strong><code>Profession.Hunter.BaiBuChuanYang</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 12 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成840%攻击伤害；出牌者抽4张牌（当所选目标具有至少5层标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+40个百分点并抽1张牌。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以3 气 / 12 内换取关键数值840%、4、5、1、40；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">127</td>
+  <td><strong>掠影箭</strong><code>Profession.Hunter.LueYingJian</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成65%攻击伤害；出牌者抽1张牌（当所选目标具有标记）；出牌者回复1点气力（当所选目标具有标记）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+20个百分点；出牌者获得1层灵动。；打出本牌时，本回合此前每打出3张主动牌，出牌者获得1层灵动。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值65%、1、1、1、20；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">128</td>
+  <td><strong>猎魂标</strong><code>Profession.Hunter.LieHunBiao</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 4 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得4层标记；出牌者获得2层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以0 气 / 4 内换取关键数值4、2；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">129</td>
+  <td><strong>破甲钉</strong><code>Profession.Hunter.PoJiaDing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成150%攻击伤害；所选目标获得3层破绽；所选目标获得2层中毒；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+25个百分点。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值150%、3、2、1、25；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">130</td>
+  <td><strong>回环箭</strong><code>Profession.Hunter.HuiHuanJian</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成60%攻击伤害；出牌者抽1张牌；出牌者回复1点气力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+15个百分点并抽1张牌。；打出本牌时，本回合此前每打出3张主动牌，出牌者抽1张牌。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 2 内换取关键数值60%、1、1、1、15；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">131</td>
+  <td><strong>腐叶陷阱</strong><code>Profession.Hunter.FuYeXianJing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 5 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得9层中毒；所选目标获得3层标记；出牌者获得3层蓄力</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 5 内换取关键数值9、3、3；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-hunter">
+  <td class="num">132</td>
+  <td><strong>鹰落</strong><code>Profession.Hunter.YingLuo</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 12 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成800%攻击伤害；本段攻击倍率+100个百分点（当所选目标生命低于35%）；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，本牌首段攻击倍率+60个百分点。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以3 气 / 12 内换取关键数值800%、100、35%、1、60；在弓手体系中主要负责承担固定流血、多段攻击和蓄力爆发。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-sorcerer">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>法师</h2>
+  <p class="tagline">把五张不同法术编成一段可重放的仪式</p>
+  <div class="keyword-line">五牌任务 · 炎法 · 寒冰 · 雷法 · 通用强牌</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>法师记录五个不同CardId的首次主动出牌顺序，完成后免费重放基础效果与编序效果，并结算启动牌奖励。</p></article>
+    <article><h3>设计思路</h3><p>炎法经营灼烧，寒冰把内力溢出转成护甲，雷法把标记变成逐层落雷，通用牌则根据任务分支获得不同终局。</p></article>
+    <article><h3>核心循环</h3><p>首牌开任务 → 五张唯一牌排序 → 免费重放 → 启动牌奖励</p></article>
+    <article><h3>数值边界</h3><p>法师以0气为主、最多1气；重放保存品质、目标与已付内力，但不支付、不推进任务也不递归。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>法师全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">133</td>
+  <td><strong>灵枢引法</strong><code>Profession.Sorcerer.LingHuoFu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：敌方全体造成70%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。&lt;br&gt;编序：第1～2位时，检索牌本回合内力消耗-3。&lt;br&gt;阵赏：回复1点气力、8点内力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 2 内换取关键数值70%、1、1、2、3；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">134</td>
+  <td><strong>周天归元</strong><code>Profession.Sorcerer.JuLing</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>固定核心牌</td>
+  <td class="effect">基础：自身回复3点内力。&lt;br&gt;编序：再回复此前记录牌实际支付内力总和的50%，向下取整。&lt;br&gt;阵赏：我方全体回复8点内力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">资源循环牌。以0 气 / 0 内换取关键数值3、50%、8、2、5；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">135</td>
+  <td><strong>灵火点灯</strong><code>Profession.Sorcerer.LiHuoYin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 1 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成60%攻击伤害并获得2层灼烧。&lt;br&gt;编序：第1～2位时，灼烧改为4层。&lt;br&gt;阵赏：敌方全体当前灼烧翻倍。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">群体转折牌。以0 气 / 1 内换取关键数值60%、2、1、2、4；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">136</td>
+  <td><strong>流焰传薪</strong><code>Profession.Sorcerer.YanQiang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 2 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体获得1层灼烧。&lt;br&gt;编序：前一张记录牌为炎牌时，灼烧改为3层。&lt;br&gt;阵赏：按场上最高灼烧补齐敌方全体，再各获得3层灼烧。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">群体转折牌。以0 气 / 2 内换取关键数值1、3、3、5；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">137</td>
+  <td><strong>焚脉爆炎</strong><code>Profession.Sorcerer.BaoYanShu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 4 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成160%攻击伤害。&lt;br&gt;编序：第3～5位时，每层灼烧使倍率+10个百分点，不消耗灼烧。&lt;br&gt;阵赏：敌方全体结算2次当前灼烧伤害，均不减层。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">群体转折牌。以0 气 / 4 内换取关键数值160%、3、5、10、2；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">138</td>
+  <td><strong>燎原寻诀</strong><code>Profession.Sorcerer.XingHuoLiaoYuan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成160%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。&lt;br&gt;编序：第4～5位时，每段改为70%攻击伤害。&lt;br&gt;阵赏：敌方全体获得6层灼烧；回复1点气力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 2 内换取关键数值160%、1、4、5、70%；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">139</td>
+  <td><strong>寒息回流</strong><code>Profession.Sorcerer.SheLingHuo</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：自身回复当前内力25%的内力，向下取整；溢出内力100%转为护甲。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值25%、100%、100%、20、1；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">140</td>
+  <td><strong>玄冰拓脉</strong><code>Profession.Sorcerer.FenMaiFu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：自身内力上限+4并获得4点护甲，当前内力不变。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 0 内换取关键数值4、4、100%、20、8；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">141</td>
+  <td><strong>霜镜叠甲</strong><code>Profession.Sorcerer.LingYanLianDan</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：自身护甲为0时获得4点护甲，否则当前护甲翻倍，最高99。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;阵赏：执行标准寒冰伤害；我方全体获得6点护甲。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 0 内换取关键数值0、4、99、100%、20；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">142</td>
+  <td><strong>冰鉴索法</strong><code>Profession.Sorcerer.HuLingMu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：自身获得当前内力25%的护甲；检索1张尚未完成的携带法师牌；无合法牌时再获得一次等量护甲。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值25%、1、100%、20、2；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">143</td>
+  <td><strong>引雷定标</strong><code>Profession.Sorcerer.ChiXiaoFenXing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 1 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成100%攻击伤害，伤害后获得3层标记。&lt;br&gt;编序：第1～2位时，标记改为3层。&lt;br&gt;阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">资源循环牌。以0 气 / 1 内换取关键数值100%、3、1、2、3；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">144</td>
+  <td><strong>雷符索敌</strong><code>Profession.Sorcerer.FenTianJue</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">1 气 / 2 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成280%攻击伤害；检索1张尚未完成的携带法师牌，随后获得3层标记；无合法牌时再结算一次同等伤害。&lt;br&gt;编序：第1～2位时，标记改为3层。&lt;br&gt;阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 2 内换取关键数值280%、1、3、1、2；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">145</td>
+  <td><strong>连霆穿云</strong><code>Profession.Sorcerer.NingYanChengRen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：按敌方各自标记快照逐层落雷，每次造成50%攻击伤害。&lt;br&gt;编序：第4～5位时，每次改为65%攻击伤害。&lt;br&gt;阵赏：敌方全体先获得5层标记，再各触发5次70%落雷。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">群体转折牌。以0 气 / 3 内换取关键数值50%、4、5、65%、5；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">146</td>
+  <td><strong>雷走八方</strong><code>Profession.Sorcerer.RanLingHuanYuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 4 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：按敌方各自标记快照逐层落雷，每次造成30%攻击伤害。&lt;br&gt;编序：第4～5位时，每次改为45%攻击伤害。&lt;br&gt;阵赏：敌方全体先获得3层标记，再各触发3次60%落雷。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">群体转折牌。以0 气 / 4 内换取关键数值30%、4、5、45%、3；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">147</td>
+  <td><strong>万法归一</strong><code>Profession.Sorcerer.YanMuHuTi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 5 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成60%攻击伤害。&lt;br&gt;编序：此前每记录1张牌，倍率+25个百分点；第1～5位依次为60/85/110/135/160%。&lt;br&gt;任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。&lt;br&gt;阵赏·普通：敌方全体造成300%攻击伤害。&lt;br&gt;阵赏·炎法：敌方全体获得3层灼烧，再结算1次灼烧且不减层。&lt;br&gt;阵赏·寒冰：消耗自身全部护甲，对敌方全体造成（120%+每点护甲25个百分点）攻击伤害。&lt;br&gt;阵赏·雷法：敌方全体获得3层标记，再按各自标记逐层触发60%落雷。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 5 内换取关键数值60%、1、25、1、5；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">148</td>
+  <td><strong>照见五蕴</strong><code>Profession.Sorcerer.LieFu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：自身抽1张牌。&lt;br&gt;编序：第3～5位时，额外回复5点内力。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。&lt;br&gt;阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。&lt;br&gt;阵赏·炎法：敌方全体获得4层灼烧；回复1点气力，抽3张牌。&lt;br&gt;阵赏·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。&lt;br&gt;阵赏·雷法：敌方全体获得2层标记并逐层触发40%落雷；回复1点气力，抽2张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 0 内换取关键数值1、3、5、5、100%；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">149</td>
+  <td><strong>六合护法</strong><code>Profession.Sorcerer.XingHuoHuiShou</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 4 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：我方全体获得6点护甲。&lt;br&gt;编序：前一张记录牌不含直接伤害时，改为6点护甲。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。&lt;br&gt;阵赏·普通：我方全体获得12点护甲；敌方全体获得2层虚弱。&lt;br&gt;阵赏·炎法：我方全体获得8点护甲；敌方全体获得4层灼烧、1层虚弱。&lt;br&gt;阵赏·寒冰：执行标准寒冰伤害；我方全体获得6+所耗护甲25%的护甲。&lt;br&gt;阵赏·雷法：敌方全体获得2层标记并逐层触发30%落雷；我方全体获得6点护甲。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 4 内换取关键数值6、6、100%、20、12；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-sorcerer">
+  <td class="num">150</td>
+  <td><strong>斗转星移</strong><code>Profession.Sorcerer.ChiYanFengJie</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">0 气 / 2 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：敌方全体造成260%攻击伤害；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。&lt;br&gt;编序：第4～5位时，每段改为90%攻击伤害。&lt;br&gt;标准寒冰伤害：消耗自身全部护甲，对敌方全体造成（100%+每点护甲20个百分点）攻击伤害。&lt;br&gt;任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。&lt;br&gt;阵赏·普通：额外重放第5张记录牌，抽1张牌。&lt;br&gt;阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2层灼烧。&lt;br&gt;阵赏·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。&lt;br&gt;阵赏·雷法：敌方全体获得2层标记，额外重放最后一张雷牌；再逐层触发40%落雷，抽1张牌。&lt;br&gt;阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。</td>
+  <td class="design-note">护甲资源终结牌。以0 气 / 2 内换取关键数值260%、1、4、5、90%；在法师体系中主要负责承担顺序任务、元素分支和整轮法术爆发。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-partner-formation">
+  <div class="chapter-kicker">永久伙伴 · 18张现役卡</div>
+  <h2>阵师</h2>
+  <p class="tagline">改变地势，为全队选择下一段收益</p>
+  <div class="keyword-line">六地势 · 换场 · 全地势收益 · 固定目标</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>阵师围绕平原、山崖、森林、水岸/渡口、村寨、洞穴六类收益切换战场。</p></article>
+    <article><h3>设计思路</h3><p>六张换场牌负责选择地势，十二张收益牌在任意地势都有基础效果，匹配时再追加显著强化，避免条件不符卡死。</p></article>
+    <article><h3>核心循环</h3><p>换场 → 触发固定地势收益 → 打出匹配收益牌 → 跨职业接力</p></article>
+    <article><h3>数值边界</h3><p>出生为2张不同换场+3张同一收益流派+1张自由收益；条件不满足时仍完整结算基础段。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>阵师全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">151</td>
+  <td><strong>平野观势</strong><code>Profession.FormationMaster.GuanShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至平原（平原收益：敌方目标获得2层灼烧）；触发当前地势收益1次（切换后平原：敌方目标获得2层灼烧）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值2、1、2；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">152</td>
+  <td><strong>定阵</strong><code>Profession.FormationMaster.DingZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至村镇（村镇收益：抽1张牌，全体友方获得4点护甲）；触发当前地势收益1次（切换后村镇：抽1张牌，全体友方获得4点护甲）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值1、4、1、1、4；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">153</td>
+  <td><strong>引水回元</strong><code>Profession.FormationMaster.YinShuiHuiYuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至水岸（水岸收益：全体友方获得3点内力）；触发当前地势收益1次（切换后水岸：全体友方获得3点内力）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值3、1、3；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">154</td>
+  <td><strong>困阵</strong><code>Profession.FormationMaster.KunZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至洞窟（洞窟收益：全体友方获得8点护甲并登记1次格挡）；触发当前地势收益1次（切换后洞窟：全体友方获得8点护甲并登记1次格挡）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值8、1、1、8、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">155</td>
+  <td><strong>林影迷踪</strong><code>Profession.FormationMaster.LinYingMiZong</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至山林（山林收益：全体友方恢复4点生命）；触发当前地势收益1次（切换后山林：全体友方恢复4点生命）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值4、1、4；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">156</td>
+  <td><strong>借山为障</strong><code>Profession.FormationMaster.JieShanWeiZhang</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：切换至断崖（断崖收益：敌方目标获得2层破绽、1层标记）；触发当前地势收益1次（切换后断崖：敌方目标获得2层破绽、1层标记）；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值2、1、1、2、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">157</td>
+  <td><strong>村寨援阵</strong><code>Profession.FormationMaster.CunZhaiYuanZhen</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体友方恢复24点生命；全体友方获得16点护甲；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以2 气 / 0 内换取关键数值24、16、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">158</td>
+  <td><strong>回声震杀</strong><code>Profession.FormationMaster.HuiShengZhenSha</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成480%攻击伤害；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以2 气 / 6 内换取关键数值480%、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">159</td>
+  <td><strong>易位阵</strong><code>Profession.FormationMaster.YiWeiZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得1层灵动；移除所选目标1层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值1、1、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">160</td>
+  <td><strong>八门轮转</strong><code>Profession.FormationMaster.BaMenLunZhuan</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：出牌者抽4张牌；出牌者弃置1张牌；触发当前地势收益1次；出牌者接下来1次地势收益翻倍；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以2 气 / 0 内换取关键数值4、1、1、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">161</td>
+  <td><strong>镇煞阵</strong><code>Profession.FormationMaster.ZhenShaZhen</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 10 内</td>
+  <td>全体敌方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体敌方造成1280%攻击伤害；全体敌方获得5层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以3 气 / 10 内换取关键数值1280%、5、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">162</td>
+  <td><strong>万象归阵</strong><code>Profession.FormationMaster.WanXiangGuiZhen</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 14 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体友方获得160点护甲；出牌者抽5张牌；出牌者获得3层地形免耗；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以3 气 / 14 内换取关键数值160、5、3、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">163</td>
+  <td><strong>山门封锁</strong><code>Profession.FormationMaster.ShanMenFengSuo</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得2层破绽；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值2、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">164</td>
+  <td><strong>水镜折光</strong><code>Profession.FormationMaster.ShuiJingZheGuang</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得32点护甲；从所选目标的流血、中毒、灼烧、蚀伤中依次清除至多3层；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值32、3、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">165</td>
+  <td><strong>林风拂阵</strong><code>Profession.FormationMaster.LinFengFuZhen</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标获得1层灵动；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以0 气 / 0 内换取关键数值1、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">166</td>
+  <td><strong>阵旗鼓舞</strong><code>Profession.FormationMaster.ZhenQiGuWu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：持续效果：下次攻击时，本段攻击倍率+20个百分点；触发1次后失效；触发当前地势收益1次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 0 内换取关键数值20、1、1；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">167</td>
+  <td><strong>地脉借力</strong><code>Profession.FormationMaster.DiMaiJieLi</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：所选目标造成400%攻击伤害；触发当前地势收益2次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以2 气 / 0 内换取关键数值400%、2；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="partner-formation">
+  <td class="num">168</td>
+  <td><strong>四象连环</strong><code>Profession.FormationMaster.SiXiangLianHuan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 12 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>职业随机池</td>
+  <td class="effect">基础：全体友方获得96点护甲；出牌者抽5张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以3 气 / 12 内换取关键数值96、5、2；在阵师体系中主要负责承担场地切换、全队资源和跨职业环境增益。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-tusi">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>土司首领</h2>
+  <p class="tagline">刀客与守卫结合的寨主号令</p>
+  <div class="keyword-line">协战 · 气势 · 护甲 · 格挡 · 冲锋/收招</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>土司首领通过号令让队友立即协战，同时用护甲、援护和格挡保持队伍阵线。</p></article>
+    <article><h3>设计思路</h3><p>四张候选把领袖感写成攻防一体的命令；任意缺一张时，另外三张仍保留刀客顺序与守卫保护两端。</p></article>
+    <article><h3>核心循环</h3><p>号令铺资源 → 队友协战 → 格挡保护 → 收招延续</p></article>
+    <article><h3>数值边界</h3><p>0–2气；协战常用100%或150%各自攻击；守卫来源反应使用格挡公式。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>土司首领全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-tusi">
+  <td class="num">037</td>
+  <td><strong>寨主号令</strong><code>Npc.TusiChief.ZhaiZhuHaoLing</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：攻击最高友方获得2层气势；攻击最高友方获得16点护甲；攻击最高友方登记1次格挡；所选目标造成200%攻击伤害；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全体友方获得6点护甲；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以0 气 / 3 内换取关键数值2、16、1、200%、6；在土司首领体系中主要负责把队友攻击和坦克保护压缩进同一条命令链。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-tusi">
+  <td class="num">038</td>
+  <td><strong>石门守势</strong><code>Npc.TusiChief.ShiMenShouShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得2层标记；所选目标获得2层灵动；所选目标获得16点护甲；所选目标登记2次格挡；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得12点护甲；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次格挡；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：所选目标转移1次敌方单体攻击；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值2、2、16、2、12；在土司首领体系中主要负责把队友攻击和坦克保护压缩进同一条命令链。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-tusi">
+  <td class="num">039</td>
+  <td><strong>土司军令</strong><code>Npc.TusiChief.TuSiJunLing</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得2层标记；所选目标获得3层破绽；攻击最高友方获得8点护甲；攻击最高友方登记1次格挡；所选目标造成150%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌的单体效果扩展为目标所在阵营全体；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全队下一次反击或格挡不消耗次数；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 3 内换取关键数值2、3、8、1、150%；在土司首领体系中主要负责把队友攻击和坦克保护压缩进同一条命令链。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-tusi">
+  <td class="num">040</td>
+  <td><strong>盟寨誓约</strong><code>Npc.TusiChief.MengZhaiShiYue</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：全体友方获得3层气势；全体友方获得32点护甲；全体友方登记1次格挡；每名存活友方对所选目标造成240%各自攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌气力消耗改为0；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌内力消耗改为0；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：全体友方下回合保留当前护甲；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以2 气 / 6 内换取关键数值3、32、1、240%、0；在土司首领体系中主要负责把队友攻击和坦克保护压缩进同一条命令链。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-song">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>宋金宝</h2>
+  <p class="tagline">法师检索与刀客顺序结合的短任务</p>
+  <div class="keyword-line">三牌任务 · 检索 · 冲锋 · 收招 · 费用控制</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>宋金宝用检索保证三张携带牌能够依次出现，完成后按首次顺序重放并结算启动奖励。</p></article>
+    <article><h3>设计思路</h3><p>短任务把法师五牌仪式压缩成适合NPC的三牌结构，再用刀客冲锋和收招保留角色性格。</p></article>
+    <article><h3>核心循环</h3><p>检索未完成牌 → 三牌各打一次 → 顺序重放 → 启动奖励</p></article>
+    <article><h3>数值边界</h3><p>0–1气；任务重放免费且不再推进；部分奖励回复2气并抽3张。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>宋金宝全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-song">
+  <td class="num">041</td>
+  <td><strong>赏钱鼓舞</strong><code>Npc.SongJinBao.ShangQianGuWu</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得2层气势；所选目标获得6点内力；标记最高敌方（同层优先生命比例最低）造成100%攻击伤害；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算后，重放本次触发牌的基础效果；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合第一张主动牌结算后，重放本牌的基础效果；仅主动出牌触发；触发1次后失效</td>
+  <td class="design-note">顺序编排牌。以0 气 / 0 内换取关键数值2、6、100%、1、1；在宋金宝体系中主要负责承担检索、减费与短周期任务爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-song">
+  <td class="num">042</td>
+  <td><strong>耳目密报</strong><code>Npc.SongJinBao.ErMuMiBao</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者揭示全部敌方意图；所选目标获得3层标记；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌</td>
+  <td class="design-note">检索与任务推进牌。以0 气 / 3 内换取关键数值3、1；在宋金宝体系中主要负责承担检索、减费与短周期任务爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-song">
+  <td class="num">043</td>
+  <td><strong>贵客令</strong><code>Npc.SongJinBao.GuiKeLing</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者获得2层标记；出牌者获得2层灵动；出牌者登记1次反击；出牌者抽1张牌；冲锋：此牌是本回合第一张主动牌打出时触发。；冲锋效果：持续效果：下一张主动牌结算前，本次打出的牌获得2层灵动；仅主动出牌触发；触发1次后失效；持续效果：下一张主动牌结算前，本次打出的牌登记1次反击；仅主动出牌触发；触发1次后失效；收招：此牌是本回合最后一张主动牌时触发。；收招效果：持续效果：下个玩家回合开始时，出牌者获得2层标记；仅主动出牌触发；触发1次后失效；持续效果：下个玩家回合开始时，出牌者登记2次反击；仅主动出牌触发；触发1次后失效；反击：敌方单体攻击牌结算后，造成100%攻击并消耗1次。</td>
+  <td class="design-note">顺序编排牌。以1 气 / 0 内换取关键数值2、2、1、1、2；在宋金宝体系中主要负责承担检索、减费与短周期任务爆发。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-song">
+  <td class="num">044</td>
+  <td><strong>一诺千金</strong><code>Npc.SongJinBao.YiNuoQianJin</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">1 气 / 6 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；持续效果：打出牌时，本次打出的牌气力消耗改为0；仅主动出牌触发；触发2次后失效；持续效果：打出牌时，本次打出的牌内力消耗改为0；仅主动出牌触发；触发2次后失效</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 6 内换取关键数值1、0、2、0、2；在宋金宝体系中主要负责承担检索、减费与短周期任务爆发。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-yue">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>月白</h2>
+  <p class="tagline">阵师地势与法师任务的月下术式</p>
+  <div class="keyword-line">地势 · 灼烧 · 标记 · 落雷 · 三牌任务</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>月白的每张牌都检索未完成牌，三牌任务把地势收益、灼烧和标记落雷连接起来。</p></article>
+    <article><h3>设计思路</h3><p>四张牌分别代表炎、雷、地势和寒冰护甲方向，使4选3时仍能形成明确的法术分支。</p></article>
+    <article><h3>核心循环</h3><p>检索 → 地势/状态铺垫 → 三牌重放 → 启动奖励</p></article>
+    <article><h3>数值边界</h3><p>0–1气；任务奖励按锁定标记数或地势触发次数结算。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>月白全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-yue">
+  <td class="num">045</td>
+  <td><strong>青焰点灯</strong><code>Npc.YueBai.QingYanDianDeng</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得6层灼烧；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌</td>
+  <td class="design-note">检索与任务推进牌。以0 气 / 3 内换取关键数值6、1、1、1；在月白体系中主要负责承担地势触发、法术任务与群体状态兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-yue">
+  <td class="num">046</td>
+  <td><strong>残卷批注</strong><code>Npc.YueBai.CanJuanPiZhu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者抽3张牌；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">检索与任务推进牌。以0 气 / 0 内换取关键数值3、1、1；在月白体系中主要负责承担地势触发、法术任务与群体状态兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-yue">
+  <td class="num">047</td>
+  <td><strong>月白照夜</strong><code>Npc.YueBai.YueBaiZhaoYe</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得2层标记；所选目标获得4层灼烧；所选目标造成100%攻击伤害；触发所选目标的灼烧1次；每次按当前层数造成生命伤害并减少1层；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌</td>
+  <td class="design-note">检索与任务推进牌。以1 气 / 3 内换取关键数值2、4、100%、1、1；在月白体系中主要负责承担地势触发、法术任务与群体状态兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-yue">
+  <td class="num">048</td>
+  <td><strong>山河残图</strong><code>Npc.YueBai.ShanHeCanTu</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">0 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：全体友方获得36点护甲；全体友方获得7点内力；触发当前地势收益1次；从抽牌堆或弃牌堆检索1张该任务 NPC 尚未完成的任务牌加入手牌；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">检索与任务推进牌。以0 气 / 6 内换取关键数值36、7、1、1；在月白体系中主要负责承担地势触发、法术任务与群体状态兑现。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-zhou">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>周光祖</h2>
+  <p class="tagline">药理与地理共同驱动的群体循环</p>
+  <div class="keyword-line">药效 · 地势 · 非致死失血 · 治疗 · 毒爆</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>周光祖用地势收益建立环境优势，再通过药效和非致死失血触发群体治疗。</p></article>
+    <article><h3>设计思路</h3><p>药师与阵师组合让治疗并非无条件发生，而是由地势、生命变化和DoT共同推动。</p></article>
+    <article><h3>核心循环</h3><p>地势收益 → 药效6 → 非致死失血 → 群体治疗或毒爆</p></article>
+    <article><h3>数值边界</h3><p>0–1气；友方主动失血最低保留1生命；药效按完整快照结算。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>周光祖全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-zhou">
+  <td class="num">049</td>
+  <td><strong>异草辨识</strong><code>Npc.ZhouGuangZu.YiCaoBianShi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 0 内</td>
+  <td>任意存活单位（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者获得6层药效；消耗出牌者全部药效；若所选目标为友方，恢复6+药效层数生命；若为敌方，失去6+药效层数生命；若所选目标为友方，清除其全部流血、中毒和灼烧；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以0 气 / 0 内换取关键数值6、6、6、1、6；在周光祖体系中主要负责承担地势放大、团队续航与中毒兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-zhou">
+  <td class="num">050</td>
+  <td><strong>黄山敷治</strong><code>Npc.ZhouGuangZu.HuangShanFuZhi</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：全体友方失去1点生命，最低保留1点；出牌者获得6层药效；消耗出牌者全部药效；全体友方恢复6+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以0 气 / 3 内换取关键数值1、1、6、6、1；在周光祖体系中主要负责承担地势放大、团队续航与中毒兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-zhou">
+  <td class="num">051</td>
+  <td><strong>地志摹图</strong><code>Npc.ZhouGuangZu.DiZhiMoTu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者抽3张牌；触发当前地势收益2次；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以0 气 / 3 内换取关键数值3、2；在周光祖体系中主要负责承担地势放大、团队续航与中毒兑现。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-zhou">
+  <td class="num">052</td>
+  <td><strong>岩粉封脉</strong><code>Npc.ZhouGuangZu.YanFenFengMai</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：触发当前地势收益1次；所选目标获得5层破绽；所选目标获得13层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害；地势：按当前地势触发对应效果。</td>
+  <td class="design-note">地势条件与场地收益牌。以1 气 / 3 内换取关键数值1、5、13、1；在周光祖体系中主要负责承担地势放大、团队续航与中毒兑现。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-jin">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>金贵</h2>
+  <p class="tagline">守卫与弓手结合的情报支援</p>
+  <div class="keyword-line">标记 · 蓄力 · 格挡 · 过牌 · 脱身</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>金贵先提供标记、抽牌和蓄力，再用护甲、格挡与灵动为输出角色创造安全窗口。</p></article>
+    <article><h3>设计思路</h3><p>角色并不追求独立爆发，而是把情报转成弓手蓄力、守卫护甲和队伍生存。</p></article>
+    <article><h3>核心循环</h3><p>标记目标 → 提供蓄力 → 护甲/格挡保护 → 重箭兑现</p></article>
+    <article><h3>数值边界</h3><p>0–2气；重箭协战按每层40%或50%；守卫来源反应使用格挡。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>金贵全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-jin">
+  <td class="num">053</td>
+  <td><strong>市井耳目</strong><code>Npc.JinGui.ShiJingErMu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：全体敌方获得3层标记；出牌者抽3张牌；攻击最高友方获得3层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以0 气 / 3 内换取关键数值3、3、3、1、1；在金贵体系中主要负责承担标记、过牌、蓄力供给和安全撤离。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-jin">
+  <td class="num">054</td>
+  <td><strong>巧言周旋</strong><code>Npc.JinGui.QiaoYanZhouXuan</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得3层破绽；护甲最高友方获得12点护甲；护甲最高友方登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以1 气 / 0 内换取关键数值3、12、2、100%、1；在金贵体系中主要负责承担标记、过牌、蓄力供给和安全撤离。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-jin">
+  <td class="num">055</td>
+  <td><strong>杂役筹备</strong><code>Npc.JinGui.ZaYiChouBei</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者抽3张牌；出牌者弃置1张牌；出牌者回复1点气力；攻击最高友方获得3层蓄力；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段40%攻击伤害。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以1 气 / 3 内换取关键数值3、1、1、3、1；在金贵体系中主要负责承担标记、过牌、蓄力供给和安全撤离。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-jin">
+  <td class="num">056</td>
+  <td><strong>后巷脱身</strong><code>Npc.JinGui.HouXiangTuoShen</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>无需选择（直接施放）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：全体友方获得4层灵动；生命最低友方获得4层标记；生命最低友方获得64点护甲；生命最低友方登记2次格挡；格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。</td>
+  <td class="design-note">护甲资源终结牌。以2 气 / 6 内换取关键数值4、4、64、2、100%；在金贵体系中主要负责承担标记、过牌、蓄力供给和安全撤离。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-npc-qiong">
+  <div class="chapter-kicker">任务NPC · 4张现役卡</div>
+  <h2>琼么儿</h2>
+  <p class="tagline">弓手机动与药师蛊毒的双循环</p>
+  <div class="keyword-line">灵动 · 蓄力 · 中毒 · 毒爆 · 药效</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>琼么儿在机动射击、蛊毒爆发和药效治疗间切换，四选三时仍能保留生产与消费端。</p></article>
+    <article><h3>设计思路</h3><p>弓手负责蓄力与灵动，药师负责中毒、毒爆和治疗，使她既能推进伤害也能救场。</p></article>
+    <article><h3>核心循环</h3><p>灵动/蓄力 → 中毒铺层 → 毒爆 → 药效治疗</p></article>
+    <article><h3>数值边界</h3><p>0–2气；药效核心值6；单体治疗12+药效；蛊雾中毒6并立即毒爆。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>琼么儿全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="npc-qiong">
+  <td class="num">057</td>
+  <td><strong>藤桥飞渡</strong><code>Npc.QiongMeiEr.TengQiaoFeiDu</code></td>
+  <td><span class="quality q-稀有">稀有</span></td>
+  <td class="cost">0 气 / 3 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：攻击最高友方获得3层灵动；攻击最高友方获得3层蓄力；出牌者抽2张牌；重箭：消耗全部蓄力，逐层触发本牌重箭效果。；重箭效果：每消耗1层，追加1段50%攻击伤害。</td>
+  <td class="design-note">蓄力生产/重箭兑现牌。以0 气 / 3 内换取关键数值3、3、2、1、1；在琼么儿体系中主要负责承担机动、蛊毒爆发与紧急治疗。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-qiong">
+  <td class="num">058</td>
+  <td><strong>蛊雾迷踪</strong><code>Npc.QiongMeiEr.GuWuMiZong</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 0 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：所选目标获得4层流血；所选目标获得6层中毒；对所选目标毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害</td>
+  <td class="design-note">状态伤害兑现牌。以1 气 / 0 内换取关键数值4、6、1；在琼么儿体系中主要负责承担机动、蛊毒爆发与紧急治疗。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-qiong">
+  <td class="num">059</td>
+  <td><strong>银铃镇心</strong><code>Npc.QiongMeiEr.YinLingZhenXin</code></td>
+  <td><span class="quality q-普通">普通</span></td>
+  <td class="cost">1 气 / 3 内</td>
+  <td>单体友方（点击后选择目标）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者获得6层药效；若所选目标为友方，清除其全部流血、中毒和灼烧；消耗出牌者全部药效；若所选目标为友方，恢复12+药效层数生命；若为敌方，失去12+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以1 气 / 3 内换取关键数值6、12、12、1、6；在琼么儿体系中主要负责承担机动、蛊毒爆发与紧急治疗。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="npc-qiong">
+  <td class="num">060</td>
+  <td><strong>山歌唤灵</strong><code>Npc.QiongMeiEr.ShanGeHuanLing</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>NPC 固定 4 选 3 卡池</td>
+  <td class="effect">基础：出牌者获得8层药效；消耗出牌者全部药效；全体友方恢复6+药效层数生命；药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。</td>
+  <td class="design-note">药效与药方引擎牌。以2 气 / 6 内换取关键数值8、6、1、6、1；在琼么儿体系中主要负责承担机动、蛊毒爆发与紧急治疗。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="chapter role-section" id="role-boss">
+  <div class="chapter-kicker">终局奖励 · 5张现役卡</div>
+  <h2>首领奖励牌</h2>
+  <p class="tagline">击败黑熊与老虎后进入专属卡槽的强牌</p>
+  <div class="keyword-line">珍稀 · 黑熊2张 · 老虎3张 · 三个专属槽</div>
+  <div class="role-grid">
+    <article><h3>角色特色</h3><p>首领牌用显著高于普通牌的数值纪念首领击杀，但受三个专属槽和重复限制约束。</p></article>
+    <article><h3>设计思路</h3><p>普通、地势和稀有路线牌已退出获取流程，只保留五张首领牌作为路线挑战对后续牌组的永久影响。</p></article>
+    <article><h3>核心循环</h3><p>击败首领 → 对应池随机候选 → 占用空槽 → 后续战斗进入共享牌组</p></article>
+    <article><h3>数值边界</h3><p>黑熊池2张、老虎池3张；最多3个首领卡槽；重复牌与第四张奖励被拒绝。</p></article>
+  </div>
+  <div class="table-wrap">
+    <table class="card-table">
+      <caption>首领奖励牌全卡效果、数值与设计定位</caption>
+      <thead><tr><th>#</th><th>卡牌 / CardId</th><th>品质</th><th>费用</th><th>目标</th><th>获取</th><th>完整效果与数值</th><th>卡牌设计定位</th></tr></thead>
+      <tbody><tr class="card-row" data-card-row data-role="boss">
+  <td class="num">194</td>
+  <td><strong>熊罴皮甲</strong><code>Route.Boss.XiongPiPiJia</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 0 内</td>
+  <td>自身（直接施放）</td>
+  <td>首领路线临时卡</td>
+  <td class="effect">基础：出牌者获得72点护甲；持续效果：本回合首次受到直接伤害时，攻击者造成200%攻击伤害；触发1次后失效</td>
+  <td class="design-note">直接输出牌。以2 气 / 0 内换取关键数值72、200%、1；在首领奖励牌体系中主要负责承担路线里程碑奖励和后续构筑改变。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="boss">
+  <td class="num">195</td>
+  <td><strong>撼地遗势</strong><code>Route.Boss.HanDiYiShi</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 10 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>首领路线临时卡</td>
+  <td class="effect">基础：所选目标造成720%攻击伤害；所选目标获得5层破绽；出牌者获得40点护甲</td>
+  <td class="design-note">直接输出牌。以3 气 / 10 内换取关键数值720%、5、40；在首领奖励牌体系中主要负责承担路线里程碑奖励和后续构筑改变。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="boss">
+  <td class="num">196</td>
+  <td><strong>虎魄镇胆</strong><code>Route.Boss.HuPoZhenDan</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 8 内</td>
+  <td>全体友方（直接施放）</td>
+  <td>首领路线临时卡</td>
+  <td class="effect">基础：全体友方获得40点护甲；从全体友方的流血、中毒、灼烧、蚀伤中依次清除至多3层</td>
+  <td class="design-note">群体转折牌。以2 气 / 8 内换取关键数值40、3；在首领奖励牌体系中主要负责承担路线里程碑奖励和后续构筑改变。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="boss">
+  <td class="num">197</td>
+  <td><strong>渡口猎风</strong><code>Route.Boss.DuKouLieFeng</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">2 气 / 6 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>首领路线临时卡</td>
+  <td class="effect">基础：所选目标造成560%攻击伤害；本段攻击倍率+80个百分点</td>
+  <td class="design-note">直接输出牌。以2 气 / 6 内换取关键数值560%、80；在首领奖励牌体系中主要负责承担路线里程碑奖励和后续构筑改变。</td>
+</tr>
+<tr class="card-row" data-card-row data-role="boss">
+  <td class="num">198</td>
+  <td><strong>伏虎断江</strong><code>Route.Boss.FuHuDuanJiang</code></td>
+  <td><span class="quality q-珍稀">珍稀</span></td>
+  <td class="cost">3 气 / 14 内</td>
+  <td>单体敌方（点击后选择目标）</td>
+  <td>首领路线临时卡</td>
+  <td class="effect">基础：所选目标造成920%攻击伤害；每消耗1层破绽，本段攻击倍率+25个百分点（当所选目标具有破绽；消耗至多3层破绽；数值按消耗层数结算）</td>
+  <td class="design-note">直接输出牌。以3 气 / 14 内换取关键数值920%、1、25、3；在首领奖励牌体系中主要负责承担路线里程碑奖励和后续构筑改变。</td>
+</tr></tbody>
+    </table>
+  </div>
+</section>
+<section class="chapter" id="synergy"><div class="chapter-kicker">20 · DECKBUILDING</div><h2>跨角色构筑关系</h2><div class="tech-grid"><article><h3>状态接力</h3><p>弓手和刀客生产流血，药师与法师铺中毒/灼烧，雷法、山崖和NPC生产标记，其他角色用多段、毒爆或落雷兑现。</p></article><article><h3>防守转进攻</h3><p>阵师洞穴提供护甲与格挡，守卫把护甲用于反击和群攻，寒冰法师又能把内力溢出转换成护甲资源。</p></article><article><h3>资源与顺序</h3><p>低费过牌帮助刀客安排首尾、法师完成任务、弓手积蓄重箭；气势、灵动、蓄力、药效与地势都拥有明确的生产者和消费者。</p></article></div></section>
+<section class="chapter sources" id="sources"><div class="chapter-kicker">21 · SOURCES</div><h2>资料口径与说明</h2><ul><li>卡牌事实来源：FGameXXKCardCatalog::GetAllCardDefinitions、品质解析与卡牌文本格式器生成的《2026-08-11-full-card-catalog.md》。</li><li>现役展示口径：主角36 + 永久伙伴108 + 任务NPC24 + 首领牌5 = 173。</li><li>排除内容：代码目录中仍保留、但已退出奖励/事件/宝箱/商人获取流程的25张普通、地势和稀有路线牌。</li><li>测试体系来源：GameXXK.Diagnostics.CardBalanceObservation、OrthogonalBalanceObservation、run_card_balance_observation.py、propose_card_balance_tuning.py与真实PIE/MCP验收记录。</li><li>卡牌“设计定位”是依据现行效果、费用与职业循环做出的设计解读；卡牌事实与数值仍以代码生成目录为准。</li></ul></section>
+</main></div><footer>GameXXK 毕业设计离线介绍页 · 2026-08-23 · 静态HTML文档</footer></div>
+<script>
+(()=>{const q=document.querySelector('#cardSearch'),f=document.querySelector('#roleFilter'),rows=[...document.querySelectorAll('[data-card-row]')],count=document.querySelector('#visibleCount');function apply(){const query=q.value.normalize('NFKC').toLowerCase().trim();let visible=0;for(const row of rows){const okText=!query||row.textContent.normalize('NFKC').toLowerCase().includes(query);const okRole=!f.value||row.dataset.role===f.value;row.hidden=!(okText&&okRole);if(!row.hidden)visible++;}count.textContent=`${visible} / ${rows.length}`;}q.addEventListener('input',apply);f.addEventListener('change',apply);})();
+</script>
+</body></html>

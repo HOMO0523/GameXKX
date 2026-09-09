@@ -1,0 +1,7 @@
+GameXXK 毕业设计离线介绍页
+
+双击 index.html 即可阅读。
+建议使用 Microsoft Edge 或 Google Chrome。
+页面不需要联网、安装依赖或启动服务器。
+页面内可按卡名、CardId、效果、数值、设计定位与角色分类检索。
+需要提交 PDF 时，可直接使用浏览器的“打印”功能。
