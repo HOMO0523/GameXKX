@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "assetName": "character_05_sorcerer_hit",
+  "sourceVideo": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\production_v1\\raw\\character_05_sorcerer_hit\\b29ef0ce-6a34-4774-8fad-1bbac255d2f2_video_1.mp4",
+  "recipe": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_05_sorcerer_hit\\recipe.json",
+  "orientation": "preserve",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "anchor": "bottom_center",
+  "atlas": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_05_sorcerer_hit\\atlas\\character_05_sorcerer_hit_atlas.png",
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_05_sorcerer_hit\\frames",
+  "contactSheet": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_05_sorcerer_hit\\contact_sheet.png",
+  "placement": {
+    "sourceBounds": [
+      169,
+      75,
+      960,
+      837
+    ],
+    "scale": 0.5436156763590392,
+    "contentSize": [
+      430,
+      414
+    ],
+    "canvasSize": 512,
+    "bottomMargin": 41,
+    "paddingRatio": 0.08,
+    "anchor": "bottom_center"
+  },
+  "sourceMetadata": {
+    "size": [
+      960,
+      960
+    ],
+    "sourceSize": [
+      960,
+      960
+    ],
+    "fps": 24.12,
+    "duration": 5.06
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

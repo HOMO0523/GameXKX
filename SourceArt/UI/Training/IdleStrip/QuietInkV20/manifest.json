@@ -1,0 +1,34 @@
+{
+  "status": "rejected-too-thick-not-imported",
+  "generation": "built-in imagegen; measured ground extension and existing ink-layer compositing",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV20\\idle_strip_quiet_ink_v20_seamless.png",
+  "sha256": "6bc778799be58d66cdabd3a8d43ae77a3ae83e7a51937833d8edc70c4f448da1",
+  "base": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV19\\idle_strip_quiet_ink_v19_seamless.png",
+  "base_sha256": "672fcd3d6e1b3869452aff1add5f48b5158746b16b9fcb9209cd291aecd8f8ff",
+  "earth_source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV20\\extended_earth_chroma_source.png",
+  "earth_source_sha256": "c919a3a8bee354d546fd1d3758809c84955bcee5761f44774aa0bf9d410ed925",
+  "size": [
+    1983,
+    793
+  ],
+  "ground_extension_source_pixels": 40,
+  "mountain_alpha_identical_above_row": 430,
+  "ink_rgb": [
+    118,
+    121,
+    117
+  ],
+  "health_bar_local_y": [
+    174,
+    192
+  ],
+  "required_texture_row": 508,
+  "ground_local_bottom_range": [
+    199.36948297604036,
+    200.12610340479193
+  ],
+  "minimum_ground_margin_below_bars": 7.369482976040359,
+  "viewport_local_height": 202,
+  "alpha_under_all_bar_positions_min": 255,
+  "horizontal_edge_max_delta": 0
+}

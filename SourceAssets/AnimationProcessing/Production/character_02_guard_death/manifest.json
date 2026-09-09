@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "assetName": "character_02_guard_death",
+  "sourceVideo": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\production_v1\\raw\\character_02_guard_death\\23048733-2065-48cd-9a42-5cad769ad076_video_1.mp4",
+  "recipe": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_02_guard_death\\recipe.json",
+  "orientation": "preserve",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "anchor": "bottom_center",
+  "atlas": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_02_guard_death\\atlas\\character_02_guard_death_atlas.png",
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_02_guard_death\\frames",
+  "contactSheet": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_02_guard_death\\contact_sheet.png",
+  "placement": {
+    "sourceBounds": [
+      127,
+      72,
+      888,
+      813
+    ],
+    "scale": 0.5650459921156373,
+    "contentSize": [
+      430,
+      419
+    ],
+    "canvasSize": 512,
+    "bottomMargin": 41,
+    "paddingRatio": 0.08,
+    "anchor": "bottom_center"
+  },
+  "sourceMetadata": {
+    "size": [
+      960,
+      960
+    ],
+    "sourceSize": [
+      960,
+      960
+    ],
+    "fps": 24.12,
+    "duration": 5.06
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

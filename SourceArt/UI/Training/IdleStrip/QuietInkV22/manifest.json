@@ -1,0 +1,34 @@
+{
+  "status": "technical-export-pass",
+  "generation": "built-in imagegen cloud layer and existing generated ink paths",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV22\\idle_strip_quiet_ink_v22_seamless.png",
+  "sha256": "5f516b41d679833d698b820c0ea116c0afb2f7b2fb4415e8d310bb73bdf3678c",
+  "selected_base": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV22\\user-selected-base.png",
+  "selected_base_sha256": "b0bdf43e3eaf9ede280dc02d640d1dbbfc5c8b87861f5c5d3048d464f611b04f",
+  "selected_base_size": [
+    1983,
+    279
+  ],
+  "canvas_origin": [
+    0,
+    256
+  ],
+  "size": [
+    1983,
+    793
+  ],
+  "cloud_source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV22\\cloud_sea_chroma_source.png",
+  "cloud_source_sha256": "cc723ff5baa8564594af8c241639a917542481b6995d3cd11ee2c978ff2907a7",
+  "cloud_opacity": 1.0,
+  "near_black_rgb": [
+    43,
+    44,
+    42
+  ],
+  "maximum_ink_opacity": 0.96,
+  "foreground_alpha_unchanged": true,
+  "opaque_uninked_foreground_pixels_unchanged": true,
+  "cloud_below_ground": false,
+  "horizontal_edge_max_delta": 0,
+  "fully_opaque_under_health_bars": true
+}

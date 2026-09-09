@@ -1,0 +1,25 @@
+{
+  "status": "technical-export-pass",
+  "generation": "built-in imagegen small mountain color edit",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV24\\idle_strip_quiet_ink_v24_seamless.png",
+  "sha256": "252d0ceb604667e9836baea8a2d4c5eab1914d0795bd81c68364684144791e3b",
+  "source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV24\\mountain_gray_green_chroma_source.png",
+  "source_sha256": "0a17d7839edabcb795c79676078b4ada6e31d837c594f788429e728d16245f5d",
+  "selected_pre_cloud_base": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV21\\user-selected-base.png",
+  "selected_base_sha256": "b0bdf43e3eaf9ede280dc02d640d1dbbfc5c8b87861f5c5d3048d464f611b04f",
+  "size": [
+    1983,
+    793
+  ],
+  "foreground_alpha_identical_to_selected_base": true,
+  "cloud_layer_removed": false,
+  "near_black_ink_rgb": [
+    43,
+    44,
+    42
+  ],
+  "cloud_source": "SourceArt/UI/Training/IdleStrip/QuietInkV22/cloud_sea_layer.png",
+  "opaque_ground_and_ink_unchanged_from_row": 430,
+  "horizontal_edge_max_delta": 0,
+  "fully_opaque_under_health_bars": true
+}

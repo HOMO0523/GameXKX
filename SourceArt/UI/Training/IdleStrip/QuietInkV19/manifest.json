@@ -1,0 +1,51 @@
+{
+  "status": "user-confirmed-previous",
+  "generation": "built-in imagegen palette-only edit",
+  "source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV19\\original_palette_chroma_source.png",
+  "source_sha256": "7af3125990ba9e96b8287aef52836bdc7955b92320c9407f9b57f52420fb6cc7",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV19\\idle_strip_quiet_ink_v19_seamless.png",
+  "sha256": "672fcd3d6e1b3869452aff1add5f48b5158746b16b9fcb9209cd291aecd8f8ff",
+  "previous_source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV18\\idle_strip_quiet_ink_v18_seamless.png",
+  "previous_source_sha256": "1823a833671105bfdb184499132ebeca82eace66451f38e6af268f71219e72c5",
+  "runtime_size": [
+    1983,
+    793
+  ],
+  "alpha_identical_to_previous": true,
+  "horizontal_edge_max_delta": 0,
+  "edge_color_pixels_extended": 6336,
+  "original_palette_reference": "SourceArt/UI/ImageTruth/confirmed/training_idle_strip_background_seamless_v003.png",
+  "palette_direction": "cool slate-blue/gray mountains; warm ochre earth; gray-brown shadows",
+  "previous_palette": {
+    "mountain_mean_rgb": [
+      143.5,
+      186.41,
+      156.02
+    ],
+    "road_mean_rgb": [
+      193.34,
+      153.08,
+      100.7
+    ]
+  },
+  "current_palette": {
+    "mountain_mean_rgb": [
+      138.24,
+      143.76,
+      142.78
+    ],
+    "road_mean_rgb": [
+      202.13,
+      154.71,
+      91.26
+    ]
+  },
+  "approval": {
+    "approvedBy": "user",
+    "approvedDate": "2026-09-08",
+    "selectionFeedback": "先用这个试试",
+    "finalFeedback": "ok",
+    "selectedSourceSha256": "7af3125990ba9e96b8287aef52836bdc7955b92320c9407f9b57f52420fb6cc7",
+    "pieEvidence": "Saved/Codex/IdleStripInkOutline-20260908/selected-palette-pie-crop.png"
+  }
+}

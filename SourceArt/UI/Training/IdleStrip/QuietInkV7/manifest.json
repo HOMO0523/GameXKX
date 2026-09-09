@@ -1,0 +1,72 @@
+{
+  "status": "technical-export-pass",
+  "generation": "built-in imagegen",
+  "source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV7\\idle_strip_quiet_ink_v7_chroma_source.png",
+  "source_sha256": "c4d4e28564628e1e619835a7f8bcd875f53741f9e6ab5b40aa94055294ba697d",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV7\\idle_strip_quiet_ink_v7_seamless.png",
+  "sha256": "c220d243db2a489ff234838920cf514861f391539485ceeb0b9e7cd07837f14b",
+  "vertical_translation_px": -64,
+  "seam_blend_px": 128,
+  "source_size": [
+    1979,
+    794
+  ],
+  "horizontal_padding": [
+    2,
+    2
+  ],
+  "bottom_blank_rows_removed": 1,
+  "original_source_sha256": "bd4c02aeafd77d8aa797e060a7114f972174f73d47f4c7227c3bcf587f6f1b96",
+  "before": {
+    "size": [
+      1983,
+      793
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+      0,
+      204,
+      1983,
+      582
+    ],
+    "transparent_pixels": 1027203,
+    "opaque_pixels": 540316,
+    "horizontal_edge_max_delta": 0,
+    "seam_neighbor_mean_delta": 0.8994325346784363,
+    "road_luminance_std": 10.710071423583766,
+    "road_horizontal_edge_mean": 1.1470656609485368,
+    "road_chroma_mean": 125.71094512939453,
+    "opaque_rgb_min": [
+      0,
+      0,
+      0
+    ],
+    "remaining_magenta_pixels": 0
+  },
+  "after": {
+    "size": [
+      1983,
+      793
+    ],
+    "mode": "RGBA",
+    "alpha_bbox": [
+      0,
+      201,
+      1983,
+      575
+    ],
+    "transparent_pixels": 1086757,
+    "opaque_pixels": 476725,
+    "horizontal_edge_max_delta": 0,
+    "seam_neighbor_mean_delta": 0.037515762925598994,
+    "road_luminance_std": 28.07556627442614,
+    "road_horizontal_edge_mean": 1.5972288698284558,
+    "road_chroma_mean": 35.0044059753418,
+    "opaque_rgb_min": [
+      0,
+      0,
+      0
+    ],
+    "remaining_magenta_pixels": 0
+  }
+}

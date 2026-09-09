@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "assetName": "character_01_blade_death",
+  "sourceVideo": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\production_v1\\raw\\character_01_blade_death\\cfae7295-ced2-44cb-a838-66802573b8b0_video_1.mp4",
+  "recipe": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_01_blade_death\\recipe.json",
+  "orientation": "preserve",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "anchor": "bottom_center",
+  "atlas": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_01_blade_death\\atlas\\character_01_blade_death_atlas.png",
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_01_blade_death\\frames",
+  "contactSheet": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_01_blade_death\\contact_sheet.png",
+  "placement": {
+    "sourceBounds": [
+      9,
+      74,
+      797,
+      815
+    ],
+    "scale": 0.5456852791878173,
+    "contentSize": [
+      430,
+      404
+    ],
+    "canvasSize": 512,
+    "bottomMargin": 41,
+    "paddingRatio": 0.08,
+    "anchor": "bottom_center"
+  },
+  "sourceMetadata": {
+    "size": [
+      960,
+      960
+    ],
+    "sourceSize": [
+      960,
+      960
+    ],
+    "fps": 24.12,
+    "duration": 5.06
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

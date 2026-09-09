@@ -1,0 +1,42 @@
+{
+  "assetId": "battle_hit_effect_03",
+  "status": "review_pending",
+  "sourceFile": "C:\\Users\\shxuw\\Downloads\\动画优化\\特效序列帧\\huaban-7251655374.png",
+  "stagedSource": "SourceAssets/AnimationProcessing/HitEffects/battle_hit_effect_03/source.png",
+  "sourceSha256": "40300f930800837071b84e6278620a34161654f0a72057e29370888c6c2eaadf",
+  "sourceSize": [
+    1024,
+    1024
+  ],
+  "sourceGrid": {
+    "columns": 3,
+    "rows": 3
+  },
+  "frameCount": 9,
+  "runtimeGrid": {
+    "columns": 8,
+    "rows": 8
+  },
+  "framesPerSecond": 30.0,
+  "runtimeReplacementStatus": "new-vfx-pending-user-confirmation",
+  "variants": {
+    "2K": {
+      "atlas": "SourceAssets/AnimationProcessing/HitEffects/battle_hit_effect_03/atlas_2K/battle_hit_effect_03_atlas.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "cellSize": 256,
+      "sha256": "d600414c28aec83c1f0161060d1e0cb73d938f2205d23cbf3f6e6c9659d89558"
+    },
+    "1K": {
+      "atlas": "SourceAssets/AnimationProcessing/HitEffects/battle_hit_effect_03/atlas_1K/battle_hit_effect_03_atlas.png",
+      "size": [
+        1024,
+        1024
+      ],
+      "cellSize": 128,
+      "sha256": "0da82bfdba2fe887f6ad2e0c98ea60f5e38a1c334568b3b7f4850ebbaef073a4"
+    }
+  }
+}

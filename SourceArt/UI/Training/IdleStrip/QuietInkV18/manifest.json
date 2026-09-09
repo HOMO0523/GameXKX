@@ -1,0 +1,33 @@
+{
+  "status": "technical-export-pass",
+  "generation": "built-in imagegen, separate gray-ink layer",
+  "final": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV18\\idle_strip_quiet_ink_v18_seamless.png",
+  "sha256": "1823a833671105bfdb184499132ebeca82eace66451f38e6af268f71219e72c5",
+  "current_artist_base": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV18\\current-approved-base.png",
+  "base_sha256": "930e7a58cfc619e39cea70d2f5a4761c93f7abea65a59b014a1365a97f71fe4a",
+  "base_size": [
+    1983,
+    235
+  ],
+  "runtime_size": [
+    1983,
+    793
+  ],
+  "base_canvas_origin": [
+    0,
+    256
+  ],
+  "ink_source": "SourceArt\\UI\\Training\\IdleStrip\\QuietInkV18\\gray_ink_overlay_chroma_source.png",
+  "ink_source_sha256": "244f65b7286593245355468c28102efade7ac1c9059ba875574d394223e64420",
+  "gray_rgb": [
+    137,
+    139,
+    135
+  ],
+  "maximum_ink_opacity": 0.84,
+  "changed_visible_pixels": 24653,
+  "changed_fraction_of_visible_base": 0.08391196612615556,
+  "alpha_identical_to_current_base": true,
+  "uninked_pixels_identical": true,
+  "horizontal_edge_max_delta": 0
+}

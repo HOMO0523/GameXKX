@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "assetName": "character_04_hunter_death",
+  "sourceVideo": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\production_v1\\raw\\character_04_hunter_death\\021e927c-417c-48d0-bced-3191e0ada670_video_1.mp4",
+  "recipe": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_04_hunter_death\\recipe.json",
+  "orientation": "preserve",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "anchor": "bottom_center",
+  "atlas": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_04_hunter_death\\atlas\\character_04_hunter_death_atlas.png",
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_04_hunter_death\\frames",
+  "contactSheet": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_04_hunter_death\\contact_sheet.png",
+  "placement": {
+    "sourceBounds": [
+      134,
+      39,
+      811,
+      773
+    ],
+    "scale": 0.5858310626702997,
+    "contentSize": [
+      397,
+      430
+    ],
+    "canvasSize": 512,
+    "bottomMargin": 41,
+    "paddingRatio": 0.08,
+    "anchor": "bottom_center"
+  },
+  "sourceMetadata": {
+    "size": [
+      960,
+      960
+    ],
+    "sourceSize": [
+      960,
+      960
+    ],
+    "fps": 24.12,
+    "duration": 5.06
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}

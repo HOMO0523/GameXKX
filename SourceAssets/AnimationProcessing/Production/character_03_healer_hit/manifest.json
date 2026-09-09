@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "assetName": "character_03_healer_hit",
+  "sourceVideo": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\production_v1\\raw\\character_03_healer_hit\\10fb9587-20b0-44f1-a1bd-863358b0d847_video_1.mp4",
+  "recipe": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_03_healer_hit\\recipe.json",
+  "orientation": "preserve",
+  "fps": 12,
+  "durationSeconds": 5,
+  "frameCount": 60,
+  "canvasSize": 512,
+  "anchor": "bottom_center",
+  "atlas": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_03_healer_hit\\atlas\\character_03_healer_hit_atlas.png",
+  "atlasGrid": {
+    "columns": 8,
+    "rows": 8,
+    "cellWidth": 512,
+    "cellHeight": 512
+  },
+  "framesDirectory": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_03_healer_hit\\frames",
+  "contactSheet": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProcessing\\Production\\character_03_healer_hit\\contact_sheet.png",
+  "placement": {
+    "sourceBounds": [
+      210,
+      132,
+      834,
+      803
+    ],
+    "scale": 0.6408345752608048,
+    "contentSize": [
+      400,
+      430
+    ],
+    "canvasSize": 512,
+    "bottomMargin": 41,
+    "paddingRatio": 0.08,
+    "anchor": "bottom_center"
+  },
+  "sourceMetadata": {
+    "size": [
+      960,
+      960
+    ],
+    "sourceSize": [
+      960,
+      960
+    ],
+    "fps": 24.12,
+    "duration": 5.06
+  },
+  "edgeAlphaMax": {
+    "left": 0,
+    "top": 0,
+    "right": 0,
+    "bottom": 0
+  }
+}
