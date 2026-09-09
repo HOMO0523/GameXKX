@@ -118,6 +118,15 @@ struct GAMEXXK_API FGameXXKOneGameRouteNodeVisualState
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FString IconPath;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	bool bSelectionCircleVisible = false;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	bool bSelectionCircleAnimating = false;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 SelectionCircleFrame = INDEX_NONE;
 };
 
 /** Tick-free route-map HUD data projected from the authoritative run state. */
@@ -125,6 +134,18 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKRouteMapSummaryView
 {
 	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int64 SpendableTravelMoney = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 CompletedLegs = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	int32 TotalLegs = 0;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FText StageName;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 RouteTravelMoney = 0;
@@ -161,6 +182,7 @@ public:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
 	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent) override;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
@@ -175,6 +197,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
 	bool ExecuteRouteNodeById(int32 NodeId);
 
+	/** Player input draws a quick ink circle before entering the selected node. */
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|RouteMap")
+	bool SelectRouteNodeWithFeedback(int32 NodeId);
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap")
 	TArray<FGameXXKOneGameRouteNodeVisualState> GetRouteNodeVisualStatesForTest() const;
 
@@ -183,6 +209,13 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
 	FText GetRouteMoneySummaryTextForTest() const;
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
+	FText GetRouteEntryTitleForTest() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
+	float GetRouteEntryTitleOpacityForTest() const;
+	UFUNCTION(BlueprintPure, Category = "GameXXK|RouteMap|Test")
+	int32 GetRouteEntryTitlePlayCountForTest() const { return RouteEntryTitlePlayCount; }
 
 	void SetRouteMapViewportGeometry(FVector2D InViewportPosition, FVector2D InViewportSize);
 	float GetCurrentScrollOffset() const;
@@ -366,6 +399,7 @@ private:
 
 	UFUNCTION()
 	void HandleCloseChallengeClicked();
+	UFUNCTION() void HandleMainStoryTreeClicked();
 
 	UFUNCTION()
 	void HandleRouteAbandonConfirmClicked();
@@ -384,6 +418,16 @@ private:
 	FGameXXKRouteMapSummaryView BuildRouteSummaryView() const;
 	void UpdateRouteSummary();
 	void ConfigureNodeButton(int32 ButtonIndex, const FGameXXKOneGameRouteNode* Node);
+	void AdvanceRouteSelection(float DeltaSeconds);
+	void CancelRouteSelectionFeedback();
+	bool IsPendingRouteSelectionValid() const;
+	uint32 GetRouteSelectionIdentity() const;
+	int32 GetSelectionCircleFrame(const FGameXXKOneGameRouteNode& Node) const;
+	void RefreshSelectionCircles();
+	void RefreshRouteInformation();
+	void AdvanceRoutePresentation(float DeltaSeconds);
+	float GetRouteVisibleHeight() const;
+	float GetRouteBottomScrollPadding() const;
 	void RegisterGuideTargets();
 	void ConfigureLineVisual(int32 LineIndex, const TArray<FGameXXKOneGameRouteNode>& Nodes);
 	void ExecuteNodeButtonAtIndex(int32 ButtonIndex);
@@ -436,6 +480,9 @@ private:
 	TSoftObjectPtr<UTexture2D> OneGameEliteDisabledTexture;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
+	TSoftObjectPtr<UTexture2D> RouteBossTexture;
+
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
 	TSoftObjectPtr<UTexture2D> OneGameCampTexture;
 
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
@@ -462,6 +509,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
 	TSoftObjectPtr<UTexture2D> OneGameRouteBackgroundTexture;
 
+	UPROPERTY(EditDefaultsOnly, Category = "GameXXK|RouteMap|Texture")
+	TSoftObjectPtr<UTexture2D> RouteSelectionCircleTexture;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UOverlay> RootOverlay;
 
@@ -476,6 +526,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> RouteCloseChallengeButton;
+	UPROPERTY(Transient) TObjectPtr<UButton> MainStoryTreeButton;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UOverlay> RouteAbandonModalOverlay;
@@ -500,6 +551,23 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RouteMoneySummaryText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteStageSummaryText;
+	UPROPERTY(Transient)
+	TObjectPtr<UBorder> RouteLegendBorder;
+	UPROPERTY(Transient)
+	TObjectPtr<USizeBox> RouteLegendContainer;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> RouteEntryTitle;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> RouteLegendNames;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> RouteLegendDescriptions;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<USizeBox>> RouteLegendRows;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> RouteLegendIcons;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> RouteProgressSummaryText;
@@ -536,6 +604,26 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UImage>> NodeVisualImages;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UImage>> NodeSelectionCircles;
+
+	int32 PendingSelectionNodeId = INDEX_NONE;
+	float SelectionElapsedSeconds = 0.0f;
+	uint32 PendingSelectionRouteIdentity = 0;
+	TSet<int32> SelectedRouteNodeIds;
+	uint32 SelectedRouteIdentity = 0;
+	bool bHasSelectedRouteIdentity = false;
+	bool bAutoCenterSelection = false;
+	float AutoCenterElapsed = 0.0f;
+	float AutoCenterStartOffset = 0.0f;
+	float AutoCenterTargetOffset = 0.0f;
+	float RoutePresentationElapsed = 0.0f;
+	float RouteEntryTitleElapsed = 0.0f;
+	bool bRouteEntryTitlePlaying = false;
+	bool bHasPresentedRouteIdentity = false;
+	uint32 PresentedRouteIdentity = 0;
+	int32 RouteEntryTitlePlayCount = 0;
 
 	UPROPERTY(Transient)
 	TArray<FString> NodeVisualIconPaths;

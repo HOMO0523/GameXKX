@@ -133,6 +133,15 @@ namespace
 		return Effect;
 	}
 
+	FGameXXKEnemyIntentEffectDefinition ManaDrain(const int32 Amount, const EGameXXKEnemyIntentTargetRule Target, const bool AfterHit = false)
+	{
+		auto Effect = BaseEffect(EGameXXKEnemyIntentEffectType::DrainMana, Target);
+		Effect.FlatMagnitude = Amount;
+		Effect.ResourceAmountByDifficulty = Difficulty(Amount, Amount, Amount);
+		Effect.bRequiresPreviousDirectHit = AfterHit;
+		return Effect;
+	}
+
 	FGameXXKEnemyIntentEffectDefinition QueueEnergyPenalty(
 		const int32 Normal,
 		const int32 Hard,
@@ -506,7 +515,7 @@ namespace
 				Intent(TEXT("Hoard"), TEXT("敛财"), {
 					ArmorFromDefense(160, 200, 240),
 					ApplyStatus(EGameXXKCardStatus::Wealth, 2, 2, 3, EGameXXKEnemyIntentTargetRule::Self)}),
-				Intent(TEXT("GreedyMark"), TEXT("贪印"), {ApplyStatus(EGameXXKCardStatus::Mark, 2, 3, 5, EGameXXKEnemyIntentTargetRule::RandomLivingParty)}),
+				Intent(TEXT("GreedyMark"), TEXT("贪印"), {ApplyStatus(EGameXXKCardStatus::Mark, 2, 3, 5, EGameXXKEnemyIntentTargetRule::RandomLivingParty), ManaDrain(8, EGameXXKEnemyIntentTargetRule::HighestManaParty)}),
 				Intent(TEXT("Pickpocket"), TEXT("扒窃"), {
 					Direct(100, 125, 150),
 					QueueEnergyPenalty(1, 2, 2),
@@ -523,7 +532,8 @@ namespace
 					ApplyStatus(EGameXXKCardStatus::Wealth, 1, 1, 1, EGameXXKEnemyIntentTargetRule::Self)}),
 				Intent(TEXT("HoardBehindClosedGates"), TEXT("闭门聚财"), {
 					ApplyStatus(EGameXXKCardStatus::Wealth, 3, 3, 3, EGameXXKEnemyIntentTargetRule::Self),
-					ArmorFromDefense(120, 120, 120, EGameXXKEnemyIntentTargetRule::AllEnemyAllies)}),
+					ArmorFromDefense(120, 120, 120, EGameXXKEnemyIntentTargetRule::AllEnemyAllies),
+					ManaDrain(8, EGameXXKEnemyIntentTargetRule::HighestManaParty)}),
 				Intent(TEXT("CompoundInterest"), TEXT("利滚利"), {
 					DirectWithSourceStatusBonus(95, 95, 95, EGameXXKCardStatus::Wealth, 20, 20, 20, 4, EGameXXKEnemyIntentTargetRule::AllLivingParty)}),
 				Intent(TEXT("SpendWealthContinueLifeP2"), TEXT("散财续命"), {
@@ -539,7 +549,8 @@ namespace
 				Intent(TEXT("HeavyInterestLockdown"), TEXT("重利封锁"), {
 					ApplyStatus(EGameXXKCardStatus::Wealth, 3, 3, 3, EGameXXKEnemyIntentTargetRule::Self),
 					ArmorFromDefense(180, 180, 180, EGameXXKEnemyIntentTargetRule::AllEnemyAllies),
-					QueueCardSurcharge()}),
+					QueueCardSurcharge(),
+					ManaDrain(8, EGameXXKEnemyIntentTargetRule::HighestManaParty)}),
 				Intent(TEXT("LifePressingCollection"), TEXT("逼命催收"), {
 					Direct(200, 200, 200),
 					QueueEnergyPenalty(3, 3, 3),
@@ -737,7 +748,7 @@ namespace
 		}));
 		Result.Add(Enemy(TEXT("Enemy.Ch3.GiantToad"), TEXT("巨蟾"), 3, EGameXXKEnemyTier::Normal, 94, 12.0f, 11, 1.25f, 7, 0.60f, 6, {
 			Phase(1, TEXT("本相"), {
-				Intent(TEXT("Tongue"), TEXT("卷舌"), {Direct(160, 230, 300), HealMaxHealth(4, 5, 6, EGameXXKEnemyIntentTargetRule::Self)}),
+				Intent(TEXT("Tongue"), TEXT("卷舌"), {Direct(160, 230, 300), ManaDrain(6, EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom, true), HealMaxHealth(4, 5, 6, EGameXXKEnemyIntentTargetRule::Self)}),
 				Intent(TEXT("PoisonFog"), TEXT("毒雾"), {Direct(90, 140, 190, EGameXXKEnemyIntentTargetRule::AllLivingParty, 1, EGameXXKCardStatus::Poison, 2, 4, 6)}),
 				Intent(TEXT("Inflate"), TEXT("鼓腹"), {ArmorFromDefense(200, 280, 360), RefreshHealingAmplification(4, 5, 6)})
 			})
@@ -841,6 +852,17 @@ namespace
 		Definitions.Append(BuildChapterOne());
 		Definitions.Append(BuildChapterTwo());
 		Definitions.Append(BuildChapterThree());
+		const TSet<FName> FrostRocks={TEXT("ThrowRock"),TEXT("BoulderCharge"),TEXT("ChaoticRocksSealMeridians"),TEXT("GiantRockCharge"),TEXT("ChaoticRocksFallHeaven"),TEXT("MountainCrushingBoulder")};
+		const TSet<FName> ThunderHorns={TEXT("Horn"),TEXT("SpiralHornInterceptsHunt"),TEXT("SpiralHornBreaksHunt")};
+		for(auto& Definition:Definitions)for(auto& PhaseDefinition:Definition.Phases)for(auto& Card:PhaseDefinition.Intents)
+		{
+			EGameXXKCardDamageElement Element=EGameXXKCardDamageElement::None;
+			if(Definition.Id==TEXT("Enemy.Ch3.WhiteApe") && FrostRocks.Contains(Card.Id))Element=EGameXXKCardDamageElement::Frost;
+			else if(Definition.Id==TEXT("Enemy.Ch3.SpiralHornDeer") && ThunderHorns.Contains(Card.Id))Element=EGameXXKCardDamageElement::Lightning;
+			else if(Card.Effects.ContainsByPredicate([](const auto& Effect){return Effect.Status==EGameXXKCardStatus::Burn;})
+				|| Card.Id==TEXT("ChaseFireRapidPeck") || Card.Id==TEXT("FireSteppingPierce") || Card.Id==TEXT("RedFlameRageStomp"))Element=EGameXXKCardDamageElement::Fire;
+			for(auto& Effect:Card.Effects)if(Effect.Type==EGameXXKEnemyIntentEffectType::DirectDamage)Effect.DamageElement=Element;
+		}
 		return Definitions;
 	}
 
@@ -872,6 +894,7 @@ namespace
 		case EGameXXKEnemyIntentEffectType::AddArmorDefensePercent:
 			return AllPositive(Effect.DefensePercentByDifficulty);
 		case EGameXXKEnemyIntentEffectType::HealMaxHealthPercent:
+		case EGameXXKEnemyIntentEffectType::DrainMana:
 		case EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty:
 		case EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy:
 		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
@@ -902,6 +925,13 @@ const TArray<FGameXXKEnemyDefinition>& FGameXXKEnemyCatalog::GetAllDefinitions()
 {
 	static const TArray<FGameXXKEnemyDefinition> Definitions = BuildDefinitions();
 	return Definitions;
+}
+
+EGameXXKCardDamageElement FGameXXKEnemyCatalog::GetIntentDamageElement(FName DefinitionId,FName IntentId)
+{
+	if(const auto* Definition=Find(DefinitionId))for(const auto& PhaseDefinition:Definition->Phases)for(const auto& Card:PhaseDefinition.Intents)
+		if(Card.Id==IntentId)for(const auto& Effect:Card.Effects)if(Effect.Type==EGameXXKEnemyIntentEffectType::DirectDamage)return Effect.DamageElement;
+	return EGameXXKCardDamageElement::None;
 }
 
 const FGameXXKEnemyDefinition* FGameXXKEnemyCatalog::Find(const FName DefinitionId)

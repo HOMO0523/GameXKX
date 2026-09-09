@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import hashlib
 from pathlib import Path
 
@@ -54,7 +59,7 @@ def main() -> None:
     texture = unreal.EditorAssetLibrary.load_asset(f"{package_path}.{ASSET_NAME}") or unreal.EditorAssetLibrary.load_asset(package_path)
     if isinstance(texture, unreal.Texture2D):
         _configure_texture(texture)
-        unreal.EditorAssetLibrary.save_loaded_asset(texture)
+        save_asset_with_texture_budget(texture)
         print(f"main menu cover replaced: {ASSET_NAME} size={texture.blueprint_get_size_x()}x{texture.blueprint_get_size_y()} sha={_sha256(SOURCE)[:16]}")
     else:
         print("import failed: texture not loaded")

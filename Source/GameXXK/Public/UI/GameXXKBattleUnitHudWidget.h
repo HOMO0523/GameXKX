@@ -4,11 +4,13 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/SlateWrapperTypes.h"
 #include "GameXXKBattlePresentation.h"
+#include "UI/GameXXKBattleMechanicPresentation.h"
 #include "GameXXKBattleUnitHudWidget.generated.h"
 
 class UGameXXKBattleUnitResourceWidget;
 class UGameXXKBattleUnitStatusEffectsWidget;
 class UVerticalBox;
+class UGameXXKBattleUnitMechanicsWidget;
 
 /** Ordinary screen-space composite of one authoritative unit's resource and status HUD children. */
 UCLASS()
@@ -19,6 +21,12 @@ class GAMEXXK_API UGameXXKBattleUnitHudWidget : public UUserWidget
 public:
 	void SetUnitView(const FGameXXKBattleUnitHudView& InView);
 	bool PrepareForBoardEmbedding();
+	void SetMechanicView(const FGameXXKUnitMechanicView& View);
+	bool MatchesMechanicView(const FGameXXKUnitMechanicView& View) const;
+	void AdvanceMechanicPresentation(float DeltaSeconds, bool bPending);
+	void ResetMechanicPresentation();
+	UFUNCTION(BlueprintPure, Category="GameXXK|Battle|Test", meta=(DevelopmentOnly))
+	UGameXXKBattleUnitMechanicsWidget* GetMechanicsWidgetForTest() const {return MechanicsWidget;}
 	UGameXXKBattleUnitResourceWidget* GetResourceWidgetForGuide() const
 	{
 		return ResourceWidget;
@@ -58,6 +66,8 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKBattleUnitStatusEffectsWidget> StatusEffectsWidget;
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKBattleUnitMechanicsWidget> MechanicsWidget;
 
 	FGameXXKBattleUnitHudView CachedView;
 	bool bHasUnitView = false;

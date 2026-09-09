@@ -1,5 +1,6 @@
 #include "UI/GameXXKCardTooltipWidget.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKCardNameStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -12,6 +13,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
+#include "GameXXKEquipmentRules.h"
+#include "GameXXKMVPRules.h"
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UObject/UObjectGlobals.h"
 #include "Widgets/SWindow.h"
@@ -22,7 +25,7 @@
 
 namespace
 {
-	constexpr float CardTooltipWidth = 480.0f;
+	constexpr float CardTooltipWidth = GameXXKCardTooltipPresentation::MinimumWidth;
 	constexpr const TCHAR* TooltipPaperTexturePath =
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 
@@ -33,7 +36,7 @@ namespace
 		{
 			Brush.SetResourceObject(Texture);
 			Brush.DrawAs = ESlateBrushDrawType::Box;
-			Brush.ImageSize = FVector2D(CardTooltipWidth, 180.0f);
+			Brush.ImageSize = FVector2D(480.0f, 180.0f);
 			Brush.Margin = FMargin(0.065f);
 		}
 		else
@@ -107,6 +110,21 @@ void UGameXXKCardTooltipWidget::NativeTick(const FGeometry& MyGeometry, const fl
 	RefreshPresentation(false);
 }
 
+FName UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(const FGameXXKRuntimeState& State, const FGameXXKCardDefinition& Definition)
+{
+	if (Definition.Owner == EGameXXKCardOwner::Hero) return FGameXXKEquipmentRules::HeroCharacterId();
+	if (Definition.Owner == EGameXXKCardOwner::QuestNpc) return Definition.NpcId.IsNone() ? Definition.OwnerId : Definition.NpcId;
+	if (Definition.Owner == EGameXXKCardOwner::Profession)
+	{
+		const auto* Companion = State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([&](const auto& C)
+		{
+			return C.bIsActive && C.Role == Definition.Role;
+		});
+		if (Companion) return Companion->InstanceId;
+	}
+	return NAME_None;
+}
+
 void UGameXXKCardTooltipWidget::ConfigureCard(
 	const FGameXXKCardDefinition& Definition,
 	const EGameXXKCardQuality Quality,
@@ -119,6 +137,7 @@ void UGameXXKCardTooltipWidget::ConfigureCard(
 		Inspection.Reset();
 	}
 	ConfiguredCardId = Definition.Id;
+	PresentationWidth = CardTooltipWidth;
 	ConfiguredQuality = DisplayQuality;
 	ConfiguredTitle = Definition.DisplayName;
 	CompactBody = GameXXKCardText::DescribeCompactTooltipBody(
@@ -145,12 +164,13 @@ void UGameXXKCardTooltipWidget::ConfigureDirect(
 	ExpandedBody = RemoveLeadingTitleLine(
 		InTitle.ToString(),
 		InExpandedBody.IsEmpty() ? InCompactBody : InExpandedBody);
+	PresentationWidth = CardTooltipWidth;
 	RefreshPresentation(true);
 }
 
 float UGameXXKCardTooltipWidget::GetFixedWidthForTest() const
 {
-	return CardTooltipWidth;
+	return PresentationWidth;
 }
 
 FString UGameXXKCardTooltipWidget::GetDisplayedTextForTest() const
@@ -324,6 +344,8 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 	TitleFont.OutlineSettings.OutlineSize = 1;
 	TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 	TitleText->SetFont(TitleFont);
+	TitleText->SetLineHeightPercentage(0.85f);
+	TitleText->SetApplyLineHeightToBottomLine(true);
 	TitleText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	Stack->AddChildToVerticalBox(TitleText);
 
@@ -333,7 +355,7 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 	BodyBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UVerticalBoxSlot* BodySlot = Stack->AddChildToVerticalBox(BodyBox))
 	{
-		BodySlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+		BodySlot->SetPadding(FMargin(0.0f, 10.0f, 0.0f, 0.0f));
 	}
 	RefreshPresentation(true);
 }
@@ -354,19 +376,30 @@ void UGameXXKCardTooltipWidget::RefreshPresentation(const bool bForce)
 		return;
 	}
 	TitleText->SetText(ConfiguredTitle);
+	if (!ConfiguredCardId.IsNone()) PresentationWidth = CardTooltipWidth;
+	RootSizeBox->SetWidthOverride(PresentationWidth);
+	TitleText->SetWrapTextAt(PresentationWidth - 44);
 	const FLinearColor TitleColor = ConfiguredQuality == EGameXXKCardQuality::Common ? FLinearColor::White
 		: ConfiguredQuality == EGameXXKCardQuality::Invalid ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
 		: FGameXXKCardQualityRules::GetDisplayColor(ConfiguredQuality);
 	TitleText->SetColorAndOpacity(FSlateColor(TitleColor));
+	GameXXKCardNameStyle::Apply(TitleText, ConfiguredQuality, 1);
+	TitleText->SetVisibility(ConfiguredTitle.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	const FString& Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
+	PresentationWidth = GameXXKCardTooltipPresentation::PreferredWidth(Body);
 	FGameXXKCardTooltipPresentationStyle Style;
+	Style.WrapWidth = PresentationWidth - 44;
 	Style.bPillHelp = bPillHelpDisplayed;
-	GameXXKCardTooltipPresentation::PopulateBody(
-		WidgetTree,
-		BodyBox,
-		ConfiguredTitle.ToString(),
-		Body,
-		Style);
+	do
+	{
+		Style.WrapWidth = PresentationWidth - 44;
+		const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(
+			WidgetTree, BodyBox, ConfiguredTitle.ToString(), Body, Style);
+		if (BodyHeight <= 580 || PresentationWidth >= GameXXKCardTooltipPresentation::MaximumWidth) break;
+		PresentationWidth = FMath::Min(GameXXKCardTooltipPresentation::MaximumWidth, PresentationWidth + 80);
+	} while (true);
+	RootSizeBox->SetWidthOverride(PresentationWidth);
+	TitleText->SetWrapTextAt(PresentationWidth - 44);
 }
 
 bool UGameXXKCardTooltipWidget::ResolveExpandedState() const

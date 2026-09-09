@@ -246,7 +246,7 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("current formatter names the highest-Attack ally target and source"), FormatterCoverageText.Contains(TEXT("攻击最高友方")));
 	TestTrue(TEXT("current formatter explains deterministic priority-enemy selection"), FormatterCoverageText.Contains(TEXT("标记最高")) && FormatterCoverageText.Contains(TEXT("生命比例最低")));
 	TestTrue(TEXT("current formatter names the selected unit's whole side"), FormatterCoverageText.Contains(TEXT("所选目标同阵营全体")));
-	TestTrue(TEXT("current formatter explains named task-NPC search"), FormatterCoverageText.Contains(TEXT("任务 NPC")) && FormatterCoverageText.Contains(TEXT("检索")));
+	TestTrue(TEXT("current formatter explains named task-NPC search"), FormatterCoverageText.Contains(TEXT("该角色未完成的任务牌")) && FormatterCoverageText.Contains(TEXT("检索")));
 	TestTrue(TEXT("current formatter explains Mana-cost changes"), FormatterCoverageText.Contains(TEXT("内力消耗-1")));
 	TestTrue(TEXT("current formatter explains single-target widening"), FormatterCoverageText.Contains(TEXT("扩展为目标所在阵营全体")));
 	TestTrue(TEXT("current formatter explains preserved reaction use"), FormatterCoverageText.Contains(TEXT("反击或格挡")) && FormatterCoverageText.Contains(TEXT("不消耗次数")));
@@ -315,7 +315,8 @@ bool FGameXXKCardTextTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("branch cards group hostile effects under one enemy branch"), YaoYinText.Contains(TEXT("若目标是敌方：")));
 		TestTrue(TEXT("branch cards consume Medicine once per branch"), YaoYinText.Contains(TEXT("消耗出牌者全部药效")));
 		TestTrue(TEXT("branch cards expose the activated Healer formula"), YaoYinText.Contains(TEXT("药方：首次打出本牌时气力+1并激活，本局持续；")));
-		TestTrue(TEXT("Yin-Yang formula describes the health-change listener"), YaoYinText.Contains(TEXT("任一敌我单位实际生命变化时")));
+		TestTrue(TEXT("Yin-Yang formula counts actual health-changing events"),
+			YaoYinText.Contains(TEXT("每笔伤害或治疗使任一角色生命变化时")) && YaoYinText.Contains(TEXT("1点药效")));
 		TestFalse(TEXT("branch-aware Medicine text no longer repeats ally/enemy condition suffixes"), YaoYinText.Contains(TEXT("（当所选目标是友方")) || YaoYinText.Contains(TEXT("（当所选目标是敌方")));
 		TestFalse(TEXT("branch-aware Medicine text no longer claims an unimplemented DoT cleanse"), YaoYinText.Contains(TEXT("恢复8+药效层数生命并清除")));
 	}

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import argparse
 import json
 from pathlib import Path
@@ -49,7 +54,7 @@ def configure_texture(texture: unreal.Texture2D) -> None:
 
 
 def save_texture(texture: unreal.Texture2D, asset_path: str) -> None:
-    if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+    if not save_asset_with_texture_budget(texture):
         raise RuntimeError(f"failed to save imported Texture2D: {asset_path}")
 
 

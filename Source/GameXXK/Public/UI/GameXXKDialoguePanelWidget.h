@@ -11,6 +11,7 @@ class UBorder;
 class UCanvasPanel;
 class UImage;
 class UTextBlock;
+class UScaleBox;
 class UGameXXKDialoguePanelWidget;
 
 DECLARE_DELEGATE(FGameXXKDialogueAdvanceRequested);
@@ -45,6 +46,10 @@ public:
 	void ClearPresentation();
 	void SetAdvanceRequested(FGameXXKDialogueAdvanceRequested Delegate);
 	void SetOptionRequested(FGameXXKDialogueOptionRequested Delegate);
+	void SetPauseRequested(FGameXXKDialogueAdvanceRequested Delegate);
+	void SetHintRequested(FGameXXKDialogueAdvanceRequested Delegate);
+	void SetCompactLayout(bool bCompact);
+	const FGameXXKDialoguePresentationView& GetPresentationView() const { return CurrentView; }
 
 	int32 GetPaperFrameCountForTest() const;
 	int32 GetPortraitCountForTest() const;
@@ -62,7 +67,10 @@ public:
 private:
 	friend class UGameXXKDialogueOptionButton;
 	void BuildProgrammaticLayout();
+	void RefreshCompactLayout();
 	bool RequestOption(int32 OptionIndex);
+	virtual FReply NativeOnKeyDown(const FGeometry& Geometry,const FKeyEvent& Event) override;
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& Geometry,const FPointerEvent& Event) override;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> RootCanvas;
@@ -87,8 +95,14 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> ContinueIndicator;
+	UPROPERTY(Transient) TObjectPtr<UGameXXKDialogueOptionButton> CloseButton;
+	UPROPERTY(Transient) TObjectPtr<UGameXXKDialogueOptionButton> HintButton;
+	UPROPERTY(Transient) TObjectPtr<UScaleBox> CompactPortraitScale;
 
 	FGameXXKDialoguePresentationView CurrentView;
 	FGameXXKDialogueAdvanceRequested AdvanceRequested;
 	FGameXXKDialogueOptionRequested OptionRequested;
+	FGameXXKDialogueAdvanceRequested PauseRequested;
+	FGameXXKDialogueAdvanceRequested HintRequested;
+	bool bCompactLayout = false;
 };

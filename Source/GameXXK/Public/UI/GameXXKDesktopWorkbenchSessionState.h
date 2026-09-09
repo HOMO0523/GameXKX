@@ -21,7 +21,9 @@ enum class EGameXXKDesktopTrainingCenterPage : uint8
 {
 	Backpack,
 	Formation,
-	Talents
+	Talents,
+	Shop,
+	MainStory
 };
 
 UENUM(BlueprintType)
@@ -78,6 +80,11 @@ struct GAMEXXK_API FGameXXKDesktopWorkbenchSessionState
 	bool bValid = false;
 	bool bBackpackExpanded = false;
 	bool bWarehousePanelOpen = false;
+	bool bStoryTaskDrawerOpen = false;
+	FName SelectedMainStoryChapter = NAME_None;
+	bool bAcademyDrawer = false;
+	int32 SelectedAcademyCourseIndex = 0;
+	bool bStoryTaskRewardTab = false;
 	int32 WarehousePageIndex = 0;
 	EGameXXKDesktopTrainingNav ActiveNav = EGameXXKDesktopTrainingNav::None;
 	EGameXXKDesktopTrainingCenterPage ActiveCenterPage =
@@ -108,6 +115,10 @@ struct GAMEXXK_API FGameXXKDesktopWorkbenchSessionState
 	bool operator==(const FGameXXKDesktopWorkbenchSessionState& Other) const
 	{
 		return bValid == Other.bValid
+			&& bAcademyDrawer == Other.bAcademyDrawer
+			&& bStoryTaskDrawerOpen == Other.bStoryTaskDrawerOpen
+			&& SelectedAcademyCourseIndex == Other.SelectedAcademyCourseIndex
+			&& bStoryTaskRewardTab == Other.bStoryTaskRewardTab
 			&& bBackpackExpanded == Other.bBackpackExpanded
 			&& bWarehousePanelOpen == Other.bWarehousePanelOpen
 			&& WarehousePageIndex == Other.WarehousePageIndex

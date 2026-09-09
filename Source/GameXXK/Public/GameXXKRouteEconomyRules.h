@@ -9,7 +9,7 @@ class GAMEXXK_API FGameXXKRouteEconomyRules final
 public:
 	static bool InitializeRoute(
 		FGameXXKCardRunState& CardRun,
-		int32 StartingBalance = 60,
+		int32 StartingBalance = 0,
 		FString* OutError = nullptr);
 
 	static bool AwardNodeOnce(

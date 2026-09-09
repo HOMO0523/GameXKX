@@ -8,10 +8,15 @@ struct FGameXXKRuntimeState;
 class GAMEXXK_API FGameXXKMetaShopRules final
 {
 public:
-	static constexpr int32 EquipmentPackPrice = 100;
+	static constexpr int32 EquipmentPackPrice = 100000;
 	static constexpr int32 CompanionPackPrice = 500;
+	static constexpr int32 MaxPurchaseQuantity = 10;
+	static int32 EquipmentItemLevel(const FGameXXKRuntimeState& State);
+	static bool PurchaseBatch(FGameXXKRuntimeState& State,EGameXXKMetaShopProductId ProductId,int32 Quantity,
+		TArray<FGameXXKMetaShopPurchaseResult>& Results,FText& Message);
 
 	static const TArray<FGameXXKMetaShopProductDefinition>& GetProducts();
+	static const TArray<FGameXXKMetaShopProductDefinition>& GetDesktopProducts();
 	static const FGameXXKMetaShopProductDefinition* FindProduct(EGameXXKMetaShopProductId ProductId);
 	static EGameXXKEquipmentQuality QualityFromRoll(int32 RollOneToHundred);
 	static bool PreviewPurchase(

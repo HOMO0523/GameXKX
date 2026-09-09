@@ -26,9 +26,10 @@ def main() -> None:
         if size != [512, 512]:
             problems.append({"path": object_path, "problem": "wrong_size", "actual": size})
             continue
+        from gamexxk_texture_budget import expected_compression
         expected = {
             "mip_gen_settings": unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS,
-            "compression_settings": unreal.TextureCompressionSettings.TC_EDITOR_ICON,
+            "compression_settings": expected_compression(asset,unreal_module=unreal),
             "lod_group": unreal.TextureGroup.TEXTUREGROUP_UI,
             "filter": unreal.TextureFilter.TF_BILINEAR,
             "address_x": unreal.TextureAddress.TA_CLAMP,

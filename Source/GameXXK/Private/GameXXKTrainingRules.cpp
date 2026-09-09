@@ -82,6 +82,10 @@ namespace
 
 	TArray<FGameXXKTrainingStageDefinition> BuildStages()
 	{
+		constexpr int32 NormalGoldMultiplier = 10;
+		constexpr double PostNormalGoldGrowthPerStage = 1.05;
+		constexpr int32 LastNormalStageGold =
+			(18 + FGameXXKTrainingRules::StagesPerDifficulty * 3) * NormalGoldMultiplier;
 		TArray<FGameXXKTrainingStageDefinition> Stages;
 		Stages.Reserve(27);
 		for (int32 DifficultyIndexValue = 0; DifficultyIndexValue < 3; ++DifficultyIndexValue)
@@ -106,7 +110,18 @@ namespace
 				Stage.BossEnemyId = BossForChapter(Stage.Chapter, ((StageNumber - 1) % 3) + 1);
 				Stage.BossDisplayName = EnemyName(Stage.BossEnemyId);
 				const int32 TierScale = DifficultyIndexValue + 1;
-				Stage.TravelGold = 18 * TierScale + StageNumber * 3;
+				if (Difficulty == EGameXXKTrainingDifficulty::Normal)
+				{
+					Stage.TravelGold = (18 + StageNumber * 3) * NormalGoldMultiplier;
+				}
+				else
+				{
+					// Continue from Normal 3-3 through both difficulty bands; round only the final amount.
+					const int32 GrowthStep = (DifficultyIndexValue - 1)
+						* FGameXXKTrainingRules::StagesPerDifficulty + StageNumber;
+					Stage.TravelGold = FMath::RoundToInt(static_cast<double>(LastNormalStageGold)
+						* FMath::Pow(PostNormalGoldGrowthPerStage, static_cast<double>(GrowthStep)));
+				}
 				Stage.TravelExperience = 10 * TierScale + StageNumber * 2;
 				Stage.NormalChestChance = 0.25f;
 				Stage.AdvancedChestChance = 0.35f;
@@ -733,7 +748,7 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 	// battle-reward offers; only battle-entry enemies are authored by Training.
 	UGameXXKMVPRules::GenerateRouteMapForSeed(State, Seed);
 	State.CardRun.RouteRandomSeed = State.RouteSeed;
-	if (!FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 60, &Error))
+	if (!FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 0, &Error))
 	{
 		State.bHasGeneratedRouteMap = false;
 		State.RouteMapNodes.Reset();

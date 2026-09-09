@@ -371,6 +371,14 @@ bool FGameXXKRelicBarHitTestTest::RunTest(const FString& Parameters)
 	Bar->RefreshFromState();
 
 	TestEqual(TEXT("the acquired relic is rendered"), Bar->GetRenderedRelicCountForTest(), 1);
+	UWidget* RelicSlot = Bar->GetWidgetFromName(TEXT("RelicSlot_0"));
+	TestNotNull(TEXT("the acquired relic has a real hover target"), RelicSlot);
+	if (RelicSlot)
+	{
+		TestEqual(TEXT("the icon slot participates in hit testing"), RelicSlot->GetVisibility(), ESlateVisibility::Visible);
+		TestNotNull(TEXT("the icon owns the shared paper tooltip"), RelicSlot->GetToolTip());
+		TestTrue(TEXT("tooltip text includes the catalog effect"), RelicSlot->GetToolTipText().ToString().Contains(Definitions[0].Description.ToString()));
+	}
 	TestEqual(
 		TEXT("the full-screen relic layer ignores its own hit test so battle buttons underneath remain clickable"),
 		Bar->GetVisibility(),

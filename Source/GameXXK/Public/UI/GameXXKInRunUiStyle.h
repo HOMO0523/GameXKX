@@ -13,6 +13,7 @@ public:
 	static FLinearColor Vermilion();
 	static FLinearColor Jade();
 	static FSlateFontInfo Font(int32 Size, bool bDisplay = false, bool bBold = false);
+	static FSlateFontInfo OutlinedFont(int32 Size, int32 OutlineSize = 2);
 	static FSlateBrush Paper(const FVector2D& Size);
 	static FButtonStyle Action(const FVector2D& Size, bool bPrimary = true);
 	static FButtonStyle Choice(const FVector2D& Size, bool bSelected = false);

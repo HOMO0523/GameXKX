@@ -70,7 +70,7 @@ namespace
 	const FTaskNpcCodexPresentation TaskNpcCodexPresentations[] = {
 		{TEXT("Npc.TusiChief"), TEXT("土司首领"), TEXT("统御·护阵"), TEXT("寨卫"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief")},
 		{TEXT("Npc.SongJinBao"), TEXT("宋金宝"), TEXT("谋略·情报"), TEXT("人情面"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao.T_CardPortrait_Npc_SongJinBao")},
-		{TEXT("Npc.YueBai"), TEXT("月白"), TEXT("术法·灼印"), TEXT("残卷先知"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai")},
+		{TEXT("Npc.YueBai"), TEXT("幽白"), TEXT("术法·灼印"), TEXT("残卷先知"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai")},
 		{TEXT("Npc.ZhouGuangZu"), TEXT("周光祖"), TEXT("医术·地志"), TEXT("草木札记"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_ZhouGuangZu.T_CardPortrait_Npc_ZhouGuangZu")},
 		{TEXT("Npc.JinGui"), TEXT("金贵"), TEXT("市井·策应"), TEXT("市井门路"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_JinGui.T_CardPortrait_Npc_JinGui")},
 		{TEXT("Npc.QiongMeiEr"), TEXT("琼么儿"), TEXT("山野·灵引"), TEXT("苗岭引路"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_QiongMeiEr.T_CardPortrait_Npc_QiongMeiEr")}

@@ -117,16 +117,9 @@ FName GameXXKLevelFlow::QingshanTownGameplayMap()
 	return QingshanTownMap;
 }
 
-FString GameXXKLevelFlow::CarriagePreviewTravelOptions()
-{
-	return TEXT("GameXXKIntro=CarriagePreview");
-}
 
-bool GameXXKLevelFlow::HasCarriagePreviewTravelOption(const FString& Options)
-{
-	return UGameplayStatics::ParseOption(Options, TEXT("GameXXKIntro"))
-		== TEXT("CarriagePreview");
-}
+
+
 
 FName GameXXKLevelFlow::Tutorial01Map()
 {
@@ -150,12 +143,7 @@ bool GameXXKLevelFlow::IsTutorial01MapPackage(
 	return MapPackageMatches(CurrentPackageName, Tutorial01MapName);
 }
 
-bool GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(
-	const FString& Options)
-{
-	return Options == CarriagePreviewTravelOptions()
-		|| HasCarriagePreviewTravelOption(Options);
-}
+
 
 FName GameXXKLevelFlow::TownToggleTargetForMapPackage(
 	const FString& CurrentPackageName)

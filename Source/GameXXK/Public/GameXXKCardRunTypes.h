@@ -18,6 +18,9 @@ struct GAMEXXK_API FGameXXKResolvedEnemyIntentEffect
 	EGameXXKEnemyIntentEffectType Type = EGameXXKEnemyIntentEffectType::DirectDamage;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	EGameXXKCardDamageElement DamageElement = EGameXXKCardDamageElement::None;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TArray<FName> TargetUnitIds;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

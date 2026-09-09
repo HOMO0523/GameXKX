@@ -1,7 +1,9 @@
 #include "MVP/GameXXKSaveMigration.h"
 #include "GameXXKTrainingSettlementRules.h"
+#include "Narrative/GameXXKMainStoryRules.h"
 
 #include "GameXXKCardRules.h"
+#include "GameXXKResistanceRules.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardBattleAdapter.h"
@@ -2523,6 +2525,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, MigrationError);
 		return false;
 	}
+	if (Source.SaveVersion < MainStoryIntroducedSaveVersion)
+	{
+		Candidate.RuntimeState.NarrativeProgress.MainStory = FGameXXKMainStorySession();
+	}
 	if (Source.SaveVersion < TrainingSettlementIntroducedSaveVersion)
 	{
 		Candidate.RuntimeState.Training.PendingSettlement = FGameXXKTrainingSettlementReceipt();
@@ -2544,6 +2550,18 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		for (auto& Unit : Battle.Units)
 		{
 			Unit.SettlementHealthLost = Unit.SettlementHealingReceived = Unit.SettlementArmorGenerated = 0;
+		}
+	}
+	if (Source.SaveVersion < ElementalResistanceIntroducedSaveVersion)
+	{
+		auto& Battle = Candidate.RuntimeState.CardRun.ActiveBattle;
+		for (auto& Unit : Battle.Units) FGameXXKResistanceRules::InitializeUnitProfile(Unit);
+		for (auto& Intent : Candidate.RuntimeState.CardRun.EnemyIntents)
+		{
+			const auto* SourceUnit = Battle.Units.FindByPredicate([&Intent](const auto& Unit){return Unit.UnitId == Intent.SourceUnitId;});
+			if (!SourceUnit) continue;
+			const auto Element = FGameXXKEnemyCatalog::GetIntentDamageElement(SourceUnit->EnemyDefinitionId, Intent.IntentDefinitionId);
+			for (auto& Effect : Intent.Effects) if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage) Effect.DamageElement = Element;
 		}
 	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
@@ -2604,6 +2622,7 @@ bool FGameXXKSaveMigration::TryRestoreRuntimeState(
 bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& State, FString& OutError)
 {
 	OutError.Reset();
+	if (!FGameXXKMainStoryRules::ValidateState(State, &OutError)) return false;
 	if (!ValidateNarrativeStageGuideState(State, OutError))
 	{
 		return false;
@@ -2648,9 +2667,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 	// Accepted-without-follower is a legal current save: the guide NPC stays in
 	// town until the player recruits it through the dialog's 入队 action. Legacy
 	// saves are still upgraded to a joined follower by the version migration path.
-	const int32 EffectiveMaxHP = FMath::Max(
-		1,
-		State.PlayerMaxHP + FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth));
+	const int32 EffectiveMaxHP = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
 	const int32 EffectiveMaxMP = FMath::Max(
 		1,
 		State.PlayerMaxMP + FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana));

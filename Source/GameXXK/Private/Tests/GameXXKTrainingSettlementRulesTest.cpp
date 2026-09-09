@@ -93,7 +93,7 @@ bool FGameXXKSettlementMigrationTest::RunTest(const FString& Parameters)
 	const int32 Gold = Old.RuntimeState.PlayerGold;
 	FGameXXKSaveState Migrated; FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("v36 upgrades without fabricating a past receipt"), FGameXXKSaveMigration::MigrateToCurrent(Old, Migrated, Report));
-	TestEqual(TEXT("schema uses the actual next version"), Migrated.SaveVersion, 37);
+	TestEqual(TEXT("schema uses the current version"), Migrated.SaveVersion, FGameXXKSaveMigration::CurrentSaveVersion);
 	TestFalse(TEXT("old clear flags do not create a pending receipt"), Migrated.RuntimeState.Training.PendingSettlement.ReceiptId.IsValid());
 	TestEqual(TEXT("migration grants no gold"), Migrated.RuntimeState.PlayerGold, Gold);
 	return true;

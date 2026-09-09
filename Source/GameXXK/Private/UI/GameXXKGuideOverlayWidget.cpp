@@ -155,7 +155,7 @@ int32 UGameXXKGuideSpotlightWidget::NativePaint(
 		FSlateBrush OutlineBrush;
 		OutlineBrush.DrawAs = ESlateBrushDrawType::Box;
 		OutlineBrush.TintColor = FSlateColor(
-			FLinearColor(0.16f, 0.62f, 0.78f, 0.96f));
+			FLinearColor(0.82f, 0.66f, 0.28f, 0.96f));
 		for (const FSlateRect& Cutout : PaddedCutouts)
 		{
 			PaintRect(OutDrawElements, AllottedGeometry, ChildLayer,

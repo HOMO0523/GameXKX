@@ -83,7 +83,7 @@ bool FGameXXKCharacterCatalogContractTest::RunTest(const FString& Parameters)
 
 	FGameXXKCharacterDefinition YueBai;
 	YueBai.CharacterId = TEXT("Character.YueBai");
-	YueBai.DisplayName = FText::FromString(TEXT("月白"));
+	YueBai.DisplayName = FText::FromString(TEXT("幽白"));
 	YueBai.SupportedActionIds = {TEXT("Narrative.Appear"), TEXT("Narrative.Idle")};
 	Catalog->Characters.Add(YueBai);
 

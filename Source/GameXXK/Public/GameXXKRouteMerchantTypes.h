@@ -148,7 +148,7 @@ struct GAMEXXK_API FGameXXKRouteMerchantView
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 PlayerGold = 0;
 
-	/** Deprecated UI compatibility alias; mirrors PlayerGold and is never route-travel money. */
+	/** Spendable physical travel money from backpack and warehouse. */
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	int32 RouteTravelMoney = 0;
 

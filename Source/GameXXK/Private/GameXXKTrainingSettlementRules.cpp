@@ -12,10 +12,10 @@ namespace
 	{
 		if (Id == TEXT("Npc.TusiChief")) return FText::FromString(TEXT("土司首领"));
 		if (Id == TEXT("Npc.SongJinBao")) return FText::FromString(TEXT("宋金宝"));
-		if (Id == TEXT("Npc.YueBai")) return FText::FromString(TEXT("月白"));
+		if (Id == TEXT("Npc.YueBai")) return FText::FromString(TEXT("幽白"));
 		if (Id == TEXT("Npc.ZhouGuangZu")) return FText::FromString(TEXT("周光祖"));
 		if (Id == TEXT("Npc.JinGui")) return FText::FromString(TEXT("金贵"));
-		if (Id == TEXT("Npc.QiongMeiEr")) return FText::FromString(TEXT("琼梅儿"));
+		if (Id == TEXT("Npc.QiongMeiEr")) return FText::FromString(TEXT("琼幺儿"));
 		return FText::FromString(TEXT("NPC"));
 	}
 	void Accumulate(int64& Total, int64 Value) { Total += FMath::Min<int64>(FMath::Max<int64>(0, Value), MAX_int64 - Total); }

@@ -55,6 +55,13 @@ def run() -> dict[str, object]:
         if actual_hash != str(entry["sha256"]).upper():
             raise RuntimeError(f"SHA256 mismatch for {semantic_id}: {actual_hash}")
 
+        # The original approval remains historical after a scoped art revision.
+        # Its dedicated importer owns that replacement; don't restore old pixels.
+        if entry.get("runtimeRevision"):
+            results.append({"id": semantic_id, "status": "preserved-runtime-revision",
+                            "revision": entry["runtimeRevision"]})
+            continue
+
         task = unreal.AssetImportTask()
         task.filename = str(source)
         task.destination_path = DESTINATION

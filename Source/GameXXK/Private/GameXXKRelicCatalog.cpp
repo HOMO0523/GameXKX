@@ -60,7 +60,7 @@ namespace
 			MakeRelic(TEXT("Relic.CandleStub"), TEXT("长明烛心"), TEXT("击败敌人时，全队恢复4点气血。"), TEXT("CandleStub"), T::EnemyDefeated, E::HealParty, 4),
 			MakeRelic(TEXT("Relic.FoxMask"), TEXT("旧狐面"), TEXT("击败敌人时，其余敌人获得1层流血。"), TEXT("FoxMask"), T::EnemyDefeated, E::BleedAllEnemies, 1),
 			MakeRelic(TEXT("Relic.StoneLion"), TEXT("袖珍石狮"), TEXT("击败敌人时，全队获得3点护甲。"), TEXT("StoneLion"), T::EnemyDefeated, E::GainPartyArmor, 3),
-			MakeRelic(TEXT("Relic.WineCup"), TEXT("缺口酒盏"), TEXT("完成路线节点时获得3行旅钱。"), TEXT("WineCup"), T::RouteNodeCompleted, E::GainRouteTravelMoney, 3, true),
+			MakeRelic(TEXT("Relic.WineCup"), TEXT("缺口酒盏"), TEXT("旧时行旅之物，现已不再产出行旅钱。"), TEXT("WineCup"), T::RouteNodeCompleted, E::GainRouteTravelMoney, 3, true, false),
 			MakeRelic(TEXT("Relic.HerbBasket"), TEXT("百草小篓"), TEXT("完成路线节点时，主角恢复3点气血。"), TEXT("HerbBasket"), T::RouteNodeCompleted, E::HealPlayer, 3),
 			MakeRelic(TEXT("Relic.PaperCrane"), TEXT("祈愿纸鹤"), TEXT("完成路线节点时，本路线最大气血提高2点。"), TEXT("PaperCrane"), T::RouteNodeCompleted, E::GainRouteMaxHealth, 2),
 			MakeRelic(TEXT("Relic.BrokenArrow"), TEXT("折锋箭簇"), TEXT("完成路线节点时，本路线攻击提高1点。"), TEXT("BrokenArrow"), T::RouteNodeCompleted, E::GainRouteAttack, 1),

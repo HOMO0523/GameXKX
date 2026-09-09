@@ -37,19 +37,19 @@ bool FGameXXKGemCatalogTest::RunTest(const FString& Parameters)
 		TEXT("普通"), TEXT("稀有"), TEXT("珍稀"), TEXT("传奇"), TEXT("不朽"),
 		TEXT("至宝"), TEXT("超凡"), TEXT("天界"), TEXT("登神"), TEXT("宇宙"),
 	};
-	const int32 ExpectedAttackDefense[] = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512};
-	const int32 ExpectedHealth[] = {10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120};
+	const int32 ExpectedAttackDefense[] = {1, 2, 4, 8, 16, 32, 58, 95, 137, 172};
+	const int32 ExpectedHealth[] = {5, 10, 20, 40, 80, 160, 290, 475, 685, 860};
 	const TArray<FName> GemIds = FGameXXKGemRules::GetAllItemIds();
-	TestEqual(TEXT("three types times ten qualities"), GemIds.Num(), 30);
+	TestEqual(TEXT("seventeen types times ten qualities"), GemIds.Num(), 170);
 	TSet<FName> UniqueIds;
 	for (const FName GemId : GemIds)
 	{
 		UniqueIds.Add(GemId);
 	}
-	TestEqual(TEXT("all gem item ids are unique"), UniqueIds.Num(), 30);
+	TestEqual(TEXT("all gem item ids are unique"), UniqueIds.Num(), 170);
 
 	const TArray<FName> KnownIds = UGameXXKMVPRules::GetKnownItemIds();
-	for (int32 TypeRank = 1; TypeRank <= 3; ++TypeRank)
+	for (int32 TypeRank = 1; TypeRank <= 17; ++TypeRank)
 	{
 		const EGameXXKGemType Type = static_cast<EGameXXKGemType>(TypeRank);
 		for (int32 Rank = 1; Rank <= 10; ++Rank)
@@ -64,7 +64,7 @@ bool FGameXXKGemCatalogTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("parsed gem quality is exact"), ParsedQuality, Quality);
 			TestEqual(TEXT("gem quality display is exact"),
 				FGameXXKGemRules::GetQualityDisplayName(Quality).ToString(), FString(QualityNames[Rank - 1]));
-			const int32 ExpectedBonus = Type == EGameXXKGemType::MaxHealth
+			const int32 ExpectedBonus = TypeRank > 3 ? 0 : Type == EGameXXKGemType::MaxHealth
 				? ExpectedHealth[Rank - 1]
 				: ExpectedAttackDefense[Rank - 1];
 			TestEqual(TEXT("gem stat bonus is exact"), FGameXXKGemRules::GetStatBonus(Type, Quality), ExpectedBonus);
@@ -161,12 +161,12 @@ bool FGameXXKGemSocketProjectionTest::RunTest(const FString& Parameters)
 		Collection, FGameXXKEquipmentRules::HeroCharacterId(), Bare, WithGems, &Error));
 	TestTrue(TEXT("empty-socket loadout projects"), FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 		EmptySocketCollection, FGameXXKEquipmentRules::HeroCharacterId(), Bare, WithoutGems, &Error));
-	TestEqual(TEXT("socket attack total"), WithGems.SocketGemFlatStats.Attack, 513);
+	TestEqual(TEXT("socket attack total"), WithGems.SocketGemFlatStats.Attack, 173);
 	TestEqual(TEXT("socket defense total"), WithGems.SocketGemFlatStats.Defense, 2);
-	TestEqual(TEXT("socket max-health total"), WithGems.SocketGemFlatStats.MaxHealth, 5130);
-	TestEqual(TEXT("socket attack is a final flat delta"), WithGems.AttributesBeforeRoute.Attack - WithoutGems.AttributesBeforeRoute.Attack, 513);
+	TestEqual(TEXT("socket max-health total"), WithGems.SocketGemFlatStats.MaxHealth, 865);
+	TestEqual(TEXT("socket attack is a final flat delta"), WithGems.AttributesBeforeRoute.Attack - WithoutGems.AttributesBeforeRoute.Attack, 173);
 	TestEqual(TEXT("socket defense is a final flat delta"), WithGems.AttributesBeforeRoute.Defense - WithoutGems.AttributesBeforeRoute.Defense, 2);
-	TestEqual(TEXT("socket health is a final flat delta"), WithGems.AttributesBeforeRoute.MaxHealth - WithoutGems.AttributesBeforeRoute.MaxHealth, 5130);
+	TestEqual(TEXT("socket health is a final flat delta"), WithGems.AttributesBeforeRoute.MaxHealth - WithoutGems.AttributesBeforeRoute.MaxHealth, 865);
 
 	const TArray<uint8> Bytes = SerializeCollection(Collection);
 	FGameXXKEquipmentCollectionState Reloaded;

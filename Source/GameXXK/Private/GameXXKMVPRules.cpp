@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKTalentRules.h"
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCharacterStatRules.h"
@@ -14,6 +15,7 @@
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKTravelMoneyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKRouteMerchantRules.h"
 #include "GameXXKRouteSettlementRules.h"
@@ -213,6 +215,7 @@ namespace GameXXKMVP
 	static TArray<FName> GetKnownItemIds()
 	{
 		TArray<FName> Result = {
+			FGameXXKTravelMoneyRules::ItemId(),
 			ItemHealingPowderName,
 			ItemEnhancementStoneName,
 			ItemQingshanRouteSealName,
@@ -249,6 +252,11 @@ namespace GameXXKMVP
 
 	static bool GetItemDef(FName ItemId, FGameXXKItemDef& OutDef)
 	{
+		if (ItemId == FGameXXKTravelMoneyRules::ItemId())
+		{
+			OutDef = MakeItem(ItemId, TEXT("行旅钱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
+			return true;
+		}
 		EGameXXKGemType GemType;
 		EGameXXKGemQuality GemQuality;
 		if (FGameXXKGemRules::TryParseItemId(ItemId, GemType, GemQuality))
@@ -421,9 +429,8 @@ namespace GameXXKMVP
 
 	static void RecalculatePlayerStats(FGameXXKRuntimeState& State, bool bPreserveMissingResources = true)
 	{
-		const int32 RouteMaxHP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth);
 		const int32 RouteMaxMP = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana);
-		const int32 OldMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
+		const int32 OldMaxHP = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
 		const int32 MissingHP = bPreserveMissingResources ? FMath::Max(0, OldMaxHP - State.PlayerHP) : 0;
 
 		State.PlayerLevel = FMath::Clamp(State.PlayerLevel, 1, FGameXXKCharacterStatRules::MaxCharacterLevel);
@@ -450,7 +457,7 @@ namespace GameXXKMVP
 			State.PlayerSpeed = BareStats.Speed;
 		}
 
-		const int32 NewEffectiveMaxHP = FMath::Max(1, State.PlayerMaxHP + RouteMaxHP);
+		const int32 NewEffectiveMaxHP = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
 		const int32 NewEffectiveMaxMP = FMath::Max(1, State.PlayerMaxMP + RouteMaxMP);
 		State.PlayerHP = FMath::Clamp(NewEffectiveMaxHP - MissingHP, 0, NewEffectiveMaxHP);
 		State.PlayerMP = bPreserveMissingResources
@@ -906,7 +913,9 @@ namespace GameXXKMVP
 			return false;
 		}
 
-		const int64 TotalTravelMoney = static_cast<int64>(BaseTravelMoney) + RelicTravelMoney;
+		// Keep the one-time receipt gate for non-currency rewards. Physical travel
+		// money is only acquired from chest loot or the dedicated outside bundle.
+		const int64 TotalTravelMoney = 0;
 		if (BaseTravelMoney < 0 || TotalTravelMoney < 0 || TotalTravelMoney > MAX_int32)
 		{
 			return false;
@@ -1432,7 +1441,7 @@ namespace GameXXKMVP
 		}
 
 		const FGameXXKBattleRuntimeUnit& Hero = State.ActiveBattleParty[0];
-		State.PlayerHP = FMath::Clamp(Hero.HP, 0, State.PlayerMaxHP);
+		State.PlayerHP = FMath::Clamp(Hero.HP, 0, FGameXXKTalentRules::GetEffectiveHeroMaxHP(State));
 		State.PlayerMP = FMath::Clamp(Hero.MP, 0, State.PlayerMaxMP);
 	}
 
@@ -1991,7 +2000,7 @@ bool UGameXXKMVPRules::EnterDungeon(FGameXXKRuntimeState& State)
 	{
 		return false;
 	}
-	if (!FGameXXKRouteEconomyRules::InitializeRoute(Candidate.CardRun, 60, &CardRunError))
+	if (!FGameXXKRouteEconomyRules::InitializeRoute(Candidate.CardRun, 0, &CardRunError))
 	{
 		return false;
 	}
@@ -2764,10 +2773,9 @@ bool UGameXXKMVPRules::ResolveCampReward(
 	FGameXXKRuntimeState& State,
 	const bool bHealNow)
 {
-	// bHealNow is a serialized Blueprint pin name and keeps its literal meaning:
-	// true heals every represented active party member by ceil(30% MaxHP), while
-	// false grants 100 route-local money. No item or relic is created here.
-	constexpr int32 CampRouteMoneyReward = 100;
+	// Keep the serialized Blueprint pin for compatibility. The approved primary
+	// reward is now the life-saving relic; healing occurs when that relic triggers.
+	constexpr int32 CampRouteMoneyReward = 0;
 	const auto StageRewardUnlessAlreadyReceipted = [bHealNow](
 		FGameXXKRuntimeState& Candidate,
 		const bool bReceiptAlreadyApplied)
@@ -2776,29 +2784,7 @@ bool UGameXXKMVPRules::ResolveCampReward(
 		{
 			return true;
 		}
-		const int32 EffectiveHeroMaxHealth = FMath::Max(
-			1,
-			Candidate.PlayerMaxHP
-				+ FMath::Max(0, Candidate.CardRun.RouteAttributeBonuses.MaxHealth));
-		const int32 HeroHealing = FMath::DivideAndRoundUp(EffectiveHeroMaxHealth * 30, 100);
-		Candidate.PlayerHP = FMath::Min(
-			EffectiveHeroMaxHealth,
-			Candidate.PlayerHP + HeroHealing);
-		for (FGameXXKBattleRuntimeUnit& Unit : Candidate.ActiveBattleParty)
-		{
-			if (Unit.bEnemy || Unit.MaxHP <= 0)
-			{
-				continue;
-			}
-			const int32 Healing = FMath::DivideAndRoundUp(Unit.MaxHP * 30, 100);
-			Unit.HP = FMath::Min(Unit.MaxHP, Unit.HP + Healing);
-			if (Unit.Id == TEXT("Player"))
-			{
-				Unit.HP = Candidate.PlayerHP;
-				Unit.MaxHP = EffectiveHeroMaxHealth;
-			}
-		}
-		return true;
+		return FGameXXKRelicRules::AcquireRelic(Candidate, FGameXXKRelicRules::LifeSavingTalismanId());
 	};
 	const int32 RouteMoneyReward = bHealNow ? 0 : CampRouteMoneyReward;
 
@@ -2916,6 +2902,16 @@ bool UGameXXKMVPRules::PurchaseRouteMerchant(
 bool UGameXXKMVPRules::CancelPendingRouteMerchantPurchase(FGameXXKRuntimeState& State, FString* OutError)
 {
 	return FGameXXKRouteMerchantRules::CancelPendingPurchase(State, OutError);
+}
+
+bool UGameXXKMVPRules::ResolveStoryRouteNode(FGameXXKRuntimeState& State, const int32 NodeId)
+{
+	if (!State.bHasGeneratedRouteMap || State.CardRun.bHasActiveCardBattle
+		|| !State.ReachableRouteNodeIds.Contains(NodeId) || State.VisitedRouteNodeIds.Contains(NodeId)) return false;
+	const FGameXXKRuntimeState Before = State;
+	if (!GameXXKMVP::SettleGeneratedRouteNode(State, Before, NodeId, 0)) return false;
+	if (State.Training.bChallengeActive) State.CurrentMapId = TEXT("DesktopTrainingHUD");
+	return true;
 }
 
 bool UGameXXKMVPRules::ResolveMerchantRouteNode(FGameXXKRuntimeState& State)
@@ -3292,7 +3288,8 @@ bool UGameXXKMVPRules::UseItem(FGameXXKRuntimeState& State, FName ItemId)
 	{
 		return false;
 	}
-	const bool bCanHealHP = Def.HealAmount > 0 && State.PlayerHP < State.PlayerMaxHP;
+	const int32 EffectiveMaxHP = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
+	const bool bCanHealHP = Def.HealAmount > 0 && State.PlayerHP < EffectiveMaxHP;
 	const bool bCanHealMP = Def.MPHealAmount > 0 && State.PlayerMP < State.PlayerMaxMP;
 	if (!bCanHealHP && !bCanHealMP)
 	{
@@ -3302,7 +3299,7 @@ bool UGameXXKMVPRules::UseItem(FGameXXKRuntimeState& State, FName ItemId)
 	{
 		return false;
 	}
-	State.PlayerHP = FMath::Min(State.PlayerMaxHP, State.PlayerHP + Def.HealAmount);
+	State.PlayerHP = static_cast<int32>(FMath::Min<int64>(EffectiveMaxHP,static_cast<int64>(State.PlayerHP)+Def.HealAmount));
 	State.PlayerMP = FMath::Min(State.PlayerMaxMP, State.PlayerMP + Def.MPHealAmount);
 	return true;
 }

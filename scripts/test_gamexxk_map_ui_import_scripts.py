@@ -12,6 +12,8 @@ import unittest
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 IMPORTER_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_import_map_ui_assets.py"
 VALIDATOR_PATH = PROJECT_ROOT / "Content" / "Python" / "gamexxk_validate_map_ui_assets.py"
+if str(IMPORTER_PATH.parent) not in sys.path:
+    sys.path.insert(0,str(IMPORTER_PATH.parent))
 
 EXPECTED_IMPORTS = (
     ("WorldMap", "world_map_terrain.png", "T_WorldMap_Terrain"),

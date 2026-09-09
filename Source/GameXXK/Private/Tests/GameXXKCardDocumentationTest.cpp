@@ -92,7 +92,7 @@ namespace GameXXKCardDocumentationTest
 	{
 		if (OwnerId == TEXT("Npc.TusiChief")) return TEXT("土司首领");
 		if (OwnerId == TEXT("Npc.SongJinBao")) return TEXT("宋金宝");
-		if (OwnerId == TEXT("Npc.YueBai")) return TEXT("月白");
+		if (OwnerId == TEXT("Npc.YueBai")) return TEXT("幽白");
 		if (OwnerId == TEXT("Npc.ZhouGuangZu")) return TEXT("周光祖");
 		if (OwnerId == TEXT("Npc.JinGui")) return TEXT("金贵");
 		if (OwnerId == TEXT("Npc.QiongMeiEr")) return TEXT("琼么儿");

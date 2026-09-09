@@ -426,6 +426,30 @@ FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::Resol
 	return Clip;
 }
 
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveLightningStrikeClip()
+{
+	FGameXXKBattleAnimationClipDescriptor Clip;
+	Clip.AssetId = TEXT("VerticalLightning");
+	Clip.TexturePath = FSoftObjectPath(TEXT("/Game/GameXXK/UI/Battle/VFX/VerticalLightning/T_VerticalLightning.T_VerticalLightning"));
+	Clip.FrameCount = 6;
+	Clip.Columns = 8;
+	Clip.Rows = 8;
+	Clip.SourceFramesPerSecond = 20.0f;
+	return Clip;
+}
+
+FGameXXKBattleAnimationClipDescriptor FGameXXKBattleAnimationPresentation::ResolveElementalHitClip(EGameXXKCardDamageElement Element)
+{
+	if (Element == EGameXXKCardDamageElement::Lightning) return ResolveLightningStrikeClip();
+	if (Element != EGameXXKCardDamageElement::Fire && Element != EGameXXKCardDamageElement::Frost) return {};
+	const FString Type = Element == EGameXXKCardDamageElement::Fire ? TEXT("Fire") : TEXT("Frost");
+	FGameXXKBattleAnimationClipDescriptor Clip;
+	Clip.AssetId = Type + TEXT("Hit");
+	Clip.TexturePath = FSoftObjectPath(FString::Printf(TEXT("/Game/GameXXK/UI/Battle/VFX/ElementalHits/T_%sHit.T_%sHit"), *Type, *Type));
+	Clip.FrameCount = 6; Clip.Columns = Clip.Rows = 8; Clip.SourceFramesPerSecond = 20.0f;
+	return Clip;
+}
+
 FSoftObjectPath FGameXXKBattleAnimationPresentation::ResolveIdleFlipbookPath(
 	const FName RuntimeUnitId,
 	const bool bEnemy)
@@ -495,6 +519,11 @@ TArray<FGameXXKBattlePresentationEvent> FGameXXKBattleAnimationPresentation::Bui
 		Event.TargetArmorBefore = Damage.TargetArmorBefore;
 		Event.TargetArmorAfter = Damage.TargetArmorAfter;
 		Event.HealthDamage = Damage.HealthDamage;
+		Event.DamageCause = Damage.Cause;
+		Event.bLightningStrike = Damage.bLightningStrike;
+		Event.Element = Damage.Element != EGameXXKCardDamageElement::None ? Damage.Element
+			: Damage.bLightningStrike ? EGameXXKCardDamageElement::Lightning : EGameXXKCardDamageElement::None;
+		Event.ManaDrained = Damage.ManaDrained;
 		Event.TargetHealthBefore = Damage.TargetHealthBefore;
 		Event.TargetHealthAfter = Damage.TargetHealthAfter;
 		Event.bAvoided = Damage.bAvoidedByAgility;

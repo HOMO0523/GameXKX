@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import json
 from pathlib import Path
 
@@ -65,7 +70,7 @@ def import_texture(source: Path, asset_name: str) -> str:
     existing_texture = unreal.EditorAssetLibrary.load_asset(asset_object_path) or unreal.EditorAssetLibrary.load_asset(asset_path)
     if isinstance(existing_texture, unreal.Texture2D):
         _configure_texture(existing_texture)
-        unreal.EditorAssetLibrary.save_loaded_asset(existing_texture)
+        save_asset_with_texture_budget(existing_texture)
         return existing_texture.get_path_name()
 
     task = unreal.AssetImportTask()
@@ -83,7 +88,7 @@ def import_texture(source: Path, asset_name: str) -> str:
         asset_exists = unreal.EditorAssetLibrary.does_asset_exist(asset_object_path) or unreal.EditorAssetLibrary.does_asset_exist(asset_path)
         raise RuntimeError(f"failed to import Texture2D: {asset_path}; exists={asset_exists}; loaded_class={texture_class}")
     _configure_texture(texture)
-    unreal.EditorAssetLibrary.save_loaded_asset(texture)
+    save_asset_with_texture_budget(texture)
     return texture.get_path_name()
 
 

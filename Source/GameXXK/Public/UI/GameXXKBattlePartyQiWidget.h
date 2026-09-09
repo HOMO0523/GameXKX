@@ -34,6 +34,7 @@ public:
 
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& Geometry,float DeltaTime) override;
 
 private:
 	void EnsureWidgetTree();
@@ -52,4 +53,6 @@ private:
 	TObjectPtr<UTextBlock> QiText;
 
 	int32 SharedQi = 0;
+	bool bQiInitialized = false;
+	float QiPulseAge = 1;
 };

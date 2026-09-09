@@ -107,21 +107,6 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 			TEXT("/Game/GameXXK/Maps/UEDPIE_0_L_DesktopTrainingHUD")),
 		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
 	TestEqual(
-		TEXT("carriage preview target is the playable Qingshan map"),
-		GameXXKLevelFlow::QingshanTownGameplayMap(),
-		FName(TEXT("/Game/GameXXK/Maps/Prototype/L_Qingshan_AsianVillage_Demo")));
-	TestEqual(
-		TEXT("carriage preview option is stable"),
-		GameXXKLevelFlow::CarriagePreviewTravelOptions(),
-		FString(TEXT("GameXXKIntro=CarriagePreview")));
-	TestTrue(
-		TEXT("carriage option parses from a travelled URL"),
-		GameXXKLevelFlow::HasCarriagePreviewTravelOption(
-			TEXT("?GameXXKIntro=CarriagePreview")));
-	TestFalse(
-		TEXT("ordinary town travel is not a carriage preview"),
-		GameXXKLevelFlow::HasCarriagePreviewTravelOption(TEXT("")));
-	TestEqual(
 		TEXT("tutorial 0-1 map is isolated"),
 		GameXXKLevelFlow::Tutorial01Map(),
 		FName(TEXT("/Game/GameXXK/Maps/Tutorial/L_Tutorial_0_1")));
@@ -144,13 +129,6 @@ bool FGameXXKLevelFlowTest::RunTest(const FString& Parameters)
 		TEXT("ordinary route battle is never tutorial 0-1"),
 		GameXXKLevelFlow::IsTutorial01MapPackage(
 			TEXT("/Game/GameXXK/Maps/L_RouteMap")));
-	TestTrue(
-		TEXT("carriage preview closes only the expanded backpack before travel"),
-		GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(
-			GameXXKLevelFlow::CarriagePreviewTravelOptions()));
-	TestFalse(
-		TEXT("ordinary town travel preserves its existing session policy"),
-		GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(FString()));
 	TestEqual(
 		TEXT("playable Qingshan town exits to the desktop HUD"),
 		GameXXKLevelFlow::TownToggleTargetForMapPackage(

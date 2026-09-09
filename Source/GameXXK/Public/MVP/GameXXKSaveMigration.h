@@ -73,7 +73,14 @@ public:
 	static constexpr int32 EnemyPhaseAndTrainingFormationIntroducedSaveVersion = 36;
 	/** v37 retains an already-applied Training Boss receipt until explicit acknowledgement. */
 	static constexpr int32 TrainingSettlementIntroducedSaveVersion = 37;
-	static constexpr int32 CurrentSaveVersion = 37;
+	/** v38: six authored chapters, per-node reward receipts and a shared story journey. */
+	static constexpr int32 MainStoryIntroducedSaveVersion = 38;
+	/** v39: appended gem types and optional per-wearer / DOT-source save fields.
+	 * Tagged-property loading leaves legacy maps empty and preserves their base status damage. */
+	static constexpr int32 GemMechanicsIntroducedSaveVersion = 39;
+	/** v40: per-unit innate resistance snapshots and elemental mitigation semantics. */
+	static constexpr int32 ElementalResistanceIntroducedSaveVersion = 40;
+	static constexpr int32 CurrentSaveVersion = 40;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

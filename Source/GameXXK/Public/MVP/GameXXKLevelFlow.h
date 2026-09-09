@@ -19,10 +19,6 @@ namespace GameXXKLevelFlow
 	GAMEXXK_API bool IsDesktopTrainingHUDMapPackage(const FString& CurrentPackageName);
 	/** Stable playable 3D Qingshan target used only by explicit scene requests. */
 	GAMEXXK_API FName QingshanTownGameplayMap();
-	/** Transient URL options for the repeatable carriage preview. */
-	GAMEXXK_API FString CarriagePreviewTravelOptions();
-	/** True only when the travelled URL explicitly requests the carriage preview. */
-	GAMEXXK_API bool HasCarriagePreviewTravelOption(const FString& Options);
 	/** Isolated pure-2D tutorial battle map; ordinary map routing never resolves here. */
 	GAMEXXK_API FName Tutorial01Map();
 	/** Transient URL option required by the isolated tutorial map. */
@@ -31,8 +27,7 @@ namespace GameXXKLevelFlow
 	GAMEXXK_API bool HasTutorial01TravelOption(const FString& Options);
 	/** True only for the isolated tutorial map package, including PIE prefixes. */
 	GAMEXXK_API bool IsTutorial01MapPackage(const FString& CurrentPackageName);
-	/** Story travel closes the expanded backpack; ordinary town travel keeps its session policy. */
-	GAMEXXK_API bool ShouldCollapseBackpackForTravelOptions(const FString& Options);
+	/** Explicit legacy town/desktop map toggle. */
 	GAMEXXK_API FName TownToggleTargetForMapPackage(
 		const FString& CurrentPackageName);
 	/** Zero keeps legacy maps uncapped; the HUD-only desktop surface is fixed at 30 FPS. */

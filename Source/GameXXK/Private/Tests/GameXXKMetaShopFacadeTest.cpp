@@ -21,7 +21,7 @@ bool FGameXXKMetaShopFacadeTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
-	State.PlayerGold = 1000;
+	State.PlayerGold = 1000000;
 
 	const TArray<FGameXXKMetaShopProductDefinition> Products = Subsystem->GetMetaShopProducts();
 	TestEqual(TEXT("facade exposes seven products"), Products.Num(), 7);
@@ -44,7 +44,7 @@ bool FGameXXKMetaShopFacadeTest::RunTest(const FString& Parameters)
 		EGameXXKMetaShopProductId::PoJunPack,
 		PurchaseResult));
 	TestTrue(TEXT("facade returns the committed result"), PurchaseResult.bPurchased);
-	TestEqual(TEXT("facade purchase debits permanent gold"), State.PlayerGold, 900);
+	TestEqual(TEXT("facade purchase debits permanent gold"), State.PlayerGold, 900000);
 	TestEqual(TEXT("facade purchase advances shop ordinal"), State.MetaShop.NextPurchaseOrdinal, 1);
 
 	for (const EGameXXKScreen RejectedScreen : {EGameXXKScreen::DungeonMap, EGameXXKScreen::Battle})
@@ -52,7 +52,7 @@ bool FGameXXKMetaShopFacadeTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("non-town facade fixture resets through StartGame"), Subsystem->StartGame());
 		FGameXXKRuntimeState& RejectedState = Subsystem->GetMutableRuntimeState();
 		RejectedState.Screen = RejectedScreen;
-		RejectedState.PlayerGold = 1000;
+		RejectedState.PlayerGold = 1000000;
 		const FGameXXKRuntimeState BeforeRejectedPurchase = RejectedState;
 		FGameXXKMetaShopPurchaseResult RejectedResult;
 		TestFalse(TEXT("facade rejects a non-town purchase"), Subsystem->PurchaseMetaShopProduct(

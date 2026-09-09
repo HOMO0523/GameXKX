@@ -5,6 +5,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKTalentRules.h"
 #include "Math/RandomStream.h"
 #include "Misc/Crc.h"
 
@@ -215,9 +216,8 @@ namespace
 
 	bool RecalculateHeroMirrors(FGameXXKRuntimeState& State)
 	{
-		const int32 RouteMaxHealth = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxHealth);
 		const int32 RouteMaxMana = FMath::Max(0, State.CardRun.RouteAttributeBonuses.MaxMana);
-		const int32 OldMaxHealth = FMath::Max(1, State.PlayerMaxHP + RouteMaxHealth);
+		const int32 OldMaxHealth = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
 		const int32 MissingHealth = FMath::Max(0, OldMaxHealth - State.PlayerHP);
 		FGameXXKEquipmentLoadoutSnapshot Snapshot;
 		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
@@ -233,7 +233,7 @@ namespace
 		State.PlayerAttack = Snapshot.AttributesBeforeRoute.Attack;
 		State.PlayerDefense = Snapshot.AttributesBeforeRoute.Defense;
 		State.PlayerSpeed = Snapshot.AttributesBeforeRoute.Speed;
-		const int32 NewEffectiveMaxHealth = FMath::Max(1, State.PlayerMaxHP + RouteMaxHealth);
+		const int32 NewEffectiveMaxHealth = FGameXXKTalentRules::GetEffectiveHeroMaxHP(State);
 		const int32 NewEffectiveMaxMana = FMath::Max(1, State.PlayerMaxMP + RouteMaxMana);
 		State.PlayerHP = FMath::Clamp(NewEffectiveMaxHealth - MissingHealth, 0, NewEffectiveMaxHealth);
 		State.PlayerMP = FMath::Clamp(State.PlayerMP, 0, NewEffectiveMaxMana);

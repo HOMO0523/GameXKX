@@ -1,5 +1,8 @@
 #include "UI/GameXXKRouteMerchantWidget.h"
+#include "GameXXKTravelMoneyRules.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKCardNameStyle.h"
+#include "UI/GameXXKCardPortraitImage.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -174,10 +177,10 @@ namespace
 	{
 		if (NpcId == TEXT("Npc.TusiChief")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcTusiChief", "土司首领");
 		if (NpcId == TEXT("Npc.SongJinBao")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcSongJinBao", "宋金宝");
-		if (NpcId == TEXT("Npc.YueBai")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcYueBai", "月白");
+		if (NpcId == TEXT("Npc.YueBai")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcYueBai", "幽白");
 		if (NpcId == TEXT("Npc.ZhouGuangZu")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcZhouGuangZu", "周光祖");
 		if (NpcId == TEXT("Npc.JinGui")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcJinGui", "金贵");
-		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcQiongMeiEr", "琼梅儿");
+		if (NpcId == TEXT("Npc.QiongMeiEr")) return NSLOCTEXT("GameXXKRouteMerchant", "NpcQiongMeiEr", "琼幺儿");
 		return NSLOCTEXT("GameXXKRouteMerchant", "QuestNpcFallback", "同行角色");
 	}
 
@@ -231,7 +234,7 @@ namespace
 		}
 		if (Contains(TEXT("ordinary gold")) || Contains(TEXT("not enough gold")))
 		{
-			return TEXT("金币不足，无法完成本次操作。");
+			return TEXT("行旅钱不足，无法完成本次操作。");
 		}
 		if (Contains(TEXT("No upgradable")) || Contains(TEXT("No unsold"))
 			|| Contains(TEXT("available to refresh")) || Contains(TEXT("no refresh")))
@@ -274,7 +277,7 @@ namespace
 			return TEXT("这个强化名额已售出。");
 		case EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney:
 		case EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold:
-			return TEXT("金币不足，无法购买本次强化。");
+			return TEXT("行旅钱不足，无法购买本次强化。");
 		case EGameXXKRouteMerchantPurchaseFailure::InvalidCardDefinition:
 			return TEXT("卡牌资料暂不可用，请刷新商店。");
 		case EGameXXKRouteMerchantPurchaseFailure::InvalidActiveCompanion:
@@ -287,7 +290,7 @@ namespace
 		case EGameXXKRouteMerchantPurchaseFailure::CardAlreadyMaxQuality:
 			return TEXT("这张卡牌已经达到最高品质。");
 		case EGameXXKRouteMerchantPurchaseFailure::ArithmeticOverflow:
-			return TEXT("金币计算异常，本次购买未扣款。");
+			return TEXT("行旅钱计算异常，本次购买未扣款。");
 		case EGameXXKRouteMerchantPurchaseFailure::DuplicateRelic:
 		case EGameXXKRouteMerchantPurchaseFailure::InvalidRouteCardOrdinal:
 		case EGameXXKRouteMerchantPurchaseFailure::DeckAcquisitionRejected:
@@ -516,6 +519,10 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 	auto* Title = MakeText(WidgetTree, FText::FromString(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
 	AddCanvasChild(RootCanvas, Title, {163, 91}, {990, 76}, 2);
 	OrdinaryGoldText = MakeText(WidgetTree, FText::GetEmpty(), 29, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantOrdinaryGold"));
+	UImage* TravelMoneyIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteMerchantTravelMoneyIcon"));
+	TravelMoneyIcon->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, FGameXXKTravelMoneyRules::IconPath), false);
+	TravelMoneyIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+	AddCanvasChild(RootCanvas, TravelMoneyIcon, {1350, 120}, {40, 40}, 2);
 	OrdinaryGoldText->SetJustification(ETextJustify::Right); AddCanvasChild(RootCanvas, OrdinaryGoldText, {1390, 117}, {350, 50}, 2);
 	auto* CardHeader = MakeText(WidgetTree, FText::FromString(TEXT("卡牌强化")), 23, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantCardRowHeader"));
 	AddCanvasChild(RootCanvas, CardHeader, {161, 193}, {620, 41}, 2);
@@ -616,7 +623,8 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	DisplayButton->SetContent(Face);
 	if (auto* FaceSlot = Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
 
-	UImage* Art = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferArt%d"), GlobalOfferIndex));
+	UGameXXKCardPortraitImage* Art = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>(UGameXXKCardPortraitImage::StaticClass(), *FString::Printf(TEXT("RouteMerchantOfferArt%d"), GlobalOfferIndex));
+	if (bCard) Art->SetCardFace(Face);
 	Art->SetVisibility(ESlateVisibility::Collapsed);
 	UScaleBox* ArtScale = WidgetTree->ConstructWidget<UScaleBox>();
 	ArtScale->SetStretch(EStretch::ScaleToFit);
@@ -668,6 +676,7 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 	NameText->SetAutoWrapText(true);
 	TitleBar->SetContent(NameText);
 	OfferNameTexts.Add(NameText);
+	if (bCard) GameXXKCardNameStyle::AttachFrame(WidgetTree, Face, NameText);
 	if (bCard)
 	{
 		auto* Cost = MakeText(WidgetTree,FText::GetEmpty(),22,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteMerchantCardCost%d"),GlobalOfferIndex));
@@ -780,13 +789,13 @@ void UGameXXKRouteMerchantWidget::ApplyView(const FGameXXKRouteMerchantView& Vie
 	if (OrdinaryGoldText)
 	{
 		OrdinaryGoldText->SetText(FText::Format(
-			NSLOCTEXT("GameXXKRouteMerchant", "OrdinaryGold", "金币：{0}"),
-			FText::AsNumber(View.PlayerGold)));
+			NSLOCTEXT("GameXXKRouteMerchant", "PhysicalTravelMoney", "行旅钱：{0}"),
+			FText::AsNumber(View.RouteTravelMoney)));
 	}
 	if (RefreshButtonText)
 	{
 		RefreshButtonText->SetText(FText::Format(
-			NSLOCTEXT("GameXXKRouteMerchant", "RefreshPrice", "刷新 {0} 金币"),
+			NSLOCTEXT("GameXXKRouteMerchant", "TravelRefreshPrice", "刷新 {0} 行旅钱"),
 			FText::AsNumber(View.RefreshCost)));
 	}
 	if (RefreshButton)
@@ -894,6 +903,8 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	}
 
 	OfferNameTexts[GlobalOfferIndex]->SetText(FText::FromString(DisplayName));
+	OfferNameTexts[GlobalOfferIndex]->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
+	GameXXKCardNameStyle::Apply(OfferNameTexts[GlobalOfferIndex], bCard && !bUnavailable ? Offer->Quality : EGameXXKCardQuality::Common);
 	if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*FString::Printf(TEXT("RouteMerchantCardCost%d"),GlobalOfferIndex))))
 		Cost->SetText(CardDefinition ? FText::FromString(FString::Printf(TEXT("%d气\n%d内"),CardDefinition->EnergyCost,CardDefinition->ManaCost)) : FText::GetEmpty());
 	OfferOwnerTexts[GlobalOfferIndex]->SetText(bCard
@@ -945,8 +956,8 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	OfferEffectTexts[GlobalOfferIndex]->SetText(FText::FromString(
 		bUnavailable || !bCard ? EffectPreview : FString::Printf(TEXT("强化后：%s"), *EffectPreview)));
 	OfferPriceTexts[GlobalOfferIndex]->SetText(bUnavailable
-		? NSLOCTEXT("GameXXKRouteMerchant", "NoPrice", "金币 --")
-		: FText::Format(NSLOCTEXT("GameXXKRouteMerchant", "OfferPrice", "金币 {0}"), FText::AsNumber(Offer->Price)));
+		? NSLOCTEXT("GameXXKRouteMerchant", "NoPrice", "行旅钱 --")
+		: FText::Format(NSLOCTEXT("GameXXKRouteMerchant", "OfferPrice", "行旅钱 {0}"), FText::AsNumber(Offer->Price)));
 	OfferStatusTexts[GlobalOfferIndex]->SetText(DisabledReason.IsEmpty()
 		? NSLOCTEXT("GameXXKRouteMerchant", "Available", "可购买")
 		: FText::FromString(DisabledReason));
@@ -964,7 +975,7 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	}
 	else if (!OfferView->bAffordable)
 	{
-		PurchaseLabel = NSLOCTEXT("GameXXKRouteMerchant", "Insufficient", "金币不足");
+		PurchaseLabel = NSLOCTEXT("GameXXKRouteMerchant", "Insufficient", "行旅钱不足");
 	}
 	OfferPurchaseTexts[GlobalOfferIndex]->SetText(PurchaseLabel);
 
@@ -1014,7 +1025,7 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	{
 		FGameXXKCardTooltipContext Context;
 		Context.InteractionResult = FString::Printf(
-			TEXT("强化：%s → %s · %d金币"),
+			TEXT("强化：%s → %s · %d行旅钱"),
 			*FGameXXKCardQualityRules::GetDisplayName(Offer->Quality).ToString(),
 			*FGameXXKCardQualityRules::GetDisplayName(Offer->NextQuality).ToString(),
 			Offer->Price);
@@ -1024,7 +1035,7 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 		const FGameXXKCardPlayPreview* Preview = TooltipSubsystem
 			&& FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
 				TooltipSubsystem->GetRuntimeState(),
-				FGameXXKEquipmentRules::HeroCharacterId(),
+				UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(TooltipSubsystem->GetRuntimeState(), *CardDefinition),
 				CardDefinition->Id,
 				Offer->NextQuality,
 				ReferencePreview)
@@ -1046,6 +1057,10 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 		OfferTooltips[GlobalOfferIndex] = Tooltip;
 		DisplayButton->SetToolTipText(Tooltip);
 		PurchaseButton->SetToolTipText(Tooltip);
+		UWidget* RelicTooltip = RelicDefinition ? GameXXKCardTooltipPresentation::BuildCompactTooltip(
+			WidgetTree, RelicDefinition->DisplayName, RelicDefinition->Description.ToString()) : nullptr;
+		DisplayButton->SetToolTip(RelicTooltip);
+		PurchaseButton->SetToolTip(RelicTooltip);
 	}
 }
 
@@ -1071,7 +1086,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 		if (const FGameXXKCardDefinition* Definition = FGameXXKCardCatalog::FindCardDefinition(Offer.ContentId))
 		{
 			FGameXXKCardTooltipContext Context;
-			Context.InteractionResult = FString::Printf(TEXT("价格：%d 金币"), Offer.Price);
+			Context.InteractionResult = FString::Printf(TEXT("价格：%d 行旅钱"), Offer.Price);
 			Context.UnavailableReason = DisabledReason;
 			return FText::FromString(FString::Printf(
 				TEXT("%s\n强化至%s：\n%s"),
@@ -1084,7 +1099,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 		FGameXXKRelicCatalog::FindDefinition(Offer.ContentId))
 	{
 		return FText::FromString(FString::Printf(
-			TEXT("%s\n%s\n品质：%s\n价格：%d 金币%s%s"),
+			TEXT("%s\n%s\n品质：%s\n价格：%d 行旅钱%s%s"),
 			*Definition->DisplayName.ToString(),
 			*Definition->Description.ToString(),
 			*FGameXXKCardQualityRules::GetDisplayName(Offer.Quality).ToString(),
@@ -1097,7 +1112,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 		? TEXT("未知卡牌")
 		: TEXT("未知遗物");
 	return FText::FromString(FString::Printf(
-		TEXT("%s\n价格：%d 金币%s%s"),
+		TEXT("%s\n价格：%d 行旅钱%s%s"),
 		UnknownLabel,
 		Offer.Price,
 		DisabledReason.IsEmpty() ? TEXT("") : TEXT("\n"),
@@ -1153,7 +1168,7 @@ FString UGameXXKRouteMerchantWidget::ResolveDisabledReason(const FGameXXKRouteMe
 	}
 	if (!OfferView->bAffordable)
 	{
-		return TEXT("金币不足。");
+		return TEXT("行旅钱不足。");
 	}
 	if (!OfferView->bPurchaseEnabled)
 	{

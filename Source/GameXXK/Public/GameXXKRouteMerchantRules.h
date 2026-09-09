@@ -46,7 +46,7 @@ public:
 		FGameXXKRouteMerchantView& OutView,
 		FString* OutError = nullptr);
 
-	/** Rerolls only unsold slots and debits ordinary gold after full generation succeeds. */
+	/** Rerolls only unsold slots and spends physical travel money after generation succeeds. */
 	static bool Refresh(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);
 
 	/** Pure simulation. ReplacementEntryId is retained for API compatibility and must be None. */

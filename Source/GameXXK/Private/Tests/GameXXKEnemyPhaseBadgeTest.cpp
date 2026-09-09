@@ -1,4 +1,7 @@
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
+#include "UI/GameXXKBattleStatusIconWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Components/TextBlock.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -21,6 +24,18 @@ bool FGameXXKEnemyPhaseBadgeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Hell renders phase two second"), HellPhaseOne[1].Style.IconId, FName(TEXT("EnemyPhase.2")));
 	TestEqual(TEXT("phase three fallback glyph"), HellPhaseOne[0].Style.FallbackGlyph, FString(TEXT("三")));
 	TestEqual(TEXT("phase two fallback glyph"), HellPhaseOne[1].Style.FallbackGlyph, FString(TEXT("二")));
+	UGameXXKBattleStatusIconWidget* Badge = NewObject<UGameXXKBattleStatusIconWidget>();
+	TestTrue(TEXT("phase badge builds the real widget"), Badge->PrepareForScreenSpaceEmbedding());
+	for (const auto& Model : HellPhaseOne)
+	{
+		Badge->SetBadgeModel(Model);
+		const UTextBlock* Glyph = Cast<UTextBlock>(Badge->GetWidgetFromName(TEXT("BattleStatusIconGlyph")));
+		const UWidget* Counter = Badge->GetWidgetFromName(TEXT("BattleStatusIconStackSeal"));
+		TestTrue(TEXT("phase is a single large JiangHu character without a duplicate corner number"),
+			Glyph && Glyph->GetText().ToString() == Model.Style.FallbackGlyph
+			&& Glyph->GetFont().FontObject == FGameXXKInRunUiStyle::Font(30,true).FontObject
+			&& Glyph->GetFont().Size == 30 && Counter && Counter->GetVisibility() == ESlateVisibility::Collapsed);
+	}
 
 	const TArray<FGameXXKBattleStatusBadgeModel> HellPhaseTwo =
 		UGameXXKBattleUnitStatusEffectsWidget::BuildBadgeModels(0, {}, 2, 3);

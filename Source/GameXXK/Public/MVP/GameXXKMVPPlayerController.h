@@ -39,8 +39,6 @@ class UGameXXKWorldMapWidget;
 class UGameXXKDesktopTrainingWorkbenchWidget;
 class UWidget;
 class AGameXXKRouteEncounterSceneActor;
-class AGameXXKPrologueAftermathController;
-class AGameXXKPrologueCarriageRig;
 class SWidget;
 class SWindow;
 class SBox;
@@ -105,41 +103,11 @@ public:
 	void EnterBattleOverlay();
 	void ExitBattleOverlay();
 	bool IsBattleOverlayActive() const;
-	bool BeginPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
-	void EndPrologueCarriagePresentation(AGameXXKPrologueCarriageRig* Rig);
-	bool SetPrologueCarriagePaused(
-		AGameXXKPrologueCarriageRig* Rig,
-		bool bPaused,
-		UWidget* FocusWidget);
-	bool BeginPrologueAftermathPresentation(
-		AGameXXKPrologueAftermathController* Controller);
-	void EndPrologueAftermathPresentation(
-		AGameXXKPrologueAftermathController* Controller);
-	bool SetPrologueAftermathPaused(
-		AGameXXKPrologueAftermathController* Controller,
-		bool bPaused,
-		UWidget* FocusWidget);
-	bool RequestDesktopReturnFromPrologue();
 	bool OpenTutorialMapInspection();
 	void CloseTutorialMapInspection();
 	bool IsTutorialMapInspectionOpenForTest() const
 	{
 		return TutorialMapInspectionWidget != nullptr;
-	}
-	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Carriage|Observation")
-	bool HasActivePrologueCarriageForTest() const
-	{
-		return ActivePrologueCarriageRig.IsValid();
-	}
-	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Aftermath|Observation")
-	bool HasActivePrologueAftermathForTest() const
-	{
-		return ActivePrologueAftermathController.IsValid();
-	}
-	UFUNCTION(BlueprintPure, Category = "GameXXK|Prologue|Aftermath|Observation")
-	bool IsPrologueAftermathInputLockedForTest() const
-	{
-		return ActivePrologueAftermathController.IsValid();
 	}
 
 	/** Single canonical battle-board instance shared by the flow and route bridge. */
@@ -289,7 +257,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining")
 	bool CloseDesktopTrainingWorkbench();
 	bool RequestDesktopTownToggleFromWorkbench();
-	bool RequestDesktopStoryCarriageFromWorkbench();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	UGameXXKDesktopTrainingWorkbenchWidget* GetDesktopTrainingWorkbenchWidgetForTest() const;
@@ -613,21 +580,6 @@ private:
 	bool bDesktopTrainingOverlayCompositionActive = false;
 	bool bDesktopTrainingOverlayFailedForSession = false;
 	bool bDesktopTownMapTravelPending = false;
-	TWeakObjectPtr<AGameXXKPrologueCarriageRig> ActivePrologueCarriageRig;
-	TWeakObjectPtr<AActor> ProloguePreviousViewTarget;
-	EGameXXKTrackedInputMode ProloguePreviousInputMode = EGameXXKTrackedInputMode::GameAndUI;
-	bool bProloguePreviousShowMouseCursor = false;
-	bool bProloguePreviousClickEvents = false;
-	bool bProloguePreviousMouseOverEvents = false;
-	bool bPrologueOwnedMoveInputIgnore = false;
-	bool bPrologueOwnedLookInputIgnore = false;
-	TWeakObjectPtr<AGameXXKPrologueAftermathController> ActivePrologueAftermathController;
-	EGameXXKTrackedInputMode AftermathPreviousInputMode = EGameXXKTrackedInputMode::GameAndUI;
-	bool bAftermathPreviousShowMouseCursor = false;
-	bool bAftermathPreviousClickEvents = false;
-	bool bAftermathPreviousMouseOverEvents = false;
-	bool bAftermathOwnedMoveInputIgnore = false;
-	bool bAftermathOwnedLookInputIgnore = false;
 	bool bOwnsDesktopWorkbenchTownMoveInputLock = false;
 	bool bOwnsDesktopWorkbenchTownLookInputLock = false;
 

@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Route.Legend.Title",
+      "zh-Hans": "沿途图例",
+      "en": "Route Guide"
+    },
+    {
+      "key": "Route.Legend.States",
+      "zh-Hans": "墨圈：本次行程已选择过的节点。淡色：暂时无法前往。悬停节点可查看说明。",
+      "en": "Ink circles mark nodes selected during this run. Faded nodes are not currently reachable. Hover over a node for details."
+    },
+    {
+      "key": "Route.Node.Start",
+      "zh-Hans": "起程",
+      "en": "Start"
+    },
+    {
+      "key": "Route.Node.Battle",
+      "zh-Hans": "战斗",
+      "en": "Battle"
+    },
+    {
+      "key": "Route.Node.Elite",
+      "zh-Hans": "精英",
+      "en": "Elite"
+    },
+    {
+      "key": "Route.Node.Boss",
+      "zh-Hans": "首领",
+      "en": "Boss"
+    },
+    {
+      "key": "Route.Node.Camp",
+      "zh-Hans": "篝火",
+      "en": "Camp"
+    },
+    {
+      "key": "Route.Node.Chest",
+      "zh-Hans": "宝匣",
+      "en": "Relic Chest"
+    },
+    {
+      "key": "Route.Node.Merchant",
+      "zh-Hans": "行商",
+      "en": "Merchant"
+    },
+    {
+      "key": "Route.Node.Event",
+      "zh-Hans": "奇遇",
+      "en": "Encounter"
+    },
+    {
+      "key": "Route.Node.Start.Hint",
+      "zh-Hans": "本次行程起点",
+      "en": "The starting point of this run."
+    },
+    {
+      "key": "Route.Node.Battle.Hint",
+      "zh-Hans": "战斗后选择奖励",
+      "en": "Win the battle, then choose a reward."
+    },
+    {
+      "key": "Route.Node.Elite.Hint",
+      "zh-Hans": "强敌拦路，奖励更佳",
+      "en": "Face stronger enemies for better rewards."
+    },
+    {
+      "key": "Route.Node.Boss.Hint",
+      "zh-Hans": "击败后结算本关",
+      "en": "Defeat the boss to settle this stage."
+    },
+    {
+      "key": "Route.Node.Camp.Hint",
+      "zh-Hans": "领取保命护符",
+      "en": "Receive a Life-Saving Talisman."
+    },
+    {
+      "key": "Route.Node.Chest.Hint",
+      "zh-Hans": "遗物三选一",
+      "en": "Choose one of three relics."
+    },
+    {
+      "key": "Route.Node.Merchant.Hint",
+      "zh-Hans": "强化卡牌 · 购买遗物",
+      "en": "Upgrade cards or buy relics with Travel Coins."
+    },
+    {
+      "key": "Route.Node.Event.Hint",
+      "zh-Hans": "属性机缘 · 主线见闻",
+      "en": "Discover attribute bonuses and story encounters."
+    },
+    {
+      "key": "Toolbar.Pinned.Hint",
+      "zh-Hans": "已置顶 · 点击取消置顶",
+      "en": "Window pinned. Click to stop keeping it on top."
+    },
+    {
+      "key": "Toolbar.Pin.Hint",
+      "zh-Hans": "置顶窗口",
+      "en": "Keep this window on top."
+    },
+    {
+      "key": "Toolbar.Muted.Hint",
+      "zh-Hans": "已静音 · 点击恢复声音",
+      "en": "Muted. Click to restore sound."
+    },
+    {
+      "key": "Toolbar.SoundOn.Hint",
+      "zh-Hans": "声音已开启 · 点击静音",
+      "en": "Sound is on. Click to mute."
+    },
+    {
+      "key": "Toolbar.Mail",
+      "zh-Hans": "邮件",
+      "en": "Mail"
+    },
+    {
+      "key": "Toolbar.Settings.Hint",
+      "zh-Hans": "HUD设置",
+      "en": "Interface settings."
+    },
+    {
+      "key": "Toolbar.Exit.Hint",
+      "zh-Hans": "退出游戏（需要再次确认）",
+      "en": "Exit the game. You will be asked to confirm."
+    },
+    {
+      "key": "Difficulty.Normal",
+      "zh-Hans": "普通",
+      "en": "Normal"
+    },
+    {
+      "key": "Difficulty.Hard",
+      "zh-Hans": "困难",
+      "en": "Hard"
+    },
+    {
+      "key": "Difficulty.Hell",
+      "zh-Hans": "地狱",
+      "en": "Hell"
+    },
+    {
+      "key": "Stage.Training.Normal.1-1",
+      "zh-Hans": "普通 1-1",
+      "en": "Normal 1-1"
+    },
+    {
+      "key": "Stage.Training.Normal.1-2",
+      "zh-Hans": "普通 1-2",
+      "en": "Normal 1-2"
+    },
+    {
+      "key": "Stage.Training.Normal.1-3",
+      "zh-Hans": "普通 1-3",
+      "en": "Normal 1-3"
+    },
+    {
+      "key": "Stage.Training.Normal.2-1",
+      "zh-Hans": "普通 2-1",
+      "en": "Normal 2-1"
+    },
+    {
+      "key": "Stage.Training.Normal.2-2",
+      "zh-Hans": "普通 2-2",
+      "en": "Normal 2-2"
+    },
+    {
+      "key": "Stage.Training.Normal.2-3",
+      "zh-Hans": "普通 2-3",
+      "en": "Normal 2-3"
+    },
+    {
+      "key": "Stage.Training.Normal.3-1",
+      "zh-Hans": "普通 3-1",
+      "en": "Normal 3-1"
+    },
+    {
+      "key": "Stage.Training.Normal.3-2",
+      "zh-Hans": "普通 3-2",
+      "en": "Normal 3-2"
+    },
+    {
+      "key": "Stage.Training.Normal.3-3",
+      "zh-Hans": "普通 3-3",
+      "en": "Normal 3-3"
+    },
+    {
+      "key": "Stage.Training.Normal.3-4",
+      "zh-Hans": "普通 3-4",
+      "en": "Normal 3-4"
+    },
+    {
+      "key": "Stage.Training.Hard.1-1",
+      "zh-Hans": "困难 1-1",
+      "en": "Hard 1-1"
+    },
+    {
+      "key": "Stage.Training.Hard.1-2",
+      "zh-Hans": "困难 1-2",
+      "en": "Hard 1-2"
+    },
+    {
+      "key": "Stage.Training.Hard.1-3",
+      "zh-Hans": "困难 1-3",
+      "en": "Hard 1-3"
+    },
+    {
+      "key": "Stage.Training.Hard.2-1",
+      "zh-Hans": "困难 2-1",
+      "en": "Hard 2-1"
+    },
+    {
+      "key": "Stage.Training.Hard.2-2",
+      "zh-Hans": "困难 2-2",
+      "en": "Hard 2-2"
+    },
+    {
+      "key": "Stage.Training.Hard.2-3",
+      "zh-Hans": "困难 2-3",
+      "en": "Hard 2-3"
+    },
+    {
+      "key": "Stage.Training.Hard.3-1",
+      "zh-Hans": "困难 3-1",
+      "en": "Hard 3-1"
+    },
+    {
+      "key": "Stage.Training.Hard.3-2",
+      "zh-Hans": "困难 3-2",
+      "en": "Hard 3-2"
+    },
+    {
+      "key": "Stage.Training.Hard.3-3",
+      "zh-Hans": "困难 3-3",
+      "en": "Hard 3-3"
+    },
+    {
+      "key": "Stage.Training.Hard.3-4",
+      "zh-Hans": "困难 3-4",
+      "en": "Hard 3-4"
+    },
+    {
+      "key": "Stage.Training.Hell.1-1",
+      "zh-Hans": "地狱 1-1",
+      "en": "Hell 1-1"
+    },
+    {
+      "key": "Stage.Training.Hell.1-2",
+      "zh-Hans": "地狱 1-2",
+      "en": "Hell 1-2"
+    },
+    {
+      "key": "Stage.Training.Hell.1-3",
+      "zh-Hans": "地狱 1-3",
+      "en": "Hell 1-3"
+    },
+    {
+      "key": "Stage.Training.Hell.2-1",
+      "zh-Hans": "地狱 2-1",
+      "en": "Hell 2-1"
+    },
+    {
+      "key": "Stage.Training.Hell.2-2",
+      "zh-Hans": "地狱 2-2",
+      "en": "Hell 2-2"
+    },
+    {
+      "key": "Stage.Training.Hell.2-3",
+      "zh-Hans": "地狱 2-3",
+      "en": "Hell 2-3"
+    },
+    {
+      "key": "Stage.Training.Hell.3-1",
+      "zh-Hans": "地狱 3-1",
+      "en": "Hell 3-1"
+    },
+    {
+      "key": "Stage.Training.Hell.3-2",
+      "zh-Hans": "地狱 3-2",
+      "en": "Hell 3-2"
+    },
+    {
+      "key": "Stage.Training.Hell.3-3",
+      "zh-Hans": "地狱 3-3",
+      "en": "Hell 3-3"
+    },
+    {
+      "key": "Stage.Training.Hell.3-4",
+      "zh-Hans": "地狱 3-4",
+      "en": "Hell 3-4"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "TravelMoneySummary",
+      "zh-Hans": "行旅钱  {0}",
+      "en": "Travel Coins  {0}"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "LegProgressSummary",
+      "zh-Hans": "行程  {0} / {1}",
+      "en": "Progress  {0} / {1}"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "CapacitySummary",
+      "zh-Hans": "首领卡槽  {0} / {1}",
+      "en": "Boss cards  {0} / {1}"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "CapacitySummaryInvalid",
+      "zh-Hans": "首领卡槽  -- / 3",
+      "en": "Boss cards  -- / 3"
+    }
+  ]
+}

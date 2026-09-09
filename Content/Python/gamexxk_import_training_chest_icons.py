@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import json
 from pathlib import Path
 
@@ -52,7 +57,7 @@ def main() -> None:
         configure(asset)
         if int(asset.blueprint_get_size_x()) != 512 or int(asset.blueprint_get_size_y()) != 512:
             raise RuntimeError(f"wrong chest texture size {name}")
-        if not unreal.EditorAssetLibrary.save_loaded_asset(asset):
+        if not save_asset_with_texture_budget(asset):
             raise RuntimeError(f"failed to save chest texture {name}")
         imported.append(asset.get_path_name())
     print(json.dumps({"ok": True, "imported_count": len(imported), "imported": imported}, ensure_ascii=False))

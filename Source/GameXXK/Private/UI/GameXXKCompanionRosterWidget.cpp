@@ -1,5 +1,7 @@
 #include "UI/GameXXKCompanionRosterWidget.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKCardNameStyle.h"
+#include "UI/GameXXKCardPortraitImage.h"
 #include "Components/ScaleBox.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -1578,10 +1580,18 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		TooltipFrame->SetBrushColor(FLinearColor::White);
 		TooltipFrame->SetPadding(CompanionTooltipPadding);
 		UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		TooltipFrame->AddChild(TooltipBox);
+		USizeBox* TooltipWidth = WidgetTree->ConstructWidget<USizeBox>();
+		TooltipWidth->SetWidthOverride(416);
+		TooltipWidth->AddChild(TooltipBox);
+		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19));
+		TooltipDetail->SetWrapTextAt(416);
+		TooltipDetail->SetLineHeightPercentage(0.80f);
+		TooltipDetail->SetApplyLineHeightToBottomLine(true);
 		if (UVerticalBoxSlot* TooltipDetailSlot = TooltipBox->AddChildToVerticalBox(TooltipDetail))
 		{
 			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
@@ -1710,10 +1720,18 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		TooltipFrame->SetBrushColor(FLinearColor::White);
 		TooltipFrame->SetPadding(CompanionTooltipPadding);
 		UVerticalBox* TooltipBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass());
-		TooltipFrame->AddChild(TooltipBox);
+		USizeBox* TooltipWidth = WidgetTree->ConstructWidget<USizeBox>();
+		TooltipWidth->SetWidthOverride(416);
+		TooltipWidth->AddChild(TooltipBox);
+		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19));
+		TooltipDetail->SetWrapTextAt(416);
+		TooltipDetail->SetLineHeightPercentage(0.80f);
+		TooltipDetail->SetApplyLineHeightToBottomLine(true);
 		if (UVerticalBoxSlot* TooltipDetailSlot = TooltipBox->AddChildToVerticalBox(TooltipDetail))
 		{
 			TooltipDetailSlot->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
@@ -1724,6 +1742,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		for (int32 CompareIndex = 0; CompareIndex < 5; ++CompareIndex)
 		{
 			UTextBlock* CompareRow = MakeText(WidgetTree, FText::GetEmpty(), 11, FLinearColor::White);
+			CompareRow->SetFont(FGameXXKInRunUiStyle::Font(17, false, true));
 			CompareRow->SetVisibility(ESlateVisibility::Collapsed);
 			TooltipBox->AddChildToVerticalBox(CompareRow);
 			CompareRows.Add(CompareRow);
@@ -1805,7 +1824,8 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		CardButton->SetBackgroundColor(FLinearColor::White);
 
 		UOverlay* CardOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
-		UImage* CardPortrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardPortrait_%02d"), CardIndex));
+		UGameXXKCardPortraitImage* CardPortrait = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>(UGameXXKCardPortraitImage::StaticClass(), *FString::Printf(TEXT("CompanionRosterPersonalCardPortrait_%02d"), CardIndex));
+		CardPortrait->SetCardFace(CardOverlay);
 		CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
 		UScaleBox* PortraitScale = WidgetTree->ConstructWidget<UScaleBox>();
 		PortraitScale->SetStretch(EStretch::ScaleToFit); PortraitScale->SetVisibility(ESlateVisibility::HitTestInvisible); PortraitScale->SetContent(CardPortrait);
@@ -1832,6 +1852,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
 		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(16, true));
 		CardLabel->SetJustification(ETextJustify::Center);
+		GameXXKCardNameStyle::AttachFrame(WidgetTree, CardOverlay, CardLabel, PersonalCardSize);
 		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
 		{
 			LabelSlot->SetHorizontalAlignment(HAlign_Fill);
@@ -1922,7 +1943,8 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		SlotButton->SetBackgroundColor(FLinearColor::White);
 
 		UOverlay* SlotOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
-		UImage* SlotPortrait = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+		UGameXXKCardPortraitImage* SlotPortrait = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>();
+		SlotPortrait->SetCardFace(SlotOverlay);
 		SlotPortrait->SetVisibility(ESlateVisibility::Collapsed);
 		if (UOverlaySlot* PortraitSlot = SlotOverlay->AddChildToOverlay(SlotPortrait))
 		{
@@ -2332,6 +2354,7 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 			CardLabel->SetColorAndOpacity(FSlateColor(bSelected
 				? FLinearColor::White
 				: FLinearColor(0.10f, 0.07f, 0.04f, 1.0f)));
+			GameXXKCardNameStyle::Apply(CardLabel, Definition ? Definition->BaseQuality : EGameXXKCardQuality::Common);
 		}
 		if (UTextBlock* CostLabel = PersonalCardCostLabels.IsValidIndex(CardIndex) ? PersonalCardCostLabels[CardIndex].Get() : nullptr)
 		{

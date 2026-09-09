@@ -62,6 +62,10 @@ struct GAMEXXK_API FGameXXKBattlePresentationEvent
 	int32 TargetHealthAfter = 0;
 	bool bAvoided = false;
 	bool bTargetDefeated = false;
+	EGameXXKCardDamageCause DamageCause = EGameXXKCardDamageCause::Invalid;
+	bool bLightningStrike = false;
+	EGameXXKCardDamageElement Element = EGameXXKCardDamageElement::None;
+	int32 ManaDrained = 0;
 };
 
 /** Immutable presentation data captured from one unit's net status-stack change. */
@@ -151,6 +155,8 @@ public:
 	static FGameXXKBattleAnimationClipDescriptor ResolveGenericClip(EGameXXKBattleAnimationAction Action);
 	/** Selects one of four approved hit VFX with a save-stable battle seed and event ordinal. */
 	static FGameXXKBattleAnimationClipDescriptor ResolveHitEffectClip(int32 BattleSeed, uint64 EventId);
+	static FGameXXKBattleAnimationClipDescriptor ResolveLightningStrikeClip();
+	static FGameXXKBattleAnimationClipDescriptor ResolveElementalHitClip(EGameXXKCardDamageElement Element);
 	static FSoftObjectPath ResolveIdleFlipbookPath(FName RuntimeUnitId, bool bEnemy);
 	/** Source-less damage stays target-only; the legacy fallback parameter is intentionally ignored here. */
 	static TArray<FGameXXKBattlePresentationEvent> BuildPresentationEvents(

@@ -4,11 +4,17 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/Border.h"
+#include "Components/HorizontalBox.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/CanvasPanel.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
+#include "Engine/Texture2D.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include <type_traits>
 #include <utility>
@@ -141,6 +147,18 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 		: nullptr;
 	TestTrue(TEXT("enemy intent card builds a dedicated portrait image layer"),
 		FirstIntentPortrait && FirstIntentPortrait->GetVisibility() == ESlateVisibility::HitTestInvisible);
+	const UCanvasPanelSlot* PortraitSlot = FirstIntentPortrait ? Cast<UCanvasPanelSlot>(FirstIntentPortrait->Slot) : nullptr;
+	const UTexture2D* PortraitTexture = FirstIntentPortrait ? Cast<UTexture2D>(FirstIntentPortrait->GetBrush().GetResourceObject()) : nullptr;
+	if (PortraitSlot && PortraitTexture)
+		AddInfo(FString::Printf(TEXT("intent art %.1fx%.1f texture %dx%d opacity %.2f layer %d"),
+			PortraitSlot->GetSize().X, PortraitSlot->GetSize().Y, PortraitTexture->GetSizeX(), PortraitTexture->GetSizeY(),
+			FirstIntentPortrait->GetRenderOpacity(), PortraitSlot->GetZOrder()));
+	TestTrue(TEXT("enemy art is large, proportional and behind the information at 70 percent opacity"),
+		PortraitSlot && PortraitTexture && PortraitSlot->GetSize().Y >= 200
+		&& FMath::IsNearlyEqual(PortraitSlot->GetSize().X / PortraitSlot->GetSize().Y,
+			PortraitTexture->GetSizeX() > 0 && PortraitTexture->GetSizeY() > 0
+				? static_cast<float>(PortraitTexture->GetSizeX()) / PortraitTexture->GetSizeY() : 171.0f / 205.0f, 0.001f)
+		&& PortraitSlot->GetZOrder() == 0 && FMath::IsNearlyEqual(FirstIntentPortrait->GetRenderOpacity(), 0.7f));
 	TestEqual(TEXT("the player-phase forecast has no active enemy showcase"), Board->GetActiveEnemyIntentPresentationIndexForTest(), INDEX_NONE);
 	if (State.CardRun.EnemyIntents.Num() != 3)
 	{
@@ -165,10 +183,41 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	UTextBlock* FirstIntentBody = Board->WidgetTree
 		? Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00Body")))
 		: nullptr;
-	const FString StinkFogBody = FirstIntentBody ? FirstIntentBody->GetText().ToString() : FString();
+	auto VisibleIntentText = [&]()
+	{
+		FString Result;
+		for (const TCHAR* Suffix : {TEXT("Target"), TEXT("Primary"), TEXT("PrimaryLabel"), TEXT("Body")})
+			if (const UTextBlock* Label = Cast<UTextBlock>(Board->WidgetTree->FindWidget(*(FString(TEXT("BattleEnemyIntentCard_00")) + Suffix))))
+				Result += Label->GetText().ToString() + TEXT("\n");
+		return Result;
+	};
+	const FString StinkFogBody = VisibleIntentText();
 	const FString StinkFogTooltip = Board->GetEnemyIntentTooltipForTest(0);
 	TestTrue(TEXT("status-only intent card names its all-party weak effect"),
-		StinkFogBody.Contains(TEXT("我方全体")) && StinkFogBody.Contains(TEXT("虚弱 1层")));
+		StinkFogBody.Contains(TEXT("我方全体")) && StinkFogBody.Contains(TEXT("虚弱")) && StinkFogBody.Contains(TEXT("1层")));
+	UImage* PrimaryStatusIcon = Cast<UImage>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00PrimaryStatusIcon")));
+	UTextBlock* PrimaryStatusValue = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00PrimaryStatusValue")));
+	UTextBlock* PrimaryStatusName = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00PrimaryStatusName")));
+	UCanvasPanel* PrimaryStatusRow = Cast<UCanvasPanel>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00PrimaryStatusRow")));
+	TestTrue(TEXT("status-only intentions have a real icon beside a one-line stack count"),
+		PrimaryStatusIcon && PrimaryStatusIcon->GetBrush().GetResourceObject()
+		&& PrimaryStatusValue && PrimaryStatusValue->GetText().ToString() == TEXT("1层")
+		&& !PrimaryStatusValue->GetAutoWrapText());
+	TestTrue(TEXT("status rows explicitly name the status before the value and place the larger icon last"),
+		PrimaryStatusName && PrimaryStatusName->GetText().ToString() == TEXT("虚弱")
+		&& PrimaryStatusRow && PrimaryStatusRow->GetChildrenCount() == 3
+		&& PrimaryStatusIcon && PrimaryStatusRow->GetChildAt(2) == PrimaryStatusIcon->GetParent()->GetParent()
+		&& PrimaryStatusValue && PrimaryStatusValue->GetFont().Size >= 30);
+	UBorder* IntentTooltipPaper = Cast<UBorder>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentDetailPanel")));
+	TestTrue(TEXT("enemy intent tooltip shares the original ItemSlot paper and slice"),
+		IntentTooltipPaper && IntentTooltipPaper->Background.GetResourceObject()
+		&& IntentTooltipPaper->Background.GetResourceObject()->GetPathName().Contains(TEXT("T_MasterV2_ItemSlot"))
+		&& IntentTooltipPaper->Background.Margin == FMargin(0.065f));
+	UTextBlock* SideWord = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentSlotLabel_00")));
+	UTextBlock* SideNumber = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentSlotNumber_00")));
+	TestTrue(TEXT("side name and outlined slot identifier use separate rows"), SideWord && SideNumber
+		&& SideWord->GetText().ToString() == TEXT("敌方") && SideNumber->GetText().ToString() == TEXT("1P")
+		&& SideNumber->GetFont().OutlineSettings.OutlineSize > 0 && !SideNumber->GetAutoWrapText());
 	TestFalse(TEXT("status-only intent card never claims zero damage"), StinkFogBody.Contains(TEXT("伤害 0")));
 	TestTrue(TEXT("status-only intent tooltip names the saved weak effect"), StinkFogTooltip.Contains(TEXT("虚弱 1层")));
 	TestFalse(TEXT("status-only intent tooltip never claims zero base damage"), StinkFogTooltip.Contains(TEXT("基础伤害 0")));
@@ -191,9 +240,9 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	ArmorEffect.Magnitude = 5;
 	RichIntent.Effects.Add(ArmorEffect);
 	Board->RefreshFromState();
-	const FString EscapeBody = FirstIntentBody ? FirstIntentBody->GetText().ToString() : FString();
+	const FString EscapeBody = VisibleIntentText();
 	TestTrue(TEXT("non-damage intent card lists its saved speed and armor effects"),
-		EscapeBody.Contains(TEXT("速度+1")) && EscapeBody.Contains(TEXT("+5护甲")));
+		EscapeBody.Contains(TEXT("速度")) && EscapeBody.Contains(TEXT("+1")) && EscapeBody.Contains(TEXT("+5护甲")));
 	TestFalse(TEXT("non-damage intent card never claims zero damage"), EscapeBody.Contains(TEXT("伤害 0")));
 
 	RichIntent = OriginalIntent;
@@ -208,8 +257,23 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	MultiHitEffect.HitCount = 2;
 	RichIntent.Effects.Add(MultiHitEffect);
 	Board->RefreshFromState();
-	const FString DoublePeckBody = FirstIntentBody ? FirstIntentBody->GetText().ToString() : FString();
-	TestTrue(TEXT("multi-hit intent card shows the saved per-hit magnitude and hit count"), DoublePeckBody.Contains(TEXT("37伤害 × 2")));
+	const FString DoublePeckBody = VisibleIntentText();
+	TestTrue(TEXT("multi-hit intent card shows the saved per-hit magnitude and hit count"),
+		DoublePeckBody.Contains(TEXT("37 × 2")) && DoublePeckBody.Contains(TEXT("伤害")));
+	UTextBlock* PrimaryValue = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00Primary")));
+	UTextBlock* PrimaryDamageLabel = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCard_00PrimaryLabel")));
+	const UCanvasPanelSlot* NumberSlot = PrimaryValue ? Cast<UCanvasPanelSlot>(PrimaryValue->Slot) : nullptr;
+	const UCanvasPanelSlot* DamageLabelSlot = PrimaryDamageLabel && PrimaryDamageLabel->GetParent()
+		? Cast<UCanvasPanelSlot>(PrimaryDamageLabel->GetParent()->Slot) : nullptr;
+	TestTrue(TEXT("damage number remains centered with a small suffix on its right"),
+		NumberSlot && DamageLabelSlot && FMath::IsNearlyEqual(NumberSlot->GetPosition().X + NumberSlot->GetSize().X*0.5f, 103.0f)
+		&& DamageLabelSlot->GetPosition().X > 103.0f
+		&& PrimaryDamageLabel && PrimaryDamageLabel->GetText().ToString() == TEXT("伤害")
+		&& PrimaryDamageLabel->GetFont().Size == 18 && !PrimaryDamageLabel->GetAutoWrapText());
+	TestTrue(TEXT("damage is larger than the supporting text and uses the JiangHu font"),
+		PrimaryValue && FirstIntentBody && PrimaryValue->GetFont().Size >= 29
+		&& PrimaryValue->GetFont().Size > FirstIntentBody->GetFont().Size
+		&& PrimaryValue->GetFont().FontObject == FGameXXKInRunUiStyle::Font(34, true).FontObject);
 
 	RichIntent = OriginalIntent;
 	RichIntent.CardDisplayName = TEXT("毒牙突袭");
@@ -229,7 +293,7 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	TestTrue(TEXT("the pending intent tooltip uses its saved central hero P label"), FirstIntentTooltip.Contains(TEXT("我 2P")));
 	TestTrue(TEXT("the pending intent tooltip identifies its target on a dedicated row"), FirstIntentTooltip.Contains(TEXT("对象：我 2P")));
 	TestTrue(TEXT("the pending intent tooltip uses its resolved damage"), FirstIntentTooltip.Contains(TEXT("8伤害")));
-	TestTrue(TEXT("the pending intent tooltip preserves direct saved status"), FirstIntentTooltip.Contains(TEXT("命中附加中毒2")));
+	TestTrue(TEXT("the pending intent tooltip preserves direct saved status"), FirstIntentTooltip.Contains(TEXT("命中附加中毒 2")));
 	TestFalse(TEXT("target armor settlement stays in the unit tooltip"), FirstIntentTooltip.Contains(TEXT("护甲结算")));
 	TestFalse(TEXT("the intent tooltip does not repeat its visible source card"), FirstIntentTooltip.Contains(TEXT("攻击者：")));
 	UButton* FirstHandCard = Board->WidgetTree ? Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleHandCard_00"))) : nullptr;
@@ -263,11 +327,26 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	TestEqual(TEXT("the first saved intent begins as the current showcase"), Board->GetActiveEnemyIntentPresentationIndexForTest(), 0);
 	TestFalse(TEXT("the player hand is disabled while enemy intents display"), FirstHandCard && FirstHandCard->GetIsEnabled());
 	TestFalse(TEXT("the end-turn control is disabled while enemy intents display"), EndTurnButton && EndTurnButton->GetIsEnabled());
+	UButton* Showcase = Cast<UButton>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentShowcaseCard")));
+	UImage* ShowcasePortrait = Cast<UImage>(Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentShowcasePortrait")));
+	TestTrue(TEXT("the central intent uses the same real monster portrait as its forecast"),
+		ShowcasePortrait && FirstIntentPortrait
+		&& ShowcasePortrait->GetBrush().GetResourceObject() == FirstIntentPortrait->GetBrush().GetResourceObject()
+		&& ShowcasePortrait->GetVisibility() == ESlateVisibility::HitTestInvisible);
 
 	double PresentationClock = 1000.0;
 	for (int32 IntentIndex = 0; IntentIndex < 3; ++IntentIndex)
 	{
-		Board->AdvanceEnemyIntentPresentationForTest(0.55f);
+		if (IntentIndex == 0)
+		{
+			const FWidgetTransform EntryPose = Showcase ? Showcase->GetRenderTransform() : FWidgetTransform();
+			Board->AdvanceEnemyIntentPresentationForTest(0.18f);
+			TestTrue(TEXT("central intent moves out of the rail and fades into its reveal"),
+				Showcase && Showcase->GetRenderTransform().Translation != EntryPose.Translation
+				&& Showcase->GetRenderTransform().Scale.X > EntryPose.Scale.X && Showcase->GetRenderOpacity() > 0.9f);
+			Board->AdvanceEnemyIntentPresentationForTest(0.37f);
+		}
+		else Board->AdvanceEnemyIntentPresentationForTest(0.55f);
 		TestEqual(FString::Printf(TEXT("intent %d waits for its resolve interval"), IntentIndex + 1),
 			Subsystem->GetRuntimeState().CardRun.NextEnemyIntentIndex,
 			IntentIndex);
@@ -339,6 +418,9 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	TestEqual(TEXT("the stable next player phase immediately stores a new forecast"), State.CardRun.EnemyIntents.Num(), 3);
 	TestEqual(TEXT("the stable next player phase immediately shows its new forecast"), Board->GetVisibleEnemyIntentCardCountForTest(), 3);
 	TestEqual(TEXT("the next player phase has no active enemy showcase"), Board->GetActiveEnemyIntentPresentationIndexForTest(), INDEX_NONE);
+	TestTrue(TEXT("the next player phase leaves no faded or transformed showcase for reuse"),
+		Showcase && Showcase->GetVisibility() == ESlateVisibility::Collapsed
+		&& Showcase->GetRenderTransform() == FWidgetTransform() && Showcase->GetRenderOpacity() == 1.0f);
 	TestTrue(TEXT("the end-turn control re-enables after the enemy sequence completes"), EndTurnButton && EndTurnButton->GetIsEnabled());
 
 	FGameXXKCardCombatUnit* DefeatedEnemy = State.CardRun.ActiveBattle.Units.FindByPredicate([](const FGameXXKCardCombatUnit& Unit)
@@ -355,6 +437,63 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 	DefeatedEnemy->HP = 0;
 	Board->RefreshFromState();
 	TestEqual(TEXT("a defeated enemy disappears from the player-phase intent rail"), Board->GetVisibleEnemyIntentCardCountForTest(), 2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKCardBattleBoardEnemyIntentDeathLabelsTest,
+	"GameXXK.Integration.CardBattle.BoardEnemyIntentDeathLabels",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKCardBattleBoardEnemyIntentDeathLabelsTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FString Error;
+	if (!TestTrue(TEXT("three-enemy label fixture starts"), BuildThreeEnemyIntentPresentationFixture(Subsystem, Error))) return false;
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	Board->Initialize();
+	Board->NativeConstruct();
+	const FGameXXKRuntimeState Baseline = Subsystem->GetRuntimeState();
+	const FName Ids[] = {TEXT("IntentEnemy.One"), TEXT("IntentEnemy.Two"), TEXT("IntentEnemy.Three")};
+	// First dies, two die, all die, reuse, middle dies, last dies.
+	for (const int32 LivingMask : {7, 6, 4, 0, 7, 5, 3})
+	{
+		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		State = Baseline;
+		TArray<FString> ExpectedNumbers;
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			if ((LivingMask & (1 << Index)) != 0)
+			{
+				ExpectedNumbers.Add(FString::Printf(TEXT("%dP"), Index + 1));
+				continue;
+			}
+			FGameXXKCardCombatUnit* Unit = State.CardRun.ActiveBattle.Units.FindByPredicate(
+				[&](const FGameXXKCardCombatUnit& Candidate) { return Candidate.UnitId == Ids[Index]; });
+			if (!TestNotNull(TEXT("defeated enemy exists"), Unit)) return false;
+			Unit->HP = 0;
+			Unit->bLiving = false;
+		}
+		Board->RefreshFromState();
+		TestEqual(TEXT("intent count matches survivors"), Board->GetVisibleEnemyIntentCardCountForTest(), ExpectedNumbers.Num());
+		for (int32 Index = 0; Index < 3; ++Index)
+		{
+			UWidget* Slot = Board->WidgetTree->FindWidget(*FString::Printf(TEXT("BattleEnemyIntentSlot_%02d"), Index));
+			UTextBlock* Number = Cast<UTextBlock>(Board->WidgetTree->FindWidget(*FString::Printf(TEXT("BattleEnemyIntentSlotNumber_%02d"), Index)));
+			if (!TestNotNull(TEXT("intent wrapper exists"), Slot) || !TestNotNull(TEXT("slot number exists"), Number)) return false;
+			if (ExpectedNumbers.IsValidIndex(Index))
+			{
+				TestEqual(TEXT("surviving card and label share a visible wrapper"), Slot->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+				TestEqual(TEXT("survivors retain their original slot number once"), Number->GetText().ToString(), ExpectedNumbers[Index]);
+			}
+			else
+			{
+				TestEqual(TEXT("empty card collapses its label and spacing too"), Slot->GetVisibility(), ESlateVisibility::Collapsed);
+				TestTrue(TEXT("empty slot clears its stale number"), Number->GetText().IsEmpty());
+			}
+		}
+	}
 	return true;
 }
 

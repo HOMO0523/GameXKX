@@ -133,10 +133,7 @@ TArray<FGameXXKBattleStatusBadgeModel> UGameXXKBattleUnitStatusEffectsWidget::Bu
 		FGameXXKBattleStatusBadgeModel& PhaseBadge = Result.AddDefaulted_GetRef();
 		PhaseBadge.Style = FGameXXKBattleStatusIconStyle::ResolveEnemyPhaseIconStyle(PhaseNumber);
 		PhaseBadge.Stacks = PhaseNumber;
-		PhaseBadge.Tooltip = FString::Printf(
-			TEXT("阶段印记 %d\n%s"),
-			PhaseNumber,
-			*PhaseBadge.Style.Tooltip);
+		PhaseBadge.Tooltip = PhaseBadge.Style.DisplayName + TEXT("\n") + PhaseBadge.Style.Tooltip;
 	}
 	if (InArmor > 0)
 	{

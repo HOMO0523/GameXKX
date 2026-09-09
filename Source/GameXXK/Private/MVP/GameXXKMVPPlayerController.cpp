@@ -27,8 +27,6 @@
 #include "Misc/PackageName.h"
 #include "Rendering/DrawElements.h"
 #include "Town/GameXXKHeroCharacter.h"
-#include "Town/GameXXKPrologueAftermathController.h"
-#include "Town/GameXXKPrologueCarriageRig.h"
 #include "Town/GameXXKTownNpcActor.h"
 #include "Town/GameXXKTownNpcCharacter.h"
 #include "Town/GameXXKTownPlayerPawn.h"
@@ -407,15 +405,8 @@ void AGameXXKMVPPlayerController::BeginPlay()
 
 void AGameXXKMVPPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (AGameXXKPrologueAftermathController* Controller =
-		ActivePrologueAftermathController.Get())
-	{
-		Controller->CancelPresentation();
-	}
-	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
-	{
-		Rig->CancelPresentation();
-	}
+
+
 	UnbindInteractionRequests();
 	if (DialogueCoordinator)
 	{
@@ -488,20 +479,7 @@ void AGameXXKMVPPlayerController::SetupInputComponent()
 
 bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 {
-	if (AGameXXKPrologueAftermathController* Controller =
-		ActivePrologueAftermathController.Get())
-	{
-		if (Controller->HandleInputKey(Params))
-		{
-			return true;
-		}
-		if (Controller->IsBlockingPresentation())
-		{
-			return Params.Key.IsMouseButton()
-				? Super::InputKey(Params)
-				: true;
-		}
-	}
+
 	if (HandleNarrativeInput(Params))
 	{
 		return true;
@@ -518,17 +496,7 @@ bool AGameXXKMVPPlayerController::InputKey(const FInputKeyEventArgs& Params)
 			return true;
 		}
 	}
-	if (AGameXXKPrologueCarriageRig* Rig = ActivePrologueCarriageRig.Get())
-	{
-		if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
-		{
-			return Rig->TogglePauseFromController();
-		}
-		if (!Rig->IsSequencePaused() || !Params.Key.IsMouseButton())
-		{
-			return true;
-		}
-	}
+
 	if (Params.Key == EKeys::Escape && Params.Event == IE_Pressed)
 	{
 		if (QuestDialogWidget && QuestDialogWidget->IsDialogOpen())
@@ -811,185 +779,19 @@ bool AGameXXKMVPPlayerController::IsBattleOverlayActive() const
 	return BattleOverlayCoordinator && BattleOverlayCoordinator->IsActive();
 }
 
-bool AGameXXKMVPPlayerController::BeginPrologueCarriagePresentation(
-	AGameXXKPrologueCarriageRig* Rig)
-{
-	if (!IsValid(Rig) || ActivePrologueCarriageRig.IsValid())
-	{
-		return false;
-	}
 
-	ActivePrologueCarriageRig = Rig;
-	Rig->SetPresentationController(this);
-	ProloguePreviousViewTarget = GetViewTarget();
-	ProloguePreviousInputMode = TrackedInputMode;
-	bProloguePreviousShowMouseCursor = bShowMouseCursor;
-	bProloguePreviousClickEvents = bEnableClickEvents;
-	bProloguePreviousMouseOverEvents = bEnableMouseOverEvents;
-	bPrologueOwnedMoveInputIgnore = !IsMoveInputIgnored();
-	bPrologueOwnedLookInputIgnore = !IsLookInputIgnored();
-	FlushPressedKeys();
-	if (bPrologueOwnedMoveInputIgnore)
-	{
-		SetIgnoreMoveInput(true);
-	}
-	if (bPrologueOwnedLookInputIgnore)
-	{
-		SetIgnoreLookInput(true);
-	}
-	bShowMouseCursor = false;
-	bEnableClickEvents = false;
-	bEnableMouseOverEvents = false;
-	SetTrackedInputMode(EGameXXKTrackedInputMode::GameOnly);
-	if (GetWorld())
-	{
-		SetViewTarget(Rig);
-	}
-	return true;
-}
 
-void AGameXXKMVPPlayerController::EndPrologueCarriagePresentation(
-	AGameXXKPrologueCarriageRig* Rig)
-{
-	if (!Rig || ActivePrologueCarriageRig.Get() != Rig)
-	{
-		return;
-	}
-	if (bPrologueOwnedMoveInputIgnore)
-	{
-		SetIgnoreMoveInput(false);
-	}
-	if (bPrologueOwnedLookInputIgnore)
-	{
-		SetIgnoreLookInput(false);
-	}
-	bShowMouseCursor = bProloguePreviousShowMouseCursor;
-	bEnableClickEvents = bProloguePreviousClickEvents;
-	bEnableMouseOverEvents = bProloguePreviousMouseOverEvents;
-	SetTrackedInputMode(ProloguePreviousInputMode);
-	if (GetWorld())
-	{
-		AActor* ViewTarget = ProloguePreviousViewTarget.Get();
-		SetViewTarget(ViewTarget ? ViewTarget : GetPawn());
-	}
 
-	ActivePrologueCarriageRig.Reset();
-	Rig->SetPresentationController(nullptr);
-	ProloguePreviousViewTarget.Reset();
-	bPrologueOwnedMoveInputIgnore = false;
-	bPrologueOwnedLookInputIgnore = false;
-}
 
-bool AGameXXKMVPPlayerController::SetPrologueCarriagePaused(
-	AGameXXKPrologueCarriageRig* Rig,
-	const bool bPaused,
-	UWidget* FocusWidget)
-{
-	if (!Rig || ActivePrologueCarriageRig.Get() != Rig)
-	{
-		return false;
-	}
-	bShowMouseCursor = bPaused;
-	bEnableClickEvents = bPaused;
-	bEnableMouseOverEvents = bPaused;
-	SetTrackedInputMode(
-		bPaused
-			? EGameXXKTrackedInputMode::GameAndUI
-			: EGameXXKTrackedInputMode::GameOnly,
-		bPaused ? FocusWidget : nullptr);
-	return true;
-}
 
-bool AGameXXKMVPPlayerController::BeginPrologueAftermathPresentation(
-	AGameXXKPrologueAftermathController* Controller)
-{
-	if (!IsValid(Controller)
-		|| ActivePrologueAftermathController.IsValid()
-		|| ActivePrologueCarriageRig.IsValid())
-	{
-		return false;
-	}
 
-	ActivePrologueAftermathController = Controller;
-	AftermathPreviousInputMode = TrackedInputMode;
-	bAftermathPreviousShowMouseCursor = bShowMouseCursor;
-	bAftermathPreviousClickEvents = bEnableClickEvents;
-	bAftermathPreviousMouseOverEvents = bEnableMouseOverEvents;
-	bAftermathOwnedMoveInputIgnore = !IsMoveInputIgnored();
-	bAftermathOwnedLookInputIgnore = !IsLookInputIgnored();
-	FlushPressedKeys();
-	if (bAftermathOwnedMoveInputIgnore)
-	{
-		SetIgnoreMoveInput(true);
-	}
-	if (bAftermathOwnedLookInputIgnore)
-	{
-		SetIgnoreLookInput(true);
-	}
-	bShowMouseCursor = true;
-	bEnableClickEvents = true;
-	bEnableMouseOverEvents = true;
-	SetTrackedInputMode(EGameXXKTrackedInputMode::GameAndUI);
-	return true;
-}
 
-void AGameXXKMVPPlayerController::EndPrologueAftermathPresentation(
-	AGameXXKPrologueAftermathController* Controller)
-{
-	if (!Controller || ActivePrologueAftermathController.Get() != Controller)
-	{
-		return;
-	}
-	if (bAftermathOwnedMoveInputIgnore)
-	{
-		SetIgnoreMoveInput(false);
-	}
-	if (bAftermathOwnedLookInputIgnore)
-	{
-		SetIgnoreLookInput(false);
-	}
-	bShowMouseCursor = bAftermathPreviousShowMouseCursor;
-	bEnableClickEvents = bAftermathPreviousClickEvents;
-	bEnableMouseOverEvents = bAftermathPreviousMouseOverEvents;
-	SetTrackedInputMode(AftermathPreviousInputMode);
 
-	ActivePrologueAftermathController.Reset();
-	bAftermathOwnedMoveInputIgnore = false;
-	bAftermathOwnedLookInputIgnore = false;
-}
 
-bool AGameXXKMVPPlayerController::SetPrologueAftermathPaused(
-	AGameXXKPrologueAftermathController* Controller,
-	const bool bPaused,
-	UWidget* FocusWidget)
-{
-	if (!Controller || ActivePrologueAftermathController.Get() != Controller)
-	{
-		return false;
-	}
-	bShowMouseCursor = true;
-	bEnableClickEvents = true;
-	bEnableMouseOverEvents = true;
-	SetTrackedInputMode(
-		EGameXXKTrackedInputMode::GameAndUI,
-		bPaused ? FocusWidget : nullptr);
-	return true;
-}
 
-bool AGameXXKMVPPlayerController::RequestDesktopReturnFromPrologue()
-{
-	UWorld* World = GetWorld();
-	if (!World || !World->IsGameWorld())
-	{
-		return false;
-	}
-	const FString CurrentPackageName = World->GetOutermost()
-		? World->GetOutermost()->GetName()
-		: FString();
-	return BeginDesktopTownMapTravelFromWorkbench(
-		GameXXKLevelFlow::TownToggleTargetForMapPackage(CurrentPackageName),
-		FString());
-}
+
+
+
 
 bool AGameXXKMVPPlayerController::OpenTutorialMapInspection()
 {
@@ -3825,24 +3627,7 @@ bool AGameXXKMVPPlayerController::TriggerPrologueInputForTest(const FKey Key)
 }
 #endif
 
-bool AGameXXKMVPPlayerController::RequestDesktopStoryCarriageFromWorkbench()
-{
-	UWorld* World = GetWorld();
-	if (!World || !World->IsGameWorld())
-	{
-		return false;
-	}
-	const FString CurrentPackageName = World->GetOutermost()
-		? World->GetOutermost()->GetName()
-		: FString();
-	if (!GameXXKLevelFlow::IsDesktopTrainingHUDMapPackage(CurrentPackageName))
-	{
-		return false;
-	}
-	return BeginDesktopTownMapTravelFromWorkbench(
-		GameXXKLevelFlow::QingshanTownGameplayMap(),
-		GameXXKLevelFlow::CarriagePreviewTravelOptions());
-}
+
 
 bool AGameXXKMVPPlayerController::BeginDesktopTownMapTravelFromWorkbench(
 	const FName TargetMap,
@@ -3864,11 +3649,7 @@ bool AGameXXKMVPPlayerController::BeginDesktopTownMapTravelFromWorkbench(
 	{
 		return false;
 	}
-	if (GameXXKLevelFlow::ShouldCollapseBackpackForTravelOptions(Options)
-		&& DesktopTrainingWorkbenchWidget->IsBackpackExpandedForTest())
-	{
-		DesktopTrainingWorkbenchWidget->HandleActionClicked(60);
-	}
+
 	const FGameXXKDesktopWorkbenchSessionState State =
 		DesktopTrainingWorkbenchWidget->CaptureSessionStateForMapTravel();
 	if (!State.bValid)

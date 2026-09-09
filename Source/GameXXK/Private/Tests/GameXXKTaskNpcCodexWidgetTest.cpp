@@ -24,7 +24,7 @@ namespace
 	const FExpectedTaskNpcCodexEntry ExpectedTaskNpcs[] = {
 		{TEXT("Npc.TusiChief"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_TusiChief.T_CardPortrait_Npc_TusiChief"), TEXT("土司首领")},
 		{TEXT("Npc.SongJinBao"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_SongJinBao.T_CardPortrait_Npc_SongJinBao"), TEXT("宋金宝")},
-		{TEXT("Npc.YueBai"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai"), TEXT("月白")},
+		{TEXT("Npc.YueBai"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_YueBai.T_CardPortrait_Npc_YueBai"), TEXT("幽白")},
 		{TEXT("Npc.ZhouGuangZu"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_ZhouGuangZu.T_CardPortrait_Npc_ZhouGuangZu"), TEXT("周光祖")},
 		{TEXT("Npc.JinGui"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_JinGui.T_CardPortrait_Npc_JinGui"), TEXT("金贵")},
 		{TEXT("Npc.QiongMeiEr"), TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Npc_QiongMeiEr.T_CardPortrait_Npc_QiongMeiEr"), TEXT("琼么儿")}

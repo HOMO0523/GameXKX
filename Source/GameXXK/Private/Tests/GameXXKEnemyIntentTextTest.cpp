@@ -3,6 +3,7 @@
 #include "GameXXKCardRunTypes.h"
 #include "GameXXKMVPRules.h"
 #include "Misc/AutomationTest.h"
+#include "UI/GameXXKCardVisualEffects.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -59,13 +60,29 @@ bool FGameXXKEnemyIntentTextTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("compact text starts with the card name"), Compact.StartsWith(TEXT("血羽焚天\n")));
 	TestTrue(TEXT("target scope occupies its own emphasized row"), Compact.Contains(TEXT("\n【我方全体】\n")));
 	TestTrue(TEXT("compact damage is the resolved Hell number"), Compact.Contains(TEXT("158伤害")));
-	TestTrue(TEXT("compact status uses its final level-scaled amount"), Compact.Contains(TEXT("灼烧15")));
+	TestTrue(TEXT("compact status uses its final level-scaled amount"), Compact.Contains(TEXT("灼烧 15")));
 
 	const FString Detail = FGameXXKEnemyText::FormatIntentTooltip(State, Intent);
 	TestTrue(TEXT("detail names the exact phase"), Detail.Contains(TEXT("阶段：3/3 · 血羽不熄")));
 	TestTrue(TEXT("detail keeps target scope separate"), Detail.Contains(TEXT("对象：我方全体")));
-	TestTrue(TEXT("detail includes resolved on-hit status"), Detail.Contains(TEXT("命中附加灼烧15")));
+	TestTrue(TEXT("detail includes resolved on-hit status"), Detail.Contains(TEXT("命中附加灼烧 15")));
+	TestFalse(TEXT("common target is not repeated on every effect"), Detail.Contains(TEXT("我方全体：")));
 	TestFalse(TEXT("enemy intent text leaves target armor settlement to the unit tooltip"), Detail.Contains(TEXT("护甲结算")));
+	const auto Face = FGameXXKEnemyText::BuildIntentCardText(State, Intent);
+	const auto* MarkRow = Face.Statuses.FindByPredicate([](const auto& Row) { return Row.Status == EGameXXKCardStatus::Mark; });
+	TestTrue(TEXT("a different status target is still named"), MarkRow && Detail.Contains(MarkRow->Target + TEXT("：标记 5层")));
+	TestTrue(TEXT("on-hit DOT is exported as an icon and an intact amount"), Face.Statuses.ContainsByPredicate([](const auto& Row)
+		{ return Row.Status == EGameXXKCardStatus::Burn && Row.Amount == 15; }));
+	TestTrue(TEXT("different-target status keeps its own scope in the presentation model"), Face.Statuses.ContainsByPredicate([](const auto& Row)
+		{ return Row.Status == EGameXXKCardStatus::Mark && Row.Amount == 5 && Row.Target != TEXT("我方全体"); }));
+	TestFalse(TEXT("DOT no longer falls back to a wrapping status-name paragraph"), Face.Details.Contains(TEXT("灼烧")));
+	const auto Burn = GameXXKCardVisualEffects::StatusColor(EGameXXKCardStatus::Burn);
+	const auto Poison = GameXXKCardVisualEffects::StatusColor(EGameXXKCardStatus::Poison);
+	const auto Bleed = GameXXKCardVisualEffects::StatusColor(EGameXXKCardStatus::Bleed);
+	TestTrue(TEXT("burn is orange, poison green and bleed red"), Burn.R > Burn.G && Burn.G > Burn.B
+		&& Poison.G > Poison.R && Poison.G > Poison.B && Bleed.R > Bleed.G * 3);
+	TestTrue(TEXT("triggered DOT and intent badge share a palette"),
+		GameXXKCardVisualEffects::DamageColor(EGameXXKCardDamageCause::ToxicExplosionBurn) == Burn);
 	return true;
 }
 

@@ -3,6 +3,19 @@
 #include "GameXXKTalentCatalog.h"
 #include "GameXXKMVPRules.h"
 
+int32 FGameXXKTalentRules::ComputeProjectedMaxHP(const int32 BaselineMaxHP,const int32 RouteFlatHP,const FGameXXKTalentProjection& Projection)
+{
+	const int64 Flat=FMath::Max<int64>(1,static_cast<int64>(BaselineMaxHP)+FMath::Max(0,RouteFlatHP)+Projection.FlatMaxHP);
+	return static_cast<int32>(FMath::Clamp<int64>((Flat*(100+FMath::Max(0,Projection.RouteMaxHPPercent))+50)/100,1,MAX_int32));
+}
+
+int32 FGameXXKTalentRules::GetEffectiveHeroMaxHP(const FGameXXKRuntimeState& State)
+{
+	FGameXXKTalentProjection Projection;
+	BuildProjection(State.Talents,Projection);
+	return ComputeProjectedMaxHP(State.PlayerMaxHP,State.CardRun.RouteAttributeBonuses.MaxHealth,Projection);
+}
+
 namespace
 {
 	void SetError(FString* OutError, const FString& Error)
@@ -64,7 +77,9 @@ namespace
 int64 FGameXXKTalentRules::GetPriceForCostTier(const int32 CostTier)
 {
 	const int32 SafeTier = FMath::Clamp(CostTier, 0, MaximumCostTier);
-	const double Raw = 2500.0 * FMath::Pow(1.35, static_cast<double>(SafeTier));
+	// 45-day benchmark: Hell 3-3, 10 seconds/wave, online-gold talents purchased first.
+	// Keep the authored tier spacing and round each rank price to hundreds.
+	const double Raw = 229.0 * FMath::Pow(1.35, static_cast<double>(SafeTier));
 	return static_cast<int64>(FMath::RoundToDouble(Raw / 100.0) * 100.0);
 }
 
@@ -345,7 +360,7 @@ FText FGameXXKTalentRules::DescribeEffect(const FGameXXKTalentNodeDefinition& No
 	{
 	case EGameXXKTalentEffect::UnlockWarehousePage: return FText::FromString(TEXT("仓库页数 +1"));
 	case EGameXXKTalentEffect::UnlockOfflineRewards: return FText::FromString(TEXT("解锁离线奖励"));
-	case EGameXXKTalentEffect::UnlockTools: return FText::FromString(TEXT("解锁全部工具功能"));
+	case EGameXXKTalentEffect::UnlockTools: return FText::FromString(TEXT("开启工具收益加成分支"));
 	case EGameXXKTalentEffect::CombatFoundation: return FText::FromString(FString::Printf(TEXT("全队攻击/生命/防御 +%d"), Value));
 	case EGameXXKTalentEffect::FlatAttack: return FText::FromString(FString::Printf(TEXT("全队攻击 +%d"), Value));
 	case EGameXXKTalentEffect::FlatMaxHP: return FText::FromString(FString::Printf(TEXT("全队最大生命 +%d"), Value));

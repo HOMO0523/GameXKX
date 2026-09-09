@@ -432,6 +432,35 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	"GameXXK.Equipment.XuanJia.ArmorRetention",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKXuanJiaAffixMarginalSettlementTest,
+	"GameXXK.Equipment.XuanJia.AffixMarginalSettlement",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKXuanJiaAffixMarginalSettlementTest::RunTest(const FString& Parameters)
+{
+	using namespace GameXXKXuanJiaSetRuntimeTest;
+	for (const FName Source : {WearerId, AllyId})
+	{
+		FGameXXKCardBattleRuntime Runtime;
+		if (!BuildRuntime(*this, TEXT("Hero.Generic.HengJianShouShi"), Source, Runtime)) return false;
+		FindUnit(Runtime, Source)->Defense = 125; // The card generates 80%, i.e. 100 base armor.
+		FGameXXKEquipmentActiveEffect Affix = MakeXuanTwoEffect();
+		Affix.RequiredPieces = 0;
+		Affix.EffectId = FName(*FString::Printf(TEXT("EquipmentAffixAggregate.%d.%d"), static_cast<int32>(Affix.Set), static_cast<int32>(Affix.ModifierKind)));
+		Affix.Magnitude = 21000; // Six perfect Treasure rolls, still stored at their original magnitude.
+		if (!TestTrue(TEXT("aggregated random Armor affix is a valid battle descriptor"), FGameXXKEquipmentRules::IsKnownActiveEffect(Affix))) return false;
+		auto& EffectRuntime = Runtime.EquipmentEffects.AddDefaulted_GetRef();
+		EffectRuntime.ActiveEffect = Affix;
+		EffectRuntime.SourceCharacterId = WearerId;
+		FGameXXKCardPlayResult Result;
+		if (!Resolve(*this, Runtime, Source, Result, TEXT("marginal Armor card settlement"))) return false;
+		const auto* Packet = FindArmorPacket(Result, Source);
+		if (!TestNotNull(TEXT("real card play produces an Armor result"), Packet)) return false;
+		TestEqual(TEXT("real settlement applies 43.75% affix and 10% fixed set only to the source wearer"), Packet->RequestedArmor, Source == WearerId ? 154 : 100);
+	}
+	return true;
+}
+
 bool FGameXXKXuanJiaArmorRetentionTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKXuanJiaSetRuntimeTest;

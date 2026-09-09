@@ -71,6 +71,8 @@ namespace GameXXKDesktopTrainingLayout
 		bool bExitConfirmationOpen = false;
 		bool bTownToggleVisible = false;
 		bool bStoryQuestVisible = false;
+		bool bMainStoryDialogueOpen = false;
+		int32 MainStoryDialogueOptionCount = 0;
 		float NoticeHeight = 0.0f;
 		float Scale = 1.0f;
 		FVector2D ContentOffset = FVector2D::ZeroVector;
@@ -110,6 +112,7 @@ namespace GameXXKDesktopTrainingLayout
 	GAMEXXK_API float GetIdleStripChestControlX();
 	GAMEXXK_API bool ShouldOffsetExpandedCenterWidget(const FVector2D& Position);
 	GAMEXXK_API FVector4 GetContentRect();
+	GAMEXXK_API FVector4 GetMainStoryDialogueRect();
 	GAMEXXK_API FVector4 GetBackpackCharacterSelectorRect(int32 Index);
 	GAMEXXK_API FVector4 GetEmbeddedCharacterTabRect(int32 Index);
 	GAMEXXK_API FVector4 GetNavigationRect();

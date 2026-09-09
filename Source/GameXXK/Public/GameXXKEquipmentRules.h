@@ -107,6 +107,14 @@ struct GAMEXXK_API FGameXXKEquipmentLoadoutSnapshot
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FGameXXKCharacterStats SocketGemFlatStats;
 
+	/** Raw nominal percentage bonuses, keyed by type; applied once per appropriate pool. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TMap<EGameXXKGemType, int32> SocketGemBasisPoints;
+
+	/** Effective flat contribution from the three stat-percent pools after flat gems. */
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FGameXXKCharacterStats SocketGemPercentStats;
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FGameXXKCharacterStats AttributesBeforeRoute;
 

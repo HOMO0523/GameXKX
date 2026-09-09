@@ -91,6 +91,12 @@ bool GameXXKCardPillText::IsKeyword(const FString& Name)
 	return Name == TEXT("蓄力／重箭") || FindPill(Name) != nullptr;
 }
 
+FString GameXXKCardPillText::DescribeTerm(const FString& Name)
+{
+	const FPill* Pill = FindPill(Name);
+	return Pill ? FString(Pill->Description) : FString();
+}
+
 FString GameXXKCardPillText::DescribeHelp(const FString& CardText, const EGameXXKCardQuality Quality, const int32 TaskCardCount)
 {
 	TArray<FString> Names;
@@ -120,7 +126,7 @@ FString GameXXKCardPillText::DescribeHelp(const FString& CardText, const EGameXX
 	const bool bMergeHeavy = Names.Contains(TEXT("蓄力")) && Names.Contains(TEXT("重箭"));
 	bool bMergedHeavy = false;
 	bool bHasDot = false;
-	TArray<FString> Lines = {TEXT("本牌Pill说明")};
+	TArray<FString> Lines = {TEXT("本牌术语")};
 	const int32 QualityPercent = Quality == EGameXXKCardQuality::Epic ? 140 : Quality == EGameXXKCardQuality::Rare ? 120 : 100;
 	for (const FString& Name : Names)
 	{

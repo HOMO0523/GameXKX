@@ -1,0 +1,308 @@
+{
+  "schema_version": 1,
+  "gold_growth": 1.05,
+  "price_base": 229,
+  "nodes": 453,
+  "ranks": 2229,
+  "total_gold": 1880754900,
+  "waves": 388128,
+  "days": 44.922222222222224,
+  "gold_talent_max_days": 3.0921296296296297,
+  "prices": [
+    {
+      "tier": 0,
+      "price": 200
+    },
+    {
+      "tier": 1,
+      "price": 300
+    },
+    {
+      "tier": 2,
+      "price": 400
+    },
+    {
+      "tier": 3,
+      "price": 600
+    },
+    {
+      "tier": 4,
+      "price": 800
+    },
+    {
+      "tier": 5,
+      "price": 1000
+    },
+    {
+      "tier": 6,
+      "price": 1400
+    },
+    {
+      "tier": 7,
+      "price": 1900
+    },
+    {
+      "tier": 8,
+      "price": 2500
+    },
+    {
+      "tier": 9,
+      "price": 3400
+    },
+    {
+      "tier": 10,
+      "price": 4600
+    },
+    {
+      "tier": 11,
+      "price": 6200
+    },
+    {
+      "tier": 12,
+      "price": 8400
+    },
+    {
+      "tier": 13,
+      "price": 11300
+    },
+    {
+      "tier": 14,
+      "price": 15300
+    },
+    {
+      "tier": 15,
+      "price": 20600
+    },
+    {
+      "tier": 16,
+      "price": 27900
+    },
+    {
+      "tier": 17,
+      "price": 37600
+    },
+    {
+      "tier": 18,
+      "price": 50800
+    },
+    {
+      "tier": 19,
+      "price": 68600
+    },
+    {
+      "tier": 20,
+      "price": 92600
+    },
+    {
+      "tier": 21,
+      "price": 125000
+    },
+    {
+      "tier": 22,
+      "price": 168700
+    },
+    {
+      "tier": 23,
+      "price": 227800
+    },
+    {
+      "tier": 24,
+      "price": 307500
+    },
+    {
+      "tier": 25,
+      "price": 415100
+    },
+    {
+      "tier": 26,
+      "price": 560400
+    },
+    {
+      "tier": 27,
+      "price": 756600
+    },
+    {
+      "tier": 28,
+      "price": 1021400
+    },
+    {
+      "tier": 29,
+      "price": 1378800
+    },
+    {
+      "tier": 30,
+      "price": 1861400
+    },
+    {
+      "tier": 31,
+      "price": 2512900
+    },
+    {
+      "tier": 32,
+      "price": 3392500
+    },
+    {
+      "tier": 33,
+      "price": 4579800
+    },
+    {
+      "tier": 34,
+      "price": 6182800
+    },
+    {
+      "tier": 35,
+      "price": 8346700
+    }
+  ],
+  "stages": [
+    {
+      "id": "Training.Normal.1-1",
+      "gold": 210,
+      "experience": 12
+    },
+    {
+      "id": "Training.Normal.1-2",
+      "gold": 240,
+      "experience": 14
+    },
+    {
+      "id": "Training.Normal.1-3",
+      "gold": 270,
+      "experience": 16
+    },
+    {
+      "id": "Training.Normal.2-1",
+      "gold": 300,
+      "experience": 18
+    },
+    {
+      "id": "Training.Normal.2-2",
+      "gold": 330,
+      "experience": 20
+    },
+    {
+      "id": "Training.Normal.2-3",
+      "gold": 360,
+      "experience": 22
+    },
+    {
+      "id": "Training.Normal.3-1",
+      "gold": 390,
+      "experience": 24
+    },
+    {
+      "id": "Training.Normal.3-2",
+      "gold": 420,
+      "experience": 26
+    },
+    {
+      "id": "Training.Normal.3-3",
+      "gold": 450,
+      "experience": 28
+    },
+    {
+      "id": "Training.Hard.1-1",
+      "gold": 473,
+      "experience": 22
+    },
+    {
+      "id": "Training.Hard.1-2",
+      "gold": 496,
+      "experience": 24
+    },
+    {
+      "id": "Training.Hard.1-3",
+      "gold": 521,
+      "experience": 26
+    },
+    {
+      "id": "Training.Hard.2-1",
+      "gold": 547,
+      "experience": 28
+    },
+    {
+      "id": "Training.Hard.2-2",
+      "gold": 574,
+      "experience": 30
+    },
+    {
+      "id": "Training.Hard.2-3",
+      "gold": 603,
+      "experience": 32
+    },
+    {
+      "id": "Training.Hard.3-1",
+      "gold": 633,
+      "experience": 34
+    },
+    {
+      "id": "Training.Hard.3-2",
+      "gold": 665,
+      "experience": 36
+    },
+    {
+      "id": "Training.Hard.3-3",
+      "gold": 698,
+      "experience": 38
+    },
+    {
+      "id": "Training.Hell.1-1",
+      "gold": 733,
+      "experience": 32
+    },
+    {
+      "id": "Training.Hell.1-2",
+      "gold": 770,
+      "experience": 34
+    },
+    {
+      "id": "Training.Hell.1-3",
+      "gold": 808,
+      "experience": 36
+    },
+    {
+      "id": "Training.Hell.2-1",
+      "gold": 849,
+      "experience": 38
+    },
+    {
+      "id": "Training.Hell.2-2",
+      "gold": 891,
+      "experience": 40
+    },
+    {
+      "id": "Training.Hell.2-3",
+      "gold": 936,
+      "experience": 42
+    },
+    {
+      "id": "Training.Hell.3-1",
+      "gold": 982,
+      "experience": 44
+    },
+    {
+      "id": "Training.Hell.3-2",
+      "gold": 1031,
+      "experience": 46
+    },
+    {
+      "id": "Training.Hell.3-3",
+      "gold": 1083,
+      "experience": 48
+    }
+  ],
+  "catalog_sha256": "10b94a80c5b014129973f212aa8a5ccf7ce3859a4b2683d1d326729fffd5de45",
+  "assumptions": {
+    "daily_online_hours": 24,
+    "seconds_per_wave": 10,
+    "target_days": 45,
+    "stage": "Hell.3-3 throughout",
+    "initial_talents": 0,
+    "initial_gold": 0,
+    "priority": "online gold first, then cheapest legal upgrades",
+    "excluded": "stage progression time, dropped chests, salvage, other spending"
+  },
+  "verification_report": "Saved/Automation/RouteMapCurrency-v2/full-index.json",
+  "unrelated_followup": "Tools task is correcting the default-tools entry in Talents.Totals; price, gold and calibration tests passed.",
+  "verification_log_excerpt": "Saved/Diagnostics/TrainingEconomy105/test-evidence.json"
+}

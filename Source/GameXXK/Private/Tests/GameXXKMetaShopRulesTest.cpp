@@ -117,7 +117,7 @@ bool FGameXXKMetaShopCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(FString::Printf(TEXT("equipment product %d keeps stable id"), Index), Product.ProductId, ExpectedIds[Index]);
 		TestEqual(FString::Printf(TEXT("equipment product %d keeps set order"), Index), Product.EquipmentSet, ExpectedSets[Index]);
 		TestEqual(FString::Printf(TEXT("equipment product %d is an equipment pack"), Index), Product.Kind, EGameXXKMetaShopProductKind::EquipmentPack);
-		TestEqual(FString::Printf(TEXT("equipment product %d costs 100"), Index), Product.Price, FGameXXKMetaShopRules::EquipmentPackPrice);
+		TestEqual(FString::Printf(TEXT("equipment product %d costs 100000"), Index), Product.Price, FGameXXKMetaShopRules::EquipmentPackPrice);
 		TestFalse(FString::Printf(TEXT("equipment product %d has a display name"), Index), Product.DisplayName.IsEmpty());
 		TestFalse(FString::Printf(TEXT("equipment product %d has an icon path"), Index), Product.IconSoftPath.IsNull());
 		UniqueIds.Add(Product.ProductId);
@@ -175,14 +175,14 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 	{
 		FGameXXKRuntimeState State = MakeMinimumValidState();
 		State.Screen = EGameXXKScreen::Town;
-		State.PlayerGold = 1000;
+		State.PlayerGold = 1000000;
 		State.PlayerLevel = Index + 1;
 		UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(State);
 		const FGameXXKRuntimeState BeforePreview = State;
 		FGameXXKMetaShopPurchasePreview Preview;
 		TestTrue(FString::Printf(TEXT("equipment product %d previews"), Index), FGameXXKMetaShopRules::PreviewPurchase(State, ProductIds[Index], Preview));
 		TestTrue(FString::Printf(TEXT("equipment product %d preview is enabled"), Index), Preview.bAvailable);
-		TestEqual(FString::Printf(TEXT("equipment product %d preview price"), Index), Preview.Price, 100);
+		TestEqual(FString::Printf(TEXT("equipment product %d preview price"), Index), Preview.Price, 100000);
 		TestTrue(
 			FString::Printf(TEXT("equipment product %d preview is pure"), Index),
 			FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&State, &BeforePreview, PPF_None));
@@ -192,8 +192,8 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 		FGameXXKMetaShopPurchaseResult Result;
 		TestTrue(FString::Printf(TEXT("equipment product %d purchases"), Index), FGameXXKMetaShopRules::Purchase(State, ProductIds[Index], Result));
 		TestTrue(FString::Printf(TEXT("equipment product %d reports success"), Index), Result.bPurchased);
-		TestEqual(FString::Printf(TEXT("equipment product %d spends exactly 100"), Index), State.PlayerGold, 900);
-		TestEqual(FString::Printf(TEXT("equipment product %d reports gold delta"), Index), Result.GoldDelta, -100);
+		TestEqual(FString::Printf(TEXT("equipment product %d spends exactly 100000"), Index), State.PlayerGold, 900000);
+		TestEqual(FString::Printf(TEXT("equipment product %d reports gold delta"), Index), Result.GoldDelta, -100000);
 		TestEqual(FString::Printf(TEXT("equipment product %d adds one warehouse item"), Index), State.EquipmentCollection.WarehouseInstanceIds.Num(), WarehouseBefore + 1);
 		TestEqual(FString::Printf(TEXT("equipment product %d advances the shop ordinal"), Index), State.MetaShop.NextPurchaseOrdinal, OrdinalBefore + 1);
 		const FGameXXKEquipmentInstance* Instance = FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection, Result.GeneratedEquipmentId);
@@ -207,14 +207,14 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 				TestEqual(FString::Printf(TEXT("equipment product %d forces its set"), Index), Definition->Set, ExpectedSets[Index]);
 				TestTrue(FString::Printf(TEXT("equipment product %d rolls a legal slot"), Index), Definition->Slot >= EGameXXKEquipmentSlot::Weapon && Definition->Slot <= EGameXXKEquipmentSlot::Accessory);
 			}
-			TestEqual(FString::Printf(TEXT("equipment product %d matches player level"), Index), Instance->ItemLevel, Index + 1);
+			TestEqual(FString::Printf(TEXT("equipment product %d defaults to level one before tool unlock"), Index), Instance->ItemLevel, 1);
 			TestTrue(FString::Printf(TEXT("equipment product %d rolls a legal quality"), Index), Instance->Quality >= EGameXXKEquipmentQuality::Common && Instance->Quality <= EGameXXKEquipmentQuality::Epic);
 		}
 	}
 
 	FGameXXKRuntimeState ReplayA = MakeMinimumValidState();
 	ReplayA.Screen = EGameXXKScreen::Town;
-	ReplayA.PlayerGold = 1000;
+	ReplayA.PlayerGold = 1000000;
 	FGameXXKRuntimeState ReplayB = ReplayA;
 	FGameXXKMetaShopPurchaseResult ReplayResultA;
 	FGameXXKMetaShopPurchaseResult ReplayResultB;
@@ -234,12 +234,12 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 
 	FGameXXKRuntimeState Insufficient = MakeMinimumValidState();
 	Insufficient.Screen = EGameXXKScreen::Town;
-	Insufficient.PlayerGold = 99;
+	Insufficient.PlayerGold = 99999;
 	TestAtomicFailure(Insufficient, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InsufficientGold, TEXT("insufficient gold"));
 
 	FGameXXKRuntimeState Full = MakeMinimumValidState();
 	Full.Screen = EGameXXKScreen::Town;
-	Full.PlayerGold = 1000;
+	Full.PlayerGold = 1000000;
 	while (FGameXXKEquipmentRules::HasWarehouseCapacity(Full.EquipmentCollection))
 	{
 		FGameXXKEquipmentCreateRequest Request;
@@ -260,19 +260,19 @@ bool FGameXXKMetaShopEquipmentPurchaseTest::RunTest(const FString& Parameters)
 
 	FGameXXKRuntimeState Exhausted = MakeMinimumValidState();
 	Exhausted.Screen = EGameXXKScreen::Town;
-	Exhausted.PlayerGold = 1000;
+	Exhausted.PlayerGold = 1000000;
 	Exhausted.MetaShop.NextPurchaseOrdinal = MAX_int32;
 	TestAtomicFailure(Exhausted, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::PurchaseOrdinalExhausted, TEXT("exhausted purchase ordinal"));
 
 	FGameXXKRuntimeState Corrupt = MakeMinimumValidState();
 	Corrupt.Screen = EGameXXKScreen::Town;
-	Corrupt.PlayerGold = 1000;
+	Corrupt.PlayerGold = 1000000;
 	Corrupt.EquipmentCollection.CollectionSeed = 0;
 	TestAtomicFailure(Corrupt, EGameXXKMetaShopProductId::PoJunPack, EGameXXKMetaShopError::InvalidRuntimeState, TEXT("corrupt runtime"));
 
 	FGameXXKRuntimeState InvalidProduct = MakeMinimumValidState();
 	InvalidProduct.Screen = EGameXXKScreen::Town;
-	InvalidProduct.PlayerGold = 1000;
+	InvalidProduct.PlayerGold = 1000000;
 	TestAtomicFailure(InvalidProduct, EGameXXKMetaShopProductId::Invalid, EGameXXKMetaShopError::InvalidProduct, TEXT("invalid product"));
 	return true;
 }

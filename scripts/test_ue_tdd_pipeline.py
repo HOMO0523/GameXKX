@@ -28,7 +28,7 @@ class UETDDPipelineCommandTests(unittest.TestCase):
         self.assertIn(f"-Project={pipeline.UPROJECT.as_posix()}", command)
         self.assertIn("-NoHotReload", command)
 
-    def test_launch_editor_uses_project_mcp_and_memory_ddc(self) -> None:
+    def test_launch_editor_uses_project_mcp_and_disk_ddc(self) -> None:
         fake_process = SimpleNamespace(pid=12345)
         with patch.object(
             pipeline.subprocess,
@@ -42,7 +42,8 @@ class UETDDPipelineCommandTests(unittest.TestCase):
         self.assertIn(pipeline.UPROJECT.as_posix(), command)
         self.assertIn("-ModelContextProtocolStartServer", command)
         self.assertIn("-ModelContextProtocolPort=18765", command)
-        self.assertEqual(command[-1], "-DDC-ForceMemoryCache")
+        self.assertNotIn("-DDC-ForceMemoryCache", command)
+        self.assertIn(f"-LocalDataCachePath={(pipeline.PROJECT_ROOT / 'Saved' / 'DerivedDataCache').as_posix()}", command)
 
     def test_launch_editor_bypasses_sdk_probes_for_automation_only(self) -> None:
         fake_process = SimpleNamespace(pid=12345)

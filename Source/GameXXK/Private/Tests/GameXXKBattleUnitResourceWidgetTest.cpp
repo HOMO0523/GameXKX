@@ -1,6 +1,13 @@
 #include "Misc/AutomationTest.h"
 #include "UObject/UnrealType.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKInkResourceBarStyle.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Image.h"
+#include "Components/ProgressBar.h"
+#include "Components/TextBlock.h"
+#include "Materials/MaterialInstanceDynamic.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -38,8 +45,6 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	VerifyReflectedRenderedValueGetter(GET_FUNCTION_NAME_CHECKED(UGameXXKBattleUnitResourceWidget, GetManaPercentForTest));
 	VerifyReflectedRenderedValueGetter(GET_FUNCTION_NAME_CHECKED(UGameXXKBattleUnitResourceWidget, IsHealthFillLeftToRightForTest));
 	VerifyReflectedRenderedValueGetter(GET_FUNCTION_NAME_CHECKED(UGameXXKBattleUnitResourceWidget, IsManaFillLeftToRightForTest));
-	TestTrue(TEXT("resource mask clips the complete Full texture horizontally instead of only its center color channel"),
-		UGameXXKBattleUnitResourceWidget::UsesWholeFullBarMaskForTest());
 
 	TestTrue(TEXT("resource widget prepares a native runtime tree for screen-space embedding"), ResourceWidget->PrepareForScreenSpaceEmbedding());
 	TestTrue(TEXT("resource widget retains its native runtime tree"), ResourceWidget->HasRuntimeWidgetTreeForTest());
@@ -47,7 +52,7 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	const auto ReadStringGetter = [this, ResourceWidget](const FName FunctionName)
 	{
 		UFunction* const Function = ResourceWidget->FindFunction(FunctionName);
-		TestNotNull(*FString::Printf(TEXT("%s is exposed for PSD resource-style inspection"), *FunctionName.ToString()), Function);
+		TestNotNull(*FString::Printf(TEXT("%s is exposed for resource-style inspection"), *FunctionName.ToString()), Function);
 		if (!Function)
 		{
 			return FString();
@@ -64,25 +69,25 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	};
 
 	TestEqual(
-		TEXT("health track uses the derived PSD track texture"),
+		TEXT("health track uses the common ink master"),
 		ReadStringGetter(TEXT("GetHealthTrackResourcePathForTest")),
-		FString(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthTrack.T_BattlePsd_HealthTrack")));
+		FString(GameXXKInkResourceBarStyle::TexturePath));
 	TestEqual(
-		TEXT("health full layer uses the complete PSD red bar before right-side masking"),
+		TEXT("health fill uses the same ink silhouette"),
 		ReadStringGetter(TEXT("GetHealthFullResourcePathForTest")),
-		FString(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthFull.T_BattlePsd_HealthFull")));
+		FString(GameXXKInkResourceBarStyle::TexturePath));
 	TestEqual(
-		TEXT("mana track uses the derived PSD track texture"),
+		TEXT("mana track uses the common ink master"),
 		ReadStringGetter(TEXT("GetManaTrackResourcePathForTest")),
-		FString(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaTrack.T_BattlePsd_ManaTrack")));
+		FString(GameXXKInkResourceBarStyle::TexturePath));
 	TestEqual(
-		TEXT("mana full layer uses the complete PSD green bar before right-side masking"),
+		TEXT("mana fill uses the same ink silhouette"),
 		ReadStringGetter(TEXT("GetManaFullResourcePathForTest")),
-		FString(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaFull.T_BattlePsd_ManaFull")));
+		FString(GameXXKInkResourceBarStyle::TexturePath));
 	TestEqual(
 		TEXT("resource rows use the dedicated percentage-mask UI material"),
 		ReadStringGetter(TEXT("GetResourceMaskMaterialPathForTest")),
-		FString(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/M_BattlePsdResourceMask.M_BattlePsdResourceMask")));
+		FString(GameXXKInkResourceBarStyle::MaterialPath));
 	TestEqual(TEXT("resource widget wrapper itself is input-transparent"), ResourceWidget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 	ResourceWidget->SetVisibility(ESlateVisibility::Visible);
 	TestTrue(TEXT("resource widget can reprepare its native runtime tree"), ResourceWidget->PrepareForScreenSpaceEmbedding());
@@ -103,6 +108,29 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("hero mana row uses the required readable label"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("内力 18 / 30")));
 	TestEqual(TEXT("hero health fill follows current and maximum health"), ResourceWidget->GetHealthPercentForTest(), 0.72f);
 	TestEqual(TEXT("hero mana fill follows current and maximum mana"), ResourceWidget->GetManaPercentForTest(), 0.60f);
+	UImage* HealthImage = Cast<UImage>(ResourceWidget->WidgetTree->FindWidget(TEXT("HealthBarLegacy")));
+	UImage* ManaImage = Cast<UImage>(ResourceWidget->WidgetTree->FindWidget(TEXT("ManaBarLegacy")));
+	UMaterialInstanceDynamic* HealthMaterial = HealthImage ? Cast<UMaterialInstanceDynamic>(HealthImage->GetBrush().GetResourceObject()) : nullptr;
+	UMaterialInstanceDynamic* ManaMaterial = ManaImage ? Cast<UMaterialInstanceDynamic>(ManaImage->GetBrush().GetResourceObject()) : nullptr;
+	TestNotNull(TEXT("the visible health image owns its ink material"), HealthMaterial);
+	TestNotNull(TEXT("the visible mana image owns its ink material"), ManaMaterial);
+	if (HealthMaterial && ManaMaterial)
+	{
+		TestEqual(TEXT("rendered health fill agrees with the number"), HealthMaterial->K2_GetScalarParameterValue(TEXT("FillPercent")), 0.72f);
+		TestEqual(TEXT("rendered mana fill agrees with the number"), ManaMaterial->K2_GetScalarParameterValue(TEXT("FillPercent")), 0.60f);
+		TestTrue(TEXT("mana and health use distinct colors on the same silhouette"),
+			!HealthMaterial->K2_GetVectorParameterValue(TEXT("FillColor")).Equals(ManaMaterial->K2_GetVectorParameterValue(TEXT("FillColor"))));
+		ResourceWidget->SetUnitVitals(TEXT("我 1P"), FText::FromString(TEXT("主角")), 0,100,30,30,true);
+		TestEqual(TEXT("death empties the actual material immediately"), HealthMaterial->K2_GetScalarParameterValue(TEXT("FillPercent")), 0.0f);
+		ResourceWidget->SetUnitVitals(TEXT("我 1P"), FText::FromString(TEXT("主角")), 100,100,0,30,true);
+		TestEqual(TEXT("a reused health row returns to a full fill"), HealthMaterial->K2_GetScalarParameterValue(TEXT("FillPercent")), 1.0f);
+		TestEqual(TEXT("empty mana does not retain the previous full fill"), ManaMaterial->K2_GetScalarParameterValue(TEXT("FillPercent")), 0.0f);
+	}
+	for (const FName TextName : {FName(TEXT("HealthText")), FName(TEXT("ManaText"))})
+	{
+		const UTextBlock* Text = Cast<UTextBlock>(ResourceWidget->WidgetTree->FindWidget(TextName));
+		TestTrue(TEXT("resource numbers use JiangHu font"), Text && Text->GetFont().FontObject == FGameXXKInRunUiStyle::Font(18,true).FontObject);
+	}
 	TestTrue(TEXT("hero mana row is visible when mana is enabled"), ResourceWidget->IsManaRowVisibleForTest());
 	TestTrue(TEXT("hero resource content never blocks screen-space targeting"), ResourceWidget->AreContentWidgetsHitTestTransparentForTest());
 	TestTrue(TEXT("health fill consumes the PSD bar from left to right"), ResourceWidget->IsHealthFillLeftToRightForTest());
@@ -114,6 +142,28 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("enemy mana row is not visible despite a mana value"), ResourceWidget->IsManaRowVisibleForTest());
 	TestTrue(TEXT("enemy resource content never blocks screen-space targeting"), ResourceWidget->AreContentWidgetsHitTestTransparentForTest());
 	TestEqual(TEXT("resource root leaves screen-space hit testing to its owner"), UGameXXKBattleUnitResourceWidget::GetRootHitTestVisibilityForTest(), ESlateVisibility::SelfHitTestInvisible);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTravelInkResourceFillTest,
+	"GameXXK.UI.Battle.InkResourceBar.TravelFillSynchronization",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTravelInkResourceFillTest::RunTest(const FString& Parameters)
+{
+	UProgressBar* Bar = NewObject<UProgressBar>();
+	Bar->SetPercent(0.75f);
+	GameXXKInkResourceBarStyle::Apply(Bar, FVector2D(124,18));
+	UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Bar->GetWidgetStyle().BackgroundImage.GetResourceObject());
+	if (!TestNotNull(TEXT("travel bar renders its shared ink material"), Material)) return false;
+	TestEqual(TEXT("initial visible fill follows the existing HP snapshot"), Material->K2_GetScalarParameterValue(TEXT("FillPercent")), 0.75f);
+	for (const float Percent : {0.37f, 0.0f, 1.0f, -1.0f, 2.0f})
+	{
+		GameXXKInkResourceBarStyle::Update(Bar, Percent);
+		TestEqual(TEXT("travel bar and shader use the same clamped live value"),
+			Material->K2_GetScalarParameterValue(TEXT("FillPercent")), Bar->GetPercent());
+		TestEqual(TEXT("fill stays inside the rail"), Bar->GetPercent(), FMath::Clamp(Percent,0.0f,1.0f));
+	}
 	return true;
 }
 

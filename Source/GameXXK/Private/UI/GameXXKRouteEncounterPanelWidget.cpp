@@ -1,5 +1,7 @@
 #include "UI/GameXXKRouteEncounterPanelWidget.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKCardTooltipPresentation.h"
+#include "UI/GameXXKCardPortraitImage.h"
 #include "Components/ScaleBox.h"
 #include "Components/SizeBox.h"
 #include "Components/Overlay.h"
@@ -14,6 +16,7 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
@@ -26,8 +29,8 @@ namespace
 	const FVector2D EncounterPanelSize(1520.0f, 840.0f);
 	const FVector2D EncounterActionSize(320.0f, 76.0f);
 	const FVector2D EncounterChoiceCardSize(300.0f, 454.0f);
-	const FVector2D EncounterSelectionInkSize(54.0f, 54.0f);
-	const FVector2D EncounterSelectionInkPosition(240.0f, 8.0f);
+	const FVector2D EncounterSelectionInkSize(264.0f, 54.0f);
+	const FVector2D EncounterSelectionInkPosition(18.0f, 14.0f);
 	const FVector2D EncounterCloseSize(56.0f, 56.0f);
 	const FMargin WindowFrameMargin(0.065f);
 	const FMargin ActionFrameMargin(5.0f / 73.0f, 5.0f / 31.0f, 5.0f / 73.0f, 5.0f / 31.0f);
@@ -38,7 +41,7 @@ namespace
 	const FString ApprovedTextureRoot(TEXT("/Game/GameXXK/UI/MasterV2/Approved/"));
 	const FString CardFrameTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardFrame.T_MasterV2_CardFrame"));
 	const FString CloseInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CloseInk.T_MasterV2_CloseInk"));
-	const FString SelectionInkTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_SquareSelected.T_MasterV2_SquareSelected"));
+	const FString SelectionInkTexturePath(ApprovedTextureRoot + TEXT("inventory_scrollbar_Button.inventory_scrollbar_Button"));
 	const FString RewardIconTexturePath(ApprovedTextureRoot + TEXT("T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon"));
 
 	struct FRouteEncounterPresentation
@@ -427,23 +430,27 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 		Button->SetStyle(FGameXXKInRunUiStyle::Choice(EncounterChoiceCardSize)); Button->ConfigureChoice(this,Index);
 		auto* Face = WidgetTree->ConstructWidget<UCanvasPanel>(); Button->SetContent(Face);
 		if (auto* FaceSlot = Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
-		auto* Art = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("RouteEncounterChoiceArt%d"),Index));
+		if (auto* FaceSlot = Cast<UButtonSlot>(Face->Slot)) { FaceSlot->SetHorizontalAlignment(HAlign_Fill); FaceSlot->SetVerticalAlignment(VAlign_Fill); FaceSlot->SetPadding(FMargin(0)); }
+		auto* Art = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>(UGameXXKCardPortraitImage::StaticClass(), *FString::Printf(TEXT("RouteEncounterChoiceArt%d"),Index));
+		Art->SetCardFace(Face);
 		Art->SetVisibility(ESlateVisibility::HitTestInvisible);
-		AddCanvasChild(Face,Art,FVector2D(95,35),FVector2D(110,110));
+		AddCanvasChild(Face,Art,FVector2D(72,94),FVector2D(156,156));
 		auto* Sigil = MakeInkText(WidgetTree,FText::GetEmpty(),64,FGameXXKInRunUiStyle::Jade(),*FString::Printf(TEXT("RouteEncounterChoiceSigil%d"),Index));
 		Sigil->SetJustification(ETextJustify::Center);
-		AddCanvasChild(Face,Sigil,FVector2D(94,34),FVector2D(112,112));
+		AddCanvasChild(Face,Sigil,FVector2D(72,94),FVector2D(156,156));
 		auto* Name = MakeInkText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteEncounterChoiceName%d"),Index));
-		Name->SetJustification(ETextJustify::Center); AddCanvasChild(Face,Name,FVector2D(24,161),FVector2D(252,80));
+		Name->SetJustification(ETextJustify::Center); AddCanvasChild(Face,Name,FVector2D(24,22),FVector2D(252,54));
+		Cast<UCanvasPanelSlot>(Name->Slot)->SetZOrder(3);
 		auto* Description = MakeInkText(WidgetTree,FText::GetEmpty(),22,FGameXXKInRunUiStyle::MutedInk(),*FString::Printf(TEXT("RouteEncounterChoiceDescription%d"),Index));
 		Description->SetWrapTextAt(220.0f); Description->SetLineHeightPercentage(1.16f); Description->SetJustification(ETextJustify::Center);
-		AddCanvasChild(Face,Description,FVector2D(25,247),FVector2D(250,170));
+		AddCanvasChild(Face,Description,FVector2D(25,274),FVector2D(250,140));
 		auto* Disabled = MakeInkText(WidgetTree,FText::GetEmpty(),18,FGameXXKInRunUiStyle::Vermilion(),*FString::Printf(TEXT("RouteEncounterChoiceDisabledReason%d"),Index));
 		Disabled->SetJustification(ETextJustify::Center); Disabled->SetVisibility(ESlateVisibility::Collapsed);
 		AddCanvasChild(Face,Disabled,FVector2D(25,386),FVector2D(250,54));
 		auto* Ink = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),*FString::Printf(TEXT("RouteEncounterChoiceSelectionInk%d"),Index));
 		Ink->SetBrush(MakeTextureBrush(SelectionInkTexturePath,EncounterSelectionInkSize)); Ink->SetVisibility(ESlateVisibility::Collapsed);
 		AddCanvasChild(Face,Ink,EncounterSelectionInkPosition,EncounterSelectionInkSize);
+		Cast<UCanvasPanelSlot>(Ink->Slot)->SetZOrder(2);
 		ChoiceCardButtons.Add(Button); ChoiceArtImages.Add(Art); ChoiceNameTexts.Add(Name); ChoiceDescriptionTexts.Add(Description); ChoiceDisabledReasonTexts.Add(Disabled); ChoiceSelectionInks.Add(Ink);
 		AddCanvasChild(FrameCanvas,Button,FVector2D(414+326*Index,144),EncounterChoiceCardSize);
 	}
@@ -468,6 +475,15 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 	auto* CampHint = MakeInkText(WidgetTree,NSLOCTEXT("GameXXKRouteEncounter","CampHint","稍作休整，再赴前路。\n选择后继续本次历练。"),24,FGameXXKInRunUiStyle::MutedInk(),TEXT("RouteCampHint"));
 	CampHint->SetJustification(ETextJustify::Center); CampHint->SetLineHeightPercentage(1.4f);
 	AddCanvasChild(FrameCanvas,CampHint,FVector2D(474,410),FVector2D(862,140));
+	UImage* CampIllustration = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteCampIllustration"));
+	CampIllustration->SetBrush(MakeTextureBrush(TEXT("/Game/GameXXK/UI/RouteCamp/T_CampfireRestBanner_V3.T_CampfireRestBanner_V3"), FVector2D(2172,724)));
+	if (UMaterialInterface* SoftEdge = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/GameXXK/UI/Materials/Followup/M_CampfireBannerSoftEdge")))
+	{
+		FSlateBrush IllustrationBrush = CampIllustration->GetBrush();
+		IllustrationBrush.SetResourceObject(SoftEdge); CampIllustration->SetBrush(IllustrationBrush);
+	}
+	CampIllustration->SetVisibility(ESlateVisibility::Collapsed);
+	AddCanvasChild(FrameCanvas,CampIllustration,FVector2D(26,302),FVector2D(1356,452));
 	CloseButton = WidgetTree->ConstructWidget<UGameXXKRouteEncounterActionButton>(UGameXXKRouteEncounterActionButton::StaticClass(),TEXT("RouteEncounterCloseAction"));
 	CloseButton->SetStyle(MakeImageButtonStyle(CloseInkTexturePath,EncounterCloseSize)); CloseButton->Configure(this,EGameXXKRouteEncounterAction::ClosePanel);
 	CloseButton->SetToolTipText(NSLOCTEXT("GameXXKRouteEncounter","ReturnToRouteMap","返回路线图（本节点不会结算）"));
@@ -585,14 +601,17 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 	{
 		Presentation.Title = NSLOCTEXT("GameXXKRouteEncounter", "CampTitle", "营火抉择");
 		Presentation.Speaker = NSLOCTEXT("GameXXKRouteEncounter", "CampSpeaker", "山间营火");
-		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampBody", "营火尚温。选择让全队休整，或领取本局行旅钱。");
-		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampHeal", "全队恢复30%气血");
-		Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoney", "获得100局内金币");
-		Presentation.PrimaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampHealTooltip", "每名当前队员恢复其最大气血的30%，不超过上限。");
-		Presentation.SecondaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampRouteMoneyTooltip", "本局行旅钱增加100。");
+		Presentation.Body = NSLOCTEXT("GameXXKRouteEncounter", "CampRestBody", "营火尚温。带上保命护符，再踏前路。");
+		Presentation.PrimaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampTalisman", "获得保命护符");
+		Presentation.SecondaryLabel = NSLOCTEXT("GameXXKRouteEncounter", "CampContinue", "继续前行");
+		const FGameXXKRelicDefinition* Talisman = FGameXXKRelicCatalog::FindDefinition(FGameXXKRelicRules::LifeSavingTalismanId());
+		Presentation.PrimaryTooltip = FGameXXKRelicRules::OwnsLifeSavingTalisman(State)
+			? NSLOCTEXT("GameXXKRelics", "TalismanOwnedContinue", "本局已持有保命护符，可继续前行。")
+			: Talisman ? Talisman->Description : FText::GetEmpty();
+		Presentation.SecondaryTooltip = NSLOCTEXT("GameXXKRouteEncounter", "CampContinueTooltip", "离开营火，继续路线。");
 		Presentation.PrimaryAction = EGameXXKRouteEncounterAction::CampTakeLifeSavingTalisman;
 		Presentation.SecondaryAction = EGameXXKRouteEncounterAction::CampTakeRouteMoney;
-		Presentation.bPrimaryEnabled = true;
+		Presentation.bPrimaryEnabled = !FGameXXKRelicRules::OwnsLifeSavingTalisman(State);
 		Presentation.bSecondaryEnabled = true;
 		break;
 	}
@@ -627,6 +646,18 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 	if (PrimaryActionButton) PrimaryActionButton->SetToolTipText(Presentation.PrimaryTooltip);
 	if (SecondaryActionButton) SecondaryActionButton->SetToolTipText(Presentation.SecondaryTooltip);
 	if (TertiaryActionButton) TertiaryActionButton->SetToolTipText(Presentation.TertiaryTooltip);
+	if (State.Screen == EGameXXKScreen::RouteCamp)
+	{
+		PrimaryActionButton->SetToolTip(GameXXKCardTooltipPresentation::BuildCompactTooltip(
+			WidgetTree, NSLOCTEXT("GameXXKRelics", "CampTalismanTooltipTitle", "保命护符"), Presentation.PrimaryTooltip.ToString()));
+		SecondaryActionButton->SetToolTip(GameXXKCardTooltipPresentation::BuildCompactTooltip(
+			WidgetTree, Presentation.SecondaryLabel, Presentation.SecondaryTooltip.ToString()));
+	}
+	else
+	{
+		PrimaryActionButton->SetToolTip(nullptr);
+		SecondaryActionButton->SetToolTip(nullptr);
+	}
 
 	ChoiceActions = {Presentation.PrimaryAction, Presentation.SecondaryAction, Presentation.TertiaryAction};
 	const bool bThreeCardMode = IsThreeCardChoiceAction(Presentation.PrimaryAction)
@@ -649,8 +680,26 @@ bool UGameXXKRouteEncounterPanelWidget::BuildPresentation()
 	const FText ChoiceLabels[] = {Presentation.PrimaryLabel, Presentation.SecondaryLabel, Presentation.TertiaryLabel};
 	const FText ChoiceDescriptions[] = {Presentation.PrimaryTooltip, Presentation.SecondaryTooltip, Presentation.TertiaryTooltip};
 	const bool ChoiceEnabled[] = {Presentation.bPrimaryEnabled, Presentation.bSecondaryEnabled, Presentation.bTertiaryEnabled};
-	if (auto* CampHint = WidgetTree->FindWidget(TEXT("RouteCampHint")))
-		CampHint->SetVisibility(State.Screen == EGameXXKScreen::RouteCamp ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	const bool bCamp = State.Screen == EGameXXKScreen::RouteCamp;
+	if (auto* CampHint = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("RouteCampHint"))))
+	{
+		CampHint->SetText(NSLOCTEXT("GameXXKRouteEncounter", "CampContinueHint", "选择后继续本次历练。"));
+		CampHint->SetVisibility(bCamp ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (auto* HintSlot = Cast<UCanvasPanelSlot>(CampHint->Slot))
+		{
+			HintSlot->SetPosition(FVector2D(474,263)); HintSlot->SetSize(FVector2D(862,38));
+		}
+	}
+	if (auto* CampArt = WidgetTree->FindWidget(TEXT("RouteCampIllustration")))
+		CampArt->SetVisibility(bCamp ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+	if (auto* SpeakerSlot = Cast<UCanvasPanelSlot>(SpeakerTextBlock->Slot)) SpeakerSlot->SetPosition(FVector2D(16,bCamp ? 133 : 154));
+	if (auto* BodySlot = Cast<UCanvasPanelSlot>(BodyTextBlock->Slot))
+	{
+		BodySlot->SetPosition(FVector2D(16,bCamp ? 200 : 233));
+		BodySlot->SetSize(FVector2D(338,bCamp ? 100 : 360));
+	}
+	if (auto* PrimarySlot = Cast<UCanvasPanelSlot>(PrimaryActionButton->Slot)) PrimarySlot->SetPosition(FVector2D(474,bCamp ? 165 : 249));
+	if (auto* SecondarySlot = Cast<UCanvasPanelSlot>(SecondaryActionButton->Slot)) SecondarySlot->SetPosition(FVector2D(948,bCamp ? 165 : 249));
 
 	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceCardButtons.Num(); ++ChoiceIndex)
 	{
@@ -752,7 +801,9 @@ void UGameXXKRouteEncounterPanelWidget::RefreshChoiceCardStates()
 {
 	for (int32 ChoiceIndex = 0; ChoiceIndex < ChoiceSelectionInks.Num(); ++ChoiceIndex)
 	{
-		if (ChoiceCardButtons.IsValidIndex(ChoiceIndex)) ChoiceCardButtons[ChoiceIndex]->SetStyle(FGameXXKInRunUiStyle::Choice(EncounterChoiceCardSize, ChoiceIndex == SelectedChoiceIndex));
+		if (ChoiceCardButtons.IsValidIndex(ChoiceIndex)) ChoiceCardButtons[ChoiceIndex]->SetStyle(FGameXXKInRunUiStyle::Choice(EncounterChoiceCardSize,false));
+		if (ChoiceNameTexts.IsValidIndex(ChoiceIndex) && ChoiceNameTexts[ChoiceIndex])
+			ChoiceNameTexts[ChoiceIndex]->SetColorAndOpacity(ChoiceIndex == SelectedChoiceIndex ? FLinearColor::White : FGameXXKInRunUiStyle::Ink());
 		if (ChoiceSelectionInks[ChoiceIndex])
 		{
 			ChoiceSelectionInks[ChoiceIndex]->SetVisibility(

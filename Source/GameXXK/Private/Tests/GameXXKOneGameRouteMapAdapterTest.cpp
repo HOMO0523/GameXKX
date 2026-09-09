@@ -99,7 +99,7 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	RouteWidget->SetRouteMapViewportGeometry(FVector2D::ZeroVector, FVector2D(1280.0f, 720.0f));
 	RouteWidget->RefreshFromState();
 	TestTrue(TEXT("adapter creates a route background visual"), RouteWidget->HasRouteBackgroundVisualForTest());
-	TestTrue(TEXT("adapter uses the 1Game map background texture"), RouteWidget->GetRouteBackgroundTexturePathForTest().Contains(TEXT("图层_1")));
+	TestTrue(TEXT("adapter uses the redrawn project route background"), RouteWidget->GetRouteBackgroundTexturePathForTest().Contains(TEXT("/Game/GameXXK/UI/RouteMap/T_RouteBackground")));
 	const FVector2D RouteContentSize = RouteWidget->GetRouteContentSizeForTest();
 	UWidget* RouteContentSizeWidget = nullptr;
 	UWidget* RouteBackgroundWidget = nullptr;
@@ -140,7 +140,9 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("route content keeps a tall scrollable route above the screen"), RouteContentSize.Y > 720.0f);
 	TestTrue(TEXT("route map shows the approved paper/ink scroll bar for the player-facing view"), RouteWidget->IsRouteScrollBarVisibleForTest());
 	TestTrue(TEXT("route map provides a blank-canvas drag surface"), RouteWidget->HasRouteDragSurfaceForTest());
-	TestEqual(TEXT("route map initially scrolls to the bottom of the route"), RouteWidget->GetLastAppliedScrollOffsetForTest(), RouteWidget->GetMaxScrollOffsetForTest());
+	const float VisibleHeight = RouteContentSize.Y - RouteWidget->GetMaxScrollOffsetForTest();
+	const float StartPosition = RouteWidget->GetRouteNodeVisualStatesForTest()[0].CanvasPosition.Y - RouteWidget->GetLastAppliedScrollOffsetForTest();
+	TestTrue(TEXT("initial framing keeps the start visible in the lower half before the centering tail"), StartPosition > VisibleHeight * 0.5f && StartPosition < VisibleHeight);
 	const float BottomScrollOffset = RouteWidget->GetLastAppliedScrollOffsetForTest();
 	TestTrue(TEXT("route map drag can move upward from the bottom"), RouteWidget->ApplyRouteMapDragDeltaForTest(160.0f));
 	TestTrue(TEXT("route map drag decreases the scroll offset when content is dragged downward"), RouteWidget->GetLastAppliedScrollOffsetForTest() < BottomScrollOffset);
@@ -300,8 +302,8 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	}
 	TestFalse(TEXT("fallback current node label is bound"), RouteWidget->GetCreatedNodeVisualLabel(0).IsEmpty());
 	TestFalse(TEXT("fallback next node label is bound"), RouteWidget->GetCreatedNodeVisualLabel(1).IsEmpty());
-	TestTrue(TEXT("fallback start node uses 1Game camp texture"), RouteWidget->GetCreatedNodeVisualIconPath(0).Contains(TEXT("篝火")));
-	TestTrue(TEXT("fallback future battle node uses 1Game disabled monster texture"), RouteWidget->GetCreatedNodeVisualIconPath(1).Contains(TEXT("小怪灰色")));
+	TestTrue(TEXT("fallback start node uses the project camp icon"), RouteWidget->GetCreatedNodeVisualIconPath(0).Contains(TEXT("T_RouteNodeCamp")));
+	TestTrue(TEXT("future battle reuses the approved idle-strip monster icon"), RouteWidget->GetCreatedNodeVisualIconPath(1).Contains(TEXT("T_TrainingWaveMarkerNormal")));
 
 	const TArray<FGameXXKOneGameRouteNode> InitialNodes = RouteWidget->BuildAdapterNodes();
 	TestEqual(TEXT("adapter exposes generated route nodes"), InitialNodes.Num(), Subsystem->GetRuntimeState().RouteMapNodes.Num());
@@ -322,7 +324,7 @@ bool FGameXXKOneGameRouteMapAdapterTest::RunTest(const FString& Parameters)
 	const TArray<FGameXXKOneGameRouteNode> AfterStartNodes = RouteWidget->BuildAdapterNodes();
 	TestFalse(TEXT("visited start node is disabled after advance"), AfterStartNodes[0].bEnabled);
 	TestTrue(TEXT("battle node becomes enabled after start"), AfterStartNodes[1].bEnabled);
-	TestTrue(TEXT("enabled battle node swaps to 1Game monster texture"), RouteWidget->GetCreatedNodeVisualIconPath(1).EndsWith(TEXT("/小怪.小怪")));
+	TestTrue(TEXT("enabled battle retains the approved idle-strip monster icon"), RouteWidget->GetCreatedNodeVisualIconPath(1).Contains(TEXT("T_TrainingWaveMarkerNormal")));
 	TestTrue(TEXT("adapter executes battle node"), RouteWidget->ExecuteRouteNode(1));
 	TestEqual(TEXT("battle node opens battle screen"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Battle);
 	TestEqual(

@@ -5,6 +5,10 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKGemRules.h"
+#include "GameXXKTalentRules.h"
+#include "GameXXKTravelMoneyRules.h"
 
 namespace
 {
@@ -60,7 +64,7 @@ namespace
 		case EGameXXKMetaShopError::NotInTown:
 			return NSLOCTEXT("GameXXKMetaShop", "NotInTown", "只能在城镇商店购买。");
 		case EGameXXKMetaShopError::InsufficientGold:
-			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "元宝不足。");
+			return NSLOCTEXT("GameXXKMetaShop", "InsufficientGold", "局外金币不足。");
 		case EGameXXKMetaShopError::WarehouseFull:
 			return NSLOCTEXT("GameXXKMetaShop", "WarehouseFull", "装备仓库已满。");
 		case EGameXXKMetaShopError::RosterFull:
@@ -75,6 +79,9 @@ namespace
 			return NSLOCTEXT("GameXXKMetaShop", "CompanionCreationFailed", "伙伴生成失败。");
 		case EGameXXKMetaShopError::InvalidRuntimeState:
 			return NSLOCTEXT("GameXXKMetaShop", "InvalidRuntimeState", "当前存档状态无效。");
+		case EGameXXKMetaShopError::BackpackFull:return FText::FromString(TEXT("背包已满，请先整理背包。"));
+		case EGameXXKMetaShopError::InventoryOverflow:return FText::FromString(TEXT("物品数量已达到上限。"));
+		case EGameXXKMetaShopError::PersistenceFailed:return FText::FromString(TEXT("保存失败，金币未扣除，请重试。"));
 		default:
 			return FText::GetEmpty();
 		}
@@ -107,11 +114,28 @@ const FGameXXKMetaShopProductDefinition* FGameXXKMetaShopRules::FindProduct(cons
 	{
 		return nullptr;
 	}
-	return GetProducts().FindByPredicate(
+	if (const auto* Existing=GetProducts().FindByPredicate(
 		[ProductId](const FGameXXKMetaShopProductDefinition& Product)
 		{
 			return Product.ProductId == ProductId;
-		});
+		})) return Existing;
+	return GetDesktopProducts().FindByPredicate([ProductId](const auto& P){return P.ProductId==ProductId;});
+}
+
+const TArray<FGameXXKMetaShopProductDefinition>& FGameXXKMetaShopRules::GetDesktopProducts()
+{
+	static const TArray<FGameXXKMetaShopProductDefinition> Products=[]()
+	{
+		TArray<FGameXXKMetaShopProductDefinition> Result;
+		for(const auto& P:GetProducts()) if(P.Kind==EGameXXKMetaShopProductKind::EquipmentPack) Result.Add(P);
+		auto Add=[&](EGameXXKMetaShopProductId Id,EGameXXKMetaShopProductKind Kind,int32 Price,const TCHAR* Name,const TCHAR* Detail,const TCHAR* Icon)
+		{FGameXXKMetaShopProductDefinition P;P.ProductId=Id;P.Kind=Kind;P.Price=Price;P.DisplayName=FText::FromString(Name);P.Description=FText::FromString(Detail);P.IconSoftPath=FSoftObjectPath(Icon);Result.Add(P);};
+		Add(EGameXXKMetaShopProductId::GemPack,EGameXXKMetaShopProductKind::GemPack,100000,TEXT("宝石包"),TEXT("随机获得1颗宝石，采用高级宝箱的宝石品质。"),TEXT(""));
+		Add(EGameXXKMetaShopProductId::AdvancedChest,EGameXXKMetaShopProductKind::TrainingChest,100000,TEXT("高级宝箱"),TEXT("获得1个高级宝箱，可在挂机栏开启。"),TEXT(""));
+		Add(EGameXXKMetaShopProductId::NormalChest,EGameXXKMetaShopProductKind::TrainingChest,25000,TEXT("普通宝箱"),TEXT("获得1个普通宝箱，可在挂机栏开启。"),TEXT(""));
+		Add(EGameXXKMetaShopProductId::TravelMoneyBundle,EGameXXKMetaShopProductKind::TravelMoney,FGameXXKTravelMoneyRules::ShopBundleGoldPrice,TEXT("行旅钱 ×10"),TEXT("获得10个行旅钱，背包或仓库中的行旅钱均可用于局内行商。"),FGameXXKTravelMoneyRules::IconPath);
+		return Result;
+	}();return Products;
 }
 
 EGameXXKEquipmentQuality FGameXXKMetaShopRules::QualityFromRoll(const int32 RollOneToHundred)
@@ -173,6 +197,20 @@ bool FGameXXKMetaShopRules::PreviewPurchase(
 		FailPreview(OutPreview, EGameXXKMetaShopError::InsufficientGold);
 		return false;
 	}
+	if (Product->Kind == EGameXXKMetaShopProductKind::TravelMoney)
+	{
+		const int32 Held = State.Inventory.FindRef(FGameXXKTravelMoneyRules::ItemId());
+		if (Held > MAX_int32 - FGameXXKTravelMoneyRules::ShopBundleQuantity)
+		{
+			FailPreview(OutPreview, EGameXXKMetaShopError::InventoryOverflow);
+			return false;
+		}
+		if (Held == 0 && FGameXXKDesktopInventoryRules::FindFirstEmptySlot(State, EGameXXKDesktopItemContainer::Backpack) == INDEX_NONE)
+		{
+			FailPreview(OutPreview, EGameXXKMetaShopError::BackpackFull);
+			return false;
+		}
+	}
 	if (Product->Kind == EGameXXKMetaShopProductKind::EquipmentPack
 		&& !FGameXXKEquipmentRules::HasWarehouseCapacity(State.EquipmentCollection))
 	{
@@ -221,6 +259,7 @@ bool FGameXXKMetaShopRules::Purchase(
 		HashCombine(GetTypeHash(Candidate.MetaShop.Seed), GetTypeHash(Candidate.MetaShop.NextPurchaseOrdinal)),
 		GetTypeHash(static_cast<uint8>(ProductId)));
 	FName GeneratedEquipmentId;
+	FName GrantedItemId;
 	FGameXXKCompanionRecruitResult CompanionResult;
 	if (Preview.Kind == EGameXXKMetaShopProductKind::EquipmentPack)
 	{
@@ -228,7 +267,7 @@ bool FGameXXKMetaShopRules::Purchase(
 		FGameXXKEquipmentCreateRequest Request;
 		Request.Set = Preview.EquipmentSet;
 		Request.Quality = QualityFromRoll(Stream.RandRange(1, 100));
-		Request.ItemLevel = FMath::Clamp(Candidate.PlayerLevel, 1, FGameXXKEquipmentRules::MaxItemLevel);
+		Request.ItemLevel = EquipmentItemLevel(Candidate);
 		Request.bForceSlot = true;
 		Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(Stream.RandRange(1, 6));
 		if (!FGameXXKEquipmentRules::CreateRolledInstance(
@@ -239,6 +278,30 @@ bool FGameXXKMetaShopRules::Purchase(
 			FailResult(OutResult, EGameXXKMetaShopError::EquipmentCreationFailed);
 			return false;
 		}
+	}
+	else if (Preview.Kind == EGameXXKMetaShopProductKind::GemPack)
+	{
+		FRandomStream Stream(static_cast<int32>(StreamSeed & 0x7fffffffU));
+		GrantedItemId=FGameXXKGemRules::MakeItemId(static_cast<EGameXXKGemType>(Stream.RandRange(1,FGameXXKGemRules::MaximumTypeRank)),EGameXXKGemQuality::Rare);
+		if (Candidate.Inventory.FindRef(GrantedItemId)==MAX_int32) {FailResult(OutResult,EGameXXKMetaShopError::InventoryOverflow);return false;}
+		if (!Candidate.Inventory.Contains(GrantedItemId) && FGameXXKDesktopInventoryRules::FindFirstEmptySlot(Candidate,EGameXXKDesktopItemContainer::Backpack)==INDEX_NONE)
+		{FailResult(OutResult,EGameXXKMetaShopError::BackpackFull);return false;}
+		Candidate.Inventory.FindOrAdd(GrantedItemId)+=1;
+	}
+	else if (Preview.Kind == EGameXXKMetaShopProductKind::TravelMoney)
+	{
+		GrantedItemId = FGameXXKTravelMoneyRules::ItemId();
+		Candidate.Inventory.FindOrAdd(GrantedItemId) += FGameXXKTravelMoneyRules::ShopBundleQuantity;
+	}
+	else if (Preview.Kind == EGameXXKMetaShopProductKind::TrainingChest)
+	{
+		if (Candidate.Training.NextChestAcquisitionOrdinal==MAX_int32) {FailResult(OutResult,EGameXXKMetaShopError::InventoryOverflow);return false;}
+		FGameXXKTrainingChestToken Token;
+		Token.Tier=ProductId==EGameXXKMetaShopProductId::AdvancedChest ? EGameXXKTrainingRewardTier::AdvancedChest : EGameXXKTrainingRewardTier::NormalChest;
+		Token.SourceItemLevel=EquipmentItemLevel(Candidate);
+		Token.SourceStageId=FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,1);
+		Token.AcquisitionOrdinal=++Candidate.Training.NextChestAcquisitionOrdinal;
+		Candidate.Training.OwnedChestTokens.Add(Token);
 	}
 	else
 	{
@@ -264,6 +327,7 @@ bool FGameXXKMetaShopRules::Purchase(
 	Candidate.MetaShop.NextPurchaseOrdinal += 1;
 	FString ValidationError;
 	if (!FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate)
+		|| !FGameXXKDesktopInventoryRules::Normalize(Candidate,&ValidationError)
 		|| !FGameXXKSaveMigration::ValidateRuntimeState(Candidate, ValidationError))
 	{
 		FailResult(OutResult, EGameXXKMetaShopError::InvalidRuntimeState);
@@ -278,7 +342,9 @@ bool FGameXXKMetaShopRules::Purchase(
 	OutResult.Price = Preview.Price;
 	OutResult.GoldDelta = -Preview.Price;
 	OutResult.GeneratedEquipmentId = GeneratedEquipmentId;
+	OutResult.GrantedItemId = GrantedItemId;
 	OutResult.CompanionResult = CompanionResult;
+	OutResult.Message=FText::FromString(TEXT("购买成功，物品已发放。"));
 	return true;
 }
 
@@ -288,6 +354,27 @@ int32 FGameXXKMetaShopRules::DeriveSeed(const FGameXXKRuntimeState& State)
 		GetTypeHash(State.EquipmentCollection.CollectionSeed),
 		GetTypeHash(State.CardRun.CompanionRoster.RecruitSequenceSeed));
 	return FMath::Max(1, static_cast<int32>(Mixed & 0x7fffffffU));
+}
+
+bool FGameXXKMetaShopRules::PurchaseBatch(FGameXXKRuntimeState& State,EGameXXKMetaShopProductId ProductId,int32 Quantity,
+	TArray<FGameXXKMetaShopPurchaseResult>& Results,FText& Message)
+{
+	Results.Reset();Message=FText::GetEmpty();
+	if(Quantity<1 || Quantity>MaxPurchaseQuantity){Message=FText::FromString(TEXT("每次可购买1至10件。"));return false;}
+	FGameXXKRuntimeState Candidate=State;TArray<FGameXXKMetaShopPurchaseResult> Pending;
+	for(int32 I=0;I<Quantity;++I)
+	{
+		FGameXXKMetaShopPurchaseResult Result;
+		if(!Purchase(Candidate,ProductId,Result)){Message=Result.Message;return false;}
+		Pending.Add(MoveTemp(Result));
+	}
+	State=MoveTemp(Candidate);Results=MoveTemp(Pending);Message=FText::FromString(TEXT("购买成功。"));return true;
+}
+
+int32 FGameXXKMetaShopRules::EquipmentItemLevel(const FGameXXKRuntimeState& State)
+{
+	FGameXXKTalentProjection Projection;
+	return FMath::Clamp(FGameXXKTalentRules::BuildProjection(State.Talents,Projection) && Projection.bToolsUnlocked?State.ToolProgress.Level:1,1,FGameXXKEquipmentRules::MaxItemLevel);
 }
 
 bool FGameXXKMetaShopRules::ValidateState(const FGameXXKRuntimeState& State, FString* OutError)

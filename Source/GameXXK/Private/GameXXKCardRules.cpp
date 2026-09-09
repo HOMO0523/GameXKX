@@ -6,6 +6,10 @@
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEnemyPhaseRules.h"
 #include "GameXXKEquipmentRules.h"
+#include "GameXXKEquipmentBonusRules.h"
+#include "GameXXKCombatGemRules.h"
+#include "GameXXKResistanceRules.h"
+#include "GameXXKGemRules.h"
 
 namespace
 {
@@ -1321,6 +1325,8 @@ namespace
 			const int32 PoisonStacksBefore = TargetBeforeDot
 				? GameXXKCardRules::GetCombatStatusStacks(*TargetBeforeDot, EGameXXKCardStatus::Poison)
 				: 0;
+			const int32 PoisonDamageBefore = TargetBeforeDot
+				? FGameXXKCombatGemRules::NaturalDot(InOutRuntime.Units, *TargetBeforeDot, EGameXXKCardStatus::Poison, PoisonStacksBefore) : 0;
 			const bool bLifeSavingConsumptionPendingBefore = InOutRuntime.bLifeSavingTalismanConsumptionPending;
 			int32 HealthDamage = 0;
 			int32 PacketHealthAfter = TargetHealthBefore;
@@ -1348,7 +1354,7 @@ namespace
 				Result.StatusStacksBefore = PoisonStacksBefore;
 				Result.RotDamageBonus = 0;
 				Result.StatusStacksConsumed = 0;
-				Result.RequestedDamage = PoisonStacksBefore;
+				Result.RequestedDamage = PoisonDamageBefore;
 				Result.DamageAfterDefense = Result.RequestedDamage;
 				Result.DamageAfterVulnerability = Result.RequestedDamage;
 				Result.DamageBeforeLevelDifference = Result.RequestedDamage;
@@ -2451,7 +2457,9 @@ namespace
 		{
 			return 0;
 		}
-		int64 BonusBasisPoints = 0;
+		FGameXXKEquipmentArmorBonus Bonus;
+		Bonus.GemBasisPoints = FGameXXKCombatGemRules::GetRawBonus(
+			FindCombatUnitById(Runtime.Units, SourceUnitId), EGameXXKGemType::ArmorGain);
 		const FGameXXKEquipmentBattleEffectRuntime* Amplifier = nullptr;
 		for (const FGameXXKEquipmentBattleEffectRuntime& EffectRuntime : Runtime.EquipmentEffects)
 		{
@@ -2461,23 +2469,12 @@ namespace
 				&& Effect.ModifierKind == EGameXXKEquipmentModifierKind::ArmorGain
 				&& Effect.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
 			{
-				BonusBasisPoints = FMath::Min<int64>(MAX_int32, BonusBasisPoints + FMath::Max(0, Effect.Magnitude));
+				Bonus.AddEffect(Effect, SourceUnitId);
 				Amplifier = &EffectRuntime;
 			}
 		}
-		const int64 Multiplier = 10000 + BonusBasisPoints;
-		int32 ResolvedArmor = 0;
-		if (static_cast<int64>(BaseArmor) > static_cast<int64>(MAX_int32) * 10000 / Multiplier)
-		{
-			ResolvedArmor = MAX_int32;
-		}
-		else
-		{
-			ResolvedArmor = static_cast<int32>(FMath::Min<int64>(
-				MAX_int32,
-				(static_cast<int64>(BaseArmor) * Multiplier + 9999) / 10000));
-		}
-		if (Amplifier && BonusBasisPoints > 0)
+		const int32 ResolvedArmor = Bonus.ApplyTo(BaseArmor);
+		if (Amplifier && Bonus.GetFinalPercent() > 0.0)
 		{
 			LogEquipmentSetTrigger(Runtime, *Amplifier, ResolvedArmor, BaseArmor);
 		}
@@ -2945,10 +2942,24 @@ namespace
 				OutError = TEXT("Party combat units may persist a valid character level, but never an enemy definition or presentation slot.");
 				return false;
 			}
+			for (const auto& Gem : Unit.GemBonusBasisPoints)
+			{
+				if (!FGameXXKGemRules::IsPercentType(Gem.Key) || Gem.Value < 0)
+				{
+					OutError = TEXT("Combat gem pools require a valid percentage type and nonnegative nominal value.");
+					return false;
+				}
+			}
+			if (!FGameXXKResistanceRules::ValidateUnitProfile(Unit))
+			{
+				OutError = TEXT("A combat resistance snapshot must contain valid fire, frost and lightning base values.");
+				return false;
+			}
 			for (const FGameXXKCardStatusStack& Stack : Unit.Statuses)
 			{
 				if (!IsConcreteCombatStatus(Stack.Status) || Stack.Stacks <= 0 || Stack.Stacks > GetCombatStatusCap(Stack.Status)
-					|| GetCombatStatusStacksInternal(Unit, Stack.Status) > GetCombatStatusCap(Stack.Status))
+					|| GetCombatStatusStacksInternal(Unit, Stack.Status) > GetCombatStatusCap(Stack.Status)
+					|| !FGameXXKCombatGemRules::ValidateSources(Stack))
 				{
 					OutError = TEXT("Combat unit contains an invalid or unbound status stack.");
 					return false;
@@ -3173,7 +3184,7 @@ int32 GameXXKCardRules::GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit
 	return IsConcreteCombatStatus(Status) ? GetCombatStatusStacksInternal(Unit, Status) : 0;
 }
 
-int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Amount)
+int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Amount, const FName SourceUnitId)
 {
 	if (!InOutUnit.bLiving || !IsConcreteCombatStatus(Status) || Amount <= 0)
 	{
@@ -3200,12 +3211,14 @@ int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const
 	if (ExistingStack)
 	{
 		ExistingStack->Stacks += AppliedStacks;
+		FGameXXKCombatGemRules::AddSource(*ExistingStack, SourceUnitId, AppliedStacks);
 	}
 	else
 	{
 		FGameXXKCardStatusStack& NewStack = InOutUnit.Statuses.AddDefaulted_GetRef();
 		NewStack.Status = Status;
 		NewStack.Stacks = AppliedStacks;
+		FGameXXKCombatGemRules::AddSource(NewStack, SourceUnitId, AppliedStacks);
 	}
 	return AppliedStacks;
 }
@@ -3215,7 +3228,8 @@ int32 GameXXKCardRules::AddDotFromCoefficient(
 	const FName TargetUnitId,
 	const EGameXXKCardStatus Status,
 	const int32 BaseCoefficient,
-	const EGameXXKCardQuality Quality)
+	const EGameXXKCardQuality Quality,
+	const FName SourceUnitId)
 {
 	if (TargetUnitId.IsNone()
 		|| !IsDotReservoirStatus(Status)
@@ -3238,7 +3252,7 @@ int32 GameXXKCardRules::AddDotFromCoefficient(
 		BaseCoefficient,
 		Quality,
 		InOutRuntime.TeamMaxLevelSnapshot);
-	return GameXXKCardRules::AddCombatStatus(*Target, Status, FMath::Min(Available, ResolvedAddition));
+	return GameXXKCardRules::AddCombatStatus(*Target, Status, FMath::Min(Available, ResolvedAddition), SourceUnitId);
 }
 
 int32 GameXXKCardRules::ClearDotReservoir(
@@ -3337,6 +3351,7 @@ int32 GameXXKCardRules::ConsumeCombatStatus(FGameXXKCardCombatUnit& InOutUnit, c
 		if (Stack.Status == Status && Stack.Stacks > 0 && Remaining > 0)
 		{
 			const int32 ConsumedHere = FMath::Min(Stack.Stacks, Remaining);
+			FGameXXKCombatGemRules::RetainSources(Stack, Stack.Stacks - ConsumedHere);
 			Stack.Stacks -= ConsumedHere;
 			Remaining -= ConsumedHere;
 		}
@@ -3502,7 +3517,8 @@ namespace
 		const int32 BaseStacks,
 		FGameXXKCardDamageResult& OutResult,
 		FString& OutError,
-		FGameXXKCardPlayResult* InOutPlayResult = nullptr)
+		FGameXXKCardPlayResult* InOutPlayResult = nullptr,
+		const FName TriggerSourceUnitId = NAME_None)
 	{
 		if (TargetUnitId.IsNone() || Cause == EGameXXKCardDamageCause::Invalid || BaseStacks <= 0)
 		{
@@ -3523,19 +3539,24 @@ namespace
 		NewResult.Cause = Cause;
 		NewResult.StatusStacksBefore = BaseStacks;
 		NewResult.RotDamageBonus = 0;
-		NewResult.RequestedDamage = static_cast<int32>(FMath::Min<int64>(
-			MAX_int32,
-			static_cast<int64>(BaseStacks) + NewResult.RotDamageBonus));
+		const EGameXXKCardStatus Status = FGameXXKCombatGemRules::StatusForCause(Cause);
+		NewResult.Element = Status == EGameXXKCardStatus::Burn ? EGameXXKCardDamageElement::Fire : EGameXXKCardDamageElement::None;
+		NewResult.SourceUnitId = TriggerSourceUnitId;
+		NewResult.RequestedDamage = TriggerSourceUnitId.IsNone()
+			? FGameXXKCombatGemRules::NaturalDot(InOutRuntime.Units, *Target, Status, BaseStacks)
+			: FGameXXKCombatGemRules::TriggeredDot(InOutRuntime.Units, TriggerSourceUnitId, Status, BaseStacks);
 		NewResult.DamageAfterDefense = NewResult.RequestedDamage;
-		NewResult.DamageAfterVulnerability = NewResult.RequestedDamage;
-		NewResult.DamageBeforeLevelDifference = NewResult.RequestedDamage;
-		NewResult.DamageAfterLevelDifference = NewResult.RequestedDamage;
+		NewResult.EffectiveResistanceBasisPoints = FGameXXKResistanceRules::GetEffectiveBasisPoints(*Target, NewResult.Element);
+		NewResult.DamageAfterResistance = FGameXXKResistanceRules::ApplyDamage(*Target, NewResult.Element, NewResult.RequestedDamage);
+		NewResult.DamageAfterVulnerability = NewResult.DamageAfterResistance;
+		NewResult.DamageBeforeLevelDifference = NewResult.DamageAfterResistance;
+		NewResult.DamageAfterLevelDifference = NewResult.DamageAfterResistance;
 		NewResult.TargetHealthBefore = Target->HP;
 		NewResult.TargetArmorBefore = Target->Armor;
 		const int32 RequestedHealthDamage = FGameXXKEnemyPhaseRules::ClampHealthDamageForRemainingPhase(
 			InOutRuntime,
 			*Target,
-			NewResult.RequestedDamage);
+			NewResult.DamageAfterResistance);
 		if (!ApplyHealthLossWithLifeSavingTalisman(
 			InOutRuntime.Units,
 			&InOutRuntime.bLifeSavingTalismanArmed,
@@ -3605,7 +3626,7 @@ bool GameXXKCardRules::ApplyCombatEndPhaseDot(
 	}
 
 	const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
-	const int64 RawDamage = PoisonStacks;
+	const int64 RawDamage = FGameXXKCombatGemRules::NaturalDot(NewUnits, *Target, EGameXXKCardStatus::Poison, PoisonStacks);
 	const int32 NewHealthDamage = static_cast<int32>(FMath::Min<int64>(Target->HP, RawDamage));
 	Target->HP -= NewHealthDamage;
 	Target->bLiving = Target->HP > 0;
@@ -3657,7 +3678,7 @@ namespace
 		}
 
 		const int32 PoisonStacks = GetCombatStatusStacksInternal(*Target, EGameXXKCardStatus::Poison);
-		const int64 RawDamage = PoisonStacks;
+		const int64 RawDamage = FGameXXKCombatGemRules::NaturalDot(NewRuntime.Units, *Target, EGameXXKCardStatus::Poison, PoisonStacks);
 		const int32 RequestedHealthDamage = FGameXXKEnemyPhaseRules::ClampHealthDamageForRemainingPhase(
 			NewRuntime,
 			*Target,
@@ -3776,7 +3797,9 @@ bool GameXXKCardRules::ResolveToxicExplosion(
 			PacketSpec.Cause,
 			PacketSpec.StacksBefore,
 			PacketResult,
-			ValidationError))
+			ValidationError,
+			nullptr,
+			SourceUnitId))
 		{
 			return SetFailure(OutError, ValidationError);
 		}
@@ -3839,7 +3862,7 @@ bool GameXXKCardRules::TriggerCombatDamageOverTime(
 			break;
 		}
 		FGameXXKCardDamageResult Result;
-		if (!ApplyStatusHealthLoss(NewRuntime, TargetUnitId, Cause, Stacks, Result, Error))
+		if (!ApplyStatusHealthLoss(NewRuntime, TargetUnitId, Cause, Stacks, Result, Error, nullptr, SourceUnitId))
 		{
 			return SetFailure(OutError, Error);
 		}
@@ -3904,6 +3927,7 @@ namespace
 
 	FGameXXKCardDamageResult NewResult;
 	NewResult.SourceUnitId = Context.SourceUnitId;
+	NewResult.Element = IsDirectOrFixedDamageKind(Context.Kind) ? Context.Element : EGameXXKCardDamageElement::None;
 	NewResult.Kind = Context.Kind;
 	NewResult.ResolutionOrigin = Context.ResolutionOrigin;
 	NewResult.SourceEffectIndex = Context.SourceEffectIndex;
@@ -3979,7 +4003,8 @@ namespace
 		const FGameXXKCardCombatUnit* SourceUnit = bDirectDamage
 			? FindCombatUnitById(NewUnits, Context.SourceUnitId)
 			: nullptr;
-		int32 TalentScaledDamage = RequestedDamage;
+		int32 TalentScaledDamage = FGameXXKGemRules::ApplyBonus(RequestedDamage,
+			FGameXXKCombatGemRules::GetDirectPool(SourceUnit, Context));
 		if (bDirectAttack
 			&& SourceUnit
 			&& SourceUnit->Side == EGameXXKCardTargetSide::Party
@@ -4027,9 +4052,14 @@ namespace
 			NewResult.WeakDamageReduction = DamageWithMomentum - DamageAfterWeak;
 		}
 		NewResult.RequestedDamage = DamageWithMomentum;
-		NewResult.DamageAfterDefense = bDirectAttack
+		const bool Spell = bDirectDamage && FGameXXKResistanceRules::IsSpell(NewResult.Element);
+		NewResult.DamageAfterDefense = bDirectAttack && !Spell
 			? ComputeDamageAfterDefense(DamageAfterWeak, *ResolvedTarget, Context.IgnoredDefense)
 			: DamageAfterWeak;
+		NewResult.EffectiveResistanceBasisPoints = Spell ? FGameXXKResistanceRules::GetEffectiveBasisPoints(*ResolvedTarget, NewResult.Element) : 0.0;
+		NewResult.DamageAfterResistance = Spell
+			? FGameXXKResistanceRules::ApplyDamage(*ResolvedTarget, NewResult.Element, NewResult.DamageAfterDefense)
+			: NewResult.DamageAfterDefense;
 		const int32 VulnerabilityStacks = bDirectDamage
 			? GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Vulnerability)
 			: 0;
@@ -4045,7 +4075,7 @@ namespace
 			NewResult.MarkStacksBeforeHit = MarkStacks;
 			NewResult.MarkDamageBonusPercent = MarkBonusPercent;
 		}
-		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterDefense)
+		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterResistance)
 			* static_cast<int64>(100 + 10 * VulnerabilityStacks + MarkBonusPercent)
 			/ 100;
 		NewResult.DamageAfterVulnerability = static_cast<int32>(FMath::Min<int64>(MAX_int32, AmplifiedDamage));
@@ -4144,7 +4174,7 @@ namespace
 		{
 			for (const FGameXXKCardStatusStack& OnHitStatus : Context.OnHitStatuses)
 			{
-				if (GameXXKCardRules::AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks) > 0
+				if (GameXXKCardRules::AddCombatStatus(*ResolvedTarget, OnHitStatus.Status, OnHitStatus.Stacks, Context.SourceUnitId) > 0
 					&& IsNegativeStatusForWhiteApeGuard(OnHitStatus.Status)
 					&& PlayerCardRuntime
 					&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
@@ -7118,7 +7148,7 @@ namespace
 		const FName SourceUnitId = NAME_None,
 		const bool bAllowHealerFormulaProgress = true)
 	{
-		const int32 Applied = GameXXKCardRules::AddCombatStatus(InOutTarget, Status, Magnitude);
+		const int32 Applied = GameXXKCardRules::AddCombatStatus(InOutTarget, Status, Magnitude, SourceUnitId);
 		if (Applied > 0
 			&& IsNegativeStatusForWhiteApeGuard(Status)
 			&& !ResolveWhiteApeStatusGuardAfterStatusAppliedInternal(
@@ -7199,7 +7229,8 @@ namespace
 			InOutTarget.UnitId,
 			Status,
 			BaseCoefficient,
-			Quality);
+			Quality,
+			SourceUnitId);
 		if (Applied <= 0)
 		{
 			return true;
@@ -9537,6 +9568,7 @@ namespace
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = HitSourceUnitId;
 				Context.ResolutionOrigin = Origin;
+				Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 				Context.SourceEffectIndex = AttackIndex;
 				Context.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
 					? EGameXXKCardDamageKind::GroupAttack
@@ -9655,6 +9687,7 @@ namespace
 				FGameXXKCardDamageContext ExtraContext;
 				ExtraContext.SourceUnitId = ExtraHitOwner->UnitId;
 				ExtraContext.ResolutionOrigin = Origin;
+				ExtraContext.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 				ExtraContext.SourceEffectIndex = AttackIndex;
 				ExtraContext.Kind = Attack.Target == EGameXXKCardEffectTarget::AllEnemies
 					? EGameXXKCardDamageKind::GroupAttack
@@ -10319,6 +10352,14 @@ namespace
 				return false;
 			}
 			Attack->Magnitude = FGameXXKCombatScalingRules::ScaleContinuousCeil(60 + 25 * (Position - 1), Snapshot.Quality);
+			// The sequence snapshot owns inheritance, so replays cannot borrow a later card's element.
+			switch (Snapshot.PreviousSorcererFamily)
+			{
+			case EGameXXKSorcererCardFamily::Fire: InOutDefinition.DamageElement = EGameXXKCardDamageElement::Fire; break;
+			case EGameXXKSorcererCardFamily::Ice: InOutDefinition.DamageElement = EGameXXKCardDamageElement::Frost; break;
+			case EGameXXKSorcererCardFamily::Lightning: InOutDefinition.DamageElement = EGameXXKCardDamageElement::Lightning; break;
+			default: InOutDefinition.DamageElement = EGameXXKCardDamageElement::None; break;
+			}
 			return true;
 		}
 		case EGameXXKSorcererSequenceRule::UniversalDraw:
@@ -10851,6 +10892,7 @@ namespace
 				return false;
 			}
 		}
+		InOutRuntime.ResolvedTerrainBenefitsByOwner.FindOrAdd(SourceInstance.OwnerUnitId) += EffectiveRepetitions;
 		return true;
 	}
 
@@ -11144,6 +11186,8 @@ namespace
 						? EGameXXKCardDamageKind::GroupAttack
 						: EGameXXKCardDamageKind::SingleTargetAttack;
 					Context.ResolutionOrigin = Origin;
+					Context.Element = Effect.Type == EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor
+						? EGameXXKCardDamageElement::Frost : FGameXXKCombatGemRules::GetCardElement(Definition);
 					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
@@ -11424,6 +11468,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &OutError))
@@ -11473,6 +11518,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
@@ -11510,6 +11556,7 @@ namespace
 					Context.SourceUnitId = Owner->UnitId;
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
+					Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!ApplyCombatDirectDamageInternal(
@@ -11547,6 +11594,7 @@ namespace
 					Context.SourceUnitId = SelfUnitId;
 					Context.Kind = EGameXXKCardDamageKind::SelfHealthLoss;
 					Context.ResolutionOrigin = Origin;
+					Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
 					if (!ApplyCombatDirectDamageInternal(
@@ -11631,7 +11679,9 @@ namespace
 					}
 					const int64 MultiplierPercent = FMath::Max<int64>(0, 100 + static_cast<int64>(HealingBonusPercent));
 					const int64 FinalHealing = BaseHealing * MultiplierPercent / 100 + HealingFlatBonus;
-					const int32 RequestedHealing = static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32));
+					const int32 BaseRequestedHealing = static_cast<int32>(FMath::Clamp<int64>(FinalHealing, 0, MAX_int32));
+					const int32 RequestedHealing = Effect.SecondaryMagnitude > 0 ? BaseRequestedHealing
+						: FGameXXKCombatGemRules::ApplyHealing(*Owner, BaseRequestedHealing, Origin);
 					if (RequestedHealing > 0)
 					{
 						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, RequestedHealing, EffectIndex);
@@ -11670,7 +11720,8 @@ namespace
 					}
 					if (Target->Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount, EffectIndex);
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target,
+							FGameXXKCombatGemRules::ApplyHealing(*Owner, ResolvedAmount, Origin), EffectIndex);
 					}
 					else
 					{
@@ -11679,6 +11730,7 @@ namespace
 						FGameXXKCardDamageContext Context;
 						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyCombatDirectDamage(
@@ -11711,7 +11763,8 @@ namespace
 						: Effect.Magnitude;
 					if (Target->Side == Owner->Side)
 					{
-						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target, ResolvedAmount, EffectIndex);
+						ApplyAndRecordHealing(InOutResult, Owner->UnitId, *Target,
+							FGameXXKCombatGemRules::ApplyHealing(*Owner, ResolvedAmount, Origin), EffectIndex);
 					}
 					else
 					{
@@ -11720,6 +11773,7 @@ namespace
 						FGameXXKCardDamageContext Context;
 						Context.Kind = EGameXXKCardDamageKind::EnvironmentalHealthLoss;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyCombatDirectDamage(
@@ -11993,7 +12047,8 @@ namespace
 						TriggeredStacks,
 						TriggerResult,
 						OutError,
-						&InOutResult))
+						&InOutResult,
+						TriggerSourceUnitId))
 					{
 						return false;
 					}
@@ -12066,7 +12121,8 @@ namespace
 							StacksBefore,
 							TriggerResult,
 							OutError,
-							&InOutResult))
+							&InOutResult,
+							TriggerOwnerId))
 						{
 							return false;
 						}
@@ -12125,6 +12181,7 @@ namespace
 							? EGameXXKCardDamageKind::GroupAttack
 							: EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = EGameXXKCardDamageElement::Lightning;
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
@@ -12137,6 +12194,7 @@ namespace
 						{
 							return false;
 						}
+						DamageResult.bLightningStrike = true;
 						InOutResult.DamageResults.Add(DamageResult);
 						if (!ResolveFirstDirectDamageReactiveModifiers(
 							InOutRuntime,
@@ -12245,6 +12303,7 @@ namespace
 						Context.SourceUnitId = Source.UnitId;
 						Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 						Context.ResolutionOrigin = Origin;
+						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
 						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
@@ -14209,7 +14268,8 @@ namespace
 				StacksBefore,
 				DamageResult,
 				OutError,
-				InOutResult))
+				InOutResult,
+				Modifier.SourceUnitId))
 			{
 				return false;
 			}
@@ -15281,7 +15341,9 @@ namespace
 					EGameXXKCardDamageCause::Burn,
 					BurnStacks,
 					TriggerResult,
-					OutError))
+					OutError,
+					nullptr,
+					OwnerUnitId))
 				{
 					return false;
 				}
@@ -15333,6 +15395,7 @@ namespace
 			Context.SourceUnitId = OwnerUnitId;
 			Context.Kind = EGameXXKCardDamageKind::GroupAttack;
 			Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::TaskReward;
+			Context.Element = EGameXXKCardDamageElement::Frost;
 			FGameXXKCardDamageResult DamageResult;
 			if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
 				InOutRuntime,
@@ -18036,6 +18099,7 @@ bool GameXXKCardRules::EndPlayerCardPhase(
 		{
 			return SetFailure(OutError, ValidationError);
 		}
+		NewRuntime.ResolvedBladeFinishesByOwner.FindOrAdd(DeferredBladeFinishSource.OwnerUnitId)++;
 	}
 	ResetPoJunCurrentRoundProgress(NewRuntime);
 	if (!ValidateCardBattleRuntimeInternal(NewRuntime, ValidationError))
@@ -18265,6 +18329,7 @@ namespace
 		Context.SourceUnitId = SourceUnitId;
 		Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 		Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::Equipment;
+		Context.bEquipmentCounter = EffectId == TEXT("Set.XuanJia.4");
 		FGameXXKCardDamageResult Result;
 		if (!ApplyCombatDirectDamageInternal(
 			Runtime.Units,

@@ -88,6 +88,14 @@ struct GAMEXXK_API FGameXXKGuideProgress
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "Guide")
 	TSet<FName> CompletedGuideStepIds;
 
+	/** Completed lesson counts are independent from dismissible guide bubbles. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "Guide")
+	TMap<FName, int32> AcademyCompletedLessons;
+
+	/** Stable course IDs; resetting hints or replaying a lesson never clears this ledger. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "Guide")
+	TSet<FName> AcademyRewardedCourses;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "Guide")
 	FString LastDiagnostic;
 };

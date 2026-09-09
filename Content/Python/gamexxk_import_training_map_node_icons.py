@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import json
 from pathlib import Path
 
@@ -11,16 +16,19 @@ import unreal
 ROOT = Path(__file__).resolve().parents[2]
 DESTINATION = "/Game/GameXXK/UI/Training/MapNodes"
 SOURCES = {
-    "T_TrainingNode_Passed": ROOT / "SourceArt/UI/Training/MapNodes/final/T_TrainingNode_Passed.png",
-    "T_TrainingNode_Challenge": ROOT / "SourceArt/UI/Training/MapNodes/final/T_TrainingNode_Challenge.png",
-    "T_TrainingNode_Locked": ROOT / "SourceArt/UI/Training/MapNodes/final/T_TrainingNode_Locked.png",
+    "T_TrainingNode_Passed": ROOT / "SourceArt/UI/RouteMap/final/T_TrainingNode_Passed.png",
+    "T_TrainingNode_Challenge": ROOT / "SourceArt/UI/RouteMap/final/T_TrainingNode_Challenge.png",
+    "T_TrainingNode_Locked": ROOT / "SourceArt/UI/RouteMap/final/T_TrainingNode_Locked.png",
 }
 
 
 def configure(texture: unreal.Texture2D) -> None:
     settings = {
         "mip_gen_settings": unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS,
-        "compression_settings": unreal.TextureCompressionSettings.TC_EDITOR_ICON,
+        "compression_settings": unreal.TextureCompressionSettings.TC_BC7,
+        "power_of_two_mode": unreal.TexturePowerOfTwoSetting.RESIZE_TO_SPECIFIC_RESOLUTION,
+        "resize_during_build_x": 512,
+        "resize_during_build_y": 512,
         "lod_group": unreal.TextureGroup.TEXTUREGROUP_UI,
         "filter": unreal.TextureFilter.TF_BILINEAR,
         "address_x": unreal.TextureAddress.TA_CLAMP,
@@ -51,10 +59,10 @@ def main() -> None:
         if not isinstance(asset, unreal.Texture2D):
             raise RuntimeError(f"failed to import Training node texture {name}")
         configure(asset)
+        if not save_asset_with_texture_budget(asset):
+            raise RuntimeError(f"failed to save Training node texture {name}")
         if int(asset.blueprint_get_size_x()) != 512 or int(asset.blueprint_get_size_y()) != 512:
             raise RuntimeError(f"wrong Training node texture size {name}")
-        if not unreal.EditorAssetLibrary.save_loaded_asset(asset):
-            raise RuntimeError(f"failed to save Training node texture {name}")
         imported.append(asset.get_path_name())
     print(json.dumps({"ok": True, "imported_count": len(imported), "imported": imported}, ensure_ascii=False))
 

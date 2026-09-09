@@ -70,6 +70,8 @@ struct FGameXXKEmbeddedInventorySessionState
 	int32 DeckColumns = 2;
 	bool bDeckExpanded = false;
 	bool bDeckDraftInitialized = false;
+	bool bDetailedAttributesOpen = false;
+	float DetailedAttributesScrollOffset = 0.0f;
 };
 
 UCLASS()
@@ -398,6 +400,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	FText GetCharacterTabBodyTextForTest() const;
 
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|InventoryWindow")
+	void SetDetailedAttributesOpen(bool bOpen);
+
+	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
+	bool IsDetailedAttributesOpenForTest() const { return bDetailedAttributesOpen; }
+
 	UFUNCTION(BlueprintPure, Category = "GameXXK|InventoryWindow|Test")
 	TArray<FName> GetHeroCardBackpackIdsForTest() const;
 	TArray<FName> GetPendingHeroDeckIdsForTest() const;
@@ -438,6 +446,7 @@ private:
 	void RefreshDetailPanel();
 	void RefreshConfirmationDialog();
 	void RefreshCharacterTabs();
+	void RefreshDetailedAttributes();
 	void UpdateBackpackScrollbarThumb();
 	UScrollBox* ResolveActiveInkScrollbar() const;
 	float ResolveActiveInkScrollbarMaximumOffset() const;
@@ -469,6 +478,12 @@ private:
 
 	UFUNCTION()
 	void HandleCloseClicked();
+
+	UFUNCTION()
+	void HandleDetailedAttributesClicked();
+
+	UFUNCTION()
+	void HandleDetailedAttributesBackClicked();
 
 	UFUNCTION()
 	void HandlePrimaryActionClicked();
@@ -539,6 +554,27 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCanvasPanel> CharacterAttributeDetails;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCanvasPanel> DetailedAttributesPanel;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> DetailedAttributesScrollBox;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UVerticalBox> DetailedAttributesList;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UVerticalBox>> DetailedAttributeRows;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> DetailedAttributeLabels;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> DetailedAttributeValues;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextBlock>> DetailedAttributeNotes;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> CharacterLevelText;
@@ -793,6 +829,9 @@ private:
 	bool bBackpackScrollbarThumbDragging = false;
 	bool bBackpackScrollbarDragTargetsHeroDeck = false;
 	bool bCardTooltipShiftExpanded = false;
+	bool bDetailedAttributesOpen = false;
+	FName LastDetailedAttributesCharacterId;
+	FString CachedDetailedAttributesBody;
 	float BackpackScrollbarDragStartScreenY = 0.0f;
 	float BackpackScrollbarDragStartOffset = 0.0f;
 	float BackpackScrollbarDragGeometryScale = 1.0f;

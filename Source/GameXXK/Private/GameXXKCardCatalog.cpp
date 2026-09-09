@@ -1250,7 +1250,7 @@ namespace
 			 SharedPlayedModifier(EGameXXKCardBattleModifierTrigger::OnCardPlayed, EGameXXKCardEffectType::ModifyManaCost, -99, 0, EGameXXKCardStatus::None, EGameXXKCardModifierExpiry::EndOfCurrentRound)});
 
 		constexpr const TCHAR* YueBai = TEXT("Npc.YueBai");
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("青焰点灯"), 0, 3, EGameXXKCardTargetMode::SingleEnemy,
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.QingYanDianDeng"), TEXT("青焰点灯"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 6, EGameXXKCardStatus::Burn)),
 			 Effect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::SelectedTarget, 1, EGameXXKCardStatus::Burn),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
@@ -1258,14 +1258,14 @@ namespace
 			{}, {}, {},
 			{Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 6, EGameXXKCardStatus::Burn)),
 			 Effect(EGameXXKCardEffectType::TriggerStatus, EGameXXKCardEffectTarget::AllEnemies, 1, EGameXXKCardStatus::Burn)});
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), 0, 0, EGameXXKCardTargetMode::None,
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.CanJuanPiZhu"), TEXT("残卷批注"), 1, 0, EGameXXKCardTargetMode::None,
 			{Effect(EGameXXKCardEffectType::DrawCards, EGameXXKCardEffectTarget::CardOwner, 2),
 			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1),
 			 Effect(EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard, EGameXXKCardEffectTarget::CardOwner, 1)},
 			EGameXXKCharacterRole::Invalid,
 			{}, {}, {},
 			{Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 3)});
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.YueBaiZhaoYe"), TEXT("月白照夜"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.YueBaiZhaoYe"), TEXT("幽白照夜"), 1, 3, EGameXXKCardTargetMode::SingleEnemy,
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 2, EGameXXKCardStatus::Mark),
 			 Dot(Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::SelectedTarget, 4, EGameXXKCardStatus::Burn)),
 			 Attack(100, EGameXXKCardEffectTarget::SelectedTarget),
@@ -1275,7 +1275,7 @@ namespace
 			{}, {}, {},
 			{Effect(EGameXXKCardEffectType::ApplyStatus, EGameXXKCardEffectTarget::AllEnemies, 3, EGameXXKCardStatus::Mark),
 			 Continuous(Effect(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot, EGameXXKCardEffectTarget::AllEnemies, 60, EGameXXKCardStatus::Mark))});
-		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), 0, 6, EGameXXKCardTargetMode::None,
+		AddQuestNpcCard(Cards, YueBai, TEXT("Npc.YueBai.ShanHeCanTu"), TEXT("山河残图"), 1, 6, EGameXXKCardTargetMode::None,
 			{DefensePercent(Effect(EGameXXKCardEffectType::AddArmor, EGameXXKCardEffectTarget::AllAllies, 40)),
 			 Effect(EGameXXKCardEffectType::GainMana, EGameXXKCardEffectTarget::AllAllies, 5),
 			 Effect(EGameXXKCardEffectType::TriggerTerrainBenefit, EGameXXKCardEffectTarget::CardOwner, 1),

@@ -9,10 +9,10 @@ FString GameXXKCharacterUiPresentation::GetDisplayName(const UGameXXKMVPSubsyste
 	if (CharacterId == FGameXXKEquipmentRules::HeroCharacterId()) return TEXT("主角");
 	if (CharacterId == TEXT("Npc.TusiChief")) return TEXT("土司首领");
 	if (CharacterId == TEXT("Npc.SongJinBao")) return TEXT("宋金宝");
-	if (CharacterId == TEXT("Npc.YueBai")) return TEXT("月白");
+	if (CharacterId == TEXT("Npc.YueBai")) return TEXT("幽白");
 	if (CharacterId == TEXT("Npc.ZhouGuangZu")) return TEXT("周光祖");
 	if (CharacterId == TEXT("Npc.JinGui")) return TEXT("金贵");
-	if (CharacterId == TEXT("Npc.QiongMeiEr")) return TEXT("琼梅儿");
+	if (CharacterId == TEXT("Npc.QiongMeiEr")) return TEXT("琼幺儿");
 	FGameXXKPermanentCompanion Companion;
 	if (Subsystem && Subsystem->TryGetPermanentCompanionView(CharacterId, Companion))
 	{

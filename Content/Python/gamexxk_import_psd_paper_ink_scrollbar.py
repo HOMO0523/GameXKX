@@ -9,6 +9,11 @@ PSD cuts 019/051 must never be imported or referenced as scrollbars.
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import argparse
 import hashlib
 import json
@@ -130,7 +135,7 @@ def import_verified_scrollbar_assets() -> dict[str, Any]:
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
         texture = unreal.EditorAssetLibrary.load_asset(asset_path)
         _configure(texture)
-        if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+        if not save_asset_with_texture_budget(texture):
             raise RuntimeError(f"failed to save scrollbar texture: {asset_path}")
         _validate_imported(texture, record)
         imported.append(asset_path)

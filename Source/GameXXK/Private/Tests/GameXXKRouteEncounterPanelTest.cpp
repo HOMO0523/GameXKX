@@ -1,6 +1,7 @@
 #include "Components/Button.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Blueprint/WidgetTree.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -485,9 +486,9 @@ bool FGameXXKRouteEncounterSelectionInkOcclusionTest::RunTest(const FString& Par
 	const UObject* ThirdSelectionResource = ThirdSelectionImage
 		? ThirdSelectionImage->GetBrush().GetResourceObject()
 		: nullptr;
-	TestTrue(TEXT("route choice uses the approved square selected-state base"),
+	TestTrue(TEXT("route choice uses the same selected-title ink as the deck"),
 		ThirdSelectionResource
-		&& ThirdSelectionResource->GetPathName().Contains(TEXT("T_MasterV2_SquareSelected")));
+		&& ThirdSelectionResource->GetPathName().Contains(TEXT("inventory_scrollbar_Button")));
 	TestEqual(TEXT("third selection ink becomes hit-test invisible"),
 		SelectionInks[2] ? SelectionInks[2]->GetVisibility() : ESlateVisibility::Collapsed,
 		ESlateVisibility::HitTestInvisible);
@@ -495,10 +496,15 @@ bool FGameXXKRouteEncounterSelectionInkOcclusionTest::RunTest(const FString& Par
 	TestNotNull(TEXT("third selection ink owns a real canvas slot"), InkSlot);
 	if (InkSlot)
 	{
-		TestTrue(TEXT("selection ink width is a small corner stamp"), InkSlot->GetSize().X <= 64.0f);
-		TestTrue(TEXT("selection ink height is a small corner stamp"), InkSlot->GetSize().Y <= 64.0f);
-		TestTrue(TEXT("selection ink sits in the card right-side safe area"), InkSlot->GetPosition().X >= 150.0f);
-		TestTrue(TEXT("selection ink stays near the card top edge"), InkSlot->GetPosition().Y <= 24.0f);
+		const auto* NameSlot = ThirdName ? Cast<UCanvasPanelSlot>(ThirdName->Slot) : nullptr;
+		const auto* ArtSlot = ThirdArt ? Cast<UCanvasPanelSlot>(ThirdArt->Slot) : nullptr;
+		const auto* DescriptionSlot = ThirdDescription ? Cast<UCanvasPanelSlot>(ThirdDescription->Slot) : nullptr;
+		TestTrue(TEXT("selected title renders above its ink"), NameSlot && NameSlot->GetZOrder() > InkSlot->GetZOrder());
+		TestTrue(TEXT("title ink ends before the relic illustration"), ArtSlot && InkSlot->GetPosition().Y + InkSlot->GetSize().Y <= ArtSlot->GetPosition().Y);
+		TestTrue(TEXT("relic illustration keeps its square aspect"), ArtSlot && FMath::IsNearlyEqual(ArtSlot->GetSize().X, ArtSlot->GetSize().Y));
+		TestTrue(TEXT("description remains below the illustration"), ArtSlot && DescriptionSlot && ArtSlot->GetPosition().Y + ArtSlot->GetSize().Y <= DescriptionSlot->GetPosition().Y);
+		const auto* NameText = Cast<UTextBlock>(ThirdName);
+		TestTrue(TEXT("selected relic name becomes white"), NameText && NameText->GetColorAndOpacity().GetSpecifiedColor().Equals(FLinearColor::White));
 	}
 	TestTrue(TEXT("third art remains visible"), ThirdArt && ThirdArt->GetVisibility() != ESlateVisibility::Collapsed && ThirdArt->GetVisibility() != ESlateVisibility::Hidden);
 	TestTrue(TEXT("third name remains visible"), ThirdName && ThirdName->GetVisibility() != ESlateVisibility::Collapsed && ThirdName->GetVisibility() != ESlateVisibility::Hidden);

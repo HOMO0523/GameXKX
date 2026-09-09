@@ -78,6 +78,9 @@ def validate_texture(path: str, texture: object) -> list[str]:
         errors.append(f"{path} imports the baked PSD map")
 
     for property_name, expected_value in EXPECTED_PROPERTIES.items():
+        if property_name == 'compression_settings':
+            from gamexxk_texture_budget import expected_compression
+            expected_value = expected_compression(texture,unreal_module=unreal)
         actual_value = get_editor_property(texture, property_name)
         if actual_value != expected_value:
             errors.append(f"{path} {property_name} is not configured for UI")

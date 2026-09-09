@@ -353,7 +353,7 @@ namespace
 			EGameXXKTalentIcon::Offline, 1);
 		AddEntry(
 			TEXT("Talent.Entry.Tools"), TEXT("百工开物"),
-			TEXT("一次解锁分解、合成、强化、洗炼与镶嵌。"),
+			TEXT("开启工具经验与金币加成分支。全部工具默认可用。"),
 			EGameXXKTalentBranch::Tools, EGameXXKTalentEffect::UnlockTools,
 			EGameXXKTalentIcon::Tools, 1);
 

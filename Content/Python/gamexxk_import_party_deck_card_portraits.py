@@ -13,6 +13,11 @@ its composite font so Chinese remains localisable and cannot become raster noise
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import argparse
 import hashlib
 import json
@@ -435,7 +440,7 @@ def import_verified_portraits() -> dict[str, Any]:
         if texture is None:
             raise RuntimeError(f"failed to import card portrait: {record.asset_path}")
         _configure_ui_texture(texture)
-        if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+        if not save_asset_with_texture_budget(texture):
             raise RuntimeError(f"failed to save card portrait: {record.asset_path}")
         _validate_imported_texture(texture, record)
         (reimported if existed else imported).append(record.asset_path)

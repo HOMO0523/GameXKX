@@ -63,8 +63,19 @@ void UGameXXKBattlePartyQiWidget::NativeConstruct()
 
 void UGameXXKBattlePartyQiWidget::SetSharedQi(const int32 InSharedQi)
 {
+	if(bQiInitialized && SharedQi!=FMath::Max(0,InSharedQi))QiPulseAge=0;
+	bQiInitialized=true;
 	SharedQi = FMath::Max(0, InSharedQi);
 	RefreshDisplay();
+}
+
+void UGameXXKBattlePartyQiWidget::NativeTick(const FGeometry& Geometry,float DeltaTime)
+{
+	Super::NativeTick(Geometry,DeltaTime);
+	QiPulseAge=FMath::Min(1.0f,QiPulseAge+FMath::Max(0.0f,DeltaTime));
+	const float Pulse=QiPulseAge>=0.32f ? 0.0f : FMath::Sin(PI*FMath::Clamp(QiPulseAge/0.32f,0.0f,1.0f));
+	if(QiText)QiText->SetRenderScale(FVector2D(1+Pulse*0.17f));
+	if(SoulIcon)SoulIcon->SetRenderScale(FVector2D(1+Pulse*0.06f));
 }
 
 bool UGameXXKBattlePartyQiWidget::PrepareForBoardEmbedding()

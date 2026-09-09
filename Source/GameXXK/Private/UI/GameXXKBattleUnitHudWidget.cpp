@@ -5,6 +5,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
+#include "UI/GameXXKBattleUnitMechanicsWidget.h"
 
 void UGameXXKBattleUnitHudWidget::NativeConstruct()
 {
@@ -80,7 +81,8 @@ bool UGameXXKBattleUnitHudWidget::PrepareForBoardEmbedding()
 	const bool bChildrenPrepared = ResourceWidget
 		&& ResourceWidget->PrepareForScreenSpaceEmbedding()
 		&& StatusEffectsWidget
-		&& StatusEffectsWidget->PrepareForScreenSpaceEmbedding();
+		&& StatusEffectsWidget->PrepareForScreenSpaceEmbedding()
+		&& MechanicsWidget && MechanicsWidget->PrepareForBoardEmbedding();
 	SetVisibility(!bHasUnitView || CachedView.bLiving ? GetRootHitTestVisibilityForTest() : ESlateVisibility::Collapsed);
 	return RootBox && WidgetTree && WidgetTree->RootWidget == RootBox && bChildrenPrepared;
 }
@@ -128,14 +130,33 @@ void UGameXXKBattleUnitHudWidget::EnsureWidgetTree()
 
 	ResourceWidget = WidgetTree->ConstructWidget<UGameXXKBattleUnitResourceWidget>(UGameXXKBattleUnitResourceWidget::StaticClass(), TEXT("BattleUnitHudResource"));
 	StatusEffectsWidget = WidgetTree->ConstructWidget<UGameXXKBattleUnitStatusEffectsWidget>(UGameXXKBattleUnitStatusEffectsWidget::StaticClass(), TEXT("BattleUnitHudStatuses"));
+	MechanicsWidget = WidgetTree->ConstructWidget<UGameXXKBattleUnitMechanicsWidget>(UGameXXKBattleUnitMechanicsWidget::StaticClass(), TEXT("BattleUnitMechanics"));
 	if (UVerticalBoxSlot* const ResourceSlot = RootBox->AddChildToVerticalBox(ResourceWidget))
 	{
 		ResourceSlot->SetHorizontalAlignment(HAlign_Fill);
 	}
+	if (auto* MechanicSlot = RootBox->AddChildToVerticalBox(MechanicsWidget)) MechanicSlot->SetHorizontalAlignment(HAlign_Center);
 	if (UVerticalBoxSlot* const StatusSlot = RootBox->AddChildToVerticalBox(StatusEffectsWidget))
 	{
 		StatusSlot->SetHorizontalAlignment(HAlign_Center);
 	}
+}
+
+void UGameXXKBattleUnitHudWidget::SetMechanicView(const FGameXXKUnitMechanicView& View)
+{
+	if (MechanicsWidget) MechanicsWidget->SetMechanicView(View);
+}
+bool UGameXXKBattleUnitHudWidget::MatchesMechanicView(const FGameXXKUnitMechanicView& View) const
+{
+	return MechanicsWidget && MechanicsWidget->MatchesMechanicView(View);
+}
+void UGameXXKBattleUnitHudWidget::AdvanceMechanicPresentation(const float DeltaSeconds,const bool bPending)
+{
+	if (MechanicsWidget) MechanicsWidget->AdvancePresentation(DeltaSeconds,bPending);
+}
+void UGameXXKBattleUnitHudWidget::ResetMechanicPresentation()
+{
+	if (MechanicsWidget) MechanicsWidget->ResetPresentation();
 }
 
 void UGameXXKBattleUnitHudWidget::RefreshFromView()

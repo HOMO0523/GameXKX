@@ -303,32 +303,17 @@ bool FGameXXKGuideWorkbenchSettingsPersistenceTest::RunTest(const FString& Param
 		? Cast<UGameXXKDesktopTrainingActionButton>(
 			Workbench->WidgetTree->FindWidget(TEXT("ResetCombatGuideButton")))
 		: nullptr;
-	if (!TestNotNull(TEXT("settings exposes reset combat guide"), ResetButton))
-	{
-		return false;
-	}
-	TestTrue(TEXT("test facade sees reset button"), Workbench->HasResetCombatGuideButtonForTest());
-	ResetButton->OnClicked.Broadcast();
-	TestEqual(TEXT("reset returns preference to unset"),
-		Subsystem->GetRuntimeState().GuideProgress.Preference,
-		EGameXXKGuidePreference::Unset);
-	TestEqual(TEXT("reset saves immediately"), SaveCount, 2);
-	TestEqual(TEXT("reset preserves pending route reward gold"),
-		Subsystem->GetRuntimeState().Training.PendingTravelGold,
-		777);
-	FGameXXKGuideProgress NewPlayerAgain = Subsystem->GetRuntimeState().GuideProgress;
-	NewPlayerAgain.Preference = EGameXXKGuidePreference::NewPlayer;
-	TestTrue(TEXT("failure fixture restores new-player preference"),
-		Subsystem->CommitGuideProgress(NewPlayerAgain));
-	Subsystem->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda(
-		[](USaveGame* SaveGame, const FString& SlotName, const int32 UserIndex)
-		{
-			return false;
-		}));
-	TestFalse(TEXT("failed immediate save rejects reset"), Workbench->ResetCombatGuideForTest());
-	TestEqual(TEXT("failed save rolls preference back"),
+	TestNull(TEXT("settings no longer exposes reset combat guide"), ResetButton);
+	TestNotNull(TEXT("settings exposes Simplified Chinese"), Workbench->WidgetTree->FindWidget(TEXT("HudLanguageChineseButton")));
+	TestNotNull(TEXT("settings exposes English"), Workbench->WidgetTree->FindWidget(TEXT("HudLanguageEnglishButton")));
+	Workbench->HandleDesktopActionForTest(655);
+	TestEqual(TEXT("retired reset action cannot clear the guide preference"),
 		Subsystem->GetRuntimeState().GuideProgress.Preference,
 		EGameXXKGuidePreference::NewPlayer);
+	TestEqual(TEXT("opening settings and the retired action do not save game progress"), SaveCount, 1);
+	TestEqual(TEXT("settings preserves pending route reward gold"),
+		Subsystem->GetRuntimeState().Training.PendingTravelGold,
+		777);
 	return true;
 }
 

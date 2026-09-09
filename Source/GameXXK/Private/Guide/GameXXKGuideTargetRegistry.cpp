@@ -40,8 +40,7 @@ namespace GameXXKGuideTargetRegistryPrivate
 			TEXT("Route.Event.ValidChoiceGroup"),
 			TEXT("Route.Camp.Heal"),
 			TEXT("Route.Camp.Gold"),
-			TEXT("Route.Chest.Open"),
-			TEXT("Desktop.Settings.ResetCombatGuide")};
+			TEXT("Route.Chest.Open")};
 		return Values;
 	}
 
@@ -127,8 +126,7 @@ namespace GameXXKGuideTargetRegistryPrivate
 			TEXT("Action.Route.CampHeal"),
 			TEXT("Action.Route.CampGold"),
 			TEXT("Action.Route.ChestOpen"),
-			TEXT("Action.Route.SettlementConfirm"),
-			TEXT("Action.Desktop.ResetCombatGuide")};
+			TEXT("Action.Route.SettlementConfirm")};
 		return Values;
 	}
 }

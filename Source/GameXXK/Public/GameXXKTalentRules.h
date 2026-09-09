@@ -17,6 +17,9 @@ public:
 	static int64 GetFullCapacityPathPrice();
 	static bool ValidateProgress(const FGameXXKTalentProgress& Progress, FString* OutError = nullptr);
 	static bool BuildProjection(const FGameXXKTalentProgress& Progress, FGameXXKTalentProjection& OutProjection, FString* OutError = nullptr);
+	// PlayerMaxHP remains the equipment baseline; current HP uses this effective ceiling.
+	static int32 ComputeProjectedMaxHP(int32 BaselineMaxHP, int32 RouteFlatHP, const FGameXXKTalentProjection& Projection);
+	static int32 GetEffectiveHeroMaxHP(const FGameXXKRuntimeState& State);
 	static bool IsRevealed(const FGameXXKTalentProgress& Progress, const FGameXXKTalentNodeDefinition& Node);
 	static bool ArePrerequisitesMet(const FGameXXKTalentProgress& Progress, const FGameXXKTalentNodeDefinition& Node, FText* OutReason = nullptr);
 	static TArray<FGameXXKTalentNodeView> BuildNodeViews(const FGameXXKRuntimeState& State);

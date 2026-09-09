@@ -1,4 +1,10 @@
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "Brushes/SlateColorBrush.h"
+#include "Narrative/GameXXKMainStorySubsystem.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKLocalization.h"
+#include "GameXXKTrainingRules.h"
+#include "GameXXKTravelMoneyRules.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -37,19 +43,20 @@ namespace
 	static const TCHAR* OneGameLineWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择-关卡-线.UI_地图选择-关卡-线_C");
 	static const TCHAR* OneGameBossWidgetClassPath = TEXT("/Game/1Game/UI/UI_地图选择-Boss.UI_地图选择-Boss_C");
 	static const TCHAR* OneGameRouteLineTexturePath = TEXT("/Game/1Game/Texture/脚印.脚印");
-	static const TCHAR* OneGameBattleTexturePath = TEXT("/Game/1Game/Texture/小怪.小怪");
-	static const TCHAR* OneGameBattleDisabledTexturePath = TEXT("/Game/1Game/Texture/小怪灰色.小怪灰色");
-	static const TCHAR* OneGameEliteTexturePath = TEXT("/Game/1Game/Texture/精英怪.精英怪");
-	static const TCHAR* OneGameEliteDisabledTexturePath = TEXT("/Game/1Game/Texture/精英怪灰色.精英怪灰色");
-	static const TCHAR* OneGameCampTexturePath = TEXT("/Game/1Game/Texture/篝火.篝火");
-	static const TCHAR* OneGameCampDisabledTexturePath = TEXT("/Game/1Game/Texture/篝火灰色.篝火灰色");
-	static const TCHAR* OneGameChestTexturePath = TEXT("/Game/1Game/Texture/宝箱.宝箱");
-	static const TCHAR* OneGameChestDisabledTexturePath = TEXT("/Game/1Game/Texture/宝箱灰色.宝箱灰色");
-	static const TCHAR* OneGameMerchantTexturePath = TEXT("/Game/1Game/Texture/钱.钱");
-	static const TCHAR* OneGameMerchantDisabledTexturePath = TEXT("/Game/1Game/Texture/钱灰色.钱灰色");
-	static const TCHAR* OneGameEventTexturePath = TEXT("/Game/1Game/Texture/问号.问号");
-	static const TCHAR* OneGameEventDisabledTexturePath = TEXT("/Game/1Game/Texture/问号灰色.问号灰色");
-	static const TCHAR* OneGameRouteBackgroundTexturePath = TEXT("/Game/1Game/Texture/图层_1.图层_1");
+	static const TCHAR* OneGameBattleTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerNormal.T_TrainingWaveMarkerNormal");
+	static const TCHAR* OneGameBattleDisabledTexturePath = OneGameBattleTexturePath;
+	static const TCHAR* OneGameEliteTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerElite.T_TrainingWaveMarkerElite");
+	static const TCHAR* OneGameEliteDisabledTexturePath = OneGameEliteTexturePath;
+	static const TCHAR* RouteBossTexturePath = TEXT("/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerBoss.T_TrainingWaveMarkerBoss");
+	static const TCHAR* OneGameCampTexturePath = TEXT("/Game/GameXXK/UI/RouteMap/T_RouteNodeCamp.T_RouteNodeCamp");
+	static const TCHAR* OneGameCampDisabledTexturePath = OneGameCampTexturePath;
+	static const TCHAR* OneGameChestTexturePath = TEXT("/Game/GameXXK/UI/RouteMap/T_RouteNodeChest.T_RouteNodeChest");
+	static const TCHAR* OneGameChestDisabledTexturePath = OneGameChestTexturePath;
+	static const TCHAR* OneGameMerchantTexturePath = TEXT("/Game/GameXXK/UI/RouteMap/T_RouteNodeMerchant.T_RouteNodeMerchant");
+	static const TCHAR* OneGameMerchantDisabledTexturePath = OneGameMerchantTexturePath;
+	static const TCHAR* OneGameEventTexturePath = TEXT("/Game/GameXXK/UI/RouteMap/T_RouteNodeEvent.T_RouteNodeEvent");
+	static const TCHAR* OneGameEventDisabledTexturePath = OneGameEventTexturePath;
+	static const TCHAR* OneGameRouteBackgroundTexturePath = TEXT("/Game/GameXXK/UI/RouteMap/T_RouteBackground.T_RouteBackground");
 	static const TCHAR* RouteActionButtonTexturePath = TEXT("/Game/GameXXK/UI/MainMenu/Textures/T_InkButtonBase.T_InkButtonBase");
 	static const TCHAR* RouteCloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	static const TCHAR* RouteModalPaperTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
@@ -70,6 +77,28 @@ namespace
 	const float RouteCenteredLaneMaxWidth = 960.0f;
 	const float RouteLineThickness = 24.0f;
 	const float RouteClickDragThresholdSq = 64.0f;
+	const float RouteCircleDrawSeconds = 0.16f;
+	const float RouteSelectionSeconds = 0.22f;
+	const FVector2D RouteCircleSize(124.0f, 124.0f);
+	// The supplied 8x8 atlas has a stable painted circle centered at (128, 135.5).
+	const FVector2D RouteCircleAnchor(0.5f, 135.5f / 256.0f);
+	const float RouteAutoCenterSeconds = 0.18f;
+	struct FRouteLegendDefinition
+	{
+		EGameXXKOneGameRouteRoomType Type;
+		const TCHAR* Name;
+		const TCHAR* Description;
+	};
+	const FRouteLegendDefinition RouteLegendDefinitions[] = {
+		{EGameXXKOneGameRouteRoomType::Start, TEXT("起程"), TEXT("本次行程起点")},
+		{EGameXXKOneGameRouteRoomType::SmallEnemy, TEXT("战斗"), TEXT("战斗后选择奖励")},
+		{EGameXXKOneGameRouteRoomType::EliteEnemy, TEXT("精英"), TEXT("强敌拦路，奖励更佳")},
+		{EGameXXKOneGameRouteRoomType::Boss, TEXT("首领"), TEXT("击败后结算本关")},
+		{EGameXXKOneGameRouteRoomType::Camp, TEXT("篝火"), TEXT("领取保命护符")},
+		{EGameXXKOneGameRouteRoomType::Chest, TEXT("宝匣"), TEXT("遗物三选一")},
+		{EGameXXKOneGameRouteRoomType::Merchant, TEXT("行商"), TEXT("强化卡牌 · 购买遗物")},
+		{EGameXXKOneGameRouteRoomType::RandomEvent, TEXT("奇遇"), TEXT("属性机缘 · 主线见闻")}
+	};
 
 	FSlateBrush BuildRouteTextureBrush(
 		UTexture2D* Texture,
@@ -199,7 +228,7 @@ namespace
 		case EGameXXKOneGameRouteRoomType::RandomEvent:
 			return FText::FromString(TEXT("奇遇"));
 		case EGameXXKOneGameRouteRoomType::Boss:
-			return FText::FromString(TEXT("Boss"));
+			return FText::FromString(TEXT("首领"));
 		default:
 			return FText::FromString(TEXT("节点"));
 		}
@@ -260,6 +289,7 @@ UGameXXKOneGameRouteMapWidget::UGameXXKOneGameRouteMapWidget()
 	OneGameBattleDisabledTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameBattleDisabledTexturePath));
 	OneGameEliteTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameEliteTexturePath));
 	OneGameEliteDisabledTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameEliteDisabledTexturePath));
+	RouteBossTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(RouteBossTexturePath));
 	OneGameCampTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameCampTexturePath));
 	OneGameCampDisabledTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameCampDisabledTexturePath));
 	OneGameChestTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameChestTexturePath));
@@ -269,6 +299,8 @@ UGameXXKOneGameRouteMapWidget::UGameXXKOneGameRouteMapWidget()
 	OneGameEventTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameEventTexturePath));
 	OneGameEventDisabledTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameEventDisabledTexturePath));
 	OneGameRouteBackgroundTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(OneGameRouteBackgroundTexturePath));
+	RouteSelectionCircleTexture = TSoftObjectPtr<UTexture2D>(FSoftObjectPath(
+		TEXT("/Game/GameXXK/UI/RouteMap/T_RouteSelectionCircleAtlas.T_RouteSelectionCircleAtlas")));
 }
 
 TSharedRef<SWidget> UGameXXKOneGameRouteMapWidget::RebuildWidget()
@@ -287,6 +319,8 @@ void UGameXXKOneGameRouteMapWidget::NativeConstruct()
 
 void UGameXXKOneGameRouteMapWidget::NativeDestruct()
 {
+	CancelRouteSelectionFeedback();
+	bRouteEntryTitlePlaying = false;
 	FGameXXKGuideTargetRegistry& Registry = FGameXXKGuideTargetRegistry::Get();
 	for (UButton* Button : NodeButtons)
 	{
@@ -296,6 +330,262 @@ void UGameXXKOneGameRouteMapWidget::NativeDestruct()
 	Registry.UnregisterTarget(TEXT("Route.Settlement.Confirm"), RouteCloseChallengeButton);
 	ClearTransientRouteProjection();
 	Super::NativeDestruct();
+}
+
+void UGameXXKOneGameRouteMapWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
+{
+	Super::NativeTick(MyGeometry, InDeltaTime);
+	AdvanceRoutePresentation(InDeltaTime);
+	AdvanceRouteSelection(InDeltaTime);
+}
+
+float UGameXXKOneGameRouteMapWidget::GetRouteVisibleHeight() const
+{
+	if (RouteScrollBox && RouteScrollBox->GetCachedGeometry().GetLocalSize().Y > 0.0f)
+		return RouteScrollBox->GetCachedGeometry().GetLocalSize().Y;
+	return RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight;
+}
+
+float UGameXXKOneGameRouteMapWidget::GetRouteBottomScrollPadding() const
+{
+	return 0.5f * (RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight);
+}
+
+void UGameXXKOneGameRouteMapWidget::AdvanceRoutePresentation(float DeltaSeconds)
+{
+	const float Delta = FMath::Max(0.0f, DeltaSeconds);
+	RoutePresentationElapsed += Delta;
+	if (bAutoCenterSelection)
+	{
+		AutoCenterElapsed += Delta;
+		const float Alpha = FMath::Clamp(AutoCenterElapsed / RouteAutoCenterSeconds, 0.0f, 1.0f);
+		SetRouteScrollOffset(FMath::Lerp(AutoCenterStartOffset, AutoCenterTargetOffset, Alpha * Alpha * (3.0f - 2.0f * Alpha)));
+		if (Alpha >= 1.0f) bAutoCenterSelection = false;
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const bool bMapInteractive = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap
+		&& GetVisibility() == ESlateVisibility::Visible && !bRouteAbandonConfirmationOpen;
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	for (int32 Index = 0; Index < NodeVisualImages.Num(); ++Index)
+	{
+		UImage* Icon = NodeVisualImages[Index];
+		if (!Icon) continue;
+		float Angle = 0.0f;
+		float Lift = 0.0f;
+		if (bMapInteractive && PendingSelectionNodeId == INDEX_NONE && Nodes.IsValidIndex(Index)
+			&& Nodes[Index].bEnabled && !Nodes[Index].bVisited)
+		{
+			const float Phase = FMath::Fmod(RoutePresentationElapsed + Nodes[Index].NodeIndex * 0.13f, 2.8f);
+			if (Phase < 0.34f)
+			{
+				const float T = Phase / 0.34f;
+				const float Envelope = FMath::Sin(T * PI);
+				Angle = 2.2f * FMath::Sin(T * 6.0f * PI) * Envelope;
+				Lift = -1.2f * FMath::Abs(FMath::Sin(T * 3.0f * PI)) * Envelope;
+			}
+		}
+		Icon->SetRenderTransformAngle(Angle);
+		Icon->SetRenderTranslation(FVector2D(0.0f, Lift));
+	}
+	if (bRouteEntryTitlePlaying && RouteEntryTitle)
+	{
+		RouteEntryTitleElapsed += Delta;
+		const float FadeIn = FMath::Clamp(RouteEntryTitleElapsed / 0.28f, 0.0f, 1.0f);
+		const float FadeOut = FMath::Clamp((2.6f - RouteEntryTitleElapsed) / 0.55f, 0.0f, 1.0f);
+		RouteEntryTitle->SetRenderOpacity(FadeIn * FadeOut);
+		RouteEntryTitle->SetRenderTranslation(FVector2D(0.0f, 8.0f * (1.0f - FadeIn)));
+		if (!bMapInteractive || RouteEntryTitleElapsed >= 2.6f)
+		{
+			bRouteEntryTitlePlaying = false;
+			RouteEntryTitle->SetRenderOpacity(0.0f);
+			RouteEntryTitle->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+}
+
+FText UGameXXKOneGameRouteMapWidget::GetRouteEntryTitleForTest() const
+{
+	return RouteEntryTitle ? RouteEntryTitle->GetText() : FText::GetEmpty();
+}
+
+float UGameXXKOneGameRouteMapWidget::GetRouteEntryTitleOpacityForTest() const
+{
+	return RouteEntryTitle ? RouteEntryTitle->GetRenderOpacity() : 0.0f;
+}
+
+void UGameXXKOneGameRouteMapWidget::RefreshRouteInformation()
+{
+	const FVector2D ViewSize = RouteMapViewportSize.X > 0.0f && RouteMapViewportSize.Y > 0.0f
+		? RouteMapViewportSize : RouteViewportDesignSize;
+	const float Scale = FMath::Clamp(FMath::Min(ViewSize.X / 1920.0f, ViewSize.Y / 1080.0f), 0.65f, 1.0f);
+	if (RouteSummaryBorder)
+	{
+		if (UOverlaySlot* PresentationSlot = Cast<UOverlaySlot>(RouteSummaryBorder->Slot))
+			PresentationSlot->SetPadding(FMargin(112.0f * Scale, 40.0f * Scale, 0.0f, 0.0f));
+	}
+	if (RouteStageSummaryText) RouteStageSummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(28.0f * Scale), true));
+	if (RouteMoneySummaryText) RouteMoneySummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(22.0f * Scale), false, true));
+	if (RouteProgressSummaryText) RouteProgressSummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(18.0f * Scale)));
+	if (RouteLegendContainer)
+	{
+		RouteLegendContainer->ClearWidthOverride();
+		RouteLegendContainer->SetMinDesiredWidth(340.0f * Scale);
+		if (UOverlaySlot* PresentationSlot = Cast<UOverlaySlot>(RouteLegendContainer->Slot))
+			PresentationSlot->SetPadding(FMargin(0.0f, 90.0f * Scale, 88.0f * Scale, 0.0f));
+		RouteLegendContainer->SetVisibility(bUsingTransientRouteProjection ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
+	for (int32 Index = 0; Index < RouteLegendRows.Num(); ++Index)
+	{
+		// The visible legend contains one short label; details live in its tooltip.
+		RouteLegendRows[Index]->ClearHeightOverride();
+		RouteLegendRows[Index]->SetMinDesiredHeight(44.0f * Scale);
+		RouteLegendIcons[Index]->SetDesiredSizeOverride(FVector2D(38.0f, 38.0f) * Scale);
+		RouteLegendNames[Index]->SetFont(FGameXXKInRunUiStyle::Font(FMath::Max(16, FMath::RoundToInt(21.0f * Scale)), true));
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const bool bSessionActive = State && !bUsingTransientRouteProjection && State->bDungeonActive && State->bHasGeneratedRouteMap;
+	if (!bSessionActive) bHasPresentedRouteIdentity = false;
+	if (!RouteEntryTitle) return;
+	RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(64.0f * Scale), true));
+	const bool bMapVisible = bSessionActive && State->Screen == EGameXXKScreen::DungeonMap;
+	const uint32 Identity = State ? HashCombine(GetRouteSelectionIdentity(), GetTypeHash(State->Training.ActiveChallengeStageId)) : 0;
+	if (bMapVisible && (!bHasPresentedRouteIdentity || PresentedRouteIdentity != Identity))
+	{
+		bHasPresentedRouteIdentity = true;
+		PresentedRouteIdentity = Identity;
+		RouteEntryTitleElapsed = 0.0f;
+		bRouteEntryTitlePlaying = true;
+		++RouteEntryTitlePlayCount;
+		RouteEntryTitle->SetText(BuildRouteSummaryView().StageName);
+		RouteEntryTitle->SetRenderOpacity(0.0f);
+		RouteEntryTitle->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+	else if (!bMapVisible)
+	{
+		bRouteEntryTitlePlaying = false;
+		RouteEntryTitle->SetRenderOpacity(0.0f);
+		RouteEntryTitle->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+uint32 UGameXXKOneGameRouteMapWidget::GetRouteSelectionIdentity() const
+{
+	if (bUsingTransientRouteProjection)
+	{
+		FGameXXKRuntimeState Projection;
+		Projection.RouteMapNodes = TransientRouteNodes;
+		return HashCombine(1u, CalculateRouteTopologyHash(Projection));
+	}
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem) return 0;
+	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
+	return HashCombine(GetTypeHash(State.RouteSeed), CalculateRouteTopologyHash(State));
+}
+
+bool UGameXXKOneGameRouteMapWidget::IsPendingRouteSelectionValid() const
+{
+	if (PendingSelectionNodeId == INDEX_NONE || bRouteAbandonConfirmationOpen
+		|| GetVisibility() != ESlateVisibility::Visible
+		|| PendingSelectionRouteIdentity != GetRouteSelectionIdentity()) return false;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || Subsystem->GetRuntimeState().Screen != EGameXXKScreen::DungeonMap) return false;
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	return Nodes.ContainsByPredicate([this](const FGameXXKOneGameRouteNode& Node)
+	{
+		return Node.NodeIndex == PendingSelectionNodeId && Node.bEnabled && !Node.bVisited
+			&& (bUsingTransientRouteProjection ? TransientNodeExecutedDelegate.IsBound() : !Node.CommandName.IsNone());
+	});
+}
+
+bool UGameXXKOneGameRouteMapWidget::SelectRouteNodeWithFeedback(int32 NodeId)
+{
+	if (PendingSelectionNodeId != INDEX_NONE || bRouteAbandonConfirmationOpen
+		|| !FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Route.SelectNext"))) return false;
+	PendingSelectionNodeId = NodeId;
+	PendingSelectionRouteIdentity = GetRouteSelectionIdentity();
+	SelectionElapsedSeconds = 0.0f;
+	if (!IsPendingRouteSelectionValid())
+	{
+		CancelRouteSelectionFeedback();
+		return false;
+	}
+	RefreshFromState();
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	if (const FGameXXKOneGameRouteNode* Node = Nodes.FindByPredicate([NodeId](const FGameXXKOneGameRouteNode& N) { return N.NodeIndex == NodeId; }))
+	{
+		AutoCenterElapsed = 0.0f;
+		AutoCenterStartOffset = LastAppliedScrollOffset;
+		AutoCenterTargetOffset = FMath::Clamp(static_cast<float>(GetNodeCanvasPosition(*Node).Y) - GetRouteVisibleHeight() * 0.5f, 0.0f, CalculateMaxScrollOffset());
+		bAutoCenterSelection = !FMath::IsNearlyEqual(AutoCenterStartOffset, AutoCenterTargetOffset, 0.5f);
+	}
+	return true;
+}
+
+void UGameXXKOneGameRouteMapWidget::CancelRouteSelectionFeedback()
+{
+	bAutoCenterSelection = false;
+	PendingSelectionNodeId = INDEX_NONE;
+	SelectionElapsedSeconds = 0.0f;
+	PendingSelectionRouteIdentity = 0;
+}
+
+void UGameXXKOneGameRouteMapWidget::AdvanceRouteSelection(float DeltaSeconds)
+{
+	if (PendingSelectionNodeId == INDEX_NONE) return;
+	if (!IsPendingRouteSelectionValid())
+	{
+		CancelRouteSelectionFeedback();
+		RefreshFromState();
+		return;
+	}
+	SelectionElapsedSeconds += FMath::Max(0.0f, DeltaSeconds);
+	RefreshSelectionCircles();
+	if (SelectionElapsedSeconds >= RouteSelectionSeconds)
+	{
+		const int32 NodeId = PendingSelectionNodeId;
+		CancelRouteSelectionFeedback();
+		// The synchronous command revalidates tutorial gates and current route state.
+		ExecuteRouteNodeById(NodeId);
+		RefreshFromState();
+	}
+}
+
+int32 UGameXXKOneGameRouteMapWidget::GetSelectionCircleFrame(const FGameXXKOneGameRouteNode& Node) const
+{
+	if (Node.NodeIndex == PendingSelectionNodeId)
+	{
+		const float Progress = FMath::Clamp(SelectionElapsedSeconds / RouteCircleDrawSeconds, 0.0f, 1.0f);
+		return FMath::Min(16, 3 + FMath::FloorToInt(Progress * 14.0f));
+	}
+	// Start is occupied automatically in the desktop route, without a player click.
+	if (Node.RoomType == EGameXXKOneGameRouteRoomType::Start) return INDEX_NONE;
+	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	const bool bPendingEncounter = !bUsingTransientRouteProjection && State
+		&& State->PendingRouteNodeId == Node.NodeIndex;
+	return Node.bVisited || bPendingEncounter || SelectedRouteNodeIds.Contains(Node.NodeIndex) ? 32 : INDEX_NONE;
+}
+
+void UGameXXKOneGameRouteMapWidget::RefreshSelectionCircles()
+{
+	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	for (int32 Index = 0; Index < NodeSelectionCircles.Num(); ++Index)
+	{
+		UImage* Circle = NodeSelectionCircles[Index];
+		if (!Circle) continue;
+		const int32 Frame = Nodes.IsValidIndex(Index) ? GetSelectionCircleFrame(Nodes[Index]) : INDEX_NONE;
+		Circle->SetVisibility(Frame == INDEX_NONE ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		if (Frame == INDEX_NONE) continue;
+		FSlateBrush Brush = Circle->GetBrush();
+		const FVector2f UVMin(static_cast<float>(Frame % 8) / 8.0f, static_cast<float>(Frame / 8) / 8.0f);
+		Brush.SetUVRegion(FBox2f(UVMin, UVMin + FVector2f(0.125f, 0.125f)));
+		Circle->SetBrush(Brush);
+		if (UCanvasPanelSlot* CircleSlot = Cast<UCanvasPanelSlot>(Circle->Slot))
+		{
+			CircleSlot->SetPosition(GetNodeCanvasPosition(Nodes[Index]) - RouteCircleSize * RouteCircleAnchor);
+		}
+	}
 }
 
 void UGameXXKOneGameRouteMapWidget::SetTransientRouteProjection(
@@ -321,6 +611,12 @@ void UGameXXKOneGameRouteMapWidget::SetTransientRouteProjection(
 
 void UGameXXKOneGameRouteMapWidget::ClearTransientRouteProjection()
 {
+	CancelRouteSelectionFeedback();
+	if (bUsingTransientRouteProjection)
+	{
+		SelectedRouteNodeIds.Reset();
+		bHasSelectedRouteIdentity = false;
+	}
 	bUsingTransientRouteProjection = false;
 	TransientRouteNodes.Reset();
 	TransientRouteEdges.Reset();
@@ -363,6 +659,7 @@ FReply UGameXXKOneGameRouteMapWidget::NativeOnKeyDown(
 	const FGeometry& InGeometry,
 	const FKeyEvent& InKeyEvent)
 {
+	if (InKeyEvent.GetKey()==EKeys::Q) { HandleMainStoryTreeClicked(); return FReply::Handled(); }
 	if (InKeyEvent.GetKey() == EKeys::Escape && bRouteAbandonConfirmationOpen)
 	{
 		CancelRouteAbandonConfirmation();
@@ -458,6 +755,20 @@ FEventReply UGameXXKOneGameRouteMapWidget::HandleRouteDragSurfaceMouseMove(
 
 void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 {
+	const uint32 SelectionIdentity = GetRouteSelectionIdentity();
+	const UGameXXKMVPSubsystem* SelectionSubsystem = ResolveMVPSubsystem();
+	const bool bRouteSessionActive = bUsingTransientRouteProjection || (SelectionSubsystem
+		&& (SelectionSubsystem->GetRuntimeState().bDungeonActive || SelectionSubsystem->GetRuntimeState().Training.bChallengeActive));
+	if (!bRouteSessionActive || !bHasSelectedRouteIdentity || SelectedRouteIdentity != SelectionIdentity)
+	{
+		SelectedRouteNodeIds.Reset();
+		SelectedRouteIdentity = SelectionIdentity;
+		bHasSelectedRouteIdentity = bRouteSessionActive;
+	}
+	if (PendingSelectionNodeId != INDEX_NONE && !IsPendingRouteSelectionValid())
+	{
+		CancelRouteSelectionFeedback();
+	}
 	BuildProgrammaticLayout();
 	UpdateRouteSummary();
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
@@ -470,17 +781,18 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 		const FGameXXKOneGameRouteNode* Node = Nodes.IsValidIndex(ButtonIndex) ? &Nodes[ButtonIndex] : nullptr;
 		ConfigureNodeButton(ButtonIndex, Node);
 	}
+	RefreshSelectionCircles();
 
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
-	if (!State || !State->bHasGeneratedRouteMap)
+	if (!bUsingTransientRouteProjection && (!State || !State->bHasGeneratedRouteMap))
 	{
 		bHasRememberedRouteIdentity = false;
 		RememberedRouteSeed = 0;
 		RememberedRouteTopologyHash = 0;
 		bHasAppliedInitialScrollOffset = false;
 	}
-	else
+	else if (!bUsingTransientRouteProjection && State)
 	{
 		const uint32 RouteTopologyHash = CalculateRouteTopologyHash(*State);
 		if (!bHasRememberedRouteIdentity
@@ -501,6 +813,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshFromState()
 		? ESlateVisibility::Visible
 		: ESlateVisibility::Collapsed);
 	RefreshFixedControls();
+	RefreshRouteInformation();
 	RegisterGuideTargets();
 	const bool bGuideRouteVisible = Subsystem && ActiveScreen == EGameXXKScreen::DungeonMap;
 	if (bGuideRouteVisible && !bGuideRouteOpenedEmitted)
@@ -776,6 +1089,13 @@ bool UGameXXKOneGameRouteMapWidget::ConfirmRouteAbandon()
 	return true;
 }
 
+void UGameXXKOneGameRouteMapWidget::HandleMainStoryTreeClicked()
+{
+	CancelRouteSelectionFeedback();
+	RefreshFromState();
+	if (GetGameInstance()) if (auto* Story=GetGameInstance()->GetSubsystem<UGameXXKMainStorySubsystem>()) Story->OpenJourneyTree();
+}
+
 void UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked()
 {
 	OpenRouteAbandonConfirmation();
@@ -816,8 +1136,14 @@ FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView
 
 	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
 	Summary.RouteTravelMoney = State.CardRun.RouteTravelMoney;
+	Summary.SpendableTravelMoney = FGameXXKTravelMoneyRules::GetBalance(State);
+	Summary.StageName = NSLOCTEXT("GameXXKRouteMap", "RouteFallbackName", "江湖行路");
+	FGameXXKTrainingStageDefinition Stage;
+	if (State.Training.bChallengeActive && FGameXXKTrainingRules::TryGetStageDefinition(State.Training.ActiveChallengeStageId, Stage))
+		Summary.StageName = Stage.DisplayName;
 	for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
 	{
+		Summary.TotalLegs = FMath::Max(Summary.TotalLegs, Node.LayerIndex);
 		if (Node.NodeKind == EGameXXKNodeKind::Start)
 		{
 			continue;
@@ -826,6 +1152,7 @@ FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView
 		if (State.VisitedRouteNodeIds.Contains(Node.NodeId))
 		{
 			++Summary.CompletedNodeCount;
+			Summary.CompletedLegs = FMath::Max(Summary.CompletedLegs, Node.LayerIndex);
 		}
 	}
 
@@ -846,19 +1173,26 @@ FText UGameXXKOneGameRouteMapWidget::GetRouteMoneySummaryTextForTest() const
 
 void UGameXXKOneGameRouteMapWidget::UpdateRouteSummary()
 {
+	if (MainStoryTreeButton)
+	{
+		const auto* M=ResolveMVPSubsystem(); const auto* S=M?&M->GetRuntimeState():nullptr;
+		MainStoryTreeButton->SetVisibility(S && S->Training.bChallengeActive && !S->NarrativeProgress.MainStory.GateNodeIds.IsEmpty() && S->NarrativeProgress.MainStory.JourneyStageId==S->Training.ActiveChallengeStageId
+			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
 	const FGameXXKRouteMapSummaryView Summary = BuildRouteSummaryView();
+	if (RouteStageSummaryText) RouteStageSummaryText->SetText(GameXXKLocalization::Localize(Summary.StageName));
 	if (RouteMoneySummaryText)
 	{
 		RouteMoneySummaryText->SetText(FText::Format(
 			NSLOCTEXT("GameXXKRouteMap", "TravelMoneySummary", "行旅钱  {0}"),
-			FText::AsNumber(Summary.RouteTravelMoney)));
+			FText::AsNumber(Summary.SpendableTravelMoney)));
 	}
 	if (RouteProgressSummaryText)
 	{
 		RouteProgressSummaryText->SetText(FText::Format(
-			NSLOCTEXT("GameXXKRouteMap", "ProgressSummary", "路线进度  {0} / {1}"),
-			FText::AsNumber(Summary.CompletedNodeCount),
-			FText::AsNumber(Summary.TotalNodeCount)));
+			NSLOCTEXT("GameXXKRouteMap", "LegProgressSummary", "行程  {0} / {1}"),
+			FText::AsNumber(Summary.CompletedLegs),
+			FText::AsNumber(Summary.TotalLegs)));
 	}
 	if (RouteCapacitySummaryText)
 	{
@@ -914,6 +1248,11 @@ TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNode
 		AdapterNode.NodeKind = RouteNode.NodeKind;
 		AdapterNode.RoomType = MapRoomType(RouteNode.NodeKind);
 		AdapterNode.NodeIndex = RouteNode.NodeIndex;
+		if (State && FGameXXKMainStoryRules::IsJourneyGate(*State,RouteNode.NodeIndex))
+		{
+			AdapterNode.NodeKind=EGameXXKNodeKind::Event; AdapterNode.RoomType=MapRoomType(EGameXXKNodeKind::Event);
+			if (const auto* N=FGameXXKMainStoryCatalog::FindNode(State->NarrativeProgress.MainStory.JourneyNodeId)) AdapterNode.Label=N->Title;
+		}
 		AdapterNode.bEnabled = RouteNode.bEnabled;
 		AdapterNode.bVisited = State && State->VisitedRouteNodeIds.Contains(RouteNode.NodeIndex);
 		AdapterNode.NormalizedPosition = RouteNode.NormalizedPosition;
@@ -940,6 +1279,7 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNode(int32 NodeIndex)
 
 bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 {
+	CancelRouteSelectionFeedback();
 	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Route.SelectNext")))
 	{
 		return false;
@@ -967,6 +1307,7 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 		const bool bExecuted = TransientNodeExecutedDelegate.Execute(NodeId);
 		if (bExecuted)
 		{
+			SelectedRouteNodeIds.Add(NodeId);
 			FGameXXKGuideTargetRegistry::Get().EmitEvent(
 				TEXT("Event.Route.NextNodeSelected"));
 			OnRouteNodeExecuted(Node);
@@ -997,6 +1338,7 @@ bool UGameXXKOneGameRouteMapWidget::ExecuteRouteNodeById(int32 NodeId)
 	const bool bExecuted = GameXXKMVPCommandRouter::ExecuteVisibleCommand(Subsystem, Node.CommandName);
 	if (bExecuted)
 	{
+		SelectedRouteNodeIds.Add(NodeId);
 		FGameXXKGuideTargetRegistry::Get().EmitEvent(TEXT("Event.Route.NextNodeSelected"));
 		OnRouteNodeExecuted(Node);
 		if (!NotifyPlayerFlowStateChanged())
@@ -1088,6 +1430,9 @@ TArray<FGameXXKOneGameRouteNodeVisualState> UGameXXKOneGameRouteMapWidget::GetRo
 			}
 		}
 		VisualState.IconPath = GetTextureForNode(Node).ToSoftObjectPath().ToString();
+		VisualState.SelectionCircleFrame = GetSelectionCircleFrame(Node);
+		VisualState.bSelectionCircleVisible = VisualState.SelectionCircleFrame != INDEX_NONE;
+		VisualState.bSelectionCircleAnimating = Node.NodeIndex == PendingSelectionNodeId;
 		VisualStates.Add(VisualState);
 	}
 	return VisualStates;
@@ -1456,6 +1801,12 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		RootOverlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass(), TEXT("GameXXKOneGameRouteMapRoot"));
 		WidgetTree->RootWidget = RootOverlay;
 		bRouteLayoutWasCreated = true;
+		UBorder* PaperBackdrop = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RoutePaperBackdrop"));
+		PaperBackdrop->SetBrush(FSlateColorBrush(FLinearColor::FromSRGBColor(FColor(238, 225, 195))));
+		PaperBackdrop->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UOverlaySlot* PaperBackdropSlot = RootOverlay->AddChildToOverlay(PaperBackdrop);
+		PaperBackdropSlot->SetHorizontalAlignment(HAlign_Fill);
+		PaperBackdropSlot->SetVerticalAlignment(VAlign_Fill);
 
 		RouteScrollBox = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(), TEXT("GameXXKOneGameRouteMapScroll"));
 		RouteScrollBox->SetScrollBarVisibility(ESlateVisibility::Visible);
@@ -1479,8 +1830,9 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 			UBorder::StaticClass(),
 			TEXT("GameXXKRouteMapFixedSummary"));
 		RouteSummaryBorder->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		RouteSummaryBorder->SetPadding(FMargin(18.0f, 14.0f));
-		RouteSummaryBorder->SetBrushColor(FLinearColor(0.055f, 0.045f, 0.035f, 0.84f));
+		RouteSummaryBorder->SetPadding(FMargin(8.0f));
+		RouteSummaryBorder->SetBrush(FSlateNoResource());
+		RouteSummaryBorder->SetBrushColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
 		if (UOverlaySlot* SummarySlot = RootOverlay->AddChildToOverlay(RouteSummaryBorder))
 		{
 			SummarySlot->SetHorizontalAlignment(HAlign_Left);
@@ -1498,19 +1850,97 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		{
 			OutText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 			OutText->SetVisibility(ESlateVisibility::HitTestInvisible);
-			OutText->SetColorAndOpacity(FSlateColor(FLinearColor(0.94f, 0.86f, 0.68f, 1.0f)));
-			FSlateFontInfo Font = OutText->GetFont();
-			Font.Size = 20;
-			OutText->SetFont(Font);
+			OutText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
+			OutText->SetFont(FGameXXKInRunUiStyle::Font(20));
 			if (UVerticalBoxSlot* LineSlot = RouteSummaryStack->AddChildToVerticalBox(OutText))
 			{
 				LineSlot->SetPadding(FMargin(0.0f, 2.0f));
 			}
 		};
+		AddSummaryLine(TEXT("GameXXKRouteStageSummary"), RouteStageSummaryText);
 		AddSummaryLine(TEXT("GameXXKRouteMoneySummary"), RouteMoneySummaryText);
+		RouteMoneySummaryText->RemoveFromParent();
+		UHorizontalBox* MoneyLine = WidgetTree->ConstructWidget<UHorizontalBox>();
+		UImage* MoneyIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RoutePhysicalMoneyIcon"));
+		MoneyIcon->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, FGameXXKTravelMoneyRules::IconPath), false);
+		MoneyIcon->SetDesiredSizeOverride(FVector2D(30.0f, 30.0f));
+		MoneyIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
+		MoneyLine->AddChildToHorizontalBox(MoneyIcon)->SetPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f));
+		MoneyLine->AddChildToHorizontalBox(RouteMoneySummaryText)->SetVerticalAlignment(VAlign_Center);
+		RouteSummaryStack->AddChildToVerticalBox(MoneyLine)->SetPadding(FMargin(0.0f, 2.0f));
 		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText);
-		AddSummaryLine(TEXT("GameXXKRouteCapacitySummary"), RouteCapacitySummaryText);
 		UpdateRouteSummary();
+	}
+
+	if (RootOverlay && !RouteLegendContainer)
+	{
+		RouteLegendContainer = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RouteLegendContainer"));
+		RouteLegendContainer->SetMinDesiredWidth(340.0f);
+		RouteLegendContainer->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		if (UOverlaySlot* PresentationSlot = RootOverlay->AddChildToOverlay(RouteLegendContainer))
+		{
+			PresentationSlot->SetHorizontalAlignment(HAlign_Right);
+			PresentationSlot->SetVerticalAlignment(VAlign_Center);
+		}
+		RouteLegendBorder = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteLegendPaper"));
+		RouteLegendBorder->SetBrush(FSlateNoResource());
+		RouteLegendBorder->SetBrushColor(FLinearColor(1.0f, 1.0f, 1.0f, 0.0f));
+		RouteLegendBorder->SetPadding(FMargin(12.0f));
+		RouteLegendContainer->SetContent(RouteLegendBorder);
+		UVerticalBox* LegendStack = WidgetTree->ConstructWidget<UVerticalBox>();
+		RouteLegendBorder->SetContent(LegendStack);
+		UTextBlock* Heading = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RouteLegendHeading"));
+		Heading->SetText(GameXXKLocalization::Text(TEXT("Route.Legend.Title")));
+		Heading->SetToolTipText(GameXXKLocalization::Text(TEXT("Route.Legend.States")));
+		Heading->SetFont(FGameXXKInRunUiStyle::Font(26, true));
+		Heading->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
+		LegendStack->AddChildToVerticalBox(Heading)->SetPadding(FMargin(0, 0, 0, 8));
+		for (int32 Index = 0; Index < UE_ARRAY_COUNT(RouteLegendDefinitions); ++Index)
+		{
+			const FRouteLegendDefinition& Definition = RouteLegendDefinitions[Index];
+			USizeBox* RowSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("RouteLegendRow%d"), Index));
+			RowSize->SetMinDesiredHeight(44.0f);
+			RowSize->SetVisibility(ESlateVisibility::Visible);
+			RowSize->SetToolTipText(GameXXKLocalization::Source(Definition.Description));
+			LegendStack->AddChildToVerticalBox(RowSize)->SetPadding(FMargin(0.0f, 3.0f));
+			UHorizontalBox* Row = WidgetTree->ConstructWidget<UHorizontalBox>();
+			RowSize->SetContent(Row);
+			UImage* Icon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *FString::Printf(TEXT("RouteLegendIcon%d"), Index));
+			FGameXXKOneGameRouteNode LegendNode;
+			LegendNode.RoomType = Definition.Type;
+			LegendNode.bEnabled = true;
+			Icon->SetBrushFromTexture(GetTextureForNode(LegendNode).LoadSynchronous(), false);
+			Icon->SetDesiredSizeOverride(FVector2D(38.0f, 38.0f));
+			UHorizontalBoxSlot* IconSlot = Row->AddChildToHorizontalBox(Icon);
+			IconSlot->SetVerticalAlignment(VAlign_Center);
+			IconSlot->SetPadding(FMargin(0, 0, 10, 0));
+			UVerticalBox* Words = WidgetTree->ConstructWidget<UVerticalBox>();
+			UHorizontalBoxSlot* WordSlot = Row->AddChildToHorizontalBox(Words);
+			WordSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+			WordSlot->SetVerticalAlignment(VAlign_Center);
+			UTextBlock* Name = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("RouteLegendName%d"), Index));
+			Name->SetText(GameXXKLocalization::Source(Definition.Name));
+			Name->SetFont(FGameXXKInRunUiStyle::Font(21, true));
+			Name->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
+			Words->AddChildToVerticalBox(Name);
+			RouteLegendRows.Add(RowSize);
+			RouteLegendIcons.Add(Icon);
+			RouteLegendNames.Add(Name);
+		}
+	}
+	if (RootOverlay && !RouteEntryTitle)
+	{
+		RouteEntryTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RouteEntryTitle"));
+		RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::Font(64, true));
+		RouteEntryTitle->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
+		RouteEntryTitle->SetJustification(ETextJustify::Center);
+		RouteEntryTitle->SetVisibility(ESlateVisibility::Collapsed);
+		if (UOverlaySlot* PresentationSlot = RootOverlay->AddChildToOverlay(RouteEntryTitle))
+		{
+			PresentationSlot->SetHorizontalAlignment(HAlign_Center);
+			PresentationSlot->SetVerticalAlignment(VAlign_Top);
+			PresentationSlot->SetPadding(FMargin(0, 48, 0, 0));
+		}
 	}
 
 	if (RootOverlay && !TransientCompletionNoticeBorder)
@@ -1544,6 +1974,12 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 
 	if (RootOverlay && !RouteCloseChallengeContainer)
 	{
+		MainStoryTreeButton=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("MainStoryTreeButton"));
+		MainStoryTreeButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(170,52),true));
+		auto* Label=WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(FText::FromString(TEXT("任务树  Q"))); Label->SetFont(FGameXXKInRunUiStyle::Font(22,false,true));
+		Label->SetColorAndOpacity(FSlateColor(FLinearColor(.96f,.91f,.79f,1))); Label->SetVisibility(ESlateVisibility::HitTestInvisible);
+		MainStoryTreeButton->SetContent(Label); MainStoryTreeButton->OnClicked.AddDynamic(this,&UGameXXKOneGameRouteMapWidget::HandleMainStoryTreeClicked);
+		if(auto* StoryButtonSlot=RootOverlay->AddChildToOverlay(MainStoryTreeButton)) { StoryButtonSlot->SetHorizontalAlignment(HAlign_Right); StoryButtonSlot->SetVerticalAlignment(VAlign_Top); StoryButtonSlot->SetPadding(FMargin(0,36,160,0)); }
 		UTexture2D* ActionTexture = LoadObject<UTexture2D>(nullptr, RouteActionButtonTexturePath);
 		UTexture2D* CloseInkTexture = LoadObject<UTexture2D>(nullptr, RouteCloseInkTexturePath);
 		RouteCloseChallengeContainer = WidgetTree->ConstructWidget<USizeBox>(
@@ -1559,8 +1995,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 			CloseInkTexture,
 			ActionTexture,
 			WidgetTree);
-		RouteCloseChallengeButton->SetToolTipText(
-			NSLOCTEXT("GameXXKRouteMap", "OpenSettlement", "结算本次路线并返回挂机"));
+		RouteCloseChallengeButton->SetToolTipText(NSLOCTEXT("GameXXKRouteMap", "OpenSettlement", "结算本次路线并返回挂机"));
 		RouteCloseChallengeButton->OnClicked.AddDynamic(
 			this,
 			&UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked);
@@ -1812,6 +2247,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	NodeVisualLabels.Reset();
 	NodeVisualImages.Reset();
 	NodeVisualIconPaths.Reset();
+	NodeSelectionCircles.Reset();
 	for (int32 NodeIndex = 0; NodeIndex < RouteNodeCount; ++NodeIndex)
 	{
 		if (UWidget* NodeVisual = ConstructNodeVisualWidget(NodeIndex))
@@ -1824,6 +2260,16 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 			}
 			NodeVisualWidgets.Add(NodeVisual);
 		}
+		UImage* Circle = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),
+			*FString::Printf(TEXT("RouteNodeSelectionCircle%d"), NodeIndex));
+		Circle->SetBrushFromTexture(RouteSelectionCircleTexture.LoadSynchronous(), false);
+		Circle->SetVisibility(ESlateVisibility::Collapsed);
+		if (UCanvasPanelSlot* CircleSlot = RootCanvas->AddChildToCanvas(Circle))
+		{
+			CircleSlot->SetSize(RouteCircleSize);
+			CircleSlot->SetZOrder(3);
+		}
+		NodeSelectionCircles.Add(Circle);
 	}
 
 	NodeButtons.Reset();
@@ -1877,7 +2323,7 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 	}
 
 	Button->SetVisibility(Node ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	Button->SetIsEnabled(Node && Node->bEnabled);
+	Button->SetIsEnabled(Node && Node->bEnabled && PendingSelectionNodeId == INDEX_NONE);
 	Button->SetRenderOpacity(1.0f);
 	if (NodeButtonIndices.IsValidIndex(ButtonIndex))
 	{
@@ -1900,7 +2346,7 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 		if (NodeVisual)
 		{
 			NodeVisual->SetVisibility(Node ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-			NodeVisual->SetRenderOpacity(Node && Node->bVisited ? 0.52f : 1.0f);
+			NodeVisual->SetRenderOpacity(Node && Node->bVisited ? 0.76f : 1.0f);
 			if (UBorder* NodeBorder = NodeVisualBorders.IsValidIndex(ButtonIndex) ? NodeVisualBorders[ButtonIndex].Get() : nullptr)
 			{
 				NodeBorder->SetBrushColor(FLinearColor::Transparent);
@@ -1922,10 +2368,11 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 					if (UTexture2D* LoadedTexture = IconTexture.LoadSynchronous())
 					{
 						NodeImage->SetBrushFromTexture(LoadedTexture, true);
+						NodeImage->SetDesiredSizeOverride(FVector2D(64.0f, 64.0f));
 					}
 					NodeImage->SetColorAndOpacity(Node->bEnabled || Node->bVisited
 						? FLinearColor::White
-						: FLinearColor(0.78f, 0.82f, 0.84f, 0.76f));
+						: FLinearColor(0.82f, 0.82f, 0.80f, 0.44f));
 					NodeImage->SetVisibility(ESlateVisibility::HitTestInvisible);
 				}
 				else
@@ -2026,7 +2473,7 @@ void UGameXXKOneGameRouteMapWidget::ExecuteNodeButtonAtIndex(int32 ButtonIndex)
 	{
 		return;
 	}
-	ExecuteRouteNodeById(NodeButtonIndices[ButtonIndex]);
+	SelectRouteNodeWithFeedback(NodeButtonIndices[ButtonIndex]);
 }
 
 bool UGameXXKOneGameRouteMapWidget::TryExecuteRouteNodeAtScreenPosition(const FVector2D& ScreenPosition)
@@ -2063,7 +2510,7 @@ bool UGameXXKOneGameRouteMapWidget::TryExecuteRouteNodeAtScreenPosition(const FV
 			&& LocalPosition.X <= ButtonSize.X
 			&& LocalPosition.Y <= ButtonSize.Y)
 		{
-			return ExecuteRouteNodeById(Nodes[NodeIndex].NodeIndex);
+			return SelectRouteNodeWithFeedback(Nodes[NodeIndex].NodeIndex);
 		}
 	}
 
@@ -2158,7 +2605,7 @@ UWidget* UGameXXKOneGameRouteMapWidget::ConstructFallbackNodeVisualWidget(int32 
 		NodeText->SetJustification(ETextJustify::Center);
 		NodeText->SetText(FText::FromString(TEXT("Node")));
 		NodeText->SetAutoWrapText(true);
-		NodeText->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+		NodeText->SetColorAndOpacity(FSlateColor(FLinearColor(0.12f, 0.15f, 0.16f, 1.0f)));
 		NodeText->SetFontSize(13);
 	}
 	if (NodeImage)
@@ -2238,8 +2685,9 @@ TSoftObjectPtr<UTexture2D> UGameXXKOneGameRouteMapWidget::GetTextureForNode(cons
 	case EGameXXKOneGameRouteRoomType::SmallEnemy:
 		return bDisabled ? OneGameBattleDisabledTexture : OneGameBattleTexture;
 	case EGameXXKOneGameRouteRoomType::EliteEnemy:
-	case EGameXXKOneGameRouteRoomType::Boss:
 		return bDisabled ? OneGameEliteDisabledTexture : OneGameEliteTexture;
+	case EGameXXKOneGameRouteRoomType::Boss:
+		return RouteBossTexture;
 	case EGameXXKOneGameRouteRoomType::Camp:
 		return bDisabled ? OneGameCampDisabledTexture : OneGameCampTexture;
 	case EGameXXKOneGameRouteRoomType::Chest:
@@ -2264,7 +2712,7 @@ FVector2D UGameXXKOneGameRouteMapWidget::GetNodeCanvasPosition(const FGameXXKOne
 	const float CenteredLaneLeft = (RouteContentSize.X - CenteredLaneWidth) * 0.5f;
 	const float LanePadding = FMath::Min(RouteHorizontalPadding, CenteredLaneWidth * 0.2f);
 	const float UsableWidth = FMath::Max(1.0f, CenteredLaneWidth - LanePadding * 2.0f);
-	const float UsableHeight = FMath::Max(1.0f, RouteContentSize.Y - RouteTopPadding - RouteBottomPadding);
+	const float UsableHeight = FMath::Max(1.0f, RouteContentSize.Y - RouteTopPadding - RouteBottomPadding - GetRouteBottomScrollPadding());
 	return FVector2D(
 		CenteredLaneLeft + LanePadding + Node.NormalizedPosition.X * UsableWidth,
 		RouteTopPadding + (1.0f - Node.NormalizedPosition.Y) * UsableHeight);
@@ -2291,7 +2739,7 @@ FVector2D UGameXXKOneGameRouteMapWidget::CalculateRouteContentSize(const TArray<
 	const double ViewportDrivenHeight = RouteMapViewportSize.Y * RouteViewportHeightContentMultiplier;
 	return FVector2D(
 		FMath::Max(MinimumRouteContentSize.X, RouteMapViewportSize.X),
-		FMath::Max3(MinimumRouteContentSize.Y, DynamicHeight, ViewportDrivenHeight));
+		FMath::Max3(MinimumRouteContentSize.Y, DynamicHeight, ViewportDrivenHeight) + GetRouteBottomScrollPadding());
 }
 
 int32 UGameXXKOneGameRouteMapWidget::GetRenderedRouteNodeCount(const TArray<FGameXXKOneGameRouteNode>& Nodes) const
@@ -2400,19 +2848,14 @@ void UGameXXKOneGameRouteMapWidget::ApplyInitialScrollOffset(const TArray<FGameX
 		return;
 	}
 
-	SetRouteScrollOffset(CalculateMaxScrollOffset());
+	// Preserve the initial bottom-of-route framing; the extra tail is only used
+	// to center a clicked low row through the existing vertical scroll box.
+	SetRouteScrollOffset(FMath::Max(0.0f, CalculateMaxScrollOffset() - GetRouteBottomScrollPadding()));
 }
 
 float UGameXXKOneGameRouteMapWidget::CalculateMaxScrollOffset() const
 {
-	if (RouteScrollBox
-		&& RouteScrollBox->GetCachedWidget().IsValid()
-		&& RouteScrollBox->GetCachedGeometry().GetLocalSize().Y > 0.0f)
-	{
-		return FMath::Max(0.0f, RouteScrollBox->GetScrollOffsetOfEnd());
-	}
-	const float EffectiveViewportHeight = RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight;
-	return FMath::Max(0.0f, RouteContentSize.Y - EffectiveViewportHeight);
+	return FMath::Max(0.0f, RouteContentSize.Y - GetRouteVisibleHeight());
 }
 
 void UGameXXKOneGameRouteMapWidget::SetRouteScrollOffset(float NewScrollOffset)

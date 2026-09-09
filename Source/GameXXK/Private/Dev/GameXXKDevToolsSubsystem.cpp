@@ -298,6 +298,9 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	Object Request=Decode(RequestJson);
 	if (!Request) return Finish(false,TEXT("命令必须是有效JSON。"));
 	const FString Command=String(Request,TEXT("command"));
+	if(const auto* AcademyMVP=ResolveMVP();AcademyMVP && AcademyMVP->IsAcademySessionActive()
+		&& Command!=TEXT("help") && Command!=TEXT("inspect") && Command!=TEXT("catalog") && Command!=TEXT("snapshot.export"))
+		return Finish(false,TEXT("请先退出教程，再修改测试场景。"));
 	Response->SetStringField(TEXT("command"),Command);
 	Response->SetStringField(TEXT("request_id"),String(Request,TEXT("request_id")));
 	const Object* ArgsPtr=nullptr; Object Args=Request->TryGetObjectField(TEXT("args"),ArgsPtr) ? *ArgsPtr : NewObject();

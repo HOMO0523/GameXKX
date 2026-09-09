@@ -4,7 +4,8 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
-#include "Components/HorizontalBox.h"
+#include "Components/WrapBox.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Engine/Texture2D.h"
@@ -65,11 +66,11 @@ namespace GameXXKCardOutcomePreviewWidgetTest
 		return Cast<UVerticalBox>(Widget->WidgetTree->RootWidget);
 	}
 
-	UHorizontalBox* RenderedRow(const UGameXXKCardOutcomePreviewWidget* Widget, const int32 LineIndex)
+	UWrapBox* RenderedRow(const UGameXXKCardOutcomePreviewWidget* Widget, const int32 LineIndex)
 	{
 		UVerticalBox* Root = RenderedRoot(Widget);
 		return Root && LineIndex >= 0 && LineIndex < Root->GetChildrenCount()
-			? Cast<UHorizontalBox>(Root->GetChildAt(LineIndex))
+			? Cast<UWrapBox>(Root->GetChildAt(LineIndex))
 			: nullptr;
 	}
 
@@ -78,7 +79,7 @@ namespace GameXXKCardOutcomePreviewWidgetTest
 		const int32 LineIndex,
 		const int32 SegmentIndex)
 	{
-		UHorizontalBox* Row = RenderedRow(Widget, LineIndex);
+		UWrapBox* Row = RenderedRow(Widget, LineIndex);
 		return Row && SegmentIndex >= 0 && SegmentIndex < Row->GetChildrenCount()
 			? Cast<UTextBlock>(Row->GetChildAt(SegmentIndex))
 			: nullptr;
@@ -145,6 +146,8 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 		Line({Segment(TEXT("伤害 12"), EGameXXKCardOutcomeTone::Damage), Segment(TEXT(" · "), EGameXXKCardOutcomeTone::Neutral), Segment(TEXT("流血 3"), EGameXXKCardOutcomeTone::Dot)}),
 		Line({Segment(TEXT("护甲 +5"), EGameXXKCardOutcomeTone::Armor), Segment(TEXT("致死"), EGameXXKCardOutcomeTone::Lethal)})};
 	Widget->SetLines(FocusedLines);
+	const FVector2D CompactSize = Widget->GetPreferredPanelSize();
+	TestTrue(TEXT("a short outcome does not reserve a wide empty strip"), CompactSize.X >= 180 && CompactSize.X < 400);
 	TestEqual(TEXT("representative focused input keeps its rules-owned two rows"), Widget->GetVisibleLineCountForTest(), 2);
 	TestEqual(TEXT("first row preserves segment order and concatenates exactly"), Widget->GetPlainLineForTest(0), FString(TEXT("伤害 12 · 流血 3")));
 	TestEqual(TEXT("second row remains after the first without widget reordering"), Widget->GetPlainLineForTest(1), FString(TEXT("护甲 +5致死")));
@@ -177,11 +180,11 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("the rendered root directly contains the two focused rows"), FocusedRoot->GetChildrenCount(), 2);
 	TestEqual(TEXT("the rendered root never intercepts input"), FocusedRoot->GetVisibility(), ESlateVisibility::HitTestInvisible);
-	TestEqual(TEXT("two input lines create two horizontal rows"), CountWidgetsOfClass(Widget, UHorizontalBox::StaticClass()), 2);
+	TestEqual(TEXT("two input lines create two horizontal rows"), CountWidgetsOfClass(Widget, UWrapBox::StaticClass()), 2);
 	TestEqual(TEXT("all five ordered segments create text children"), CountWidgetsOfClass(Widget, UTextBlock::StaticClass()), 5);
 	for (int32 LineIndex = 0; LineIndex < FocusedLines.Num(); ++LineIndex)
 	{
-		UHorizontalBox* Row = Cast<UHorizontalBox>(FocusedRoot->GetChildAt(LineIndex));
+		UWrapBox* Row = Cast<UWrapBox>(FocusedRoot->GetChildAt(LineIndex));
 		TestNotNull(*FString::Printf(TEXT("rendered focused row %d is horizontal"), LineIndex), Row);
 		if (!Row)
 		{
@@ -204,8 +207,9 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 				TextBlock->GetText().ToString(), ExpectedSegment.Text.ToString());
 			TestTrue(*FString::Printf(TEXT("focused row %d segment %d uses its exact rendered tone"), LineIndex, SegmentIndex),
 				TextBlock->GetColorAndOpacity().GetSpecifiedColor() == ExpectedToneColor(ExpectedSegment.Tone));
-			TestEqual(*FString::Printf(TEXT("focused row %d segment %d uses font size 18"), LineIndex, SegmentIndex),
-				TextBlock->GetFont().Size, 18.0f);
+			TestEqual(*FString::Printf(TEXT("focused row %d segment %d uses font size 20"), LineIndex, SegmentIndex),
+				TextBlock->GetFont().Size, 20.0f);
+			TestTrue(TEXT("outcome text and slot identifiers use JiangHu lettering"), TextBlock->GetFont().FontObject == FGameXXKInRunUiStyle::Font(20,true).FontObject);
 			TestEqual(*FString::Printf(TEXT("focused row %d segment %d uses one-pixel outline"), LineIndex, SegmentIndex),
 				TextBlock->GetFont().OutlineSettings.OutlineSize, 1);
 			TestEqual(*FString::Printf(TEXT("focused row %d segment %d never intercepts input"), LineIndex, SegmentIndex),
@@ -241,7 +245,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	UVerticalBox* ToneRoot = RenderedRoot(Widget);
 	TestNotNull(TEXT("tone fixture retains the real rendered root"), ToneRoot);
 	TestEqual(TEXT("tone fixture renders one row"), ToneRoot ? ToneRoot->GetChildrenCount() : 0, 1);
-	UHorizontalBox* ToneRow = ToneRoot ? Cast<UHorizontalBox>(ToneRoot->GetChildAt(0)) : nullptr;
+	UWrapBox* ToneRow = ToneRoot ? Cast<UWrapBox>(ToneRoot->GetChildAt(0)) : nullptr;
 	TestNotNull(TEXT("tone fixture renders one horizontal row"), ToneRow);
 	TestEqual(TEXT("tone fixture renders all seven segments"), ToneRow ? ToneRow->GetChildrenCount() : 0, ToneColors.Num());
 	for (int32 ToneIndex = 0; ToneIndex < ToneColors.Num(); ++ToneIndex)
@@ -254,7 +258,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 				ToneText->GetText().ToString(), FString::Printf(TEXT("tone%d"), ToneIndex));
 			TestTrue(*FString::Printf(TEXT("tone %d real text uses the exact low-saturation ink color"), ToneIndex),
 				ToneText->GetColorAndOpacity().GetSpecifiedColor() == ToneColors[ToneIndex].Value);
-			TestEqual(*FString::Printf(TEXT("tone %d real text uses font size 18"), ToneIndex), ToneText->GetFont().Size, 18.0f);
+			TestEqual(*FString::Printf(TEXT("tone %d real text uses font size 20"), ToneIndex), ToneText->GetFont().Size, 20.0f);
 			TestEqual(*FString::Printf(TEXT("tone %d real text uses one-pixel outline"), ToneIndex),
 				ToneText->GetFont().OutlineSettings.OutlineSize, 1);
 			TestEqual(*FString::Printf(TEXT("tone %d real text never intercepts input"), ToneIndex),
@@ -290,7 +294,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	Widget->SetLines({Line({})});
 	TestEqual(TEXT("empty-segment line remains one explicit rendered row"),
 		RenderedRoot(Widget) ? RenderedRoot(Widget)->GetChildrenCount() : 0, 1);
-	UHorizontalBox* EmptySegmentRow = RenderedRow(Widget, 0);
+	UWrapBox* EmptySegmentRow = RenderedRow(Widget, 0);
 	TestNotNull(TEXT("empty-segment line renders a real horizontal row"), EmptySegmentRow);
 	TestEqual(TEXT("empty-segment line renders zero text children"),
 		EmptySegmentRow ? EmptySegmentRow->GetChildrenCount() : 0, 0);
@@ -316,7 +320,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the real group tree contains three rows in rules order"), GroupRoot ? GroupRoot->GetChildrenCount() : 0, 3);
 	for (int32 LineIndex = 0; LineIndex < GroupLines.Num(); ++LineIndex)
 	{
-		UHorizontalBox* Row = GroupRoot ? Cast<UHorizontalBox>(GroupRoot->GetChildAt(LineIndex)) : nullptr;
+		UWrapBox* Row = GroupRoot ? Cast<UWrapBox>(GroupRoot->GetChildAt(LineIndex)) : nullptr;
 		UTextBlock* TextBlock = Row && Row->GetChildrenCount() == 1 ? Cast<UTextBlock>(Row->GetChildAt(0)) : nullptr;
 		TestNotNull(*FString::Printf(TEXT("group row %d has its real text child"), LineIndex), TextBlock);
 		if (TextBlock)
@@ -343,7 +347,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	{
 		for (int32 LineIndex = 0; LineIndex < DefensiveRoot->GetChildrenCount(); ++LineIndex)
 		{
-			if (UHorizontalBox* Row = Cast<UHorizontalBox>(DefensiveRoot->GetChildAt(LineIndex)))
+			if (UWrapBox* Row = Cast<UWrapBox>(DefensiveRoot->GetChildAt(LineIndex)))
 			{
 				DefensiveRenderedObjects.Add(Row);
 				for (int32 SegmentIndex = 0; SegmentIndex < Row->GetChildrenCount(); ++SegmentIndex)
@@ -360,7 +364,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("replacement text contains no stale content"), Widget->GetPlainLineForTest(0), FString(TEXT("replacement")));
 	UVerticalBox* ReplacementRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("replacement real tree has exactly one row"), ReplacementRoot ? ReplacementRoot->GetChildrenCount() : 0, 1);
-	UHorizontalBox* ReplacementRow = RenderedRow(Widget, 0);
+	UWrapBox* ReplacementRow = RenderedRow(Widget, 0);
 	TestNotNull(TEXT("replacement real row exists"), ReplacementRow);
 	TestEqual(TEXT("replacement real row has exactly one segment"), ReplacementRow ? ReplacementRow->GetChildrenCount() : 0, 1);
 	UTextBlock* ReplacementText = RenderedSegment(Widget, 0, 0);
@@ -381,7 +385,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 
 	Widget->Clear();
 	TestEqual(TEXT("Clear removes all visible rows"), Widget->GetVisibleLineCountForTest(), 0);
-	TestEqual(TEXT("Clear removes generated row children"), CountWidgetsOfClass(Widget, UHorizontalBox::StaticClass()), 0);
+	TestEqual(TEXT("Clear removes generated row children"), CountWidgetsOfClass(Widget, UWrapBox::StaticClass()), 0);
 	TestEqual(TEXT("Clear removes generated segment children"), CountWidgetsOfClass(Widget, UTextBlock::StaticClass()), 0);
 	UVerticalBox* ClearedRoot = RenderedRoot(Widget);
 	TestNotNull(TEXT("Clear retains the real root for reuse"), ClearedRoot);
@@ -407,7 +411,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("SetLines after rebuild restores transparent visibility"), Widget->GetVisibility(), ESlateVisibility::HitTestInvisible);
 	UVerticalBox* FreshRoot = RenderedRoot(Widget);
 	TestEqual(TEXT("fresh real tree has exactly one row"), FreshRoot ? FreshRoot->GetChildrenCount() : 0, 1);
-	UHorizontalBox* FreshRow = RenderedRow(Widget, 0);
+	UWrapBox* FreshRow = RenderedRow(Widget, 0);
 	TestNotNull(TEXT("fresh real row exists"), FreshRow);
 	TestEqual(TEXT("fresh real row has exactly two segments"), FreshRow ? FreshRow->GetChildrenCount() : 0, 2);
 	UTextBlock* FreshText = RenderedSegment(Widget, 0, 0);

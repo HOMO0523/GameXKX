@@ -14,13 +14,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKTalentPriceCurveTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("tier zero costs 2500"), FGameXXKTalentRules::GetPriceForCostTier(0), int64(2500));
-	TestEqual(TEXT("tier one rounds to 3400"), FGameXXKTalentRules::GetPriceForCostTier(1), int64(3400));
-	TestEqual(TEXT("tier five rounds to 11200"), FGameXXKTalentRules::GetPriceForCostTier(5), int64(11200));
+	TestEqual(TEXT("tier zero costs 200"), FGameXXKTalentRules::GetPriceForCostTier(0), int64(200));
+	TestEqual(TEXT("tier one rounds to 300"), FGameXXKTalentRules::GetPriceForCostTier(1), int64(300));
+	TestEqual(TEXT("tier five rounds to 1000"), FGameXXKTalentRules::GetPriceForCostTier(5), int64(1000));
 	TestEqual(TEXT("tier thirty-five uses the approved exponential curve"),
-		FGameXXKTalentRules::GetPriceForCostTier(35), int64(91121700));
+		FGameXXKTalentRules::GetPriceForCostTier(35), int64(8346700));
 	TestEqual(TEXT("complete capacity path uses checked 64-bit accumulation"),
-		FGameXXKTalentRules::GetFullCapacityPathPrice(), int64(1757301500));
+		FGameXXKTalentRules::GetFullCapacityPathPrice(), int64(160968000));
 	return true;
 }
 
@@ -32,13 +32,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKTalentPurchaseTransactionTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
-	State.PlayerGold = 2500;
+	State.PlayerGold = 200;
 	FGameXXKTalentPurchaseResult Result;
-	TestTrue(TEXT("root purchases with exactly 2500 gold"),
+	TestTrue(TEXT("root purchases with exactly its calibrated price"),
 		FGameXXKTalentRules::Purchase(State, TEXT("Talent.Root"), Result));
 	TestEqual(TEXT("root purchase spends all ordinary gold"), State.PlayerGold, 0);
 	TestEqual(TEXT("root purchase records rank one"), State.Talents.NodeRanks.FindRef(TEXT("Talent.Root")), 1);
-	TestEqual(TEXT("root purchase reports its fixed price"), Result.Price, int64(2500));
+	TestEqual(TEXT("root purchase reports its fixed price"), Result.Price, int64(200));
 
 	const FGameXXKTalentNodeDefinition* CombatEntry =
 		FGameXXKTalentCatalog::Find(TEXT("Talent.Entry.Combat"));
@@ -62,7 +62,7 @@ bool FGameXXKTalentPurchaseTransactionTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("failed purchase is byte-transactional"), AfterInsufficient, BeforeInsufficient);
 
-	State.PlayerGold = 2500;
+	State.PlayerGold = 200;
 	TestTrue(TEXT("combat entry purchases after funding"),
 		FGameXXKTalentRules::Purchase(State, TEXT("Talent.Entry.Combat"), Result));
 	const FName FirstAttack(TEXT("Talent.Combat.FlatAttack.01"));
@@ -74,12 +74,12 @@ bool FGameXXKTalentPurchaseTransactionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("second attack node stays hidden before its predecessor is purchased"),
 		SecondAttackNode && FGameXXKTalentRules::IsRevealed(State.Talents, *SecondAttackNode));
 
-	State.PlayerGold = 3400 * 5;
+	State.PlayerGold = 300 * 5;
 	for (int32 Rank = 1; Rank <= 5; ++Rank)
 	{
 		TestTrue(FString::Printf(TEXT("attack rank %d purchases"), Rank),
 			FGameXXKTalentRules::Purchase(State, FirstAttack, Result));
-		TestEqual(TEXT("every rank of one node keeps the same price"), Result.Price, int64(3400));
+		TestEqual(TEXT("every rank of one node keeps the same price"), Result.Price, int64(300));
 	}
 	TestEqual(TEXT("attack node reaches rank five"), State.Talents.NodeRanks.FindRef(FirstAttack), 5);
 	TestFalse(TEXT("max-rank node rejects another purchase"),

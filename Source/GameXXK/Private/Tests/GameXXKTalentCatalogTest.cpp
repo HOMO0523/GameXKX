@@ -27,8 +27,8 @@ bool FGameXXKTalentCatalogTopologyTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("catalog validates: %s"), *Error), FGameXXKTalentCatalog::Validate(&Error));
 
 	const FGameXXKTalentNodeDefinition* Root = FGameXXKTalentCatalog::Find(TEXT("Talent.Root"));
-	TestTrue(TEXT("root is one-time and costs 2500"),
-		Root && Root->MaxRank == 1 && FGameXXKTalentRules::GetRankPrice(*Root, 0) == 2500);
+	TestTrue(TEXT("root is one-time and costs 200"),
+		Root && Root->MaxRank == 1 && FGameXXKTalentRules::GetRankPrice(*Root, 0) == 200);
 	for (const EGameXXKTalentBranch Branch : {
 		EGameXXKTalentBranch::Combat,
 		EGameXXKTalentBranch::CapacityChest,

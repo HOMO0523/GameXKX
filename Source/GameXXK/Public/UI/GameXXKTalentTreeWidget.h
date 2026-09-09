@@ -11,9 +11,11 @@ class UBorder;
 class UGameXXKMVPSubsystem;
 class UImage;
 class UScrollBox;
+class USizeBox;
 class UGameXXKInkScrollBar;
 class UTextBlock;
 class UTexture2D;
+class UVerticalBox;
 class UGameXXKTalentTreeWidget;
 
 DECLARE_MULTICAST_DELEGATE(FGameXXKTalentPurchaseCommitted);
@@ -49,6 +51,8 @@ public:
 	bool ClickPurchaseButtonForTest();
 	bool SelectNodeForTest(FName NodeId);
 	bool PurchaseSelectedForTest();
+	bool ToggleTotalsForTest();
+	bool IsTotalsVisibleForTest() const { return bShowTotals; }
 	int32 GetVisibleNodeCountForTest() const;
 	bool IsNodeVisibleForTest(FName NodeId) const;
 	FName GetSelectedNodeIdForTest() const { return SelectedNodeId; }
@@ -89,11 +93,13 @@ private:
 	void RebuildGraphAndDetails();
 	void BuildGraph(UCanvasPanel* GraphCanvas, const TArray<FGameXXKTalentNodeView>& Views);
 	void BuildDetails(const TArray<FGameXXKTalentNodeView>& Views);
+	void BuildTotals();
 	void ApplyGraphPanDelta(const FVector2D& DragDelta);
 	const FGameXXKTalentNodeView* FindSelectedView(const TArray<FGameXXKTalentNodeView>& Views) const;
 
 	UFUNCTION()
 	void HandlePurchaseClicked();
+	UFUNCTION() void HandleTotalsClicked();
 
 	UFUNCTION()
 	void HandleHorizontalGraphScrolled(float CurrentOffset);
@@ -133,9 +139,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> UpgradePriceText;
+	UPROPERTY(Transient) TObjectPtr<UTextBlock> PurchaseStatusText;
+	UPROPERTY(Transient) TObjectPtr<USizeBox> PurchaseButtonContainer;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> PurchaseButton;
+	UPROPERTY(Transient) TObjectPtr<UButton> TotalsButton;
+	UPROPERTY(Transient) TObjectPtr<UScrollBox> TotalsScroll;
+	UPROPERTY(Transient) TObjectPtr<UVerticalBox> TotalsColumn;
+	bool bShowTotals=false;
 
 	UPROPERTY(Transient)
 	TMap<FName, TObjectPtr<UImage>> NodeIconImages;
@@ -157,6 +169,9 @@ private:
 	TArray<float> RenderedConnectionAngles;
 	TArray<FVector2D> RenderedConnectionBoundaryOffsets;
 	bool bSlateRebuildPending = false;
+	int32 LastPresentedGold = INDEX_NONE;
+	bool bLastPurchaseContextAllowed = false;
+	FText LastPurchaseError;
 	bool bGraphPanning = false;
 	FVector2D LastGraphPanScreenPosition = FVector2D::ZeroVector;
 	FVector2D RequestedGraphScrollOffset = FVector2D::ZeroVector;

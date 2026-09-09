@@ -4,6 +4,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKTravelMoneyRules.h"
 #include "Math/RandomStream.h"
 #include "Misc/Crc.h"
 
@@ -85,24 +86,33 @@ namespace
 		}
 		else
 		{
+			// Total weights: equipment 50%, gems 30%, materials 20%.
+			// Ordinary materials share that 20% equally: stone, sand, travel money.
 			const int32 Outcome = Stream.RandRange(0, 4);
+			const int32 MaterialOutcome = Outcome <= 2 ? INDEX_NONE
+				: (Tier == EGameXXKTrainingRewardTier::NormalChest ? Stream.RandRange(0, 2) : Outcome - 3);
 			FName ItemId;
 			int32 Quantity = 1;
 			if (Outcome <= 2)
 			{
 				ItemId = FGameXXKGemRules::MakeItemId(
-					static_cast<EGameXXKGemType>(Outcome + 1),
+					static_cast<EGameXXKGemType>(Stream.RandRange(1,FGameXXKGemRules::MaximumTypeRank)),
 					Tier == EGameXXKTrainingRewardTier::AdvancedChest ? EGameXXKGemQuality::Rare : EGameXXKGemQuality::Common);
 			}
-			else if (Outcome == 3)
+			else if (MaterialOutcome == 0)
 			{
 				ItemId = UGameXXKMVPRules::ItemEnhancementStone();
 				Quantity = Tier == EGameXXKTrainingRewardTier::AdvancedChest ? 3 : 1;
 			}
-			else
+			else if (MaterialOutcome == 1)
 			{
 				ItemId = UGameXXKMVPRules::ItemRefinementSand();
 				Quantity = Tier == EGameXXKTrainingRewardTier::AdvancedChest ? 3 : 1;
+			}
+			else
+			{
+				ItemId = FGameXXKTravelMoneyRules::ItemId();
+				Quantity = FGameXXKTravelMoneyRules::ChestDropQuantity;
 			}
 			if (!Candidate.Inventory.Contains(ItemId)
 				&& FGameXXKDesktopInventoryRules::FindFirstEmptySlot(Candidate, EGameXXKDesktopItemContainer::Backpack) == INDEX_NONE)

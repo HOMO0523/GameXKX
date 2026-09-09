@@ -7,10 +7,15 @@
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
+#include "GameXXKTravelMoneyRules.h"
 
 namespace
 {
 	const FName HeroMemberId(TEXT("Player"));
+	int32 TravelBalance(const FGameXXKRuntimeState& State)
+	{
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32, FGameXXKTravelMoneyRules::GetBalance(State)));
+	}
 
 	bool SetError(FString* OutError, const FString& Error)
 	{
@@ -666,7 +671,9 @@ namespace
 			{
 				const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(Offer.ContentId);
 				if (Offer.ContentId.IsNone() || !Offer.OwnerMemberId.IsNone() || !Definition
-					|| !Definition->bOfferEligible
+					// Retired currency relics can remain in old saved stock. Live
+					// validation disables them; a normal refresh replaces the slot.
+					|| (!Definition->bOfferEligible && Offer.ContentId != FName(TEXT("Relic.WineCup")))
 					|| Definition->BaseQuality != Offer.Quality
 					|| Offer.NextQuality != EGameXXKCardQuality::Invalid
 					|| FGameXXKCardQualityRules::GetRelicPrice(Offer.Quality) != Offer.Price
@@ -738,8 +745,8 @@ namespace
 				TEXT("The merchant offer id is stale or unknown."), OutError);
 		}
 		OutPreview.Offer = *Offer;
-		OutPreview.BalanceBefore = State.PlayerGold;
-		OutPreview.BalanceAfter = State.PlayerGold;
+		OutPreview.BalanceBefore = TravelBalance(State);
+		OutPreview.BalanceAfter = TravelBalance(State);
 		OutPreview.Price = Offer->Price;
 		if (Offer->bUnavailable)
 		{
@@ -758,10 +765,10 @@ namespace
 			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InvalidReplacementEntryId,
 				TEXT("Merchant card and relic purchases never accept a replacement EntryId."), OutError);
 		}
-		if (State.PlayerGold < Offer->Price)
+		if (!FGameXXKTravelMoneyRules::CanAfford(State, Offer->Price))
 		{
-			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold,
-				FString::Printf(TEXT("Ordinary gold is short by %d."), Offer->Price - State.PlayerGold), OutError);
+			return SetPurchaseFailure(OutPreview, EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney,
+				FString::Printf(TEXT("行旅钱不足，还差%d。"), Offer->Price - TravelBalance(State)), OutError);
 		}
 		EGameXXKRouteMerchantPurchaseFailure LiveFailure =
 			EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
@@ -780,7 +787,7 @@ namespace
 			}
 			return SetPurchaseFailure(OutPreview, LiveFailure, LiveReason, OutError);
 		}
-		OutPreview.BalanceAfter = State.PlayerGold - Offer->Price;
+		OutPreview.BalanceAfter = TravelBalance(State) - Offer->Price;
 		OutPreview.FinalQuality = Offer->Kind == EGameXXKRouteMerchantOfferKind::Card
 			? Offer->NextQuality
 			: Offer->Quality;
@@ -951,9 +958,9 @@ bool FGameXXKRouteMerchantRules::GetView(
 	}
 	const FGameXXKRouteMerchantState& Merchant = State.CardRun.RouteMerchant;
 	OutView.PlayerGold = State.PlayerGold;
-	OutView.RouteTravelMoney = State.PlayerGold;
+	OutView.RouteTravelMoney = TravelBalance(State);
 	OutView.RefreshCost = GetRefreshCost(Merchant.RefreshCount);
-	OutView.bRefreshAffordable = OutView.RefreshCost > 0 && State.PlayerGold >= OutView.RefreshCost;
+	OutView.bRefreshAffordable = OutView.RefreshCost > 0 && FGameXXKTravelMoneyRules::CanAfford(State, OutView.RefreshCost);
 	FString RefreshEligibilityError;
 	const bool bRefreshEligible = !Merchant.PendingPurchase.bActive
 		&& Merchant.RefreshCount < MAX_int32
@@ -977,7 +984,7 @@ bool FGameXXKRouteMerchantRules::GetView(
 	else if (!OutView.bRefreshAffordable)
 	{
 		OutView.RefreshDisabledReason = FString::Printf(
-			TEXT("金币不足，还差%d"), FMath::Max(0, OutView.RefreshCost - State.PlayerGold));
+			TEXT("行旅钱不足，还差%d"), FMath::Max(0, OutView.RefreshCost - TravelBalance(State)));
 	}
 	OutView.bHasPendingReplacement = false;
 	OutView.bCanLeave = true;
@@ -985,7 +992,7 @@ bool FGameXXKRouteMerchantRules::GetView(
 	{
 		FGameXXKRouteMerchantOfferView OfferView;
 		OfferView.SavedOffer = Offer;
-		OfferView.bAffordable = !Offer.bUnavailable && Offer.Price > 0 && State.PlayerGold >= Offer.Price;
+		OfferView.bAffordable = !Offer.bUnavailable && Offer.Price > 0 && FGameXXKTravelMoneyRules::CanAfford(State, Offer.Price);
 		bool bLiveValid = true;
 		FString LiveDisabledReason;
 		if (!Offer.bUnavailable && !Offer.bSold)
@@ -1007,7 +1014,7 @@ bool FGameXXKRouteMerchantRules::GetView(
 		else if (!OfferView.bAffordable)
 		{
 			OfferView.DisabledReason = FString::Printf(
-				TEXT("金币不足，还差%d"), FMath::Max(0, Offer.Price - State.PlayerGold));
+				TEXT("行旅钱不足，还差%d"), FMath::Max(0, Offer.Price - TravelBalance(State)));
 		}
 		if (Offer.Kind == EGameXXKRouteMerchantOfferKind::Card)
 		{
@@ -1050,9 +1057,9 @@ bool FGameXXKRouteMerchantRules::Refresh(FGameXXKRuntimeState& InOutState, FStri
 		return false;
 	}
 	const int32 Cost = GetRefreshCost(Existing.RefreshCount);
-	if (Cost <= 0 || Candidate.PlayerGold < Cost)
+	if (Cost <= 0 || !FGameXXKTravelMoneyRules::CanAfford(Candidate, Cost))
 	{
-		return SetError(OutError, TEXT("There is not enough ordinary gold to refresh the merchant."));
+		return SetError(OutError, TEXT("行旅钱不足，无法刷新行商。"));
 	}
 	FGameXXKRouteMerchantState Refreshed;
 	if (!GenerateStock(Candidate, MerchantNode->NodeId, Existing.RefreshCount + 1,
@@ -1061,7 +1068,7 @@ bool FGameXXKRouteMerchantRules::Refresh(FGameXXKRuntimeState& InOutState, FStri
 		return false;
 	}
 	Candidate.CardRun.RouteMerchant = MoveTemp(Refreshed);
-	Candidate.PlayerGold -= Cost;
+	if (!FGameXXKTravelMoneyRules::Spend(Candidate, Cost, OutError)) return false;
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -1101,22 +1108,23 @@ bool FGameXXKRouteMerchantRules::Purchase(
 	FGameXXKRouteMerchantOffer* CandidateOffer = Candidate.CardRun.RouteMerchant.Offers.FindByPredicate(
 		[OfferId](const FGameXXKRouteMerchantOffer& Offer) { return Offer.OfferId == OfferId; });
 	if (!CandidateOffer || CandidateOffer->bSold || CandidateOffer->bUnavailable
-		|| Candidate.PlayerGold < CandidateOffer->Price)
+		|| !FGameXXKTravelMoneyRules::CanAfford(Candidate, CandidateOffer->Price))
 	{
 		OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
 		OutResult.FailureReason = TEXT("The candidate merchant offer changed before commit.");
 		return false;
 	}
-	if (CandidateOffer->Kind == EGameXXKRouteMerchantOfferKind::Card)
+	const FGameXXKRouteMerchantOffer AcceptedOffer = *CandidateOffer;
+	if (AcceptedOffer.Kind == EGameXXKRouteMerchantOfferKind::Card)
 	{
 		Candidate.CardRun.UpgradedCardQualities.Add(
-			CandidateOffer->ContentId,
-			CandidateOffer->NextQuality);
+			AcceptedOffer.ContentId,
+			AcceptedOffer.NextQuality);
 	}
-	else if (CandidateOffer->Kind == EGameXXKRouteMerchantOfferKind::Relic)
+	else if (AcceptedOffer.Kind == EGameXXKRouteMerchantOfferKind::Relic)
 	{
 		FString RelicError;
-		if (!FGameXXKRelicRules::AcquireRelic(Candidate, CandidateOffer->ContentId, &RelicError))
+		if (!FGameXXKRelicRules::AcquireRelic(Candidate, AcceptedOffer.ContentId, &RelicError))
 		{
 			OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::RelicAcquisitionRejected;
 			OutResult.FailureReason = RelicError.IsEmpty()
@@ -1131,11 +1139,25 @@ bool FGameXXKRouteMerchantRules::Purchase(
 		OutResult.FailureReason = TEXT("The merchant offer has an unknown kind.");
 		return false;
 	}
-	Candidate.PlayerGold -= CandidateOffer->Price;
-	CandidateOffer->bSold = true;
+	if (!FGameXXKTravelMoneyRules::Spend(Candidate, AcceptedOffer.Price, &CommitError))
+	{
+		OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+		OutResult.FailureReason = CommitError;
+		return false;
+	}
+	// Both acquisition and payment may replace the candidate state atomically.
+	FGameXXKRouteMerchantOffer* CommittedOffer = Candidate.CardRun.RouteMerchant.Offers.FindByPredicate(
+		[OfferId](const FGameXXKRouteMerchantOffer& Offer) { return Offer.OfferId == OfferId; });
+	if (!CommittedOffer)
+	{
+		OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::InvalidMerchantStock;
+		OutResult.FailureReason = TEXT("The merchant offer disappeared before commit.");
+		return false;
+	}
+	CommittedOffer->bSold = true;
 	Candidate.CardRun.RouteMerchant.PendingPurchase = FGameXXKPendingRouteMerchantPurchase();
 	OutResult.bPurchased = true;
-	OutResult.BalanceAfter = Candidate.PlayerGold;
+	OutResult.BalanceAfter = TravelBalance(Candidate);
 	OutResult.FinalQuality = CommitPreview.FinalQuality;
 	OutResult.Failure = EGameXXKRouteMerchantPurchaseFailure::None;
 	OutResult.FailureReason.Reset();

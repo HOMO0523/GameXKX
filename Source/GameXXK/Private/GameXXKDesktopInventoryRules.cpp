@@ -3,6 +3,7 @@
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKTalentRules.h"
+#include "GameXXKTravelMoneyRules.h"
 
 namespace
 {
@@ -304,9 +305,16 @@ namespace
 			SetError(OutError, TEXT("Item stack is no longer available in its source container."));
 			return false;
 		}
+		const int64 MergedQuantity = static_cast<int64>(Quantity)
+			+ (Entry.EntryId == FGameXXKTravelMoneyRules::ItemId() ? DestinationItems.FindRef(Entry.EntryId) : 0);
+		if (MergedQuantity > MAX_int32)
+		{
+			SetError(OutError, TEXT("行旅钱合并数量超出上限。"));
+			return false;
+		}
 		SourceItems.Remove(Entry.EntryId);
 		DestinationItems.Remove(Entry.EntryId);
-		DestinationItems.Add(Entry.EntryId, Quantity);
+		DestinationItems.Add(Entry.EntryId, static_cast<int32>(MergedQuantity));
 		return true;
 	}
 
@@ -673,7 +681,8 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 	}
 	for (const TPair<FName, int32>& Pair : State.DesktopInventory.WarehouseItems)
 	{
-		if (Pair.Key.IsNone() || Pair.Value <= 0 || State.Inventory.FindRef(Pair.Key) > 0)
+		if (Pair.Key.IsNone() || Pair.Value <= 0
+			|| (State.Inventory.FindRef(Pair.Key) > 0 && Pair.Key != FGameXXKTravelMoneyRules::ItemId()))
 		{
 			SetError(OutError, TEXT("Desktop warehouse item partition is invalid."));
 			return false;
@@ -709,6 +718,7 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 			return false;
 		}
 		const TSet<FGameXXKDesktopInventoryEntryKey> Expected = BuildExpectedEntries(State, Container);
+		TSet<FGameXXKDesktopInventoryEntryKey> InThisContainer;
 		for (int32 SlotIndex = 0; SlotIndex < Slots.Num(); ++SlotIndex)
 		{
 			const FGameXXKDesktopInventoryEntryKey& Entry = Slots[SlotIndex];
@@ -721,12 +731,15 @@ bool FGameXXKDesktopInventoryRules::Validate(const FGameXXKRuntimeState& State, 
 				SetError(OutError, TEXT("Desktop inventory contains an entry beyond unlocked talent capacity."));
 				return false;
 			}
-			if (!Expected.Contains(Entry) || AcrossContainers.Contains(Entry))
+			const bool bSharedCurrency = !Entry.bEquipmentInstance && Entry.EntryId == FGameXXKTravelMoneyRules::ItemId();
+			if (!Expected.Contains(Entry) || InThisContainer.Contains(Entry)
+				|| (AcrossContainers.Contains(Entry) && !bSharedCurrency))
 			{
 				SetError(OutError, TEXT("Desktop inventory contains a stale or duplicated physical entry."));
 				return false;
 			}
 			AcrossContainers.Add(Entry);
+			InThisContainer.Add(Entry);
 		}
 	}
 	return true;
@@ -822,6 +835,21 @@ bool FGameXXKDesktopInventoryRules::MoveOrSwap(
 	}
 
 	const FGameXXKDesktopInventoryEntryKey TargetEntry = ToSlots[Request.ToSlotIndex];
+	const TMap<FName, int32>& DestinationItems = Request.ToContainer == EGameXXKDesktopItemContainer::Warehouse
+		? Candidate.DesktopInventory.WarehouseItems : Candidate.Inventory;
+	if (Request.FromContainer != Request.ToContainer && !SourceEntry.bEquipmentInstance
+		&& SourceEntry.EntryId == FGameXXKTravelMoneyRules::ItemId() && DestinationItems.FindRef(SourceEntry.EntryId) > 0)
+	{
+		if (TargetEntry.IsValid() && TargetEntry != SourceEntry)
+		{
+			SetError(OutError, TEXT("行旅钱可放入空格或已有行旅钱的格子。"));
+			return false;
+		}
+		if (!TransferEntryPartition(Candidate, SourceEntry, Request.FromContainer, Request.ToContainer, OutError)
+			|| !Normalize(Candidate, OutError)) return false;
+		InOutState = MoveTemp(Candidate);
+		return true;
+	}
 	if (TargetEntry.IsValid() && !Request.bAllowSwap)
 	{
 		SetError(OutError, TEXT("Desktop inventory destination slot is occupied."));

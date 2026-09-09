@@ -185,6 +185,10 @@ def launch_editor(mcp_port: int = DEFAULT_PORT) -> subprocess.Popen | None:
         # This is deliberately scoped to the automation child process: normal
         # interactive editor launches and packaging still validate SDKs.
         child_environment["UE_SKIP_UBT_SDK_SETUP"] = "1"
+        # Avoid an unbounded RAM fallback when the user DDC is unavailable.
+        # Keep automation derivatives in a writable project-local disk cache.
+        automation_cache = PROJECT_ROOT / "Saved" / "DerivedDataCache"
+        automation_cache.mkdir(parents=True, exist_ok=True)
         proc = subprocess.Popen(
             [
                 str(UE_EDITOR),
@@ -193,7 +197,7 @@ def launch_editor(mcp_port: int = DEFAULT_PORT) -> subprocess.Popen | None:
                 "-UnattendedInput",
                 "-ModelContextProtocolStartServer",
                 f"-ModelContextProtocolPort={int(mcp_port)}",
-                "-DDC-ForceMemoryCache",
+                f"-LocalDataCachePath={automation_cache.as_posix()}",
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

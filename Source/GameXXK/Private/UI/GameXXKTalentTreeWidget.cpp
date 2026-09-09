@@ -1,6 +1,9 @@
 #include "UI/GameXXKTalentTreeWidget.h"
+#include "Audio/GameXXKSfx.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 #include "UI/GameXXKInkScrollBar.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKTalentTotals.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 
 #include "GameXXKTalentCatalog.h"
@@ -14,6 +17,7 @@
 #include "Components/CanvasPanelSlot.h"
 #include "Components/ContentWidget.h"
 #include "Components/HorizontalBox.h"
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
@@ -51,6 +55,14 @@ namespace
 
 	const FLinearColor Ink(0.16f, 0.13f, 0.09f, 1.0f);
 	const FLinearColor Gold(0.92f, 0.66f, 0.18f, 1.0f);
+	const FLinearColor GraphText(0.87f, 0.82f, 0.70f, 1.0f);
+	const FLinearColor GraphMutedText(0.44f, 0.43f, 0.40f, 1.0f);
+
+	bool IsPurchaseContextAllowed(const FGameXXKRuntimeState& State)
+	{
+		return State.Screen == EGameXXKScreen::Town
+			&& !State.bDungeonActive && !State.CardRun.bHasActiveCardBattle;
+	}
 
 	UTextBlock* MakeText(
 		UWidgetTree* Tree,
@@ -62,9 +74,8 @@ namespace
 		UTextBlock* Block = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		Block->SetText(Text);
 		Block->SetColorAndOpacity(FSlateColor(Color));
-		FSlateFontInfo Font = Block->GetFont();
-		Font.Size = Size;
-		Block->SetFont(Font);
+		Block->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
+		Block->SetVisibility(ESlateVisibility::HitTestInvisible);
 		Block->SetAutoWrapText(true);
 		return Block;
 	}
@@ -91,6 +102,15 @@ namespace
 		return View.State == EGameXXKTalentNodeState::Locked
 			? FLinearColor(0.30f, 0.30f, 0.28f, 0.92f)
 			: FLinearColor::White;
+	}
+
+	FText NodeTooltip(const FGameXXKTalentNodeView& View)
+	{
+		return FText::FromString(FString::Printf(TEXT("%s\n%s\n%s"),
+			*View.Definition.DisplayName.ToString(),
+			*FGameXXKTalentRules::DescribeEffect(View.Definition).ToString(),
+			View.State == EGameXXKTalentNodeState::Locked
+				? *View.LockReason.ToString() : TEXT("点击查看详情")));
 	}
 
 	const TCHAR* TalentIconPath(const EGameXXKTalentIcon Icon)
@@ -136,7 +156,7 @@ namespace
 		const TCHAR* TexturePath,
 		const FVector2D Size)
 	{
-		FButtonStyle Style = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("Button");
+		FButtonStyle Style = FCoreStyle::Get().GetWidgetStyle<FButtonStyle>("Button"); FGameXXKSfx::SetButtonSound(Style);
 		if (UTexture2D* Texture = LoadTexture(TexturePath))
 		{
 			FSlateBrush Brush;
@@ -247,6 +267,7 @@ void UGameXXKTalentNodeButton::HandleClicked()
 void UGameXXKTalentTreeWidget::SetMVPSubsystem(UGameXXKMVPSubsystem* InSubsystem)
 {
 	MVPSubsystem = InSubsystem;
+	if(RootCanvas)bSlateRebuildPending=true;
 }
 
 TSharedRef<SWidget> UGameXXKTalentTreeWidget::RebuildWidget()
@@ -257,8 +278,7 @@ TSharedRef<SWidget> UGameXXKTalentTreeWidget::RebuildWidget()
 
 void UGameXXKTalentTreeWidget::RebuildForTest()
 {
-	ReleaseSlateResources(true);
-	TakeWidget();
+	if(RootCanvas) RebuildGraphAndDetails(); else TakeWidget();
 }
 
 void UGameXXKTalentTreeWidget::TickForTest(const float DeltaSeconds)
@@ -303,6 +323,8 @@ bool UGameXXKTalentTreeWidget::SelectNodeForTest(const FName NodeId)
 	{
 		return false;
 	}
+	bShowTotals=false;
+	LastPurchaseError = FText::GetEmpty();
 	SelectedNodeId = NodeId;
 	for (const TPair<FName, TObjectPtr<UGameXXKTalentNodeButton>>& Pair : NodeButtons)
 	{
@@ -420,6 +442,49 @@ void UGameXXKTalentTreeWidget::HandleNodeClicked(const FName NodeId)
 	}
 }
 
+bool UGameXXKTalentTreeWidget::ToggleTotalsForTest()
+{
+	if(!TotalsButton)return false;
+	TotalsButton->OnClicked.Broadcast();return bShowTotals;
+}
+
+void UGameXXKTalentTreeWidget::HandleTotalsClicked()
+{
+	bShowTotals=!bShowTotals;
+	BuildDetails(MVPSubsystem?MVPSubsystem->GetTalentNodeViews():TArray<FGameXXKTalentNodeView>());
+	if(bShowTotals && TotalsScroll)TotalsScroll->ScrollToStart();
+}
+
+void UGameXXKTalentTreeWidget::BuildTotals()
+{
+	if(!TotalsColumn || !MVPSubsystem)return;
+	TotalsColumn->ClearChildren();
+	TArray<FGameXXKTalentTotalGroup> Groups;
+	const bool Valid=GameXXKTalentTotals::Build(MVPSubsystem->GetRuntimeState().Talents,Groups);
+	if(!Valid || Groups.IsEmpty())
+	{
+		auto* Empty=MakeText(WidgetTree,FText::FromString(Valid?TEXT("尚未学习天赋"):TEXT("暂时无法读取合计")),17,Ink);
+		TotalsColumn->AddChildToVerticalBox(Empty)->SetPadding(FMargin(0,12));return;
+	}
+	for(const auto& Group:Groups)
+	{
+		auto* Heading=MakeText(WidgetTree,Group.Title,19,FGameXXKInRunUiStyle::Jade());
+		TotalsColumn->AddChildToVerticalBox(Heading)->SetPadding(FMargin(0,10,0,3));
+		auto* Rule=WidgetTree->ConstructWidget<UBorder>();Rule->SetPadding(FMargin(0));Rule->SetBrushColor(FLinearColor(.17f,.14f,.1f,.3f));Rule->SetVisibility(ESlateVisibility::HitTestInvisible);
+		auto* RuleSize=WidgetTree->ConstructWidget<USizeBox>();RuleSize->SetHeightOverride(1);RuleSize->SetContent(Rule);
+		TotalsColumn->AddChildToVerticalBox(RuleSize)->SetPadding(FMargin(0,0,0,5));
+		for(const auto& Entry:Group.Entries)
+		{
+			auto* Row=WidgetTree->ConstructWidget<UHorizontalBox>();
+			auto* Name=MakeText(WidgetTree,Entry.Label,17,Ink);Name->SetAutoWrapText(false);
+			auto* NameSlot=Row->AddChildToHorizontalBox(Name);NameSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));NameSlot->SetVerticalAlignment(VAlign_Center);
+			auto* Value=MakeText(WidgetTree,Entry.Value,17,Ink);Value->SetAutoWrapText(false);Value->SetJustification(ETextJustify::Right);
+			Row->AddChildToHorizontalBox(Value)->SetVerticalAlignment(VAlign_Center);
+			TotalsColumn->AddChildToVerticalBox(Row)->SetPadding(FMargin(0,4));
+		}
+	}
+}
+
 void UGameXXKTalentTreeWidget::HandlePurchaseClicked()
 {
 	if (!MVPSubsystem || SelectedNodeId.IsNone())
@@ -429,10 +494,12 @@ void UGameXXKTalentTreeWidget::HandlePurchaseClicked()
 	FGameXXKTalentPurchaseResult Result;
 	if (!MVPSubsystem->PurchaseTalentNode(SelectedNodeId, Result))
 	{
+		LastPurchaseError = Result.Message;
 		BuildDetails(MVPSubsystem->GetTalentNodeViews());
 		return;
 	}
 
+	LastPurchaseError = FText::GetEmpty();
 	BuildDetails(MVPSubsystem->GetTalentNodeViews());
 	// Mutating the graph while the purchase button callback is unwinding is
 	// unsafe. Rebuild only the existing graph panel on the next NativeTick.
@@ -450,6 +517,24 @@ void UGameXXKTalentTreeWidget::NativeTick(
 	if (HorizontalInkScrollbar) HorizontalInkScrollbar->RefreshFromTarget();
 	if (!bSlateRebuildPending)
 	{
+		if (MVPSubsystem
+			&& (LastPresentedGold != MVPSubsystem->GetRuntimeState().PlayerGold
+				|| bLastPurchaseContextAllowed != IsPurchaseContextAllowed(MVPSubsystem->GetRuntimeState())))
+		{
+			// Income can arrive while this panel stays open. Update affordability
+			// in place so an insufficient-gold button does not stay disabled.
+			LastPurchaseError = FText::GetEmpty();
+			const auto Views = MVPSubsystem->GetTalentNodeViews();
+			BuildDetails(Views);
+			for (const auto& View : Views)
+			{
+				if (UImage* Icon = NodeIconImages.FindRef(View.Definition.Id)) Icon->SetColorAndOpacity(StateIconTint(View));
+				if (UGameXXKTalentNodeButton* Button = NodeButtons.FindRef(View.Definition.Id)) Button->SetToolTipText(NodeTooltip(View));
+				const auto Color = View.State == EGameXXKTalentNodeState::Locked ? GraphMutedText : GraphText;
+				if (UTextBlock* Name = NodeNameTexts.FindRef(View.Definition.Id)) Name->SetColorAndOpacity(FSlateColor(Color));
+				if (UTextBlock* Rank = NodeRankTexts.FindRef(View.Definition.Id)) Rank->SetColorAndOpacity(FSlateColor(Color));
+			}
+		}
 		return;
 	}
 	bSlateRebuildPending = false;
@@ -458,6 +543,7 @@ void UGameXXKTalentTreeWidget::NativeTick(
 
 void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 {
+	if(RootCanvas){RebuildGraphAndDetails();return;}
 	if (!WidgetTree)
 	{
 		WidgetTree = NewObject<UWidgetTree>(this, TEXT("TalentWidgetTree"));
@@ -482,8 +568,8 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		TEXT("TalentGraphFrame"));
 	// Preserve a clear node-workspace boundary against the paper detail area.
 	const FSlateRoundedBoxBrush GraphBackground(
-		FLinearColor(0.12f, 0.105f, 0.08f, 0.16f), 2.0f,
-		FLinearColor(0.20f, 0.17f, 0.12f, 0.34f), 1.0f);
+		FLinearColor(0.045f, 0.045f, 0.045f, 1.0f), 2.0f,
+		FLinearColor(0.11f, 0.11f, 0.11f, 1.0f), 1.0f);
 	GraphFrame->SetBrush(GraphBackground);
 	GraphFrame->SetBrushColor(FLinearColor::White);
 	GraphFrame->SetPadding(FMargin(3.0f,3.0f,21.0f,21.0f));
@@ -559,12 +645,19 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		UVerticalBox::StaticClass(),
 		TEXT("TalentDetailColumn"));
 	DetailFrame->SetContent(DetailColumn);
-	DetailNameText = MakeText(WidgetTree, FText::GetEmpty(), 21, Ink, TEXT("TalentDetailName"));
+	DetailNameText = MakeText(WidgetTree, FText::GetEmpty(), 24, Ink, TEXT("TalentDetailName"));
 	DetailColumn->AddChildToVerticalBox(DetailNameText)->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 8.0f));
-	DetailBodyText = MakeText(WidgetTree, FText::GetEmpty(), 14, Ink, TEXT("TalentDetailBody"));
+	DetailBodyText = MakeText(WidgetTree, FText::GetEmpty(), 18, Ink, TEXT("TalentDetailBody"));
 	UVerticalBoxSlot* BodySlot = DetailColumn->AddChildToVerticalBox(DetailBodyText);
 	BodySlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 10.0f));
 	BodySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	TotalsScroll=WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("TalentTotalsScroll"));
+	TotalsScroll->SetScrollBarVisibility(ESlateVisibility::Collapsed);
+	TotalsScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	FSlateBrush None;None.DrawAs=ESlateBrushDrawType::NoDrawType;FScrollBoxStyle Clean;Clean.SetTopShadowBrush(None).SetBottomShadowBrush(None);TotalsScroll->SetWidgetStyle(Clean);
+	TotalsColumn=WidgetTree->ConstructWidget<UVerticalBox>();TotalsScroll->AddChild(TotalsColumn);
+	TotalsScroll->SetVisibility(ESlateVisibility::Collapsed);
+	DetailColumn->AddChildToVerticalBox(TotalsScroll)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	UpgradePriceText = MakeText(
 		WidgetTree,
 		FText::GetEmpty(),
@@ -573,20 +666,41 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		TEXT("TalentUpgradePriceText"));
 	DetailColumn->AddChildToVerticalBox(UpgradePriceText)->SetPadding(
 		FMargin(0.0f, 0.0f, 0.0f, 6.0f));
+	PurchaseStatusText = MakeText(WidgetTree, FText::GetEmpty(), 16, Ink, TEXT("TalentPurchaseStatus"));
+	auto* StatusBox = WidgetTree->ConstructWidget<USizeBox>();
+	StatusBox->SetHeightOverride(42.0f);
+	StatusBox->SetContent(PurchaseStatusText);
+	DetailColumn->AddChildToVerticalBox(StatusBox);
 	PurchaseButton = WidgetTree->ConstructWidget<UButton>(
 		UButton::StaticClass(),
 		TEXT("TalentPurchaseButton"));
 	PurchaseButton->SetStyle(MakeTextureButtonStyle(
 		TalentUpgradeButtonPath,
-		FVector2D(190.0f, 54.0f)));
+		FVector2D(200.0f, 64.0f)));
 	PurchaseButton->SetBackgroundColor(FLinearColor::White);
 	PurchaseButton->OnClicked.AddDynamic(this, &UGameXXKTalentTreeWidget::HandlePurchaseClicked);
 	UTextBlock* PurchaseLabel = MakeText(WidgetTree, FText::FromString(TEXT("升级")),
-		17, Ink, TEXT("TalentPurchaseLabel"));
+		24, Ink, TEXT("TalentPurchaseLabel"));
 	PurchaseLabel->SetAutoWrapText(false);
 	PurchaseLabel->SetJustification(ETextJustify::Center);
 	PurchaseButton->SetContent(PurchaseLabel);
-	DetailColumn->AddChildToVerticalBox(PurchaseButton)->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+	if (auto* LabelSlot = Cast<UButtonSlot>(PurchaseButton->GetContentSlot()))
+	{
+		LabelSlot->SetHorizontalAlignment(HAlign_Center);
+		LabelSlot->SetVerticalAlignment(VAlign_Center);
+		LabelSlot->SetPadding(FMargin(10.0f, 4.0f));
+	}
+	PurchaseButtonContainer = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("TalentPurchaseButtonSize"));
+	PurchaseButtonContainer->SetHeightOverride(64.0f);
+	PurchaseButtonContainer->SetContent(PurchaseButton);
+	DetailColumn->AddChildToVerticalBox(PurchaseButtonContainer)->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
+	TotalsButton=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("TalentTotalsButton"));
+	TotalsButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(190,36),true));
+	auto* TotalsLabel=MakeText(WidgetTree,FText::FromString(TEXT("合计属性")),18,FLinearColor(.96f,.92f,.82f,1));
+	TotalsLabel->SetAutoWrapText(false);TotalsLabel->SetJustification(ETextJustify::Center);TotalsButton->SetContent(TotalsLabel);
+	TotalsButton->SetToolTipText(FText::FromString(TEXT("合并统计已学天赋的有效加成")));
+	TotalsButton->OnClicked.AddDynamic(this,&UGameXXKTalentTreeWidget::HandleTotalsClicked);
+	DetailColumn->AddChildToVerticalBox(TotalsButton)->SetPadding(FMargin(0,10,0,0));
 
 	const TArray<FGameXXKTalentNodeView> Views = MVPSubsystem
 		? MVPSubsystem->GetTalentNodeViews()
@@ -789,10 +903,10 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			Line->SetBrushColor(
 				View.State == EGameXXKTalentNodeState::Locked
 					? FLinearColor(0.30f, 0.29f, 0.25f, 0.72f)
-					: FLinearColor(0.74f, 0.58f, 0.24f, 0.90f));
+					: FLinearColor(0.12f, 0.30f, 0.22f, 1.0f));
 			Line->SetRenderTransformPivot(FVector2D(0.0f, 0.5f));
 			Line->SetRenderTransformAngle(Angle);
-			AddCanvas(InGraphCanvas, Line, Start, FVector2D(Delta.Size(), 3.0f));
+			AddCanvas(InGraphCanvas, Line, Start-FVector2D(0,2.25f), FVector2D(Delta.Size(), 4.5f));
 		}
 	}
 
@@ -809,7 +923,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 		UGameXXKTalentNodeButton* Button =
 			WidgetTree->ConstructWidget<UGameXXKTalentNodeButton>(
 				UGameXXKTalentNodeButton::StaticClass(),
-				*FString::Printf(TEXT("TalentNode_%s"), *View.Definition.Id.ToString().Replace(TEXT("."), TEXT("_"))));
+				MakeUniqueObjectName(WidgetTree,UGameXXKTalentNodeButton::StaticClass(),FName(*FString::Printf(TEXT("TalentNode_%s"), *View.Definition.Id.ToString().Replace(TEXT("."), TEXT("_"))))));
 		Button->Configure(this, View.Definition.Id);
 		Button->SetStyle(MakeTextureButtonStyle(
 			View.Definition.Id == SelectedNodeId
@@ -820,7 +934,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 
 		UImage* Icon = WidgetTree->ConstructWidget<UImage>(
 			UImage::StaticClass(),
-			*FString::Printf(TEXT("TalentIcon_%s"), *View.Definition.Id.ToString().Replace(TEXT("."), TEXT("_"))));
+			MakeUniqueObjectName(WidgetTree,UImage::StaticClass(),FName(*FString::Printf(TEXT("TalentIcon_%s"), *View.Definition.Id.ToString().Replace(TEXT("."), TEXT("_"))))));
 		FSlateBrush IconBrush;
 		IconBrush.SetResourceObject(LoadTexture(TalentIconPath(View.Definition.Icon)));
 		IconBrush.DrawAs = ESlateBrushDrawType::Image;
@@ -842,13 +956,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			ContentSlot->SetVerticalAlignment(VAlign_Center);
 			ContentSlot->SetPadding(FMargin(0.0f));
 		}
-		Button->SetToolTipText(FText::FromString(FString::Printf(
-			TEXT("%s\n%s\n%s"),
-			*View.Definition.DisplayName.ToString(),
-			*FGameXXKTalentRules::DescribeEffect(View.Definition).ToString(),
-			View.State == EGameXXKTalentNodeState::Locked
-				? *View.LockReason.ToString()
-				: TEXT("点击查看详情"))));
+		Button->SetToolTipText(NodeTooltip(View));
 		AddCanvas(
 			InGraphCanvas,
 			Button,
@@ -862,8 +970,8 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			View.Definition.DisplayName,
 			16,
 			View.State == EGameXXKTalentNodeState::Locked
-				? FLinearColor(0.48f, 0.46f, 0.41f, 1.0f)
-				: Ink);
+				? GraphMutedText
+				: GraphText);
 		NameText->SetJustification(ETextJustify::Center);
 		NameText->SetAutoWrapText(false);
 		UScaleBox* NameScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass());
@@ -882,8 +990,8 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 			FText::FromString(FString::Printf(TEXT("%d/%d"), View.Rank, View.Definition.MaxRank)),
 			14,
 			View.State == EGameXXKTalentNodeState::Locked
-				? FLinearColor(0.48f, 0.46f, 0.41f, 1.0f)
-				: Ink);
+				? GraphMutedText
+				: GraphText);
 		Rank->SetJustification(ETextJustify::Center);
 		Rank->SetAutoWrapText(false);
 		AddCanvas(
@@ -911,6 +1019,20 @@ void UGameXXKTalentTreeWidget::BuildDetails(
 	{
 		return;
 	}
+	LastPresentedGold = MVPSubsystem ? MVPSubsystem->GetRuntimeState().PlayerGold : INDEX_NONE;
+	bLastPurchaseContextAllowed = MVPSubsystem && IsPurchaseContextAllowed(MVPSubsystem->GetRuntimeState());
+	if(TotalsScroll)TotalsScroll->SetVisibility(bShowTotals?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
+	DetailBodyText->SetVisibility(bShowTotals?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+	UpgradePriceText->SetVisibility(bShowTotals?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+	PurchaseButton->SetVisibility(bShowTotals?ESlateVisibility::Collapsed:ESlateVisibility::Visible);
+	if (PurchaseButtonContainer) PurchaseButtonContainer->SetVisibility(bShowTotals ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	if (PurchaseStatusText)
+	{
+		PurchaseStatusText->SetText(FText::GetEmpty());
+		PurchaseStatusText->GetParent()->SetVisibility(bShowTotals ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+	}
+	if(TotalsButton)if(auto* Label=Cast<UTextBlock>(TotalsButton->GetContent()))Label->SetText(FText::FromString(bShowTotals?TEXT("返回天赋"):TEXT("合计属性")));
+	if(bShowTotals){DetailNameText->SetText(FText::FromString(TEXT("合计属性")));BuildTotals();return;}
 	const FGameXXKTalentNodeView* View = FindSelectedView(Views);
 	if (!View)
 	{
@@ -930,9 +1052,17 @@ void UGameXXKTalentTreeWidget::BuildDetails(
 		View->Rank >= View->Definition.MaxRank
 			? TEXT("升级售价：已满级")
 			: FString::Printf(TEXT("升级售价：%lld"), View->NextPrice)));
-	PurchaseButton->SetIsEnabled(
+	PurchaseButton->SetIsEnabled(bLastPurchaseContextAllowed && (
 		View->State == EGameXXKTalentNodeState::Available
-		|| View->State == EGameXXKTalentNodeState::Purchased);
+		|| View->State == EGameXXKTalentNodeState::Purchased));
+	if (PurchaseStatusText)
+	{
+		const FText Status = !LastPurchaseError.IsEmpty() ? LastPurchaseError
+			: !bLastPurchaseContextAllowed ? FText::FromString(TEXT("返回桌面后可升级"))
+			: !View->LockReason.IsEmpty() ? View->LockReason
+			: FText::FromString(FString::Printf(TEXT("当前等级：%d/%d"), View->Rank, View->Definition.MaxRank));
+		PurchaseStatusText->SetText(Status);
+	}
 	if (UTextBlock* Label = Cast<UTextBlock>(PurchaseButton->GetContent()))
 	{
 		Label->SetText(FText::FromString(TEXT("升级")));

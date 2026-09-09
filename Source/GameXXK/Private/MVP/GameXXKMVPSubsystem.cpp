@@ -1,4 +1,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
+#include "Audio/GameXXKSfx.h"
+#include "Guide/GameXXKAcademyRules.h"
+#include "MVP/GameXXKAcademyStateBuilder.h"
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardCatalog.h"
@@ -25,6 +28,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "Guide/GameXXKGuideRules.h"
 #include "Narrative/GameXXKNarrativeEncounterCatalog.h"
+#include "Narrative/GameXXKMainStorySubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
@@ -383,11 +387,9 @@ namespace
 				0,
 				MAX_int32));
 		};
-		const auto TalentHealth = [&TalentProjection, &ScaleTalentStat](const int32 BaseValue)
+		const auto TalentHealth = [&TalentProjection](const int32 BaseValue)
 		{
-			return FMath::Max(1, ScaleTalentStat(
-				BaseValue + TalentProjection.FlatMaxHP,
-				TalentProjection.RouteMaxHPPercent));
+			return FGameXXKTalentRules::ComputeProjectedMaxHP(BaseValue,0,TalentProjection);
 		};
 		const auto TalentAttack = [&TalentProjection, &ScaleTalentStat](const int32 BaseValue)
 		{
@@ -1933,6 +1935,9 @@ bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
 			^ static_cast<int32>(GetTypeHash(StageId))
 			^ Candidate.Training.ChallengeRewardSeed);
 	FGameXXKTrainingRules::GenerateChallengeRouteMap(Candidate, StageId, ChallengeRouteSeed);
+	// Ordinary replay owns a fresh route; an earlier story journey must not reserve its row.
+	Candidate.NarrativeProgress.MainStory.GateNodeIds.Reset();
+	Candidate.NarrativeProgress.MainStory.bShowJourneyTree=false;
 	if (!Candidate.bHasGeneratedRouteMap
 		|| Candidate.RouteMapNodes.IsEmpty()
 		|| Candidate.ReachableRouteNodeIds.IsEmpty())
@@ -2055,6 +2060,15 @@ bool UGameXXKMVPSubsystem::SelectTrainingChallengeRouteNode(const int32 NodeId)
 		return false;
 	}
 
+	if (FGameXXKMainStoryRules::IsJourneyGate(State, NodeId)
+		&& !(State.NarrativeProgress.MainStory.bBattleStarted
+			&& State.NarrativeProgress.MainStory.GateNodeId==NodeId
+			&& State.NarrativeProgress.MainStory.Phase==EGameXXKMainStoryActivityPhase::AwaitingBattle))
+	{
+		if (auto* Instance=GetGameInstance())
+			if (auto* Story=Instance->GetSubsystem<UGameXXKMainStorySubsystem>()) return Story->EnterJourneyGate(NodeId);
+		return false;
+	}
 	// Non-battle route nodes (Start, Event, Camp, Chest, Merchant) keep the
 	// canonical generated-map behavior and rewards.
 	if (RouteNode->NodeKind != EGameXXKNodeKind::Battle
@@ -2109,6 +2123,14 @@ bool UGameXXKMVPSubsystem::CancelTrainingChallengeToWorkbench()
 
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	ClearTrainingBattleProjection(Candidate);
+	auto& StorySession=Candidate.NarrativeProgress.MainStory;
+	StorySession.bShowJourneyTree=false;
+	if (!FGameXXKMainStoryRules::IsNodeCompleted(Candidate,StorySession.JourneyNodeId))
+	{
+		StorySession.bGateEntered=false; StorySession.bBattleStarted=false;
+		StorySession.GateNodeIds.Reset(); StorySession.GateNodeId=INDEX_NONE;
+		FGameXXKMainStoryRules::PauseActivity(Candidate);
+	}
 	Candidate.Training.bChallengeActive = false;
 	Candidate.Training.ActiveChallengeStageId = NAME_None;
 	Candidate.Training.ActiveChallengeEncounterIndex = INDEX_NONE;
@@ -2132,6 +2154,7 @@ bool UGameXXKMVPSubsystem::CancelTrainingChallengeToWorkbench()
 	Candidate.CardRun.PendingSettlement = FGameXXKRouteSettlementReceipt();
 	FGameXXKRelicRules::ClearRouteRelics(Candidate);
 	FGameXXKRouteEconomyRules::ClearRouteEconomy(Candidate.CardRun);
+	Candidate.CardRun.RouteProgress = FGameXXKRouteProgress();
 	const FName PreviousTravelStageId = Candidate.Training.CurrentTravelStageId;
 	if (PreviousTravelStageId.IsNone()
 		|| !FGameXXKTrainingRules::StartTravel(Candidate.Training, PreviousTravelStageId))
@@ -2222,6 +2245,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 			return true;
 		}
 
+		const bool bStoryCompleted=FGameXXKMainStoryRules::ObserveBattleVictory(Candidate);
 		// The Boss is the route terminal. It skips the ordinary three-choice battle
 		// reward and atomically applies the cleared-route settlement before the
 		// workbench resumes. Normal and Elite victories keep the existing offer.
@@ -2260,6 +2284,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		{
 			return false;
 		}
+		if (bStoryCompleted && !PersistTrainingCheckpoint(Candidate)) return false;
 
 		BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 		RuntimeState = MoveTemp(Candidate);
@@ -2475,7 +2500,7 @@ bool UGameXXKMVPSubsystem::SettleTrainingChallengeBossNode(
 		InOutState.CardRun,
 		1,
 		RouteNodeId,
-		50,
+		0,
 		bAwarded,
 		OutError))
 	{
@@ -2844,7 +2869,26 @@ bool UGameXXKMVPSubsystem::PurchaseMetaShopProduct(
 	const EGameXXKMetaShopProductId ProductId,
 	FGameXXKMetaShopPurchaseResult& OutResult)
 {
-	return FGameXXKMetaShopRules::Purchase(RuntimeState, ProductId, OutResult);
+	FGameXXKRuntimeState Candidate=RuntimeState;
+	if (!FGameXXKMetaShopRules::Purchase(Candidate,ProductId,OutResult)) return false;
+	if (!PersistTrainingCheckpoint(Candidate))
+	{
+		OutResult=FGameXXKMetaShopPurchaseResult();OutResult.Error=EGameXXKMetaShopError::PersistenceFailed;
+		OutResult.Message=FText::FromString(TEXT("保存失败，金币未扣除，请重试。"));return false;
+	}
+	BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+	RuntimeState=MoveTemp(Candidate);return true;
+}
+
+bool UGameXXKMVPSubsystem::PurchaseMetaShopProducts(EGameXXKMetaShopProductId ProductId,int32 Quantity,
+	TArray<FGameXXKMetaShopPurchaseResult>& OutResults,FText& OutMessage)
+{
+	FGameXXKRuntimeState Candidate=RuntimeState;OutResults.Reset();
+	TArray<FGameXXKMetaShopPurchaseResult> Pending;
+	if(!FGameXXKMetaShopRules::PurchaseBatch(Candidate,ProductId,Quantity,Pending,OutMessage))return false;
+	if(!PersistTrainingCheckpoint(Candidate)){OutMessage=FText::FromString(TEXT("保存失败，金币未扣除，请重试。"));return false;}
+	BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+	RuntimeState=MoveTemp(Candidate);OutResults=MoveTemp(Pending);return true;
 }
 
 bool UGameXXKMVPSubsystem::ApplyBattleHudFixtureForTest(FString& OutError)
@@ -3601,6 +3645,7 @@ bool UGameXXKMVPSubsystem::ContinueGameFromSlot(FString SlotName, int32 UserInde
 
 bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 {
+	if (bAcademyWriteGuard) {LastSaveLoadError=FText::FromString(TEXT("教学阵容不会写入玩家存档。"));return false;}
 	PersistenceBoundaryDelegate.Broadcast();
 	LastSaveLoadError = FText::GetEmpty();
 	FGameXXKRuntimeState Candidate = RuntimeState;
@@ -4340,6 +4385,7 @@ bool UGameXXKMVPSubsystem::ExecuteToolDismantle(
 	if (!FGameXXKEquipmentToolRules::Dismantle(Candidate, Inputs, bConfirmed, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
 	return true;
 }
 
@@ -4356,10 +4402,11 @@ bool UGameXXKMVPSubsystem::ExecuteToolCombine(
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	const bool bSucceeded = Kind == EGameXXKToolCombineKind::Equipment
 		? FGameXXKEquipmentToolRules::CombineEquipment(Candidate, Inputs, OutResult)
-		: (Inputs.Num() == 1 && FGameXXKEquipmentToolRules::CombineGem(Candidate, Inputs[0], OutResult));
+		: FGameXXKEquipmentToolRules::CombineGems(Candidate, Inputs, OutResult);
 	if (!bSucceeded) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
 	return true;
 }
 
@@ -4385,6 +4432,7 @@ bool UGameXXKMVPSubsystem::ExecuteToolEnhance(
 	if (!FGameXXKEquipmentToolRules::Enhance(Candidate, Input, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
 	return true;
 }
 
@@ -4418,6 +4466,7 @@ bool UGameXXKMVPSubsystem::ExecuteToolResolveReforge(
 	if (!FGameXXKEquipmentToolRules::ResolveReforge(Candidate, bAccept, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	if (bAccept) FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
 	return true;
 }
 
@@ -4434,6 +4483,24 @@ bool UGameXXKMVPSubsystem::ExecuteToolSocket(
 	if (!FGameXXKEquipmentToolRules::SocketGem(Candidate, Request, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
+	return true;
+}
+
+bool UGameXXKMVPSubsystem::ExecuteToolRemoveSocketGem(
+	const FGameXXKToolInputRef& EquipmentInput, const int32 SocketIndex,
+	FGameXXKEquipmentTransactionResult& OutResult)
+{
+	if (!IsTownCompanionConfigurationAvailable(RuntimeState))
+	{
+		SetEquipmentTransactionFailure(OutResult, EGameXXKEquipmentTransactionError::RouteLocked);
+		return false;
+	}
+	FGameXXKRuntimeState Candidate = RuntimeState;
+	if (!FGameXXKEquipmentToolRules::RemoveSocketGem(Candidate, EquipmentInput, SocketIndex, OutResult)) return false;
+	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Tool);
 	return true;
 }
 
@@ -4450,6 +4517,7 @@ bool UGameXXKMVPSubsystem::OpenOneTrainingChest(
 	if (!FGameXXKTrainingChestRules::OpenOne(Candidate, Tier, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
 	return true;
 }
 
@@ -4461,11 +4529,13 @@ bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
 	if (!FGameXXKTrainingChestRules::OpenAll(Candidate, Tier, OutResult)) return false;
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
+	FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
 	return true;
 }
 
 bool UGameXXKMVPSubsystem::WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, const int32 UserIndex)
 {
+	if (bAcademyWriteGuard) return false;
 #if !UE_BUILD_SHIPPING
 	if (bDevelopmentWritesSuppressed) return true;
 #endif
@@ -4879,7 +4949,9 @@ bool UGameXXKMVPSubsystem::ResolveEventReward(bool bTakeGold)
 bool UGameXXKMVPSubsystem::ResolveRouteEncounterChoice(const int32 ChoiceIndex)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return UGameXXKMVPRules::ResolveRouteEncounterChoice(RuntimeState, ChoiceIndex);
+	const bool bSucceeded = UGameXXKMVPRules::ResolveRouteEncounterChoice(RuntimeState, ChoiceIndex);
+	if (bSucceeded) FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
+	return bSucceeded;
 }
 
 bool UGameXXKMVPSubsystem::ReturnPendingRouteChoiceToMap()
@@ -4914,7 +4986,9 @@ bool UGameXXKMVPSubsystem::AcceptRouteEventNpcSupport()
 bool UGameXXKMVPSubsystem::ResolveCampReward(const bool bHealNow)
 {
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	return UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);
+	const bool bSucceeded = UGameXXKMVPRules::ResolveCampReward(RuntimeState, bHealNow);
+	if (bSucceeded && bHealNow) FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
+	return bSucceeded;
 }
 
 bool UGameXXKMVPSubsystem::EnsureRouteMerchantStock(FString* OutError)
@@ -5081,6 +5155,11 @@ bool UGameXXKMVPSubsystem::SettleAndExitActiveRoute(
 		return false;
 	}
 
+	if (!Candidate.NarrativeProgress.MainStory.JourneyNodeId.IsNone() && !PersistTrainingCheckpoint(Candidate))
+	{
+		OutError=TEXT("行程退出尚未保存，请重试；已完成的任务和报酬仍然保留。");
+		return false;
+	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	RuntimeState = MoveTemp(Candidate);
 	TrainingTravelRuntime = MoveTemp(CandidateTravelRuntime);
@@ -5757,4 +5836,13 @@ bool UGameXXKMVPSubsystem::PromotePermanentCompanionStar(const FName InstanceId)
 TArray<FName> UGameXXKMVPSubsystem::BuildTurnOrder(bool bBossBattle) const
 {
 	return UGameXXKMVPRules::BuildTurnOrder(RuntimeState, bBossBattle);
+}
+
+bool UGameXXKMVPSubsystem::BuildAcademyBattleState(const FGameXXKAcademyCourse& Course,int32 LessonIndex,
+	FGameXXKRuntimeState& State,FName& Focus,FString& Error)
+{
+	if (!GameXXKAcademyStateBuilder::BuildLoadout(Course,LessonIndex,State,Focus,Error)) return false;
+	State.GuideProgress.Preference=EGameXXKGuidePreference::ExperiencedPlayer;
+	if (!BeginTrainingEncounterBattle(State,FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,1),0,&Error)) return false;
+	return GameXXKAcademyStateBuilder::ConfigureBattle(Course,LessonIndex,State,Focus,Error);
 }

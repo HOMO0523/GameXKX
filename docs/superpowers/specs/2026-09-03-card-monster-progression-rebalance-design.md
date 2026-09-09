@@ -200,6 +200,8 @@ Enemy shared-Energy theft stores an additive penalty for the next player-round r
 
 ## 5. Equipment, gems, and late-game benchmark
 
+**2026-09-09 gem revision:** The current quality curve and Treasure benchmark are now maintained in [the gem-quality specification](../../design/2026-09-09-gem-quality-marginal-curve.md) and [the equipment master workbook](../../design/2026-09-04-project-design-tables/README.md). Ranks 1–5 remain unchanged; the five later upgrade multipliers decrease evenly from 2 to 1.25. Attack/Defense are now 1, 2, 4, 8, 16, 32, 58, 95, 137, 172; HP remains five times those values. Multiple gems add normally. The revised Treasure package contributes 128 Attack, 128 Defense and 640 HP. The numerical tables below are retained as the historical inputs used by the original battle calculations, which have not been rerun for the new gem curve; they are no longer the current gem or final-attribute table. The equipment-base budget described below remains unchanged.
+
 Deterministic equipment Attack contribution is approximately halved from the current curve. Equipment base Defense and HP contribution are also halved. Gem MaxHealth uses five times its same-rank Attack/Defense value rather than the old ten-times layer; do not halve innate character HP a second time. The approved post-reduction level-100 late-game reference stats used for the Hell 3-3 calculations **already include** six Treasure equipment pieces and the balanced four-Attack/four-Defense/four-HP Treasure-gem package:
 
 | Role | HP | Attack | Defense |

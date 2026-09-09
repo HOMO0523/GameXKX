@@ -8,6 +8,11 @@ runtime Content tree.
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import hashlib
 import json
 from pathlib import Path
@@ -67,7 +72,7 @@ def _import_one(source: Path, destination: str, asset_name: str) -> dict[str, ob
     if not isinstance(texture, unreal.Texture2D):
         raise RuntimeError(f"import did not yield Texture2D: {package_path}")
     _configure_texture(texture, nearest="walkloop" in source.as_posix().casefold())
-    if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+    if not save_asset_with_texture_budget(texture):
         raise RuntimeError(f"could not save imported texture: {package_path}")
     return {
         "source": source.relative_to(PROJECT_ROOT).as_posix(),

@@ -10,6 +10,9 @@
 #include "GameXXKMVPSubsystem.generated.h"
 
 class USaveGame;
+class UGameXXKAcademySubsystem;
+class UGameXXKMainStorySubsystem;
+struct FGameXXKAcademyCourse;
 struct FGameXXKEquipmentTransactionResult;
 enum class EGameXXKDesktopItemContainer : uint8;
 
@@ -28,6 +31,8 @@ class GAMEXXK_API UGameXXKMVPSubsystem : public UGameInstanceSubsystem
 
 public:
 	UGameXXKMVPSubsystem();
+	static bool BuildAcademyBattleState(const FGameXXKAcademyCourse& Course,int32 LessonIndex,FGameXXKRuntimeState& OutState,FName& OutFocus,FString& Error);
+	bool IsAcademySessionActive() const { return bAcademyWriteGuard; }
 
 	const FGameXXKRuntimeState& GetRuntimeState() const;
 	FGameXXKRuntimeState& GetMutableRuntimeState();
@@ -248,6 +253,9 @@ public:
 	bool PurchaseMetaShopProduct(
 		EGameXXKMetaShopProductId ProductId,
 		FGameXXKMetaShopPurchaseResult& OutResult);
+	/** One persisted transaction for 1..10 products; failure leaves all currency/items unchanged. */
+	bool PurchaseMetaShopProducts(EGameXXKMetaShopProductId ProductId,int32 Quantity,
+		TArray<FGameXXKMetaShopPurchaseResult>& OutResults,FText& OutMessage);
 
 	/** UI read model: returns the save-authoritative warehouse order without mutating runtime state. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Equipment")
@@ -327,6 +335,7 @@ public:
 	bool ExecuteToolBeginReforge(const FGameXXKToolInputRef& Input, int32 AffixIndex, FGameXXKEquipmentTransactionResult& OutResult);
 	bool ExecuteToolResolveReforge(bool bAccept, FGameXXKEquipmentTransactionResult& OutResult);
 	bool ExecuteToolSocket(const FGameXXKSocketGemRequest& Request, FGameXXKEquipmentTransactionResult& OutResult);
+	bool ExecuteToolRemoveSocketGem(const FGameXXKToolInputRef& EquipmentInput, int32 SocketIndex, FGameXXKEquipmentTransactionResult& OutResult);
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Training")
 	int32 GetTrainingChestCount(EGameXXKTrainingRewardTier Tier) const;
@@ -452,7 +461,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool AcceptRouteEventNpcSupport();
 
-	/** Compatibility facade. The legacy bHealNow pin is preserved: true now means charm; false means 100 route money. */
+	/** Compatibility facade. The legacy bHealNow pin is preserved: true takes the charm; false continues without a reward. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	bool ResolveCampReward(bool bHealNow);
 
@@ -731,4 +740,7 @@ private:
 
 	/** Rebuilt from save-authoritative Training progress; never serialized itself. */
 	FGameXXKTrainingTravelRuntime TrainingTravelRuntime;
+	friend class UGameXXKAcademySubsystem;
+	friend class UGameXXKMainStorySubsystem;
+	bool bAcademyWriteGuard = false;
 };

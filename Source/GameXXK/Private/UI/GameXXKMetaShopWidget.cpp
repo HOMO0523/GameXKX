@@ -1,4 +1,5 @@
 #include "UI/GameXXKMetaShopWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -196,14 +197,13 @@ namespace
 		{
 			return nullptr;
 		}
-		UBorder* Frame = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass());
-		Frame->SetBrush(TextureBrush(ItemSlotTexturePath));
-		Frame->SetPadding(FMargin(16.0f, 12.0f));
-		UTextBlock* Block = MakeText(WidgetTree, NAME_None, Text, 13);
-		Block->SetJustification(ETextJustify::Left);
-		Block->SetAutoWrapText(true);
-		Frame->SetContent(Block);
-		return Frame;
+		UBorder* Frame = WidgetTree->ConstructWidget<UBorder>();
+		Frame->SetBrush(TextureBrush(ItemSlotTexturePath)); Frame->SetPadding(FMargin(16,12));
+		UTextBlock* Block = MakeText(WidgetTree, NAME_None, Text, 19);
+		Block->SetFont(FGameXXKInRunUiStyle::Font(19)); Block->SetJustification(ETextJustify::Left);
+		Block->SetAutoWrapText(true); Block->SetWrapTextAt(416);
+		Block->SetLineHeightPercentage(0.8f); Block->SetApplyLineHeightToBottomLine(true);
+		Frame->SetContent(Block); return Frame;
 	}
 
 }

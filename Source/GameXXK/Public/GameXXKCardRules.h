@@ -285,7 +285,7 @@ namespace GameXXKCardRules
 	GAMEXXK_API int32 GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, EGameXXKCardStatus Status);
 
 	/** Adds up to the approved cap for a combat status and returns the number of stacks actually applied. */
-	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount);
+	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount, FName SourceUnitId = NAME_None);
 
 	/** Resolves a card-authored DOT coefficient and adds only the amount that fits this battle's level cap. */
 	GAMEXXK_API int32 AddDotFromCoefficient(
@@ -293,7 +293,8 @@ namespace GameXXKCardRules
 		FName TargetUnitId,
 		EGameXXKCardStatus Status,
 		int32 BaseCoefficient,
-		EGameXXKCardQuality Quality);
+		EGameXXKCardQuality Quality,
+		FName SourceUnitId = NAME_None);
 
 	/** Clears one complete Bleed, Poison, Burn, or Rot reservoir. */
 	GAMEXXK_API int32 ClearDotReservoir(

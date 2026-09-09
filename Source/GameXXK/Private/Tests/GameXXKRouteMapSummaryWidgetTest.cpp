@@ -9,6 +9,8 @@
 #include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKTravelMoneyRules.h"
+#include "GameXXKTrainingRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 
@@ -39,7 +41,11 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 		FGameXXKRouteMapEdge{12, 13}};
 	State.VisitedRouteNodeIds = {10, 11, 12};
 	State.ReachableRouteNodeIds = {13};
-	State.CardRun.RouteTravelMoney = 137;
+	State.Training.bChallengeActive = true;
+	State.Training.ActiveChallengeStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
+	State.CardRun.RouteTravelMoney = 777;
+	State.Inventory.Add(FGameXXKTravelMoneyRules::ItemId(), 37);
+	State.DesktopInventory.WarehouseItems.Add(FGameXXKTravelMoneyRules::ItemId(), 100);
 	State.CardRun.BossCardSlots = {TEXT("BossCard.One"), TEXT("BossCard.Two")};
 
 	UGameXXKOneGameRouteMapWidget* Widget = NewObject<UGameXXKOneGameRouteMapWidget>();
@@ -51,7 +57,10 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 
 	const FGameXXKRouteMapSummaryView Summary = Widget->GetRouteSummaryViewForTest();
 	TestTrue(TEXT("route summary validates capacity through the boss-slot rules"), Summary.bCapacityValid);
-	TestEqual(TEXT("route summary shows route-only money"), Summary.RouteTravelMoney, 137);
+	TestEqual(TEXT("route summary shows physical money from both containers"), Summary.SpendableTravelMoney, int64(137));
+	TestEqual(TEXT("progress counts completed layers"), Summary.CompletedLegs, 2);
+	TestEqual(TEXT("progress counts route length"), Summary.TotalLegs, 3);
+	TestNull(TEXT("obsolete boss capacity has no display widget"), Widget->WidgetTree->FindWidget(TEXT("GameXXKRouteMapCapacitySummary")));
 	TestEqual(TEXT("route progress excludes Start from completed nodes"), Summary.CompletedNodeCount, 2);
 	TestEqual(TEXT("route progress excludes Start from total nodes"), Summary.TotalNodeCount, 3);
 	TestEqual(TEXT("capacity follows the boss-card slots"), Summary.CapacityUsed, State.CardRun.BossCardSlots.Num());
@@ -69,8 +78,30 @@ bool FGameXXKRouteMapFixedSummaryWidgetTest::RunTest(const FString& Parameters)
 		FixedSummaryWidget ? FixedSummaryWidget->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::SelfHitTestInvisible);
 	TestTrue(TEXT("existing route-node buttons remain bound"), Widget->IsRouteNodeButtonBoundForTest(0));
+	TestNotNull(TEXT("right-side node guide exists outside scroll"), Widget->WidgetTree->FindWidget(TEXT("RouteLegendContainer")));
+	TestEqual(TEXT("legend permits child tooltip hover"),
+		Widget->WidgetTree->FindWidget(TEXT("RouteLegendContainer"))->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
+	for (int32 Index = 0; Index < 8; ++Index)
+	{
+		const FName DescriptionName(*FString::Printf(TEXT("RouteLegendDescription%d"), Index));
+		TestNull(TEXT("secondary legend description is not painted on the map"), Widget->WidgetTree->FindWidget(DescriptionName));
+		UWidget* Row = Widget->WidgetTree->FindWidget(*FString::Printf(TEXT("RouteLegendRow%d"), Index));
+		TestTrue(TEXT("each legend row has a hover explanation"), Row && !Row->GetToolTipText().IsEmpty());
+	}
+	TestNull(TEXT("grey state paragraphs are moved off the map"), Widget->WidgetTree->FindWidget(TEXT("RouteLegendStateGuide")));
+	FGameXXKTrainingStageDefinition Stage;
+	FGameXXKTrainingRules::TryGetStageDefinition(State.Training.ActiveChallengeStageId, Stage);
+	TestEqual(TEXT("entry title uses authoritative stage name"), Widget->GetRouteEntryTitleForTest().ToString(), Stage.DisplayName.ToString());
+	Widget->NativeTick(FGeometry(), 0.3f);
+	TestTrue(TEXT("stage name fades into view"), Widget->GetRouteEntryTitleOpacityForTest() > 0.95f);
+	const int32 TitlePlays = Widget->GetRouteEntryTitlePlayCountForTest();
+	Widget->RefreshFromState();
+	Widget->NativeTick(FGeometry(), 2.4f);
+	TestEqual(TEXT("stage title fades out"), Widget->GetRouteEntryTitleOpacityForTest(), 0.0f);
+	TestEqual(TEXT("refresh never replays the entry title"), Widget->GetRouteEntryTitlePlayCountForTest(), TitlePlays);
 
-	State.CardRun.RouteTravelMoney = 91;
+	State.Inventory.Add(FGameXXKTravelMoneyRules::ItemId(), 91);
+	State.DesktopInventory.WarehouseItems.Remove(FGameXXKTravelMoneyRules::ItemId());
 	Widget->RefreshFromState();
 	TestTrue(TEXT("summary refreshes from state without Tick"), Widget->GetRouteMoneySummaryTextForTest().ToString().Contains(TEXT("91")));
 	return true;

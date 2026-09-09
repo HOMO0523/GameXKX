@@ -13,6 +13,9 @@ struct GAMEXXK_API FGameXXKEnemyIntentEffectDefinition
 	EGameXXKEnemyIntentEffectType Type = EGameXXKEnemyIntentEffectType::DirectDamage;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	EGameXXKCardDamageElement DamageElement = EGameXXKCardDamageElement::None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	EGameXXKEnemyIntentTargetRule Target = EGameXXKEnemyIntentTargetRule::LowestHealthParty;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -260,6 +263,7 @@ class GAMEXXK_API FGameXXKEnemyCatalog final
 public:
 	static const TArray<FGameXXKEnemyDefinition>& GetAllDefinitions();
 	static const FGameXXKEnemyDefinition* Find(FName DefinitionId);
+	static EGameXXKCardDamageElement GetIntentDamageElement(FName DefinitionId,FName IntentId);
 	static TArray<FName> GetPool(int32 Chapter, EGameXXKEnemyTier Tier);
 	static int32 ResolveTotalPhases(EGameXXKEnemyTier Tier, EGameXXKEnemyDifficulty Difficulty);
 	static const FGameXXKEnemyPhaseDefinition* GetPhaseDefinition(

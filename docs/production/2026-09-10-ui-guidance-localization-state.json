@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "goalDocument": "docs/production/2026-09-10-ui-guidance-localization-goal.md",
+  "overallStatus": "执行中，未完成",
+  "branchDecision": "本次允许根目录 codex/ui-visual-optimization；其他任务结束后统一提交",
+  "milestones": [
+    {
+      "id": "G0",
+      "name": "分支与统一提交保护",
+      "design": "已确认",
+      "implementation": "已记录，尚未提交",
+      "validation": "当前分支已核对",
+      "progress": "stage/commit/push均未执行",
+      "next": "其他任务与本任务验收完成后统一提交",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+    },
+    {
+      "id": "G1",
+      "name": "中英语言基础",
+      "design": "仅zh-Hans/en，江湖风字体",
+      "implementation": "基础模块已写，未接入全界面",
+      "validation": "冷UBT通过；词库3项通过；UE行为测试待跑",
+      "progress": "独立FText资源、偏好原子写入与变更通知",
+      "next": "接入设置及界面刷新并验证重启",
+      "evidence": "Saved/Codex/ToolsRedesign-20260909/build-reforge-choice.log"
+    },
+    {
+      "id": "G2",
+      "name": "设置改版与移除重置",
+      "design": "已确认",
+      "implementation": "已接入代码，等待实机验证",
+      "validation": "联合冷UBT通过；UE交互待验证",
+      "progress": "语言按钮/独立读取大小/关闭已接；旧重置UI与路由已删除",
+      "next": "删除旧入口，加入语言/帮助与独立阅读布局",
+      "evidence": "Saved/Diagnostics/TalentUpgradeUsability/build-fixed.log"
+    },
+    {
+      "id": "G3",
+      "name": "所有按钮与布局引导",
+      "design": "已建立界面覆盖清单",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "旧GuideRegistry缺少多数桌面目标",
+      "next": "新增帮助目标、关闭/跳过/复习与状态保护",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+    },
+    {
+      "id": "G4",
+      "name": "Tooltip、Pill与文本Shader双语",
+      "design": "已定位中文解析及缓存问题",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "不得直接翻译中文语义解析输入",
+      "next": "分离语义与显示、刷新缓存、复测文本宽度与材质",
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/source-inventory.json"
+    },
+    {
+      "id": "G5R",
+      "name": "20稀有+10史诗遗物",
+      "design": "30件首版候选",
+      "implementation": "独立定义已编译，旧31件目录未切换",
+      "validation": "定义/译文同步检查通过；机制未测试",
+      "progress": "保留16普通/特殊，目标总目录46",
+      "next": "实现真实联动、次数账本与完整结算测试",
+      "evidence": "docs/design/2026-09-10-relic-redesign/runtime-contract.md"
+    },
+    {
+      "id": "G5A",
+      "name": "遗物45张统一宝石画风",
+      "design": "用户已纠正为宝石定稿风格",
+      "implementation": "制作中，未导入UE",
+      "validation": "按manifest动态统计",
+      "progress": "由素材清单自动刷新",
+      "next": "完成全部重绘、透明边缘与小尺寸审核、MCP导入",
+      "evidence": "SourceArt/UI/Relics/gemstyle-20260910/manifest.json"
+    },
+    {
+      "id": "G5M",
+      "name": "路线纸底与右侧Tooltip",
+      "design": "保留最终整窗浅纸底，右侧灰字移悬停",
+      "implementation": "已接入代码，等待实机验证",
+      "validation": "联合冷UBT通过；悬停实拍待验证",
+      "progress": "右侧8段灰字和底部说明已移入tooltip，恢复子项命中",
+      "next": "移走灰字、恢复行悬停、双语与三档检查",
+      "evidence": "Saved/Diagnostics/TalentUpgradeUsability/build-fixed.log"
+    },
+    {
+      "id": "G5H",
+      "name": "三难度3-4讨伐连续地图",
+      "design": "已登记需求，规则核查中",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "原27关保持，目标新增3个3-4",
+      "next": "连续三章、Boss节点、1.5倍生命/金币/经验",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+    },
+    {
+      "id": "G5T",
+      "name": "讨伐令与结算账本",
+      "design": "三品质映射、首通及失败不耗已确认；箱内分配待答",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "普通2%、高级8%掉落口径待明确",
+      "next": "缺票禁入、胜利一次扣票/发箱、失败与存档保护",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+    },
+    {
+      "id": "G5C",
+      "name": "讨伐宝箱与第三箱区域",
+      "design": "品质表已批准：高级90/8/1.5/0.5；讨伐60/32/6/2",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "稀有/珍稀/传奇/不朽高品质概率精确4倍，运行时未接入",
+      "next": "定义4倍品质概率，接入左右键与全部宝箱美术",
+      "evidence": "docs/design/2026-09-10-hunt-stage-design/hunt-design.json"
+    },
+    {
+      "id": "G5D",
+      "name": "困难/地狱怪物强化",
+      "design": "困难约1.5、地狱约2，核查旧倍率",
+      "implementation": "未接入",
+      "validation": "待验证",
+      "progress": "必须避免与旧伤害倍率重复乘算",
+      "next": "统一挑战/游历/意图/tooltip及数值总表",
+      "evidence": "Source/GameXXK/Private/GameXXKTrainingRules.cpp"
+    },
+    {
+      "id": "G5S",
+      "name": "设计总表与项目状态同步",
+      "design": "用户要求持续同步",
+      "implementation": "本状态表已创建；设计数值按阶段更新",
+      "validation": "导出后重载校验",
+      "progress": "设计、实现、验证分列，不把草稿标为完成",
+      "next": "遗物/讨伐及受影响既有总表同步",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-state.json"
+    },
+    {
+      "id": "G6",
+      "name": "完整构建与纯2D实机验收",
+      "design": "覆盖中英、50/75/100%、旧档与真实流程",
+      "implementation": "未完成",
+      "validation": "目前仅基础源随共享UBT通过",
+      "progress": "不以基础编译代替整体功能验收",
+      "next": "所有接入后冷UBT、自动化、实机及证据归档",
+      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+    }
+  ],
+  "otherTasks": [
+    {
+      "name": "重绘地图节点图标",
+      "state": "已完成并冻结",
+      "scope": "地图/行旅钱",
+      "verification": "地图与货币58/58、库存8/8，最终实拍通过",
+      "evidence": "docs/production/2026-09-09-route-map-travel-money-acceptance.md"
+    },
+    {
+      "name": "整理音效需求表",
+      "state": "已完成并冻结",
+      "scope": "工具/天赋及洗炼交互",
+      "verification": "21/21、最新1/1、真实14状态与最终洗炼实拍通过",
+      "evidence": "docs/production/2026-09-10-tools-redesign-acceptance.md"
+    },
+    {
+      "name": "评估任务线接入方案",
+      "state": "最终实拍进行中，等待交接",
+      "scope": "主线/对白",
+      "verification": "以其最终验收为准",
+      "evidence": "任务01a08172-043d-75e0-a149-f8895de07b04"
+    }
+  ]
+}

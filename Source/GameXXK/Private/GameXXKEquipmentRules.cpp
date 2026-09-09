@@ -1236,6 +1236,12 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 		AddStats(OutSnapshot.EnhancedEquipmentBaseStats, ResolveItemCurrentStats(*Instance, *Definition));
 		for (const FGameXXKSocketedGem& Gem : Instance->SocketedGems)
 		{
+			if (FGameXXKGemRules::IsPercentType(Gem.Type))
+			{
+				int32& Total = OutSnapshot.SocketGemBasisPoints.FindOrAdd(Gem.Type);
+				Total = AddClamped(Total,FGameXXKGemRules::GetBonusBasisPoints(Gem.Type,Gem.Quality));
+				continue;
+			}
 			if (Gem.IsEmpty())
 			{
 				continue;
@@ -1406,6 +1412,13 @@ bool FGameXXKEquipmentRules::BuildLoadoutSnapshot(
 	// Gems are a separate flat layer: equipment percentages never multiply them,
 	// while route/battle projection still consumes the final AttributesBeforeRoute.
 	AddStats(OutSnapshot.AttributesBeforeRoute, OutSnapshot.SocketGemFlatStats);
+	const auto BeforePercentGems = OutSnapshot.AttributesBeforeRoute;
+	OutSnapshot.AttributesBeforeRoute.Attack = FGameXXKGemRules::ApplyBonus(BeforePercentGems.Attack,OutSnapshot.SocketGemBasisPoints.FindRef(EGameXXKGemType::AttackPercent));
+	OutSnapshot.AttributesBeforeRoute.Defense = FGameXXKGemRules::ApplyBonus(BeforePercentGems.Defense,OutSnapshot.SocketGemBasisPoints.FindRef(EGameXXKGemType::DefensePercent));
+	OutSnapshot.AttributesBeforeRoute.MaxHealth = FGameXXKGemRules::ApplyBonus(BeforePercentGems.MaxHealth,OutSnapshot.SocketGemBasisPoints.FindRef(EGameXXKGemType::MaxHealthPercent));
+	OutSnapshot.SocketGemPercentStats.Attack = OutSnapshot.AttributesBeforeRoute.Attack - BeforePercentGems.Attack;
+	OutSnapshot.SocketGemPercentStats.Defense = OutSnapshot.AttributesBeforeRoute.Defense - BeforePercentGems.Defense;
+	OutSnapshot.SocketGemPercentStats.MaxHealth = OutSnapshot.AttributesBeforeRoute.MaxHealth - BeforePercentGems.MaxHealth;
 	OutSnapshot.AttributesBeforeRoute.MaxMana = BareStats.MaxMana;
 	return true;
 }

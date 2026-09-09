@@ -1,0 +1,23 @@
+{
+  "workbooks": [
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\docs\\design\\2026-09-10-relic-redesign\\GameXXK_遗物设计总表_2026-09-10.xlsx",
+      "rows": {
+        "01_遗物总表": 46,
+        "02_实现与验收边界": 7
+      },
+      "validation": "reloaded-and-counted",
+      "runtimeVerification": "pending"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\docs\\design\\2026-09-10-hunt-stage-design\\GameXXK_讨伐与宝箱设计总表_2026-09-10.xlsx",
+      "rows": {
+        "01_讨伐关卡": 3,
+        "02_宝箱品质概率": 4,
+        "03_门票与奖励规则": 11
+      },
+      "validation": "reloaded-and-counted",
+      "runtimeVerification": "pending"
+    }
+  ]
+}

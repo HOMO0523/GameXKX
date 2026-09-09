@@ -13,6 +13,7 @@
 #include "Components/TextBlock.h"
 #include "Components/UniformGridPanel.h"
 #include "Components/UniformGridSlot.h"
+#include "UI/GameXXKCardTooltipPresentation.h"
 #include "Engine/Texture2D.h"
 #include "GameXXKRelicCatalog.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -98,7 +99,12 @@ void UGameXXKRelicBarWidget::RefreshFromState()
 		USizeBox* IconBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("RelicSlot_%d"), Index));
 		IconBox->SetWidthOverride(IconSize);
 		IconBox->SetHeightOverride(IconSize);
+		// SizeBox defaults to SelfHitTestInvisible and every image below it is
+		// decorative. The slot itself must receive hover for Slate tooltips.
+		IconBox->SetVisibility(ESlateVisibility::Visible);
 		IconBox->SetToolTipText(FText::Format(NSLOCTEXT("GameXXKRelics", "RelicTooltip", "{0}\n{1}"), Definition->DisplayName, Definition->Description));
+		IconBox->SetToolTip(GameXXKCardTooltipPresentation::BuildCompactTooltip(
+			WidgetTree, Definition->DisplayName, Definition->Description.ToString()));
 		UOverlay* Overlay = WidgetTree->ConstructWidget<UOverlay>(UOverlay::StaticClass());
 		IconBox->SetContent(Overlay);
 		UImage* Icon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());

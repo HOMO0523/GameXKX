@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import hashlib
 import json
 from pathlib import Path
@@ -66,7 +71,7 @@ def _import_texture(asset_name: str, expected_hash: str) -> unreal.Texture2D:
     _try_set(texture, "filter", unreal.TextureFilter.TF_BILINEAR)
     _try_set(texture, "address_x", unreal.TextureAddress.TA_CLAMP)
     _try_set(texture, "address_y", unreal.TextureAddress.TA_CLAMP)
-    unreal.EditorAssetLibrary.save_loaded_asset(texture, only_if_is_dirty=False)
+    save_asset_with_texture_budget(texture, only_if_is_dirty=False)
     return texture
 
 

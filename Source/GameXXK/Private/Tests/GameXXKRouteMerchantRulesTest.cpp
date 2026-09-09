@@ -15,8 +15,14 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Misc/AutomationTest.h"
+#include "GameXXKTravelMoneyRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+namespace {
+ int32& MerchantRulesTestMoney(FGameXXKRuntimeState& State) { return State.Inventory.FindOrAdd(FGameXXKTravelMoneyRules::ItemId()); }
+ int32 MerchantRulesTestMoney(const FGameXXKRuntimeState& State) { return static_cast<int32>(FGameXXKTravelMoneyRules::GetBalance(State)); }
+}
+
 
 namespace
 {
@@ -70,7 +76,7 @@ namespace
 		State.CardRun.bLoadoutLockedForRoute = true;
 		State.CardRun.bRouteEconomyInitialized = true;
 		State.CardRun.RouteTravelMoney = 500;
-		State.PlayerGold = 777;
+		MerchantRulesTestMoney(State) = 777;
 
 		const TArray<FName> HeroCards = FindCardIdsByOwner(EGameXXKCardOwner::Hero);
 		State.CardRun.HeroUnlockedCardIds.Reset();
@@ -394,7 +400,8 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 		}
 	}
 
-	FGameXXKRuntimeState IndependentTwin = MakeMerchantState(true);
+	FGameXXKRuntimeState IndependentTwin = State;
+	IndependentTwin.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
 	TestTrue(TEXT("independent same-root fixture generates"), FGameXXKRouteMerchantRules::EnsureStock(IndependentTwin, &Error));
 	TestTrue(TEXT("root seed, source node, and refresh count deterministically reproduce identical ordered stock"), MerchantStatesMatch(IndependentTwin.CardRun.RouteMerchant, FirstStock));
 
@@ -428,8 +435,8 @@ bool FGameXXKRouteMerchantStockCompanionTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("view read is pure"), RuntimeStatesMatch(State, BeforeView));
 	TestEqual(TEXT("view exposes four card slots"), View.CardOffers.Num(), 4);
 	TestEqual(TEXT("view exposes four relic slots"), View.RelicOffers.Num(), 4);
-	TestEqual(TEXT("view exposes ordinary gold"), View.PlayerGold, State.PlayerGold);
-	TestEqual(TEXT("legacy view balance alias mirrors ordinary gold"), View.RouteTravelMoney, State.PlayerGold);
+	TestEqual(TEXT("view retains ordinary gold as diagnostics only"), View.PlayerGold, State.PlayerGold);
+	TestEqual(TEXT("legacy view balance alias mirrors physical travel money"), View.RouteTravelMoney, MerchantRulesTestMoney(State));
 	TestEqual(TEXT("view exposes first refresh cost"), View.RefreshCost, 20);
 	TestTrue(TEXT("view enables affordable refresh"), View.bRefreshEnabled);
 	return true;
@@ -487,7 +494,7 @@ bool FGameXXKRouteMerchantRefreshTest::RunTest(const FString& Parameters)
 	FString Error;
 	TestTrue(TEXT("initial stock generates before refresh"), FGameXXKRouteMerchantRules::EnsureStock(State, &Error));
 	const FGameXXKRouteMerchantState BeforeRefresh = State.CardRun.RouteMerchant;
-	const int32 PlayerGoldBefore = State.PlayerGold;
+	const int32 PlayerGoldBefore = MerchantRulesTestMoney(State);
 	const int32 MoneyBefore = State.CardRun.RouteTravelMoney;
 	TestEqual(TEXT("refresh zero costs twenty"), FGameXXKRouteMerchantRules::GetRefreshCost(0), 20);
 	TestEqual(TEXT("refresh one costs thirty"), FGameXXKRouteMerchantRules::GetRefreshCost(1), 30);
@@ -497,7 +504,7 @@ bool FGameXXKRouteMerchantRefreshTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("invalid refresh count has no valid cost"), FGameXXKRouteMerchantRules::GetRefreshCost(-1), 0);
 	TestTrue(TEXT("refresh succeeds"), FGameXXKRouteMerchantRules::Refresh(State, &Error));
 	TestEqual(TEXT("refresh preserves route travel money"), State.CardRun.RouteTravelMoney, MoneyBefore);
-	TestEqual(TEXT("refresh debits ordinary gold once"), State.PlayerGold, PlayerGoldBefore - 20);
+	TestEqual(TEXT("refresh debits physical travel money once"), MerchantRulesTestMoney(State), PlayerGoldBefore - 20);
 	TestEqual(TEXT("refresh count advances once"), State.CardRun.RouteMerchant.RefreshCount, 1);
 	TestEqual(TEXT("refresh replaces the complete four-slot stock"), State.CardRun.RouteMerchant.Offers.Num(), FGameXXKRouteMerchantRules::TotalSlotCount);
 	for (int32 Index = 0; Index < FGameXXKRouteMerchantRules::TotalSlotCount; ++Index)
@@ -509,10 +516,10 @@ bool FGameXXKRouteMerchantRefreshTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("post-refresh view exposes next cost"), View.RefreshCost, 30);
 
 	FGameXXKRuntimeState Insufficient = State;
-	Insufficient.PlayerGold = View.RefreshCost - 1;
+	MerchantRulesTestMoney(Insufficient) = View.RefreshCost - 1;
 	Insufficient.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState InsufficientBefore = Insufficient;
-	TestFalse(TEXT("refresh rejects insufficient ordinary gold"), FGameXXKRouteMerchantRules::Refresh(Insufficient, &Error));
+	TestFalse(TEXT("refresh rejects insufficient physical travel money"), FGameXXKRouteMerchantRules::Refresh(Insufficient, &Error));
 	TestTrue(TEXT("insufficient refresh preserves the complete runtime"), RuntimeStatesMatch(Insufficient, InsufficientBefore));
 	FGameXXKRouteMerchantView InsufficientView;
 	TestTrue(TEXT("insufficient view still reads"), FGameXXKRouteMerchantRules::GetView(Insufficient, InsufficientView, &Error));
@@ -554,12 +561,12 @@ bool FGameXXKRouteMerchantPurchaseValidationTest::RunTest(const FString& Paramet
 	const int32 Price = BaseOffer->Price;
 
 	FGameXXKRuntimeState Insufficient = Base;
-	Insufficient.PlayerGold = Price - 1;
+	MerchantRulesTestMoney(Insufficient) = Price - 1;
 	Insufficient.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState BeforePreview = Insufficient;
 	FGameXXKRouteMerchantPurchasePreview Preview;
 	TestFalse(TEXT("insufficient preview rejects"), FGameXXKRouteMerchantRules::PreviewPurchase(Insufficient, OfferId, NAME_None, Preview, &Error));
-	TestEqual(TEXT("insufficient preview reports typed reason"), Preview.Failure, EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold);
+	TestEqual(TEXT("insufficient preview reports typed reason"), Preview.Failure, EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney);
 	TestEqual(TEXT("insufficient preview includes the saved offer"), Preview.Offer.OfferId, OfferId);
 	TestEqual(TEXT("insufficient preview includes balance before"), Preview.BalanceBefore, Price - 1);
 	TestEqual(TEXT("insufficient preview includes price"), Preview.Price, Price);
@@ -569,7 +576,7 @@ bool FGameXXKRouteMerchantPurchaseValidationTest::RunTest(const FString& Paramet
 		Insufficient,
 		OfferId,
 		NAME_None,
-		EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold,
+		EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney,
 		TEXT("insufficient purchase"));
 
 	FGameXXKRuntimeState Sold = Base;
@@ -635,7 +642,7 @@ bool FGameXXKRouteMerchantPurchaseCardQualityTest::RunTest(const FString& Parame
 	}
 	const FGameXXKRouteMerchantOffer SavedOffer = *Offer;
 	const int32 MoneyBefore = State.CardRun.RouteTravelMoney;
-	const int32 GoldBefore = State.PlayerGold;
+	const int32 GoldBefore = MerchantRulesTestMoney(State);
 	const int32 RelicsBefore = State.CardRun.Relics.Num();
 	FGameXXKRouteMerchantPurchasePreview Preview;
 	const FGameXXKRuntimeState BeforePreview = State;
@@ -647,7 +654,7 @@ bool FGameXXKRouteMerchantPurchaseCardQualityTest::RunTest(const FString& Parame
 	TestTrue(TEXT("card purchase commits"), FGameXXKRouteMerchantRules::Purchase(State, Offer->OfferId, NAME_None, Result));
 	TestEqual(TEXT("card purchase adds no relic"), State.CardRun.Relics.Num(), RelicsBefore);
 	TestEqual(TEXT("card purchase preserves route money"), State.CardRun.RouteTravelMoney, MoneyBefore);
-	TestEqual(TEXT("card purchase debits ordinary gold"), State.PlayerGold, GoldBefore - SavedOffer.Price);
+	TestEqual(TEXT("card purchase debits physical travel money"), MerchantRulesTestMoney(State), GoldBefore - SavedOffer.Price);
 	TestEqual(TEXT("card purchase upgrades authoritative quality"),
 		FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, SavedOffer.ContentId), SavedOffer.NextQuality);
 	const FGameXXKRouteMerchantOffer* SoldOffer = State.CardRun.RouteMerchant.Offers.FindByPredicate([&SavedOffer](const FGameXXKRouteMerchantOffer& Candidate)
@@ -678,7 +685,7 @@ bool FGameXXKRouteMerchantPurchaseRelicTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	const FGameXXKRouteMerchantOffer SavedOffer = *Offer;
-	const int32 GoldBefore = State.PlayerGold;
+	const int32 GoldBefore = MerchantRulesTestMoney(State);
 	const int32 RouteMoneyBefore = State.CardRun.RouteTravelMoney;
 	const int32 RelicStacksBefore = State.CardRun.Relics.ContainsByPredicate([&SavedOffer](const FGameXXKRelicInstance& Instance)
 	{
@@ -694,7 +701,7 @@ bool FGameXXKRouteMerchantPurchaseRelicTest::RunTest(const FString& Parameters)
 	FGameXXKRouteMerchantPurchaseResult Result;
 	TestTrue(TEXT("relic purchase commits"),
 		FGameXXKRouteMerchantRules::Purchase(State, SavedOffer.OfferId, NAME_None, Result));
-	TestEqual(TEXT("relic purchase debits ordinary gold"), State.PlayerGold, GoldBefore - SavedOffer.Price);
+	TestEqual(TEXT("relic purchase debits physical travel money"), MerchantRulesTestMoney(State), GoldBefore - SavedOffer.Price);
 	TestEqual(TEXT("relic purchase preserves route travel money"), State.CardRun.RouteTravelMoney, RouteMoneyBefore);
 	const FGameXXKRelicInstance* Acquired = State.CardRun.Relics.FindByPredicate([&SavedOffer](const FGameXXKRelicInstance& Instance)
 	{
@@ -951,7 +958,7 @@ bool FGameXXKRouteMerchantCarriedCardUpgradeTest::RunTest(const FString& Paramet
 	FGameXXKRuntimeState State = MakeMerchantState(true);
 	const FGameXXKRuntimeState InitialState = State;
 	const int32 InitialRouteMoney = State.CardRun.RouteTravelMoney;
-	const int32 InitialPlayerGold = State.PlayerGold;
+	const int32 InitialPlayerGold = MerchantRulesTestMoney(State);
 	const TArray<FName> InitialHeroCards = State.CardRun.HeroSelectedCardIds;
 	const int32 InitialRelicCount = State.CardRun.Relics.Num();
 	FString Error;
@@ -1002,8 +1009,8 @@ bool FGameXXKRouteMerchantCarriedCardUpgradeTest::RunTest(const FString& Paramet
 		FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, First.CardId), First.FinalQuality);
 	TestEqual(TEXT("second authoritative quality upgraded"),
 		FGameXXKCardBattleAdapter::GetConfiguredCardQuality(State.CardRun, Second.CardId), Second.FinalQuality);
-	TestEqual(TEXT("ordinary gold pays for both upgrades"),
-		State.PlayerGold, InitialPlayerGold - First.Price - Second.Price);
+	TestEqual(TEXT("physical travel money pays for both upgrades"),
+		MerchantRulesTestMoney(State), InitialPlayerGold - First.Price - Second.Price);
 	TestEqual(TEXT("route-travel money is bit-identical after both upgrades"),
 		State.CardRun.RouteTravelMoney, InitialRouteMoney);
 	TestEqual(TEXT("merchant upgrades do not replace carried cards"), State.CardRun.HeroSelectedCardIds, InitialHeroCards);
@@ -1146,11 +1153,11 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 	FGameXXKRouteMerchantPurchaseResult Purchased;
 	TestTrue(TEXT("one offer buys before refresh"),
 		FGameXXKRouteMerchantRules::Purchase(State, SavedPurchased.OfferId, NAME_None, Purchased));
-	const int32 GoldBeforeRefresh = State.PlayerGold;
+	const int32 GoldBeforeRefresh = MerchantRulesTestMoney(State);
 	const int32 RouteMoneyBeforeRefresh = State.CardRun.RouteTravelMoney;
 	TestTrue(TEXT("refresh commits"), FGameXXKRouteMerchantRules::Refresh(State, &Error));
 	TestEqual(TEXT("refresh count advances"), State.CardRun.RouteMerchant.RefreshCount, 1);
-	TestEqual(TEXT("refresh uses ordinary gold"), State.PlayerGold, GoldBeforeRefresh - 20);
+	TestEqual(TEXT("refresh uses physical travel money"), MerchantRulesTestMoney(State), GoldBeforeRefresh - 20);
 	TestEqual(TEXT("refresh never changes route money"), State.CardRun.RouteTravelMoney, RouteMoneyBeforeRefresh);
 	TestTrue(TEXT("sold card remains visible and sold after refresh"),
 		State.CardRun.RouteMerchant.Offers.ContainsByPredicate([&SavedPurchased](const auto& Offer)
@@ -1162,7 +1169,7 @@ bool FGameXXKRouteMerchantRefreshAndStaleTest::RunTest(const FString& Parameters
 		SavedPurchased.NextQuality);
 
 	FGameXXKRuntimeState NoGold = State;
-	NoGold.PlayerGold = FGameXXKRouteMerchantRules::GetRefreshCost(NoGold.CardRun.RouteMerchant.RefreshCount) - 1;
+	MerchantRulesTestMoney(NoGold) = FGameXXKRouteMerchantRules::GetRefreshCost(NoGold.CardRun.RouteMerchant.RefreshCount) - 1;
 	NoGold.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState NoGoldBefore = NoGold;
 	TestFalse(TEXT("route money cannot fund refresh"), FGameXXKRouteMerchantRules::Refresh(NoGold, &Error));
@@ -1517,6 +1524,50 @@ bool FGameXXKRouteMerchantSaveContractTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("new typed failures append after legacy values"),
 		static_cast<uint8>(EGameXXKRouteMerchantPurchaseFailure::StaleCardQuality)
 			> static_cast<uint8>(EGameXXKRouteMerchantPurchaseFailure::ArithmeticOverflow));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKMerchantPhysicalCurrencyTest,
+	"GameXXK.RouteTravelMoney.MerchantCombinedContainers", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKMerchantPhysicalCurrencyTest::RunTest(const FString& Parameters)
+{
+	auto State = MakeMerchantState();
+	State.PlayerGold = 1000000;
+	State.Inventory.Remove(FGameXXKTravelMoneyRules::ItemId());
+	FString Error;
+	if (!TestTrue(TEXT("merchant stock is generated"), FGameXXKRouteMerchantRules::EnsureStock(State, &Error))) return false;
+	const auto* Available = State.CardRun.RouteMerchant.Offers.FindByPredicate([](const auto& Offer)
+		{ return !Offer.bUnavailable && !Offer.bSold; });
+	if (!TestNotNull(TEXT("fixture has a purchaseable offer"), Available)) return false;
+	const auto Offer = *Available;
+	auto LegacyStock = State;
+	auto* LegacyRelic = LegacyStock.CardRun.RouteMerchant.Offers.FindByPredicate([](const auto& Saved)
+		{ return Saved.Kind == EGameXXKRouteMerchantOfferKind::Relic && !Saved.bUnavailable; });
+	const auto* RetiredRelic = FGameXXKRelicCatalog::FindDefinition(TEXT("Relic.WineCup"));
+	if (LegacyRelic && RetiredRelic)
+	{
+		LegacyRelic->ContentId = RetiredRelic->Id;
+		LegacyRelic->Quality = RetiredRelic->BaseQuality;
+		LegacyRelic->Price = FGameXXKCardQualityRules::GetRelicPrice(RetiredRelic->BaseQuality);
+		TestTrue(TEXT("retired relic does not corrupt existing merchant saves"), FGameXXKRouteMerchantRules::ValidateSavedStock(LegacyStock, &Error));
+	}
+	FGameXXKRouteMerchantPurchaseResult Result;
+	const auto RichButNoMoney = State;
+	TestFalse(TEXT("ordinary gold cannot fund route purchases"), FGameXXKRouteMerchantRules::Purchase(State, Offer.OfferId, NAME_None, Result));
+	TestTrue(TEXT("rejected purchase neither grants goods nor spends gold"), RuntimeStatesMatch(State, RichButNoMoney));
+	State.Inventory.Add(FGameXXKTravelMoneyRules::ItemId(), 3);
+	State.DesktopInventory.WarehouseItems.Add(FGameXXKTravelMoneyRules::ItemId(), Offer.Price + 27);
+	TestTrue(TEXT("purchase spans backpack and warehouse"), FGameXXKRouteMerchantRules::Purchase(State, Offer.OfferId, NAME_None, Result));
+	TestEqual(TEXT("ordinary gold stays intact"), State.PlayerGold, 1000000);
+	TestEqual(TEXT("backpack is consumed before warehouse"), State.Inventory.FindRef(FGameXXKTravelMoneyRules::ItemId()), 0);
+	TestEqual(TEXT("warehouse pays exact remainder"), State.DesktopInventory.WarehouseItems.FindRef(FGameXXKTravelMoneyRules::ItemId()), 30);
+	const auto Paid = State;
+	TestFalse(TEXT("sold offer cannot be purchased twice"), FGameXXKRouteMerchantRules::Purchase(State, Offer.OfferId, NAME_None, Result));
+	TestTrue(TEXT("second click changes no state"), RuntimeStatesMatch(State, Paid));
+	TestTrue(TEXT("refresh can spend warehouse money"), FGameXXKRouteMerchantRules::Refresh(State, &Error));
+	TestEqual(TEXT("refresh consumes twenty travel money"), FGameXXKTravelMoneyRules::GetBalance(State), int64(10));
+	TestEqual(TEXT("refresh leaves ordinary gold intact"), State.PlayerGold, 1000000);
 	return true;
 }
 

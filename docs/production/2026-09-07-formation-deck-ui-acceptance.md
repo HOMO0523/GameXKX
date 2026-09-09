@@ -14,7 +14,7 @@
 ## 验证
 
 - RED：`Saved/Automation/FormationDeckRed_20260907`，缺少密度按钮与编队卡组入口两项按预期失败。
-- `Saved/Automation/FormationDeckRelease_20260907/index.json`：85/86。新交互、卡组及其余Workbench检查通过；唯一失败仍为之前已有的`Workbench.InnerGeometry`武器槽位置/尺寸旧断言，本轮未改武器槽。
+- `Saved/Automation/FormationDeckRelease_20260907/index.json`：87/88（85项正常通过、2项带警告通过）。新交互、卡组及其余Workbench检查通过；唯一失败仍为之前已有的`Workbench.InnerGeometry`武器槽位置/尺寸旧断言，本轮未改武器槽。
 - 最终Editor与Development游戏目标均经冷UBT通过。游戏目标日志保留在`Saved/Codex/FormationDeck-20260907/development-build-final.log`。
 - 实机证据目录：`Saved/Codex/FormationDeck-20260907`。`formation-before-confirmed.png`、`backpack-deck-before.png`是修改前截图；`formation-final-50/75/100.png`与`deck-overview-final-100.png`为三档复核。
 - `native-selected-seven.png`、`native-return-seven.png`、`formation-deck-final-seven.png`：真实鼠标选成7/8，展开返回后仍7/8，再从编队打开仍7/8。`npc-candidate-final.png`、`npc-cancel-final.png`确认预览周光祖后取消，出战仍为土司首领。

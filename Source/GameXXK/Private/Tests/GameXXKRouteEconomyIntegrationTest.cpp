@@ -5,6 +5,9 @@
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteEconomyRules.h"
+#include "GameXXKTravelMoneyRules.h"
+#include "MVP/GameXXKMVPSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
@@ -13,7 +16,14 @@
 
 namespace
 {
-	constexpr int32 DefaultRouteBalance = 60;
+	constexpr int32 DefaultRouteBalance = 0;
+
+	FGameXXKRuntimeState MakeEconomyPartyFixture()
+	{
+		auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+		Subsystem->StartGame();
+		return Subsystem->GetRuntimeStateCopy();
+	}
 
 	TArray<uint8> SerializeRuntimeState(const FGameXXKRuntimeState& State)
 	{
@@ -27,7 +37,7 @@ namespace
 
 	bool EnterRouteFixture(FGameXXKRuntimeState& OutState, const int32 PlayerGold = 137)
 	{
-		OutState = UGameXXKMVPRules::CreateNewGame();
+		OutState = MakeEconomyPartyFixture();
 		OutState.Screen = EGameXXKScreen::Town;
 		OutState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 		OutState.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
@@ -161,7 +171,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a new game has no route award receipts"), NewGame.CardRun.RewardedTravelMoneyNodes.IsEmpty());
 
 	// A genuinely new route must discard stale economy before the idempotent initializer runs.
-	FGameXXKRuntimeState EntryState = UGameXXKMVPRules::CreateNewGame();
+	FGameXXKRuntimeState EntryState = MakeEconomyPartyFixture();
 	EntryState.Screen = EGameXXKScreen::Town;
 	EntryState.CurrentRegion = UGameXXKMVPRules::RegionQingshan();
 	EntryState.CurrentMapId = UGameXXKMVPRules::RegionQingshan();
@@ -172,7 +182,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	EntryState.CardRun.RouteTravelMoney = 777;
 	EntryState.CardRun.RewardedTravelMoneyNodes.Add(FGameXXKRouteTravelMoneyReceipt{2, 44, 9});
 	TestTrue(TEXT("entering a new route succeeds"), UGameXXKMVPRules::EnterDungeon(EntryState));
-	TestEqual(TEXT("a new route starts with exactly 60 travel money"), EntryState.CardRun.RouteTravelMoney, DefaultRouteBalance);
+	TestEqual(TEXT("a new route starts without virtual travel money"), EntryState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	TestTrue(TEXT("a new route marks its economy initialized"), EntryState.CardRun.bRouteEconomyInitialized);
 	TestTrue(TEXT("a new route clears every prior node receipt"), EntryState.CardRun.RewardedTravelMoneyNodes.IsEmpty());
 	TestEqual(TEXT("route entry never changes permanent gold"), EntryState.PlayerGold, 913);
@@ -229,11 +239,11 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 		FString::Printf(TEXT("skipping the saved reward succeeds: %s"), *RewardError),
 		FGameXXKCardBattleAdapter::SkipPendingRouteReward(NormalState, &RewardError));
 	TestTrue(TEXT("the resolved normal reward settles its node"), UGameXXKMVPRules::ResolveBattleVictory(NormalState, false));
-	TestEqual(TEXT("a normal node awards exactly 20 travel money"), NormalState.CardRun.RouteTravelMoney, DefaultRouteBalance + 20);
+	TestEqual(TEXT("a normal node awards no travel money"), NormalState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	TestEqual(TEXT("normal node settlement writes one receipt"), NormalState.CardRun.RewardedTravelMoneyNodes.Num(), 1);
 	if (const FGameXXKRouteTravelMoneyReceipt* Receipt = FindReceipt(NormalState, 1, 7))
 	{
-		TestEqual(TEXT("the normal receipt records exactly 20"), Receipt->Amount, 20);
+		TestEqual(TEXT("the normal receipt records zero currency"), Receipt->Amount, 0);
 	}
 	else
 	{
@@ -268,10 +278,10 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	SetSingleGeneratedNode(EliteState, EGameXXKNodeKind::Elite, 8, EGameXXKScreen::DungeonMap, false);
 	const int32 EliteGoldBefore = EliteState.PlayerGold;
 	TestTrue(TEXT("an elite battle settles after its real card-reward gate"), ResolvePendingBattleReward(EliteState, false));
-	TestEqual(TEXT("an elite node awards exactly 35 travel money"), EliteState.CardRun.RouteTravelMoney, DefaultRouteBalance + 35);
+	TestEqual(TEXT("an elite node awards no travel money"), EliteState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	if (const FGameXXKRouteTravelMoneyReceipt* Receipt = FindReceipt(EliteState, 1, 8))
 	{
-		TestEqual(TEXT("the elite receipt records exactly 35"), Receipt->Amount, 35);
+		TestEqual(TEXT("the elite receipt records zero currency"), Receipt->Amount, 0);
 	}
 	else
 	{
@@ -310,10 +320,10 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the second WineCup becomes a stack"), FGameXXKRelicRules::AcquireRelic(StackedWineState, TEXT("Relic.WineCup"), &RelicError));
 	SetSingleGeneratedNode(StackedWineState, EGameXXKNodeKind::Start, 4, EGameXXKScreen::DungeonMap, false);
 	TestTrue(TEXT("the stacked-WineCup zero node completes"), UGameXXKMVPRules::SelectRouteNodeById(StackedWineState, 4));
-	TestEqual(TEXT("two WineCup stacks add exactly six travel money"), StackedWineState.CardRun.RouteTravelMoney, DefaultRouteBalance + 6);
+	TestEqual(TEXT("old WineCup stacks no longer mint travel money"), StackedWineState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	if (const FGameXXKRouteTravelMoneyReceipt* Receipt = FindReceipt(StackedWineState, 1, 4))
 	{
-		TestEqual(TEXT("base and stacked WineCup share one six-money receipt"), Receipt->Amount, 6);
+		TestEqual(TEXT("retired WineCup writes a zero-currency receipt"), Receipt->Amount, 0);
 	}
 	else
 	{
@@ -323,7 +333,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("WineCup remains in the relic catalog"), WineCupDefinition);
 	if (WineCupDefinition)
 	{
-		TestEqual(TEXT("WineCup names route travel money explicitly"), WineCupDefinition->Description.ToString(), FString(TEXT("完成路线节点时获得3行旅钱。")));
+		TestFalse(TEXT("retired currency relic leaves new offer pools"), WineCupDefinition->bOfferEligible);
 	}
 
 	// Treasure acquisition is staged before bonus calculation, so WineCup affects its own node.
@@ -347,10 +357,10 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	{
 		return Instance.RelicId == FName(TEXT("Relic.WineCup"));
 	}));
-	TestEqual(TEXT("a newly chosen WineCup adds three on that same treasure"), TreasureState.CardRun.RouteTravelMoney, DefaultRouteBalance + 3);
+	TestEqual(TEXT("a legacy WineCup offer no longer mints currency"), TreasureState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	if (const FGameXXKRouteTravelMoneyReceipt* Receipt = FindReceipt(TreasureState, 1, 10))
 	{
-		TestEqual(TEXT("the treasure receipt atomically includes the WineCup bonus"), Receipt->Amount, 3);
+		TestEqual(TEXT("the treasure receipt atomically includes the WineCup bonus"), Receipt->Amount, 0);
 	}
 	else
 	{
@@ -437,10 +447,10 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	SetSingleGeneratedNode(LegacyMoneyEvent, EGameXXKNodeKind::Event, 17, EGameXXKScreen::RouteEvent, true);
 	const int32 LegacyMoneyGoldBefore = LegacyMoneyEvent.PlayerGold;
 	TestTrue(TEXT("the legacy take-money event resolves"), UGameXXKMVPRules::ResolveEventReward(LegacyMoneyEvent, true));
-	TestEqual(TEXT("the legacy take-money event awards exactly 20"), LegacyMoneyEvent.CardRun.RouteTravelMoney, DefaultRouteBalance + 20);
+	TestEqual(TEXT("the legacy take-money event awards no currency"), LegacyMoneyEvent.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	if (const FGameXXKRouteTravelMoneyReceipt* Receipt = FindReceipt(LegacyMoneyEvent, 1, 17))
 	{
-		TestEqual(TEXT("the legacy money event receipt records 20"), Receipt->Amount, 20);
+		TestEqual(TEXT("the legacy money event receipt records zero"), Receipt->Amount, 0);
 	}
 	else
 	{
@@ -479,9 +489,8 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("overflow fixture resolves its card-reward gate before corruption"), ResolveCardBattleRewardGate(OverflowState, false));
 	OverflowState.CardRun.RouteTravelMoney = MAX_int32;
 	const FGameXXKRuntimeState OverflowBefore = OverflowState;
-	TestFalse(TEXT("an overflowing normal award is rejected"), UGameXXKMVPRules::ResolveBattleVictory(OverflowState, false));
-	TestTrue(TEXT("overflow rejection preserves every reflected runtime property"),
-		FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&OverflowState, &OverflowBefore, PPF_None));
+	TestTrue(TEXT("a maximum legacy balance does not block a zero-currency node"), UGameXXKMVPRules::ResolveBattleVictory(OverflowState, false));
+	TestEqual(TEXT("node settlement mints no currency even at legacy maximum"), OverflowState.CardRun.RouteTravelMoney, MAX_int32);
 
 	FGameXXKRuntimeState UninitializedState;
 	if (!EnterRouteFixture(UninitializedState))
@@ -519,7 +528,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	const int32 BossGoldBefore = BossState.PlayerGold;
 	SetSingleGeneratedNode(BossState, EGameXXKNodeKind::Boss, 21, EGameXXKScreen::DungeonMap, false);
 	TestTrue(TEXT("chapter-one Boss victory resolves"), ResolvePendingBattleReward(BossState, true));
-	TestEqual(TEXT("chapter-one Boss awards exactly 50 before advancing"), BossState.CardRun.RouteTravelMoney, DefaultRouteBalance + 50);
+	TestEqual(TEXT("chapter-one Boss awards no currency before advancing"), BossState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	TestEqual(TEXT("chapter-one Boss advances to chapter two"), BossState.CardRun.RouteProgress.CurrentChapter, 2);
 	TestTrue(TEXT("chapter-one Boss preserves initialized economy"), BossState.CardRun.bRouteEconomyInitialized);
 	TestNotNull(TEXT("chapter-one Boss keeps its chapter-scoped receipt"), FindReceipt(BossState, 1, 21));
@@ -527,7 +536,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 
 	SetSingleGeneratedNode(BossState, EGameXXKNodeKind::Boss, 21, EGameXXKScreen::DungeonMap, false);
 	TestTrue(TEXT("chapter-two Boss victory resolves"), ResolvePendingBattleReward(BossState, true));
-	TestEqual(TEXT("chapter-two same-node ID receives its own 50"), BossState.CardRun.RouteTravelMoney, DefaultRouteBalance + 100);
+	TestEqual(TEXT("chapter-two same-node ID receives no currency"), BossState.CardRun.RouteTravelMoney, DefaultRouteBalance);
 	TestEqual(TEXT("chapter-two Boss advances to chapter three"), BossState.CardRun.RouteProgress.CurrentChapter, 3);
 	TestTrue(TEXT("chapter-two Boss preserves initialized economy"), BossState.CardRun.bRouteEconomyInitialized);
 	TestEqual(TEXT("chapter one and two preserve both receipts"), BossState.CardRun.RewardedTravelMoneyNodes.Num(), 2);
@@ -536,7 +545,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	const int32 GoldBeforeTerminalBoss = BossState.PlayerGold;
 	SetSingleGeneratedNode(BossState, EGameXXKNodeKind::Boss, 21, EGameXXKScreen::DungeonMap, false);
 	TestTrue(TEXT("chapter-three Boss victory resolves the route"), ResolvePendingBattleReward(BossState, true));
-	TestEqual(TEXT("chapter-three clear converts post-Boss travel money ten to one"), BossState.PlayerGold, GoldBeforeTerminalBoss + (DefaultRouteBalance + 150) / 10);
+	TestEqual(TEXT("chapter-three clear converts post-Boss travel money ten to one"), BossState.PlayerGold, GoldBeforeTerminalBoss + (DefaultRouteBalance) / 10);
 	TestFalse(TEXT("chapter-three clear ends the active route"), BossState.bDungeonActive);
 	TestEqual(TEXT("chapter-three clear zeros travel money"), BossState.CardRun.RouteTravelMoney, 0);
 	TestFalse(TEXT("chapter-three clear removes the economy initialization"), BossState.CardRun.bRouteEconomyInitialized);
@@ -550,6 +559,10 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	bool bSeedAwarded = false;
+	// Explicitly model a legacy save balance; new runs start at zero.
+	FailureState.CardRun.RouteTravelMoney = 60;
+	FailureState.Inventory.Add(FGameXXKTravelMoneyRules::ItemId(), 10);
+	FailureState.DesktopInventory.WarehouseItems.Add(FGameXXKTravelMoneyRules::ItemId(), 7);
 	TestTrue(
 		TEXT("failure fixture records one seven-money node"),
 		FGameXXKRouteEconomyRules::AwardNodeOnce(FailureState.CardRun, 1, 31, 7, bSeedAwarded));
@@ -559,6 +572,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("route defeat settles"), UGameXXKMVPRules::FailDungeonToTown(FailureState));
 	TestEqual(TEXT("route defeat converts travel money twenty to one"), FailureState.PlayerGold, FailureGoldBefore + 67 / 20);
 	TestEqual(TEXT("route defeat clears travel money"), FailureState.CardRun.RouteTravelMoney, 0);
+	TestEqual(TEXT("defeat preserves physical travel money"), FGameXXKTravelMoneyRules::GetBalance(FailureState), int64(17));
 	TestFalse(TEXT("route defeat clears economy initialization"), FailureState.CardRun.bRouteEconomyInitialized);
 	TestTrue(TEXT("route defeat clears receipts"), FailureState.CardRun.RewardedTravelMoneyNodes.IsEmpty());
 	TestTrue(TEXT("route defeat preserves LastAppliedRouteSettlementId"), FailureState.CardRun.LastAppliedRouteSettlementId.IsValid());
@@ -567,6 +581,7 @@ bool FGameXXKRouteEconomyIntegrationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("route abandon settles"), UGameXXKMVPRules::AbandonDungeonToTown(AbandonState));
 	TestEqual(TEXT("route abandon converts travel money twenty to one"), AbandonState.PlayerGold, AbandonGoldBefore + 67 / 20);
 	TestEqual(TEXT("route abandon clears travel money"), AbandonState.CardRun.RouteTravelMoney, 0);
+	TestEqual(TEXT("abandon preserves physical travel money"), FGameXXKTravelMoneyRules::GetBalance(AbandonState), int64(17));
 	TestFalse(TEXT("route abandon clears economy initialization"), AbandonState.CardRun.bRouteEconomyInitialized);
 	TestTrue(TEXT("route abandon clears receipts"), AbandonState.CardRun.RewardedTravelMoneyNodes.IsEmpty());
 	TestTrue(TEXT("route abandon preserves LastAppliedRouteSettlementId"), AbandonState.CardRun.LastAppliedRouteSettlementId.IsValid());

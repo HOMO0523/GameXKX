@@ -28,7 +28,7 @@ bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
-	State.PlayerGold = 1000;
+	State.PlayerGold = 1000000;
 
 	UGameXXKMetaShopWidget* Widget = NewObject<UGameXXKMetaShopWidget>();
 	Widget->SetMVPSubsystem(Subsystem);
@@ -93,7 +93,7 @@ bool FGameXXKMetaShopWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("confirmed purchase succeeds"), Widget->ConfirmPurchaseForTest());
 	const FGameXXKMetaShopPurchaseResult PurchaseResult = Widget->GetLastPurchaseResultForTest();
 	TestTrue(TEXT("widget stores successful purchase result"), PurchaseResult.bPurchased);
-	TestEqual(TEXT("widget purchase debits exact price"), State.PlayerGold, 900);
+	TestEqual(TEXT("widget purchase debits exact price"), State.PlayerGold, 900000);
 
 	Widget->OpenMetaShopForTest();
 	TestTrue(TEXT("player can select the companion pack"), Widget->SelectProductForTest(EGameXXKMetaShopProductId::CompanionPack));

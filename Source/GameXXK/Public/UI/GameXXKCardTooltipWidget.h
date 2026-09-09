@@ -3,6 +3,7 @@
 #include "Blueprint/UserWidget.h"
 #include "GameXXKCardText.h"
 #include "UI/GameXXKCardTooltipInteraction.h"
+#include "UI/GameXXKCardTooltipPresentation.h"
 #include "GameXXKCardTooltipWidget.generated.h"
 
 class UBorder;
@@ -10,6 +11,7 @@ class USizeBox;
 class UTextBlock;
 class UVerticalBox;
 struct FGameXXKCardDefinition;
+struct FGameXXKRuntimeState;
 
 /**
  * Fixed-width parchment Tooltip shared by Backpack, companion/NPC decks and
@@ -27,6 +29,7 @@ public:
 	static bool IsPhysicalControlDown();
 	static bool IsPhysicalEscapeDown();
 	static bool IsOwnerWindowActive(const UWidget* Owner);
+	static FName ResolveCardOwnerCharacterId(const FGameXXKRuntimeState& State, const FGameXXKCardDefinition& Definition);
 
 	void ConfigureCard(
 		const FGameXXKCardDefinition& Definition,
@@ -74,6 +77,7 @@ private:
 	TObjectPtr<UVerticalBox> BodyBox;
 
 	FText ConfiguredTitle;
+	float PresentationWidth = GameXXKCardTooltipPresentation::MinimumWidth;
 	FString CompactBody;
 	FString ExpandedBody;
 	FString PillBody;

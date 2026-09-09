@@ -13,7 +13,7 @@ namespace GameXXKDialogueHistoryPrivate
 {
 	constexpr int32 MaximumEntries = 100;
 	constexpr const TCHAR* PaperTexturePath =
-		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelTall.T_MasterV2_PanelTall");
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
 
 	FSlateBrush PaperBrush()
 	{
@@ -91,7 +91,10 @@ FGameXXKDialogueHistoryEntry UGameXXKDialogueHistoryWidget::GetHistoryEntryForTe
 
 bool UGameXXKDialogueHistoryWidget::IsReadOnlyForTest() const
 {
-	return GetVisibility() == ESlateVisibility::HitTestInvisible;
+	// Read-only history still allows scrolling; its rows must contain only text.
+	if(!HistoryRows)return false;
+	for(UWidget* Row:HistoryRows->GetAllChildren())if(!Cast<UTextBlock>(Row))return false;
+	return true;
 }
 
 void UGameXXKDialogueHistoryWidget::BuildProgrammaticLayout()

@@ -1,4 +1,5 @@
 #include "GameXXKRelicRules.h"
+#include "GameXXKTalentRules.h"
 
 #include "GameXXKCardRules.h"
 #include "GameXXKRelicCatalog.h"
@@ -336,7 +337,7 @@ void FGameXXKRelicRules::ClearRouteRelics(FGameXXKRuntimeState& InOutState)
 	InOutState.CardRun.RouteAttributeBonuses = FGameXXKRouteAttributeBonuses();
 	// Route-only maxima disappear with their modifiers; retain damage without
 	// leaving persistent resources above the permanent character limits.
-	InOutState.PlayerHP = FMath::Clamp(InOutState.PlayerHP,0,InOutState.PlayerMaxHP);
+	InOutState.PlayerHP = FMath::Clamp(InOutState.PlayerHP,0,FGameXXKTalentRules::GetEffectiveHeroMaxHP(InOutState));
 	InOutState.PlayerMP = FMath::Clamp(InOutState.PlayerMP,0,InOutState.PlayerMaxMP);
 }
 
@@ -449,7 +450,8 @@ bool FGameXXKRelicRules::CalculateRouteNodeTravelMoneyBonus(
 		TotalBonus += Contribution;
 	}
 
-	OutBonus = static_cast<int32>(TotalBonus);
+	// Retain validation for old saves, but route effects no longer mint currency.
+	OutBonus = 0;
 	return true;
 }
 
@@ -465,9 +467,9 @@ void FGameXXKRelicRules::ApplyRouteNodeCompletedNonCurrency(FGameXXKRuntimeState
 		case EGameXXKRelicEffectKind::GainRouteTravelMoney:
 			break;
 		case EGameXXKRelicEffectKind::HealPlayer:
-			InOutState.PlayerHP = FMath::Min(
-				InOutState.PlayerMaxHP + FMath::Max(0, InOutState.CardRun.RouteAttributeBonuses.MaxHealth),
-				InOutState.PlayerHP + Magnitude);
+			InOutState.PlayerHP = static_cast<int32>(FMath::Min<int64>(
+				FGameXXKTalentRules::GetEffectiveHeroMaxHP(InOutState),
+				static_cast<int64>(InOutState.PlayerHP) + Magnitude));
 			break;
 		case EGameXXKRelicEffectKind::GainRouteMaxHealth: InOutState.CardRun.RouteAttributeBonuses.MaxHealth += Magnitude; break;
 		case EGameXXKRelicEffectKind::GainRouteMaxMana: InOutState.CardRun.RouteAttributeBonuses.MaxMana += Magnitude; break;

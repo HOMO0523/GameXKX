@@ -1,6 +1,12 @@
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "Audio/GameXXKSfx.h"
+#include "Guide/GameXXKAcademySubsystem.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKCharacterUiPresentation.h"
+#include "UI/GameXXKCardVisualEffects.h"
+#include "UI/GameXXKCardNameStyle.h"
+#include "UI/GameXXKCardPortraitImage.h"
+#include "UI/GameXXKCardSynergyPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 
@@ -30,6 +36,8 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKCombatGemRules.h"
+#include "GameXXKResistanceRules.h"
 #include "GameXXKCardText.h"
 #include "GameXXKEnemyText.h"
 #include "GameXXKMVPRules.h"
@@ -37,6 +45,7 @@
 #include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Guide/GameXXKTutorial01GuideHost.h"
 #include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 #include "HAL/PlatformTime.h"
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
@@ -167,14 +176,20 @@ namespace
 	static constexpr float PlayerHandSelectedScale = 1.20f;
 	static constexpr float PlayerHandSelectedLift = -32.0f;
 	static constexpr double PlayedCardCommitDurationSeconds = 0.18;
-	static constexpr float PlayedCardCommitLift = -72.0f;
-	static constexpr float PlayedCardCommitPeakScale = 1.26f;
-	static const FVector2D EnemyIntentCardSize(178.0f, 202.0f);
-	static const FVector2D EnemyIntentShowcaseCardSize(256.0f, 292.0f);
+	static constexpr float PlayedCardCommitLift = -142.0f;
+	static constexpr float PlayedCardCommitPeakScale = 1.34f;
+	static const FVector2D EnemyIntentCardSize(206.0f, 285.0f);
+	static const FVector2D EnemyIntentShowcaseCardSize(320.0f, 443.0f);
 	static const FVector2D RewardCardSize(206.0f, 285.0f);
-	static const FVector2D EnemyIntentRailSize(684.0f, 202.0f);
-	static const FVector2D EnemyIntentTooltipSize(460.0f, 256.0f);
-	static const FVector2D HandCardDetailPanelSize(480.0f, 320.0f);
+	static const FVector2D BattleRewardDisplaySize = RewardCardSize * 1.20f;
+	static constexpr float EnemyIntentSideWidth = 56.0f;
+	static constexpr float EnemyIntentSideGap = 4.0f;
+	static constexpr float EnemyIntentCardGap = 8.0f;
+	static constexpr float EnemyIntentStride = 274.0f;
+	static const FVector2D EnemyIntentRailSize(822.0f, 285.0f);
+	static constexpr float EnemyIntentRailAnchorX = 0.32f;
+	static const FVector2D EnemyIntentTooltipSize(GameXXKCardTooltipPresentation::MinimumWidth, 256.0f);
+	static const FVector2D HandCardDetailPanelSize(GameXXKCardTooltipPresentation::MinimumWidth, 320.0f);
 	static const FLinearColor BattleStatusInkColor(0.12f, 0.09f, 0.06f, 1.0f);
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
@@ -187,11 +202,12 @@ namespace
 	static const FMargin GroupOutcomePreviewOffsets(0.0f, 0.0f, 620.0f, 108.0f);
 
 	TArray<FGameXXKCardDamageResult> FlattenResumedCardDamageResults(
-		const TArray<FGameXXKCardPlayResult>& ResumedResults)
+		const TArray<FGameXXKCardPlayResult>& ResumedResults,UGameInstance* GameInstance)
 	{
 		TArray<FGameXXKCardDamageResult> DamageResults;
 		for (const FGameXXKCardPlayResult& Result : ResumedResults)
 		{
+			if(GameInstance)if(auto* Academy=GameInstance->GetSubsystem<UGameXXKAcademySubsystem>())Academy->ObserveCommittedResult(Result);
 			DamageResults.Append(Result.DamageResults);
 		}
 		return DamageResults;
@@ -550,7 +566,8 @@ namespace
 	TArray<FBodySegment> SplitStatusSegments(
 		const FString& Text,
 		const FLinearColor& StatusPillColor,
-		const float StatusPillFontSize)
+		const float StatusPillFontSize,
+		const float KeywordPillFontSize)
 	{
 		// Longer compound names first so e.g. 破绽免疫 never half-matches 破绽.
 		static const TArray<FString> StatusNames = []
@@ -599,8 +616,10 @@ namespace
 			FBodySegment PillSegment;
 			PillSegment.Text = Name;
 			PillSegment.bPill = true;
-			PillSegment.PillColor = StatusPillColor;
-			PillSegment.FontSize = StatusPillFontSize;
+			// A keyword keeps its battle palette when mentioned inside a sentence,
+			// including equipment affixes and set descriptions using this renderer.
+			PillSegment.PillColor = ResolvePillFillColor(Name);
+			PillSegment.FontSize = PillSegment.PillColor.Equals(StatusPillColor) ? StatusPillFontSize : KeywordPillFontSize;
 			Segments.Add(PillSegment);
 		};
 		const auto EmitText = [&](const FString& Value)
@@ -709,7 +728,7 @@ namespace
 		float TotalEstimatedHeight = 0.0f;
 		bool bSeenAbilityRow = false;
 
-		const auto MakeTextBlock = [WidgetTree, &BodyInk](const FString& Content, const float FontSize, const bool bBold) -> UTextBlock*
+		const auto MakeTextBlock = [WidgetTree, &BodyInk, &Style](const FString& Content, const float FontSize, const bool bBold) -> UTextBlock*
 		{
 			UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			TextBlock->SetText(FText::FromString(Content));
@@ -717,10 +736,12 @@ namespace
 			// Chunks are pre-measured to fit one line; no UMG auto-wrap, which
 			// would feed wrapped desired sizes back into row layout.
 			TextBlock->SetAutoWrapText(false);
+			TextBlock->SetLineHeightPercentage(0.80f);
+			TextBlock->SetApplyLineHeightToBottomLine(true);
 			TextBlock->SetJustification(ETextJustify::Left);
-			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize));
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont, bBold);
 			Font.Size = static_cast<int32>(FontSize);
-			if (bBold)
+			if (bBold && !Style.bDisplayBodyFont)
 			{
 				Font.TypefaceFontName = TEXT("Bold");
 			}
@@ -752,8 +773,7 @@ namespace
 		// generous per-character estimate when Slate has no renderer (e.g.
 		// headless commandlets).
 		UTextBlock* FontProbe = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-		const FSlateFontInfo BodyBaseFont = FGameXXKInRunUiStyle::Font(16);
-		const auto MeasureText = [BodyBaseFont](const FString& Content, const float FontSize, const bool bBold) -> float
+		const auto MeasureText = [&Style](const FString& Content, const float FontSize, const bool bBold, const bool bPill = false) -> float
 		{
 			if (Content.IsEmpty())
 			{
@@ -761,9 +781,9 @@ namespace
 			}
 			if (FSlateApplication::IsInitialized())
 			{
-				FSlateFontInfo Font = BodyBaseFont;
+				FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont && !bPill, bBold);
 				Font.Size = static_cast<int32>(FontSize);
-				if (bBold)
+				if (bBold && (bPill || !Style.bDisplayBodyFont))
 				{
 					Font.TypefaceFontName = TEXT("Bold");
 				}
@@ -775,7 +795,7 @@ namespace
 		const auto CellWidth = [&](const FBodySegment& Segment)
 		{
 			return Segment.bPill
-				? 10.0f + MeasureText(Segment.Text, Segment.FontSize, true)
+				? 10.0f + MeasureText(Segment.Text, Segment.FontSize, true, true)
 				: MeasureText(Segment.Text, Segment.FontSize, false);
 		};
 
@@ -868,6 +888,7 @@ namespace
 				{
 					RowSlot->SetHorizontalAlignment(HAlign_Fill);
 					RowSlot->SetVerticalAlignment(VAlign_Top);
+					RowSlot->SetPadding(FMargin(0, 1, 0, 2));
 				}
 				TotalEstimatedHeight += RowHeight;
 				Row.Reset();
@@ -950,6 +971,15 @@ namespace
 							}
 						}
 					}
+					// Closing punctuation travels with the preceding text, never as
+					// a lone final row after a measured Chinese sentence.
+					int32 PunctuationIndex = INDEX_NONE;
+					if (ChunkCount < Remaining.Len() && ChunkCount > 1
+						&& FString(TEXT("，。；：！？、）】》”’")).FindChar(Remaining[ChunkCount], PunctuationIndex))
+					{
+						const int32 SafeBreak = AdjustBreakToNumericTokenBoundary(Remaining, ChunkCount - 1);
+						if (SafeBreak > 0) ChunkCount = ConsumeCount = SafeBreak;
+					}
 					FBodySegment Chunk;
 					Chunk.Text = Remaining.Left(ChunkCount);
 					Chunk.FontSize = Segment.FontSize;
@@ -976,6 +1006,28 @@ namespace
 				// shows the name.
 				continue;
 			}
+			if (Line.StartsWith(TEXT("品质：")) && Lines.IsValidIndex(LineIndex + 1)
+				&& Lines[LineIndex + 1].StartsWith(TEXT("费用：")))
+			{
+				const FString Cost = Lines[++LineIndex].Mid(3).Replace(TEXT(" "), TEXT(""));
+				UHorizontalBox* MetaRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+				UTextBlock* Meta = MakeTextBlock(Line.Mid(3) + TEXT("  ·  ") + Cost, 17, false);
+				Meta->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::MutedInk()));
+				MetaRow->AddChildToHorizontalBox(Meta);
+				BodyBox->AddChildToVerticalBox(MetaRow)->SetPadding(FMargin(0, 0, 0, 8));
+				TotalEstimatedHeight += 30;
+				continue;
+			}
+			if (Line.StartsWith(TEXT("Shift：")))
+			{
+				UHorizontalBox* HelpRow = WidgetTree->ConstructWidget<UHorizontalBox>();
+				UTextBlock* Help = MakeTextBlock(Line, 15, false);
+				Help->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::MutedInk()));
+				HelpRow->AddChildToHorizontalBox(Help);
+				BodyBox->AddChildToVerticalBox(HelpRow)->SetPadding(FMargin(0, 10, 0, 0));
+				TotalEstimatedHeight += 30;
+				continue;
+			}
 
 			FString Keyword;
 			FString Rest;
@@ -988,12 +1040,14 @@ namespace
 				return Label != TEXT("单体友方") && Label != TEXT("单体敌方") && Label != TEXT("单体友方/敌方")
 					&& Label != TEXT("全体敌方") && Label != TEXT("全体友方") && Label != TEXT("无需选择对象");
 			});
-			if (bTargetHeading || Line == TEXT("本牌Pill说明"))
+			if (bTargetHeading || Line == TEXT("本牌术语"))
 			{
 				UHorizontalBox* HeadingRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 				HeadingRow->SetVisibility(ESlateVisibility::HitTestInvisible);
-				HeadingRow->AddChildToHorizontalBox(MakeTextBlock(Line, Style.TargetFontSize, true));
-				if (UVerticalBoxSlot* Slot = BodyBox->AddChildToVerticalBox(HeadingRow)) Slot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 4.0f));
+				UTextBlock* Heading = MakeTextBlock(Line, Style.TargetFontSize, true);
+				Heading->SetWrapTextAt(WrapWidth);
+				HeadingRow->AddChildToHorizontalBox(Heading);
+				if (UVerticalBoxSlot* Slot = BodyBox->AddChildToVerticalBox(HeadingRow)) Slot->SetPadding(FMargin(0.0f, 4.0f, 0.0f, 8.0f));
 				TotalEstimatedHeight += Style.RowHeight + 6.0f;
 				continue;
 			}
@@ -1016,7 +1070,7 @@ namespace
 				}
 				else
 				{
-					Segments.Append(SplitStatusSegments(Rest, StatusPillColor, Style.StatusPillFontSize));
+					Segments.Append(SplitStatusSegments(Rest, StatusPillColor, Style.StatusPillFontSize, Style.KeywordPillFontSize));
 				}
 			}
 			else if (Style.bPillHelp)
@@ -1030,7 +1084,7 @@ namespace
 				for (const FBodySegment& StatusSegment : SplitStatusSegments(
 					Line,
 					StatusPillColor,
-					Style.StatusPillFontSize))
+					Style.StatusPillFontSize, Style.KeywordPillFontSize))
 				{
 					Segments.Add(StatusSegment);
 				}
@@ -1038,8 +1092,9 @@ namespace
 
 			if (bAbilityLine && !bSeenAbilityRow)
 			{
-				// One blank row between the base effects and the ability
-				// keyword rows keeps the two groups visually separated.
+				USizeBox* Gap = WidgetTree->ConstructWidget<USizeBox>();
+				Gap->SetHeightOverride(8);
+				BodyBox->AddChildToVerticalBox(Gap);
 				TotalEstimatedHeight += 8.0f;
 				bSeenAbilityRow = true;
 			}
@@ -1126,6 +1181,25 @@ namespace
 		return FGameXXKEnemyText::FormatIntentTooltip(State, Intent);
 	}
 
+	void SetCardFaceCaption(UWidgetTree* Tree, UTextBlock* Label, const FString& Title, const FString& Subtitle, const FString& Cost)
+	{
+		if (!Tree || !Label) return;
+		Label->SetText(FText::FromString(Title));
+		Label->SetFont(FGameXXKInRunUiStyle::Font(Title.Len() > 6 ? 20 : 24, true));
+		GameXXKCardNameStyle::Apply(Label, EGameXXKCardQuality::Common);
+		const FString Prefix = Label->GetName().LeftChop(5);
+		if (auto* Meta = Cast<UTextBlock>(Tree->FindWidget(*(Prefix + TEXT("Subtitle")))))
+		{
+			Meta->SetText(FText::FromString(Subtitle));
+			Meta->SetVisibility(Subtitle.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+		if (auto* Amount = Cast<UTextBlock>(Tree->FindWidget(*(Label->GetName() + TEXT("Cost")))))
+		{
+			Amount->SetText(FText::FromString(Cost));
+			Amount->SetVisibility(Cost.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+	}
+
 	FGameXXKCardTooltipContext BuildHandTooltipContext(const FGameXXKCardPlayPreview& Preview)
 	{
 		FGameXXKCardTooltipContext Context;
@@ -1138,7 +1212,7 @@ namespace
 		}
 		if (Preview.TargetRequest.bRequiresManualSelection)
 		{
-			Context.InteractionResult = TEXT("点击后选择高亮合法目标。");
+			Context.InteractionResult = TEXT("点击后选择高亮目标。");
 		}
 		else if (Preview.TargetRequest.bRequiresRandomResolution)
 		{
@@ -1399,6 +1473,7 @@ void UGameXXKBattleBoardWidget::NativeDestruct()
 void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>())Academy->RefreshOverlay(this);
 	const bool bShiftExpanded = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
 	const bool bTooltipWindowActive = UGameXXKCardTooltipWidget::IsOwnerWindowActive(this);
 	if (!bTooltipWindowActive && HoveredCardTooltipSource != ECardTooltipSource::None)
@@ -1418,6 +1493,10 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		}
 	}
 	RefreshCinematicViewportCoverLayout(MyGeometry.GetLocalSize());
+	if (!BattleSettlementViewportSize.Equals(MyGeometry.GetLocalSize(), 0.5f))
+	{
+		RefreshBattleSettlementLayout(MyGeometry.GetLocalSize());
+	}
 	if (ActiveBattleVisualSessionToken != 0 && FSlateApplicationBase::IsInitialized())
 	{
 		AdvanceVisualsAtRealTime(FSlateApplicationBase::Get().GetCurrentTime());
@@ -1452,7 +1531,11 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		RefreshProjectedUnitHudsIfStale();
 	}
 	AdvanceHandCardHoverMotion(InDeltaTime);
+	AdvanceCardReveals(InDeltaTime);
+	RefreshCardMechanicFeedback(InDeltaTime);
+	for (const auto& Pair : ProjectedUnitHuds) if (Pair.Value) Pair.Value->AdvanceMechanicPresentation(InDeltaTime, IsBattlePresentationPending());
 	AdvanceEnemyIntentPresentation(InDeltaTime);
+	UpdateEnemyIntentShowcaseMotion();
 	if (PartyQiWidget && RootCanvas)
 	{
 		const FVector2D CurrentCanvasSize = RootCanvas->GetCachedGeometry().GetLocalSize();
@@ -1510,7 +1593,8 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 			Entry.AttackerClip,
 			Entry.Rhythm.DurationSeconds);
 	}
-	if (Event.bTargetEnemy && !Event.bAvoided)
+	const bool ElementalHit = Event.bLightningStrike || FGameXXKResistanceRules::IsSpell(Event.Element);
+	if ((Event.bTargetEnemy || ElementalHit) && !Event.bAvoided)
 	{
 		const UGameXXKMVPSubsystem* const Subsystem = ResolveMVPSubsystem();
 		const FGameXXKRuntimeState* const State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -1518,8 +1602,14 @@ void UGameXXKBattleBoardWidget::QueuePresentationInternal(
 			? State->CardRun.ActiveBattle.Deck.InitialRandomSeed
 			: 0;
 		Entry.ImpactClip = FGameXXKBattleAnimationPresentation::FitClipToDuration(
-			FGameXXKBattleAnimationPresentation::ResolveHitEffectClip(BattleSeed, Event.EventId),
-			FGameXXKBattleAnimationPresentation::GetHitEffectDurationSeconds());
+			ElementalHit
+				? FGameXXKBattleAnimationPresentation::ResolveElementalHitClip(Event.bLightningStrike ? EGameXXKCardDamageElement::Lightning : Event.Element)
+				: FGameXXKBattleAnimationPresentation::ResolveHitEffectClip(BattleSeed, Event.EventId),
+			ElementalHit ? 0.30f : FGameXXKBattleAnimationPresentation::GetHitEffectDurationSeconds());
+		if (ElementalHit)
+		{
+			Entry.Rhythm.DurationSeconds = FMath::Max(Entry.Rhythm.DurationSeconds, Entry.Rhythm.ImpactSeconds + 0.30f);
+		}
 	}
 	const uint64 QueueSerial = Entry.QueueSerial;
 	BattlePresentationQueue.Add(MoveTemp(Entry));
@@ -1620,6 +1710,8 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 
 	DeferredBattlePresentationContinuation = Continuation;
 	const FGameXXKCardBattleRuntime& After = Subsystem->GetRuntimeState().CardRun.ActiveBattle;
+	bPendingHealingSfx |= FGameXXKSfxPolicy::HasActualHealing(Before, After);
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>())Academy->Observe(Before,After,DamageResults,PlayedCardInstanceId);
 	const TArray<FGameXXKBattlePresentationEvent> DamageEvents =
 		FGameXXKBattleAnimationPresentation::BuildPresentationEvents(After, NAME_None, DamageResults);
 	const TArray<FGameXXKBattleStatusPresentationEvent> StatusEvents =
@@ -1630,6 +1722,8 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 			Event,
 			false,
 			BuildBattleSettlementLine(Event, PlayedCardInstanceId, Before));
+		// Task rewards use the same simple per-target lightning as normal strikes.
+		// The reviewed full-screen 057 presentation is parked, not scheduled here.
 	}
 	for (const FGameXXKBattleStatusPresentationEvent& Event : StatusEvents)
 	{
@@ -1655,6 +1749,7 @@ bool UGameXXKBattleBoardWidget::QueueMutationPresentation(
 
 	const EBattlePresentationContinuation ImmediateContinuation = DeferredBattlePresentationContinuation;
 	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
+	PlayPendingHealingSfx();
 	DiscardPresentationHudSnapshot();
 	// Immediate refresh from live runtime so that healing-only / status-only /
 	// relic-only HP mutations are visible before the deferred continuation runs.
@@ -1722,12 +1817,17 @@ FString UGameXXKBattleBoardWidget::BuildBattleSettlementLine(
 	}
 
 	const int32 TotalDamage = Event.ArmorAbsorbed + Event.HealthDamage;
+	const FString DamageLabel = FGameXXKResistanceRules::IsSpell(Event.Element) ? FGameXXKCombatGemRules::GetElementLabel(Event.Element)
+		: Event.DamageCause == EGameXXKCardDamageCause::DirectAttack ? TEXT("物理")
+		: Event.DamageCause == EGameXXKCardDamageCause::FixedDamage ? TEXT("固定") : TEXT("");
 	FString Line = FString::Printf(
-		TEXT("%s用【%s】对%s造成了%d伤害"),
+		TEXT("%s用【%s】对%s造成了%d%s伤害"),
 		*AttackerName,
 		*CardName,
 		*TargetName,
-		TotalDamage);
+		TotalDamage,
+		*DamageLabel);
+	if (Event.ManaDrained > 0) Line += FString::Printf(TEXT("，吸取%d点内力"), Event.ManaDrained);
 	if (Event.bTargetDefeated)
 	{
 		Line += TEXT("，击倒");
@@ -1755,15 +1855,66 @@ void UGameXXKBattleBoardWidget::RefreshBattleSettlementLog()
 	{
 		return;
 	}
-	BattleSettlementLogText->SetText(
-		FText::FromString(FString::Join(BattleSettlementLines, TEXT("\n"))));
+	BattleSettlementLogText->SetText(FText::FromString(bBattleSettlementLogExpanded
+		? FString::Join(BattleSettlementLines,TEXT("\n"))
+		: BattleSettlementLines.IsEmpty() ? FString() : BattleSettlementLines.Last()));
+	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::Font(bBattleSettlementLogExpanded ? 18 : 14,true));
+	if (BattleSettlementToggleText)
+	{
+		BattleSettlementToggleText->SetText(FText::FromString(bBattleSettlementLogExpanded ? TEXT("-") : TEXT("+")));
+		BattleSettlementToggleText->SetColorAndOpacity(FLinearColor(1.0f, 0.96f, 0.86f));
+	}
+	if (BattleSettlementLogScroll)
+	{
+		BattleSettlementLogScroll->SetVisibility(ESlateVisibility::Visible);
+		BattleSettlementLogScroll->SetScrollBarVisibility(bBattleSettlementLogExpanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (bBattleSettlementLogExpanded) BattleSettlementLogScroll->ScrollToEnd();
+		else BattleSettlementLogScroll->SetScrollOffset(0.0f);
+	}
 	if (BattleSettlementLogPanel)
 	{
+		BattleSettlementLogPanel->SetBrush(BuildRoundedPillBrush(FLinearColor(0.055f, 0.04f, 0.025f, 0.48f), 9.0f));
 		BattleSettlementLogPanel->SetVisibility(
 			BattleSettlementLines.IsEmpty()
 				? ESlateVisibility::Collapsed
 				: ESlateVisibility::SelfHitTestInvisible);
 	}
+	RefreshBattleSettlementLayout(BattleSettlementViewportSize);
+}
+
+void UGameXXKBattleBoardWidget::RefreshBattleSettlementLayout(const FVector2D& ViewportSize)
+{
+	BattleSettlementViewportSize = ViewportSize;
+	const FGameXXKBattleHudSafeStageLayout Stage = ResolveBattleHudSafeStageLayoutForTest(ViewportSize);
+	// Use available viewport margin without letting the compact log leave the screen.
+	// The compact body starts below enemy labels and ends before the first intent card.
+	const float Left = Stage.Scale > KINDA_SMALL_NUMBER
+		? FMath::Max(-96.0f, 8.0f - static_cast<float>(Stage.Offset.X) / Stage.Scale) : 8.0f;
+	const float Width = 246.0f - Left;
+	const float Scale = Stage.Scale > KINDA_SMALL_NUMBER ? Stage.Scale : 1.0f;
+	const auto PlaceInViewport = [&](UWidget* Widget, const FVector2D& Position, const FVector2D& Size)
+	{
+		if (!Widget) return;
+		Widget->SetRenderTransformPivot(FVector2D::ZeroVector);
+		Widget->SetRenderScale(FVector2D(Scale));
+		if (auto* Slot = Cast<UCanvasPanelSlot>(Widget->Slot))
+		{
+			Slot->SetPosition(Stage.Offset + Position * Scale);
+			Slot->SetSize(Size);
+		}
+	};
+	PlaceInViewport(BattleSettlementLogPanel,
+		bBattleSettlementLogExpanded ? FVector2D(24,334) : FVector2D(Left,84),
+		bBattleSettlementLogExpanded ? FVector2D(700,260) : FVector2D(Width,156));
+	if (BattleSettlementLogText)
+		BattleSettlementLogText->SetWrapTextAt(bBattleSettlementLogExpanded ? 650.0f : Width - 24.0f);
+	PlaceInViewport(TerrainFeedbackText, FVector2D(Left,26), FVector2D(Width,42));
+}
+
+void UGameXXKBattleBoardWidget::HandleBattleSettlementLogToggle()
+{
+	bBattleSettlementLogExpanded = !bBattleSettlementLogExpanded;
+	RefreshBattleSettlementLog();
 }
 
 FString UGameXXKBattleBoardWidget::GetBattleSettlementLogForTest() const
@@ -1779,6 +1930,7 @@ int32 UGameXXKBattleBoardWidget::GetBattleSettlementLineCountForTest() const
 void UGameXXKBattleBoardWidget::ClearBattleSettlementLogForTest()
 {
 	BattleSettlementLines.Reset();
+	bBattleSettlementLogExpanded = false;
 	RefreshBattleSettlementLog();
 }
 
@@ -1798,6 +1950,8 @@ bool UGameXXKBattleBoardWidget::BeginPlayedCardCommit(const FName PlayedCardInst
 	}
 
 	UButton* const SourceButton = HandCardButtons[SlotIndex];
+	if(auto* Motion=HandMotions.Find(PlayedCardInstanceId))Motion->Age=1;
+	AdvanceHandCardHoverMotion(0);
 	bPlayedCardCommitActive = true;
 	bPlayedCardCommitStarted = false;
 	PlayedCardCommitInstanceId = PlayedCardInstanceId;
@@ -1819,6 +1973,7 @@ TOptional<double> UGameXXKBattleBoardWidget::AdvancePlayedCardCommit(const doubl
 	{
 		bPlayedCardCommitStarted = true;
 		PlayedCardCommitStartSeconds = AbsoluteSeconds;
+		FGameXXKSfx::Play(this, EGameXXKSfxCue::CardPlay);
 	}
 
 	PlayedCardCommitElapsedSeconds = FMath::Max(0.0, AbsoluteSeconds - PlayedCardCommitStartSeconds);
@@ -1831,8 +1986,9 @@ TOptional<double> UGameXXKBattleBoardWidget::AdvancePlayedCardCommit(const doubl
 	{
 		const FVector2D InitialTranslation = PlayedCardCommitInitialTransform.Translation;
 		SourceButton->SetRenderTranslation(FVector2D(
-			InitialTranslation.X,
+			InitialTranslation.X + FMath::Sin(PI*LinearProgress)*32.0f,
 			FMath::Lerp(InitialTranslation.Y, PlayedCardCommitLift, EaseOutProgress)));
+		SourceButton->SetRenderTransformAngle(-7.0f*FMath::Sin(PI*LinearProgress));
 		const float Scale = FMath::Lerp(
 			PlayedCardCommitInitialTransform.Scale.X,
 			PlayedCardCommitPeakScale,
@@ -1840,6 +1996,7 @@ TOptional<double> UGameXXKBattleBoardWidget::AdvancePlayedCardCommit(const doubl
 		SourceButton->SetRenderScale(FVector2D(Scale, Scale));
 		const float FadeProgress = FMath::Clamp((LinearProgress - 0.5f) * 2.0f, 0.0f, 1.0f);
 		SourceButton->SetRenderOpacity(FMath::Lerp(PlayedCardCommitInitialOpacity, 0.0f, FadeProgress));
+		SyncHandCardAura(SourceButton);
 	}
 
 	if (PlayedCardCommitElapsedSeconds + static_cast<double>(KINDA_SMALL_NUMBER)
@@ -1860,6 +2017,7 @@ void UGameXXKBattleBoardWidget::CompletePlayedCardCommit()
 		return;
 	}
 	++PlayedCardCommitCompletionCount;
+	PlayPendingHealingSfx();
 	ResetPlayedCardCommit(false);
 	if (!BattlePresentationQueue.IsEmpty())
 	{
@@ -1893,7 +2051,12 @@ void UGameXXKBattleBoardWidget::ResetPlayedCardCommit(const bool bRestoreInitial
 			// old slot hidden until the deferred continuation refreshes the hand;
 			// restoring opacity here would flash the spent card over the damage queue.
 			SourceButton->SetRenderOpacity(0.0f);
+			if (FHandMotion* Motion = HandMotions.Find(PlayedCardCommitInstanceId))
+			{
+				Motion->BaseOpacity = 0.0f;
+			}
 		}
+		SyncHandCardAura(SourceButton);
 	}
 	bPlayedCardCommitActive = false;
 	bPlayedCardCommitStarted = false;
@@ -1976,6 +2139,26 @@ bool UGameXXKBattleBoardWidget::ExecuteBattlePresentationContinuation(
 	}
 }
 
+void UGameXXKBattleBoardWidget::PlayPendingHealingSfx()
+{
+	if (bPendingHealingSfx)
+	{
+		bPendingHealingSfx = false;
+		FGameXXKSfx::Play(this, EGameXXKSfxCue::Heal);
+	}
+}
+
+void UGameXXKBattleBoardWidget::PlayTerminalSfx(EGameXXKCardBattlePhase Phase, uint64 SessionToken)
+{
+	if (SessionToken == 0 || LastTerminalSfxSessionToken == SessionToken
+		|| (Phase != EGameXXKCardBattlePhase::Victory && Phase != EGameXXKCardBattlePhase::Defeat))
+	{
+		return;
+	}
+	LastTerminalSfxSessionToken = SessionToken;
+	FGameXXKSfx::Play(this, Phase == EGameXXKCardBattlePhase::Victory ? EGameXXKSfxCue::Victory : EGameXXKSfxCue::Defeat);
+}
+
 void UGameXXKBattleBoardWidget::HandleBattlePresentationQueueDrained()
 {
 	if (!BattlePresentationQueue.IsEmpty())
@@ -1985,6 +2168,7 @@ void UGameXXKBattleBoardWidget::HandleBattlePresentationQueueDrained()
 
 	const EBattlePresentationContinuation Continuation = DeferredBattlePresentationContinuation;
 	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
+	PlayPendingHealingSfx();
 	for (const FName UnitId : DefeatedUnitVisualsPendingRemoval)
 	{
 		RemoveUnitVisual(UnitId);
@@ -2224,6 +2408,10 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 	{
 		return;
 	}
+	if (AdvanceLightningUltimate(AbsoluteSeconds))
+	{
+		return;
+	}
 
 	const TOptional<double> CommitCompletionBoundary = AdvancePlayedCardCommit(AbsoluteSeconds);
 	if (bPlayedCardCommitActive)
@@ -2241,6 +2429,11 @@ void UGameXXKBattleBoardWidget::AdvanceBattlePresentation(const double AbsoluteS
 	while (!BattlePresentationQueue.IsEmpty() && CompletedEntryGuard++ < 256)
 	{
 		FBattlePresentationQueueEntry& Entry = BattlePresentationQueue[0];
+		if (!Entry.bStarted && Entry.bLightningUltimateBeforeHit)
+		{
+			Entry.bLightningUltimateBeforeHit = false;
+			if (BeginLightningUltimate(AbsoluteSeconds)) return;
+		}
 		if (!Entry.bStarted)
 		{
 			StartPresentationEntry(Entry, NextStartSeconds);
@@ -2333,6 +2526,10 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 	Entry.StartSeconds = StartSeconds;
 	Entry.bStarted = true;
 	Entry.bImpactFired = false;
+	if (Entry.Kind == EBattlePresentationKind::Death)
+	{
+		FGameXXKSfx::Play(this, EGameXXKSfxCue::Down);
+	}
 	Entry.bCompletionFired = false;
 	Entry.PresentedAttackerClip = FGameXXKBattleAnimationClipDescriptor();
 	Entry.PresentedTargetClip = FGameXXKBattleAnimationClipDescriptor();
@@ -2526,6 +2723,7 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 	}
 	Entry.bImpactFired = true;
 	++BattlePresentationImpactCount;
+	FGameXXKSfx::Play(this, FGameXXKSfxPolicy::ResolveImpact(Entry.Event));
 	// One settlement line per impact, in queue order; the damage overlay below
 	// animates the same packet's HP change immediately afterwards.
 	if (!Entry.SettlementLine.IsEmpty())
@@ -2548,7 +2746,26 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 			ImpactSlot->SetAnchors(FAnchors(TargetAnchor.X, TargetAnchor.Y));
 			ImpactSlot->SetAlignment(FVector2D(0.5f, 0.5f));
 			ImpactSlot->SetPosition(FVector2D::ZeroVector);
-			ImpactSlot->SetSize(CinematicHitEffectVisualSize);
+			const bool ElementalHit = Entry.Event.bLightningStrike || FGameXXKResistanceRules::IsSpell(Entry.Event.Element);
+			ImpactSlot->SetSize(ElementalHit ? FVector2D(640.0f, 700.0f) : CinematicHitEffectVisualSize);
+			if (ElementalHit)
+			{
+				// The six authored frames share a hit point at (256, 510) in a 512x560 cell.
+				// Anchor the authored hit point to the sprite ground line, not its canvas centre.
+				ImpactSlot->SetAlignment(FVector2D(0.5f, Entry.Event.bLightningStrike || Entry.Event.Element == EGameXXKCardDamageElement::Lightning ? 510.0f / 560.0f : 250.0f / 280.0f));
+				if (const UGameXXKBattleUnitVisualWidget* GroundTarget = UnitVisuals.FindRef(Entry.Event.TargetUnitId))
+				{
+					// Median idle alpha bottoms: wildcat .9121, vulture .9053, corrected toad .9063.
+					float FootY = Entry.PresentedTargetClip.AssetId.Contains(TEXT("wildcat")) ? .912109375f : .90625f;
+					if (const UImage* TargetImage = GroundTarget->GetUnitImageForTest())
+					{
+						const double PivotY = TargetImage->GetRenderTransformPivot().Y;
+						FootY = static_cast<float>(PivotY + (FootY - PivotY) * TargetImage->GetRenderTransform().Scale.Y);
+					}
+					const float GroundOffset = (FootY - .5f) * GroundTarget->GetPresentedSize().Y * GroundTarget->GetRenderTransform().Scale.Y;
+					ImpactSlot->SetPosition(FVector2D(0, GroundOffset));
+				}
+			}
 			ImpactSlot->SetZOrder(BattleCinematicImpactZOrder);
 		}
 		BattleCinematicImpact->AdvanceAtRealTime(
@@ -2581,7 +2798,10 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 				NSLOCTEXT("GameXXK", "BattlePresentationDamage", "-{0}"),
 				FText::AsNumber(Entry.Event.HealthDamage));
 		}
+		if (!Entry.Event.bAvoided && FGameXXKResistanceRules::IsSpell(Entry.Event.Element))
+			Readout = FText::FromString(FGameXXKCombatGemRules::GetElementLabel(Entry.Event.Element) + TEXT(" · ") + Readout.ToString());
 		BattleCinematicReadout->SetText(Readout);
+		BattleCinematicReadout->SetColorAndOpacity(GameXXKCardVisualEffects::DamageColor(Entry.Event.DamageCause));
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
 		BattleCinematicReadout->SetRenderScale(FVector2D(
 			Entry.Rhythm.ReadoutPeakScale,
@@ -2701,6 +2921,8 @@ void UGameXXKBattleBoardWidget::ReleasePresentationPins(FBattlePresentationQueue
 
 void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 {
+	bPendingHealingSfx = false;
+	ResetLightningUltimate();
 	ResetPlayedCardCommit(true);
 	DeferredBattlePresentationContinuation = EBattlePresentationContinuation::None;
 	for (FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
@@ -2720,6 +2942,7 @@ void UGameXXKBattleBoardWidget::ResetBattlePresentation()
 	ExecutedBattlePresentationContinuationCount = 0;
 	PlayedCardCommitCompletionCount = 0;
 	BattleSettlementLines.Reset();
+	bBattleSettlementLogExpanded = false;
 	RefreshBattleSettlementLog();
 	ResetBattlePresentationFeedback();
 	RestoreFormationAfterPresentation();
@@ -2903,6 +3126,7 @@ void UGameXXKBattleBoardWidget::ApplyDisplayedDamagePacket(
 	{
 		View->CurrentHP = DisplayedHealth;
 		View->Armor = FMath::Max(0, Event.TargetArmorAfter);
+		View->CurrentMana = FMath::Max(0, View->CurrentMana - Event.ManaDrained);
 		View->bLiving = true;
 	}
 	RefreshProjectedUnitHuds();
@@ -3048,7 +3272,9 @@ bool UGameXXKBattleBoardWidget::BeginBattleVisualSession(const uint64 SessionTok
 	}
 
 	ActiveBattleVisualSessionToken = SessionToken;
+	for (const auto& Pair : ProjectedUnitHuds) if (Pair.Value) Pair.Value->ResetMechanicPresentation();
 	BattleSettlementLines.Reset();
+	bBattleSettlementLogExpanded = false;
 	RefreshBattleSettlementLog();
 	RefreshUnitVisuals();
 	for (const FBattlePresentationQueueEntry& Entry : BattlePresentationQueue)
@@ -3075,6 +3301,10 @@ void UGameXXKBattleBoardWidget::CancelBattleVisualSession(const uint64 ClosingSe
 	// Invalidate the Board first. CancelSession may synchronously deliver callbacks,
 	// and those callbacks must observe a stale Board token before touching widgets.
 	ActiveBattleVisualSessionToken = 0;
+	HandMotions.Reset();
+	CardReveals.Reset();
+	FeedbackRound=INDEX_NONE;
+	FeedbackTerrain=EGameXXKCardTerrain::Invalid;
 	if (AtlasCache)
 	{
 		AtlasCache->CancelSession(ClosingSessionToken);
@@ -4234,6 +4464,7 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingEnemy(int32 EnemyIndex)
 
 bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 {
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>();Academy && !Academy->AllowsCard(CardInstanceId)){LastCardInteractionError=TEXT("请点击高亮卡牌。");return false;}
 	ClearCardOutcomePreview();
 	if (RejectBattleHudFixtureMutation())
 	{
@@ -4313,6 +4544,7 @@ bool UGameXXKBattleBoardWidget::ClickCardInHand(FName CardInstanceId)
 
 bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 {
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>();Academy && !Academy->AllowsTarget(UnitId)){LastCardInteractionError=TEXT("请选择高亮目标。");return false;}
 	FGameXXKGuideTargetRegistry& GuideRegistry = FGameXXKGuideTargetRegistry::Get();
 	const FName SpecificTargetAction = ResolveTutorial01TargetAction(UnitId);
 	const bool bLegacyTargetAllowed = GuideRegistry.IsActionAllowed(
@@ -4369,6 +4601,7 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 
 	const FName TutorialCompletionEvent =
 		ResolveTutorial01CompletionEvent(Result, UnitId);
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>())Academy->ObserveCommittedResult(Result);
 	ClearCardTargetingState();
 	LastCardInteractionError.Reset();
 	GuideRegistry.EmitEvent(TEXT("Event.Battle.LegalTargetSelected"));
@@ -4388,6 +4621,7 @@ bool UGameXXKBattleBoardWidget::ConfirmTargetingUnit(FName UnitId)
 
 bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 {
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>();Academy && !Academy->AllowsEndTurn()){LastCardInteractionError=TEXT("请先完成当前步骤。");return false;}
 	if (!FGameXXKGuideTargetRegistry::Get().IsActionAllowed(TEXT("Action.Battle.EndTurn")))
 	{
 		return false;
@@ -4441,6 +4675,7 @@ bool UGameXXKBattleBoardWidget::EndCardPlayerPhase()
 
 bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 {
+	if(bEnabled && GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>();Academy && Academy->IsActive())return false;
 	if (bBattleRetreatConfirmationOpen)
 	{
 		return false;
@@ -4824,7 +5059,7 @@ bool UGameXXKBattleBoardWidget::SubmitPendingInsightChoice(FName PickedInstanceI
 	LastCardInteractionError.Reset();
 	return QueueMutationPresentation(
 		Before,
-		FlattenResumedCardDamageResults(ResumedResults),
+		FlattenResumedCardDamageResults(ResumedResults,GetGameInstance()),
 		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
@@ -4884,7 +5119,7 @@ bool UGameXXKBattleBoardWidget::SubmitPendingHeroTaskSearchChoice(FName PickedIn
 	LastCardInteractionError.Reset();
 	return QueueMutationPresentation(
 		Before,
-		FlattenResumedCardDamageResults(ResumedResults),
+		FlattenResumedCardDamageResults(ResumedResults,GetGameInstance()),
 		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
@@ -4956,7 +5191,7 @@ bool UGameXXKBattleBoardWidget::SubmitPendingForcedDiscards(const TArray<FName>&
 	DeferredTutorial01GuideEvent = TutorialForcedDiscardEvent;
 	const bool bQueued = QueueMutationPresentation(
 		Before,
-		FlattenResumedCardDamageResults(ResumedResults),
+		FlattenResumedCardDamageResults(ResumedResults,GetGameInstance()),
 		EBattlePresentationContinuation::FinalizeCardMutation);
 	if (!bQueued)
 	{
@@ -5012,7 +5247,7 @@ bool UGameXXKBattleBoardWidget::CancelPendingInsightChoice()
 	LastCardInteractionError.Reset();
 	return QueueMutationPresentation(
 		Before,
-		FlattenResumedCardDamageResults(ResumedResults),
+		FlattenResumedCardDamageResults(ResumedResults,GetGameInstance()),
 		EBattlePresentationContinuation::FinalizeCardMutation);
 }
 
@@ -5105,6 +5340,8 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 			{
 				continue;
 			}
+			const FGameXXKUnitMechanicView MechanicView = GameXXKBattleMechanicPresentation::Build(State->CardRun.ActiveBattle, Unit.UnitId);
+			FixedLayout.Size.Y += MechanicView.LogicalHeight();
 
 			LivingUnitIds.Add(Unit.UnitId);
 			UGameXXKBattleUnitHudWidget* Hud = ProjectedUnitHuds.FindRef(Unit.UnitId);
@@ -5147,6 +5384,7 @@ void UGameXXKBattleBoardWidget::RefreshProjectedUnitHuds()
 				View.CurrentHP,
 				BattleProjectedUnitHudLayer->GetChildrenCount());
 			Hud->SetUnitView(View);
+			Hud->SetMechanicView(MechanicView);
 			if (UCanvasPanelSlot* const HudSlot = Cast<UCanvasPanelSlot>(Hud->Slot))
 			{
 				HudSlot->SetAnchors(FixedLayout.Anchors);
@@ -5223,7 +5461,8 @@ bool UGameXXKBattleBoardWidget::RefreshProjectedUnitHudsIfStale()
 			|| !TryResolveFixedUnitHudLayout(AuthoritativeView, AuthoritativeLayout)
 			|| !Pair.Value
 			|| Pair.Value->GetUnitIdForTest() != Pair.Key
-			|| !Pair.Value->MatchesUnitView(AuthoritativeView))
+			|| !Pair.Value->MatchesUnitView(AuthoritativeView)
+			|| !Pair.Value->MatchesMechanicView(GameXXKBattleMechanicPresentation::Build(Runtime,Pair.Key)))
 		{
 			bStale = true;
 			break;
@@ -5373,7 +5612,7 @@ void UGameXXKBattleBoardWidget::RefreshUnitVisuals()
 				{
 					FSlateBrush InvisibleBrush;
 					InvisibleBrush.DrawAs = ESlateBrushDrawType::NoDrawType;
-					FButtonStyle InvisibleStyle;
+					FButtonStyle InvisibleStyle; FGameXXKSfx::SetButtonSound(InvisibleStyle);
 					InvisibleStyle
 						.SetNormal(InvisibleBrush)
 						.SetHovered(InvisibleBrush)
@@ -5592,6 +5831,7 @@ bool UGameXXKBattleBoardWidget::IsCardTargetingActive() const
 
 bool UGameXXKBattleBoardWidget::ChoosePendingBattleRewardOption(int32 OptionIndex, FName ReplacementEntryId)
 {
+	if(RewardCardButtons.IsValidIndex(OptionIndex))FinishCardReveal(RewardCardButtons[OptionIndex]);
 	if (RejectBattleHudFixtureMutation())
 	{
 		return false;
@@ -6631,6 +6871,7 @@ void UGameXXKBattleBoardWidget::HandlePendingChoiceCardHoverChanged(
 	if (bHovered)
 	{
 		HoveredCardTooltipSource = ECardTooltipSource::PendingChoice;
+		if(PendingChoiceCardButtons.IsValidIndex(SlotIndex))FinishCardReveal(PendingChoiceCardButtons[SlotIndex]);
 		HoveredCardTooltipId = CandidateInstanceId;
 		HoveredPendingChoiceKind = ChoiceKind;
 		HoveredPendingChoiceSlot = SlotIndex;
@@ -6938,7 +7179,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	EnemyIntentCardBox->SetVisibility(ESlateVisibility::Collapsed);
 	if (UCanvasPanelSlot* IntentRailSlot = RootCanvas->AddChildToCanvas(EnemyIntentCardBox))
 	{
-		IntentRailSlot->SetAnchors(FAnchors(0.5f, 0.0f, 0.5f, 0.0f));
+		IntentRailSlot->SetAnchors(FAnchors(EnemyIntentRailAnchorX, 0.0f));
 		IntentRailSlot->SetOffsets(FMargin(-EnemyIntentRailSize.X * 0.5f, 24.0f, EnemyIntentRailSize.X, EnemyIntentRailSize.Y));
 		IntentRailSlot->SetAlignment(FVector2D::ZeroVector);
 	}
@@ -6954,21 +7195,33 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		USizeBox* SideLabelSizeBox = WidgetTree->ConstructWidget<USizeBox>(
 			USizeBox::StaticClass(),
 			*FString::Printf(TEXT("BattleEnemyIntentSlotLabelSize_%02d"), SlotIndex));
-		SideLabelSizeBox->SetWidthOverride(42.0f);
+		SideLabelSizeBox->SetWidthOverride(EnemyIntentSideWidth);
 		SideLabelSizeBox->SetHeightOverride(EnemyIntentCardSize.Y);
 		UTextBlock* SideLabel = WidgetTree->ConstructWidget<UTextBlock>(
 			UTextBlock::StaticClass(),
 			*FString::Printf(TEXT("BattleEnemyIntentSlotLabel_%02d"), SlotIndex));
 		SideLabel->SetJustification(ETextJustify::Center);
 		SideLabel->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-		FSlateFontInfo SideLabelFont = SideLabel->GetFont();
-		SideLabelFont.Size = 16;
-		SideLabelFont.TypefaceFontName = TEXT("Bold");
-		SideLabel->SetFont(SideLabelFont);
-		SideLabelSizeBox->AddChild(SideLabel);
+		SideLabel->SetFont(FGameXXKInRunUiStyle::Font(18, true));
+		SideLabel->SetAutoWrapText(false);
+		UVerticalBox* SideStack = WidgetTree->ConstructWidget<UVerticalBox>();
+		SideLabelSizeBox->AddChild(SideStack);
+		USizeBox* SideWordHeight = WidgetTree->ConstructWidget<USizeBox>();
+		SideWordHeight->SetHeightOverride(28);
+		UScaleBox* SideWordFit = WidgetTree->ConstructWidget<UScaleBox>();
+		SideWordFit->SetStretch(EStretch::ScaleToFit); SideWordFit->SetStretchDirection(EStretchDirection::DownOnly);
+		SideWordFit->AddChild(SideLabel); SideWordHeight->AddChild(SideWordFit);
+		SideStack->AddChildToVerticalBox(SideWordHeight);
+		UTextBlock* SideNumber = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
+			*FString::Printf(TEXT("BattleEnemyIntentSlotNumber_%02d"), SlotIndex));
+		SideNumber->SetFont(FGameXXKInRunUiStyle::OutlinedFont(22, 1));
+		SideNumber->SetColorAndOpacity(FLinearColor(1,0.95f,0.82f,1));
+		SideNumber->SetJustification(ETextJustify::Center); SideNumber->SetAutoWrapText(false);
+		SideNumber->SetLineHeightPercentage(0.85f); SideNumber->SetApplyLineHeightToBottomLine(true);
+		SideStack->AddChildToVerticalBox(SideNumber);
 		if (UHorizontalBoxSlot* SideLabelSlot = IntentSlotBox->AddChildToHorizontalBox(SideLabelSizeBox))
 		{
-			SideLabelSlot->SetPadding(FMargin(0.0f, 0.0f, 3.0f, 0.0f));
+			SideLabelSlot->SetPadding(FMargin(0.0f, 0.0f, EnemyIntentSideGap, 0.0f));
 			SideLabelSlot->SetVerticalAlignment(VAlign_Center);
 		}
 
@@ -6992,7 +7245,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		IntentCardSizeBox->AddChild(IntentCardButton);
 		if (UHorizontalBoxSlot* IntentCardSlot = IntentSlotBox->AddChildToHorizontalBox(IntentCardSizeBox))
 		{
-			IntentCardSlot->SetPadding(FMargin(0.0f, 0.0f, 7.0f, 0.0f));
+			IntentCardSlot->SetPadding(FMargin(0.0f, 0.0f, EnemyIntentCardGap, 0.0f));
 			IntentCardSlot->SetVerticalAlignment(VAlign_Center);
 		}
 		if (UHorizontalBoxSlot* IntentSlot = EnemyIntentCardBox->AddChildToHorizontalBox(IntentSlotBox))
@@ -7025,20 +7278,20 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	EnemyIntentShowcaseCard = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleEnemyIntentShowcaseCard"));
 	StyleCardButton(EnemyIntentShowcaseCard, EnemyIntentShowcaseCardSize);
 	EnemyIntentShowcaseCard->SetVisibility(ESlateVisibility::Collapsed);
-	EnemyIntentShowcaseBody = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEnemyIntentShowcaseBody"));
-	EnemyIntentShowcaseBody->SetAutoWrapText(true);
-	EnemyIntentShowcaseBody->SetJustification(ETextJustify::Center);
-	EnemyIntentShowcaseBody->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
-	FSlateFontInfo ShowcaseFont = EnemyIntentShowcaseBody->GetFont();
-	ShowcaseFont.Size = 15;
-	ShowcaseFont.TypefaceFontName = TEXT("Bold");
-	EnemyIntentShowcaseBody->SetFont(ShowcaseFont);
-	EnemyIntentShowcaseCard->AddChild(EnemyIntentShowcaseBody);
+	EnemyIntentShowcaseCard->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	UTextBlock* ShowcaseBody = nullptr;
+	UImage* ShowcasePortrait = nullptr;
+	BuildEnemyIntentCardFace(EnemyIntentShowcaseCard, TEXT("BattleEnemyIntentShowcase"),
+		ShowcaseBody, ShowcasePortrait, true);
+	EnemyIntentShowcaseBody = ShowcaseBody;
+	EnemyIntentShowcasePortrait = ShowcasePortrait;
 	if (UCanvasPanelSlot* ShowcaseSlot = RootCanvas->AddChildToCanvas(EnemyIntentShowcaseCard))
 	{
 		ShowcaseSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
-		ShowcaseSlot->SetOffsets(FMargin(-128.0f, -140.0f, 256.0f, 292.0f));
+		ShowcaseSlot->SetOffsets(FMargin(-EnemyIntentShowcaseCardSize.X * 0.5f, -EnemyIntentShowcaseCardSize.Y * 0.5f,
+			EnemyIntentShowcaseCardSize.X, EnemyIntentShowcaseCardSize.Y));
 		ShowcaseSlot->SetAlignment(FVector2D::ZeroVector);
+		ShowcaseSlot->SetZOrder(40);
 	}
 
 	EnemyIntentRecoveryButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleEnemyIntentRecoveryButton"));
@@ -7058,26 +7311,29 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	}
 
 	EnemyIntentDetailPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleEnemyIntentDetailPanel"));
-	EnemyIntentDetailPanel->SetBrush(BuildBoxTextureBrush(
-		BattleStatusWindowFrameTexture.Get(),
-		EnemyIntentTooltipSize,
-		FMargin(BattleStatusFrameMarginRatio)));
+	if (UTexture2D* TooltipPaper = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot")))
+		EnemyIntentDetailPanel->SetBrush(BuildBoxTextureBrush(TooltipPaper, FVector2D(480,320), FMargin(0.065f)));
 	EnemyIntentDetailPanel->SetBrushColor(FLinearColor::White);
-	EnemyIntentDetailPanel->SetPadding(FMargin(22.0f, 18.0f, 22.0f, 16.0f));
+	EnemyIntentDetailPanel->SetPadding(FMargin(16.0f, 12.0f));
 	EnemyIntentDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
-	EnemyIntentDetailBody = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEnemyIntentDetailBody"));
-	EnemyIntentDetailBody->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
-	EnemyIntentDetailBody->SetAutoWrapText(true);
-	EnemyIntentDetailBody->SetJustification(ETextJustify::Left);
-	FSlateFontInfo EnemyIntentDetailFont = EnemyIntentDetailBody->GetFont();
-	EnemyIntentDetailFont.Size = 14;
-	EnemyIntentDetailBody->SetFont(EnemyIntentDetailFont);
-	EnemyIntentDetailPanel->SetContent(EnemyIntentDetailBody);
+	EnemyIntentDetailBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleEnemyIntentDetailBody"));
+	UVerticalBox* IntentTooltipStack = WidgetTree->ConstructWidget<UVerticalBox>();
+	UTextBlock* IntentTooltipTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEnemyIntentDetailTitle"));
+	IntentTooltipTitle->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+	IntentTooltipTitle->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
+	IntentTooltipTitle->SetWrapTextAt(EnemyIntentTooltipSize.X - 32);
+	IntentTooltipTitle->SetLineHeightPercentage(0.85f);
+	IntentTooltipTitle->SetApplyLineHeightToBottomLine(true);
+	IntentTooltipStack->AddChildToVerticalBox(IntentTooltipTitle)->SetPadding(FMargin(0, 0, 0, 8));
+	IntentTooltipStack->AddChildToVerticalBox(EnemyIntentDetailBody);
+	EnemyIntentDetailPanel->SetContent(IntentTooltipStack);
 	if (UCanvasPanelSlot* IntentDetailSlot = RootCanvas->AddChildToCanvas(EnemyIntentDetailPanel))
 	{
 		IntentDetailSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		IntentDetailSlot->SetOffsets(FMargin(-EnemyIntentTooltipSize.X * 0.5f, -118.0f, EnemyIntentTooltipSize.X, EnemyIntentTooltipSize.Y));
 		IntentDetailSlot->SetAlignment(FVector2D::ZeroVector);
+		IntentDetailSlot->SetZOrder(BattleTopRightToolbarZOrder + 10);
 	}
 
 	ActionBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleActionBox"));
@@ -7088,39 +7344,55 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		ActionSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
-	// Sequential settlement readout. It is input-transparent and appends one
-	// line per landed combat packet, keeping the newest six lines visible.
-	BattleSettlementLogPanel = WidgetTree->ConstructWidget<UBorder>(
-		UBorder::StaticClass(),
-		TEXT("BattleSettlementLogPanel"));
-	if (BattleSettlementLogPanel)
+	// A compact latest-entry log in the left gutter, with an explicit zoom button.
+	BattleSettlementLogPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),TEXT("BattleSettlementLogPanel"));
+	BattleSettlementLogPanel->SetBrushColor(FLinearColor::White);
+	BattleSettlementLogPanel->SetPadding(FMargin(12,4));
+	BattleSettlementLogPanel->SetVisibility(ESlateVisibility::Collapsed);
+	UVerticalBox* LogContent=WidgetTree->ConstructWidget<UVerticalBox>();
+	BattleSettlementLogPanel->SetContent(LogContent);
+	UButton* LogToggle=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("BattleSettlementLogToggle"));
+	FSlateBrush NoLogButtonBrush;NoLogButtonBrush.DrawAs=ESlateBrushDrawType::NoDrawType;
+	FButtonStyle LogToggleStyle; FGameXXKSfx::SetButtonSound(LogToggleStyle);LogToggleStyle.SetNormal(NoLogButtonBrush);LogToggleStyle.SetHovered(NoLogButtonBrush);LogToggleStyle.SetPressed(NoLogButtonBrush);
+	LogToggleStyle.SetNormalPadding(FMargin(0));LogToggleStyle.SetPressedPadding(FMargin(0));LogToggle->SetStyle(LogToggleStyle);
+	LogToggle->OnClicked.AddDynamic(this,&UGameXXKBattleBoardWidget::HandleBattleSettlementLogToggle);
+	BattleSettlementToggleText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleSettlementSummary"));
+	BattleSettlementToggleText->SetFont(FGameXXKInRunUiStyle::Font(18,true));BattleSettlementToggleText->SetAutoWrapText(false);
+	BattleSettlementToggleText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
+	LogToggle->SetContent(BattleSettlementToggleText);
+	UHorizontalBox* LogHeader=WidgetTree->ConstructWidget<UHorizontalBox>();
+	UTextBlock* LogCaption=WidgetTree->ConstructWidget<UTextBlock>();LogCaption->SetText(FText::FromString(TEXT("战报")));
+	LogCaption->SetFont(FGameXXKInRunUiStyle::Font(15,true));LogCaption->SetColorAndOpacity(FLinearColor(0.89f,0.84f,0.73f));
+	LogHeader->AddChildToHorizontalBox(LogCaption)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
+	USizeBox* LogZoomSize=WidgetTree->ConstructWidget<USizeBox>();LogZoomSize->SetWidthOverride(26);LogZoomSize->SetHeightOverride(26);LogZoomSize->SetContent(LogToggle);
+	LogHeader->AddChildToHorizontalBox(LogZoomSize);LogContent->AddChildToVerticalBox(LogHeader);
+	BattleSettlementLogScroll=WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("BattleSettlementHistory"));
+	FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(BattleSettlementLogScroll,12,36);
+	BattleSettlementLogScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
+	BattleSettlementLogScroll->SetVisibility(ESlateVisibility::Collapsed);
+	BattleSettlementLogText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleSettlementLogText"));
+	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::Font(18,true));BattleSettlementLogText->SetAutoWrapText(true);
+	BattleSettlementLogText->SetWrapTextAt(650);BattleSettlementLogText->SetColorAndOpacity(FLinearColor(1.0f,0.96f,0.86f));
+	BattleSettlementLogText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	BattleSettlementLogScroll->AddChild(BattleSettlementLogText);
+	UVerticalBoxSlot* LogHistorySlot=LogContent->AddChildToVerticalBox(BattleSettlementLogScroll);
+	LogHistorySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));LogHistorySlot->SetPadding(FMargin(0,8,0,4));
+	// This rail can use the viewport's side margin, outside the clipped design stage.
+	if(UCanvasPanelSlot* LogSlot=ViewportRootCanvas->AddChildToCanvas(BattleSettlementLogPanel))
 	{
-		BattleSettlementLogPanel->SetBrushColor(FLinearColor(0.05f, 0.03f, 0.02f, 0.72f));
-		BattleSettlementLogPanel->SetPadding(FMargin(12.0f, 8.0f, 12.0f, 8.0f));
-		BattleSettlementLogPanel->SetVisibility(ESlateVisibility::Collapsed);
-		BattleSettlementLogText = WidgetTree->ConstructWidget<UTextBlock>(
-			UTextBlock::StaticClass(),
-			TEXT("BattleSettlementLogText"));
-		if (BattleSettlementLogText)
-		{
-			BattleSettlementLogText->SetAutoWrapText(true);
-			BattleSettlementLogText->SetJustification(ETextJustify::Left);
-			BattleSettlementLogText->SetColorAndOpacity(FSlateColor(FLinearColor(0.96f, 0.90f, 0.78f, 1.0f)));
-			FSlateFontInfo SettlementFont = BattleSettlementLogText->GetFont();
-			SettlementFont.Size = 15;
-			BattleSettlementLogText->SetFont(SettlementFont);
-			BattleSettlementLogPanel->SetContent(BattleSettlementLogText);
-		}
-		if (UCanvasPanelSlot* const LogSlot = RootCanvas->AddChildToCanvas(BattleSettlementLogPanel))
-		{
-			LogSlot->SetAnchors(FAnchors(0.0f, 0.0f, 0.0f, 0.0f));
-			LogSlot->SetAlignment(FVector2D::ZeroVector);
-			LogSlot->SetOffsets(FMargin(24.0f, 104.0f, 700.0f, 176.0f));
-			LogSlot->SetZOrder(55);
-		}
+		LogSlot->SetOffsets(FMargin(8,84,162,156));LogSlot->SetZOrder(BattleSafeStageRootZOrder);
 	}
 
 	HandCardBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("BattleHandCardBox"));
+	TerrainFeedbackText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleTerrainFeedback"));
+	TerrainFeedbackText->SetFont(FGameXXKInRunUiStyle::Font(21,true));
+	TerrainFeedbackText->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
+	TerrainFeedbackText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	TerrainFeedbackText->SetJustification(ETextJustify::Center);
+	if(auto* TerrainSlot=ViewportRootCanvas->AddChildToCanvas(TerrainFeedbackText))
+	{
+		TerrainSlot->SetOffsets(FMargin(8,26,162,42));TerrainSlot->SetZOrder(BattleSafeStageRootZOrder);
+	}
 	if (UCanvasPanelSlot* HandSlot = RootCanvas->AddChildToCanvas(HandCardBox))
 	{
 		HandSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
@@ -7149,7 +7421,21 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			CardPortrait,
 			CardInfoStrip,
 			true);
-		CardSizeBox->AddChild(CardButton);
+		// The glow belongs behind the button's parchment, outside its face canvas.
+		// Both overlay slots fill the same bounds, including when the HUD scales.
+		UOverlay* CardLayers = WidgetTree->ConstructWidget<UOverlay>(
+			UOverlay::StaticClass(), *FString::Printf(TEXT("BattleHandCardLayers_%02d"), SlotIndex));
+		UGameXXKCardAuraWidget* Aura = WidgetTree->ConstructWidget<UGameXXKCardAuraWidget>(
+			UGameXXKCardAuraWidget::StaticClass(), *FString::Printf(TEXT("BattleHandCard_%02dAura"), SlotIndex));
+		Aura->SetCues({});
+		for (UWidget* Layer : {static_cast<UWidget*>(Aura), static_cast<UWidget*>(CardButton)})
+		{
+			UOverlaySlot* LayerSlot = CardLayers->AddChildToOverlay(Layer);
+			LayerSlot->SetHorizontalAlignment(HAlign_Fill);
+			LayerSlot->SetVerticalAlignment(VAlign_Fill);
+		}
+		CardAuraWidgets.Add(CardButton->GetFName(), Aura);
+		CardSizeBox->AddChild(CardLayers);
 		if (UHorizontalBoxSlot* CardSlot = HandCardBox->AddChildToHorizontalBox(CardSizeBox))
 		{
 			CardSlot->SetPadding(FMargin(4.0f, 0.0f, 4.0f, 0.0f));
@@ -7191,14 +7477,14 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	UTextBlock* EndTurnLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEndTurnLabel"));
 	EndTurnLabel->SetText(NSLOCTEXT("GameXXKBattle", "EndTurn", "结束回合"));
 	EndTurnLabel->SetJustification(ETextJustify::Center);
-	EndTurnLabel->SetFont(FGameXXKInRunUiStyle::Font(26,true));
+	EndTurnLabel->SetFont(FGameXXKInRunUiStyle::Font(30,true));
 	EndTurnLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	EndTurnButton->AddChild(EndTurnLabel);
 	EndTurnButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleEndTurnClicked);
 	if (UCanvasPanelSlot* EndTurnSlot = RootCanvas->AddChildToCanvas(EndTurnButton))
 	{
 		EndTurnSlot->SetAnchors(FAnchors(1.0f, 1.0f, 1.0f, 1.0f));
-		EndTurnSlot->SetOffsets(FMargin(-230.0f, -76.0f, 190.0f, 62.0f));
+		EndTurnSlot->SetOffsets(FMargin(-264.0f, -90.0f, 224.0f, 76.0f));
 		EndTurnSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
@@ -7261,16 +7547,9 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	}
 
 	HandCardDetailPanel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleHandCardDetailPanel"));
-	// Shared tooltip paper and nine-slice margin with the out-of-battle deck tooltips
-	// (T_MasterV2_ItemSlot at the inventory tooltip's fixed 0.065 box margin).
 	if (UTexture2D* TooltipPaper = LoadObject<UTexture2D>(nullptr,
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot")))
-	{
-		HandCardDetailPanel->SetBrush(BuildBoxTextureBrush(
-			TooltipPaper,
-			HandCardDetailPanelSize,
-			FMargin(0.065f)));
-	}
+		HandCardDetailPanel->SetBrush(BuildBoxTextureBrush(TooltipPaper, FVector2D(480,320), FMargin(0.065f)));
 	HandCardDetailPanel->SetBrushColor(FLinearColor::White);
 	HandCardDetailPanel->SetPadding(FMargin(16.0f, 12.0f));
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
@@ -7283,6 +7562,8 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28, true);
 	HandCardDetailTitle->SetFont(TitleFont);
+	HandCardDetailTitle->SetLineHeightPercentage(0.85f);
+	HandCardDetailTitle->SetApplyLineHeightToBottomLine(true);
 	TooltipBox->AddChildToVerticalBox(HandCardDetailTitle);
 	HandCardDetailBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleHandCardDetailBody"));
 	HandCardDetailBody->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -7295,7 +7576,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		DetailSlot->SetAnchors(FAnchors(0.5f, 1.0f, 0.5f, 1.0f));
 		DetailSlot->SetOffsets(FMargin(-HandCardDetailPanelSize.X * 0.5f, -588.0f, HandCardDetailPanelSize.X, HandCardDetailPanelSize.Y));
 		DetailSlot->SetAlignment(FVector2D::ZeroVector);
-		DetailSlot->SetZOrder(50);
+		DetailSlot->SetZOrder(BattleTopRightToolbarZOrder + 10);
 	}
 
 	RewardCardBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("BattleRewardCardBox"));
@@ -7306,12 +7587,12 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		// slot padding per side) need a row sized for the full card faces.
 		// The previous 370x136 strip was the legacy small-card container and
 		// clipped the 206x285 faces down to horizontal slivers.
-		const float RewardRowWidth = static_cast<float>(MaximumVisibleRewardCards) * (RewardCardSize.X + 10.0f);
+		const float RewardRowWidth = static_cast<float>(MaximumVisibleRewardCards) * (BattleRewardDisplaySize.X + 10.0f);
 		RewardCardBoxSlotOffsets = FMargin(
 			-RewardRowWidth * 0.5f,
-			-RewardCardSize.Y * 0.5f,
+			-BattleRewardDisplaySize.Y * 0.5f,
 			RewardRowWidth,
-			RewardCardSize.Y);
+			BattleRewardDisplaySize.Y);
 		RewardSlot->SetOffsets(RewardCardBoxSlotOffsets);
 		RewardSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
@@ -7322,8 +7603,8 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	for (int32 SlotIndex = 0; SlotIndex < MaximumVisibleRewardCards; ++SlotIndex)
 	{
 		USizeBox* RewardSizeBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *FString::Printf(TEXT("BattleRewardCardSize_%02d"), SlotIndex));
-		RewardSizeBox->SetWidthOverride(RewardCardSize.X);
-		RewardSizeBox->SetHeightOverride(RewardCardSize.Y);
+		RewardSizeBox->SetWidthOverride(BattleRewardDisplaySize.X);
+		RewardSizeBox->SetHeightOverride(BattleRewardDisplaySize.Y);
 		UButton* RewardButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), *FString::Printf(TEXT("BattleRewardCard_%02d"), SlotIndex));
 		StyleCardButton(RewardButton, RewardCardSize);
 		UTextBlock* RewardLabel = nullptr;
@@ -7335,7 +7616,14 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			RewardLabel,
 			RewardPortrait,
 			RewardInfoStrip);
-		RewardSizeBox->AddChild(RewardButton);
+		USizeBox* RewardDesignSize = WidgetTree->ConstructWidget<USizeBox>();
+		RewardDesignSize->SetWidthOverride(RewardCardSize.X);
+		RewardDesignSize->SetHeightOverride(RewardCardSize.Y);
+		RewardDesignSize->SetContent(RewardButton);
+		UScaleBox* RewardScale = WidgetTree->ConstructWidget<UScaleBox>();
+		RewardScale->SetStretch(EStretch::ScaleToFit);
+		RewardScale->SetContent(RewardDesignSize);
+		RewardSizeBox->SetContent(RewardScale);
 		if (UHorizontalBoxSlot* RewardCardSlot = RewardCardBox->AddChildToHorizontalBox(RewardSizeBox))
 		{
 			RewardCardSlot->SetPadding(FMargin(5.0f, 0.0f, 5.0f, 0.0f));
@@ -7382,6 +7670,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	UTextBlock* SkipRewardLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleSkipRewardLabel"));
 	SkipRewardLabel->SetText(NSLOCTEXT("GameXXKBattle", "SkipReward", "跳过奖励"));
 	SkipRewardLabel->SetJustification(ETextJustify::Center);
+	SkipRewardLabel->SetFont(FGameXXKInRunUiStyle::Font(24, true));
 	SkipRewardLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	SkipRewardButton->AddChild(SkipRewardLabel);
 	SkipRewardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleSkipRewardClicked);
@@ -7389,7 +7678,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	{
 		SkipRewardSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		// Below the full-height reward row, clear of the card faces.
-		SkipRewardSlot->SetOffsets(FMargin(-95.0f, RewardCardSize.Y * 0.5f + 40.0f, 190.0f, 56.0f));
+		SkipRewardSlot->SetOffsets(FMargin(-95.0f, BattleRewardDisplaySize.Y * 0.5f + 40.0f, 190.0f, 56.0f));
 		SkipRewardSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
@@ -8014,6 +8303,9 @@ void UGameXXKBattleBoardWidget::RefreshActionButtons()
 
 void UGameXXKBattleBoardWidget::RefreshHandCards()
 {
+	const TArray<FName> PreviousIds=HandCardInstanceIds;
+	TMap<FName,FWidgetTransform> PreviousTransforms;
+	for(int32 I=0;I<PreviousIds.Num() && I<HandCardButtons.Num();++I)if(HandCardButtons[I])PreviousTransforms.Add(PreviousIds[I],HandCardButtons[I]->GetRenderTransform());
 	HandCardInstanceIds.Reset();
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
@@ -8065,6 +8357,8 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		EndTurnButton->SetIsEnabled(bCanEndTurn);
 	}
 
+	for(auto It=HandMotions.CreateIterator();It;++It)if(!HandCardInstanceIds.Contains(It.Key()))It.RemoveCurrent();
+	int32 ArrivalOrder=0;
 	for (int32 SlotIndex = 0; SlotIndex < HandCardButtons.Num(); ++SlotIndex)
 	{
 		UButton* CardButton = HandCardButtons[SlotIndex];
@@ -8086,6 +8380,7 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		}
 		if (!bHasCard)
 		{
+			if(CardButton)if(UGameXXKCardAuraWidget* Aura=CardAuraWidgets.FindRef(CardButton->GetFName()))Aura->SetCues({});
 			continue;
 		}
 
@@ -8102,6 +8397,22 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 		const bool bCanPlay = bPreviewBuilt && Preview.bCanPlay && !IsCardTargetingActive();
 		const bool bSelectedForTargeting = IsCardTargetingActive() && PendingCardPreview.CardInstanceId == CardInstanceId;
 		ApplyCardPresentation(CardButton, CardLabel, CardPortrait, CardInfoStrip, Definition);
+		const bool NewCard=!HandMotions.Contains(CardInstanceId);
+		auto& Motion=HandMotions.FindOrAdd(CardInstanceId);
+		if(NewCard)Motion.Order=ArrivalOrder++;
+		else if(PreviousIds.IndexOfByKey(CardInstanceId)!=SlotIndex)
+		{
+			const auto Prior=PreviousTransforms.FindRef(CardInstanceId);
+			Motion.Age=1;Motion.ReflowAge=0;
+			Motion.ReflowOffset=Prior.Translation+FVector2D((PreviousIds.IndexOfByKey(CardInstanceId)-SlotIndex)*(PlayerHandCardSize.X+8),-Motion.HoverLift);
+			Motion.ReflowScale=Prior.Scale.X/FMath::Max(0.1f,Motion.HoverScale);
+		}
+		Motion.BaseOpacity=(bCanPlay || bSelectedForTargeting) ? 1.0f : 0.58f;
+		if(CardButton && CardInstance && Definition)if(UGameXXKCardAuraWidget* Aura=CardAuraWidgets.FindRef(CardButton->GetFName()))
+		{
+			const auto Effective=FGameXXKCardQualityRules::BuildEffectiveDefinition(*Definition,CardInstance->CurrentQuality);
+			Aura->SetCues(GameXXKCardSynergyPresentation::Build(State->CardRun.ActiveBattle,*CardInstance,Effective,&Preview));
+		}
 		if (CardButton)
 		{
 			CardButton->SetRenderOpacity((bCanPlay || bSelectedForTargeting) ? 1.0f : 0.58f);
@@ -8112,10 +8423,12 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 			const int32 Energy = bPreviewBuilt ? Preview.EffectiveEnergyCost : (Definition ? Definition->EnergyCost : 0);
 			const int32 Mana = bPreviewBuilt ? Preview.EffectiveManaCost : (Definition ? Definition->ManaCost : 0);
 			CardLabel->SetText(FText::FromString(DisplayName));
+			GameXXKCardNameStyle::Apply(CardLabel, CardInstance ? CardInstance->CurrentQuality : EGameXXKCardQuality::Common);
 			if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*(CardLabel->GetName()+TEXT("Cost")))))
 				Cost->SetText(FText::FromString(FString::Printf(TEXT("%d气\n%d内"),Energy,Mana)));
 		}
 	}
+	AdvanceHandCardHoverMotion(0);
 }
 
 void UGameXXKBattleBoardWidget::RefreshPartyQiWidget()
@@ -8694,17 +9007,27 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		}
 		else if (RewardOption.Kind == EGameXXKBattleRewardKind::EnergyCapBonus)
 		{
-			DirectTooltipText = FText::FromString(TEXT("[属性奖励]\n气力上限永久 +1"));
+			DirectTooltipText = FText::FromString(TEXT("气力上限 +1\n玩家回合的气力上限增加1点。"));
 		}
 		else if (RewardOption.Kind == EGameXXKBattleRewardKind::DrawBonus)
 		{
-			DirectTooltipText = FText::FromString(TEXT("[属性奖励]\n每回合抽牌数永久 +1"));
+			DirectTooltipText = FText::FromString(TEXT("每回合抽牌 +1\n玩家回合多抽1张牌。"));
 		}
 		else if (!RewardOption.CardId.IsNone())
 		{
 			Definition = FGameXXKCardCatalog::FindCardDefinition(RewardOption.CardId);
 			TooltipQuality = Definition ? Definition->BaseQuality : EGameXXKCardQuality::Invalid;
-			Context.InteractionResult = TEXT("点击后加入临时路线卡组；满位时选择要替换的路线牌。");
+			if (RewardOption.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade)
+			{
+				TooltipQuality = FGameXXKCardBattleAdapter::GetNextCardQuality(
+					FGameXXKCardBattleAdapter::GetConfiguredCardQuality(Subsystem->GetRuntimeState().CardRun, RewardOption.CardId));
+				Context.InteractionResult = TEXT("领取后提升此牌品质。");
+			}
+			else Context.InteractionResult = TEXT("领取首领卡牌。");
+			FGameXXKCardPlayPreview ReferencePreview;
+			if (Definition && FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(Subsystem->GetRuntimeState(),
+				UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(Subsystem->GetRuntimeState(), *Definition),
+				Definition->Id, TooltipQuality, ReferencePreview)) TooltipPreview = ReferencePreview;
 		}
 		break;
 	}
@@ -8798,6 +9121,18 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 					: GameXXKCardText::DescribeCompactTooltipBody(*Definition, TooltipQuality, Preview, Context));
 		}
 	}
+	if(HoveredCardTooltipSource==ECardTooltipSource::Hand)
+	{
+		const FString Cue=GetHandSynergyForTest(HoveredHandCardSlot);
+		if(!Cue.IsEmpty())
+		{
+			FString WithCue = TooltipBody.ToString();
+			const int32 Footer = WithCue.Find(TEXT("\nShift："));
+			if (Footer != INDEX_NONE) WithCue.InsertAt(Footer, TEXT("\n") + Cue);
+			else WithCue += TEXT("\n") + Cue;
+			TooltipBody = FText::FromString(WithCue);
+		}
+	}
 	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
 	{
 		// An empty tooltip must not touch layout: collapsing without rewriting
@@ -8814,40 +9149,53 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		HandCardDetailTitle->SetText(TooltipTitle);
 		const EGameXXKCardQuality TitleQuality = TooltipQuality == EGameXXKCardQuality::Invalid && Definition ? Definition->BaseQuality : TooltipQuality;
 		const FLinearColor TitleColor = !Definition ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
-			: TitleQuality == EGameXXKCardQuality::Common ? FLinearColor::White
-			: FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
+			: TitleQuality == EGameXXKCardQuality::Common ? FLinearColor::White : FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
 		HandCardDetailTitle->SetColorAndOpacity(FSlateColor(TitleColor));
 		FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28,true);
 		TitleFont.OutlineSettings.OutlineSize = 1;
 		TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 		HandCardDetailTitle->SetFont(TitleFont);
+		GameXXKCardNameStyle::Apply(HandCardDetailTitle, TitleQuality, 1);
 	}
+	const FVector2D CachedCanvasSize = RootCanvas ? RootCanvas->GetCachedGeometry().GetLocalSize() : FVector2D::ZeroVector;
+	const FVector2D CanvasSize = CachedCanvasSize.X > 1 && CachedCanvasSize.Y > 1 ? CachedCanvasSize : BattleHudSafeStageDesignSize;
+	float PanelWidth = DirectTooltipText.IsSet()
+		? GameXXKCardTooltipPresentation::CompactWidth(TooltipTitle.ToString(), TooltipBody.ToString())
+		: GameXXKCardTooltipPresentation::PreferredWidth(TooltipBody.ToString());
 	float PanelHeight = HandCardDetailPanelSize.Y;
 	if (HandCardDetailBody)
 	{
 		// Height follows the populated rows: title band + gap + measured
 		// wrapped body height + vertical padding + parchment bottom border.
 		FGameXXKCardTooltipPresentationStyle Style;
+		Style.bDisplayBodyFont = DirectTooltipText.IsSet();
 		Style.bPillHelp = Definition && !bCardTooltipExpanded
 			&& CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Pills;
-		const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(
-			WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString(), Style);
-		PanelHeight = 12.0f + 34.0f + 6.0f + BodyHeight + 12.0f + 20.0f;
+		do
+		{
+			Style.WrapWidth = PanelWidth - 44;
+			const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(
+				WidgetTree, HandCardDetailBody, TooltipTitle.ToString(), TooltipBody.ToString(), Style);
+			PanelHeight = (DirectTooltipText.IsSet() ? 70.0f : 96.0f) + BodyHeight;
+			if (PanelHeight <= FMath::Max(340.0f, CanvasSize.Y - 405.0f) || PanelWidth >= GameXXKCardTooltipPresentation::MaximumWidth) break;
+			PanelWidth = FMath::Min(GameXXKCardTooltipPresentation::MaximumWidth, PanelWidth + 80);
+		} while (true);
 	}
+	if (HandCardDetailTitle) HandCardDetailTitle->SetWrapTextAt(PanelWidth - 44);
 
 	// Follow the hovered card slot instead of the fixed default anchor.
-	FVector2D PanelPosition(-HandCardDetailPanelSize.X * 0.5f, -588.0f);
+	FVector2D PanelPosition(-PanelWidth * 0.5f, -588.0f);
 	switch (HoveredCardTooltipSource)
 	{
 	case ECardTooltipSource::Reward:
 		if (PendingRewardOptions.IsValidIndex(HoveredRewardCardSlot))
 		{
 			const float SlotCenterX = RewardCardBoxSlotOffsets.Left + 5.0f
-				+ HoveredRewardCardSlot * (RewardCardSize.X + 10.0f)
-				+ RewardCardSize.X * 0.5f;
+				+ HoveredRewardCardSlot * (BattleRewardDisplaySize.X + 10.0f)
+				+ BattleRewardDisplaySize.X * 0.5f;
 			PanelPosition = FVector2D(
-				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
-				RewardCardBoxSlotOffsets.Top - PanelHeight - 12.0f);
+				SlotCenterX - PanelWidth * 0.5f,
+				-CanvasSize.Y * 0.5f + RewardCardBoxSlotOffsets.Top - PanelHeight - 12.0f);
 		}
 		break;
 	case ECardTooltipSource::Hand:
@@ -8856,9 +9204,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			const float SlotCenterX = -585.0f + 4.0f
 				+ HoveredHandCardSlot * (PlayerHandCardSize.X + 8.0f)
 				+ PlayerHandCardSize.X * 0.5f;
-			PanelPosition = FVector2D(
-				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
-				-305.0f - PanelHeight - 12.0f);
+			const float CardTop = -305.0f - 26.0f - PlayerHandCardSize.Y * 0.16f;
+			PanelPosition = FVector2D(SlotCenterX - PanelWidth * 0.5f, CardTop - PanelHeight - 12.0f);
 		}
 		break;
 	case ECardTooltipSource::PendingChoice:
@@ -8878,8 +9225,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			// Cards start at panel-relative y 39; the panel is centered, so the
 			// card top sits at board y -142. Keep the tooltip bottom 12px above it.
 			PanelPosition = FVector2D(
-				SlotCenterX - HandCardDetailPanelSize.X * 0.5f,
-				-142.0f - PanelHeight - 12.0f);
+				SlotCenterX - PanelWidth * 0.5f,
+				-CanvasSize.Y * 0.5f - 142.0f - PanelHeight - 12.0f);
 		}
 		break;
 	default:
@@ -8887,10 +9234,19 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	}
 	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(HandCardDetailPanel->Slot))
 	{
+		if (PanelPosition.Y < -CanvasSize.Y + 16)
+		{
+			// Long detail sits on the opposite side of its card, preserving the
+			// hovered card and the pointer instead of covering its name/costs.
+			const float CardCenterX = PanelPosition.X + PanelWidth * 0.5f;
+			PanelPosition.X = CardCenterX < 0 ? CanvasSize.X * 0.5f - PanelWidth - 16 : -CanvasSize.X * 0.5f + 16;
+		}
+		PanelPosition.X = FMath::Clamp(PanelPosition.X, -CanvasSize.X * 0.5f + 16, CanvasSize.X * 0.5f - PanelWidth - 16);
+		PanelPosition.Y = FMath::Clamp(PanelPosition.Y, -CanvasSize.Y + 16, -PanelHeight - 16);
 		DetailSlot->SetOffsets(FMargin(
 			PanelPosition.X,
 			PanelPosition.Y,
-			HandCardDetailPanelSize.X,
+			PanelWidth,
 			PanelHeight));
 	}
 }
@@ -8962,6 +9318,12 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		UImage* CardPortrait = EnemyIntentCardPortraits.IsValidIndex(VisibleSlotIndex) ? EnemyIntentCardPortraits[VisibleSlotIndex] : nullptr;
 		const int32 PersistentIntentIndex = GetEnemyIntentPersistentIndexForVisibleSlot(VisibleSlotIndex);
 		const bool bHasIntent = Run && Run->EnemyIntents.IsValidIndex(PersistentIntentIndex);
+		// The side label and the card are one presentation slot. Hiding just the
+		// button leaves its old 3P label visible after the live intents compact.
+		if (UWidget* IntentSlot = EnemyIntentCardBox ? EnemyIntentCardBox->GetChildAt(VisibleSlotIndex) : nullptr)
+			IntentSlot->SetVisibility(bHasIntent ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		UTextBlock* SlotNumber = WidgetTree ? Cast<UTextBlock>(WidgetTree->FindWidget(
+			*FString::Printf(TEXT("BattleEnemyIntentSlotNumber_%02d"), VisibleSlotIndex))) : nullptr;
 		if (IntentCardButton)
 		{
 			IntentCardButton->SetVisibility(bHasIntent ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -8970,6 +9332,8 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		}
 		if (!bHasIntent)
 		{
+			if (SideLabel) SideLabel->SetText(FText::GetEmpty());
+			if (SlotNumber) SlotNumber->SetText(FText::GetEmpty());
 			if (CardPortrait)
 			{
 				CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
@@ -8982,36 +9346,12 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 			&& PersistentIntentIndex == ActiveEnemyIntentPresentationIndex;
 		if (SideLabel)
 		{
-			SideLabel->SetText(FText::FromString(ResolveEnemyIntentSourceSlotLabel(Intent)));
+			SideLabel->SetText(NSLOCTEXT("GameXXKBattle", "IntentEnemySide", "敌方"));
 			SideLabel->SetRenderOpacity(bCurrentIntent ? 1.0f : 0.68f);
+			if (SlotNumber)
+				SlotNumber->SetText(FText::Format(NSLOCTEXT("GameXXKBattle", "IntentSlotNumber", "{0}P"), FText::AsNumber(Intent.SourceSlotNumber)));
 		}
-		if (CardBody)
-		{
-			FString Full=BuildEnemyIntentCardBody(*State,Intent),TitleLine,Rest;
-			Full.Split(TEXT("\n"),&TitleLine,&Rest);
-			if(auto* Title=Cast<UTextBlock>(WidgetTree->FindWidget(FName(*(CardBody->GetName().LeftChop(4)+TEXT("Title"))))))Title->SetText(FText::FromString(TitleLine));
-			CardBody->SetText(FText::FromString(Rest));
-		}
-		if (CardPortrait)
-		{
-			const FGameXXKBattleRuntimeUnit* SourceEnemy = State->ActiveBattleEnemies.FindByPredicate([&Intent](const FGameXXKBattleRuntimeUnit& Unit)
-			{
-				return Unit.Id == Intent.SourceUnitId;
-			});
-			UTexture2D* PortraitTexture = SourceEnemy
-				? ResolveEnemyIntentPortraitTexture(SourceEnemy->EnemyDefinitionId)
-				: nullptr;
-			if (PortraitTexture)
-			{
-				CardPortrait->SetBrushFromTexture(PortraitTexture, true);
-				CardPortrait->SetColorAndOpacity(FLinearColor::White);
-				CardPortrait->SetVisibility(ESlateVisibility::HitTestInvisible);
-			}
-			else
-			{
-				CardPortrait->SetVisibility(ESlateVisibility::Collapsed);
-			}
-		}
+		ApplyEnemyIntentCardPresentation(CardBody, CardPortrait, *State, Intent);
 		if (IntentCardButton)
 		{
 			IntentCardButton->SetToolTipText(FText::GetEmpty());
@@ -9037,14 +9377,52 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentShowcase()
 	if (EnemyIntentShowcaseCard)
 	{
 		EnemyIntentShowcaseCard->SetVisibility(bShowShowcase ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
-		EnemyIntentShowcaseCard->SetRenderOpacity(EnemyIntentPresentationState == EGameXXKEnemyIntentPresentationState::Reveal ? 0.88f : 1.0f);
 	}
 	if (bShowShowcase && EnemyIntentShowcaseBody)
 	{
-		EnemyIntentShowcaseBody->SetText(FText::FromString(BuildEnemyIntentCardBody(
-			*State,
-			Run->EnemyIntents[ActiveEnemyIntentPresentationIndex])));
+		ApplyEnemyIntentCardPresentation(EnemyIntentShowcaseBody, EnemyIntentShowcasePortrait, *State,
+			Run->EnemyIntents[ActiveEnemyIntentPresentationIndex], true);
 	}
+	UpdateEnemyIntentShowcaseMotion();
+}
+
+void UGameXXKBattleBoardWidget::UpdateEnemyIntentShowcaseMotion()
+{
+	if (!EnemyIntentShowcaseCard) return;
+	FWidgetTransform Pose;
+	float Opacity = 1.0f;
+	if (EnemyIntentPresentationState == EGameXXKEnemyIntentPresentationState::Reveal)
+	{
+		const float T = FMath::Clamp(EnemyIntentPresentationElapsed / 0.36f, 0.0f, 1.0f);
+		const float Ease = 1.0f - FMath::Pow(1.0f - T, 3.0f);
+		const int32 RailIndex = FMath::Max(0, VisibleEnemyIntentIndices.IndexOfByKey(ActiveEnemyIntentPresentationIndex));
+		const FVector2D RootSize = RootCanvas ? RootCanvas->GetCachedGeometry().GetLocalSize() : FVector2D::ZeroVector;
+		const float Height = RootSize.Y > 1.0f ? RootSize.Y : BattleHudSafeStageDesignSize.Y;
+		const float Width = RootSize.X > 1.0f ? RootSize.X : BattleHudSafeStageDesignSize.X;
+		const FVector2D Origin(Width * (EnemyIntentRailAnchorX - 0.5f) - EnemyIntentRailSize.X * 0.5f + RailIndex * EnemyIntentStride + EnemyIntentSideWidth + EnemyIntentSideGap + EnemyIntentCardSize.X * 0.5f,
+			24.0f + EnemyIntentCardSize.Y * 0.5f - Height * 0.5f);
+		Pose.Translation = Origin * (1.0f - Ease) + FVector2D(0, -14.0f * FMath::Sin(PI * T));
+		const float Scale = FMath::Lerp(EnemyIntentCardSize.X / EnemyIntentShowcaseCardSize.X, 1.0f, Ease);
+		Pose.Scale = FVector2D(Scale, Scale);
+		Pose.Angle = -5.0f * (1.0f - Ease);
+		Opacity = FMath::Clamp(T * 5.0f, 0.0f, 1.0f);
+	}
+	else if (EnemyIntentPresentationState == EGameXXKEnemyIntentPresentationState::Resolve)
+	{
+		const float T = FMath::Clamp(EnemyIntentPresentationElapsed / EnemyIntentResolveDuration, 0.0f, 1.0f);
+		Pose.Scale = FVector2D(1.0f + 0.055f * FMath::Sin(PI * T));
+		Pose.Translation = FVector2D(20.0f * T, -22.0f * T);
+		Pose.Angle = 3.0f * T;
+		Opacity = 1.0f - FMath::Clamp((T - 0.35f) / 0.65f, 0.0f, 1.0f);
+	}
+	else if (EnemyIntentPresentationState == EGameXXKEnemyIntentPresentationState::Settle)
+	{
+		Opacity = 0.0f;
+	}
+	// The attack close-up now owns the centre; do not flash the intent behind it.
+	if (IsBattlePresentationPending()) Opacity = 0.0f;
+	EnemyIntentShowcaseCard->SetRenderTransform(Pose);
+	EnemyIntentShowcaseCard->SetRenderOpacity(Opacity);
 }
 
 void UGameXXKBattleBoardWidget::RefreshEnemyIntentRecoveryControl()
@@ -9075,9 +9453,38 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentDetail()
 		EnemyIntentDetailPanel->SetVisibility(ESlateVisibility::Collapsed);
 		return;
 	}
-	EnemyIntentDetailBody->SetText(FText::FromString(Tooltip));
+	FString Title, Body;
+	Tooltip.Split(TEXT("\n"), &Title, &Body);
+	float LongestLine = 0;
+	TArray<FString> BodyLines; Body.ParseIntoArrayLines(BodyLines);
+	if (FSlateApplication::IsInitialized())
+	{
+		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+		LongestLine = Measure->Measure(Title,FGameXXKInRunUiStyle::Font(28,true)).X;
+		for (const auto& Line : BodyLines) LongestLine = FMath::Max(LongestLine,Measure->Measure(Line,FGameXXKInRunUiStyle::Font(20,true)).X);
+	}
+	else for (const auto& Line : BodyLines) LongestLine = FMath::Max(LongestLine,Line.Len()*20.0f);
+	const float Width = FMath::Clamp(LongestLine + 44, 260.0f, 620.0f);
+	if (UTextBlock* Heading = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("BattleEnemyIntentDetailTitle"))))
+	{
+		Heading->SetText(FText::FromString(Title));
+		Heading->SetWrapTextAt(Width - 32);
+	}
+	FGameXXKCardTooltipPresentationStyle Style;
+	Style.WrapWidth = Width - 32;
+	Style.bDisplayBodyFont = true;
+	const float BodyHeight = GameXXKCardTooltipPresentation::PopulateBody(WidgetTree, EnemyIntentDetailBody, Title, Body, Style);
 	// It overlaps presentation space but must not intercept card-hover transitions.
 	EnemyIntentDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
+	EnemyIntentDetailPanel->ForceLayoutPrepass();
+	if (UCanvasPanelSlot* DetailSlot = Cast<UCanvasPanelSlot>(EnemyIntentDetailPanel->Slot))
+	{
+		const float Height = FMath::Max(120.0f, BodyHeight + 70);
+		DetailSlot->SetAnchors(FAnchors(EnemyIntentRailAnchorX, 0.0f));
+		DetailSlot->SetOffsets(FMargin(-EnemyIntentRailSize.X * 0.5f + FMath::Max(0, HoveredEnemyIntentSlot) * EnemyIntentStride
+			+ EnemyIntentSideWidth + EnemyIntentSideGap + EnemyIntentCardSize.X * 0.5f - Width * 0.5f,
+			24.0f + EnemyIntentCardSize.Y + 12.0f, Width, Height));
+	}
 }
 
 void UGameXXKBattleBoardWidget::SetEnemyIntentHoverState(const int32 VisibleSlotIndex, const bool bHovered)
@@ -9202,6 +9609,14 @@ bool UGameXXKBattleBoardWidget::ResolveCurrentEnemyIntentPresentation()
 			EBattlePresentationContinuation::ResumeEnemyIntentAfterMutation);
 	}
 	LastCardInteractionError.Reset();
+	for (const auto& Unit : MutableState.CardRun.ActiveBattle.Units)
+	{
+		int32 UnattachedDrain = MutableState.CardRun.ActiveBattle.LastManaDrainedByTarget.FindRef(Unit.UnitId);
+		for (const auto& Hit : DamageResults) if (Hit.ResolvedTargetUnitId == Unit.UnitId) UnattachedDrain -= Hit.ManaDrained;
+		if (UnattachedDrain > 0) AppendBattleSettlementLine(FString::Printf(TEXT("%s用【%s】吸取%s%d点内力"),
+			*ResolveProjectedUnitHudDisplayName(ResolvedIntent.SourceUnitId).ToString(), *ResolvedIntent.CardDisplayName,
+			*ResolveProjectedUnitHudDisplayName(Unit.UnitId).ToString(), UnattachedDrain));
+	}
 	return QueueMutationPresentation(
 		Before,
 		DamageResults,
@@ -9454,6 +9869,7 @@ void UGameXXKBattleBoardWidget::ClearCardTooltipHoverState()
 		if (CardButton)
 		{
 			CardButton->SetRenderTransform(FWidgetTransform());
+			SyncHandCardAura(CardButton);
 		}
 	}
 	if (HandCardDetailPanel)
@@ -9476,6 +9892,7 @@ void UGameXXKBattleBoardWidget::SetRewardCardHoverState(const int32 SlotIndex, c
 	{
 		// Track the option slot instead of a card id: relic and attribute options
 		// carry no CardId, but every option owns exactly one visible slot.
+		if(RewardCardButtons.IsValidIndex(SlotIndex))FinishCardReveal(RewardCardButtons[SlotIndex]);
 		HoveredCardTooltipSource = ECardTooltipSource::Reward;
 		HoveredRewardCardSlot = SlotIndex;
 		HoveredCardTooltipId = NAME_None;
@@ -9513,11 +9930,116 @@ void UGameXXKBattleBoardWidget::AdvanceHandCardHoverMotion(float InDeltaTime)
 		const bool bHovered = !bCardTargeting && SlotIndex == HoveredHandCardSlot;
 		const float TargetScale = bSelected ? PlayerHandSelectedScale : (bHovered ? 1.16f : 1.0f);
 		const float TargetLift = bSelected ? PlayerHandSelectedLift : (bHovered ? -26.0f : 0.0f);
-		const FWidgetTransform CurrentTransform = CardButton->GetRenderTransform();
-		const float NextScale = FMath::FInterpTo(CurrentTransform.Scale.X, TargetScale, InDeltaTime, 16.0f);
-		const float NextLift = FMath::FInterpTo(CurrentTransform.Translation.Y, TargetLift, InDeltaTime, 18.0f);
-		CardButton->SetRenderScale(FVector2D(NextScale, NextScale));
-		CardButton->SetRenderTranslation(FVector2D(0.0f, NextLift));
+		if(!HandCardInstanceIds.IsValidIndex(SlotIndex))continue;
+		auto* Motion=HandMotions.Find(HandCardInstanceIds[SlotIndex]);
+		if(!Motion)continue;
+		const float Dt=FMath::IsFinite(InDeltaTime) ? FMath::Max(0.0f,InDeltaTime) : 0.0f;
+		Motion->Age=FMath::Min(1.0f,Motion->Age+Dt);
+		if(bSelected || bHovered)Motion->Age=1;
+		Motion->ReflowAge=FMath::Min(1.0f,Motion->ReflowAge+Dt);
+		Motion->HoverScale=FMath::FInterpTo(Motion->HoverScale,TargetScale,Dt,16.0f);
+		Motion->HoverLift=FMath::FInterpTo(Motion->HoverLift,TargetLift,Dt,18.0f);
+		const auto Deal=GameXXKCardVisualEffects::Deal(Motion->Age,SlotIndex,Motion->Order);
+		const float Reflow=1-FMath::Square(1-FMath::Clamp(Motion->ReflowAge/0.20f,0.0f,1.0f));
+		CardButton->SetRenderScale(Deal.Scale*Motion->HoverScale*FMath::Lerp(Motion->ReflowScale,1.0f,Reflow));
+		CardButton->SetRenderTranslation(Deal.Offset+Motion->ReflowOffset*(1-Reflow)+FVector2D(0,Motion->HoverLift));
+		CardButton->SetRenderTransformAngle(Deal.Angle);
+		CardButton->SetRenderOpacity(Motion->BaseOpacity*Deal.Opacity);
+		SyncHandCardAura(CardButton);
+	}
+}
+
+void UGameXXKBattleBoardWidget::SyncHandCardAura(UButton* CardButton)
+{
+	if (!CardButton) return;
+	if (UGameXXKCardAuraWidget* Aura = CardAuraWidgets.FindRef(CardButton->GetFName()))
+	{
+		Aura->SetRenderTransformPivot(CardButton->GetRenderTransformPivot());
+		Aura->SetRenderTransform(CardButton->GetRenderTransform());
+		Aura->SetRenderOpacity(CardButton->GetRenderOpacity());
+		Aura->SetIsEnabled(CardButton->GetIsEnabled());
+	}
+}
+
+FString UGameXXKBattleBoardWidget::GetHandSynergyForTest(int32 SlotIndex) const
+{
+	if(HandCardButtons.IsValidIndex(SlotIndex) && HandCardButtons[SlotIndex])
+		if(UGameXXKCardAuraWidget* Aura=CardAuraWidgets.FindRef(HandCardButtons[SlotIndex]->GetFName()))return Aura->GetCueDebugText();
+	return FString();
+}
+
+void UGameXXKBattleBoardWidget::RegisterCardReveal(UButton* Button,FName Identity,int32 Order,bool bVisible)
+{
+	if(!Button)return;
+	const FName Key=Button->GetFName();
+	if(!bVisible)
+	{
+		CardReveals.Remove(Key);Button->SetRenderTransform(FWidgetTransform());Button->SetRenderOpacity(1);
+		if(UWidget* Back=CardBackWidgets.FindRef(Key))Back->SetVisibility(ESlateVisibility::Collapsed);
+		return;
+	}
+	if(const auto* Existing=CardReveals.Find(Key))if(Existing->Identity==Identity)return;
+	FCardReveal R;R.Identity=Identity;R.Button=Button;R.Order=Order;CardReveals.Add(Key,R);
+	Button->SetRenderTransformPivot(FVector2D(0.5,0.5));
+	AdvanceCardReveals(0);
+}
+
+void UGameXXKBattleBoardWidget::FinishCardReveal(UButton* Button)
+{
+	if(!Button)return;
+	if(auto* Reveal=CardReveals.Find(Button->GetFName()))Reveal->Age=1;
+	Button->SetRenderTransform(FWidgetTransform());Button->SetRenderOpacity(1);
+	if(UWidget* Back=CardBackWidgets.FindRef(Button->GetFName()))Back->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+void UGameXXKBattleBoardWidget::AdvanceCardReveals(float DeltaTime)
+{
+	for(auto It=CardReveals.CreateIterator();It;++It)
+	{
+		auto& Reveal=It.Value();UButton* Button=Reveal.Button.Get();
+		if(!Button) {It.RemoveCurrent();continue;}
+		Reveal.Age=FMath::Min(1.0f,Reveal.Age+FMath::Max(0.0f,DeltaTime));
+		const auto Flip=GameXXKCardVisualEffects::Flip(Reveal.Age,Reveal.Order);
+		Button->SetRenderScale(Flip.Scale);Button->SetRenderTranslation(Flip.Offset);
+		Button->SetRenderTransformAngle(Flip.Angle);Button->SetRenderOpacity(Flip.Opacity);
+		if(UWidget* Back=CardBackWidgets.FindRef(It.Key()))Back->SetVisibility(Flip.bFrontFace ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	}
+}
+
+void UGameXXKBattleBoardWidget::RefreshCardMechanicFeedback(float DeltaTime)
+{
+	CardEffectsSeconds=FMath::Fmod(CardEffectsSeconds+FMath::Max(0.0f,DeltaTime),180.0f);
+	const auto* S=ResolveMVPSubsystem();
+	const bool Active=S && S->GetRuntimeState().Screen==EGameXXKScreen::Battle && S->GetRuntimeState().CardRun.bHasActiveCardBattle && !HasPendingRouteReward();
+	if(TerrainFeedbackText)TerrainFeedbackText->SetVisibility(Active ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	if(!Active) {if(EndTurnButton)EndTurnButton->SetBackgroundColor(FLinearColor::White);return;}
+	const auto& R=S->GetRuntimeState().CardRun.ActiveBattle;
+	const bool HasFormation=R.Units.ContainsByPredicate([](const auto& U){return U.bLiving && U.Side==EGameXXKCardTargetSide::Party && U.Role==EGameXXKCharacterRole::FormationMaster;});
+	const bool LabelChanged=FeedbackTerrain!=R.Terrain || FeedbackRound==INDEX_NONE || bFeedbackHasFormation!=HasFormation;
+	if(R.Terrain!=FeedbackTerrain || (HasFormation && R.RoundNumber!=FeedbackRound))TerrainPulseAge=0;
+	FeedbackTerrain=R.Terrain;FeedbackRound=R.RoundNumber;bFeedbackHasFormation=HasFormation;
+	TerrainPulseAge=FMath::Min(1.0f,TerrainPulseAge+FMath::Max(0.0f,DeltaTime));
+	if(TerrainFeedbackText)
+	{
+		const TCHAR* Names[]={TEXT("未知"),TEXT("平原"),TEXT("断崖"),TEXT("山林"),TEXT("水岸"),TEXT("渡口"),TEXT("村镇"),TEXT("洞窟")};
+		const int32 Index=FMath::Clamp(static_cast<int32>(R.Terrain),0,7);
+		if(LabelChanged)
+		{
+			TerrainFeedbackText->SetText(FText::FromString(FString::Printf(TEXT("地势 · %s"),Names[Index])));
+			TerrainFeedbackText->SetToolTipText(FText::FromString(TEXT("阵师存活时，玩家回合开始自动触发当前地势收益一次。地势牌可额外触发；紫色边光提示换势、双效或减耗。")));
+		}
+		const float Pulse=FMath::Sin(PI*FMath::Clamp(TerrainPulseAge/0.7f,0.0f,1.0f));
+		const FGameXXKBattleHudSafeStageLayout TerrainStage = ResolveBattleHudSafeStageLayoutForTest(BattleSettlementViewportSize);
+		const float TerrainScale = TerrainStage.Scale > KINDA_SMALL_NUMBER ? TerrainStage.Scale : 1.0f;
+		TerrainFeedbackText->SetRenderScale(FVector2D(TerrainScale * (1+Pulse*0.07f)));
+		TerrainFeedbackText->SetColorAndOpacity(FMath::Lerp(FGameXXKInRunUiStyle::Ink(),GameXXKCardSynergyPresentation::Color(EGameXXKCardSynergyKind::Terrain),Pulse*0.8f));
+	}
+	if(EndTurnButton)
+	{
+		const FString Finish=GameXXKCardSynergyPresentation::FinisherHint(R);
+		const float Pulse=Finish.IsEmpty() ? 0 : GameXXKCardVisualEffects::Breath(CardEffectsSeconds)*0.30f;
+		EndTurnButton->SetBackgroundColor(FMath::Lerp(FLinearColor::White,FLinearColor(1,0.35f,0.43f,1),Pulse));
+		if(Finish!=CardFinisherHint) {CardFinisherHint=Finish;EndTurnButton->SetToolTipText(FText::FromString(Finish.IsEmpty() ? TEXT("结束本回合，进入敌方行动") : Finish));}
 	}
 }
 
@@ -9638,6 +10160,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 		}
 		if (!bHasCandidate)
 		{
+			RegisterCardReveal(CardButton,NAME_None,SlotIndex,false);
 			continue;
 		}
 
@@ -9648,13 +10171,15 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 			PendingChoiceButton->Configure(this, SlotIndex, Candidate.InstanceId, PendingChoice->Kind);
 		}
 		ApplyCardPresentation(CardButton, CardLabel, CardPortrait, CardInfoStrip, Definition);
+		RegisterCardReveal(CardButton,Candidate.InstanceId,SlotIndex,true);
 		if (CardLabel)
 		{
 			const FString DisplayName = Definition ? Definition->DisplayName.ToString() : Candidate.CardId.ToString();
-			CardLabel->SetText(FText::FromString(FString::Printf(
-				TEXT("%s\n%s"),
-				*DisplayName,
-				(bShowInsight || bShowHeroTaskSearch) ? TEXT("加入手牌") : TEXT("点击弃置"))));
+			const auto Effective = Definition ? FGameXXKCardQualityRules::BuildEffectiveDefinition(*Definition, Candidate.CurrentQuality) : FGameXXKCardDefinition();
+			SetCardFaceCaption(WidgetTree, CardLabel, DisplayName,
+				(bShowInsight || bShowHeroTaskSearch) ? TEXT("加入手牌") : TEXT("点击弃置"),
+				FString::Printf(TEXT("%d气\n%d内"), Effective.EnergyCost, Effective.ManaCost));
+			GameXXKCardNameStyle::Apply(CardLabel, Candidate.CurrentQuality);
 		}
 	}
 }
@@ -9698,10 +10223,12 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 		}
 		if (!bHasReward)
 		{
+			RegisterCardReveal(RewardButton,NAME_None,SlotIndex,false);
 			continue;
 		}
 
 		const FGameXXKBattleRewardOption& Option = PendingRewardOptions[SlotIndex];
+		RegisterCardReveal(RewardButton,FName(*FString::Printf(TEXT("Reward.%d.%s"),static_cast<int32>(Option.Kind),*PendingRewardCardIds[SlotIndex].ToString())),SlotIndex,true);
 		const bool bIsCardOption = Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade
 			|| Option.Kind == EGameXXKBattleRewardKind::BossCard;
 		const FGameXXKCardDefinition* Definition = !Option.CardId.IsNone()
@@ -9734,6 +10261,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 		}
 		if (bIsCardOption)
 		{
+			if (RewardPortrait) if (auto* ArtSlot = Cast<UCanvasPanelSlot>(RewardPortrait->Slot)) ArtSlot->SetOffsets(FMargin(8,48,190,228));
 			ApplyCardPresentation(RewardButton, RewardLabel, RewardPortrait, RewardInfoStrip, Definition);
 		}
 		else
@@ -9749,23 +10277,27 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 		}
 		if (RewardLabel)
 		{
+			UTextBlock* RelicDescription = Cast<UTextBlock>(WidgetTree->FindWidget(*(RewardLabel->GetName().LeftChop(5)+TEXT("RelicDescription"))));
+			if (RelicDescription) RelicDescription->SetVisibility(ESlateVisibility::Collapsed);
 			if (Option.Kind == EGameXXKBattleRewardKind::EnergyCapBonus)
 			{
-				RewardLabel->SetText(FText::FromString(TEXT("气力上限 +1\n[属性奖励]")));
+				SetCardFaceCaption(WidgetTree, RewardLabel, TEXT("气力上限 +1"), TEXT("属性奖励"), FString());
 			}
 			else if (Option.Kind == EGameXXKBattleRewardKind::DrawBonus)
 			{
-				RewardLabel->SetText(FText::FromString(TEXT("每回合抽牌 +1\n[属性奖励]")));
+				SetCardFaceCaption(WidgetTree, RewardLabel, TEXT("每回合抽牌 +1"), TEXT("属性奖励"), FString());
 			}
 			else if (Option.Kind == EGameXXKBattleRewardKind::Relic)
 			{
 				FString RelicName = Option.RelicId.ToString();
+				FString RelicCopy;
 				UTexture2D* RelicIcon = nullptr;
 				for (const FGameXXKRelicDefinition& RelicDefinition : FGameXXKRelicCatalog::GetAllDefinitions())
 				{
 					if (RelicDefinition.Id == Option.RelicId)
 					{
 						RelicName = RelicDefinition.DisplayName.ToString();
+						RelicCopy = RelicDefinition.Description.ToString();
 						RelicIcon = RelicIconTextures.FindRef(RelicDefinition.Id);
 						break;
 					}
@@ -9776,7 +10308,8 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 					{
 						// Centered relic icon inside the card's portrait area.
 						RewardPortrait->SetBrushFromTexture(RelicIcon, true);
-						RewardPortrait->SetDesiredSizeOverride(FVector2D(100.0f, 100.0f));
+						RewardPortrait->SetDesiredSizeOverride(FVector2D(128.0f, 128.0f));
+						if (auto* ArtSlot = Cast<UCanvasPanelSlot>(RewardPortrait->Slot)) ArtSlot->SetOffsets(FMargin(39,56,128,128));
 						RewardPortrait->SetVisibility(ESlateVisibility::HitTestInvisible);
 					}
 					else
@@ -9784,25 +10317,24 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 						RewardPortrait->SetVisibility(ESlateVisibility::Collapsed);
 					}
 				}
-				RewardLabel->SetText(FText::FromString(FString::Printf(TEXT("%s\n[遗物]"), *RelicName)));
+				SetCardFaceCaption(WidgetTree, RewardLabel, RelicName, FString(), FString());
+				if (RelicDescription) { RelicDescription->SetText(FText::FromString(RelicCopy)); RelicDescription->SetVisibility(ESlateVisibility::HitTestInvisible); }
 			}
 			else
 			{
 				const FString DisplayName = Definition ? Definition->DisplayName.ToString() : Option.CardId.ToString();
-				const int32 Energy = Definition ? Definition->EnergyCost : 0;
-				const int32 Mana = Definition ? Definition->ManaCost : 0;
 				EGameXXKCardQuality ShownQuality = Definition ? Definition->BaseQuality : EGameXXKCardQuality::Common;
 				if (Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade)
 				{
-					ShownQuality = FGameXXKCardBattleAdapter::GetNextCardQuality(ShownQuality);
+					ShownQuality = FGameXXKCardBattleAdapter::GetNextCardQuality(
+						FGameXXKCardBattleAdapter::GetConfiguredCardQuality(Subsystem->GetRuntimeState().CardRun, Option.CardId));
 				}
 				const FString Quality = FGameXXKCardQualityRules::GetDisplayName(ShownQuality).ToString();
-				RewardLabel->SetText(FText::FromString(FString::Printf(
-					TEXT("%s\n[%s] %d 气 / %d 内"),
-					*DisplayName,
-					*Quality,
-					Energy,
-					Mana)));
+				const auto Effective = Definition ? FGameXXKCardQualityRules::BuildEffectiveDefinition(*Definition, ShownQuality) : FGameXXKCardDefinition();
+				SetCardFaceCaption(WidgetTree, RewardLabel, DisplayName,
+					(Option.Kind == EGameXXKBattleRewardKind::DeckCardUpgrade ? TEXT("升级至") : TEXT("")) + Quality,
+					FString::Printf(TEXT("%d气\n%d内"), Effective.EnergyCost, Effective.ManaCost));
+				GameXXKCardNameStyle::Apply(RewardLabel, ShownQuality);
 			}
 		}
 	}
@@ -9938,11 +10470,24 @@ void UGameXXKBattleBoardWidget::StyleBattleActionButton(UButton* Button, FName A
 	}
 
 	const FVector2D ButtonImageSize(360.0f, 74.0f);
-	FButtonStyle ButtonStyle;
+	FButtonStyle ButtonStyle; FGameXXKSfx::SetButtonSound(ButtonStyle);
 	ButtonStyle.SetNormal(BuildTextureBrush(BattleActionInkButtonTexture.Get(), ButtonImageSize, ActionTint));
 	ButtonStyle.SetHovered(BuildTextureBrush(BattleActionInkButtonTexture.Get(), ButtonImageSize, FLinearColor(ActionTint.R, ActionTint.G, ActionTint.B, 1.0f)));
 	ButtonStyle.SetPressed(BuildTextureBrush(BattleActionInkButtonTexture.Get(), ButtonImageSize, FLinearColor(ActionTint.R * 0.82f, ActionTint.G * 0.86f, ActionTint.B * 0.90f, 0.98f)));
 	ButtonStyle.SetDisabled(BuildTextureBrush(BattleActionInkButtonTexture.Get(), ButtonImageSize, FLinearColor(0.42f, 0.46f, 0.44f, 0.52f)));
+	if (ActionName == TEXT("BattleEndTurn"))
+	{
+		if (UMaterialInterface* InkMaterial = LoadObject<UMaterialInterface>(nullptr,
+			TEXT("/Game/GameXXK/UI/Materials/Followup/M_EndTurnVermilionInk")))
+		{
+			FSlateBrush Ink = ButtonStyle.Normal;
+			Ink.SetResourceObject(InkMaterial); Ink.TintColor = FSlateColor(FLinearColor::White);
+			ButtonStyle.SetNormal(Ink);
+			Ink.TintColor = FSlateColor(FLinearColor(1.12f,1.06f,1.02f,1)); ButtonStyle.SetHovered(Ink);
+			Ink.TintColor = FSlateColor(FLinearColor(0.82f,0.82f,0.82f,1)); ButtonStyle.SetPressed(Ink);
+			Ink.TintColor = FSlateColor(FLinearColor(0.7f,0.7f,0.7f,0.55f)); ButtonStyle.SetDisabled(Ink);
+		}
+	}
 	ButtonStyle.SetNormalPadding(FMargin(12.0f, 6.0f, 12.0f, 6.0f));
 	ButtonStyle.SetPressedPadding(FMargin(12.0f, 8.0f, 12.0f, 4.0f));
 	Button->SetStyle(ButtonStyle);
@@ -9964,7 +10509,7 @@ void UGameXXKBattleBoardWidget::StyleCardButton(UButton* Button, const FVector2D
 		return;
 	}
 
-	FButtonStyle ButtonStyle;
+	FButtonStyle ButtonStyle; FGameXXKSfx::SetButtonSound(ButtonStyle);
 	ButtonStyle.SetNormal(BuildTextureBrush(CardFrameTexture.Get(), CardImageSize, FLinearColor::White));
 	ButtonStyle.SetHovered(BuildTextureBrush(CardFrameTexture.Get(), CardImageSize, FLinearColor(1.0f, 0.962f, 0.874f, 1.0f)));
 	ButtonStyle.SetPressed(BuildTextureBrush(CardFrameTexture.Get(), CardImageSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.88f)));
@@ -10015,9 +10560,10 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 		LabelSlot->SetZOrder(2);
 	}
 
-	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
-		UImage::StaticClass(),
+	UGameXXKCardPortraitImage* Portrait = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>(
+		UGameXXKCardPortraitImage::StaticClass(),
 		*FString::Printf(TEXT("%sPortrait"), *NamePrefix));
+	Portrait->SetCardFace(FaceCanvas);
 	Portrait->SetVisibility(ESlateVisibility::Collapsed);
 	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
 	{
@@ -10027,9 +10573,46 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 	}
 
 	UTextBlock* Cost = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*FString::Printf(TEXT("%sLabelCost"),*NamePrefix));
-	Cost->SetFont(FGameXXKInRunUiStyle::Font(22,true)); Cost->SetColorAndOpacity(FSlateColor(ResolveCardFaceLabelColor()));
+	Cost->SetFont(FGameXXKInRunUiStyle::OutlinedFont(24)); Cost->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.95f, 0.82f, 1.0f)));
 	Cost->SetVisibility(ESlateVisibility::HitTestInvisible); Cost->SetAutoWrapText(false);
+	Cost->SetLineHeightPercentage(0.85f); Cost->SetApplyLineHeightToBottomLine(true);
 	if (auto* CostSlot = FaceCanvas->AddChildToCanvas(Cost)) { CostSlot->SetOffsets(FMargin(13,78,70,95)); CostSlot->SetZOrder(3); }
+	UTextBlock* Subtitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + TEXT("Subtitle")));
+	Subtitle->SetFont(FGameXXKInRunUiStyle::Font(17, true));
+	Subtitle->SetJustification(ETextJustify::Center); Subtitle->SetColorAndOpacity(FGameXXKInRunUiStyle::MutedInk());
+	Subtitle->SetVisibility(ESlateVisibility::Collapsed);
+	if (auto* MetaSlot = FaceCanvas->AddChildToCanvas(Subtitle)) { MetaSlot->SetOffsets(FMargin(8,50,190,26)); MetaSlot->SetZOrder(3); }
+	GameXXKCardNameStyle::AttachFrame(WidgetTree, FaceCanvas, Label);
+	UTextBlock* RelicDescription = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*(NamePrefix+TEXT("RelicDescription")));
+	RelicDescription->SetFont(FGameXXKInRunUiStyle::Font(14,true));
+	RelicDescription->SetColorAndOpacity(FGameXXKInRunUiStyle::MutedInk());
+	RelicDescription->SetJustification(ETextJustify::Center);RelicDescription->SetAutoWrapText(false);RelicDescription->SetWrapTextAt(172);
+	RelicDescription->SetLineHeightPercentage(0.9f);RelicDescription->SetApplyLineHeightToBottomLine(true);
+	RelicDescription->SetVisibility(ESlateVisibility::Collapsed);
+	USizeBox* DescriptionWidth = WidgetTree->ConstructWidget<USizeBox>();
+	DescriptionWidth->SetWidthOverride(172);
+	DescriptionWidth->SetContent(RelicDescription);
+	UScaleBox* DescriptionFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix+TEXT("RelicDescriptionFit")));
+	DescriptionFit->SetStretch(EStretch::ScaleToFit);
+	DescriptionFit->SetStretchDirection(EStretchDirection::DownOnly);
+	DescriptionFit->SetClipping(EWidgetClipping::ClipToBounds);
+	DescriptionFit->SetVisibility(ESlateVisibility::HitTestInvisible);
+	DescriptionFit->SetContent(DescriptionWidth);
+	if(auto* DescriptionSlot=FaceCanvas->AddChildToCanvas(DescriptionFit)) { DescriptionSlot->SetOffsets(FMargin(17,187,172,89));DescriptionSlot->SetZOrder(3); }
+
+	if(!bUsePlayerHandSize)
+	{
+		auto* Back=WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(),*FString::Printf(TEXT("%sBack"),*NamePrefix));
+		Back->SetBrush(FGameXXKInRunUiStyle::Choice(RewardCardSize).Normal);
+		Back->SetBrushColor(FLinearColor(0.30f,0.38f,0.34f,1));Back->SetPadding(FMargin(0));
+		auto* Seal=WidgetTree->ConstructWidget<UTextBlock>();Seal->SetText(FText::FromString(TEXT("缘")));
+		Seal->SetFont(FGameXXKInRunUiStyle::Font(56,true));Seal->SetColorAndOpacity(FLinearColor(0.92f,0.85f,0.65f,1));
+		Seal->SetJustification(ETextJustify::Center);Back->SetContent(Seal);
+		Back->SetVerticalAlignment(VAlign_Center);Back->SetHorizontalAlignment(HAlign_Fill);
+		Back->SetVisibility(ESlateVisibility::Collapsed);
+		if(auto* BackSlot=FaceCanvas->AddChildToCanvas(Back)) {BackSlot->SetOffsets(FMargin(0,0,206,285));BackSlot->SetZOrder(10);}
+		CardBackWidgets.Add(CardButton->GetFName(),Back);
+	}
 
 	// No bottom color strip: the page-18 card face is frame + portrait + name only.
 	OutLabel = Label;
@@ -10041,7 +10624,8 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 	UButton* CardButton,
 	const FString& NamePrefix,
 	UTextBlock*& OutBody,
-	UImage*& OutPortrait)
+	UImage*& OutPortrait,
+	bool bShowcase)
 {
 	OutBody = nullptr;
 	OutPortrait = nullptr;
@@ -10054,36 +10638,203 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		UCanvasPanel::StaticClass(),
 		*FString::Printf(TEXT("%sFace"), *NamePrefix));
 	CardButton->AddChild(FaceCanvas);
+	const float Scale = bShowcase ? EnemyIntentShowcaseCardSize.X / EnemyIntentCardSize.X : 1.0f;
+	auto AddText = [&](const TCHAR* Suffix, int32 FontSize, const FMargin& Bounds, ETextJustify::Type Align)
+	{
+		UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix));
+		Text->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize * Scale), bShowcase ? 2 : 1));
+		Text->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.95f, 0.82f, 1.0f)));
+		Text->SetAutoWrapText(true);
+		Text->SetLineHeightPercentage(0.80f);
+		Text->SetApplyLineHeightToBottomLine(true);
+		Text->SetJustification(Align);
+		Text->SetVisibility(ESlateVisibility::HitTestInvisible);
+		UCanvasPanelSlot* TextSlot = FaceCanvas->AddChildToCanvas(Text);
+		TextSlot->SetOffsets(FMargin(Bounds.Left * Scale, Bounds.Top * Scale, Bounds.Right * Scale, Bounds.Bottom * Scale));
+		TextSlot->SetZOrder(2);
+		return Text;
+	};
 
-	UImage* Portrait = WidgetTree->ConstructWidget<UImage>(
-		UImage::StaticClass(),
+	UGameXXKCardPortraitImage* Portrait = WidgetTree->ConstructWidget<UGameXXKCardPortraitImage>(
+		UGameXXKCardPortraitImage::StaticClass(),
 		*FString::Printf(TEXT("%sPortrait"), *NamePrefix));
+	Portrait->SetCardFace(FaceCanvas);
 	Portrait->SetVisibility(ESlateVisibility::Collapsed);
 	if (UCanvasPanelSlot* PortraitSlot = FaceCanvas->AddChildToCanvas(Portrait))
 	{
-		PortraitSlot->SetOffsets(FMargin(0.0f, 0.0f, EnemyIntentCardSize.X, EnemyIntentCardSize.Y));
+		PortraitSlot->SetOffsets(FMargin(114.0f * Scale, 170.0f * Scale, 84.0f * Scale, 101.0f * Scale));
 		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
 	}
-
-	UTextBlock* Body = WidgetTree->ConstructWidget<UTextBlock>(
-		UTextBlock::StaticClass(),
-		*FString::Printf(TEXT("%sBody"), *NamePrefix));
-	Body->SetAutoWrapText(true);
-	Body->SetJustification(ETextJustify::Center);
-	Body->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
-	Body->SetShadowColorAndOpacity(FLinearColor(1.0f, 1.0f, 1.0f, 0.34f));
-	Body->SetShadowOffset(FVector2D(0.5f, 0.5f));
-	Body->SetFont(FGameXXKInRunUiStyle::Font(15,false,true));
-	if (UCanvasPanelSlot* BodySlot = FaceCanvas->AddChildToCanvas(Body))
+	AddText(TEXT("Title"), 28, FMargin(10, 10, 186, 50), ETextJustify::Center);
+	AddText(TEXT("Target"), 18, FMargin(12, 64, 182, 28), ETextJustify::Center);
+	UTextBlock* Primary = AddText(TEXT("Primary"), 34, FMargin(13, 94, 180, 44), ETextJustify::Center);
+	Primary->SetAutoWrapText(false);
+	UTextBlock* PrimaryLabel = AddText(TEXT("PrimaryLabel"), 18, FMargin(144,94,50,44), ETextJustify::Left);
+	PrimaryLabel->SetAutoWrapText(false);
+	PrimaryLabel->RemoveFromParent();
+	UScaleBox* PrimaryLabelFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix + TEXT("PrimaryLabelFit")));
+	PrimaryLabelFit->SetStretch(EStretch::ScaleToFit); PrimaryLabelFit->SetStretchDirection(EStretchDirection::DownOnly);
+	if (UScaleBoxSlot* LabelContentSlot = Cast<UScaleBoxSlot>(PrimaryLabelFit->AddChild(PrimaryLabel)))
+		LabelContentSlot->SetHorizontalAlignment(HAlign_Left);
+	if (UCanvasPanelSlot* LabelFitSlot = FaceCanvas->AddChildToCanvas(PrimaryLabelFit))
 	{
-		BodySlot->SetOffsets(FMargin(12.0f, 57.0f, 154.0f, 133.0f));
-		BodySlot->SetAlignment(FVector2D::ZeroVector);
+		LabelFitSlot->SetOffsets(FMargin(144*Scale,94*Scale,50*Scale,44*Scale)); LabelFitSlot->SetZOrder(2);
 	}
-	UTextBlock* Title=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*FString::Printf(TEXT("%sTitle"),*NamePrefix));
-	Title->SetFont(FGameXXKInRunUiStyle::Font(23,true));Title->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));Title->SetJustification(ETextJustify::Center);Title->SetAutoWrapText(true);Title->SetVisibility(ESlateVisibility::HitTestInvisible);
-	if(auto* TitleSlot=FaceCanvas->AddChildToCanvas(Title)){TitleSlot->SetOffsets(FMargin(10,9,158,48));}
+	UTextBlock* Body = AddText(TEXT("Body"), 18, FMargin(14, 170, 104, 68), ETextJustify::Left);
+	auto AddStatusRow = [&](const FString& Suffix, const FMargin& Bounds, float IconSize, int32 FontSize)
+	{
+		UCanvasPanel* Row = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), *(NamePrefix + Suffix + TEXT("Row")));
+		Row->SetVisibility(ESlateVisibility::Collapsed);
+		UCanvasPanelSlot* RowSlot = FaceCanvas->AddChildToCanvas(Row);
+		RowSlot->SetOffsets(FMargin(Bounds.Left*Scale,Bounds.Top*Scale,Bounds.Right*Scale,Bounds.Bottom*Scale)); RowSlot->SetZOrder(3);
+		UScaleBox* NameFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix + Suffix + TEXT("NameFit")));
+		NameFit->SetStretch(EStretch::ScaleToFit); NameFit->SetStretchDirection(EStretchDirection::DownOnly);
+		UTextBlock* StatusName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Name")));
+		FSlateFontInfo NameFont = FGameXXKInRunUiStyle::Font(FMath::RoundToInt(22*Scale),true);
+		NameFont.OutlineSettings.OutlineSize = bShowcase ? 2 : 1;
+		NameFont.OutlineSettings.OutlineColor = FLinearColor(0.98f,0.94f,0.84f,1);
+		StatusName->SetFont(NameFont); StatusName->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink()); StatusName->SetAutoWrapText(false);
+		if (UScaleBoxSlot* NameContent = Cast<UScaleBoxSlot>(NameFit->AddChild(StatusName))) NameContent->SetHorizontalAlignment(HAlign_Right);
+		Row->AddChildToCanvas(NameFit)->SetOffsets(FMargin(0,0,50*Scale,Bounds.Bottom*Scale));
+		UScaleBox* ValueFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix + Suffix + TEXT("ValueFit")));
+		ValueFit->SetStretch(EStretch::ScaleToFit); ValueFit->SetStretchDirection(EStretchDirection::DownOnly);
+		UTextBlock* Value = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Value")));
+		Value->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize*Scale),bShowcase ? 2 : 1));
+		Value->SetAutoWrapText(false); Value->SetLineHeightPercentage(0.8f); Value->SetApplyLineHeightToBottomLine(true);
+		ValueFit->AddChild(Value);
+		// The numeric centre is always x=103 in the full 206px card.
+		Row->AddChildToCanvas(ValueFit)->SetOffsets(FMargin(50*Scale,0,78*Scale,Bounds.Bottom*Scale));
+		USizeBox* IconBox = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), *(NamePrefix + Suffix + TEXT("IconBox")));
+		IconBox->SetWidthOverride(IconSize*Scale); IconBox->SetHeightOverride(IconSize*Scale);
+		UOverlay* IconLayers = WidgetTree->ConstructWidget<UOverlay>(); IconBox->AddChild(IconLayers);
+		UImage* Icon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *(NamePrefix + Suffix + TEXT("Icon")));
+		IconLayers->AddChildToOverlay(Icon)->SetHorizontalAlignment(HAlign_Fill);
+		UTextBlock* Fallback = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Fallback")));
+		Fallback->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(IconSize*Scale),true)); Fallback->SetJustification(ETextJustify::Center);
+		IconLayers->AddChildToOverlay(Fallback)->SetHorizontalAlignment(HAlign_Fill);
+		Row->AddChildToCanvas(IconBox)->SetOffsets(FMargin(130*Scale,(Bounds.Bottom-IconSize)*0.5f*Scale,IconSize*Scale,IconSize*Scale));
+	};
+	AddStatusRow(TEXT("PrimaryStatus"),FMargin(14,94,178,46),36,30);
+	for (int32 Index=0; Index<4; ++Index) AddStatusRow(FString::Printf(TEXT("Status%d"),Index),FMargin(14,158+Index*34,178,34),32,28);
 	OutBody = Body;
 	OutPortrait = Portrait;
+}
+
+void UGameXXKBattleBoardWidget::ApplyEnemyIntentCardPresentation(
+	UTextBlock* Body, UImage* Portrait, const FGameXXKRuntimeState& State,
+	const FGameXXKCardEnemyIntent& Intent, bool bShowcase)
+{
+	if (!Body || !WidgetTree) return;
+	const auto Text = FGameXXKEnemyText::BuildIntentCardText(State, Intent);
+	const FString Prefix = Body->GetName().LeftChop(4);
+	const float Scale = bShowcase ? EnemyIntentShowcaseCardSize.X / EnemyIntentCardSize.X : 1.0f;
+	auto SetText = [&](const TCHAR* Suffix, const FString& Value) -> UTextBlock*
+	{
+		UTextBlock* Label = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix)));
+		if (Label && Label->GetText().ToString() != Value) Label->SetText(FText::FromString(Value));
+		return Label;
+	};
+	if (UTextBlock* Title = SetText(TEXT("Title"), Text.Title))
+	{
+		Title->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt((Text.Title.Len() > 6 ? 23 : 28) * Scale), true));
+		Title->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
+	}
+	SetText(TEXT("Target"), Text.Target);
+	if (UTextBlock* Primary = SetText(TEXT("Primary"), Text.Primary))
+	{
+		const int32 FontSize = Text.bDamage ? (Text.Primary.Len() > 7 ? 29 : 34) : (Text.Primary.Len() > 7 ? 19 : 25);
+		Primary->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize * Scale), 2));
+		Primary->SetColorAndOpacity(FSlateColor(Text.bDamage ? FLinearColor(1.0f, 0.69f, 0.34f, 1) : FLinearColor(1.0f, 0.95f, 0.82f, 1)));
+		const float NumberWidth = FSlateApplication::IsInitialized()
+			? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Text.Primary, Primary->GetFont()).X
+			: Text.Primary.Len() * FontSize * Scale * 0.6f;
+		UWidget* LabelFit = WidgetTree->FindWidget(*(Prefix + TEXT("PrimaryLabelFit")));
+		if (UCanvasPanelSlot* LabelFitSlot = LabelFit ? Cast<UCanvasPanelSlot>(LabelFit->Slot) : nullptr)
+		{
+			const float Left = FMath::Min(172*Scale, 103*Scale + NumberWidth*0.5f + 4*Scale);
+			LabelFitSlot->SetOffsets(FMargin(Left,94*Scale,194*Scale-Left,44*Scale));
+		}
+	}
+	SetText(TEXT("PrimaryLabel"), Text.PrimaryLabel);
+	SetText(TEXT("Body"), Text.Details);
+	const bool PrimaryIsStatus = Text.PrimaryStatus != EGameXXKCardStatus::None;
+	if (UTextBlock* Primary = SetText(TEXT("Primary"), Text.Primary)) Primary->SetVisibility(PrimaryIsStatus ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (UTextBlock* PrimaryLabel = SetText(TEXT("PrimaryLabel"), Text.PrimaryLabel)) PrimaryLabel->SetVisibility(PrimaryIsStatus ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	auto ApplyStatus = [&](const FString& Suffix, EGameXXKCardStatus Status, int32 Amount)
+	{
+		UWidget* Row = WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Row")));
+		const bool Visible = Status != EGameXXKCardStatus::None && Amount > 0;
+		if (Row) Row->SetVisibility(Visible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		if (!Visible) return;
+		if (UTextBlock* StatusName = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Name")))))
+			StatusName->SetText(FText::FromString(GameXXKCardText::DescribeStatusName(Status)));
+		const auto IconStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Status);
+		const FName Key(*IconStyle.TexturePath.ToString());
+		TObjectPtr<UTexture2D>& Texture = CardPortraitTextures.FindOrAdd(Key);
+		if (!Texture && !IconStyle.TexturePath.IsNull()) Texture = LoadObject<UTexture2D>(nullptr, *IconStyle.TexturePath.ToString());
+		if (UImage* Icon = Cast<UImage>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Icon")))))
+		{
+			FSlateBrush Brush; Brush.SetResourceObject(Texture); Brush.DrawAs = ESlateBrushDrawType::Image;
+			Brush.TintColor = IconStyle.Tint; Brush.SetUVRegion(FBox2f(FVector2f(0.22f,0.20f), FVector2f(0.80f,0.80f)));
+			Icon->SetBrush(Brush); Icon->SetVisibility(Texture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		}
+		if (UTextBlock* Fallback = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Fallback")))))
+		{
+			Fallback->SetText(FText::FromString(IconStyle.FallbackGlyph)); Fallback->SetVisibility(Texture ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		}
+		const bool Dot = Status == EGameXXKCardStatus::Bleed || Status == EGameXXKCardStatus::Poison || Status == EGameXXKCardStatus::Burn || Status == EGameXXKCardStatus::DamageOverTime;
+		if (UTextBlock* Value = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Value")))))
+		{
+			Value->SetText(Dot ? FText::AsNumber(Amount) : FText::Format(NSLOCTEXT("GameXXKBattle", "IntentStatusStacks", "{0}层"), FText::AsNumber(Amount)));
+			Value->SetColorAndOpacity(GameXXKCardVisualEffects::StatusColor(Status));
+			const float MeasuredWidth = FSlateApplication::IsInitialized()
+				? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Value->GetText(),Value->GetFont()).X
+				: Value->GetText().ToString().Len()*Value->GetFont().Size*0.65f;
+			const float HalfWidth = FMath::Min(78*Scale,MeasuredWidth)*0.5f;
+			UWidget* NameFit = WidgetTree->FindWidget(*(Prefix+Suffix+TEXT("NameFit")));
+			UWidget* IconBox = WidgetTree->FindWidget(*(Prefix+Suffix+TEXT("IconBox")));
+			if (UCanvasPanelSlot* NameSlot = NameFit ? Cast<UCanvasPanelSlot>(NameFit->Slot) : nullptr)
+				NameSlot->SetSize(FVector2D(89*Scale-HalfWidth-6*Scale,NameSlot->GetSize().Y));
+			if (UCanvasPanelSlot* IconSlot = IconBox ? Cast<UCanvasPanelSlot>(IconBox->Slot) : nullptr)
+				IconSlot->SetPosition(FVector2D(89*Scale+HalfWidth+6*Scale,IconSlot->GetPosition().Y));
+		}
+	};
+	ApplyStatus(TEXT("PrimaryStatus"), Text.PrimaryStatus, Text.PrimaryStatusAmount);
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		const auto* Status = Text.Statuses.IsValidIndex(Index) ? &Text.Statuses[Index] : nullptr;
+		ApplyStatus(FString::Printf(TEXT("Status%d"), Index), Status ? Status->Status : EGameXXKCardStatus::None, Status ? Status->Amount : 0);
+	}
+	Body->SetVisibility(Text.Details.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+	if (UCanvasPanelSlot* BodySlot = Cast<UCanvasPanelSlot>(Body->Slot))
+	{
+		const float Top = Text.Statuses.IsEmpty() ? 170 : 164 + Text.Statuses.Num()*34;
+		BodySlot->SetOffsets(FMargin(14*Scale, Top*Scale, 178*Scale, FMath::Max(28.0f, 273-Top)*Scale));
+	}
+	if (!Portrait) return;
+	const auto* Source = State.ActiveBattleEnemies.FindByPredicate([&](const auto& Unit) { return Unit.Id == Intent.SourceUnitId; });
+	UTexture2D* Texture = Source ? ResolveEnemyIntentPortraitTexture(Source->EnemyDefinitionId) : nullptr;
+	if (Texture && Portrait->GetBrush().GetResourceObject() != Texture) Portrait->SetBrushFromTexture(Texture, false);
+	// Large artwork sits below the card information, with its source ratio intact.
+	// The existing portrait PNGs include transparent headroom and a shared baseline.
+	if (Texture)
+	{
+		// UI portraits are authored at 171x205. RHI data can still be absent on
+		// first load (and in NullRHI), which must not turn them into square art.
+		const bool HasTextureSize = Texture->GetSizeX() > 0 && Texture->GetSizeY() > 0;
+		const float TextureWidth = HasTextureSize ? Texture->GetSizeX() : 171.0f;
+		const float TextureHeight = HasTextureSize ? Texture->GetSizeY() : 205.0f;
+		const float Fit = FMath::Min(184.0f / TextureWidth, 210.0f / TextureHeight);
+		if (UCanvasPanelSlot* PortraitSlot = Cast<UCanvasPanelSlot>(Portrait->Slot))
+		{
+			const FVector2D Size(TextureWidth * Fit, TextureHeight * Fit);
+			PortraitSlot->SetOffsets(FMargin((194-Size.X)*Scale,(276-Size.Y)*Scale,Size.X*Scale,Size.Y*Scale));
+			PortraitSlot->SetZOrder(0);
+		}
+	}
+	Portrait->SetColorAndOpacity(FLinearColor::White);
+	Portrait->SetRenderOpacity(0.7f);
+	Portrait->SetVisibility(Texture ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 }
 
 void UGameXXKBattleBoardWidget::ApplyCardPresentation(
@@ -10184,6 +10935,10 @@ UTexture2D* UGameXXKBattleBoardWidget::ResolveCardPortraitTexture(const FGameXXK
 
 FLinearColor UGameXXKBattleBoardWidget::ResolveBattleActionButtonTint(FName ActionName) const
 {
+	if (ActionName == TEXT("BattleEndTurn"))
+	{
+		return FLinearColor(0.96f, 0.15f, 0.075f, 1.0f);
+	}
 	if (ActionName == BasicAttackAction || ActionName == CraneWingSlashAction)
 	{
 		return FLinearColor(0.92f, 0.42f, 0.34f, 0.88f);
@@ -10552,6 +11307,7 @@ bool UGameXXKBattleBoardWidget::ResolveAutomaticCardPlay(FName CardInstanceId)
 		return false;
 	}
 	LastCardInteractionError.Reset();
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>())Academy->ObserveCommittedResult(Result);
 	return QueueMutationPresentation(
 		Before,
 		Result.DamageResults,
@@ -10642,6 +11398,15 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 	}
 
 	const EGameXXKCardBattlePhase Phase = Subsystem->GetRuntimeState().CardRun.ActiveBattle.Phase;
+	const uint64 TerminalSfxSession = ActiveBattleVisualSessionToken;
+	if (GetGameInstance())
+	{
+		if (auto* Academy = GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>(); Academy && Academy->HandleTerminal(Phase))
+		{
+			PlayTerminalSfx(Phase, TerminalSfxSession);
+			return true;
+		}
+	}
 	const EGameXXKCardBattleNodeKind SourceNodeKind =
 		Subsystem->GetRuntimeState().CardRun.ActiveBattle.SourceNodeKind;
 	if ((Phase == EGameXXKCardBattlePhase::Victory
@@ -10650,6 +11415,7 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 		&& BattleTerminalInterceptor.Execute(Phase))
 	{
 		ClearCardOutcomePreview();
+		PlayTerminalSfx(Phase, TerminalSfxSession);
 		return true;
 	}
 	if ((Phase == EGameXXKCardBattlePhase::Victory || Phase == EGameXXKCardBattlePhase::Defeat)
@@ -10687,6 +11453,7 @@ bool UGameXXKBattleBoardWidget::ResolveCardBattleTerminalState()
 			return false;
 		}
 	}
+	PlayTerminalSfx(Phase, TerminalSfxSession);
 	return true;
 }
 
@@ -10968,6 +11735,7 @@ void UGameXXKBattleBoardWidget::HandleAutoBattleClicked()
 
 void UGameXXKBattleBoardWidget::HandleBattleCloseClicked()
 {
+	if(GetGameInstance())if(auto* Academy=GetGameInstance()->GetSubsystem<UGameXXKAcademySubsystem>();Academy && Academy->IsActive()){Academy->CancelCourse();return;}
 	RequestBattleExit();
 }
 

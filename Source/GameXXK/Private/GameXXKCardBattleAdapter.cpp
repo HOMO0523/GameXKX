@@ -3,6 +3,7 @@
 #include "GameXXKCardCatalog.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKCardRules.h"
+#include "GameXXKResistanceRules.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
@@ -357,13 +358,9 @@ namespace
 	// unequipped hero. ActiveBattleParty is only a presentation projection and may already
 	// include these bonuses from the previous room, so incrementing that projection would
 	// silently double every event reward.
-	const int32 PreviousHeroMaxHP = FMath::Max(1, InOutState.PlayerMaxHP + FMath::Max(0, RouteBonus.MaxHealth));
+	const int32 PreviousHeroMaxHP = FGameXXKTalentRules::GetEffectiveHeroMaxHP(InOutState);
 	const int32 MissingHeroHP = FMath::Max(0, PreviousHeroMaxHP - InOutState.PlayerHP);
-	Hero.MaxHP = FMath::Max(1, ScaleTalentStat(
-		HeroSnapshot.AttributesBeforeRoute.MaxHealth
-			+ FMath::Max(0, RouteBonus.MaxHealth)
-			+ TalentProjection.FlatMaxHP,
-		TalentProjection.RouteMaxHPPercent));
+	Hero.MaxHP = FGameXXKTalentRules::ComputeProjectedMaxHP(HeroSnapshot.AttributesBeforeRoute.MaxHealth,RouteBonus.MaxHealth,TalentProjection);
 	Hero.HP = FMath::Clamp(Hero.MaxHP - MissingHeroHP, 1, Hero.MaxHP);
 	Hero.MaxMP = FMath::Max(0, HeroSnapshot.AttributesBeforeRoute.MaxMana + FMath::Max(0, RouteBonus.MaxMana));
 	Hero.MP = FMath::Clamp(InOutState.PlayerMP, 0, Hero.MaxMP);
@@ -534,6 +531,27 @@ namespace
 		}
 		Snapshots.Add(MoveTemp(QuestNpcSnapshot));
 
+		// The ordered party may contain two permanent companions. Gem ownership follows
+		// every actual unit rather than the legacy single-companion / quest-NPC aliases.
+		for (FGameXXKCardCombatUnit& Unit : InOutRuntime.Units)
+		{
+			if (Unit.Side != EGameXXKCardTargetSide::Party) continue;
+			if (const auto* Existing = Snapshots.FindByPredicate([&Unit](const auto& S) { return S.CharacterId == Unit.UnitId; }))
+			{
+				Unit.GemBonusBasisPoints = Existing->SocketGemBasisPoints;
+				continue;
+			}
+			const auto* Companion = InOutState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
+				[&Unit](const auto& C) { return C.InstanceId == Unit.UnitId; });
+			if (Companion)
+			{
+				FGameXXKCharacterStats Bare;FGameXXKEquipmentLoadoutSnapshot GemSnapshot;
+				if (!FGameXXKCharacterStatRules::GetBareCompanionStats(Companion->Role,Companion->Level,Companion->Star,Bare,OutError)
+					|| !FGameXXKEquipmentRules::BuildLoadoutSnapshot(InOutState.EquipmentCollection,Unit.UnitId,Bare,GemSnapshot,OutError)) return false;
+				Unit.GemBonusBasisPoints = GemSnapshot.SocketGemBasisPoints;
+			}
+		}
+
 		InOutRuntime.EquipmentEffects.Reset();
 		TSet<FString> EffectKeys;
 		const auto AddEffect = [&InOutRuntime, &EffectKeys, OutError](const FGameXXKEquipmentActiveEffect& Effect)
@@ -555,6 +573,11 @@ namespace
 		};
 		for (const FGameXXKEquipmentLoadoutSnapshot& Snapshot : Snapshots)
 		{
+			if (FGameXXKCardCombatUnit* Wearer = InOutRuntime.Units.FindByPredicate(
+				[&Snapshot](const auto& Unit) { return Unit.UnitId == Snapshot.CharacterId; }))
+			{
+				Wearer->GemBonusBasisPoints = Snapshot.SocketGemBasisPoints;
+			}
 			for (const FGameXXKEquipmentActiveEffect& Effect : Snapshot.ActivePersonalEffects)
 			{
 				if (!AddEffect(Effect))
@@ -717,6 +740,7 @@ namespace
 			}
 			NewUnits.Add(MakeCardCombatUnit(LegacyUnit, EGameXXKCardTargetSide::Enemy, EGameXXKCharacterRole::Invalid, EnemyIndex));
 		}
+		for (auto& Unit : NewUnits) FGameXXKResistanceRules::InitializeUnitProfile(Unit);
 		OutUnits = MoveTemp(NewUnits);
 		return true;
 	}
@@ -735,6 +759,12 @@ namespace
 		{
 			return Candidate.UnitId == UnitId;
 		});
+	}
+
+	EGameXXKCardDamageElement ResolveSavedIntentElement(const FGameXXKCardBattleRuntime& Runtime, const FGameXXKCardEnemyIntent& Intent)
+	{
+		const auto* Source = FindCardUnit(Runtime.Units, Intent.SourceUnitId);
+		return Source ? FGameXXKEnemyCatalog::GetIntentDamageElement(Source->EnemyDefinitionId, Intent.IntentDefinitionId) : EGameXXKCardDamageElement::None;
 	}
 
 	const FGameXXKCardCombatUnit* FindLowestLivingPartyUnit(const FGameXXKCardBattleRuntime& Runtime)
@@ -1025,6 +1055,18 @@ namespace
 		case EGameXXKEnemyIntentTargetRule::LowestHealthParty:
 			if (const FGameXXKCardCombatUnit* Target = FindLowestLivingUnitForSide(Runtime, EGameXXKCardTargetSide::Party)) Result.Add(Target->UnitId);
 			break;
+		case EGameXXKEnemyIntentTargetRule::HighestManaParty:
+		{
+			const FGameXXKCardCombatUnit* Best = nullptr;
+			for (const auto& Unit : Runtime.Units)
+			{
+				if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Party) continue;
+				if (!Best || Unit.Mana > Best->Mana || (Unit.Mana == Best->Mana
+					&& (Unit.StableSortOrder < Best->StableSortOrder || (Unit.StableSortOrder == Best->StableSortOrder && NameLess(Unit.UnitId, Best->UnitId))))) Best = &Unit;
+			}
+			if (Best) Result.Add(Best->UnitId);
+			break;
+		}
 		case EGameXXKEnemyIntentTargetRule::MarkedPartyElseRandom:
 		{
 			// A marked party member is the only thing that overrides an otherwise
@@ -1169,6 +1211,7 @@ namespace
 				Effect.DefensePercentByDifficulty.Resolve(Runtime.EnemyDifficulty));
 			break;
 		case EGameXXKEnemyIntentEffectType::HealMaxHealthPercent:
+		case EGameXXKEnemyIntentEffectType::DrainMana:
 		case EGameXXKEnemyIntentEffectType::QueueNextRoundEnergyPenalty:
 		case EGameXXKEnemyIntentEffectType::IncreaseNextCardEnergy:
 		case EGameXXKEnemyIntentEffectType::RemovePositiveStatus:
@@ -1531,6 +1574,7 @@ namespace
 		{
 			FGameXXKResolvedEnemyIntentEffect& Effect = OutIntent.Effects.AddDefaulted_GetRef();
 			Effect.Type = EffectDefinition.Type;
+			Effect.DamageElement = EffectDefinition.DamageElement;
 			Effect.TargetRule = EffectDefinition.Target;
 			Effect.bAssignsPersistentTarget = EffectDefinition.bAssignsPersistentTarget;
 			Effect.bPhaseTwoFallbackToLowestHealth = EffectDefinition.bPhaseTwoFallbackToLowestHealth;
@@ -1723,6 +1767,7 @@ namespace
 		{
 			FGameXXKResolvedEnemyIntentEffect& Effect = OutIntent.Effects.AddDefaulted_GetRef();
 			Effect.Type = EffectDefinition.Type;
+			Effect.DamageElement = EffectDefinition.DamageElement;
 			Effect.TargetRule = EffectDefinition.Target;
 			Effect.bAssignsPersistentTarget = EffectDefinition.bAssignsPersistentTarget;
 			Effect.bPhaseTwoFallbackToLowestHealth = EffectDefinition.bPhaseTwoFallbackToLowestHealth;
@@ -2055,6 +2100,34 @@ namespace
 				}
 			}
 
+			if (Effect.Type == EGameXXKEnemyIntentEffectType::DrainMana)
+			{
+				const auto* Source = FindCardUnit(InOutRuntime.Units, Intent.SourceUnitId);
+				if (!Source || !Source->bLiving) continue;
+				for (FName DeclaredTarget : ResolvedEffectTargetIds)
+				{
+					const FName Receiver = ResolveFollowUpTarget(DeclaredTarget);
+					auto* Target = FindCardUnit(InOutRuntime.Units, Receiver);
+					if (!Target || !Target->bLiving || Target->Side != EGameXXKCardTargetSide::Party) continue;
+					const int32 Taken = FMath::Min(FMath::Max(0, Target->Mana), FMath::Max(0, Effect.Magnitude));
+					Target->Mana -= Taken;
+					if (Taken > 0)
+					{
+						InOutRuntime.LastManaDrainedByTarget.FindOrAdd(Receiver) += Taken;
+						if (Effect.bRequiresPreviousDirectHit)
+						{
+							for (int32 Index = OutDamageResults.Num() - 1; Index >= 0; --Index)
+							{
+								auto& Hit = OutDamageResults[Index];
+								if (Hit.SourceUnitId == Intent.SourceUnitId && Hit.ResolvedTargetUnitId == Receiver && !Hit.bAvoidedByAgility
+									&& (Hit.Kind == EGameXXKCardDamageKind::SingleTargetAttack || Hit.Kind == EGameXXKCardDamageKind::GroupAttack))
+								{ Hit.ManaDrained += Taken; break; }
+							}
+						}
+					}
+				}
+				continue;
+			}
 			if (Effect.Type == EGameXXKEnemyIntentEffectType::AddArmor
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::AddArmorDefensePercent)
 			{
@@ -2314,6 +2387,7 @@ namespace
 					DirectMagnitude);
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = Intent.SourceUnitId;
+				Context.Element = Effect.DamageElement != EGameXXKCardDamageElement::None ? Effect.DamageElement : ResolveSavedIntentElement(InOutRuntime, Intent);
 				Context.Kind = Effect.TargetRule == EGameXXKEnemyIntentTargetRule::AllLivingParty
 					? EGameXXKCardDamageKind::GroupAttack
 					: EGameXXKCardDamageKind::SingleTargetAttack;
@@ -3723,6 +3797,8 @@ bool FGameXXKCardBattleAdapter::BuildReferenceCardPlayPreview(
 	SourceUnit.Mana = SourceUnit.MaxMana;
 	SourceUnit.Attack = FMath::Max(0, Snapshot.AttributesBeforeRoute.Attack);
 	SourceUnit.Defense = FMath::Max(0, Snapshot.AttributesBeforeRoute.Defense);
+	SourceUnit.GemBonusBasisPoints = Snapshot.SocketGemBasisPoints;
+	FGameXXKResistanceRules::InitializeUnitProfile(SourceUnit);
 	SourceUnit.Speed = FMath::Max(1, Snapshot.AttributesBeforeRoute.Speed);
 	SourceUnit.StableSortOrder = 1;
 	SourceUnit.CombatLevel = CharacterLevel;
@@ -4042,6 +4118,7 @@ static bool ResolveNextEnemyIntentImpl(
 	OutDamageResults.Reset();
 	bOutIntentsFinished = false;
 	FGameXXKCardRunState& Run = InOutState.CardRun;
+	Run.ActiveBattle.LastManaDrainedByTarget.Reset();
 	if (!Run.bHasActiveCardBattle || Run.ActiveBattle.Phase != EGameXXKCardBattlePhase::Enemy)
 	{
 		return SetFailure(OutError, TEXT("Enemy intents can only resolve during an active enemy card phase."));
@@ -4092,7 +4169,8 @@ static bool ResolveNextEnemyIntentImpl(
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifyAttack
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::ModifySpeed
 				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemovePositiveStatus
-				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemoveNegativeStatus;
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::RemoveNegativeStatus
+				|| Effect.Type == EGameXXKEnemyIntentEffectType::DrainMana;
 		});
 		if (bHasCatalogResolvedEffect)
 		{
@@ -4117,6 +4195,7 @@ static bool ResolveNextEnemyIntentImpl(
 			{
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = Intent.SourceUnitId;
+				Context.Element = ResolveSavedIntentElement(Run.ActiveBattle, Intent);
 				Context.Kind = Intent.Kind;
 				Context.OnHitStatuses = Intent.OnHitStatuses;
 				FGameXXKCardDamageResult DamageResult;

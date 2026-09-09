@@ -59,7 +59,8 @@ enum class EGameXXKEnemyIntentTargetRule : uint8
 	MarkedParty = 7,
 	PreyTarget = 8,
 	/** Marked living party member first; otherwise a stable per-round random pick. */
-	MarkedPartyElseRandom = 9
+	MarkedPartyElseRandom = 9,
+	HighestManaParty = 10
 };
 
 UENUM(BlueprintType)
@@ -84,7 +85,8 @@ enum class EGameXXKEnemyIntentEffectType : uint8
 	RefreshHealingAmplification = 16,
 	ConsumeWealthForDamage = 17,
 	ConsumeWealthForHealing = 18,
-	RemoveNegativeStatus = 19
+	RemoveNegativeStatus = 19,
+	DrainMana = 20
 };
 
 UENUM(BlueprintType)

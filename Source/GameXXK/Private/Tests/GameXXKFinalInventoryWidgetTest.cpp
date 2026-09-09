@@ -125,7 +125,7 @@ bool FGameXXKFinalInventoryWidgetTest::RunTest(const FString& Parameters)
 	Inventory->HandleConfiguredSlotClicked(EGameXXKInventorySlotSource::PlayerBackpack, FirstWeaponSlot, NAME_None);
 	TestTrue(
 		TEXT("clicking an instance equipment cell exposes its composed tooltip detail"),
-		Inventory->GetSelectedDetailTextForTest().ToString().Contains(TEXT("装备等级 1")));
+		Inventory->GetSelectedDetailTextForTest().ToString().Contains(TEXT("等级1")));
 
 	TestTrue(
 		TEXT("right-clicking a warehouse equipment cell equips it"),
@@ -882,12 +882,8 @@ bool FGameXXKFinalInventoryLegacyOwnerIsolationTest::RunTest(const FString& Para
 	UOverlay* WeaponOverlay = WeaponButton
 		? Cast<UOverlay>(WeaponButton->GetContent())
 		: nullptr;
-	UImage* WeaponIcon = WeaponOverlay && WeaponOverlay->GetChildrenCount() > 0
-		? Cast<UImage>(WeaponOverlay->GetChildAt(0))
-		: nullptr;
-	UTextBlock* WeaponLabel = WeaponOverlay && WeaponOverlay->GetChildrenCount() > 1
-		? Cast<UTextBlock>(WeaponOverlay->GetChildAt(1))
-		: nullptr;
+	UImage* WeaponIcon = Cast<UImage>(Inventory->WidgetTree->FindWidget(TEXT("InventoryEquipmentIcon_Weapon")));
+	UTextBlock* WeaponLabel = Cast<UTextBlock>(Inventory->WidgetTree->FindWidget(TEXT("InventoryEquipmentLabel_Weapon")));
 	if (!TestNotNull(TEXT("legacy-owner fixture owns the weapon icon"), WeaponIcon)
 		|| !TestNotNull(TEXT("legacy-owner fixture owns the weapon label"), WeaponLabel))
 	{

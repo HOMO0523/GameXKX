@@ -13,7 +13,8 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector4 ContentRect(397.0f, 244.0f, 945.0f, 533.0f);
 		const FVector4 NavigationRect(397.0f, 788.0f, 945.0f, 137.0f);
 		const FVector2D CollapsedHudLogicalSize(1038.0f, 202.0f);
-		const FVector2D FoldedHudInteractiveSize(1025.0f, 24.0f);
+		const FVector2D SummaryControlRailSize(1025.0f, 24.0f);
+		const FVector2D FoldedHudInteractiveSize(1217.0f, 24.0f);
 		constexpr float UpwardContentShift = 210.0f;
 		constexpr float IdleStripChestControlX = 953.0f;
 		const FVector2D TownToggleButtonSize(144.0f, 144.0f);
@@ -446,6 +447,12 @@ namespace GameXXKDesktopTrainingLayout
 		return FVector4(SlateTopLeft.X, SlateTopLeft.Y, SlateSize.X, SlateSize.Y);
 	}
 
+	FVector4 GetMainStoryDialogueRect()
+	{
+		const FVector4 Content=GetContentRect();
+		return FVector4(Content.X,Content.Y+20,945,430);
+	}
+
 	TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State)
 	{
@@ -505,8 +512,8 @@ namespace GameXXKDesktopTrainingLayout
 				FVector4(
 					0.0f,
 					CollapsedSize.Y,
-					FoldedHudInteractiveSize.X,
-					FoldedHudInteractiveSize.Y),
+					SummaryControlRailSize.X,
+					SummaryControlRailSize.Y),
 				FVector2D::ZeroVector);
 			if (State.NoticeHeight > 0.0f)
 			{
@@ -535,6 +542,7 @@ namespace GameXXKDesktopTrainingLayout
 		FVector4 StripRect = GetExpandedIdleStripRect(State.bExpandUpward);
 		if (State.bIdleStripFolded)
 		{
+			StripRect.Z = FoldedHudInteractiveSize.X;
 			StripRect.W = 24.0f;
 		}
 		AddLogicalRect(StripRect, State.ContentOffset);
@@ -545,7 +553,7 @@ namespace GameXXKDesktopTrainingLayout
 				FVector4(StripRect.X, NoticeY, 420.0f, State.NoticeHeight),
 				State.ContentOffset);
 			AddLogicalRect(
-				FVector4(StripRect.X, NoticeY, FoldedHudInteractiveSize.X, 24.0f),
+				FVector4(StripRect.X, NoticeY, SummaryControlRailSize.X, 24.0f),
 				State.ContentOffset);
 		}
 		FVector2D EffectiveBodyOffset = State.BodyOffset;
@@ -554,17 +562,25 @@ namespace GameXXKDesktopTrainingLayout
 			EffectiveBodyOffset.Y = GetUpwardContentOffset().Y;
 		}
 		const FVector2D BodyContentOffset = State.ContentOffset + EffectiveBodyOffset;
+		if(State.bMainStoryDialogueOpen)
+		{
+			const FVector4 Dialogue=GetMainStoryDialogueRect();
+			const int32 Count=FMath::Clamp(State.MainStoryDialogueOptionCount,0,4);
+			const float Height=Count>0?196.f+Count*48.f:220.f;
+			AddLogicalRect(FVector4(Dialogue.X,Dialogue.Y+424-Height,924,Height),BodyContentOffset);
+			return Result;
+		}
 		AddLogicalRect(GetContentRect(), BodyContentOffset);
 		for (int32 NavigationIndex = 0; NavigationIndex < 5; ++NavigationIndex)
 		{
 			AddLogicalRect(
-				FVector4(421.0f + NavigationIndex * 181.0f, 800.0f, 151.0f, 112.0f),
+				FVector4(421.0f + NavigationIndex * 181.0f, 788.0f, 151.0f, 136.0f),
 				BodyContentOffset);
 		}
-		for (int32 ToolbarIndex = 0; ToolbarIndex < 5; ++ToolbarIndex)
+		for (int32 ToolbarIndex = 0; ToolbarIndex < 6; ++ToolbarIndex)
 		{
 			AddLogicalRect(
-				FVector4(1092.0f + ToolbarIndex * 47.0f, 226.0f, 42.0f, 36.0f),
+				FVector4(971.0f + ToolbarIndex * 49.0f, 249.0f, 46.0f, 42.0f),
 				BodyContentOffset);
 		}
 		if (State.bWarehouseOpen)

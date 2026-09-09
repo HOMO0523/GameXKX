@@ -17,11 +17,11 @@ bool FGameXXKStoryTaskCatalogConcurrencyTest::RunTest(const FString& Parameters)
 		FGameXXKStoryCatalog::FindStory(TEXT("Story.Main.XuXiakeTreasure")));
 	TestNull(TEXT("retired prologue task is absent"),
 		FGameXXKStoryCatalog::FindTask(TEXT("Task.Main.XuXiake.Prologue")));
-	TestTrue(TEXT("retired catalog has no player-facing stories"),
-		FGameXXKStoryCatalog::GetStories().IsEmpty());
-	TestTrue(TEXT("retired catalog has no player-facing tasks"),
-		FGameXXKStoryCatalog::GetTasks().IsEmpty());
-	TestTrue(TEXT("empty catalog remains structurally valid"),
+	TestEqual(TEXT("authored catalog contains six current chapters"),
+		FGameXXKStoryCatalog::GetStories().Num(), 6);
+	TestEqual(TEXT("authored catalog contains sixty-one current nodes"),
+		FGameXXKStoryCatalog::GetTasks().Num(), 61);
+	TestTrue(TEXT("current catalog remains structurally valid"),
 		FGameXXKStoryCatalog::Validate(nullptr));
 
 	FGameXXKNarrativeProgress Progress;

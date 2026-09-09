@@ -24,6 +24,7 @@ Plugins/**/__pycache__/
 
 # Local packaging, scratch, and generated review outputs
 Packaged/
+Builds/
 tmp/
 outputs/
 Build/Windows/FileOpenOrder/
@@ -31,6 +32,9 @@ Build/Windows/FileOpenOrder/
 *.log.err
 *.log.out
 *.out.err
+
+# Regenerable ZIP duplicate; the complete expanded art handoff remains tracked.
+/Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828.zip
 
 # Visual Studio generated solutions can be regenerated from the uproject
 *.sln

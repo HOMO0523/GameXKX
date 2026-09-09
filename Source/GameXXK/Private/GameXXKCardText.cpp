@@ -3,6 +3,8 @@
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCardPillText.h"
 #include "GameXXKCombatScalingRules.h"
+#include "GameXXKCombatGemRules.h"
+#include "GameXXKResistanceRules.h"
 
 namespace
 {
@@ -346,7 +348,7 @@ namespace
 		switch (Type)
 		{
 		case EGameXXKCardEffectType::DamagePercentAttack: return FString::Printf(TEXT("造成%d%%的攻击伤害%s"), Magnitude, *HitSuffix);
-		case EGameXXKCardEffectType::DamageFlat: return FString::Printf(TEXT("%s受到%d点直接伤害%s"), *Target, Magnitude, *HitSuffix);
+		case EGameXXKCardEffectType::DamageFlat: return FString::Printf(TEXT("%s受到%d点固定伤害%s"), *Target, Magnitude, *HitSuffix);
 		case EGameXXKCardEffectType::LoseHealth: return FString::Printf(TEXT("%s失去%d点生命"), *Target, Magnitude);
 		case EGameXXKCardEffectType::Heal:
 			return SecondaryMagnitude > 0
@@ -404,7 +406,7 @@ namespace
 		case EGameXXKCardEffectType::LoseHealthNonlethal: return FString::Printf(TEXT("%s失去%d点生命，最低保留1点"), *Target, Magnitude);
 		case EGameXXKCardEffectType::Cleanse: return FString::Printf(TEXT("清除%s的全部流血、中毒和灼烧"), *Target);
 		case EGameXXKCardEffectType::TriggerHighestDamageOverTime: return FString::Printf(TEXT("触发%s层数最高的流血、中毒或灼烧1次，并减少对应状态1层"), *Target);
-		case EGameXXKCardEffectType::ResolveToxicExplosion: return FString::Printf(TEXT("对%s毒爆：分别结算流血、中毒、灼烧并各减少1层；蚀伤只追加伤害"), *Target);
+		case EGameXXKCardEffectType::ResolveToxicExplosion: return FString::Printf(TEXT("对%s触发1次毒爆"), *Target);
 		case EGameXXKCardEffectType::HealOrReverseWithMedicine:
 		{
 			FGameXXKCardEffect EffectForMedicine;
@@ -429,8 +431,8 @@ namespace
 		case EGameXXKCardEffectType::GainArmorFromCurrentManaPercent: return FString::Printf(TEXT("%s获得等于当前内力%d%%的护甲"), *Target, Magnitude);
 		case EGameXXKCardEffectType::GainManaOverflowToArmor: return FString::Printf(TEXT("%s回复%d点内力；溢出内力按%d%%转为护甲"), *Target, SecondaryMagnitude, Magnitude);
 		case EGameXXKCardEffectType::SearchUnfinishedHeroTaskCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张尚未完成的主角法术任务牌加入手牌"), Magnitude);
-		case EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard: return FString::Printf(TEXT("从抽牌堆或弃牌堆检索%d张该任务 NPC 尚未完成的任务牌加入手牌"), Magnitude);
-		case EGameXXKCardEffectType::TriggerStatus: return FString::Printf(TEXT("触发%s的%s%d次；每次按当前层数造成生命伤害并减少1层"), *Target, *DescribeStatus(Status), Magnitude);
+		case EGameXXKCardEffectType::SearchUnfinishedTaskNpcCard: return FString::Printf(TEXT("从抽牌或弃牌堆检索%d张该角色未完成的任务牌"), Magnitude);
+		case EGameXXKCardEffectType::TriggerStatus: return FString::Printf(TEXT("触发%s的%s%d次"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::LightningPerTargetStatusSnapshot: return FString::Printf(TEXT("按%s当前%s层数，逐层造成%d%%攻击伤害"), *Target, *DescribeStatus(Status), Magnitude);
 		case EGameXXKCardEffectType::ReplayTriggeredCardBase: return TEXT("重放本次触发牌的基础效果");
 		case EGameXXKCardEffectType::ReplaySourceCardBase: return TEXT("重放本牌的基础效果");
@@ -473,6 +475,8 @@ namespace
 			return FString();
 		}
 		FString TimingText;
+		bool bGatesInTiming = false;
+		bool bCountInTiming = false;
 		if (Modifier.Trigger == EGameXXKCardBattleModifierTrigger::OnCardPlayed
 			&& Modifier.Target == EGameXXKCardEffectTarget::PlayedCard
 			&& (Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
@@ -483,17 +487,21 @@ namespace
 				&& Modifier.RemainingTriggers > 0)
 			{
 				Subject = Modifier.RemainingTriggers == 1
-					? TEXT("后续打出的第一张牌")
-					: FString::Printf(TEXT("后续打出的%d张牌"), Modifier.RemainingTriggers);
+					? TEXT("下一张")
+					: FString::Printf(TEXT("接下来%d张"), Modifier.RemainingTriggers);
+				bCountInTiming = true;
 			}
 			else if (Modifier.Expiry == EGameXXKCardModifierExpiry::EndOfCurrentRound)
 			{
-				Subject = TEXT("本回合后续打出的牌");
+				Subject = TEXT("本回合后续");
 			}
 			else
 			{
-				Subject = TEXT("后续打出的牌");
+				Subject = TEXT("后续");
 			}
+			Subject += Modifier.bActivePlayOnly ? TEXT("主动牌") : TEXT("牌");
+			if (Modifier.bExcludeSourceUnit) Subject = TEXT("其他角色的") + Subject;
+			bGatesInTiming = true;
 			const TCHAR* Resource = Modifier.EffectType == EGameXXKCardEffectType::ModifyEnergyCost
 				? TEXT("气力")
 				: TEXT("内力");
@@ -506,7 +514,7 @@ namespace
 		{
 			TimingText = FString::Printf(TEXT("下一次地势收益改为触发%d次"), Modifier.Magnitude);
 		}
-		const FString Core = DescribeEffectType(
+		FString Core = DescribeEffectType(
 			Modifier.EffectType,
 			Modifier.Target,
 			EGameXXKCardEffectSource::CardOwner,
@@ -514,6 +522,17 @@ namespace
 			0,
 			1,
 			Modifier.Status);
+		if (Modifier.Target == EGameXXKCardEffectTarget::PlayedCard)
+		{
+			Core.ReplaceInline(TEXT("本次打出的牌获得"), TEXT("该牌出牌者获得"));
+			Core.ReplaceInline(TEXT("本次打出的牌登记"), TEXT("该牌出牌者获得"));
+		}
+		const bool bNamedActiveTrigger = Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextActiveCard
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::AfterNextActiveCard
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeFirstActiveCardNextPlayerRound
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::AfterFirstActiveCardNextPlayerRound
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::FirstActiveAttackAgainstStatusNextPlayerRound
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::AfterEachActiveCard;
 		TArray<FString> Clauses;
 		Clauses.Add(TimingText.IsEmpty()
 			? FString::Printf(TEXT("持续效果：%s，%s"), *DescribeModifierTrigger(Modifier.Trigger), *Core)
@@ -526,11 +545,12 @@ namespace
 		{
 			Clauses.Add(TEXT("限指定角色触发"));
 		}
-		if (Modifier.bActivePlayOnly)
+		if (Modifier.bActivePlayOnly && !bNamedActiveTrigger && !bGatesInTiming
+			&& Modifier.Trigger != EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart)
 		{
 			Clauses.Add(TEXT("仅主动出牌触发"));
 		}
-		if (Modifier.bExcludeSourceUnit)
+		if (Modifier.bExcludeSourceUnit && !bGatesInTiming)
 		{
 			Clauses.Add(TEXT("不作用于效果来源单位"));
 		}
@@ -542,9 +562,13 @@ namespace
 		{
 			Clauses.Add(FString::Printf(TEXT("前序结果至少为%d"), Modifier.MinimumResult));
 		}
-		Clauses.Add(Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit
-			&& Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && Modifier.RemainingTriggers == 1
-			? TEXT("生效一次") : DescribeModifierExpiry(Modifier.Expiry, Modifier.RemainingTriggers));
+		const bool bNamedSingleTrigger = (bNamedActiveTrigger && Modifier.Trigger != EGameXXKCardBattleModifierTrigger::AfterEachActiveCard)
+			|| Modifier.Trigger == EGameXXKCardBattleModifierTrigger::NextPlayerRoundStart;
+		if (!bCountInTiming && !(bNamedSingleTrigger
+			&& Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && Modifier.RemainingTriggers == 1))
+			Clauses.Add(Modifier.Trigger == EGameXXKCardBattleModifierTrigger::BeforeNextTerrainBenefit
+				&& Modifier.Expiry == EGameXXKCardModifierExpiry::AfterTriggerCount && Modifier.RemainingTriggers == 1
+				? TEXT("生效一次") : DescribeModifierExpiry(Modifier.Expiry, Modifier.RemainingTriggers));
 		const FString Condition = DescribeCondition(Modifier.Condition);
 		if (!Condition.IsEmpty())
 		{
@@ -862,6 +886,8 @@ namespace
 		TArray<FString>& OutLines)
 	{
 		const auto Scale = [Quality](const int32 Value) { return FGameXXKCombatScalingRules::ScaleContinuousCeil(Value, Quality); };
+		// The explosion is part of this reward, not an additional on-play effect.
+		const FString IceBurst = FString::Printf(TEXT("冰爆，消耗全部护甲，攻击全体敌方（%d%%攻击＋每点护甲1个百分点）"), Scale(100));
 		switch (Reward)
 		{
 		case EGameXXKSorcererRewardRule::CoreSearch:
@@ -883,16 +909,16 @@ namespace
 			OutLines.Add(TEXT("阵赏：敌方全体获得6点基础灼烧；回复1点气力，抽2张牌。"));
 			break;
 		case EGameXXKSorcererRewardRule::IceCurrentManaRestore:
-			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；回复1点气力，抽1张牌。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏：%s；回复1点气力，抽1张牌。"), *IceBurst));
 			break;
 		case EGameXXKSorcererRewardRule::IceMaxMana:
-			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；自身内力上限再+8并补满内力。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏：%s；本场自身内力上限再+8并补满内力。"), *IceBurst));
 			break;
 		case EGameXXKSorcererRewardRule::IceArmorDouble:
-			OutLines.Add(TEXT("阵赏：标准冰爆；全体友方各获得本次消耗护甲的25%，向下取整。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏：%s；全体友方各获得所耗护甲的25%%，向下取整。"), *IceBurst));
 			break;
 		case EGameXXKSorcererRewardRule::IceSearch:
-			OutLines.Add(TEXT("阵赏：执行标准寒冰伤害；敌方全体获得2层虚弱。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏：%s；敌方全体获得2层虚弱。"), *IceBurst));
 			break;
 		case EGameXXKSorcererRewardRule::LightningMark:
 			OutLines.Add(TEXT("阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌。"));
@@ -915,19 +941,19 @@ namespace
 		case EGameXXKSorcererRewardRule::UniversalDraw:
 			OutLines.Add(TEXT("阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。"));
 			OutLines.Add(TEXT("阵赏·炎法：敌方全体获得4点基础灼烧；回复1点气力，抽3张牌。"));
-			OutLines.Add(TEXT("阵赏·寒冰：执行标准寒冰伤害，返还25%所耗护甲；回复1点气力，抽2张牌。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·寒冰：%s，返还25%%所耗护甲；回复1点气力，抽2张牌。"), *IceBurst));
 			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；回复1气，抽2张。"), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalPartyArmor:
 			OutLines.Add(FString::Printf(TEXT("阵赏·普通：全体友方各获得%d%%防御的护甲；全体敌方获得2层虚弱。"), Scale(80)));
 			OutLines.Add(FString::Printf(TEXT("阵赏·炎法：全体友方各获得%d%%防御的护甲；全体敌方获得4点基础灼烧、1层虚弱。"), Scale(60)));
-			OutLines.Add(TEXT("阵赏·寒冰：标准冰爆；全体友方各获得本次消耗护甲的25%，向下取整。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·寒冰：%s；全体友方各获得所耗护甲的25%%，向下取整。"), *IceBurst));
 			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；全体友方各获得%d%%防御的护甲。"), Scale(30), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::UniversalSearch:
 			OutLines.Add(TEXT("阵赏·普通：额外重放第5张记录牌，抽1张牌。"));
 			OutLines.Add(TEXT("阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2点基础灼烧。"));
-			OutLines.Add(TEXT("阵赏·寒冰：额外重放最后一张冰牌，再执行标准寒冰伤害，抽1张牌。"));
+			OutLines.Add(FString::Printf(TEXT("阵赏·寒冰：额外重放最后一张冰牌，再%s；抽1张牌。"), *IceBurst));
 			OutLines.Add(FString::Printf(TEXT("阵赏·雷法：全体敌方获得2层标记，额外重放最后一张雷牌；再按剩余标记数，每层造成%d%%的攻击伤害，抽1张。"), Scale(40)));
 			break;
 		case EGameXXKSorcererRewardRule::None:
@@ -1137,20 +1163,15 @@ namespace
 			return TEXT("未知法师牌规则");
 		}
 
-		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Ice
-			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalDraw
-			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalPartyArmor
-			|| Definition.SorcererRule.RewardRule == EGameXXKSorcererRewardRule::UniversalSearch)
-		{
-			Lines.Add(FString::Printf(TEXT("标准冰爆：消耗全部护甲，对全体敌方造成%d%%的攻击伤害；每点消耗护甲再增加1个百分点。"), Scale(100)));
-		}
 		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
 		{
 			Lines.Add(TEXT("任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。"));
 		}
 		if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal)
 		{
-			Lines.Add(TEXT("自动入手：作首牌时，基础效果后将其余4张未完成携带法师牌从抽牌/弃牌堆加入手牌；非首牌则在任务开始时自动入手。每场限1次。"));
+			Lines.Add(bCompact
+				? TEXT("自动入手：首牌生效后，其余未完成任务牌入手；非首牌随任务开启入手。每张每场1次。")
+				: TEXT("自动入手：首牌生效后，其余未完成的携带法师牌入手；非首牌在任务开启后入手。均从抽牌或弃牌堆获取，每张每场限1次。"));
 		}
 		AppendSorcererRewardText(Definition.SorcererRule.RewardRule, Definition.BaseQuality, Lines);
 		Lines.Add(TEXT("阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。"));
@@ -1444,7 +1465,7 @@ namespace
 		switch (Kind)
 		{
 		case EGameXXKHealerFormulaKind::AnyHealthChangeMedicine:
-			return TEXT("任一敌我单位实际生命变化时，药师获得等量层数药效（每笔伤害或治疗各计1层）。");
+			return TEXT("每笔伤害或治疗使任一角色生命变化时，自身获得1点药效。");
 		case EGameXXKHealerFormulaKind::HighEnergyAndSixMedicine:
 			return TEXT("每回合首次打出当前气力消耗至少2的牌时，全体友方失去1点生命（最低保留1点）再恢复2点；每回合累计获得至少6层药效时，回复1点气力（每回合1次；敌方回合触发则下回合开始到账）。");
 		case EGameXXKHealerFormulaKind::FirstHealingMedicine:
@@ -1731,6 +1752,27 @@ namespace
 		return Value;
 	}
 
+	FString WithDamageElement(const FGameXXKCardDefinition& Definition, const FString& Text)
+	{
+		const auto Has = [&Definition](EGameXXKCardEffectType Type)
+		{
+			const auto Match = [Type](const auto& Effect){return Effect.Type == Type;};
+			return Definition.Effects.ContainsByPredicate(Match) || Definition.ChargeEffects.ContainsByPredicate(Match) || Definition.FinishEffects.ContainsByPredicate(Match);
+		};
+		if (Definition.SorcererRule.SequenceRule == EGameXXKSorcererSequenceRule::UniversalScalingAttack)
+			return TEXT("伤害元素承接前一张法师序牌；火焰／冰霜／雷击，无对应元素时为物理。\n") + Text;
+		const bool Attack = Has(EGameXXKCardEffectType::DamagePercentAttack) || Has(EGameXXKCardEffectType::EachLivingAllyAttackSelectedTarget)
+			|| Has(EGameXXKCardEffectType::DamagePercentAttackPlusArmor) || Has(EGameXXKCardEffectType::DamagePercentAttackPerTargetStatus);
+		auto Element = FGameXXKCombatGemRules::GetCardElement(Definition);
+		if (Has(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot)) Element = EGameXXKCardDamageElement::Lightning;
+		else if (Has(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor)) Element = EGameXXKCardDamageElement::Frost;
+		const bool ElementalAttack = FGameXXKResistanceRules::IsSpell(Element)
+			&& (Attack || Has(EGameXXKCardEffectType::DamageFlat) || Has(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot) || Has(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor));
+		if (ElementalAttack) return TEXT("伤害类型：") + FGameXXKCombatGemRules::GetElementLabel(Element) + TEXT("法术（受对应抗性减免）\n") + Text;
+		if (Attack) return TEXT("伤害类型：物理（受防御减免）\n") + Text;
+		return Text;
+	}
+
 	FString DescribeEffectsResolved(
 		const FGameXXKCardDefinition& EffectiveDefinition,
 		const EGameXXKCardTerrain CurrentTerrain = EGameXXKCardTerrain::Invalid,
@@ -1739,11 +1781,11 @@ namespace
 	{
 		if (IsPermanentSorcererCard(EffectiveDefinition))
 		{
-			return DescribeSorcererEffects(EffectiveDefinition, Preview, bCompact);
+			return WithDamageElement(EffectiveDefinition, DescribeSorcererEffects(EffectiveDefinition, Preview, bCompact));
 		}
 		if (IsBladeProfessionCard(EffectiveDefinition))
 		{
-			return DescribeBladeEffects(EffectiveDefinition, Preview, bCompact);
+			return WithDamageElement(EffectiveDefinition, DescribeBladeEffects(EffectiveDefinition, Preview, bCompact));
 		}
 		EGameXXKCardTerrain PlannedTerrain = EGameXXKCardTerrain::Invalid;
 		for (const FGameXXKCardEffect& Effect : EffectiveDefinition.Effects)
@@ -1894,7 +1936,7 @@ namespace
 			Lines.Add(TEXT("法术任务：4张携带主角法师牌各主动打出一次后，依序重放基础效果并触发阵赏。"));
 			Lines.Add(DescribeSpellTaskReward(EffectiveDefinition.SpellTaskReward));
 		}
-		return FString::Join(Lines, TEXT("\n"));
+		return WithDamageElement(EffectiveDefinition, FString::Join(Lines, TEXT("\n")));
 	}
 
 	FString DescribeDetailResolved(
@@ -1961,11 +2003,15 @@ namespace
 		}
 		for (FString Line : RawLines)
 		{
+			if (bCompact && Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal && !BranchPrefix
+				&& Line.StartsWith(TEXT("阵赏·")))
+			{
+				Lines.AddUnique(TEXT("阵赏：任务分支尚未确定（Shift查看）。"));
+				continue;
+			}
 			if (Definition.SorcererRule.Family == EGameXXKSorcererCardFamily::Universal && BranchPrefix)
 			{
 				if (Line.StartsWith(TEXT("阵赏·")) && !Line.StartsWith(BranchPrefix)) continue;
-				if ((Line.StartsWith(TEXT("标准寒冰伤害：")) || Line.StartsWith(TEXT("标准冰爆：")))
-					&& Context.LockedSpellBranch != EGameXXKSorcererTaskBranch::Ice) continue;
 			}
 			if (Line.StartsWith(TEXT("法术任务：")) || Line.StartsWith(TEXT("阵法：携带的5张法师牌")))
 			{
@@ -1999,7 +2045,13 @@ namespace
 					? TEXT("重箭：消耗打出前的全部蓄力；") : TEXT("重箭：基础效果后，消耗全部蓄力；"));
 			}
 			Line.ReplaceInline(TEXT("药方：首次打出本牌时气力+1并激活，本局持续；"), TEXT("药方：首次额外消耗1气；"));
-			Line.ReplaceInline(TEXT("标准寒冰伤害"), TEXT("冰爆"));
+			Line.RemoveFromStart(TEXT("基础："));
+			Line.ReplaceInline(TEXT("无合法牌"), TEXT("无可检索牌"));
+			Line.ReplaceInline(TEXT("无合法目标"), TEXT("无可检索牌"));
+			Line.ReplaceInline(TEXT("候选牌"), TEXT("可选牌"));
+			Line.ReplaceInline(TEXT("按敌方各自标记快照逐层落雷"), TEXT("按各敌人发动前的标记层数落雷"));
+			Line.ReplaceInline(TEXT("按护甲快照层数"), TEXT("按本次消耗的护甲值"));
+			Line.ReplaceInline(TEXT("按各目标标记快照逐层"), TEXT("按各目标发动前的标记层数"));
 			Line.ReplaceInline(TEXT("；每次按当前层数造成生命伤害并减少1层"), TEXT(""));
 			Line.ReplaceInline(TEXT("守护"), TEXT("援护"));
 			Line.ReplaceInline(TEXT("地形双效"), TEXT("地势双效"));
@@ -2075,8 +2127,25 @@ namespace
 		Line = Line.Replace(TEXT("持续效果："), TEXT(""));
 		Line = Line.Replace(
 			TEXT("下个玩家回合首次主动攻击指定状态目标时"),
-			TEXT("下回合首次攻击目标时"));
+			TEXT("下回合首次主动攻击指定状态目标时"));
 		Line = Line.Replace(TEXT("所选目标"), TEXT("目标"));
+		Line.ReplaceInline(TEXT("对目标造成"), TEXT("造成"));
+		Line.ReplaceInline(TEXT("对目标施加"), TEXT("施加"));
+		Line.ReplaceInline(TEXT("气力消耗-"), TEXT("气力-"));
+		Line.ReplaceInline(TEXT("内力消耗-"), TEXT("内力-"));
+		if (Line.Contains(TEXT("后续打出的第一张牌")) && Line.Contains(TEXT("触发1次后失效")))
+		{
+			const bool ActiveOnly = Line.Contains(TEXT("仅主动出牌触发"));
+			const bool OtherOwner = Line.Contains(TEXT("不作用于效果来源单位"));
+			const FString Subject = FString(OtherOwner ? TEXT("其他角色的") : TEXT(""))
+				+ (ActiveOnly ? TEXT("下一张主动牌") : TEXT("下一张牌"));
+			Line.ReplaceInline(TEXT("后续打出的第一张牌"), *Subject);
+			Line.ReplaceInline(TEXT("；仅主动出牌触发"), TEXT(""));
+			Line.ReplaceInline(TEXT("；不作用于效果来源单位"), TEXT(""));
+			Line.ReplaceInline(TEXT("；触发1次后失效"), TEXT(""));
+			Line.ReplaceInline(TEXT("气力消耗"), TEXT("气力"));
+			Line.ReplaceInline(TEXT("内力消耗"), TEXT("内力"));
+		}
 
 		FString Prefix;
 		FString Payload = Line;
@@ -2094,23 +2163,71 @@ namespace
 		{
 			Clause = Clause.TrimStartAndEnd();
 			if (Clause.IsEmpty()
-				|| Clause == TEXT("仅主动出牌触发")
-				|| Clause == TEXT("触发1次后失效")
 				|| Clause == TEXT("触发状态伤害时不减层")
-				|| Clause == TEXT("不作用于效果来源单位")
-				|| Clause == TEXT("限指定职业触发")
-				|| Clause == TEXT("限指定角色触发")
 				|| Clause.StartsWith(TEXT("每次按当前层数造成生命伤害并减少1层")))
 			{
 				continue;
 			}
 			Clause = Clause.Replace(TEXT("当目标具有"), TEXT("需目标有"));
+			Clause.ReplaceInline(TEXT("仅主动出牌触发"), TEXT("主动出牌触发"));
+			Clause.ReplaceInline(TEXT("触发1次后失效"), TEXT("限1次"));
+			Clause.ReplaceInline(TEXT("不作用于效果来源单位"), TEXT("来源除外"));
+			Clause.ReplaceInline(TEXT("限指定职业触发"), TEXT("仅指定职业"));
+			Clause.ReplaceInline(TEXT("限指定角色触发"), TEXT("仅指定角色"));
 			KeptClauses.Add(Clause);
 		}
 		const FString CompactPayload = FString::Join(KeptClauses, TEXT("；"));
 		return CompactPayload.IsEmpty()
 			? FString()
 			: EllipsizeCompactTooltipLine(Prefix + CompactPayload);
+	}
+
+	FString MergeRepeatedTooltipTiming(FString Text)
+	{
+		// Only merge adjacent clauses with the exact same explicit trigger.
+		// A new condition or target keeps its own clause and its position.
+		TArray<FString> Clauses;
+		Text.ParseIntoArray(Clauses, TEXT("；"), false);
+		FString PreviousTiming;
+		for (FString& Clause : Clauses)
+		{
+			int32 Comma = INDEX_NONE;
+			if (!Clause.FindChar(TEXT('，'), Comma)) { PreviousTiming.Reset(); continue; }
+			FString Timing = Clause.Left(Comma);
+			int32 Heading = INDEX_NONE;
+			if (Timing.FindChar(TEXT('：'), Heading)) Timing = Timing.Mid(Heading + 1);
+			if (!Timing.Contains(TEXT("下一张主动牌")) && !Timing.Contains(TEXT("下个玩家回合")))
+			{
+				PreviousTiming.Reset(); continue;
+			}
+			if (Timing == PreviousTiming) Clause = Clause.Mid(Comma + 1);
+			PreviousTiming = Timing;
+		}
+		return FString::Join(Clauses, TEXT("；"));
+	}
+
+	FString MergeRepeatedTooltipSubject(FString Text)
+	{
+		Text.ReplaceInline(TEXT("登记"), TEXT("获得"));
+		static const TArray<FString> Heads = {TEXT("该牌出牌者获得"), TEXT("目标同阵营全体获得"),
+			TEXT("全体友方各获得"), TEXT("全体敌方各获得"), TEXT("全体友方获得"), TEXT("全体敌方获得"),
+			TEXT("出牌者获得"), TEXT("目标获得"), TEXT("清除目标同阵营全体的全部")};
+		TArray<FString> Clauses, Merged;
+		Text.ParseIntoArray(Clauses, TEXT("；"), false);
+		FString PreviousHead;
+		for (const FString& Clause : Clauses)
+		{
+			const FString* Head = Heads.FindByPredicate([&](const FString& Candidate)
+			{
+				const int32 At = Clause.Find(Candidate);
+				return At == 0 || (At > 0 && (Clause[At-1] == TEXT('：') || Clause[At-1] == TEXT('，')));
+			});
+			if (Head && *Head == PreviousHead && Clause.StartsWith(*Head) && !Merged.IsEmpty())
+				Merged.Last() += TEXT("、") + Clause.Mid(Head->Len());
+			else Merged.Add(Clause);
+			PreviousHead = Head ? *Head : FString();
+		}
+		return FString::Join(Merged, TEXT("；"));
 	}
 
 	void MergeCompactTooltipLine(TArray<FString>& Lines, const FString& Candidate)
@@ -2161,7 +2278,7 @@ namespace
 			false);
 		for (const FString& RawLine : RawEffectLines)
 		{
-			const FString CompactLine = CompactTooltipEffectLine(RawLine);
+			const FString CompactLine = MergeRepeatedTooltipSubject(MergeRepeatedTooltipTiming(CompactTooltipEffectLine(RawLine)));
 			if (CompactLine.IsEmpty())
 			{
 				continue;
@@ -2184,7 +2301,7 @@ namespace
 
 		for (const FString& BaseLine : BaseEffectLines)
 		{
-			Lines.Add(EllipsizeCompactTooltipLine(BaseLine));
+			Lines.Add(EllipsizeCompactTooltipLine(MergeRepeatedTooltipSubject(BaseLine)));
 		}
 		for (const FString& KeywordLine : KeywordLines)
 		{
@@ -2196,11 +2313,11 @@ namespace
 			Lines.Add(EllipsizeCompactTooltipLine(
 				FString::Printf(TEXT("当前不可用：%s"), *Context.UnavailableReason)));
 		}
-		else if (!Context.InteractionResult.IsEmpty())
+		else if (!Context.InteractionResult.IsEmpty() && !Context.InteractionResult.StartsWith(TEXT("点击后立即施放")))
 		{
 			Lines.Add(EllipsizeCompactTooltipLine(Context.InteractionResult));
 		}
-		else if (Preview)
+		else if (Preview && DescribePreviewState(*Preview) != TEXT("点击后立即施放"))
 		{
 			Lines.Add(EllipsizeCompactTooltipLine(DescribePreviewState(*Preview)));
 		}
@@ -2224,16 +2341,14 @@ namespace
 			Preview ? Preview->EffectiveEnergyCost : EffectiveDefinition.EnergyCost,
 			Preview ? Preview->EffectiveManaCost : EffectiveDefinition.ManaCost));
 		Lines.Add(GameXXKCardText::DescribeTargetHeading(EffectiveDefinition));
-		Lines.Add(FString::Printf(
-			TEXT("效果：\n%s"),
-			*DescribeTooltipRules(EffectiveDefinition, Context, Preview, false)));
-		if (Preview)
-		{
-			Lines.Add(DescribePreviewState(*Preview));
-		}
+		Lines.Add(DescribeTooltipRules(EffectiveDefinition, Context, Preview, false));
 		if (!Context.InteractionResult.IsEmpty())
 		{
 			Lines.Add(Context.InteractionResult);
+		}
+		else if (Preview && Context.UnavailableReason.IsEmpty())
+		{
+			Lines.Add(DescribePreviewState(*Preview));
 		}
 		if (!Context.UnavailableReason.IsEmpty())
 		{

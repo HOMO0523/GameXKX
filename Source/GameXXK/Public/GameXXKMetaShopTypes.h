@@ -17,14 +17,21 @@ enum class EGameXXKMetaShopProductId : uint8
 	ZhuiFengPack,
 	ShiGuPack,
 	ShanHePack,
-	CompanionPack
+	CompanionPack,
+	GemPack,
+	AdvancedChest,
+	NormalChest,
+	TravelMoneyBundle
 };
 
 UENUM(BlueprintType)
 enum class EGameXXKMetaShopProductKind : uint8
 {
 	EquipmentPack = 0,
-	CompanionPack
+	CompanionPack,
+	GemPack,
+	TrainingChest,
+	TravelMoney
 };
 
 UENUM(BlueprintType)
@@ -40,7 +47,10 @@ enum class EGameXXKMetaShopError : uint8
 	PurchaseOrdinalExhausted,
 	EquipmentCreationFailed,
 	CompanionCreationFailed,
-	InvalidRuntimeState
+	InvalidRuntimeState,
+	BackpackFull,
+	InventoryOverflow,
+	PersistenceFailed
 };
 
 USTRUCT(BlueprintType)
@@ -140,6 +150,9 @@ struct GAMEXXK_API FGameXXKMetaShopPurchaseResult
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FName GeneratedEquipmentId = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	FName GrantedItemId = NAME_None;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	FGameXXKCompanionRecruitResult CompanionResult;

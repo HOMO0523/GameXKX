@@ -1,5 +1,6 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKInkResourceBarStyle.h"
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 
@@ -20,21 +21,13 @@
 
 namespace
 {
-	const FString HealthTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthTrack.T_BattlePsd_HealthTrack"));
-	const FString HealthFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthFull.T_BattlePsd_HealthFull"));
-	const FString ManaTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaTrack.T_BattlePsd_ManaTrack"));
-	const FString ManaFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaFull.T_BattlePsd_ManaFull"));
-	const FString ResourceMaskMaterialPath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/M_BattlePsdResourceMask.M_BattlePsdResourceMask"));
-	const FName TrackTextureParameter(TEXT("TrackTexture"));
-	const FName FullTextureParameter(TEXT("FullTexture"));
-	const FName FillPercentParameter(TEXT("FillPercent"));
-	const FName FillLeftParameter(TEXT("FillLeft"));
-	const FName FillRightParameter(TEXT("FillRight"));
-	const FName FillTopParameter(TEXT("FillTop"));
-	const FName FillBottomParameter(TEXT("FillBottom"));
-	// Match the previously approved PSD bar span. The mask trims the fill inside
-	// this fixed footprint; it must not shrink the whole rail a second time.
-	const FVector2D ResourceBarLogicalSize(252.0f, 34.0f);
+	const FString HealthTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/InkV3/T_InkResourceBarMaster.T_InkResourceBarMaster"));
+	const FString HealthFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/InkV3/T_InkResourceBarMaster.T_InkResourceBarMaster"));
+	const FString ManaTrackTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/InkV3/T_InkResourceBarMaster.T_InkResourceBarMaster"));
+	const FString ManaFullTexturePath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/InkV3/T_InkResourceBarMaster.T_InkResourceBarMaster"));
+	const FString ResourceMaskMaterialPath(TEXT("/Game/GameXXK/UI/Battle/ResourceBars/InkV3/M_InkResourceBar.M_InkResourceBar"));
+	// The same authored silhouette is used at both battle and travel HUD sizes.
+	const FVector2D ResourceBarLogicalSize(252.0f, 28.0f);
 
 	FSlateBrush MakeResourceBrush(const FString& TexturePath)
 	{
@@ -58,59 +51,27 @@ namespace
 		return Style;
 	}
 
-	struct FResourceMaskChannel
+	UMaterialInstanceDynamic* CreateResourceMaskMaterial(UObject* Outer, const bool bMana = false)
 	{
-		float Left;
-		float Right;
-		float Top;
-		float Bottom;
-	};
-
-	const FResourceMaskChannel HealthChannel {
-		0.0f,
-		1.0f,
-		0.0f,
-		1.0f,
-	};
-	const FResourceMaskChannel ManaChannel {
-		0.0f,
-		1.0f,
-		0.0f,
-		1.0f,
-	};
-
-	UMaterialInstanceDynamic* CreateResourceMaskMaterial(UObject* Outer)
-	{
-		UMaterialInterface* const ParentMaterial = LoadObject<UMaterialInterface>(nullptr, *ResourceMaskMaterialPath);
-		return ParentMaterial ? UMaterialInstanceDynamic::Create(ParentMaterial, Outer) : nullptr;
+		return GameXXKInkResourceBarStyle::Create(Outer,ResourceBarLogicalSize,bMana);
 	}
 
 	void RefreshResourceMask(
 		UImage* const Image,
 		UMaterialInstanceDynamic* const Material,
-		UTexture2D* const TrackTexture,
-		UTexture2D* const FullTexture,
-		const float Percent,
-		const FResourceMaskChannel& Channel)
+		const float Percent)
 	{
 		if (!Image)
 		{
 			return;
 		}
 
-		if (!Material || !TrackTexture || !FullTexture)
+		if (!Material)
 		{
-			Image->SetBrushFromTexture(TrackTexture ? TrackTexture : FullTexture, false);
+			Image->SetBrush(FSlateBrush());
 			return;
 		}
-
-		Material->SetTextureParameterValue(TrackTextureParameter, TrackTexture);
-		Material->SetTextureParameterValue(FullTextureParameter, FullTexture);
-		Material->SetScalarParameterValue(FillPercentParameter, Percent);
-		Material->SetScalarParameterValue(FillLeftParameter, Channel.Left);
-		Material->SetScalarParameterValue(FillRightParameter, Channel.Right);
-		Material->SetScalarParameterValue(FillTopParameter, Channel.Top);
-		Material->SetScalarParameterValue(FillBottomParameter, Channel.Bottom);
+		GameXXKInkResourceBarStyle::Update(Material,Percent);
 		Image->SetBrushFromMaterial(Material);
 	}
 
@@ -121,7 +82,7 @@ namespace
 			return;
 		}
 
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,false,true);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,true);
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
 		TextBlock->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
@@ -221,18 +182,6 @@ bool UGameXXKBattleUnitResourceWidget::IsManaFillLeftToRightForTest() const
 	return ManaProgressBar && ManaProgressBar->GetBarFillType() == EProgressBarFillType::LeftToRight;
 }
 
-bool UGameXXKBattleUnitResourceWidget::UsesWholeFullBarMaskForTest()
-{
-	return HealthChannel.Left == 0.0f
-		&& HealthChannel.Right == 1.0f
-		&& HealthChannel.Top == 0.0f
-		&& HealthChannel.Bottom == 1.0f
-		&& ManaChannel.Left == 0.0f
-		&& ManaChannel.Right == 1.0f
-		&& ManaChannel.Top == 0.0f
-		&& ManaChannel.Bottom == 1.0f;
-}
-
 FString UGameXXKBattleUnitResourceWidget::GetHealthTrackResourcePathForTest() const
 {
 	return HealthTrackTexturePath;
@@ -311,7 +260,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	UVerticalBox* const HealthContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("HealthContentBox"));
 	HealthContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	HealthText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("HealthText"));
-	ConfigureReadableText(HealthText, 16);
+	ConfigureReadableText(HealthText, 18);
 	HealthText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const HealthTextSlot = HealthContentBox->AddChildToVerticalBox(HealthText))
 	{
@@ -329,7 +278,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	HealthTrackTexture = LoadObject<UTexture2D>(nullptr, *HealthTrackTexturePath);
 	HealthFullTexture = LoadObject<UTexture2D>(nullptr, *HealthFullTexturePath);
 	HealthMaskMaterial = CreateResourceMaskMaterial(this);
-	// Render the PSD track/full pair through the authored UI mask.  A native
+	// Render the shared ink rail through its authored UI material. A native
 	// UProgressBar scales the full texture itself and exposes its transparent
 	// source margins, which is why the fill appeared centered instead of being
 	// consumed from the left edge.  Keep the progress bar as a test seam, but
@@ -361,7 +310,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	UVerticalBox* const ManaContentBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("ManaContentBox"));
 	ManaContentBox->SetVisibility(ESlateVisibility::HitTestInvisible);
 	ManaText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("ManaText"));
-	ConfigureReadableText(ManaText, 16);
+	ConfigureReadableText(ManaText, 18);
 	ManaText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const ManaTextSlot = ManaContentBox->AddChildToVerticalBox(ManaText))
 	{
@@ -378,7 +327,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 	ManaBar = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("ManaBarLegacy"));
 	ManaTrackTexture = LoadObject<UTexture2D>(nullptr, *ManaTrackTexturePath);
 	ManaFullTexture = LoadObject<UTexture2D>(nullptr, *ManaFullTexturePath);
-	ManaMaskMaterial = CreateResourceMaskMaterial(this);
+	ManaMaskMaterial = CreateResourceMaskMaterial(this,true);
 	ManaText->RemoveFromParent();
 	UOverlay* ManaOverlay=WidgetTree->ConstructWidget<UOverlay>();
 	ManaOverlay->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -424,7 +373,7 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	{
 		HealthProgressBar->SetPercent(HealthPercent);
 	}
-	RefreshResourceMask(HealthBar, HealthMaskMaterial, HealthTrackTexture, HealthFullTexture, HealthPercent, HealthChannel);
+	RefreshResourceMask(HealthBar, HealthMaskMaterial, HealthPercent);
 	if (ManaText)
 	{
 		ManaText->SetText(FText::FromString(FString::Printf(TEXT("内力 %d / %d"), CurrentMana, MaxMana)));
@@ -434,7 +383,7 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	{
 		ManaProgressBar->SetPercent(ManaPercent);
 	}
-	RefreshResourceMask(ManaBar, ManaMaskMaterial, ManaTrackTexture, ManaFullTexture, ManaPercent, ManaChannel);
+	RefreshResourceMask(ManaBar, ManaMaskMaterial, ManaPercent);
 	if (ManaRow)
 	{
 		ManaRow->SetVisibility(bShowMana ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);

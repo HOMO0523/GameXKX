@@ -334,12 +334,12 @@ bool FGameXXKInteractableMetadataTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("incomplete metadata cannot be force-enabled"), Interactable->IsInteractionEnabled());
 	Interactable->Configure(
 		TEXT("Npc.YueBai"),
-		FText::FromString(TEXT("月白")),
+		FText::FromString(TEXT("幽白")),
 		TEXT("Sequence.Npc.YueBai.Talk"),
 		7,
 		Anchor);
 	TestEqual(TEXT("stable interaction ID"), Interactable->GetInteractionId(), FName(TEXT("Npc.YueBai")));
-	TestEqual(TEXT("display name"), Interactable->GetDisplayName(), FText::FromString(TEXT("月白")));
+	TestEqual(TEXT("display name"), Interactable->GetDisplayName(), FText::FromString(TEXT("幽白")));
 	TestEqual(TEXT("sequence ID"), Interactable->GetNarrativeSequenceId(), FName(TEXT("Sequence.Npc.YueBai.Talk")));
 	TestEqual(TEXT("priority"), Interactable->GetPriority(), 7);
 	TestEqual(TEXT("prompt anchor"), Interactable->GetPromptAnchor(), Anchor);

@@ -1,0 +1,619 @@
+{
+  "schemaVersion": 1,
+  "status": "design-in-progress",
+  "counts": {
+    "preservedCommonAndSpecial": 16,
+    "rare": 20,
+    "epic": 10,
+    "totalCatalog": 46
+  },
+  "decisions": [
+    "Preserve all 31 existing relic IDs; redesign existing rare/epic effects and add 15 new IDs.",
+    "All reworked high-tier effects are non-stackable.",
+    "Short descriptions and named numeric parameters must share the same authored values as the runtime effects.",
+    "Each trigger is counted per active player action or explicit turn event; relic effects never recursively trigger other relics.",
+    "Images: one independent transparent built-in generation per relic; same object artwork is usable in reward cards and icons."
+  ],
+  "relics": [
+    {
+      "id": "Relic.TigerSeal",
+      "slug": "TigerSeal",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "虎纹兵符",
+        "en": "Tiger Command Seal"
+      },
+      "description": {
+        "zh-Hans": "开战：全队获得6气势、4蓄力。",
+        "en": "Battle start: the party gains 6 Momentum and 4 Charge."
+      },
+      "trigger": "battle_start",
+      "effect": "party_status",
+      "primary": 6,
+      "secondary": 4,
+      "synergy": "Momentum / Charge / first-turn attack",
+      "art": "weathered bronze crouching tiger military seal with a vermilion silk cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.InkTalisman",
+      "slug": "InkTalisman",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "镇煞墨符",
+        "en": "Warding Ink Talisman"
+      },
+      "description": {
+        "zh-Hans": "回合开始：全敌叠加最高攻击20%的中毒。",
+        "en": "Turn start: apply Poison equal to 20% of the highest party Attack to all enemies."
+      },
+      "trigger": "round_start",
+      "effect": "poison_all_attack_percent",
+      "primary": 20,
+      "secondary": 0,
+      "synergy": "Poison / Toxic Explosion",
+      "art": "ivory talisman paper with a bold abstract black ink ward and a small jade bead",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.CloudMirror",
+      "slug": "CloudMirror",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "云纹古镜",
+        "en": "Cloud Mirror"
+      },
+      "description": {
+        "zh-Hans": "主动牌获得护甲后，出牌者回3内力。每回合3次。",
+        "en": "After an active card grants Armor, its owner restores 3 Inner Power. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "armor_restore_owner_mana",
+      "primary": 3,
+      "secondary": 3,
+      "synergy": "Armor / Guardian / Frost",
+      "art": "round aged bronze hand mirror with a milky jade face and carved cloud rim",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.StoneBead",
+      "slug": "StoneBead",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "山石念珠",
+        "en": "Mountain Prayer Beads"
+      },
+      "description": {
+        "zh-Hans": "回合开始：全队获得自身防御60%的护甲。",
+        "en": "Turn start: each party member gains Armor equal to 60% of their Defense."
+      },
+      "trigger": "round_start",
+      "effect": "party_armor_defense_percent",
+      "primary": 60,
+      "secondary": 0,
+      "synergy": "Defense / Block / Ice Burst",
+      "art": "loop of six irregular dark stone prayer beads and one ochre mountain bead",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.IronKnot",
+      "slug": "IronKnot",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "玄铁结",
+        "en": "Black Iron Knot"
+      },
+      "description": {
+        "zh-Hans": "回合结束：护甲最高者获得2格挡、3气势。",
+        "en": "Turn end: the party member with the most Armor gains 2 Block and 3 Momentum."
+      },
+      "trigger": "round_end",
+      "effect": "strongest_armor_block_momentum",
+      "primary": 2,
+      "secondary": 3,
+      "synergy": "Armor / Block / Counter",
+      "art": "two dark forged iron rings interlocked into an angular knot with restrained silver highlights",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.Compass",
+      "slug": "Compass",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "寻路司南",
+        "en": "Wayfarer's Compass"
+      },
+      "description": {
+        "zh-Hans": "主动换地势后，全队回3内力并抽1牌。每回合1次。",
+        "en": "After actively changing terrain, restore 3 Inner Power to the party and draw 1 card. Once per turn."
+      },
+      "trigger": "active_card",
+      "effect": "terrain_change_mana_draw",
+      "primary": 3,
+      "secondary": 1,
+      "synergy": "Formation / terrain / spell sequencing",
+      "art": "jade green compass plate holding an old brass spoon with a single vermilion pointer",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.RedCord",
+      "slug": "RedCord",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "同心红绳",
+        "en": "Heartbound Cord"
+      },
+      "description": {
+        "zh-Hans": "主动牌实际治疗后，目标获得等量护甲。每回合3次。",
+        "en": "After an active card restores Health, its targets gain that much Armor. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "effective_healing_to_armor",
+      "primary": 100,
+      "secondary": 3,
+      "synergy": "Healing / Armor / life recovery",
+      "art": "strong red silk double knot binding two pale jade beads",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.BronzeNeedle",
+      "slug": "BronzeNeedle",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "定脉铜针",
+        "en": "Meridian Needle"
+      },
+      "description": {
+        "zh-Hans": "主动牌实际治疗后，全队获得4药效。每回合3次。",
+        "en": "After an active card restores Health, the party gains 4 Medicine. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "effective_healing_party_medicine",
+      "primary": 4,
+      "secondary": 3,
+      "synergy": "Medicine / healing / Medicine to Momentum",
+      "art": "long antiqued bronze acupuncture needle with a curled jade handle and ochre cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.LotusSeed",
+      "slug": "LotusSeed",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "清心莲子",
+        "en": "Clearheart Lotus Seed"
+      },
+      "description": {
+        "zh-Hans": "每回合第3张主动牌：回1气力，全队回3内力。",
+        "en": "On the 3rd active card each turn: gain 1 Energy and restore 3 Inner Power to the party."
+      },
+      "trigger": "active_card",
+      "effect": "third_card_energy_mana",
+      "primary": 1,
+      "secondary": 3,
+      "synergy": "Cross-character card chains / energy",
+      "art": "opened dark lotus pod cradling a single pale luminous jade seed",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.SwordGuard",
+      "slug": "SwordGuard",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "旧剑镡",
+        "en": "Veteran's Sword Guard"
+      },
+      "description": {
+        "zh-Hans": "每回合首张主动牌后，出牌者获得4蓄力与自身防御50%的护甲。",
+        "en": "After the first active card each turn, its owner gains 4 Charge and Armor equal to 50% of their Defense."
+      },
+      "trigger": "active_card",
+      "effect": "first_owner_charge_armor",
+      "primary": 4,
+      "secondary": 50,
+      "synergy": "Opener / Charge / defensive setup",
+      "art": "aged iron sword guard with a broad crescent silhouette and red tassel",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.BloodInkSeal",
+      "slug": "BloodInkSeal",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "赤墨印",
+        "en": "Blood-Ink Seal"
+      },
+      "description": {
+        "zh-Hans": "主动攻击命中流血敌人，追加自身攻击30%的伤害。每回合3次。",
+        "en": "An active attack hitting a bleeding enemy deals an extra 30% of its owner's Attack as damage. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "bleeding_hit_bonus",
+      "primary": 30,
+      "secondary": 3,
+      "synergy": "Bleed / multi-hit / Blade",
+      "art": "square cinnabar seal stone chipped at one corner with dark red ink pooled in its carving",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.StormChime",
+      "slug": "StormChime",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "惊雷铃",
+        "en": "Thunderwake Bell"
+      },
+      "description": {
+        "zh-Hans": "回合开始：全敌获得2标记，全队获得2蓄力。",
+        "en": "Turn start: all enemies gain 2 Mark and the party gains 2 Charge."
+      },
+      "trigger": "round_start",
+      "effect": "enemy_mark_party_charge",
+      "primary": 2,
+      "secondary": 2,
+      "synergy": "Mark / lightning / Heavy Shot",
+      "art": "small bronze bell with a jagged thunder-shaped clapper and dark indigo cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.FlameCenser",
+      "slug": "FlameCenser",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "余烬炉",
+        "en": "Ember Censer"
+      },
+      "description": {
+        "zh-Hans": "每回合前3张主动牌后，全敌叠加最高攻击10%的灼烧。",
+        "en": "After each of the first 3 active cards per turn, apply Burn equal to 10% of the highest party Attack to all enemies."
+      },
+      "trigger": "active_card",
+      "effect": "first_three_burn_all",
+      "primary": 10,
+      "secondary": 3,
+      "synergy": "Burn / Toxic Explosion / multi-card",
+      "art": "round blackened bronze censer with three broad ember-orange slits and one restrained smoke curl",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.HunterQuiver",
+      "slug": "HunterQuiver",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "追风箭囊",
+        "en": "Windchaser Quiver"
+      },
+      "description": {
+        "zh-Hans": "连续由不同角色主动出牌，出牌者获得4蓄力。每回合3次。",
+        "en": "When a different character plays the next active card, that owner gains 4 Charge. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "alternate_owner_charge",
+      "primary": 4,
+      "secondary": 3,
+      "synergy": "Party rotation / Heavy Shot",
+      "art": "compact worn brown leather quiver holding three broad white-feather arrows and a jade clasp",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.MoonDewVial",
+      "slug": "MoonDewVial",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "月露瓶",
+        "en": "Moon-Dew Vial"
+      },
+      "description": {
+        "zh-Hans": "回合开始：半血及以下队员恢复自身最大气血20%。",
+        "en": "Turn start: party members at half Health or below restore 20% of their maximum Health."
+      },
+      "trigger": "round_start",
+      "effect": "low_health_party_heal",
+      "primary": 20,
+      "secondary": 50,
+      "synergy": "Low-health healing / Healer / defensive teams",
+      "art": "small moon-white ceramic bottle holding blue-green dew with a deep navy stopper",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.WarBanner",
+      "slug": "WarBanner",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "破阵小旗",
+        "en": "Formation-Breaker Pennant"
+      },
+      "description": {
+        "zh-Hans": "每回合首次主动命中标记敌人：回1气力，出牌者获3气势。",
+        "en": "The first active hit on a marked enemy each turn grants 1 Energy and 3 Momentum to its owner."
+      },
+      "trigger": "active_card",
+      "effect": "first_marked_hit_energy_momentum",
+      "primary": 1,
+      "secondary": 3,
+      "synergy": "Mark / offensive card loop",
+      "art": "small triangular vermilion battle pennant on a short dark bamboo shaft with torn ink-edged cloth",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.AmberPestle",
+      "slug": "AmberPestle",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "琥珀药杵",
+        "en": "Amber Medicine Pestle"
+      },
+      "description": {
+        "zh-Hans": "主动毒爆结算后，出牌者回4内力并抽1牌。每回合2次。",
+        "en": "After an active Toxic Explosion, its owner restores 4 Inner Power and draws 1 card. Twice per turn."
+      },
+      "trigger": "active_card",
+      "effect": "toxic_explosion_mana_draw",
+      "primary": 4,
+      "secondary": 2,
+      "synergy": "Toxic Explosion / DOT / card access",
+      "art": "honey amber pestle resting diagonally in a shallow dark green stone mortar",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.TwinJade",
+      "slug": "TwinJade",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "双生玉",
+        "en": "Twin Jade"
+      },
+      "description": {
+        "zh-Hans": "每回合首次主动消耗蓄力后：返还4蓄力，回1气力。",
+        "en": "After the first active use of Charge each turn: regain 4 Charge and 1 Energy."
+      },
+      "trigger": "active_card",
+      "effect": "heavy_shot_refund",
+      "primary": 4,
+      "secondary": 1,
+      "synergy": "Heavy Shot / resource timing",
+      "art": "two interlocking pale jade fish pendants tied with a muted olive cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.SilkFan",
+      "slug": "SilkFan",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "回风扇",
+        "en": "Returning-Wind Fan"
+      },
+      "description": {
+        "zh-Hans": "每回合首张主动牌后抽2牌。",
+        "en": "Draw 2 cards after the first active card each turn."
+      },
+      "trigger": "active_card",
+      "effect": "first_card_draw",
+      "primary": 2,
+      "secondary": 1,
+      "synergy": "Opener / party rotation / spell access",
+      "art": "half-open ivory silk folding fan with bold black wind strokes and an aged bamboo handle",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.ObsidianScale",
+      "slug": "ObsidianScale",
+      "quality": "Rare",
+      "name": {
+        "zh-Hans": "玄鳞",
+        "en": "Obsidian Scale"
+      },
+      "description": {
+        "zh-Hans": "每回合首次受到生命伤害后，受击队员获得自身防御120%的护甲。",
+        "en": "After the first Health damage each turn, the injured party member gains Armor equal to 120% of their Defense."
+      },
+      "trigger": "damage_taken",
+      "effect": "first_hit_defense_armor",
+      "primary": 120,
+      "secondary": 1,
+      "synergy": "Reactive defense / low-health recovery",
+      "art": "one broad black dragon scale with angular brushed highlights and a tiny jade edge",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.BambooTally",
+      "slug": "BambooTally",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "竹节令",
+        "en": "Bamboo Command Tally"
+      },
+      "description": {
+        "zh-Hans": "每回合第3张主动牌：回2气力，抽2牌。",
+        "en": "On the 3rd active card each turn: gain 2 Energy and draw 2 cards."
+      },
+      "trigger": "active_card",
+      "effect": "third_card_energy_draw",
+      "primary": 2,
+      "secondary": 2,
+      "synergy": "Three-card chain / cross-class engine",
+      "art": "carved golden bamboo command tally split into two fitted halves with vermilion silk bindings",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.CraneFeather",
+      "slug": "CraneFeather",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "鹤羽",
+        "en": "Crane Feather"
+      },
+      "description": {
+        "zh-Hans": "每名队员每回合首次主动出牌后：抽1牌，回4内力。",
+        "en": "After each party member's first active card per turn: draw 1 card and restore 4 Inner Power to that owner."
+      },
+      "trigger": "active_card",
+      "effect": "first_per_owner_draw_mana",
+      "primary": 1,
+      "secondary": 4,
+      "synergy": "Full party rotation / spell sequences",
+      "art": "single elegant white crane plume with a dark ink tip bound to a small polished gold ring",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.ChessStone",
+      "slug": "ChessStone",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "残局黑子",
+        "en": "Endgame Stone"
+      },
+      "description": {
+        "zh-Hans": "每回合3名不同队员均主动出牌后：全队获得2格挡、回5内力。",
+        "en": "After 3 different party members play active cards in a turn: the party gains 2 Block and restores 5 Inner Power."
+      },
+      "trigger": "active_card",
+      "effect": "three_owners_block_mana",
+      "primary": 2,
+      "secondary": 5,
+      "synergy": "Three-person chain / Block / Guardian",
+      "art": "large glossy black go stone on a broken corner of a jade chessboard with one red cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.DrumCharm",
+      "slug": "DrumCharm",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "震山鼓坠",
+        "en": "Mountain-Shaking Drum"
+      },
+      "description": {
+        "zh-Hans": "每回合第5张主动牌后，对全敌造成最高攻击150%的伤害。",
+        "en": "After the 5th active card each turn, deal 150% of the highest party Attack as damage to all enemies."
+      },
+      "trigger": "active_card",
+      "effect": "fifth_card_party_attack_aoe",
+      "primary": 150,
+      "secondary": 5,
+      "synergy": "Card-chain payoff / multi-character / draw",
+      "art": "small imposing vermilion war drum with aged gold studs and a dark braided hanging cord",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.OldMap",
+      "slug": "OldMap",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "残山旧图",
+        "en": "Ancient Mountain Map"
+      },
+      "description": {
+        "zh-Hans": "每回合首次主动换地势后：回2气力，全队获得自身防御100%的护甲。",
+        "en": "After the first active terrain change each turn: gain 2 Energy, and each party member gains Armor equal to 100% of their Defense."
+      },
+      "trigger": "active_card",
+      "effect": "terrain_change_energy_party_armor",
+      "primary": 2,
+      "secondary": 100,
+      "synergy": "Terrain / Formation / Armor / party pacing",
+      "art": "unfurled weathered map scroll with a bold ink mountain silhouette, jade rollers and a single vermilion route trace",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.BloodMoonBlade",
+      "slug": "BloodMoonBlade",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "血月残锋",
+        "en": "Bloodmoon Blade Shard"
+      },
+      "description": {
+        "zh-Hans": "回合结束：触发全敌流血与灼烧各1次。",
+        "en": "Turn end: trigger Bleed and Burn on all enemies once each."
+      },
+      "trigger": "round_end",
+      "effect": "trigger_bleed_burn",
+      "primary": 1,
+      "secondary": 1,
+      "synergy": "Blade / Burn / DOT detonation",
+      "art": "curved broken sword tip in dark iron with a blood-red crescent inlay and weathered gold collar",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.PhoenixCauldron",
+      "slug": "PhoenixCauldron",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "涅槃药鼎",
+        "en": "Phoenix Medicine Cauldron"
+      },
+      "description": {
+        "zh-Hans": "每回合首次主动治疗后：全队恢复最大气血15%，获得6药效。",
+        "en": "After the first active heal each turn: the party restores 15% of maximum Health and gains 6 Medicine."
+      },
+      "trigger": "active_card",
+      "effect": "first_heal_party_percent_medicine",
+      "primary": 15,
+      "secondary": 6,
+      "synergy": "Effective healing / Medicine / sustain",
+      "art": "small archaic jade-green bronze medicine cauldron with phoenix-wing handles and warm coral ember glow",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.StarAbacus",
+      "slug": "StarAbacus",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "星衡算盘",
+        "en": "Starweigh Abacus"
+      },
+      "description": {
+        "zh-Hans": "每回合首次主动出牌耗尽内力：回满出牌者内力，抽2牌。",
+        "en": "The first active card to spend its owner's remaining Inner Power each turn refills that owner's Inner Power and draws 2 cards."
+      },
+      "trigger": "active_card",
+      "effect": "spend_last_mana_refill_draw",
+      "primary": 2,
+      "secondary": 1,
+      "synergy": "Inner Power timing / expensive spells / card access",
+      "art": "compact dark rosewood abacus with alternating deep indigo and pale gold stone beads and a small star charm",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.DragonCarapace",
+      "slug": "DragonCarapace",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "伏龙甲印",
+        "en": "Dragon Ward Seal"
+      },
+      "description": {
+        "zh-Hans": "回合开始：全队获得自身防御120%的护甲与1反击。",
+        "en": "Turn start: each party member gains Armor equal to 120% of their Defense and 1 Counter."
+      },
+      "trigger": "round_start",
+      "effect": "party_armor_counter",
+      "primary": 120,
+      "secondary": 1,
+      "synergy": "Defense scaling / Counter / Block / armor conversion",
+      "art": "broad jade dragon-carapace amulet with dark ink cracks and restrained antique gold raised ridges",
+      "status": "draft-pending-runtime-tests"
+    },
+    {
+      "id": "Relic.ThunderSeal",
+      "slug": "ThunderSeal",
+      "quality": "Epic",
+      "name": {
+        "zh-Hans": "九霄雷印",
+        "en": "Skybreaker Thunder Seal"
+      },
+      "description": {
+        "zh-Hans": "主动命中标记敌人后，追加最高攻击60%的伤害。每回合3次。",
+        "en": "After an active hit on a marked enemy, deal an extra 60% of the highest party Attack as damage. 3 times per turn."
+      },
+      "trigger": "active_card",
+      "effect": "marked_hit_party_attack_bonus",
+      "primary": 60,
+      "secondary": 3,
+      "synergy": "Mark / lightning / sequential attacks",
+      "art": "antique gold and indigo thunder seal with a bold forked lightning inlay and one curled vermilion tassel",
+      "status": "draft-pending-runtime-tests"
+    }
+  ]
+}

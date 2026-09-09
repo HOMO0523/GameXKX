@@ -121,6 +121,44 @@ struct GAMEXXK_API FGameXXKTaskProgress
 	bool bRewardCommitted = false;
 };
 
+UENUM(BlueprintType)
+enum class EGameXXKMainStoryActivityPhase : uint8
+{
+	None,
+	Dialogue,
+	Choice,
+	ReadyToTravel,
+	AwaitingGate,
+	ReadyToBattle,
+	AwaitingBattle,
+	Result
+};
+
+/** Save-authoritative activity and one-journey context for the authored task tree. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKMainStorySession
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> SeenChapters;
+	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> MainlineCompletedChapters;
+	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> JourneyStartedNodes;
+	UPROPERTY(BlueprintReadWrite, SaveGame) FName ActiveNodeId;
+	UPROPERTY(BlueprintReadWrite, SaveGame) EGameXXKMainStoryActivityPhase Phase = EGameXXKMainStoryActivityPhase::None;
+	UPROPERTY(BlueprintReadWrite, SaveGame) int32 LineIndex = 0;
+	UPROPERTY(BlueprintReadWrite, SaveGame) FName JourneyNodeId;
+	UPROPERTY(BlueprintReadWrite, SaveGame) FName JourneyChapterId;
+	UPROPERTY(BlueprintReadWrite, SaveGame) FName JourneyStageId;
+	UPROPERTY(BlueprintReadWrite, SaveGame) FGuid JourneyId;
+	UPROPERTY(BlueprintReadWrite, SaveGame) int32 JourneySeed = 0;
+	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<int32> GateNodeIds;
+	UPROPERTY(BlueprintReadWrite, SaveGame) int32 GateNodeId = INDEX_NONE;
+	UPROPERTY(BlueprintReadWrite, SaveGame) bool bGateEntered = false;
+	UPROPERTY(BlueprintReadWrite, SaveGame) bool bBattleStarted = false;
+	UPROPERTY(BlueprintReadWrite, SaveGame) bool bBattleWon = false;
+	UPROPERTY(BlueprintReadWrite, SaveGame) bool bShowJourneyTree = false;
+	UPROPERTY(BlueprintReadWrite, SaveGame) int32 Revision = 0;
+};
+
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKNarrativeProgress
 {
@@ -134,4 +172,7 @@ struct GAMEXXK_API FGameXXKNarrativeProgress
 
 	UPROPERTY(BlueprintReadOnly, SaveGame, Category = "Narrative")
 	FName TrackedTaskId;
+
+	UPROPERTY(BlueprintReadOnly, SaveGame, Category = "Narrative")
+	FGameXXKMainStorySession MainStory;
 };

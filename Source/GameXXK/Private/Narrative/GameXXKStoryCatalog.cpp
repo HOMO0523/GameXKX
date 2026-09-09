@@ -1,4 +1,5 @@
 #include "Narrative/GameXXKStoryCatalog.h"
+#include "Narrative/GameXXKMainStoryCatalog.h"
 
 namespace GameXXKStoryCatalogPrivate
 {
@@ -13,13 +14,34 @@ namespace GameXXKStoryCatalogPrivate
 
 	const TArray<FGameXXKTaskDefinition>& BuildTasks()
 	{
-		static const TArray<FGameXXKTaskDefinition> Tasks;
+		static const TArray<FGameXXKTaskDefinition> Tasks = []
+		{
+			TArray<FGameXXKTaskDefinition> Result;
+			for (const auto& Node : FGameXXKMainStoryCatalog::Nodes())
+			{
+				FGameXXKTaskDefinition Task;
+				Task.TaskId=Node.Id; Task.StoryId=Node.StoryId; Task.EntryStepId=Node.StepId;
+				Task.PrerequisiteTaskIds=Node.RequiresAll;
+				FGameXXKTaskStepDefinition Step; Step.StepId=Node.StepId;
+				Task.Steps.Add(MoveTemp(Step)); Result.Add(MoveTemp(Task));
+			}
+			return Result;
+		}();
 		return Tasks;
 	}
 
 	const TArray<FGameXXKStoryDefinition>& BuildStories()
 	{
-		static const TArray<FGameXXKStoryDefinition> Stories;
+		static const TArray<FGameXXKStoryDefinition> Stories = []
+		{
+			TArray<FGameXXKStoryDefinition> Result;
+			for (const auto& Chapter : FGameXXKMainStoryCatalog::Chapters())
+			{
+				FGameXXKStoryDefinition Story; Story.StoryId=Chapter.StoryId; Story.Version=1; Story.TaskIds=Chapter.Nodes;
+				Result.Add(MoveTemp(Story));
+			}
+			return Result;
+		}();
 		return Stories;
 	}
 }

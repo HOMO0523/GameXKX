@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import json
 from pathlib import Path
 import struct
@@ -75,7 +80,7 @@ def import_record(record: dict[str, object]) -> str:
     if not isinstance(texture, unreal.Texture2D):
         raise RuntimeError(f"failed to import gem Texture2D: {package_path}")
     configure(texture)
-    if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+    if not save_asset_with_texture_budget(texture):
         raise RuntimeError(f"failed to save gem texture: {package_path}")
     return texture.get_path_name()
 

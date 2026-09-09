@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import json
 from pathlib import Path
 
@@ -51,7 +56,7 @@ def main() -> None:
     height = int(texture.blueprint_get_size_y())
     if width != height or width < 1024:
         raise RuntimeError(f"talent atlas must be square and at least 1024px, got {width}x{height}")
-    if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+    if not save_asset_with_texture_budget(texture):
         raise RuntimeError(f"failed to save permanent-talent atlas: {asset_path}")
 
     print(json.dumps({

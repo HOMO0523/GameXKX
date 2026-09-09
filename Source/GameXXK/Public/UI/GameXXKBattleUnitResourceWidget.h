@@ -53,9 +53,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	bool IsManaFillLeftToRightForTest() const;
-	static bool UsesWholeFullBarMaskForTest();
 
-	/** The four texture sources must remain distinct PSD-derived Track/Full assets. */
+	/** HP and Mana share the same ink master; the material controls color and fill. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Test", meta = (DevelopmentOnly))
 	FString GetHealthTrackResourcePathForTest() const;
 

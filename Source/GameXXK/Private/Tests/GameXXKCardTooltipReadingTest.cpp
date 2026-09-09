@@ -2,12 +2,122 @@
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/TextBlock.h"
+#include "Components/Button.h"
+#include "Components/Border.h"
+#include "Components/VerticalBox.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardText.h"
+#include "GameXXKMVPRules.h"
+#include "GameXXKEquipmentRules.h"
 #include "UI/GameXXKCardTooltipInteraction.h"
 #include "UI/GameXXKCardTooltipWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipPlayerLanguageTest,
+	"GameXXK.UI.CardTooltip.PlayerFacingLanguage", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipPlayerLanguageTest::RunTest(const FString&)
+{
+	int32 Checked = 0;
+	for (const auto& Card : FGameXXKCardCatalog::GetAllCardDefinitions())
+	{
+		for (const auto Quality : {EGameXXKCardQuality::Common, EGameXXKCardQuality::Rare, EGameXXKCardQuality::Epic})
+		{
+			if (static_cast<int32>(Quality) < static_cast<int32>(Card.BaseQuality)) continue;
+			const FString Text = GameXXKCardText::DescribeCompactTooltipBody(Card, Quality, nullptr, {})
+				+ GameXXKCardText::DescribeExpandedTooltipBody(Card, Quality, nullptr, {});
+			for (const TCHAR* Internal : {TEXT("标准冰爆"), TEXT("标准寒冰伤害"), TEXT("并各减少1层"),
+				TEXT("任务 NPC"), TEXT("本次打出的牌获得"), TEXT("本次打出的牌登记"), TEXT("标记快照")})
+				TestFalse(FString::Printf(TEXT("%s excludes obsolete/internal phrase %s"), *Card.Id.ToString(), Internal), Text.Contains(Internal));
+			++Checked;
+		}
+	}
+	TestEqual(TEXT("language audit covers every current card quality"), Checked, 419);
+	const auto* Ice = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.SheLingHuo"));
+	const auto* Medicine = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Healer.YaoYin"));
+	const auto* Npc = FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.SongJinBao.GuiKeLing"));
+	if (!Ice || !Medicine || !Npc) return false;
+	const FString IceText = GameXXKCardText::DescribeCompactTooltipBody(*Ice, EGameXXKCardQuality::Common, nullptr, {});
+	TestTrue(TEXT("ice explosion stays inside the task reward and explains armor consumption"),
+		IceText.Contains(TEXT("阵赏：冰爆，消耗全部护甲")) && IceText.Contains(TEXT("100%攻击"))
+		&& !IceText.Contains(TEXT("\n冰爆：")));
+	const FString MedicineText = GameXXKCardText::DescribeCompactTooltipBody(*Medicine, nullptr, {});
+	TestTrue(TEXT("health-change formula counts events rather than damage magnitude"),
+		MedicineText.Contains(TEXT("每笔伤害")) && MedicineText.Contains(TEXT("1点药效")));
+	const FString NpcText = GameXXKCardText::DescribeCompactTooltipBody(*Npc, nullptr, {});
+	TestTrue(TEXT("reactive status goes to the next card's owner"), NpcText.Contains(TEXT("该牌出牌者")));
+	TestTrue(TEXT("one-shot trigger and next-round timing remain explicit"),
+		NpcText.Contains(TEXT("下一张主动牌结算前")) && NpcText.Contains(TEXT("下个玩家回合开始时")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipOwnerPreviewTest,
+	"GameXXK.UI.CardTooltip.CorrectPreviewOwner", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipOwnerPreviewTest::RunTest(const FString&)
+{
+	FGameXXKRuntimeState State;
+	auto& Active = State.CardRun.CompanionRoster.PermanentCompanions.AddDefaulted_GetRef();
+	Active.InstanceId = TEXT("Tooltip.ActiveBlade"); Active.Role = EGameXXKCharacterRole::Blade; Active.bIsActive = true;
+	const auto* Blade = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Blade.HuiFengJiaShi"));
+	const auto* Npc = FGameXXKCardCatalog::FindCardDefinition(TEXT("Npc.TusiChief.TuSiJunLing"));
+	if (!Blade || !Npc) return false;
+	TestEqual(TEXT("shop and reward previews use the active companion rather than hero stats"),
+		UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(State, *Blade), Active.InstanceId);
+	TestEqual(TEXT("NPC cards resolve the real NPC equipment owner"),
+		UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(State, *Npc), FName(TEXT("Npc.TusiChief")));
+	Active.bIsActive = false;
+	TestTrue(TEXT("an unavailable profession never silently borrows hero stats"),
+		UGameXXKCardTooltipWidget::ResolveCardOwnerCharacterId(State, *Blade).IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipModifierRestrictionTest,
+	"GameXXK.UI.CardTooltip.ModifierRestrictions", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipModifierRestrictionTest::RunTest(const FString&)
+{
+	const FGameXXKCardDefinition* Card = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.QingFengYiShi"));
+	if (!TestNotNull(TEXT("real next-card discount exists"), Card)) return false;
+	const FString Compact = GameXXKCardText::DescribeCompactTooltipBody(*Card, nullptr, {});
+	TestTrue(TEXT("compact retains active-play gating"), Compact.Contains(TEXT("主动牌")));
+	TestTrue(TEXT("compact retains the excluded source unit"), Compact.Contains(TEXT("其他角色")));
+	TestTrue(TEXT("compact retains its one-use limit"), Compact.Contains(TEXT("下一张")));
+	TestTrue(TEXT("the benefit still reduces the next card's energy"), Compact.Contains(TEXT("气力-1")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTooltipOriginalArtTest,
+	"GameXXK.UI.CardTooltip.OriginalPillsAndItemSlot", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKTooltipOriginalArtTest::RunTest(const FString&)
+{
+	FGameXXKCardDefinition Card; Card.Id = TEXT("Test.Tooltip.OriginalArt");
+	Card.DisplayName = FText::FromString(TEXT("原样检查")); Card.BaseQuality = EGameXXKCardQuality::Common;
+	Card.TargetSpec.Mode = EGameXXKCardTargetMode::SingleEnemy;
+	auto& Effect = Card.Effects.AddDefaulted_GetRef(); Effect.Type = EGameXXKCardEffectType::ApplyStatus;
+	Effect.Target = EGameXXKCardEffectTarget::SelectedTarget; Effect.Status = EGameXXKCardStatus::Poison; Effect.Magnitude = 2;
+	UGameXXKCardTooltipWidget* Tooltip = NewObject<UGameXXKCardTooltipWidget>();
+	Tooltip->Initialize(); Tooltip->SetExpandedForTest(false); Tooltip->ConfigureCard(Card, Card.BaseQuality, nullptr, {});
+	TSharedRef<SWidget> SlateTooltip = Tooltip->TakeWidget(); SlateTooltip->SlatePrepass();
+	UBorder* Paper = Cast<UBorder>(Tooltip->WidgetTree->FindWidget(TEXT("CardTooltipPaper")));
+	TestTrue(TEXT("the original ItemSlot paper is retained"), Paper && Paper->Background.GetResourceObject()
+		&& Paper->Background.GetResourceObject()->GetPathName().Contains(TEXT("T_MasterV2_ItemSlot")));
+	TestTrue(TEXT("the original paper slice is retained"), Paper && Paper->Background.Margin == FMargin(0.065f));
+	bool FoundOriginalPill = false;
+	Tooltip->WidgetTree->ForEachWidget([&](UWidget* Widget)
+	{
+		UBorder* Pill = Cast<UBorder>(Widget); UTextBlock* Label = Pill ? Cast<UTextBlock>(Pill->GetContent()) : nullptr;
+		if (Label && Label->GetText().ToString() == TEXT("中毒"))
+			FoundOriginalPill = Pill->Background.TintColor.GetSpecifiedColor().Equals(FLinearColor(0.18f,0.13f,0.09f,1))
+				&& Label->GetFont().Size == 16;
+	});
+	TestTrue(TEXT("status Pill keeps its original dark fill and type size"), FoundOriginalPill);
+	TestEqual(TEXT("short explanations keep a fixed minimum width"),
+		GameXXKCardTooltipPresentation::PreferredWidth(TEXT("造成100点伤害。")), 520.0f);
+	TestTrue(TEXT("long explanations grow without exceeding the declared maximum"),
+		GameXXKCardTooltipPresentation::PreferredWidth(FString::ChrN(500, TEXT('字'))) > 520.0f
+		&& GameXXKCardTooltipPresentation::PreferredWidth(FString::ChrN(500, TEXT('字'))) <= 800.0f);
+	return true;
+}
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipControlTest,
 	"GameXXK.UI.CardTooltip.ControlReading", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -50,6 +160,39 @@ bool FGameXXKCardTooltipControlTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipUnresolvedBranchTest,
+	"GameXXK.UI.CardTooltip.UnresolvedBranchAndLongLayout", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipUnresolvedBranchTest::RunTest(const FString&)
+{
+	const auto* Card = FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.ChiYanFengJie"));
+	if (!TestNotNull(TEXT("real universal reward card exists"), Card)) return false;
+	const FString Compact = GameXXKCardText::DescribeCompactTooltipBody(*Card, EGameXXKCardQuality::Epic, nullptr, {});
+	const FString Detail = GameXXKCardText::DescribeExpandedTooltipBody(*Card, EGameXXKCardQuality::Epic, nullptr, {});
+	TestTrue(TEXT("compact explains that the reward branch is not yet fixed"), Compact.Contains(TEXT("任务分支尚未确定")));
+	TestFalse(TEXT("compact does not stack four alternative reward paragraphs"), Compact.Contains(TEXT("阵赏·炎法：")));
+	for (const TCHAR* Branch : {TEXT("阵赏·普通："), TEXT("阵赏·炎法："), TEXT("阵赏·寒冰："), TEXT("阵赏·雷法：")})
+		TestTrue(TEXT("detail preserves every unresolved branch"), Detail.Contains(Branch));
+	FGameXXKCardTooltipContext Context; Context.LockedSpellBranch = EGameXXKSorcererTaskBranch::Fire;
+	const FString Locked = GameXXKCardText::DescribeCompactTooltipBody(*Card, EGameXXKCardQuality::Epic, nullptr, Context);
+	TestTrue(TEXT("a locked branch shows its actual reward"), Locked.Contains(TEXT("阵赏·炎法：")));
+	TestFalse(TEXT("a locked branch omits unrelated ice rewards"), Locked.Contains(TEXT("阵赏·寒冰：")));
+	UGameXXKCardTooltipWidget* Tooltip = NewObject<UGameXXKCardTooltipWidget>();
+	Tooltip->Initialize(); Tooltip->SetExpandedForTest(true); Tooltip->ConfigureCard(*Card, EGameXXKCardQuality::Epic, nullptr, {});
+	TSharedRef<SWidget> SlateTooltip = Tooltip->TakeWidget();
+	SlateTooltip->SlatePrepass();
+	const FVector2D Measured = SlateTooltip->GetDesiredSize();
+	AddInfo(FString::Printf(TEXT("expanded tooltip measured %.1f x %.1f"), Measured.X, Measured.Y));
+	if (UVerticalBox* Body = Cast<UVerticalBox>(Tooltip->WidgetTree->FindWidget(TEXT("CardTooltipBody"))))
+	{
+		float Widest = 0, Tallest = 0;
+		for (UWidget* Row : Body->GetAllChildren()) { Widest = FMath::Max(Widest, Row->GetDesiredSize().X); Tallest = FMath::Max(Tallest, Row->GetDesiredSize().Y); }
+		AddInfo(FString::Printf(TEXT("rows %d, widest %.1f, tallest %.1f; text %s"), Body->GetChildrenCount(), Widest, Tallest, *Tooltip->GetRenderedTextForTest()));
+	}
+	TestTrue(TEXT("long detailed text fits a bounded panel instead of growing past the screen"),
+		Measured.Y > 200 && Measured.Y < 850 && Measured.X >= 520 && Measured.X <= 800);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipPillCopyTest,
 	"GameXXK.UI.CardTooltip.PillCopy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -84,9 +227,9 @@ bool FGameXXKCardTooltipPillCopyTest::RunTest(const FString& Parameters)
 	Tooltip->TakeWidget();
 	Tooltip->UpdateInspectionFromOwner(true, false, false, false);
 	Tooltip->UpdateInspectionFromOwner(true, false, true, false);
-	TestTrue(TEXT("owner input opens the real widget's separate help body"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌Pill说明")));
+	TestTrue(TEXT("owner input opens the real widget's separate help body"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌术语")));
 	Tooltip->UpdateInspectionFromOwner(true, false, false, false);
-	TestTrue(TEXT("the real widget retains help on Ctrl release"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌Pill说明")));
+	TestTrue(TEXT("the real widget retains help on Ctrl release"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌术语")));
 	const TArray<FString> RenderedPills = Tooltip->GetPillTextsForTest();
 	TestEqual(TEXT("the help render has one poison pill"), RenderedPills.FilterByPredicate([](const FString& Name) { return Name == TEXT("中毒"); }).Num(), 1);
 	TestTrue(TEXT("the help render uses the combined charge label"), RenderedPills.Contains(TEXT("蓄力／重箭")));
@@ -96,9 +239,9 @@ bool FGameXXKCardTooltipPillCopyTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Shift has no appended status glossary"), Detail.Contains(TEXT("状态说明：")));
 	TestFalse(TEXT("Shift does not repeat the generic heavy-arrow definition"), Detail.Contains(TEXT("逐层触发本牌重箭效果")));
 	Tooltip->UpdateInspectionFromOwner(true, false, false, false);
-	TestTrue(TEXT("Shift release restores this widget's help"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌Pill说明")));
+	TestTrue(TEXT("Shift release restores this widget's help"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌术语")));
 	Tooltip->UpdateInspectionFromOwner(false, false, false, false);
-	TestFalse(TEXT("leaving resets the real widget"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌Pill说明")));
+	TestFalse(TEXT("leaving resets the real widget"), Tooltip->GetDisplayedTextForTest().Contains(TEXT("本牌术语")));
 	TestEqual(TEXT("reading never mutates the card's authored effects"), Card.Effects.Num(), 2);
 
 	Card.HeavyArrow.Kind = EGameXXKHeavyArrowKind::None;

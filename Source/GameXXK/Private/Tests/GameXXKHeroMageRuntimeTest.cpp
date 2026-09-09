@@ -2,6 +2,7 @@
 #include "GameXXKCardRules.h"
 
 #include "Misc/AutomationTest.h"
+#include "UI/GameXXKBattleAnimationPresentation.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -947,6 +948,23 @@ bool FGameXXKMageAutomaticAreaTargetingTest::RunTest(const FString& Parameters)
 	FGameXXKCardPlayResult LightningResult;
 	TestTrue(FString::Printf(TEXT("group Lightning resolves without a selected target: %s"), *Error), GameXXKCardRules::ResolveCardPlay(LightningRuntime, TEXT("Lightning"), NAME_None, LightningResult, &Error));
 	TestEqual(TEXT("three locked Mark strikes hit each of two enemies"), CountDamage(LightningResult.DamageResults, EGameXXKCardResolutionOrigin::ActivePlay, EGameXXKCardDamageCause::DirectAttack), 6);
+	for (const auto& Packet : LightningResult.DamageResults)
+	{
+		TestTrue(TEXT("resolved lightning packets retain the VFX cue"), Packet.bLightningStrike);
+	}
+	for (const auto& Packet : FireResult.DamageResults)
+	{
+		TestFalse(TEXT("fire must not display lightning"), Packet.bLightningStrike);
+	}
+	const auto Events = FGameXXKBattleAnimationPresentation::BuildPresentationEvents(LightningRuntime, NAME_None, LightningResult.DamageResults);
+	TestEqual(TEXT("one visual event per resolved strike"), Events.Num(), 6);
+	for (const auto& Event : Events)
+	{
+		TestTrue(TEXT("immutable presentation keeps lightning classification"), Event.bLightningStrike);
+	}
+	const auto Clip = FGameXXKBattleAnimationPresentation::ResolveLightningStrikeClip();
+	TestTrue(TEXT("six frame clip is valid"), Clip.IsValid());
+	TestEqual(TEXT("final pose is reachable before clip completion"), FGameXXKBattleAnimationPresentation::CalculateFrameIndex(Clip, 0.29f, false), 5);
 	TestEqual(TEXT("EnemyA spends its three locked Mark"), Status(LightningRuntime, EnemyAId, EGameXXKCardStatus::Mark), 0);
 	TestEqual(TEXT("EnemyB spends its three locked Mark"), Status(LightningRuntime, EnemyBId, EGameXXKCardStatus::Mark), 0);
 	return true;

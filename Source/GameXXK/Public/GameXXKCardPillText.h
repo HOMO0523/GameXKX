@@ -8,5 +8,7 @@ namespace GameXXKCardPillText
 {
 	GAMEXXK_API const TArray<FString>& InlineNames();
 	GAMEXXK_API bool IsKeyword(const FString& Name);
+	/** The shared player-facing definition, also used by status HUD tooltips. */
+	GAMEXXK_API FString DescribeTerm(const FString& Name);
 	GAMEXXK_API FString DescribeHelp(const FString& CardText, EGameXXKCardQuality Quality, int32 TaskCardCount);
 }

@@ -173,7 +173,7 @@ struct GAMEXXK_API FGameXXKTalentProjection
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) int32 BackpackCapacity = 20;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) int32 WarehousePageCount = 1;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) bool bOfflineRewardsUnlocked = false;
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) bool bToolsUnlocked = false;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) bool bToolsUnlocked = true;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) int32 OnlineGoldPercent = 0;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) int32 OnlineExperiencePercent = 0;
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere) int32 OfflineGoldPercent = 0;

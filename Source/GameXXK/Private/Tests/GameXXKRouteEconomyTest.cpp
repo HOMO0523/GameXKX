@@ -134,7 +134,7 @@ bool FGameXXKRouteEconomyRulesTest::RunTest(const FString& Parameters)
 			TEXT("first initialization accepts the default starting balance"),
 			FGameXXKRouteEconomyRules::InitializeRoute(CardRun));
 		TestTrue(TEXT("first initialization records the initialized state"), CardRun.bRouteEconomyInitialized);
-		TestEqual(TEXT("first initialization sets exactly sixty travel money"), CardRun.RouteTravelMoney, 60);
+		TestEqual(TEXT("default initialization creates no virtual travel money"), CardRun.RouteTravelMoney, 0);
 		TestTrue(TEXT("first initialization clears stale rewarded-node receipts"), CardRun.RewardedTravelMoneyNodes.IsEmpty());
 
 		bool bAwarded = false;

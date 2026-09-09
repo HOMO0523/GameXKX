@@ -19,6 +19,8 @@ class UCanvasPanel;
 class UScaleBox;
 class UBorder;
 class UImage;
+class UMaterialInstanceDynamic;
+class UGameXXKCardAuraWidget;
 class UTextBlock;
 class UTexture2D;
 class UVerticalBox;
@@ -618,6 +620,8 @@ public:
 	void HandlePendingChoiceCardHoverChanged(int32 SlotIndex, FName CandidateInstanceId, EGameXXKCardPendingChoiceKind ChoiceKind, bool bHovered);
 	void HandleRouteRewardReplacementEntryHoverChanged(FName EntryId, bool bHovered);
 
+	UFUNCTION(BlueprintPure, Category="GameXXK|Battle|Test")
+	FString GetHandSynergyForTest(int32 SlotIndex) const;
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Test seam for deterministic hover-motion assertions; production animation advances through NativeTick. */
 	void AdvanceHandCardHoverMotionForTest(float InDeltaTime);
@@ -667,6 +671,7 @@ private:
 		bool bStarted = false;
 		bool bImpactFired = false;
 		bool bCompletionFired = false;
+		bool bLightningUltimateBeforeHit = false;
 		FGameXXKBattlePresentationRhythm Rhythm;
 		FGameXXKBattleAnimationClipDescriptor AttackerClip;
 		FGameXXKBattleAnimationClipDescriptor TargetClip;
@@ -688,6 +693,17 @@ private:
 		bool bRefreshBaseline,
 		const FString& SettlementLine = FString());
 	void QueueStatusPresentation(const FGameXXKBattleStatusPresentationEvent& Event);
+	bool BeginLightningUltimate(double AbsoluteSeconds);
+	bool AdvanceLightningUltimate(double AbsoluteSeconds);
+	void ResetLightningUltimate();
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> LightningUltimateImage;
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> LightningUltimateMaterial;
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTexture2D>> LightningUltimateAtlases;
+	double LightningUltimateStart = -1.0;
+
 	bool QueueMutationPresentation(
 		const FGameXXKCardBattleRuntime& Before,
 		const TArray<FGameXXKCardDamageResult>& DamageResults,
@@ -705,6 +721,8 @@ private:
 	void ApplyBattlePresentationInteractionLock();
 	bool ExecuteBattlePresentationContinuation(EBattlePresentationContinuation Continuation);
 	void HandleBattlePresentationQueueDrained();
+	void PlayPendingHealingSfx();
+	void PlayTerminalSfx(EGameXXKCardBattlePhase Phase, uint64 SessionToken);
 	void PrefetchPresentationEntry(uint64 QueueSerial);
 	void PrefetchPresentationAtlas(
 		uint64 QueueSerial,
@@ -738,6 +756,9 @@ private:
 		const FGameXXKCardBattleRuntime& BeforeRuntime) const;
 	void AppendBattleSettlementLine(const FString& Line);
 	void RefreshBattleSettlementLog();
+	void RefreshBattleSettlementLayout(const FVector2D& ViewportSize);
+	UFUNCTION()
+	void HandleBattleSettlementLogToggle();
 	bool IsUnitRetainedByPresentation(FName UnitId) const;
 	void UpdateBattlePresentationShake(double AbsoluteSeconds);
 	void UpdateBattlePresentationReadout(double AbsoluteSeconds);
@@ -754,6 +775,10 @@ private:
 	void RefreshProgrammaticLayout();
 	void RefreshActionButtons();
 	void RefreshHandCards();
+	void AdvanceCardReveals(float DeltaTime);
+	void RegisterCardReveal(UButton* Button,FName Identity,int32 Order,bool bVisible);
+	void FinishCardReveal(UButton* Button);
+	void RefreshCardMechanicFeedback(float DeltaTime);
 	void RefreshPartyQiWidget();
 	void RefreshGuideTargets();
 	void ClearTutorial01GuideTargets();
@@ -773,6 +798,7 @@ private:
 	void RefreshEnemyIntentCards();
 	void RefreshEnemyIntentDetail();
 	void RefreshEnemyIntentShowcase();
+	void UpdateEnemyIntentShowcaseMotion();
 	void RefreshEnemyIntentRecoveryControl();
 	void RefreshPendingCardChoices();
 	void RefreshPendingRewardChoices();
@@ -797,6 +823,7 @@ private:
 	void SetHandCardHoverState(int32 SlotIndex, bool bHovered);
 	void SetRewardCardHoverState(int32 SlotIndex, bool bHovered);
 	void AdvanceHandCardHoverMotion(float InDeltaTime);
+	void SyncHandCardAura(UButton* CardButton);
 	void SetEnemyIntentHoverState(int32 VisibleSlotIndex, bool bHovered);
 	void AdvanceEnemyIntentPresentation(float InDeltaTime);
 	void BeginEnemyIntentPresentation();
@@ -815,7 +842,8 @@ private:
 	void BuildCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutLabel, UImage*& OutPortrait, UBorder*& OutInfoStrip, bool bUsePlayerHandSize = false);
 	/** Approved ink label color for every BuildCardFace name band. */
 	static FLinearColor ResolveCardFaceLabelColor();
-	void BuildEnemyIntentCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutBody, UImage*& OutPortrait);
+	void BuildEnemyIntentCardFace(UButton* CardButton, const FString& NamePrefix, UTextBlock*& OutBody, UImage*& OutPortrait, bool bShowcase = false);
+	void ApplyEnemyIntentCardPresentation(UTextBlock* Body, UImage* Portrait, const FGameXXKRuntimeState& State, const FGameXXKCardEnemyIntent& Intent, bool bShowcase = false);
 	FString ResolveEnemyIntentPortraitResourcePath(FName EnemyDefinitionId) const;
 	UTexture2D* ResolveEnemyIntentPortraitTexture(FName EnemyDefinitionId) const;
 	void ApplyCardPresentation(UButton* CardButton, UTextBlock* CardLabel, UImage* PortraitImage, UBorder* InfoStrip, const FGameXXKCardDefinition* Definition);
@@ -1074,6 +1102,8 @@ private:
 	TMap<FName, TObjectPtr<UTexture2D>> UnitIdleAtlasTextures;
 	TUniquePtr<FGameXXKBattleAtlasCache> AtlasCache;
 	uint64 ActiveBattleVisualSessionToken = 0;
+	uint64 LastTerminalSfxSessionToken = 0;
+	bool bPendingHealingSfx = false;
 	double LastSlateSeconds = 0.0;
 	TArray<FBattlePresentationQueueEntry> BattlePresentationQueue;
 	TMap<FName, int32> DisplayedHealthOverrides;
@@ -1131,12 +1161,15 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> EnemyIntentShowcaseBody;
 
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> EnemyIntentShowcasePortrait;
+
 	/** Paper tooltip for a hovered enemy intent; it remains input-transparent. */
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> EnemyIntentDetailPanel;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UTextBlock> EnemyIntentDetailBody;
+	TObjectPtr<UVerticalBox> EnemyIntentDetailBody;
 
 	/** Shared PSD paper tooltip for every playable Battle Board card. It never intercepts card input. */
 	UPROPERTY(Transient)
@@ -1148,6 +1181,12 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> BattleSettlementLogText;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> BattleSettlementToggleText;
+	UPROPERTY(Transient)
+	TObjectPtr<UScrollBox> BattleSettlementLogScroll;
+	bool bBattleSettlementLogExpanded = false;
+	FVector2D BattleSettlementViewportSize = FVector2D::ZeroVector;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> HandCardDetailTitle;
@@ -1224,6 +1263,39 @@ private:
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UButton>> HandCardButtons;
+	UPROPERTY(Transient)
+	TMap<FName,TObjectPtr<UGameXXKCardAuraWidget>> CardAuraWidgets;
+	UPROPERTY(Transient)
+	TMap<FName,TObjectPtr<UWidget>> CardBackWidgets;
+	struct FHandMotion
+	{
+		float Age=0;
+		int32 Order=0;
+		float HoverScale=1;
+		float HoverLift=0;
+		float BaseOpacity=1;
+		float ReflowAge=1;
+		FVector2D ReflowOffset=FVector2D::ZeroVector;
+		float ReflowScale=1;
+		float ReflowOpacity=1;
+	};
+	TMap<FName,FHandMotion> HandMotions;
+	struct FCardReveal
+	{
+		FName Identity;
+		TWeakObjectPtr<UButton> Button;
+		float Age=0;
+		int32 Order=0;
+	};
+	TMap<FName,FCardReveal> CardReveals;
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TerrainFeedbackText;
+	int32 FeedbackRound=INDEX_NONE;
+	EGameXXKCardTerrain FeedbackTerrain=EGameXXKCardTerrain::Invalid;
+	float TerrainPulseAge=1;
+	float CardEffectsSeconds=0;
+	bool bFeedbackHasFormation=false;
+	FString CardFinisherHint;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTextBlock>> HandCardLabels;

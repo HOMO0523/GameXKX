@@ -913,7 +913,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool AcceptRouteEventNpcSupport(UPARAM(ref) FGameXXKRuntimeState& State);
 
-	/** Compatibility facade. The legacy bHealNow pin is preserved: true now means charm; false means 100 route money. */
+	/** Compatibility facade. The legacy bHealNow pin is preserved: true takes the charm; false continues without a reward. */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveCampReward(UPARAM(ref) FGameXXKRuntimeState& State, bool bHealNow);
 
@@ -949,6 +949,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool ResolveMerchantRouteNode(UPARAM(ref) FGameXXKRuntimeState& State);
+
+	/** Advances a completed narrative gate through the ordinary route receipt boundary. */
+	static bool ResolveStoryRouteNode(FGameXXKRuntimeState& State, int32 NodeId);
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|MVP")
 	static bool FailDungeonToTown(UPARAM(ref) FGameXXKRuntimeState& State);

@@ -5,6 +5,7 @@
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentToolRules.h"
 #include "GameXXKTrainingRules.h"
+#include "GameXXKMetaShopTypes.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKDesktopWorkbenchSessionState.h"
 #include "UI/GameXXKDesktopTrainingLayout.h"
@@ -31,12 +32,14 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKGuideCoordinator;
 class UGameXXKGuideOverlayWidget;
 class UGameXXKGuidePreferenceWidget;
+class UGameXXKMainStoryPanelWidget;
+class UGameXXKDialoguePanelWidget;
+class UGameXXKTalentTreeWidget;
 class SBox;
 class SWindow;
 enum class EGameXXKGuidePreference : uint8;
 struct FGameXXKGuideProgress;
 
-DECLARE_DELEGATE_RetVal(bool, FGameXXKStoryCarriageRequested);
 
 UCLASS()
 class GAMEXXK_API UGameXXKDesktopTrainingStageButton : public UButton
@@ -162,6 +165,7 @@ public:
 
 	/** True while one non-committing desktop entry preview is attached to the cursor. */
 	bool HasDesktopCarriedEntry() const;
+	int32 GetDesktopAvailableQuantity(EGameXXKDesktopItemContainer Container, const FGameXXKDesktopInventoryEntryKey& Entry) const;
 
 	FText GetLastDesktopInventoryNoticeForTest() const;
 	EGameXXKDesktopNoticeCategory GetLastNoticeCategoryForTest() const;
@@ -259,13 +263,7 @@ public:
 	bool IsSettingsPanelOpenForTest() const;
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
-	bool HasResetCombatGuideButtonForTest() const;
-
-	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsGuidePreferencePromptVisibleForTest() const;
-
-	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
-	bool ResetCombatGuideForTest();
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetWarehouseColumnCountForTest() const;
@@ -510,10 +508,7 @@ public:
 	void RestoreSessionStateAfterMapTravel(
 		const FGameXXKDesktopWorkbenchSessionState& State);
 	void SetTownMapTravelPending(bool bPending);
-	void SetStoryCarriageRequestedForTest(FGameXXKStoryCarriageRequested InRequest)
-	{
-		StoryCarriageRequested = MoveTemp(InRequest);
-	}
+
 	void SetTutorialMapInspectionRequestedForTest(
 		FGameXXKTutorialMapInspectionRequested InRequest)
 	{
@@ -576,7 +571,6 @@ private:
 	void TickDesktopNativeWindow();
 	void UpdateTownPresentationInputLock();
 	bool RequestTownToggle();
-	bool RequestStoryCarriage();
 	void ReleaseDesktopNativeWindow();
 	void ApplyDesktopNativeWindowLayout(bool bForce);
 	void ApplyDesktopNativeInputRegion();
@@ -592,15 +586,24 @@ private:
 	void BuildWorkbenchShell();
 	void BuildTownToggleButton();
 	void BuildStoryQuestButton();
+	void BuildStoryTaskDrawer();
+	void BuildMainStoryTree();
+	bool ShouldShowMainStoryDialogue() const;
+	void BuildMainStoryDialogue();
+	void RefreshMainStoryDialogue();
 	void BuildBackpackTabToggle();
 	void BuildTopToolbar();
+	void BuildDesktopShopPanel();
+	int32 SelectedShopProductIndex = 0;
+	bool bShopConfirmPurchase = false;
+	int32 ShopPurchaseQuantity = 1;
+	TArray<FGameXXKMetaShopPurchaseResult> ShopPurchaseResults;
 	void BuildHudSettingsPanel();
 	void EnsureGuideSurfaces();
 	void RefreshGuideSurfaces();
 	void HandleGuidePreferenceChosen(EGameXXKGuidePreference Preference);
 	void HandleGuideEvent(FName EventId);
 	bool PersistGuideProgressCandidate(const FGameXXKGuideProgress& Candidate);
-	bool HandleResetCombatGuide();
 	void BuildExitConfirmation();
 	void BuildCarriedItemVisual();
 	void BuildWarehousePanel();
@@ -654,6 +657,15 @@ private:
 	bool PickUpToolEntry(int32 SlotIndex);
 	bool DropCarriedOnDesktopSlot(EGameXXKDesktopItemContainer Container, int32 SlotIndex);
 	bool DropCarriedOnToolSlot(int32 SlotIndex);
+	const FGameXXKEquipmentInstance* GetToolEquipment() const;
+	bool IsToolCellActive(int32 SlotIndex) const;
+	bool CanPlaceEntryInToolCell(const FGameXXKDesktopInventoryEntryKey& Entry, int32 SlotIndex) const;
+	TArray<FGameXXKToolInputRef> BuildToolInputs() const;
+	void ReconcileToolSlotsForMode();
+	void RefreshToolTargetSource();
+	bool BuildToolStatus(FString& OutText) const;
+	bool DropCarriedGemInSocket(int32 SlotIndex);
+	bool RemoveSelectedToolGem();
 	TSet<FGameXXKDesktopInventoryEntryKey> BuildBatchTransferExclusions() const;
 	bool ToggleDesktopEntryLock(const FGameXXKDesktopInventoryEntryKey& Entry);
 	bool RouteBackpackRightClick(int32 SlotIndex);
@@ -816,9 +828,6 @@ private:
 	TObjectPtr<UGameXXKDesktopTrainingActionButton> StoryQuestButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UGameXXKDesktopTrainingActionButton> ResetCombatGuideButton;
-
-	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKGuideOverlayWidget> GuideOverlayWidget;
 
 	UPROPERTY(Transient)
@@ -907,6 +916,9 @@ private:
 	TObjectPtr<UTextBlock> ToolCraftLevelText;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> ToolRecipeText;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKDesktopTrainingActionButton> ToolConfirmButton;
 
 	UPROPERTY(Transient)
@@ -988,8 +1000,8 @@ private:
 	EGameXXKDesktopHudPresentationMode PresentationMode =
 		EGameXXKDesktopHudPresentationMode::DesktopWindow;
 	EGameXXKToolCombineKind ActiveToolCombineKind = EGameXXKToolCombineKind::Equipment;
-	int32 SelectedToolSocketIndex = 0;
-	TArray<TPair<TWeakObjectPtr<UWidget>, ESlateVisibility>> LockedToolControls;
+	int32 SelectedToolSocketIndex = INDEX_NONE;
+	int32 SelectedToolAffixIndex = 0;
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKInkScrollBar> WarehouseInkScrollbar;
 	EGameXXKDesktopTrainingCharacterRoster ActiveCharacterRoster = EGameXXKDesktopTrainingCharacterRoster::Hero;
@@ -1019,6 +1031,16 @@ private:
 	bool bIdleStripFolded = false;
 	bool bExpandUpward = false;
 	bool bWarehousePanelOpen = false;
+	bool bStoryTaskDrawerOpen = false;
+	FName SelectedMainStoryChapter = NAME_None;
+	UPROPERTY(Transient) TObjectPtr<UGameXXKMainStoryPanelWidget> MainStoryCentralPanel;
+	UPROPERTY(Transient) TObjectPtr<UGameXXKTalentTreeWidget> CachedTalentTree;
+	UPROPERTY(Transient) TObjectPtr<UGameXXKDialoguePanelWidget> MainStoryDialoguePanel;
+	bool bMainStoryDialogueLayoutActive = false;
+	bool bAcademyDrawer = false;
+	int32 SelectedAcademyCourseIndex = 0;
+	bool bStoryTaskRewardTab = false;
+	TMap<int32,float> TutorialListOffsets;
 	bool bTrainingDifficultyDropdownOpen = false;
 	bool bRestoreTrainingPanelAfterChallenge = false;
 	FGuid RouteSettlementReceiptAtChallengeStart;
@@ -1051,7 +1073,6 @@ private:
 	bool bDesktopNativeMoveSavePending = false;
 	bool bDesktopHudDragging = false;
 	bool bTownMapTravelPending = false;
-	FGameXXKStoryCarriageRequested StoryCarriageRequested;
 	FGameXXKTutorialMapInspectionRequested TutorialMapInspectionRequested;
 	bool bDesktopNativeLastExpanded = false;
 	int32 DesktopNativeLastHudScalePercent = INDEX_NONE;

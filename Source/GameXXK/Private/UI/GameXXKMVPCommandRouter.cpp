@@ -1,4 +1,5 @@
 #include "UI/GameXXKMVPCommandRouter.h"
+#include "GameXXKTalentRules.h"
 
 #include "GameXXKMVPRules.h"
 #include "GameXXKRelicCatalog.h"
@@ -132,9 +133,10 @@ namespace
 		AddCommand(
 			Commands,
 			ResolveCampHeal,
-			TEXT("全队恢复30%气血"),
-			true);
-		AddCommand(Commands, ResolveCampRouteMoney, TEXT("获得100局内金币"), true);
+			TEXT("获得保命护符"),
+			!FGameXXKRelicRules::OwnsLifeSavingTalisman(State),
+			NSLOCTEXT("GameXXKRelics", "TalismanAlreadyOwned", "本局已持有保命护符，可选择行旅钱。"));
+		AddCommand(Commands, ResolveCampRouteMoney, TEXT("继续前行"), true);
 	}
 
 	static void AddPendingRouteChoiceCommands(TArray<FGameXXKMVPCommandDescriptor>& Commands, const FGameXXKRuntimeState& State)
@@ -387,7 +389,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 		{
 			AddCommand(Commands, CloseTownPanel, TEXT("关闭"), true);
 		}
-		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < State.PlayerMaxHP);
+		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < FGameXXKTalentRules::GetEffectiveHeroMaxHP(State));
 		AddCommand(Commands, EnterDungeon, TEXT("Enter Route Map"), Subsystem->CanEnterDungeon());
 		AddCommand(Commands, SaveGame, TEXT("Save Game"), true);
 		AddSaveSlotCommands(Commands);
@@ -472,7 +474,7 @@ TArray<FGameXXKMVPCommandDescriptor> GameXXKMVPCommandRouter::BuildVisibleComman
 	case EGameXXKScreen::RouteMerchant:
 		AddCommand(Commands, BuyHealingPowder, TEXT("Buy Healing Powder"), State.PlayerGold >= 10);
 		AddCommand(Commands, SellHealingPowder, TEXT("Sell Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0);
-		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < State.PlayerMaxHP);
+		AddCommand(Commands, UseHealingPowder, TEXT("Use Healing Powder"), UGameXXKMVPRules::GetItemCount(State, UGameXXKMVPRules::ItemHealingPowder()) > 0 && State.PlayerHP < FGameXXKTalentRules::GetEffectiveHeroMaxHP(State));
 		AddCommand(Commands, CompleteMerchantNode, TEXT("Leave Merchant"), true);
 		break;
 	default:

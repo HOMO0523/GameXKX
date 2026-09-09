@@ -42,7 +42,9 @@ enum class EGameXXKRelicEffectKind : uint8
 	GainRouteDefense,
 	GainRouteSpeed,
 	GainRouteTravelMoney,
-	EmergencyHealPartyPercent
+	EmergencyHealPartyPercent,
+	/** High-tier effects with explicit per-turn ledgers, authored in the synergy catalogue. */
+	Synergy
 };
 
 USTRUCT(BlueprintType)
@@ -75,6 +77,15 @@ struct GAMEXXK_API FGameXXKRelicDefinition
 	int32 Magnitude = 0;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 SecondaryMagnitude = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FName SynergyKey = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	FText DetailedDescription;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	bool bStackable = false;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
@@ -94,6 +105,19 @@ struct GAMEXXK_API FGameXXKRelicInstance
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 AcquisitionOrdinal = 0;
+
+	/** Serialized trigger ledger: resuming a battle must not grant another use in the same turn. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SynergyRound = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 SynergyUses = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 LastSynergyActiveCardOrdinal = INDEX_NONE;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TSet<FName> SynergyOwners;
 };
 
 USTRUCT(BlueprintType)

@@ -7,6 +7,11 @@ source check succeeds and a reviewer has approved the resulting asset write.
 
 from __future__ import annotations
 
+def save_asset_with_texture_budget(*args, **kwargs):
+    from gamexxk_texture_budget import save_loaded_asset
+    return save_loaded_asset(*args, unreal_module=unreal, **kwargs)
+
+
 import argparse
 import hashlib
 import json
@@ -176,7 +181,7 @@ def import_verified_card_frame() -> dict[str, Any]:
         loaded_class = texture.get_class().get_name() if texture else "None"
         raise RuntimeError(f"failed to import Texture2D {ASSET_PATH}; class={loaded_class}")
     _configure_ui_texture(texture)
-    if not unreal.EditorAssetLibrary.save_loaded_asset(texture):
+    if not save_asset_with_texture_budget(texture):
         raise RuntimeError(f"failed to save imported Texture2D: {ASSET_PATH}")
 
     manifest["imported_asset"] = texture.get_path_name()

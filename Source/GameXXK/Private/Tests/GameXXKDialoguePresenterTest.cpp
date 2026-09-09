@@ -20,7 +20,7 @@ bool FGameXXKDialoguePanelViewModelTest::RunTest(const FString& Parameters)
 	Widget->TakeWidget();
 	FGameXXKDialoguePresentationView View;
 	View.NodeId = TEXT("choice");
-	View.SpeakerDisplayName = FText::FromString(TEXT("月白"));
+	View.SpeakerDisplayName = FText::FromString(TEXT("幽白"));
 	View.Text = FText::FromString(TEXT("你是谁？"));
 	FGameXXKDialogueVisibleOption First;
 	First.OptionId = TEXT("one");
@@ -39,7 +39,7 @@ bool FGameXXKDialoguePanelViewModelTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("formal panel owns one portrait"), Widget->GetPortraitCountForTest(), 1);
 	TestTrue(TEXT("formal panel has continue indicator"), Widget->HasContinueIndicatorForTest());
 	TestEqual(TEXT("two options visible"), Widget->GetVisibleOptionCountForTest(), 2);
-	TestEqual(TEXT("speaker rendered"), Widget->GetSpeakerTextForTest(), FText::FromString(TEXT("月白")));
+	TestEqual(TEXT("speaker rendered"), Widget->GetSpeakerTextForTest(), FText::FromString(TEXT("幽白")));
 	TestEqual(TEXT("body rendered"), Widget->GetBodyTextForTest(), FText::FromString(TEXT("你是谁？")));
 	TestTrue(TEXT("first option enabled"), Widget->IsOptionEnabledForTest(0));
 	TestFalse(TEXT("second option disabled"), Widget->IsOptionEnabledForTest(1));

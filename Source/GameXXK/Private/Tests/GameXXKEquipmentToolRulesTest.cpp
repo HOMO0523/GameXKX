@@ -85,12 +85,12 @@ bool FGameXXKToolTalentGateAndRewardTest::RunTest(const FString& Parameters)
 	const int32 LockedGold = State.PlayerGold;
 	const int32 LockedEquipmentCount = State.EquipmentCollection.EquipmentInstances.Num();
 	FGameXXKEquipmentTransactionResult Result;
-	TestFalse(TEXT("tools reject operations before the tools entry is purchased"),
-		FGameXXKEquipmentToolRules::Dismantle(State, Inputs, true, Result));
-	TestEqual(TEXT("locked tool attempt preserves gold"), State.PlayerGold, LockedGold);
-	TestEqual(TEXT("locked tool attempt preserves inputs"),
-		State.EquipmentCollection.EquipmentInstances.Num(),
-		LockedEquipmentCount);
+	FGameXXKRuntimeState DefaultOpen = State;
+	TestTrue(TEXT("tools work before the bonus branch is purchased"),
+		FGameXXKEquipmentToolRules::Dismantle(DefaultOpen, Inputs, true, Result));
+	TestEqual(TEXT("default tools grant the base gold"), DefaultOpen.PlayerGold, LockedGold + 20);
+	TestEqual(TEXT("default tools consume selected inputs"),
+		DefaultOpen.EquipmentCollection.EquipmentInstances.Num(), LockedEquipmentCount - 2);
 
 	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Tools"), 1);
@@ -219,7 +219,11 @@ bool FGameXXKToolTransactionsTest::RunTest(const FString& Parameters)
 		FGameXXKEquipmentTransactionResult Result;
 		TestTrue(TEXT("nine gems combine"), FGameXXKEquipmentToolRules::CombineGem(State, Input, Result));
 		TestEqual(TEXT("common gem stack consumed"), State.Inventory.FindRef(CommonAttack), 0);
-		TestEqual(TEXT("rare gem produced"), State.Inventory.FindRef(FGameXXKGemRules::MakeItemId(EGameXXKGemType::Attack, EGameXXKGemQuality::Rare)), 1);
+		EGameXXKGemType OutputType;
+		EGameXXKGemQuality OutputQuality;
+		TestTrue(TEXT("random gem output resolves"), FGameXXKGemRules::TryParseItemId(Result.OutputEntryId, OutputType, OutputQuality));
+		TestEqual(TEXT("rare gem produced"), OutputQuality, EGameXXKGemQuality::Rare);
+		TestEqual(TEXT("exactly one output gem"), State.Inventory.FindRef(Result.OutputEntryId), 1);
 		TestEqual(TEXT("gem combine XP"), Result.ToolExperienceDelta, int64(9));
 	}
 	{

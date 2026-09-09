@@ -12,6 +12,8 @@ public class GameXXK : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "EngineSettings", "InputCore", "EnhancedInput", "UMG", "Slate", "SlateCore", "Paper2D" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "Json", "JsonUtilities", "ApplicationCore" });
+		// The keyed language catalogue is read through Unreal's UFS in both editor and packaged games.
+		RuntimeDependencies.Add("$(ProjectDir)/Content/Localization/GameXXK/strings.json", StagedFileType.UFS);
 		if (Target.Platform == UnrealTargetPlatform.Win64)
 		{
 			PrivateDependencyModuleNames.Add("GameXXKDesktopOverlay");

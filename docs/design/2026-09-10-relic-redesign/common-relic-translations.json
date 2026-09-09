@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "relics": [
+    {
+      "id": "Relic.AncientCoin",
+      "slug": "AncientCoin",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "古铜方孔钱",
+        "en": "Ancient Coin"
+      },
+      "description": {
+        "zh-Hans": "战斗开始时，全队获得4点护甲。",
+        "en": "At battle start, the party gains 4 Armor."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.JadeBell",
+      "slug": "JadeBell",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "青玉铃",
+        "en": "Jade Bell"
+      },
+      "description": {
+        "zh-Hans": "战斗开始时，全队恢复3点内力。",
+        "en": "At battle start, the party restores 3 Inner Power."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.MedicineGourd",
+      "slug": "MedicineGourd",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "青釉药葫",
+        "en": "Medicine Gourd"
+      },
+      "description": {
+        "zh-Hans": "战斗开始时，全队恢复8点气血。",
+        "en": "At battle start, the party restores 8 Health."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.TeaBrick",
+      "slug": "TeaBrick",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "陈香茶砖",
+        "en": "Aged Tea Brick"
+      },
+      "description": {
+        "zh-Hans": "每回合开始时，主角恢复2点内力。",
+        "en": "At turn start, the Hero restores 2 Inner Power."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.RainCape",
+      "slug": "RainCape",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "旧蓑衣",
+        "en": "Old Straw Cape"
+      },
+      "description": {
+        "zh-Hans": "每回合结束时，全队获得2点护甲。",
+        "en": "At turn end, the party gains 2 Armor."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.PineCone",
+      "slug": "PineCone",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "雷击松果",
+        "en": "Lightning-Struck Pinecone"
+      },
+      "description": {
+        "zh-Hans": "受到伤害后，受击者获得2点护甲。",
+        "en": "After taking Health damage, the injured party member gains 2 Armor."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.RiverPearl",
+      "slug": "RiverPearl",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "江心珠",
+        "en": "River Pearl"
+      },
+      "description": {
+        "zh-Hans": "受到伤害后，受击者恢复1点气血。",
+        "en": "After taking Health damage, the injured party member restores 1 Health."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.CandleStub",
+      "slug": "CandleStub",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "长明烛心",
+        "en": "Everlight Candle"
+      },
+      "description": {
+        "zh-Hans": "击败敌人时，全队恢复4点气血。",
+        "en": "When an enemy is defeated, the party restores 4 Health."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.FoxMask",
+      "slug": "FoxMask",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "旧狐面",
+        "en": "Old Fox Mask"
+      },
+      "description": {
+        "zh-Hans": "击败敌人时，其余敌人获得1层流血。",
+        "en": "When an enemy is defeated, the remaining enemies gain 1 Bleed."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.StoneLion",
+      "slug": "StoneLion",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "袖珍石狮",
+        "en": "Pocket Stone Lion"
+      },
+      "description": {
+        "zh-Hans": "击败敌人时，全队获得3点护甲。",
+        "en": "When an enemy is defeated, the party gains 3 Armor."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.WineCup",
+      "slug": "WineCup",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "缺口酒盏",
+        "en": "Chipped Wine Cup"
+      },
+      "description": {
+        "zh-Hans": "旧时行旅之物，现已不再产出行旅钱。",
+        "en": "An old memento of the road. It no longer produces Travel Coins."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.HerbBasket",
+      "slug": "HerbBasket",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "百草小篓",
+        "en": "Herbal Basket"
+      },
+      "description": {
+        "zh-Hans": "完成路线节点时，主角恢复3点气血。",
+        "en": "After completing a route node, the Hero restores 3 Health."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.PaperCrane",
+      "slug": "PaperCrane",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "祈愿纸鹤",
+        "en": "Paper Crane"
+      },
+      "description": {
+        "zh-Hans": "完成路线节点时，本路线最大气血提高2点。",
+        "en": "After completing a route node, maximum Health increases by 2 for this run."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.BrokenArrow",
+      "slug": "BrokenArrow",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "折锋箭簇",
+        "en": "Broken Arrowhead"
+      },
+      "description": {
+        "zh-Hans": "完成路线节点时，本路线攻击提高1点。",
+        "en": "After completing a route node, Attack increases by 1 for this run."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.MoonDisc",
+      "slug": "MoonDisc",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "月白玉璧",
+        "en": "Moon Jade Disc"
+      },
+      "description": {
+        "zh-Hans": "完成路线节点时，本路线最大内力提高1点。",
+        "en": "After completing a route node, maximum Inner Power increases by 1 for this run."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    },
+    {
+      "id": "Relic.LifeSavingTalisman",
+      "slug": "LifeSavingTalisman",
+      "quality": "Common",
+      "name": {
+        "zh-Hans": "保命护符",
+        "en": "Life-Saving Talisman"
+      },
+      "description": {
+        "zh-Hans": "战斗中任一角色气血将降至50%以下时，令其至少保留1点气血，消耗此遗物并使全队恢复30%最大气血。",
+        "en": "When a party member would fall below 50% Health in battle, keep them at 1 Health or more, consume this relic, and restore 30% of maximum Health to the party."
+      },
+      "implementation": "preserved-existing-runtime",
+      "verification": "existing behavior; current scoped regression pending"
+    }
+  ]
+}

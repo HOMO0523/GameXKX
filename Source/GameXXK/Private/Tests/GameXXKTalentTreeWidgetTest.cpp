@@ -6,6 +6,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
+#include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Engine/GameInstance.h"
 
@@ -72,7 +73,7 @@ bool FGameXXKTalentTreeWidgetTest::RunTest(const FString& Parameters)
 		FText::FromString(TEXT("仓库页数 +1")));
 	TestEqual(TEXT("talent details label only the current upgrade price"),
 		UpgradePrice ? UpgradePrice->GetText() : FText::GetEmpty(),
-		FText::FromString(TEXT("升级售价：2500")));
+		FText::FromString(TEXT("升级售价：200")));
 	TestNull(TEXT("talent details no longer duplicate the shared gold display"),
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("TalentGoldText")) : nullptr);
 	TestTrue(TEXT("talent detail column has no white backing"),
@@ -93,9 +94,9 @@ bool FGameXXKTalentTreeWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a maxed one-rank talent replaces its current price with maxed text"),
 		UpgradePrice ? UpgradePrice->GetText() : FText::GetEmpty(),
 		FText::FromString(TEXT("升级售价：已满级")));
-	TestEqual(TEXT("root costs the approved 2500 gold"),
+	TestEqual(TEXT("root costs the calibrated 200 gold"),
 		Subsystem->GetRuntimeState().PlayerGold,
-		GoldBefore - 2500);
+		GoldBefore - 200);
 	TestEqual(TEXT("root purchase reveals the four 45-degree branch entries"),
 		Widget->GetVisibleNodeCountForTest(),
 		5);
@@ -156,7 +157,7 @@ bool FGameXXKTalentTreeWidgetTest::RunTest(const FString& Parameters)
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKTalentWorkbenchCrossPanelRefreshTest,
-	"GameXXK.Talents.Widget.CrossPanelToolUnlockRefresh",
+	"GameXXK.Talents.Widget.CrossPanelToolBonusRefresh",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parameters)
@@ -187,7 +188,7 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 		? Workbench->WidgetTree->FindWidget(TEXT("ToolsTalentLockedPanel"))
 		: nullptr;
 	if (!TestNotNull(TEXT("workbench embeds the permanent talent tree"), TalentTree)
-		|| !TestNotNull(TEXT("tools begin behind the talent lock overlay"), LockedToolsPanel))
+		|| !TestNull(TEXT("tools are available before talent purchases"), LockedToolsPanel))
 	{
 		return false;
 	}
@@ -212,8 +213,8 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 	TalentTree->RebuildForTest();
 
 	UWidget* ToolModeButton = Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0"));
-	TestTrue(TEXT("locked tool controls do not show through the shared paper"),
-		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Collapsed);
+	TestTrue(TEXT("tool controls are visible without purchasing the branch"),
+		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Visible);
 	TestTrue(TEXT("real root button purchases"), TalentTree->ClickPurchaseButtonForTest());
 	TalentTree->TickForTest(0.0f);
 	TestTrue(TEXT("tools entry can be selected after root refresh"),
@@ -223,13 +224,74 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 	TestEqual(TEXT("talent purchase keeps the same central graph widget alive"),
 		Workbench->WidgetTree->FindWidget(TEXT("PermanentTalentTreeWidget")),
 		static_cast<UWidget*>(TalentTree));
-	TestEqual(TEXT("tools-entry purchase collapses the lock overlay in place"),
-		LockedToolsPanel->GetVisibility(),
-		ESlateVisibility::Collapsed);
+	TestNull(TEXT("purchasing tool bonuses never introduces an unlock overlay"),
+		Workbench->WidgetTree->FindWidget(TEXT("ToolsTalentLockedPanel")));
 	TestTrue(TEXT("unlocking tools restores the existing controls without rebuilding the talent graph"),
 		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Visible);
 	TestNotNull(TEXT("five-mode tool controls remain ready behind the overlay"),
 		Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+	FGameXXKTalentPurchaseAvailabilityTest,
+	"GameXXK.Talents.Widget.LiveGoldAndRepeatedUpgrade",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTalentPurchaseAvailabilityTest::RunTest(const FString& Parameters)
+{
+	auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	auto* Widget = NewObject<UGameXXKTalentTreeWidget>();
+	if (!Subsystem->StartGame()) return false;
+	Subsystem->GetMutableRuntimeState().PlayerGold = 0;
+	Widget->SetMVPSubsystem(Subsystem);
+	Widget->RebuildForTest();
+	auto* Button = Cast<UButton>(Widget->WidgetTree->FindWidget(TEXT("TalentPurchaseButton")));
+	if (!TestNotNull(TEXT("the actual upgrade control exists"), Button)) return false;
+	TestFalse(TEXT("zero gold disables purchasing"), Button->GetIsEnabled());
+	Subsystem->GetMutableRuntimeState().PlayerGold = 10000;
+	Widget->TickForTest(0.016f);
+	TestTrue(TEXT("income enables the same button without reselecting or reopening"), Button->GetIsEnabled());
+	Subsystem->GetMutableRuntimeState().CardRun.bHasActiveCardBattle = true;
+	Widget->TickForTest(0.016f);
+	TestFalse(TEXT("active combat disables purchases with a reason"), Button->GetIsEnabled());
+	Subsystem->GetMutableRuntimeState().CardRun.bHasActiveCardBattle = false;
+	Widget->TickForTest(0.016f);
+	TestTrue(TEXT("returning to the desktop restores purchases"), Button->GetIsEnabled());
+	TestEqual(TEXT("income keeps the actual button alive"), Widget->WidgetTree->FindWidget(TEXT("TalentPurchaseButton")), static_cast<UWidget*>(Button));
+	TestTrue(TEXT("root purchase succeeds after income"), Widget->ClickPurchaseButtonForTest());
+	Widget->TickForTest(0.016f);
+	Widget->SelectNodeForTest(TEXT("Talent.Entry.Combat"));
+	TestTrue(TEXT("combat entry purchases"), Widget->ClickPurchaseButtonForTest());
+	Widget->TickForTest(0.016f);
+	const FName RepeatedNode(TEXT("Talent.Combat.FlatAttack.01"));
+	if (!TestTrue(TEXT("multi-rank attack node can be selected"), Widget->SelectNodeForTest(RepeatedNode))) return false;
+	Widget->PanGraphForTest(FVector2D(25, -30));
+	const FVector2D Offset = Widget->GetGraphScrollOffsetForTest();
+	int32 Committed = 0;
+	Widget->OnPurchaseCommitted().AddLambda([&Committed](){ ++Committed; });
+	for (int32 Rank = 1; Rank <= 5; ++Rank)
+	{
+		TestTrue(TEXT("each successive click buys exactly one rank"), Widget->ClickPurchaseButtonForTest());
+		Widget->TickForTest(0.016f);
+		TestEqual(TEXT("rank follows the number of accepted clicks"), Subsystem->GetRuntimeState().Talents.NodeRanks.FindRef(RepeatedNode), Rank);
+		TestEqual(TEXT("upgrade keeps selection"), Widget->GetSelectedNodeIdForTest(), RepeatedNode);
+		TestEqual(TEXT("upgrade keeps panning position"), Widget->GetGraphScrollOffsetForTest(), Offset);
+		TestEqual(TEXT("upgrade keeps the same button"), Widget->WidgetTree->FindWidget(TEXT("TalentPurchaseButton")), static_cast<UWidget*>(Button));
+	}
+	TestEqual(TEXT("five purchases emit five notifications"), Committed, 5);
+	TestFalse(TEXT("full rank disables another upgrade"), Button->GetIsEnabled());
+	Widget->SelectNodeForTest(TEXT("Talent.Combat.FlatHealth.01"));
+	Subsystem->GetMutableRuntimeState().PlayerGold = 0;
+	Widget->TickForTest(0.016f);
+	TestFalse(TEXT("spending elsewhere immediately disables upgrade"), Button->GetIsEnabled());
+	Subsystem->GetMutableRuntimeState().PlayerGold = 10000;
+	Widget->TickForTest(0.016f);
+	TestTrue(TEXT("another income restores purchasing"), Button->GetIsEnabled());
+	Subsystem->GetMutableRuntimeState().PlayerGold = 0;
+	TestFalse(TEXT("authority rejects a click if gold changed before the next tick"), Widget->ClickPurchaseButtonForTest());
+	auto* Status = Cast<UTextBlock>(Widget->WidgetTree->FindWidget(TEXT("TalentPurchaseStatus")));
+	TestTrue(TEXT("rejected purchases explain why instead of appearing unresponsive"), Status && Status->GetText().ToString().Contains(TEXT("金币不足")));
 	return true;
 }
 

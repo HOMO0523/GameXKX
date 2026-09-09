@@ -11,6 +11,7 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
+#include "Components/Overlay.h"
 #include "Components/SizeBox.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
@@ -26,6 +27,7 @@
 #include "UI/GameXXKBattleUnitHudWidget.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKCardOutcomePreviewWidget.h"
+#include "UI/GameXXKCardVisualEffects.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -1851,6 +1853,7 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("manual commit Board initializes"), ManualBoard->Initialize());
 	ManualBoard->NativeConstruct();
 	TestTrue(TEXT("manual commit Board begins its visual session"), ManualBoard->BeginBattleVisualSession(8301));
+	ManualBoard->AdvanceHandCardHoverMotionForTest(1.0f);
 	UButton* const ManualSourceButton = ManualBoard->WidgetTree
 		? Cast<UButton>(ManualBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
 		: nullptr;
@@ -1859,6 +1862,12 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 		: nullptr;
 	TestNotNull(TEXT("manual commit keeps the real source hand button"), ManualSourceButton);
 	TestNotNull(TEXT("manual commit keeps the approved source size box"), ManualSourceSize);
+	UGameXXKCardAuraWidget* const ManualAura = Cast<UGameXXKCardAuraWidget>(
+		ManualBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00Aura")));
+	UOverlay* const ManualLayers = ManualSourceSize ? Cast<UOverlay>(ManualSourceSize->GetContent()) : nullptr;
+	TestTrue(TEXT("the aura is behind the paper in the same full-card overlay"),
+		ManualLayers && ManualAura && ManualLayers->GetChildAt(0) == ManualAura
+		&& ManualLayers->GetChildAt(1) == ManualSourceButton);
 	const FWidgetTransform InitialTransform = ManualSourceButton
 		? ManualSourceButton->GetRenderTransform()
 		: FWidgetTransform();
@@ -1918,6 +1927,11 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 		ManualBoard->GetActiveBattlePresentationEventIdForTest(), static_cast<uint64>(0));
 	ManualBoard->AdvanceVisualsAtRealTime(0.179);
 	TestTrue(TEXT("the second half fades the committed source card"), FCommitApi::Opacity(ManualBoard) < 0.05f);
+	TestTrue(TEXT("the background aura follows the exact commit pose and fade"),
+		ManualAura && ManualSourceButton
+		&& ManualAura->GetRenderTransform() == ManualSourceButton->GetRenderTransform()
+		&& ManualAura->GetRenderTransformPivot() == ManualSourceButton->GetRenderTransformPivot()
+		&& ManualAura->GetRenderOpacity() == ManualSourceButton->GetRenderOpacity());
 	TestTrue(TEXT("commit remains active strictly before 0.18 seconds"), FCommitApi::IsActive(ManualBoard));
 	TestEqual(TEXT("damage presentation remains gated strictly before 0.18 seconds"),
 		ManualBoard->GetActiveBattlePresentationEventIdForTest(), static_cast<uint64>(0));
@@ -1935,6 +1949,12 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 	TestEqual(TEXT("the spent source card stays hidden while its damage queue is still playing"),
 		ManualSourceButton ? ManualSourceButton->GetRenderOpacity() : 1.0f,
 		0.0f);
+	TestEqual(TEXT("the spent card leaves no detached aura during the damage queue"),
+		ManualAura ? ManualAura->GetRenderOpacity() : 1.0f, 0.0f);
+	ManualBoard->AdvanceHandCardHoverMotionForTest(0.016f);
+	TestTrue(TEXT("the next hand-motion tick cannot flash the spent paper or its aura"),
+		ManualSourceButton && ManualAura && ManualSourceButton->GetRenderOpacity() == 0.0f
+		&& ManualAura->GetRenderOpacity() == 0.0f);
 	ManualBoard->AdvanceVisualsAtRealTime(0.48);
 	TestEqual(TEXT("later frames cannot flash the spent source card back during damage presentation"),
 		ManualSourceButton ? ManualSourceButton->GetRenderOpacity() : 1.0f,
@@ -2015,6 +2035,7 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("commit-cancel Board initializes"), CancelBoard->Initialize());
 	CancelBoard->NativeConstruct();
 	TestTrue(TEXT("commit-cancel Board begins its visual session"), CancelBoard->BeginBattleVisualSession(8304));
+	CancelBoard->AdvanceHandCardHoverMotionForTest(1.0f);
 	UButton* const CancelSourceButton = CancelBoard->WidgetTree
 		? Cast<UButton>(CancelBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
 		: nullptr;
@@ -2057,6 +2078,7 @@ bool FGameXXKPlayedCardCommitPresentationTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("commit-teardown Board initializes"), TeardownBoard->Initialize());
 	TeardownBoard->NativeConstruct();
 	TestTrue(TEXT("commit-teardown Board begins its visual session"), TeardownBoard->BeginBattleVisualSession(8305));
+	TeardownBoard->AdvanceHandCardHoverMotionForTest(1.0f);
 	UButton* const TeardownSourceButton = TeardownBoard->WidgetTree
 		? Cast<UButton>(TeardownBoard->WidgetTree->FindWidget(TEXT("BattleHandCard_00")))
 		: nullptr;
@@ -2157,6 +2179,16 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Parameters)
 {
 	using FGateApi = TBoardPresentationGateApi<UGameXXKBattleBoardWidget>;
+	// Observe packet stages instead of tying the regression to one animation speed.
+	const auto AdvanceUntil = [this](UGameXXKBattleBoardWidget* Board, double& Time, const auto& Condition, const TCHAR* What)
+	{
+		for (int32 Step = 0; Step < 1200 && !Condition(); ++Step)
+		{
+			Time += 0.005;
+			Board->AdvanceVisualsAtRealTime(Time);
+		}
+		return TestTrue(What, Condition());
+	};
 	TestTrue(TEXT("Board exposes an occupancy-based presentation lock and typed-continuation diagnostics"), FGateApi::bAvailable);
 	if (!FGateApi::bAvailable)
 	{
@@ -2208,9 +2240,10 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		LockedTargetProxy
 		&& (!LockedTargetProxy->GetIsEnabled() || LockedTargetProxy->GetVisibility() != ESlateVisibility::Visible));
 	GateBoard->AdvanceVisualsAtRealTime(0.0);
-	GateBoard->AdvanceVisualsAtRealTime(0.301);
+	double GateTime = 0.0;
+	AdvanceUntil(GateBoard, GateTime, [&] { return GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")) == 90; }, TEXT("the queued packet reaches its damage marker"));
 	TestEqual(TEXT("the marker exposes the packet-local intermediate health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 90);
-	GateBoard->AdvanceVisualsAtRealTime(0.821);
+	AdvanceUntil(GateBoard, GateTime, [&] { return !FGateApi::IsLocked(GateBoard); }, TEXT("the queued packet completes"));
 	TestFalse(TEXT("input unlocks only after the full presentation queue drains"), FGateApi::IsLocked(GateBoard));
 	TestEqual(TEXT("full-drain reconciliation restores authoritative target health"), GateBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
 	TestTrue(TEXT("the target confirmation can mutate again after full drain"), GateBoard->ConfirmTargetingUnit(TEXT("Enemy")));
@@ -2258,25 +2291,26 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		OrderedBoard->GetBattlePresentationQueueCountForTest(),
 		3);
 	OrderedBoard->AdvanceVisualsAtRealTime(0.0);
-	OrderedBoard->AdvanceVisualsAtRealTime(0.18);
+	double OrderedTime = 0.0;
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return FGateApi::Attacker(OrderedBoard) == FName(TEXT("Npc.JinGui")); }, TEXT("the source-card motion reaches packet one"));
 	TestEqual(TEXT("packet one retains the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one retains the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("the first target baseline is seeded from packet one"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 100);
-	OrderedBoard->AdvanceVisualsAtRealTime(0.481);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")) == 89; }, TEXT("packet one reaches its own marker"));
 	TestEqual(TEXT("packet one marker applies only packet one's health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.001);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return FGateApi::Attacker(OrderedBoard) == FName(TEXT("Enemy")); }, TEXT("the reflected packet starts after packet one"));
 	TestEqual(TEXT("packet two reverses the reflected source"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet two reverses the reflected target"), FGateApi::Target(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet one's target override survives the reflected intermediate entry"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.101);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")) == 95; }, TEXT("the reflection reaches its own marker"));
 	TestEqual(TEXT("the reflection marker applies its own target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.301);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return FGateApi::Attacker(OrderedBoard) == FName(TEXT("Npc.JinGui")); }, TEXT("packet three starts after reflection"));
 	TestEqual(TEXT("packet three returns to the Heavy Arrow attacker"), FGateApi::Attacker(OrderedBoard), FName(TEXT("Npc.JinGui")));
 	TestEqual(TEXT("packet three returns to the primary target"), FGateApi::Target(OrderedBoard), FName(TEXT("Enemy")));
 	TestEqual(TEXT("packet three begins at packet one's committed target health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 89);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.401);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")) == 78; }, TEXT("packet three reaches its own marker"));
 	TestEqual(TEXT("packet three marker reaches the final target health without early reconciliation"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
-	OrderedBoard->AdvanceVisualsAtRealTime(1.601);
+	AdvanceUntil(OrderedBoard, OrderedTime, [&] { return !FGateApi::IsLocked(OrderedBoard); }, TEXT("the ordered packet sequence fully drains"));
 	TestFalse(TEXT("the ordered batch unlocks after all three packets"), FGateApi::IsLocked(OrderedBoard));
 	TestEqual(TEXT("ordered target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Enemy")), 78);
 	TestEqual(TEXT("reflected target HUD reconciles to authoritative final health"), OrderedBoard->GetDisplayedHealthForTest(TEXT("Npc.JinGui")), 95);
@@ -2295,6 +2329,33 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("every settlement line resolves a real attacker/target display name"),
 		SettlementLog.Contains(TEXT("None")));
 	TestTrue(TEXT("every settlement line records its damage amount"), SettlementLog.Contains(TEXT("造成了")) && SettlementLog.Contains(TEXT("伤害")));
+	UTextBlock* LogBody = Cast<UTextBlock>(OrderedBoard->WidgetTree->FindWidget(TEXT("BattleSettlementLogText")));
+	UButton* LogZoom = Cast<UButton>(OrderedBoard->WidgetTree->FindWidget(TEXT("BattleSettlementLogToggle")));
+	TArray<FString> LogEntries;
+	SettlementLog.ParseIntoArrayLines(LogEntries);
+	TestTrue(TEXT("compact battle log shows only the newest complete entry"),
+		LogBody && !LogEntries.IsEmpty() && LogBody->GetText().ToString() == LogEntries.Last());
+	TestNotNull(TEXT("battle log provides an explicit zoom button"), LogZoom);
+	UBorder* LogPanel = Cast<UBorder>(OrderedBoard->WidgetTree->FindWidget(TEXT("BattleSettlementLogPanel")));
+	UWidget* TerrainLabel = OrderedBoard->WidgetTree->FindWidget(TEXT("BattleTerrainFeedback"));
+	TestTrue(TEXT("battle log is outside the clipped design-stage layer"), LogPanel && LogPanel->GetParent() == OrderedBoard->GetBattleViewportRootForTest());
+	TestTrue(TEXT("terrain title is outside the clipped design-stage layer"), TerrainLabel && TerrainLabel->GetParent() == OrderedBoard->GetBattleViewportRootForTest());
+	TestTrue(TEXT("battle log uses a translucent color base without a paper texture"), LogPanel
+		&& LogPanel->Background.GetResourceObject() == nullptr
+		&& LogPanel->Background.TintColor.GetSpecifiedColor().A > 0.0f
+		&& LogPanel->Background.TintColor.GetSpecifiedColor().A < 0.65f);
+	if (LogBody && LogZoom)
+	{
+		const auto CompactFontSize = LogBody->GetFont().Size;
+		const FGameXXKRuntimeState BeforeLogZoom = OrderedSubsystem->GetRuntimeState();
+		LogZoom->OnClicked.Broadcast();
+		TestEqual(TEXT("zoom exposes the same complete settlement history"), LogBody->GetText().ToString(), SettlementLog);
+		TestTrue(TEXT("zoom enlarges the text for reading"), LogBody->GetFont().Size > CompactFontSize);
+		LogZoom->OnClicked.Broadcast();
+		TestEqual(TEXT("closing zoom restores the latest entry"), LogBody->GetText().ToString(), LogEntries.Last());
+		TestEqual(TEXT("closing zoom restores compact font size"), LogBody->GetFont().Size, CompactFontSize);
+		TestTrue(TEXT("battle log inspection cannot mutate combat"), RuntimeStatesEqual(OrderedSubsystem->GetRuntimeState(), BeforeLogZoom));
+	}
 
 	// A leftover HP snapshot on an idle board is a stale presentation artifact:
 	// the next visual tick must discard it and re-sync the HUD to live runtime.
@@ -2304,7 +2365,7 @@ bool FGameXXKCardBattleBoardPresentationGateTest::RunTest(const FString& Paramet
 		[](const FGameXXKCardCombatUnit& Unit) { return Unit.UnitId == FName(TEXT("Enemy")); });
 	TestTrue(TEXT("the stale-snapshot fixture finds the enemy unit"), EnemyUnit != nullptr);
 	EnemyUnit->HP = 42;
-	OrderedBoard->AdvanceVisualsAtRealTime(1.701);
+	OrderedBoard->AdvanceVisualsAtRealTime(OrderedTime + 0.1);
 	if (UGameXXKBattleUnitHudWidget* const EnemyHud = OrderedBoard->GetProjectedUnitHudForTest(TEXT("Enemy")))
 	{
 		const UGameXXKBattleUnitResourceWidget* const Resource = EnemyHud->GetResourceWidgetForTest();
@@ -2764,8 +2825,10 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 		Board->GetTargetingPointerPositionForTest().Equals(FVector2D(1730.0f, 900.0f), 0.01f));
 	TestTrue(TEXT("manual preview shares the first arrow-target anchor instead of the HUD anchor"),
 		Board->GetSingleOutcomePreviewAnchorForTest().Equals(FirstTargetAnchor, 0.001f));
-	TestEqual(TEXT("manual preview bottom stays twelve pixels above the 410px target visual"),
-		Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -217.0f, 272.0f, 56.0f));
+	const FMargin AdaptiveManual = Board->GetSingleOutcomePreviewOffsetsForTest();
+	TestTrue(TEXT("manual preview preserves the target gap and sizes to its text"),
+		AdaptiveManual.Left == 0 && AdaptiveManual.Top == -217 && AdaptiveManual.Right >= 180
+		&& AdaptiveManual.Right <= 600 && AdaptiveManual.Bottom >= 40);
 	TestEqual(TEXT("first manual hover performs one outcome build"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
 	FirstProxy->OnHovered.Broadcast();
 	TestEqual(TEXT("identical consecutive hover reuses the complete-state cache"), Board->GetCardOutcomePreviewBuildCountForTest(), 1);
@@ -2795,6 +2858,7 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
+	const FName OriginalOutcomeCardId = RuntimeCard->CardId;
 	RuntimeCard->CardId = TEXT("Missing.TargetOutcome.Card");
 	FirstProxy->OnHovered.Broadcast();
 	TestTrue(TEXT("failed manual preview replaces old content with one visible fallback"), Board->IsCardOutcomePreviewVisibleForTest());
@@ -2814,7 +2878,7 @@ bool FGameXXKTargetOutcomePreviewManualHoverTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("manual submit failure is reported"), Board->ConfirmTargetingUnit(LegalEnemyTargets[0]));
 	AssertOutcomeCleared(*this, Board, TEXT("manual submit failure"));
 
-	RuntimeCard->CardId = TEXT("Route.General.PoJiaTuCi");
+	RuntimeCard->CardId = OriginalOutcomeCardId;
 	Board->RefreshFromState();
 	FirstProxy = Board->GetUnitTargetProxyForTest(LegalEnemyTargets[0]);
 	TestNotNull(TEXT("manual target proxy survives authoritative recovery"), FirstProxy);
@@ -3349,8 +3413,9 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	TestTrue(TEXT("layout hover never snaps the targeting arrow head"),
 		Board->GetTargetingPointerPositionForTest().Equals(Board->GetTargetingSourcePositionForTest(), 0.01f));
 	TestEqual(TEXT("single outcome uses exact alignment"), Board->GetSingleOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
-	TestEqual(TEXT("single outcome sits above the full target visual without changing its compact size"),
-		Board->GetSingleOutcomePreviewOffsetsForTest(), FMargin(0.0f, -217.0f, 272.0f, 56.0f));
+	const FMargin SingleOffsets = Board->GetSingleOutcomePreviewOffsetsForTest();
+	TestTrue(TEXT("single outcome sits above the target and uses a bounded content width"),
+		SingleOffsets.Left == 0 && SingleOffsets.Top == -217 && SingleOffsets.Right >= 180 && SingleOffsets.Right <= 600);
 	const UCanvasPanelSlot* const ProjectedLayerSlot = Cast<UCanvasPanelSlot>(Board->GetBattleProjectedUnitHudLayerForTest()->Slot);
 	const UCanvasPanelSlot* const RootCanvasSlot = Cast<UCanvasPanelSlot>(Board->GetBattleControlsLayerForTest()->Slot);
 	TestNotNull(TEXT("projected HUD layer remains attached by Canvas slot"), ProjectedLayerSlot);
@@ -3409,7 +3474,9 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 	}
 	TestEqual(TEXT("group outcome keeps the fixed 0.245/0.34 anchor"), GroupBoard->GetGroupOutcomePreviewAnchorForTest(), FVector2D(0.245f, 0.34f));
 	TestEqual(TEXT("group outcome uses exact alignment"), GroupBoard->GetGroupOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
-	TestEqual(TEXT("group outcome uses exact offsets/size"), GroupBoard->GetGroupOutcomePreviewOffsetsForTest(), FMargin(0.0f, 0.0f, 620.0f, 108.0f));
+	const FMargin GroupOffsets = GroupBoard->GetGroupOutcomePreviewOffsetsForTest();
+	TestTrue(TEXT("group outcome retains its anchor but no longer reserves a 620px empty strip"),
+		GroupOffsets.Left == 0 && GroupOffsets.Top == 0 && GroupOffsets.Right >= 180 && GroupOffsets.Right <= 600 && GroupOffsets.Bottom >= 40);
 	return true;
 }
 
@@ -3859,8 +3926,10 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::Battle;
 	Board->RefreshFromState();
 	TestFalse(TEXT("repopulating the same hand slot never resurrects a stale tooltip"), Board->IsCardTooltipVisibleForTest());
+	// Re-entry now deals the hand in; it must settle without reviving old hover state.
+	Board->AdvanceHandCardHoverMotionForTest(1.0f);
 	const FWidgetTransform ReenteredTransform = CardButton->GetRenderTransform();
-	TestTrue(TEXT("repopulating the same hand slot keeps its transform at identity until a new hover"),
+	TestTrue(TEXT("repopulated hand settles at identity without a new hover"),
 		FMath::IsNearlyZero(ReenteredTransform.Translation.Y)
 		&& FMath::IsNearlyEqual(ReenteredTransform.Scale.X, 1.0f)
 		&& FMath::IsNearlyEqual(ReenteredTransform.Scale.Y, 1.0f));
@@ -3927,6 +3996,7 @@ bool FGameXXKCardBattleBoardRewardTest::RunTest(const FString& Parameters)
 	const TArray<FName> RewardIdsBeforeHover = Board->GetPendingRouteRewardCardIds();
 	const FGameXXKRuntimeState StateBeforeRewardHover = Subsystem->GetRuntimeState();
 	RelicRewardButton->OnHovered.Broadcast();
+	Board->SetCardTooltipExpandedForTest(false);
 	const FGameXXKRelicDefinition* RewardRelic = FGameXXKRelicCatalog::FindDefinition(RewardOptions[0].RelicId);
 	TestTrue(TEXT("hovering a relic reward option reveals the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("the relic reward tooltip states the relic name"),
@@ -3956,23 +4026,52 @@ bool FGameXXKCardBattleBoardRewardTest::RunTest(const FString& Parameters)
 			}
 		}
 		TestTrue(TEXT("the relic reward tooltip states the relic description"),
-			RewardTooltipText.Contains(RewardRelic->Description.ToString())
-			|| RewardTooltipText.Contains(PillOrderedDescription));
+			RewardTooltipText.Replace(TEXT("\n"), TEXT("")).Replace(TEXT(" "), TEXT("")).Contains(
+				RewardRelic->Description.ToString().Replace(TEXT("\n"), TEXT("")).Replace(TEXT(" "), TEXT("")))
+			|| RewardTooltipText.Replace(TEXT("\n"), TEXT("")).Replace(TEXT(" "), TEXT("")).Contains(
+				PillOrderedDescription.Replace(TEXT("\n"), TEXT("")).Replace(TEXT(" "), TEXT(""))));
 	}
 	const FMargin TooltipOffsetsSlot0 = Board->GetHandCardDetailPanelOffsetsForTest();
 	RelicRewardButton->OnUnhovered.Broadcast();
 	TestFalse(TEXT("leaving a relic reward hides the shared tooltip panel"), Board->IsCardTooltipVisibleForTest());
 	UpgradeRewardButton->OnHovered.Broadcast();
+	// Physical Shift may be held while this commandlet runs beside the editor.
+	// This assertion compares compact placements, not the alternate long-detail layout.
+	Board->SetCardTooltipExpandedForTest(false);
 	TestTrue(TEXT("hovering the deck-card upgrade option reveals the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
 	const FGameXXKCardDefinition* UpgradeTooltipDefinition = FGameXXKCardCatalog::FindCardDefinition(RewardOptions[2].CardId);
 	TestTrue(TEXT("the reward tooltip titles the actual upgrade card"),
 		UpgradeTooltipDefinition && Board->GetCardTooltipTextForTest().Contains(UpgradeTooltipDefinition->DisplayName.ToString()));
+	TestFalse(TEXT("an upgrade reward never claims to add a retired route card"),
+		Board->GetCardTooltipTextForTest().Contains(TEXT("临时路线卡组")));
+	UTextBlock* UpgradeName = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleRewardCard_02Label")));
+	UTextBlock* UpgradeCost = Cast<UTextBlock>(Board->WidgetTree->FindWidget(TEXT("BattleRewardCard_02LabelCost")));
+	TestTrue(TEXT("reward name and readable cost occupy separate fields"), UpgradeName && UpgradeCost
+		&& !UpgradeName->GetText().ToString().Contains(TEXT("\n")) && UpgradeCost->GetText().ToString().Contains(TEXT("气\n")));
 	TestEqual(TEXT("reward hover preserves every saved reward slot id"), Board->GetPendingRouteRewardCardIds(), RewardIdsBeforeHover);
 	TestTrue(TEXT("reward hover preserves the complete runtime state"),
 		RuntimeStatesEqual(Subsystem->GetRuntimeState(), StateBeforeRewardHover));
 	const FMargin TooltipOffsetsSlot2 = Board->GetHandCardDetailPanelOffsetsForTest();
-	TestTrue(TEXT("the tooltip follows the hovered reward slot instead of a fixed anchor"),
-		FMath::Abs((TooltipOffsetsSlot2.Left - TooltipOffsetsSlot0.Left) - 2.0f * (206.0f + 10.0f)) < 2.0f);
+	AddInfo(FString::Printf(TEXT("reward tooltip slot0=(%.1f %.1f %.1f %.1f), slot2=(%.1f %.1f %.1f %.1f)"),
+		TooltipOffsetsSlot0.Left,TooltipOffsetsSlot0.Top,TooltipOffsetsSlot0.Right,TooltipOffsetsSlot0.Bottom,
+		TooltipOffsetsSlot2.Left,TooltipOffsetsSlot2.Top,TooltipOffsetsSlot2.Right,TooltipOffsetsSlot2.Bottom));
+	const FMargin RewardRow = Board->GetRewardCardBoxOffsetsForTest();
+	const float RewardStride = RewardRow.Right / 3.0f;
+	TestTrue(TEXT("a compact relic tooltip stays centered above its actual reward"),
+		FMath::Abs(TooltipOffsetsSlot0.Left + TooltipOffsetsSlot0.Right * 0.5f + RewardStride) < 2.0f);
+	if (TooltipOffsetsSlot2.Bottom > 540.0f + RewardRow.Top - 28.0f)
+	{
+		TestTrue(TEXT("a tall reward explanation moves aside instead of covering its card"),
+			TooltipOffsetsSlot2.Left + TooltipOffsetsSlot2.Right <= RewardStride * 0.5f + 5.0f);
+		TestTrue(TEXT("the tall explanation stays within the stage"),
+			TooltipOffsetsSlot2.Left >= -944.0f && TooltipOffsetsSlot2.Top >= -1064.0f
+			&& TooltipOffsetsSlot2.Top + TooltipOffsetsSlot2.Bottom <= -16.0f);
+	}
+	else
+	{
+		TestTrue(TEXT("a short upgrade explanation follows the hovered third reward"),
+			FMath::Abs(TooltipOffsetsSlot2.Left + TooltipOffsetsSlot2.Right * 0.5f - 216.0f) < 2.0f);
+	}
 	UpgradeRewardButton->OnUnhovered.Broadcast();
 	TestFalse(TEXT("leaving a reward immediately hides the shared card tooltip"), Board->IsCardTooltipVisibleForTest());
 	TestTrue(TEXT("skip reward resolves through adapter then Rules victory gate"), Board->SkipPendingRouteReward());

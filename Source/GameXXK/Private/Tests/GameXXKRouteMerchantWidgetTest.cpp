@@ -1,6 +1,8 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
+
 #include "Misc/AutomationTest.h"
+#include "GameXXKTravelMoneyRules.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -20,6 +22,11 @@
 #include "GameXXKRouteMerchantTypes.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKRouteMerchantWidget.h"
+
+namespace {
+ int32& MerchantWidgetTestMoney(FGameXXKRuntimeState& State) { return State.Inventory.FindOrAdd(FGameXXKTravelMoneyRules::ItemId()); }
+ int32 MerchantWidgetTestMoney(const FGameXXKRuntimeState& State) { return static_cast<int32>(FGameXXKTravelMoneyRules::GetBalance(State)); }
+}
 
 namespace GameXXKRouteMerchantWidgetTest
 {
@@ -46,7 +53,7 @@ namespace GameXXKRouteMerchantWidgetTest
 		State.CardRun.RouteProgress.RouteCombatLevel = 1;
 		State.CardRun.bLoadoutLockedForRoute = true;
 		State.CardRun.bRouteEconomyInitialized = true;
-		State.PlayerGold = 100000;
+		MerchantWidgetTestMoney(State) = 100000;
 		State.CardRun.RouteTravelMoney = 777;
 
 		State.CardRun.HeroUnlockedCardIds.Reset();
@@ -116,10 +123,10 @@ namespace GameXXKRouteMerchantWidgetTest
 	{
 		if (NpcId == TEXT("Npc.TusiChief")) return TEXT("土司首领");
 		if (NpcId == TEXT("Npc.SongJinBao")) return TEXT("宋金宝");
-		if (NpcId == TEXT("Npc.YueBai")) return TEXT("月白");
+		if (NpcId == TEXT("Npc.YueBai")) return TEXT("幽白");
 		if (NpcId == TEXT("Npc.ZhouGuangZu")) return TEXT("周光祖");
 		if (NpcId == TEXT("Npc.JinGui")) return TEXT("金贵");
-		if (NpcId == TEXT("Npc.QiongMeiEr")) return TEXT("琼梅儿");
+		if (NpcId == TEXT("Npc.QiongMeiEr")) return TEXT("琼幺儿");
 		return FString();
 	}
 
@@ -244,10 +251,10 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 	TestTrue(TEXT("leave action is explicitly labelled"), ReadText(Widget, TEXT("RouteMerchantLeaveLabel")).Contains(TEXT("离开商店")));
 
 	const FString GoldCopy = ReadText(Widget, TEXT("RouteMerchantOrdinaryGold"));
-	TestEqual(TEXT("ordinary-gold test seam matches the visible label"), Widget->GetOrdinaryGoldTextForTest().ToString(), GoldCopy);
-	TestTrue(TEXT("ordinary gold label identifies normal gold"), GoldCopy.Contains(TEXT("金币")));
-	TestFalse(TEXT("ordinary gold label never calls the balance travel money"), GoldCopy.Contains(TEXT("行旅钱")));
-	TestTrue(TEXT("ordinary gold label displays PlayerGold"), GoldCopy.Contains(TEXT("100,000")) || GoldCopy.Contains(TEXT("100000")));
+	TestEqual(TEXT("travel-money test seam matches the visible label"), Widget->GetOrdinaryGoldTextForTest().ToString(), GoldCopy);
+	TestTrue(TEXT("physical travel money label identifies normal gold"), GoldCopy.Contains(TEXT("行旅钱")));
+	TestFalse(TEXT("travel money label does not identify ordinary gold"), GoldCopy.Contains(TEXT("金币")));
+	TestTrue(TEXT("physical travel money label displays physical travel money"), GoldCopy.Contains(TEXT("100,000")) || GoldCopy.Contains(TEXT("100000")));
 
 	FGameXXKRouteMerchantView View;
 	FString Error;
@@ -264,7 +271,7 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 		TestFalse(*FString::Printf(TEXT("slot %d displays the card name"), Index), Name.IsEmpty());
 		TestTrue(*FString::Printf(TEXT("slot %d displays current to next quality"), Index), Quality.Contains(TEXT("→")));
 		TestFalse(*FString::Printf(TEXT("slot %d displays a next-quality effect preview"), Index), Effect.IsEmpty());
-		TestTrue(*FString::Printf(TEXT("slot %d price is ordinary gold"), Index), Price.Contains(TEXT("金币")) && !Price.Contains(TEXT("行旅钱")));
+		TestTrue(*FString::Printf(TEXT("slot %d price is physical travel money"), Index), Price.Contains(TEXT("行旅钱")) && !Price.Contains(TEXT("金币")));
 		UImage* Art = FindWidget<UImage>(Widget, *FString::Printf(TEXT("RouteMerchantOfferArt%d"), Index));
 		TestTrue(*FString::Printf(TEXT("slot %d displays card art"), Index), Art && Art->GetVisibility() != ESlateVisibility::Collapsed);
 	}
@@ -279,7 +286,7 @@ bool FGameXXKRouteMerchantWidgetStructureTest::RunTest(const FString& Parameters
 		TestFalse(*FString::Printf(TEXT("relic slot %d displays its name"), Index), Name.IsEmpty());
 		TestFalse(*FString::Printf(TEXT("relic slot %d displays its quality"), Index), Quality.IsEmpty());
 		TestFalse(*FString::Printf(TEXT("relic slot %d displays its concise effect"), Index), Effect.IsEmpty());
-		TestTrue(*FString::Printf(TEXT("relic slot %d price is ordinary gold"), Index), Price.Contains(TEXT("金币")) && !Price.Contains(TEXT("行旅钱")));
+		TestTrue(*FString::Printf(TEXT("relic slot %d price is physical travel money"), Index), Price.Contains(TEXT("行旅钱")) && !Price.Contains(TEXT("金币")));
 		UImage* Art = FindWidget<UImage>(Widget, *FString::Printf(TEXT("RouteMerchantOfferArt%d"), Index));
 		TestTrue(*FString::Printf(TEXT("relic slot %d displays catalog icon art"), Index), Art && Art->GetVisibility() != ESlateVisibility::Collapsed);
 	}
@@ -389,7 +396,7 @@ bool FGameXXKRouteMerchantWidgetActionsTest::RunTest(const FString& Parameters)
 	const int32 SecondInitialIndex = FindCardOfferIndex(InitialView, PurchasableOfferIds[1]);
 	const FGameXXKRouteMerchantOfferView FirstOffer = InitialView.CardOffers[FirstInitialIndex];
 	const FGameXXKRouteMerchantOfferView SecondOffer = InitialView.CardOffers[SecondInitialIndex];
-	const int32 InitialPlayerGold = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 InitialPlayerGold = MerchantWidgetTestMoney(Subsystem->GetRuntimeState());
 	const int32 InitialRouteTravelMoney = Subsystem->GetRuntimeState().CardRun.RouteTravelMoney;
 	const int32 ExpectedAfterTwoPurchases = InitialPlayerGold - FirstOffer.SavedOffer.Price - SecondOffer.SavedOffer.Price;
 	const FName FirstCardId = FirstOffer.SavedOffer.ContentId;
@@ -421,7 +428,7 @@ bool FGameXXKRouteMerchantWidgetActionsTest::RunTest(const FString& Parameters)
 	SecondPurchaseButton->OnClicked.Broadcast();
 
 	const FGameXXKRuntimeState& AfterPurchases = Subsystem->GetRuntimeState();
-	TestEqual(TEXT("two purchases debit only ordinary PlayerGold"), AfterPurchases.PlayerGold, ExpectedAfterTwoPurchases);
+	TestEqual(TEXT("two purchases debit only physical travel money"), MerchantWidgetTestMoney(AfterPurchases), ExpectedAfterTwoPurchases);
 	TestEqual(TEXT("merchant purchases never debit RouteTravelMoney"), AfterPurchases.CardRun.RouteTravelMoney, InitialRouteTravelMoney);
 	const EGameXXKCardQuality* FirstUpgrade = AfterPurchases.CardRun.UpgradedCardQualities.Find(FirstCardId);
 	const EGameXXKCardQuality* SecondUpgrade = AfterPurchases.CardRun.UpgradedCardQualities.Find(SecondCardId);
@@ -439,11 +446,11 @@ bool FGameXXKRouteMerchantWidgetActionsTest::RunTest(const FString& Parameters)
 			SoldContentBySlot.Add(Index, AfterPurchases.CardRun.RouteMerchant.Offers[Index].ContentId);
 		}
 	}
-	const int32 GoldBeforeRefresh = AfterPurchases.PlayerGold;
+	const int32 GoldBeforeRefresh = MerchantWidgetTestMoney(AfterPurchases);
 	const FString RefreshBefore = ReadText(Widget, TEXT("RouteMerchantRefreshLabel"));
 	UButton* RefreshButton = FindWidget<UButton>(Widget, TEXT("RouteMerchantRefreshButton"));
 	TestTrue(TEXT("refresh is a real enabled button"), RefreshButton && RefreshButton->GetIsEnabled());
-	TestTrue(TEXT("first refresh displays its ordinary-gold fee"), RefreshBefore.Contains(TEXT("20")) && RefreshBefore.Contains(TEXT("金币")));
+	TestTrue(TEXT("first refresh displays its travel-money fee"), RefreshBefore.Contains(TEXT("20")) && RefreshBefore.Contains(TEXT("行旅钱")));
 	if (!RefreshButton)
 	{
 		return false;
@@ -452,7 +459,7 @@ bool FGameXXKRouteMerchantWidgetActionsTest::RunTest(const FString& Parameters)
 
 	const FGameXXKRuntimeState& AfterRefresh = Subsystem->GetRuntimeState();
 	TestEqual(TEXT("refresh advances stable stock count"), AfterRefresh.CardRun.RouteMerchant.RefreshCount, 1);
-	TestEqual(TEXT("refresh debits PlayerGold"), AfterRefresh.PlayerGold, GoldBeforeRefresh - 20);
+	TestEqual(TEXT("refresh debits physical travel money"), MerchantWidgetTestMoney(AfterRefresh), GoldBeforeRefresh - 20);
 	TestEqual(TEXT("refresh never debits RouteTravelMoney"), AfterRefresh.CardRun.RouteTravelMoney, InitialRouteTravelMoney);
 	for (const TPair<int32, FName>& Sold : SoldContentBySlot)
 	{
@@ -464,7 +471,7 @@ bool FGameXXKRouteMerchantWidgetActionsTest::RunTest(const FString& Parameters)
 			Sold.Value);
 	}
 	const FString RefreshAfter = ReadText(Widget, TEXT("RouteMerchantRefreshLabel"));
-	TestTrue(TEXT("next refresh displays the increased thirty-gold fee"), RefreshAfter.Contains(TEXT("30")) && RefreshAfter.Contains(TEXT("金币")));
+	TestTrue(TEXT("next refresh displays the increased thirty-gold fee"), RefreshAfter.Contains(TEXT("30")) && RefreshAfter.Contains(TEXT("行旅钱")));
 
 	UButton* LeaveButton = FindWidget<UButton>(Widget, TEXT("RouteMerchantLeaveButton"));
 	TestTrue(TEXT("leave merchant is the only visible exit and is actionable"), LeaveButton && LeaveButton->GetIsEnabled());
@@ -512,7 +519,7 @@ bool FGameXXKRouteMerchantWidgetRebuildIdempotencyTest::RunTest(const FString& P
 	TestEqual(TEXT("reopen restores the merchant HUD"),
 		Widget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 
-	const int32 GoldBeforeRefresh = Subsystem->GetRuntimeState().PlayerGold;
+	const int32 GoldBeforeRefresh = MerchantWidgetTestMoney(Subsystem->GetRuntimeState());
 	UButton* RefreshButton = FindWidget<UButton>(Widget, TEXT("RouteMerchantRefreshButton"));
 	TestTrue(TEXT("rebuilt refresh button remains enabled"), RefreshButton && RefreshButton->GetIsEnabled());
 	if (RefreshButton)
@@ -522,7 +529,7 @@ bool FGameXXKRouteMerchantWidgetRebuildIdempotencyTest::RunTest(const FString& P
 	TestEqual(TEXT("one rebuilt refresh click fires exactly one delegate"),
 		Subsystem->GetRuntimeState().CardRun.RouteMerchant.RefreshCount, 1);
 	TestEqual(TEXT("one rebuilt refresh click charges exactly one refresh"),
-		Subsystem->GetRuntimeState().PlayerGold, GoldBeforeRefresh - 20);
+		MerchantWidgetTestMoney(Subsystem->GetRuntimeState()), GoldBeforeRefresh - 20);
 
 	UButton* LeaveButton = FindWidget<UButton>(Widget, TEXT("RouteMerchantLeaveButton"));
 	TestTrue(TEXT("rebuilt leave button remains enabled"), LeaveButton && LeaveButton->GetIsEnabled());
@@ -589,17 +596,17 @@ bool FGameXXKRouteMerchantWidgetDisabledReasonsTest::RunTest(const FString& Para
 	UGameInstance* PoorGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* PoorSubsystem = NewObject<UGameXXKMVPSubsystem>(PoorGameInstance);
 	PoorSubsystem->GetMutableRuntimeState() = MakeMerchantFixture();
-	PoorSubsystem->GetMutableRuntimeState().PlayerGold = 0;
+	MerchantWidgetTestMoney(PoorSubsystem->GetMutableRuntimeState()) = 0;
 	TestTrue(TEXT("poor merchant fixture opens"), PoorSubsystem->SelectRouteNodeById(10));
 	UGameXXKRouteMerchantWidget* PoorWidget = MakeWidget(PoorSubsystem);
 	UButton* PoorRefresh = FindWidget<UButton>(PoorWidget, TEXT("RouteMerchantRefreshButton"));
-	TestTrue(TEXT("refresh disables when ordinary gold is insufficient"), PoorRefresh && !PoorRefresh->GetIsEnabled());
-	TestTrue(TEXT("refresh names the ordinary-gold shortage"), PoorRefresh && PoorRefresh->GetToolTipText().ToString().Contains(TEXT("金币不足")));
+	TestTrue(TEXT("refresh disables when physical travel money is insufficient"), PoorRefresh && !PoorRefresh->GetIsEnabled());
+	TestTrue(TEXT("refresh names the travel-money shortage"), PoorRefresh && PoorRefresh->GetToolTipText().ToString().Contains(TEXT("行旅钱不足")));
 	FGameXXKRouteMerchantView PoorView;
 	TestTrue(TEXT("poor merchant view remains valid"), PoorSubsystem->GetRouteMerchantView(PoorView, &Error));
 	TestFalse(TEXT("poor merchant offer is disabled"), PoorWidget->IsOfferPurchaseEnabledForTest(PoorView.CardOffers[0].SavedOffer.OfferId));
-	TestTrue(TEXT("poor merchant offer exposes an ordinary-gold reason"),
-		PoorWidget->GetOfferDisabledReasonForTest(PoorView.CardOffers[0].SavedOffer.OfferId).Contains(TEXT("金币不足")));
+	TestTrue(TEXT("poor merchant offer exposes an travel-money reason"),
+		PoorWidget->GetOfferDisabledReasonForTest(PoorView.CardOffers[0].SavedOffer.OfferId).Contains(TEXT("行旅钱不足")));
 	return true;
 }
 
@@ -615,7 +622,7 @@ bool FGameXXKRouteMerchantWidgetLocalizedFailuresTest::RunTest(const FString& Pa
 	{
 		return Text.Contains(TEXT("no longer"), ESearchCase::IgnoreCase)
 			|| Text.Contains(TEXT("merchant refresh rejected"), ESearchCase::IgnoreCase)
-			|| Text.Contains(TEXT("ordinary gold"), ESearchCase::IgnoreCase)
+			|| Text.Contains(TEXT("physical travel money"), ESearchCase::IgnoreCase)
 			|| Text.Contains(TEXT("already sold"), ESearchCase::IgnoreCase)
 			|| Text.Contains(TEXT("upgradable carried card"), ESearchCase::IgnoreCase);
 	};
@@ -680,7 +687,7 @@ bool FGameXXKRouteMerchantWidgetLocalizedFailuresTest::RunTest(const FString& Pa
 	UGameInstance* PoorGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* PoorSubsystem = NewObject<UGameXXKMVPSubsystem>(PoorGameInstance);
 	PoorSubsystem->GetMutableRuntimeState() = MakeMerchantFixture();
-	PoorSubsystem->GetMutableRuntimeState().PlayerGold = 0;
+	MerchantWidgetTestMoney(PoorSubsystem->GetMutableRuntimeState()) = 0;
 	TestTrue(TEXT("poor purchase fixture opens"), PoorSubsystem->SelectRouteNodeById(10));
 	UGameXXKRouteMerchantWidget* PoorWidget = MakeWidget(PoorSubsystem);
 	FGameXXKRouteMerchantView PoorView;
@@ -688,9 +695,9 @@ bool FGameXXKRouteMerchantWidgetLocalizedFailuresTest::RunTest(const FString& Pa
 	TestFalse(TEXT("poor widget purchase is rejected"), PoorWidget->PurchaseOffer(PoorView.CardOffers[0].SavedOffer.OfferId));
 	TestEqual(TEXT("poor widget failure stays typed"),
 		PoorWidget->GetLastPurchaseResultForTest().Failure,
-		EGameXXKRouteMerchantPurchaseFailure::InsufficientOrdinaryGold);
+		EGameXXKRouteMerchantPurchaseFailure::InsufficientTravelMoney);
 	const FString PoorError = PoorWidget->GetDisplayedLastActionErrorForTest().ToString();
-	TestTrue(TEXT("poor purchase error is Chinese"), PoorError.Contains(TEXT("金币不足")));
+	TestTrue(TEXT("poor purchase error is Chinese"), PoorError.Contains(TEXT("行旅钱不足")));
 	TestFalse(TEXT("poor purchase error never leaks raw English"), HasRawRuleEnglish(PoorError));
 	return true;
 }

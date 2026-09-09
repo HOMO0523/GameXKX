@@ -1,4 +1,5 @@
 #include "UI/GameXXKBattleStatusIconWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -219,10 +220,19 @@ void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
 
 	UBorder* const TooltipPaper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("BattleStatusIconTooltipPaper"));
 	TooltipPaper->SetBrush(MakeRoundedBrush(PaperColor, InkColor, 1.0f, 6.0f));
-	TooltipPaper->SetPadding(FMargin(8.0f, 6.0f));
+	if (UTexture2D* Paper = LoadObject<UTexture2D>(nullptr,
+		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot")))
+	{
+		FSlateBrush Brush; Brush.SetResourceObject(Paper); Brush.DrawAs = ESlateBrushDrawType::Box;
+		Brush.ImageSize = FVector2D(480,180); Brush.Margin = FMargin(0.065f); TooltipPaper->SetBrush(Brush);
+	}
+	TooltipPaper->SetPadding(FMargin(16.0f, 12.0f));
 	TooltipPaper->SetVisibility(GetTooltipVisibilityForTest());
 	UTextBlock* const TooltipText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleStatusIconTooltipText"));
-	ConfigureCenteredText(TooltipText, 13, InkColor);
+	ConfigureCenteredText(TooltipText, 20, InkColor);
+	TooltipText->SetFont(FGameXXKInRunUiStyle::Font(20));
+	TooltipText->SetJustification(ETextJustify::Left);
+	TooltipText->SetWrapTextAt(360);
 	TooltipText->SetAutoWrapText(true);
 	TooltipPaper->SetContent(TooltipText);
 	HitTarget->SetToolTip(TooltipPaper);
@@ -243,6 +253,9 @@ void UGameXXKBattleStatusIconWidget::RefreshDisplay()
 
 	UImage* const IconImage = Cast<UImage>(GetWidgetFromName(TEXT("BattleStatusIconImage")));
 	UTextBlock* const GlyphText = Cast<UTextBlock>(GetWidgetFromName(TEXT("BattleStatusIconGlyph")));
+	const bool bPhaseMark = !bIsOverflowBadge && CachedBadgeModel.Style.IconId.ToString().StartsWith(TEXT("EnemyPhase."));
+	if (UWidget* Seal = GetWidgetFromName(TEXT("BattleStatusIconStackSeal")))
+		Seal->SetVisibility(bPhaseMark ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	bool bUseFallbackGlyph = bIsOverflowBadge;
 	if (!bUseFallbackGlyph && CachedBadgeModel.Style.TexturePath.IsValid())
 	{
@@ -275,7 +288,10 @@ void UGameXXKBattleStatusIconWidget::RefreshDisplay()
 			? TEXT("+")
 			: (CachedBadgeModel.Style.FallbackGlyph.IsEmpty() ? TEXT("?") : CachedBadgeModel.Style.FallbackGlyph);
 		GlyphText->SetText(FText::FromString(Glyph));
-		GlyphText->SetColorAndOpacity(FSlateColor(CachedBadgeModel.Style.Tint));
+		GlyphText->SetFont(FGameXXKInRunUiStyle::Font(bPhaseMark ? 30 : 19, bPhaseMark));
+		GlyphText->SetLineHeightPercentage(bPhaseMark ? 0.72f : 1.0f);
+		GlyphText->SetApplyLineHeightToBottomLine(bPhaseMark);
+		GlyphText->SetColorAndOpacity(FSlateColor(bPhaseMark ? InkColor : CachedBadgeModel.Style.Tint));
 		GlyphText->SetVisibility(bUseFallbackGlyph ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	}
 

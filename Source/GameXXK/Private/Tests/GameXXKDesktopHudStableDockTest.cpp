@@ -180,7 +180,7 @@ bool FGameXXKDesktopHudUpwardNativeRegionTest::RunTest(const FString& Parameters
 		IsPointInsideDesktopNativeRegionShapes(Shapes, FVector2D(700.0f, 100.0f)));
 	TestTrue(
 		TEXT("upward toolbar is interactive at its rendered position"),
-		IsPointInsideDesktopNativeRegionShapes(Shapes, FVector2D(1100.0f, 20.0f)));
+		IsPointInsideDesktopNativeRegionShapes(Shapes, FVector2D(1092.0f, 60.0f)));
 	TestTrue(
 		TEXT("upward notice and Tab rail stays below the fixed strip"),
 		IsPointInsideDesktopNativeRegionShapes(Shapes, FVector2D(1200.0f, 945.0f)));

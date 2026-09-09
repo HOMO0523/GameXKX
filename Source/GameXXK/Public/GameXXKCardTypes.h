@@ -101,6 +101,16 @@ enum class EGameXXKCardResolutionOrigin : uint8
 	Equipment = 10
 };
 
+/** Damage attribution is independent of mitigation, statuses and packet count. */
+UENUM(BlueprintType)
+enum class EGameXXKCardDamageElement : uint8
+{
+	None = 0 UMETA(DisplayName = "物理"),
+	Fire = 1 UMETA(DisplayName = "火焰"),
+	Frost = 2 UMETA(DisplayName = "冰霜"),
+	Lightning = 3 UMETA(DisplayName = "雷击")
+};
+
 /** Declarative post-base behavior for protagonist Hunter cards. */
 UENUM(BlueprintType)
 enum class EGameXXKHeavyArrowKind : uint8
@@ -1156,6 +1166,10 @@ struct GAMEXXK_API FGameXXKCardDefinition
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	EGameXXKHeroSpellTaskReward SpellTaskReward = EGameXXKHeroSpellTaskReward::None;
 
+	/** Explicit override for authored elemental cards outside the Sorcerer family metadata. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageElement DamageElement = EGameXXKCardDamageElement::None;
+
 	/** Reward resolved only after this named task NPC's carried three-card task completes. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	TArray<FGameXXKCardEffect> TaskNpcRewardEffects;
@@ -1384,6 +1398,17 @@ enum class EGameXXKCardTargetDisabledReason : uint8
 	InvalidHealth = 11
 };
 
+/** Persisted contribution to a DOT reservoir. Unattributed legacy stacks remain implicit. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKCardStatusSource
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName SourceUnitId = NAME_None;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 Stacks = 0;
+};
+
 /** One status stack view supplied by the battle layer for targeting. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardStatusStack
@@ -1395,6 +1420,10 @@ struct GAMEXXK_API FGameXXKCardStatusStack
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 Stacks = 0;
+
+	/** Bleed/Poison/Burn only. The unrecorded remainder has no source bonus. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FGameXXKCardStatusSource> Sources;
 };
 
 /** Stable battle-unit facts needed to calculate card target candidates. */
@@ -1494,6 +1523,14 @@ struct GAMEXXK_API FGameXXKCardCombatUnit
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementHealthLost = 0;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementHealingReceived = 0;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int64 SettlementArmorGenerated = 0;
+
+	/** The wearer's own nominal gem pools, snapshotted on battle entry. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<EGameXXKGemType, int32> GemBonusBasisPoints;
+
+	/** Authored base resistances snapshotted at battle entry; empty pure-rule inputs mean zero. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<EGameXXKCardDamageElement, int32> InnateResistanceBasisPoints;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName UnitId = NAME_None;
@@ -1597,6 +1634,13 @@ struct GAMEXXK_API FGameXXKCardDamageContext
 {
 	GENERATED_BODY()
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageElement Element = EGameXXKCardDamageElement::None;
+
+	/** Explicit equipment counter packet; other equipment procs do not inherit it. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bEquipmentCounter = false;
+
 	/** Required and living for direct attacks and self loss; empty for environmental health loss. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName SourceUnitId = NAME_None;
@@ -1656,6 +1700,23 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardDamageResult
 {
 	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	double EffectiveResistanceBasisPoints = 0.0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 DamageAfterResistance = 0;
+
+	/** Resource loss attached to this hit; excluded from every health-damage total. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	int32 ManaDrained = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	EGameXXKCardDamageElement Element = EGameXXKCardDamageElement::None;
+
+	/** Presentation-only cue set by the resolved lightning operation, including task replays. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	bool bLightningStrike = false;
 
 	/** Stable source identity captured from the explicit damage context for audit and follow-up effects. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
@@ -2353,6 +2414,15 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKCardBattleRuntime
 {
 	GENERATED_BODY()
+
+	/** Presentation receipt for the last resolved enemy card; never a health-damage packet. */
+	UPROPERTY(Transient)
+	TMap<FName, int32> LastManaDrainedByTarget;
+	/** Runtime audit of completed terrain benefits, used by teaching objectives. */
+	UPROPERTY(Transient)
+	TMap<FName, int32> ResolvedTerrainBenefitsByOwner;
+	UPROPERTY(Transient)
+	TMap<FName, int32> ResolvedBladeFinishesByOwner;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKBattleSessionStats SessionStats;

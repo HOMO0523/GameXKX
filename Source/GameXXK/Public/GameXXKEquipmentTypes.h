@@ -67,7 +67,21 @@ enum class EGameXXKGemType : uint8
 	Invalid = 0 UMETA(Hidden),
 	Attack = 1 UMETA(DisplayName = "攻击"),
 	Defense = 2 UMETA(DisplayName = "防御"),
-	MaxHealth = 3 UMETA(DisplayName = "生命")
+	MaxHealth = 3 UMETA(DisplayName = "生命"),
+	AttackPercent = 4 UMETA(DisplayName = "攻击百分比"),
+	DefensePercent = 5 UMETA(DisplayName = "防御百分比"),
+	MaxHealthPercent = 6 UMETA(DisplayName = "生命百分比"),
+	DirectDamage = 7 UMETA(DisplayName = "物理伤害"),
+	ArmorGain = 8 UMETA(DisplayName = "护甲获得量"),
+	Healing = 9 UMETA(DisplayName = "治疗效果"),
+	CounterDamage = 10 UMETA(DisplayName = "反击伤害"),
+	FireDamage = 11 UMETA(DisplayName = "火焰伤害"),
+	DamageOverTime = 12 UMETA(DisplayName = "持续伤害"),
+	FrostDamage = 13 UMETA(DisplayName = "冰霜伤害"),
+	LightningDamage = 14 UMETA(DisplayName = "雷击伤害"),
+	FireResistance = 15 UMETA(DisplayName = "火焰抗性"),
+	FrostResistance = 16 UMETA(DisplayName = "冰霜抗性"),
+	LightningResistance = 17 UMETA(DisplayName = "雷击抗性")
 };
 
 UENUM(BlueprintType)

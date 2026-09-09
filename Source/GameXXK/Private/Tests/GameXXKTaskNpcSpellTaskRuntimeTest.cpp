@@ -186,7 +186,9 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKCardPlayResult FirstResult;
-	if (!Resolve(*this, Runtime, TEXT("QingYan"), EnemyAId, FirstResult, TEXT("月白任务首牌"))) return true;
+	const int32 EnergyBeforeYueBaiTask = Runtime.Deck.SharedEnergy;
+	if (!Resolve(*this, Runtime, TEXT("QingYan"), EnemyAId, FirstResult, TEXT("幽白任务首牌"))) return true;
+	TestEqual(TEXT("YueBai active play spends one shared energy"), Runtime.Deck.SharedEnergy, EnergyBeforeYueBaiTask - 1);
 	TestEqual(TEXT("first task card creates one named-NPC task"), Runtime.TaskNpcSpellTasks.Num(), 1);
 	if (Runtime.TaskNpcSpellTasks.Num() == 1)
 	{
@@ -200,7 +202,7 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKCardPlayResult SecondResult;
-	if (!Resolve(*this, Runtime, TEXT("CanJuan"), NAME_None, SecondResult, TEXT("月白任务次牌"))) return true;
+	if (!Resolve(*this, Runtime, TEXT("CanJuan"), NAME_None, SecondResult, TEXT("幽白任务次牌"))) return true;
 	if (Runtime.TaskNpcSpellTasks.Num() != 1)
 	{
 		AddError(TEXT("task state disappeared before the three-card sequence completed"));
@@ -209,7 +211,8 @@ bool FGameXXKTaskNpcSpellReplayTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("two distinct carried cards advance progress to two"), Runtime.TaskNpcSpellTasks[0].CompletedCardIds.Num(), 2);
 
 	FGameXXKCardPlayResult ThirdResult;
-	if (!Resolve(*this, Runtime, TEXT("ShanHe"), NAME_None, ThirdResult, TEXT("月白任务末牌"))) return true;
+	if (!Resolve(*this, Runtime, TEXT("ShanHe"), NAME_None, ThirdResult, TEXT("幽白任务末牌"))) return true;
+	TestEqual(TEXT("three active cards pay three energy; task replay and reward remain free"), Runtime.Deck.SharedEnergy, EnergyBeforeYueBaiTask - 3);
 	TestEqual(TEXT("task state resets only after three replays and the starter reward"), Runtime.TaskNpcSpellTasks.Num(), 0);
 	TestEqual(TEXT("three real plays remain exactly three active cards"), Runtime.ActiveCardsPlayedThisRound, 3);
 	TestEqual(TEXT("completion audits three base replays plus one reward"), ThirdResult.AutomaticResolutionCount, 4);

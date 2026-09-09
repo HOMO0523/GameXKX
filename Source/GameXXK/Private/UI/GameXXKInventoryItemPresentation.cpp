@@ -1,6 +1,7 @@
 #include "UI/GameXXKInventoryItemPresentation.h"
 
 #include "GameXXKMVPRules.h"
+#include "GameXXKTravelMoneyRules.h"
 
 namespace GameXXKInventoryItemPresentationPrivate
 {
@@ -12,6 +13,7 @@ namespace GameXXKInventoryItemPresentationPrivate
 
 FString FGameXXKInventoryItemPresentation::ResolveIconPath(const FName ItemId)
 {
+	if (ItemId == FGameXXKTravelMoneyRules::ItemId()) return FGameXXKTravelMoneyRules::IconPath;
 	return IsInspectable(ItemId)
 		? FString(GameXXKInventoryItemPresentationPrivate::TutorialMapIcon)
 		: FString();
