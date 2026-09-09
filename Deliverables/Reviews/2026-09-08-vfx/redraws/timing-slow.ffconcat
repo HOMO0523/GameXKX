@@ -1,0 +1,24 @@
+ffconcat version 1.0
+file 'frame-00.png'
+option framerate 100
+duration 0.16
+file 'frame-01.png'
+option framerate 100
+duration 0.12
+file 'frame-02.png'
+option framerate 100
+duration 0.20
+file 'frame-03.png'
+option framerate 100
+duration 0.16
+file 'frame-04.png'
+option framerate 100
+duration 0.20
+file 'frame-05.png'
+option framerate 100
+duration 0.22
+file 'blank.png'
+option framerate 100
+duration 0.90
+file 'blank.png'
+option framerate 100

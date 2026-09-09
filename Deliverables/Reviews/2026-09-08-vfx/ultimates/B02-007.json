@@ -1,0 +1,70 @@
+{
+  "id": "007",
+  "source_archive": "D:\\BaiduNetdiskDownload\\413-spine全屏大招特效动画 png技能特效序列帧 游戏视频动画通用素材\\B02.【第二期】满屏技能大招【spine特效】【序列】.zip",
+  "source_group": "【第二期】满屏技能大招【spine特效】【序列】/007",
+  "source_first": "【第二期】满屏技能大招【spine特效】【序列】/007/007_000.png",
+  "source_last": "【第二期】满屏技能大招【spine特效】【序列】/007/007_206.png",
+  "frame_count": 207,
+  "source_dimensions": [
+    [
+      1920,
+      1080
+    ]
+  ],
+  "preview_fps": 30,
+  "fps_is_assumed": true,
+  "seconds": 6.9,
+  "video": "B02-007-full.mp4",
+  "decoded_frames": 207,
+  "source_sequence_sha256": "6b0f9a2e3b197f2d921b7a30b9c5a0aaa92258a2400bfbca0ef803412cb59132",
+  "samples": [
+    {
+      "frame": 10,
+      "path": "B02-007-sample-00.png"
+    },
+    {
+      "frame": 27,
+      "path": "B02-007-sample-01.png"
+    },
+    {
+      "frame": 44,
+      "path": "B02-007-sample-02.png"
+    },
+    {
+      "frame": 61,
+      "path": "B02-007-sample-03.png"
+    },
+    {
+      "frame": 78,
+      "path": "B02-007-sample-04.png"
+    },
+    {
+      "frame": 95,
+      "path": "B02-007-sample-05.png"
+    },
+    {
+      "frame": 113,
+      "path": "B02-007-sample-06.png"
+    },
+    {
+      "frame": 130,
+      "path": "B02-007-sample-07.png"
+    },
+    {
+      "frame": 147,
+      "path": "B02-007-sample-08.png"
+    },
+    {
+      "frame": 164,
+      "path": "B02-007-sample-09.png"
+    },
+    {
+      "frame": 181,
+      "path": "B02-007-sample-10.png"
+    },
+    {
+      "frame": 198,
+      "path": "B02-007-sample-11.png"
+    }
+  ]
+}

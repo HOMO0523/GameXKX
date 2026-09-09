@@ -1,0 +1,253 @@
+{
+  "stage": "six-keyframe style and timing preview, not integrated into UE",
+  "source_mode": "RGB",
+  "source_dimensions": [
+    1536,
+    1024
+  ],
+  "source_sha256": "74a9420dd323b8036f45fcd51d6acad98e052e75a197a43e1d09ca0a3fa9a0f5",
+  "generator": "built-in ImageGen",
+  "assembly": "FFmpeg crop, registration, paper matte, GIF encoding",
+  "shared_impact": [
+    256,
+    510
+  ],
+  "assembly_canvas": [
+    512,
+    600
+  ],
+  "final_viewport_crop": [
+    0,
+    40,
+    512,
+    560
+  ],
+  "frames": [
+    {
+      "crop": [
+        223,
+        0,
+        139,
+        460
+      ],
+      "anchor": [
+        280,
+        507
+      ],
+      "placement": [
+        199,
+        43
+      ],
+      "file": "frame-00.png"
+    },
+    {
+      "crop": [
+        681,
+        0,
+        171,
+        516
+      ],
+      "anchor": [
+        752,
+        507
+      ],
+      "placement": [
+        185,
+        43
+      ],
+      "file": "frame-01.png"
+    },
+    {
+      "crop": [
+        1044,
+        0,
+        380,
+        532
+      ],
+      "anchor": [
+        1221,
+        523
+      ],
+      "placement": [
+        79,
+        27
+      ],
+      "file": "frame-02.png"
+    },
+    {
+      "crop": [
+        170,
+        538,
+        239,
+        443
+      ],
+      "anchor": [
+        286,
+        972
+      ],
+      "placement": [
+        140,
+        116
+      ],
+      "file": "frame-03.png"
+    },
+    {
+      "crop": [
+        688,
+        803,
+        161,
+        178
+      ],
+      "anchor": [
+        766,
+        972
+      ],
+      "placement": [
+        178,
+        381
+      ],
+      "file": "frame-04.png"
+    },
+    {
+      "crop": [
+        1196,
+        893,
+        91,
+        93
+      ],
+      "anchor": [
+        1242,
+        977
+      ],
+      "placement": [
+        210,
+        466
+      ],
+      "file": "frame-05.png"
+    }
+  ],
+  "gif_checks": [
+    {
+      "file": "yellow-thunder-normal.gif",
+      "size": [
+        512,
+        560
+      ],
+      "decoded_frames": 8,
+      "durations_ms": [
+        80,
+        60,
+        100,
+        80,
+        100,
+        110,
+        900,
+        10
+      ],
+      "total_ms": 1440,
+      "loop": 0,
+      "paint_bounds": [
+        [
+          207,
+          3,
+          329,
+          454
+        ],
+        [
+          193,
+          3,
+          347,
+          510
+        ],
+        [
+          87,
+          0,
+          450,
+          510
+        ],
+        [
+          149,
+          81,
+          370,
+          510
+        ],
+        [
+          186,
+          349,
+          330,
+          510
+        ],
+        [
+          218,
+          434,
+          292,
+          509
+        ],
+        null,
+        null
+      ],
+      "sha256": "d6c19e9aa9aae7919fecf58c6b7a85441e8deca2c1b0aa15072488c0a86511a9"
+    },
+    {
+      "file": "yellow-thunder-slow.gif",
+      "size": [
+        512,
+        560
+      ],
+      "decoded_frames": 8,
+      "durations_ms": [
+        160,
+        120,
+        200,
+        160,
+        200,
+        220,
+        900,
+        10
+      ],
+      "total_ms": 1970,
+      "loop": 0,
+      "paint_bounds": [
+        [
+          207,
+          3,
+          329,
+          454
+        ],
+        [
+          193,
+          3,
+          347,
+          510
+        ],
+        [
+          87,
+          0,
+          450,
+          510
+        ],
+        [
+          149,
+          81,
+          370,
+          510
+        ],
+        [
+          186,
+          349,
+          330,
+          510
+        ],
+        [
+          218,
+          434,
+          292,
+          509
+        ],
+        null,
+        null
+      ],
+      "sha256": "404d2a9ebfbf655ddc456bce6a0f069d4d06463879581d36d04b77730efe1053"
+    }
+  ]
+}

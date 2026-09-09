@@ -1,0 +1,27 @@
+Use case: style-transfer.
+Asset: a six-keyframe sprite atlas draft for a THICK YELLOW LIGHTNING STRIKE in a playful Chinese wuxia 2D game. This atlas will be assembled into an animated GIF for the user.
+
+REFERENCE ROLES:
+Image 1 is the PRIMARY new art direction chosen by the user: the yellow painted lightning icon with ochre edges, golden middle strokes, pale warm highlights, visibly layered paint. Adopt this brushwork and tonal depth, not its static icon silhouette.
+Image 2 (red flame) is a secondary reference for confident textured brush-shaped masses and layered lighter center.
+Image 3 (green air) illustrates the same painterly layered style with clean broad shapes. Do not draw green air or red fire.
+Image 4 is the previous SIX-FRAME animation draft whose temporal phases and thick grounded strike should be refined.
+
+The user specifically asks for MORE TONAL LAYERS matching the new references. Replace the previous uniform flat yellow fill and smooth outlined cartoon appearance with hand-painted Chinese-game brushwork: deep ochre outer strokes, saturated golden-yellow body, lighter yellow mid-strokes, and a broad pale golden/ivory inner highlight. The highlights are painted shape layers, not neon bloom. A little directional dry-brush grain is welcome, while keeping the main silhouette broad, clean and easily readable when reduced.
+
+Keep a VERY THICK vertical irregular lightning trunk, wide at peak, tapering with a few angular asymmetric bends. It strikes down into one fixed impact point. It should resemble an energetic falling thunderbolt, not a repeated static zigzag symbol and not a smooth wavy ribbon. At most two short side branches. Peak impact produces a low, bold, brushy burst with three large angled lobes. No thin particle spray, no magic circles, no sci-fi laser, no lens flare.
+
+EXACT ATLAS COMPOSITION:
+1536x1024 raster sheet, perfectly regular 3 columns x 2 rows, six equal 512x512 cells. No borders, no drawn grid, no labels or typography.
+For THIS GIF proof, use a perfectly SOLID warm ivory background (#EEDFC2), uniformly flat everywhere, no paper texture, checkerboard, transparency pattern, shadows or scenery. The material being tested is the colored brush effect.
+Every frame's effect must remain entirely within its cell. Leave at least 30 px blank safety space around each cell. All cells share exactly the same camera, scale and registration. The virtual bolt path is centered around x=256 in local cell coordinates; its fixed ground anchor is x=256,y=444. The complete trunk extends from local y=36 to y=444. Keep that same underlying path as the action changes.
+
+Read left to right, then next row:
+1. A thick pointed upper leader drops along the shared path, ending at y=300, still above ground. No impact yet.
+2. The same full bolt reaches y=444 and starts a compact ground spark.
+3. Peak: thickest golden body with rich but simple cream/yellow/ochre brush layers; a powerful 3-lobe grounded brush burst centered at x=256,y=444, maximum total width 200 px.
+4. Contraction: same registered trunk narrows along the same path, ground burst shrinks and separates into two broad sparks.
+5. Upper trunk gone. Only two short residual golden electrical strokes in the lower part and a little spark at the fixed foot.
+6. One last tiny warm painted spark at x=256,y=444; it ends the effect. Do not fill the cell with a faint copy.
+
+The reference-matched painterly color layers and good-looking powerful main bolt are the key improvement. Maintain stable scale/anchor and clear action phases so the resulting short GIF does not jump sideways.

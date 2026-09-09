@@ -1,0 +1,9 @@
+{
+  "candidates": 10,
+  "playbackAdvances": true,
+  "scrub": true,
+  "backgroundToggle": true,
+  "smallPreview": true,
+  "narrowOverflow": false,
+  "errors": []
+}

@@ -1,0 +1,166 @@
+[
+  {
+    "id": "A0867",
+    "order": 1,
+    "title": "之前的单束落雷",
+    "use": "对照 · 11 帧",
+    "note": "线条细，短促利落。与右侧保持同样的预览区域和等比缩放。",
+    "source": "后【序列】/zhangjiao_skill3/zhangjiao_skill03-skill3_",
+    "count": 11,
+    "dimensions": [
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ],
+      [
+        441,
+        441
+      ]
+    ],
+    "canvas": [
+      441,
+      441
+    ],
+    "frames": [
+      "candidates/A0867/0000.png",
+      "candidates/A0867/0001.png",
+      "candidates/A0867/0002.png",
+      "candidates/A0867/0003.png",
+      "candidates/A0867/0004.png",
+      "candidates/A0867/0005.png",
+      "candidates/A0867/0006.png",
+      "candidates/A0867/0007.png",
+      "candidates/A0867/0008.png",
+      "candidates/A0867/0009.png",
+      "candidates/A0867/0010.png"
+    ]
+  },
+  {
+    "id": "A0040",
+    "order": 2,
+    "title": "更粗的道士落雷",
+    "use": "推荐 · 15 帧",
+    "note": "命中瞬间的白色雷芯更厚，落点爆发更强。重绘时保留粗主干，减少旁侧细分叉。",
+    "source": "中【序列】/daoshi_skill1/002/1/daoshi_skill1_2-animation_",
+    "count": 15,
+    "dimensions": [
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ],
+      [
+        450,
+        550
+      ]
+    ],
+    "canvas": [
+      450,
+      550
+    ],
+    "frames": [
+      "candidates/A0040/0000.png",
+      "candidates/A0040/0001.png",
+      "candidates/A0040/0002.png",
+      "candidates/A0040/0003.png",
+      "candidates/A0040/0004.png",
+      "candidates/A0040/0005.png",
+      "candidates/A0040/0006.png",
+      "candidates/A0040/0007.png",
+      "candidates/A0040/0008.png",
+      "candidates/A0040/0009.png",
+      "candidates/A0040/0010.png",
+      "candidates/A0040/0011.png",
+      "candidates/A0040/0012.png",
+      "candidates/A0040/0013.png",
+      "candidates/A0040/0014.png"
+    ]
+  }
+]

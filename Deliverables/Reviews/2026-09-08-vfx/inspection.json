@@ -1,0 +1,962 @@
+[
+  {
+    "id": "01",
+    "label": "火球飞行",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire",
+    "count": 8,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire/buff_fire-animation_1.png",
+        "path": "inspect/01/0001.png",
+        "size": [
+          225,
+          102
+        ],
+        "mode": "RGBA",
+        "sha256": "f4224ad1b228163a13447ab12aee1d3b05e48fe5d85f99b2654114601d7c0986"
+      },
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire/buff_fire-animation_2.png",
+        "path": "inspect/01/0002.png",
+        "size": [
+          225,
+          102
+        ],
+        "mode": "RGBA",
+        "sha256": "08e5b9b0a4228d6c32e622839eb2e20f1c730d8fe3b2b66c0d777a59df86e3b0"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire/buff_fire-animation_4.png",
+        "path": "inspect/01/0004.png",
+        "size": [
+          225,
+          102
+        ],
+        "mode": "RGBA",
+        "sha256": "d2233d2cd15f56e68ce05f77f88d1b77cb616a3eb1f25a380ca024b59ed013db"
+      },
+      {
+        "index": 5,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire/buff_fire-animation_5.png",
+        "path": "inspect/01/0005.png",
+        "size": [
+          225,
+          102
+        ],
+        "mode": "RGBA",
+        "sha256": "d2233d2cd15f56e68ce05f77f88d1b77cb616a3eb1f25a380ca024b59ed013db"
+      },
+      {
+        "index": 6,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_fire/base_fly_fire/buff_fire-animation_6.png",
+        "path": "inspect/01/0006.png",
+        "size": [
+          225,
+          102
+        ],
+        "mode": "RGBA",
+        "sha256": "236828796d235523e2133d782051768201d9b51e6f7b34a0304ab9f7fe9e775c"
+      }
+    ]
+  },
+  {
+    "id": "02",
+    "label": "火焰命中",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire",
+    "count": 7,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire/impact_fire-Play_1.png",
+        "path": "inspect/02/0001.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "744108a682f7f901503ca82e0aff2a49a80fbca53863a0f20ed71ffac93764be"
+      },
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire/impact_fire-Play_2.png",
+        "path": "inspect/02/0002.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "1591a6ca5854a732088df963ee3ba47cde3f39ac60d449387ae989f09eb54287"
+      },
+      {
+        "index": 3,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire/impact_fire-Play_3.png",
+        "path": "inspect/02/0003.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "70bf0114c76b2175d12ca6253f4702f962289bae802f4b97cf7c83f353244eb0"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire/impact_fire-Play_4.png",
+        "path": "inspect/02/0004.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "b81e7ceb45044df0151f98f9d2c6c46d42a0b06e577d0eb74b48e8d703e26a70"
+      },
+      {
+        "index": 5,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_fire/impact_fire-Play_5.png",
+        "path": "inspect/02/0005.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "933a64cfe7414a6cf9a01c10b393ce19dbf23330c1dfff709adddc3117b64585"
+      }
+    ]
+  },
+  {
+    "id": "03",
+    "label": "雷电飞行",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1",
+    "count": 8,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1/buff_thunder-animation_1.png",
+        "path": "inspect/03/0001.png",
+        "size": [
+          244,
+          87
+        ],
+        "mode": "RGBA",
+        "sha256": "e648d0af76583669eda011b7d7a935e89a13cec9e0ed13a4cddea03b2382fee0"
+      },
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1/buff_thunder-animation_2.png",
+        "path": "inspect/03/0002.png",
+        "size": [
+          244,
+          87
+        ],
+        "mode": "RGBA",
+        "sha256": "44deb8d4b5c75825ae670b7495985fcadec67b13b59adb0c570186393987c4fc"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1/buff_thunder-animation_4.png",
+        "path": "inspect/03/0004.png",
+        "size": [
+          244,
+          87
+        ],
+        "mode": "RGBA",
+        "sha256": "2c803a2235897dc1d2de9bd750c7bcaf19fbd7bf419123aedd9dc3df7f4386e7"
+      },
+      {
+        "index": 5,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1/buff_thunder-animation_5.png",
+        "path": "inspect/03/0005.png",
+        "size": [
+          244,
+          87
+        ],
+        "mode": "RGBA",
+        "sha256": "2c803a2235897dc1d2de9bd750c7bcaf19fbd7bf419123aedd9dc3df7f4386e7"
+      },
+      {
+        "index": 6,
+        "member": "UI技能特效1000个【PNG格式】/中【序列】/base_fly_thunder/1/buff_thunder-animation_6.png",
+        "path": "inspect/03/0006.png",
+        "size": [
+          244,
+          87
+        ],
+        "mode": "RGBA",
+        "sha256": "68ef55fb362369bcc3597a824a96af7adfc5b030003bc84bd404e65a02630ad2"
+      }
+    ]
+  },
+  {
+    "id": "04",
+    "label": "电击命中",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric",
+    "count": 7,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric/impact_electric-Play_1.png",
+        "path": "inspect/04/0001.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "3daa12a8a2349f68b0a95be8c958093e3e7c53d0984f682904afa39cd46ec74d"
+      },
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric/impact_electric-Play_2.png",
+        "path": "inspect/04/0002.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "4296dba7e8837f30c0cf2643dc98a759d508241254c1ca347e2db7a52d85e016"
+      },
+      {
+        "index": 3,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric/impact_electric-Play_3.png",
+        "path": "inspect/04/0003.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "b131b2b924780f3668bcfb735efd03fde82dee88a14a09877b2d1f3cf35518a6"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric/impact_electric-Play_4.png",
+        "path": "inspect/04/0004.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "61644bbe518dde026e197d9f187fbc542bad7e950f00fbf872d39a69417bfd86"
+      },
+      {
+        "index": 5,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/impact_electric/impact_electric-Play_5.png",
+        "path": "inspect/04/0005.png",
+        "size": [
+          353,
+          353
+        ],
+        "mode": "RGBA",
+        "sha256": "a526b55be86c56f331d9bc0849fd713116ce4b22eb01b0babaa2417d23d2fefb"
+      }
+    ]
+  },
+  {
+    "id": "05",
+    "label": "电击候选",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1",
+    "count": 16,
+    "frames": [
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1/shot_elect-animation1_02.png",
+        "path": "inspect/05/0002.png",
+        "size": [
+          259,
+          176
+        ],
+        "mode": "RGBA",
+        "sha256": "2acf51c9228290496bb3d559e29b74aeea72ee88b24761917136c2616e47ab6b"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1/shot_elect-animation1_04.png",
+        "path": "inspect/05/0004.png",
+        "size": [
+          259,
+          176
+        ],
+        "mode": "RGBA",
+        "sha256": "79a294f30e7abd176c2cba9f5bc191760735d891ee06dab3b255f06d522f6205"
+      },
+      {
+        "index": 8,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1/shot_elect-animation1_08.png",
+        "path": "inspect/05/0008.png",
+        "size": [
+          259,
+          176
+        ],
+        "mode": "RGBA",
+        "sha256": "af5b2d9e59b5224d4cec4043143953110c040539d3be8406f8d478198dd50edf"
+      },
+      {
+        "index": 10,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1/shot_elect-animation1_10.png",
+        "path": "inspect/05/0010.png",
+        "size": [
+          259,
+          176
+        ],
+        "mode": "RGBA",
+        "sha256": "16b04871fb45570ad321edd9e27766ece6b2f45c4dc9eea2a1191dec073ace79"
+      },
+      {
+        "index": 14,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_elect/1/shot_elect-animation1_14.png",
+        "path": "inspect/05/0014.png",
+        "size": [
+          259,
+          176
+        ],
+        "mode": "RGBA",
+        "sha256": "5961a5ff34277d7d85d36e4a89ca0e663454c440210802806274125cf8e6a61b"
+      }
+    ]
+  },
+  {
+    "id": "06",
+    "label": "受击电弧",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect",
+    "count": 15,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect/attacked_elect-animation1_01.png",
+        "path": "inspect/06/0001.png",
+        "size": [
+          606,
+          606
+        ],
+        "mode": "RGBA",
+        "sha256": "7cbbd0b8587c8bc46958cc84f43f62c27f5b181b7f7f34859e6b88489df9dec2"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect/attacked_elect-animation1_04.png",
+        "path": "inspect/06/0004.png",
+        "size": [
+          606,
+          606
+        ],
+        "mode": "RGBA",
+        "sha256": "5731546bc9015687c5e9e24f508e4654e8d9fbca4850cfe961f0c7909ae625a4"
+      },
+      {
+        "index": 7,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect/attacked_elect-animation1_07.png",
+        "path": "inspect/06/0007.png",
+        "size": [
+          606,
+          606
+        ],
+        "mode": "RGBA",
+        "sha256": "f85df2dbc55c2537dfb78fe46a7fea471cd55e7d449edac6046acb88848669e9"
+      },
+      {
+        "index": 10,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect/attacked_elect-animation1_10.png",
+        "path": "inspect/06/0010.png",
+        "size": [
+          606,
+          606
+        ],
+        "mode": "RGBA",
+        "sha256": "4955635fddc69d96a512e8980e9d8c8c0138bc5b842fbdbf081c606ce436bcfa"
+      },
+      {
+        "index": 13,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/attacked_elect/attacked_elect-animation1_13.png",
+        "path": "inspect/06/0013.png",
+        "size": [
+          606,
+          606
+        ],
+        "mode": "RGBA",
+        "sha256": "b0cce97d92a9d77a36591e47260c95dc76c249c6d01e632817fa76c93179c854"
+      }
+    ]
+  },
+  {
+    "id": "07",
+    "label": "冰块轰击",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1",
+    "count": 58,
+    "frames": [
+      {
+        "index": 6,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1/shot_iceberg-animation1_06.png",
+        "path": "inspect/07/0006.png",
+        "size": [
+          1500,
+          900
+        ],
+        "mode": "RGBA",
+        "sha256": "ceb68ed6d89b5af615d84a7a06768a0777fcc99179301a38252dcea312d55b9d"
+      },
+      {
+        "index": 17,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1/shot_iceberg-animation1_17.png",
+        "path": "inspect/07/0017.png",
+        "size": [
+          1500,
+          900
+        ],
+        "mode": "RGBA",
+        "sha256": "f538c53285974e47435be5bb12b977e3d833a825f796a6b380025d961cae6b89"
+      },
+      {
+        "index": 28,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1/shot_iceberg-animation1_28.png",
+        "path": "inspect/07/0028.png",
+        "size": [
+          1500,
+          900
+        ],
+        "mode": "RGBA",
+        "sha256": "e64cb1235913fee74fc0555de598db320f73f545ebccc097ce9a914454aec9d2"
+      },
+      {
+        "index": 40,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1/shot_iceberg-animation1_40.png",
+        "path": "inspect/07/0040.png",
+        "size": [
+          1500,
+          900
+        ],
+        "mode": "RGBA",
+        "sha256": "094b480eb21811b10673d93c2c6f9e34a0669ee2644e8f133cd1fbbe62e91615"
+      },
+      {
+        "index": 51,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/shot_iceberg/1/shot_iceberg-animation1_51.png",
+        "path": "inspect/07/0051.png",
+        "size": [
+          1500,
+          900
+        ],
+        "mode": "RGBA",
+        "sha256": "dc459515d810810c8fd484e29bd5cf5c398d7bf2db3ab649568cd8464c97abc1"
+      }
+    ]
+  },
+  {
+    "id": "08",
+    "label": "寒冰凝结",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1",
+    "count": 135,
+    "frames": [
+      {
+        "index": 13,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1/icelocklv1-Destroy_13.png",
+        "path": "inspect/08/0013.png",
+        "size": [
+          293,
+          339
+        ],
+        "mode": "RGBA",
+        "sha256": "73f4dbc930ebf286867f4a23a589aadc64994a8756c45a432753ba253f2d2b41"
+      },
+      {
+        "index": 40,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1/icelocklv1-Entry_15.png",
+        "path": "inspect/08/0040.png",
+        "size": [
+          247,
+          250
+        ],
+        "mode": "RGBA",
+        "sha256": "96d5910baa2d449bc0e8e312738f29ee3b072adb12a3830b177289ae8d92139d"
+      },
+      {
+        "index": 67,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1/icelocklv1-Idle_22.png",
+        "path": "inspect/08/0067.png",
+        "size": [
+          156,
+          126
+        ],
+        "mode": "RGBA",
+        "sha256": "347cd70b76a26b62ef55e93f7505a0f2a5f08de7d11b4d86b95f1d921e47792f"
+      },
+      {
+        "index": 94,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1/icelocklv1-Idle_49.png",
+        "path": "inspect/08/0094.png",
+        "size": [
+          156,
+          126
+        ],
+        "mode": "RGBA",
+        "sha256": "c1595e5ca3fb5e1012aad62e2f98984815d366a10c00c411f95c9eff3980b1b8"
+      },
+      {
+        "index": 121,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/icelocklv1/icelocklv1-Idle_76.png",
+        "path": "inspect/08/0121.png",
+        "size": [
+          156,
+          126
+        ],
+        "mode": "RGBA",
+        "sha256": "c1595e5ca3fb5e1012aad62e2f98984815d366a10c00c411f95c9eff3980b1b8"
+      }
+    ]
+  },
+  {
+    "id": "09",
+    "label": "冰冻状态",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze",
+    "count": 80,
+    "frames": [
+      {
+        "index": 8,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze/states_freeze-animation1_08.png",
+        "path": "inspect/09/0008.png",
+        "size": [
+          631,
+          627
+        ],
+        "mode": "RGBA",
+        "sha256": "05687cbad858808ff14f9b689622c33bb2a6667f8cf4acefcd80e4f7a1f29f6f"
+      },
+      {
+        "index": 24,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze/states_freeze-animation1_24.png",
+        "path": "inspect/09/0024.png",
+        "size": [
+          631,
+          627
+        ],
+        "mode": "RGBA",
+        "sha256": "3c84fde685594da96bedb660dc503d05ce65bf41bb1579641cc1f118d68c9eed"
+      },
+      {
+        "index": 40,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze/states_freeze-animation2_00.png",
+        "path": "inspect/09/0040.png",
+        "size": [
+          267,
+          341
+        ],
+        "mode": "RGBA",
+        "sha256": "8cf8f95bbb7886f031fb8f4987d8f2a134ed49dc77cd2d9821d2d32555ad4d51"
+      },
+      {
+        "index": 55,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze/states_freeze-animation2_15.png",
+        "path": "inspect/09/0055.png",
+        "size": [
+          267,
+          341
+        ],
+        "mode": "RGBA",
+        "sha256": "8cf8f95bbb7886f031fb8f4987d8f2a134ed49dc77cd2d9821d2d32555ad4d51"
+      },
+      {
+        "index": 71,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_freeze/states_freeze-animation2_31.png",
+        "path": "inspect/09/0071.png",
+        "size": [
+          267,
+          341
+        ],
+        "mode": "RGBA",
+        "sha256": "8cf8f95bbb7886f031fb8f4987d8f2a134ed49dc77cd2d9821d2d32555ad4d51"
+      }
+    ]
+  },
+  {
+    "id": "10",
+    "label": "治疗",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1",
+    "count": 36,
+    "frames": [
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1/states_dot_heal-animation1_04.png",
+        "path": "inspect/10/0004.png",
+        "size": [
+          402,
+          568
+        ],
+        "mode": "RGBA",
+        "sha256": "d9f7be080e095ac9086771655ee9cee59b825aa0566edc92d78838d930a5fcf5"
+      },
+      {
+        "index": 10,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1/states_dot_heal-animation1_10.png",
+        "path": "inspect/10/0010.png",
+        "size": [
+          402,
+          568
+        ],
+        "mode": "RGBA",
+        "sha256": "bcc0811dcf8e0cafdf2c3eef5c97c5e4a2e3fc6b16c194d508f91410f4a0a42d"
+      },
+      {
+        "index": 18,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1/states_dot_heal-animation1_18.png",
+        "path": "inspect/10/0018.png",
+        "size": [
+          402,
+          568
+        ],
+        "mode": "RGBA",
+        "sha256": "66edccfc52826ea6e90b02b9a84a5c63d3d5e1f51d6c20d4407113d1a3f5d62e"
+      },
+      {
+        "index": 24,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1/states_dot_heal-animation1_24.png",
+        "path": "inspect/10/0024.png",
+        "size": [
+          402,
+          568
+        ],
+        "mode": "RGBA",
+        "sha256": "df460c8b2a3a9eb68e402376b1aa3df26d66a0cb5cf37af9bb725193e7ec6e9d"
+      },
+      {
+        "index": 32,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_dot_heal/1/states_dot_heal-animation1_32.png",
+        "path": "inspect/10/0032.png",
+        "size": [
+          402,
+          568
+        ],
+        "mode": "RGBA",
+        "sha256": "b16b34ddc25903b4cd3426aec10d9f0f9345a1ac2aa5a9e97a16f6a0588d5fc6"
+      }
+    ]
+  },
+  {
+    "id": "11",
+    "label": "护盾",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1",
+    "count": 78,
+    "frames": [
+      {
+        "index": 8,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1/states_shield-animation1_08.png",
+        "path": "inspect/11/0008.png",
+        "size": [
+          616,
+          696
+        ],
+        "mode": "RGBA",
+        "sha256": "82ba39902912046f8864e9742818adca4aff197ffbea140858533bb901415fae"
+      },
+      {
+        "index": 23,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1/states_shield-animation1_23.png",
+        "path": "inspect/11/0023.png",
+        "size": [
+          616,
+          696
+        ],
+        "mode": "RGBA",
+        "sha256": "955214173f740ea648db609ca19065e7d289931ee0cbefbfd6d8853bdd59e523"
+      },
+      {
+        "index": 38,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1/states_shield-animation1_38.png",
+        "path": "inspect/11/0038.png",
+        "size": [
+          616,
+          696
+        ],
+        "mode": "RGBA",
+        "sha256": "a477215041c11b66be50a2806d754a77e8373b83a11ac68e8dfe70ebc034ce48"
+      },
+      {
+        "index": 54,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1/states_shield-animation1_54.png",
+        "path": "inspect/11/0054.png",
+        "size": [
+          616,
+          696
+        ],
+        "mode": "RGBA",
+        "sha256": "32eb144c9309a33d5c9090554864f460bd1abe0ef97bcf7e77e71b7f6ca49e15"
+      },
+      {
+        "index": 69,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_shield/1/states_shield-animation1_69.png",
+        "path": "inspect/11/0069.png",
+        "size": [
+          616,
+          696
+        ],
+        "mode": "RGBA",
+        "sha256": "fe5f44126aa2d78f316217c4eadd42d28de427d7af40dec20dbfec9f952bc8c9"
+      }
+    ]
+  },
+  {
+    "id": "12",
+    "label": "格挡候选",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1",
+    "count": 45,
+    "frames": [
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1/states_damage_prevent_a-animation1_04.png",
+        "path": "inspect/12/0004.png",
+        "size": [
+          326,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "78ea20e17e036bee3958aae150c176afafcada35f2e25e46a987c72598e79671"
+      },
+      {
+        "index": 13,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1/states_damage_prevent_a-animation1_13.png",
+        "path": "inspect/12/0013.png",
+        "size": [
+          326,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "be073f093d88512a99b3770b363b4b82988306f9b594b98dcfae3aeac47c9492"
+      },
+      {
+        "index": 22,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1/states_damage_prevent_a-animation1_22.png",
+        "path": "inspect/12/0022.png",
+        "size": [
+          326,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "effa52da1bb9c7288ef2bc446b2ba508ad7a0c304459c52eb476d05e65b3a701"
+      },
+      {
+        "index": 31,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1/states_damage_prevent_a-animation1_31.png",
+        "path": "inspect/12/0031.png",
+        "size": [
+          326,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "654f6f89b33845b3d422264c99984a470bd71e85c036176efba06e9a3e216afc"
+      },
+      {
+        "index": 40,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_damage_prevent_a/1/states_damage_prevent_a-animation1_40.png",
+        "path": "inspect/12/0040.png",
+        "size": [
+          326,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "6a060b8217bd9ff73460aef0de4467ff1ae6da5347146e9f406a6c7862a1882d"
+      }
+    ]
+  },
+  {
+    "id": "13",
+    "label": "碎甲候选",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect",
+    "count": 10,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect/blockdestroyeffect-Play_01.png",
+        "path": "inspect/13/0001.png",
+        "size": [
+          672,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "299d200a63a3c5abd8dc067d0389b7004c2ba1435d208748b7c5930bb40b679d"
+      },
+      {
+        "index": 3,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect/blockdestroyeffect-Play_03.png",
+        "path": "inspect/13/0003.png",
+        "size": [
+          672,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "09dea3c2c766585f728b77b0d976a69b5398f4ba6fa503841ce4a1a04a181161"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect/blockdestroyeffect-Play_04.png",
+        "path": "inspect/13/0004.png",
+        "size": [
+          672,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "844184a60d0f89f12431d06ec53e2a77ea5788cc810ed6d319303b1c4b3d2aed"
+      },
+      {
+        "index": 6,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect/blockdestroyeffect-Play_06.png",
+        "path": "inspect/13/0006.png",
+        "size": [
+          672,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "8cdadbbf4ae5d1412b31011465d1bad55281d77f7c9bbdc157b07d4f2ddad42d"
+      },
+      {
+        "index": 8,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/blockdestroyeffect/blockdestroyeffect-Play_08.png",
+        "path": "inspect/13/0008.png",
+        "size": [
+          672,
+          672
+        ],
+        "mode": "RGBA",
+        "sha256": "deb54d115fea4f4fb1ce203ba00226af67e21415d5dd8f38f0e34cbe5e02d9b0"
+      }
+    ]
+  },
+  {
+    "id": "14",
+    "label": "普通命中",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1",
+    "count": 15,
+    "frames": [
+      {
+        "index": 1,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1/hiteffectnormal1-Play_01.png",
+        "path": "inspect/14/0001.png",
+        "size": [
+          242,
+          218
+        ],
+        "mode": "RGBA",
+        "sha256": "cd5089fe7a83f520ca4cf3654032834111afc1cadbb286f1fd6a5026dc112a6e"
+      },
+      {
+        "index": 4,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1/hiteffectnormal1-Play_04.png",
+        "path": "inspect/14/0004.png",
+        "size": [
+          242,
+          218
+        ],
+        "mode": "RGBA",
+        "sha256": "2a79ab4e51f74076e1814e8972b8d4c9233fcf404082650dcaa71ac769f75d6a"
+      },
+      {
+        "index": 7,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1/hiteffectnormal1-Play_07.png",
+        "path": "inspect/14/0007.png",
+        "size": [
+          242,
+          218
+        ],
+        "mode": "RGBA",
+        "sha256": "29899138f3b96e2a72ed9007a1d6fe0283deac1c2f1e54d6c5126d2b420708e0"
+      },
+      {
+        "index": 10,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1/hiteffectnormal1-Play_10.png",
+        "path": "inspect/14/0010.png",
+        "size": [
+          242,
+          218
+        ],
+        "mode": "RGBA",
+        "sha256": "dd487c0e1f52e484a42e6631ed7a8472b6d9e010f41a91ffd9e574cb2c229d09"
+      },
+      {
+        "index": 13,
+        "member": "UI技能特效1000个【PNG格式】/前【序列】/hiteffectnormal1/hiteffectnormal1-Play_13.png",
+        "path": "inspect/14/0013.png",
+        "size": [
+          242,
+          218
+        ],
+        "mode": "RGBA",
+        "sha256": "869ec5db9ed9626f307772c9ce1fea4e4641c5f1a6eb05dc44a170716273a071"
+      }
+    ]
+  },
+  {
+    "id": "15",
+    "label": "净化",
+    "archive": "D:\\BaiduNetdiskDownload\\UI技能特效1000个【PNG格式】.zip",
+    "group": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1",
+    "count": 25,
+    "frames": [
+      {
+        "index": 2,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1/states_buffremove-animation1_02.png",
+        "path": "inspect/15/0002.png",
+        "size": [
+          446,
+          446
+        ],
+        "mode": "RGBA",
+        "sha256": "d58e89c30fdf2be0ae810d0e491fa3f2440e283520f79f5c4c0677c931f70c57"
+      },
+      {
+        "index": 7,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1/states_buffremove-animation1_07.png",
+        "path": "inspect/15/0007.png",
+        "size": [
+          446,
+          446
+        ],
+        "mode": "RGBA",
+        "sha256": "27c7bd5163caade9fa0dfd547e3b439d1a6fa3ce79da5b6f0e045213d6390da7"
+      },
+      {
+        "index": 12,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1/states_buffremove-animation1_12.png",
+        "path": "inspect/15/0012.png",
+        "size": [
+          446,
+          446
+        ],
+        "mode": "RGBA",
+        "sha256": "17d46bd1ba808ac248a116d488c26384b2d244b6b69d4445a926ea2f701c5ba7"
+      },
+      {
+        "index": 17,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1/states_buffremove-animation1_17.png",
+        "path": "inspect/15/0017.png",
+        "size": [
+          446,
+          446
+        ],
+        "mode": "RGBA",
+        "sha256": "0e5d13733730f9d5e396279aebdf1ee4d042a7b122267d55d5e0fd1f853c522b"
+      },
+      {
+        "index": 22,
+        "member": "UI技能特效1000个【PNG格式】/后【序列】/zzuiorthe/states_buffremove/1/states_buffremove-animation1_22.png",
+        "path": "inspect/15/0022.png",
+        "size": [
+          446,
+          446
+        ],
+        "mode": "RGBA",
+        "sha256": "a10c66bc5972760f43ff4763b11fdc434eb2642b59574ea4492ee16ad4c5c1ca"
+      }
+    ]
+  }
+]
