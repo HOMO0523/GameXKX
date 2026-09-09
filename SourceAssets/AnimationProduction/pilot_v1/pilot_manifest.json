@@ -1,0 +1,13 @@
+{
+  "budget_baseline": 7145,
+  "retry_credit_cap": 565,
+  "assets": [
+    {"id":"hero_attack","model":"seedance2.0_vip","expected_credits":70,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png","last_frame":"SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/hero_attack.txt"},
+    {"id":"hero_hit","model":"seedance1.5pro","expected_credits":40,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png","last_frame":"SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/hero_hit.txt"},
+    {"id":"rooster_attack","model":"seedance2.0_vip","expected_credits":70,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png","last_frame":"SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/rooster_attack.txt"},
+    {"id":"rooster_hit","model":"seedance1.5pro","expected_credits":40,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png","last_frame":"SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/rooster_hit.txt"},
+    {"id":"status_buff_generic","model":"seedance1.5pro","expected_credits":40,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","last_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/status_buff_generic.txt"},
+    {"id":"status_debuff_generic","model":"seedance1.5pro","expected_credits":40,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","last_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/status_debuff_generic.txt"},
+    {"id":"impact_ink_generic","model":"seedance1.5pro","expected_credits":40,"duration_seconds":5,"resolution":"720p","first_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","last_frame":"SourceAssets/AnimationProduction/pilot_v1/inputs/magenta_blank_720.png","prompt_file":"SourceAssets/AnimationProduction/pilot_v1/prompts/impact_ink_generic.txt"}
+  ]
+}

@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "status": "approved_runtime_source_processed",
+  "directionPolicy": "source_faces_left; right_uses_horizontal_component_mirror",
+  "locomotionPolicy": "idle_loop -> walk_start_once -> walk_loop; release -> walk_stop_once -> idle",
+  "excludedSources": [],
+  "timing": {
+    "fps": 30.0,
+    "preserveSourceFrameCount": true
+  },
+  "atlas": {
+    "size": [
+      2048,
+      2048
+    ],
+    "columns": 8,
+    "rows": 8,
+    "cellSize": 256
+  },
+  "placement": {
+    "sharedSourceUnionBounds": [
+      231,
+      29,
+      1212,
+      1404
+    ],
+    "scale": 0.14545454545454545,
+    "contentSize": [
+      143,
+      200
+    ],
+    "canvasSize": 256,
+    "anchor": "bottom_center",
+    "bottomMargin": 28
+  },
+  "transitionMeanAbsoluteDifference": {
+    "idleLastToWalkStartFirst": 2.5415,
+    "walkStartLastToWalkLoopFirst": 9.9162,
+    "walkLoopLastToFirst": 4.2259,
+    "walkLoopLastToWalkStopFirst": 15.4398,
+    "walkStopLastToIdleFirst": 2.5292
+  },
+  "reviewContactSheet": "Saved/HarnessReports/town-hero-horizontal/town_hero_horizontal_contact_sheet.png",
+  "clips": [
+    {
+      "id": "hero_town_idle_left",
+      "source": "主角待机.mov",
+      "flipbook": "FB_Hero_Town_Idle_Left",
+      "paperzd": "PZD_Hero_Town_Idle",
+      "loop": true,
+      "sourcePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角待机.mov",
+      "sourceSha256": "b359f6f2f44eca9ba32324062ba49388b06723156cc8671f66e382bda75638b6",
+      "frameCount": 60,
+      "fps": 30.0,
+      "duration": 2.0,
+      "atlas": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_idle_left/hero_town_idle_left_atlas.png",
+      "atlasSha256": "cf05e96d0960ef5d6608383b860c5b8589a1d5ef56fd754d32ba8beefab3036e",
+      "framesDirectory": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_idle_left/frames",
+      "edgeAlphaMax": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "sourceMetadata": {
+        "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+        "codec": "hevc",
+        "pix_fmt": "yuv420p(tv, bt709, progressive)",
+        "audio_codec": "aac",
+        "fps": 30.0,
+        "source_size": [
+          1440,
+          1440
+        ],
+        "size": [
+          1440,
+          1440
+        ],
+        "rotate": 0,
+        "duration": 2.02,
+        "decodedFrameCount": 60,
+        "decodedDuration": 2.0,
+        "sourceSha256": "b359f6f2f44eca9ba32324062ba49388b06723156cc8671f66e382bda75638b6"
+      }
+    },
+    {
+      "id": "hero_town_walk_start_left",
+      "source": "主角开始行走.mov",
+      "flipbook": "FB_Hero_Town_WalkStart_Left",
+      "paperzd": "PZD_Hero_Town_WalkStart",
+      "loop": false,
+      "sourcePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角开始行走.mov",
+      "sourceSha256": "cf89784adb62b7ead70d8439c426a3d946f45546404c694d6525b49ffa07eb49",
+      "frameCount": 26,
+      "fps": 30.0,
+      "duration": 0.8666666666666667,
+      "atlas": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_start_left/hero_town_walk_start_left_atlas.png",
+      "atlasSha256": "18d9676e43ede58265d824e5d4a39203a699cb302bcd3146b0e749247a7301ae",
+      "framesDirectory": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_start_left/frames",
+      "edgeAlphaMax": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "sourceMetadata": {
+        "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+        "codec": "hevc",
+        "pix_fmt": "yuv420p(tv, bt709, progressive)",
+        "audio_codec": "aac",
+        "fps": 30.0,
+        "source_size": [
+          1440,
+          1440
+        ],
+        "size": [
+          1440,
+          1440
+        ],
+        "rotate": 0,
+        "duration": 0.88,
+        "decodedFrameCount": 26,
+        "decodedDuration": 0.8666666666666667,
+        "sourceSha256": "cf89784adb62b7ead70d8439c426a3d946f45546404c694d6525b49ffa07eb49"
+      }
+    },
+    {
+      "id": "hero_town_walk_loop_left",
+      "source": "主角行走中.mov",
+      "flipbook": "FB_Hero_Town_WalkLoop_Left",
+      "paperzd": "PZD_Hero_Town_WalkLoop",
+      "loop": true,
+      "sourcePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角行走中.mov",
+      "sourceSha256": "bbaad715c1638546f33e64e3392045b224a1e0ff20f5b60bcf55d613617c533a",
+      "frameCount": 38,
+      "fps": 30.0,
+      "duration": 1.2666666666666666,
+      "atlas": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_loop_left/hero_town_walk_loop_left_atlas.png",
+      "atlasSha256": "197c5ef204ced5dfe0c1a783356e41418c5adfcd55b426c92a33fb9d7e22ebf4",
+      "framesDirectory": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_loop_left/frames",
+      "edgeAlphaMax": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "sourceMetadata": {
+        "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+        "codec": "hevc",
+        "pix_fmt": "yuv420p(tv, bt709, progressive)",
+        "audio_codec": "aac",
+        "fps": 30.0,
+        "source_size": [
+          1440,
+          1440
+        ],
+        "size": [
+          1440,
+          1440
+        ],
+        "rotate": 0,
+        "duration": 1.27,
+        "decodedFrameCount": 38,
+        "decodedDuration": 1.2666666666666666,
+        "sourceSha256": "bbaad715c1638546f33e64e3392045b224a1e0ff20f5b60bcf55d613617c533a"
+      }
+    },
+    {
+      "id": "hero_town_walk_stop_left",
+      "source": "主角急停.mov",
+      "flipbook": "FB_Hero_Town_WalkStop_Left",
+      "paperzd": "PZD_Hero_Town_WalkStop",
+      "loop": false,
+      "sourcePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\新建文件夹\\8月27号序列帧\\主角状态机\\基础状态机\\主角急停.mov",
+      "sourceSha256": "146dab5578f2b48037649603086383a3e6c394614d7811c2425239d6379c377b",
+      "frameCount": 11,
+      "fps": 30.0,
+      "duration": 0.36666666666666664,
+      "atlas": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_stop_left/hero_town_walk_stop_left_atlas.png",
+      "atlasSha256": "9b17a66db26b5f94403c568648e46ff2201d2fe43db5f0abfcd72a9a371c13ee",
+      "framesDirectory": "SourceAssets/AnimationProcessing/TownHeroHorizontal/hero_town_walk_stop_left/frames",
+      "edgeAlphaMax": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "sourceMetadata": {
+        "ffmpeg_version": "7.1-essentials_build-www.gyan.dev built with gcc 14.2.0 (Rev1, Built by MSYS2 project)",
+        "codec": "hevc",
+        "pix_fmt": "yuv420p(tv, bt709, progressive)",
+        "audio_codec": "aac",
+        "fps": 30.0,
+        "source_size": [
+          1440,
+          1440
+        ],
+        "size": [
+          1440,
+          1440
+        ],
+        "rotate": 0,
+        "duration": 0.37,
+        "decodedFrameCount": 11,
+        "decodedDuration": 0.36666666666666664,
+        "sourceSha256": "146dab5578f2b48037649603086383a3e6c394614d7811c2425239d6379c377b"
+      }
+    }
+  ]
+}
