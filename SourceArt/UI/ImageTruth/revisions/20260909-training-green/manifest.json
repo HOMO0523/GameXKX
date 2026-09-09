@@ -1,0 +1,53 @@
+{
+  "status": "user-requested-art-revision",
+  "visualApproval": "not-yet-recorded",
+  "request": "地图描边有点细，地图中间线条着色单色墨绿色，和别的图标区分一下，强调一下",
+  "tool": "built-in image_gen",
+  "prompt": "prompt.txt",
+  "reference": "SourceArt/UI/ImageTruth/confirmed/training_nav_training_ink_v001.png",
+  "generated": "SourceArt/UI/ImageTruth/revisions/20260909-training-green/generated-map.png",
+  "final": "SourceArt/UI/ImageTruth/revisions/20260909-training-green/training_nav_training_ink_green_v002.png",
+  "sha256": "fd32b23e4048232a8b535907188934902e02179da4ee2f01c1271fdc4dd137eb",
+  "size": [
+    1254,
+    1254
+  ],
+  "alpha_bbox": [
+    206,
+    317,
+    1051,
+    941
+  ],
+  "cleanup": {
+    "background_pixels": 1362412,
+    "rgb_artwork_unchanged": true,
+    "includes_enclosed_checker": true
+  },
+  "asset": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTraining.T_TrainingNavTraining",
+  "runtime_imported": true,
+  "verification": {
+    "source_export_pixel_exact": true,
+    "runtime_size": [
+      256,
+      256
+    ],
+    "runtime_compression": "BC7",
+    "compile": "Saved/Diagnostics/BottomNavDiscs/build-bold-ink.log",
+    "automation": "Saved/Automation/BottomNavBoldInk20260909/index.json",
+    "visual": "Saved/Diagnostics/BottomNavDiscs/preview-bold-ink.png",
+    "reviewed_by": "Codex",
+    "runtime_reloaded": true
+  },
+  "navigation_layout": {
+    "disc": 100,
+    "glyph": 82,
+    "tools_glyph": 70,
+    "button_y": 788,
+    "button_size": [
+      151,
+      136
+    ],
+    "label_outside_disc": true,
+    "map_glyph": 88
+  }
+}

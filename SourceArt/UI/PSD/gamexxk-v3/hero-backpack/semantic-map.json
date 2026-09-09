@@ -1,0 +1,95 @@
+{
+  "screenId": "town.hero_backpack",
+  "textBaked": false,
+  "heroRuntimeAtlas": "/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_idle_atlas",
+  "assets": [
+    {
+      "ueAssetName": "T_UIV3_HeroBackpack_PaperPanel",
+      "file": "RuntimeAssets/T_UIV3_HeroBackpack_PaperPanel.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Tab_Normal",
+      "file": "RuntimeAssets/T_UIV3_Tab_Normal.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Tab_Selected",
+      "file": "RuntimeAssets/T_UIV3_Tab_Selected.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_EquipmentSlot",
+      "file": "RuntimeAssets/T_UIV3_EquipmentSlot.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_ItemSlot",
+      "file": "RuntimeAssets/T_UIV3_ItemSlot.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_ItemDetailPanel",
+      "file": "RuntimeAssets/T_UIV3_ItemDetailPanel.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Neutral",
+      "file": "RuntimeAssets/T_UIV3_Button_Neutral.png",
+      "buttonSemantic": "neutral"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Primary",
+      "file": "RuntimeAssets/T_UIV3_Button_Primary.png",
+      "buttonSemantic": "primary"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Destructive",
+      "file": "RuntimeAssets/T_UIV3_Button_Destructive.png",
+      "buttonSemantic": "destructive"
+    },
+    {
+      "ueAssetName": "T_UIV3_ProgressTrack",
+      "file": "RuntimeAssets/T_UIV3_ProgressTrack.png"
+    }
+  ],
+  "runtimeAssets": [
+    {
+      "ueAssetName": "T_UIV3_HeroBackpack_PaperPanel",
+      "file": "RuntimeAssets/T_UIV3_HeroBackpack_PaperPanel.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Tab_Normal",
+      "file": "RuntimeAssets/T_UIV3_Tab_Normal.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Tab_Selected",
+      "file": "RuntimeAssets/T_UIV3_Tab_Selected.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_EquipmentSlot",
+      "file": "RuntimeAssets/T_UIV3_EquipmentSlot.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_ItemSlot",
+      "file": "RuntimeAssets/T_UIV3_ItemSlot.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_ItemDetailPanel",
+      "file": "RuntimeAssets/T_UIV3_ItemDetailPanel.png"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Neutral",
+      "file": "RuntimeAssets/T_UIV3_Button_Neutral.png",
+      "buttonSemantic": "neutral"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Primary",
+      "file": "RuntimeAssets/T_UIV3_Button_Primary.png",
+      "buttonSemantic": "primary"
+    },
+    {
+      "ueAssetName": "T_UIV3_Button_Destructive",
+      "file": "RuntimeAssets/T_UIV3_Button_Destructive.png",
+      "buttonSemantic": "destructive"
+    },
+    {
+      "ueAssetName": "T_UIV3_ProgressTrack",
+      "file": "RuntimeAssets/T_UIV3_ProgressTrack.png"
+    }
+  ]
+}

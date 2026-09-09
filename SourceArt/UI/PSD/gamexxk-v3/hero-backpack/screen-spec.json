@@ -1,0 +1,26 @@
+{
+  "screenId": "town.hero_backpack",
+  "canvas": {
+    "width": 1920,
+    "height": 1080,
+    "resolution": 72
+  },
+  "safeArea": {
+    "left": 48,
+    "top": 40,
+    "right": 48,
+    "bottom": 40
+  },
+  "reference": "Reference/approved_hero_backpack_reference.png",
+  "outputPsd": "outputs/UI_PSD/Candidates/GameXXK_HeroBackpack_V1.psd",
+  "requiredGroups": [
+    "00_Reference",
+    "10_WorldContext",
+    "20_Shell",
+    "30_Hero",
+    "40_Equipment",
+    "50_Inventory",
+    "60_Detail",
+    "70_RuntimeText"
+  ]
+}

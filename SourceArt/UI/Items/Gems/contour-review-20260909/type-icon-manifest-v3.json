@@ -1,0 +1,312 @@
+{
+  "status": "review-only",
+  "count": 12,
+  "quality_agnostic": true,
+  "runtime_imported": false,
+  "generated_with": "built-in imagegen",
+  "background_cleanup": "user-authorized local script",
+  "board": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v3.png",
+  "small_board": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-48px-review-v3.png",
+  "records": [
+    {
+      "type": "Attack",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-8bb03bfa-f2d2-4a4b-9c56-bd6affaf3ab6.png",
+      "prompt": "修正第一张参考图这枚宇宙品质宝石的造型，让它接近第二张参考图的清楚大体块、圆整结实轮廓和简洁水墨卡通手绘质感。第一张是修改目标，第二张只参考体块画法，绝不能照搬拳头形状或黄色。攻击红晶：把细长斜刀收短加宽，做成一块饱满有力的斜向楔形刃晶；保留明确朝右上的进攻尖锋，但尖端不能细得像针。原来零散、重复的侧尖减为左右各一处短粗连体凸棱，主轮廓干净有节奏。像一块厚实的刃形宝石，不是多把刀或漂浮晶簇。类别颜色严格保留第一张的红/蓝/绿。降低碎笔触和细碎切面，保留粗而自然的深墨外轮廓、3至5个主要平涂切面、明确但不过亮的顶面与侧面，少量手绘笔触，低光泽，略诙谐卡通。不要写实珠宝材质、复杂折射或精细雕刻。禁止皇冠、光环、金属镶托、徽章、文字、数字、百分号、眼睛嘴巴及任何漂浮物。本轮是基础值版本。单个饱满物品，正方形画布中占约88%到90%，四边安全透明边，48px也能辨识。输出独立透明PNG，背景不要绘制棋盘格或投影。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 665795,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        78,
+        48,
+        1194,
+        1202
+      ],
+      "source_sha256": "8b63e9017fa3f52ae56b0b7271fa343e0db9a4e3e2823275b0e3342edc601a23",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_Attack.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_Attack.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_Attack.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "d6d66096922ba75beb3df5f468961c7b646202096fac6feda12250bc0fc52b22"
+    },
+    {
+      "type": "Defense",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-42d723d0-e962-41fc-902f-198f931dc5a6.png",
+      "prompt": "修正第一张参考图这枚宇宙品质宝石的造型，让它接近第二张参考图的清楚大体块、圆整结实轮廓和简洁水墨卡通手绘质感。第一张是修改目标，第二张只参考体块画法，绝不能照搬拳头形状或黄色。防御蓝晶：保留宽厚盾形外轮廓，去掉多层套娃式边框和台阶框线。改成一块鼓起的厚盾晶体，宽肩、短宽、底端钝尖，外缘只有两处明确的厚结晶肩角；中心是饱满隆起的大晶腹，用3到5个大块面给出实在体积，不能像一张薄盾牌图标或UI边框。类别颜色严格保留第一张的红/蓝/绿。降低碎笔触和细碎切面，保留粗而自然的深墨外轮廓、3至5个主要平涂切面、明确但不过亮的顶面与侧面，少量手绘笔触，低光泽，略诙谐卡通。不要写实珠宝材质、复杂折射或精细雕刻。禁止皇冠、光环、金属镶托、徽章、文字、数字、百分号、眼睛嘴巴及任何漂浮物。本轮是基础值版本。单个饱满物品，正方形画布中占约88%到90%，四边安全透明边，48px也能辨识。输出独立透明PNG，背景不要绘制棋盘格或投影。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 733442,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        75,
+        56,
+        1177,
+        1204
+      ],
+      "source_sha256": "35473e88ffbad42601095b908c4ee7df2b23b9b5995bde316adb89583fb2467b",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_Defense.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_Defense.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_Defense.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "2bf21aaf00c14f776cbb801691dca2457115dc3fe202bc03f867331bbd648faa"
+    },
+    {
+      "type": "MaxHealth",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-22ef2aa3-2452-4ef7-8ed3-ada4d2dd6114.png",
+      "prompt": "修正第一张参考图这枚宇宙品质宝石的造型，让它接近第二张参考图的清楚大体块、圆整结实轮廓和简洁水墨卡通手绘质感。第一张是修改目标，第二张只参考体块画法，绝不能照搬拳头形状或黄色。生命绿晶：保留一眼可辨的饱满心形，去掉两侧的台阶翼片。两个心瓣更鼓、更圆，中央凹口清楚，下端短而圆钝，外缘整体简洁，只在心瓣转折处留下少数晶体棱角。用4到5个大块面表现厚实的心形晶石体积，不能像扁平心形按钮。类别颜色严格保留第一张的红/蓝/绿。降低碎笔触和细碎切面，保留粗而自然的深墨外轮廓、3至5个主要平涂切面、明确但不过亮的顶面与侧面，少量手绘笔触，低光泽，略诙谐卡通。不要写实珠宝材质、复杂折射或精细雕刻。禁止皇冠、光环、金属镶托、徽章、文字、数字、百分号、眼睛嘴巴及任何漂浮物。本轮是基础值版本。单个饱满物品，正方形画布中占约88%到90%，四边安全透明边，48px也能辨识。输出独立透明PNG，背景不要绘制棋盘格或投影。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 676548,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        37,
+        109,
+        1217,
+        1170
+      ],
+      "source_sha256": "4f996acc08c2835ddd45a6055c615a8333179aaa7e54eaebb060bfdc2e340624",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_MaxHealth.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_MaxHealth.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_MaxHealth.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "2ddc7266a5ece7c9e17ba020d0d72b3228f4cc1d357a7de4aac2e872ff48ab6f"
+    },
+    {
+      "type": "AttackPercent",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-d75aae23-b751-499d-8156-e6041f28339d.png",
+      "prompt": "只修参考图宝石中心的百分号，宝石本体轮廓、位置、颜色和所有切面全部保持不变。三个属性版本需要共用同一个百分号结构和视觉尺寸：最终512×512标准图标中，百分号的整体视觉框统一约132像素宽、148像素高；按完整画布衡量大小，不要按各颗宝石表面积重新定比例。保持正中心，同样的斜杠角度、笔画粗细、两个圆环的外径和孔径、同样的浅浮雕厚度。由两枚小扁圆晶环与一根斜晶条组成，微微凸起，顶面与薄侧面两档颜色，加一条很窄的右下暗边，不能做厚重徽章。百分号颜色改为浅珊瑚粉：顶面很浅的珊瑚红偏奶油粉，侧面低饱和玫瑰红；颜色只带轻微属性色，保留与深色宝石的清楚明度对比。画风沿用简洁水墨手绘卡通，手工大块面，不增加精细纹理或光晕。不复制宝石，不加其他符号、数字或外部装饰。只有一个百分号。透明PNG背景，不绘制棋盘格。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 666786,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        79,
+        48,
+        1194,
+        1201
+      ],
+      "source_sha256": "57196679361a185f8a847d8475c652397d0cb0017d2175d3f9b5c6917325b8eb",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_AttackPercent.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_AttackPercent.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_AttackPercent.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "44e18f16e68e80c00d640b8d432a82ce49f559d47f6d0a1ea4f89c31207dd4b2"
+    },
+    {
+      "type": "DefensePercent",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-21cfe7e4-6ed3-444a-a49f-3e2f0c1b1a41.png",
+      "prompt": "只修参考图宝石中心的百分号，宝石本体轮廓、位置、颜色和所有切面全部保持不变。三个属性版本需要共用同一个百分号结构和视觉尺寸：最终512×512标准图标中，百分号的整体视觉框统一约132像素宽、148像素高；按完整画布衡量大小，不要按各颗宝石表面积重新定比例。保持正中心，同样的斜杠角度、笔画粗细、两个圆环的外径和孔径、同样的浅浮雕厚度。由两枚小扁圆晶环与一根斜晶条组成，微微凸起，顶面与薄侧面两档颜色，加一条很窄的右下暗边，不能做厚重徽章。百分号颜色改为浅冰蓝：顶面明亮的浅冰蓝带一点青色，侧面柔和的中灰蓝；颜色只带轻微属性色，保留与深色宝石的清楚明度对比。画风沿用简洁水墨手绘卡通，手工大块面，不增加精细纹理或光晕。不复制宝石，不加其他符号、数字或外部装饰。只有一个百分号。透明PNG背景，不绘制棋盘格。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 732539,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        75,
+        56,
+        1178,
+        1204
+      ],
+      "source_sha256": "2160b4e8e3865a581ada58f774b19a7f2f082efd83e03c6482bc752ae6f53523",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_DefensePercent.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_DefensePercent.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_DefensePercent.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "b4debe1485cb4ea804bec6e4018c959f9e5088802f8dc5405f4fe80de1ad7adc"
+    },
+    {
+      "type": "MaxHealthPercent",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-5f85c453-bfab-4f6c-935b-d5e45994ffb1.png",
+      "prompt": "只修参考图宝石中心的百分号，宝石本体轮廓、位置、颜色和所有切面全部保持不变。三个属性版本需要共用同一个百分号结构和视觉尺寸：最终512×512标准图标中，百分号的整体视觉框统一约132像素宽、148像素高；按完整画布衡量大小，不要按各颗宝石表面积重新定比例。保持正中心，同样的斜杠角度、笔画粗细、两个圆环的外径和孔径、同样的浅浮雕厚度。由两枚小扁圆晶环与一根斜晶条组成，微微凸起，顶面与薄侧面两档颜色，加一条很窄的右下暗边，不能做厚重徽章。百分号颜色改为浅薄荷绿：顶面明亮的淡薄荷绿偏奶油绿，侧面低饱和灰绿色；颜色只带轻微属性色，保留与深色宝石的清楚明度对比。画风沿用简洁水墨手绘卡通，手工大块面，不增加精细纹理或光晕。不复制宝石，不加其他符号、数字或外部装饰。只有一个百分号。透明PNG背景，不绘制棋盘格。",
+      "original_mode": "RGB",
+      "removed_background_pixels": 673373,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        38,
+        108,
+        1218,
+        1172
+      ],
+      "source_sha256": "628122b153cd06cbe5a33b16c623a1cd7b3bc2ba1502ff739cf1f02b0651695a",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_MaxHealthPercent.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_MaxHealthPercent.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_MaxHealthPercent.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "269470ec1467570a6db379a4849a78f8182d087bee68e8b4d81a06ed926f3ab6"
+    },
+    {
+      "type": "DirectDamage",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-88d0fd96-b257-41b2-ac2f-1bfe1a4d7efd.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质直接伤害宝石”，这一类的最高品质。主体造型：暖赭黄色的拳形晶体：四个粗壮圆钝晶节连成向前击打的拳面，一块拇指形短晶棱斜扣在侧边，形成短宽饱满的出拳剪影，必须像一块长成拳头轮廓的宝石，不是人的皮肤手、不是金属拳套。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        46,
+        98,
+        1221,
+        1163
+      ],
+      "source_sha256": "316209e62b5e251be59ae92e1cc7bfd10e17162d5ab7bcf1cdeaaa32e4ff8dbe",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_DirectDamage.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_DirectDamage.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_DirectDamage.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "46b6ca385c84296e49f40ecdf4b569d00603cb937cf08ff1d7288071938da062"
+    },
+    {
+      "type": "ArmorGain",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-ea20efb8-72af-45bc-9818-e6b5b456e54d.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质护甲获得量宝石”，这一类的最高品质。主体造型：青绿色偏蓝的甲片晶簇：三片宽厚的倒V形晶体甲片紧贴层叠、向上生长，三个朝上的宽钝峰构成饱满的上升轮廓，底部连为一体。不是单块向下尖的盾牌，不能与普通防御宝石相同。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        60,
+        82,
+        1198,
+        1202
+      ],
+      "source_sha256": "52147fec26af00236b97c8911ab82fe8f6b9e3015191c7fb0b952c64d2ee9bb5",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_ArmorGain.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_ArmorGain.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_ArmorGain.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "fe514c619eaf70aa83455cb217372cadd8b604d3f30cf22a2eba0eec7a4c8d9c"
+    },
+    {
+      "type": "Healing",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-4874e2a5-063f-4c57-81d8-024ca81a86ae.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质治疗效果宝石”，这一类的最高品质。主体造型：黄绿色的药葫芦形晶体：上方一颗较小圆鼓晶瓣、下方一颗很大很胖的圆鼓晶瓣，中间短而明显的窄腰，顶部一小段弯曲晶梗，整体略歪而诙谐。完全由同一块黄绿晶体组成，不画瓶塞绳带和药液，不画心形。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        218,
+        54,
+        1022,
+        1206
+      ],
+      "source_sha256": "4214b7c6f6f5cd40f900eab080f8f619015bdfca714b63d070d71a78af9e6765",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_Healing.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_Healing.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_Healing.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "fa3ab2229b5741b4015718890d05b78c0be01dded69491ece0cba61e9f4635aa"
+    },
+    {
+      "type": "CounterDamage",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-2388d44a-cdd2-414f-aad2-cf3ec71222a8.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质反击伤害宝石”，这一类的最高品质。主体造型：橙色回钩刃形晶体：一块短宽厚实的弯曲晶刃从右侧绕回，清晰的大钩尖朝左内侧回指，背缘带两道同材质晶棱，整体是饱满的回击趋势。钩形负空间要大，小图也能看到回钩，不能像直线攻击刀锋。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        118,
+        61,
+        1191,
+        1186
+      ],
+      "source_sha256": "4d0c2f23cd1b160a4b6cc842ae1737a362953ee9829c54e5df9acb9682654799",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_CounterDamage.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_CounterDamage.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_CounterDamage.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "77f2a10dfb174a5a5bad5e900760f56f9288b472a06ac207146f552481628966"
+    },
+    {
+      "type": "FireDamage",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-f674c37f-66a0-4e50-a76f-5c7f4acf9054.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质火焰伤害宝石”，这一类的最高品质。主体造型：橘红色火舌形晶体：胖而宽的晶石底部连为一体，上方三束粗壮弯曲晶舌朝上卷曲，中间晶舌最大，一眼可辨火焰轮廓。是宝石本身长成火焰形，不是普通宝石外加燃烧特效，不画漂浮火星。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        82,
+        64,
+        1187,
+        1205
+      ],
+      "source_sha256": "ea7df121ee450d626c29136efed49b16c40b33026c2513cf92c48e3d3c0f7f72",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_FireDamage.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_FireDamage.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_FireDamage.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "2e42a843a2f67230f8cd1f6a895aa1e0794feb3348ba020530acb12f5611f765"
+    },
+    {
+      "type": "DamageOverTime",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-6b071eb7-20bc-4a6d-94b7-d83a951c9974.png",
+      "prompt": "中国武侠诙谐卡通游戏的“宇宙品质持续伤害宝石”独立物品图标。宝石本身是一块胖胖的深紫色水滴晶体，中央饱满宽厚，上端滴尖轻轻内弯，左右外缘各有两枚短粗倒钩状的晶尖，下方一枚钝尖收尾，形成有一点危险又诙谐的侵蚀毒滴轮廓。所有钩尖都是宝石本体连体生长，没有漂浮碎片，不加骷髅、眼睛、嘴巴。主色紫罗兰，阴影深紫，小块柔和薰衣草色高光，颜色不能像绿色生命或橘色火焰。简化水墨手绘卡通，厚而自然的深墨色轮廓，饱满大色块，3到5个主要切面，两档明暗，少量粗笔触，低光泽，48像素也能辨认带倒钩的胖水滴剪影。最高级只靠晶体外缘形态和层次表达；不加皇冠、光环、金属、徽章、文字、数字、百分号或特效。居中占正方形画布88%，留安全透明边。输出真正alpha透明PNG，不得绘制棋盘格背景，不要地面投影。",
+      "original_mode": "RGBA",
+      "removed_background_pixels": 0,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        206,
+        55,
+        1048,
+        1203
+      ],
+      "source_sha256": "daaf3d48b9152f96d82554c053b9d1d3823b83161f6ab6b777b387a1d794d3ba",
+      "raw_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-raw-v3\\T_Item_Gem_DamageOverTime.png",
+      "clean_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-clean-v3\\T_Item_Gem_DamageOverTime.png",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v3\\T_Item_Gem_DamageOverTime.png",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "normalized_sha256": "a8f13bbb4ca19e5db51b908c416802f9a1ad0ff31b273fcef2726d2774bffb03"
+    }
+  ]
+}

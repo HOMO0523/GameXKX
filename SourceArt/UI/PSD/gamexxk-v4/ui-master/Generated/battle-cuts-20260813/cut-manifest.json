@@ -1,0 +1,1009 @@
+{
+ "status": "PASS",
+ "elementCount": 59,
+ "elements": [
+  {
+   "file": "battle-cuts-20260813/1-02_山水战斗背景.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    0,
+    43,
+    1538,
+    769
+   ],
+   "size": [
+    1538,
+    726
+   ],
+   "sha256": "1fc9bf981fdb62a751ae8936e3f18cb28870bedae3fb57dd0509212b4f45f16b",
+   "category": "背景层",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/1-03_敌方公鸡意图卡.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    599,
+    62,
+    697,
+    173
+   ],
+   "size": [
+    98,
+    111
+   ],
+   "sha256": "2eac3289e419d04e8c5b6d56ce4eedb4f879674a2deda58419f4a53e664b1d9f",
+   "category": "信息展示",
+   "state": "敌方意图卡，未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/1-04_敌方狸猫意图卡.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    736,
+    62,
+    833,
+    174
+   ],
+   "size": [
+    97,
+    112
+   ],
+   "sha256": "2672d1d70e3042f12726f48d09902fd83bc2d416c664b73f1cba0df937a7a23b",
+   "category": "信息展示",
+   "state": "敌方意图卡，未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/1-05_公鸡敌人立绘_状态标签.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    163,
+    324,
+    336,
+    546
+   ],
+   "size": [
+    173,
+    222
+   ],
+   "sha256": "cf3d0e34d73c5ed89fe50f2a91f574a29aa422a00bc756c6f06bef034d38d87e",
+   "category": "信息展示",
+   "state": "敌方存活、普通亮度"
+  },
+  {
+   "file": "battle-cuts-20260813/1-06_公鸡生命条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    167,
+    512,
+    334,
+    520
+   ],
+   "size": [
+    167,
+    8
+   ],
+   "sha256": "63c475f73a7b4453147c04110bdabeec43eec26dc6492e5cdb7441f9c923beaf",
+   "category": "信息展示",
+   "state": "当前满血"
+  },
+  {
+   "file": "battle-cuts-20260813/1-07_狸猫敌人立绘_状态标签.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    699,
+    393,
+    918,
+    551
+   ],
+   "size": [
+    219,
+    158
+   ],
+   "sha256": "25ce1cfc60c305711ec89b7c7c3e3ddfe637cf779e0f9fbf21410ca0948bd413",
+   "category": "信息展示",
+   "state": "敌方存活、普通亮度"
+  },
+  {
+   "file": "battle-cuts-20260813/1-08_狸猫生命条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    553,
+    393,
+    714,
+    402
+   ],
+   "size": [
+    161,
+    9
+   ],
+   "sha256": "51fe389240698832ff00be9916d0ad5a65c6fbd237c6b1c2d45a55c1d19b9ebd",
+   "category": "信息展示",
+   "state": "当前满血"
+  },
+  {
+   "file": "battle-cuts-20260813/1-09_男性玩家角色立绘_状态标签.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1271,
+    390,
+    1473,
+    635
+   ],
+   "size": [
+    202,
+    245
+   ],
+   "sha256": "01159b06c9027ad89726f1aa0733337e87900f8a15c9f501787abc8f35c82084",
+   "category": "信息展示",
+   "state": "玩家角色，普通亮度"
+  },
+  {
+   "file": "battle-cuts-20260813/1-10_男性角色生命条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1013,
+    453,
+    1177,
+    462
+   ],
+   "size": [
+    164,
+    9
+   ],
+   "sha256": "aca8b6de38bee3da3653be10fc54e067b869218c89444b7c43bb11415a8936b9",
+   "category": "信息展示",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/1-11_男性角色内力_资源条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1013,
+    479,
+    1177,
+    489
+   ],
+   "size": [
+    164,
+    10
+   ],
+   "sha256": "23905698a0a8628a6b13f7398151afecf3d785e4111c9be3759a456012072fbd",
+   "category": "信息展示",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/1-12_男性角色护盾_状态图标.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1083,
+    491,
+    1113,
+    520
+   ],
+   "size": [
+    30,
+    29
+   ],
+   "sha256": "d77715a048b9cc5c7152254e4b00c619d47a22db7c29022fc76e153ebf74958e",
+   "category": "指示标记",
+   "state": "数值 `1`"
+  },
+  {
+   "file": "battle-cuts-20260813/1-13_女性玩家角色立绘_状态标签.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1507,
+    468,
+    1724,
+    714
+   ],
+   "size": [
+    217,
+    246
+   ],
+   "sha256": "d57e04405d3338039b1caaad73b41dcd56df838d7cf0b38f0abaeaa54124810a",
+   "category": "信息展示",
+   "state": "玩家角色，普通亮度"
+  },
+  {
+   "file": "battle-cuts-20260813/1-14_女性角色生命条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1205,
+    509,
+    1371,
+    518
+   ],
+   "size": [
+    166,
+    9
+   ],
+   "sha256": "ffaae8005b83e91dcef517c81225dc26b6639004f183c9f20d174de00964c1a7",
+   "category": "信息展示",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/1-15_女性角色内力_资源条.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1205,
+    537,
+    1372,
+    547
+   ],
+   "size": [
+    167,
+    10
+   ],
+   "sha256": "8955e6cc71b38fb115d0d5ca43b36b5e9cc09203e43d4bae848f0e82188d3f9e",
+   "category": "信息展示",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/1-16_女性角色护盾_状态图标.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1270,
+    549,
+    1301,
+    579
+   ],
+   "size": [
+    31,
+    30
+   ],
+   "sha256": "e78c1ad4962d7da59063919d28c917ee6e0ad187cd61b5db0d660f9643f4d434",
+   "category": "指示标记",
+   "state": "数值 `1`"
+  },
+  {
+   "file": "battle-cuts-20260813/1-17_手牌：鹤羽斩.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    383,
+    568,
+    515,
+    752
+   ],
+   "size": [
+    132,
+    184
+   ],
+   "sha256": "775b9221b343a351e1b484903da40694deb3051061d2970ebd35d5f9980c25df",
+   "category": "交互控件",
+   "state": "未选中、可用"
+  },
+  {
+   "file": "battle-cuts-20260813/1-18_手牌：横剑守势.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    526,
+    568,
+    658,
+    752
+   ],
+   "size": [
+    132,
+    184
+   ],
+   "sha256": "80bcc783e2c812cd89554fe68341e2186b6bddb5bcc38fa24b52f24e0476e6b0",
+   "category": "交互控件",
+   "state": "未选中、可用"
+  },
+  {
+   "file": "battle-cuts-20260813/1-19_手牌：碎岩击.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    671,
+    568,
+    802,
+    752
+   ],
+   "size": [
+    131,
+    184
+   ],
+   "sha256": "f28cd8b498581c15e0d6882df6d589677a8b4df28b70b594ed14d312c422617a",
+   "category": "交互控件",
+   "state": "未选中、可用"
+  },
+  {
+   "file": "battle-cuts-20260813/1-20_手牌：破甲突刺.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    814,
+    568,
+    946,
+    752
+   ],
+   "size": [
+    132,
+    184
+   ],
+   "sha256": "75db119aa74de680dd491b599a10a2345356a46b0a3b2761dcb4d06c8676ce6c",
+   "category": "交互控件",
+   "state": "未选中、可用"
+  },
+  {
+   "file": "battle-cuts-20260813/1-21_手牌：裂风斩.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    959,
+    568,
+    1090,
+    752
+   ],
+   "size": [
+    131,
+    184
+   ],
+   "sha256": "2d56add95f9702f825e886f330c48bfba3eebc1124bb5c1717f56a53e9b7ff25",
+   "category": "交互控件",
+   "state": "低亮/不可用状态"
+  },
+  {
+   "file": "battle-cuts-20260813/1-22_气力值.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1276,
+    603,
+    1353,
+    656
+   ],
+   "size": [
+    77,
+    53
+   ],
+   "sha256": "5813033d55a6b9de432f267000003d97f25172ff645a9abcd28cb62e6893f0b9",
+   "category": "指示标记",
+   "state": "当前回合剩余 `3`"
+  },
+  {
+   "file": "battle-cuts-20260813/1-23_结束回合按钮.png",
+   "source": "battle_open_pie.png",
+   "boxNative": [
+    1268,
+    677,
+    1384,
+    713
+   ],
+   "size": [
+    116,
+    36
+   ],
+   "sha256": "323d9b5cb673fee037d194199afc8d2508ae47e26cc64977047c23f655554aa6",
+   "category": "交互控件",
+   "state": "可用"
+  },
+  {
+   "file": "battle-cuts-20260813/2-02_山水战斗背景.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    0,
+    43,
+    1538,
+    769
+   ],
+   "size": [
+    1538,
+    726
+   ],
+   "sha256": "ca5d00820789afd180c2c81b4e6a41f97246bb96a63904dd4dcf1a589071a7fd",
+   "category": "背景层",
+   "state": "普通"
+  },
+  {
+   "file": "battle-cuts-20260813/2-03_狸猫意图卡.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    599,
+    62,
+    697,
+    174
+   ],
+   "size": [
+    98,
+    112
+   ],
+   "sha256": "92b91273a892b9bb73c2414b9a22f2b2aef8f45e2cf1beaee875e89e35db0226",
+   "category": "信息展示",
+   "state": "仅剩一个敌方意图卡"
+  },
+  {
+   "file": "battle-cuts-20260813/2-04_狸猫敌人立绘_状态标签.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    699,
+    393,
+    918,
+    551
+   ],
+   "size": [
+    219,
+    158
+   ],
+   "sha256": "8a763e32beaf3dce15520e9320932780a82be02dbe95a813586ac2aeebbfc509",
+   "category": "信息展示",
+   "state": "敌方目标，普通亮度"
+  },
+  {
+   "file": "battle-cuts-20260813/2-05_狸猫生命条.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    553,
+    393,
+    714,
+    402
+   ],
+   "size": [
+    161,
+    9
+   ],
+   "sha256": "5398598ad0b988f97171cbd171321626fdab368d2254297fc8393c4747ca3ec2",
+   "category": "信息展示",
+   "state": "受伤状态"
+  },
+  {
+   "file": "battle-cuts-20260813/2-06_男性玩家角色立绘_状态标签.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1271,
+    390,
+    1473,
+    635
+   ],
+   "size": [
+    202,
+    245
+   ],
+   "sha256": "6845a7dbb4f4e5dcf96d8db15aab55bc5f42986e5ff5bfdfa99457c15340f432",
+   "category": "信息展示",
+   "state": "目标选择中，半透明/禁用视觉"
+  },
+  {
+   "file": "battle-cuts-20260813/2-07_男性角色生命条.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1013,
+    453,
+    1177,
+    462
+   ],
+   "size": [
+    164,
+    9
+   ],
+   "sha256": "5611381ad75e1c67cf598e93601cd40a2bee97fac53b515891f0be14c5df98d7",
+   "category": "信息展示",
+   "state": "选择目标中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-08_男性角色内力_资源条.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1013,
+    479,
+    1177,
+    489
+   ],
+   "size": [
+    164,
+    10
+   ],
+   "sha256": "d2d7031e9c9b8c6be48eaa2cddd9a7f464bf4c0c6a0d3e7935f7c0a6813c5cab",
+   "category": "信息展示",
+   "state": "选择目标中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-09_男性角色护盾_状态图标.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1083,
+    491,
+    1113,
+    520
+   ],
+   "size": [
+    30,
+    29
+   ],
+   "sha256": "f0399a1ab27d8af64012da54f293db72eff11854e747e631e423da76daca900d",
+   "category": "指示标记",
+   "state": "数值 `2`"
+  },
+  {
+   "file": "battle-cuts-20260813/2-10_女性玩家角色立绘_状态标签.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1507,
+    468,
+    1724,
+    714
+   ],
+   "size": [
+    217,
+    246
+   ],
+   "sha256": "d57e04405d3338039b1caaad73b41dcd56df838d7cf0b38f0abaeaa54124810a",
+   "category": "信息展示",
+   "state": "目标选择中，半透明/禁用视觉"
+  },
+  {
+   "file": "battle-cuts-20260813/2-11_女性角色生命条.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1504,
+    714,
+    1712,
+    727
+   ],
+   "size": [
+    208,
+    13
+   ],
+   "sha256": "afa127dc531b7e44ee7c191bbff129df0ba6b41ce9307f993ffb21ea22d17950",
+   "category": "信息展示",
+   "state": "选择目标中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-12_女性角色内力_资源条.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1504,
+    753,
+    1713,
+    767
+   ],
+   "size": [
+    209,
+    14
+   ],
+   "sha256": "de8bd72a497eae232c6586a48a5dbcc1289f767c4738ff35d41f9ed8a9dc0e70",
+   "category": "信息展示",
+   "state": "选择目标中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-13_女性角色护盾_状态图标.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1270,
+    549,
+    1301,
+    579
+   ],
+   "size": [
+    31,
+    30
+   ],
+   "sha256": "8b80e0b5a086edb8f3e8a8e80475e4d3a8bc1b1c49b03d63599c778a01294909",
+   "category": "指示标记",
+   "state": "数值 `2`"
+  },
+  {
+   "file": "battle-cuts-20260813/2-14_手牌：守势回元.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    383,
+    568,
+    515,
+    752
+   ],
+   "size": [
+    132,
+    184
+   ],
+   "sha256": "dd4677cc2b30bcca26889eb59e83dad40cbaa2dc7f4ab79e824cb8c4b61130e8",
+   "category": "交互控件",
+   "state": "未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-15_手牌：破军.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    514,
+    508,
+    672,
+    728
+   ],
+   "size": [
+    158,
+    220
+   ],
+   "sha256": "febf2e3680c58faa9c73257df21160695310e1e46332147f545410bd1a9b0b86",
+   "category": "交互控件",
+   "state": "已选中、抬高/高亮"
+  },
+  {
+   "file": "battle-cuts-20260813/2-16_手牌：止血散.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    671,
+    568,
+    802,
+    752
+   ],
+   "size": [
+    131,
+    184
+   ],
+   "sha256": "35f37fc9491604d51585e92a5945b89df00fca85ddd33fdb3a6913a778a23fb7",
+   "category": "交互控件",
+   "state": "未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/2-17_手牌：归元术.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    814,
+    568,
+    946,
+    752
+   ],
+   "size": [
+    132,
+    184
+   ],
+   "sha256": "ae794d6c8cb5a2402023a359451246e253071132274b85d031f94d897537d78f",
+   "category": "交互控件",
+   "state": "未选中、低亮"
+  },
+  {
+   "file": "battle-cuts-20260813/2-18_气力值.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1276,
+    603,
+    1353,
+    656
+   ],
+   "size": [
+    77,
+    53
+   ],
+   "sha256": "f53a74316a0b5deda4143f718801fc68094b81995db32a36738bc90974d6270e",
+   "category": "指示标记",
+   "state": "当前回合剩余 `0`"
+  },
+  {
+   "file": "battle-cuts-20260813/2-19_结束回合按钮.png",
+   "source": "battle_target_select_pie.png",
+   "boxNative": [
+    1268,
+    677,
+    1384,
+    713
+   ],
+   "size": [
+    116,
+    36
+   ],
+   "sha256": "a1bf0607050372e6255305e3e7d9509f1aaf4adf436038d914324b1a36957386",
+   "category": "交互控件",
+   "state": "禁用/低亮"
+  },
+  {
+   "file": "battle-cuts-20260813/3-02_水墨山水战斗背景.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    4,
+    43,
+    1533,
+    765
+   ],
+   "size": [
+    1529,
+    722
+   ],
+   "sha256": "9a97f36849beba426ecd2b34a46782a960904a9bf9bfb9cba797e8d091035fe7",
+   "category": "背景层",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-08_奖励卡1_地脉回响.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    652,
+    329,
+    783,
+    417
+   ],
+   "size": [
+    131,
+    88
+   ],
+   "sha256": "2d8fe0bb46d56fe815fe1921bea24bf0cf307ef9b4f6374ec53b1311d9a7a153",
+   "category": "交互控件",
+   "state": "未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/3-09_奖励卡2_情深驱势.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    797,
+    329,
+    929,
+    417
+   ],
+   "size": [
+    132,
+    88
+   ],
+   "sha256": "94d419527d7e3b833b2f95d5a63703f4acd6126209e64c08c02e619866dfea72",
+   "category": "交互控件",
+   "state": "未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/3-10_奖励卡3_摘花援守.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    941,
+    329,
+    1073,
+    417
+   ],
+   "size": [
+    132,
+    88
+   ],
+   "sha256": "233369d3c5e85a3379e1de4ced28fae50d849e1ab71d39b8a763dfffa5252f69",
+   "category": "交互控件",
+   "state": "未选中"
+  },
+  {
+   "file": "battle-cuts-20260813/3-11_继续按钮.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    701,
+    425,
+    818,
+    462
+   ],
+   "size": [
+    117,
+    37
+   ],
+   "sha256": "a30f19ab78d92773b2b4adde55c9015ece3a124b1895740149c8c0ce9ccdec4c",
+   "category": "交互控件",
+   "state": "可点击未悬停"
+  },
+  {
+   "file": "battle-cuts-20260813/3-12_奖励图标1_地脉回响.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    670,
+    418,
+    758,
+    509
+   ],
+   "size": [
+    88,
+    91
+   ],
+   "sha256": "38293b90a5d38e41d1ee9013a729f49bf53964dea2c878c104642079615868d0",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-13_奖励图标2_情深驱势.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    834,
+    419,
+    916,
+    509
+   ],
+   "size": [
+    82,
+    90
+   ],
+   "sha256": "d15f375b10974da2ab8cb45163f4b5e67c4933db3b631c6841ef26f213007909",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-14_奖励图标3_摘花援守.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    960,
+    418,
+    1045,
+    509
+   ],
+   "size": [
+    85,
+    91
+   ],
+   "sha256": "5e4ecb2ab0d9ebede1b9ea69a3e71761bf4f4fe0de7eca389f35cf6f3619f8dd",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-15_玩家角色组_胜利变暗.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1024,
+    276,
+    1179,
+    508
+   ],
+   "size": [
+    155,
+    232
+   ],
+   "sha256": "39dde8b5c4da3f57d8088bcf9a2306f8806b0e6d5e2e9f4114231f8bae2a5cbd",
+   "category": "信息展示",
+   "state": "胜利后静态变暗25-35%"
+  },
+  {
+   "file": "battle-cuts-20260813/3-16_玩家名字等级信息.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1041,
+    426,
+    1179,
+    485
+   ],
+   "size": [
+    138,
+    59
+   ],
+   "sha256": "654f32b36c3fb030cbdf240e5307af18d02b27c96bb704ab7f3f6bf4a7f732cd",
+   "category": "信息展示",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-17_玩家状态图标1.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1051,
+    491,
+    1082,
+    520
+   ],
+   "size": [
+    31,
+    29
+   ],
+   "sha256": "bb6e6cfb388946b38b4c7d54d33db1bba9f2e470aa9d115605814aa67f1673d9",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-18_玩家状态图标2.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1082,
+    491,
+    1111,
+    520
+   ],
+   "size": [
+    29,
+    29
+   ],
+   "sha256": "a80bef4256391f3bfc99eb79aaffff57147b38cac481b79050be7d5a5ac25cba",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-19_玩家状态图标3.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1111,
+    490,
+    1140,
+    520
+   ],
+   "size": [
+    29,
+    30
+   ],
+   "sha256": "02c5f9d1d4ac790a8facd3b19eeb453bb75b3bdfc47bb5e600f7b0ac9c5cf26d",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-20_玩家防御资源信息.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1041,
+    523,
+    1179,
+    539
+   ],
+   "size": [
+    138,
+    16
+   ],
+   "sha256": "dc45311d8f29c54971c74390bfd695dd28293bdeca65996cd2296a590e7eae06",
+   "category": "信息展示",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-21_状态小卡_行动提示.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1275,
+    548,
+    1304,
+    579
+   ],
+   "size": [
+    29,
+    31
+   ],
+   "sha256": "d89e84a66a7b703985a09ca4652652a4096130fad94e09fb3dcbb28812920aa9",
+   "category": "指示标记",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-22_伙伴角色立绘_胜利态.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1206,
+    333,
+    1385,
+    550
+   ],
+   "size": [
+    179,
+    217
+   ],
+   "sha256": "e63b9ec14603d5c5d8fcb882fb860b4a6de40fc84358515ffa2340701aea175f",
+   "category": "信息展示",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-23_伙伴名字信息.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1248,
+    478,
+    1331,
+    497
+   ],
+   "size": [
+    83,
+    19
+   ],
+   "sha256": "a5aa1fd8002decc43b2052313278d24fdc6813e2db8f3d5d55e634a725bcf2ac",
+   "category": "信息展示",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-24_伙伴血条.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1206,
+    509,
+    1372,
+    521
+   ],
+   "size": [
+    166,
+    12
+   ],
+   "sha256": "b8d16d17b4c3e70f6734f9ff66c2118785b26bfc379324504b9065375bc6e9cb",
+   "category": "信息展示",
+   "state": "静止"
+  },
+  {
+   "file": "battle-cuts-20260813/3-25_伙伴资源数值信息.png",
+   "source": "battle_reward_pie.png",
+   "boxNative": [
+    1214,
+    525,
+    1370,
+    539
+   ],
+   "size": [
+    156,
+    14
+   ],
+   "sha256": "db9a785c129e3665121b536a304d7c04ccf8c4f03fe56c8bcb5d01d9c8e7b2a9",
+   "category": "信息展示",
+   "state": "静止"
+  }
+ ]
+}

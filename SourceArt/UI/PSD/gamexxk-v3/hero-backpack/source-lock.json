@@ -1,0 +1,13 @@
+{
+  "heroIdleSource": "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png",
+  "heroIdleSha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
+  "heroIdleDimensions": [
+    512,
+    512
+  ],
+  "runtimeAtlas": "T_character_00_hero_idle_atlas",
+  "runtimeAtlasAsset": "/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_idle_atlas",
+  "retiredSourceRoots": [
+    "SourceAssets/PartyDeck/card-portraits/generated"
+  ]
+}

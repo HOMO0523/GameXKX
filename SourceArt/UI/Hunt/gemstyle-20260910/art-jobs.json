@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "expectedCount": 5,
+  "style": "approved gem type-icons-v5",
+  "background": "magenta",
+  "jobs": [
+    {"slug":"HuntOrder","name":"讨伐令","subject":"一枚短胖厚实的竖向赤色木令牌，顶端一个大圆挂孔，底部削成两角，宽暖金边框，中央一个简化的黑金兽首符号；没有汉字、文字或细绳","asset":"/Game/GameXXK/UI/Items/T_Item_HuntOrder","note":"三种品质共用物件图，名称/底面/tooltip使用对应普通/珍稀/不朽品质表现"},
+    {"slug":"TrainingNormalChest","name":"普通宝箱","subject":"一只饱满短胖的棕木弧顶箱，粗厚蓝灰铁箍和一个大锁扣，只用三块大木色面概括木板，不画细木纹或小铆钉","asset":"/Game/GameXXK/UI/Items/T_Item_TrainingNormalChest"},
+    {"slug":"TrainingAdvancedChest","name":"高级宝箱","subject":"一只饱满短胖的深青蓝弧顶宝箱，粗宽暖金边与大金锁扣，箱面仅一个简化青玉大饰块，不画细雕花","asset":"/Game/GameXXK/UI/Items/T_Item_TrainingAdvancedChest"},
+    {"slug":"TrainingHuntChest","name":"讨伐宝箱","subject":"一只厚实饱满的朱红漆面弧顶宝箱，宽金色包边和一个大兽首形金锁扣，红金主色非常明确，最多三处大装饰，不画细雕花、皇冠或光圈","asset":"/Game/GameXXK/UI/Items/T_Item_TrainingHuntChest"},
+    {"slug":"RouteRelicChest","name":"路线宝匣","subject":"一只小巧饱满的暖金色宝匣，深青绿宽锁扣和大包角，干净宽厚轮廓，略微侧向，只画三到五块大明暗面，无细纹","asset":"/Game/GameXXK/UI/RouteMap/T_RouteNodeChest","additionalConsumer":"/Game/GameXXK/UI/Talents/Flat/T_TalentFlat_Chest"}
+  ]
+}

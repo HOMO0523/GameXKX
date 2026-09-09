@@ -1,0 +1,99 @@
+{
+  "status": "approved-awaiting-runtime-import",
+  "count": 3,
+  "planned_gem_type_count": 17,
+  "quality_agnostic": true,
+  "runtime_imported": false,
+  "board": "SourceArt\\UI\\Items\\Gems\\resistance-review-20260909\\resistance-gems-review-v1.png",
+  "records": [
+    {
+      "type": "FireResistance",
+      "title": "火焰抗性",
+      "refs": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_Defense.png",
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_FireDamage.png"
+      ],
+      "prompt": "为第一张参考宝石系列制作一枚新的“元素抗性宝石”定型图。第一张参考防御宝石只参考简洁厚实体块、墨边与手绘材质；第二张参考对应元素伤害宝石只参考配色与元素语汇。抗性宝石要表现“元素被厚实晶壳包住、抵挡伤害”，仍然是一整块饱满宝石，不能变成真实装备盾牌、徽章或复杂首饰。国风简化水墨手绘、略诙谐卡通，粗深墨轮廓、3至5个大切面，平涂为主，少量自然干笔，低光泽、低细节。中间元素符号是同块晶体的一处简单浅浮雕或内嵌大切面，有一点厚度，不能像白色印刷贴纸。单图正方形，宝石完整居中，视觉占幅约88%，边缘安全留白；缩到48像素仍能看清元素及防护外壳。只画一颗。不要百分号、字母、数字、文字、皇冠、光环、金属镶托、眼睛嘴、漂浮粒子、复杂花纹。输出真正透明的PNG背景，不画棋盘格、不画黑底或纸底。本枚为火焰抗性。外轮廓是一块宽圆、上方弧拱、底部钝尖的厚实晶壳，肩部圆整、边缘收拢；给人结实的隔热防护感。主体朱红与深橘红，侧面深赭，中央包住一枚简洁、短粗、三瓣的橘黄色火焰切面，火焰根部宽而稳，整个火焰不穿出外轮廓。外形必须与参考中的向上窜出的攻击火焰不同，重点是圆拱厚壳包裹火焰。不要同心多层边框，最多一圈厚晶边。",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a081fe-c2ea-7c52-9b93-e50433252402/exec-39773e3e-7177-454d-96ca-014f33f9910b.png",
+      "original_mode": "RGB",
+      "removed_background_pixels": 737501,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        83,
+        55,
+        1171,
+        1196
+      ],
+      "source_sha256": "bd5ba83980203d8e01b926fe18b12a9c45720ed665f868c9759105cce787bbee",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\resistance-review-20260909\\icons\\T_Item_Gem_FireResistance.png",
+      "normalized_sha256": "9713e823c39d018b04d32dce552f01757543f890b7b868b52b038c8bb2bfd3a0",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "percent_overlay": false
+    },
+    {
+      "type": "FrostResistance",
+      "title": "冰霜抗性",
+      "refs": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_Defense.png",
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_FrostDamage.png"
+      ],
+      "prompt": "为第一张参考宝石系列制作一枚新的“元素抗性宝石”定型图。第一张参考防御宝石只参考简洁厚实体块、墨边与手绘材质；第二张参考对应元素伤害宝石只参考配色与元素语汇。抗性宝石要表现“元素被厚实晶壳包住、抵挡伤害”，仍然是一整块饱满宝石，不能变成真实装备盾牌、徽章或复杂首饰。国风简化水墨手绘、略诙谐卡通，粗深墨轮廓、3至5个大切面，平涂为主，少量自然干笔，低光泽、低细节。中间元素符号是同块晶体的一处简单浅浮雕或内嵌大切面，有一点厚度，不能像白色印刷贴纸。单图正方形，宝石完整居中，视觉占幅约88%，边缘安全留白；缩到48像素仍能看清元素及防护外壳。只画一颗。不要百分号、字母、数字、文字、皇冠、光环、金属镶托、眼睛嘴、漂浮粒子、复杂花纹。输出真正透明的PNG背景，不画棋盘格、不画黑底或纸底。本枚为冰霜抗性。外轮廓是一整块宽厚的六角护壁晶体，顶底短平、左右宽肩与清楚的大切角，比防御盾更横向；只有左右各一处短粗肩棱，完全没有雪花向外伸出的六根长臂。主色浅冰蓝、青蓝，侧面深靛蓝；中央嵌一枚非常简洁的冷白浅蓝六瓣雪晶印记，六瓣短粗、凹凸只一层，符号全被厚六角晶壁包住。用三至五个大块面突出冰壁厚度。不要城堡、尖塔、多层窗框。",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a081fe-c2ea-7c52-9b93-e50433252402/exec-eb164ca0-f5ba-4b2d-a9bd-5802428622d9.png",
+      "original_mode": "RGB",
+      "removed_background_pixels": 724744,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        48,
+        79,
+        1206,
+        1181
+      ],
+      "source_sha256": "ca97e5d4acd735ff97e19de737e9f92125ae39ce40e52598d8d775ace4f7ab6f",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\resistance-review-20260909\\icons\\T_Item_Gem_FrostResistance.png",
+      "normalized_sha256": "1edc4e337e57a3eb46507fc82f73071a207fdfbd7a66a9bffd3d5d67c4bd21fa",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "percent_overlay": false
+    },
+    {
+      "type": "LightningResistance",
+      "title": "雷击抗性",
+      "refs": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_Defense.png",
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5/T_Item_Gem_LightningDamage.png"
+      ],
+      "prompt": "为第一张参考宝石系列制作一枚新的“元素抗性宝石”定型图。第一张参考防御宝石只参考简洁厚实体块、墨边与手绘材质；第二张参考对应元素伤害宝石只参考配色与元素语汇。抗性宝石要表现“元素被厚实晶壳包住、抵挡伤害”，仍然是一整块饱满宝石，不能变成真实装备盾牌、徽章或复杂首饰。国风简化水墨手绘、略诙谐卡通，粗深墨轮廓、3至5个大切面，平涂为主，少量自然干笔，低光泽、低细节。中间元素符号是同块晶体的一处简单浅浮雕或内嵌大切面，有一点厚度，不能像白色印刷贴纸。单图正方形，宝石完整居中，视觉占幅约88%，边缘安全留白；缩到48像素仍能看清元素及防护外壳。只画一颗。不要百分号、字母、数字、文字、皇冠、光环、金属镶托、眼睛嘴、漂浮粒子、复杂花纹。输出真正透明的PNG背景，不画棋盘格、不画黑底或纸底。本枚为雷击抗性。外轮廓是一块宽实、扁方、四角大切角的晶甲，顶部低拱、底部短平，两侧收得干净，像能够承受雷击的结实晶壳；不要长尖闪电外形，不要三角盾底。主体金黄与琥珀黄，左右厚侧面用暗金赭色和少量深紫阴影。中央仅一枚宽短的浅金黄色之字闪电切面，斜条宽而结实、三个转角清楚，带简洁浅浮雕侧面，完整收在晶壳内部，不越出轮廓。整体必须明显区别于圆拱红火抗、六角蓝冰抗：本枚是扁方金晶甲。",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a081fe-c2ea-7c52-9b93-e50433252402/exec-c91233ba-5951-4131-a91e-3f8a8211e2d4.png",
+      "original_mode": "RGB",
+      "removed_background_pixels": 537687,
+      "rgb_artwork_preserved_before_resize": true,
+      "source_alpha_bbox": [
+        33,
+        41,
+        1220,
+        1180
+      ],
+      "source_sha256": "efeebcbfe142e407c528704d1fb32466125a7eafc65fe5295e397cb87687a937",
+      "normalized_png": "SourceArt\\UI\\Items\\Gems\\resistance-review-20260909\\icons\\T_Item_Gem_LightningResistance.png",
+      "normalized_sha256": "682d298e6cb4fd20911a60d57e058eda4cdae8fea557aca67ae54569ed3d30de",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "transparent_border": true,
+      "percent_overlay": false
+    }
+  ],
+  "approved_for_runtime": true,
+  "approval_note": "User approved these three resistance gem icons with 可以."
+}

@@ -1,0 +1,163 @@
+{
+  "stage": "highest-types-review",
+  "count": 12,
+  "approved_for_runtime": false,
+  "records": [
+    {
+      "type": "Attack",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-402a8d85-1203-4cdf-a6ac-3855d36f68b2.png",
+      "prompt": "Use case: background-extraction. This is an existing red cartoon crystal icon on an UNWANTED gray checkerboard. Delete only every background checkerboard pixel and make the entire exterior genuinely transparent (RGBA alpha=0). Preserve the one-piece red blade-shaped crystal cluster, its black outline, small connected side points, hand-painted colors and orientation exactly. Do not depict transparency as a pattern: no checkerboard pixels, no white or black fill outside the object, no shadows. Do not add any crown, halo, symbol, metal, letters or ornaments. The result must be the isolated icon with a real transparent alpha channel.",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_Attack_Cosmic.png",
+      "image_mode": "RGB",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": false
+    },
+    {
+      "type": "Defense",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-130da7a6-7092-4391-b939-710711193f37.png",
+      "prompt": "把参考图改为本项目最终方向的“宇宙品质”防御宝石图标。必须彻底删除参考图的皇冠、黄色装饰、光环/墨圈、外部徽记和漂浮碎片。只保留一个连成整体的宝石本体，用它自身的轮廓表达最高稀有度。新轮廓：蓝色厚盾形晶体：宽肩、短宽敦实、对称稳重、下端钝尖，盾状宝石本体外缘有三层简洁的阶梯状结晶台阶，所有部分都是一体的蓝色晶体；不要金属盾牌或额外护具。保留参考图的简洁水墨手绘卡通风格、粗而自然的墨色外轮廓、少量粗笔触、饱满大色块和哑光质感；3至5个主要切面，一小块暖白高光即可。没有精密切面、镜面闪光、珠宝渲染、金属镶托、刻字、数字、眼睛嘴巴、粒子或星标。造型略夸张诙谐，高填充率约88%到90%，正方形画布四周5%安全透明边。缩小到48像素，单看剪影也必须认出属性；稀有度只能来自连体晶形的外缘层次。真正透明RGBA PNG背景，不能画棋盘格，不要背景底板或投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_Defense_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "MaxHealth",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-6be53414-27aa-490d-b136-d26cf1774cf3.png",
+      "prompt": "Use case: background-extraction. Remove ONLY the entire gray checkerboard background from this green heart-shaped gem icon. Produce a real RGBA PNG with alpha=0 outside the gem, not a painted transparency checkerboard. Preserve the icon itself: the two-lobed green heart silhouette with stepped crystal edges, thick black hand-painted outline, green color fills, low-gloss highlights, size, orientation and proportions. Do not add or redraw ornaments. No crown, no halo, no gold, no letters, no shadow. Clean opaque jewel edge against true alpha transparency. The checkerboard is unwanted image content and must be completely deleted.",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_MaxHealth_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "AttackPercent",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-0b98e539-af52-4a03-9c2a-e6fe81291632.png",
+      "prompt": "只修改参考图一处：在这枚宝石主体的正中心加一个简洁的暖白色手绘“%”符号，大小约主体宽度的25%，让它成为百分比宝石。必须完全保留原图的单颗主宝石轮廓、全部晶体形状、大小、数量、颜色、位置、手绘笔触和透明背景。不叠加第二颗主石，不复制成双刃/双盾/双心，也不加其它装饰。百分号直接画在晶体表面，不是外置徽章。一个图标，一个百分号。保留真实alpha透明背景；严禁把透明区画成棋盘格或纯色底。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_AttackPercent_Cosmic.png",
+      "image_mode": "RGB",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": false
+    },
+    {
+      "type": "DefensePercent",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-1e16426e-d0bd-442d-ba43-4cac342fe5fa.png",
+      "prompt": "只修改参考图一处：在这枚宝石主体的正中心加一个简洁的暖白色手绘“%”符号，大小约主体宽度的25%，让它成为百分比宝石。必须完全保留原图的单颗主宝石轮廓、全部晶体形状、大小、数量、颜色、位置、手绘笔触和透明背景。不叠加第二颗主石，不复制成双刃/双盾/双心，也不加其它装饰。百分号直接画在晶体表面，不是外置徽章。一个图标，一个百分号。保留真实alpha透明背景；严禁把透明区画成棋盘格或纯色底。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_DefensePercent_Cosmic.png",
+      "image_mode": "RGB",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": false
+    },
+    {
+      "type": "MaxHealthPercent",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-d8b2b120-0405-4131-8fc6-dcd3a3f3a710.png",
+      "prompt": "只修改参考图一处：在这枚宝石主体的正中心加一个简洁的暖白色手绘“%”符号，大小约主体宽度的25%，让它成为百分比宝石。必须完全保留原图的单颗主宝石轮廓、全部晶体形状、大小、数量、颜色、位置、手绘笔触和透明背景。不叠加第二颗主石，不复制成双刃/双盾/双心，也不加其它装饰。百分号直接画在晶体表面，不是外置徽章。一个图标，一个百分号。保留真实alpha透明背景；严禁把透明区画成棋盘格或纯色底。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_MaxHealthPercent_Cosmic.png",
+      "image_mode": "RGB",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": false
+    },
+    {
+      "type": "DirectDamage",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-88d0fd96-b257-41b2-ac2f-1bfe1a4d7efd.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质直接伤害宝石”，这一类的最高品质。主体造型：暖赭黄色的拳形晶体：四个粗壮圆钝晶节连成向前击打的拳面，一块拇指形短晶棱斜扣在侧边，形成短宽饱满的出拳剪影，必须像一块长成拳头轮廓的宝石，不是人的皮肤手、不是金属拳套。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_DirectDamage_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "ArmorGain",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-ea20efb8-72af-45bc-9818-e6b5b456e54d.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质护甲获得量宝石”，这一类的最高品质。主体造型：青绿色偏蓝的甲片晶簇：三片宽厚的倒V形晶体甲片紧贴层叠、向上生长，三个朝上的宽钝峰构成饱满的上升轮廓，底部连为一体。不是单块向下尖的盾牌，不能与普通防御宝石相同。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_ArmorGain_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "Healing",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-4874e2a5-063f-4c57-81d8-024ca81a86ae.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质治疗效果宝石”，这一类的最高品质。主体造型：黄绿色的药葫芦形晶体：上方一颗较小圆鼓晶瓣、下方一颗很大很胖的圆鼓晶瓣，中间短而明显的窄腰，顶部一小段弯曲晶梗，整体略歪而诙谐。完全由同一块黄绿晶体组成，不画瓶塞绳带和药液，不画心形。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_Healing_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "CounterDamage",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-2388d44a-cdd2-414f-aad2-cf3ec71222a8.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质反击伤害宝石”，这一类的最高品质。主体造型：橙色回钩刃形晶体：一块短宽厚实的弯曲晶刃从右侧绕回，清晰的大钩尖朝左内侧回指，背缘带两道同材质晶棱，整体是饱满的回击趋势。钩形负空间要大，小图也能看到回钩，不能像直线攻击刀锋。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_CounterDamage_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "FireDamage",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-f674c37f-66a0-4e50-a76f-5c7f4acf9054.png",
+      "prompt": "中国武侠诙谐卡通游戏的独立背包图标：“宇宙品质火焰伤害宝石”，这一类的最高品质。主体造型：橘红色火舌形晶体：胖而宽的晶石底部连为一体，上方三束粗壮弯曲晶舌朝上卷曲，中间晶舌最大，一眼可辨火焰轮廓。是宝石本身长成火焰形，不是普通宝石外加燃烧特效，不画漂浮火星。重要：用宝石本体的轮廓直接表达属性和最高稀有度。简化水墨手绘卡通风格，粗而自然的深墨色轮廓，饱满大色块，3至5个主要切面，两档平涂明暗，一块小暖白高光即可，少量粗笔刷痕，低光泽。画得朴拙、有趣、短宽结实，48像素也看得清。切忌写实珠宝、精细折射、细碎纹理或复杂装饰。不加皇冠、光环、底板、金属、徽章、符号、字母数字、眼睛嘴巴、飘散碎片或粒子。所有部分连成单个紧凑晶体，居中占方形画布约88%，四边留安全空隙。背景是真正透明alpha，不得绘制棋盘格或任何背景，也没有地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_FireDamage_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    },
+    {
+      "type": "DamageOverTime",
+      "quality": "Cosmic",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a081fe-c2ea-7c52-9b93-e50433252402\\exec-6b071eb7-20bc-4a6d-94b7-d83a951c9974.png",
+      "prompt": "中国武侠诙谐卡通游戏的“宇宙品质持续伤害宝石”独立物品图标。宝石本身是一块胖胖的深紫色水滴晶体，中央饱满宽厚，上端滴尖轻轻内弯，左右外缘各有两枚短粗倒钩状的晶尖，下方一枚钝尖收尾，形成有一点危险又诙谐的侵蚀毒滴轮廓。所有钩尖都是宝石本体连体生长，没有漂浮碎片，不加骷髅、眼睛、嘴巴。主色紫罗兰，阴影深紫，小块柔和薰衣草色高光，颜色不能像绿色生命或橘色火焰。简化水墨手绘卡通，厚而自然的深墨色轮廓，饱满大色块，3到5个主要切面，两档明暗，少量粗笔触，低光泽，48像素也能辨认带倒钩的胖水滴剪影。最高级只靠晶体外缘形态和层次表达；不加皇冠、光环、金属、徽章、文字、数字、百分号或特效。居中占正方形画布88%，留安全透明边。输出真正alpha透明PNG，不得绘制棋盘格背景，不要地面投影。",
+      "source_png": "SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\highest-raw\\T_Item_Gem_DamageOverTime_Cosmic.png",
+      "image_mode": "RGBA",
+      "image_size": [
+        1254,
+        1254
+      ],
+      "true_alpha": true
+    }
+  ]
+}

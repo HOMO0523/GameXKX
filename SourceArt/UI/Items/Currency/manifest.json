@@ -1,0 +1,35 @@
+{
+  "status": "source_checked",
+  "textures": [
+    {
+      "name": "T_Item_TravelMoney",
+      "destination": "/Game/GameXXK/UI/Items/Currency",
+      "source": "SourceArt/UI/Items/Currency/T_Item_TravelMoney.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "alpha_bbox": [
+        49,
+        53,
+        1175,
+        1182
+      ],
+      "visible_alpha_bbox": [
+        103,
+        86,
+        1172,
+        1178
+      ],
+      "sha256": "d92a59ebdeee30d03ca96717a9b8d34ac7ddea2d0a6eea163b0b08ba012953cb",
+      "decoded_bgra_sha1": "6da31a7d8fb7f143331553745aaca6c27f3b74d5",
+      "generated_source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08602-b9f7-7d13-aee2-255fd3d4fdcb\\exec-6219694e-52b2-4a42-ac3c-32d1131c44ef.png",
+      "approved_design": "exec-90d25f0d-91d3-4fa4-afc3-60b0ce8abecd.png"
+    }
+  ]
+}

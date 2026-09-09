@@ -1,0 +1,14 @@
+{
+  "ok": true,
+  "screenId": "town.hero_backpack",
+  "canvas": [
+    1920,
+    1080
+  ],
+  "imageLayers": 57,
+  "editableTextLayers": 26,
+  "runtimeAssets": 10,
+  "heroIdleSource": "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png",
+  "preview": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/gamexxk-v3/hero-backpack/Previews/GameXXK_HeroBackpack_V1.png",
+  "outputPsd": "D:/UE5 demo/GameXXK/outputs/UI_PSD/Candidates/GameXXK_HeroBackpack_V1.psd"
+}

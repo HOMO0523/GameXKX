@@ -1,0 +1,79 @@
+{
+  "status": "user-requested-art-revision",
+  "visualApproval": "not-yet-recorded",
+  "tool": "built-in image_gen",
+  "prompts": "prompts.json",
+  "runtime_imported": true,
+  "images": [
+    {
+      "kind": "Warehouse",
+      "id": "training.nav.warehouse.ink.monochrome.v002",
+      "final": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/T_TrainingNavWarehouse.png",
+      "generated": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/Warehouse-generated.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "786d2fa7e5f760a7946b14e83183572556f003fce30cec6c767c9466389976f4",
+      "alpha_bbox": [
+        172,
+        251,
+        1082,
+        996
+      ],
+      "asset": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavWarehouse",
+      "cleanup": "Removed exterior and enclosed checker only; opaque ink RGB unchanged",
+      "reference": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/T_TrainingNavWarehouse.png"
+    },
+    {
+      "kind": "Training",
+      "id": "training.nav.training.ink.v001",
+      "final": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/T_TrainingNavTraining.png",
+      "generated": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/Training-generated.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "1df5008fed1c0ff3e3c16eda034e800b2662821ea14b3045478cc2c2c501e642",
+      "alpha_bbox": [
+        185,
+        296,
+        1079,
+        962
+      ],
+      "asset": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavTraining",
+      "cleanup": "Removed exterior and enclosed checker only; opaque ink RGB unchanged",
+      "reference": "SourceArt/UI/ImageTruth/revisions/20260909-training-green/training_nav_training_ink_green_v002.png"
+    }
+  ],
+  "presentation": {
+    "disc": 100,
+    "glyph": 82,
+    "map_glyph": 88,
+    "tools_glyph": 70,
+    "talents_tint_linear": [
+      0.01,
+      0.01,
+      0.01,
+      1.0
+    ],
+    "tools_tint_linear": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+    ]
+  },
+  "verification": {
+    "source_export_pixel_exact": true,
+    "runtime_size": [
+      256,
+      256
+    ],
+    "runtime_compression": "BC7",
+    "compile": "Saved/Diagnostics/BottomNavDiscs/build-contour-v2.log",
+    "automation": "Saved/Automation/BottomNavContourV220260909/index.json",
+    "visual": "Saved/Diagnostics/BottomNavDiscs/preview-contour-v2.png",
+    "reviewed_by": "Codex"
+  }
+}

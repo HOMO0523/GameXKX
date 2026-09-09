@@ -1,0 +1,71 @@
+{
+  "status": "user-requested-art-revision",
+  "visualApproval": "not-yet-recorded",
+  "tool": "built-in image_gen",
+  "prompts": "prompts.json",
+  "runtime_imported": true,
+  "images": [
+    {
+      "kind": "Warehouse",
+      "id": "training.nav.warehouse.ink.monochrome.v002",
+      "final": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/T_TrainingNavWarehouse.png",
+      "generated": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/Warehouse-generated.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "cb9ca377e19e8b833f3cd6c4b4041122e7be838a47d6c0ca05a16aedf56f4bf4",
+      "alpha_bbox": [
+        185,
+        263,
+        1070,
+        982
+      ],
+      "asset": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavWarehouse",
+      "cleanup": "Removed exterior and enclosed checker only; opaque ink RGB unchanged"
+    },
+    {
+      "kind": "Formation",
+      "id": "training.nav.formation.ink.v002",
+      "final": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/T_TrainingNavFormation.png",
+      "generated": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/Formation-generated.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "sha256": "b7147961b62f9d318d05abd1c946bedaa1cb7e1514615e90bdf2599048f28ac9",
+      "alpha_bbox": [
+        127,
+        304,
+        1128,
+        950
+      ],
+      "asset": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingNavFormation",
+      "cleanup": "Removed exterior and enclosed checker only; opaque ink RGB unchanged"
+    }
+  ],
+  "presentation": {
+    "disc": 100,
+    "glyph": 82,
+    "map_glyph": 88,
+    "tools_glyph": 70,
+    "talents_tools_tint_linear": [
+      0.01,
+      0.01,
+      0.01,
+      1.0
+    ]
+  },
+  "verification": {
+    "source_export_pixel_exact": true,
+    "runtime_size": [
+      256,
+      256
+    ],
+    "runtime_compression": "BC7",
+    "compile": "Saved/Diagnostics/BottomNavDiscs/build-bold-ink.log",
+    "automation": "Saved/Automation/BottomNavBoldInk20260909/index.json",
+    "visual": "Saved/Diagnostics/BottomNavDiscs/preview-bold-ink.png",
+    "reviewed_by": "Codex"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "frames": [
+    {
+      "frame": 0,
+      "alpha_levels": 245,
+      "opaque_pixels": 4385
+    },
+    {
+      "frame": 1,
+      "alpha_levels": 250,
+      "opaque_pixels": 7997
+    },
+    {
+      "frame": 2,
+      "alpha_levels": 255,
+      "opaque_pixels": 14680
+    },
+    {
+      "frame": 3,
+      "alpha_levels": 216,
+      "opaque_pixels": 3961
+    },
+    {
+      "frame": 4,
+      "alpha_levels": 202,
+      "opaque_pixels": 694
+    },
+    {
+      "frame": 5,
+      "alpha_levels": 187,
+      "opaque_pixels": 216
+    }
+  ],
+  "size": [
+    2048,
+    2240
+  ],
+  "cell": [
+    256,
+    280
+  ],
+  "columns": 8,
+  "rows": 8,
+  "sha256": "b7a64f2478625f43e37fbf9b2841f6717ceee8722375e92551d81a69d909b025"
+}

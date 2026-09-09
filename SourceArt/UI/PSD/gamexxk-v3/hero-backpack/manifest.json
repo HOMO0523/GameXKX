@@ -1,0 +1,883 @@
+{
+  "document": {
+    "name": "GameXXK_HeroBackpack_V1",
+    "width": 1920,
+    "height": 1080,
+    "resolution": 72,
+    "scale": 1,
+    "outputPsd": "D:/UE5 demo/GameXXK/outputs/UI_PSD/Candidates/GameXXK_HeroBackpack_V1.psd"
+  },
+  "sourceLock": {
+    "heroIdleSource": "SourceAssets/AnimationProcessing/Production/character_00_hero_idle/frames/frame_0000.png",
+    "heroIdleSha256": "d6e1bcc2acbce962c5b872ac628c5a86dbcc99466a56d6a6a48ab8bef6a8cc58",
+    "heroIdleDimensions": [
+      512,
+      512
+    ],
+    "runtimeAtlas": "T_character_00_hero_idle_atlas",
+    "runtimeAtlasAsset": "/Game/GameXXK/BattleAnimations/Atlases/T_character_00_hero_idle_atlas",
+    "retiredSourceRoots": [
+      "SourceAssets/PartyDeck/card-portraits/generated"
+    ]
+  },
+  "imageLayers": [
+    {
+      "name": "approved_reference_hidden",
+      "path": "Reference/approved_hero_backpack_reference.png",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "group": "00_Reference",
+      "visible": false
+    },
+    {
+      "name": "world_context",
+      "path": "Assets/world_context.png",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "group": "10_WorldContext",
+      "visible": true
+    },
+    {
+      "name": "screen_scrim",
+      "path": "Assets/screen_scrim.png",
+      "x": 0,
+      "y": 0,
+      "width": 1920,
+      "height": 1080,
+      "group": "10_WorldContext",
+      "visible": true
+    },
+    {
+      "name": "hero_backpack_panel",
+      "path": "Assets/paper_panel.png",
+      "x": 290,
+      "y": 150,
+      "width": 1560,
+      "height": 790,
+      "group": "20_Shell",
+      "visible": true
+    },
+    {
+      "name": "title_underline",
+      "path": "Assets/title_underline.png",
+      "x": 338,
+      "y": 242,
+      "width": 180,
+      "height": 12,
+      "group": "20_Shell",
+      "visible": true
+    },
+    {
+      "name": "content_divider",
+      "path": "Assets/ink_divider.png",
+      "x": 1110,
+      "y": 258,
+      "width": 5,
+      "height": 620,
+      "group": "20_Shell",
+      "visible": true
+    },
+    {
+      "name": "close_button",
+      "path": "Assets/close_button.png",
+      "x": 1760,
+      "y": 178,
+      "width": 54,
+      "height": 54,
+      "group": "20_Shell",
+      "visible": true
+    },
+    {
+      "name": "hero_ink_shadow",
+      "path": "Assets/hero_ink_shadow.png",
+      "x": 458,
+      "y": 704,
+      "width": 500,
+      "height": 90,
+      "group": "30_Hero",
+      "visible": true
+    },
+    {
+      "name": "hero_runtime_idle_frame",
+      "path": "Assets/hero_runtime_idle_frame_0000.png",
+      "x": 455,
+      "y": 276,
+      "width": 490,
+      "height": 490,
+      "group": "30_Hero",
+      "visible": true
+    },
+    {
+      "name": "hero_progress_track",
+      "path": "Assets/progress_track.png",
+      "x": 520,
+      "y": 782,
+      "width": 360,
+      "height": 18,
+      "group": "30_Hero",
+      "visible": true
+    },
+    {
+      "name": "hero_progress_fill",
+      "path": "Assets/progress_fill.png",
+      "x": 525,
+      "y": 787,
+      "width": 238,
+      "height": 8,
+      "group": "30_Hero",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_01",
+      "path": "Assets/equipment_slot.png",
+      "x": 342,
+      "y": 318,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_01",
+      "path": "Assets/equipment_1.png",
+      "x": 359,
+      "y": 336,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_02",
+      "path": "Assets/equipment_slot.png",
+      "x": 342,
+      "y": 480,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_02",
+      "path": "Assets/equipment_2.png",
+      "x": 359,
+      "y": 498,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_03",
+      "path": "Assets/equipment_slot.png",
+      "x": 342,
+      "y": 642,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_03",
+      "path": "Assets/equipment_3.png",
+      "x": 359,
+      "y": 660,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_04",
+      "path": "Assets/equipment_slot.png",
+      "x": 962,
+      "y": 318,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_04",
+      "path": "Assets/equipment_4.png",
+      "x": 979,
+      "y": 336,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_05",
+      "path": "Assets/equipment_slot.png",
+      "x": 962,
+      "y": 480,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_05",
+      "path": "Assets/equipment_5.png",
+      "x": 979,
+      "y": 498,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_slot_06",
+      "path": "Assets/equipment_slot.png",
+      "x": 962,
+      "y": 642,
+      "width": 112,
+      "height": 118,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "equipment_icon_06",
+      "path": "Assets/equipment_6.png",
+      "x": 979,
+      "y": 660,
+      "width": 78,
+      "height": 82,
+      "group": "40_Equipment",
+      "visible": true
+    },
+    {
+      "name": "inventory_category_tab_01",
+      "path": "Assets/tab_selected.png",
+      "x": 1148,
+      "y": 246,
+      "width": 116,
+      "height": 43,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_category_tab_02",
+      "path": "Assets/tab_normal.png",
+      "x": 1273,
+      "y": 246,
+      "width": 116,
+      "height": 43,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_category_tab_03",
+      "path": "Assets/tab_normal.png",
+      "x": 1398,
+      "y": 246,
+      "width": 116,
+      "height": 43,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_category_tab_04",
+      "path": "Assets/tab_normal.png",
+      "x": 1523,
+      "y": 246,
+      "width": 116,
+      "height": 43,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_category_tab_05",
+      "path": "Assets/tab_normal.png",
+      "x": 1648,
+      "y": 246,
+      "width": 116,
+      "height": 43,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_01",
+      "path": "Assets/item_slot.png",
+      "x": 1155,
+      "y": 314,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_02",
+      "path": "Assets/item_slot.png",
+      "x": 1267,
+      "y": 314,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_03",
+      "path": "Assets/item_slot.png",
+      "x": 1379,
+      "y": 314,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_04",
+      "path": "Assets/item_slot.png",
+      "x": 1491,
+      "y": 314,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_05",
+      "path": "Assets/item_slot.png",
+      "x": 1603,
+      "y": 314,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_06",
+      "path": "Assets/item_slot.png",
+      "x": 1155,
+      "y": 416,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_07",
+      "path": "Assets/item_slot.png",
+      "x": 1267,
+      "y": 416,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_08",
+      "path": "Assets/item_slot.png",
+      "x": 1379,
+      "y": 416,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_09",
+      "path": "Assets/item_slot.png",
+      "x": 1491,
+      "y": 416,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_10",
+      "path": "Assets/item_slot.png",
+      "x": 1603,
+      "y": 416,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_11",
+      "path": "Assets/item_slot.png",
+      "x": 1155,
+      "y": 518,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_12",
+      "path": "Assets/item_slot.png",
+      "x": 1267,
+      "y": 518,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_13",
+      "path": "Assets/item_slot.png",
+      "x": 1379,
+      "y": 518,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_14",
+      "path": "Assets/item_slot.png",
+      "x": 1491,
+      "y": 518,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_15",
+      "path": "Assets/item_slot.png",
+      "x": 1603,
+      "y": 518,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_16",
+      "path": "Assets/item_slot.png",
+      "x": 1155,
+      "y": 620,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_17",
+      "path": "Assets/item_slot.png",
+      "x": 1267,
+      "y": 620,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_18",
+      "path": "Assets/item_slot.png",
+      "x": 1379,
+      "y": 620,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_19",
+      "path": "Assets/item_slot.png",
+      "x": 1491,
+      "y": 620,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_slot_20",
+      "path": "Assets/item_slot.png",
+      "x": 1603,
+      "y": 620,
+      "width": 92,
+      "height": 92,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_item_01",
+      "path": "Assets/item_1.png",
+      "x": 1170,
+      "y": 328,
+      "width": 62,
+      "height": 64,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_item_02",
+      "path": "Assets/item_2.png",
+      "x": 1282,
+      "y": 328,
+      "width": 62,
+      "height": 64,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_item_03",
+      "path": "Assets/item_3.png",
+      "x": 1394,
+      "y": 328,
+      "width": 62,
+      "height": 64,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_item_04",
+      "path": "Assets/item_4.png",
+      "x": 1506,
+      "y": 328,
+      "width": 62,
+      "height": 64,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "inventory_item_05",
+      "path": "Assets/item_5.png",
+      "x": 1618,
+      "y": 328,
+      "width": 62,
+      "height": 64,
+      "group": "50_Inventory",
+      "visible": true
+    },
+    {
+      "name": "item_detail_panel",
+      "path": "Assets/item_detail_panel.png",
+      "x": 1148,
+      "y": 735,
+      "width": 620,
+      "height": 120,
+      "group": "60_Detail",
+      "visible": true
+    },
+    {
+      "name": "button_sort",
+      "path": "Assets/button_neutral.png",
+      "x": 1270,
+      "y": 868,
+      "width": 150,
+      "height": 54,
+      "group": "60_Detail",
+      "visible": true
+    },
+    {
+      "name": "button_use",
+      "path": "Assets/button_primary.png",
+      "x": 1605,
+      "y": 770,
+      "width": 150,
+      "height": 54,
+      "group": "60_Detail",
+      "visible": true
+    },
+    {
+      "name": "button_disassemble",
+      "path": "Assets/button_destructive.png",
+      "x": 1450,
+      "y": 868,
+      "width": 150,
+      "height": 54,
+      "group": "60_Detail",
+      "visible": true
+    }
+  ],
+  "textLayers": [
+    {
+      "name": "title",
+      "text": "主角",
+      "x": 340,
+      "y": 178,
+      "fontSize": 44,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "tab_attribute",
+      "text": "属性",
+      "x": 514,
+      "y": 184,
+      "fontSize": 25,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "tab_equipment",
+      "text": "装备",
+      "x": 645,
+      "y": 184,
+      "fontSize": 25,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "tab_skill",
+      "text": "技能",
+      "x": 776,
+      "y": 184,
+      "fontSize": 25,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "tab_talent",
+      "text": "天赋",
+      "x": 907,
+      "y": 184,
+      "fontSize": 25,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "tab_title",
+      "text": "称号",
+      "x": 1038,
+      "y": 184,
+      "fontSize": 25,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_name",
+      "text": "小侠客",
+      "x": 620,
+      "y": 250,
+      "fontSize": 29,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_level",
+      "text": "Lv. 1",
+      "x": 470,
+      "y": 818,
+      "fontSize": 24,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_exp",
+      "text": "0 / 100",
+      "x": 785,
+      "y": 818,
+      "fontSize": 19,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_attack",
+      "text": "攻击 33",
+      "x": 484,
+      "y": 860,
+      "fontSize": 22,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_health",
+      "text": "气血 120",
+      "x": 650,
+      "y": 860,
+      "fontSize": 22,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "hero_defense",
+      "text": "防御 18",
+      "x": 830,
+      "y": 860,
+      "fontSize": 22,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "category_all",
+      "text": "全部",
+      "x": 1206,
+      "y": 253,
+      "fontSize": 20,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "category_consumable",
+      "text": "消耗",
+      "x": 1330,
+      "y": 253,
+      "fontSize": 20,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "category_material",
+      "text": "材料",
+      "x": 1455,
+      "y": 253,
+      "fontSize": 20,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "category_quest",
+      "text": "任务",
+      "x": 1580,
+      "y": 253,
+      "fontSize": 20,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "category_other",
+      "text": "其他",
+      "x": 1705,
+      "y": 253,
+      "fontSize": 20,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "inventory_capacity",
+      "text": "背包  5 / 80",
+      "x": 1150,
+      "y": 188,
+      "fontSize": 26,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "resource_coin",
+      "text": "铜钱 50",
+      "x": 1530,
+      "y": 192,
+      "fontSize": 22,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "detail_name",
+      "text": "小布袋",
+      "x": 1248,
+      "y": 760,
+      "fontSize": 27,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "detail_count",
+      "text": "拥有：2",
+      "x": 1480,
+      "y": 764,
+      "fontSize": 19,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "detail_description",
+      "text": "普通的布袋，能装下一些小物件。",
+      "x": 1248,
+      "y": 806,
+      "fontSize": 19,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": false,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "button_sort_text",
+      "text": "整理",
+      "x": 1320,
+      "y": 879,
+      "fontSize": 21,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "button_use_text",
+      "text": "使用",
+      "x": 1655,
+      "y": 781,
+      "fontSize": 21,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "button_disassemble_text",
+      "text": "分解",
+      "x": 1500,
+      "y": 879,
+      "fontSize": 21,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    },
+    {
+      "name": "close_text",
+      "text": "×",
+      "x": 1777,
+      "y": 182,
+      "fontSize": 30,
+      "font": "STKaiti",
+      "color": "#2a2822",
+      "bold": true,
+      "group": "70_RuntimeText"
+    }
+  ]
+}

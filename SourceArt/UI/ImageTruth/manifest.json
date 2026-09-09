@@ -6,6 +6,23 @@
   "images": [
     {
       "id": "training.idle_strip.background.seamless.v003",
+      "runtimeRevision": {
+        "manifest": "SourceArt/UI/Training/IdleStrip/QuietInkV24/manifest.json",
+        "importScript": "Content/Python/gamexxk_import_idle_strip_quiet_background.py",
+        "status": "user-requested-art-revision",
+        "visualApproval": "not-yet-recorded",
+        "note": "Current v24: user requested a slight gray-green tint in the mountains, then explicitly requested both near-black contours and the rear cloud sea. Selected ochre foreground is retained; current PIE verified.",
+        "colorApproval": {
+          "version": "v19",
+          "feedback": "先用这个试试 / ok",
+          "approvedBy": "user"
+        },
+        "baseSelection": {
+          "path": "SourceArt/UI/Training/IdleStrip/QuietInkV21/user-selected-base.png",
+          "sha256": "b0bdf43e3eaf9ede280dc02d640d1dbbfc5c8b87861f5c5d3048d464f611b04f",
+          "feedback": "用这个，勾线再深点，接近黑线，后面加层云海"
+        }
+      },
       "role": "desktop-training infinite horizontal travel-strip background",
       "path": "SourceArt/UI/ImageTruth/confirmed/training_idle_strip_background_seamless_v003.png",
       "ueAssetPath": "/Game/GameXXK/UI/ImageTruth/Training/T_TrainingIdleStrip_Background.T_TrainingIdleStrip_Background",
@@ -32,7 +49,14 @@
       "textLayer": "UE-localized label: 仓库",
       "approvedBy": "user",
       "approvedAt": "2026-08-19T12:10:04.8458631+08:00",
-      "approvalReference": "Current Codex task: user replied 'ok吧' to approve the simplified warehouse ink glyph and clarified that labels remain a separate UE text layer."
+      "approvalReference": "Current Codex task: user replied 'ok吧' to approve the simplified warehouse ink glyph and clarified that labels remain a separate UE text layer.",
+      "runtimeRevision": {
+        "manifest": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/manifest.json",
+        "importScript": "Content/Python/gamexxk_import_navigation_contour_v2.py",
+        "status": "user-requested-art-revision",
+        "visualApproval": "not-yet-recorded",
+        "note": "User requested one further contour increase; original approval stays historical."
+      }
     },
     {
       "id": "training.nav.formation.ink.v002",
@@ -47,7 +71,14 @@
       "textLayer": "UE-localized label: 编队",
       "approvedBy": "user",
       "approvedAt": "2026-08-19T12:18:00+08:00",
-      "approvalReference": "User attached codex-clipboard-cdba903e-5556-444f-9ca1-96b7f98d9258.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate."
+      "approvalReference": "User attached codex-clipboard-cdba903e-5556-444f-9ca1-96b7f98d9258.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate.",
+      "runtimeRevision": {
+        "manifest": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-bold/manifest.json",
+        "importScript": "Content/Python/gamexxk_import_navigation_bold_revision.py",
+        "status": "user-requested-art-revision",
+        "visualApproval": "not-yet-recorded",
+        "note": "User requested stronger ink contours; preserve original approval as historical."
+      }
     },
     {
       "id": "training.nav.training.ink.v001",
@@ -62,7 +93,14 @@
       "textLayer": "UE-localized label: 历练",
       "approvedBy": "user",
       "approvedAt": "2026-08-19T12:18:00+08:00",
-      "approvalReference": "User attached codex-clipboard-35aa3d11-9b6d-4f96-bc0e-5c3b06e02ae9.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate."
+      "approvalReference": "User attached codex-clipboard-35aa3d11-9b6d-4f96-bc0e-5c3b06e02ae9.png and said the two shown images are acceptable. Attachment hash exactly matches the review candidate.",
+      "runtimeRevision": {
+        "manifest": "SourceArt/UI/ImageTruth/revisions/20260909-navigation-contour-v2/manifest.json",
+        "importScript": "Content/Python/gamexxk_import_navigation_contour_v2.py",
+        "status": "user-requested-art-revision",
+        "visualApproval": "not-yet-recorded",
+        "note": "User requested one further contour increase; original approval stays historical."
+      }
     },
     {
       "id": "training.nav.talents.ink.knot.v004",

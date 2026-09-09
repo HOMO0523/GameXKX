@@ -1,0 +1,1742 @@
+{
+  "name": "UltimateLightning057",
+  "revision": "continuous-handoff-v3",
+  "frame_count": 58,
+  "frame_size": [
+    640,
+    360
+  ],
+  "alpha": "straight RGBA, paper matte removed, bright painted core retained, hidden RGB edge bleed",
+  "canonical_orientation": true,
+  "friendly_flip_x": true,
+  "mirror_inside_frame_uv_only": true,
+  "original_fps_assumed": 30,
+  "source_duration_seconds": 9.866666666666667,
+  "recommended_preview_speed": 2,
+  "texture_settings": {
+    "texture_group": "UI",
+    "mipmaps": "NoMipmaps",
+    "filter": "Bilinear",
+    "address_x": "Clamp",
+    "address_y": "Clamp",
+    "sRGB": true
+  },
+  "frames": [
+    {
+      "index": 0,
+      "source_frame": 1,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_001.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "91199db261021d06a691a1a961f6536a761c7f417614bb809c8a43bff358afdf",
+      "transparent_pixels": 92815,
+      "partial_alpha_pixels": 137124,
+      "opaque_pixels": 461,
+      "alpha_levels": 217,
+      "bright_core_pixels": 322,
+      "atlas_index": 0,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.08888888888888889,
+      "slot": 0
+    },
+    {
+      "index": 1,
+      "source_frame": 11,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_002.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "a3ce2fb45708e7514f67eebe89222a77282f2ee409dab6c3a898512f2c8bcc92",
+      "transparent_pixels": 93048,
+      "partial_alpha_pixels": 136698,
+      "opaque_pixels": 654,
+      "alpha_levels": 211,
+      "bright_core_pixels": 511,
+      "atlas_index": 0,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.08888888888888889,
+      "slot": 1
+    },
+    {
+      "index": 2,
+      "source_frame": 21,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_003.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "97087cd118d646da53c42baf1c106d2459376186dca609da9ad67ca2e656ec04",
+      "transparent_pixels": 91609,
+      "partial_alpha_pixels": 138503,
+      "opaque_pixels": 288,
+      "alpha_levels": 212,
+      "bright_core_pixels": 223,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.06222222222222223,
+      "slot": 2
+    },
+    {
+      "index": 3,
+      "source_frame": 28,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_004.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "2ec6319b6abf4b6f44f5cf4ab22f199f7aafefafc1c4b0ab8e712522018f0d85",
+      "transparent_pixels": 94929,
+      "partial_alpha_pixels": 135252,
+      "opaque_pixels": 219,
+      "alpha_levels": 214,
+      "bright_core_pixels": 183,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.044444444444444446,
+      "slot": 3
+    },
+    {
+      "index": 4,
+      "source_frame": 33,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_005.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "d5d4b51129bf557a86f3a04dba7048e311939fc6c7d3ae235f4514be78591e73",
+      "transparent_pixels": 95598,
+      "partial_alpha_pixels": 134680,
+      "opaque_pixels": 122,
+      "alpha_levels": 209,
+      "bright_core_pixels": 87,
+      "atlas_index": 0,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 4
+    },
+    {
+      "index": 5,
+      "source_frame": 35,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_006.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "d256a27c830f576ed74ed93e25925625cfec0e2ea776b4c01ed49fbcbe91a27f",
+      "transparent_pixels": 89814,
+      "partial_alpha_pixels": 139805,
+      "opaque_pixels": 781,
+      "alpha_levels": 209,
+      "bright_core_pixels": 636,
+      "atlas_index": 0,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 5
+    },
+    {
+      "index": 6,
+      "source_frame": 37,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_007.png",
+      "duration_seconds": 0.1,
+      "sha256": "24edf8c1b7c041d10cf1bc337ad901aa9d01e7775b9f628cad8371149d8356df",
+      "transparent_pixels": 77750,
+      "partial_alpha_pixels": 149873,
+      "opaque_pixels": 2777,
+      "alpha_levels": 209,
+      "bright_core_pixels": 2241,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 6
+    },
+    {
+      "index": 7,
+      "source_frame": 40,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_008.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "184b36a62e2f5f125e9d5680c2c77b31db73a67c23695f26e6c8c3881f73d7a7",
+      "transparent_pixels": 191695,
+      "partial_alpha_pixels": 37531,
+      "opaque_pixels": 1174,
+      "alpha_levels": 209,
+      "bright_core_pixels": 973,
+      "atlas_index": 0,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 7
+    },
+    {
+      "index": 8,
+      "source_frame": 41,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_009.png",
+      "duration_seconds": 0.3,
+      "sha256": "7f4ee6b333eb35768c66fdcce70baa22e893de899e87f9088b6fe23f7a3e1877",
+      "transparent_pixels": 184298,
+      "partial_alpha_pixels": 44200,
+      "opaque_pixels": 1902,
+      "alpha_levels": 194,
+      "bright_core_pixels": 1522,
+      "atlas_index": 1,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.09999999999999999,
+      "slot": 8
+    },
+    {
+      "index": 9,
+      "source_frame": 50,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_010.png",
+      "duration_seconds": 0.4,
+      "sha256": "3df235bc9050718df6e001acc911ed28a6344c7dbbbbec35aa4b134a71ffd069",
+      "transparent_pixels": 210924,
+      "partial_alpha_pixels": 18058,
+      "opaque_pixels": 1418,
+      "alpha_levels": 190,
+      "bright_core_pixels": 1197,
+      "atlas_index": 1,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.13333333333333333,
+      "slot": 9
+    },
+    {
+      "index": 10,
+      "source_frame": 62,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_011.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "2654a62129ef4044f3fb50487b6a7ecc0f46050a0e5370e8f3089c4e499c7e82",
+      "transparent_pixels": 200803,
+      "partial_alpha_pixels": 27590,
+      "opaque_pixels": 2007,
+      "alpha_levels": 189,
+      "bright_core_pixels": 1742,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.07777777777777778,
+      "slot": 10
+    },
+    {
+      "index": 11,
+      "source_frame": 69,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_012.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "051707f4b5e0695a4cfaf89d429589e8fcc8fec3f0d10a5d6f6acbf93fe35796",
+      "transparent_pixels": 201946,
+      "partial_alpha_pixels": 26478,
+      "opaque_pixels": 1976,
+      "alpha_levels": 194,
+      "bright_core_pixels": 1574,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.044444444444444446,
+      "slot": 11
+    },
+    {
+      "index": 12,
+      "source_frame": 73,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_013.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "468b0f1134578dc603b65f854e01ece24246224c6f79dfcd297ea34ab1636db4",
+      "transparent_pixels": 196378,
+      "partial_alpha_pixels": 31915,
+      "opaque_pixels": 2107,
+      "alpha_levels": 189,
+      "bright_core_pixels": 1806,
+      "atlas_index": 1,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 12
+    },
+    {
+      "index": 13,
+      "source_frame": 75,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_014.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "a90b8856a8114e6b4fe8a8c2322db7ecdc7ba859b857eedff683d26affc764c7",
+      "transparent_pixels": 143020,
+      "partial_alpha_pixels": 80772,
+      "opaque_pixels": 6608,
+      "alpha_levels": 193,
+      "bright_core_pixels": 5742,
+      "atlas_index": 1,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 13
+    },
+    {
+      "index": 14,
+      "source_frame": 77,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_015.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "0dbe62c0c2d15b3b49222103e3d84febcab69809741d59782a8a6649da17c427",
+      "transparent_pixels": 91250,
+      "partial_alpha_pixels": 119474,
+      "opaque_pixels": 19676,
+      "alpha_levels": 193,
+      "bright_core_pixels": 16471,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 14
+    },
+    {
+      "index": 15,
+      "source_frame": 82,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_016.png",
+      "duration_seconds": 0.1,
+      "sha256": "10c5890d5cf36e88f1309a8242de268297971bc5de14ee3c10873cd32719b9e1",
+      "transparent_pixels": 68773,
+      "partial_alpha_pixels": 153870,
+      "opaque_pixels": 7757,
+      "alpha_levels": 214,
+      "bright_core_pixels": 7185,
+      "atlas_index": 1,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 15
+    },
+    {
+      "index": 16,
+      "source_frame": 85,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_017.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "126e4e0aa57ca321b9349297434f3b5c8a40bba39006bc46d0acb385185a4a6c",
+      "transparent_pixels": 59182,
+      "partial_alpha_pixels": 167291,
+      "opaque_pixels": 3927,
+      "alpha_levels": 224,
+      "bright_core_pixels": 3172,
+      "atlas_index": 2,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 16
+    },
+    {
+      "index": 17,
+      "source_frame": 89,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_018.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "0ea8de8022eea54e1eaded23f0d1cd58cbbf51b7974f34c9fc1eb96615d98801",
+      "transparent_pixels": 71902,
+      "partial_alpha_pixels": 157504,
+      "opaque_pixels": 994,
+      "alpha_levels": 218,
+      "bright_core_pixels": 778,
+      "atlas_index": 2,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 17
+    },
+    {
+      "index": 18,
+      "source_frame": 93,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_019.png",
+      "duration_seconds": 0.1,
+      "sha256": "09fb96df704794e341e235ed6dbd9df70fcb6d2301d719aa78aa6103a48d4c95",
+      "transparent_pixels": 63040,
+      "partial_alpha_pixels": 167256,
+      "opaque_pixels": 104,
+      "alpha_levels": 214,
+      "bright_core_pixels": 81,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 18
+    },
+    {
+      "index": 19,
+      "source_frame": 96,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_020.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "2bd58474274f1ae963e143108e5b345d090233d4bf0c5993f7b10f4847c73b8f",
+      "transparent_pixels": 56028,
+      "partial_alpha_pixels": 174350,
+      "opaque_pixels": 22,
+      "alpha_levels": 203,
+      "bright_core_pixels": 21,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 19
+    },
+    {
+      "index": 20,
+      "source_frame": 97,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_021.png",
+      "duration_seconds": 0.2,
+      "sha256": "2255b01bcaf7fb44d7125cfbf3dcd3408746dc19e045ecb34407e026e201f9d2",
+      "transparent_pixels": 107186,
+      "partial_alpha_pixels": 123207,
+      "opaque_pixels": 7,
+      "alpha_levels": 212,
+      "bright_core_pixels": 4,
+      "atlas_index": 2,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.048,
+      "slot": 20
+    },
+    {
+      "index": 21,
+      "source_frame": 103,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_022.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "beb746625536afe01126783d4a87901a83ed09f9e55b3cc9c8a199f5643737d5",
+      "transparent_pixels": 130447,
+      "partial_alpha_pixels": 99940,
+      "opaque_pixels": 13,
+      "alpha_levels": 199,
+      "bright_core_pixels": 6,
+      "atlas_index": 2,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 21
+    },
+    {
+      "index": 22,
+      "source_frame": 108,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_023.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "71f559702e6783771c26870b0040ff983690063556de96796c8f72231591a738",
+      "transparent_pixels": 98656,
+      "partial_alpha_pixels": 131535,
+      "opaque_pixels": 209,
+      "alpha_levels": 206,
+      "bright_core_pixels": 158,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.056,
+      "slot": 22
+    },
+    {
+      "index": 23,
+      "source_frame": 115,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_024.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "65f4421c9a0f694cec8faa72107013f2ca033e87600b5d4e69165a7a6267926a",
+      "transparent_pixels": 77479,
+      "partial_alpha_pixels": 148702,
+      "opaque_pixels": 4219,
+      "alpha_levels": 200,
+      "bright_core_pixels": 3906,
+      "atlas_index": 2,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 23
+    },
+    {
+      "index": 24,
+      "source_frame": 120,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_025.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "2f4cf2e9f1d860aa8eb6a61295741190dbdd09af33480b11a92464bcdbcfa76c",
+      "transparent_pixels": 179372,
+      "partial_alpha_pixels": 44667,
+      "opaque_pixels": 6361,
+      "alpha_levels": 234,
+      "bright_core_pixels": 3727,
+      "atlas_index": 3,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 24
+    },
+    {
+      "index": 25,
+      "source_frame": 125,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_026.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "29deae30edc166adb8e9c0e2bea8fe01d18bdf8a4534f3dc5de1cbe8b30bd6c1",
+      "transparent_pixels": 152131,
+      "partial_alpha_pixels": 68650,
+      "opaque_pixels": 9619,
+      "alpha_levels": 234,
+      "bright_core_pixels": 6277,
+      "atlas_index": 3,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 25
+    },
+    {
+      "index": 26,
+      "source_frame": 130,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_027.png",
+      "duration_seconds": 0.2,
+      "sha256": "1978e12b8118222f945ff52c27118901f74bd18b6f2b35a98d8ed17280832bb9",
+      "transparent_pixels": 180770,
+      "partial_alpha_pixels": 44917,
+      "opaque_pixels": 4713,
+      "alpha_levels": 234,
+      "bright_core_pixels": 3228,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.048,
+      "slot": 26
+    },
+    {
+      "index": 27,
+      "source_frame": 136,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_028.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "056d8d71863b57a5ab862150f1c6e23fb06c87b60e016936a24082015846e349",
+      "transparent_pixels": 168088,
+      "partial_alpha_pixels": 57656,
+      "opaque_pixels": 4656,
+      "alpha_levels": 235,
+      "bright_core_pixels": 1668,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 27
+    },
+    {
+      "index": 28,
+      "source_frame": 140,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_029.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "4bbb4f4c1c1ab82fee7a80adff1ee9357fbbea1c7b11cc3c8e8bc74ef782649a",
+      "transparent_pixels": 159184,
+      "partial_alpha_pixels": 64689,
+      "opaque_pixels": 6527,
+      "alpha_levels": 240,
+      "bright_core_pixels": 3307,
+      "atlas_index": 3,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 28
+    },
+    {
+      "index": 29,
+      "source_frame": 142,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_030.png",
+      "duration_seconds": 0.2,
+      "sha256": "a38b7f8971eb518e5ff118945468bffb1c8767d2d4e63e06527e5bae08ee042a",
+      "transparent_pixels": 182096,
+      "partial_alpha_pixels": 43936,
+      "opaque_pixels": 4368,
+      "alpha_levels": 235,
+      "bright_core_pixels": 3050,
+      "atlas_index": 3,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.048,
+      "slot": 29
+    },
+    {
+      "index": 30,
+      "source_frame": 148,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_031.png",
+      "duration_seconds": 0.2,
+      "sha256": "449405fbfaf0ce3f58b9dedbdad047ab098f97bab2095d8a747afb0aaf36e598",
+      "transparent_pixels": 118276,
+      "partial_alpha_pixels": 101507,
+      "opaque_pixels": 10617,
+      "alpha_levels": 237,
+      "bright_core_pixels": 7572,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.048,
+      "slot": 30
+    },
+    {
+      "index": 31,
+      "source_frame": 154,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_032.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "880d5367d22a7d6c01733bfd0a650fb99f63d492ec810654194178b6bffb1b5a",
+      "transparent_pixels": 86920,
+      "partial_alpha_pixels": 131130,
+      "opaque_pixels": 12350,
+      "alpha_levels": 236,
+      "bright_core_pixels": 10436,
+      "atlas_index": 3,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 31
+    },
+    {
+      "index": 32,
+      "source_frame": 159,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_033.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "d532160f5ba4438dd293ea8143ca6dce62763e2dc5d5aba884150bfb49e5ccf7",
+      "transparent_pixels": 129101,
+      "partial_alpha_pixels": 92449,
+      "opaque_pixels": 8850,
+      "alpha_levels": 228,
+      "bright_core_pixels": 7664,
+      "atlas_index": 4,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 32
+    },
+    {
+      "index": 33,
+      "source_frame": 164,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_034.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "980a272331979379b6acd331fff94cf2528e2d67619b5dd23b7959eccff5a0c6",
+      "transparent_pixels": 98618,
+      "partial_alpha_pixels": 129576,
+      "opaque_pixels": 2206,
+      "alpha_levels": 239,
+      "bright_core_pixels": 1897,
+      "atlas_index": 4,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 33
+    },
+    {
+      "index": 34,
+      "source_frame": 166,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_035.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "cd08897eeb65d020b25bad64d211082b25b34403c44680a2e107913c6cf786ec",
+      "transparent_pixels": 185522,
+      "partial_alpha_pixels": 41470,
+      "opaque_pixels": 3408,
+      "alpha_levels": 232,
+      "bright_core_pixels": 2795,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.07999999999999999,
+      "slot": 34
+    },
+    {
+      "index": 35,
+      "source_frame": 176,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_036.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "a37aecf0104b2e71a859c9dec839041381bab73e4b354b06af0d13e88c17d790",
+      "transparent_pixels": 199121,
+      "partial_alpha_pixels": 30519,
+      "opaque_pixels": 760,
+      "alpha_levels": 227,
+      "bright_core_pixels": 629,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 35
+    },
+    {
+      "index": 36,
+      "source_frame": 181,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_037.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "95e0d5e96f2aaed2b5b34977992eec0ae8c997c3cc31c0317c3700125c658477",
+      "transparent_pixels": 108197,
+      "partial_alpha_pixels": 120232,
+      "opaque_pixels": 1971,
+      "alpha_levels": 238,
+      "bright_core_pixels": 1560,
+      "atlas_index": 4,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 36
+    },
+    {
+      "index": 37,
+      "source_frame": 185,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_038.png",
+      "duration_seconds": 0.16666666666666666,
+      "sha256": "83c9e83cc70b6a6425ec8227dbe2b422899aee9114f8084c7601ef98f08eb03e",
+      "transparent_pixels": 161518,
+      "partial_alpha_pixels": 68094,
+      "opaque_pixels": 788,
+      "alpha_levels": 232,
+      "bright_core_pixels": 641,
+      "atlas_index": 4,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 37
+    },
+    {
+      "index": 38,
+      "source_frame": 190,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_039.png",
+      "duration_seconds": 0.23333333333333334,
+      "sha256": "2d5b63646b1f585ea876d040ccf655808fcc2a0b70539962f5815976c7adb248",
+      "transparent_pixels": 172774,
+      "partial_alpha_pixels": 54117,
+      "opaque_pixels": 3509,
+      "alpha_levels": 231,
+      "bright_core_pixels": 2746,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.056,
+      "slot": 38
+    },
+    {
+      "index": 39,
+      "source_frame": 197,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_040.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "5f622e1ff6c2be18423c722a7e26cef79d45fe89c250f2793f3e2b8f82db57c8",
+      "transparent_pixels": 69384,
+      "partial_alpha_pixels": 155132,
+      "opaque_pixels": 5884,
+      "alpha_levels": 226,
+      "bright_core_pixels": 5010,
+      "atlas_index": 4,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 39
+    },
+    {
+      "slot": 56,
+      "source_frame": null,
+      "bridge_frame": 1,
+      "atlas_index": 7,
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_01.png",
+      "index": 40,
+      "sha256": "f604b159823e212c5681314677f860940d87be9a7d002455bc1e32d88696bf2a"
+    },
+    {
+      "slot": 57,
+      "source_frame": null,
+      "bridge_frame": 2,
+      "atlas_index": 7,
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_02.png",
+      "index": 41,
+      "sha256": "25b7465cd0bc5140c9b1affa74cab7208198394976a38b856804694cb12c7fc9"
+    },
+    {
+      "slot": 58,
+      "source_frame": null,
+      "bridge_frame": 3,
+      "atlas_index": 7,
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_03.png",
+      "index": 42,
+      "sha256": "aa936feffc050283939f770e800028330d563db27efeb247bbfb02a8e7dfbfb9"
+    },
+    {
+      "slot": 59,
+      "source_frame": null,
+      "bridge_frame": 4,
+      "atlas_index": 7,
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_04.png",
+      "index": 43,
+      "sha256": "c2a95be9aad2e05202db999b565345f1656b329fa3977a0e10d01df7a63348b7"
+    },
+    {
+      "slot": 60,
+      "source_frame": null,
+      "bridge_frame": 5,
+      "atlas_index": 7,
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_05.png",
+      "index": 44,
+      "sha256": "fe5edc8c6eed4c0fd40cdccf3c845d41e78bf36bb3796b82d97d61ad15dfad5c"
+    },
+    {
+      "slot": 61,
+      "source_frame": null,
+      "bridge_frame": 6,
+      "atlas_index": 7,
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "file": "Frames/T_UltimateLightning057_Bridge_06.png",
+      "index": 45,
+      "sha256": "88d051c16f80b34e8c90e69668853d9400a6d2139b90dfa95252698242bc25e5"
+    },
+    {
+      "index": 46,
+      "source_frame": 222,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_045.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "62133388eef5cc7a69d8c7e2cc4f601d0d6e834e295d81a65d0318314b4a27ef",
+      "transparent_pixels": 148726,
+      "partial_alpha_pixels": 79958,
+      "opaque_pixels": 1716,
+      "alpha_levels": 236,
+      "bright_core_pixels": 958,
+      "atlas_index": 5,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 44
+    },
+    {
+      "index": 47,
+      "source_frame": 223,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_046.png",
+      "duration_seconds": 0.06666666666666667,
+      "sha256": "bdf7e41a69c846e3a3d1dd005a0f0ece9e60e7a86707e905c2ef8fb9d0f3a11a",
+      "transparent_pixels": 129161,
+      "partial_alpha_pixels": 97163,
+      "opaque_pixels": 4076,
+      "alpha_levels": 233,
+      "bright_core_pixels": 3013,
+      "atlas_index": 5,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 45
+    },
+    {
+      "index": 48,
+      "source_frame": 225,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_047.png",
+      "duration_seconds": 0.2,
+      "sha256": "577c75d43065cea15f6169bd4a8f97238182d94d811e1c498ccdf1aa8a529653",
+      "transparent_pixels": 90398,
+      "partial_alpha_pixels": 134886,
+      "opaque_pixels": 5116,
+      "alpha_levels": 240,
+      "bright_core_pixels": 3274,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.15666666666666668,
+      "slot": 46
+    },
+    {
+      "index": 49,
+      "source_frame": 231,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_048.png",
+      "duration_seconds": 0.5666666666666667,
+      "sha256": "4d17cc031ee7da8d1128452376c54faaa01b97275cf580acf64e8062aea4dffc",
+      "transparent_pixels": 111803,
+      "partial_alpha_pixels": 116694,
+      "opaque_pixels": 1903,
+      "alpha_levels": 236,
+      "bright_core_pixels": 1067,
+      "atlas_index": 5,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.18888888888888888,
+      "slot": 47
+    },
+    {
+      "index": 50,
+      "source_frame": 248,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_049.png",
+      "duration_seconds": 0.4,
+      "sha256": "3be1c532f3fa169ff60cafbede759e3e2ef1fc5d34ea95a0e8ed9fc90c6311ea",
+      "transparent_pixels": 126246,
+      "partial_alpha_pixels": 100825,
+      "opaque_pixels": 3329,
+      "alpha_levels": 226,
+      "bright_core_pixels": 1835,
+      "atlas_index": 6,
+      "pixel_rect": [
+        4,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.13333333333333333,
+      "slot": 48
+    },
+    {
+      "index": 51,
+      "source_frame": 260,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_050.png",
+      "duration_seconds": 0.13333333333333333,
+      "sha256": "32f5968bffc31b743c8de0f28d9619ff6efa825cdcbe789543ac614f72d28cf0",
+      "transparent_pixels": 135104,
+      "partial_alpha_pixels": 90971,
+      "opaque_pixels": 4325,
+      "alpha_levels": 222,
+      "bright_core_pixels": 2567,
+      "atlas_index": 6,
+      "pixel_rect": [
+        652,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.044444444444444446,
+      "slot": 49
+    },
+    {
+      "index": 52,
+      "source_frame": 264,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_051.png",
+      "duration_seconds": 0.1,
+      "sha256": "cee672b9ae8486bc0fe4002143bae676cbe2ffbb04d18b6159efab2703c3c60e",
+      "transparent_pixels": 140302,
+      "partial_alpha_pixels": 87636,
+      "opaque_pixels": 2462,
+      "alpha_levels": 218,
+      "bright_core_pixels": 1549,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1300,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 50
+    },
+    {
+      "index": 53,
+      "source_frame": 267,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_052.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "7c6e09b487ac0158c99b9969ae4de1d1abcfbe9f3a20b9985b75f53ecbdf76c6",
+      "transparent_pixels": 115582,
+      "partial_alpha_pixels": 111752,
+      "opaque_pixels": 3066,
+      "alpha_levels": 222,
+      "bright_core_pixels": 1871,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1948,
+        4,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.006114130434782609
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.4938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 51
+    },
+    {
+      "index": 54,
+      "source_frame": 268,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_053.png",
+      "duration_seconds": 0.2,
+      "sha256": "e02dfa5d39b1d538a7147840d1f6ad7afe26d97a8b6c81bde10132bed2aac6d1",
+      "transparent_pixels": 59306,
+      "partial_alpha_pixels": 163806,
+      "opaque_pixels": 7288,
+      "alpha_levels": 238,
+      "bright_core_pixels": 4778,
+      "atlas_index": 6,
+      "pixel_rect": [
+        4,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.001736111111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.2482638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.12666666666666665,
+      "slot": 52
+    },
+    {
+      "index": 55,
+      "source_frame": 274,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_054.png",
+      "duration_seconds": 0.4,
+      "sha256": "99da55ee4f6b032e3f8ea09c8cab320c536147ab37f2cef362282d071bb43b99",
+      "transparent_pixels": 160180,
+      "partial_alpha_pixels": 69273,
+      "opaque_pixels": 947,
+      "alpha_levels": 218,
+      "bright_core_pixels": 552,
+      "atlas_index": 6,
+      "pixel_rect": [
+        652,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.2517361111111111,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.4982638888888889,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.1,
+      "slot": 53
+    },
+    {
+      "index": 56,
+      "source_frame": 286,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_055.png",
+      "duration_seconds": 0.3333333333333333,
+      "sha256": "d936f1088ad5490110618c823f8e7ade172e48a1444a2bcbe8b5c427c3673a25",
+      "transparent_pixels": 146146,
+      "partial_alpha_pixels": 83653,
+      "opaque_pixels": 601,
+      "alpha_levels": 226,
+      "bright_core_pixels": 275,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1300,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.5017361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.7482638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.08333333333333333,
+      "slot": 54
+    },
+    {
+      "index": 57,
+      "source_frame": 296,
+      "file": "../UltimateLightning057UnifiedV2/Frames/T_UltimateLightning057_056.png",
+      "duration_seconds": 0.03333333333333333,
+      "sha256": "9c04fc1d0bb0f2b13e872de6801d3945d077872653b08a1e5409d55fc465c7bd",
+      "transparent_pixels": 145188,
+      "partial_alpha_pixels": 85083,
+      "opaque_pixels": 129,
+      "alpha_levels": 219,
+      "bright_core_pixels": 19,
+      "atlas_index": 6,
+      "pixel_rect": [
+        1948,
+        372,
+        640,
+        360
+      ],
+      "uv_min": [
+        0.7517361111111112,
+        0.5061141304347826
+      ],
+      "uv_max": [
+        0.9982638888888888,
+        0.9938858695652174
+      ],
+      "play_seconds": 0.04,
+      "slot": 55
+    }
+  ],
+  "atlases": [
+    {
+      "index": 0,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_01.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "b7437d5b309ff01a869099cfe1d66d6529a66efe714bc62137f5fef8293f243c"
+    },
+    {
+      "index": 1,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_02.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "d2c5619f114e92f01dcab02a9fd2e2f32ba3c057f663518dccb4dda94be48d24"
+    },
+    {
+      "index": 2,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_03.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "4e9cce873c73a2ab6ccdc45df305902aa27fc667492a7cf716e6cd3380bb2e52"
+    },
+    {
+      "index": 3,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_04.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "8077c94d88f6eb28478dbb6595f1829edc4f3993beb4eb7eaa000c064129a682"
+    },
+    {
+      "index": 4,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_05.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "4b86d0d5e71f143464ee19c6f851ddc48a83ef61ccea9a024ec29edee2041868"
+    },
+    {
+      "index": 5,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_06.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "154cf2b790811b0d3dca11c65cf18d5ba4018bfa770b336940cb4b4a7cf66666"
+    },
+    {
+      "index": 6,
+      "file": "../UltimateLightning057UnifiedV2/Atlases/T_UltimateLightning057_Atlas_07.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 8,
+      "transparent_gutter": 4,
+      "sha256": "8b8bd929a52b5b16b82cc9f20b40bd91dcfd77ff8261c97158d57f98e3cf623a"
+    },
+    {
+      "index": 7,
+      "file": "Atlases/T_UltimateLightning057_TransitionV3.png",
+      "size": [
+        2592,
+        736
+      ],
+      "frames": 6,
+      "transparent_gutter": 4,
+      "sha256": "cd0be3e5f65b03b022b03a02e5dc3f2426f713d27502645710c22c732be3013b"
+    }
+  ],
+  "render": "OnlyLightning=1; frame scale=0.9; original 56 poses; minimum 40ms per pose",
+  "removed_source_frames": [
+    201,
+    209,
+    218,
+    220
+  ],
+  "new_transition_count": 6,
+  "source_count": 52,
+  "runtime_seconds": 3.2973333333333334
+}
