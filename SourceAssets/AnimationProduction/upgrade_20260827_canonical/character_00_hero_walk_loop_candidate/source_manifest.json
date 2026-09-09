@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "character_00_hero_walk_loop_candidate",
+  "sourceRelativePath": "主角状态机/主角状态机-3.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\主角状态机\\主角状态机-3.mov",
+  "sourceVideoSha256": "bbaad715c1638546f33e64e3392045b224a1e0ff20f5b60bcf55d613617c533a",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/character_00_hero_walk_loop_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "character_00_hero_walk_left",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 1.27,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 38
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/character_00_hero_walk_loop_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

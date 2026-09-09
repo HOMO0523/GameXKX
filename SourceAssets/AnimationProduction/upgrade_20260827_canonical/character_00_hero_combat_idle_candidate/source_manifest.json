@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "character_00_hero_combat_idle_candidate",
+  "sourceRelativePath": "主角状态机/主角攻击/主角战斗待机.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\8月27号序列帧\\8月27号序列帧\\主角状态机\\主角攻击\\主角战斗待机.mov",
+  "sourceVideoSha256": "611f8a60f4e6480678b3c2925ab6dbe4ff8cbc0e562da4297b7dd06c09a4098f",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827_canonical/character_00_hero_combat_idle_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "character_00_hero_idle",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 2.02,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 61
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827-canonical/character_00_hero_combat_idle_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

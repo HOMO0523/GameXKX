@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "character_00_hero_attack_punch_candidate",
+  "sourceRelativePath": "主角攻击/主角打拳.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\主角攻击\\主角打拳.mov",
+  "sourceVideoSha256": "207286abddccdb5b5c46a0f6bc7eeea4deee5291cf0146bd97e2440908ce8a9b",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827/character_00_hero_attack_punch_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "character_00_hero_attack",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 1.3,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 39
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827/character_00_hero_attack_punch_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}

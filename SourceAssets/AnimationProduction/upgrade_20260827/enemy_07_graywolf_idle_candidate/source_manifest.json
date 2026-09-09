@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "status": "review_pending",
+  "candidateId": "enemy_07_graywolf_idle_candidate",
+  "sourceRelativePath": "怪物们/狼待机.mov",
+  "sourceAbsolutePath": "C:\\Users\\shxuw\\Downloads\\动画优化\\怪物们\\狼待机.mov",
+  "sourceVideoSha256": "3516667188baa579bdaac2fd89630cb926987bbab80581df8b48d29d707b9f4c",
+  "stagedVideo": "SourceAssets/AnimationProduction/upgrade_20260827/enemy_07_graywolf_idle_candidate/raw/source.mov",
+  "replacementTargetSuggestion": "enemy_07_graywolf_idle",
+  "sourceMetadata": {
+    "size": [
+      1440,
+      1440
+    ],
+    "fps": 30.0,
+    "duration": 4.07,
+    "codec": "hevc",
+    "audioCodec": "aac",
+    "estimatedSourceFrameCount": 122
+  },
+  "background": {
+    "cornerMedianRgb": [
+      0,
+      0,
+      0
+    ],
+    "cornerMaximumDeviation": 0.0,
+    "classification": "black",
+    "mattingStatus": "pending_visual_review"
+  },
+  "reviewContactSheet": "Saved/HarnessReports/animation-upgrade-20260827/enemy_07_graywolf_idle_candidate/source_contact_sheet.png",
+  "atlasStatus": "not_built_pending_mapping_and_visual_confirmation",
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+}
