@@ -1,0 +1,18 @@
+{
+  "canvas": [
+    4096,
+    4096
+  ],
+  "imageLayers": 133,
+  "textLayers": 130,
+  "preview": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/previews/town-clean-preview.png",
+  "runtimeBackgrounds": {
+    "hud": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Hud.png",
+    "character": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Character.png",
+    "companion": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Companion.png",
+    "task": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Task.png",
+    "map": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Map.png",
+    "backpack": "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/town-v2/runtime_backgrounds/T_TownPsd_Background_Backpack.png"
+  },
+  "outputPsd": "D:/UE5 demo/GameXXK/outputs/UI_PSD/GameXXK_Town_4K.psd"
+}

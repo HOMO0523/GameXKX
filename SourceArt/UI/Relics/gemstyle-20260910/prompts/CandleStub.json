@@ -1,0 +1,11 @@
+{
+  "slug": "CandleStub",
+  "status": "candidate",
+  "prompt": "重绘第一张里的CandleStub（长明烛心），为第二张宝石画一枚同系列遗物。只输出这个独立物件，不输出图表文字或其他物品。形体：一截短胖米白蜡烛，顶部一朵大橘红火苗，两块宽蜡滴，暗金侧影，轮廓清楚无光晕无底座。 风格必须是第二张的粗自然黑墨轮廓、饱满卡通大形、鲜明主色、3至5块主要明暗平涂面与少量宽手绘笔触，低光泽。忠于器物类别，不改成写实珠宝或统一晶体。主体完整居中，最大边占正方形88%到90%，四边安全，48px轮廓清楚。无细密纹理雕花、无写实镜面反射、无长细穗带、无UI框、光晕或品质皇冠。背景完全均匀纯洋红#FF00FF，本体无洋红；背景无渐变、阴影、棋盘或纹理。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Relics\\relic_icon_contact_sheet.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8a3d26be-2b6b-4ded-a5e0-2c39c3b62fc4.png",
+  "background": "magenta"
+}

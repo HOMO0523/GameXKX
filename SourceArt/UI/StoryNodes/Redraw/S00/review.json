@@ -1,0 +1,104 @@
+{
+  "chapter": "S00",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S00-01",
+      "title": "天台山脚",
+      "highlight": "路线比人先出发：主角飞身追图，车夫稳稳替他踩住墨盒。",
+      "result": "已问清沿溪上山的方向，旧图被风吹向浅溪。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_01_v5.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_01_1536.webp",
+      "webp_bytes": 140924,
+      "sha256": "034a1c9a7a6c6185324346cce830469823e66b62cdb7a23ea539e855d6c34b95",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_01_v5_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-02",
+      "title": "获得卷轴",
+      "highlight": "竹竿挑出一团火，主角脱口喊祖父，幽白当场炸毛。",
+      "result": "卷轴已拾回，幽白现身同行，决定前往国清寺核对旧路。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_02_v4.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_02_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_02_1536.webp",
+      "webp_bytes": 131832,
+      "sha256": "7518133257b2f736d2072b3814d3e156ef8a8e23f7d81f40365e0a55fb0dc544",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_02_v4_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-03",
+      "title": "越过山肩",
+      "highlight": "幽白的话没说完，桥板先给出了反对意见。",
+      "result": "沿有新脚印的松根石阶安全越过山肩，记下断桥与绕行路。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_03_v5.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_03_1536.webp",
+      "webp_bytes": 176662,
+      "sha256": "f2724732c378948f2bb9609dcb029ff791f3a5f00e9a569dacd5937ccaa6d304",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_03_v5_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-04",
+      "title": "初次战斗",
+      "highlight": "护的不是奇书秘宝，而是包过饼的半生手稿：挑纸、接稿、引兽三人同时动起来。",
+      "result": "拦路兽群被击退，山客与手稿平安，获知国清寺仍存旧路记录。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_04_v3.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_04_1536.webp",
+      "webp_bytes": 170224,
+      "sha256": "87a19af2b2446c671416aec9eaa6e6902ae5f571f43c18338adec738b96b9d60",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_04_v3_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-05",
+      "title": "国清寺",
+      "highlight": "所谓正本没有神谕，只有一层层被认真改过的补丁。",
+      "result": "住持确认旧桥已毁、新路已成，允许以实地证据补注抄图。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_05_v3.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_05_1536.webp",
+      "webp_bytes": 188806,
+      "sha256": "d0ce48b6978e96ed9096f9ddd14ec88bc8a64b86ff1e1712684156d231770ad8",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_05_v3_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-06",
+      "title": "获得天台山简图",
+      "highlight": "幽白第一次主动照着主角改错，争功的火变成了帮忙的光。",
+      "result": "天台山简图已补全，取得黄山暗溪的后续线索。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_06_v3.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_06_1536.webp",
+      "webp_bytes": 174798,
+      "sha256": "69266fe814917b31cc7d82ac7ffefdeffdf56bde5dd331e1e0865854e0bd141f",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_06_v3_prompt.txt",
+      "user_review": "approved"
+    },
+    {
+      "id": "S00-07",
+      "title": "客栈",
+      "highlight": "保真问路生意露了底：掌柜坐着的凳子，正是旧桥拆下来的料。",
+      "result": "从掌柜处核实改道传闻，学会把传闻和实地证据分开记。",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_07_v3.png",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S00/s00_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S00/s00_07_1536.webp",
+      "webp_bytes": 164800,
+      "sha256": "d98250643fb45b2441f921baffae0d38d1866b62517acf290c6d0361dc23d65c",
+      "prompt": "SourceArt/UI/StoryNodes/Redraw/S00/Raw/s00_07_v3_prompt.txt",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": [
+    "driver",
+    "mountain_man",
+    "abbot",
+    "innkeeper"
+  ],
+  "remaining_other_scene_redraws": 53
+}

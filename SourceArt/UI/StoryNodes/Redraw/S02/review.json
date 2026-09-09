@@ -1,0 +1,108 @@
+{
+  "chapter": "S02",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S02-01",
+      "title": "湘江渡口",
+      "highlight": "竹篙戳中干渠，漂亮舆图被现实当场反驳。",
+      "result": "确认江湾村有水陆两种走法，并听闻水道异常。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_01_1536.webp",
+      "webp_bytes": 141582,
+      "sha256": "aab0b234b5c6431561dd42d6b9d3bd52445f8a13d8d104554a2a3e721d10fda4",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_01_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-02",
+      "title": "舌战船夫",
+      "highlight": "被误认为讨价的手，翻过来是连夜清渠的泥痕。",
+      "result": "船夫讲清两条路线，水路与陆路分支均可体验。",
+      "image": "SourceArt/UI/StoryNodes/Review/s02_02_hero_identity_v1_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Review/s02_02_hero_identity_v1_1536.webp",
+      "webp_bytes": 154156,
+      "sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136",
+      "raw": "C:/Users/shxuw/.codex/generated_images/01a08172-043d-75e0-a149-f8895de07b04/exec-645cfe2c-c8d3-45a5-9db0-d9c4d41e4ea8.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-03",
+      "title": "船上施贫",
+      "highlight": "受助老人用两根筷子讲清水路，双方从施舍关系变成平等交换。",
+      "result": "老行人得到帮助，得知支渠堵塞而非整条河断流。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_03_1536.webp",
+      "webp_bytes": 179688,
+      "sha256": "d90074231120ffd5022853367d34f3b1cfdb91c89d89dfa3ca02107ad2dd8878",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_03_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-04",
+      "title": "村头问询",
+      "highlight": "测试水流原路回到挖沟人的鞋边，一眼看清‘漂亮却逆坡’的错误。",
+      "result": "从陆路村头确认支渠入口与杂物淤堵的线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_04_1536.webp",
+      "webp_bytes": 134122,
+      "sha256": "a408402e2ed63a5fe8e8d74fb7a44c7c210ed6ecb36b4694398980038e43e243",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_04_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-05",
+      "title": "江湾村治水",
+      "highlight": "合力抽出堵口竹枝的一瞬，一股清水终于拐入旧渠；这是全章劳动的高潮。",
+      "result": "支渠入口被疏通，水重新流向农田；村长闻讯赶来查看，治水目标达成。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_05_1536.webp",
+      "webp_bytes": 181644,
+      "sha256": "ba3a245739478b726dd29ef0fb0957d7b8faca3b302d02b2a5954cdec6353de8",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_05_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-06",
+      "title": "潇水古图",
+      "highlight": "村长从贴身袖包抽出磨软的实用古图，反转‘珍贵古图必有隆重仪式’。",
+      "result": "潇水古图已核对补注，取得永州柳子庙的后续线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_06_1536.webp",
+      "webp_bytes": 167296,
+      "sha256": "618a65b3cdea82c03fe95d6f352c8f6a332274e1d152d54c0c9b5a65016aab57",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_06_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-07",
+      "title": "呈谢纷纷",
+      "highlight": "谢礼被主角顺手分回劳动者，形成热闹的人与菜的接力。",
+      "result": "与村民互致谢意，将共同疏渠的经历记入行旅笔记。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_07_1536.webp",
+      "webp_bytes": 174596,
+      "sha256": "589a0f464ce611fdc1c399af47b87e4f283fb6c9db6114ecf44a4a1bc5a66628",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_07_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S02-08",
+      "title": "答谢呈图",
+      "highlight": "带泥的指尖与古图旧手印相叠，幽白意识到守图也是守住许多普通人的经验。",
+      "result": "补记古图的来源与作图者口述，完善证据记录。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S02/s02_08_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S02/s02_08_1536.webp",
+      "webp_bytes": 167412,
+      "sha256": "d4d1e24026664ae90c164176d04a011c2a8235b490438564ce16ba30bf86133a",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_08_v1.png",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": [
+    "boatman",
+    "poor_traveler",
+    "villager",
+    "elder"
+  ]
+}

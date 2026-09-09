@@ -1,0 +1,247 @@
+{
+  "status": "asset_checks_pass",
+  "textures": [
+    {
+      "name": "T_RouteBackground",
+      "source": "SourceArt/UI/RouteMap/final/T_RouteBackground.png",
+      "source_size": [
+        1086,
+        1448
+      ],
+      "size": [
+        1088,
+        1448
+      ],
+      "alpha": false,
+      "alpha_bbox": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "visible_alpha_bbox": [
+        0,
+        0,
+        1086,
+        1448
+      ],
+      "edge_alpha_max": 255,
+      "sha256": "5550f4708f2a5661ffc5f23230328b8c50b1d3b3b6c6b923c1ad28e44d5fca4b"
+    },
+    {
+      "name": "T_RouteNodeCamp",
+      "source": "SourceArt/UI/RouteMap/final/T_RouteNodeCamp.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "alpha": true,
+      "alpha_bbox": [
+        65,
+        21,
+        1224,
+        1254
+      ],
+      "visible_alpha_bbox": [
+        235,
+        137,
+        1035,
+        1166
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "88949f59b3ef75827e7c235b463389102a4a85479f0c9ac35e2c84c5ad0f61e5"
+    },
+    {
+      "name": "T_RouteNodeChest",
+      "source": "SourceArt/UI/RouteMap/final/T_RouteNodeChest.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "alpha": true,
+      "alpha_bbox": [
+        0,
+        0,
+        1236,
+        1206
+      ],
+      "visible_alpha_bbox": [
+        76,
+        203,
+        1196,
+        1079
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "8d6291842cc4abc485c8f7bb4d374d0c9ae0b7d99eaa1f47446dbd31307be388"
+    },
+    {
+      "name": "T_RouteNodeEvent",
+      "source": "SourceArt/UI/RouteMap/final/T_RouteNodeEvent.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "alpha": true,
+      "alpha_bbox": [
+        97,
+        9,
+        1194,
+        1203
+      ],
+      "visible_alpha_bbox": [
+        268,
+        116,
+        1016,
+        1136
+      ],
+      "edge_alpha_max": 0,
+      "sha256": "87c4238818c37b45e2187afbef1be9dca5b935e3d59078310e596e8ef7f33b0d"
+    },
+    {
+      "name": "T_RouteNodeMerchant",
+      "source": "SourceArt/UI/RouteMap/final/T_RouteNodeMerchant.png",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        256,
+        256
+      ],
+      "alpha": true,
+      "alpha_bbox": [
+        0,
+        53,
+        1238,
+        1214
+      ],
+      "visible_alpha_bbox": [
+        82,
+        187,
+        1173,
+        1121
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "5779f6d6de88fab82009b2ce23db32f693ff6f89e31ab0871c321630b2a4745b"
+    },
+    {
+      "name": "T_RouteSelectionCircleAtlas",
+      "source": "SourceArt/UI/RouteMap/source/battle_circle_effect_01_atlas.png",
+      "source_size": [
+        2048,
+        2048
+      ],
+      "size": [
+        2048,
+        2048
+      ],
+      "alpha": true,
+      "sha256": "4615e2ef594c99c84654773cb8fae955feeed37673e427d7eff6897cebd20410"
+    },
+    {
+      "name": "T_TrainingNode_Challenge",
+      "source": "SourceArt/UI/RouteMap/final/T_TrainingNode_Challenge.png",
+      "destination": "/Game/GameXXK/UI/Training/MapNodes",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "visible_alpha_bbox": [
+        82,
+        86,
+        1173,
+        1175
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "9a36957b957f33a0dcc6ec363bbf6bc8da40752b95f1b4b7a98cb8cca35d5235"
+    },
+    {
+      "name": "T_TrainingNode_Locked",
+      "source": "SourceArt/UI/RouteMap/final/T_TrainingNode_Locked.png",
+      "destination": "/Game/GameXXK/UI/Training/MapNodes",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "visible_alpha_bbox": [
+        196,
+        93,
+        1058,
+        1143
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "4a9792f4e75d1d4fe13cb1db63fde5e527d78d2b53d224459fdb72db6008133e"
+    },
+    {
+      "name": "T_TrainingNode_Passed",
+      "source": "SourceArt/UI/RouteMap/final/T_TrainingNode_Passed.png",
+      "destination": "/Game/GameXXK/UI/Training/MapNodes",
+      "source_size": [
+        1254,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alpha": true,
+      "visible_alpha_bbox": [
+        140,
+        122,
+        1113,
+        1133
+      ],
+      "edge_alpha_max": 1,
+      "sha256": "adcc807bad1c23482b7c7ac8cf7282388a8ca298225e9923b644949cbad490ef"
+    }
+  ],
+  "reused_monsters": [
+    "/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerNormal",
+    "/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerElite",
+    "/Game/GameXXK/UI/Training/IdleStrip/T_TrainingWaveMarkerBoss"
+  ],
+  "alpha_note": "Generated PNGs retain original alpha. A few outer-edge samples have alpha 1/255; all visible silhouettes (alpha >=16) have clear margins. Texture build resizes icons to 256 square; PNGs remain untouched.",
+  "circle": {
+    "grid": [
+      8,
+      8
+    ],
+    "cell_size": [
+      256,
+      256
+    ],
+    "draw_frames": [
+      3,
+      16
+    ],
+    "static_frame": 32,
+    "draw_seconds": 0.16,
+    "total_feedback_seconds": 0.22,
+    "painted_center": [
+      128,
+      135.5
+    ]
+  }
+}

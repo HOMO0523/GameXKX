@@ -1,0 +1,169 @@
+{
+  "S00-01": {
+    "file": "SourceArt/UI/StoryNodes/s00_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-6a29df9a-b66e-4728-a9bf-e8c26bbf466c.png",
+    "sha256": "47f35bec23217cae63044e8d860e7584052a9982f8ad97cacdaceb0942d0d728",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_01.T_Story_S00_01",
+    "cast": [
+      "driver",
+      "hero"
+    ],
+    "result": "已问清沿溪上山的方向，旧图被风吹向浅溪。",
+    "display_phase": "completed",
+    "visual_review": "pass",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。",
+    "reviewed_sha256": "47f35bec23217cae63044e8d860e7584052a9982f8ad97cacdaceb0942d0d728",
+    "contract_sha256": "d6cb4797e4b54fdf9e43c8692c241696998326493a227942c5899128828b216e",
+    "contract_recorded_after_visual_review": true
+  },
+  "S00-02": {
+    "file": "SourceArt/UI/StoryNodes/s00_02_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-34859c51-1506-4d42-b0a0-68b0dad463f7.png",
+    "sha256": "b8eafd7d944ec2f2b615c20c93002362e1c84ee6cf3deed1a2ac087efa07f20c",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_02.T_Story_S00_02",
+    "cast": [
+      "hero",
+      "you_bai"
+    ],
+    "result": "卷轴已拾回，幽白现身同行，决定前往国清寺核对旧路。",
+    "display_phase": "completed",
+    "visual_review": "pass",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。",
+    "reviewed_sha256": "b8eafd7d944ec2f2b615c20c93002362e1c84ee6cf3deed1a2ac087efa07f20c",
+    "contract_sha256": "a940c429740a0af2ab6ef8f798f918498b71c4d0c431d78fca576f55289c8aae",
+    "contract_recorded_after_visual_review": true
+  },
+  "S00-03": {
+    "file": "SourceArt/UI/StoryNodes/s00_03_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-57165edd-8bc7-4153-8298-f0291b48584f.png",
+    "sha256": "1ccf9908de6895082494e10566736f7220d066373ca30724bd431fcdc9451310",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_03.T_Story_S00_03",
+    "cast": [
+      "you_bai",
+      "hero"
+    ],
+    "result": "沿有新脚印的松根石阶安全越过山肩，记下断桥与绕行路。",
+    "display_phase": "story_preview_and_result",
+    "style_version": "clean_ink_v2",
+    "contract_sha256": "22d131dee52045517323df64d435e732a0959873f4b7eeff1dfba30e6a66f8e5",
+    "visual_review": "pending"
+  },
+  "S00-04": {
+    "file": "SourceArt/UI/StoryNodes/s00_04_v3.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-e0741cc3-d4c2-472a-9ad6-8634e236cd7a.png",
+    "sha256": "86f57d0b418cea2298c549e6092fb3eb07b9465e4acb63724f5893c094fa5227",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 3,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_04.T_Story_S00_04",
+    "cast": [
+      "mountain_man",
+      "hero",
+      "you_bai"
+    ],
+    "result": "拦路兽群被击退，山客与手稿平安，获知国清寺仍存旧路记录。",
+    "display_phase": "story_preview_and_result",
+    "style_version": "clean_ink_v2",
+    "contract_sha256": "1671b71c7798bdb97d27216cd993264bc4616716886e18b71b8f34cc66af5119",
+    "visual_review": "pass",
+    "reviewed_sha256": "86f57d0b418cea2298c549e6092fb3eb07b9465e4acb63724f5893c094fa5227",
+    "reviewer": "agent",
+    "review_notes": "新清爽风格基准：无颗粒与碎点、大色块与粗实轮廓，山客/主角/幽白及护住手稿结果正确。"
+  },
+  "S00-05": {
+    "file": "SourceArt/UI/StoryNodes/s00_05_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-c1e2c0f9-a636-47e8-97f1-44fcb20f9023.png",
+    "sha256": "c5dd55d9782a792da44495001651cc60861ba6927e166018e1dbc266fdfa0a59",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_05.T_Story_S00_05",
+    "cast": [
+      "abbot",
+      "hero",
+      "you_bai"
+    ],
+    "result": "住持确认旧桥已毁、新路已成，允许以实地证据补注抄图。",
+    "display_phase": "completed",
+    "contract_sha256": "45677711d2c05e465ebca8ba4f6b2e26685b23882f9a75e964b6247436deb5bd",
+    "visual_review": "pass",
+    "reviewed_sha256": "c5dd55d9782a792da44495001651cc60861ba6927e166018e1dbc266fdfa0a59",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S00-06": {
+    "file": "SourceArt/UI/StoryNodes/s00_06_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-f25911ff-4ca3-4269-b69c-c5977f72d72d.png",
+    "sha256": "db0396a0f44a246a374417509cec7dc34ee7a262d08d7cc4d2b3ddf1473c529b",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_06.T_Story_S00_06",
+    "cast": [
+      "hero",
+      "you_bai",
+      "abbot"
+    ],
+    "result": "天台山简图已补全，取得黄山暗溪的后续线索。",
+    "display_phase": "completed",
+    "visual_review": "pass",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。",
+    "reviewed_sha256": "db0396a0f44a246a374417509cec7dc34ee7a262d08d7cc4d2b3ddf1473c529b",
+    "contract_sha256": "f52c6792040f945e3274a45876e6bcdd9968c18cd47be74118ea98e926237497",
+    "contract_recorded_after_visual_review": true
+  },
+  "S00-07": {
+    "file": "SourceArt/UI/StoryNodes/s00_07_v3.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-4c1d8196-536d-40d9-b3f2-111759d23511.png",
+    "sha256": "eae9cb39171dd588840dfa4e724105b9ddfb5e08a229bbefe4d4f5a4461ef935",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 3,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S00_07.T_Story_S00_07",
+    "cast": [
+      "innkeeper",
+      "hero",
+      "you_bai"
+    ],
+    "result": "从掌柜处核实改道传闻，学会把传闻和实地证据分开记。",
+    "display_phase": "completed",
+    "contract_sha256": "ca7d975a628dead7175cab07fe92ad1af951bea622991f312acb6dd346bb5740",
+    "visual_review": "pass",
+    "reviewed_sha256": "eae9cb39171dd588840dfa4e724105b9ddfb5e08a229bbefe4d4f5a4461ef935",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

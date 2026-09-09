@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "expectedCount": 45,
+  "style": "approved gem type-icons-v5",
+  "background": "magenta",
+  "jobs": [
+    {
+      "slug": "AncientCoin",
+      "name": "古铜方孔钱",
+      "subject": "一枚暖金铜色厚实方孔古钱，中央方孔清楚，仅两块青绿包浆大色块，无字。",
+      "existing": true
+    },
+    {
+      "slug": "JadeBell",
+      "name": "青玉铃",
+      "subject": "一只上窄下宽的浅青绿色玉铃，顶部圆环，宽厚铃口与大铃舌，短胖结实，三块深浅青绿面。",
+      "existing": true
+    },
+    {
+      "slug": "BambooTally",
+      "name": "竹节令",
+      "subject": "一枚竖立的金黄竹节令牌，两节粗短竹筒，中央一个宽黑墨圆记，粗绿竹边，大体块，无字无穗。",
+      "existing": true
+    },
+    {
+      "slug": "TigerSeal",
+      "name": "虎纹兵符",
+      "subject": "青绿短壮卧虎形兵符，大虎头厚爪，贴身卷尾，温金色大虎纹，无底座与外挂装饰。",
+      "existing": true
+    },
+    {
+      "slug": "MedicineGourd",
+      "name": "青釉药葫",
+      "subject": "一只上小下大、圆润短胖的蓝青药葫芦，腰间一条粗黑绿束带，小瓶口，两三块大色面。",
+      "existing": true
+    },
+    {
+      "slug": "InkTalisman",
+      "name": "镇煞墨符",
+      "subject": "一张边角略卷的厚米黄色符纸，中央一个粗黑抽象墨符与两道短朱红笔画，无金属边框。",
+      "existing": true
+    },
+    {
+      "slug": "CloudMirror",
+      "name": "云纹古镜",
+      "subject": "一面短柄圆形古镜，青绿镜面与宽温金镜沿，镜沿仅两三个大云纹，无真实反射无雕花细节。",
+      "existing": true
+    },
+    {
+      "slug": "StoneBead",
+      "name": "山石念珠",
+      "subject": "六颗深青石珠与一颗温黄主珠围成念珠，珠子又大又饱满，少数宽明暗面，无细裂纹隔珠穗带。",
+      "existing": true
+    },
+    {
+      "slug": "CraneFeather",
+      "name": "鹤羽",
+      "subject": "一根宽大弯曲的乳白鹤羽，深灰羽尖与一条深墨羽轴，羽片合并为三四块大面，短粗羽根。",
+      "existing": true
+    },
+    {
+      "slug": "IronKnot",
+      "name": "玄铁结",
+      "subject": "两个粗厚的深靛玄铁环互相套合成结，立体关系明确，黑墨轮廓、宽蓝灰亮面，无纹理和装饰。",
+      "existing": true
+    },
+    {
+      "slug": "TeaBrick",
+      "name": "陈香茶砖",
+      "subject": "一块圆角厚方形赤褐茶砖，中间只有三片宽大的深墨茶叶纹，面与侧用三大暖棕色块概括。",
+      "existing": true
+    },
+    {
+      "slug": "Compass",
+      "name": "寻路司南",
+      "subject": "一块厚实青绿色方形司南盘，盘中一只短胖金黄磁勺，轮廓简洁，少量大明暗面，无文字刻度。",
+      "existing": true
+    },
+    {
+      "slug": "RedCord",
+      "name": "同心红绳",
+      "subject": "一条鲜明朱红粗绳盘成同心结，两个清楚圆环与短粗绳尾，深红阴影，线条饱满，不画细编织纹。",
+      "existing": true
+    },
+    {
+      "slug": "BronzeNeedle",
+      "name": "定脉铜针",
+      "subject": "一枚斜放的短粗温金铜针，圆形粗环针柄、明确尖端，适度夸张加宽，青绿侧影，无长绳。",
+      "existing": true
+    },
+    {
+      "slug": "RainCape",
+      "name": "旧蓑衣",
+      "subject": "一件短胖扇形蓑衣，小圆领口，四五束宽大的金黄稻草片向下展开，深棕粗线，无细丝草。",
+      "existing": true
+    },
+    {
+      "slug": "ChessStone",
+      "name": "残局黑子",
+      "subject": "一颗厚实椭圆黑色围棋子，黑墨外轮廓，三块深紫灰明暗面与一处宽浅灰笔触，低光泽，无底盘。",
+      "existing": true
+    },
+    {
+      "slug": "DrumCharm",
+      "name": "震山鼓坠",
+      "subject": "一只短胖小鼓，米白圆鼓面、宽朱红鼓框，四个大金黄钉，顶上一只简单短环，无穗带。",
+      "existing": true
+    },
+    {
+      "slug": "LotusSeed",
+      "name": "清心莲子",
+      "subject": "一粒饱满乳白莲子被两瓣青绿莲萼包住，圆润大形，温黄明面与深绿侧面，不画细脉络。",
+      "existing": true
+    },
+    {
+      "slug": "SwordGuard",
+      "name": "旧剑镡",
+      "subject": "一枚粗厚暖金色弯月剑镡，中央大圆孔，单一干净弧形，深褐侧面，一道宽亮笔触，无雕花。",
+      "existing": true
+    },
+    {
+      "slug": "OldMap",
+      "name": "残山旧图",
+      "subject": "一张两端短卷轴的旧地图，米黄纸面上仅三笔大的青绿山形与一段红色路径，纸卷厚实无小字。",
+      "existing": true
+    },
+    {
+      "slug": "PineCone",
+      "name": "雷击松果",
+      "subject": "一颗短胖的赤棕松果，只画五六块粗大鳞片，大暖棕明暗色块，一道暗黑雷击痕，不画细纹。",
+      "existing": true
+    },
+    {
+      "slug": "RiverPearl",
+      "name": "江心珠",
+      "subject": "一颗饱满的浅冰蓝圆珠，粗深蓝外轮廓，三块弧形蓝白色面与一笔宽白亮面，低光泽无光晕。",
+      "existing": true
+    },
+    {
+      "slug": "CandleStub",
+      "name": "长明烛心",
+      "subject": "一截短胖米白蜡烛，顶部一朵大橘红火苗，两块宽蜡滴，暗金侧影，轮廓清楚无光晕无底座。",
+      "existing": true
+    },
+    {
+      "slug": "FoxMask",
+      "name": "旧狐面",
+      "subject": "一张简化橘白狐面，两只大三角耳，厚实面型，两个短黑眼孔与一笔红纹，略诙谐，不是写实狐狸。",
+      "existing": true
+    },
+    {
+      "slug": "StoneLion",
+      "name": "袖珍石狮",
+      "subject": "一只青绿短胖石狮摆件，大头短腿，鬃毛只保留三处大卷纹，卡通轮廓，少量宽明暗色块。",
+      "existing": true
+    },
+    {
+      "slug": "WineCup",
+      "name": "缺口酒盏",
+      "subject": "一只矮宽陶酒杯，暖土棕与金黄大明暗面，杯口有一个明显小缺口，厚口沿，无细裂纹。",
+      "existing": true
+    },
+    {
+      "slug": "HerbBasket",
+      "name": "百草小篓",
+      "subject": "一只短胖金黄竹篓，粗圆提把，内放三片大青绿药草叶，只用三四条粗线暗示编织。",
+      "existing": true
+    },
+    {
+      "slug": "PaperCrane",
+      "name": "祈愿纸鹤",
+      "subject": "一只米白浅金折纸鹤，清楚的宽折翼、尖嘴与短尾，用四五个大折面概括，黑墨外线，无挂绳。",
+      "existing": true
+    },
+    {
+      "slug": "BrokenArrow",
+      "name": "折锋箭簇",
+      "subject": "一枚宽厚深蓝灰铁箭头，三角轮廓带一个明显缺口，短粗箭杆，两道宽金绑带，少量大切面。",
+      "existing": true
+    },
+    {
+      "slug": "MoonDisc",
+      "name": "月白玉璧",
+      "subject": "一枚厚实浅青玉璧，中心圆孔，外围圆润宽玉环，深青侧面与一笔宽白亮面，无云纹细雕。",
+      "existing": true
+    },
+    {
+      "slug": "BloodInkSeal",
+      "name": "赤墨印",
+      "subject": "一枚短胖朱红方印，大方印身与简化山形钮，深红阴影，宽温金亮面，底部一道黑墨痕，无文字。",
+      "existing": false
+    },
+    {
+      "slug": "StormChime",
+      "name": "惊雷铃",
+      "subject": "一只短胖金黄铜铃，深蓝侧面，中央一个粗壮闪电形铃舌，顶部短环，无细刻纹无穗带。",
+      "existing": false
+    },
+    {
+      "slug": "FlameCenser",
+      "name": "余烬炉",
+      "subject": "一只圆润矮胖深蓝香炉，三道宽橘红余烬缝，顶部一个短粗烟卷，黑墨轮廓，无密集镂空。",
+      "existing": false
+    },
+    {
+      "slug": "HunterQuiver",
+      "name": "追风箭囊",
+      "subject": "一只斜放的短胖赤棕箭囊，三根宽白羽短箭露出，青绿大扣，粗轮廓大色块，无细皮革纹。",
+      "existing": false
+    },
+    {
+      "slug": "MoonDewVial",
+      "name": "月露瓶",
+      "subject": "一只圆润乳白小瓷瓶，浅青大月牙色块，深蓝瓶塞，短脖大肚，三块宽明暗面，无文字。",
+      "existing": false
+    },
+    {
+      "slug": "WarBanner",
+      "name": "破阵小旗",
+      "subject": "一面短杆厚实朱红三角小旗，旗面一道粗黑破阵笔画，金黄旗杆，干净宽旗尾，无细绳。",
+      "existing": false
+    },
+    {
+      "slug": "AmberPestle",
+      "name": "琥珀药杵",
+      "subject": "一只矮胖深青药臼配一根粗短蜜黄药杵，杵斜靠臼中，轮廓紧凑，四块大色面，无药粉粒。",
+      "existing": false
+    },
+    {
+      "slug": "TwinJade",
+      "name": "双生玉",
+      "subject": "两块浅青与深翠的肥厚逗号形玉佩相扣，如两尾简化玉鱼，主轮廓圆整，不画鱼鳞与细绳。",
+      "existing": false
+    },
+    {
+      "slug": "SilkFan",
+      "name": "回风扇",
+      "subject": "一把半开的米白折扇，三四根粗金黄扇骨，一道宽黑风纹，短厚扇柄，简洁大形无字。",
+      "existing": false
+    },
+    {
+      "slug": "ObsidianScale",
+      "name": "玄鳞",
+      "subject": "一片宽厚盾形黑蓝龙鳞，中心一条宽青绿棱，三块大明暗面，略不规则轮廓，无小鳞纹无外框。",
+      "existing": false
+    },
+    {
+      "slug": "BloodMoonBlade",
+      "name": "血月残锋",
+      "subject": "一段宽厚暗铁弯刃残片，清楚的朱红弯月形大刃纹，短金黄断柄，深墨轮廓，无刀鞘穗带。",
+      "existing": false
+    },
+    {
+      "slug": "PhoenixCauldron",
+      "name": "涅槃药鼎",
+      "subject": "一只青绿短胖三足药鼎，左右宽大的简化凤翼耳，炉腹一道橘红大火纹，四五块大面，无细雕花。",
+      "existing": false
+    },
+    {
+      "slug": "StarAbacus",
+      "name": "星衡算盘",
+      "subject": "一只短胖深红木算盘，只有三根粗横杆与几颗大靛蓝和金黄算珠，中央一个简化星点，无字无绳。",
+      "existing": false
+    },
+    {
+      "slug": "DragonCarapace",
+      "name": "伏龙甲印",
+      "subject": "一枚宽厚青绿甲印，三块隆起的大甲片，上方一个简化金色龙角轮廓，黑墨边，极少大明暗面。",
+      "existing": false
+    },
+    {
+      "slug": "ThunderSeal",
+      "name": "九霄雷印",
+      "subject": "一枚粗厚靛蓝方雷印，正面只有一块粗壮金黄闪电，顶部短阶梯形印钮，四块大色面，无字无穗。",
+      "existing": false
+    }
+  ]
+}

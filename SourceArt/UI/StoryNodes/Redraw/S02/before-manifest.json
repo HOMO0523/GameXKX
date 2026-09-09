@@ -1,0 +1,195 @@
+{
+  "S02-01": {
+    "file": "SourceArt/UI/StoryNodes/s02_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-f641032b-8880-43a9-927f-db3c5b9fae65.png",
+    "sha256": "5b662e7aa14160b4ec0aee24070d94bdcce13b393abaf4e063206cd166961de2",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_01.T_Story_S02_01",
+    "cast": [
+      "boatman",
+      "hero",
+      "you_bai"
+    ],
+    "result": "确认江湾村有水陆两种走法，并听闻水道异常。",
+    "display_phase": "completed",
+    "contract_sha256": "69b43461cb8deeb0dde6b4264bbc2ac0ef5321eb4cd2c876572a327f2124178d",
+    "visual_review": "pass",
+    "reviewed_sha256": "5b662e7aa14160b4ec0aee24070d94bdcce13b393abaf4e063206cd166961de2",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S02-02": {
+    "file": "SourceArt/UI/StoryNodes/Review/s02_02_hero_identity_v1_1536.png",
+    "generated_source": "C:/Users/shxuw/.codex/generated_images/01a08172-043d-75e0-a149-f8895de07b04/exec-645cfe2c-c8d3-45a5-9db0-d9c4d41e4ea8.png",
+    "sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136",
+    "size": [
+      1536,
+      512
+    ],
+    "mode": "RGB",
+    "revision": 3,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_02.T_Story_S02_02",
+    "cast": [
+      "boatman",
+      "hero",
+      "you_bai"
+    ],
+    "result": "船夫讲清两条路线，水路与陆路分支均可体验。",
+    "display_phase": "story_preview_and_result",
+    "style_version": "clean_ink_v2",
+    "contract_sha256": "5d364eddd6d26fec73ce944ad7b2038f0f1120b36f422b57332f9e38b587b9e2",
+    "visual_review": "pass",
+    "reviewed_sha256": "7751a0493eccde9ce927908a38b02f3c7e21ce1b587f516ff5ec005a19b88136",
+    "reviewer": "user",
+    "review_notes": "用户确认可以了；使用时按篝火图四周柔化。主角身份依项目原设修正，保留船夫泥手反转、幽白与已认可画风。"
+  },
+  "S02-03": {
+    "file": "SourceArt/UI/StoryNodes/s02_03_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-0ea01e7a-9cf3-4420-bf09-fbad53c6f695.png",
+    "sha256": "62b9e82d8d39ecea9e9e9c9d592af50103032be6a4582f401feb02bc0ce62101",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_03.T_Story_S02_03",
+    "cast": [
+      "poor_traveler",
+      "hero",
+      "you_bai",
+      "boatman"
+    ],
+    "result": "老行人得到帮助，得知支渠堵塞而非整条河断流。",
+    "display_phase": "completed",
+    "contract_sha256": "abb89a061b885fe8a0d84f1a8b9d4ed19cf4baa68382c04c145722b3632e6d47",
+    "visual_review": "pass",
+    "reviewed_sha256": "62b9e82d8d39ecea9e9e9c9d592af50103032be6a4582f401feb02bc0ce62101",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S02-04": {
+    "file": "SourceArt/UI/StoryNodes/s02_04_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-1f35a148-5d10-4cde-b82a-90578d10da9a.png",
+    "sha256": "19471e44feebdb4e60a20e7450b9f202dd59922aa2c17ae330158373bd3083ec",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_04.T_Story_S02_04",
+    "cast": [
+      "villager",
+      "hero",
+      "you_bai"
+    ],
+    "result": "从陆路村头确认支渠入口与杂物淤堵的线索。",
+    "display_phase": "completed",
+    "contract_sha256": "788fb72774e130045ce66941cd83300948f7e7744846d19a3adce96c545fb9d8",
+    "visual_review": "pass",
+    "reviewed_sha256": "19471e44feebdb4e60a20e7450b9f202dd59922aa2c17ae330158373bd3083ec",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S02-05": {
+    "file": "SourceArt/UI/StoryNodes/s02_05_v2.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-4794ebee-5c7a-4392-868f-4522309a2269.png",
+    "sha256": "eda52be6d80d68bbd9b7cbaf7e09977970872aff192aa95fed12b99046ebb637",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 2,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_05.T_Story_S02_05",
+    "cast": [
+      "hero",
+      "you_bai",
+      "villager",
+      "elder"
+    ],
+    "result": "支渠入口被疏通，水重新流向农田；村长闻讯赶来查看，治水目标达成。",
+    "display_phase": "story_preview_and_result",
+    "style_version": "clean_ink_v2",
+    "contract_sha256": "8c11490312a2f5af83d6e39b3430df80aec8bba84246f2cb53209b4e270f6fa3",
+    "visual_review": "pending"
+  },
+  "S02-06": {
+    "file": "SourceArt/UI/StoryNodes/s02_06_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-b8a10bae-72c0-44c0-ad80-7635bd18c5c6.png",
+    "sha256": "3c93d1d2a170cc0b42514e7dd487ce8068a1a42a10c8525b95323f917d378f1c",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_06.T_Story_S02_06",
+    "cast": [
+      "elder",
+      "hero",
+      "you_bai"
+    ],
+    "result": "潇水古图已核对补注，取得永州柳子庙的后续线索。",
+    "display_phase": "completed",
+    "contract_sha256": "b29b447298b63c408e873cc4503c7300d963c212e39248c6f6d8f9bcb231fc84",
+    "visual_review": "pass",
+    "reviewed_sha256": "3c93d1d2a170cc0b42514e7dd487ce8068a1a42a10c8525b95323f917d378f1c",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S02-07": {
+    "file": "SourceArt/UI/StoryNodes/s02_07_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-e29bb1e3-512a-4299-bbc0-5992b130cde5.png",
+    "sha256": "faa6770077ecb7bfbd81748139b31a7c38d07d22e190ad8df272efc0f5f57c67",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_07.T_Story_S02_07",
+    "cast": [
+      "villager",
+      "hero",
+      "you_bai"
+    ],
+    "result": "与村民互致谢意，将共同疏渠的经历记入行旅笔记。",
+    "display_phase": "completed",
+    "contract_sha256": "3ef7b7d3b1990aa3fa54cb9677fd137bcd9390531a809ec14a0eb6a4446841a7",
+    "visual_review": "pass",
+    "reviewed_sha256": "faa6770077ecb7bfbd81748139b31a7c38d07d22e190ad8df272efc0f5f57c67",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S02-08": {
+    "file": "SourceArt/UI/StoryNodes/s02_08_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-440e3122-0154-431d-b5e4-b5100e668424.png",
+    "sha256": "a57752f8546a64e730ccd033013dfac2c384bff44088ea5ff86f03306d9a4611",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S02_08.T_Story_S02_08",
+    "cast": [
+      "elder",
+      "hero",
+      "you_bai"
+    ],
+    "result": "补记古图的来源与作图者口述，完善证据记录。",
+    "display_phase": "completed",
+    "contract_sha256": "05f356bce6414f96b4ed5bbf6a1e9210974aa12e69f4cff3197b77b82b605e70",
+    "visual_review": "pass",
+    "reviewed_sha256": "a57752f8546a64e730ccd033013dfac2c384bff44088ea5ff86f03306d9a4611",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "slug": "RedCord",
+  "status": "candidate",
+  "prompt": "把第一张参考图的RedCord（同心红绳）重新绘制成第二张已批准宝石图标的同系列遗物。仅画一个物件，不输出联系表、文字、格子或其他物件。具体造型：一条鲜明朱红粗绳盘成同心结，两个清楚圆环与短粗绳尾，深红阴影，线条饱满，不画细编织纹。 风格严格跟第二张宝石：粗而自然的深墨外轮廓，饱满结实略夸张的卡通大体块，鲜明受控的主色，3至5块大的平涂明暗面，少量宽阔手绘笔刷，低光泽。像同一位画师给宝石画的同一套物品。保持器物本来的材质概括，不把所有器物画成同形晶体。正方形，主体最大边占88%到90%，完整画入四边安全区，48px也能看懂轮廓。不要写实腐蚀、密集花纹、小切面、复杂反射、长穗带、细碎纹理、UI边框、品质皇冠或光晕。背景完全均匀纯洋红#FF00FF，物件不能有洋红色，背景无阴影、无纹理、无棋盘、无渐变。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Relics\\relic_icon_contact_sheet.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-21a9612b-3903-4ed5-98c9-b01cecd07631.png",
+  "background": "magenta"
+}

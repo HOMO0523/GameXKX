@@ -1,0 +1,131 @@
+{
+  "chapter": "S01",
+  "status": "user_approved",
+  "images": [
+    {
+      "id": "S01-01",
+      "title": "云雾缭绕的黄山脚下",
+      "highlight": "幽白冲出去会‘仙人’，却被自己的回声招回来。",
+      "result": "找到樵夫，确认应先核对山路和暗溪线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_01_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_01_1536.webp",
+      "webp_bytes": 143564,
+      "sha256": "cf36970efcd618b2cc95325ea28a9e75d7d71346a567e1d9c24f95eba102bbba",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_01_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-02",
+      "title": "山下歇脚",
+      "highlight": "满场刺眼的光一收，头巾下面反而照出了真路。",
+      "result": "得到脚印、旧石阶和溪声三条辨路线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_02_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_02_1536.webp",
+      "webp_bytes": 168136,
+      "sha256": "cfd99ba7d7a735eefdeae199b4a1443eb991fef4692477dbfc9d76a0cf2945b6",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_02_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-03",
+      "title": "松影辨路",
+      "highlight": "仙路的幻象让位于泥脚印，雾后求救声突然变成‘顺便救饼’。",
+      "result": "循左侧旧石阶穿过迷雾，听见猎人在前方求助。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_03_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_03_1536.webp",
+      "webp_bytes": 145068,
+      "sha256": "d7bfa914cd923954ca5741fbe72b3be6d7e895f6c5d58e41575037a261e97aee",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_03_v4.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-04",
+      "title": "黄山地形草图",
+      "highlight": "幽白把咬穿的纸洞当成山洞，猎人从背面探来一根指头拆穿。",
+      "result": "完成黄山山路草图，标出暗溪入口与待核实的下坡水路。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_04_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_04_1536.webp",
+      "webp_bytes": 177318,
+      "sha256": "9ba3acc2afda22b5fab8c47b3ba525045b5ec7eb1b99f30bf961249ffa191ebb",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_04_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-05",
+      "title": "标注溪流",
+      "highlight": "叶子绕一圈才现真出口，幽白的长篇解释卡在半句。",
+      "result": "暗溪按左下方低处出口补全，黄山草图完成。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_05_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_05_1536.webp",
+      "webp_bytes": 142978,
+      "sha256": "540bc87afa8a932459ac01d57858bcba9101929de6ce11365b0ed18fd2bb7577",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_05_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-06",
+      "title": "大雾封山",
+      "highlight": "两个时代的地名对上，幽白刚想炫耀又被轻轻压回一盏实用的小灯。",
+      "result": "记下雾天辨路经验，得到对山路传闻的补充说明。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_06_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_06_1536.webp",
+      "webp_bytes": 144200,
+      "sha256": "a299732acb657ffafc484ddda15729a4d5cce000d389f8d332682294687879bf",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_06_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-07",
+      "title": "解救猎人",
+      "highlight": "猎人举饼保命，主角横竿抢回手记；嘴硬的行家终于肯伸手求助。",
+      "result": "兽群被击退，猎人与手记获救，取得暗溪入口的可靠线索。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_07_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_07_1536.webp",
+      "webp_bytes": 155590,
+      "sha256": "56884b5e2e62201912b2b5219a0d97989499fe29aa138c48c56359581926da7f",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_07_v2.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-08",
+      "title": "技能采卖",
+      "highlight": "大侠等秘籍，猎人却先把肉干从脖子上摘了下来。",
+      "result": "听完猎人的防身与整备经验，不额外购买或消耗物品。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_08_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_08_1536.webp",
+      "webp_bytes": 150842,
+      "sha256": "7ec06f73e83142cd22bcfa4fe90f5ca98138471c2b33e7a94bad18703bd17d24",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_08_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-09",
+      "title": "傍溪住民·周光祖",
+      "highlight": "狐狸先喝到水，主人的高论被一口真水截了胡。",
+      "result": "从周光祖处取得新旧水痕的旁证，完善草木观察记录。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_09_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_09_1536.webp",
+      "webp_bytes": 161924,
+      "sha256": "51f3b4f82be45ea16c715bcc745aca6ff927a8dc94248ef3a25d2a15b7e5334c",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_09_v1.png",
+      "user_review": "approved"
+    },
+    {
+      "id": "S01-10",
+      "title": "傍溪住民·垂柳先生",
+      "highlight": "一根柳枝划过两处叫法，落回同一股真水，整章的争论终于合流。",
+      "result": "确认暗溪与柳湾是同一段水路的地方称呼，补上旁注。",
+      "image": "SourceArt/UI/StoryNodes/Redraw/S01/s01_10_1536.png",
+      "webp": "SourceArt/UI/StoryNodes/Redraw/S01/s01_10_1536.webp",
+      "webp_bytes": 132472,
+      "sha256": "acf1494e6855c5cca32289225c45ac65c2e00d675f04b91ccaafcbaeb82e1c58",
+      "raw": "SourceArt/UI/StoryNodes/Redraw/S01/Raw/s01_10_v1.png",
+      "user_review": "approved"
+    }
+  ],
+  "portraits": [
+    "woodcutter",
+    "hunter",
+    "willow_scholar"
+  ]
+}

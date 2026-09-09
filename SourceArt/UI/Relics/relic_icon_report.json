@@ -1,0 +1,308 @@
+{
+  "icon_count": 30,
+  "expected_icon_count": 30,
+  "canvas_size": 512,
+  "subject_fill_target": 0.86,
+  "icons": [
+    {
+      "file": "T_Relic_AncientCoin.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_JadeBell.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_BambooTally.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_TigerSeal.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_MedicineGourd.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_InkTalisman.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_CloudMirror.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_StoneBead.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_CraneFeather.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_IronKnot.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_TeaBrick.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_Compass.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_RedCord.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_BronzeNeedle.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_RainCape.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_ChessStone.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_DrumCharm.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_LotusSeed.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_SwordGuard.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_OldMap.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_PineCone.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_RiverPearl.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_CandleStub.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_FoxMask.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_StoneLion.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_WineCup.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_HerbBasket.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_PaperCrane.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_BrokenArrow.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    },
+    {
+      "file": "T_Relic_MoonDisc.png",
+      "size": [
+        512,
+        512
+      ],
+      "subject_fill": 0.8594,
+      "corner_alpha": 0,
+      "magenta_spill_ratio": 0.0
+    }
+  ]
+}

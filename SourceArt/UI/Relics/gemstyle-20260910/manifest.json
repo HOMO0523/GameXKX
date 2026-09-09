@@ -1,0 +1,994 @@
+{
+  "schemaVersion": 1,
+  "styleReference": "SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5",
+  "backgroundAndResizeAuthorized": true,
+  "expectedUniqueIcons": 45,
+  "icons": [
+    {
+      "slug": "TigerSeal",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_TigerSeal.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-0a33479b-ab29-4b3d-8928-6e5849cdddd7.png",
+      "rawSha256": "4e0c738bbc1a314e533b2982643336aa5c800628f4041d3cc23986967b82576b",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_TigerSeal.png",
+      "sha256": "8aa74c2268f3452182eab2d9a289aafa720dec412a708a0c9db74828a8e6428e",
+      "background": "neutral",
+      "removedBackgroundPixels": 967428,
+      "sourceAlphaBounds": [
+        33,
+        268,
+        1222,
+        983
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        120,
+        482,
+        392
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "InkTalisman",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_InkTalisman.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-1543c693-526a-433b-adc7-ea67ac6eb71b.png",
+      "rawSha256": "c12c033fcd745f47868391cb4fb0835204037eb0a7e7b5c8105cce3c72f82e5f",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_InkTalisman.png",
+      "sha256": "486bee67442e51ebc75db49c9ccf10c0d092a8204e259ed60b2117a39543249b",
+      "background": "magenta",
+      "removedBackgroundPixels": 953733,
+      "sourceAlphaBounds": [
+        128,
+        161,
+        1119,
+        1123
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        36,
+        482,
+        475
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "CloudMirror",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_CloudMirror.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-c7696753-fe9f-4923-9833-6cae383751ae.png",
+      "rawSha256": "ea0740f6dc3ad3e032ae500bfc01cf04dbdad429af79950d7329a77a6f660fe6",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_CloudMirror.png",
+      "sha256": "077ac233114cdd2f42cf54fa77373162e42affde7e992c21bb679a8d79193749",
+      "background": "magenta",
+      "removedBackgroundPixels": 950424,
+      "sourceAlphaBounds": [
+        219,
+        82,
+        1080,
+        1181
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        79,
+        30,
+        433,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "StoneBead",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StoneBead.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-63a5534e-43e9-41ac-8931-a390cd580044.png",
+      "rawSha256": "3a67c0d7f8be53acada5e42bf18c29cfaa0a0e65cbbacbc85c93a7575527a402",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StoneBead.png",
+      "sha256": "2d41127a5ba62394acf5a791b6531f01a444db24830274a06911b2cb5907f6c4",
+      "background": "magenta",
+      "removedBackgroundPixels": 946088,
+      "sourceAlphaBounds": [
+        108,
+        99,
+        1145,
+        1115
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        34,
+        482,
+        477
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "AncientCoin",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_AncientCoin.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-415b6714-50f3-4a14-a027-63c5738964fe.png",
+      "rawSha256": "709aece7f42f27e5e81357dc37b1b435e07c8a1adf9f6a5f18f52adf8b992ff4",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_AncientCoin.png",
+      "sha256": "1c0e134ff8f3f100b8a1e0a25e9c8dbbaf7ab636f43e50aec8891dc30cad6f88",
+      "background": "magenta",
+      "removedBackgroundPixels": 853636,
+      "sourceAlphaBounds": [
+        136,
+        127,
+        1114,
+        1112
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        31,
+        30,
+        480,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "JadeBell",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_JadeBell.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-cf454a84-6af9-400d-985e-022fd119436b.png",
+      "rawSha256": "5959bbaec221a161cbe2f618d8af8ab450edd45a395708b4a466c1563f4d4670",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_JadeBell.png",
+      "sha256": "9bcde055d41287cacbe6978cef8f7685e55b2407ad772f595828cb0b475dd8fe",
+      "background": "magenta",
+      "removedBackgroundPixels": 902437,
+      "sourceAlphaBounds": [
+        112,
+        60,
+        1124,
+        1164
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        49,
+        30,
+        463,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "BambooTally",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BambooTally.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8b90177c-ea89-4942-9e42-4f67d3a15518.png",
+      "rawSha256": "9316eec02e38fe5a2b92e062feee6df69004c94f490ea48b96417f1668555d3c",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BambooTally.png",
+      "sha256": "b3ca797cca777bb715f93cc8210818f05ad5fcdfc88a44d2014dbbad59bc9e0d",
+      "background": "magenta",
+      "removedBackgroundPixels": 1026358,
+      "sourceAlphaBounds": [
+        350,
+        44,
+        904,
+        1210
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        148,
+        30,
+        363,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "IronKnot",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_IronKnot.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-a161b317-e696-4041-9b76-babd87defdff.png",
+      "rawSha256": "008910f3ceb63547edeb1e0d54e31ed3c684198afba151ff3fe40cf225534388",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_IronKnot.png",
+      "sha256": "65d58a16d079a4df79c7b6ff04d19a76ed5efb5a39686740d3b6bb8e0e4de9b6",
+      "background": "magenta",
+      "removedBackgroundPixels": 808716,
+      "sourceAlphaBounds": [
+        87,
+        119,
+        1168,
+        1135
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        43,
+        482,
+        468
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "TeaBrick",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_TeaBrick.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-be9da5cd-d636-4fe4-99b5-82160ceafd82.png",
+      "rawSha256": "827ee18627994c35e943a719271fa76b6f96d298142fb251e6b003ff83ed8224",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_TeaBrick.png",
+      "sha256": "b8275b8831dd736309e4ed92c0a931a0eaff88093816bb7501bcf7b8cbc62cb5",
+      "background": "magenta",
+      "removedBackgroundPixels": 766600,
+      "sourceAlphaBounds": [
+        77,
+        120,
+        1177,
+        1134
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        47,
+        482,
+        464
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "MedicineGourd",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_MedicineGourd.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-0a308873-855e-4b23-a40d-603e61a37bf9.png",
+      "rawSha256": "09de535228546287309a4a39466650f54f8ca2e0fcba2f63c9c19831a3d6bc30",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_MedicineGourd.png",
+      "sha256": "ff709dcd8c88b7901a7341a4e1e14ab11da32762a0db14c5100ae068bcdff63b",
+      "background": "magenta",
+      "removedBackgroundPixels": 922007,
+      "sourceAlphaBounds": [
+        215,
+        60,
+        1039,
+        1206
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        93,
+        30,
+        418,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "CraneFeather",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_CraneFeather.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-313a7305-a179-4e68-bf53-bfa29d743880.png",
+      "rawSha256": "7a443fffcdff5678d0e956609ef080c42f48ef03820d595313aa9f088163e930",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_CraneFeather.png",
+      "sha256": "bad4c8ab953a21b33ec6ede594677bc9d1af64a69f8fe2a7302e7ad346ddc1d7",
+      "background": "magenta",
+      "removedBackgroundPixels": 987646,
+      "sourceAlphaBounds": [
+        102,
+        64,
+        1157,
+        1190
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        44,
+        30,
+        467,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "Compass",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_Compass.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-5cce4fc7-1af8-421b-93fe-453e223d42cf.png",
+      "rawSha256": "b78a88597f889b7b65ed824300c31e34ad8dada72cefec2b6cfb584638370017",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_Compass.png",
+      "sha256": "f097aaded521d23bbb1b2e8299b7e3f156a551ef76aff5dca9cb0b7b21feaef6",
+      "background": "magenta",
+      "removedBackgroundPixels": 885890,
+      "sourceAlphaBounds": [
+        81,
+        202,
+        1182,
+        1097
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        72,
+        482,
+        439
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "RedCord",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_RedCord.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-21a9612b-3903-4ed5-98c9-b01cecd07631.png",
+      "rawSha256": "4d101d49b773d14b9f25a8126ef9cee247032b42f759c0c667618da0c8d819ef",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_RedCord.png",
+      "sha256": "0c93e5e862a1cc7c9048c4137d5fb5ecf330fd0eb338b7dd7443d45f525418f7",
+      "background": "magenta",
+      "removedBackgroundPixels": 800926,
+      "sourceAlphaBounds": [
+        122,
+        102,
+        1127,
+        1149
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        39,
+        30,
+        473,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "BronzeNeedle",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BronzeNeedle.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-479d7385-3a74-41bd-96d6-0b43f3fee690.png",
+      "rawSha256": "ad41f85b86bfe045ce31b84d4a0638136dc15a91885c9bc3e3d286af4987b584",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BronzeNeedle.png",
+      "sha256": "80549f1f032ca9f55a8409afbd5acdb0ade387bb78ac5017a8f91e7371bb4f84",
+      "background": "magenta",
+      "removedBackgroundPixels": 1251523,
+      "sourceAlphaBounds": [
+        206,
+        146,
+        1096,
+        1109
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        47,
+        30,
+        465,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "LotusSeed",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_LotusSeed.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-92b7d110-7b02-4943-80b9-bfd7120c9d16.png",
+      "rawSha256": "3ad35c216ac3a0a9cab7d05161b057c910ff3eb624f5c5ce8044127525ea6ccc",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_LotusSeed.png",
+      "sha256": "45dea2bf199a44ea8f0580de5a2cf4afa3ce503614a93cc0fddd8028c29142f1",
+      "background": "magenta",
+      "removedBackgroundPixels": 921997,
+      "sourceAlphaBounds": [
+        168,
+        153,
+        1088,
+        1122
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        41,
+        30,
+        470,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "DrumCharm",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_DrumCharm.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-c7602efa-1fdf-4123-ad50-29c8662301d9.png",
+      "rawSha256": "d3cbc6ae365dc592732ea26ab710c321f14d99d862fa2fa565cf4b0ab3cb48b2",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_DrumCharm.png",
+      "sha256": "ddaf8f9d57cec67a1da2ea7fbadeaf227b97a467c09db53b8a122cfe4e8f0b19",
+      "background": "magenta",
+      "removedBackgroundPixels": 1046238,
+      "sourceAlphaBounds": [
+        225,
+        132,
+        1027,
+        1081
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        65,
+        30,
+        447,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "RainCape",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_RainCape.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-f0671204-8793-4477-b6f3-65e97d30088a.png",
+      "rawSha256": "661acd0839279aa8ae8ebf41e2375da90f025eba8ed9adab2013f8c15fa6c46f",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_RainCape.png",
+      "sha256": "df14416ab1f9b1fb8947e52c5a3436cbd60d7ff59a5a027d52f3c9f12a7f12a7",
+      "background": "magenta",
+      "removedBackgroundPixels": 860470,
+      "sourceAlphaBounds": [
+        98,
+        193,
+        1161,
+        1087
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        66,
+        482,
+        446
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "SwordGuard",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_SwordGuard.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-ae92a14b-74f2-4450-8c4c-7428c6646680.png",
+      "rawSha256": "c8cb10112542fdfd735ced230babc6681e9ed2dcd90b660696118869a1977ede",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_SwordGuard.png",
+      "sha256": "04a3c64eaf973482c8b4b3d83283bbaa67f91bca919c1e2670919050362cfc05",
+      "background": "magenta",
+      "removedBackgroundPixels": 1152007,
+      "sourceAlphaBounds": [
+        104,
+        349,
+        1150,
+        918
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        133,
+        482,
+        379
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "ChessStone",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_ChessStone.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-f13eaf57-e07c-4ef8-8fde-1c636331ed21.png",
+      "rawSha256": "d1ae908a7e9dc069a311225b987bf224f4b452fbd4903800fa745bd4dfdccbe4",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_ChessStone.png",
+      "sha256": "b1005ba5e3b4e0153fb2b82cac025afce0561a74777ad0875a832b312ad96ac1",
+      "background": "magenta",
+      "removedBackgroundPixels": 1042919,
+      "sourceAlphaBounds": [
+        145,
+        279,
+        1108,
+        975
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        92,
+        482,
+        419
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "OldMap",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_OldMap.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8882728b-7427-41b5-bc42-77348d117eb5.png",
+      "rawSha256": "cf9856ede6c8449a0cc1def76f68b7791ddb4f56f839d9e8d034a5f7bca96eaa",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_OldMap.png",
+      "sha256": "189a732178a5b5f3f8931e3e4b6dfdc1d4f3a47e5dd5422458c4f50040122034",
+      "background": "magenta",
+      "removedBackgroundPixels": 960831,
+      "sourceAlphaBounds": [
+        69,
+        209,
+        1188,
+        1060
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        84,
+        482,
+        428
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "PineCone",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_PineCone.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2e794c4d-5aeb-4853-9e6d-e81242e1b1bd.png",
+      "rawSha256": "72356e167c95ba0af7d648c66267e0c5bbcb6f11dd3a25b3fcef144a1747c416",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_PineCone.png",
+      "sha256": "a2b45d90fde547a7aec66443b9084e4bfb6456833ea4200ccdda77d478367af5",
+      "background": "magenta",
+      "removedBackgroundPixels": 1044662,
+      "sourceAlphaBounds": [
+        230,
+        180,
+        1031,
+        1091
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        57,
+        30,
+        454,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "RiverPearl",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_RiverPearl.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-e13c7ec7-7d1b-486d-9395-b05fd2dcdc5d.png",
+      "rawSha256": "f25830d3e4f25705a04a27c0ebc3483be324993d32a8de71f45d629b520f9940",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_RiverPearl.png",
+      "sha256": "22d2d4e19aaa45a746268aab4f49a67492ab3dc7abca26fae62f0350a81ba707",
+      "background": "magenta",
+      "removedBackgroundPixels": 845038,
+      "sourceAlphaBounds": [
+        144,
+        142,
+        1109,
+        1103
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        31,
+        482,
+        481
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "WineCup",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_WineCup.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-7e88d499-baa1-42e1-a86c-82a0daf55454.png",
+      "rawSha256": "f91e54fe655e8a8a0d9bfe73ce73789ed13ca678f3b8192858464ea25c462dca",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_WineCup.png",
+      "sha256": "f13318554c2d1505ece3c2872042cbccb8a131252922ec33b0a4711a3a560488",
+      "background": "magenta",
+      "removedBackgroundPixels": 957022,
+      "sourceAlphaBounds": [
+        63,
+        286,
+        1187,
+        1017
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        109,
+        482,
+        403
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "CandleStub",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_CandleStub.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8a3d26be-2b6b-4ded-a5e0-2c39c3b62fc4.png",
+      "rawSha256": "ff44c9d57c3195fb3e0ab195bbcd27cc2f17168a41468b89befa1a12caf32104",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_CandleStub.png",
+      "sha256": "221ae63c237b079fe56c97176c248c143f9aee1c73cf7f5cf728682362a34536",
+      "background": "magenta",
+      "removedBackgroundPixels": 996147,
+      "sourceAlphaBounds": [
+        273,
+        52,
+        984,
+        1204
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        116,
+        30,
+        395,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "FoxMask",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_FoxMask.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-af830abc-7101-4433-a490-bdc2976bfc74.png",
+      "rawSha256": "68ad326f24009fd3e6d548d2e4dbd4240a270d0fd88c29c59e77d11b8657142f",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_FoxMask.png",
+      "sha256": "d87fb60ea8da3a6ec1aeb282038eee8e6fbc56129496ff1078e922d7a3bd08a5",
+      "background": "magenta",
+      "removedBackgroundPixels": 862852,
+      "sourceAlphaBounds": [
+        183,
+        73,
+        1097,
+        1165
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        67,
+        30,
+        445,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "HerbBasket",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_HerbBasket.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-53bbde55-b317-4040-a894-ed7758f2c202.png",
+      "rawSha256": "dd890b0ca27b68d8c5560b7361a8c1398313fdc58eb423d2ee41bc1cc924b2ee",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_HerbBasket.png",
+      "sha256": "f04b979d4e1cc627b54d122ce03232a2125e2c7c77fcc31fdc135f1af3662059",
+      "background": "magenta",
+      "removedBackgroundPixels": 831511,
+      "sourceAlphaBounds": [
+        150,
+        97,
+        1105,
+        1159
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        53,
+        30,
+        459,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "PaperCrane",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_PaperCrane.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-7299979a-6cad-453c-be40-11cf966d5835.png",
+      "rawSha256": "2b0b5a4b1acfc455b7c1c2286f3beedd6122d7f292ea5ab15b4b895fb63a8526",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_PaperCrane.png",
+      "sha256": "0ab67b0d37fecfc8e2a7e444669aced563a33914f0745b829dc1607669277b21",
+      "background": "magenta",
+      "removedBackgroundPixels": 1033407,
+      "sourceAlphaBounds": [
+        80,
+        169,
+        1179,
+        1083
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        68,
+        482,
+        444
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "StoneLion",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StoneLion.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-96323ac1-75e7-4f3b-b296-39dd37fbd5e8.png",
+      "rawSha256": "759ed6a0bbc8f439b0a93c673301645f2b2783688a19ba75c895267306be8735",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StoneLion.png",
+      "sha256": "47464895d79c6d3d8c38e945a9b8232f0b3d5ce9e34eb6ad0f8e4c281e59bc76",
+      "background": "magenta",
+      "removedBackgroundPixels": 809497,
+      "sourceAlphaBounds": [
+        212,
+        51,
+        1058,
+        1203
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        90,
+        30,
+        422,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "BrokenArrow",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BrokenArrow.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-54b9a8b4-0963-4ecb-ac2d-52fe3d873ce3.png",
+      "rawSha256": "f641bbf02df4f98c7ca14ee6c5638be7438067b43fa05897ff7ea45208e261a1",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BrokenArrow.png",
+      "sha256": "7db85c7a5bfd222e5db9538e2f7a175bd0eba705f5426a1925b7fe714ddc2959",
+      "background": "magenta",
+      "removedBackgroundPixels": 1072490,
+      "sourceAlphaBounds": [
+        97,
+        102,
+        1161,
+        1168
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        30,
+        481,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "MoonDisc",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_MoonDisc.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-9e769abc-084a-435f-929e-a335f5fe6f2e.png",
+      "rawSha256": "4171c4f4421c3b2445ffefdadd1f351e121b8459a2bdc1642c55d34021922626",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_MoonDisc.png",
+      "sha256": "e03fc85b9d6226ea09e8f7d764af9cdc58fde7a7f275c17f55495c4d5381b298",
+      "background": "magenta",
+      "removedBackgroundPixels": 669222,
+      "sourceAlphaBounds": [
+        80,
+        62,
+        1171,
+        1183
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        36,
+        30,
+        476,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "StormChime",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StormChime.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-d0678983-dc7d-4ef2-8b21-703980d3069b.png",
+      "rawSha256": "1c5d0f89b8b95fb5fa0a3bc8d4a5543ef20da1e66311caca4a020067c4965515",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StormChime.png",
+      "sha256": "9c0b2a79616ab435889708e43beb49bf2029a5b21a0d88a9aafe29badde8dd0d",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 770640,
+      "sourceAlphaBounds": [
+        25,
+        47,
+        1200,
+        1204
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        57,
+        37,
+        482,
+        478
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "FlameCenser",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_FlameCenser.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8a98e6bf-769b-4afa-ad6d-544b556d2aa7.png",
+      "rawSha256": "e1a85545b44002469161c7e3263ebdf2b246d4f48da2b2e319ea5a6aa27acddc",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_FlameCenser.png",
+      "sha256": "21ecbfb27ba48f1a83e1aa38e7538b63df266cf5e86b0169fa30b3b35dbf109f",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 796665,
+      "sourceAlphaBounds": [
+        0,
+        21,
+        1253,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        41,
+        40,
+        482,
+        464
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "BloodInkSeal",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BloodInkSeal.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2f4a336a-2818-4dfb-bd2c-5a026a1d1a20.png",
+      "rawSha256": "f062f7a0528be7a049bc317acaa19d178ca0acb37cf9cd381c8437d0d1b23aa0",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BloodInkSeal.png",
+      "sha256": "bb1517ea8574b64163526083c970bd4613ee3083b95823169d933122111d26fe",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 663958,
+      "sourceAlphaBounds": [
+        0,
+        53,
+        1236,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        42,
+        39,
+        477,
+        456
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    },
+    {
+      "slug": "HunterQuiver",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_HunterQuiver.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-495a5c0e-4acd-4053-ae3f-fed2c406dc3e.png",
+      "rawSha256": "d2155f26ef9b3a7d7cf0f40ef694756705124061a7f05df879780e9b3b7187ff",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_HunterQuiver.png",
+      "sha256": "aba3438522f12cc0f6667d251753d6ffebb0932d8de5f576c2d9fa61c7a5b77a",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 905951,
+      "sourceAlphaBounds": [
+        31,
+        23,
+        1224,
+        1230
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        51,
+        30,
+        479,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": false
+    }
+  ]
+}

@@ -1,0 +1,241 @@
+{
+  "S01-01": {
+    "file": "SourceArt/UI/StoryNodes/s01_01_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-ebb1f2cb-c2ef-4c0e-ab6f-e3c1a587bb75.png",
+    "sha256": "832dd2b8b19f0d3ce3b99d3f7641bc86407f49acd99bad6015ea69114f5b7c4c",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_01.T_Story_S01_01",
+    "cast": [
+      "you_bai",
+      "hero",
+      "woodcutter"
+    ],
+    "result": "找到樵夫，确认应先核对山路和暗溪线索。",
+    "display_phase": "completed",
+    "contract_sha256": "4271d5c75ff72ae1a4259e12fad071781febfd520f981eb8c77ad48b0502411b",
+    "visual_review": "pass",
+    "reviewed_sha256": "832dd2b8b19f0d3ce3b99d3f7641bc86407f49acd99bad6015ea69114f5b7c4c",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-02": {
+    "file": "SourceArt/UI/StoryNodes/s01_02_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-19e961df-9a45-4688-8c41-39755d6e0068.png",
+    "sha256": "23642672759c4f529ab5aef5f3a16ff8c58fae311189c6db519838309f450363",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_02.T_Story_S01_02",
+    "cast": [
+      "woodcutter",
+      "hero",
+      "you_bai"
+    ],
+    "result": "得到脚印、旧石阶和溪声三条辨路线索。",
+    "display_phase": "completed",
+    "contract_sha256": "1dead11cf5fca4f6d2a8efb519aa3ec11e8c555de7c654d0cbb9e28cd0ec169c",
+    "visual_review": "pass",
+    "reviewed_sha256": "23642672759c4f529ab5aef5f3a16ff8c58fae311189c6db519838309f450363",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-03": {
+    "file": "SourceArt/UI/StoryNodes/s01_03_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-8caa9d30-d87f-488f-b9c9-d38f72dfbcd2.png",
+    "sha256": "d016a0aa68adfc68447b3a3241b2f7f497ac3733b859796a2b6e499f179e3bef",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_03.T_Story_S01_03",
+    "cast": [
+      "you_bai",
+      "hero"
+    ],
+    "result": "循左侧旧石阶穿过迷雾，听见猎人在前方求助。",
+    "display_phase": "completed",
+    "contract_sha256": "629028be2facdd70af4751ad4230ab48742b1b464b53af516edf2d0b078f7a78",
+    "visual_review": "pass",
+    "reviewed_sha256": "d016a0aa68adfc68447b3a3241b2f7f497ac3733b859796a2b6e499f179e3bef",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-04": {
+    "file": "SourceArt/UI/StoryNodes/s01_04_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-62ab3ab0-6b25-4612-96f3-36b3af9b526a.png",
+    "sha256": "ef74e1091ecd3d7f50d4e67dc860dfa1f39cb3cc0b3143622b7977aa23df3185",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_04.T_Story_S01_04",
+    "cast": [
+      "hunter",
+      "hero",
+      "you_bai"
+    ],
+    "result": "完成黄山山路草图，标出暗溪入口与待核实的下坡水路。",
+    "display_phase": "completed",
+    "contract_sha256": "561ff197c80b405ae93faf6a59fe931e55fa49f60c40ae767b3d5f36d26871ff",
+    "visual_review": "pass",
+    "reviewed_sha256": "ef74e1091ecd3d7f50d4e67dc860dfa1f39cb3cc0b3143622b7977aa23df3185",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-05": {
+    "file": "SourceArt/UI/StoryNodes/s01_05_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-96e1b692-565e-49fc-acba-674ec74acb2d.png",
+    "sha256": "d184fc51f42ebd54b97e2c00ab33a2cf326245127ffc99fc7f003aca6c71cb55",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_05.T_Story_S01_05",
+    "cast": [
+      "hero",
+      "you_bai",
+      "hunter"
+    ],
+    "result": "暗溪按左下方低处出口补全，黄山草图完成。",
+    "display_phase": "completed",
+    "contract_sha256": "87385a333ce4552a936dabeded496aa0ca82f08550f3b51b5427d8e6dc358e9d",
+    "visual_review": "pass",
+    "reviewed_sha256": "d184fc51f42ebd54b97e2c00ab33a2cf326245127ffc99fc7f003aca6c71cb55",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-06": {
+    "file": "SourceArt/UI/StoryNodes/s01_06_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-1f1dc28c-3cef-412a-bd1d-8f055992975b.png",
+    "sha256": "1e9a838206e0d76652e915d0933ee9095278c21cb46285ef600217fe7538ead8",
+    "size": [
+      2171,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_06.T_Story_S01_06",
+    "cast": [
+      "woodcutter",
+      "you_bai",
+      "hero"
+    ],
+    "result": "记下雾天辨路经验，得到对山路传闻的补充说明。",
+    "display_phase": "completed",
+    "contract_sha256": "7b591bd096bdfbe63e8a78d1ed058dd4d5697a8f462c9acd095b45e3189a364c",
+    "visual_review": "pass",
+    "reviewed_sha256": "1e9a838206e0d76652e915d0933ee9095278c21cb46285ef600217fe7538ead8",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-07": {
+    "file": "SourceArt/UI/StoryNodes/s01_07_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-865c793c-a3e2-4e06-854a-a2513ca0d222.png",
+    "sha256": "04d6091b0c071fdb71b40ad2e545dfc25070195f0c9a0bcd9cf4a50cc205f1f9",
+    "size": [
+      2172,
+      724
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_07.T_Story_S01_07",
+    "cast": [
+      "hunter",
+      "hero",
+      "you_bai"
+    ],
+    "result": "兽群被击退，猎人与手记获救，取得暗溪入口的可靠线索。",
+    "display_phase": "completed",
+    "contract_sha256": "30816dce9e32886613ab22c27f3418f04102ef50b5aaace41dc2c400cededc3f",
+    "visual_review": "pass",
+    "reviewed_sha256": "04d6091b0c071fdb71b40ad2e545dfc25070195f0c9a0bcd9cf4a50cc205f1f9",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-08": {
+    "file": "SourceArt/UI/StoryNodes/s01_08_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-b8fba2a6-348f-478b-a167-766f7e9939bb.png",
+    "sha256": "90a04bd44c6da82ef687706cb8bb36ebc87ca0c23227b0b54c5269d0c7a323b2",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_08.T_Story_S01_08",
+    "cast": [
+      "hunter",
+      "hero",
+      "you_bai"
+    ],
+    "result": "听完猎人的防身与整备经验，不额外购买或消耗物品。",
+    "display_phase": "completed",
+    "contract_sha256": "c9787130ff38f6ce6368815d8305a3ac4225835b8a6967a7b17d60e6e4c2dc3c",
+    "visual_review": "pass",
+    "reviewed_sha256": "90a04bd44c6da82ef687706cb8bb36ebc87ca0c23227b0b54c5269d0c7a323b2",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-09": {
+    "file": "SourceArt/UI/StoryNodes/s01_09_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-467b66e3-b5be-4efd-ab30-9da2a8ca8e42.png",
+    "sha256": "619b38ed57da2f897e13c81703314ed363fbe9041a9a456131d5b274e1a4e685",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_09.T_Story_S01_09",
+    "cast": [
+      "zhou_guang_zu",
+      "hero",
+      "you_bai"
+    ],
+    "result": "从周光祖处取得新旧水痕的旁证，完善草木观察记录。",
+    "display_phase": "completed",
+    "contract_sha256": "9c58fca706b99742d4af3495156f1e7c287ec9faebc2a3fe28f0e4713ab0d79f",
+    "visual_review": "pass",
+    "reviewed_sha256": "619b38ed57da2f897e13c81703314ed363fbe9041a9a456131d5b274e1a4e685",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  },
+  "S01-10": {
+    "file": "SourceArt/UI/StoryNodes/s01_10_v1.png",
+    "generated_source": "D:\\CodexData\\generated_images\\01a08172-043d-75e0-a149-f8895de07b04\\exec-f2696ca2-2c36-4e3f-b483-d33aca25aec9.png",
+    "sha256": "94d5c6ed8b4d35d0d5095eff040ef58a0f75e0a39a323dfa3843f0f4340598fa",
+    "size": [
+      2170,
+      725
+    ],
+    "mode": "RGB",
+    "revision": 1,
+    "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_S01_10.T_Story_S01_10",
+    "cast": [
+      "willow_scholar",
+      "hero",
+      "you_bai"
+    ],
+    "result": "确认暗溪与柳湾是同一段水路的地方称呼，补上旁注。",
+    "display_phase": "completed",
+    "contract_sha256": "b82ee13e681c4bc7dc993d8ec71113ed0a175f5513e786fee510d10b80532c05",
+    "visual_review": "pass",
+    "reviewed_sha256": "94d5c6ed8b4d35d0d5095eff040ef58a0f75e0a39a323dfa3843f0f4340598fa",
+    "reviewer": "agent",
+    "review_notes": "逐张视觉复核：主角与在场主要人物身份、动作、场景线索和节点结果一致；保持篝火横幅的纸底水墨国风喜剧风格。修订图已复核局部修改。"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "slug": "RainCape",
+  "status": "candidate",
+  "prompt": "将第一张参考中的RainCape（旧蓑衣）重绘为第二张宝石定稿的同系列遗物图标。仅输出这一件物品，不要图表、文字或其他物件。具体物件：一件短胖扇形蓑衣，小圆领口，四五束宽大的金黄稻草片向下展开，深棕粗线，无细丝草。 严格匹配宝石画风：粗深墨外轮廓、饱满结实的简化卡通形体、鲜明受控的主色、3至5块宽大的平涂明暗面、少量大笔刷，低光泽。器物形体与材质概括要清楚，不要把所有物件都画成一颗宝石。正方形构图，最大边占88%到90%，四边留安全区，48px能识别。无写实纹理、无精细金属反射、无细碎雕花或长穗带、无UI框或品质光圈。背景为完全平坦均匀纯洋红#FF00FF，物件本体不能有洋红；无投影、无棋盘、无纹理、无渐变。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Relics\\relic_icon_contact_sheet.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-f0671204-8793-4477-b6f3-65e97d30088a.png",
+  "background": "magenta"
+}

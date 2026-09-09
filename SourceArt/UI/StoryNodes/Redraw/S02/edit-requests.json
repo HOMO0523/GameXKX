@@ -1,0 +1,28 @@
+[
+  {
+    "node_id": "S02-03",
+    "revision": 2,
+    "prompt": "Precise prop correction. Preserve the entire image, all four character identities, poses, hands, boat, palette and camera. On the center plank there must be EXACTLY TWO whole straight chopsticks, not three broken pieces in a Y. One long continuous chopstick represents the main river. One shorter continuous straight chopstick touches the SIDE of the first at a clean junction representing a tributary. Arrange as an asymmetrical T or acute branch, while keeping both sticks visibly unbroken from end to end. Old man's pointing fingertip remains beside the junction. No extra sticks, writing, noodles or bowls. Change only the chopsticks.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_03_v1.png"
+    ]
+  },
+  {
+    "node_id": "S02-04",
+    "revision": 2,
+    "prompt": "Identity-preserve local edit. Image ONE is the target scene. Image TWO is the EXACT identity of the farmer holding the bucket at upper left. Replace ONLY that farmer's FACE to match reference TWO: compact bean-shaped rounded cheek, short upturned block nose, lifted curved brows, open cheerful mouth with two front teeth, CLEAN-SHAVEN warm tan upper lip and chin. REMOVE the black moustache entirely, no black strip over his mouth, no stubble. This is Jiangwan VILLAGER, NOT the boatman or porter. His open surprised expression fits unexpectedly wet shoes; maintain reference face anatomy. Preserve original headcloth, clothes, bucket-holding arm, lifted shoe, body pose, hero, blue flame, returning narrow water stream, camera and landscape. No other changes; same 3:1 banner.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_04_v1.png",
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryPortraits/Raw/villager_v1.png"
+    ]
+  },
+  {
+    "node_id": "S02-05",
+    "revision": 2,
+    "prompt": "Two targeted corrections to this wuxia scene. First SIMPLIFY the lifted bamboo blockage to a compact clearly readable bundle of SIX broad bamboo stems caught in TWO large bending root loops, not a dense pile of dozens of tiny sticks. Both hero and villager retain their current anatomically correct arms/hands and believable grips on these stems. Water flows through the same low inlet in one broad clean ribbon, remove most tiny spray dots, at most three large droplets. Second match the distant village elder's face to reference TWO: low ochre cap, short octagonal angular face, large ears, STRAIGHT WHITE BLOCK eyebrows, clean upper lip, short WHITE SQUARED-OFF chin beard. Remove curled white moustache wings. Preserve his wave, cane, robe and position. Keep exact hero/villager/Youbai identities and poses, perspective, successful canal-repair action, fields and warm paper mood. Same 3:1 panorama. No other new props, characters or text.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S02/Raw/s02_05_v1.png",
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryPortraits/Raw/elder_v1.png"
+    ]
+  }
+]

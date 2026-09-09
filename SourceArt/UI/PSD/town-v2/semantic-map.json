@@ -1,0 +1,71 @@
+{
+  "package": "GameXXK_Town_PSD_v2",
+  "logicalCanvas": {
+    "width": 1024,
+    "height": 1024,
+    "scale": 4
+  },
+  "runtimeBackgrounds": [
+    {"page":"hud","file":"runtime_backgrounds/T_TownPsd_Background_Hud.png","crop":[0,0,4096,1720],"logicalSize":[1024,430]},
+    {"page":"character","file":"runtime_backgrounds/T_TownPsd_Background_Character.png","crop":[0,1720,2048,2892],"logicalSize":[512,293]},
+    {"page":"companion","file":"runtime_backgrounds/T_TownPsd_Background_Companion.png","crop":[2048,1720,4096,2892],"logicalSize":[512,293]},
+    {"page":"task","file":"runtime_backgrounds/T_TownPsd_Background_Task.png","crop":[0,2892,1396,4096],"logicalSize":[349,301]},
+    {"page":"map","file":"runtime_backgrounds/T_TownPsd_Background_Map.png","crop":[1396,2892,2572,4096],"logicalSize":[294,301]},
+    {"page":"backpack","file":"runtime_backgrounds/T_TownPsd_Background_Backpack.png","crop":[2572,2892,4096,4096],"logicalSize":[381,301]}
+  ],
+  "assets": [
+    {"manifestLayer":"角色_主角_顶部","cleanAssetFile":"clean_assets/001.png","group":"HUD","ueAssetName":"T_TownPsd_HudProfile","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_头像_顶部","cleanAssetFile":"clean_assets/002.png","group":"HUD","ueAssetName":"T_TownPsd_HudAvatar","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_铜钱","cleanAssetFile":"clean_assets/008.png","group":"HUD","ueAssetName":"T_TownPsd_HudCoin","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_玉币","cleanAssetFile":"clean_assets/010.png","group":"HUD","ueAssetName":"T_TownPsd_HudJade","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_元宝","cleanAssetFile":"clean_assets/012.png","group":"HUD","ueAssetName":"T_TownPsd_HudIngot","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_加号一","cleanAssetFile":"clean_assets/009.png","group":"HUD","ueAssetName":"T_TownPsd_HudPlus","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_邮件","cleanAssetFile":"clean_assets/014.png","group":"HUD","ueAssetName":"T_TownPsd_HudMail","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_顶部_设置","cleanAssetFile":"clean_assets/015.png","group":"HUD","ueAssetName":"T_TownPsd_HudSettings","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"进度条_顶部经验","cleanAssetFile":"clean_assets/016.png","group":"HUD","ueAssetName":"T_TownPsd_HudExperienceFrame","nineSlice":[10,4,10,4]},
+
+    {"manifestLayer":"图标_导航_任务","cleanAssetFile":"clean_assets/003.png","group":"Nav","ueAssetName":"T_TownPsd_NavTask","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_导航_背包","cleanAssetFile":"clean_assets/004.png","group":"Nav","ueAssetName":"T_TownPsd_NavBackpack","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_导航_修炼","cleanAssetFile":"clean_assets/005.png","group":"Nav","ueAssetName":"T_TownPsd_NavRefine","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_导航_地图","cleanAssetFile":"clean_assets/006.png","group":"Nav","ueAssetName":"T_TownPsd_NavMap","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"图标_导航_好友","cleanAssetFile":"clean_assets/007.png","group":"Nav","ueAssetName":"T_TownPsd_NavCompanion","nineSlice":[0,0,0,0]},
+
+    {"manifestLayer":"标签_角色分类_1","cleanAssetFile":"clean_assets/031.png","group":"Character","ueAssetName":"T_TownPsd_CharacterTabOne","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_角色分类_2","cleanAssetFile":"clean_assets/032.png","group":"Character","ueAssetName":"T_TownPsd_CharacterTabTwo","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_角色分类_3","cleanAssetFile":"clean_assets/033.png","group":"Character","ueAssetName":"T_TownPsd_CharacterTabThree","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_角色分类_4","cleanAssetFile":"clean_assets/034.png","group":"Character","ueAssetName":"T_TownPsd_CharacterTabFour","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_角色分类_5","cleanAssetFile":"clean_assets/035.png","group":"Character","ueAssetName":"T_TownPsd_CharacterTabFive","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"角色_主角_详情","cleanAssetFile":"clean_assets/036.png","group":"Character","ueAssetName":"T_TownPsd_CharacterHeroDetail","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"框_装备槽_1","cleanAssetFile":"clean_assets/037.png","group":"Character","ueAssetName":"T_TownPsd_CharacterEquipmentSlot","nineSlice":[7,7,7,7]},
+    {"manifestLayer":"进度条_角色气血","cleanAssetFile":"clean_assets/049.png","group":"Character","ueAssetName":"T_TownPsd_CharacterHealthFrame","nineSlice":[8,4,8,4]},
+    {"manifestLayer":"进度条_角色内力","cleanAssetFile":"clean_assets/050.png","group":"Character","ueAssetName":"T_TownPsd_CharacterManaFrame","nineSlice":[8,4,8,4]},
+
+    {"manifestLayer":"标签_伙伴分类_1","cleanAssetFile":"clean_assets/052.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionTabOne","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_伙伴分类_2","cleanAssetFile":"clean_assets/053.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionTabTwo","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_伙伴分类_3","cleanAssetFile":"clean_assets/054.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionTabThree","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_伙伴分类_4","cleanAssetFile":"clean_assets/055.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionTabFour","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_伙伴分类_5","cleanAssetFile":"clean_assets/056.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionTabFive","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"框_伙伴卡片_1","cleanAssetFile":"clean_assets/057.png","group":"Companion","ueAssetName":"T_TownPsd_CompanionCardFrame","nineSlice":[8,8,8,8]},
+
+    {"manifestLayer":"标签_任务分类_1","cleanAssetFile":"clean_assets/075.png","group":"Task","ueAssetName":"T_TownPsd_TaskTabOne","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_任务分类_2","cleanAssetFile":"clean_assets/076.png","group":"Task","ueAssetName":"T_TownPsd_TaskTabTwo","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_任务分类_3","cleanAssetFile":"clean_assets/077.png","group":"Task","ueAssetName":"T_TownPsd_TaskTabThree","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_任务分类_4","cleanAssetFile":"clean_assets/078.png","group":"Task","ueAssetName":"T_TownPsd_TaskTabFour","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"框_任务行_1","cleanAssetFile":"clean_assets/079.png","group":"Task","ueAssetName":"T_TownPsd_TaskRow","nineSlice":[10,8,10,8]},
+    {"manifestLayer":"图标_任务铜钱_1","cleanAssetFile":"clean_assets/082.png","group":"Task","ueAssetName":"T_TownPsd_TaskRewardCoin","nineSlice":[0,0,0,0]},
+    {"manifestLayer":"底板_任务经验_1","cleanAssetFile":"clean_assets/083.png","group":"Task","ueAssetName":"T_TownPsd_TaskRewardExperience","nineSlice":[4,4,4,4]},
+    {"manifestLayer":"图标_任务玉币_1","cleanAssetFile":"clean_assets/084.png","group":"Task","ueAssetName":"T_TownPsd_TaskRewardJade","nineSlice":[0,0,0,0]},
+
+    {"manifestLayer":"标签_背包分类_1","cleanAssetFile":"clean_assets/096.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackTabAll","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_背包分类_2","cleanAssetFile":"clean_assets/097.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackTabEquipment","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_背包分类_3","cleanAssetFile":"clean_assets/098.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackTabProp","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_背包分类_4","cleanAssetFile":"clean_assets/099.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackTabMaterial","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"标签_背包分类_5","cleanAssetFile":"clean_assets/100.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackTabTask","nineSlice":[6,4,6,4]},
+    {"manifestLayer":"框_背包物品格_1","cleanAssetFile":"clean_assets/101.png","group":"Backpack","ueAssetName":"T_TownPsd_BackpackSlot","nineSlice":[7,7,7,7]},
+
+    {"manifestLayer":"按钮_详细属性","cleanAssetFile":"clean_assets/051.png","group":"Controls","ueAssetName":"T_TownPsd_ButtonNeutral","buttonSemantic":"neutral","nineSlice":[12,8,12,8]},
+    {"manifestLayer":"按钮_任务_2","cleanAssetFile":"clean_assets/092.png","group":"Controls","ueAssetName":"T_TownPsd_ButtonPrimary","buttonSemantic":"primary","nineSlice":[12,8,12,8]},
+    {"manifestLayer":"按钮_背包整理","cleanAssetFile":"clean_assets/131.png","group":"Controls","ueAssetName":"T_TownPsd_ButtonSort","nineSlice":[12,8,12,8]},
+    {"manifestLayer":"按钮_背包分解","cleanAssetFile":"clean_assets/132.png","group":"Controls","ueAssetName":"T_TownPsd_ButtonDestructive","buttonSemantic":"destructive","nineSlice":[12,8,12,8]}
+  ]
+}

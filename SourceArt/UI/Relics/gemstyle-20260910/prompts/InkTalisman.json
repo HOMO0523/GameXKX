@@ -1,0 +1,11 @@
+{
+  "slug": "InkTalisman",
+  "status": "candidate",
+  "prompt": "将第一张参考中的 InkTalisman 遗物重新画成第二张宝石参考的同系列图标。只输出这一枚物件，绝不输出对照表、格子、文字或其他物件。第二张严格作为画风基准：粗自然深墨外轮廓、饱满结实略夸张的卡通大体块、鲜明主色、3至5个大的平涂明暗面、少量宽阔手绘笔刷、低光泽。遗物造型：一张厚实小巧、边角略卷的米黄符纸，上面只有一个粗大的黑墨抽象镇煞符号，配两道短朱红笔画；无金属框、无绳穗。 正方形画布，主体最大边占88%到90%，四边保留安全空间；48px清楚。不要写实材质、复杂反射、细密雕纹、繁杂穗带、细碎纹理、UI边框或品质皇冠。背景必须是完全均匀的纯洋红 #FF00FF 色度键，物件本身不要任何洋红色，背景没有纹理、没有棋盘格、没有阴影、没有渐变。仅绘制一件遗物。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Relics\\relic_icon_contact_sheet.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-1543c693-526a-433b-adc7-ea67ac6eb71b.png",
+  "background": "magenta"
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "node_id": "S04-11",
+    "revision": 2,
+    "prompt": "Recompose the first target image, whose giant chief and cropped ambiguous furniture are rejected. Keep exact project hero/chief/Youbai identities from references2/3/4 and warm muted painted ink style. Use a NORMAL seated-eye-height THREE-QUARTER MEDIUM-WIDE shot showing ONE COMPLETE SMALL WOODEN TEA TABLE, not a view from under it. Entire rectangular tabletop, all four slim legs or their clearly understandable occlusion, and small side apron are visible, without any object cropped. Put ONE plain teapot and ONE little cup on the tabletop so it is unmistakably a TABLE, not a chair or doorframe. Table is about knee-to-thigh height compared to standing hero, normal domestic furniture, not huge architecture.\nTusi chief crouches on LEFT of table, hero crouches on RIGHT, SAME distance from camera and nearly equal head scale. Chief's head at most 15 percent larger than hero's; chief is broad and stocky but NOT a giant. Both human bodies fully traceable and feet grounded. Chief's staff leans against a wall behind him, freeing his hands. With ONE hand UNDER the near tabletop EDGE he gently lifts that corner just a little. His OTHER index finger points to ONE folded sheet of old fake map directly UNDER the short FRONT TABLE LEG; this folded map levels the table. Only a few paper folds, no pile of books, no gigantic manuscript. Clear continuous leg from tabletop to that exact shim, with tiny gap showing the light lift. Hero rests both hands naturally on his knees, looking at the same folded map with a surprised half-smile; Youbai hovers small beside the leg, no limbs. Chief has a sheepish amused smile about his past mistake, not a looming angry stare. Strong readable relation: chief admits fake map is now useful as table shim. A simple floor and muted porch, quiet paper space. No giant hand, no ultra-wide lens distortion, no dramatic low angle, no text/UI. 3:1 panorama.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S04/Raw/s04_11_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/00_hero.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/07_tusi_chief.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/09_yue_bai.png"
+    ]
+  },
+  {
+    "node_id": "S05-01",
+    "revision": 2,
+    "prompt": "Rebuild the HERO'S ENTIRE POSE and trail composition in image ONE to fix contradictory front/back anatomy. Reference TWO is the exact hero, reference THREE exact bodiless flame. Preserve their identities and warm clean ink-paint palette. Clear SIDE-THREE-QUARTER view of hero walking UPHILL FROM LEFT TO RIGHT toward the village gate in the upper-right distance. His head, CHEST, pelvis, BOTH knees and BOTH shoe toes all face RIGHT consistently. Camera sees the FRONT crossed grey-blue collar and a little of his left side; no backwards torso or twisted waist. Basket is firmly BEHIND his back, projecting on the LEFT side behind his shoulders, never wrapping around his chest. One hand at his FRONT chest naturally tucks the crossed collar against wind; the other hand holds one bamboo pole planted AHEAD of him on the trail to the RIGHT. His FRONT foot steps onto a slightly higher flat stone to the right, back foot on a lower stone to the left; natural knee direction and balance, no huge boot toward viewer, no back-of-leg presented as kneecap. EXACTLY two arms/two hands/two legs, wrists continuous with forearms.\nYoubai hovers just ahead near hero's face, its flame tip blown LEFT by a breeze coming from the right, same direction as hero's topknot ribbon; indignant comic face. Trail clearly rises gently rightward into the distant village at the foothills, snowline is high behind it. Three calm large rock shapes and two very faint mountain planes, no detail confetti, not summit, no snow emergency. Preserve original short broad hero face, brows, hairstyle, jacket, pants, cloth gaiters and shoes. No cape, sword, UI or writing. Same 3:1 banner.",
+    "referenced_image_paths": [
+      "D:/UE5 demo/GameXXK/SourceArt/UI/StoryNodes/Redraw/S05/Raw/s05_01_v1.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/00_hero.png",
+      "D:/UE5 demo/GameXXK/SourceAssets/CharacterVisuals/final_selected_v1/09_yue_bai.png"
+    ]
+  }
+]
