@@ -9834,6 +9834,15 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::ConfirmExit(const bool bExecutePlat
 	{
 		return false;
 	}
+	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
+	if (!Subsystem || !Subsystem->SaveCurrentGame())
+	{
+		SetNotice(Subsystem && !Subsystem->GetLastSaveLoadError().IsEmpty()
+			? Subsystem->GetLastSaveLoadError()
+			: GameXXKLocalization::Text(TEXT("Save.Error.Write")));
+		RefreshLayout();
+		return false;
+	}
 	bExitConfirmationOpen = false;
 	if (bExecutePlatformQuit)
 	{

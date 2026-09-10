@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Dev/GameXXKDevBuildPolicy.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "GameXXKDevToolsSubsystem.generated.h"
 

@@ -1,4 +1,5 @@
 #include "Dev/GameXXKDevToolsSubsystem.h"
+#include "UI/GameXXKLocalization.h"
 #include "SGameXXKDevWorkbench.h"
 #include "GameXXKDevFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -199,7 +200,7 @@ UGameXXKDevToolsSubsystem::UGameXXKDevToolsSubsystem():Impl(MakeShared<FGameXXKD
 UGameXXKDevToolsSubsystem::~UGameXXKDevToolsSubsystem() = default;
 bool UGameXXKDevToolsSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
-#if UE_BUILD_SHIPPING
+#if !GAMEXXK_WITH_DEV_TOOLS
 	return false;
 #else
 	return Super::ShouldCreateSubsystem(Outer);
@@ -208,7 +209,7 @@ bool UGameXXKDevToolsSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 void UGameXXKDevToolsSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	Collection.InitializeDependency<UGameXXKMVPSubsystem>();
 	IFileManager::Get().MakeDirectory(*(GetStorageDirectory()/TEXT("inbox")),true);
 	IFileManager::Get().MakeDirectory(*(GetStorageDirectory()/TEXT("outbox")),true);
@@ -232,7 +233,7 @@ void UGameXXKDevToolsSubsystem::Deinitialize()
 	if (Impl->TickHandle.IsValid()) FTSTicker::GetCoreTicker().RemoveTicker(Impl->TickHandle);
 	if (Impl->Input && FSlateApplication::IsInitialized()) FSlateApplication::Get().UnregisterInputPreProcessor(Impl->Input);
 	Impl->Input.Reset();
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	if (auto* MVP=ResolveMVP(); MVP && Impl->Original.IsSet())
 	{
 		FString Error;
@@ -256,7 +257,7 @@ FString UGameXXKDevToolsSubsystem::GetStatusText() const
 }
 void UGameXXKDevToolsSubsystem::TogglePanel()
 {
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	if (IsPanelOpen()) { ClosePanel(); return; }
 	if (!FSlateApplication::IsInitialized() || !ResolveMVP()) return;
 	if(!Impl->Panel) Impl->Panel=SNew(SGameXXKDevWorkbench).Tools(this);
@@ -291,7 +292,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		if (!bOK || (Op!=TEXT("inspect") && Op!=TEXT("catalog") && Op!=TEXT("snapshot.list") && Op!=TEXT("simulate.status"))) { Impl->Message=Message;Impl->bLastCommandSucceeded=bOK; }
 		return Encode(Response);
 	};
-#if UE_BUILD_SHIPPING
+#if !GAMEXXK_WITH_DEV_TOOLS
 	return Finish(false,TEXT("此版本不包含开发工具。"));
 #else
 	if (RequestJson.Len()>16*1024*1024) return Finish(false,TEXT("命令超过16MB限制。"));
@@ -338,9 +339,17 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	{
 		if (!Impl->Original.IsSet())
 		{
+			if (GetWorld() && GetWorld()->IsGameWorld() && !MVP->SaveCurrentGame())
+			{
+				Error = MVP->GetLastSaveLoadError().IsEmpty()
+					? GameXXKLocalization::Text(TEXT("Save.Error.Write")).ToString()
+					: MVP->GetLastSaveLoadError().ToString();
+				return false;
+			}
 			Impl->Original=Current; Impl->OriginalTravel=MVP->GetTrainingTravelRuntimeCopy();
 			MVP->SetDevelopmentWritesSuppressed(true);
 		}
+		return true;
 	};
 	if (Command==TEXT("help"))
 	{
@@ -416,14 +425,12 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		D->SetStringField(TEXT("character_name"),GameXXKCharacterUiPresentation::GetDisplayName(MVP,Character));
 		return Finish(true,TEXT("实时属性与战斗状态"),D);
 	}
-	if (Command==TEXT("session.begin")) { BeginSession();return Finish(true,TEXT("已开始临时试验；原进度保留。")); }
+	if (Command==TEXT("session.begin")) { if (!BeginSession()) return Finish(false,Error);return Finish(true,TEXT("已开始临时试验；原进度保留。")); }
     if(Command==TEXT("progress.unlock_stages")||Command==TEXT("progress.unlock_tasks"))
     {
         if(Current.CardRun.bHasActiveCardBattle||Current.Training.bChallengeActive)
             return Finish(false,TEXT("先返回桌面，再解锁测试入口。"));
-        if(!Impl->Original.IsSet()&&GetWorld()&&GetWorld()->IsGameWorld()&&!MVP->SaveCurrentGame())
-            return Finish(false,TEXT("原进度未能保存，未解锁测试入口。"));
-        const auto Travel=MVP->GetTrainingTravelRuntimeCopy();BeginSession();auto Unlocked=Current;
+        const auto Travel=MVP->GetTrainingTravelRuntimeCopy();if (!BeginSession()) return Finish(false,Error);auto Unlocked=Current;
         Unlocked.Training.bDevelopmentUnlockAllStages=true;
         if(Command==TEXT("progress.unlock_tasks"))Unlocked.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks=true;
         if(!MVP->ApplyDevelopmentState(Unlocked,Error,&Travel))return Finish(false,Error);
@@ -442,7 +449,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	{
 		const Object* Scene=nullptr;FGameXXKRuntimeState S;FGameXXKTrainingTravelRuntime Travel;
 		if (!Args->TryGetObjectField(TEXT("scene"),Scene) || !ReadSnapshot(*Scene,S,Travel,Error)) return Finish(false,Error.IsEmpty()?TEXT("请提供有效的scene对象。"):Error);
-		BeginSession();if (!MVP->ApplyDevelopmentState(S,Error,&Travel)) return Finish(false,Error);RefreshPresentation(MVP);return Finish(true,TEXT("已导入测试场景。"));
+		if (!BeginSession()) return Finish(false,Error);if (!MVP->ApplyDevelopmentState(S,Error,&Travel)) return Finish(false,Error);RefreshPresentation(MVP);return Finish(true,TEXT("已导入测试场景。"));
 	}
 	if (Command==TEXT("snapshot.list"))
 	{
@@ -461,7 +468,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		}
 		FString File;FGameXXKRuntimeState S;FGameXXKTrainingTravelRuntime Travel;
 		if (!FFileHelper::LoadFileToString(File,*Path) || !ReadSnapshot(Decode(File),S,Travel,Error)) return Finish(false,Error.IsEmpty()?TEXT("找不到快照。"):Error);
-		BeginSession();if (!MVP->ApplyDevelopmentState(S,Error,&Travel)) return Finish(false,Error);RefreshPresentation(MVP);return Finish(true,TEXT("已载入试验快照：")+Name);
+		if (!BeginSession()) return Finish(false,Error);if (!MVP->ApplyDevelopmentState(S,Error,&Travel)) return Finish(false,Error);RefreshPresentation(MVP);return Finish(true,TEXT("已载入试验快照：")+Name);
 	}
 	if (Command==TEXT("settings.key"))
 	{
@@ -538,13 +545,13 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	if (Command==TEXT("battle.auto"))
 	{
 		if (!Current.CardRun.bHasActiveCardBattle) return Finish(false,TEXT("请先进入测试战斗。"));
-		BeginSession();const bool Enabled=Flag(Args,TEXT("enabled"),true);MVP->SetBattleAutoPlayEnabled(Enabled);return Finish(true,Enabled?TEXT("自动出牌已开启。"):TEXT("自动出牌已关闭。"));
+		if (!BeginSession()) return Finish(false,Error);const bool Enabled=Flag(Args,TEXT("enabled"),true);MVP->SetBattleAutoPlayEnabled(Enabled);return Finish(true,Enabled?TEXT("自动出牌已开启。"):TEXT("自动出牌已关闭。"));
 	}
 	if (Command==TEXT("battle.return") || Command==TEXT("battle.restart"))
 	{
 		const auto& Target=Command==TEXT("battle.return") ? Impl->BeforeBattle : Impl->BattleStart;
 		if (!Target.IsSet()) return Finish(false,TEXT("尚未建立测试战斗。"));
-		BeginSession();if (!MVP->ApplyDevelopmentState(Target.GetValue(),Error,Command==TEXT("battle.return")?&Impl->BeforeBattleTravel:nullptr)) return Finish(false,Error);
+		if (!BeginSession()) return Finish(false,Error);if (!MVP->ApplyDevelopmentState(Target.GetValue(),Error,Command==TEXT("battle.return")?&Impl->BeforeBattleTravel:nullptr)) return Finish(false,Error);
 		MVP->SetBattleAutoPlayEnabled(false);RefreshPresentation(MVP);return Finish(true,Command==TEXT("battle.return")?TEXT("已返回战前配装状态。"):TEXT("已使用相同种子重开本场。"));
 	}
 	FGameXXKRuntimeState Candidate=Current;
@@ -586,7 +593,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		{
 			// Use the public formation transaction on a temporary subsystem state only after validation.
 			if (!IsCharacter(Candidate,Character) || Character==TEXT("Player")) return Finish(false,TEXT("请选择一个伙伴或NPC。"));
-			BeginSession();if (!MVP->SetActivePermanentCompanion(Character)) return Finish(false,TEXT("无法更换出战伙伴。"));RefreshPresentation(MVP);return Finish(true,TEXT("出战伙伴已更新。"));
+			if (!BeginSession()) return Finish(false,Error);if (!MVP->SetActivePermanentCompanion(Character)) return Finish(false,TEXT("无法更换出战伙伴。"));RefreshPresentation(MVP);return Finish(true,TEXT("出战伙伴已更新。"));
 		}
 	}
 	else if (Command==TEXT("cards.set"))
@@ -678,7 +685,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		for(auto& U:AppliedTravel.PartyUnits) U.HP=U.MaxHP;
 		AppliedTravel.PlayerHP=AppliedTravel.PlayerMaxHP;
 	}
-	BeginSession();if (!MVP->ApplyDevelopmentState(Candidate,Error,bPreserveTravel?&AppliedTravel:nullptr)) return Finish(false,Error);
+	if (!BeginSession()) return Finish(false,Error);if (!MVP->ApplyDevelopmentState(Candidate,Error,bPreserveTravel?&AppliedTravel:nullptr)) return Finish(false,Error);
 	if(Command==TEXT("equipment.recommend_all"))
 	{
 		auto FullTravel=MVP->GetTrainingTravelRuntimeCopy();for(auto& U:FullTravel.PartyUnits)U.HP=U.MaxHP;FullTravel.PlayerHP=FullTravel.PlayerMaxHP;
@@ -694,7 +701,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 
 bool UGameXXKDevToolsSubsystem::TickDevelopment(float DeltaSeconds)
 {
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	using namespace DevTools;
 	if (!ResolveMVP()) return true;
 	if (!Impl->Input && !GIsAutomationTesting && FSlateApplication::IsInitialized() && GetWorld() && GetWorld()->IsGameWorld())

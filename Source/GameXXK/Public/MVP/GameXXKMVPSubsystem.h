@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Dev/GameXXKDevBuildPolicy.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKEquipmentToolRules.h"
 #include "GameXXKTrainingChestRules.h"
@@ -37,7 +38,7 @@ public:
 	const FGameXXKRuntimeState& GetRuntimeState() const;
 	FGameXXKRuntimeState& GetMutableRuntimeState();
 
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	/** Dev sessions reuse normal transactions while suppressing all player-slot writes. */
 	void SetDevelopmentWritesSuppressed(bool bSuppressed) { bDevelopmentWritesSuppressed = bSuppressed; }
 	bool AreDevelopmentWritesSuppressed() const { return bDevelopmentWritesSuppressed; }
@@ -672,7 +673,7 @@ public:
 	TArray<FName> BuildTurnOrder(bool bBossBattle) const;
 
 private:
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	bool bDevelopmentWritesSuppressed = false;
 #endif
 	bool PersistTrainingCheckpoint(const FGameXXKRuntimeState& Candidate);

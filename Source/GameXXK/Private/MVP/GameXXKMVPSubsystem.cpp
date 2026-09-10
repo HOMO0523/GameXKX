@@ -1831,7 +1831,7 @@ FGameXXKRuntimeState UGameXXKMVPSubsystem::GetRuntimeStateCopy() const
 	return GetRuntimeState();
 }
 
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 bool UGameXXKMVPSubsystem::ApplyDevelopmentState(const FGameXXKRuntimeState& State,
 	FString& OutError, const FGameXXKTrainingTravelRuntime* ExactTravel)
 {
@@ -3730,7 +3730,7 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 	}
 #endif
 	if (IsTrainingCheckpointWorld()
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 		&& !bDevelopmentWritesSuppressed
 #endif
 		&& UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)
@@ -3813,7 +3813,7 @@ bool UGameXXKMVPSubsystem::DoesSaveGameExist(FString SlotName, int32 UserIndex) 
 
 bool UGameXXKMVPSubsystem::DeleteSaveGame(FString SlotName, int32 UserIndex)
 {
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	if (bDevelopmentWritesSuppressed) return false;
 #endif
 	const FString ResolvedSlotName = ResolveSaveSlotName(SlotName);
@@ -4750,7 +4750,7 @@ bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
 bool UGameXXKMVPSubsystem::WriteSaveGameToSlot(USaveGame* SaveGame, const FString& SlotName, const int32 UserIndex)
 {
 	if (bAcademyWriteGuard) return false;
-#if !UE_BUILD_SHIPPING
+#if GAMEXXK_WITH_DEV_TOOLS
 	if (bDevelopmentWritesSuppressed) return true;
 #endif
 #if WITH_DEV_AUTOMATION_TESTS
@@ -4862,6 +4862,13 @@ bool UGameXXKMVPSubsystem::EnsureDesktopTrainingRuntimeForDirectMap()
 		{
 			TGuardValue<bool> RecoveryGuard(bRecoveringTrainingCheckpoint, true);
 			return LoadGameFromSlot(GetTrainingCheckpointSlotName(), 0);
+		}
+		// The packaged game opens this map directly. A regular save remains the
+		// resume source when no in-progress training checkpoint exists. Do not
+		// replace an unreadable existing save with a silently initialized game.
+		if (DoesSaveGameExist(GetDefaultSaveSlotName(), 0))
+		{
+			return LoadGameFromSlot(GetDefaultSaveSlotName(), 0);
 		}
 		// The isolated HUD map is itself a playable entry surface. A fresh direct
 		// launch therefore needs the full new-game initialization (starter roster,
