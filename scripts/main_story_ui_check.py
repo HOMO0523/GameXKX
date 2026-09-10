@@ -16,10 +16,13 @@ parser.add_argument('action', choices=['snapshot','click','capture','probe','sta
 parser.add_argument('value',nargs='?',default='')
 parser.add_argument('--window',default='GameXXKDesktopOverlay')
 parser.add_argument('--native-input',action='store_true')
+parser.add_argument('--mouse-button',choices=['left','right'],default='left')
 parser.add_argument('--port',type=int,default=18765)
 parser.add_argument('--native-coordinate-scale',type=float,default=1.0,
                     help='Explicit OS-screen calibration after comparing Slate and desktop captures')
 args=parser.parse_args()
+if args.mouse_button=='right' and not args.native_input:
+    parser.error('Right-click verification requires --native-input')
 client=UnrealMCPClient(timeout=60,port=args.port)
 assert client.connect()
 if args.action=='start-pie':
@@ -101,7 +104,13 @@ else:
                 time.sleep(.1)
                 hit=int(input_controller.user32.WindowFromPoint(wintypes.POINT(x,y)) or 0)
                 assert hit==window['hwnd'], f'Observed control is covered by another native window: target={window["hwnd"]}, hit={hit}'
-                clicked=input_controller.click_absolute_point(window,x,y)
+                if args.mouse_button=='right':
+                    input_controller.user32.mouse_event(0x0008,0,0,0,0)
+                    time.sleep(.05)
+                    input_controller.user32.mouse_event(0x0010,0,0,0,0)
+                    clicked={'x':x,'y':y,'button':'right'}
+                else:
+                    clicked=input_controller.click_absolute_point(window,x,y)
             else:
                 clicked=client.call_tool('Click',{'ref':target},toolset_name=TOOLSET)
             print(json.dumps({'label':label,'ref':target,'clicked':clicked},ensure_ascii=False))

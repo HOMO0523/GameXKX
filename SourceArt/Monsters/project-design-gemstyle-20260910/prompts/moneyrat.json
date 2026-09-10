@@ -1,0 +1,24 @@
+{
+  "slug": "moneyrat",
+  "name": "金钱鼠",
+  "id": "Enemy.Ch1.MoneyRat",
+  "chapter": 1,
+  "tier": "boss",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png",
+  "identitySourceSha256": "d71d6b99bf437562a3bb354356d636520f816cb389769251045f4caffce85814",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "金钱鼠Boss：保留原褐色肥壮鼠商人、尖脸红鼻、露大门牙的狡黠笑、卷长胡须、原铜钱形大耳；赭红金边短披肩与棕衣、红腰带、金色手脚环。两手牢抱胸前一枚巨大的方孔铜钱，背后保持原竹架与青绳串钱的结构，但小钱串合并成三组疏朗大串、减少碎线；一条细卷鼠尾和两只宽脚完整可见。三角头+圆巨钱+厚重身体，3/4朝右，Boss更有重量。只画一个鼠，不添加座椅、地面钱堆、皇冠或背景。",
+  "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：金钱鼠Boss：保留原褐色肥壮鼠商人、尖脸红鼻、露大门牙的狡黠笑、卷长胡须、原铜钱形大耳；赭红金边短披肩与棕衣、红腰带、金色手脚环。两手牢抱胸前一枚巨大的方孔铜钱，背后保持原竹架与青绳串钱的结构，但小钱串合并成三组疏朗大串、减少碎线；一条细卷鼠尾和两只宽脚完整可见。三角头+圆巨钱+厚重身体，3/4朝右，Boss更有重量。只画一个鼠，不添加座椅、地面钱堆、皇冠或背景。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\moneyrat.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-33f0f755-19d7-45eb-8607-73778ba5b12c.png"
+}

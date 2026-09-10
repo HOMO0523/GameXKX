@@ -1,0 +1,11 @@
+{
+  "slug": "TrainingAdvancedChest",
+  "status": "candidate",
+  "prompt": "重绘第一张参考里的宝箱，形体进一步简化，严格匹配第二张已批准宝石图标的画风。物件是高级宝箱：一只饱满短胖的深青蓝弧顶宝箱，粗宽暖金边与大金锁扣，箱面仅一个简化青玉大饰块，不画细雕花。只画这一个物件。要饱满厚实、略夸张的卡通轮廓、粗而自然的近黑墨边、鲜明主色、3至5块大的几何明暗色面、少量宽手绘笔触、低光泽，和卡通宝石属于同一套游戏图标。48px轮廓仍能辨识。不要写实木纹、金属锈蚀、细密雕花、复杂反射、细小铆钉或飘散粒子。不要文字、数字、UI框、皇冠、光晕或外部底座。正方形，主体最大边占88%到90%，四边安全。背景纯洋红#FF00FF，完全均匀无阴影无纹理无渐变无棋盘，物件本体不能有洋红。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Chests\\final\\T_Item_TrainingAdvancedChest_v3.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-3e821782-22c7-4dce-8312-d0310ade17e0.png",
+  "background": "magenta"
+}

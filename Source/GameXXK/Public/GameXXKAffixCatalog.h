@@ -86,4 +86,7 @@ public:
 	static const FGameXXKAffixDefinition* FindDefinition(FName AffixId);
 	static FGameXXKAffixTierWeights GetTierWeights(EGameXXKEquipmentQuality Quality);
 	static FGameXXKAffixMagnitudeRange GetMagnitudeRange(EGameXXKEquipmentMagnitudeUnit Unit, EGameXXKAffixTier Tier);
+	/** Definition-aware range: fixed-per-copy affixes do not inherit tier scaling. */
+	static FGameXXKAffixMagnitudeRange GetMagnitudeRange(FName AffixId, EGameXXKAffixTier Tier);
+	static bool IsRetiredResourceAffix(FName AffixId);
 };

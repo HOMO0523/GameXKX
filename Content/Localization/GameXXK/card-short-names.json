@@ -1,0 +1,1743 @@
+{
+  "schemaVersion": 1,
+  "scope": "All 173 Hero, Companion, NPC and Boss-reward cards",
+  "maxWords": 2,
+  "preferredWords": 1,
+  "fontSource": "Saved/FontPreview/20260904/fonts/ZiKuJiangHuGuFeng.ttf",
+  "measurement": "40px source-font preflight; verify actual UE 30-point font and 190-unit name area after build",
+  "preflightLimit": 178,
+  "cards": [
+    {
+      "id": "Hero.Generic.QingFengYiShi",
+      "zh-Hans": "青锋一式",
+      "previousEnglish": "Azure Edge",
+      "en": "Edge",
+      "wordCount": 1,
+      "widthAt40px": 80.0,
+      "previousWidthAt40px": 202.0,
+      "ueWidthAt30": 80.0
+    },
+    {
+      "id": "Hero.Generic.HeYuZhan",
+      "zh-Hans": "鹤羽斩",
+      "previousEnglish": "Crane Cut",
+      "en": "Crane",
+      "wordCount": 1,
+      "widthAt40px": 107.0,
+      "previousWidthAt40px": 182.0,
+      "ueWidthAt30": 107.0
+    },
+    {
+      "id": "Hero.Generic.FengShenBu",
+      "zh-Hans": "风身步",
+      "previousEnglish": "Windstep",
+      "en": "Windstep",
+      "wordCount": 1,
+      "widthAt40px": 167.0,
+      "previousWidthAt40px": 167.0,
+      "ueWidthAt30": 167.0
+    },
+    {
+      "id": "Hero.Generic.SuiYanJi",
+      "zh-Hans": "碎岩击",
+      "previousEnglish": "Rockbreaker",
+      "en": "Shatter",
+      "wordCount": 1,
+      "widthAt40px": 143.0,
+      "previousWidthAt40px": 217.0,
+      "ueWidthAt30": 143.0
+    },
+    {
+      "id": "Hero.Generic.GuiYuanShu",
+      "zh-Hans": "归元术",
+      "previousEnglish": "Renewal",
+      "en": "Renewal",
+      "wordCount": 1,
+      "widthAt40px": 149.0,
+      "previousWidthAt40px": 149.0,
+      "ueWidthAt30": 149.0
+    },
+    {
+      "id": "Hero.Generic.HengJianShouShi",
+      "zh-Hans": "横剑守势",
+      "previousEnglish": "Blade Guard",
+      "en": "Parry",
+      "wordCount": 1,
+      "widthAt40px": 104.0,
+      "previousWidthAt40px": 213.0,
+      "ueWidthAt30": 104.0
+    },
+    {
+      "id": "Hero.Generic.NingShenTuNa",
+      "zh-Hans": "凝神吐纳",
+      "previousEnglish": "Still Breath",
+      "en": "Breathe",
+      "wordCount": 1,
+      "widthAt40px": 143.0,
+      "previousWidthAt40px": 201.0,
+      "ueWidthAt30": 143.0
+    },
+    {
+      "id": "Hero.Generic.GuanXi",
+      "zh-Hans": "观隙",
+      "previousEnglish": "Read the Gap",
+      "en": "Insight",
+      "wordCount": 1,
+      "widthAt40px": 124.0,
+      "previousWidthAt40px": 222.0,
+      "ueWidthAt30": 124.0
+    },
+    {
+      "id": "Hero.Generic.PoYunYiShan",
+      "zh-Hans": "破云一闪",
+      "previousEnglish": "Cloud Flash",
+      "en": "Flash",
+      "wordCount": 1,
+      "widthAt40px": 90.0,
+      "previousWidthAt40px": 193.0,
+      "ueWidthAt30": 90.0
+    },
+    {
+      "id": "Hero.Generic.XingQiHuiHuan",
+      "zh-Hans": "行气回环",
+      "previousEnglish": "Flow Cycle",
+      "en": "Cycle",
+      "wordCount": 1,
+      "widthAt40px": 93.0,
+      "previousWidthAt40px": 185.0,
+      "ueWidthAt30": 93.0
+    },
+    {
+      "id": "Hero.Generic.JianYiGuanHong",
+      "zh-Hans": "剑意贯虹",
+      "previousEnglish": "Rainbow Thrust",
+      "en": "Thrust",
+      "wordCount": 1,
+      "widthAt40px": 129.0,
+      "previousWidthAt40px": 283.0,
+      "ueWidthAt30": 129.0
+    },
+    {
+      "id": "Hero.Generic.GuiYuanFanZhao",
+      "zh-Hans": "归元返照",
+      "previousEnglish": "Returning Light",
+      "en": "Glow",
+      "wordCount": 1,
+      "widthAt40px": 90.0,
+      "previousWidthAt40px": 272.0,
+      "ueWidthAt30": 90.0
+    },
+    {
+      "id": "Hero.Blade.TongFengYinShi",
+      "zh-Hans": "同锋引式",
+      "previousEnglish": "Shared Edge",
+      "en": "Link",
+      "wordCount": 1,
+      "widthAt40px": 71.0,
+      "previousWidthAt40px": 210.0,
+      "ueWidthAt30": 71.0
+    },
+    {
+      "id": "Hero.Blade.XueLuXiangCheng",
+      "zh-Hans": "血路相承",
+      "previousEnglish": "Blood Legacy",
+      "en": "Legacy",
+      "wordCount": 1,
+      "widthAt40px": 120.0,
+      "previousWidthAt40px": 216.0,
+      "ueWidthAt30": 120.0
+    },
+    {
+      "id": "Hero.Blade.YingFengHuanBu",
+      "zh-Hans": "迎锋换步",
+      "previousEnglish": "Sidestep Edge",
+      "en": "Sidestep",
+      "wordCount": 1,
+      "widthAt40px": 147.0,
+      "previousWidthAt40px": 234.0,
+      "ueWidthAt30": 147.0
+    },
+    {
+      "id": "Hero.Blade.TongPaoJuShi",
+      "zh-Hans": "同袍聚势",
+      "previousEnglish": "Allied Momentum",
+      "en": "Rally",
+      "wordCount": 1,
+      "widthAt40px": 84.0,
+      "previousWidthAt40px": 305.0,
+      "ueWidthAt30": 84.0
+    },
+    {
+      "id": "Hero.Guard.TieBiTongShou",
+      "zh-Hans": "铁壁同守",
+      "previousEnglish": "Shared Ironwall",
+      "en": "Bastion",
+      "wordCount": 1,
+      "widthAt40px": 131.0,
+      "previousWidthAt40px": 286.0,
+      "ueWidthAt30": 131.0
+    },
+    {
+      "id": "Hero.Guard.JieJiaHuanFeng",
+      "zh-Hans": "借甲还锋",
+      "previousEnglish": "Borrowed Armor",
+      "en": "Borrow",
+      "wordCount": 1,
+      "widthAt40px": 137.0,
+      "previousWidthAt40px": 305.0,
+      "ueWidthAt30": 137.0
+    },
+    {
+      "id": "Hero.Guard.LieZhenChengFeng",
+      "zh-Hans": "列阵承锋",
+      "previousEnglish": "Hold the Line",
+      "en": "Hold",
+      "wordCount": 1,
+      "widthAt40px": 72.0,
+      "previousWidthAt40px": 216.0,
+      "ueWidthAt30": 72.0
+    },
+    {
+      "id": "Hero.Guard.XuanJiaZhenYue",
+      "zh-Hans": "玄甲镇岳",
+      "previousEnglish": "Mountain Ward",
+      "en": "Ward",
+      "wordCount": 1,
+      "widthAt40px": 100.0,
+      "previousWidthAt40px": 275.0,
+      "ueWidthAt30": 100.0
+    },
+    {
+      "id": "Hero.Healer.YiXueCuiFang",
+      "zh-Hans": "以血催方",
+      "previousEnglish": "Blood Remedy",
+      "en": "Blood Aid",
+      "wordCount": 2,
+      "widthAt40px": 152.0,
+      "previousWidthAt40px": 231.0,
+      "ueWidthAt30": 152.0
+    },
+    {
+      "id": "Hero.Healer.HuiChunNiMai",
+      "zh-Hans": "回春逆脉",
+      "previousEnglish": "Reversed Pulse",
+      "en": "Reverse",
+      "wordCount": 1,
+      "widthAt40px": 138.0,
+      "previousWidthAt40px": 256.0,
+      "ueWidthAt30": 138.0
+    },
+    {
+      "id": "Hero.Healer.DuHuoTongLu",
+      "zh-Hans": "毒火同炉",
+      "previousEnglish": "Venom Crucible",
+      "en": "Brew",
+      "wordCount": 1,
+      "widthAt40px": 99.0,
+      "previousWidthAt40px": 273.0,
+      "ueWidthAt30": 99.0
+    },
+    {
+      "id": "Hero.Healer.BaiCaoJiZhen",
+      "zh-Hans": "百草济阵",
+      "previousEnglish": "Herbal Formation",
+      "en": "Herbs",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 306.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Hero.Hunter.FengYanDingXian",
+      "zh-Hans": "风眼定弦",
+      "previousEnglish": "Eye of the Gale",
+      "en": "Aim",
+      "wordCount": 1,
+      "widthAt40px": 70.0,
+      "previousWidthAt40px": 260.0,
+      "ueWidthAt30": 70.0
+    },
+    {
+      "id": "Hero.Hunter.LieYuLianShi",
+      "zh-Hans": "裂羽连矢",
+      "previousEnglish": "Rending Volley",
+      "en": "Volley",
+      "wordCount": 1,
+      "widthAt40px": 106.0,
+      "previousWidthAt40px": 245.0,
+      "ueWidthAt30": 106.0
+    },
+    {
+      "id": "Hero.Hunter.CuiDuChuanXin",
+      "zh-Hans": "淬毒穿心",
+      "previousEnglish": "Venom Heartshot",
+      "en": "Pierce",
+      "wordCount": 1,
+      "widthAt40px": 105.0,
+      "previousWidthAt40px": 309.0,
+      "ueWidthAt30": 105.0
+    },
+    {
+      "id": "Hero.Hunter.HuiFengGuanRi",
+      "zh-Hans": "回风贯日",
+      "previousEnglish": "Sunpiercer",
+      "en": "Sunshot",
+      "wordCount": 1,
+      "widthAt40px": 146.0,
+      "previousWidthAt40px": 198.0,
+      "ueWidthAt30": 146.0
+    },
+    {
+      "id": "Hero.Mage.YanXuLiaoYuan",
+      "zh-Hans": "炎序燎原",
+      "previousEnglish": "Wildfire",
+      "en": "Wildfire",
+      "wordCount": 1,
+      "widthAt40px": 146.0,
+      "previousWidthAt40px": 146.0,
+      "ueWidthAt30": 146.0
+    },
+    {
+      "id": "Hero.Mage.HanXuNingChuan",
+      "zh-Hans": "寒序凝川",
+      "previousEnglish": "Frozen Sequence",
+      "en": "Frost",
+      "wordCount": 1,
+      "widthAt40px": 98.0,
+      "previousWidthAt40px": 297.0,
+      "ueWidthAt30": 98.0
+    },
+    {
+      "id": "Hero.Mage.LeiXuYinTing",
+      "zh-Hans": "雷序引霆",
+      "previousEnglish": "Thunder Sequence",
+      "en": "Thunder",
+      "wordCount": 1,
+      "widthAt40px": 153.0,
+      "previousWidthAt40px": 326.0,
+      "ueWidthAt30": 153.0
+    },
+    {
+      "id": "Hero.Mage.GuiXuTongXuan",
+      "zh-Hans": "归序通玄",
+      "previousEnglish": "Mystic Sequence",
+      "en": "Mystic",
+      "wordCount": 1,
+      "widthAt40px": 117.0,
+      "previousWidthAt40px": 290.0,
+      "ueWidthAt30": 117.0
+    },
+    {
+      "id": "Hero.Formation.GuanShiLuoZi",
+      "zh-Hans": "观势落子",
+      "previousEnglish": "Read the Ground",
+      "en": "Survey",
+      "wordCount": 1,
+      "widthAt40px": 130.0,
+      "previousWidthAt40px": 287.0,
+      "ueWidthAt30": 130.0
+    },
+    {
+      "id": "Hero.Formation.YiZhenHuiXiang",
+      "zh-Hans": "移阵回响",
+      "previousEnglish": "Shifting Echo",
+      "en": "Echo",
+      "wordCount": 1,
+      "widthAt40px": 80.0,
+      "previousWidthAt40px": 228.0,
+      "ueWidthAt30": 80.0
+    },
+    {
+      "id": "Hero.Formation.LianYingBuShi",
+      "zh-Hans": "连营布势",
+      "previousEnglish": "Linked Camps",
+      "en": "Camp",
+      "wordCount": 1,
+      "widthAt40px": 99.0,
+      "previousWidthAt40px": 234.0,
+      "ueWidthAt30": 99.0
+    },
+    {
+      "id": "Hero.Formation.LiuHeGuiYi",
+      "zh-Hans": "六合归一",
+      "previousEnglish": "Sixfold Unity",
+      "en": "Union",
+      "wordCount": 1,
+      "widthAt40px": 95.0,
+      "previousWidthAt40px": 226.0,
+      "ueWidthAt30": 95.0
+    },
+    {
+      "id": "Npc.TusiChief.ZhaiZhuHaoLing",
+      "zh-Hans": "寨主号令",
+      "previousEnglish": "Chief's Command",
+      "en": "Command",
+      "wordCount": 1,
+      "widthAt40px": 173.0,
+      "previousWidthAt40px": 330.0,
+      "ueWidthAt30": 173.0
+    },
+    {
+      "id": "Npc.TusiChief.ShiMenShouShi",
+      "zh-Hans": "石门守势",
+      "previousEnglish": "Stonegate Guard",
+      "en": "Gate",
+      "wordCount": 1,
+      "widthAt40px": 86.0,
+      "previousWidthAt40px": 300.0,
+      "ueWidthAt30": 86.0
+    },
+    {
+      "id": "Npc.TusiChief.TuSiJunLing",
+      "zh-Hans": "土司军令",
+      "previousEnglish": "Tusi War Order",
+      "en": "Order",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 272.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Npc.TusiChief.MengZhaiShiYue",
+      "zh-Hans": "盟寨誓约",
+      "previousEnglish": "Clan Oath",
+      "en": "Oath",
+      "wordCount": 1,
+      "widthAt40px": 82.0,
+      "previousWidthAt40px": 166.0,
+      "ueWidthAt30": 82.0
+    },
+    {
+      "id": "Npc.SongJinBao.ShangQianGuWu",
+      "zh-Hans": "赏钱鼓舞",
+      "previousEnglish": "Coin Rally",
+      "en": "Bounty",
+      "wordCount": 1,
+      "widthAt40px": 131.0,
+      "previousWidthAt40px": 163.0,
+      "ueWidthAt30": 131.0
+    },
+    {
+      "id": "Npc.SongJinBao.ErMuMiBao",
+      "zh-Hans": "耳目密报",
+      "previousEnglish": "Secret Report",
+      "en": "Report",
+      "wordCount": 1,
+      "widthAt40px": 120.0,
+      "previousWidthAt40px": 247.0,
+      "ueWidthAt30": 120.0
+    },
+    {
+      "id": "Npc.SongJinBao.GuiKeLing",
+      "zh-Hans": "贵客令",
+      "previousEnglish": "Guest Token",
+      "en": "Token",
+      "wordCount": 1,
+      "widthAt40px": 104.0,
+      "previousWidthAt40px": 219.0,
+      "ueWidthAt30": 104.0
+    },
+    {
+      "id": "Npc.SongJinBao.YiNuoQianJin",
+      "zh-Hans": "一诺千金",
+      "previousEnglish": "Golden Promise",
+      "en": "Promise",
+      "wordCount": 1,
+      "widthAt40px": 137.0,
+      "previousWidthAt40px": 260.0,
+      "ueWidthAt30": 137.0
+    },
+    {
+      "id": "Npc.YueBai.QingYanDianDeng",
+      "zh-Hans": "青焰点灯",
+      "previousEnglish": "Spirit Lamp",
+      "en": "Lamp",
+      "wordCount": 1,
+      "widthAt40px": 97.0,
+      "previousWidthAt40px": 204.0,
+      "ueWidthAt30": 97.0
+    },
+    {
+      "id": "Npc.YueBai.CanJuanPiZhu",
+      "zh-Hans": "残卷批注",
+      "previousEnglish": "Scroll Notes",
+      "en": "Notes",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 209.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Npc.YueBai.YueBaiZhaoYe",
+      "zh-Hans": "幽白照夜",
+      "previousEnglish": "Pale Night",
+      "en": "Night",
+      "wordCount": 1,
+      "widthAt40px": 93.0,
+      "previousWidthAt40px": 169.0,
+      "ueWidthAt30": 93.0
+    },
+    {
+      "id": "Npc.YueBai.ShanHeCanTu",
+      "zh-Hans": "山河残图",
+      "previousEnglish": "Mountain Map",
+      "en": "Map",
+      "wordCount": 1,
+      "widthAt40px": 72.0,
+      "previousWidthAt40px": 247.0,
+      "ueWidthAt30": 72.0
+    },
+    {
+      "id": "Npc.ZhouGuangZu.YiCaoBianShi",
+      "zh-Hans": "异草辨识",
+      "previousEnglish": "Herb Lore",
+      "en": "Lore",
+      "wordCount": 1,
+      "widthAt40px": 79.0,
+      "previousWidthAt40px": 170.0,
+      "ueWidthAt30": 79.0
+    },
+    {
+      "id": "Npc.ZhouGuangZu.HuangShanFuZhi",
+      "zh-Hans": "黄山敷治",
+      "previousEnglish": "Hill Remedy",
+      "en": "Mend",
+      "wordCount": 1,
+      "widthAt40px": 92.0,
+      "previousWidthAt40px": 194.0,
+      "ueWidthAt30": 92.0
+    },
+    {
+      "id": "Npc.ZhouGuangZu.DiZhiMoTu",
+      "zh-Hans": "地志摹图",
+      "previousEnglish": "Land Survey",
+      "en": "Terrain",
+      "wordCount": 1,
+      "widthAt40px": 138.0,
+      "previousWidthAt40px": 222.0,
+      "ueWidthAt30": 138.0
+    },
+    {
+      "id": "Npc.ZhouGuangZu.YanFenFengMai",
+      "zh-Hans": "岩粉封脉",
+      "previousEnglish": "Stone Seal",
+      "en": "Seal",
+      "wordCount": 1,
+      "widthAt40px": 72.0,
+      "previousWidthAt40px": 181.0,
+      "ueWidthAt30": 72.0
+    },
+    {
+      "id": "Npc.JinGui.ShiJingErMu",
+      "zh-Hans": "市井耳目",
+      "previousEnglish": "Street Eyes",
+      "en": "Scout",
+      "wordCount": 1,
+      "widthAt40px": 104.0,
+      "previousWidthAt40px": 210.0,
+      "ueWidthAt30": 104.0
+    },
+    {
+      "id": "Npc.JinGui.QiaoYanZhouXuan",
+      "zh-Hans": "巧言周旋",
+      "previousEnglish": "Silver Tongue",
+      "en": "Persuade",
+      "wordCount": 1,
+      "widthAt40px": 162.0,
+      "previousWidthAt40px": 236.0,
+      "ueWidthAt30": 162.0
+    },
+    {
+      "id": "Npc.JinGui.ZaYiChouBei",
+      "zh-Hans": "杂役筹备",
+      "previousEnglish": "Handy Errands",
+      "en": "Supply",
+      "wordCount": 1,
+      "widthAt40px": 121.0,
+      "previousWidthAt40px": 264.0,
+      "ueWidthAt30": 121.0
+    },
+    {
+      "id": "Npc.JinGui.HouXiangTuoShen",
+      "zh-Hans": "后巷脱身",
+      "previousEnglish": "Alley Escape",
+      "en": "Escape",
+      "wordCount": 1,
+      "widthAt40px": 121.0,
+      "previousWidthAt40px": 217.0,
+      "ueWidthAt30": 121.0
+    },
+    {
+      "id": "Npc.QiongMeiEr.TengQiaoFeiDu",
+      "zh-Hans": "藤桥飞渡",
+      "previousEnglish": "Vine Crossing",
+      "en": "Vines",
+      "wordCount": 1,
+      "widthAt40px": 95.0,
+      "previousWidthAt40px": 231.0,
+      "ueWidthAt30": 95.0
+    },
+    {
+      "id": "Npc.QiongMeiEr.GuWuMiZong",
+      "zh-Hans": "蛊雾迷踪",
+      "previousEnglish": "Venom Mist",
+      "en": "Mist",
+      "wordCount": 1,
+      "widthAt40px": 76.0,
+      "previousWidthAt40px": 204.0,
+      "ueWidthAt30": 76.0
+    },
+    {
+      "id": "Npc.QiongMeiEr.YinLingZhenXin",
+      "zh-Hans": "银铃镇心",
+      "previousEnglish": "Silver Chime",
+      "en": "Chime",
+      "wordCount": 1,
+      "widthAt40px": 104.0,
+      "previousWidthAt40px": 212.0,
+      "ueWidthAt30": 104.0
+    },
+    {
+      "id": "Npc.QiongMeiEr.ShanGeHuanLing",
+      "zh-Hans": "山歌唤灵",
+      "previousEnglish": "Spirit Song",
+      "en": "Song",
+      "wordCount": 1,
+      "widthAt40px": 81.0,
+      "previousWidthAt40px": 188.0,
+      "ueWidthAt30": 81.0
+    },
+    {
+      "id": "Profession.Blade.LieFengZhan",
+      "zh-Hans": "裂风斩",
+      "previousEnglish": "Gale Slash",
+      "en": "Slash",
+      "wordCount": 1,
+      "widthAt40px": 91.0,
+      "previousWidthAt40px": 174.0,
+      "ueWidthAt30": 91.0
+    },
+    {
+      "id": "Profession.Blade.HuiFengJiaShi",
+      "zh-Hans": "回锋架势",
+      "previousEnglish": "Returning Stance",
+      "en": "Stance",
+      "wordCount": 1,
+      "widthAt40px": 124.0,
+      "previousWidthAt40px": 309.0,
+      "ueWidthAt30": 124.0
+    },
+    {
+      "id": "Profession.Blade.FengHou",
+      "zh-Hans": "封喉",
+      "previousEnglish": "Throat Seal",
+      "en": "Silence",
+      "wordCount": 1,
+      "widthAt40px": 120.0,
+      "previousWidthAt40px": 204.0,
+      "ueWidthAt30": 120.0
+    },
+    {
+      "id": "Profession.Blade.JiYuLianZhan",
+      "zh-Hans": "疾雨连斩",
+      "previousEnglish": "Rain of Steel",
+      "en": "Flurry",
+      "wordCount": 1,
+      "widthAt40px": 120.0,
+      "previousWidthAt40px": 217.0,
+      "ueWidthAt30": 120.0
+    },
+    {
+      "id": "Profession.Blade.YinXueDao",
+      "zh-Hans": "饮血刀",
+      "previousEnglish": "Blooddrinker",
+      "en": "Drain",
+      "wordCount": 1,
+      "widthAt40px": 97.0,
+      "previousWidthAt40px": 220.0,
+      "ueWidthAt30": 97.0
+    },
+    {
+      "id": "Profession.Blade.LangDuan",
+      "zh-Hans": "浪断",
+      "previousEnglish": "Wave Break",
+      "en": "Break",
+      "wordCount": 1,
+      "widthAt40px": 103.0,
+      "previousWidthAt40px": 209.0,
+      "ueWidthAt30": 103.0
+    },
+    {
+      "id": "Profession.Blade.DuanYue",
+      "zh-Hans": "断岳",
+      "previousEnglish": "Mountain Cleave",
+      "en": "Cleave",
+      "wordCount": 1,
+      "widthAt40px": 113.0,
+      "previousWidthAt40px": 288.0,
+      "ueWidthAt30": 113.0
+    },
+    {
+      "id": "Profession.Blade.PoJun",
+      "zh-Hans": "破军",
+      "previousEnglish": "Armybreaker",
+      "en": "Rout",
+      "wordCount": 1,
+      "widthAt40px": 84.0,
+      "previousWidthAt40px": 245.0,
+      "ueWidthAt30": 84.0
+    },
+    {
+      "id": "Profession.Blade.ZhanYiFeiTeng",
+      "zh-Hans": "战意沸腾",
+      "previousEnglish": "Battle Fervor",
+      "en": "Fervor",
+      "wordCount": 1,
+      "widthAt40px": 121.0,
+      "previousWidthAt40px": 241.0,
+      "ueWidthAt30": 121.0
+    },
+    {
+      "id": "Profession.Blade.ZhanJin",
+      "zh-Hans": "斩尽",
+      "previousEnglish": "Final Cut",
+      "en": "Finale",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 158.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Profession.Blade.JieShiHuiFeng",
+      "zh-Hans": "借势回锋",
+      "previousEnglish": "Borrowed Edge",
+      "en": "Counter",
+      "wordCount": 1,
+      "widthAt40px": 149.0,
+      "previousWidthAt40px": 263.0,
+      "ueWidthAt30": 149.0
+    },
+    {
+      "id": "Profession.Blade.ZhuYing",
+      "zh-Hans": "逐影",
+      "previousEnglish": "Shadowchase",
+      "en": "Chase",
+      "wordCount": 1,
+      "widthAt40px": 101.0,
+      "previousWidthAt40px": 234.0,
+      "ueWidthAt30": 101.0
+    },
+    {
+      "id": "Profession.Blade.PoLangTuJin",
+      "zh-Hans": "破浪突进",
+      "previousEnglish": "Wave Rush",
+      "en": "Rush",
+      "wordCount": 1,
+      "widthAt40px": 84.0,
+      "previousWidthAt40px": 190.0,
+      "ueWidthAt30": 84.0
+    },
+    {
+      "id": "Profession.Blade.YiShiDuanJiang",
+      "zh-Hans": "一式断江",
+      "previousEnglish": "River Sever",
+      "en": "Sever",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 199.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Profession.Blade.JingHongChuQiao",
+      "zh-Hans": "惊鸿出鞘",
+      "previousEnglish": "Swift Draw",
+      "en": "Draw",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 217.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Profession.Blade.HengYunKaiFeng",
+      "zh-Hans": "横云开锋",
+      "previousEnglish": "Cloud Edge",
+      "en": "Cloud",
+      "wordCount": 1,
+      "widthAt40px": 96.0,
+      "previousWidthAt40px": 183.0,
+      "ueWidthAt30": 96.0
+    },
+    {
+      "id": "Profession.Blade.LianXiGuiQiao",
+      "zh-Hans": "敛息归鞘",
+      "previousEnglish": "Quiet Sheath",
+      "en": "Sheathe",
+      "wordCount": 1,
+      "widthAt40px": 141.0,
+      "previousWidthAt40px": 226.0,
+      "ueWidthAt30": 141.0
+    },
+    {
+      "id": "Profession.Blade.BaoDaoShouYe",
+      "zh-Hans": "抱刀守夜",
+      "previousEnglish": "Night Watch",
+      "en": "Watch",
+      "wordCount": 1,
+      "widthAt40px": 118.0,
+      "previousWidthAt40px": 218.0,
+      "ueWidthAt30": 118.0
+    },
+    {
+      "id": "Profession.Guard.TieBi",
+      "zh-Hans": "铁壁",
+      "previousEnglish": "Ironwall",
+      "en": "Ironwall",
+      "wordCount": 1,
+      "widthAt40px": 156.0,
+      "previousWidthAt40px": 156.0,
+      "ueWidthAt30": 156.0
+    },
+    {
+      "id": "Profession.Guard.HuZhu",
+      "zh-Hans": "护主",
+      "previousEnglish": "Protect Master",
+      "en": "Protect",
+      "wordCount": 1,
+      "widthAt40px": 136.0,
+      "previousWidthAt40px": 272.0,
+      "ueWidthAt30": 136.0
+    },
+    {
+      "id": "Profession.Guard.ZhenDun",
+      "zh-Hans": "震盾",
+      "previousEnglish": "Shield Quake",
+      "en": "Quake",
+      "wordCount": 1,
+      "widthAt40px": 109.0,
+      "previousWidthAt40px": 215.0,
+      "ueWidthAt30": 109.0
+    },
+    {
+      "id": "Profession.Guard.GuShou",
+      "zh-Hans": "固守",
+      "previousEnglish": "Hold Fast",
+      "en": "Brace",
+      "wordCount": 1,
+      "widthAt40px": 103.0,
+      "previousWidthAt40px": 159.0,
+      "ueWidthAt30": 103.0
+    },
+    {
+      "id": "Profession.Guard.FanZhenJia",
+      "zh-Hans": "反震甲",
+      "previousEnglish": "Rebound Armor",
+      "en": "Rebound",
+      "wordCount": 1,
+      "widthAt40px": 146.0,
+      "previousWidthAt40px": 275.0,
+      "ueWidthAt30": 146.0
+    },
+    {
+      "id": "Profession.Guard.ZhenYueLing",
+      "zh-Hans": "镇岳令",
+      "previousEnglish": "Mountain Seal",
+      "en": "Anchor",
+      "wordCount": 1,
+      "widthAt40px": 129.0,
+      "previousWidthAt40px": 247.0,
+      "ueWidthAt30": 129.0
+    },
+    {
+      "id": "Profession.Guard.YuanHuBu",
+      "zh-Hans": "援护步",
+      "previousEnglish": "Guardstep",
+      "en": "Rescue",
+      "wordCount": 1,
+      "widthAt40px": 121.0,
+      "previousWidthAt40px": 191.0,
+      "ueWidthAt30": 121.0
+    },
+    {
+      "id": "Profession.Guard.PiJiaXingJun",
+      "zh-Hans": "披甲行军",
+      "previousEnglish": "Armored March",
+      "en": "March",
+      "wordCount": 1,
+      "widthAt40px": 111.0,
+      "previousWidthAt40px": 279.0,
+      "ueWidthAt30": 111.0
+    },
+    {
+      "id": "Profession.Guard.QinWangDunJi",
+      "zh-Hans": "擒王盾击",
+      "previousEnglish": "Kingslayer Bash",
+      "en": "Bash",
+      "wordCount": 1,
+      "widthAt40px": 82.0,
+      "previousWidthAt40px": 272.0,
+      "ueWidthAt30": 82.0
+    },
+    {
+      "id": "Profession.Guard.TieBiRuShan",
+      "zh-Hans": "铁壁如山",
+      "previousEnglish": "Mountain Wall",
+      "en": "Wall",
+      "wordCount": 1,
+      "widthAt40px": 79.0,
+      "previousWidthAt40px": 254.0,
+      "ueWidthAt30": 79.0
+    },
+    {
+      "id": "Profession.Guard.BiLeiFanGong",
+      "zh-Hans": "壁垒反攻",
+      "previousEnglish": "Bulwark Counter",
+      "en": "Riposte",
+      "wordCount": 1,
+      "widthAt40px": 125.0,
+      "previousWidthAt40px": 311.0,
+      "ueWidthAt30": 125.0
+    },
+    {
+      "id": "Profession.Guard.BuDongRuShan",
+      "zh-Hans": "不动如山",
+      "previousEnglish": "Unshaken",
+      "en": "Unshaken",
+      "wordCount": 1,
+      "widthAt40px": 166.0,
+      "previousWidthAt40px": 166.0,
+      "ueWidthAt30": 166.0
+    },
+    {
+      "id": "Profession.Guard.PanShiTuNa",
+      "zh-Hans": "磐石吐纳",
+      "previousEnglish": "Stone Breath",
+      "en": "Endure",
+      "wordCount": 1,
+      "widthAt40px": 131.0,
+      "previousWidthAt40px": 233.0,
+      "ueWidthAt30": 131.0
+    },
+    {
+      "id": "Profession.Guard.YuanJunBiLei",
+      "zh-Hans": "援军壁垒",
+      "previousEnglish": "Allied Bulwark",
+      "en": "Cover",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 257.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Profession.Guard.DunZhenTuiJin",
+      "zh-Hans": "盾阵推进",
+      "previousEnglish": "Shield Advance",
+      "en": "Advance",
+      "wordCount": 1,
+      "widthAt40px": 151.0,
+      "previousWidthAt40px": 257.0,
+      "ueWidthAt30": 151.0
+    },
+    {
+      "id": "Profession.Guard.TieSuoHengJiang",
+      "zh-Hans": "铁锁横江",
+      "previousEnglish": "River Chain",
+      "en": "Chain",
+      "wordCount": 1,
+      "widthAt40px": 95.0,
+      "previousWidthAt40px": 192.0,
+      "ueWidthAt30": 95.0
+    },
+    {
+      "id": "Profession.Guard.SuiJiaHuiJi",
+      "zh-Hans": "碎甲回击",
+      "previousEnglish": "Shatter Counter",
+      "en": "Retort",
+      "wordCount": 1,
+      "widthAt40px": 119.0,
+      "previousWidthAt40px": 299.0,
+      "ueWidthAt30": 119.0
+    },
+    {
+      "id": "Profession.Guard.YiFuDangGuan",
+      "zh-Hans": "一夫当关",
+      "previousEnglish": "Lone Sentinel",
+      "en": "Stand",
+      "wordCount": 1,
+      "widthAt40px": 106.0,
+      "previousWidthAt40px": 232.0,
+      "ueWidthAt30": 106.0
+    },
+    {
+      "id": "Profession.Healer.YaoYin",
+      "zh-Hans": "阴阳药引",
+      "previousEnglish": "Yin-Yang",
+      "en": "Duality",
+      "wordCount": 1,
+      "widthAt40px": 130.0,
+      "previousWidthAt40px": 185.0,
+      "ueWidthAt30": 130.0
+    },
+    {
+      "id": "Profession.Healer.XingQiZhen",
+      "zh-Hans": "行气活血",
+      "previousEnglish": "Flowing Blood",
+      "en": "Circulate",
+      "wordCount": 1,
+      "widthAt40px": 166.0,
+      "previousWidthAt40px": 230.0,
+      "ueWidthAt30": 166.0
+    },
+    {
+      "id": "Profession.Healer.CaoMuFuZhi",
+      "zh-Hans": "草木敷治",
+      "previousEnglish": "Herbal Poultice",
+      "en": "Poultice",
+      "wordCount": 1,
+      "widthAt40px": 138.0,
+      "previousWidthAt40px": 260.0,
+      "ueWidthAt30": 138.0
+    },
+    {
+      "id": "Profession.Healer.QingXinSan",
+      "zh-Hans": "清心散",
+      "previousEnglish": "Mindclear Powder",
+      "en": "Clear",
+      "wordCount": 1,
+      "widthAt40px": 94.0,
+      "previousWidthAt40px": 311.0,
+      "ueWidthAt30": 94.0
+    },
+    {
+      "id": "Profession.Healer.LingZhiXuMing",
+      "zh-Hans": "灵芝续命",
+      "previousEnglish": "Lingzhi Lifeline",
+      "en": "Lifeline",
+      "wordCount": 1,
+      "widthAt40px": 130.0,
+      "previousWidthAt40px": 257.0,
+      "ueWidthAt30": 130.0
+    },
+    {
+      "id": "Profession.Healer.HuiChunLu",
+      "zh-Hans": "回春露",
+      "previousEnglish": "Spring Dew",
+      "en": "Dew",
+      "wordCount": 1,
+      "widthAt40px": 79.0,
+      "previousWidthAt40px": 199.0,
+      "ueWidthAt30": 79.0
+    },
+    {
+      "id": "Profession.Healer.ZhiXueCao",
+      "zh-Hans": "止血草",
+      "previousEnglish": "Clotting Herb",
+      "en": "Clot",
+      "wordCount": 1,
+      "widthAt40px": 71.0,
+      "previousWidthAt40px": 231.0,
+      "ueWidthAt30": 71.0
+    },
+    {
+      "id": "Profession.Healer.WenYangGao",
+      "zh-Hans": "温养膏",
+      "previousEnglish": "Warm Balm",
+      "en": "Balm",
+      "wordCount": 1,
+      "widthAt40px": 88.0,
+      "previousWidthAt40px": 209.0,
+      "ueWidthAt30": 88.0
+    },
+    {
+      "id": "Profession.Healer.JinChuangXuMing",
+      "zh-Hans": "金疮续命",
+      "previousEnglish": "Wound Remedy",
+      "en": "Remedy",
+      "wordCount": 1,
+      "widthAt40px": 135.0,
+      "previousWidthAt40px": 266.0,
+      "ueWidthAt30": 135.0
+    },
+    {
+      "id": "Profession.Healer.YaoWangGuiYuan",
+      "zh-Hans": "药王归元",
+      "previousEnglish": "Healer's Renewal",
+      "en": "Restore",
+      "wordCount": 1,
+      "widthAt40px": 136.0,
+      "previousWidthAt40px": 328.0,
+      "ueWidthAt30": 136.0
+    },
+    {
+      "id": "Profession.Healer.BaiCaoDu",
+      "zh-Hans": "百草毒",
+      "previousEnglish": "Hundred Herbs",
+      "en": "Venom",
+      "wordCount": 1,
+      "widthAt40px": 121.0,
+      "previousWidthAt40px": 261.0,
+      "ueWidthAt30": 121.0
+    },
+    {
+      "id": "Profession.Healer.FuGuSan",
+      "zh-Hans": "腐骨散",
+      "previousEnglish": "Bone Rot",
+      "en": "Bone Rot",
+      "wordCount": 2,
+      "widthAt40px": 149.0,
+      "previousWidthAt40px": 149.0,
+      "ueWidthAt30": 149.0
+    },
+    {
+      "id": "Profession.Healer.HuiQiXiang",
+      "zh-Hans": "蚀心香",
+      "previousEnglish": "Soul Incense",
+      "en": "Incense",
+      "wordCount": 1,
+      "widthAt40px": 138.0,
+      "previousWidthAt40px": 220.0,
+      "ueWidthAt30": 138.0
+    },
+    {
+      "id": "Profession.Healer.LianQiaoJieDu",
+      "zh-Hans": "连翘引毒",
+      "previousEnglish": "Forsythia Venom",
+      "en": "Toxin",
+      "wordCount": 1,
+      "widthAt40px": 97.0,
+      "previousWidthAt40px": 297.0,
+      "ueWidthAt30": 97.0
+    },
+    {
+      "id": "Profession.Healer.YaoJiuWenShen",
+      "zh-Hans": "红花透骨",
+      "previousEnglish": "Safflower Pierce",
+      "en": "Bloom",
+      "wordCount": 1,
+      "widthAt40px": 103.0,
+      "previousWidthAt40px": 303.0,
+      "ueWidthAt30": 103.0
+    },
+    {
+      "id": "Profession.Healer.YaoNangFeiTou",
+      "zh-Hans": "药囊飞投",
+      "previousEnglish": "Medicine Toss",
+      "en": "Toss",
+      "wordCount": 1,
+      "widthAt40px": 79.0,
+      "previousWidthAt40px": 232.0,
+      "ueWidthAt30": 79.0
+    },
+    {
+      "id": "Profession.Healer.KuShenMaSan",
+      "zh-Hans": "苦参麻散",
+      "previousEnglish": "Bitterroot Numb",
+      "en": "Numb",
+      "wordCount": 1,
+      "widthAt40px": 106.0,
+      "previousWidthAt40px": 301.0,
+      "ueWidthAt30": 106.0
+    },
+    {
+      "id": "Profession.Healer.WuWeiTiaoHe",
+      "zh-Hans": "五毒调和",
+      "previousEnglish": "Five Venoms",
+      "en": "Blend",
+      "wordCount": 1,
+      "widthAt40px": 95.0,
+      "previousWidthAt40px": 215.0,
+      "ueWidthAt30": 95.0
+    },
+    {
+      "id": "Profession.Hunter.XunXiJian",
+      "zh-Hans": "寻隙箭",
+      "previousEnglish": "Gapfinder Arrow",
+      "en": "Probe",
+      "wordCount": 1,
+      "widthAt40px": 97.0,
+      "previousWidthAt40px": 312.0,
+      "ueWidthAt30": 97.0
+    },
+    {
+      "id": "Profession.Hunter.FuBu",
+      "zh-Hans": "鹰眼",
+      "previousEnglish": "Hawkeye",
+      "en": "Hawkeye",
+      "wordCount": 1,
+      "widthAt40px": 160.0,
+      "previousWidthAt40px": 160.0,
+      "ueWidthAt30": 160.0
+    },
+    {
+      "id": "Profession.Hunter.ZhuiLie",
+      "zh-Hans": "追猎",
+      "previousEnglish": "Pursuit",
+      "en": "Pursuit",
+      "wordCount": 1,
+      "widthAt40px": 136.0,
+      "previousWidthAt40px": 136.0,
+      "ueWidthAt30": 136.0
+    },
+    {
+      "id": "Profession.Hunter.YingYan",
+      "zh-Hans": "锐意感知",
+      "previousEnglish": "Keen Senses",
+      "en": "Sense",
+      "wordCount": 1,
+      "widthAt40px": 101.0,
+      "previousWidthAt40px": 210.0,
+      "ueWidthAt30": 101.0
+    },
+    {
+      "id": "Profession.Hunter.LieWang",
+      "zh-Hans": "猎网",
+      "previousEnglish": "Hunting Net",
+      "en": "Net",
+      "wordCount": 1,
+      "widthAt40px": 66.0,
+      "previousWidthAt40px": 214.0,
+      "ueWidthAt30": 66.0
+    },
+    {
+      "id": "Profession.Hunter.ChuanYang",
+      "zh-Hans": "穿杨",
+      "previousEnglish": "Willowpiercer",
+      "en": "Bullseye",
+      "wordCount": 1,
+      "widthAt40px": 146.0,
+      "previousWidthAt40px": 248.0,
+      "ueWidthAt30": 146.0
+    },
+    {
+      "id": "Profession.Hunter.LianZhuJian",
+      "zh-Hans": "连珠箭",
+      "previousEnglish": "Arrow Chain",
+      "en": "Salvo",
+      "wordCount": 1,
+      "widthAt40px": 92.0,
+      "previousWidthAt40px": 226.0,
+      "ueWidthAt30": 92.0
+    },
+    {
+      "id": "Profession.Hunter.FuZuShi",
+      "zh-Hans": "淬毒矢",
+      "previousEnglish": "Venom Arrow",
+      "en": "Envenom",
+      "wordCount": 1,
+      "widthAt40px": 161.0,
+      "previousWidthAt40px": 252.0,
+      "ueWidthAt30": 161.0
+    },
+    {
+      "id": "Profession.Hunter.YinZong",
+      "zh-Hans": "隐踪",
+      "previousEnglish": "Vanish",
+      "en": "Vanish",
+      "wordCount": 1,
+      "widthAt40px": 117.0,
+      "previousWidthAt40px": 117.0,
+      "ueWidthAt30": 117.0
+    },
+    {
+      "id": "Profession.Hunter.DuanMaiShi",
+      "zh-Hans": "断脉矢",
+      "previousEnglish": "Veinbreaker",
+      "en": "Cripple",
+      "wordCount": 1,
+      "widthAt40px": 123.0,
+      "previousWidthAt40px": 217.0,
+      "ueWidthAt30": 123.0
+    },
+    {
+      "id": "Profession.Hunter.ShouHun",
+      "zh-Hans": "狩魂",
+      "previousEnglish": "Soulhunt",
+      "en": "Soulhunt",
+      "wordCount": 1,
+      "widthAt40px": 163.0,
+      "previousWidthAt40px": 163.0,
+      "ueWidthAt30": 163.0
+    },
+    {
+      "id": "Profession.Hunter.BaiBuChuanYang",
+      "zh-Hans": "百步穿杨",
+      "previousEnglish": "Perfect Aim",
+      "en": "Focus",
+      "wordCount": 1,
+      "widthAt40px": 101.0,
+      "previousWidthAt40px": 216.0,
+      "ueWidthAt30": 101.0
+    },
+    {
+      "id": "Profession.Hunter.LueYingJian",
+      "zh-Hans": "掠影箭",
+      "previousEnglish": "Shadow Arrow",
+      "en": "Shadow",
+      "wordCount": 1,
+      "widthAt40px": 137.0,
+      "previousWidthAt40px": 268.0,
+      "ueWidthAt30": 137.0
+    },
+    {
+      "id": "Profession.Hunter.LieHunBiao",
+      "zh-Hans": "猎魂标",
+      "previousEnglish": "Soulhunt Mark",
+      "en": "Track",
+      "wordCount": 1,
+      "widthAt40px": 105.0,
+      "previousWidthAt40px": 261.0,
+      "ueWidthAt30": 105.0
+    },
+    {
+      "id": "Profession.Hunter.PoJiaDing",
+      "zh-Hans": "破甲钉",
+      "previousEnglish": "Armor Spike",
+      "en": "Spike",
+      "wordCount": 1,
+      "widthAt40px": 89.0,
+      "previousWidthAt40px": 218.0,
+      "ueWidthAt30": 89.0
+    },
+    {
+      "id": "Profession.Hunter.HuiHuanJian",
+      "zh-Hans": "回环箭",
+      "previousEnglish": "Circling Arrow",
+      "en": "Orbit",
+      "wordCount": 1,
+      "widthAt40px": 90.0,
+      "previousWidthAt40px": 261.0,
+      "ueWidthAt30": 90.0
+    },
+    {
+      "id": "Profession.Hunter.FuYeXianJing",
+      "zh-Hans": "腐叶陷阱",
+      "previousEnglish": "Rotleaf Trap",
+      "en": "Trap",
+      "wordCount": 1,
+      "widthAt40px": 88.0,
+      "previousWidthAt40px": 226.0,
+      "ueWidthAt30": 88.0
+    },
+    {
+      "id": "Profession.Hunter.YingLuo",
+      "zh-Hans": "鹰落",
+      "previousEnglish": "Hawkfall",
+      "en": "Hawkfall",
+      "wordCount": 1,
+      "widthAt40px": 163.0,
+      "previousWidthAt40px": 163.0,
+      "ueWidthAt30": 163.0
+    },
+    {
+      "id": "Profession.Sorcerer.LingHuoFu",
+      "zh-Hans": "灵枢引法",
+      "previousEnglish": "Spirit Conduit",
+      "en": "Conduit",
+      "wordCount": 1,
+      "widthAt40px": 137.0,
+      "previousWidthAt40px": 244.0,
+      "ueWidthAt30": 137.0
+    },
+    {
+      "id": "Profession.Sorcerer.JuLing",
+      "zh-Hans": "周天归元",
+      "previousEnglish": "Celestial Return",
+      "en": "Return",
+      "wordCount": 1,
+      "widthAt40px": 129.0,
+      "previousWidthAt40px": 284.0,
+      "ueWidthAt30": 129.0
+    },
+    {
+      "id": "Profession.Sorcerer.LiHuoYin",
+      "zh-Hans": "灵火点灯",
+      "previousEnglish": "Flame Lamp",
+      "en": "Kindle",
+      "wordCount": 1,
+      "widthAt40px": 103.0,
+      "previousWidthAt40px": 209.0,
+      "ueWidthAt30": 103.0
+    },
+    {
+      "id": "Profession.Sorcerer.YanQiang",
+      "zh-Hans": "流焰传薪",
+      "previousEnglish": "Passing Embers",
+      "en": "Embers",
+      "wordCount": 1,
+      "widthAt40px": 135.0,
+      "previousWidthAt40px": 267.0,
+      "ueWidthAt30": 135.0
+    },
+    {
+      "id": "Profession.Sorcerer.BaoYanShu",
+      "zh-Hans": "焚脉爆炎",
+      "previousEnglish": "Flameburst",
+      "en": "Burst",
+      "wordCount": 1,
+      "widthAt40px": 107.0,
+      "previousWidthAt40px": 209.0,
+      "ueWidthAt30": 107.0
+    },
+    {
+      "id": "Profession.Sorcerer.XingHuoLiaoYuan",
+      "zh-Hans": "燎原寻诀",
+      "previousEnglish": "Wildfire Search",
+      "en": "Seek",
+      "wordCount": 1,
+      "widthAt40px": 79.0,
+      "previousWidthAt40px": 275.0,
+      "ueWidthAt30": 79.0
+    },
+    {
+      "id": "Profession.Sorcerer.SheLingHuo",
+      "zh-Hans": "寒息回流",
+      "previousEnglish": "Cold Return",
+      "en": "Chill",
+      "wordCount": 1,
+      "widthAt40px": 71.0,
+      "previousWidthAt40px": 207.0,
+      "ueWidthAt30": 71.0
+    },
+    {
+      "id": "Profession.Sorcerer.FenMaiFu",
+      "zh-Hans": "玄冰拓脉",
+      "previousEnglish": "Frost Veins",
+      "en": "Ice Vein",
+      "wordCount": 2,
+      "widthAt40px": 139.0,
+      "previousWidthAt40px": 200.0,
+      "ueWidthAt30": 139.0
+    },
+    {
+      "id": "Profession.Sorcerer.LingYanLianDan",
+      "zh-Hans": "霜镜叠甲",
+      "previousEnglish": "Frost Mirror",
+      "en": "Mirror",
+      "wordCount": 1,
+      "widthAt40px": 119.0,
+      "previousWidthAt40px": 224.0,
+      "ueWidthAt30": 119.0
+    },
+    {
+      "id": "Profession.Sorcerer.HuLingMu",
+      "zh-Hans": "冰鉴索法",
+      "previousEnglish": "Ice Insight",
+      "en": "Glimpse",
+      "wordCount": 1,
+      "widthAt40px": 136.0,
+      "previousWidthAt40px": 186.0,
+      "ueWidthAt30": 136.0
+    },
+    {
+      "id": "Profession.Sorcerer.ChiXiaoFenXing",
+      "zh-Hans": "引雷定标",
+      "previousEnglish": "Thunder Mark",
+      "en": "Bolt",
+      "wordCount": 1,
+      "widthAt40px": 71.0,
+      "previousWidthAt40px": 251.0,
+      "ueWidthAt30": 71.0
+    },
+    {
+      "id": "Profession.Sorcerer.FenTianJue",
+      "zh-Hans": "雷符索敌",
+      "previousEnglish": "Thunder Search",
+      "en": "Trace",
+      "wordCount": 1,
+      "widthAt40px": 105.0,
+      "previousWidthAt40px": 282.0,
+      "ueWidthAt30": 105.0
+    },
+    {
+      "id": "Profession.Sorcerer.NingYanChengRen",
+      "zh-Hans": "连霆穿云",
+      "previousEnglish": "Cloud Bolt",
+      "en": "Arc",
+      "wordCount": 1,
+      "widthAt40px": 68.0,
+      "previousWidthAt40px": 174.0,
+      "ueWidthAt30": 68.0
+    },
+    {
+      "id": "Profession.Sorcerer.RanLingHuanYuan",
+      "zh-Hans": "雷走八方",
+      "previousEnglish": "Thunderstorm",
+      "en": "Storm",
+      "wordCount": 1,
+      "widthAt40px": 115.0,
+      "previousWidthAt40px": 264.0,
+      "ueWidthAt30": 115.0
+    },
+    {
+      "id": "Profession.Sorcerer.YanMuHuTi",
+      "zh-Hans": "万法归一",
+      "previousEnglish": "All Arts as One",
+      "en": "Unity",
+      "wordCount": 1,
+      "widthAt40px": 96.0,
+      "previousWidthAt40px": 258.0,
+      "ueWidthAt30": 96.0
+    },
+    {
+      "id": "Profession.Sorcerer.LieFu",
+      "zh-Hans": "照见五蕴",
+      "previousEnglish": "Clear Insight",
+      "en": "Clarity",
+      "wordCount": 1,
+      "widthAt40px": 125.0,
+      "previousWidthAt40px": 225.0,
+      "ueWidthAt30": 125.0
+    },
+    {
+      "id": "Profession.Sorcerer.XingHuoHuiShou",
+      "zh-Hans": "六合护法",
+      "previousEnglish": "Sixfold Ward",
+      "en": "Aegis",
+      "wordCount": 1,
+      "widthAt40px": 91.0,
+      "previousWidthAt40px": 230.0,
+      "ueWidthAt30": 91.0
+    },
+    {
+      "id": "Profession.Sorcerer.ChiYanFengJie",
+      "zh-Hans": "斗转星移",
+      "previousEnglish": "Shifting Stars",
+      "en": "Stars",
+      "wordCount": 1,
+      "widthAt40px": 102.0,
+      "previousWidthAt40px": 250.0,
+      "ueWidthAt30": 102.0
+    },
+    {
+      "id": "Profession.FormationMaster.GuanShi",
+      "zh-Hans": "平野观势",
+      "previousEnglish": "Read the Plain",
+      "en": "Plain",
+      "wordCount": 1,
+      "widthAt40px": 81.0,
+      "previousWidthAt40px": 235.0,
+      "ueWidthAt30": 81.0
+    },
+    {
+      "id": "Profession.FormationMaster.DingZhen",
+      "zh-Hans": "定阵",
+      "previousEnglish": "Set Formation",
+      "en": "Array",
+      "wordCount": 1,
+      "widthAt40px": 113.0,
+      "previousWidthAt40px": 252.0,
+      "ueWidthAt30": 113.0
+    },
+    {
+      "id": "Profession.FormationMaster.YinShuiHuiYuan",
+      "zh-Hans": "引水回元",
+      "previousEnglish": "Water Renewal",
+      "en": "Spring",
+      "wordCount": 1,
+      "widthAt40px": 113.0,
+      "previousWidthAt40px": 275.0,
+      "ueWidthAt30": 113.0
+    },
+    {
+      "id": "Profession.FormationMaster.KunZhen",
+      "zh-Hans": "困阵",
+      "previousEnglish": "Entrapment",
+      "en": "Snare",
+      "wordCount": 1,
+      "widthAt40px": 106.0,
+      "previousWidthAt40px": 225.0,
+      "ueWidthAt30": 106.0
+    },
+    {
+      "id": "Profession.FormationMaster.LinYingMiZong",
+      "zh-Hans": "林影迷踪",
+      "previousEnglish": "Forest Mist",
+      "en": "Grove",
+      "wordCount": 1,
+      "widthAt40px": 105.0,
+      "previousWidthAt40px": 200.0,
+      "ueWidthAt30": 105.0
+    },
+    {
+      "id": "Profession.FormationMaster.JieShanWeiZhang",
+      "zh-Hans": "借山为障",
+      "previousEnglish": "Mountain Barrier",
+      "en": "Barrier",
+      "wordCount": 1,
+      "widthAt40px": 134.0,
+      "previousWidthAt40px": 309.0,
+      "ueWidthAt30": 134.0
+    },
+    {
+      "id": "Profession.FormationMaster.CunZhaiYuanZhen",
+      "zh-Hans": "村寨援阵",
+      "previousEnglish": "Village Aid",
+      "en": "Aid",
+      "wordCount": 1,
+      "widthAt40px": 56.0,
+      "previousWidthAt40px": 176.0,
+      "ueWidthAt30": 56.0
+    },
+    {
+      "id": "Profession.FormationMaster.HuiShengZhenSha",
+      "zh-Hans": "回声震杀",
+      "previousEnglish": "Echo Blast",
+      "en": "Pulse",
+      "wordCount": 1,
+      "widthAt40px": 91.0,
+      "previousWidthAt40px": 179.0,
+      "ueWidthAt30": 91.0
+    },
+    {
+      "id": "Profession.FormationMaster.YiWeiZhen",
+      "zh-Hans": "易位阵",
+      "previousEnglish": "Position Swap",
+      "en": "Swap",
+      "wordCount": 1,
+      "widthAt40px": 100.0,
+      "previousWidthAt40px": 239.0,
+      "ueWidthAt30": 100.0
+    },
+    {
+      "id": "Profession.FormationMaster.BaMenLunZhuan",
+      "zh-Hans": "八门轮转",
+      "previousEnglish": "Eight Gates",
+      "en": "Gates",
+      "wordCount": 1,
+      "widthAt40px": 104.0,
+      "previousWidthAt40px": 200.0,
+      "ueWidthAt30": 104.0
+    },
+    {
+      "id": "Profession.FormationMaster.ZhenShaZhen",
+      "zh-Hans": "镇煞阵",
+      "previousEnglish": "Demon Ward",
+      "en": "Banish",
+      "wordCount": 1,
+      "widthAt40px": 113.0,
+      "previousWidthAt40px": 225.0,
+      "ueWidthAt30": 113.0
+    },
+    {
+      "id": "Profession.FormationMaster.WanXiangGuiZhen",
+      "zh-Hans": "万象归阵",
+      "previousEnglish": "Myriad Formation",
+      "en": "Myriad",
+      "wordCount": 1,
+      "widthAt40px": 122.0,
+      "previousWidthAt40px": 313.0,
+      "ueWidthAt30": 122.0
+    },
+    {
+      "id": "Profession.FormationMaster.ShanMenFengSuo",
+      "zh-Hans": "山门封锁",
+      "previousEnglish": "Mountain Lock",
+      "en": "Lock",
+      "wordCount": 1,
+      "widthAt40px": 77.0,
+      "previousWidthAt40px": 252.0,
+      "ueWidthAt30": 77.0
+    },
+    {
+      "id": "Profession.FormationMaster.ShuiJingZheGuang",
+      "zh-Hans": "水镜折光",
+      "previousEnglish": "Mirror Water",
+      "en": "Reflect",
+      "wordCount": 1,
+      "widthAt40px": 130.0,
+      "previousWidthAt40px": 245.0,
+      "ueWidthAt30": 130.0
+    },
+    {
+      "id": "Profession.FormationMaster.LinFengFuZhen",
+      "zh-Hans": "林风拂阵",
+      "previousEnglish": "Forest Wind",
+      "en": "Breeze",
+      "wordCount": 1,
+      "widthAt40px": 123.0,
+      "previousWidthAt40px": 213.0,
+      "ueWidthAt30": 123.0
+    },
+    {
+      "id": "Profession.FormationMaster.ZhenQiGuWu",
+      "zh-Hans": "阵旗鼓舞",
+      "previousEnglish": "Rallying Banner",
+      "en": "Banner",
+      "wordCount": 1,
+      "widthAt40px": 130.0,
+      "previousWidthAt40px": 270.0,
+      "ueWidthAt30": 130.0
+    },
+    {
+      "id": "Profession.FormationMaster.DiMaiJieLi",
+      "zh-Hans": "地脉借力",
+      "previousEnglish": "Earthflow",
+      "en": "Earth",
+      "wordCount": 1,
+      "widthAt40px": 105.0,
+      "previousWidthAt40px": 191.0,
+      "ueWidthAt30": 105.0
+    },
+    {
+      "id": "Profession.FormationMaster.SiXiangLianHuan",
+      "zh-Hans": "四象连环",
+      "previousEnglish": "Fourfold Chain",
+      "en": "Fourfold",
+      "wordCount": 1,
+      "widthAt40px": 155.0,
+      "previousWidthAt40px": 257.0,
+      "ueWidthAt30": 155.0
+    },
+    {
+      "id": "Route.Boss.XiongPiPiJia",
+      "zh-Hans": "熊罴皮甲",
+      "previousEnglish": "Bearhide Armor",
+      "en": "Bearhide",
+      "wordCount": 1,
+      "widthAt40px": 151.0,
+      "previousWidthAt40px": 280.0,
+      "ueWidthAt30": 151.0
+    },
+    {
+      "id": "Route.Boss.HanDiYiShi",
+      "zh-Hans": "撼地遗势",
+      "previousEnglish": "Earth Echo",
+      "en": "Tremor",
+      "wordCount": 1,
+      "widthAt40px": 138.0,
+      "previousWidthAt40px": 192.0,
+      "ueWidthAt30": 138.0
+    },
+    {
+      "id": "Route.Boss.HuPoZhenDan",
+      "zh-Hans": "虎魄镇胆",
+      "previousEnglish": "Tiger Resolve",
+      "en": "Resolve",
+      "wordCount": 1,
+      "widthAt40px": 126.0,
+      "previousWidthAt40px": 224.0,
+      "ueWidthAt30": 126.0
+    },
+    {
+      "id": "Route.Boss.DuKouLieFeng",
+      "zh-Hans": "渡口猎风",
+      "previousEnglish": "Ferry Gale",
+      "en": "Gale",
+      "wordCount": 1,
+      "widthAt40px": 76.0,
+      "previousWidthAt40px": 187.0,
+      "ueWidthAt30": 76.0
+    },
+    {
+      "id": "Route.Boss.FuHuDuanJiang",
+      "zh-Hans": "伏虎断江",
+      "previousEnglish": "Tiger Riverbreak",
+      "en": "Rend",
+      "wordCount": 1,
+      "widthAt40px": 83.0,
+      "previousWidthAt40px": 288.0,
+      "ueWidthAt30": 83.0
+    }
+  ],
+  "validation": "All 173 UE measurements passed at font size 30; max 173 within 184 allowance.",
+  "measurementReport": "Saved/Codex/UIGuidanceLocalization-20260910/all-card-name-widths.tsv"
+}

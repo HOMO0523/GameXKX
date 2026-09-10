@@ -1,0 +1,12 @@
+{
+  "slug": "qi-base",
+  "prompt": "Use case: ui asset. 重新设计独立的「气力值圆底」空白底图。第一张宝石只参考干净大块面与自然墨边，第二张项目旧底图只核对外形比例与功能，不沿用旧细碎纹理。一个简单圆形气力数值底座，近乎正圆，浅暖米白的干净圆面，一层细而自然的深青墨线包住外沿，底部最多一小段很淡的天青宽刷痕暗示气息。中央85%完全干净留白，以后会叠加一个数字。圆形有轻微手绘温度但轮廓整齐，只有一层线；不要像珠宝，不要厚金属圈，不要双层环、宝石切面、光晕或粒子。只一个圆底，无数字，无字，无任何徽记、装饰、刻度或符号。 要和本批简洁单层墨线卡底配套，视觉清爽、平面、克制，有少量手绘笔感。禁止厚重装饰、描金角花、纸纹噪点、宝石材质、复杂3D高光。只有这一个独立空白底图，正视，不倾斜，不画透视，不画投影。外部为完全均匀纯洋红#FF00FF用于去底，主体不要洋红。保持第二张原素材的整体宽高比例与轮廓占幅，留安全边，后续按原像素尺寸和透明边距归一化。绝对不能出现数字、文字、图标、游戏场景、卡片套装或其它UI部件。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Battle/PartyQi/battle_party_qi_soul_orb_v1.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-3924f6b2-0fa1-4e26-a7ba-16efecb15865.png",
+  "originalSource": "SourceArt/UI/Battle/PartyQi/battle_party_qi_soul_orb_v1.png",
+  "background": "magenta",
+  "blank": true
+}

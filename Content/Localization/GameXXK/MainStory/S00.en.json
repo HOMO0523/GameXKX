@@ -1,0 +1,153 @@
+{
+  "id": "S00",
+  "title": "Tiantai Mountain · Even Heirlooms Get Lost",
+  "location": "Tiantai Mountain",
+  "summary": "A mountain gust wakes the map's guardian and blows a hole in the family's faith in its infallible map. What you rescue is no sacred decree, but a map that can still be corrected.",
+  "nodes": {
+    "S00-01": {
+      "title": "Tiantai Foothills",
+      "summary": "While you haggle with the driver, your family map sets off up the mountain. Your first great feat in the martial world: catching up with your own itinerary.",
+      "objective": "Ask the way uphill and sort out the old map",
+      "result": "You learn the route upstream. A gust blows the old map toward the shallows.",
+      "lines": [
+        "At the foot of Tiantai Mountain, you unroll Grandfather's old map, hoping to find a respectable way up.",
+        "Follow the stream, cross the bridge, and head for Guoqing Temple. The mountain doesn't charge a fare. It charges your knees.",
+        "Put that on your cart and see how many customers you have left.",
+        "While you turn to haggle, a gust slips under the scroll and lifts the whole map into the air.",
+        "Oi! I haven't even left yet. Why is my route running away?",
+        "A fine map. Knows its own mind.",
+        "You grab your bamboo pole and chase it toward the shallows. The driver stays behind, pinning down the ink box rolling past his feet.",
+        "Remember the directions before you run! You can patch a map. Knees are another matter."
+      ]
+    },
+    "S00-02": {
+      "title": "Recover the Scroll",
+      "summary": "Your pole retrieves a soggy map and a flame full of self-importance. For a moment, you think you've found a pocket-sized grandfather.",
+      "objective": "Retrieve the scroll and meet Youbai",
+      "result": "The scroll is recovered. Youbai joins you, and you decide to check the old route at Guoqing Temple.",
+      "lines": [
+        "Barely out the door and I'm washing the family legacy. Grandfather would be fuming.",
+        "You lift the wet scroll with your pole. A blue-violet flame leaps between two old notes and stops against your nose.",
+        "Grandfather? Why are you... travel-sized?",
+        "Hold the family reunion! I am Youbai, guardian of this map. Adding branches to your family tree is not my duty.",
+        "You came out of Grandfather's map. That calls for some explanation.",
+        "Generations have copied this map. Generations have corrected it. I watched them write, took a nap, and woke up to you giving it a bath.",
+        "On the back, you find old notes in several shades of ink. Youbai hovers over the crookedest one and urges you onward.",
+        "Guoqing Temple first! We'll check the old route. And stop calling me Grandfather. It adds centuries."
+      ]
+    },
+    "S00-03": {
+      "title": "Over the Ridge",
+      "summary": "Youbai declares the old map infallible. The bridge promptly drops a plank. You can save the elder's dignity or your own feet. Feet first.",
+      "objective": "Use shoeprints and trail markers to choose a safe path uphill",
+      "result": "Fresh shoeprints lead you safely over the ridge by the pine-root steps. You mark the broken bridge and the detour.",
+      "lines": [
+        "Cross the bridge ahead. I remember this stretch. I could do it with my eyes clo—",
+        "Crack. The last loose plank tips into the gorge. You pull back your raised foot. Youbai pulls back the rest of the sentence.",
+        "Closed, you can still hear it collapse.",
+        "The bridge has failed to comply with the map.",
+        "The map is right and the landscape is at fault? Let's hear what my soles have to say.",
+        "The vine slope to the right is slick with moss. To the left, an old blue cloth marks pine-root steps. Fresh shoeprints show someone has already climbed that way.",
+        "Wait. No returning prints beside the fresh ones... That path should go through.",
+        "Now that sounds like evidence. Give me more of that, elder."
+      ],
+      "hints": [
+        "Look for a route someone has used recently.",
+        "The blue-cloth steps have fresh shoeprints and no return tracks. The broken bridge and mossy slope are unsafe.",
+        "Choose the pine-root steps marked by blue cloth and fresh shoeprints."
+      ],
+      "options": [
+        [
+          "Take the pine-root steps with blue cloth and fresh shoeprints",
+          "This time, Youbai checks the prints before nodding. You climb the steps and leave the broken bridge behind."
+        ],
+        [
+          "Trust the family map and jump across the broken bridge",
+          "Youbai stops you at once: I identify routes. I do not reassemble travelers."
+        ],
+        [
+          "Climb straight up the mossy vine slope",
+          "You test it with your pole. A whole sheet of moss slides loose. Your legs have no better eyesight than bamboo."
+        ]
+      ]
+    },
+    "S00-04": {
+      "title": "First Fight",
+      "summary": "Animals have surrounded a mountain traveler's manuscript. You suspect a priceless secret manual, until you discover the pages once wrapped sesame cakes.",
+      "objective": "Enter task map 1-1 and defeat the animals at the story question mark",
+      "result": "The animals retreat. The traveler and his manuscript are safe. You learn that Guoqing Temple still keeps old route records.",
+      "lines": [
+        "At the top of the pine-root steps, a breathless traveler runs toward you. His empty arms make a convincing argument.",
+        "Young hero! Two illiterate book lovers have surrounded my manuscript on the rocks ahead!",
+        "Book lovers?",
+        "A rooster and a weasel. They read with their mouths, not their eyes.",
+        "It seems your work has finally found an audience.",
+        "I wrapped sesame cakes in the pages! That's half a lifetime of roads, not half a lifetime of cake!",
+        "Stay somewhere safe and point the way. I'll retrieve the manuscript and discourage the readership.",
+        "Prepare before setting off. First lesson of the martial world: don't let the family map lose to greasy stationery."
+      ],
+      "after_battle_lines": [
+        "The animals finally back away. You lift the scattered pages with your pole while the traveler catches them in his sack. The crumbs land louder than applause.",
+        "Manuscript intact. Author intact. Those two cakes can count as royalties.",
+        "Use oilpaper next time. Don't let your readers eat the ending.",
+        "I illuminate the way. Sesame seeds are outside my duties.",
+        "Guoqing Temple still has old route records. Compare your map with those. They're more reliable than my hungry mouth.",
+        "Good. First we fill in the map. Then we fill our stomachs."
+      ],
+      "hints": [
+        "This step requires entering the task map. Protect the traveler and his manuscript.",
+        "Reach the story question mark in task map 1-1 and defeat the animals with your current party.",
+        "Win the task battle at the mandatory story question mark to secure the manuscript."
+      ]
+    },
+    "S00-05": {
+      "title": "Guoqing Temple",
+      "summary": "You ask the abbot about the broken bridge. Youbai demands an infallible original. The abbot unrolls a map patched upon patches.",
+      "objective": "Ask the abbot to check the old bridge and mountain-route records",
+      "result": "The abbot confirms the old bridge is gone and a new route exists. He permits corrections based on firsthand evidence.",
+      "lines": [
+        "Bring out the original, Abbot. Copies may be wrong. Surely the original is sound.",
+        "The abbot unfolds a map. Beneath one layer is another. Old bridges, new bridges, and detours overlap like a patchwork robe.",
+        "That original gets a lot of mending.",
+        "Bridges fell, streams rose, paths changed. Whenever someone walked a route themselves, we added a note.",
+        "Then... which layer did the ancestors settle on?",
+        "The one they walked. The one you walked today may become a layer too.",
+        "Youbai moves aside, exposing the crooked note it guarded so fiercely. The abbot confirms the old bridge is gone; the pine-root steps are the current route.",
+        "I see. Respecting our predecessors doesn't stop us from getting this next line right."
+      ]
+    },
+    "S00-06": {
+      "title": "Complete the Tiantai Map",
+      "summary": "Youbai still wants a credit line. But as you carefully strike out the wrong route, the spirit quietly lights the empty corner for you.",
+      "objective": "Make the first correction to the Tiantai route",
+      "result": "The Tiantai map is complete. You receive a new lead about Huangshan's hidden stream.",
+      "lines": [
+        "Old bridge crossed out. Stone steps added. Leave a corner for who saw it and when it changed.",
+        "Start that corner with: Under Youbai's excellent guidance.",
+        "Certainly. Then: Briefly recommended takeoff from a collapsed bridge.",
+        "Youbai falls silent, then moves its light to your brush. Beside the new route, the crooked old note seems less glaring.",
+        "Mark the wrong route too. The next traveler shouldn't have to repeat the mistake.",
+        "Now you sound like a guardian of maps.",
+        "With the Tiantai map complete, the abbot gives you a record of Huangshan's hidden stream. The same stretch of water appears in two different forms.",
+        "Elder, next time let's work out which drawing is wrong before we argue over the credits."
+      ],
+      "short_title": "Tiantai Map"
+    },
+    "S00-07": {
+      "title": "The Inn",
+      "summary": "The innkeeper makes the bridge detour sound mysterious, then offers a guaranteed map for a fee. You look down: the evidence is supporting his backside.",
+      "objective": "Check mountain-route and lodging rumors with the innkeeper",
+      "result": "The innkeeper confirms the detour. You learn to record rumors separately from firsthand evidence.",
+      "lines": [
+        "We offer tea and directions. Directions cost extra. Guaranteed directions cost extra again.",
+        "Then start by guaranteeing which of your two opposite routes is the real one.",
+        "Agreed. Prices may have tiers. Mountain paths should not have doubles.",
+        "The innkeeper shifts his stool, revealing part of an old bridge rail beneath a leg. You recognize the broken wooden joint.",
+        "So the bridge didn't retire. It took a desk job here.",
+        "Salvaged bridge timber! When the pilgrims switched to the steps, I moved my trade to meet them.",
+        "You have him point out the detour, matching the timber with what you saw along the road. The hand waiting for money turns to pouring tea.",
+        "This pot is on me. Hear plenty of rumors, but look twice before you write. Don't follow my example: more talk than directions."
+      ]
+    }
+  }
+}

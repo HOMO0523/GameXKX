@@ -1,0 +1,194 @@
+{
+  "id": "S05",
+  "title": "Cangshan · Even the Summit Won't Stop the Banter",
+  "location": "Cangshan",
+  "summary": "Qiong Yaoer joins the final stretch, while wind and snow cool your grand declarations. Bring the old copy together with the mountains and rivers you have seen, and leave this search for truth an ending someone can keep writing.",
+  "nodes": {
+    "S05-01": {
+      "title": "Cangshan Foothills",
+      "summary": "Cangshan wears a crown of clouds. Youbai wears a face of confidence. You pull your collar tight and wonder which is more windproof.",
+      "objective": "Confirm the uphill route and changes in wind and snow",
+      "result": "You decide to follow the old road to the ancient village for directions, preparing for wind and snow higher up.",
+      "lines": [
+        "That's Cangshan ahead? It looks taller than on the old map.",
+        "Limited paper. The famous mountain showed some restraint.",
+        "The mountain hasn't. My legs are feeling humble already.",
+        "An old footpath leads from the foothills to an ancient village. The snowline appears and vanishes above. You decide to ask people who know the mountain.",
+        "This time, I favor asking before walking. Experience speaks.",
+        "Excellent progress. The bridge at Tiantai would be touched."
+      ]
+    },
+    "S05-02": {
+      "title": "The Old Miao Village",
+      "summary": "A village girl hears your purpose, examines the map, then Youbai. She decides your party already meets its quota for lively company.",
+      "objective": "Meet Qiong Yaoer and ask about Eagle's Beak Rock and the uphill path",
+      "result": "You meet Qiong Yaoer, who advises waiting for calmer weather and checking the signs around Eagle's Beak Rock.",
+      "lines": [
+        "I'm Qiong Yaoer. Looking for Eagle's Beak Rock? Don't let that flame choose your direction yet.",
+        "Has my reputation traveled this far already?",
+        "Not your reputation. You just looked at a snowy peak and said 'that way's shorter.'",
+        "Judge distance by the path, danger by the sky. When the wind drops, I'll explain the rock markers and the route past the pool.",
+        "Good. A local guide makes me feel better.",
+        "I'll explain clearly. You listen carefully. Don't write extra heroics into your own part."
+      ],
+      "short_title": "Old Miao Village"
+    },
+    "S05-03": {
+      "title": "Shelter from the Snowstorm",
+      "summary": "As the storm sharpens, you shelter beneath the eaves. Youbai calls it a master's grasp of timing. You call it not standing around freezing.",
+      "objective": "Wait for the wind to ease and verify when it is safe to leave",
+      "result": "You shelter safely from the sudden storm and continue once the old path is visible again.",
+      "lines": [
+        "A sudden gust drives you beneath sturdy eaves. A stone holds the old map down. Nobody rushes into the whiteout.",
+        "Stillness overcoming motion.",
+        "I call it ducking out of the weather.",
+        "Either name is fine. Don't found rival martial schools over waiting for a storm.",
+        "After a while, the nearby pine tips stop lashing. The edges of the steps become visible. Qiong signals that you can cautiously follow the old path.",
+        "The wind has started being reasonable. Let's not suddenly stop."
+      ],
+      "short_title": "Storm Shelter"
+    },
+    "S05-04": {
+      "title": "Find Eagle's Beak Rock",
+      "summary": "Two rocks seem convinced they resemble eagles. The real one doesn't argue; it quietly overlooks the old path.",
+      "objective": "Identify Eagle's Beak Rock using its shape, the old path, and the pine tree",
+      "result": "The rock, old path, and leaning pine match, safely locating the next route.",
+      "lines": [
+        "Eagle's Beak has a projecting point, an old stone path beneath it, and an old pine leaning toward the valley. Use all three.",
+        "That other rock looks like an eagle too.",
+        "You see famous mountains in steamed buns. Follow the clues first.",
+        "Ahead-left, a point projects over the old path, beside a pine leaning toward the valley. The lone rock on the right looks like a bird's head, but no path reaches it.",
+        "Resemblance is a first impression. Matching the terrain is what matters."
+      ],
+      "hints": [
+        "Check the rock's shape together with its neighboring path and old pine.",
+        "The real landmark has a projecting point, an old path below, and a pine leaning toward the valley.",
+        "Choose the projecting rock ahead-left that matches both the old path and the pine."
+      ],
+      "options": [
+        [
+          "Choose the projecting rock ahead-left by the old path and pine",
+          "Rock, path, and pine agree. Eagle's Beak Rock is identified."
+        ],
+        [
+          "Choose only the right-hand rock that looks most like a bird",
+          "An excellent likeness, but no path beside it. Rock appreciation is not a travel plan."
+        ],
+        [
+          "Choose whichever rock Youbai praises the loudest",
+          "Qiong rings her bell softly: That clue has volume, but no direction."
+        ]
+      ],
+      "short_title": "Eagle's Beak Rock"
+    },
+    "S05-05": {
+      "title": "Horse-Washing Pool",
+      "summary": "The pool reflects clouds. The old map reflects the past. Youbai finds both poetic. Qiong suggests saving the poetry until you've found your footing.",
+      "objective": "Check the old lakeside path and stable crossings",
+      "result": "You correct the detour around the pool and discover a danger ahead that must be dealt with.",
+      "lines": [
+        "The map makes this lakeside stretch too straight. We need to follow the stone shore around.",
+        "Stay on the firm old path. Don't shortcut across thin snow. Mountains enjoy giving stubborn people a fresh start.",
+        "I have no feet. I shall skip that class.",
+        "Then light the way for the students who do.",
+        "After checking the terrain by the pool, you prepare to continue. At the next bend, you hear animals closing in."
+      ]
+    },
+    "S05-06": {
+      "title": "A Heroic Rescue",
+      "summary": "Animals block the bend while Qiong guards the firm footing beside the path. Youbai urges action. Finally, you say, a chance to do some proper work.",
+      "objective": "Enter task map 2-3 and defeat the animals at the story question mark so you and Qiong escape safely",
+      "result": "The animals retreat. You and Qiong help each other to safety, reopening the path ahead.",
+      "lines": [
+        "Narrow path blocked ahead. One gray wolf, one porcupine. Firm rock to the left. Don't charge onto the scree.",
+        "A hero rescues a maiden today. First, make sure the hero doesn't slip into a joke.",
+        "I'll record that. If you slip, I want to know which line to laugh at.",
+        "I'll watch the footing. Once you clear the path, we'll help each other across.",
+        "Right. Prepare first. Claim the heroic title later. Firm footing now."
+      ],
+      "after_battle_lines": [
+        "The animals retreat into the mountain shadows. You brace your pole, and Qiong steadies your shoulder, helping you across the loose stone edge.",
+        "There. Everyone upright. Which hero nearly left his pack behind?",
+        "The pack was a decoy. I wasn't. Good thing you caught me.",
+        "Recorded: a mutual rescue of beauties. Both parties contributed.",
+        "Then neither gets all the credit. Plenty of road ahead. Keep lending each other a hand."
+      ],
+      "hints": [
+        "This rescue requires a real victory at the story question mark in the corresponding task map.",
+        "Use your current party and deck. Continue Qiong's story after winning.",
+        "Enter task map 2-3 from this node and win the task battle at the story question mark."
+      ]
+    },
+    "S05-07": {
+      "title": "Keep Going",
+      "summary": "The danger passes, but the summit remains. You unroll the old map and realize you no longer wait for it to supply every answer.",
+      "objective": "Clarify why you will continue and confirm a reliable route to the summit",
+      "result": "You decide to continue toward the summit along the verified safe old path.",
+      "lines": [
+        "We've come this far. I want to see the last stretch for myself.",
+        "Excellent. A young hero should have such resolve.",
+        "Mostly, after all those corrections, I don't want the last line to be another guess.",
+        "Then follow the old path we've checked. Perseverance isn't picking a fight with danger. It's knowing why you keep going.",
+        "Heard. Steady steps. Save the grand declarations for the summit."
+      ]
+    },
+    "S05-08": {
+      "title": "A Moment of Doubt",
+      "summary": "You admit you briefly wanted to turn back. Before Youbai can assume an elder's dignity, Qiong meets the admission kindly.",
+      "objective": "Acknowledge your fear, recover, and adjust your pace",
+      "result": "You admit and settle the fear left by the encounter, choosing to continue at a steadier pace.",
+      "lines": [
+        "Honestly, when that racket started, I was already planning dinner back home.",
+        "Well... that does show planning.",
+        "Fear is normal. Stop, catch your breath, and follow the route you can verify. Nobody said seeking truth requires nonstop bravado.",
+        "Then I admit it: I panicked. Better now.",
+        "I also admit to floating a little faster than usual.",
+        "Understood. One tactical sit-down, one tactical drift away. Recovered? Onward."
+      ]
+    },
+    "S05-09": {
+      "title": "Youbai Explains",
+      "summary": "The chapters' discoveries finally fit together. Youbai admits that what it guards is not an eternally correct map, but work people must keep doing.",
+      "objective": "Understand Youbai's wish as guardian and review the journey's evidence",
+      "result": "You understand Youbai's purpose and unite the six chapters' evidence in a map that can continue to be corrected.",
+      "lines": [
+        "Youbai, you knew copies could miss things. Why were you so certain at the start?",
+        "Guard something long enough and you defend it a little too much. Besides, I have dignity to preserve.",
+        "Mostly a face, in your case. Not much room elsewhere to put it.",
+        "...But this journey taught me something. Guarding a map means more than guarding old ink. It means waiting for people willing to look for themselves and make careful corrections.",
+        "You've asked about and walked the bridges, streams, field channels, and village roads. That's what can remain for others.",
+        "Then the final line is for whoever walks next. If they find a mistake, they're welcome to fix it.",
+        "Agreed. Provided they are polite to me while doing so."
+      ]
+    },
+    "S05-10": {
+      "title": "Cangshan Summit",
+      "summary": "From the summit, the map holds more than old ink. Youbai would like to make a speech. This time, you decide to let it finish.",
+      "objective": "Complete Cangshan's final correction and continue the travel record",
+      "result": "Cangshan's last correction completes the six-chapter main story. Blank space remains on the map for further discoveries.",
+      "lines": [
+        "Cangshan's sea of clouds opens before you. The old copy and your journey's notes align at last. Streams, villages, and mountain paths take their proper places.",
+        "Grandfather said to see unclear places on the map with my own eyes. Now I can answer him: I saw them. I corrected them too.",
+        "A journey worth making. Others will follow this map, waste fewer steps, and see more real mountains and rivers.",
+        "I declare this expedition a success. The young hero has diligent legs, occasionally an argumentative tongue, and is overall worthy of—",
+        "Keep the speech brief, elder. Strong wind up here. No encore guaranteed.",
+        "...Of traveling beside.",
+        "You add your own words at the scroll's end: The road of those before us lies not only through mountains and rivers, but in seeking truth. The remaining blank space belongs to the next journey."
+      ]
+    },
+    "S05-11": {
+      "title": "The Miao Guide",
+      "summary": "Qiong's bell rings clearly, as do her directions. Youbai asks its greatest power. She says it tells talkative people when to stop.",
+      "objective": "Learn about Qiong and local ways of reading the mountain paths",
+      "result": "You hear Qiong's trail-reading advice and build an understanding as traveling companions.",
+      "lines": [
+        "Does your bell reveal mountain spirits and summon clouds?",
+        "It calls back people who wander off. And reminds people who talk too much.",
+        "That artifact suits our party perfectly.",
+        "Why does the second function seem pointed?",
+        "Reading the sky, listening to the wind, knowing the old paths—people learned them by walking again and again. If you'll record them clearly, I'll gladly explain more.",
+        "Then we'll add more notes. Keep the bell handy so our mouths don't outrun our feet."
+      ]
+    }
+  }
+}

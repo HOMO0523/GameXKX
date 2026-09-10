@@ -80,7 +80,9 @@ public:
 	static constexpr int32 GemMechanicsIntroducedSaveVersion = 39;
 	/** v40: per-unit innate resistance snapshots and elemental mitigation semantics. */
 	static constexpr int32 ElementalResistanceIntroducedSaveVersion = 40;
-	static constexpr int32 CurrentSaveVersion = 40;
+	/** v41 adds inventory-backed Hunt Orders, receipts and attribute-scaled Training encounters. */
+	static constexpr int32 HuntExpansionIntroducedSaveVersion = 41;
+	static constexpr int32 CurrentSaveVersion = 41;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

@@ -225,6 +225,10 @@ public:
 	static bool NormalizeSocketArrays(
 		FGameXXKEquipmentCollectionState& InOutCollection,
 		FString* OutError = nullptr);
+	/** Converts only retired random resource rolls, including a paid pending reforge. */
+	static bool NormalizeRetiredResourceAffixes(
+		FGameXXKEquipmentCollectionState& InOutCollection,
+		FString* OutError = nullptr);
 	static bool ValidateCollectionAgainstRoster(
 		const FGameXXKEquipmentCollectionState& Collection,
 		const FGameXXKCompanionRosterState& Roster,

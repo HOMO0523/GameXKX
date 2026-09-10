@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKHuntRules.h"
 #include "GameXXKTalentRules.h"
 
 #include "GameXXKCardBattleAdapter.h"
@@ -252,6 +253,11 @@ namespace GameXXKMVP
 
 	static bool GetItemDef(FName ItemId, FGameXXKItemDef& OutDef)
 	{
+		if(FGameXXKHuntRules::IsOrder(ItemId))
+		{
+			OutDef=MakeItem(ItemId,*FGameXXKHuntRules::OrderName(ItemId).ToString(),EGameXXKItemKind::Task,0,0,0,0,0,0,0,0);
+			OutDef.DisplayName=FGameXXKHuntRules::OrderName(ItemId);return true;
+		}
 		if (ItemId == FGameXXKTravelMoneyRules::ItemId())
 		{
 			OutDef = MakeItem(ItemId, TEXT("行旅钱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -289,6 +295,10 @@ namespace GameXXKMVP
 		{
 			OutDef = MakeItem(ItemId, TEXT("普通历练宝箱"), EGameXXKItemKind::Material, 0, 0, 0, 0, 0, 0, 0, 0);
 			return true;
+		}
+		if(ItemId==FName(TEXT("Item.TrainingHuntChest")))
+		{
+			OutDef=MakeItem(ItemId,TEXT("讨伐宝箱"),EGameXXKItemKind::Material,0,0,0,0,0,0,0,0);return true;
 		}
 		if (ItemId == ItemTrainingAdvancedChestName)
 		{
@@ -2299,12 +2309,23 @@ bool UGameXXKMVPRules::ResolveBattleVictory(FGameXXKRuntimeState& State, bool bB
 			State = MoveTemp(Candidate);
 			return true;
 		}
-		GameXXKMVP::ApplyXP(Candidate, NodeKind == EGameXXKNodeKind::Elite ? 110 : 80);
-		GameXXKMVP::AwardActivePermanentCompanionBattleExperience(
-			Candidate,
-			NodeKind == EGameXXKNodeKind::Elite
-				? GameXXKMVP::ElitePermanentCompanionBattleExperience
-				: GameXXKMVP::NormalPermanentCompanionBattleExperience);
+		const int32 HeroExperience=NodeKind==EGameXXKNodeKind::Elite?110:80;
+		const int32 CompanionExperience=NodeKind==EGameXXKNodeKind::Elite?GameXXKMVP::ElitePermanentCompanionBattleExperience:GameXXKMVP::NormalPermanentCompanionBattleExperience;
+		if(FGameXXKHuntRules::IsHuntStage(Candidate.Training.ActiveChallengeStageId))
+		{
+			// Defer the entire three-chapter reward. This path is the same topology
+			// a3-3 reference run would use; later chapters never add another budget.
+			if(Candidate.CardRun.RouteProgress.CurrentChapter==1)
+			{
+				Candidate.Training.HuntReferenceHeroExperience+=HeroExperience;
+				Candidate.Training.HuntReferenceCompanionExperience+=CompanionExperience;
+			}
+		}
+		else
+		{
+			GameXXKMVP::ApplyXP(Candidate,HeroExperience);
+			GameXXKMVP::AwardActivePermanentCompanionBattleExperience(Candidate,CompanionExperience);
+		}
 		if (!GameXXKMVP::SettleGeneratedRouteNode(
 			Candidate,
 			BeforeOneTimeRewards,

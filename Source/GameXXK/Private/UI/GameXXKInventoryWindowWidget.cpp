@@ -1,5 +1,6 @@
 #include "UI/GameXXKInventoryWindowWidget.h"
 #include "GameXXKTravelMoneyRules.h"
+#include "GameXXKHuntRules.h"
 #include "Audio/GameXXKSfx.h"
 #include "UI/GameXXKEquipmentTooltipPresentation.h"
 #include "UI/GameXXKEquipmentQualityStyle.h"
@@ -9,6 +10,7 @@
 #include "UI/GameXXKCharacterDetailedAttributes.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKCardNameStyle.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKCardPortraitImage.h"
 #include "Components/ScaleBox.h"
 
@@ -393,7 +395,7 @@ namespace
 			return nullptr;
 		}
 		UTextBlock* TextBlock = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-		TextBlock->SetText(Text);
+		TextBlock->SetText(GameXXKLocalization::Localize(Text));
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
 		// Button labels (分解/页签等) must never wrap into vertical stacked glyphs.
 		TextBlock->SetAutoWrapText(false);
@@ -410,7 +412,8 @@ namespace
 		UButton* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass());
 		Button->SetStyle(MakeBoxTextureButtonStyle(ActionButtonTexturePath, ActionButtonSize, ActionFrameMargin));
 		Button->SetBackgroundColor(FLinearColor::White);
-		OutText = MakeText(WidgetTree, Text, 16, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
+		OutText = MakeText(WidgetTree, GameXXKLocalization::Compact(Text), 16, FLinearColor(0.10f, 0.08f, 0.05f, 1.0f));
+		Button->SetToolTipText(GameXXKLocalization::Localize(Text));
 		if (OutText)
 		{
 			OutText->SetJustification(ETextJustify::Center);
@@ -589,6 +592,7 @@ namespace
 
 	FString ItemStatsText(const FGameXXKItemDef& Def, int32 EnhancementLevel)
 	{
+		if(FGameXXKHuntRules::IsOrder(Def.Id))return FGameXXKHuntRules::OrderDescription(Def.Id).ToString();
 		if (Def.Id == FGameXXKTravelMoneyRules::ItemId()) return TEXT("行走江湖，兜里有钱。\n背包和仓库中的行旅钱均可用于局内行商。\n普通宝箱材料池可开出10个，局外商店100000金币购入10个。\n分解每个固定返还2500金币。");
 		EGameXXKGemType GemType; EGameXXKGemQuality GemQuality;
 		if(FGameXXKGemRules::TryParseItemId(Def.Id,GemType,GemQuality))return FGameXXKGemRules::GetDescription(GemType,GemQuality).ToString();
@@ -714,7 +718,7 @@ namespace
 				}
 			}
 		}
-		return FText::FromString(FString::Join(Lines, TEXT("\n")));
+		return GameXXKLocalization::Source(FString::Join(Lines, TEXT("\n")));
 	}
 
 	FName SlotForItemKind(EGameXXKItemKind Kind)
@@ -1733,7 +1737,7 @@ FText UGameXXKInventoryWindowWidget::GetSelectedDetailTextForTest() const
 	FString Text = SelectedDetailTextBlock ? SelectedDetailTextBlock->GetText().ToString() : FString();
 	if(auto* List=WidgetTree?Cast<UVerticalBox>(WidgetTree->FindWidget(TEXT("InventorySelectedSocketList"))):nullptr)
 		if(List->GetVisibility()!=ESlateVisibility::Collapsed)for(auto* Child:List->GetAllChildren())if(auto* Label=Cast<UTextBlock>(Child))Text+=TEXT("\n")+Label->GetText().ToString();
-	return FText::FromString(Text);
+	return GameXXKLocalization::Source(Text);
 }
 
 FString UGameXXKInventoryWindowWidget::GetInventoryFilterTexturePathForTest(EGameXXKInventoryFilter Filter) const
@@ -1780,12 +1784,12 @@ FText UGameXXKInventoryWindowWidget::GetCharacterTabBodyTextForTest() const
 		if (bDetailedAttributesOpen)
 		{
 			if (CharacterIdentityText) Body += TEXT("\n") + CharacterIdentityText->GetText().ToString();
-			return FText::FromString(Body + TEXT("\n") + CachedDetailedAttributesBody);
+			return GameXXKLocalization::Source(Body + TEXT("\n") + CachedDetailedAttributesBody);
 		}
 		const TCHAR* Labels[]={TEXT("气血"),TEXT("内力"),TEXT("攻击"),TEXT("防御"),TEXT("速度")};
 		for(int32 I=0;I<CharacterAttributeValues.Num();++I)Body+=FString::Printf(TEXT("\n%s %s"),Labels[I],*CharacterAttributeValues[I]->GetText().ToString());
 	}
-	return FText::FromString(Body);
+	return GameXXKLocalization::Source(Body);
 }
 
 TArray<FName> UGameXXKInventoryWindowWidget::GetHeroCardBackpackIdsForTest() const
@@ -1958,8 +1962,8 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckLayout()
 	DeckCollapseButton->SetVisibility(Expanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	DeckExpandedTitle->SetVisibility(Expanded ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 	DeckExpandedBackdrop->SetVisibility(Expanded ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	DeckExpandedTitle->SetText(FText::FromString(GameXXKCharacterUiPresentation::GetDisplayName(ResolveMVPSubsystem(),ResolveInventoryCharacterId())+TEXT(" · 挑选卡牌")));
-	Cast<UTextBlock>(DeckDensityButton->GetContent())->SetText(FText::FromString(DeckColumns==2 ? TEXT("缩小 · 4列") : TEXT("放大 · 2列")));
+	DeckExpandedTitle->SetText(GameXXKLocalization::Source(GameXXKCharacterUiPresentation::GetDisplayName(ResolveMVPSubsystem(),ResolveInventoryCharacterId())+TEXT(" · 挑选卡牌")));
+	Cast<UTextBlock>(DeckDensityButton->GetContent())->SetText(GameXXKLocalization::Compact(GameXXKLocalization::Source(DeckColumns==2 ? TEXT("缩小 · 4列") : TEXT("放大 · 2列"))));
 	const FLinearColor TextColor=Expanded ? FLinearColor(0.96f,0.91f,0.80f,1.0f) : FGameXXKInRunUiStyle::Ink();
 	HeroDeckCountText->SetColorAndOpacity(TextColor); HeroDeckCaptionText->SetColorAndOpacity(TextColor);
 	HeroDeckGrid->SetMinDesiredSlotWidth(ResolvedDeckCardSize.X+10.0f);
@@ -1970,6 +1974,8 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckLayout()
 		Cell->SetWidthOverride(ResolvedDeckCardSize.X); Cell->SetHeightOverride(ResolvedDeckCardSize.Y);
 		if(auto* GridSlot=Cast<UUniformGridSlot>(Cell->Slot)) { GridSlot->SetRow(I/ResolvedDeckColumns); GridSlot->SetColumn(I%ResolvedDeckColumns); }
 		HeroDeckCardLabels[I]->SetFont(FGameXXKInRunUiStyle::Font(Expanded ? 30 : 24,true));
+        const auto* Definition=HeroCardBackpackIds.IsValidIndex(I)?FGameXXKCardCatalog::FindCardDefinition(HeroCardBackpackIds[I]):nullptr;
+        GameXXKCardNameStyle::Apply(HeroDeckCardLabels[I],Definition?Definition->BaseQuality:EGameXXKCardQuality::Common);
 		FSlateBrush SelectionBrush=HeroDeckSelectedInks[I]->GetBrush();
 		SelectionBrush.ImageSize=FVector2D(196,Expanded ? 44 : 36);
 		HeroDeckSelectedInks[I]->SetBrush(SelectionBrush);
@@ -2233,8 +2239,9 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		TabButton->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath, CharacterTabSize, FMargin(0.08f)));
 		UTextBlock* TabText = MakeText(
 			WidgetTree,
-			CharacterTabLabels[TabIndex],
+			GameXXKLocalization::Compact(CharacterTabLabels[TabIndex]),
 			bDesktopTrainingEmbeddedMode ? 32 : 14);
+		TabButton->SetToolTipText(GameXXKLocalization::Localize(CharacterTabLabels[TabIndex]));
 		TabText->SetJustification(ETextJustify::Center);
 		TabButton->AddChild(TabText);
 		if (bDesktopTrainingEmbeddedMode && TabIndex < 3)
@@ -2477,7 +2484,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	for(int32 I=0;I<2;++I)
 	{
 		const float Y=110.0f+I*94.0f;
-		auto* Label=MakeText(WidgetTree,FText::FromString(ResourceLabels[I]),22,FGameXXKInRunUiStyle::MutedInk());
+		auto* Label=MakeText(WidgetTree,GameXXKLocalization::Source(ResourceLabels[I]),22,FGameXXKInRunUiStyle::MutedInk());
 		Label->SetAutoWrapText(false); AddCanvasChild(CharacterAttributeDetails,Label,FVector2D(0,Y),FVector2D(100,34));
 		auto* Value=MakeText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("InventoryCharacterAttributeValue_%d"),I));
 		Value->SetJustification(ETextJustify::Right); Value->SetAutoWrapText(false);
@@ -2491,7 +2498,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	for(int32 I=0;I<3;++I)
 	{
 		const float X=I*151.0f;
-		auto* Label=MakeText(WidgetTree,FText::FromString(StatLabels[I]),20,FGameXXKInRunUiStyle::MutedInk());
+		auto* Label=MakeText(WidgetTree,GameXXKLocalization::Source(StatLabels[I]),20,FGameXXKInRunUiStyle::MutedInk());
 		Label->SetJustification(ETextJustify::Center); Label->SetAutoWrapText(false);
 		AddCanvasChild(CharacterAttributeDetails,Label,FVector2D(X,310),FVector2D(138,34));
 		auto* Value=MakeText(WidgetTree,FText::GetEmpty(),32,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("InventoryCharacterAttributeValue_%d"),I+2));
@@ -2505,14 +2512,14 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	CharacterExperienceBar=WidgetTree->ConstructWidget<UProgressBar>(UProgressBar::StaticClass(),TEXT("InventoryCharacterExperienceBar"));
 	CharacterExperienceBar->SetWidgetStyle(ResourceStyle); CharacterExperienceBar->SetFillColorAndOpacity(FGameXXKInRunUiStyle::Jade());
 	AddCanvasChild(CharacterAttributeDetails,CharacterExperienceBar,FVector2D(0,500),FVector2D(440,12));
-	auto* AttributeHint=MakeText(WidgetTree,FText::FromString(TEXT("当前装备已计入 · 不含本局临时加成")),16,FGameXXKInRunUiStyle::MutedInk());
+	auto* AttributeHint=MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("当前装备已计入 · 不含本局临时加成")),16,FGameXXKInRunUiStyle::MutedInk());
 	AttributeHint->SetAutoWrapText(true);
 	AddCanvasChild(CharacterAttributeDetails,AttributeHint,FVector2D(0,540),FVector2D(250,50));
 	auto MakeAttributeButton = [this](const TCHAR* Name, const TCHAR* Label)
 	{
 		auto* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
 		Button->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath,FVector2D(170,44),FMargin(0.08f)));
-		auto* Text = MakeText(WidgetTree,FText::FromString(Label),22,FGameXXKInRunUiStyle::Ink());
+		auto* Text = MakeText(WidgetTree,GameXXKLocalization::Source(Label),22,FGameXXKInRunUiStyle::Ink());
 		Text->SetJustification(ETextJustify::Center);
 		Button->AddChild(Text);
 		return Button;
@@ -2553,18 +2560,21 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 	{
 		auto* Button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), Name);
 		Button->SetStyle(MakeBoxTextureButtonStyle(CharacterTabNormalTexturePath,FVector2D(168,40),FMargin(0.08f)));
-		auto* Text = MakeText(WidgetTree,FText::FromString(Label),20);
+		auto* Text = MakeText(WidgetTree,GameXXKLocalization::Compact(GameXXKLocalization::Source(Label)),20);
 		Text->SetAutoWrapText(false); Text->SetJustification(ETextJustify::Center);
 		Button->SetContent(Text);
 		return Button;
 	};
 	DeckDensityButton = MakeDeckControl(TEXT("InventoryDeckDensityButton"),TEXT("缩小 · 4列"));
+	DeckDensityButton->SetToolTipText(GameXXKLocalization::Text(TEXT("Deck.Help.Density")));
 	DeckDensityButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::ToggleDeckDensity);
 	AddCanvasChild(HeroDeckCanvas,DeckDensityButton,FVector2D(0,0),FVector2D(168,40));
 	DeckExpandButton = MakeDeckControl(TEXT("InventoryDeckExpandButton"),TEXT("展开选牌"));
+	DeckExpandButton->SetToolTipText(GameXXKLocalization::Text(TEXT("Deck.Help.Expand")));
 	DeckExpandButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::HandleExpandDeckClicked);
 	AddCanvasChild(HeroDeckCanvas,DeckExpandButton,FVector2D(182,0),FVector2D(168,40));
 	DeckCollapseButton = MakeDeckControl(TEXT("InventoryDeckCollapseButton"),TEXT("返回卡组"));
+	DeckCollapseButton->SetToolTipText(GameXXKLocalization::Text(TEXT("Deck.Help.Back")));
 	DeckCollapseButton->SetBackgroundColor(FGameXXKInRunUiStyle::Vermilion());
 	Cast<UTextBlock>(DeckCollapseButton->GetContent())->SetColorAndOpacity(FLinearColor::White);
 	DeckCollapseButton->OnClicked.AddDynamic(this,&UGameXXKInventoryWindowWidget::HandleCollapseDeckClicked);
@@ -3245,15 +3255,15 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 								FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(CharacterLevel);
 						}
 					}
-					CharacterTabBodyText->SetText(FText::FromString(bDetailedAttributesOpen ? TEXT("详细属性") : CharacterLabel+TEXT(" · 属性")));
-					if (CharacterLevelText) CharacterLevelText->SetText(FText::FromString(FString::Printf(TEXT("等级 %d"),CharacterLevel)));
+					CharacterTabBodyText->SetText(GameXXKLocalization::Source(bDetailedAttributesOpen ? TEXT("详细属性") : CharacterLabel+TEXT(" · 属性")));
+					if (CharacterLevelText) CharacterLevelText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("等级 %d"),CharacterLevel)));
 					const bool bDeployed=bHero || CharacterId==State.CardRun.PartySelection.ActivePermanentCompanionInstanceId || CharacterId==State.CardRun.PartySelection.QuestNpc.NpcId;
-					if (CharacterIdentityText) CharacterIdentityText->SetText(FText::FromString(FString::Printf(TEXT("%s · %s"),bHero ? TEXT("主角") : bQuestNpc ? TEXT("同行角色") : TEXT("伙伴"),bDeployed ? TEXT("已出战") : TEXT("未出战"))));
-					if (bDetailedAttributesOpen && CharacterIdentityText) CharacterIdentityText->SetText(FText::FromString(CharacterLabel + (bDeployed ? TEXT(" · 已出战") : TEXT(" · 未出战"))));
+					if (CharacterIdentityText) CharacterIdentityText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%s · %s"),bHero ? TEXT("主角") : bQuestNpc ? TEXT("同行角色") : TEXT("伙伴"),bDeployed ? TEXT("已出战") : TEXT("未出战"))));
+					if (bDetailedAttributesOpen && CharacterIdentityText) CharacterIdentityText->SetText(GameXXKLocalization::Source(CharacterLabel + (bDeployed ? TEXT(" · 已出战") : TEXT(" · 未出战"))));
 					const int32 Values[]={bHero ? State.PlayerHP : Stats.MaxHealth,bHero ? State.PlayerMP : Stats.MaxMana,Stats.Attack,Stats.Defense,Stats.Speed};
 					for(int32 I=0;I<CharacterAttributeValues.Num();++I)
 					{
-						CharacterAttributeValues[I]->SetText(I<2 ? FText::FromString(FString::Printf(TEXT("%d / %d"),Values[I],I==0 ? Stats.MaxHealth : Stats.MaxMana)) : FText::AsNumber(Values[I]));
+						CharacterAttributeValues[I]->SetText(I<2 ? GameXXKLocalization::Source(FString::Printf(TEXT("%d / %d"),Values[I],I==0 ? Stats.MaxHealth : Stats.MaxMana)) : FText::AsNumber(Values[I]));
 					}
 					for(int32 I=0;I<CharacterResourceBars.Num();++I)
 					{
@@ -3263,11 +3273,11 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 					if (CharacterExperienceText)
 					{
 						CharacterExperienceText->SetText(RequiredExperience > 0
-							? FText::FromString(FString::Printf(
+							? GameXXKLocalization::Source(FString::Printf(
 								TEXT("经验  %d / %d"),
 								CharacterExperience,
 								RequiredExperience))
-							: FText::FromString(TEXT("经验  已满级")));
+							: GameXXKLocalization::Source(TEXT("经验  已满级")));
 					}
 					if (CharacterExperienceBar)
 					{
@@ -3286,7 +3296,7 @@ void UGameXXKInventoryWindowWidget::RefreshCharacterTabs()
 			}
 			else
 			{
-				CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "AttributesUnavailable", "主角属性\n\n暂无运行时数据"));
+				CharacterTabBodyText->SetText(NSLOCTEXT("GameXXKInventoryWindow", "HeroAttributesUnavailable", "主角属性\n\n暂无运行时数据"));
 			}
 		}
 		else if (ActiveCharacterTab == EGameXXKCharacterBackpackTab::Talents)
@@ -3414,7 +3424,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailedAttributes()
 			};
 			Divider();
 			auto* RuleHeading = TipText(TEXT("RuleHeading"), 18, FGameXXKInRunUiStyle::Jade());
-			RuleHeading->SetText(FText::FromString(TEXT("计算规则")));
+			RuleHeading->SetText(GameXXKLocalization::Source(TEXT("计算规则")));
 			TooltipBody->AddChildToVerticalBox(RuleHeading)->SetPadding(FMargin(0, 0, 0, 5));
 			auto* RuleText = TipText(TEXT("Rule"), 18, FGameXXKInRunUiStyle::Ink());
 			RuleText->SetAutoWrapText(true);
@@ -3423,7 +3433,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailedAttributes()
 			TooltipBody->AddChildToVerticalBox(RuleText);
 			Divider();
 			auto* SourceHeading = TipText(TEXT("SourceHeading"), 18, FGameXXKInRunUiStyle::Jade());
-			SourceHeading->SetText(FText::FromString(TEXT("加成来源")));
+			SourceHeading->SetText(GameXXKLocalization::Source(TEXT("加成来源")));
 			TooltipBody->AddChildToVerticalBox(SourceHeading)->SetPadding(FMargin(0, 0, 0, 5));
 			auto* SourceText = TipText(TEXT("Sources"), 18, FGameXXKInRunUiStyle::Ink());
 			SourceText->SetAutoWrapText(true);
@@ -3436,14 +3446,14 @@ void UGameXXKInventoryWindowWidget::RefreshDetailedAttributes()
 		}
 		const auto& Data = Rows[Index];
 		DetailedAttributeRows[Index]->SetVisibility(ESlateVisibility::Visible);
-		DetailedAttributeLabels[Index]->SetText(FText::FromString(Data.Label));
-		DetailedAttributeValues[Index]->SetText(FText::FromString(Data.Value));
+		DetailedAttributeLabels[Index]->SetText(GameXXKLocalization::Source(Data.Label));
+		DetailedAttributeValues[Index]->SetText(GameXXKLocalization::Source(Data.Value));
 		DetailedAttributeValues[Index]->SetColorAndOpacity(Data.bInactive ? FGameXXKInRunUiStyle::MutedInk() : FGameXXKInRunUiStyle::Ink());
 		const auto Tip = TooltipParts(DetailedAttributeRows[Index]->GetToolTip());
-		if (Tip.Title) Tip.Title->SetText(FText::FromString(Data.Label));
-		if (Tip.Value) Tip.Value->SetText(FText::FromString(Data.Value));
-		if (Tip.Rule) Tip.Rule->SetText(FText::FromString(Rules[Index]));
-		if (Tip.Sources) Tip.Sources->SetText(FText::FromString(Sources[Index]));
+		if (Tip.Title) Tip.Title->SetText(GameXXKLocalization::Source(Data.Label));
+		if (Tip.Value) Tip.Value->SetText(GameXXKLocalization::Source(Data.Value));
+		if (Tip.Rule) Tip.Rule->SetText(GameXXKLocalization::Source(Rules[Index]));
+		if (Tip.Sources) Tip.Sources->SetText(GameXXKLocalization::Source(Sources[Index]));
 	}
 	for (int32 Index = Rows.Num(); Index < DetailedAttributeRows.Num(); ++Index) DetailedAttributeRows[Index]->SetVisibility(ESlateVisibility::Collapsed);
 }
@@ -3505,7 +3515,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 	if (Subsystem) bDeckDraftInitialized = true;
 	if (HeroDeckCaptionText)
 	{
-		HeroDeckCaptionText->SetText(FText::FromString(FString::Printf(
+		HeroDeckCaptionText->SetText(GameXXKLocalization::Source(FString::Printf(
 			TEXT("卡池 %d 张"),
 			HeroCardBackpackIds.Num())));
 	}
@@ -3546,13 +3556,13 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 		{
 			CostLabel->SetText(CardId.IsNone() || !Definition
 				? FText::GetEmpty()
-				: FText::FromString(FString::Printf(TEXT("%d气"), Definition->EnergyCost)));
+				: GameXXKLocalization::Source(FString::Printf(TEXT("%d气"), Definition->EnergyCost)));
 		}
 		if (UTextBlock* ManaCostLabel = HeroDeckManaCostLabels.IsValidIndex(Index) ? HeroDeckManaCostLabels[Index].Get() : nullptr)
 		{
 			ManaCostLabel->SetText(CardId.IsNone() || !Definition
 				? FText::GetEmpty()
-				: FText::FromString(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
+				: GameXXKLocalization::Source(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
 		}
 		if (UGameXXKCardTooltipWidget* Tooltip = HeroDeckTooltipWidgets.IsValidIndex(Index)
 			? HeroDeckTooltipWidgets[Index].Get()
@@ -3622,7 +3632,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 			if (bShowCompanionUnlockLevel)
 			{
 				const int32 UnlockLevel = Index < 10 ? 5 : Index < 14 ? 10 : 15;
-				UnlockLabel->SetText(FText::FromString(FString::Printf(TEXT("%d级解锁"), UnlockLevel)));
+				UnlockLabel->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%d级解锁"), UnlockLevel)));
 				UnlockLabel->SetVisibility(ESlateVisibility::HitTestInvisible);
 			}
 			else
@@ -3638,7 +3648,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckCards()
 	}
 	if (HeroDeckCountText)
 	{
-		HeroDeckCountText->SetText(FText::FromString(FString::Printf(TEXT("已选 %d / %d"), PendingHeroDeckIds.Num(), RequiredCount)));
+		HeroDeckCountText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("已选 %d / %d"), PendingHeroDeckIds.Num(), RequiredCount)));
 	}
 	RefreshHeroDeckLayout();
 }
@@ -3729,7 +3739,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 		Entry.Quantity = LegacyEntry.Value;
 		Entry.IconPath = ResolveItemIconTexturePath(LegacyEntry.Key);
 		Entry.DisplayName = Definition.DisplayName;
-		Entry.DetailText = FText::FromString(ItemStatsText(Definition, Subsystem ? Subsystem->GetItemEnhancementLevel(LegacyEntry.Key) : 0));
+		Entry.DetailText = GameXXKLocalization::Source(ItemStatsText(Definition, Subsystem ? Subsystem->GetItemEnhancementLevel(LegacyEntry.Key) : 0));
 		BackpackEntries.Add(MoveTemp(Entry));
 	}
 
@@ -3856,7 +3866,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 				bSlotUnlocked ? FLinearColor::White : FLinearColor(0.28f, 0.28f, 0.26f, 0.72f));
 			if (!bSlotUnlocked)
 			{
-				SlotButton->SetToolTipText(FText::FromString(TEXT("该背包格尚未由永久天赋解锁")));
+				SlotButton->SetToolTipText(GameXXKLocalization::Source(TEXT("该背包格尚未由永久天赋解锁")));
 			}
 		}
 		if (UBorder* Tooltip = BackpackTooltipFrames.IsValidIndex(SlotIndex) ? BackpackTooltipFrames[SlotIndex].Get() : nullptr)
@@ -3867,7 +3877,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 		if (UTextBlock* Label = BackpackSlotLabels.IsValidIndex(SlotIndex) ? BackpackSlotLabels[SlotIndex].Get() : nullptr)
 		{
 			Label->SetText(bHasItem && Quantity > 1
-				? FText::FromString(FString::FromInt(Quantity))
+				? GameXXKLocalization::Source(FString::FromInt(Quantity))
 				: FText::GetEmpty());
 		}
 		if (UImage* Icon = BackpackSlotIcons.IsValidIndex(SlotIndex) ? BackpackSlotIcons[SlotIndex].Get() : nullptr)
@@ -3901,11 +3911,11 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 		}
 		if (UTextBlock* TooltipName = BackpackTooltipNameTextBlocks.IsValidIndex(SlotIndex) ? BackpackTooltipNameTextBlocks[SlotIndex].Get() : nullptr)
 		{
-			TooltipName->SetText(Entry ? Entry->DisplayName : FText::GetEmpty());
+			TooltipName->SetText(Entry ? GameXXKLocalization::Localize(Entry->DisplayName) : FText::GetEmpty());
 		}
 		if (UTextBlock* TooltipDetail = BackpackTooltipDetailTextBlocks.IsValidIndex(SlotIndex) ? BackpackTooltipDetailTextBlocks[SlotIndex].Get() : nullptr)
 		{
-			TooltipDetail->SetText(Entry ? Entry->DetailText : FText::GetEmpty());
+			TooltipDetail->SetText(Entry ? GameXXKLocalization::Localize(Entry->DetailText) : FText::GetEmpty());
 		}
 		const auto* QualityItem=Subsystem && !EquipmentInstanceId.IsNone()?FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection,EquipmentInstanceId):nullptr;
 		if(auto* Button=BackpackSlotButtons[SlotIndex].Get())
@@ -3933,7 +3943,7 @@ void UGameXXKInventoryWindowWidget::RefreshBackpackSlots()
 				}
 				if (UTextBlock* Row = (*CompareRows)[CompareRowIndex])
 				{
-					Row->SetText(FText::FromString(FString::Printf(TEXT("%s %+d"), *Label, Delta)));
+					Row->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%s %+d"), *Label, Delta)));
 					Row->SetColorAndOpacity(FSlateColor(Delta > 0
 						? FLinearColor(0.85f, 0.15f, 0.15f, 1.0f)
 						: FLinearColor(0.10f, 0.65f, 0.25f, 1.0f)));
@@ -4049,7 +4059,7 @@ void UGameXXKInventoryWindowWidget::RefreshMerchantStockSlots()
 		}
 		if (UTextBlock* Label = MerchantStockSlotLabels.IsValidIndex(SlotIndex) ? MerchantStockSlotLabels[SlotIndex].Get() : nullptr)
 		{
-			Label->SetText(bFound ? FText::FromString(FString::Printf(TEXT("%d金"), Def.BuyPrice)) : FText::GetEmpty());
+			Label->SetText(bFound ? GameXXKLocalization::Source(FString::Printf(TEXT("%d金"), Def.BuyPrice)) : FText::GetEmpty());
 		}
 		if (UImage* Icon = MerchantStockSlotIcons.IsValidIndex(SlotIndex) ? MerchantStockSlotIcons[SlotIndex].Get() : nullptr)
 		{
@@ -4124,7 +4134,7 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 		{
 			Label->SetText(!InstanceId.IsNone()
 				? FText::GetEmpty()
-				: bLegacyFound ? LegacyDefinition.DisplayName : EmptyLabels[SlotIndex]);
+				: bLegacyFound ? GameXXKLocalization::Localize(LegacyDefinition.DisplayName) : GameXXKLocalization::Compact(EmptyLabels[SlotIndex]));
 		}
 		if (UImage* Icon = EquipmentSlotIcons.IsValidIndex(SlotIndex) ? EquipmentSlotIcons[SlotIndex].Get() : nullptr)
 		{
@@ -4166,7 +4176,7 @@ void UGameXXKInventoryWindowWidget::RefreshEquipmentSlots()
 			{
 				if (UTextBlock* TooltipName = EquipmentTooltipNameTextBlocks.IsValidIndex(SlotIndex) ? EquipmentTooltipNameTextBlocks[SlotIndex].Get() : nullptr)
 				{
-					TooltipName->SetText(EquipmentDefinition->DisplayName);
+					TooltipName->SetText(GameXXKLocalization::Localize(EquipmentDefinition->DisplayName));
 				}
 				if (UTextBlock* TooltipDetail = EquipmentTooltipDetailTextBlocks.IsValidIndex(SlotIndex) ? EquipmentTooltipDetailTextBlocks[SlotIndex].Get() : nullptr)
 				{
@@ -4215,7 +4225,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 		{
 			if (SelectedNameTextBlock)
 			{
-				SelectedNameTextBlock->SetText(Definition->DisplayName);
+				SelectedNameTextBlock->SetText(GameXXKLocalization::Localize(Definition->DisplayName));
 				GameXXKEquipmentQualityStyle::ApplyName(SelectedNameTextBlock,Instance->Quality);
 			}
 			if (SelectedDetailTextBlock)
@@ -4234,7 +4244,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 					Cache.Add(SocketList,Signature);SocketList->ClearChildren();
 					for(const auto& Gem:Instance->SocketedGems)
 					{
-						auto* Label=MakeText(WidgetTree,Gem.IsEmpty()?FText::FromString(TEXT("空孔位")):FGameXXKGemRules::GetSocketText(Gem.Type,Gem.Quality),15);
+						auto* Label=MakeText(WidgetTree,Gem.IsEmpty()?GameXXKLocalization::Source(TEXT("空孔位")):FGameXXKGemRules::GetSocketText(Gem.Type,Gem.Quality),15);
 						Label->SetAutoWrapText(true);GameXXKEquipmentQualityStyle::ApplyName(Label,FGameXXKGemRules::GetPresentationQuality(Gem.Quality));SocketList->AddChildToVerticalBox(Label);
 					}
 				}
@@ -4244,7 +4254,7 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 				: NSLOCTEXT("GameXXKInventoryWindow", "EquipInstanceAction", "装备");
 			if (PrimaryActionButton && PrimaryActionTextBlock)
 			{
-				PrimaryActionTextBlock->SetText(CurrentPrimaryActionText);
+				PrimaryActionTextBlock->SetText(GameXXKLocalization::Compact(CurrentPrimaryActionText));
 				PrimaryActionButton->SetVisibility(ESlateVisibility::Visible);
 			}
 			if (SecondaryActionButton)
@@ -4293,12 +4303,12 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 
 	if (SelectedNameTextBlock)
 	{
-		SelectedNameTextBlock->SetText(Def.DisplayName);
+		SelectedNameTextBlock->SetText(GameXXKLocalization::Localize(Def.DisplayName));
 		GameXXKEquipmentQualityStyle::ApplyName(SelectedNameTextBlock,FGameXXKGemRules::GetItemPresentationQuality(SelectedItemId));
 	}
 	if (SelectedDetailTextBlock)
 	{
-		SelectedDetailTextBlock->SetText(FText::FromString(ItemStatsText(Def, EnhancementLevel)));
+		SelectedDetailTextBlock->SetText(GameXXKLocalization::Source(ItemStatsText(Def, EnhancementLevel)));
 	}
 
 	if (SelectedSlotSource == EGameXXKInventorySlotSource::PlayerBackpack)
@@ -4327,12 +4337,12 @@ void UGameXXKInventoryWindowWidget::RefreshDetailPanel()
 
 	if (PrimaryActionButton && PrimaryActionTextBlock)
 	{
-		PrimaryActionTextBlock->SetText(CurrentPrimaryActionText);
+		PrimaryActionTextBlock->SetText(GameXXKLocalization::Compact(CurrentPrimaryActionText));
 		PrimaryActionButton->SetVisibility(CurrentPrimaryActionText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	}
 	if (SecondaryActionButton && SecondaryActionTextBlock)
 	{
-		SecondaryActionTextBlock->SetText(CurrentSecondaryActionText);
+		SecondaryActionTextBlock->SetText(GameXXKLocalization::Compact(CurrentSecondaryActionText));
 		SecondaryActionButton->SetVisibility(CurrentSecondaryActionText.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 	}
 	if (EnhanceButton)
@@ -4417,11 +4427,11 @@ void UGameXXKInventoryWindowWidget::RefreshConfirmationDialog()
 		{
 			const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 			const int32 CurrentLevel = Subsystem ? Subsystem->GetItemEnhancementLevel(PendingConfirmationItemId) : 0;
-			ConfirmationSummaryTextBlock->SetText(FText::FromString(FString::Printf(TEXT("消耗 强化材料 1    当前 +%d / +%d"), CurrentLevel, UGameXXKMVPRules::GetMaxItemEnhancementLevel())));
+			ConfirmationSummaryTextBlock->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("消耗 强化材料 1    当前 +%d / +%d"), CurrentLevel, UGameXXKMVPRules::GetMaxItemEnhancementLevel())));
 		}
 		else
 		{
-			ConfirmationSummaryTextBlock->SetText(FText::FromString(FString::Printf(TEXT("数量 x%d    金 %d"), FMath::Max(1, PendingConfirmationQuantity), PendingConfirmationPrice)));
+			ConfirmationSummaryTextBlock->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("数量 x%d    金 %d"), FMath::Max(1, PendingConfirmationQuantity), PendingConfirmationPrice)));
 		}
 	}
 }
@@ -4784,7 +4794,7 @@ void UGameXXKInventoryWindowWidget::HandleEnhanceMainClicked()
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || SelectedEquipmentInstanceId.IsNone())
 	{
-		ShowActionErrorText(FText::FromString(TEXT("请先选中一件装备。")));
+		ShowActionErrorText(GameXXKLocalization::Source(TEXT("请先选中一件装备。")));
 		return;
 	}
 	FGameXXKEquipmentTransactionResult Result;
@@ -4805,7 +4815,7 @@ void UGameXXKInventoryWindowWidget::HandleReforgeMainClicked()
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || SelectedEquipmentInstanceId.IsNone())
 	{
-		ShowActionErrorText(FText::FromString(TEXT("请先选中一件装备。")));
+		ShowActionErrorText(GameXXKLocalization::Source(TEXT("请先选中一件装备。")));
 		return;
 	}
 	FGameXXKEquipmentTransactionResult Result;
@@ -4827,7 +4837,7 @@ void UGameXXKInventoryWindowWidget::ShowActionErrorText(const FText& Message)
 {
 	if (SelectedDetailTextBlock)
 	{
-		SelectedDetailTextBlock->SetText(Message);
+		SelectedDetailTextBlock->SetText(GameXXKLocalization::Localize(Message));
 	}
 }
 

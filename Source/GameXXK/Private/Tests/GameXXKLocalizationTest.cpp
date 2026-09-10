@@ -33,6 +33,9 @@ bool FGameXXKLocalizationLiveTextTest::RunTest(const FString&)
     TestEqual(TEXT("formatted text keeps its quantity and rebuilds its language"), LiveReward.ToString(),
         FString(TEXT("First-clear reward: 123456 Gold")));
     TestEqual(TEXT("game language does not change the editor language"), FInternationalization::Get().GetCurrentLanguage()->GetName(), EditorLanguage);
+	const FText NormalDifficulty = GameXXKLocalization::Text(TEXT("Difficulty.Normal"));
+	TestEqual(TEXT("same Chinese word keeps its difficulty identity instead of becoming a quality"),
+		GameXXKLocalization::Localize(NormalDifficulty).ToString(), FString(TEXT("Normal")));
     TestFalse(TEXT("unsupported languages cannot become active"), GameXXKLocalization::SetLanguage(TEXT("ja"), false));
     TestEqual(TEXT("rejected language retains English"), GameXXKLocalization::GetLanguage(), FString(TEXT("en")));
     TestTrue(TEXT("switch back"), GameXXKLocalization::SetLanguage(TEXT("zh-Hans"), false));

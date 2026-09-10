@@ -1,0 +1,203 @@
+{
+  "reviewer": "Codex visual inspection",
+  "count": 21,
+  "scope": "all project monsters",
+  "checks": [
+    "原设计身份和标志特征",
+    "完整全身与四肢/尾/角",
+    "画面右朝向，尽量3/4",
+    "大轮廓与普通/精英/首领区别",
+    "卡通眼睛和内部色块密度"
+  ],
+  "userFeedbackApplied": {
+    "broadFormsRevisions": [
+      "graymane",
+      "porcupine",
+      "boar",
+      "blackbear",
+      "redtusk",
+      "snake",
+      "wildcat",
+      "vulture",
+      "whiteape",
+      "bluehorn",
+      "graywolf"
+    ],
+    "eyeCorrections": [
+      "porcupine",
+      "boar",
+      "wildcat"
+    ],
+    "roosterRuntimeSize": "separate pilot atlases restored to prior production 0.824219 occupied-cell height"
+  },
+  "records": [
+    {
+      "slug": "rooster",
+      "name": "公鸡",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "goat",
+      "name": "山羊",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "weasel",
+      "name": "黄鼬",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "civet",
+      "name": "狸猫",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "ironfeather",
+      "name": "铁羽斗鸡",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "bluehorn",
+      "name": "青角羊王",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "graywolf",
+      "name": "灰狼",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "boar",
+      "name": "野猪",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "macaque",
+      "name": "猕猴",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "porcupine",
+      "name": "豪猪",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "graymane",
+      "name": "苍鬃狼王",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "redtusk",
+      "name": "赤獠猪王",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "blackbear",
+      "name": "黑熊",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "snake",
+      "name": "毒蛇",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "wildcat",
+      "name": "山猫",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "vulture",
+      "name": "秃鹫",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "toad",
+      "name": "巨蟾",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "whiteape",
+      "name": "白猿",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "broad-forms-cartoon-eyes-v1"
+    },
+    {
+      "slug": "spiralhorn_deer",
+      "name": "盘角鹿",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    },
+    {
+      "slug": "tiger",
+      "name": "老虎",
+      "visualReview": "ready-for-user",
+      "userApproved": false,
+      "imported": false,
+      "revision": "project-design-redraw"
+    }
+  ]
+}

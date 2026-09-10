@@ -299,7 +299,11 @@ bool FGameXXKMetaShopRules::Purchase(
 		FGameXXKTrainingChestToken Token;
 		Token.Tier=ProductId==EGameXXKMetaShopProductId::AdvancedChest ? EGameXXKTrainingRewardTier::AdvancedChest : EGameXXKTrainingRewardTier::NormalChest;
 		Token.SourceItemLevel=EquipmentItemLevel(Candidate);
-		Token.SourceStageId=FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,1);
+		FGameXXKTrainingStageDefinition SelectedStage;
+		if(FGameXXKTrainingRules::TryGetStageDefinition(Candidate.Training.SelectedStageId,SelectedStage)
+			&&FGameXXKTrainingRules::IsDifficultyUnlocked(Candidate.Training,SelectedStage.Difficulty))
+			Token.SourceStageId=Candidate.Training.SelectedStageId;
+		else Token.SourceStageId=FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,1);
 		Token.AcquisitionOrdinal=++Candidate.Training.NextChestAcquisitionOrdinal;
 		Candidate.Training.OwnedChestTokens.Add(Token);
 	}

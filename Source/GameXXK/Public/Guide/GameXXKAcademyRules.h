@@ -2,6 +2,7 @@
 #include "CoreMinimal.h"
 #include "Guide/GameXXKGuideAsset.h"
 #include "GameXXKCardTypes.h"
+struct FGameXXKRuntimeState;
 
 enum class EGameXXKAcademyGoal : uint8
 {
@@ -49,6 +50,9 @@ public:
 	static constexpr int32 FirstClearGold = 100000;
 	static const TArray<FGameXXKAcademyCourse>& Courses();
 	static const FGameXXKAcademyCourse* Find(FName Id);
+    /** Same one-step planner used by the visible tutorial and its playable acceptance. */
+    static void Recommend(const FGameXXKRuntimeState& State,FName FocusUnitId,const FGameXXKAcademyLesson& Lesson,
+        const FGameXXKAcademyEvidence& Evidence,FName RestrictedCard,FName& Card,FName& Target,bool& EndTurn);
 	static void ObserveCommittedResult(const FGameXXKCardPlayResult& Result,FName FocusUnitId,FGameXXKAcademyEvidence& Evidence);
 	static void Observe(const FGameXXKCardBattleRuntime& Before,const FGameXXKCardBattleRuntime& After,
 		const TArray<FGameXXKCardDamageResult>& Damage,FName PlayedInstance,FName FocusUnitId,FGameXXKAcademyEvidence& Evidence);

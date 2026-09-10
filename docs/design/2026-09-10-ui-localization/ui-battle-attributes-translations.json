@@ -1,0 +1,900 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.b4f2921b73475bb1",
+      "zh-Hans": "\n敌方意图索引在失败后发生变化；将继续完成该敌方回合。",
+      "en": "\nThe enemy intent index changed after failure; the enemy turn will finish."
+    },
+    {
+      "key": "Legacy.def242450cb31de4",
+      "zh-Hans": "\n已跳过该异常敌方意图，继续结算。",
+      "en": "\nSkipped the invalid enemy intent and continued resolution."
+    },
+    {
+      "key": "Legacy.1b04878c3089006f",
+      "zh-Hans": "敌方意图完成时战斗状态已丢失。",
+      "en": "Battle state was lost when the enemy intent completed."
+    },
+    {
+      "key": "Legacy.073af8d99c800e2a",
+      "zh-Hans": "阵师存活时，玩家回合开始自动触发当前地势收益一次。地势牌可额外触发；紫色边光提示换势、双效或减耗。",
+      "en": "While the Formation Master lives, the current terrain benefit triggers at the start of each player turn. Terrain cards can trigger it again; a purple edge indicates a terrain switch, double benefit, or reduced cost."
+    },
+    {
+      "key": "Legacy.2e446b22e9e5af9c",
+      "zh-Hans": "结束本回合，进入敌方行动",
+      "en": "End this turn and let the enemies act"
+    },
+    {
+      "key": "Legacy.b175d407936d68af",
+      "zh-Hans": "选择一张尚未完成任务的主角牌",
+      "en": "Choose a Hero card whose task is unfinished"
+    },
+    {
+      "key": "Legacy.d7cfef75784723ee",
+      "zh-Hans": "洞察：选择一张加入手牌",
+      "en": "Insight: choose a card to add to your hand"
+    },
+    {
+      "key": "Legacy.bcc77cba2305050f",
+      "zh-Hans": "加入手牌",
+      "en": "Add to hand"
+    },
+    {
+      "key": "Legacy.83ca28024fae5464",
+      "zh-Hans": "点击弃置",
+      "en": "Click to discard"
+    },
+    {
+      "key": "Legacy.d8aa571ea9cf04de",
+      "zh-Hans": "气力上限 +1",
+      "en": "Max Qi +1"
+    },
+    {
+      "key": "Legacy.bbce56029cf682e5",
+      "zh-Hans": "属性奖励",
+      "en": "Stat reward"
+    },
+    {
+      "key": "Legacy.03e3f7f38c533958",
+      "zh-Hans": "每回合抽牌 +1",
+      "en": "Draw per round +1"
+    },
+    {
+      "key": "Legacy.29bbd74e50ed9d4f",
+      "zh-Hans": "升级至",
+      "en": "Upgrade to"
+    },
+    {
+      "key": "Legacy.8c4b60170d4e732a",
+      "zh-Hans": "替换\n",
+      "en": "Replace\n"
+    },
+    {
+      "key": "Legacy.032b0555298f46f8",
+      "zh-Hans": "该卡无法进入手动目标选择。",
+      "en": "This card cannot enter manual target selection."
+    },
+    {
+      "key": "Legacy.a4266c79fe4ee3ee",
+      "zh-Hans": "该卡当前没有合法目标。",
+      "en": "This card has no legal target right now."
+    },
+    {
+      "key": "Legacy.c0317d8f3fa6c14a",
+      "zh-Hans": "卡牌战斗状态不可用。",
+      "en": "Card battle state is unavailable."
+    },
+    {
+      "key": "Legacy.1a8a9718892edc80",
+      "zh-Hans": "训练挑战结算失败。",
+      "en": "Training challenge settlement failed."
+    },
+    {
+      "key": "Legacy.2892b0a815e4fc77",
+      "zh-Hans": "战斗胜利奖励未能生成。",
+      "en": "Victory rewards could not be generated."
+    },
+    {
+      "key": "Legacy.3125ad2913bd5fbf",
+      "zh-Hans": "战斗失败后未能返回城镇。",
+      "en": "Could not return to town after defeat."
+    },
+    {
+      "key": "Legacy.54ede255b8e3bef7",
+      "zh-Hans": "空格继续",
+      "en": "Space to continue"
+    },
+    {
+      "key": "Legacy.fb64046416fab747",
+      "zh-Hans": "未知卡牌",
+      "en": "Unknown card"
+    },
+    {
+      "key": "Legacy.d6f632886fd1ffe3",
+      "zh-Hans": "手牌中",
+      "en": "In hand"
+    },
+    {
+      "key": "Legacy.43c0808afd36c9c0",
+      "zh-Hans": "抽牌堆中",
+      "en": "In draw pile"
+    },
+    {
+      "key": "Legacy.112c00509dad0c75",
+      "zh-Hans": "弃牌堆中",
+      "en": "In discard pile"
+    },
+    {
+      "key": "Legacy.98a951a6e42c5639",
+      "zh-Hans": "已消耗",
+      "en": "Exhausted"
+    },
+    {
+      "key": "Legacy.df7dbef791408567",
+      "zh-Hans": "待入手",
+      "en": "Pending draw"
+    },
+    {
+      "key": "Legacy.bd18b2a032ef7d7d",
+      "zh-Hans": "首张主动打出的任务牌决定阵赏。",
+      "en": "The first actively played task card determines the formation reward."
+    },
+    {
+      "key": "Legacy.b02671f0e1c33a6d",
+      "zh-Hans": "每笔伤害或治疗使任一角色气血变化时，自身获得1点药效。",
+      "en": "Gain 1 Potency whenever a damage or healing event changes any unit's HP."
+    },
+    {
+      "key": "Legacy.7390d8c3a7427c74",
+      "zh-Hans": "每回合首次实际治疗或造成药效反转伤害时，自身获得2点药效。",
+      "en": "Gain 2 Potency on the first effective heal or reversed Potency damage each round."
+    },
+    {
+      "key": "Legacy.ad4b950a188fb523",
+      "zh-Hans": "累计清除友方3点流血、中毒或灼烧，自身获得1点药效；余数保留。",
+      "en": "Gain 1 Potency per 3 stacks of Bleed, Poison, or Burn removed from allies; carry over the remainder."
+    },
+    {
+      "key": "Legacy.3d371e4c55de3088",
+      "zh-Hans": "每回合首次有友方气血从不低于35%降至35%以下，自身获得3点药效。",
+      "en": "Gain 3 Potency the first time an ally falls from at least 35% HP to below 35% each round."
+    },
+    {
+      "key": "Legacy.dd584cf3b0b20cdf",
+      "zh-Hans": "每3笔有效友方治疗抽1张牌，每回合最多2张。",
+      "en": "Draw 1 card per 3 effective allied healing events, up to 2 cards each round."
+    },
+    {
+      "key": "Legacy.0a1c12672a144397",
+      "zh-Hans": "每回合首次清除友方流血，全队获得相当于药师20%防御的护甲，受开方品质增幅。",
+      "en": "The first removal of allied Bleed each round grants all allies Armor equal to 20% of the Apothecary's Defense, increased by Prescription quality."
+    },
+    {
+      "key": "Legacy.236481c5bc5d1463",
+      "zh-Hans": "每回合首次有友方气血从不低于30%降至30%以下，该友方获得2层灵动。",
+      "en": "The first ally to fall from at least 30% HP to below 30% each round gains 2 Agility stacks."
+    },
+    {
+      "key": "Legacy.02c9f3f1b0eeede5",
+      "zh-Hans": "同次结算使至少3个不同单位实际气血变化：抽1张牌，全队恢复2内力；每回合1次。",
+      "en": "When the same resolution changes the HP of at least 3 different units, draw 1 card and restore 2 Inner Power to all allies; 1 time per round."
+    },
+    {
+      "key": "Legacy.d236e0f68442e2aa",
+      "zh-Hans": "每笔中毒伤害生效时，自身获得1点药效。",
+      "en": "Gain 1 Potency each time Poison deals damage."
+    },
+    {
+      "key": "Legacy.56cbc1773587ef92",
+      "zh-Hans": "每回合，具有流血和中毒的敌人各获得1层标记，每名敌人1次。",
+      "en": "Each round, enemies with both Bleed and Poison gain 1 Mark, 1 time per enemy."
+    },
+    {
+      "key": "Legacy.4524193c01f3166d",
+      "zh-Hans": "每回合首次使至少2名敌人获得中毒，自身获得2点药效并抽1张牌。",
+      "en": "Gain 2 Potency and draw 1 card the first time you apply Poison to at least 2 enemies each round."
+    },
+    {
+      "key": "Legacy.f96f0eda8833bb0e",
+      "zh-Hans": "每次毒爆包含至少2类持续伤害，自身获得2点药效。",
+      "en": "Gain 2 Potency whenever a Poison Burst contains at least 2 damage-over-time types."
+    },
+    {
+      "key": "Legacy.7fa6d73a17ceb478",
+      "zh-Hans": "每2笔流血伤害生效，自身获得1点药效；余数保留。",
+      "en": "Gain 1 Potency per 2 Bleed damage events; carry over the remainder."
+    },
+    {
+      "key": "Legacy.dd773d19b8bfbc46",
+      "zh-Hans": "每回合首次直接攻击命中至少2名敌人，回复1气。",
+      "en": "Restore 1 Qi the first time a direct attack hits at least 2 enemies each round."
+    },
+    {
+      "key": "Legacy.a07385c389fab9fe",
+      "zh-Hans": "每回合首次给已中毒的敌人施加破绽，自身获得1点药效并抽1张牌。",
+      "en": "Gain 1 Potency and draw 1 card the first time you apply Vulnerability to a Poisoned enemy each round."
+    },
+    {
+      "key": "Legacy.ecc06ccdf919db15",
+      "zh-Hans": "每回合首次毒爆同时包含流血、中毒、灼烧，自身获得1层气势并抽1张牌。",
+      "en": "Gain 1 Momentum and draw 1 card the first time a Poison Burst contains Bleed, Poison, and Burn together each round."
+    },
+    {
+      "key": "Legacy.649806ee7e0ffb7f",
+      "zh-Hans": "每回合每名友方首次实际失血时，自身获得1点药效，最多计3名友方。",
+      "en": "Gain 1 Potency the first time each ally actually loses HP each round, counting up to 3 allies."
+    },
+    {
+      "key": "Legacy.c06c21a3905eb58c",
+      "zh-Hans": "每回合首次在治疗或反转中消耗至少6点药效，抽1张牌。",
+      "en": "Draw 1 card the first time a heal or reversal consumes at least 6 Potency each round."
+    },
+    {
+      "key": "Legacy.f19c91e3815201b9",
+      "zh-Hans": "毒爆包含至少2类持续伤害时，自身获得2点药效，每回合最多2次。",
+      "en": "Gain 2 Potency when a Poison Burst contains at least 2 damage-over-time types, up to 2 times each round."
+    },
+    {
+      "key": "Legacy.455ca22ee621ccd9",
+      "zh-Hans": "每回合首次在同次结算中有效治疗至少2名友方，回复1气。",
+      "en": "Restore 1 Qi the first time the same resolution effectively heals at least 2 allies each round."
+    },
+    {
+      "key": "Legacy.859bfbfa2d64bea5",
+      "zh-Hans": "本局持续生效。",
+      "en": "Active for this run."
+    },
+    {
+      "key": "Legacy.b8daa0bc6eeb8b9d",
+      "zh-Hans": "寒霜",
+      "en": "Frost"
+    },
+    {
+      "key": "Legacy.788b413f22405e2a",
+      "zh-Hans": "雷电",
+      "en": "Lightning"
+    },
+    {
+      "key": "Legacy.ef83b8bd33b16c6c",
+      "zh-Hans": "尚未打出 · ",
+      "en": "Not played · "
+    },
+    {
+      "key": "Legacy.92af1c78d40e53c4",
+      "zh-Hans": "各牌首次主动打出后记录牌序。",
+      "en": "Records the order of each card's first active play."
+    },
+    {
+      "key": "Legacy.4fec6bd201321ea1",
+      "zh-Hans": "主动打出其中任意一张即可开启。",
+      "en": "Actively play any of these cards to activate."
+    },
+    {
+      "key": "Legacy.eeb152453dfcd565",
+      "zh-Hans": "\n通用先手，分支由下一张任务牌锁定。",
+      "en": "\nUniversal opener; the next task card locks the branch."
+    },
+    {
+      "key": "Legacy.3f8e3a9214659b89",
+      "zh-Hans": "\n首牌：",
+      "en": "\nOpener: "
+    },
+    {
+      "key": "Legacy.0fd22693e1f73f6f",
+      "zh-Hans": "\n待出：",
+      "en": "\nRemaining: "
+    },
+    {
+      "key": "Legacy.6cd8138d04900947",
+      "zh-Hans": "\n依记录顺序重放中，随后结算阵赏。",
+      "en": "\nReplaying in the recorded order, then resolving the formation reward."
+    },
+    {
+      "key": "Legacy.e36803891cee632f",
+      "zh-Hans": "\n本组卡牌已全部记录。",
+      "en": "\nAll cards in this group have been recorded."
+    },
+    {
+      "key": "Legacy.7da1d698d85a9ecf",
+      "zh-Hans": "已开方 · ",
+      "en": "Prescribed · "
+    },
+    {
+      "key": "Legacy.1f82bf291595dc06",
+      "zh-Hans": " · 本局持续\n",
+      "en": " · Lasts for this run\n"
+    },
+    {
+      "key": "Legacy.46368944008e7444",
+      "zh-Hans": "\n本回合已触发，下回合恢复。",
+      "en": "\nAlready triggered this round; resets next round."
+    },
+    {
+      "key": "Legacy.a1ea87e6c00c0b79",
+      "zh-Hans": "\n本回合尚未触发。",
+      "en": "\nNot yet triggered this round."
+    },
+    {
+      "key": "Legacy.170755c6a5e12ba2",
+      "zh-Hans": "法术任务完成",
+      "en": "Spell task complete"
+    },
+    {
+      "key": "Legacy.4058b51662c013db",
+      "zh-Hans": "本组任务牌已全部打出。\n首牌：",
+      "en": "All task cards in this group have been played.\nOpener: "
+    },
+    {
+      "key": "Legacy.798eea3fe1434f48",
+      "zh-Hans": "第三阶段",
+      "en": "Third phase"
+    },
+    {
+      "key": "Legacy.0aaccd4ac8a6ee14",
+      "zh-Hans": "第二阶段",
+      "en": "Second phase"
+    },
+    {
+      "key": "Legacy.1fd7557aafb89828",
+      "zh-Hans": "生命降至1%时消耗，进入下一阶段并回满生命。",
+      "en": "Consumed at 1% HP to enter the next phase and fully restore HP."
+    },
+    {
+      "key": "Legacy.49ddb069d5b83585",
+      "zh-Hans": "三",
+      "en": "Three"
+    },
+    {
+      "key": "Legacy.1d5639f716b643b7",
+      "zh-Hans": "二",
+      "en": "Two"
+    },
+    {
+      "key": "Legacy.52152364930a0801",
+      "zh-Hans": "数值",
+      "en": "Value"
+    },
+    {
+      "key": "Legacy.d4a97e757743f038",
+      "zh-Hans": "次数",
+      "en": "Uses"
+    },
+    {
+      "key": "Legacy.7233d530968bf00b",
+      "zh-Hans": "层数",
+      "en": "Stacks"
+    },
+    {
+      "key": "Legacy.fecbbb04573aa698",
+      "zh-Hans": "更多状态",
+      "en": "More statuses"
+    },
+    {
+      "key": "Legacy.e958bec1d21b587c",
+      "zh-Hans": "药方未开启 · 首次主动打出激活本场效果",
+      "en": "Prescription inactive · First active play enables its effect for this battle"
+    },
+    {
+      "key": "Legacy.666b95bdd848bbc7",
+      "zh-Hans": "冲锋就绪 · 本回合第一张主动牌",
+      "en": "Opener ready · First active card this round"
+    },
+    {
+      "key": "Legacy.ddcf2f603d764fb1",
+      "zh-Hans": "收招候选 · 留作最后一张主动牌时生效",
+      "en": "Finisher candidate · Takes effect if kept as the last active card"
+    },
+    {
+      "key": "Legacy.cd682ff6d35b6c77",
+      "zh-Hans": "承接刀式 · 下一张主动牌可触发已登记的冲锋联动",
+      "en": "Blade follow-up · The next active card can trigger the registered Opener synergy"
+    },
+    {
+      "key": "Legacy.2f3f28e6f13cbe49",
+      "zh-Hans": "护甲转伤 · 伤害来源已有可用护甲",
+      "en": "Armor to damage · The damage source has usable Armor"
+    },
+    {
+      "key": "Legacy.0634057b1f74c7fe",
+      "zh-Hans": "本回合换势增益",
+      "en": "Terrain switch bonus this round"
+    },
+    {
+      "key": "Legacy.084c0b2dc8a84dcf",
+      "zh-Hans": "将切换地势",
+      "en": "Will switch terrain"
+    },
+    {
+      "key": "Legacy.9426f297f5642d59",
+      "zh-Hans": "当前地势相合",
+      "en": "Matches the current terrain"
+    },
+    {
+      "key": "Legacy.398d0dcf30fc0a92",
+      "zh-Hans": "最高攻击友方可提供",
+      "en": "Available from the ally with the highest Attack"
+    },
+    {
+      "key": "Legacy.b7c325ec90a0b417",
+      "zh-Hans": "自身可提供",
+      "en": "Available from self"
+    },
+    {
+      "key": "Legacy.6521e915f229931c",
+      "zh-Hans": "药效联动 · 本牌可使用药效治疗或反转",
+      "en": "Potency synergy · This card can use Potency to heal or reverse"
+    },
+    {
+      "key": "Legacy.ae7f85525d923f40",
+      "zh-Hans": "毒爆联动 · 可选目标已有持续伤害",
+      "en": "Poison Burst synergy · A selectable target has damage over time"
+    },
+    {
+      "key": "Legacy.6c50b54e21aa81f3",
+      "zh-Hans": "山河减耗",
+      "en": "Landscape cost reduction"
+    },
+    {
+      "key": "Legacy.5c844900f6e08149",
+      "zh-Hans": "地势联动 · ",
+      "en": "Terrain synergy · "
+    },
+    {
+      "key": "Legacy.5782b1fa26ac4f6c",
+      "zh-Hans": "地势收益 · 本牌会触发或切换地势",
+      "en": "Terrain benefit · This card triggers or switches terrain"
+    },
+    {
+      "key": "Legacy.626372939890e38d",
+      "zh-Hans": "暂无角色属性",
+      "en": "No character stats"
+    },
+    {
+      "key": "Legacy.72be71b71708b374",
+      "zh-Hans": "当前没有可用的角色属性。\n\n· 加成来源：暂无",
+      "en": "No character stats are available.\n\n· Bonus sources: None"
+    },
+    {
+      "key": "Legacy.33e0f20a851bc365",
+      "zh-Hans": "暴击率",
+      "en": "Critical chance"
+    },
+    {
+      "key": "Legacy.a672dd78105149db",
+      "zh-Hans": "暴击伤害倍率",
+      "en": "Critical damage multiplier"
+    },
+    {
+      "key": "Legacy.d785d157c3c53d03",
+      "zh-Hans": "攻击加成",
+      "en": "Attack bonus"
+    },
+    {
+      "key": "Legacy.6f024c6b5afa9475",
+      "zh-Hans": "防御加成",
+      "en": "Defense bonus"
+    },
+    {
+      "key": "Legacy.7bec3f7966381247",
+      "zh-Hans": "气血加成",
+      "en": "HP bonus"
+    },
+    {
+      "key": "Legacy.be65271fabe658d4",
+      "zh-Hans": "物理伤害加成",
+      "en": "Physical damage bonus"
+    },
+    {
+      "key": "Legacy.bf42cc5549094224",
+      "zh-Hans": "伤害加成",
+      "en": "Damage bonus"
+    },
+    {
+      "key": "Legacy.aa2e49408560de3f",
+      "zh-Hans": "物理反击伤害加成",
+      "en": "Physical counterattack damage bonus"
+    },
+    {
+      "key": "Legacy.3a9efce76e6a56d2",
+      "zh-Hans": "流血／中毒伤害加成",
+      "en": "Bleed / Poison damage bonus"
+    },
+    {
+      "key": "Legacy.ca71d8335e822d6d",
+      "zh-Hans": "灼烧伤害加成",
+      "en": "Burn damage bonus"
+    },
+    {
+      "key": "Legacy.6a119fa89662b8ba",
+      "zh-Hans": "护甲获得量加成",
+      "en": "Armor gain bonus"
+    },
+    {
+      "key": "Legacy.2b8e22fbb3a2227f",
+      "zh-Hans": "回合开始护甲保留",
+      "en": "Armor retained at round start"
+    },
+    {
+      "key": "Legacy.8ea2fea02604f7d2",
+      "zh-Hans": "主动治疗加成",
+      "en": "Active healing bonus"
+    },
+    {
+      "key": "Legacy.aa8457052a32685c",
+      "zh-Hans": "抗性",
+      "en": "Resistance"
+    },
+    {
+      "key": "Legacy.84a1f2b7413651e3",
+      "zh-Hans": "未生效，不计入",
+      "en": "Inactive; excluded"
+    },
+    {
+      "key": "Legacy.cddf575f1524b6e8",
+      "zh-Hans": "直接攻击的暴击概率，最高20%。本页不计局内临时效果。",
+      "en": "Critical chance for direct attacks, capped at 20%. This page excludes temporary run effects."
+    },
+    {
+      "key": "Legacy.e05675a1e9a67cd0",
+      "zh-Hans": "基础暴击率",
+      "en": "Base critical chance"
+    },
+    {
+      "key": "Legacy.3ec0d0f380dbe9a6",
+      "zh-Hans": "永久天赋",
+      "en": "Permanent talents"
+    },
+    {
+      "key": "Legacy.3a58432a18658278",
+      "zh-Hans": "暴击时使用的伤害倍率。基础150%，天赋最多增加50个百分点。",
+      "en": "Damage multiplier on a critical hit. Base 150%; talents add up to 50 percentage points."
+    },
+    {
+      "key": "Legacy.dee1e1b8a76390a2",
+      "zh-Hans": "基础倍率",
+      "en": "Base multiplier"
+    },
+    {
+      "key": "Legacy.e875f7eda3e9f50e",
+      "zh-Hans": "宝石作用于角色、装备与固定宝石合计的数值，再乘永久天赋百分比；两类不是直接相加。宝石部分边际递减，上限75%。",
+      "en": "Gems apply to the combined character, equipment, and flat gem values, then multiply by permanent talent percentages; the two categories are not added together. Gems have diminishing returns capped at 75%."
+    },
+    {
+      "key": "Legacy.2ce696d874a5a460",
+      "zh-Hans": "百分比宝石",
+      "en": "Percentage gems"
+    },
+    {
+      "key": "Legacy.d1247bcd4bb06771",
+      "zh-Hans": "物理伤害宝石",
+      "en": "Physical damage gems"
+    },
+    {
+      "key": "Legacy.234358182f02305d",
+      "zh-Hans": "永久终伤天赋",
+      "en": "Permanent final damage talents"
+    },
+    {
+      "key": "Legacy.c26a6ec552b85660",
+      "zh-Hans": "装备物理伤害词缀",
+      "en": "Equipment physical damage affixes"
+    },
+    {
+      "key": "Legacy.1d105f251c79a018",
+      "zh-Hans": "物理直击先受防御减伤，再由护甲吸收。宝石先按75%上限递减，再乘终伤天赋；暴击和局内临时效果另算。",
+      "en": "Physical direct hits are reduced by Defense before Armor absorbs them. Gems diminish toward a 75% cap, then multiply by final damage talents; critical hits and temporary run effects are calculated separately."
+    },
+    {
+      "key": "Legacy.e5f5d0bf0065257d",
+      "zh-Hans": "对应法术直击跳过防御，受同系抗性减伤，护甲仍可吸收。元素宝石按75%上限递减后乘终伤天赋，不叠加物理宝石；暴击另算。",
+      "en": "Matching spell direct hits bypass Defense, are reduced by elemental resistance, and can still be absorbed by Armor. Elemental gems diminish toward a 75% cap before multiplying by final damage talents; they do not stack with physical gems. Critical hits are separate."
+    },
+    {
+      "key": "Legacy.aaa24afb46b512ad",
+      "zh-Hans": "伤害宝石",
+      "en": "Damage gems"
+    },
+    {
+      "key": "Legacy.750d9376c802214d",
+      "zh-Hans": "物理宝石（名义）",
+      "en": "Physical gems (nominal)"
+    },
+    {
+      "key": "Legacy.8890dae442bd96c9",
+      "zh-Hans": "反击宝石（名义）",
+      "en": "Counterattack gems (nominal)"
+    },
+    {
+      "key": "Legacy.5f68b48b6544fd36",
+      "zh-Hans": "宝石合计（递减后）",
+      "en": "Gem total (after diminishing returns)"
+    },
+    {
+      "key": "Legacy.d3ae009d113f21c0",
+      "zh-Hans": "装备反击词缀",
+      "en": "Equipment counterattack affixes"
+    },
+    {
+      "key": "Legacy.b3818fba3f1f6443",
+      "zh-Hans": "仅放大已触发的物理反击，不增加触发次数。物理与反击宝石合并递减，上限75%，再乘终伤天赋。",
+      "en": "Amplifies triggered physical counterattacks without adding triggers. Physical and counterattack gems share diminishing returns capped at 75%, then multiply by final damage talents."
+    },
+    {
+      "key": "Legacy.94daa20d7624e483",
+      "zh-Hans": "提高流血、中毒及对应引爆的伤害，不增加层数，不含蚀伤。自然伤害看施加者，主动引爆看触发者；宝石边际递减，上限75%。",
+      "en": "Increases Bleed, Poison, and their burst damage without adding stacks; excludes Corrosion. Natural ticks use the applier; active bursts use the triggerer. Gems have diminishing returns capped at 75%."
+    },
+    {
+      "key": "Legacy.4033728b66cb9827",
+      "zh-Hans": "持续伤害宝石",
+      "en": "Damage-over-time gems"
+    },
+    {
+      "key": "Legacy.c45f15f6c97f5ff0",
+      "zh-Hans": "持续伤害与火焰宝石合并递减，上限75%。灼烧与引燃受火焰抗性减伤，仍直接扣气血。",
+      "en": "Damage-over-time and fire gems share diminishing returns capped at 75%. Burn and Ignite are reduced by fire resistance but still remove HP directly."
+    },
+    {
+      "key": "Legacy.07fc389bd9b729b6",
+      "zh-Hans": "持续伤害宝石（名义）",
+      "en": "Damage-over-time gems (nominal)"
+    },
+    {
+      "key": "Legacy.16708c0e79c18d3a",
+      "zh-Hans": "火焰宝石（名义）",
+      "en": "Fire gems (nominal)"
+    },
+    {
+      "key": "Legacy.2255ca838309d136",
+      "zh-Hans": "装备词缀",
+      "en": "Equipment affixes"
+    },
+    {
+      "key": "Legacy.9d2ec68582b931b3",
+      "zh-Hans": "护甲宝石（名义）",
+      "en": "Armor gems (nominal)"
+    },
+    {
+      "key": "Legacy.14299d9f40fa62e8",
+      "zh-Hans": "固定套装",
+      "en": "Fixed set bonuses"
+    },
+    {
+      "key": "Legacy.418ddae75ca5add1",
+      "zh-Hans": "基础保留",
+      "en": "Base retention"
+    },
+    {
+      "key": "Legacy.b515d954020823c8",
+      "zh-Hans": "玄甲四件套",
+      "en": "Xuanjia four-piece set"
+    },
+    {
+      "key": "Legacy.8bb38ef00cccd5f4",
+      "zh-Hans": "未启用",
+      "en": "Inactive"
+    },
+    {
+      "key": "Legacy.51022af0e0b3eee6",
+      "zh-Hans": "装备护甲保留词缀",
+      "en": "Equipment Armor retention affixes"
+    },
+    {
+      "key": "Legacy.524f83d46b0ab903",
+      "zh-Hans": "每回合开始保留上回合护甲的比例。不包含本局临时获得的全部保留效果。",
+      "en": "The share of last round's Armor retained at each round start. Excludes temporary effects that retain all Armor during this run."
+    },
+    {
+      "key": "Legacy.329eb696c0d87a9d",
+      "zh-Hans": "治疗宝石",
+      "en": "Healing gems"
+    },
+    {
+      "key": "Legacy.db5610fdc06c5742",
+      "zh-Hans": "装备治疗词缀",
+      "en": "Equipment healing affixes"
+    },
+    {
+      "key": "Legacy.111db8cdf03d088b",
+      "zh-Hans": "提高主动治疗牌及其重放产生的治疗量；不含吸血、复活和固定套装额外恢复。宝石边际递减，上限75%。",
+      "en": "Increases healing from active healing cards and their replays; excludes lifesteal, revival, and extra recovery from fixed set bonuses. Gems have diminishing returns capped at 75%."
+    },
+    {
+      "key": "Legacy.b69d909924df9ef9",
+      "zh-Hans": "只减免同系法术伤害。宝石根据基础抗性向75%上限递减，不直接相加；护甲仍能吸收法术直击，战斗中的临时减抗另算。",
+      "en": "Reduces only matching elemental spell damage. Gems diminish from base resistance toward a 75% cap rather than adding directly. Armor can still absorb spell direct hits; temporary battle resistance reductions are separate."
+    },
+    {
+      "key": "Legacy.88fd7e0cc5b34371",
+      "zh-Hans": "角色基础抗性",
+      "en": "Character base resistance"
+    },
+    {
+      "key": "Legacy.1d01e27f6533db2b",
+      "zh-Hans": "抗性宝石（名义）",
+      "en": "Resistance gems (nominal)"
+    },
+    {
+      "key": "Legacy.6985e25a86ddea8d",
+      "zh-Hans": "宝石实际提升",
+      "en": "Actual gem increase"
+    },
+    {
+      "key": "Legacy.728f9b278cf52fda",
+      "zh-Hans": "未知职业",
+      "en": "Unknown class"
+    },
+    {
+      "key": "Legacy.a14f6f965a564f0d",
+      "zh-Hans": "（已激活）",
+      "en": "(Active)"
+    },
+    {
+      "key": "Legacy.9e7e90de79e3ea30",
+      "zh-Hans": "暂不编入未完成：该操作仅可在城镇的可编辑状态执行。",
+      "en": "Could not bench the companion: this action requires an editable town state."
+    },
+    {
+      "key": "Legacy.9027b4f494698083",
+      "zh-Hans": "已暂不编入永久伙伴；本次路线可仅由主角与任务 NPC 出战。",
+      "en": "Permanent companion benched; the Hero and task NPC can enter this route together."
+    },
+    {
+      "key": "Legacy.4ff9c3e0d8eda947",
+      "zh-Hans": "名册已满：新伙伴已固定保存，请选择替换对象或放弃候选。",
+      "en": "Roster full: the new companion is held for your decision. Choose a replacement or decline."
+    },
+    {
+      "key": "Legacy.cdec49d8a9f1f78e",
+      "zh-Hans": "招贤未能完成，请稍后重试。",
+      "en": "Recruitment could not be completed. Please try again."
+    },
+    {
+      "key": "Legacy.8c03511257fe2535",
+      "zh-Hans": "遣散未完成：至少保留一名伙伴。",
+      "en": "Could not dismiss: keep at least one companion."
+    },
+    {
+      "key": "Legacy.b20eb43338d95111",
+      "zh-Hans": "已遣散该伙伴，装备已返还到背包。",
+      "en": "Companion dismissed; equipment returned to the backpack."
+    },
+    {
+      "key": "Legacy.dc4f030abe15c305",
+      "zh-Hans": "替换未完成：请先卸下装备并清空已投入经验，再替换该伙伴。",
+      "en": "Could not replace: remove equipment and clear invested experience first."
+    },
+    {
+      "key": "Legacy.f9ca9a6702fcce76",
+      "zh-Hans": "已完成替换，并自动选中新伙伴。",
+      "en": "Replacement complete; the new companion is selected."
+    },
+    {
+      "key": "Legacy.c9340a2b428eb8f6",
+      "zh-Hans": "放弃候选未完成，请稍后重试。",
+      "en": "Could not decline the candidate. Please try again."
+    },
+    {
+      "key": "Legacy.a9af0197328ff948",
+      "zh-Hans": "已放弃本次候选；下次招贤将继续后续卡池顺序。",
+      "en": "Candidate declined; the next recruitment continues from the next pool entry."
+    },
+    {
+      "key": "Legacy.d31f5e904da0bf37",
+      "zh-Hans": "经验  已满级",
+      "en": "Experience Max level"
+    },
+    {
+      "key": "Legacy.ce1160bcf855cc9d",
+      "zh-Hans": " · 已出战",
+      "en": " · In formation"
+    },
+    {
+      "key": "Legacy.34bfc77d3ac8de7b",
+      "zh-Hans": "升星 · 请选择伙伴",
+      "en": "Raise star · Select a companion"
+    },
+    {
+      "key": "Legacy.cf4f886b4d2cccbb",
+      "zh-Hans": "本次路线已锁定，无法遣散。",
+      "en": "This route is locked; dismissal is unavailable."
+    },
+    {
+      "key": "Legacy.dc7004fdf0161d80",
+      "zh-Hans": "至少保留一名伙伴，无法遣散。",
+      "en": "Keep at least one companion; dismissal is unavailable."
+    },
+    {
+      "key": "Legacy.88abff0b993bbfc5",
+      "zh-Hans": "请先选择一名伙伴。",
+      "en": "Select a companion first."
+    },
+    {
+      "key": "Legacy.e9591af200d4282a",
+      "zh-Hans": "遣散当前伙伴并让候选入队；装备与经验材料将返还。",
+      "en": "Dismiss this companion and accept the candidate; equipment and experience materials are returned."
+    },
+    {
+      "key": "Legacy.d78c8eaf13cef624",
+      "zh-Hans": "遣散当前伙伴；装备将返还到背包。",
+      "en": "Dismiss this companion; equipment returns to the backpack."
+    },
+    {
+      "key": "Legacy.2c2ea29bcd3c2153",
+      "zh-Hans": "本次路线已锁定，牌组只读。",
+      "en": "This route is locked; the deck is read only."
+    },
+    {
+      "key": "Legacy.8230de02d3365553",
+      "zh-Hans": "此牌尚未解锁。",
+      "en": "This card is not unlocked yet."
+    },
+    {
+      "key": "Legacy.976c636887f1bde8",
+      "zh-Hans": "主角牌组已满（8 张），无法编入此牌。",
+      "en": "Hero deck is full (8 cards); this card cannot be added."
+    },
+    {
+      "key": "Legacy.b89ed50c200b11ad",
+      "zh-Hans": "该伙伴个人牌组已满（5 张），无法编入此牌。",
+      "en": "This companion's personal deck is full (5 cards); this card cannot be added."
+    },
+    {
+      "key": "Legacy.17b6e8e7025d3655",
+      "zh-Hans": "真气",
+      "en": "Qi"
+    },
+    {
+      "key": "Legacy.7ec05360e665e435",
+      "zh-Hans": "身法",
+      "en": "Agility"
+    },
+    {
+      "key": "Legacy.d287782f3ff08f4f",
+      "zh-Hans": "任务 NPC 未加入",
+      "en": "Task NPC has not joined"
+    },
+    {
+      "key": "Legacy.e65b1ed6df0cc495",
+      "zh-Hans": "工具尚未就绪",
+      "en": "Tool is not ready"
+    },
+    {
+      "key": "Legacy.559b43303287d22d",
+      "zh-Hans": "请先放下手中物品",
+      "en": "Put down the carried item first"
+    },
+    {
+      "key": "Legacy.7394986f049c43a6",
+      "zh-Hans": "来源已变化，请重新放入物品",
+      "en": "Source changed; place the item again"
+    },
+    {
+      "key": "Legacy.b456bcf1b7c86b31",
+      "zh-Hans": "请先采用或保留洗炼结果",
+      "en": "Accept or keep the refinement result first"
+    },
+    {
+      "key": "Legacy.541c4c4f149ae583",
+      "zh-Hans": "请先移出锁定物品",
+      "en": "Remove locked items first"
+    },
+    {
+      "key": "Legacy.90aa9ee3cb20e1f2",
+      "zh-Hans": "只能分解装备或行旅钱",
+      "en": "Only equipment or Travel Coins can be dismantled"
+    },
+    {
+      "key": "Legacy.855260b652d4ad1f",
+      "zh-Hans": "请在首格放入装备",
+      "en": "Place equipment in the first slot"
+    },
+    {
+      "key": "Legacy.a812e5a05e36750c",
+      "zh-Hans": "强化已达上限",
+      "en": "Enhancement cap reached"
+    }
+  ]
+}

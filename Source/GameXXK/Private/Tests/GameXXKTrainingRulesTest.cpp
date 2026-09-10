@@ -46,8 +46,8 @@ bool FGameXXKTrainingDifficultyUnlockTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("challenge starts"), FGameXXKTrainingRules::StartChallenge(Progress, StageId));
 		TestTrue(TEXT("challenge completes"), FGameXXKTrainingRules::CompleteChallenge(Progress, StageId));
 	}
-	TestEqual(TEXT("all three difficulty bands expose nine stages"),
-		FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
+	TestEqual(TEXT("three difficulty bands retain nine base stages and add one Hunt each"),
+		FGameXXKTrainingRules::GetStageDefinitions().Num(), 30);
 	TestTrue(TEXT("Hard unlocks after Normal 3-3"),
 		FGameXXKTrainingRules::IsDifficultyUnlocked(Progress, EGameXXKTrainingDifficulty::Hard));
 	const FName HardOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Hard, 1);
@@ -1454,6 +1454,8 @@ bool FGameXXKTrainingTravelOfflineLoadTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("offline load source starts 1-1 travel"), SourceSubsystem->StartTrainingTravel(StageOne));
 
 	FGameXXKRuntimeState SourceState = SourceSubsystem->GetRuntimeStateCopy();
+	SourceState.Talents.NodeRanks.Add(TEXT("Talent.Root"),1);
+	SourceState.Talents.NodeRanks.Add(TEXT("Talent.Entry.IdleOffline"),1);
 	SourceState.Training.TravelLastUpdatedUnixSeconds = FDateTime::UtcNow().ToUnixTimestamp() - 512;
 	UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(
 		UGameplayStatics::CreateSaveGameObject(UGameXXKSaveGame::StaticClass()));

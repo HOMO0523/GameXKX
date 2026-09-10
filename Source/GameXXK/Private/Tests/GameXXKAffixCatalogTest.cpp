@@ -14,7 +14,7 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 	const TArray<FGameXXKAffixDefinition>& Universal = FGameXXKAffixCatalog::GetUniversalDefinitions();
 	const TArray<FGameXXKAffixDefinition>& All = FGameXXKAffixCatalog::GetAllDefinitions();
 	TestEqual(TEXT("there are three active universal families after Mana retirement"), Universal.Num(), 3);
-	TestEqual(TEXT("five universal plus thirty set-specific families are exposed"), All.Num(), 35);
+	TestEqual(TEXT("active and legacy families remain readable"), All.Num(), 36);
 	TestFalse(TEXT("retired Speed is absent from the new-roll universal pool"), Universal.ContainsByPredicate(
 		[](const FGameXXKAffixDefinition& Definition)
 		{
@@ -56,6 +56,7 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 		{TEXT("Affix.QingNang.EmergencyHealing"), S::QingNang, K::EmergencyHealing, U::BasisPoints},
 		{TEXT("Affix.ZhuiFeng.Draw"), S::ZhuiFeng, K::Draw, U::FlatCount},
 		{TEXT("Affix.ZhuiFeng.LowCostBonus"), S::ZhuiFeng, K::LowCostBonus, U::BasisPoints},
+		{TEXT("Affix.ZhuiFeng.LateCardDamage"), S::ZhuiFeng, K::ZhuiFengLateCardDamage, U::BasisPoints},
 		{TEXT("Affix.ZhuiFeng.SharedEnergy"), S::ZhuiFeng, K::SharedEnergy, U::FlatCount},
 		{TEXT("Affix.ZhuiFeng.ComboCount"), S::ZhuiFeng, K::ComboCount, U::FlatCount},
 		{TEXT("Affix.ZhuiFeng.TemporaryCostReduction"), S::ZhuiFeng, K::TemporaryCostReduction, U::FlatCount},
@@ -70,7 +71,7 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 		{TEXT("Affix.ShanHe.FormationPower"), S::ShanHe, K::FormationPower, U::BasisPoints},
 		{TEXT("Affix.ShanHe.TeamTerrainPower"), S::ShanHe, K::TeamTerrainPower, U::BasisPoints},
 	};
-	TestEqual(TEXT("the exact affix expectation table contains all 35 rows"), static_cast<int32>(UE_ARRAY_COUNT(ExpectedDefinitions)), 35);
+	TestEqual(TEXT("the exact affix expectation table contains all 36 rows"), static_cast<int32>(UE_ARRAY_COUNT(ExpectedDefinitions)), 36);
 	for (const FAffixExpectation& Expected : ExpectedDefinitions)
 	{
 		const FGameXXKAffixDefinition* Definition = FGameXXKAffixCatalog::FindDefinition(FName(Expected.Id));
@@ -96,8 +97,8 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 		ModifierKinds.Add(static_cast<uint8>(Definition.ModifierKind));
 		TestNotNull(TEXT("affix lookup uses its stable row ID"), FGameXXKAffixCatalog::FindDefinition(Definition.Id));
 	}
-	TestEqual(TEXT("affix row IDs are unique"), Ids.Num(), 35);
-	TestEqual(TEXT("affix uniqueness is defined by ModifierKind"), ModifierKinds.Num(), 35);
+	TestEqual(TEXT("affix row IDs are unique"), Ids.Num(), 36);
+	TestEqual(TEXT("affix uniqueness is defined by ModifierKind"), ModifierKinds.Num(), 36);
 
 	for (const FGameXXKAffixDefinition& Definition : Universal)
 	{
@@ -107,7 +108,9 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 	{
 		const EGameXXKEquipmentSet Set = static_cast<EGameXXKEquipmentSet>(SetValue);
 		const TArray<FGameXXKAffixDefinition>& Definitions = FGameXXKAffixCatalog::GetSetDefinitions(Set);
-		TestEqual(TEXT("each modern set has exactly five exclusive families"), Definitions.Num(), 5);
+		TestEqual(TEXT("active pools use the approved numeric families"), Definitions.Num(), Set==S::ZhuiFeng?2:Set==S::ShanHe?4:5);
+		for (const auto& Definition : Definitions)
+			TestFalse(TEXT("random pools contain no retired resource family"), FGameXXKAffixCatalog::IsRetiredResourceAffix(Definition.Id));
 		for (const FGameXXKAffixDefinition& Definition : Definitions)
 		{
 			TestEqual(TEXT("set pool contains only its own affixes"), Definition.Set, Set);
@@ -183,6 +186,9 @@ bool FGameXXKAffixCatalogTest::RunTest(const FString& Parameters)
 	for (int32 TierIndex = 0; TierIndex < static_cast<int32>(UE_ARRAY_COUNT(Tiers)); ++TierIndex)
 	{
 		const int64 Rank = TierIndex + 1;
+		const auto WindRange = FGameXXKAffixCatalog::GetMagnitudeRange(FName(TEXT("Affix.ZhuiFeng.LateCardDamage")), Tiers[TierIndex]);
+		TestEqual(TEXT("Wind minimum is fixed at 1% for every tier"), WindRange.Minimum, 100);
+		TestEqual(TEXT("Wind maximum is fixed at 1% for every tier"), WindRange.Maximum, 100);
 		const int32 ExpectedBasisMin = static_cast<int32>(100LL * (Rank + 1) * (Rank + 2) / 2);
 		const int32 ExpectedBasisMax = ExpectedBasisMin + static_cast<int32>(100LL * (Rank + 1));
 		const int32 ExpectedFlatMin = static_cast<int32>((Rank + 1) / 2);

@@ -1,0 +1,10 @@
+{
+  "slug": "qi-base",
+  "prompt": "Use case: ui asset. 只根据参考宝石icon的画风，从零重绘一个气力数值圆底。外形为饱满结实的近圆形浅青玉牌，粗而干净的深墨外轮廓，像参考宝石一样用3个明确的大平涂明暗面表达很浅的实体厚度：大面积浅青白正面、一小块左上明面、一段深青下侧面。中央至少80%是一块平稳、干净的浅青白空白面，便于以后叠加深色数字。整体简洁、低细节、略卡通，轮廓略有手绘温度；只有极少量宽刷笔感，不要细碎纹理，不要水彩渗化，不要紙纹，不要毛边或喷溅。不要层层套环、金属圈、金色饰边、云角、符号、刻度、文字、数字、图标、光晕或粒子。不是旧纸面墨圈，而是一枚清楚大块面、粗墨边的圆形UI底片。单个独立正视圆底，正方形画布，主体占约84%，背景完全均匀纯洋红#FF00FF以便去底；无阴影。只画一个无字圆底。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-b8b68056-8ab5-4def-8c3e-06655927bebd.png",
+  "originalSource": "SourceArt/UI/Battle/PartyQi/battle_party_qi_soul_orb_v1.png",
+  "revision": "gem reference only; three large planes, no paper/grain"
+}

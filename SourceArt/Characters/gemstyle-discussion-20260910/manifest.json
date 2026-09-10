@@ -1,0 +1,352 @@
+{
+  "countCharacters": 3,
+  "countMonsters": 3,
+  "tool": "built-in image_gen",
+  "phase": "discussion-awaiting-user",
+  "userApproved": false,
+  "imported": false,
+  "records": [
+    {
+      "slug": "hero",
+      "id": "Character.Hero",
+      "name": "主角",
+      "group": "characters",
+      "tier": null,
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/hero.png",
+      "rawSha256": "9153224aeef2749383bbf5041c852e0dc9f2011d6a87aace47d4552d42386265",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/hero.png",
+      "sha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        340,
+        65,
+        1238,
+        1544
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+      "identitySourceSha256": "39fe355f4e42b63d2fb3329a3d4f3b404dfd00be222957230a90df7b75f6270d",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "characters/hero.png",
+      "facing": "left",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": false
+    },
+    {
+      "slug": "hunter",
+      "id": "Role.Hunter",
+      "name": "弓手",
+      "group": "characters",
+      "tier": null,
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/hunter.png",
+      "rawSha256": "a44dcb08010cb23cf8f1f795130fa652e569c5245299e2ea177d9a21d99d32b9",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/hunter.png",
+      "sha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        116,
+        144,
+        1398,
+        1487
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png",
+      "identitySourceSha256": "faf669d99e53f17f6fb38ee3e7f76fae8c1c3aadd35791d9dd1364a2fe749131",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "characters/hunter.png",
+      "facing": "left",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": false
+    },
+    {
+      "slug": "you_bai",
+      "id": "Npc.YueBai",
+      "name": "幽白",
+      "group": "characters",
+      "tier": null,
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/you_bai.png",
+      "rawSha256": "88fc1a02d4e78e77a790f7341b4f854030170c61d6ef01e94d4ac2ee6aa59cba",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/you_bai.png",
+      "sha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        297,
+        87,
+        1336,
+        1516
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/09_yue_bai.png",
+      "identitySourceSha256": "4977909d69c2542bd6c536650a56854b1d7a21883f16b909fec9f8b6b67c10c0",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "characters/you_bai.png",
+      "facing": "left",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": false
+    },
+    {
+      "slug": "rooster",
+      "id": "Enemy.Ch1.Rooster",
+      "name": "公鸡",
+      "group": "monsters",
+      "tier": "normal",
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/rooster.png",
+      "rawSha256": "f2bbb0788a14f20a0409d79fbe84862a6adbc9c0bd3efc5ca30b79d2504a83e7",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/monsters/rooster.png",
+      "sha256": "78f29195ad1b9c890f1798decaaf2b1f654dad0ba615100bff2ab0668c108939",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        104,
+        44,
+        1399,
+        1542
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png",
+      "identitySourceSha256": "f7543ca644d968f8b4f32c6d2ad2317fb57b9597b568692d0b9b04d69c6fedd8",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "monsters/rooster.png",
+      "facing": "right",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": true
+    },
+    {
+      "slug": "goat",
+      "id": "Enemy.Ch1.Goat",
+      "name": "山羊",
+      "group": "monsters",
+      "tier": "normal",
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/goat.png",
+      "rawSha256": "ed741fb0526c33733f1bfba72a98776a719f9f886169d4b1f8cbc803f625b622",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/monsters/goat.png",
+      "sha256": "cffc586898cfaa15f131cdd9a1607713079b2e80f2a0262114107bd3a0ae652e",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        74,
+        274,
+        1551,
+        1396
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png",
+      "identitySourceSha256": "ad6e09c7fa4b3f90e746912b1ebecd239c7a2292ce84c3360aa7d371020294d7",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "monsters/goat.png",
+      "facing": "right",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": false
+    },
+    {
+      "slug": "moneyrat",
+      "id": "Enemy.Ch1.MoneyRat",
+      "name": "金钱鼠",
+      "group": "monsters",
+      "tier": "boss",
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/moneyrat.png",
+      "rawSha256": "6fc0be23e6b76eed6dc99ca40a7a2faffa499bc93d8bc129180d74c6aff78ad1",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/monsters/moneyrat.png",
+      "sha256": "60e1e95b71f570b1a46524fa45a09ef8a172fec17f972a3d28ab2dd95d90941e",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        79,
+        49,
+        1517,
+        1552
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png",
+      "identitySourceSha256": "d71d6b99bf437562a3bb354356d636520f816cb389769251045f4caffce85814",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false,
+      "file": "monsters/moneyrat.png",
+      "facing": "right",
+      "view": "three-quarter",
+      "reviewFlipHorizontal": false
+    }
+  ],
+  "sceneComplete": true,
+  "scene": {
+    "file": "layout-preview.png",
+    "size": [
+      1920,
+      1080
+    ],
+    "sha256": "dcc3380e5b1a9926aecf1f39aa8c11986b951ab0457921dc748f3e49b7ff866c",
+    "kind": "deterministic offline composition from independent assets; not an in-engine screenshot"
+  },
+  "layoutSpec": "layout-spec.json",
+  "independentBackground": "background-pure.png",
+  "independentCardBase": "card-base.png",
+  "fullCatalogGenerationPaused": true,
+  "cardBaseCanvasMatchesOriginal": {
+    "originalSource": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeApproved/T_MasterV2_CardFrame.png",
+    "file": "card-base.png",
+    "originalSize": [
+      452,
+      516
+    ],
+    "newSize": [
+      452,
+      516
+    ],
+    "originalAlphaBounds": [
+      2,
+      4,
+      448,
+      512
+    ],
+    "newAlphaBounds": [
+      2,
+      4,
+      448,
+      512
+    ],
+    "exactCanvasAndMarginsMatch": true,
+    "sha256": "b7b22181fa88d10b3036364d5983fd7ed29b99c3f5f1117ea0a1f58e58fd0d43"
+  },
+  "uiBaseChecks": [
+    {
+      "originalSource": "SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeApproved/T_MasterV2_CardFrame.png",
+      "file": "card-base.png",
+      "originalSize": [
+        452,
+        516
+      ],
+      "newSize": [
+        452,
+        516
+      ],
+      "originalAlphaBounds": [
+        2,
+        4,
+        448,
+        512
+      ],
+      "newAlphaBounds": [
+        2,
+        4,
+        448,
+        512
+      ],
+      "exactCanvasAndMarginsMatch": true,
+      "sha256": "b7b22181fa88d10b3036364d5983fd7ed29b99c3f5f1117ea0a1f58e58fd0d43"
+    },
+    {
+      "originalSource": "SourceArt/UI/Battle/PartyQi/battle_party_qi_soul_orb_v1.png",
+      "file": "qi-base.png",
+      "originalSize": [
+        1254,
+        1254
+      ],
+      "newSize": [
+        1254,
+        1254
+      ],
+      "originalAlphaBounds": [
+        226,
+        210,
+        1037,
+        1034
+      ],
+      "newAlphaBounds": [
+        226,
+        210,
+        1037,
+        1034
+      ],
+      "exactCanvasAndMarginsMatch": true,
+      "sha256": "c1c5e824d92a0f1b75215558d8f0c9ab1f45cca1f90dc5f93adaf09fa5a4b268"
+    },
+    {
+      "originalSource": "docs/ui/main_menu/source_art/ink_button_base.png",
+      "file": "end-turn-base.png",
+      "originalSize": [
+        1667,
+        492
+      ],
+      "newSize": [
+        1667,
+        492
+      ],
+      "originalAlphaBounds": [
+        28,
+        18,
+        1639,
+        474
+      ],
+      "newAlphaBounds": [
+        28,
+        18,
+        1639,
+        474
+      ],
+      "exactCanvasAndMarginsMatch": true,
+      "sha256": "79b7291da096d79ccfafe8092af5748cb132c5dac7edb98b28fc54173569da56"
+    }
+  ]
+}

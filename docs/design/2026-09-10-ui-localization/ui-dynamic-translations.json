@@ -1,0 +1,1438 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.4b2e1c6230c688b9",
+      "nativePattern": "%s %d层",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "{0} {1}层",
+      "en": "{0} {1} stacks"
+    },
+    {
+      "key": "Legacy.e31bf490844641df",
+      "nativePattern": "%s用【%s】攻击%s，被闪避",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}用【{1}】攻击{2}，被闪避",
+      "en": "{0} attacks {2} with [{1}]: dodged"
+    },
+    {
+      "key": "Legacy.af0812c19384e6b8",
+      "nativePattern": "%s用【%s】对%s造成了%d%s伤害",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%s",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "{0}用【{1}】对{2}造成了{3}{4}伤害",
+      "en": "{0} deals {3} {4} damage to {2} with [{1}]"
+    },
+    {
+      "key": "Legacy.d29c833edd89cffe",
+      "nativePattern": "，吸取%d点内力",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "，吸取{0}点内力",
+      "en": ", drains {0} Inner Power"
+    },
+    {
+      "key": "Legacy.1dfbeaf7ed056ffd",
+      "nativePattern": "%d气\n%d内",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "{0}气\n{1}内",
+      "en": "{0} Qi\n{1} Inner"
+    },
+    {
+      "key": "Legacy.adf131633fec953b",
+      "nativePattern": "\n敌方意图恢复失败：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "\n敌方意图恢复失败：{0}",
+      "en": "\nCould not restore enemy intent: {0}"
+    },
+    {
+      "key": "Legacy.48976346576ff2b1",
+      "nativePattern": "%s用【%s】吸取%s%d点内力",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "{0}用【{1}】吸取{2}{3}点内力",
+      "en": "{0} drains {3} Inner Power from {2} with [{1}]"
+    },
+    {
+      "key": "Legacy.60444ba394e4dc2d",
+      "nativePattern": "地势 · %s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "地势 · {0}",
+      "en": "Terrain · {0}"
+    },
+    {
+      "key": "Legacy.0461a84846f30aa4",
+      "nativePattern": "此牌要求弃置 %d 张手牌",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "此牌要求弃置 {0} 张手牌",
+      "en": "This card requires discarding {0} cards"
+    },
+    {
+      "key": "Legacy.6d71fb1464dec1c9",
+      "nativePattern": "每回合首次打出耗气至少2的牌：全队失去1气血（最低保留1点），再恢复%d气血。每回合累计获得6药效时，回复1气；敌方回合达成则下回合到账。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "每回合首次打出耗气至少2的牌：全队失去1气血（最低保留1点），再恢复{0}气血。每回合累计获得6药效时，回复1气；敌方回合达成则下回合到账。",
+      "en": "The first card costing at least 2 Qi each round makes all allies lose 1 HP (minimum 1), then restores {0} HP. Gain 1 Qi after gaining a total of 6 Potency each round; if reached during the enemy turn, receive it next round."
+    },
+    {
+      "key": "Legacy.b5a8de85ac455bc2",
+      "nativePattern": "每回合首次治疗或药效反转达到%d点：友方目标获得药师20%%防御的护甲（受开方品质增幅）；敌方目标获得1层破绽。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "每回合首次治疗或药效反转达到{0}点：友方目标获得药师20%防御的护甲（受开方品质增幅）；敌方目标获得1层破绽。",
+      "en": "The first heal or reversed Potency reaching {0} each round grants an allied target Armor equal to 20% of the Apothecary's Defense (increased by Prescription quality), or applies 1 Vulnerability to an enemy target."
+    },
+    {
+      "key": "Legacy.cb26462c43b96ba1",
+      "nativePattern": "已打出 · 本次任务第%d张。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已打出 · 本次任务第{0}张。",
+      "en": "Played · Card {0} in this task."
+    },
+    {
+      "key": "Legacy.dcca6e70358b18af",
+      "nativePattern": "进度 %d/%d\n%s",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "进度 {0}/{1}\n{2}",
+      "en": "Progress {0}/{1}\n{2}"
+    },
+    {
+      "key": "Legacy.931643b9c8261be4",
+      "nativePattern": "药方%d · %s",
+      "argumentTypes": [
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "药方{0} · {1}",
+      "en": "Prescription {0} · {1}"
+    },
+    {
+      "key": "Legacy.dea51466e50090f1",
+      "nativePattern": "\n本回合已触发 %d/2 次。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "\n本回合已触发 {0}/2 次。",
+      "en": "\nTriggered {0}/2 times this round."
+    },
+    {
+      "key": "Legacy.0ae6cf386acdf1e0",
+      "nativePattern": "\n累计清除进度 %d/3。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "\n累计清除进度 {0}/3。",
+      "en": "\nCumulative removal progress {0}/3."
+    },
+    {
+      "key": "Legacy.2d8922f92cfdb0d5",
+      "nativePattern": "\n流血伤害进度 %d/2。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "\n流血伤害进度 {0}/2。",
+      "en": "\nBleed damage progress {0}/2."
+    },
+    {
+      "key": "Legacy.11f4fe8b7a937b5e",
+      "nativePattern": "未知状态（枚举值 %d）",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "未知状态（枚举值 {0}）",
+      "en": "Unknown status (enum {0})"
+    },
+    {
+      "key": "Legacy.f3c4b0f40688381b",
+      "nativePattern": "未配置状态枚举 %d；仅展示权威层数。",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "未配置状态枚举 {0}；仅展示权威层数。",
+      "en": "Status enum {0} has no presentation; showing the recorded stack count."
+    },
+    {
+      "key": "Legacy.f18bd547c99ce4c1",
+      "nativePattern": "气血 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "气血 {0} / {1}",
+      "en": "HP {0} / {1}"
+    },
+    {
+      "key": "Legacy.dced2b0761834f10",
+      "nativePattern": "内力 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "内力 {0} / {1}",
+      "en": "Inner Power {0} / {1}"
+    },
+    {
+      "key": "Legacy.3173200dbed7d8ef",
+      "nativePattern": "法术任务待完成 · %d/%d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "法术任务待完成 · {0}/{1}",
+      "en": "Spell task pending · {0}/{1}"
+    },
+    {
+      "key": "Legacy.186545071b08a386",
+      "nativePattern": "重箭就绪 · %s%d层蓄力",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "重箭就绪 · {0}{1}层蓄力",
+      "en": "Heavy Arrow ready · {0}{1} Charge stacks"
+    },
+    {
+      "key": "Legacy.98e0e3393a419ada",
+      "nativePattern": "结束回合将触发〈%s〉的收招",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "结束回合将触发〈{0}〉的收招",
+      "en": "Ending the turn triggers the finisher of <{0}>"
+    },
+    {
+      "key": "Legacy.2c2d8407681df3f9",
+      "nativePattern": "%s（递减后%s）",
+      "argumentTypes": [
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}（递减后{1}）",
+      "en": "{0} ({1} after diminishing returns)"
+    },
+    {
+      "key": "Legacy.b4e55d7eaafd0a92",
+      "nativePattern": "+%d个百分点",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "+{0}个百分点",
+      "en": "+{0} percentage points"
+    },
+    {
+      "key": "Legacy.1853fb672000fd0a",
+      "nativePattern": "词缀按一半数值计入，与护甲宝石合并后按75%%上限递减，再加固定套装。当前共享部分递减后为%s。",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "词缀按一半数值计入，与护甲宝石合并后按75%上限递减，再加固定套装。当前共享部分递减后为{0}。",
+      "en": "Affixes count at half value and combine with Armor gems under a 75% diminishing-return cap, then fixed set bonuses are added. The shared portion after diminishing returns is {0}."
+    },
+    {
+      "key": "Legacy.0f0e8c3407d1da82",
+      "nativePattern": "%s（折半后%s）",
+      "argumentTypes": [
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}（折半后{1}）",
+      "en": "{0} ({1} after halving)"
+    },
+    {
+      "key": "Legacy.77d274fa5e729b33",
+      "nativePattern": "+%.2f个百分点",
+      "argumentTypes": [
+        "%.2f"
+      ],
+      "zh-Hans": "+{0}个百分点",
+      "en": "+{0} percentage points"
+    },
+    {
+      "key": "Legacy.08515d075214827f",
+      "nativePattern": "类型：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "类型：{0}",
+      "en": "Type: {0}"
+    },
+    {
+      "key": "Legacy.31f6303267deb4ad",
+      "nativePattern": "恢复 HP +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "恢复 HP +{0}",
+      "en": "Restore HP +{0}"
+    },
+    {
+      "key": "Legacy.234a43d407e4d69a",
+      "nativePattern": "恢复 MP +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "恢复 MP +{0}",
+      "en": "Restore MP +{0}"
+    },
+    {
+      "key": "Legacy.5193f60d91a075d1",
+      "nativePattern": "攻击 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "攻击 +{0}",
+      "en": "Attack +{0}"
+    },
+    {
+      "key": "Legacy.c293e9bf4383bb75",
+      "nativePattern": "防御 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "防御 +{0}",
+      "en": "Defense +{0}"
+    },
+    {
+      "key": "Legacy.d018c57c0c795e1a",
+      "nativePattern": "生命上限 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "生命上限 +{0}",
+      "en": "Max HP +{0}"
+    },
+    {
+      "key": "Legacy.c44106ec34e8d4f9",
+      "nativePattern": "真气上限 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "真气上限 +{0}",
+      "en": "Max Qi +{0}"
+    },
+    {
+      "key": "Legacy.d137843b2d2b5660",
+      "nativePattern": "强化 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "强化 +{0}",
+      "en": "Enhancement +{0}"
+    },
+    {
+      "key": "Legacy.8a34f3d9a40df0d4",
+      "nativePattern": "部位：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "部位：{0}",
+      "en": "Slot: {0}"
+    },
+    {
+      "key": "Legacy.96e4cb8e77b6f947",
+      "nativePattern": "装备等级 %d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "装备等级 {0}",
+      "en": "Equipment level {0}"
+    },
+    {
+      "key": "Legacy.3d49b2b39b365581",
+      "nativePattern": "%s（已停用）",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "{0}（已停用）",
+      "en": "{0} (disabled)"
+    },
+    {
+      "key": "Legacy.f6399bc84f573387",
+      "nativePattern": "孔位 %d：空",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "孔位 {0}：空",
+      "en": "Socket {0}: Empty"
+    },
+    {
+      "key": "Legacy.7b2714cb2756fb52",
+      "nativePattern": "孔位 %d：%s +%d",
+      "argumentTypes": [
+        "%d",
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "孔位 {0}：{1} +{2}",
+      "en": "Socket {0}: {1} +{2}"
+    },
+    {
+      "key": "Legacy.fc9c776342cca274",
+      "nativePattern": "套装：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "套装：{0}",
+      "en": "Set: {0}"
+    },
+    {
+      "key": "Legacy.29f0800b748c5172",
+      "nativePattern": "%d件：%s",
+      "argumentTypes": [
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "{0}件：{1}",
+      "en": "{0} pieces: {1}"
+    },
+    {
+      "key": "Legacy.80f5fd1d37a9a2a3",
+      "nativePattern": "攻击 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "攻击 {0}",
+      "en": "Attack {0}"
+    },
+    {
+      "key": "Legacy.fdb4015e523ccdcd",
+      "nativePattern": "防御 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "防御 {0}",
+      "en": "Defense {0}"
+    },
+    {
+      "key": "Legacy.a6908ae2d6d3c689",
+      "nativePattern": "气血 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "气血 {0}",
+      "en": "HP {0}"
+    },
+    {
+      "key": "Legacy.c10e0a0ce375d9c2",
+      "nativePattern": "真气 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "真气 {0}",
+      "en": "Qi {0}"
+    },
+    {
+      "key": "Legacy.d1c43aeb955342a4",
+      "nativePattern": "身法 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "身法 {0}",
+      "en": "Agility {0}"
+    },
+    {
+      "key": "Legacy.9b5765200b9e308f",
+      "nativePattern": "已招募：%s · 已自动选中，可配置个人牌组。",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "已招募：{0} · 已自动选中，可配置个人牌组。",
+      "en": "Recruited: {0} · Selected automatically. You can now edit their personal deck."
+    },
+    {
+      "key": "Legacy.8babf11ffe064bdb",
+      "nativePattern": "招募重复：%s 转化为 1 枚升星印（现有 %d 枚）。",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "招募重复：{0} 转化为 1 枚升星印（现有 {1} 枚）。",
+      "en": "Duplicate recruit: {0} converted into 1 Star Seal ({1} owned)."
+    },
+    {
+      "key": "Legacy.e5154d2c1e4eee7f",
+      "nativePattern": "%d / %d · %d / %d 页",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "{0} / {1} · {2} / {3} 页",
+      "en": "{0} / {1} · Page {2} / {3}"
+    },
+    {
+      "key": "Legacy.f430d953191dd05c",
+      "nativePattern": "经验  %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "经验  {0} / {1}",
+      "en": "Experience {0} / {1}"
+    },
+    {
+      "key": "Legacy.9ad2104dbdd36f37",
+      "nativePattern": "职业  %s\n等级  Lv.%d\n%s\n星级  ★%d\n\n气血  %d\n攻击  %d\n防御  %d\n内力  %d",
+      "argumentTypes": [
+        "%s",
+        "%d",
+        "%s",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "职业  {0}\n等级  Lv.{1}\n{2}\n星级  ★{3}\n\n气血  {4}\n攻击  {5}\n防御  {6}\n内力  {7}",
+      "en": "Class {0}\nLevel Lv.{1}\n{2}\nStars ★{3}\n\nHP {4}\nAttack {5}\nDefense {6}\nInner Power {7}"
+    },
+    {
+      "key": "Legacy.d34f197114b29b16",
+      "nativePattern": "已选 %d / 5 张 · 升星印 %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "已选 {0} / 5 张 · 升星印 {1}",
+      "en": "Selected {0} / 5 cards · Star Seals {1}"
+    },
+    {
+      "key": "Legacy.d20cfb71a149aa8d",
+      "nativePattern": "升星 · 消耗 %d 枚升星印",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "升星 · 消耗 {0} 枚升星印",
+      "en": "Raise star · Costs {0} Star Seals"
+    },
+    {
+      "key": "Legacy.3f2a5e9f703b8e27",
+      "nativePattern": "待决定：%s · 个人牌组 %d 张\n选择左侧伙伴替换，或放弃候选。",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "待决定：{0} · 个人牌组 {1} 张\n选择左侧伙伴替换，或放弃候选。",
+      "en": "Pending: {0} · Personal deck: {1} cards\nSelect a companion on the left to replace, or decline the candidate."
+    },
+    {
+      "key": "Legacy.d91ae0e39961bbd8",
+      "nativePattern": "%d气",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "{0}气",
+      "en": "{0} Qi"
+    },
+    {
+      "key": "Legacy.796d0bcac9801b08",
+      "nativePattern": "%d内",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "{0}内",
+      "en": "{0} Inner"
+    },
+    {
+      "key": "Legacy.b2af399327eb35fe",
+      "nativePattern": "主角牌组  %d / 8\n%s",
+      "argumentTypes": [
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "主角牌组  {0} / 8\n{1}",
+      "en": "Hero deck {0} / 8\n{1}"
+    },
+    {
+      "key": "Legacy.d4dad7f960cea042",
+      "nativePattern": "任务 NPC · %s\n固定支援牌组  %d / 3 · 只读\n%s",
+      "argumentTypes": [
+        "%s",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "任务 NPC · {0}\n固定支援牌组  {1} / 3 · 只读\n{2}",
+      "en": "Task NPC · {0}\nFixed support deck {1} / 3 · Read only\n{2}"
+    },
+    {
+      "key": "Legacy.f40d020f6d67c380",
+      "nativePattern": "已选 %d / 8 张",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已选 {0} / 8 张",
+      "en": "Selected {0} / 8 cards"
+    },
+    {
+      "key": "Legacy.f9dfb4062d9d6f42",
+      "nativePattern": "已消耗洗炼砂 %d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已消耗洗炼砂 {0}",
+      "en": "Refinement Sand spent: {0}"
+    },
+    {
+      "key": "Legacy.512d4e3e2a7711b0",
+      "nativePattern": "强化石 %d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "强化石 {0}",
+      "en": "Enhancement Stones {0}"
+    },
+    {
+      "key": "Legacy.190156498cb00a65",
+      "nativePattern": "洗炼砂 %d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "洗炼砂 {0}",
+      "en": "Refinement Sand {0}"
+    },
+    {
+      "key": "Legacy.3cf5933d8b34d8d4",
+      "nativePattern": "金币 +%lld",
+      "argumentTypes": [
+        "%lld"
+      ],
+      "zh-Hans": "金币 +{0}",
+      "en": "Gold +{0}"
+    },
+    {
+      "key": "Legacy.0c5fc638f0bd1a0e",
+      "nativePattern": "\n强化石 +%d · 洗炼砂 +%d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "\n强化石 +{0} · 洗炼砂 +{1}",
+      "en": "\nEnhancement Stones +{0} · Refinement Sand +{1}"
+    },
+    {
+      "key": "Legacy.af8cb427f91f5f45",
+      "nativePattern": "+%d → +%d\n强化石 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "+{0} → +{1}\n强化石 {2} / {3}",
+      "en": "+{0} → +{1}\nEnhancement Stones {2} / {3}"
+    },
+    {
+      "key": "Legacy.deae35d39416ac67",
+      "nativePattern": "洗炼砂 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "洗炼砂 {0} / {1}",
+      "en": "Refinement Sand {0} / {1}"
+    },
+    {
+      "key": "Legacy.e3e9e46998e9bbf1",
+      "nativePattern": "已选第 %d 孔",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已选第 {0} 孔",
+      "en": "Socket {0} selected"
+    },
+    {
+      "key": "Legacy.b58cefccf15a2e44",
+      "nativePattern": "%d/%d 已完成%s",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "{0}/{1} 已完成{2}",
+      "en": "{0}/{1} completed{2}"
+    },
+    {
+      "key": "Legacy.ab2f27ee335486a0",
+      "nativePattern": "%s 已编入队伍",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "{0} 已编入队伍",
+      "en": "{0} joined the formation"
+    },
+    {
+      "key": "Legacy.12405579d62d7228",
+      "nativePattern": "收菜完成：+%d金币 / +%d经验 · 普通箱%d · 高级箱%d",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "收菜完成：+{0}金币 / +{1}经验 · 普通箱{2} · 高级箱{3}",
+      "en": "Collected: +{0} Gold / +{1} XP · Normal Chests {2} · Advanced Chests {3}"
+    },
+    {
+      "key": "Legacy.124b58850e913027",
+      "nativePattern": "获得了%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "获得了{0}",
+      "en": "Obtained {0}"
+    },
+    {
+      "key": "Legacy.53bd1e0893bd7715",
+      "nativePattern": "通关 %s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "通关 {0}",
+      "en": "Clear {0}"
+    },
+    {
+      "key": "Legacy.2da0c38dff4f2ec8",
+      "nativePattern": "游历失败：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "游历失败：{0}",
+      "en": "Travel failed: {0}"
+    },
+    {
+      "key": "Legacy.c79771c1b8f01243",
+      "nativePattern": "Lv.%d · 随机1件",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "Lv.{0} · 随机1件",
+      "en": "Lv.{0} · 1 random item"
+    },
+    {
+      "key": "Legacy.7c7724a0ce1ce074",
+      "nativePattern": "待领取：%d金币 / %d经验 / 普通箱%d / 高级箱%d\n普通箱冷却 %s · 高级箱冷却 %s",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "待领取：{0}金币 / {1}经验 / 普通箱{2} / 高级箱{3}\n普通箱冷却 {4} · 高级箱冷却 {5}",
+      "en": "Unclaimed: {0} Gold / {1} XP / Normal Chests {2} / Advanced Chests {3}\nNormal Chest cooldown {4} · Advanced Chest cooldown {5}"
+    },
+    {
+      "key": "Legacy.2ac3358776247092",
+      "nativePattern": "%s ×%d\n左键开启1个；右键开启全部",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "{0} ×{1}\n左键开启1个；右键开启全部",
+      "en": "{0} ×{1}\nLeft-click: open 1; right-click: open all"
+    },
+    {
+      "key": "Legacy.a66709d8a3da3a0c",
+      "nativePattern": "第 %d / %d 页 · 每页 %d 格",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "第 {0} / {1} 页 · 每页 {2} 格",
+      "en": "Page {0} / {1} · {2} slots per page"
+    },
+    {
+      "key": "Legacy.a8e4525171f12bfc",
+      "nativePattern": "仓库物品 %d / %d\n不显示角色身份卡",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "仓库物品 {0} / {1}\n不显示角色身份卡",
+      "en": "Warehouse items {0} / {1}\nCharacter identity cards are hidden"
+    },
+    {
+      "key": "Legacy.7952ee02f771dde5",
+      "nativePattern": "等级 %d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "等级 {0}",
+      "en": "Level {0}"
+    },
+    {
+      "key": "Legacy.33a081a6a427d3b4",
+      "nativePattern": "主角升级至 Lv.%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "主角升级至 Lv.{0}",
+      "en": "Hero reached Lv.{0}"
+    },
+    {
+      "key": "Legacy.189909c4d48ac5ed",
+      "nativePattern": "仓库第 %d 页",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "仓库第 {0} 页",
+      "en": "Warehouse page {0}"
+    },
+    {
+      "key": "Legacy.d6cff9b14b4bbdd7",
+      "nativePattern": "%s\n%s\n左键拿起；右键返回背包",
+      "argumentTypes": [
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}\n{1}\n左键拿起；右键返回背包",
+      "en": "{0}\n{1}\nLeft-click: pick up; right-click: return to backpack"
+    },
+    {
+      "key": "Legacy.26bb301d842352d2",
+      "nativePattern": "查看%s · 等级%d\n属性、装备与卡组",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "查看{0} · 等级{1}\n属性、装备与卡组",
+      "en": "Inspect {0} · Level {1}\nStats, equipment and deck"
+    },
+    {
+      "key": "Legacy.ebd24dbf1a00902b",
+      "nativePattern": "第%d孔：拖入背包或仓库宝石即可镶嵌",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "第{0}孔：拖入背包或仓库宝石即可镶嵌",
+      "en": "Socket {0}: drag in a gem from your backpack or warehouse"
+    },
+    {
+      "key": "Legacy.e70319e98464960f",
+      "nativePattern": "难度：%s  ▼",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "难度：{0}  ▼",
+      "en": "Difficulty: {0} ▼"
+    },
+    {
+      "key": "Legacy.37b929a7844abb8d",
+      "nativePattern": "第%d章",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "第{0}章",
+      "en": "Chapter {0}"
+    },
+    {
+      "key": "Legacy.f5beed3d3f89c67a",
+      "nativePattern": "已选择：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "已选择：{0}",
+      "en": "Selected: {0}"
+    },
+    {
+      "key": "Legacy.9fe5505504b0ed0c",
+      "nativePattern": "当前游历：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "当前游历：{0}",
+      "en": "Current travel: {0}"
+    },
+    {
+      "key": "Legacy.032695790e58d4e6",
+      "nativePattern": "%s · 未解锁",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "{0} · 未解锁",
+      "en": "{0} · Locked"
+    },
+    {
+      "key": "Legacy.b80f06666bf0d285",
+      "nativePattern": "HUD缩放已切换为 %d%%",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "HUD缩放已切换为 {0}%",
+      "en": "HUD scale set to {0}%"
+    },
+    {
+      "key": "Legacy.e4cf8b4a8951c28d",
+      "nativePattern": "已移动 %d 件，目标空间不足",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已移动 {0} 件，目标空间不足",
+      "en": "Moved {0} items; destination has no more space"
+    },
+    {
+      "key": "Legacy.64d8cbea69ab12bd",
+      "nativePattern": "已移动 %d 件",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已移动 {0} 件",
+      "en": "Moved {0} items"
+    },
+    {
+      "key": "Legacy.27c702dc2da0f7e2",
+      "nativePattern": "已开启 1 个宝箱：装备 %d 件，道具 %d 类",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "已开启 1 个宝箱：装备 {0} 件，道具 {1} 类",
+      "en": "Opened 1 chest: {0} equipment pieces, {1} item types"
+    },
+    {
+      "key": "Legacy.ae4b5ee2c8cc6c4f",
+      "nativePattern": "已放入最接近九件的品质组，共 %d/9 格",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已放入最接近九件的品质组，共 {0}/9 格",
+      "en": "Filled with the quality group closest to nine pieces: {0}/9 slots"
+    },
+    {
+      "key": "Legacy.335f09a2771eaae7",
+      "nativePattern": "已按所选品质补至 %d/9 格",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "已按所选品质补至 {0}/9 格",
+      "en": "Filled to {0}/9 slots with the selected quality"
+    },
+    {
+      "key": "Legacy.0d7491a436ad47f2",
+      "nativePattern": "已开启 %d 个宝箱：装备 %d 件，道具 %d 类%s",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "已开启 {0} 个宝箱：装备 {1} 件，道具 {2} 类{3}",
+      "en": "Opened {0} chests: {1} equipment pieces, {2} item types{3}"
+    },
+    {
+      "key": "Legacy.012b0115aeb9a2b9",
+      "nativePattern": "%s · 等级 %d",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "{0} · 等级 {1}",
+      "en": "{0} · Level {1}"
+    },
+    {
+      "key": "Legacy.835dbfc67ec69b2d",
+      "nativePattern": " · 强化 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": " · 强化 +{0}",
+      "en": " · Enhancement +{0}"
+    },
+    {
+      "key": "Legacy.2a44457f001192ed",
+      "nativePattern": "%d件%s：%s",
+      "argumentTypes": [
+        "%d",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}件{1}：{2}",
+      "en": "{0}-piece {1}: {2}"
+    },
+    {
+      "key": "Legacy.1da04bcb2f671e94",
+      "nativePattern": "速度 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "速度 {0}",
+      "en": "Speed {0}"
+    },
+    {
+      "key": "Legacy.4954717f869671b8",
+      "nativePattern": "强化 +%d / +%d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "强化 +{0} / +{1}",
+      "en": "Enhancement +{0} / +{1}"
+    },
+    {
+      "key": "Legacy.32746e415cbe51d2",
+      "nativePattern": "买入 %d金 / 卖出 %d金",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "买入 {0}金 / 卖出 {1}金",
+      "en": "Buy {0} Gold / Sell {1} Gold"
+    },
+    {
+      "key": "Legacy.09fbe3089e81b021",
+      "nativePattern": "%s · %s · 等级%d · 强化+%d",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "{0} · {1} · 等级{2} · 强化+{3}",
+      "en": "{0} · {1} · Level {2} · Enhancement +{3}"
+    },
+    {
+      "key": "Legacy.f8f26494c90115e8",
+      "nativePattern": "内力 %+d",
+      "argumentTypes": [
+        "%+d"
+      ],
+      "zh-Hans": "内力 {0}",
+      "en": "Inner Power {0}"
+    },
+    {
+      "key": "Legacy.5afb1f9815922fc0",
+      "nativePattern": "孔位 %d：%s %s",
+      "argumentTypes": [
+        "%d",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "孔位 {0}：{1} {2}",
+      "en": "Socket {0}: {1} {2}"
+    },
+    {
+      "key": "Legacy.cfb6b4e7b3170ceb",
+      "nativePattern": "\n%s套装",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "\n{0}套装",
+      "en": "\n{0} set"
+    },
+    {
+      "key": "Legacy.c1d86bf8f68ad268",
+      "nativePattern": "卡池 %d 张",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "卡池 {0} 张",
+      "en": "Card pool: {0} cards"
+    },
+    {
+      "key": "Legacy.0a0c505f74cb83b1",
+      "nativePattern": "%d级解锁",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "{0}级解锁",
+      "en": "Unlocks at level {0}"
+    },
+    {
+      "key": "Legacy.9bf2fbafd02c787b",
+      "nativePattern": "已选 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "已选 {0} / {1}",
+      "en": "Selected {0} / {1}"
+    },
+    {
+      "key": "Legacy.e9d35150c9c6963c",
+      "nativePattern": "%d金",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "{0}金",
+      "en": "{0} Gold"
+    },
+    {
+      "key": "Legacy.e4cab0afd0a0af8a",
+      "nativePattern": "消耗 强化材料 1    当前 +%d / +%d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "消耗 强化材料 1    当前 +{0} / +{1}",
+      "en": "Cost: 1 enhancement material    Current +{0} / +{1}"
+    },
+    {
+      "key": "Legacy.62869533cf03472b",
+      "nativePattern": "数量 x%d    金 %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "数量 x{0}    金 {1}",
+      "en": "Quantity x{0}    Gold {1}"
+    },
+    {
+      "key": "Legacy.b24c0021b1c68808",
+      "nativePattern": "报酬：%d万金币",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "报酬：{0}万金币",
+      "en": "Reward: {0} ten-thousands of Gold"
+    },
+    {
+      "key": "Legacy.f6cd7b782ba91625",
+      "nativePattern": " · %d级高级箱%d个、普通箱%d个",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": " · {0}级高级箱{1}个、普通箱{2}个",
+      "en": " · Level {0}: {1} Advanced Chests, {2} Normal Chests"
+    },
+    {
+      "key": "Legacy.15e7d2fab198fa72",
+      "nativePattern": "元宝：%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "元宝：{0}",
+      "en": "Ingots: {0}"
+    },
+    {
+      "key": "Legacy.54716abf31fc38f0",
+      "nativePattern": "获得装备：%s\n等级 %d，品质：%s",
+      "argumentTypes": [
+        "%s",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "获得装备：{0}\n等级 {1}，品质：{2}",
+      "en": "Equipment obtained: {0}\nLevel {1}, Quality: {2}"
+    },
+    {
+      "key": "Legacy.7783127b66126f62",
+      "nativePattern": "获得伙伴：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "获得伙伴：{0}",
+      "en": "Companion obtained: {0}"
+    },
+    {
+      "key": "Legacy.f9d738a9b66ce95f",
+      "nativePattern": "已获奖励：普通金币 +%d，强化石 +%d\n已完成进度：%d / %d\n未解决或未访问节点：%d，提前结束将失去其中内容",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "已获奖励：普通金币 +{0}，强化石 +{1}\n已完成进度：{2} / {3}\n未解决或未访问节点：{4}，提前结束将失去其中内容",
+      "en": "Rewards earned: Gold +{0}, Enhancement Stones +{1}\nProgress: {2} / {3}\nUnresolved or unvisited nodes: {4}. Ending early forfeits their contents."
+    },
+    {
+      "key": "Legacy.9645fbcde01b82c6",
+      "nativePattern": "结算失败：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "结算失败：{0}",
+      "en": "Settlement failed: {0}"
+    },
+    {
+      "key": "Legacy.b891e9ec590d0a5c",
+      "nativePattern": "强化后：%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "强化后：{0}",
+      "en": "After upgrade: {0}"
+    },
+    {
+      "key": "Legacy.40f8d8c4d5f1e80e",
+      "nativePattern": "强化：%s → %s · %d行旅钱",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "强化：{0} → {1} · {2}行旅钱",
+      "en": "Upgrade: {0} → {1} · {2} Travel Coins"
+    },
+    {
+      "key": "Legacy.29b1fdfe1048001d",
+      "nativePattern": "价格：%d 行旅钱",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "价格：{0} 行旅钱",
+      "en": "Price: {0} Travel Coins"
+    },
+    {
+      "key": "Legacy.a5e24b855a5ae93f",
+      "nativePattern": "%s\n强化至%s：\n%s",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}\n强化至{1}：\n{2}",
+      "en": "{0}\nUpgrade to {1}:\n{2}"
+    },
+    {
+      "key": "Legacy.f70861352739a9fc",
+      "nativePattern": "%s\n%s\n品质：%s\n价格：%d 行旅钱%s%s",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%s",
+        "%d",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}\n{1}\n品质：{2}\n价格：{3} 行旅钱{4}{5}",
+      "en": "{0}\n{1}\nQuality: {2}\nPrice: {3} Travel Coins{4}{5}"
+    },
+    {
+      "key": "Legacy.7fc5fe4b4fb14c41",
+      "nativePattern": "%s\n价格：%d 行旅钱%s%s",
+      "argumentTypes": [
+        "%s",
+        "%d",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "{0}\n价格：{1} 行旅钱{2}{3}",
+      "en": "{0}\nPrice: {1} Travel Coins{2}{3}"
+    },
+    {
+      "key": "Legacy.267f189686a6bc7e",
+      "nativePattern": "-%.1f秒",
+      "argumentTypes": [
+        "%.1f"
+      ],
+      "zh-Hans": "-{0}秒",
+      "en": "-{0}s"
+    },
+    {
+      "key": "Legacy.482a6909c2faaa33",
+      "nativePattern": "升级售价：%lld",
+      "argumentTypes": [
+        "%lld"
+      ],
+      "zh-Hans": "升级售价：{0}",
+      "en": "Upgrade price: {0}"
+    },
+    {
+      "key": "Legacy.70286e4c6bed67f5",
+      "nativePattern": "当前等级：%d/%d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "当前等级：{0}/{1}",
+      "en": "Current level: {0}/{1}"
+    },
+    {
+      "key": "Legacy.96569085b6953665",
+      "nativePattern": "已收录 %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "已收录 {0} / {1}",
+      "en": "Collected {0} / {1}"
+    },
+    {
+      "key": "Legacy.1da8d20315aeed93",
+      "nativePattern": "%s · 固定 NPC",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "{0} · 固定 NPC",
+      "en": "{0} · Permanent NPC"
+    },
+    {
+      "key": "Legacy.61bbc508266c0419",
+      "nativePattern": "%s  |  战斗定位：%s\n固定 NPC · 固定拥有 · 可编入队伍\n基础属性：生命 %d  攻击 %d\n防御 %d  真气 %d  被动：%s",
+      "argumentTypes": [
+        "%s",
+        "%s",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%s"
+      ],
+      "zh-Hans": "{0}  |  战斗定位：{1}\n固定 NPC · 固定拥有 · 可编入队伍\n基础属性：生命 {2}  攻击 {3}\n防御 {4}  真气 {5}  被动：{6}",
+      "en": "{0} | Combat role: {1}\nPermanent NPC · Always owned · Can join formation\nBase stats: HP {2} Attack {3}\nDefense {4} Qi {5} Passive: {6}"
+    },
+    {
+      "key": "Legacy.09ed9d86a0fee790",
+      "nativePattern": "武器\n%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "武器\n{0}",
+      "en": "Weapon\n{0}"
+    },
+    {
+      "key": "Legacy.d176f8e4bad010be",
+      "nativePattern": "防具\n%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "防具\n{0}",
+      "en": "Armor\n{0}"
+    },
+    {
+      "key": "Legacy.cd706be57bb046e9",
+      "nativePattern": "饰品\n%s",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "饰品\n{0}",
+      "en": "Accessory\n{0}"
+    },
+    {
+      "key": "Legacy.1850f9aeafcf4a3d",
+      "nativePattern": "Lv.%d\nHP %d/%d\nMP %d/%d\n攻 %d  防 %d  速 %d\n武器 %s\n防具 %s\n饰品 %s",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%d",
+        "%s",
+        "%s",
+        "%s"
+      ],
+      "zh-Hans": "Lv.{0}\nHP {1}/{2}\nMP {3}/{4}\n攻 {5}  防 {6}  速 {7}\n武器 {8}\n防具 {9}\n饰品 {10}",
+      "en": "Lv.{0}\nHP {1}/{2}\nMP {3}/{4}\nATK {5} DEF {6} SPD {7}\nWeapon {8}\nArmor {9}\nAccessory {10}"
+    },
+    {
+      "key": "Legacy.0de4f68281de2068",
+      "nativePattern": "%s  买%d/卖%d",
+      "argumentTypes": [
+        "%s",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "{0}  买{1}/卖{2}",
+      "en": "{0} Buy {1}/Sell {2}"
+    },
+    {
+      "key": "Legacy.1058528b9ef72bb1",
+      "nativePattern": "确认购买 %s？价格 %d 金",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "确认购买 {0}？价格 {1} 金",
+      "en": "Buy {0} for {1} Gold?"
+    },
+    {
+      "key": "Legacy.95b3e1900d278947",
+      "nativePattern": "确认购买 %s？",
+      "argumentTypes": [
+        "%s"
+      ],
+      "zh-Hans": "确认购买 {0}？",
+      "en": "Buy {0}?"
+    },
+    {
+      "key": "Legacy.d7838ff05608da33",
+      "nativePattern": "含行旅钱折算金币 +%d",
+      "argumentTypes": [
+        "%d"
+      ],
+      "zh-Hans": "含行旅钱折算金币 +{0}",
+      "en": "Includes Gold converted from Travel Coins: +{0}"
+    },
+    {
+      "key": "Legacy.d9b8a48cfe16dda3",
+      "nativePattern": "%s宝箱 × %d",
+      "argumentTypes": [
+        "%s",
+        "%d"
+      ],
+      "zh-Hans": "{0}宝箱 × {1}",
+      "en": "{0} Chests × {1}"
+    },
+    {
+      "key": "Legacy.c4499328a9ce1b23",
+      "nativePattern": "经验 +%d    %d / %d",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d"
+      ],
+      "zh-Hans": "经验 +{0}    {1} / {2}",
+      "en": "XP +{0}    {1} / {2}"
+    },
+    {
+      "key": "Legacy.f997b4cd2b5a3fce",
+      "nativePattern": "%d 回合    ·    主动出牌 %d 张    ·    存活 %d / 3\n敌方损失气血 %lld    我方损失气血 %lld    有效治疗 %lld    获得护甲 %lld",
+      "argumentTypes": [
+        "%d",
+        "%d",
+        "%d",
+        "%lld",
+        "%lld",
+        "%lld",
+        "%lld"
+      ],
+      "zh-Hans": "{0} 回合    ·    主动出牌 {1} 张    ·    存活 {2} / 3\n敌方损失气血 {3}    我方损失气血 {4}    有效治疗 {5}    获得护甲 {6}",
+      "en": "{0} rounds · {1} active cards played · {2} / 3 survivors\nEnemy HP lost {3} · Ally HP lost {4} · Effective healing {5} · Armor gained {6}"
+    }
+  ]
+}

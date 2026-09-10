@@ -1,0 +1,690 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.f86848b5dbb90b1f",
+      "zh-Hans": "镶嵌完成，可继续放入宝石",
+      "en": "Socketed; you can place another gem"
+    },
+    {
+      "key": "Legacy.5672e16032d9ce68",
+      "zh-Hans": "获得宝箱",
+      "en": "Chest obtained"
+    },
+    {
+      "key": "Legacy.74c2c372a5a70052",
+      "zh-Hans": "宝箱开启结果",
+      "en": "Chest opening result"
+    },
+    {
+      "key": "Legacy.ba02f2a809661c78",
+      "zh-Hans": "关卡通关",
+      "en": "Stage cleared"
+    },
+    {
+      "key": "Legacy.74b2cf21226dd007",
+      "zh-Hans": "关卡失败",
+      "en": "Stage failed"
+    },
+    {
+      "key": "Legacy.6d99935bd233a1cb",
+      "zh-Hans": "角色升级",
+      "en": "Level up"
+    },
+    {
+      "key": "Legacy.3c1190cc4f29c8ee",
+      "zh-Hans": "角色死亡",
+      "en": "Character defeated"
+    },
+    {
+      "key": "Legacy.e7f2ed2ffee842cc",
+      "zh-Hans": "角色复活",
+      "en": "Character revived"
+    },
+    {
+      "key": "Legacy.b554d9bc934b4d42",
+      "zh-Hans": "装备合成结果",
+      "en": "Equipment crafting result"
+    },
+    {
+      "key": "Legacy.9037be9b03175d3c",
+      "zh-Hans": "强化与洗炼结果",
+      "en": "Enhancement and refinement result"
+    },
+    {
+      "key": "Legacy.722c0002b4d1d95c",
+      "zh-Hans": "镶嵌结果",
+      "en": "Socketing result"
+    },
+    {
+      "key": "Legacy.980c195f6e31c2bf",
+      "zh-Hans": "系统提示",
+      "en": "System notice"
+    },
+    {
+      "key": "Legacy.6d5691c27aefe907",
+      "zh-Hans": "未游历",
+      "en": "Not traveling"
+    },
+    {
+      "key": "Legacy.6a787dc0798633a8",
+      "zh-Hans": " · 待领奖",
+      "en": " · Reward pending"
+    },
+    {
+      "key": "Legacy.3888b1872565737a",
+      "zh-Hans": "当前状态不能修改编队；请回到可编辑的城镇状态",
+      "en": "Formation cannot be changed here; return to an editable town state"
+    },
+    {
+      "key": "Legacy.7820fe8f811b64d0",
+      "zh-Hans": "装备已转入当前角色",
+      "en": "Equipment transferred to the inspected character"
+    },
+    {
+      "key": "Legacy.186aece625bd0546",
+      "zh-Hans": "仓库已排序：槽位 → 品质 → 等级",
+      "en": "Warehouse sorted: slot → quality → level"
+    },
+    {
+      "key": "Legacy.543434f8e05c0565",
+      "zh-Hans": "装备已卸下并返回背包",
+      "en": "Equipment removed and returned to the backpack"
+    },
+    {
+      "key": "Legacy.7e71328a1be8f83a",
+      "zh-Hans": "关闭背包与全部子界面；历练挂机继续运行",
+      "en": "Close backpack and all subpanels; idle training continues"
+    },
+    {
+      "key": "Legacy.dff65c2fcd61b472",
+      "zh-Hans": "菜单 [Tab]：展开角色背包",
+      "en": "Menu [Tab]: open the character backpack"
+    },
+    {
+      "key": "Legacy.d9e19555a6c31e61",
+      "zh-Hans": "向下展开挂机栏",
+      "en": "Expand the idle bar downward"
+    },
+    {
+      "key": "Legacy.18bb4bbe1f4b550b",
+      "zh-Hans": "向上折叠挂机栏",
+      "en": "Collapse the idle bar upward"
+    },
+    {
+      "key": "Legacy.0c81e849ca8fa7ab",
+      "zh-Hans": "消息设置",
+      "en": "Notice settings"
+    },
+    {
+      "key": "Legacy.9058a1c2c59e2496",
+      "zh-Hans": "记录",
+      "en": "History"
+    },
+    {
+      "key": "Legacy.6d7aac9afc3e488f",
+      "zh-Hans": "折",
+      "en": "Fold"
+    },
+    {
+      "key": "Legacy.4918c19fbc400867",
+      "zh-Hans": "展",
+      "en": "Open"
+    },
+    {
+      "key": "Legacy.ebbdf13fa650eb8d",
+      "zh-Hans": "设",
+      "en": "Set"
+    },
+    {
+      "key": "Legacy.80123ac22592d5f4",
+      "zh-Hans": "套装",
+      "en": "Set"
+    },
+    {
+      "key": "Legacy.364cebc12c679978",
+      "zh-Hans": "每份1颗宝石",
+      "en": "1 gem per purchase"
+    },
+    {
+      "key": "Legacy.59b1f7c6270babf8",
+      "zh-Hans": "每份10个行旅钱",
+      "en": "10 Travel Coins per purchase"
+    },
+    {
+      "key": "Legacy.91de5e212cad50d9",
+      "zh-Hans": "每份1个宝箱",
+      "en": "1 chest per purchase"
+    },
+    {
+      "key": "Legacy.d0010cd9ca68026a",
+      "zh-Hans": "已开启战斗引导",
+      "en": "Battle guide enabled"
+    },
+    {
+      "key": "Legacy.5e81f5305268320b",
+      "zh-Hans": "已跳过战斗引导",
+      "en": "Battle guide skipped"
+    },
+    {
+      "key": "Legacy.80b7aa7142ea478f",
+      "zh-Hans": "战斗引导设置未保存",
+      "en": "Battle guide preference was not saved"
+    },
+    {
+      "key": "Legacy.2b822c79dd18cfa0",
+      "zh-Hans": "退出游戏？\n历练挂机会在关闭游戏后按离线规则结算。",
+      "en": "Exit the game?\nIdle training is calculated under offline rules while the game is closed."
+    },
+    {
+      "key": "Legacy.1da96b82a1482d32",
+      "zh-Hans": "失败自动重试：已开启\n点击关闭；关闭后阵亡会回退到前一关。",
+      "en": "Retry on defeat: On\nClick to disable. When disabled, defeat returns to the previous stage."
+    },
+    {
+      "key": "Legacy.e1f1898924728477",
+      "zh-Hans": "失败自动重试：已关闭\n点击开启；1-1失败仍重试1-1。",
+      "en": "Retry on defeat: Off\nClick to enable. Defeat at 1-1 still retries 1-1."
+    },
+    {
+      "key": "Legacy.1f34e14e1fa6473d",
+      "zh-Hans": "可进行",
+      "en": "Available"
+    },
+    {
+      "key": "Legacy.e99b48a29bdfdc82",
+      "zh-Hans": "已完成",
+      "en": "Completed"
+    },
+    {
+      "key": "Legacy.80b7a5290b234f22",
+      "zh-Hans": "待领取",
+      "en": "Unclaimed"
+    },
+    {
+      "key": "Legacy.c50813ee1be6c623",
+      "zh-Hans": "上一章主线完成，且对应游历关卡开放后解锁。",
+      "en": "Unlocks after completing the previous story chapter and opening its training stage."
+    },
+    {
+      "key": "Legacy.fb24cfe54aafc760",
+      "zh-Hans": "暂无待领取奖励",
+      "en": "No unclaimed rewards"
+    },
+    {
+      "key": "Legacy.5c0759379d3513be",
+      "zh-Hans": "支线可回头补做",
+      "en": "Side quests can be completed later"
+    },
+    {
+      "key": "Legacy.c629ab1aadd5764b",
+      "zh-Hans": "暂无已完成教程",
+      "en": "No completed tutorials"
+    },
+    {
+      "key": "Legacy.61933bfc26fe6776",
+      "zh-Hans": "已领取",
+      "en": "Claimed"
+    },
+    {
+      "key": "Legacy.fd7750b2b9e50e61",
+      "zh-Hans": "首通",
+      "en": "First clear"
+    },
+    {
+      "key": "Legacy.09b0d74616c2a6ad",
+      "zh-Hans": "重温教程",
+      "en": "Review tutorial"
+    },
+    {
+      "key": "Legacy.e5438ec6d81b357f",
+      "zh-Hans": "继续教程",
+      "en": "Continue tutorial"
+    },
+    {
+      "key": "Legacy.7e8e698f40cf3652",
+      "zh-Hans": "开始教程",
+      "en": "Start tutorial"
+    },
+    {
+      "key": "Legacy.139de9a263d1386a",
+      "zh-Hans": "需要容量分支的仓库页天赋",
+      "en": "Requires the warehouse page talent in the Capacity branch"
+    },
+    {
+      "key": "Legacy.63bdd12b06ace331",
+      "zh-Hans": "该仓库格尚未由永久天赋解锁",
+      "en": "This warehouse slot is not unlocked by permanent talents yet"
+    },
+    {
+      "key": "Legacy.109e3ace20b2a0b0",
+      "zh-Hans": "仓库 → 背包",
+      "en": "Warehouse → Backpack"
+    },
+    {
+      "key": "Legacy.17a265bb1f14325a",
+      "zh-Hans": "将当前仓库页的全部装备和道具转入背包；锁定状态保留",
+      "en": "Move all equipment and items on this warehouse page to the backpack; keep their locks"
+    },
+    {
+      "key": "Legacy.5f659675b42092a7",
+      "zh-Hans": "背包 → 仓库",
+      "en": "Backpack → Warehouse"
+    },
+    {
+      "key": "Legacy.0543778fa5b7c793",
+      "zh-Hans": "将背包内全部装备和道具转入当前仓库页；锁定状态保留",
+      "en": "Move all equipment and items in the backpack to this warehouse page; keep their locks"
+    },
+    {
+      "key": "Legacy.dc35af8d69c59ae1",
+      "zh-Hans": "排序",
+      "en": "Sort"
+    },
+    {
+      "key": "Legacy.a4bf4edc0f605ee6",
+      "zh-Hans": "返回编队",
+      "en": "Back to formation"
+    },
+    {
+      "key": "Legacy.e5d2bafc67703006",
+      "zh-Hans": "关闭背包与全部子界面",
+      "en": "Close backpack and all subpanels"
+    },
+    {
+      "key": "Legacy.e94cebcac187654a",
+      "zh-Hans": "选择同行角色",
+      "en": "Choose a traveling character"
+    },
+    {
+      "key": "Legacy.8dba8cbbe488baef",
+      "zh-Hans": "选择伙伴",
+      "en": "Choose a companion"
+    },
+    {
+      "key": "Legacy.3a21d517834ea291",
+      "zh-Hans": "当前查看：",
+      "en": "Inspecting: "
+    },
+    {
+      "key": "Legacy.e87edd10d07b2cb5",
+      "zh-Hans": "返回背包",
+      "en": "Back to backpack"
+    },
+    {
+      "key": "Legacy.4fe0eea75a96dabb",
+      "zh-Hans": "切换查看角色；出战成员在编队中调整。",
+      "en": "Inspect another character; change deployed members in Formation."
+    },
+    {
+      "key": "Legacy.5c42c048ea24666c",
+      "zh-Hans": "等级",
+      "en": "Level"
+    },
+    {
+      "key": "Legacy.12577cd1b571e36a",
+      "zh-Hans": "出战",
+      "en": "Deploy"
+    },
+    {
+      "key": "Legacy.b41561d80765888e",
+      "zh-Hans": "上一页",
+      "en": "Previous page"
+    },
+    {
+      "key": "Legacy.67a246a344ae111a",
+      "zh-Hans": "下一页",
+      "en": "Next page"
+    },
+    {
+      "key": "Legacy.abec0e06b93d3660",
+      "zh-Hans": "尚未结伴",
+      "en": "No companion yet"
+    },
+    {
+      "key": "Legacy.f24ddc2bef8f19d8",
+      "zh-Hans": "已选",
+      "en": "Selected"
+    },
+    {
+      "key": "Legacy.c48e8066f4a4b57f",
+      "zh-Hans": "出战三人 · 卡组随角色保存",
+      "en": "Three deployed members · Decks are saved per character"
+    },
+    {
+      "key": "Legacy.14fab7392596ce3e",
+      "zh-Hans": "编辑卡组",
+      "en": "Edit deck"
+    },
+    {
+      "key": "Legacy.ea561ed559a1e069",
+      "zh-Hans": "更换伙伴",
+      "en": "Change companion"
+    },
+    {
+      "key": "Legacy.7b022da3f72be1de",
+      "zh-Hans": "更换NPC",
+      "en": "Change NPC"
+    },
+    {
+      "key": "Legacy.a8692e9c67dbfd1e",
+      "zh-Hans": "编入队伍",
+      "en": "Add to formation"
+    },
+    {
+      "key": "Legacy.2f4161ce462d70df",
+      "zh-Hans": "天赋修行",
+      "en": "Talent training"
+    },
+    {
+      "key": "Legacy.cfb15f6580d713dd",
+      "zh-Hans": "全队共享 · 四向展开修行脉络",
+      "en": "Shared by the party · Four paths of training"
+    },
+    {
+      "key": "Legacy.0bb9bb46f1f938ce",
+      "zh-Hans": "合成",
+      "en": "Craft"
+    },
+    {
+      "key": "Legacy.4d702ed092dc404b",
+      "zh-Hans": "本模式不使用",
+      "en": "Unused in this mode"
+    },
+    {
+      "key": "Legacy.507f0ae89816b0b6",
+      "zh-Hans": "放入装备或行旅钱；右键可取回",
+      "en": "Place equipment or Travel Coins; right-click to retrieve"
+    },
+    {
+      "key": "Legacy.2aa44caee0262e01",
+      "zh-Hans": "放入物品；合成输入须同品质",
+      "en": "Place items; crafting inputs must share the same quality"
+    },
+    {
+      "key": "Legacy.f7304eac5f9ab113",
+      "zh-Hans": "自动放置",
+      "en": "Auto fill"
+    },
+    {
+      "key": "Legacy.b937fb8f4c026b2f",
+      "zh-Hans": "仓库 ✓",
+      "en": "Warehouse ✓"
+    },
+    {
+      "key": "Legacy.b71715f34cb0b29f",
+      "zh-Hans": "仓库 ×",
+      "en": "Warehouse ×"
+    },
+    {
+      "key": "Legacy.92e5dcd954d56842",
+      "zh-Hans": "宝石",
+      "en": "Gem"
+    },
+    {
+      "key": "Legacy.e9cc71ec547b3099",
+      "zh-Hans": "已停用词缀",
+      "en": "Disabled affix"
+    },
+    {
+      "key": "Legacy.c2523b4e6aa1a157",
+      "zh-Hans": "原属性",
+      "en": "Original stats"
+    },
+    {
+      "key": "Legacy.492c9d908cba7e4d",
+      "zh-Hans": "新属性",
+      "en": "New stats"
+    },
+    {
+      "key": "Legacy.51e3c073ac0bd446",
+      "zh-Hans": "选择原属性，本次洗炼结果作废",
+      "en": "Keep the original stats and discard this refinement result"
+    },
+    {
+      "key": "Legacy.35b46e22c0e73be9",
+      "zh-Hans": "选择新属性，替换原词缀",
+      "en": "Accept the new stats to replace the original affix"
+    },
+    {
+      "key": "Legacy.25f55ef5972b8df8",
+      "zh-Hans": "拆卸",
+      "en": "Remove"
+    },
+    {
+      "key": "Legacy.53e2db70167fd64b",
+      "zh-Hans": "未选择",
+      "en": "Not selected"
+    },
+    {
+      "key": "Legacy.24fe167bd7a02ebb",
+      "zh-Hans": "游历中",
+      "en": "Traveling"
+    },
+    {
+      "key": "Legacy.fae07039a5dc1b66",
+      "zh-Hans": "通关",
+      "en": "Clear"
+    },
+    {
+      "key": "Legacy.f803016bff55a961",
+      "zh-Hans": "需要先完成前置关卡或解锁当前难度",
+      "en": "Complete the prerequisite stage or unlock this difficulty first"
+    },
+    {
+      "key": "Legacy.8b4be8869f64a503",
+      "zh-Hans": "需要先通关前置关卡或选择可游历关卡",
+      "en": "Clear the prerequisite stage or select a travel-ready stage first"
+    },
+    {
+      "key": "Legacy.ae762f9ecf28151d",
+      "zh-Hans": "仅装备实例可放入角色装备格",
+      "en": "Only equipment instances fit character equipment slots"
+    },
+    {
+      "key": "Legacy.83bdaee25fd09fc5",
+      "zh-Hans": "该装备无法放入目标装备格",
+      "en": "This equipment does not fit the target slot"
+    },
+    {
+      "key": "Legacy.6c4d6ca3381aa958",
+      "zh-Hans": "空格没有可锁定的物品",
+      "en": "This empty slot has no item to lock"
+    },
+    {
+      "key": "Legacy.a2509405107b653b",
+      "zh-Hans": "无法切换物品锁定状态",
+      "en": "Could not change the item lock"
+    },
+    {
+      "key": "Legacy.c5b52ae5df94cf3d",
+      "zh-Hans": "已锁定物品",
+      "en": "Item locked"
+    },
+    {
+      "key": "Legacy.ddaa23bb3588c92f",
+      "zh-Hans": "已解除物品锁定",
+      "en": "Item unlocked"
+    },
+    {
+      "key": "Legacy.c3fdf4fccaacb4cc",
+      "zh-Hans": "目标格已被另一工具输入占用；当前道具继续吸附在鼠标上",
+      "en": "Another tool input occupies the target slot; the item remains attached to the cursor"
+    },
+    {
+      "key": "Legacy.c9e4e4631b40243d",
+      "zh-Hans": "该堆叠有宝石放在工具中；右键取消携带，或返回原格",
+      "en": "A gem from this stack is in a tool; right-click to stop carrying, or return it to its original slot"
+    },
+    {
+      "key": "Legacy.d544fd945f8cd6fa",
+      "zh-Hans": "该格无法放置道具",
+      "en": "This slot cannot accept the item"
+    },
+    {
+      "key": "Legacy.fef145dc0a3b8ac5",
+      "zh-Hans": "任务地图不能放入工具格；仍吸附在鼠标上",
+      "en": "Task maps cannot enter tool slots; the item remains attached to the cursor"
+    },
+    {
+      "key": "Legacy.6f6f5bba955a09bd",
+      "zh-Hans": "该道具不符合当前工具格要求；仍吸附在鼠标上",
+      "en": "The item does not meet this tool slot's requirements; it remains attached to the cursor"
+    },
+    {
+      "key": "Legacy.d08876880bbc455c",
+      "zh-Hans": "请先采用或保留当前洗炼结果",
+      "en": "Accept or keep the current refinement result first"
+    },
+    {
+      "key": "Legacy.feb263e5e967a22f",
+      "zh-Hans": "锁定道具不能用于分解或合成",
+      "en": "Locked items cannot be dismantled or crafted"
+    },
+    {
+      "key": "Legacy.41d70c59678f98f9",
+      "zh-Hans": "原工具格已变化；当前道具继续吸附在鼠标上",
+      "en": "The original tool slot changed; the item remains attached to the cursor"
+    },
+    {
+      "key": "Legacy.2f8f350f41c5dd7f",
+      "zh-Hans": "该物品已放入工具，请先移出后再转移",
+      "en": "This item is in a tool; remove it before transferring"
+    },
+    {
+      "key": "Legacy.1a3cd39b41e1e555",
+      "zh-Hans": "仓库已满",
+      "en": "Warehouse full"
+    },
+    {
+      "key": "Legacy.ae568fee75408a53",
+      "zh-Hans": "窗口已保持最顶层",
+      "en": "Window pinned on top"
+    },
+    {
+      "key": "Legacy.b8e9320cc2696fb3",
+      "zh-Hans": "窗口已取消最顶层",
+      "en": "Window unpinned"
+    },
+    {
+      "key": "Legacy.a074ec8d4d464d41",
+      "zh-Hans": "已静音",
+      "en": "Muted"
+    },
+    {
+      "key": "Legacy.571aee319be7accc",
+      "zh-Hans": "声音已恢复",
+      "en": "Sound restored"
+    },
+    {
+      "key": "Legacy.5c45453e3c8884e7",
+      "zh-Hans": "工具输入来源已变化；未执行操作且未消耗任何道具",
+      "en": "Tool input source changed; no action was taken and no item was consumed"
+    },
+    {
+      "key": "Legacy.70721c23309da852",
+      "zh-Hans": "请先放入道具",
+      "en": "Place an item first"
+    },
+    {
+      "key": "Legacy.b305be1e642aafed",
+      "zh-Hans": "强化和洗炼一次只能放入一件装备",
+      "en": "Enhancement and refinement accept one equipment piece at a time"
+    },
+    {
+      "key": "Legacy.c2a595a15af33dc2",
+      "zh-Hans": "请选择采用新词缀或保留原词缀",
+      "en": "Choose whether to accept the new affix or keep the original"
+    },
+    {
+      "key": "Legacy.7e7619c5e9cb39d8",
+      "zh-Hans": "工具执行失败；未改变输入道具",
+      "en": "Tool action failed; input items were unchanged"
+    },
+    {
+      "key": "Legacy.bbd04f6837999a7d",
+      "zh-Hans": "洗炼预览已生成，请选择采用或保留",
+      "en": "Refinement preview ready; accept it or keep the original"
+    },
+    {
+      "key": "Legacy.5c55334202500c30",
+      "zh-Hans": "工具执行完成",
+      "en": "Tool action complete"
+    },
+    {
+      "key": "Legacy.5b2011a06a94e5d0",
+      "zh-Hans": "当前物品无法批量转移",
+      "en": "This item cannot be transferred in bulk"
+    },
+    {
+      "key": "Legacy.17ebb51ac0db8635",
+      "zh-Hans": "当前关卡尚未解锁，或已有挑战正在进行",
+      "en": "This stage is locked, or a challenge is already active"
+    },
+    {
+      "key": "Legacy.1d83126c524ad386",
+      "zh-Hans": "开始游历：走动、遭遇、自动战斗、结算后循环",
+      "en": "Travel started: walk, encounter, auto-battle, settle, then repeat"
+    },
+    {
+      "key": "Legacy.cbf80edd1f273e96",
+      "zh-Hans": "未通关关卡不能游历",
+      "en": "Clear this stage before traveling"
+    },
+    {
+      "key": "Legacy.d8bf043b2bd84a51",
+      "zh-Hans": "已切换游历失败重试策略",
+      "en": "Travel retry policy changed"
+    },
+    {
+      "key": "Legacy.8bdd13c5909111c8",
+      "zh-Hans": "背包已按已确认规则排序",
+      "en": "Backpack sorted using the confirmed rules"
+    },
+    {
+      "key": "Legacy.3bf3ecf3a5137ec6",
+      "zh-Hans": "邮件功能尚未开放",
+      "en": "Mail is not available yet"
+    },
+    {
+      "key": "Legacy.9eaf9307fe3ef50e",
+      "zh-Hans": "已放入最低可凑齐品质的九件物品",
+      "en": "Filled with nine items of the lowest available matching quality"
+    },
+    {
+      "key": "Legacy.05038af3975dad0d",
+      "zh-Hans": "已采用新词缀",
+      "en": "New affix accepted"
+    },
+    {
+      "key": "Legacy.0917db0180ac7f4d",
+      "zh-Hans": "已保留原词缀",
+      "en": "Original affix kept"
+    },
+    {
+      "key": "Legacy.f358f4fda26397ae",
+      "zh-Hans": "当前没有待处理的洗炼结果",
+      "en": "No refinement result is pending"
+    },
+    {
+      "key": "Legacy.ea194f56567b2546",
+      "zh-Hans": "；背包已满，剩余宝箱保留",
+      "en": "; backpack full, remaining chests kept"
+    },
+    {
+      "key": "Legacy.4f9ba23510ec027f",
+      "zh-Hans": "暂无记录",
+      "en": "No history yet"
+    },
+    {
+      "key": "Legacy.c23407d91e4856df",
+      "zh-Hans": "点击 / 空格继续  ▶",
+      "en": "Click / Space to continue ▶"
+    },
+    {
+      "key": "Legacy.85ca17e0c1bb055f",
+      "zh-Hans": "暂歇对话",
+      "en": "Pause dialogue"
+    }
+  ]
+}

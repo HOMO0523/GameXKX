@@ -12,6 +12,11 @@ namespace GameXXKRelicSynergyRules
     GAMEXXK_API void ReplaceHighTierDefinitions(TArray<FGameXXKRelicDefinition>& InOutDefinitions);
     GAMEXXK_API bool Apply(FGameXXKRuntimeState& State, const FGameXXKRelicDefinition& Definition,
         FGameXXKRelicInstance& Instance, EGameXXKRelicTrigger Trigger,
-        const FGameXXKCardBattleRuntime* BeforeCard, const TArray<FGameXXKCardDamageResult>* PrimaryDamage,
+        const FGameXXKRelicActionEvidence* Evidence, const TArray<FGameXXKCardDamageResult>* PrimaryDamage,
         FGameXXKCardPlayResult* CardResult, FString* OutError = nullptr);
+
+    GAMEXXK_API bool BeginAction(FGameXXKRuntimeState& State, const FGameXXKCardBattleRuntime& Before,
+        const FGameXXKCardPlayResult& Primary, FGameXXKCardPlayResult& Output, FString* OutError);
+    GAMEXXK_API bool ResumeAction(FGameXXKRuntimeState& State,
+        TArray<FGameXXKCardPlayResult>& ResumedResults, FString* OutError);
 }

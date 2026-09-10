@@ -1,4 +1,5 @@
 #include "GameXXKRelicRules.h"
+#include "GameXXKRelicSynergyRules.h"
 #include "GameXXKTalentRules.h"
 
 #include "GameXXKCardRules.h"
@@ -230,11 +231,20 @@ namespace
 		FString* OutError = nullptr)
 	{
 		if (!State.CardRun.bHasActiveCardBattle) return true;
-		for (const FGameXXKRelicInstance& Instance : State.CardRun.Relics)
+		FGameXXKRelicActionEvidence Evidence;
+		Evidence.BeforeUnits = State.CardRun.ActiveBattle.Units;
+		for (FGameXXKRelicInstance& Instance : State.CardRun.Relics)
 		{
 			const FGameXXKRelicDefinition* Definition = FGameXXKRelicCatalog::FindDefinition(Instance.RelicId);
 			if (Definition && Definition->Trigger == Trigger)
 			{
+				if (Definition->EffectKind == EGameXXKRelicEffectKind::Synergy)
+				{
+					// Active actions use the deferred immutable transaction evidence below.
+					if (Trigger != EGameXXKRelicTrigger::CardPlayed && !GameXXKRelicSynergyRules::Apply(
+						State,*Definition,Instance,Trigger,&Evidence,DamageResults,InOutCardPlayResult,OutError))return false;
+					continue;
+				}
 				if (!ApplyCombatEffect(
 					State,
 					*Definition,
@@ -248,6 +258,11 @@ namespace
 				}
 			}
 		}
+		// A card may defeat the last enemy before its mandatory choice/replay completes.
+		// Keep that transaction in the player phase until the deferred action is flushed.
+		if (!GameXXKCardRules::HasPendingChoice(State.CardRun.ActiveBattle.Deck)
+			&& !State.CardRun.ActiveBattle.AutomaticResolutionQueue.bActive)
+			GameXXKCardRules::RefreshCombatTerminalPhase(State.CardRun.ActiveBattle);
 		return true;
 	}
 }
@@ -332,6 +347,7 @@ bool FGameXXKRelicRules::ChoosePendingRelic(FGameXXKRuntimeState& InOutState, FN
 void FGameXXKRelicRules::ClearRouteRelics(FGameXXKRuntimeState& InOutState)
 {
 	InOutState.CardRun.Relics.Reset();
+	InOutState.CardRun.PendingRelicAction = FGameXXKRelicActionEvidence();
 	InOutState.CardRun.PendingRelicOffer = FGameXXKPendingRelicOffer();
 	InOutState.CardRun.NextRelicAcquisitionOrdinal = 0;
 	InOutState.CardRun.RouteAttributeBonuses = FGameXXKRouteAttributeBonuses();
@@ -341,19 +357,31 @@ void FGameXXKRelicRules::ClearRouteRelics(FGameXXKRuntimeState& InOutState)
 	InOutState.PlayerMP = FMath::Clamp(InOutState.PlayerMP,0,InOutState.PlayerMaxMP);
 }
 
-void FGameXXKRelicRules::ApplyBattleStart(FGameXXKRuntimeState& InOutState)
+bool FGameXXKRelicRules::ApplyBattleStart(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output, FString* OutError)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::BattleStart, NAME_None, nullptr, nullptr, nullptr);
+	InOutState.CardRun.PendingRelicAction = FGameXXKRelicActionEvidence();
+	for(auto& I:InOutState.CardRun.Relics)
+	{I.SynergyRound=INDEX_NONE;I.SynergyUses=0;I.LastSynergyActiveCardOrdinal=INDEX_NONE;I.SynergyOwners.Reset();}
+	if(!ApplyTrigger(InOutState, EGameXXKRelicTrigger::BattleStart, NAME_None, nullptr, Output, OutError))return false;
+	// New round-start relics also act on the opening round. Common legacy timings stay unchanged.
+	FGameXXKRelicActionEvidence Evidence;Evidence.BeforeUnits=InOutState.CardRun.ActiveBattle.Units;
+	for(auto& I:InOutState.CardRun.Relics)
+	{
+		const auto* D=FGameXXKRelicCatalog::FindDefinition(I.RelicId);
+		if(D&&D->EffectKind==EGameXXKRelicEffectKind::Synergy&&D->Trigger==EGameXXKRelicTrigger::PlayerRoundStart
+			&&!GameXXKRelicSynergyRules::Apply(InOutState,*D,I,D->Trigger,&Evidence,nullptr,Output,OutError))return false;
+	}
+	return true;
 }
 
-void FGameXXKRelicRules::ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState)
+bool FGameXXKRelicRules::ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output, FString* OutError)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundStart, NAME_None, nullptr, nullptr, nullptr);
+	return ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundStart, NAME_None, nullptr, Output, OutError);
 }
 
-void FGameXXKRelicRules::ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState)
+bool FGameXXKRelicRules::ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output, FString* OutError)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundEnd, NAME_None, nullptr, nullptr, nullptr);
+	return ApplyTrigger(InOutState, EGameXXKRelicTrigger::PlayerRoundEnd, NAME_None, nullptr, Output, OutError);
 }
 
 bool FGameXXKRelicRules::ApplyCardPlayed(
@@ -410,9 +438,10 @@ bool FGameXXKRelicRules::ApplyCardPlayed(
 	return true;
 }
 
-void FGameXXKRelicRules::ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults)
+bool FGameXXKRelicRules::ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults,
+	FGameXXKCardPlayResult* Output, FString* OutError)
 {
-	ApplyTrigger(InOutState, EGameXXKRelicTrigger::DamageTaken, NAME_None, &DamageResults, nullptr, nullptr);
+	return ApplyTrigger(InOutState, EGameXXKRelicTrigger::DamageTaken, NAME_None, &DamageResults, Output, OutError);
 }
 
 bool FGameXXKRelicRules::CalculateRouteNodeTravelMoneyBonus(

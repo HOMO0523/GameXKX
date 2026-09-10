@@ -2859,17 +2859,18 @@ namespace
 
 	bool RegisterPartyReactionUses(
 		FGameXXKCardBattleRuntime& InOutRuntime,
-		const FGameXXKCardInstance& Instance,
+		const FName GrantorId,
+		const FName SourceId,
 		const FName RecipientUnitId,
 		const EGameXXKCardStatus Status,
 		const int32 Uses,
 		FString& OutError)
 	{
 		FGameXXKCardCombatUnit* Recipient = FindCombatUnitById(InOutRuntime.Units, RecipientUnitId);
-		const FGameXXKCardCombatUnit* Grantor = FindCombatUnitById(InOutRuntime.Units, Instance.OwnerUnitId);
+		const FGameXXKCardCombatUnit* Grantor = FindCombatUnitById(InOutRuntime.Units, GrantorId);
 		if (!Recipient || !Recipient->bLiving || Recipient->Side != EGameXXKCardTargetSide::Party
 			|| !Grantor || !Grantor->bLiving || Grantor->Side != EGameXXKCardTargetSide::Party
-			|| Instance.InstanceId.IsNone() || !IsPartyReactionStatus(Status) || Uses <= 0
+			|| SourceId.IsNone() || !IsPartyReactionStatus(Status) || Uses <= 0
 			|| Uses > GetCombatStatusCap(Status) - CountReactionUses(InOutRuntime, RecipientUnitId, Status))
 		{
 			OutError = TEXT("A party reaction requires living party records, a stable source card, and available reaction capacity.");
@@ -2889,14 +2890,20 @@ namespace
 			Reaction.ReactionId = FName(*FString::Printf(TEXT("Reaction.%d"), Ordinal));
 			Reaction.Status = Status;
 			Reaction.RecipientUnitId = RecipientUnitId;
-			Reaction.GrantedByUnitId = Instance.OwnerUnitId;
-			Reaction.SourceCardInstanceId = Instance.InstanceId;
+			Reaction.GrantedByUnitId = GrantorId;
+			Reaction.SourceCardInstanceId = SourceId;
 			Reaction.RegistrationBatchOrdinal = RegistrationBatchOrdinal;
 			Reaction.RemainingTriggers = 1;
 			Reaction.ExpireBeforePlayerRound = InOutRuntime.RoundNumber + 1;
 		}
 		SyncPartyReactionStatuses(InOutRuntime);
 		return true;
+	}
+
+	bool RegisterPartyReactionUses(FGameXXKCardBattleRuntime& Runtime, const FGameXXKCardInstance& Instance,
+		FName Recipient, EGameXXKCardStatus Status, int32 Uses, FString& Error)
+	{
+		return RegisterPartyReactionUses(Runtime, Instance.OwnerUnitId, Instance.InstanceId, Recipient, Status, Uses, Error);
 	}
 
 	bool ValidateCombatUnits(const TArray<FGameXXKCardCombatUnit>& Units, FString& OutError)
@@ -3182,6 +3189,20 @@ void GameXXKCardRules::RefreshCombatTerminalPhase(FGameXXKCardBattleRuntime& InO
 int32 GameXXKCardRules::GetCombatStatusStacks(const FGameXXKCardCombatUnit& Unit, const EGameXXKCardStatus Status)
 {
 	return IsConcreteCombatStatus(Status) ? GetCombatStatusStacksInternal(Unit, Status) : 0;
+}
+
+bool GameXXKCardRules::GrantRelicReaction(FGameXXKCardBattleRuntime& Runtime, FName RelicId,
+	FName Recipient, EGameXXKCardStatus Status, int32 Uses, FString* OutError)
+{
+	if (!IsPartyReactionStatus(Status) || Uses < 0 || RelicId.IsNone())
+		return SetFailure(OutError, TEXT("Relic reactions require a stable source and a valid reaction status."));
+	const int32 Available = FMath::Max(0, GetCombatStatusCap(Status) - CountReactionUses(Runtime, Recipient, Status));
+	const int32 Approved = FMath::Min(Uses, Available);
+	if (Approved == 0) return true;
+	FString Error;
+	if (!RegisterPartyReactionUses(Runtime, Recipient, RelicId, Recipient, Status, Approved, Error))
+		return SetFailure(OutError, Error);
+	return true;
 }
 
 int32 GameXXKCardRules::AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, const EGameXXKCardStatus Status, const int32 Amount, const FName SourceUnitId)
@@ -4073,6 +4094,7 @@ namespace
 		{
 			NewResult.VulnerabilityStacksBeforeHit = VulnerabilityStacks;
 			NewResult.MarkStacksBeforeHit = MarkStacks;
+			NewResult.BleedStacksBeforeHit = GetCombatStatusStacksInternal(*ResolvedTarget, EGameXXKCardStatus::Bleed);
 			NewResult.MarkDamageBonusPercent = MarkBonusPercent;
 		}
 		const int64 AmplifiedDamage = static_cast<int64>(NewResult.DamageAfterResistance)
@@ -5399,13 +5421,14 @@ namespace
 	bool ValidateCardBattleRuntimeInternal(const FGameXXKCardBattleRuntime& Runtime, FString& OutError)
 	{
 		OutError.Reset();
-		const int32 ExpectedDifficultyDamagePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal
+		const int32 LegacyDifficultyDamagePercent = Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Normal
 			? 100
 			: Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hard
 				? 125
 				: Runtime.EnemyDifficulty == EGameXXKEnemyDifficulty::Hell
 					? 150
 					: 0;
+		const int32 ExpectedDifficultyDamagePercent = Runtime.bEnemyAttributesIncludeDifficulty && LegacyDifficultyDamagePercent > 0 ? 100 : LegacyDifficultyDamagePercent;
 		const bool bLifeSavingProjectionActive = Runtime.bLifeSavingTalismanArmed
 			|| Runtime.bLifeSavingTalismanConsumptionPending;
 		if (!IsSupportedCardBattlePhase(Runtime.Phase) || !IsConcreteTerrain(Runtime.Terrain) || Runtime.RoundNumber < 1
@@ -9260,6 +9283,42 @@ namespace
 		return true;
 	}
 
+	int32 ApplyWindMomentumDamage(
+		const FGameXXKCardBattleRuntime& Runtime,
+		const FGameXXKCardDamageContext& Context,
+		const FGameXXKCardPlayResult* CardResult,
+		const int32 Damage)
+	{
+		if (Damage <= 0 || !CardResult || !IsDirectAttackDamageKind(Context.Kind)
+			|| CardResult->CardId.IsNone() || CardResult->OwnerUnitId.IsNone()) return Damage;
+		using O = EGameXXKCardResolutionOrigin;
+		const bool bCardAttack = Context.ResolutionOrigin == O::ActivePlay
+			|| Context.ResolutionOrigin == O::AutomaticReplay || Context.ResolutionOrigin == O::MageTaskReplay
+			|| Context.ResolutionOrigin == O::TaskNpcTaskReplay || Context.ResolutionOrigin == O::PartnerSorcererTaskReplay;
+		if (!(bCardAttack && Context.SourceEffectIndex >= 0) && Context.ResolutionOrigin != O::HeavyArrow) return Damage;
+		// The ordinary active card is committed after its attack/heavy-arrow packets.
+		// Replays resolve against the already committed counter and never advance it.
+		const int64 Ordinal = static_cast<int64>(Runtime.ActiveCardsPlayedThisRound)
+			+ (CardResult->ResolutionOrigin == O::ActivePlay ? 1 : 0);
+		const int64 Steps = FMath::Max<int64>(0, Ordinal - 2);
+		if (Steps == 0) return Damage;
+		int64 PerStep = 0;
+		for (const auto& Entry : Runtime.EquipmentEffects)
+		{
+			const auto& Effect = Entry.ActiveEffect;
+			if (Entry.SourceCharacterId == CardResult->OwnerUnitId
+				&& Effect.SourceCharacterId == CardResult->OwnerUnitId && Effect.RequiredPieces == 0
+				&& Effect.ModifierKind == EGameXXKEquipmentModifierKind::ZhuiFengLateCardDamage
+				&& Effect.Unit == EGameXXKEquipmentMagnitudeUnit::BasisPoints)
+			{
+				PerStep = FMath::Min<int64>(MAX_int32, PerStep + FMath::Max(0, Effect.Magnitude));
+			}
+		}
+		const int64 Bonus = FMath::Min<int64>(MAX_int32, PerStep * Steps);
+		return static_cast<int32>(FMath::Min<int64>(MAX_int32,
+			static_cast<int64>(Damage) * (10000 + Bonus) / 10000));
+	}
+
 	bool ApplyPlayerCardDirectDamageInternal(
 		FGameXXKCardBattleRuntime& InOutRuntime,
 		const FGameXXKCardDamageContext& Context,
@@ -9296,12 +9355,13 @@ namespace
 		}
 		FGameXXKCardDamageResult NewResult;
 		FGameXXKCardPlayResult PendingAuditResult;
+		const int32 EquipmentScaledDamage = ApplyWindMomentumDamage(NewRuntime, Context, InOutPlayResult, RequestedDamage);
 		if (!ApplyCombatDirectDamageInternal(
 			NewRuntime.Units,
 			NewRuntime.GuardLinks,
 			ResolvedContext,
 			TargetUnitId,
-			RequestedDamage,
+			EquipmentScaledDamage,
 			NewResult,
 			&NewRuntime,
 			&NewRuntime,
@@ -9696,13 +9756,13 @@ namespace
 				ExtraContext.MomentumStacksOverride = MomentumAtPacketStart;
 				ExtraContext.VulnerabilityStacksToConsumeOverride = 0;
 				FGameXXKCardDamageResult ExtraResult;
-				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+				if (!ApplyPlayerCardDirectDamageInternal(
 					InOutRuntime,
 					ExtraContext,
 					TargetId,
 					static_cast<int32>(ExtraRawDamage),
 					ExtraResult,
-					&OutError))
+					&InOutResult, &OutError))
 				{
 					return false;
 				}
@@ -11190,13 +11250,13 @@ namespace
 						? EGameXXKCardDamageElement::Frost : FGameXXKCombatGemRules::GetCardElement(Definition);
 					Context.SourceEffectIndex = EffectIndex;
 					FGameXXKCardDamageResult DamageResult;
-					if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+					if (!ApplyPlayerCardDirectDamageInternal(
 						InOutRuntime,
 						Context,
 						GuardTargetId,
 						static_cast<int32>(RawDamage),
 						DamageResult,
-						&OutError))
+						&InOutResult, &OutError))
 					{
 						return false;
 					}
@@ -11471,7 +11531,7 @@ namespace
 						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+						if (!ApplyPlayerCardDirectDamageInternal(InOutRuntime, Context, Target->UnitId, static_cast<int32>(RawDamage), DamageResult, &InOutResult, &OutError))
 						{
 							return false;
 						}
@@ -11521,13 +11581,13 @@ namespace
 						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+						if (!ApplyPlayerCardDirectDamageInternal(
 							InOutRuntime,
 							Context,
 							DamageTargetId,
 							static_cast<int32>(RawDamage),
 							DamageResult,
-							&OutError))
+							&InOutResult, &OutError))
 						{
 							return false;
 						}
@@ -12184,13 +12244,13 @@ namespace
 						Context.Element = EGameXXKCardDamageElement::Lightning;
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+						if (!ApplyPlayerCardDirectDamageInternal(
 							InOutRuntime,
 							Context,
 							LightningTargetId,
 							static_cast<int32>(RawDamage),
 							DamageResult,
-							&OutError))
+							&InOutResult, &OutError))
 						{
 							return false;
 						}
@@ -12306,7 +12366,7 @@ namespace
 						Context.Element = FGameXXKCombatGemRules::GetCardElement(Definition);
 						Context.SourceEffectIndex = EffectIndex;
 						FGameXXKCardDamageResult DamageResult;
-						if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(InOutRuntime, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &OutError))
+						if (!ApplyPlayerCardDirectDamageInternal(InOutRuntime, Context, EffectTargetId, static_cast<int32>(RawDamage), DamageResult, &InOutResult, &OutError))
 						{
 							return false;
 						}
@@ -12650,13 +12710,13 @@ namespace
 				Context.Kind = EGameXXKCardDamageKind::SingleTargetAttack;
 				Context.ResolutionOrigin = EGameXXKCardResolutionOrigin::HeavyArrow;
 				FGameXXKCardDamageResult DamageResult;
-				if (!GameXXKCardRules::ApplyPlayerCardDirectDamage(
+				if (!ApplyPlayerCardDirectDamageInternal(
 					InOutRuntime,
 					Context,
 					CardTargetIds[0],
 					static_cast<int32>(RequestedDamage),
 					DamageResult,
-					&OutError))
+					&InOutResult, &OutError))
 				{
 					return false;
 				}
@@ -17331,6 +17391,7 @@ bool GameXXKCardRules::ResolveCardPlay(
 	}
 	NewRuntime.Deck.SharedEnergy -= Preview.EffectiveEnergyCost;
 	Owner->Mana -= Preview.EffectiveManaCost;
+	const bool bActiveSpentLastMana = Preview.EffectiveManaCost > 0 && Owner->Mana == 0;
 	const FGameXXKCardInstance CopiedInstance = *Instance;
 	if (!MoveResolvedHandCard(NewRuntime.Deck, CardInstanceId, QualityEffectiveDefinition.bExhaustOnPlay, &ValidationError))
 	{
@@ -17357,6 +17418,8 @@ bool GameXXKCardRules::ResolveCardPlay(
 
 	FGameXXKCardPlayResult NewResult;
 	NewResult.CardInstanceId = CopiedInstance.InstanceId;
+	NewResult.ActiveManaSpent = Preview.EffectiveManaCost;
+	NewResult.bActiveSpentLastMana = bActiveSpentLastMana;
 	FGameXXKResolvedCardSnapshot ActiveSnapshot;
 	ActiveSnapshot.CardId = CopiedInstance.CardId;
 	ActiveSnapshot.Quality = CopiedInstance.CurrentQuality;

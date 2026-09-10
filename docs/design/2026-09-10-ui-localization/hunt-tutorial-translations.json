@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "DifficultyNormal",
+      "zh-Hans": "普通",
+      "en": "Normal",
+      "namespace": "GameXXKTraining"
+    },
+    {
+      "key": "DifficultyHard",
+      "zh-Hans": "困难",
+      "en": "Hard",
+      "namespace": "GameXXKTraining"
+    },
+    {
+      "key": "DifficultyHell",
+      "zh-Hans": "地狱",
+      "en": "Hell",
+      "namespace": "GameXXKTraining"
+    },
+    {
+      "key": "StageName",
+      "zh-Hans": "{0} {1}-{2}",
+      "en": "{0} {1}-{2}",
+      "namespace": "GameXXKTraining"
+    },
+    {
+      "key": "Item.HuntOrder.Common.Name",
+      "zh-Hans": "普通讨伐令",
+      "en": "Common Hunt Order"
+    },
+    {
+      "key": "Item.HuntOrder.Common.Description",
+      "zh-Hans": "用于普通3-4讨伐。完整通关或历练完成消耗1枚，必得讨伐宝箱；挑战失败保留。",
+      "en": "Entry to Normal3-4 Hunt. A full clear or completed travel consumes1 and guarantees a Hunt Chest. Challenge failure preserves the order."
+    },
+    {
+      "key": "Item.HuntOrder.Epic.Name",
+      "zh-Hans": "珍稀讨伐令",
+      "en": "Epic Hunt Order"
+    },
+    {
+      "key": "Item.HuntOrder.Epic.Description",
+      "zh-Hans": "用于困难3-4讨伐。完整通关或历练完成消耗1枚，必得讨伐宝箱；挑战失败保留。",
+      "en": "Entry to Hard3-4 Hunt. A full clear or completed travel consumes1 and guarantees a Hunt Chest. Challenge failure preserves the order."
+    },
+    {
+      "key": "Item.HuntOrder.Immortal.Name",
+      "zh-Hans": "不朽讨伐令",
+      "en": "Immortal Hunt Order"
+    },
+    {
+      "key": "Item.HuntOrder.Immortal.Description",
+      "zh-Hans": "用于地狱3-4讨伐。完整通关或历练完成消耗1枚，必得讨伐宝箱；挑战失败保留。",
+      "en": "Entry to Hell3-4 Hunt. A full clear or completed travel consumes1 and guarantees a Hunt Chest. Challenge failure preserves the order."
+    },
+    {
+      "key": "Hunt.Error.NoOrder",
+      "zh-Hans": "需要对应品质的讨伐令，且已通关同难度3-3。",
+      "en": "A matching Hunt Order and a clear of this difficulty’s 3-3 are required."
+    },
+    {
+      "key": "Hunt.Error.PendingSettlement",
+      "zh-Hans": "请先完成上次讨伐结算。",
+      "en": "Resolve the previous Hunt settlement first."
+    },
+    {
+      "key": "Hunt.Error.AlreadySettled",
+      "zh-Hans": "这次讨伐已结算。",
+      "en": "This Hunt has already been settled."
+    },
+    {
+      "key": "Hunt.Error.InvalidOrder",
+      "zh-Hans": "讨伐令记录无效。",
+      "en": "Invalid Hunt Order record."
+    },
+    {
+      "key": "Hunt.Error.InventoryFull",
+      "zh-Hans": "背包和仓库没有足够空间。",
+      "en": "Not enough room in your bag or warehouse."
+    },
+    {
+      "key": "Hunt.Error.SourceNotCleared",
+      "zh-Hans": "尚未通关对应3-3。",
+      "en": "The corresponding 3-3 has not been cleared."
+    },
+    {
+      "key": "Tutorial.InterfaceHelp",
+      "zh-Hans": "界面引导",
+      "en": "Interface Guide"
+    },
+    {
+      "key": "Tutorial.InterfaceHelp.Hint",
+      "zh-Hans": "查看各个界面和按钮的说明，可随时重看，不会重置教学进度。",
+      "en": "Review interfaces and buttons at any time. Your tutorial progress is preserved."
+    },
+    {
+      "key": "Help.InterfaceCatalog",
+      "zh-Hans": "界面引导",
+      "en": "Interface Guide"
+    },
+    {
+      "key": "Help.InterfaceCatalog.Body",
+      "zh-Hans": "这里可以重新查看仓库、卡组、编队、天赋、工具、历练、商店、任务、教程、战斗和路线的说明。用上一步、下一步翻阅；关闭后继续当前操作。",
+      "en": "Review the inventory, deck, formation, talents, tools, training, shop, quests, tutorials, battle and route map here. Use Previous and Next to browse, then close the guide to continue."
+    },
+    {
+      "key": "Training.DifficultySelector",
+      "zh-Hans": "难度：{0} ▼",
+      "en": "Difficulty: {0} ▼"
+    },
+    {
+      "key": "Training.ChapterLabel",
+      "zh-Hans": "第{0}章",
+      "en": "Ch. {0}"
+    },
+    {
+      "key": "Hunt.Node.Active",
+      "zh-Hans": "历练中",
+      "en": "Traveling"
+    },
+    {
+      "key": "Hunt.Node.Ready",
+      "zh-Hans": "可讨伐",
+      "en": "Ready"
+    },
+    {
+      "key": "Hunt.Node.NoOrder",
+      "zh-Hans": "缺令",
+      "en": "No Order"
+    },
+    {
+      "key": "Hunt.Node.Locked",
+      "zh-Hans": "锁定",
+      "en": "Locked"
+    },
+    {
+      "key": "Hunt.Stage.Tooltip",
+      "zh-Hans": "{Stage} · 连续三章\n需要：{Order}，持有{Count}枚。\n挑战失败保留令；完整通关或历练完成消耗1枚，必得讨伐宝箱。\n历练通程：金币{Gold}，经验{XP}。\n挑战三章总收益为同难度3-3的1.5倍，末章统一结算。",
+      "en": "{Stage} · Three Consecutive Chapters\nRequires {Order}. Owned: {Count}.\nChallenge failure preserves the order. A full clear or completed travel consumes1 and guarantees a Hunt Chest.\nFull travel reward: {Gold} Gold, {XP} Experience.\nTotal challenge rewards are1.5 times the corresponding3-3 run, settled after the final chapter."
+    },
+    {
+      "key": "Hunt.PendingDelivery",
+      "zh-Hans": "首通讨伐令待入库；腾出一格后自动领取。",
+      "en": "Your first-clear Hunt Order awaits delivery. Free an inventory cell to receive it automatically."
+    },
+    {
+      "key": "Chest.Normal.Name",
+      "zh-Hans": "普通历练宝箱",
+      "en": "Normal Training Chest"
+    },
+    {
+      "key": "Chest.Advanced.Name",
+      "zh-Hans": "高级历练宝箱",
+      "en": "Advanced Training Chest"
+    },
+    {
+      "key": "Chest.Hunt.Name",
+      "zh-Hans": "讨伐宝箱",
+      "en": "Hunt Chest"
+    },
+    {
+      "key": "Chest.Count",
+      "zh-Hans": "{0} × {1}",
+      "en": "{0} × {1}"
+    },
+    {
+      "key": "Chest.NoDrop",
+      "zh-Hans": "本次未掉落",
+      "en": "No Chest This Time"
+    },
+    {
+      "key": "Chest.Controls",
+      "zh-Hans": "{Name} ×{Count}\n左键开启1个；右键开启全部。\n{Odds}",
+      "en": "{Name} ×{Count}\nLeft-click to open1; right-click to open all.\n{Odds}"
+    },
+    {
+      "key": "Chest.Normal.Odds",
+      "zh-Hans": "2%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。",
+      "en": "2% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty."
+    },
+    {
+      "key": "Chest.Advanced.Odds",
+      "zh-Hans": "8%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。\n装备/宝石品质：稀有90%、珍稀8%、传奇1.5%、不朽0.5%。",
+      "en": "8% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty.\nEquipment/gem quality: Rare90%, Epic8%, Legendary1.5%, Immortal0.5%."
+    },
+    {
+      "key": "Chest.Hunt.Odds",
+      "zh-Hans": "装备/宝石品质：稀有60%、珍稀32%、传奇6%、不朽2%。",
+      "en": "Equipment/gem quality: Rare60%, Epic32%, Legendary6%, Immortal2%."
+    },
+    {
+      "key": "Hunt.Settlement.OrderGranted",
+      "zh-Hans": "获得：{0} ×1",
+      "en": "Received: {0} ×1"
+    },
+    {
+      "key": "Hunt.Settlement.OrderPending",
+      "zh-Hans": "获得：{0} ×1（待入库）",
+      "en": "Received: {0} ×1 (Awaiting Delivery)"
+    },
+    {
+      "key": "Common.TwoLines",
+      "zh-Hans": "{0}\n{1}",
+      "en": "{0}\n{1}"
+    },
+    {
+      "key": "Legacy.ac6a23ee76cf89f2",
+      "zh-Hans": "宝箱类型无效",
+      "en": "Invalid chest type"
+    },
+    {
+      "key": "Legacy.f6929268e10ea072",
+      "zh-Hans": "没有该类型宝箱",
+      "en": "No chest of this type"
+    },
+    {
+      "key": "Legacy.dd00e56900432490",
+      "zh-Hans": "宝箱钱包数据无效",
+      "en": "Invalid chest wallet"
+    },
+    {
+      "key": "Legacy.cdbe607d5a1a43d2",
+      "zh-Hans": "背包已满，宝箱未消耗",
+      "en": "Bag full. The chest was not consumed."
+    },
+    {
+      "key": "Legacy.7365236d77e49363",
+      "zh-Hans": "宝箱装备生成失败",
+      "en": "Could not create chest equipment"
+    },
+    {
+      "key": "Legacy.5774696f28f1d630",
+      "zh-Hans": "宝箱道具数量溢出",
+      "en": "Chest item quantity would overflow"
+    },
+    {
+      "key": "Legacy.f05c6547e0d5ab30",
+      "zh-Hans": "背包无法容纳宝箱产物",
+      "en": "The bag cannot hold this chest reward"
+    },
+    {
+      "key": "Legacy.485f1c8e1accb8da",
+      "zh-Hans": "宝箱开启序号耗尽",
+      "en": "Chest opening counter reached its limit"
+    },
+    {
+      "key": "Legacy.7e5b6599e7ab0246",
+      "zh-Hans": "宝箱开启结果无效",
+      "en": "Invalid chest opening result"
+    }
+  ]
+}

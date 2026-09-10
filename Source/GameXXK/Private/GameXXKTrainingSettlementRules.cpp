@@ -1,4 +1,5 @@
 #include "GameXXKTrainingSettlementRules.h"
+#include "GameXXKHuntRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKCompanionRules.h"
@@ -94,7 +95,14 @@ bool FGameXXKTrainingSettlementRules::CaptureAppliedResult(const FGameXXKRuntime
 		if (Before.Training.OwnedChestTokens.ContainsByPredicate([&Token](const auto& Old){return Old.AcquisitionOrdinal == Token.AcquisitionOrdinal;})) continue;
 		Receipt.NormalChestCount += Token.Tier == EGameXXKTrainingRewardTier::NormalChest ? 1 : 0;
 		Receipt.AdvancedChestCount += Token.Tier == EGameXXKTrainingRewardTier::AdvancedChest ? 1 : 0;
+		Receipt.HuntChestCount += Token.Tier==EGameXXKTrainingRewardTier::HuntChest?1:0;
 		Receipt.ChestItemLevel = FMath::Max(Receipt.ChestItemLevel, Token.SourceItemLevel);
+	}
+	if(!Before.Training.HuntFirstClearOrderGrants.Contains(Stage.StageId)&&After.Training.HuntFirstClearOrderGrants.Contains(Stage.StageId))
+	{
+		Receipt.GrantedHuntOrderId=FGameXXKHuntRules::OrderId(Stage.Difficulty);
+		Receipt.bHuntOrderPendingDelivery=After.Training.PendingHuntOrders.FindRef(Receipt.GrantedHuntOrderId)>0;
+		Receipt.UnlockedStageId=FGameXXKTrainingRules::MakeStageId(Stage.Difficulty,10);
 	}
 	AddMember(Receipt, FGameXXKEquipmentRules::HeroCharacterId(), FText::FromString(TEXT("主角")), Before.PlayerLevel, Before.PlayerXP, After.PlayerLevel, After.PlayerXP);
 	const FName CompanionId = Before.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
@@ -130,7 +138,8 @@ bool FGameXXKTrainingSettlementRules::ValidatePending(const FGameXXKRuntimeState
 		|| !State.Training.ClearedStageIds.Contains(R.StageId) || State.Screen != EGameXXKScreen::Town
 		|| State.CurrentMapId != TEXT("DesktopTrainingHUD") || State.bDungeonActive || State.Training.bChallengeActive || State.Training.bTravelActive
 		|| R.Gold < 0 || R.RouteGold < 0 || R.RouteGold > R.Gold || R.Experience < 0 || R.SourceTravelMoney < 0
-		|| R.NormalChestCount < 0 || R.AdvancedChestCount < 0 || R.ChestItemLevel < 0 || R.Members.Num() != 3
+		|| R.NormalChestCount < 0 || R.AdvancedChestCount < 0 || R.HuntChestCount < 0
+		|| (!R.GrantedHuntOrderId.IsNone()&&!FGameXXKHuntRules::IsOrder(R.GrantedHuntOrderId)) || R.ChestItemLevel < 0 || R.Members.Num() != 3
 		|| R.Stats.Rounds < 0 || R.Stats.ActiveCardsPlayed < 0 || R.Stats.PartyDamageDealt < 0 || R.Stats.PartyDamageTaken < 0
 		|| R.Stats.HealingDone < 0 || R.Stats.ArmorGenerated < 0 || R.Stats.SurvivingPartyUnits < 0 || R.Stats.SurvivingPartyUnits > 3
 		|| R.Stats.PartyEndingHealth < 0 || R.Stats.PartyEndingHealth > R.Stats.PartyEndingMaxHealth)

@@ -1,0 +1,24 @@
+{
+  "slug": "goat",
+  "name": "山羊",
+  "id": "Enemy.Ch1.Goat",
+  "chapter": 1,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png",
+  "identitySourceSha256": "ad6e09c7fa4b3f90e746912b1ebecd239c7a2292ce84c3360aa7d371020294d7",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "山羊：保留原图拟人两足直立的奶白胖山羊，椭圆大肚、两只很短的前臂和深灰蹄，脚为另外两只短蹄，恰好四肢；一对短厚灰褐盘弯角，横耳、原菱形小胡须，平直浓眉半眯眼和不屑小嘴、短上翘尾。身体与脸转为3/4朝右。不能改成四足普通写实羊，不能变瘦或变成青角羊王的大角。",
+  "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：山羊：保留原图拟人两足直立的奶白胖山羊，椭圆大肚、两只很短的前臂和深灰蹄，脚为另外两只短蹄，恰好四肢；一对短厚灰褐盘弯角，横耳、原菱形小胡须，平直浓眉半眯眼和不屑小嘴、短上翘尾。身体与脸转为3/4朝右。不能改成四足普通写实羊，不能变瘦或变成青角羊王的大角。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\goat.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-2db476a1-ca07-4fe9-9e52-e822a116dc69.png"
+}

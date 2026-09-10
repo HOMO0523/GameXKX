@@ -61,9 +61,9 @@ bool FGameXXKFirstChapterSpeakerPortraitTest::RunTest(const FString&)
 	{
 		const auto* Node=FGameXXKMainStoryCatalog::FindNode(Id);
 		if(!Node)continue;
-		for(int32 I=0;I<Node->Lines.Num();++I)
+		for(int32 I=0;I<Node->ReplayLineCount();++I)
 		{
-			const auto& Line=Node->Lines[I];
+			const auto& Line=*Node->ReplayLine(I);
 			const auto View=GameXXKMainStoryDialoguePresentation::LineView(*Node,I);
 			if(Line.SpeakerId==TEXT("narrator"))
 			{
@@ -106,9 +106,9 @@ bool FGameXXKAllChapterSpeakerPortraitTest::RunTest(const FString&)
 		{
 			const auto* Node=FGameXXKMainStoryCatalog::FindNode(Id);
 			if(!TestNotNull(TEXT("authored node exists"),Node))continue;
-			for(int32 I=0;I<Node->Lines.Num();++I)
+			for(int32 I=0;I<Node->ReplayLineCount();++I)
 			{
-				const FName Speaker=Node->Lines[I].SpeakerId;
+				const FName Speaker=Node->ReplayLine(I)->SpeakerId;
 				const auto View=GameXXKMainStoryDialoguePresentation::LineView(*Node,I);
 				if(Speaker==TEXT("narrator"))
 				{

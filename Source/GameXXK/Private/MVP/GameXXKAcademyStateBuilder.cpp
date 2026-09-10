@@ -5,12 +5,14 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKEnemyCatalog.h"
+#include "Misc/Crc.h"
 
 bool GameXXKAcademyStateBuilder::BuildLoadout(const FGameXXKAcademyCourse& Course,int32 LessonIndex,FGameXXKRuntimeState& State,FName& Focus,FString& Error)
 {
 	if(!Course.Lessons.IsValidIndex(LessonIndex))return false;
 	State=UGameXXKMVPRules::CreateNewGame();State.PlayerLevel=100;State.PlayerXP=0;State.PlayerGold=0;
-	const auto Role=Course.Role==EGameXXKCharacterRole::Hero ? EGameXXKCharacterRole::Guard : Course.Role;
+	const auto Role=Course.Role==EGameXXKCharacterRole::Hero ? EGameXXKCharacterRole::Blade : Course.Role;
 	const auto* Recruit=FGameXXKCompanionCatalog::GetRecruitTemplates().FindByPredicate([Role](const auto& T){return T.Role==Role && T.TemplateId.ToString().EndsWith(TEXT(".01"));});
 	if(!Recruit){Error=TEXT("教学伙伴配置缺失。");return false;}
 	FGameXXKCompanionRecruitResult Result;
@@ -45,16 +47,48 @@ bool GameXXKAcademyStateBuilder::BuildLoadout(const FGameXXKAcademyCourse& Cours
 	return true;
 }
 
+bool GameXXKAcademyStateBuilder::BuildEncounter(const FGameXXKAcademyCourse& Course,int32 LessonIndex,FGameXXKRuntimeState& State,FString& Error)
+{
+    if(!Course.Lessons.IsValidIndex(LessonIndex))return false;
+    // Course-owned encounter: no Training stage, difficulty, unlocks, tickets,
+    // route generation or stage reward calculation participates in this battle.
+    State.Training=FGameXXKTrainingProgress();
+    State.bHasActiveBattle=true;State.ActiveBattleNodeId=-200000-LessonIndex;
+    State.ActiveBattleParty.Reset();State.ActiveBattleEnemies.Reset();
+    State.PendingRouteNodeId=INDEX_NONE;State.bDungeonActive=false;
+    State.Screen=EGameXXKScreen::Battle;State.CurrentMapId=TEXT("AcademyBattle");State.TownPanelMode=EGameXXKTownPanelMode::None;
+    const FName Enemies[]={TEXT("Enemy.Ch1.Rooster"),TEXT("Enemy.Ch1.Weasel")};
+    for(int32 Index=0;Index<UE_ARRAY_COUNT(Enemies);++Index)
+    {
+        const auto* Definition=FGameXXKEnemyCatalog::Find(Enemies[Index]);
+        if(!Definition){Error=TEXT("Tutorial enemy definition is missing.");return false;}
+        auto& Enemy=State.ActiveBattleEnemies.AddDefaulted_GetRef();
+        Enemy.Id=FName(*FString::Printf(TEXT("%s.Lesson%d.Enemy%d"),*Course.Id.ToString(),LessonIndex+1,Index+1));
+        Enemy.EnemyDefinitionId=Definition->Id;Enemy.DisplayName=Definition->DisplayName;
+        Enemy.HP=Enemy.MaxHP=300;Enemy.Attack=12;Enemy.Defense=0;
+        Enemy.Speed=10+Index;Enemy.CombatLevel=100;Enemy.BattleSlotNumber=Index+1;
+        Enemy.bEnemy=true;Enemy.bDefeated=false;
+    }
+    const int32 Seed=static_cast<int32>(FCrc::StrCrc32(*FString::Printf(TEXT("%s.Lesson%d"),*Course.Id.ToString(),LessonIndex+1)));
+    return FGameXXKCardBattleAdapter::BeginCardBattle(State,EGameXXKNodeKind::Battle,EGameXXKCardTerrain::Plain,Seed,&Error,100,false);
+}
+
 bool GameXXKAcademyStateBuilder::ConfigureBattle(const FGameXXKAcademyCourse& Course,int32 LessonIndex,FGameXXKRuntimeState& State,FName Focus,FString& Error)
 {
 	auto& Battle=State.CardRun.ActiveBattle;
 	const auto* FocusUnit=Battle.Units.FindByPredicate([Focus](const auto& U){return U.UnitId==Focus;});
 	if(!FocusUnit){Error=TEXT("教学角色未能进入战斗。");return false;}
-	const int32 EnemyHealth=FMath::Max(700,FocusUnit->Attack*12);
+	const int32 EnemyHealth=Course.Role==EGameXXKCharacterRole::Hero
+		? (LessonIndex==0?240:LessonIndex==1?180:300) : 300;
 	for(auto& Unit:Battle.Units)
 	{
-		if(Unit.Side==EGameXXKCardTargetSide::Enemy){Unit.MaxHP=EnemyHealth;Unit.HP=EnemyHealth;Unit.Attack=35;Unit.Defense=0;Unit.CombatLevel=100;}
-		else Unit.HP=FMath::Max(1,Unit.MaxHP*7/10);
+		if(Unit.Side==EGameXXKCardTargetSide::Enemy){Unit.MaxHP=EnemyHealth;Unit.HP=EnemyHealth;Unit.Attack=12;Unit.Defense=0;Unit.CombatLevel=100;}
+		else
+		{
+			// Borrowed demonstration stats: retain access to every lesson card,
+			// but avoid one-shotting 300-HP dummies before the mechanic is shown.
+			Unit.Attack=70;Unit.Defense=35;Unit.MaxHP=300;Unit.HP=210;
+		}
 	}
 	TArray<FGameXXKCardInstance> Cards;auto& Deck=Battle.Deck;
 	for(auto* Zone:{&Deck.Hand,&Deck.DrawPile,&Deck.DiscardPile,&Deck.ExhaustPile,&Deck.PendingAutomaticHandCards}){Cards.Append(*Zone);Zone->Reset();}

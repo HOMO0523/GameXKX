@@ -2,6 +2,7 @@
 #include "Dev/GameXXKDevToolsSubsystem.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKDesktopPaperStyle.h"
+#include "UI/GameXXKLocalization.h"
 #include "Engine/Texture2D.h"
 #include "Engine/Font.h"
 #include "Widgets/Layout/SBorder.h"
@@ -57,7 +58,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Text(const FString& Value,int32 Size,b
 {
 	const auto Font=FGameXXKInRunUiStyle::Font(Size,bDisplay);
 	if (Font.FontObject) Resources.AddUnique(const_cast<UObject*>(Font.FontObject.Get()));
-	return SNew(STextBlock).Text(FText::FromString(Value)).Font(Font)
+	return SNew(STextBlock).Text(GameXXKLocalization::Source(Value)).Font(Font)
 		.ColorAndOpacity(Color==FLinearColor::Black ? FGameXXKInRunUiStyle::Ink() : Color).AutoWrapText(true);
 }
 TSharedRef<SWidget> SGameXXKDevWorkbench::Button(const FString& Label,TFunction<void()> Action,bool bPrimary)
@@ -65,7 +66,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Button(const FString& Label,TFunction<
 	return SNew(SButton).ButtonStyle(bPrimary?&ActionStyle:&QuietStyle)
 		.HAlign(HAlign_Center).VAlign(VAlign_Center)
 		.OnClicked_Lambda([Action=MoveTemp(Action)](){Action();return FReply::Handled();})
-		[SNew(STextBlock).Text(FText::FromString(Label)).Font(FGameXXKInRunUiStyle::Font(16,true)).AutoWrapText(false)
+		[SNew(STextBlock).Text(GameXXKLocalization::Source(Label)).Font(FGameXXKInRunUiStyle::Font(16,true)).AutoWrapText(false)
 			.ColorAndOpacity(bPrimary?FLinearColor(0.98f,0.94f,0.83f):FGameXXKInRunUiStyle::Ink())];
 }
 TSharedRef<SWidget> SGameXXKDevWorkbench::Field(const FString& Key,const FString& Label,const FString& Default,float Width)
@@ -176,7 +177,7 @@ void SGameXXKDevWorkbench::Construct(const FArguments& Args)
 		+SVerticalBox::Slot().AutoHeight().Padding(0,15,0,0)
 		[SNew(SBorder).BorderImage(&ShadeBrush).Padding(FMargin(12,9))
 		[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(14)).ColorAndOpacity_Lambda([this](){return Tools.IsValid()&&Tools->WasLastCommandSuccessful()?FGameXXKInRunUiStyle::Jade():FGameXXKInRunUiStyle::Vermilion();}).AutoWrapText(true)
-			.Text_Lambda([this](){return FText::FromString(Tools.IsValid()?Tools->GetLastMessage():FString());})]]]];
+			.Text_Lambda([this](){return GameXXKLocalization::Source(Tools.IsValid()?Tools->GetLastMessage():FString());})]]]];
 	Rebuild();RebuildInspector();
 }
 void SGameXXKDevWorkbench::Tick(const FGeometry& Geometry,double CurrentTime,float DeltaTime)
@@ -238,6 +239,11 @@ void SGameXXKDevWorkbench::RebuildInspector()
 TSharedRef<SWidget> SGameXXKDevWorkbench::BuildHome()
 {
 	auto Content=SNew(SVerticalBox);
+    Content->AddSlot().AutoHeight().Padding(0,0,0,12)
+    [SNew(SHorizontalBox)
+        +SHorizontalBox::Slot().FillWidth(1).Padding(0,0,8,0)[Button(TEXT("解锁全部关卡"),[this](){Run(TEXT("progress.unlock_stages"),Obj());})]
+        +SHorizontalBox::Slot().FillWidth(1)[Button(TEXT("解锁全部任务"),[this](){Run(TEXT("progress.unlock_tasks"),Obj());})]];
+    Content->AddSlot().AutoHeight().Padding(0,0,0,12)[Text(TEXT("只放开测试入口；恢复试验即可撤销。"),13,false,FGameXXKInRunUiStyle::MutedInk())];
 
 	Content->AddSlot().AutoHeight().Padding(0,0,0,22)[Text(TEXT("为主角、所有已拥有伙伴与六位NPC，配置同等级的完整装备。"),16,false,FGameXXKInRunUiStyle::MutedInk())];
 	Content->AddSlot().AutoHeight().Padding(0,0,0,22)

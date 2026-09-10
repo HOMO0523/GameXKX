@@ -1,0 +1,330 @@
+{
+  "schemaVersion": 1,
+  "courses": 13,
+  "lessons": [
+    {
+      "course": "Academy.Basic",
+      "index": 0,
+      "zhTitle": "资源",
+      "enTitle": "Resources",
+      "zhMechanism": "气力全队共享，内力各自消耗。青锋一式可为队友减费。",
+      "enMechanism": "AP is shared; MP is personal. Edge cuts the next ally card's AP cost."
+    },
+    {
+      "course": "Academy.Basic",
+      "index": 1,
+      "zhTitle": "防护",
+      "enTitle": "Defense",
+      "zhMechanism": "先看敌方意图，再叠护甲。护甲先挡伤害，剩余伤害扣气血。",
+      "enMechanism": "Read enemy intent, then gain Armor. Armor absorbs damage before HP."
+    },
+    {
+      "course": "Academy.Basic",
+      "index": 2,
+      "zhTitle": "四式",
+      "enTitle": "Four Spells",
+      "zhMechanism": "首牌定阵赏；四张不同主角法术牌完成任务并重放，每回合至多一次。",
+      "enMechanism": "First card sets the reward. Four different Hero spells replay; one task per round."
+    },
+    {
+      "course": "Academy.Blade",
+      "index": 0,
+      "zhTitle": "首尾",
+      "enTitle": "First & Last",
+      "zhMechanism": "队伍首张主动牌触发冲锋；末张刀客牌在回合末收招。",
+      "enMechanism": "Open with a Blade card for its Opener; end with one for its Finisher."
+    },
+    {
+      "course": "Academy.Blade",
+      "index": 1,
+      "zhTitle": "气势",
+      "enTitle": "Momentum",
+      "zhMechanism": "先积气势、给敌人破绽，再接攻击牌提高伤害。",
+      "enMechanism": "Build Momentum and apply Vulnerability, then follow with attacks."
+    },
+    {
+      "course": "Academy.Blade",
+      "index": 2,
+      "zhTitle": "反应",
+      "enTitle": "Reactions",
+      "zhMechanism": "反应牌等敌人行动触发；收招看最后主动牌，重放不改它。",
+      "enMechanism": "Reactions wait for enemy actions. Replays do not change your Finisher."
+    },
+    {
+      "course": "Academy.Guard",
+      "index": 0,
+      "zhTitle": "格挡",
+      "enTitle": "Block",
+      "zhMechanism": "护甲挡伤害，格挡按次数触发。叠好防护，再让敌人进攻。",
+      "enMechanism": "Armor absorbs damage; Block uses charges. Prepare, then face an attack."
+    },
+    {
+      "course": "Academy.Guard",
+      "index": 1,
+      "zhTitle": "盾击",
+      "enTitle": "Shield Strike",
+      "zhMechanism": "先叠护甲，再用盾击；护甲越多，这类攻击越强。",
+      "enMechanism": "Build Armor before shield attacks: more Armor means more damage."
+    },
+    {
+      "course": "Academy.Healer",
+      "index": 0,
+      "zhTitle": "开方",
+      "enTitle": "Prescription",
+      "zhMechanism": "每张药方牌首次主动使用多耗1气力，药方持续本场战斗。",
+      "enMechanism": "Each Prescription costs +1 AP on its first active play; it lasts this battle."
+    },
+    {
+      "course": "Academy.Healer",
+      "index": 1,
+      "zhTitle": "毒爆",
+      "enTitle": "Toxic Burst",
+      "zhMechanism": "先挂流血、中毒或灼烧，再毒爆，让持续伤害立即结算。",
+      "enMechanism": "Apply Bleed, Poison or Burn, then use Toxic Burst to trigger it now."
+    },
+    {
+      "course": "Academy.Hunter",
+      "index": 0,
+      "zhTitle": "蓄力",
+      "enTitle": "Charge",
+      "zhMechanism": "先积蓄力，再打重箭牌；消耗蓄力会触发牌上的追加效果。",
+      "enMechanism": "Build Charge, then play a Heavy Arrow card to spend it on its bonus effect."
+    },
+    {
+      "course": "Academy.Hunter",
+      "index": 1,
+      "zhTitle": "追射",
+      "enTitle": "Follow-up",
+      "zhMechanism": "先挂持续伤害或破绽，再用重箭追击。留意消耗的蓄力。",
+      "enMechanism": "Apply damage over time or Vulnerability, then follow with a Heavy Arrow."
+    },
+    {
+      "course": "Academy.Sorcerer",
+      "index": 0,
+      "zhTitle": "雷阵",
+      "enTitle": "Storm Task",
+      "zhMechanism": "首牌定阵赏；五张不同法师牌触发重放，雷阵按标记落雷。",
+      "enMechanism": "First card sets the reward. Five different cards replay; Marks fuel lightning."
+    },
+    {
+      "course": "Academy.Sorcerer",
+      "index": 1,
+      "zhTitle": "编序",
+      "enTitle": "Spell Order",
+      "zhMechanism": "通用牌也计入五牌任务。按主动出牌顺序重放，不重复付费。",
+      "enMechanism": "Core cards count too. Play five different cards; they replay in order for free."
+    },
+    {
+      "course": "Academy.Sorcerer",
+      "index": 2,
+      "zhTitle": "火阵",
+      "enTitle": "Fire Task",
+      "zhMechanism": "火系牌开局决定阵赏；再主动打出另外四张不同法师牌。",
+      "enMechanism": "Open with a Fire card to set its reward, then play four other Mage cards."
+    },
+    {
+      "course": "Academy.Sorcerer",
+      "index": 3,
+      "zhTitle": "冰阵",
+      "enTitle": "Ice Task",
+      "zhMechanism": "冰系牌开局决定阵赏；再主动打出另外四张不同法师牌。",
+      "enMechanism": "Open with an Ice card to set its reward, then play four other Mage cards."
+    },
+    {
+      "course": "Academy.Formation",
+      "index": 0,
+      "zhTitle": "换场",
+      "enTitle": "Terrain",
+      "zhMechanism": "换成另一地势才算换场；地势收益按当前地形结算。",
+      "enMechanism": "Switch to different terrain, then trigger a benefit from the new terrain."
+    },
+    {
+      "course": "Academy.Formation",
+      "index": 1,
+      "zhTitle": "布阵",
+      "enTitle": "Benefits",
+      "zhMechanism": "根据攻防需要换地势，再多次触发收益；收益不会重放整张牌。",
+      "enMechanism": "Choose terrain for attack or defense. Benefits trigger without replaying the card."
+    },
+    {
+      "course": "Academy.Npc.Tusi",
+      "index": 0,
+      "zhTitle": "号令",
+      "enTitle": "Command",
+      "zhMechanism": "号令借最高攻击队友出手；再给受击队友护甲和反应。",
+      "enMechanism": "Command calls your highest-ATK ally. Add Armor and reactions for defense."
+    },
+    {
+      "course": "Academy.Npc.Tusi",
+      "index": 1,
+      "zhTitle": "合击",
+      "enTitle": "Team Strike",
+      "zhMechanism": "先安排增益，再号令或誓约；合击由牌面指定的队友执行。",
+      "enMechanism": "Prepare buffs, then command an attack. The card names which ally strikes."
+    },
+    {
+      "course": "Academy.Npc.Song",
+      "index": 0,
+      "zhTitle": "三牌",
+      "enTitle": "Three Cards",
+      "zhMechanism": "首牌定阵赏；主动打出三张不同专属牌，免费依次重放。",
+      "enMechanism": "First card sets the reward. Play three different personal cards for free replays."
+    },
+    {
+      "course": "Academy.Npc.YueBai",
+      "index": 0,
+      "zhTitle": "残卷",
+      "enTitle": "Fragments",
+      "zhMechanism": "每牌基础1气力；检索三张不同牌，衔接地势收益。",
+      "enMechanism": "Cards cost 1 AP. Search for three different cards; trigger terrain benefits."
+    },
+    {
+      "course": "Academy.Npc.YueBai",
+      "index": 1,
+      "zhTitle": "照夜",
+      "enTitle": "Nightfall",
+      "zhMechanism": "照夜做首牌；三张不同牌完成任务后，按标记逐次落雷。",
+      "enMechanism": "Open with Night. Complete three different cards; Marks fuel its lightning."
+    },
+    {
+      "course": "Academy.Npc.Zhou",
+      "index": 0,
+      "zhTitle": "救治",
+      "enTitle": "Healing",
+      "zhMechanism": "对受伤队友出牌才有有效治疗；摹图再触发当前地势收益。",
+      "enMechanism": "Heal an injured ally, then use Terrain to trigger the current terrain benefit."
+    },
+    {
+      "course": "Academy.Npc.Zhou",
+      "index": 1,
+      "zhTitle": "岩粉",
+      "enTitle": "Dust",
+      "zhMechanism": "先给敌人挂持续伤害，再用岩粉毒爆，立即结算伤害。",
+      "enMechanism": "Apply damage over time, then use Seal for an immediate Toxic Burst."
+    },
+    {
+      "course": "Academy.Npc.JinGui",
+      "index": 0,
+      "zhTitle": "借力",
+      "enTitle": "Borrow Power",
+      "zhMechanism": "先给高攻队友蓄力；重箭消耗牌面指定队友的蓄力。",
+      "enMechanism": "Build Charge on your strongest ally. Heavy Arrow uses the named ally's Charge."
+    },
+    {
+      "course": "Academy.Npc.JinGui",
+      "index": 1,
+      "zhTitle": "周旋",
+      "enTitle": "Cover",
+      "zhMechanism": "灵动有25%概率耗1层闪避，否则耗2层闪避；挡不住持续伤害。",
+      "enMechanism": "Agility: 25% chance to dodge for 1 stack; otherwise needs 2. Cannot dodge DOT."
+    },
+    {
+      "course": "Academy.Npc.Qiong",
+      "index": 0,
+      "zhTitle": "蛊毒",
+      "enTitle": "Venom",
+      "zhMechanism": "先挂持续伤害，再毒爆；转向受伤队友时使用治疗效果。",
+      "enMechanism": "Apply damage over time, then Toxic Burst. Use healing on injured allies."
+    },
+    {
+      "course": "Academy.Npc.Qiong",
+      "index": 1,
+      "zhTitle": "山歌",
+      "enTitle": "Song",
+      "zhMechanism": "藤桥为队友积蓄力；山歌恢复全队气血，先看谁已受伤。",
+      "enMechanism": "Vines builds ally Charge. Song restores party HP; check who is injured."
+    }
+  ],
+  "goals": [
+    {
+      "kind": "ActiveCards",
+      "zh": "不同主动牌",
+      "en": "Different cards"
+    },
+    {
+      "kind": "EndRound",
+      "zh": "结束回合",
+      "en": "End Turn"
+    },
+    {
+      "kind": "Damage",
+      "zh": "造成伤害",
+      "en": "Deal damage"
+    },
+    {
+      "kind": "Armor",
+      "zh": "获得护甲",
+      "en": "Gain Armor"
+    },
+    {
+      "kind": "Healing",
+      "zh": "恢复气血",
+      "en": "Restore HP"
+    },
+    {
+      "kind": "Cleanse",
+      "zh": "清除负面",
+      "en": "Cleanse"
+    },
+    {
+      "kind": "Medicine",
+      "zh": "获得药效",
+      "en": "Gain Potency"
+    },
+    {
+      "kind": "Formula",
+      "zh": "开启药方",
+      "en": "Open Prescription"
+    },
+    {
+      "kind": "Reaction",
+      "zh": "触发反应",
+      "en": "Trigger a reaction"
+    },
+    {
+      "kind": "ArmorDamage",
+      "zh": "护甲伤害",
+      "en": "Armor damage"
+    },
+    {
+      "kind": "Charge",
+      "zh": "获得蓄力",
+      "en": "Gain Charge"
+    },
+    {
+      "kind": "HeavyArrow",
+      "zh": "重箭联动",
+      "en": "Heavy Arrow"
+    },
+    {
+      "kind": "TerrainChange",
+      "zh": "切换地势",
+      "en": "Change terrain"
+    },
+    {
+      "kind": "TerrainBenefit",
+      "zh": "地势收益",
+      "en": "Terrain benefit"
+    },
+    {
+      "kind": "SpellTask",
+      "zh": "任务重放",
+      "en": "Task replay"
+    },
+    {
+      "kind": "BladeOpening",
+      "zh": "首牌冲锋",
+      "en": "Opener"
+    },
+    {
+      "kind": "BladeFinish",
+      "zh": "末牌收招",
+      "en": "Finisher"
+    },
+    {
+      "kind": "ToxicExplosion",
+      "zh": "有效毒爆",
+      "en": "Toxic Burst"
+    }
+  ]
+}

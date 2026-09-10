@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.bd2f8146fd3b0583",
+      "zh-Hans": "选择目标",
+      "en": "Choose Target"
+    },
+    {
+      "key": "Legacy.f111b3d9697fd212",
+      "zh-Hans": "自身施放",
+      "en": "Cast on Self"
+    },
+    {
+      "key": "Legacy.7539004351edc8c8",
+      "zh-Hans": "群体施放",
+      "en": "Cast on Group"
+    },
+    {
+      "key": "Legacy.97be43f1964fda6d",
+      "zh-Hans": "自动目标",
+      "en": "Automatic Target"
+    },
+    {
+      "key": "Legacy.301edae72c17a3f4",
+      "zh-Hans": "直接施放",
+      "en": "Cast Directly"
+    },
+    {
+      "key": "Legacy.f0c596126d4276a9",
+      "zh-Hans": "自动结算",
+      "en": "Automatic Resolution"
+    },
+    {
+      "key": "Legacy.5b1aae4d726c3a8a",
+      "zh-Hans": "无附加状态",
+      "en": "No Additional Status"
+    },
+    {
+      "key": "Legacy.620c3e875a8beea6",
+      "zh-Hans": "点击后选择高亮目标。",
+      "en": "Click, then choose a highlighted target."
+    },
+    {
+      "key": "Legacy.f60f0e481b49ff84",
+      "zh-Hans": "点击后自动随机结算。",
+      "en": "Click to resolve with a random target."
+    },
+    {
+      "key": "Legacy.8b91079c5067694e",
+      "zh-Hans": "点击后立即施放。",
+      "en": "Click to cast immediately."
+    },
+    {
+      "key": "Legacy.79612f3a8c16f351",
+      "zh-Hans": "\n状态说明：\n",
+      "en": "\nStatus Details:\n"
+    },
+    {
+      "key": "Legacy.35b422c611fff00f",
+      "zh-Hans": "，击倒",
+      "en": ", defeated"
+    },
+    {
+      "key": "Legacy.5143e4287dd52af2",
+      "zh-Hans": "战斗演出正在结算，请等待演出完成。",
+      "en": "Battle animations are resolving. Wait until they finish."
+    },
+    {
+      "key": "Legacy.fb75ed3152d63182",
+      "zh-Hans": "请先处理退出战斗确认。",
+      "en": "Resolve the leave-battle confirmation first."
+    },
+    {
+      "key": "Legacy.dd26b2b693826676",
+      "zh-Hans": "开发用战斗 HUD 预览为只读，不能执行战斗操作。",
+      "en": "The development battle HUD preview is read only."
+    },
+    {
+      "key": "Legacy.ed2baaee2e51d7c9",
+      "zh-Hans": "请点击高亮卡牌。",
+      "en": "Click the highlighted card."
+    },
+    {
+      "key": "Legacy.527c3025849e9a79",
+      "zh-Hans": "当前没有可操作的卡牌战斗。",
+      "en": "No active card battle is available."
+    },
+    {
+      "key": "Legacy.be45b94dbc2171a4",
+      "zh-Hans": "请先取消当前的目标选择。",
+      "en": "Cancel the current target selection first."
+    },
+    {
+      "key": "Legacy.7b3a606e6988de30",
+      "zh-Hans": "敌方意图正在结算，请等待玩家回合。",
+      "en": "Enemy intents are resolving. Wait for the player turn."
+    },
+    {
+      "key": "Legacy.fc9d14d092bd4df2",
+      "zh-Hans": "该卡已不在当前手牌中。",
+      "en": "This card is no longer in your hand."
+    },
+    {
+      "key": "Legacy.711db4daa8a42e1d",
+      "zh-Hans": "请选择高亮目标。",
+      "en": "Choose a highlighted target."
+    },
+    {
+      "key": "Legacy.3c311c2bce0e8acf",
+      "zh-Hans": "该单位不是此牌当前可选的目标。",
+      "en": "This unit is not a legal target for this card."
+    },
+    {
+      "key": "Legacy.06bbb1e65e197826",
+      "zh-Hans": "战斗状态已发生变化，请重新选择卡牌。",
+      "en": "The battle state has changed. Select a card again."
+    },
+    {
+      "key": "Legacy.9b6e18340d4c007c",
+      "zh-Hans": "请先完成当前步骤。",
+      "en": "Complete the current step first."
+    },
+    {
+      "key": "Legacy.0c945381cbcb8b9f",
+      "zh-Hans": "当前没有可结束的卡牌回合。",
+      "en": "No player card turn can be ended right now."
+    },
+    {
+      "key": "Legacy.a686039243da9944",
+      "zh-Hans": "请先取消或完成当前的目标选择。",
+      "en": "Cancel or complete the current target selection first."
+    },
+    {
+      "key": "Legacy.0d69b62071204c8f",
+      "zh-Hans": "自动战斗：开",
+      "en": "Auto Battle: On"
+    },
+    {
+      "key": "Legacy.4aa4fdf78954fb9a",
+      "zh-Hans": "自动战斗：关",
+      "en": "Auto Battle: Off"
+    },
+    {
+      "key": "Legacy.ea3c130ccff3bcd1",
+      "zh-Hans": "当前没有可选择的洞察牌。",
+      "en": "No Insight cards are available."
+    },
+    {
+      "key": "Legacy.e4c4c29940238f05",
+      "zh-Hans": "所选卡牌不在当前洞察列表中。",
+      "en": "This card is not in the current Insight list."
+    },
+    {
+      "key": "Legacy.69e30bdb9380e77d",
+      "zh-Hans": "当前没有可检索的任务牌。",
+      "en": "No task cards can be searched right now."
+    },
+    {
+      "key": "Legacy.96ccfab9a75511bb",
+      "zh-Hans": "所选卡牌不在当前任务检索列表中。",
+      "en": "This card is not in the current task search list."
+    },
+    {
+      "key": "Legacy.c88c8463300d75d0",
+      "zh-Hans": "当前没有需要弃置的手牌。",
+      "en": "No cards need to be discarded."
+    },
+    {
+      "key": "Legacy.3648807847d69527",
+      "zh-Hans": "弃牌数量与当前要求不一致。",
+      "en": "The discard count does not match the current requirement."
+    },
+    {
+      "key": "Legacy.25189cd7320c07bb",
+      "zh-Hans": "所选卡牌不在当前弃牌列表中。",
+      "en": "This card is not in the current discard list."
+    },
+    {
+      "key": "Legacy.5206733371d9ae23",
+      "zh-Hans": "当前没有可取消的洞察。",
+      "en": "No Insight choice can be cancelled."
+    },
+    {
+      "key": "Legacy.10030ffb94566132",
+      "zh-Hans": "当前洞察不可取消。",
+      "en": "This Insight choice cannot be cancelled."
+    },
+    {
+      "key": "Legacy.e622f41be6736b28",
+      "zh-Hans": "当前没有可选取的战后奖励。",
+      "en": "No battle reward is available."
+    },
+    {
+      "key": "Legacy.c754f7aedd680390",
+      "zh-Hans": "所选奖励不在当前战后三选一内。",
+      "en": "This reward is not among the current three choices."
+    },
+    {
+      "key": "Legacy.346e68ad930635b1",
+      "zh-Hans": "当前没有可跳过的战后卡牌。",
+      "en": "No battle card reward can be skipped right now."
+    },
+    {
+      "key": "Legacy.24f2a6c50ee8c72f",
+      "zh-Hans": "只能替换当前候选允许的临时路线牌实例。",
+      "en": "Only an eligible temporary route card instance can be replaced."
+    },
+    {
+      "key": "Legacy.7370a5aae58f6539",
+      "zh-Hans": "无法读取当前战斗状态。",
+      "en": "Cannot read the current battle state."
+    },
+    {
+      "key": "Legacy.f2c290aeed2044de",
+      "zh-Hans": "战斗演出正在结算，完成后即可退出。",
+      "en": "Battle animations are resolving. You may leave when they finish."
+    },
+    {
+      "key": "Legacy.6a2c5f00277f9c24",
+      "zh-Hans": "当前战斗不支持返回路线节点。",
+      "en": "This battle cannot return to a route node."
+    },
+    {
+      "key": "Legacy.d33579c6af08cf1c",
+      "zh-Hans": "本场缺少可验证的入场检查点，无法安全回退。",
+      "en": "No verified entry checkpoint is available for this battle."
+    },
+    {
+      "key": "Legacy.69cee10456cc34f4",
+      "zh-Hans": "退出挑战失败，当前挑战状态未改变。",
+      "en": "Could not leave the challenge. Its state is unchanged."
+    },
+    {
+      "key": "Legacy.713e60ff2fa6bb95",
+      "zh-Hans": "退出战斗失败，当前战斗与路线状态均未改变。",
+      "en": "Could not leave the battle. Battle and route states are unchanged."
+    },
+    {
+      "key": "Legacy.f0ac81f22593090e",
+      "zh-Hans": "点击后加入手牌。",
+      "en": "Click to add this card to your hand."
+    },
+    {
+      "key": "Legacy.a6d27b18ab0cc273",
+      "zh-Hans": "点击后弃置此牌。",
+      "en": "Click to discard this card."
+    },
+    {
+      "key": "Legacy.d7f362b307782f7e",
+      "zh-Hans": "气力上限 +1\n玩家回合的气力上限增加1点。",
+      "en": "Energy Limit +1\nIncrease the player-turn Energy limit by1."
+    },
+    {
+      "key": "Legacy.32e1b45c3845defe",
+      "zh-Hans": "每回合抽牌 +1\n玩家回合多抽1张牌。",
+      "en": "Draw per Turn +1\nDraw1 more card each player turn."
+    },
+    {
+      "key": "Legacy.4d511de3a4ae91d2",
+      "zh-Hans": "领取后提升此牌品质。",
+      "en": "Claim to improve this card’s quality."
+    },
+    {
+      "key": "Legacy.d427dca6ed481bb4",
+      "zh-Hans": "领取首领卡牌。",
+      "en": "Claim the Boss card."
+    },
+    {
+      "key": "Legacy.751dd49f2182c637",
+      "zh-Hans": "敌方意图结算时战斗状态已丢失。",
+      "en": "The battle state was lost while resolving enemy intents."
+    },
+    {
+      "key": "Legacy.697f79ce0049ff23",
+      "zh-Hans": "\n敌方意图已结算，投影同步失败；将继续完成该敌方回合。",
+      "en": "\nEnemy intents resolved, but projection sync failed. Enemy-turn completion will continue."
+    }
+  ]
+}

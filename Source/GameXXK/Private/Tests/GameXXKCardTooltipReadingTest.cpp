@@ -305,10 +305,13 @@ bool FGameXXKCardTooltipTargetHeadingTest::RunTest(const FString& Parameters)
 		{
 			if (const UTextBlock* Label = Cast<UTextBlock>(Widget))
 			{
-				bBoldTarget |= Label->GetText().ToString() == Row.Value && Label->GetFont().TypefaceFontName == TEXT("Bold");
+				bBoldTarget |= Label->GetText().ToString() == Row.Value
+					&& Label->GetFont().TypefaceFontName == TEXT("Default")
+					&& Label->GetFont().OutlineSettings.OutlineSize>=1
+					&& Label->GetFont().FontObject&&Label->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng"));
 			}
 		});
-		TestTrue(TEXT("recipient text is bold"), bBoldTarget);
+		TestTrue(TEXT("recipient text is emphasized without leaving the Jianghu face"), bBoldTarget);
 	}
 	return true;
 }

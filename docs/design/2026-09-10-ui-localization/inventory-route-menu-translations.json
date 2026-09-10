@@ -1,0 +1,515 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "CharacterTabEquipment",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "CharacterTabDeck",
+      "zh-Hans": "卡组",
+      "en": "Deck"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "CharacterTabTalents",
+      "zh-Hans": "天赋",
+      "en": "Talents"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "CharacterTabTitles",
+      "zh-Hans": "称号",
+      "en": "Titles"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "FilterAll",
+      "zh-Hans": "全部",
+      "en": "All"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "FilterEquipment",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "FilterProps",
+      "zh-Hans": "道具",
+      "en": "Items"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "FilterMaterials",
+      "zh-Hans": "材料",
+      "en": "Materials"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "FilterTasks",
+      "zh-Hans": "任务",
+      "en": "Quests"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "Decompose",
+      "zh-Hans": "分解",
+      "en": "Dismantle"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EnhanceMain",
+      "zh-Hans": "强化",
+      "en": "Enhance"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ReforgeMain",
+      "zh-Hans": "洗炼",
+      "en": "Refine"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "NoSelectionTitle",
+      "zh-Hans": "选择物品",
+      "en": "Select an Item"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "NoSelectionDetail",
+      "zh-Hans": "从背包、商店或装备槽中选择。",
+      "en": "Select an item from your bag, the shop, or an equipment slot."
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EnhanceAction",
+      "zh-Hans": "强化",
+      "en": "Enhance"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "HeroDeckCaption",
+      "zh-Hans": "卡组背包 36 张 · 角色卡组 8 张",
+      "en": "Card Collection: 36 · Hero Deck: 8"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ApplyHeroDeck",
+      "zh-Hans": "应用卡组",
+      "en": "Apply Deck"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "WeaponSlot",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "HeadSlot",
+      "zh-Hans": "头部",
+      "en": "Head"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ArmorSlot",
+      "zh-Hans": "衣甲",
+      "en": "Body Armor"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "BeltSlot",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ShoesSlot",
+      "zh-Hans": "鞋",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "AccessorySlot",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ConfirmPrompt",
+      "zh-Hans": "确认操作？",
+      "en": "Confirm this action?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "Confirm",
+      "zh-Hans": "确认",
+      "en": "Confirm"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "Cancel",
+      "zh-Hans": "取消",
+      "en": "Cancel"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "TitleTrade",
+      "zh-Hans": "商铺",
+      "en": "Shop"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "TitleBackpack",
+      "zh-Hans": "背包",
+      "en": "Bag"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "AttributesUnavailable",
+      "zh-Hans": "角色属性\n\n暂无运行时数据",
+      "en": "Character Attributes\n\nNo runtime data available"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "HeroAttributesUnavailable",
+      "zh-Hans": "主角属性\n\n暂无运行时数据",
+      "en": "Hero Attributes\n\nNo runtime data available"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "TalentsUnavailable",
+      "zh-Hans": "天赋\n\n尚未开放",
+      "en": "Talents\n\nNot Yet Available"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "TitlesUnavailable",
+      "zh-Hans": "称号\n\n尚未开放",
+      "en": "Titles\n\nNot Yet Available"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "WeaponEmpty",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "HeadEmpty",
+      "zh-Hans": "头部",
+      "en": "Head"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ArmorEmpty",
+      "zh-Hans": "衣甲",
+      "en": "Body Armor"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "BeltEmpty",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ShoesEmpty",
+      "zh-Hans": "鞋",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "AccessoryEmpty",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "UnequipInstanceAction",
+      "zh-Hans": "卸下",
+      "en": "Unequip"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipInstanceAction",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "UseAction",
+      "zh-Hans": "使用",
+      "en": "Use"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipAction",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "SellAction",
+      "zh-Hans": "出售",
+      "en": "Sell"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "BuyAction",
+      "zh-Hans": "购买",
+      "en": "Buy"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "UnequipAction",
+      "zh-Hans": "卸下",
+      "en": "Unequip"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "BuyConfirmPrompt",
+      "zh-Hans": "购买 {0}？",
+      "en": "Buy {0}?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "SellConfirmPrompt",
+      "zh-Hans": "卖出 {0}？",
+      "en": "Sell {0}?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "DecomposeConfirmPrompt",
+      "zh-Hans": "分解 {0}？",
+      "en": "Dismantle {0}?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EnhanceConfirmPrompt",
+      "zh-Hans": "强化 {0}？",
+      "en": "Enhance {0}?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "DecomposeRewardSummary",
+      "zh-Hans": "分解奖励：金币 10、强化石 x1、洗炼砂 x1",
+      "en": "Dismantle reward: 10 Gold, Enhancement Stone x1, Refinement Sand x1"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EnhanceFailed",
+      "zh-Hans": "强化失败。",
+      "en": "Enhancement failed."
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "ReforgeFailed",
+      "zh-Hans": "洗炼失败。",
+      "en": "Refinement failed."
+    },
+    {
+      "namespace": "GameXXKRelics",
+      "key": "TalismanAlreadyOwned",
+      "zh-Hans": "本局已持有保命护符，可选择行旅钱。",
+      "en": "You already have a Life-Saving Talisman this run. You may choose Travel Money."
+    },
+    {
+      "namespace": "GameXXKMVPCommandRouter",
+      "key": "ChooseRelic",
+      "zh-Hans": "选择遗物 · {0}",
+      "en": "Choose Relic · {0}"
+    },
+    {
+      "namespace": "GameXXKMVPCommandRouter",
+      "key": "ChooseRelicUnknown",
+      "zh-Hans": "选择遗物",
+      "en": "Choose Relic"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "NewGameAction",
+      "zh-Hans": "开始游戏",
+      "en": "Start Game"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "ContinueAction",
+      "zh-Hans": "加载存档",
+      "en": "Load Save"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "OptionsAction",
+      "zh-Hans": "设置游戏",
+      "en": "Settings"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "QuitAction",
+      "zh-Hans": "退出",
+      "en": "Quit"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "NewGameButton",
+      "zh-Hans": "开始游戏",
+      "en": "Start Game"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "ContinueButton",
+      "zh-Hans": "加载存档",
+      "en": "Load Save"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "OptionsButton",
+      "zh-Hans": "设置游戏",
+      "en": "Settings"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "QuitButton",
+      "zh-Hans": "退出",
+      "en": "Quit"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotHead",
+      "zh-Hans": "头部",
+      "en": "Head"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotArmor",
+      "zh-Hans": "衣甲",
+      "en": "Body Armor"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotBelt",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotShoes",
+      "zh-Hans": "鞋",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "SlotAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "Title",
+      "zh-Hans": "商店",
+      "en": "Shop"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "Purchase",
+      "zh-Hans": "购买",
+      "en": "Buy"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "ConfirmPrompt",
+      "zh-Hans": "确认购买所选商品？",
+      "en": "Buy the selected product?"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "Confirm",
+      "zh-Hans": "确认",
+      "en": "Confirm"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "Cancel",
+      "zh-Hans": "取消",
+      "en": "Cancel"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "ResultConfirm",
+      "zh-Hans": "确定",
+      "en": "OK"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "RouteFallbackName",
+      "zh-Hans": "江湖行路",
+      "en": "Journey through Jianghu"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "OpenSettlement",
+      "zh-Hans": "结算本次路线并返回挂机",
+      "en": "Settle This Run and Return to Idle"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "SettlementTitle",
+      "zh-Hans": "本次路线结算",
+      "en": "Run Settlement"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "SettlementDescription",
+      "zh-Hans": "仅结算当前已获得的奖励；未解决与未访问节点不会计入。",
+      "en": "Collect the rewards earned so far. Unresolved and unvisited nodes are not counted."
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "SettlementConfirm",
+      "zh-Hans": "确认结算并返回挂机",
+      "en": "Confirm and Return to Idle"
+    },
+    {
+      "namespace": "GameXXKRouteMap",
+      "key": "SettlementCancel",
+      "zh-Hans": "继续路线",
+      "en": "Continue Run"
+    },
+    {
+      "namespace": "GameXXKQuestDialog",
+      "key": "Speaker",
+      "zh-Hans": "青山镇 · 引路人",
+      "en": "Qingshan Town · Guide"
+    },
+    {
+      "namespace": "GameXXKQuestDialog",
+      "key": "Prompt",
+      "zh-Hans": "少侠，山道上近来有妖物出没。可愿随我前去查探？",
+      "en": "Young warrior, monsters have appeared along the mountain path. Will you join me to investigate?"
+    },
+    {
+      "namespace": "GameXXKQuestDialog",
+      "key": "Leave",
+      "zh-Hans": "暂且离开",
+      "en": "Leave for Now"
+    },
+    {
+      "namespace": "GameXXKQuestDialog",
+      "key": "Accept",
+      "zh-Hans": "接取委托",
+      "en": "Accept Quest"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "slug": "boar",
+  "name": "野猪",
+  "id": "Enemy.Ch2.Boar",
+  "chapter": 2,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/08_boar.png",
+  "identitySourceSha256": "8a33e559b7e40a91ead33bc1cdb61662ffef5f2cebe48e1aa1b17e9cef293d9b",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "野猪：保留原土棕色矮胖野猪，椭圆厚背、深棕短硬鬃、小尖耳、圆柱猪鼻两鼻孔、一对短弯米白獠牙、卷小尾，四条短腿。头低3/4朝右，倔强愤怒眼神；普通猪体型圆敦、牙短，不变成赤獠猪王、不添装甲。",
+  "prompt": "Use case: style-transfer / precise-object-edit. 修正第一张的绘制密度和眼睛，第二张是项目原图，作为细节上限和卡通眼睛依据。保持第一张的身份、姿态、配色、比例、朝右3/4方向和原道具，全身完整居中、原米白背景不变。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。 野猪重点：眼睛恢复项目原图那种简洁漫画符号，粗黑直斜眉下一小块米白眼白和单块黑瞳，不要棕色虹膜/反光玻璃球/湿润眼缘，保持愤怒眼神。全身毛纹去掉八成，椭圆背部一整块棕色亮面加大阴影，不要满身碎三角；颊毛、腿和鬃只在外轮廓留少数尖毛块。保留原圆敦体型、四脚、短弯双獠牙、猪鼻和卷尾。 必须重新组织大色面，不是将现图模糊，不增加其它物体或文字。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\boar.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/08_boar.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\boar.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-428f72cd-dc09-4168-b3e6-796081984b57.png",
+  "previousGeneratedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\boar.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：野猪：保留原土棕色矮胖野猪，椭圆厚背、深棕短硬鬃、小尖耳、圆柱猪鼻两鼻孔、一对短弯米白獠牙、卷小尾，四条短腿。头低3/4朝右，倔强愤怒眼神；普通猪体型圆敦、牙短，不变成赤獠猪王、不添装甲。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

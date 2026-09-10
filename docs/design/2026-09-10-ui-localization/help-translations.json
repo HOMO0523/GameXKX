@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Toolbar.Help.Hint",
+      "zh-Hans": "界面说明（F1）",
+      "en": "Interface help (F1)"
+    },
+    {
+      "key": "Help.Battle.Resources",
+      "zh-Hans": "气力与角色资源",
+      "en": "Energy and character resources"
+    },
+    {
+      "key": "Help.Battle.Resources.Body",
+      "zh-Hans": "气力由全队共用，内力由每名角色各自持有。出牌前先看费用；气血归零的角色会退场，护甲用于抵挡伤害。",
+      "en": "The party shares Energy, while each character has their own Inner Power. Check a card's costs before playing it. A character leaves battle at zero Health; Armor absorbs damage."
+    },
+    {
+      "key": "Help.Battle.Intent",
+      "zh-Hans": "先看敌方意图",
+      "en": "Read enemy intents"
+    },
+    {
+      "key": "Help.Battle.Intent.Body",
+      "zh-Hans": "悬停敌方意图，查看招式、目标与实际数值。按即将到来的攻击安排护甲、格挡、援护或治疗。",
+      "en": "Hover over an enemy intent to inspect its move, target and current values. Prepare Armor, Block, Cover or healing for the incoming action."
+    },
+    {
+      "key": "Help.Battle.Cards",
+      "zh-Hans": "出牌与查看说明",
+      "en": "Play and inspect cards"
+    },
+    {
+      "key": "Help.Battle.Cards.Body",
+      "zh-Hans": "选择一张可用手牌，再点合法目标；无需选目标的牌会直接使用。右键取消选目标。悬停卡牌，Shift看详述，Ctrl看术语。",
+      "en": "Select a playable card, then choose a legal target. Cards that need no target are played directly. Right-click to cancel targeting. Hover over a card; use Shift for details and Ctrl for keywords."
+    },
+    {
+      "key": "Help.Battle.Turn",
+      "zh-Hans": "结束回合",
+      "en": "End the turn"
+    },
+    {
+      "key": "Help.Battle.Turn.Body",
+      "zh-Hans": "完成本回合操作后结束回合，让敌方按意图行动。下个玩家回合会补充资源和手牌；结束前留意收招与回合末效果。",
+      "en": "End the turn after your actions to let enemies carry out their intents. Resources and cards refill on the next player turn. Check Finisher and end-of-turn effects before ending."
+    },
+    {
+      "key": "Help.Route.Choice",
+      "zh-Hans": "选择下一站",
+      "en": "Choose the next stop"
+    },
+    {
+      "key": "Help.Route.Choice.Body",
+      "zh-Hans": "选择当前能够到达的节点。节点类型决定战斗、商店或其他遭遇；点过的位置会留下墨圈。",
+      "en": "Choose a currently reachable node. Its type determines the battle, shop or other encounter. Selected positions keep an ink-circle mark."
+    },
+    {
+      "key": "Help.Route.Summary",
+      "zh-Hans": "行程与行旅钱",
+      "en": "Progress and Travel Coins"
+    },
+    {
+      "key": "Help.Route.Summary.Body",
+      "zh-Hans": "左上显示当前关卡、行程和可用行旅钱。行旅钱用于局内商店，不能用局外金币代付。",
+      "en": "The top left shows the current stage, route progress and available Travel Coins. Route shops use Travel Coins; Gold cannot be used in their place."
+    },
+    {
+      "key": "Help.Route.Legend",
+      "zh-Hans": "沿途图例",
+      "en": "Route legend"
+    },
+    {
+      "key": "Help.Route.Legend.Body",
+      "zh-Hans": "右侧只保留图标和短名称。把鼠标放到对应行查看完整说明；悬停图例标题可查看墨圈和淡色状态的含义。",
+      "en": "The right side shows icons and short names. Hover over a row for its full explanation, or over the heading to learn what ink circles and faded nodes mean."
+    }
+  ]
+}

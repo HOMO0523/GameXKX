@@ -1,4 +1,5 @@
 #include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKHuntRules.h"
 
 #include "GameXXKEquipmentCatalog.h"
 #include "GameXXKEquipmentRules.h"
@@ -646,6 +647,8 @@ bool FGameXXKDesktopInventoryRules::Normalize(FGameXXKRuntimeState& InOutState, 
 	{
 		return false;
 	}
+	// Delivery removes pending entries monotonically; a second normalization places their physical cells.
+	if(FGameXXKHuntRules::DeliverPending(InOutState))return Normalize(InOutState,OutError);
 	SynchronizeLegacyMaterialMirrors(InOutState);
 	return Validate(InOutState, OutError);
 }

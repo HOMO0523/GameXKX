@@ -3891,10 +3891,10 @@ bool FGameXXKCardBattleBoardHandCardHoverStyleTest::RunTest(const FString& Param
 	});
 	TestNotNull(TEXT("playable hand-card preview exposes its generated attack"), GeneratedAttack);
 	TestTrue(TEXT("battle hover consumes the live card preview instead of a catalog-only percentage"),
-		GeneratedAttack && DetailText.Contains(FString::Printf(TEXT("造成%d点伤害"), GeneratedAttack->ResolvedMagnitude)));
+		GeneratedAttack && DetailText.Contains(FString::Printf(TEXT("造成%d点物理伤害"), GeneratedAttack->ResolvedMagnitude)));
 	TestTrue(TEXT("hover detail names the enemy recipient on its own line"), DetailText.Contains(TEXT("\n单体敌方\n")));
 	TestFalse(TEXT("recipient line omits the old target prefix"), DetailText.Contains(TEXT("\n目标：")));
-	TestTrue(TEXT("hover compact text explains the generated card effect"), DetailText.Contains(TEXT("点伤害")));
+	TestTrue(TEXT("hover compact text explains the generated card effect"), DetailText.Contains(TEXT("点物理伤害")));
 	TestFalse(TEXT("concise hand tooltip omits the legacy interaction instruction"), DetailText.Contains(TEXT("点击后选择高亮合法目标。")));
 	TestTrue(TEXT("hand hover keeps the reusable tooltip input-transparent"), Board->IsCardTooltipHitTestInvisibleForTest());
 

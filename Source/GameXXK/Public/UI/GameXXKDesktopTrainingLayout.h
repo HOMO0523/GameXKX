@@ -69,6 +69,10 @@ namespace GameXXKDesktopTrainingLayout
 		bool bWarehouseOpen = false;
 		bool bRightPanelOpen = false;
 		bool bExitConfirmationOpen = false;
+		bool bSettingsOpen = false;
+		bool bInterfaceHelpOpen = false;
+        FVector4 InterfaceHelpRect = FVector4(0,0,0,0);
+		int32 HudScalePercent = 100;
 		bool bTownToggleVisible = false;
 		bool bStoryQuestVisible = false;
 		bool bMainStoryDialogueOpen = false;
@@ -188,6 +192,10 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector2D& LogicalVisualSize);
 	GAMEXXK_API TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State);
+	GAMEXXK_API FVector4 GetHudSettingsReferenceRect();
+	GAMEXXK_API FVector4 GetHudSettingsRenderedLogicalRect(int32 HudScalePercent);
+	GAMEXXK_API FVector4 GetInterfaceHelpReferenceRect();
+	GAMEXXK_API FVector4 GetInterfaceHelpRenderedLogicalRect(int32 HudScalePercent);
 	GAMEXXK_API FVector4 ResolveDesktopNativeRegionRect(
 		const FDesktopNativeRegionShape& Shape,
 		const FVector2D& HostOffset,

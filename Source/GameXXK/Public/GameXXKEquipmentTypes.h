@@ -209,7 +209,8 @@ enum class EGameXXKEquipmentModifierKind : uint8
 	BladeOpeningReplay = 38,
 	QingNangCycle = 39,
 	ShiGuCycle = 40,
-	ZhuiFengCycle = 41
+	ZhuiFengCycle = 41,
+	ZhuiFengLateCardDamage = 42
 };
 
 USTRUCT(BlueprintType)

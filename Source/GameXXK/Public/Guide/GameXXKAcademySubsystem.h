@@ -31,9 +31,9 @@ public:
 	const FGameXXKAcademyEvidence& GetEvidence() const {return Evidence;}
 	FText GetMessage() const {return Message;}
 	void ObserveCommittedResult(const FGameXXKCardPlayResult& Result);
-	bool AllowsCard(FName Id) const {return !IsActive() || CueMode==5 || CueMode==4 || (CueMode==0 && Id==CueCard);}
-	bool AllowsTarget(FName Id) const {return !IsActive() || CueMode==5 || (CueMode==1 && CueTargets.Contains(Id));}
-	bool AllowsEndTurn() const {return !IsActive() || CueMode==5 || CueMode==2;}
+	bool AllowsCard(FName Id) const {return !IsActive() || CueMode==4 || (CueMode==0 && (bPractice || Id==CueCard));}
+	bool AllowsTarget(FName Id) const {return !IsActive() || (CueMode==1 && (bPractice || CueTargets.Contains(Id)));}
+	bool AllowsEndTurn() const {return !IsActive() || CueMode==2 || (bPractice && CueMode==0);}
 	void Observe(const FGameXXKCardBattleRuntime& Before,const FGameXXKCardBattleRuntime& After,const TArray<FGameXXKCardDamageResult>& Damage,FName PlayedInstance);
 	bool HandleTerminal(EGameXXKCardBattlePhase Phase);
 	void RefreshOverlay(UGameXXKBattleBoardWidget* Board);
@@ -42,6 +42,7 @@ private:
 	void RefreshPlayerUi();
 	void UpdateGuidance(UGameXXKBattleBoardWidget* Board,bool bWatching);
 	int32 CueMode=0;
+	bool bPractice=false;
 	FName CueCard;
 	TArray<FName> CueTargets;
 	FText CueText;
@@ -60,6 +61,10 @@ private:
 	TWeakObjectPtr<UGameXXKBattleBoardWidget> OverlayBoard;
 	UPROPERTY(Transient) TObjectPtr<UCanvasPanel> Overlay;
 	UPROPERTY(Transient) TObjectPtr<UTextBlock> GoalText;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> LessonTitleText;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> MechanismText;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> ObjectiveText;
+    uint64 GuidanceLanguageRevision=0;
 	UPROPERTY(Transient) TObjectPtr<UBorder> GuideCaption;
 	UPROPERTY(Transient) TObjectPtr<UGameXXKGuideSpotlightWidget> GuideSpotlight;
 	UFUNCTION() void OnExit();

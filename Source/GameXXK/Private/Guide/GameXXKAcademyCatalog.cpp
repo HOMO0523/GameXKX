@@ -1,5 +1,6 @@
 #include "Guide/GameXXKAcademyRules.h"
 #include "GameXXKCardCatalog.h"
+#include "UI/GameXXKLocalization.h"
 
 namespace
 {
@@ -73,6 +74,31 @@ namespace
 				Mage->Lessons.Add(MoveTemp(Extra));
 			}
 		}
+        if(auto* Hero=C.FindByPredicate([](const auto& Course){return Course.Id==FName(TEXT("Academy.Basic"));}))
+        {
+            FGameXXKAcademyLesson Extra;
+            Extra.Cards={TEXT("Hero.Mage.YanXuLiaoYuan"),TEXT("Hero.Mage.HanXuNingChuan"),TEXT("Hero.Mage.LeiXuYinTing"),TEXT("Hero.Mage.GuiXuTongXuan"),
+                TEXT("Hero.Generic.QingFengYiShi"),TEXT("Hero.Generic.GuiYuanShu"),TEXT("Hero.Generic.NingShenTuNa"),TEXT("Hero.Generic.HengJianShouShi")};
+            Extra.Goals={Goal(G::SpellTask,TEXT("完成主角四牌任务")),Goal(G::ActiveCards,TEXT("使用不同主动牌"),4)};
+            Hero->Lessons.Add(MoveTemp(Extra));
+        }
+        // Existing lesson indices and rewards stay stable; presentation uses the
+        // reviewed, concise bilingual teaching copy instead of raw catalog prose.
+        const TCHAR* GoalNames[]={TEXT("ActiveCards"),TEXT("EndRound"),TEXT("Damage"),TEXT("Armor"),TEXT("Healing"),TEXT("Cleanse"),TEXT("Medicine"),TEXT("Formula"),TEXT("Reaction"),TEXT("ArmorDamage"),TEXT("Charge"),TEXT("HeavyArrow"),TEXT("TerrainChange"),TEXT("TerrainBenefit"),TEXT("SpellTask"),TEXT("BladeOpening"),TEXT("BladeFinish"),TEXT("ToxicExplosion")};
+        for(auto& Course:C)
+        {
+            const FString Prefix=Course.Id.ToString();
+            Course.Title=GameXXKLocalization::Text(*(Prefix+TEXT(".Name")));
+            Course.Summary=GameXXKLocalization::Text(*(Prefix+TEXT(".Summary")));
+            for(int32 Index=0;Index<Course.Lessons.Num();++Index)
+            {
+                auto& Item=Course.Lessons[Index];const FString Key=Prefix+FString::Printf(TEXT(".Lesson.%d"),Index);
+                Item.Title=GameXXKLocalization::Text(*(Key+TEXT(".Title")));
+                Item.Instruction=GameXXKLocalization::Text(*(Key+TEXT(".Instruction")));
+                for(auto& Objective:Item.Goals)
+                    Objective.Text=GameXXKLocalization::Text(*(FString(TEXT("Academy.Goal."))+GoalNames[static_cast<int32>(Objective.Kind)]));
+            }
+        }
 		return C;
 	}
 }

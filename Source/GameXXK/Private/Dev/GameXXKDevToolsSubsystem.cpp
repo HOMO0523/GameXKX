@@ -314,6 +314,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		{TEXT("session.begin"),TEXT("")},{TEXT("session.restore"),TEXT("")},
 		{TEXT("snapshot.save"),TEXT("name")},{TEXT("snapshot.load"),TEXT("name")},{TEXT("snapshot.list"),TEXT("")},{TEXT("snapshot.export"),TEXT("")},{TEXT("snapshot.import"),TEXT("scene")},
 		{TEXT("item.give"),TEXT("id,quantity,character")},{TEXT("character.level"),TEXT("level,character")},{TEXT("party.select"),TEXT("character")},{TEXT("cards.set"),TEXT("character,cards")},
+        {TEXT("progress.unlock_stages"),TEXT("")},{TEXT("progress.unlock_tasks"),TEXT("")},
 		{TEXT("equipment.create"),TEXT("id,character,level,quality,enhance,quantity,affix,gem,equip,character_level")},{TEXT("equipment.loadout"),TEXT("sets,character,level,quality,enhance,quantity,affix,gem,equip,character_level")},
 		{TEXT("equipment.recommend_all"),TEXT("level,hero_set")},{TEXT("benchmark.prepare"),TEXT("role,npc,hero_direction,npc_omit,hero_cards,partner_cards,npc_cards,enhance,gems")},{TEXT("simulate.run"),TEXT("stage,encounter,seed,max_rounds,continue_current,scene")},
 		{TEXT("heal"),TEXT("")},{TEXT("battle.start"),TEXT("stage,encounter,seed")},{TEXT("battle.restart"),TEXT("")},{TEXT("battle.return"),TEXT("")},{TEXT("battle.auto"),TEXT("enabled")},
@@ -416,6 +417,19 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		return Finish(true,TEXT("实时属性与战斗状态"),D);
 	}
 	if (Command==TEXT("session.begin")) { BeginSession();return Finish(true,TEXT("已开始临时试验；原进度保留。")); }
+    if(Command==TEXT("progress.unlock_stages")||Command==TEXT("progress.unlock_tasks"))
+    {
+        if(Current.CardRun.bHasActiveCardBattle||Current.Training.bChallengeActive)
+            return Finish(false,TEXT("先返回桌面，再解锁测试入口。"));
+        if(!Impl->Original.IsSet()&&GetWorld()&&GetWorld()->IsGameWorld()&&!MVP->SaveCurrentGame())
+            return Finish(false,TEXT("原进度未能保存，未解锁测试入口。"));
+        const auto Travel=MVP->GetTrainingTravelRuntimeCopy();BeginSession();auto Unlocked=Current;
+        Unlocked.Training.bDevelopmentUnlockAllStages=true;
+        if(Command==TEXT("progress.unlock_tasks"))Unlocked.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks=true;
+        if(!MVP->ApplyDevelopmentState(Unlocked,Error,&Travel))return Finish(false,Error);
+        RefreshPresentation(MVP);
+        return Finish(true,Command==TEXT("progress.unlock_tasks")?TEXT("全部剧情任务入口已解锁；临时试验，不发通关奖励。"):TEXT("全部关卡入口已解锁；临时试验，不发通关奖励。"));
+    }
 	if (Command==TEXT("session.restore"))
 	{
 		if (!Impl->Original.IsSet()) return Finish(false,TEXT("没有需要恢复的试验会话。"));
@@ -631,7 +645,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 			auto* Item=Candidate.EquipmentCollection.EquipmentInstances.FindByPredicate([Id](const auto& E){return E.InstanceId==Id;});
 			if (!Item) return Finish(false,TEXT("装备生成后无法找到实例。"));Item->EnhancementLevel=Enhance;
 			for (auto& A:Item->RolledAffixes)
-				if (AffixMode!=TEXT("random")) { const auto Range=FGameXXKAffixCatalog::GetMagnitudeRange(A.Unit,A.Tier);A.Magnitude=AffixMode==TEXT("low")?Range.Minimum:AffixMode==TEXT("high")?Range.Maximum:Range.Minimum+(Range.Maximum-Range.Minimum)/2; }
+				if (AffixMode!=TEXT("random")) { const auto Range=FGameXXKAffixCatalog::GetMagnitudeRange(A.AffixId,A.Tier);A.Magnitude=AffixMode==TEXT("low")?Range.Minimum:AffixMode==TEXT("high")?Range.Maximum:Range.Minimum+(Range.Maximum-Range.Minimum)/2; }
 			for (auto& Socket:Item->SocketedGems)
 				if (Gem!=TEXT("none")) { Socket.Type=Gem==TEXT("balanced")?static_cast<EGameXXKGemType>(1+(GemIndex++%3)):GemType;Socket.Quality=static_cast<EGameXXKGemQuality>(Quality); }
 			if (bEquip) { FGameXXKEquipmentTransactionResult Result;if (!FGameXXKEquipmentEconomyRules::Equip(Candidate,Character,Slots[I],Id,Result)) return Finish(false,Result.Message.ToString()); }

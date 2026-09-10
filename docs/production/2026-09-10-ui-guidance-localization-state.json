@@ -8,70 +8,70 @@
       "id": "G0",
       "name": "分支与统一提交保护",
       "design": "已确认",
-      "implementation": "已记录，尚未提交",
-      "validation": "当前分支已核对",
-      "progress": "stage/commit/push均未执行",
-      "next": "其他任务与本任务验收完成后统一提交",
-      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+      "implementation": "21批备份已提交并全部上传",
+      "validation": "远端 HEAD 004c45fb9e6ceaedf340698bf5cc41391a60f626 已核对",
+      "progress": "备份HEAD 004c45fb9e6ceaedf340698bf5cc41391a60f626；19,373文件/8.787GiB",
+      "next": "完成本任务剩余功能后再次提交与上传",
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/git-backup/state.json"
     },
     {
       "id": "G1",
       "name": "中英语言基础",
       "design": "仅zh-Hans/en，江湖风字体",
-      "implementation": "基础模块已写，未接入全界面",
-      "validation": "冷UBT通过；词库3项通过；UE行为测试待跑",
-      "progress": "独立FText资源、偏好原子写入与变更通知",
-      "next": "接入设置及界面刷新并验证重启",
-      "evidence": "Saved/Codex/ToolsRedesign-20260909/build-reforge-choice.log"
+      "implementation": "文本身份4414；补回53个跨命名空间条目，完整中文卡面气/内与英文AP/MP。29节教学、23步入门已登记；词缀/逐箱报告新增双语。",
+      "validation": "Python本地化7/7；独立Academy与双语恢复回归27/27。新增半透明UI/逐箱报告/乘风尚在冷编译。",
+      "progress": "本地化总表13页；装备49、卡牌173、怪物21名称与教学、规则同步。",
+      "next": "本轮操作式教学、角色机制、退出上限与F10解锁的冷编译/定向行为/实机验证。",
+      "evidence": "docs/design/2026-09-10-ui-localization/export-report.json"
     },
     {
       "id": "G2",
       "name": "设置改版与移除重置",
       "design": "已确认",
-      "implementation": "已接入代码，等待实机验证",
-      "validation": "联合冷UBT通过；UE交互待验证",
-      "progress": "语言按钮/独立读取大小/关闭已接；旧重置UI与路由已删除",
-      "next": "删除旧入口，加入语言/帮助与独立阅读布局",
-      "evidence": "Saved/Diagnostics/TalentUpgradeUsability/build-fixed.log"
+      "implementation": "按用户最新截图改为背包中央页：同945×533宿主、同纸底边缘与关闭位置，取消独立反向放大；关闭恢复原页",
+      "validation": "中央页26/26通过；最新97.91秒冷UBT通过；DPI虚拟化补偿后中英50/75/100真实鼠标点击及设置边缘实拍通过。",
+      "progress": "设置共用背包945×533中央页、关闭返回原页；已保存并正常退出最新真实玩家，最新备份170317。",
+      "next": "复拍最新无底图折叠图标，后续完整存档管理仍待实现。",
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/ui-review/settings-matrix.json"
     },
     {
       "id": "G3",
       "name": "所有按钮与布局引导",
-      "design": "已建立界面覆盖清单",
-      "implementation": "未接入",
-      "validation": "待验证",
-      "progress": "旧GuideRegistry缺少多数桌面目标",
-      "next": "新增帮助目标、关闭/跳过/复习与状态保护",
-      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+      "design": "用户明确全屏半透明黑色遮罩、当前按钮/功能镂空，白字说明无局部底框",
+      "implementation": "遮罩绘制与强制输入模式解耦；桌面引导移到全窗口根节点并扩展原生窗口区域；界面/战斗教程移除局部底框。",
+      "validation": "最终21/21引导检查通过；中文100%按钮与50%功能格/整块设置面板镂空已实拍，玩家真实推进完23步。英文恢复提示已观察，完整多语言逐页视觉覆盖仍待继续。",
+      "progress": "进度复用CompletedGuideStepIds版本化UI.Basics.V1；F1简短上下文说明仍保留。",
+      "next": "整理当前试玩进度与证据，继续未覆盖页面的视觉复核。",
+      "evidence": "docs/production/2026-09-11-fullscreen-guide-mask.md"
     },
     {
       "id": "G4",
       "name": "Tooltip、Pill与文本Shader双语",
       "design": "已定位中文解析及缓存问题",
-      "implementation": "未接入",
-      "validation": "待验证",
+      "implementation": "动态整句、分号分行、宝石完整句、两词装备名及套装Pill、APMPHP与Auto已冷编译；当前工具模式曾被格式化源串回退为中文，已通过独立ModeLabel修正待编译。",
+      "validation": "格式化身份/中文语义分号边界29/29；卡名/数量/宝石/工具上一批38/38。宝石中英及纯色英文Pill已实拍；全部Tooltip尚未完整验收。",
       "progress": "不得直接翻译中文语义解析输入",
-      "next": "分离语义与显示、刷新缓存、复测文本宽度与材质",
+      "next": "继续实际卡牌普通/Shift/Ctrl与品质Shader、遗物及新增教程逐页复核。",
       "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/source-inventory.json"
     },
     {
       "id": "G5R",
       "name": "20稀有+10史诗遗物",
       "design": "30件首版候选",
-      "implementation": "独立定义已编译，旧31件目录未切换",
-      "validation": "定义/译文同步检查通过；机制未测试",
-      "progress": "保留16普通/特殊，目标总目录46",
-      "next": "实现真实联动、次数账本与完整结算测试",
-      "evidence": "docs/design/2026-09-10-relic-redesign/runtime-contract.md"
+      "implementation": "30件运行时效果、延迟动作账本和46件目录已接入并冷编译通过",
+      "validation": "9/9基础回归；新增7/7含真实5牌、无效条件、真实存档限次、待选胜负顺序通过",
+      "progress": "格挡/反击复用真实反应记录；主动作证据与遗物追加结果分开",
+      "next": "更多职业/阶段/次数联动、平衡对照与UI视觉验收",
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/relic-edge-fixed-tests.json"
     },
     {
       "id": "G5A",
       "name": "遗物45张统一宝石画风",
       "design": "用户已纠正为宝石定稿风格",
-      "implementation": "制作中，未导入UE",
-      "validation": "按manifest动态统计",
+      "implementation": "45张已生成并导入UE",
+      "validation": "45/45尺寸透明边缘哈希通过；冷重启加载45/45通过",
       "progress": "由素材清单自动刷新",
-      "next": "完成全部重绘、透明边缘与小尺寸审核、MCP导入",
+      "next": "中英遗物卡面与品质shader实机核对",
       "evidence": "SourceArt/UI/Relics/gemstyle-20260910/manifest.json"
     },
     {
@@ -79,7 +79,7 @@
       "name": "路线纸底与右侧Tooltip",
       "design": "保留最终整窗浅纸底，右侧灰字移悬停",
       "implementation": "已接入代码，等待实机验证",
-      "validation": "联合冷UBT通过；悬停实拍待验证",
+      "validation": "路线摘要/Tooltip结构UE检查通过，实机悬停待验证",
       "progress": "右侧8段灰字和底部说明已移入tooltip，恢复子项命中",
       "next": "移走灰字、恢复行悬停、双语与三档检查",
       "evidence": "Saved/Diagnostics/TalentUpgradeUsability/build-fixed.log"
@@ -88,19 +88,19 @@
       "id": "G5H",
       "name": "三难度3-4讨伐连续地图",
       "design": "已登记需求，规则核查中",
-      "implementation": "未接入",
-      "validation": "待验证",
-      "progress": "原27关保持，目标新增3个3-4",
+      "implementation": "完整讨伐已冷编译通过，后续存档修复待编译",
+      "validation": "9/9核心回归通过（章间保持/准确收益/票及箱）；真实MVP全三章仍待验收",
+      "progress": "已发现旧生成路线遇敌顺序错配、所有Boss提前终结、无票自动挂机边界",
       "next": "连续三章、Boss节点、1.5倍生命/金币/经验",
-      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/hunt-full-and-new-save-red-tests.json"
     },
     {
       "id": "G5T",
       "name": "讨伐令与结算账本",
-      "design": "三品质映射、首通及失败不耗已确认；箱内分配待答",
-      "implementation": "未接入",
-      "validation": "待验证",
-      "progress": "普通2%、高级8%掉落口径待明确",
+      "design": "用户确认：按箱来源难度给品质；2%/8%命中时替代原奖励",
+      "implementation": "来源品质与替代掉落、首通/旧档补发、预留/成功扣票、满包待入库已接源码",
+      "validation": "首通一次发放、满包待入库、替代掉落与来源、成功扣票/退出保票核心检查通过；整体持久化未完成",
+      "progress": "先判断出令，命中仅1令；未命中才生成原装备/宝石/材料",
       "next": "缺票禁入、胜利一次扣票/发箱、失败与存档保护",
       "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
     },
@@ -108,19 +108,19 @@
       "id": "G5C",
       "name": "讨伐宝箱与第三箱区域",
       "design": "品质表已批准：高级90/8/1.5/0.5；讨伐60/32/6/2",
-      "implementation": "未接入",
+      "implementation": "第三箱展开/折叠UI、左右键、实时计数、结算箱与令显示已写，待编译",
       "validation": "待验证",
-      "progress": "稀有/珍稀/传奇/不朽高品质概率精确4倍，运行时未接入",
-      "next": "定义4倍品质概率，接入左右键与全部宝箱美术",
+      "progress": "两张品质表为装备/宝石条件概率；出令替代原奖励",
+      "next": "接入概率表、第三箱区域与左右键",
       "evidence": "docs/design/2026-09-10-hunt-stage-design/hunt-design.json"
     },
     {
       "id": "G5D",
       "name": "困难/地狱怪物强化",
       "design": "困难约1.5、地狱约2，核查旧倍率",
-      "implementation": "未接入",
+      "implementation": "HP/攻击/防御倍率与旧伤害去重已冷编译，实际困难/地狱行为待回归",
       "validation": "待验证",
-      "progress": "必须避免与旧伤害倍率重复乘算",
+      "progress": "新战斗显式保存属性已含难度标记，保留Hard/Hell阶段；旧战斗快照维持原语义",
       "next": "统一挑战/游历/意图/tooltip及数值总表",
       "evidence": "Source/GameXXK/Private/GameXXKTrainingRules.cpp"
     },
@@ -139,33 +139,126 @@
       "name": "完整构建与纯2D实机验收",
       "design": "覆盖中英、50/75/100%、旧档与真实流程",
       "implementation": "未完成",
-      "validation": "目前仅基础源随共享UBT通过",
-      "progress": "不以基础编译代替整体功能验收",
+      "validation": "联合冷UBT455.01秒通过；独立18866定向27项25通过/2旧迁移快照比较待修",
+      "progress": "主线另有21/21通过；图形GUI目前由主线处理用户新档和实机，根任务不接管",
       "next": "所有接入后冷UBT、自动化、实机及证据归档",
-      "evidence": "docs/production/2026-09-10-ui-guidance-localization-goal.md"
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/hunt-training-save-regression-first.json"
+    },
+    {
+      "id": "G7Save",
+      "name": "挂机游戏完整存档与异常恢复",
+      "design": "用户新增要求；已完成第一轮源码审计与设计矩阵",
+      "implementation": "可靠写入/3备份、离线时钟/事务、开箱领奖保存已冷编译；自动保存/精确挂机快照/完整存档UI仍未实现",
+      "validation": "真实任务入战又发现无key FText首次序列化导致CRC误报；主线任务已联合加规范化副本与实际活动战斗磁盘回归，23/23通过；未宣称完整挂机存档已完成",
+      "progress": "保留现有CRC兼容；Write先引擎内存序列化/读回再封装。自动保存/完整挂机快照/UI仍待做。",
+      "next": "按设计补齐并完成存档专项验收",
+      "evidence": "Saved/Codex/UIGuidanceLocalization-20260910/hunt-full-and-new-save-red-tests.json"
+    },
+    {
+      "id": "G3A",
+      "name": "角色职业机制教学",
+      "design": "用户最新裁决：独立课程遭遇，不补历练来源关卡，与历练地图/难度/门票/奖励解耦。",
+      "implementation": "角色最大HP300、开场210用于治疗；怪物最大180/240/300、ATK12。主角演示辅助伙伴为刀客，所有借用角色ATK70/DEF35；土司合击正确归入教学伤害。持续指引保留。",
+      "validation": "最终79.45秒冷UBT、Academy6/6通过，覆盖29节目标/胜利/HP上限；主角三节分别2、3、1回合结束。此前三节实机通关/奖励/返回已验证，当前新数值待实机短确认。",
+      "progress": "目标完成后的全队练习持续推荐；动画/布局过渡保留可見区域；白字避开意图、遮罩覆盖完整viewport。",
+      "next": "其余12门课程完整实机覆盖及后续用户体验调整。",
+      "evidence": "docs/production/2026-09-11-academy-short-demo.md"
+    },
+    {
+      "id": "G3F",
+      "name": "F10关卡与任务测试入口",
+      "design": "用户要求解锁所有关卡、所有任务，便于直接测试后续剧情",
+      "implementation": "两个首页按钮和同名JSON命令；仅临时旁路入口，复用Dev保护和恢复，不序列化不补发奖励。",
+      "validation": "TemporaryProgressUnlocks通过：30关/61任务入口、无奖励、无存档泄漏、恢复检查；相邻5主线检查通过。",
+      "progress": "用户说明其他任务均已完成，不再跨任务发消息；F10入口保留临时会话保护。",
+      "next": "F10真实窗口按钮点击验收。",
+      "evidence": "Source/GameXXK/Private/Tests/GameXXKDevWorkbenchTest.cpp"
+    },
+    {
+      "id": "G3E",
+      "name": "退出离线奖励简短提示",
+      "design": "未解锁仅提示天赋解锁离线奖励；已解锁分别显示宝箱/金币/经验上限",
+      "implementation": "读取三个实际天赋Projection上限，中文英文支持小时/分/秒。",
+      "validation": "中英六场景已通过，含24时28分48秒等不同上限；实际窗口排版待复核。",
+      "progress": "无取整丢失，退出保存和取消流程保持。",
+      "next": "回归和实机小窗排版。",
+      "evidence": "Source/GameXXK/Private/Tests/GameXXKExitOfflineHintTest.cpp"
+    },
+    {
+      "id": "G4M",
+      "name": "宝箱材料到工具闭环",
+      "design": "用户开30多个箱后工具材料为0；保持概率，修正存储来源",
+      "implementation": "工具从背包和仓库共同计数并原位扣料；分解保持材料堆位置；开箱具体收据中英已接入。",
+      "validation": "12场景全部通过：3箱型×2材料×2语言，真实开箱到UI与消费、存盘失败、末枚耗尽、分解原位增量、数量刷新。相邻工具/经济/宝箱检查通过。",
+      "progress": "真实仓库20石/19砂原因已确认；实机工具显示20石；用户后续整理与开箱已批准保留并写入正式存档。",
+      "next": "真实窗口验证材料数量与工具消费，保护真档。",
+      "evidence": "docs/production/2026-09-10-stored-tool-materials.md"
+    },
+    {
+      "id": "G4R",
+      "name": "逐箱掉落报告",
+      "design": "每箱独立报告，批量每箱一条，完整具体掉落中英配齐",
+      "implementation": "每个成功开箱产生稳定收据和独立报告；按当前语言重新构建具体名称/数量/品质/等级/去向，长信息放悬停。",
+      "validation": "逐箱报告检查通过：批量30箱与逐次30箱内容次序相同、30条真实UI历史、中文生成后切英文、保存失败无虚假报告且宝箱保留。",
+      "progress": "早期中文残留告警实际为测试遍历临时FText产生的悬空字符串误报，已纠正；历史仍沿用200条界面消息，不属于跨重启日志。",
+      "next": "消息区真实悬停视觉复核；跨重启日志随完整存档目标继续。",
+      "evidence": "Source/GameXXK/Private/Tests/GameXXKChestReceiptsTest.cpp"
+    },
+    {
+      "id": "G4W",
+      "name": "追风乘风与随机资源词缀退休",
+      "design": "用户确认固定1%、逐张递增、同名正常叠加；按推荐移除随机抽牌/气力/减费/计数",
+      "implementation": "乘风固定1%已接真实伤害。5项随机资源词缀退休；旧装备定向转换，强化/孔/归属/其他词缀保留。洗炼使用同一候选池决定启用，窄行短标签、完整白字江湖体Tooltip。",
+      "validation": "核心5/5、相邻69/69通过：逐张与同名叠加、火/冰/雷/物理/重箭、重放不计数/回合重置、两件实际投影、十品质生成洗炼、旧档和待选结果转换。",
+      "progress": "乘风及产甲已生效；其余24项分系词缀的未实现状态保留在总表，不冒充已接入。",
+      "next": "实际工具窄行与完整Tooltip视觉复核；其余词缀独立继续审查。",
+      "evidence": "docs/design/2026-09-11-affix-wind-ramp.md"
     }
   ],
   "otherTasks": [
     {
       "name": "重绘地图节点图标",
-      "state": "已完成并冻结",
+      "state": "用户明确已完成；本任务不再发送消息",
       "scope": "地图/行旅钱",
       "verification": "地图与货币58/58、库存8/8，最终实拍通过",
       "evidence": "docs/production/2026-09-09-route-map-travel-money-acceptance.md"
     },
     {
       "name": "整理音效需求表",
-      "state": "已完成并冻结",
+      "state": "用户明确已完成；本任务不再发送消息",
       "scope": "工具/天赋及洗炼交互",
       "verification": "21/21、最新1/1、真实14状态与最终洗炼实拍通过",
       "evidence": "docs/production/2026-09-10-tools-redesign-acceptance.md"
     },
     {
       "name": "评估任务线接入方案",
-      "state": "最终实拍进行中，等待交接",
-      "scope": "主线/对白",
-      "verification": "以其最终验收为准",
-      "evidence": "任务01a08172-043d-75e0-a149-f8895de07b04"
+      "state": "用户明确已完成；本任务不再发送消息",
+      "scope": "六章61节点全文与主线显示；最新玩家快照恢复",
+      "verification": "31/31英文及主线回归通过；代表实拍中断后恢复最新真实快照，尚待实拍收尾",
+      "evidence": "Saved/StorySystem/Localization/save-audit-after-restart.json"
+    },
+    {
+      "name": "统计天赋金币需求",
+      "state": "用户明确已完成；本任务不再发送消息",
+      "scope": "天赋/属性/tooltip",
+      "verification": "25/25；真实连续5次升级及2种tooltip实拍通过",
+      "evidence": "Saved/Diagnostics/TalentUpgradeUsability/build-fixed.log"
+    },
+    {
+      "name": "重制装备图标画风",
+      "state": "用户明确已完成；本任务不再发送消息",
+      "scope": "宝石风格装备图标；GemstyleKeyframes默认0的2单位8/10帧试验",
+      "verification": "Pilot1/1及UnitVisual3/3通过；图形窗口改为协调独占，不得再打断玩家保护会话",
+      "evidence": "Saved/Diagnostics/GemstyleKeyframePilot-20260910"
     }
-  ]
+  ],
+  "runtimeControl": {
+    "status": "GUI18765/正常PIE已恢复，未开启临时测试；中文50%，保持最新玩家存档。",
+    "playerBackup": "Saved/Codex/UIGuidanceLocalization-20260910/player-before-central-settings-20260911-030214",
+    "recoverySlot": "GameXXK_UserUI_Keep_20260911_025606",
+    "buildLog": "Saved/Codex/UIGuidanceLocalization-20260910/academy-pacing-corrected-build.log",
+    "latestGuide": "Saved/Codex/UIGuidanceLocalization-20260910/academy-short-final-tests.json"
+  },
+  "coordination": "用户21:06明确其他对话均完成，不再发送跨对话消息。",
+  "updatedAt": "2026-09-11T01:46:34"
 }

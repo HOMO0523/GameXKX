@@ -1,5 +1,6 @@
 #include "UI/GameXXKMainStoryDialoguePresentation.h"
 #include "GameXXKMVPRules.h"
+#include "Narrative/GameXXKMainStoryRules.h"
 
 namespace
 {
@@ -34,14 +35,14 @@ bool GameXXKMainStoryDialoguePresentation::IsActive(const FGameXXKRuntimeState& 
 	const auto Phase=State.NarrativeProgress.MainStory.Phase;
 	return !State.NarrativeProgress.MainStory.ActiveNodeId.IsNone() &&
 		(Phase==EGameXXKMainStoryActivityPhase::Dialogue || Phase==EGameXXKMainStoryActivityPhase::Choice ||
-		 Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle);
+		 Phase==EGameXXKMainStoryActivityPhase::ReadyToTravel || Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle);
 }
 
 FGameXXKDialoguePresentationView GameXXKMainStoryDialoguePresentation::LineView(const FGameXXKMainStoryNode& Node,int32 Index)
 {
 	FGameXXKDialoguePresentationView View;
-	if(!Node.Lines.IsValidIndex(Index)) return View;
-	const auto& Line=Node.Lines[Index];
+	const auto* Presented=Node.ReplayLine(Index);if(!Presented)return View;
+	const auto& Line=*Presented;
 	View.NodeId=FName(*FString::Printf(TEXT("%s.Line.%d"),*Node.Id.ToString(),Index));
 	View.SpeakerDisplayName=Line.SpeakerName;
 	View.Text=Line.Text;
@@ -56,15 +57,27 @@ FGameXXKDialoguePresentationView GameXXKMainStoryDialoguePresentation::Build(con
 	const auto* Node=FGameXXKMainStoryCatalog::FindNode(Session.ActiveNodeId);
 	if(!Node || !IsActive(State))return View;
 	if(Session.Phase==EGameXXKMainStoryActivityPhase::Dialogue)
-		View=LineView(*Node,FMath::Clamp(Session.LineIndex,0,Node->Lines.Num()-1));
+	{
+		const bool bAfter=FGameXXKMainStoryRules::HasPendingAfterBattleDialogue(State,Node->Id);
+		View=LineView(*Node,(bAfter?Node->Lines.Num():0)+FMath::Clamp(Session.LineIndex,0,(bAfter?Node->AfterBattleLines.Num():Node->Lines.Num())-1));
+	}
 	else
 	{
-		View.NodeId=FName(*(Node->Id.ToString()+(Session.Phase==EGameXXKMainStoryActivityPhase::Choice?TEXT(".Choice"):TEXT(".Battle"))));
+		View.NodeId=FName(*(Node->Id.ToString()+(Session.Phase==EGameXXKMainStoryActivityPhase::Choice?TEXT(".Choice"):
+			Session.Phase==EGameXXKMainStoryActivityPhase::ReadyToTravel?TEXT(".Travel"):TEXT(".Battle"))));
 		View.SpeakerDisplayName=FGameXXKMainStoryCatalog::CharacterName(TEXT("hero"));
 		View.PortraitPath=Portrait(TEXT("hero"));
 		View.Text=Node->Objective;
-		if(Session.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle)
+		if(Session.Phase==EGameXXKMainStoryActivityPhase::ReadyToTravel)
 		{
+			View.SpeakerDisplayName=FText::FromString(TEXT("启程"));View.PortraitPath=FSoftObjectPath();
+			FGameXXKDialogueVisibleOption Option;Option.OptionId=TEXT("MainStory.Travel");
+			Option.Text=FText::FromString(FString::Printf(TEXT("进入%d-%d"),(Node->StageNumber-1)/3+1,(Node->StageNumber-1)%3+1));
+			View.Options.Add(Option);
+		}
+		else if(Session.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle)
+		{
+			View.Text=FText::FromString(TEXT("眼前的阻拦还未解决，准备迎战。"));
 			FGameXXKDialogueVisibleOption Option;Option.OptionId=TEXT("MainStory.Battle");Option.Text=FText::FromString(TEXT("迎战"));
 			View.Options.Add(Option);
 		}

@@ -1,4 +1,7 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKHuntRules.h"
+#include "GameXXKEncounterRules.h"
+#include "GameXXKCharacterStatRules.h"
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKEnemyCatalog.h"
@@ -51,6 +54,21 @@ namespace
 		}
 	}
 
+	FText DifficultyText(const EGameXXKTrainingDifficulty Difficulty)
+	{
+		switch(Difficulty)
+		{
+		case EGameXXKTrainingDifficulty::Hard: return NSLOCTEXT("GameXXKTraining", "DifficultyHard", "困难");
+		case EGameXXKTrainingDifficulty::Hell: return NSLOCTEXT("GameXXKTraining", "DifficultyHell", "地狱");
+		default: return NSLOCTEXT("GameXXKTraining", "DifficultyNormal", "普通");
+		}
+	}
+	FText StageName(EGameXXKTrainingDifficulty Difficulty,int32 Chapter,int32 LocalStage)
+	{
+		return FText::Format(NSLOCTEXT("GameXXKTraining", "StageName", "{0} {1}-{2}"),
+			DifficultyText(Difficulty),FText::AsNumber(Chapter),FText::AsNumber(LocalStage));
+	}
+
 	FName BossForChapter(const int32 Chapter, const int32 StageNumber)
 	{
 		if (Chapter == 1)
@@ -87,7 +105,7 @@ namespace
 		constexpr int32 LastNormalStageGold =
 			(18 + FGameXXKTrainingRules::StagesPerDifficulty * 3) * NormalGoldMultiplier;
 		TArray<FGameXXKTrainingStageDefinition> Stages;
-		Stages.Reserve(27);
+		Stages.Reserve(30);
 		for (int32 DifficultyIndexValue = 0; DifficultyIndexValue < 3; ++DifficultyIndexValue)
 		{
 			const EGameXXKTrainingDifficulty Difficulty = DifficultyFromIndex(DifficultyIndexValue);
@@ -99,12 +117,7 @@ namespace
 				Stage.StageNumber = StageNumber;
 				Stage.CombatLevel = (DifficultyIndexValue * FGameXXKTrainingRules::StagesPerDifficulty + StageNumber) * 5;
 				Stage.StageId = FGameXXKTrainingRules::MakeStageId(Difficulty, StageNumber);
-				Stage.DisplayName = FText::FromString(FString::Printf(
-					TEXT("%s %d-%d"),
-					Difficulty == EGameXXKTrainingDifficulty::Normal ? TEXT("普通")
-						: Difficulty == EGameXXKTrainingDifficulty::Hard ? TEXT("困难") : TEXT("地狱"),
-					Stage.Chapter,
-					((StageNumber - 1) % 3) + 1));
+				Stage.DisplayName = StageName(Difficulty,Stage.Chapter,((StageNumber-1)%3)+1);
 				Stage.NormalEnemyPool = NormalPoolForChapter(Stage.Chapter);
 				Stage.EliteEnemyPool = ElitePoolForChapter(Stage.Chapter);
 				Stage.BossEnemyId = BossForChapter(Stage.Chapter, ((StageNumber - 1) % 3) + 1);
@@ -127,6 +140,16 @@ namespace
 				Stage.AdvancedChestChance = 0.35f;
 				Stages.Add(MoveTemp(Stage));
 			}
+		}
+		// Append rather than inserting so the original27 array positions and level bands remain stable.
+		for(int32 Index=0;Index<3;++Index)
+		{
+			FGameXXKTrainingStageDefinition Hunt=Stages[Index*FGameXXKTrainingRules::StagesPerDifficulty+8];
+			Hunt.StageNumber=10;Hunt.StageId=FGameXXKTrainingRules::MakeStageId(Hunt.Difficulty,10);
+			Hunt.DisplayName=StageName(Hunt.Difficulty,3,4);
+			Hunt.TravelGold=Hunt.TravelGold*3/2;Hunt.TravelExperience=Hunt.TravelExperience*3/2;
+			Hunt.NormalChestChance=0;Hunt.AdvancedChestChance=0;
+			Stages.Add(MoveTemp(Hunt));
 		}
 		return Stages;
 	}
@@ -393,6 +416,7 @@ namespace
 			return FName(TEXT("Item.TrainingNormalChest"));
 		case EGameXXKTrainingRewardTier::AdvancedChest:
 			return FName(TEXT("Item.TrainingAdvancedChest"));
+		case EGameXXKTrainingRewardTier::HuntChest: return FName(TEXT("Item.TrainingHuntChest"));
 		default:
 			return NAME_None;
 		}
@@ -435,7 +459,7 @@ bool FGameXXKTrainingRules::AppendChestToken(
 {
 	if (OutError) OutError->Reset();
 	FGameXXKTrainingStageDefinition Stage;
-	if ((Tier != EGameXXKTrainingRewardTier::NormalChest && Tier != EGameXXKTrainingRewardTier::AdvancedChest)
+	if ((Tier != EGameXXKTrainingRewardTier::NormalChest && Tier != EGameXXKTrainingRewardTier::AdvancedChest && Tier != EGameXXKTrainingRewardTier::HuntChest)
 		|| SourceStageId.IsNone()
 		|| !TryGetStageDefinition(SourceStageId, Stage)
 		|| InOutProgress.NextChestAcquisitionOrdinal == MAX_int32)
@@ -479,7 +503,7 @@ bool FGameXXKTrainingRules::ValidateChestTokens(const FGameXXKTrainingProgress& 
 	for (const FGameXXKTrainingChestToken& Token : Progress.OwnedChestTokens)
 	{
 		FGameXXKTrainingStageDefinition Stage;
-		if ((Token.Tier != EGameXXKTrainingRewardTier::NormalChest && Token.Tier != EGameXXKTrainingRewardTier::AdvancedChest)
+		if ((Token.Tier != EGameXXKTrainingRewardTier::NormalChest && Token.Tier != EGameXXKTrainingRewardTier::AdvancedChest && Token.Tier != EGameXXKTrainingRewardTier::HuntChest)
 			|| Token.SourceItemLevel < 1 || Token.SourceItemLevel > 100
 			|| Token.AcquisitionOrdinal <= PreviousOrdinal
 			|| Token.AcquisitionOrdinal > Progress.NextChestAcquisitionOrdinal
@@ -500,6 +524,7 @@ FName FGameXXKTrainingRules::DifficultyId(const EGameXXKTrainingDifficulty Diffi
 
 FName FGameXXKTrainingRules::MakeStageId(const EGameXXKTrainingDifficulty Difficulty, const int32 StageNumber)
 {
+	if(StageNumber==10)return FName(*FString::Printf(TEXT("Training.%s.3-4"),DifficultyLabel(Difficulty)));
 	const int32 ClampedStageNumber = FMath::Clamp(StageNumber, 1, StagesPerDifficulty);
 	const int32 Chapter = ((ClampedStageNumber - 1) / 3) + 1;
 	const int32 ChapterStage = ((ClampedStageNumber - 1) % 3) + 1;
@@ -512,6 +537,17 @@ EGameXXKTrainingDifficulty FGameXXKTrainingRules::DifficultyFromStageId(const FN
 	if (Value.Contains(TEXT(".Hard."))) return EGameXXKTrainingDifficulty::Hard;
 	if (Value.Contains(TEXT(".Hell."))) return EGameXXKTrainingDifficulty::Hell;
 	return EGameXXKTrainingDifficulty::Normal;
+}
+
+int32 FGameXXKTrainingRules::EnemyAttributePercent(EGameXXKTrainingDifficulty Difficulty)
+{
+	return Difficulty==EGameXXKTrainingDifficulty::Hard?150:Difficulty==EGameXXKTrainingDifficulty::Hell?200:100;
+}
+
+int32 FGameXXKTrainingRules::EnemyHealthPercent(FName StageId)
+{
+	const auto Difficulty=DifficultyFromStageId(StageId);
+	return EnemyAttributePercent(Difficulty)*(StageId==MakeStageId(Difficulty,10)?150:100)/100;
 }
 
 const TArray<FGameXXKTrainingStageDefinition>& FGameXXKTrainingRules::GetStageDefinitions()
@@ -543,6 +579,23 @@ TArray<FGameXXKTrainingEncounterDefinition> FGameXXKTrainingRules::BuildEncounte
 		return Encounters;
 	}
 	(void)bTravelMode;
+	if(Stage.StageNumber==10)
+	{
+		for(int32 Chapter=1;Chapter<=3;++Chapter)
+		{
+			auto Segment=BuildEncounterSequence(MakeStageId(Stage.Difficulty,Chapter*3),bTravelMode);
+			for(auto& Encounter:Segment)
+			{
+				Encounter.CombatLevel=Stage.CombatLevel;
+				int64 Health=0;
+				for(FName Id:Encounter.EnemyDefinitionIds)
+					Health+=static_cast<int64>(FGameXXKEnemyCatalog::ComputeStats(Id,Stage.CombatLevel).MaxHP)*EnemyHealthPercent(StageId)/100;
+				Encounter.BaseHealth=static_cast<int32>(FMath::Clamp<int64>(Health,1,MAX_int32));
+				Encounters.Add(MoveTemp(Encounter));
+			}
+		}
+		return Encounters;
+	}
 	const int32 RowIndex = DifficultyIndex(Stage.Difficulty) * StagesPerDifficulty + Stage.StageNumber - 1;
 	if (RowIndex < 0 || RowIndex >= UE_ARRAY_COUNT(ApprovedFormationRows))
 	{
@@ -574,9 +627,9 @@ TArray<FGameXXKTrainingEncounterDefinition> FGameXXKTrainingRules::BuildEncounte
 			FGameXXKTrainingEnemySlotDefinition& Slot = Encounter.EnemySlots.AddDefaulted_GetRef();
 			Slot.EnemyDefinitionId = Encounter.EnemyDefinitionIds[SlotIndex];
 			Slot.OpeningIntentId = ResolveOpeningIntent(Encounter.EnemyDefinitionIds, SlotIndex);
-			FirstPhaseHealth += FGameXXKEnemyCatalog::ComputeStats(
+			FirstPhaseHealth += static_cast<int64>(FGameXXKEnemyCatalog::ComputeStats(
 				Slot.EnemyDefinitionId,
-				Stage.CombatLevel).MaxHP;
+				Stage.CombatLevel).MaxHP)*EnemyHealthPercent(StageId)/100;
 		}
 		Encounter.BaseHealth = static_cast<int32>(FMath::Clamp<int64>(FirstPhaseHealth, 1, MAX_int32));
 		Encounters.Add(MoveTemp(Encounter));
@@ -601,6 +654,7 @@ void FGameXXKTrainingRules::InitializeNewGame(FGameXXKTrainingProgress& Progress
 
 bool FGameXXKTrainingRules::IsDifficultyUnlocked(const FGameXXKTrainingProgress& Progress, const EGameXXKTrainingDifficulty Difficulty)
 {
+	if(Progress.bDevelopmentUnlockAllStages)return Difficulty==EGameXXKTrainingDifficulty::Normal||Difficulty==EGameXXKTrainingDifficulty::Hard||Difficulty==EGameXXKTrainingDifficulty::Hell;
 	return Progress.UnlockedDifficultyIds.Contains(DifficultyId(Difficulty));
 }
 
@@ -624,6 +678,7 @@ bool FGameXXKTrainingRules::AreAllStagesCleared(const FGameXXKTrainingProgress& 
 bool FGameXXKTrainingRules::CanChallenge(const FGameXXKTrainingProgress& Progress, const FName StageId)
 {
 	FGameXXKTrainingStageDefinition Stage;
+	if(Progress.bDevelopmentUnlockAllStages)return TryGetStageDefinition(StageId,Stage);
 	if (!TryGetStageDefinition(StageId, Stage)
 		|| !IsDifficultyUnlocked(Progress, Stage.Difficulty))
 	{
@@ -651,7 +706,24 @@ bool FGameXXKTrainingRules::CanChallenge(const FGameXXKTrainingProgress& Progres
 bool FGameXXKTrainingRules::CanTravel(const FGameXXKTrainingProgress& Progress, const FName StageId)
 {
 	FGameXXKTrainingStageDefinition Stage;
-	return IsStageCleared(Progress, StageId) && TryGetStageDefinition(StageId, Stage);
+	return TryGetStageDefinition(StageId,Stage) && IsStageCleared(Progress,Stage.StageNumber==10?MakeStageId(Stage.Difficulty,9):StageId);
+}
+
+bool FGameXXKTrainingRules::BuildFormationEncounter(FName StageId,const TArray<FName>& EnemyIds,FGameXXKTrainingEncounterDefinition& Out)
+{
+	Out=FGameXXKTrainingEncounterDefinition();FGameXXKTrainingStageDefinition Stage;
+	if(!TryGetStageDefinition(StageId,Stage)||EnemyIds.IsEmpty()||EnemyIds.Num()>3)return false;
+	Out.Kind=EGameXXKTrainingEncounterKind::Normal;Out.CombatLevel=Stage.CombatLevel;
+	Out.EnemyDefinitionIds=EnemyIds;Out.EnemyDefinitionId=EnemyIds[0];Out.DisplayName=FText::FromString(JoinNames(EnemyIds));
+	int64 Health=0;
+	for(int32 I=0;I<EnemyIds.Num();++I)
+	{
+		if(!FGameXXKEnemyCatalog::Find(EnemyIds[I]))return false;
+		const FName Intent=ResolveOpeningIntent(EnemyIds,I);if(Intent.IsNone())return false;
+		auto& Slot=Out.EnemySlots.AddDefaulted_GetRef();Slot.EnemyDefinitionId=EnemyIds[I];Slot.OpeningIntentId=Intent;
+		Health+=static_cast<int64>(FGameXXKEnemyCatalog::ComputeStats(EnemyIds[I],Stage.CombatLevel).MaxHP)*EnemyHealthPercent(StageId)/100;
+	}
+	Out.BaseHealth=static_cast<int32>(FMath::Clamp<int64>(Health,1,MAX_int32));return true;
 }
 
 bool FGameXXKTrainingRules::StartChallenge(FGameXXKTrainingProgress& Progress, const FName StageId)
@@ -703,7 +775,7 @@ bool FGameXXKTrainingRules::CompleteChallenge(FGameXXKTrainingProgress& Progress
 	return true;
 }
 
-void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& State, const FName StageId, const int32 Seed)
+static bool GenerateTrainingChallengeMap(FGameXXKRuntimeState& State, const FName StageId, const int32 Seed, const bool bPreserveRun)
 {
 	State.bHasGeneratedRouteMap = false;
 	State.RouteMapNodes.Reset();
@@ -717,25 +789,29 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 	State.Training.ChallengeRouteNodeEncounterIndices.Reset();
 	State.Training.ActiveChallengeRouteNodeId = INDEX_NONE;
 
-	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = BuildEncounterSequence(StageId, false);
+	const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(StageId, false);
 	if (Encounters.Num() < 7)
 	{
-		return;
+		return false;
 	}
 
 	FString Error;
 	if (!FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error))
 	{
-		return;
+		return false;
 	}
 	// Clear route-local progress without touching the desktop party selection
 	// (Challenge never accepts or alters the town quest/party).
 	State.CardRun.PendingEvent = FGameXXKPendingRouteEvent();
 	State.CardRun.RouteMerchant = FGameXXKRouteMerchantState();
-	FGameXXKRelicRules::ClearRouteRelics(State);
+	if(!bPreserveRun)FGameXXKRelicRules::ClearRouteRelics(State);
 	FGameXXKCardBattleAdapter::ClearActiveCardBattle(State);
-	FGameXXKRouteEconomyRules::ClearRouteEconomy(State.CardRun);
-	State.CardRun.RouteProgress.CurrentChapter = 1;
+	if(!bPreserveRun)
+	{
+		FGameXXKRouteEconomyRules::ClearRouteEconomy(State.CardRun);
+		State.CardRun.RouteProgress=FGameXXKRouteProgress();
+		State.CardRun.RouteProgress.CurrentChapter=1;
+	}
 	State.CardRun.bLoadoutLockedForRoute = true;
 	State.bDungeonActive = true;
 	State.Screen = EGameXXKScreen::DungeonMap;
@@ -747,14 +823,24 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 	// Players keep the full route economy, one-time node rewards and tiered
 	// battle-reward offers; only battle-entry enemies are authored by Training.
 	UGameXXKMVPRules::GenerateRouteMapForSeed(State, Seed);
-	State.CardRun.RouteRandomSeed = State.RouteSeed;
+	if(!bPreserveRun)
+	{
+		State.CardRun.RouteRandomSeed=State.RouteSeed;
+		if(FGameXXKHuntRules::IsHuntStage(StageId))
+		{
+			auto& Progress=State.CardRun.RouteProgress;Progress.SchemaVersion=1;Progress.RootSeed=State.RouteSeed;
+			auto Normalize=[](int32 Value){return Value==0||Value==MIN_int32?1:FMath::Abs(Value);};
+			Progress.ChapterSeeds={Progress.RootSeed,Normalize(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed,2)),Normalize(FGameXXKEncounterRules::DeriveChapterSeed(Progress.RootSeed,3))};
+			Progress.RouteCombatLevel=FMath::Clamp(State.PlayerLevel,1,FGameXXKCharacterStatRules::MaxCharacterLevel);
+		}
+	}
 	if (!FGameXXKRouteEconomyRules::InitializeRoute(State.CardRun, 0, &Error))
 	{
 		State.bHasGeneratedRouteMap = false;
 		State.RouteMapNodes.Reset();
 		State.RouteMapEdges.Reset();
 		State.ReachableRouteNodeIds.Reset();
-		return;
+		return false;
 	}
 
 	// The bottom campfire is the player's current camp, not a selectable reward
@@ -773,7 +859,7 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 		State.RouteMapEdges.Reset();
 		State.VisitedRouteNodeIds.Reset();
 		State.ReachableRouteNodeIds.Reset();
-		return;
+		return false;
 	}
 	State.VisitedRouteNodeIds = {StartNode->NodeId};
 	State.ReachableRouteNodeIds.Reset();
@@ -785,38 +871,57 @@ void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& Stat
 	State.PendingRouteNodeId = INDEX_NONE;
 	State.DungeonNodeIndex = State.VisitedRouteNodeIds.Num();
 
-	// Authored challenge sequence is [0 N, 1 N, 2 E0, 3 N, 4 E1, 5 N, 6 B].
-	// Generated battle-kind nodes consume those encounters in map order and
-	// cycle when the generated map offers more nodes than the authored pool.
-	const int32 NormalEncounterIndices[4] = {0, 1, 3, 5};
-	const int32 EliteEncounterIndices[2] = {2, 4};
-	int32 NormalCursor = 0;
-	int32 EliteCursor = 0;
-	for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
+	// Match encounter kinds rather than the retired mixed index order.
+	const int32 Offset=FGameXXKHuntRules::IsHuntStage(StageId)?(State.CardRun.RouteProgress.CurrentChapter-1)*7:0;
+	TArray<int32> Normal,Elite;int32 Boss=INDEX_NONE;
+	for(int32 Index=Offset;Index<FMath::Min(Offset+7,Encounters.Num());++Index)
 	{
-		if (Node.NodeKind == EGameXXKNodeKind::Battle)
-		{
-			State.Training.ChallengeRouteNodeEncounterIndices.Add(
-				Node.NodeId,
-				NormalEncounterIndices[NormalCursor % 4]);
-			++NormalCursor;
-		}
-		else if (Node.NodeKind == EGameXXKNodeKind::Elite)
-		{
-			State.Training.ChallengeRouteNodeEncounterIndices.Add(
-				Node.NodeId,
-				EliteEncounterIndices[EliteCursor % 2]);
-			++EliteCursor;
-		}
-		else if (Node.NodeKind == EGameXXKNodeKind::Boss)
-		{
-			State.Training.ChallengeRouteNodeEncounterIndices.Add(Node.NodeId, 6);
-		}
+		if(Encounters[Index].Kind==EGameXXKTrainingEncounterKind::Normal)Normal.Add(Index);
+		else if(Encounters[Index].Kind==EGameXXKTrainingEncounterKind::Elite)Elite.Add(Index);
+		else Boss=Index;
 	}
+	if(Normal.IsEmpty()||Elite.IsEmpty()||Boss==INDEX_NONE)
+	{
+		State.bHasGeneratedRouteMap=false;
+		State.ReachableRouteNodeIds.Reset();
+		return false;
+	}
+	int32 NormalCursor=0,EliteCursor=0;
+	for(const auto& Node:State.RouteMapNodes)
+	{
+		if(Node.NodeKind==EGameXXKNodeKind::Battle)State.Training.ChallengeRouteNodeEncounterIndices.Add(Node.NodeId,Normal[NormalCursor++%Normal.Num()]);
+		else if(Node.NodeKind==EGameXXKNodeKind::Elite)State.Training.ChallengeRouteNodeEncounterIndices.Add(Node.NodeId,Elite[EliteCursor++%Elite.Num()]);
+		else if(Node.NodeKind==EGameXXKNodeKind::Boss)State.Training.ChallengeRouteNodeEncounterIndices.Add(Node.NodeId,Boss);
+	}
+	return true;
+}
+
+void FGameXXKTrainingRules::GenerateChallengeRouteMap(FGameXXKRuntimeState& State,FName StageId,int32 Seed)
+{
+	GenerateTrainingChallengeMap(State,StageId,Seed,false);
+}
+
+bool FGameXXKHuntRules::AdvanceChapter(FGameXXKRuntimeState& State,FString* Error)
+{
+	const FName StageId=State.Training.ActiveChallengeStageId;
+	const auto& Progress=State.CardRun.RouteProgress;
+	if(!IsHuntStage(StageId)||!State.Training.bChallengeActive||Progress.CurrentChapter<1||Progress.CurrentChapter>=3||Progress.ChapterSeeds.Num()!=3)
+	{if(Error)*Error=TEXT("Hunt chapter continuation requires an active non-final chapter.");return false;}
+	FGameXXKRuntimeState Candidate=State;
+	++Candidate.CardRun.RouteProgress.CurrentChapter;
+	const int32 NextSeed=Candidate.CardRun.RouteProgress.ChapterSeeds[Candidate.CardRun.RouteProgress.CurrentChapter-1];
+	Candidate.bHasActiveBattle=false;Candidate.ActiveBattleNodeId=INDEX_NONE;
+	Candidate.ActiveBattleEnemies.Reset();Candidate.ActiveBattleParty.Reset();
+	Candidate.CardRun.PendingReward=FGameXXKPendingRouteCardReward();Candidate.CardRun.PendingRelicOffer=FGameXXKPendingRelicOffer();
+	if(!GenerateTrainingChallengeMap(Candidate,StageId,NextSeed,true))
+	{if(Error)*Error=TEXT("Could not generate the next Hunt chapter.");return false;}
+	Candidate.Training.ActiveChallengeEncounterIndex=(Candidate.CardRun.RouteProgress.CurrentChapter-1)*7;
+	State=MoveTemp(Candidate);return true;
 }
 
 bool FGameXXKTrainingRules::StartTravel(FGameXXKTrainingProgress& Progress, const FName StageId)
 {
+	if(FGameXXKHuntRules::IsHuntStage(StageId)&&Progress.HuntTravelOrderBudget<=0)return false;
 	if (Progress.bChallengeActive || !CanTravel(Progress, StageId))
 	{
 		return false;
@@ -923,11 +1028,11 @@ bool FGameXXKTrainingRules::InitializeTravelRunner(
 			? FGameXXKEnemyCatalog::ResolveTotalPhases(Definition->Tier, EnemyDifficulty)
 			: 1;
 		Enemy.MaxHP = static_cast<int32>(FMath::Clamp<int64>(
-			static_cast<int64>(FMath::Max(1, Stats.MaxHP)) * TotalPhases,
+			(static_cast<int64>(FMath::Max(1, Stats.MaxHP))*EnemyHealthPercent(Progress.CurrentTravelStageId)/100) * TotalPhases,
 			1,
 			MAX_int32));
 		Enemy.HP = Enemy.MaxHP;
-		Enemy.Attack = FMath::Max(1, Stats.Attack);
+		Enemy.Attack = static_cast<int32>(FMath::Clamp<int64>(static_cast<int64>(Stats.Attack)*EnemyAttributePercent(Stage.Difficulty)/100,1,MAX_int32));
 		OutRuntime.Enemies.Add(MoveTemp(Enemy));
 	}
 	OutRuntime.ActiveEnemyIndex = FindNextLivingTravelEnemy(OutRuntime, 0);
@@ -967,6 +1072,7 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 	bOutDefeated = false;
 	OutReward = FGameXXKTrainingReward();
 
+	if (FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId)&&Progress.HuntTravelOrderBudget<=0)return false;
 	if (!Progress.bTravelActive || Progress.bChallengeActive || Progress.CurrentTravelStageId.IsNone())
 	{
 		return false;
@@ -1060,7 +1166,7 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 			Progress.TravelNormalChestCooldownRemainingSeconds,
 			Progress.TravelAdvancedChestCooldownRemainingSeconds,
 			0.0f,
-			true);
+			!FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId)||bLastEncounter);
 		if (OutReward.bChestRolled)
 		{
 			if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
@@ -1078,6 +1184,17 @@ bool FGameXXKTrainingRules::AdvanceTravelRunner(
 			++Progress.TravelVictories;
 			Progress.ActiveTravelEncounterIndex = 0;
 			bOutStageCompleted = true;
+			if(FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId))
+			{
+				--Progress.HuntTravelOrderBudget;++Progress.PendingHuntTravelOrdersConsumed;
+				if(Progress.HuntTravelOrderBudget==0)
+				{
+					Progress.bTravelActive=false;Progress.ActiveTravelEncounterIndex=INDEX_NONE;
+					InOutRuntime.Phase=EGameXXKTrainingTravelPhase::Idle;InOutRuntime.ActiveEnemyIndex=INDEX_NONE;
+					InOutRuntime.EnemyDefinitionId=NAME_None;InOutRuntime.EnemyHP=0;
+					return true;
+				}
+			}
 		}
 		else
 		{
@@ -1140,6 +1257,7 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 {
 	bOutStageCompleted = false;
 	OutReward = FGameXXKTrainingReward();
+	if(FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId)&&Progress.HuntTravelOrderBudget<=0)return false;
 	if (!Progress.bTravelActive || Progress.bChallengeActive || Progress.CurrentTravelStageId.IsNone())
 	{
 		return false;
@@ -1163,7 +1281,7 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 		Progress.TravelNormalChestCooldownRemainingSeconds,
 		Progress.TravelAdvancedChestCooldownRemainingSeconds,
 		0.0f,
-		true);
+		!FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId)||bLastEncounter);
 	if (OutReward.bChestRolled)
 	{
 		if (OutReward.ChestTier == EGameXXKTrainingRewardTier::AdvancedChest)
@@ -1184,6 +1302,11 @@ bool FGameXXKTrainingRules::AdvanceTravelEncounter(
 	++Progress.TravelVictories;
 	Progress.ActiveTravelEncounterIndex = 0;
 	bOutStageCompleted = true;
+	if(FGameXXKHuntRules::IsHuntStage(Progress.CurrentTravelStageId))
+	{
+		--Progress.HuntTravelOrderBudget;++Progress.PendingHuntTravelOrdersConsumed;
+		if(Progress.HuntTravelOrderBudget==0){Progress.bTravelActive=false;Progress.ActiveTravelEncounterIndex=INDEX_NONE;}
+	}
 	return true;
 }
 
@@ -1200,7 +1323,7 @@ bool FGameXXKTrainingRules::AdvanceTravelOffline(
 	}
 
 	const int32 SimulationSeconds = FMath::Clamp(ElapsedSeconds, 1, MaxTravelOfflineSimulationSeconds);
-	for (int32 Second = 0; Second < SimulationSeconds; ++Second)
+	for (int32 Second = 0; Second < SimulationSeconds && Progress.bTravelActive; ++Second)
 	{
 		bool bEncounterCompleted = false;
 		bool bStageCompleted = false;
@@ -1232,6 +1355,7 @@ bool FGameXXKTrainingRules::AdvanceTravelOffline(
 			{
 				++OutReward.AdvancedChestCount;
 			}
+			else if(Reward.ChestTier==EGameXXKTrainingRewardTier::HuntChest&&Reward.bChestRolled)++OutReward.HuntChestCount;
 		}
 		if (bStageCompleted)
 		{
@@ -1254,19 +1378,29 @@ bool FGameXXKTrainingRules::AccumulatePendingTravelReward(
 		|| Reward.Experience < 0
 		|| Reward.NormalChestCount < 0
 		|| Reward.AdvancedChestCount < 0
+		|| Reward.HuntChestCount < 0
 		|| Reward.CompletedEncounters < 0
 		|| Reward.CompletedStages < 0
 		|| Reward.SimulatedSeconds < 0)
 	{
 		return false;
 	}
-	Progress.PendingTravelGold = FMath::Max(0, Progress.PendingTravelGold + Reward.Gold);
-	Progress.PendingTravelExperience = FMath::Max(0, Progress.PendingTravelExperience + Reward.Experience);
-	Progress.PendingTravelNormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount + Reward.NormalChestCount);
-	Progress.PendingTravelAdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount + Reward.AdvancedChestCount);
-	Progress.PendingTravelCompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters + Reward.CompletedEncounters);
-	Progress.PendingTravelCompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages + Reward.CompletedStages);
-	Progress.PendingTravelSimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds + Reward.SimulatedSeconds);
+	FGameXXKTrainingProgress Candidate=Progress;
+	const auto Add=[](int32& Balance,int32 Delta)
+	{
+		const int64 Sum=static_cast<int64>(Balance)+Delta;
+		if(Balance<0||Delta<0||Sum>MAX_int32)return false;
+		Balance=static_cast<int32>(Sum);return true;
+	};
+	if(!Add(Candidate.PendingTravelGold,Reward.Gold)
+		||!Add(Candidate.PendingTravelExperience,Reward.Experience)
+		||!Add(Candidate.PendingTravelNormalChestCount,Reward.NormalChestCount)
+		||!Add(Candidate.PendingTravelAdvancedChestCount,Reward.AdvancedChestCount)
+		||!Add(Candidate.PendingTravelHuntChestCount,Reward.HuntChestCount)
+		||!Add(Candidate.PendingTravelCompletedEncounters,Reward.CompletedEncounters)
+		||!Add(Candidate.PendingTravelCompletedStages,Reward.CompletedStages)
+		||!Add(Candidate.PendingTravelSimulatedSeconds,Reward.SimulatedSeconds))return false;
+	Progress=MoveTemp(Candidate);
 	return true;
 }
 
@@ -1279,6 +1413,7 @@ bool FGameXXKTrainingRules::GetPendingTravelReward(
 	OutReward.Experience = FMath::Max(0, Progress.PendingTravelExperience);
 	OutReward.NormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount);
 	OutReward.AdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount);
+	OutReward.HuntChestCount=FMath::Max(0,Progress.PendingTravelHuntChestCount);
 	OutReward.CompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters);
 	OutReward.CompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages);
 	OutReward.SimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds);
@@ -1287,6 +1422,7 @@ bool FGameXXKTrainingRules::GetPendingTravelReward(
 		|| OutReward.Experience > 0
 		|| OutReward.NormalChestCount > 0
 		|| OutReward.AdvancedChestCount > 0
+		|| OutReward.HuntChestCount > 0
 		|| OutReward.CompletedEncounters > 0
 		|| OutReward.CompletedStages > 0
 		|| OutReward.SimulatedSeconds > 0;
@@ -1304,6 +1440,7 @@ bool FGameXXKTrainingRules::ConsumePendingTravelReward(
 	Progress.PendingTravelExperience = 0;
 	Progress.PendingTravelNormalChestCount = 0;
 	Progress.PendingTravelAdvancedChestCount = 0;
+	Progress.PendingTravelHuntChestCount=0;
 	Progress.PendingTravelCompletedEncounters = 0;
 	Progress.PendingTravelCompletedStages = 0;
 	Progress.PendingTravelSimulatedSeconds = 0;
@@ -1345,6 +1482,16 @@ FGameXXKTrainingReward FGameXXKTrainingRules::BuildTravelReward(const FName Stag
 	{
 		return Reward;
 	}
+	if(Stage.StageNumber==10)
+	{
+		FGameXXKTrainingStageDefinition Reference;
+		if(!TryGetStageDefinition(MakeStageId(Stage.Difficulty,9),Reference))return Reward;
+		// A normal travel cycle pays7 encounters. A complete21-encounter Hunt
+		// pays exactly150% of that cycle, once at its final encounter.
+		Reward.Gold=static_cast<int32>(static_cast<int64>(Reference.TravelGold)*21/2);
+		Reward.Experience=static_cast<int32>(static_cast<int64>(Reference.TravelExperience)*21/2);
+		return Reward;
+	}
 	Reward.Gold = Stage.TravelGold;
 	Reward.Experience = Stage.TravelExperience;
 	Reward.ChestTier = EGameXXKTrainingRewardTier::None;
@@ -1358,6 +1505,7 @@ FGameXXKTrainingReward FGameXXKTrainingRules::BuildChallengeReward(
 	const bool bChestRolled,
 	const float TalentChestDropBonus)
 {
+	if(FGameXXKHuntRules::IsHuntStage(StageId))return ResolveChallengeReward(StageId,EncounterKind,DefaultChallengeRewardSeed(),TalentChestDropBonus);
 	FGameXXKTrainingReward Reward = BuildTravelReward(StageId);
 	FGameXXKTrainingStageDefinition Stage;
 	if (!TryGetStageDefinition(StageId, Stage))
@@ -1394,6 +1542,16 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveChallengeReward(
 	if (!TryGetStageDefinition(StageId, Stage))
 	{
 		return Reward;
+	}
+	if(Stage.StageNumber==10)
+	{
+		Reward=FGameXXKTrainingReward();
+		if(EncounterKind!=EGameXXKTrainingEncounterKind::Boss)return Reward;
+		FGameXXKTrainingStageDefinition Reference;
+		if(!TryGetStageDefinition(MakeStageId(Stage.Difficulty,9),Reference))return Reward;
+		Reward.Gold=Reference.TravelGold*3;Reward.Experience=Reference.TravelExperience*3;
+		Reward.ChestTier=EGameXXKTrainingRewardTier::HuntChest;Reward.bChestRolled=true;
+		Reward.ChestItemId=ChestItemIdForTierInternal(Reward.ChestTier);return Reward;
 	}
 	Reward.Gold = FMath::Max(1, Stage.TravelGold * 2);
 	Reward.Experience = FMath::Max(1, Stage.TravelExperience * 2);
@@ -1432,6 +1590,11 @@ FGameXXKTrainingReward FGameXXKTrainingRules::ResolveTravelReward(
 	FGameXXKTrainingStageDefinition Stage;
 	if (!TryGetStageDefinition(StageId, Stage))
 	{
+		return Reward;
+	}
+	if(Stage.StageNumber==10)
+	{
+		if(bIncludeStageReward){Reward.bChestRolled=true;Reward.ChestTier=EGameXXKTrainingRewardTier::HuntChest;Reward.ChestItemId=ChestItemIdForTierInternal(Reward.ChestTier);}
 		return Reward;
 	}
 	const EGameXXKTrainingRewardTier Tier = ChestTierForEncounter(EncounterKind);

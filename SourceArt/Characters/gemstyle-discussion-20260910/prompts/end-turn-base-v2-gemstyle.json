@@ -1,0 +1,10 @@
+{
+  "slug": "end-turn-base",
+  "prompt": "Use case: ui asset. 只根据参考宝石icon的画风，从零重绘一个国风结束回合按钮的无字底图。一个正视横向长条的深青玉牌，长宽约3.5:1，宽钝的小切角，粗而干净的深墨外轮廓。用参考宝石一样的饱满大体块和3个明确的大色面：中央大面积平稳深青绿正面，上侧一条短浅青明面，下侧一条深墨绿侧面，表达浅浅厚度；两头简单圆钝，绝不多层边框。中央85%以上深青绿完全干净留白，将来叠加白色四字标题。极少量宽笔刷，低光泽，低细节，清楚结实的手绘卡通感。不要旧式水彩纸纹、毛边墨团、细碎纹理、斑驳、复杂高光、金边、云纹角花、雕刻、图标、文字、数字、符号、投影、光环或UI示例。这是单独无字的按钮底图，不是游戏画面。完整主体留安全边，背景为完全均匀纯洋红#FF00FF供去底。只画这一个按钮底。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-6adff8cb-1585-4e2a-9b36-5245fb3f30bc.png",
+  "originalSource": "docs/ui/main_menu/source_art/ink_button_base.png",
+  "revision": "gem reference only; three large planes, no paper/grain"
+}

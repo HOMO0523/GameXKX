@@ -150,6 +150,12 @@ def save_running_editor_before_close(host: str = DEFAULT_HOST, port: int = DEFAU
         print("[SAVE] UE MCP unavailable and editor state unknown; refusing to close before compile")
         return False
 
+    # Saving editor packages does not save the player's runtime. A running PIE
+    # may also belong to another task's protected Dev session. Its owner must
+    # save/restore that session and stop PIE before the generic pipeline closes it.
+    if client.is_in_pie():
+        print("[SAVE] ACTIVE PIE: save/restore the current player or Dev session with its owner, then stop PIE before compiling. Editor left open.")
+        return False
     response = client.save_dirty_packages()
     print(f"[SAVE] save_result={response.get('save_result')} dirty_before={response.get('dirty_before')} dirty_after={response.get('dirty_after')}")
     if not response.get("save_result") or response.get("dirty_after"):

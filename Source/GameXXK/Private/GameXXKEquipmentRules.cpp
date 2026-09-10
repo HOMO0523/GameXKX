@@ -178,7 +178,7 @@ namespace
 			SetError(OutError, TEXT("Equipment affix modifier kinds must be unique."));
 			return false;
 		}
-		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier);
+		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Roll.Tier);
 		if (Range.Minimum <= 0 || Range.Maximum < Range.Minimum
 			|| Roll.Magnitude < Range.Minimum || Roll.Magnitude > Range.Maximum)
 		{
@@ -1011,7 +1011,7 @@ bool FGameXXKEquipmentRules::CreateRolledInstance(
 		Roll.AffixId = Definition->Id;
 		Roll.Tier = RollTier(Stream, Request.Quality);
 		Roll.Unit = Definition->Unit;
-		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier);
+		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Roll.Tier);
 		Roll.Magnitude = Stream.RandRange(Range.Minimum, Range.Maximum);
 		Instance.RolledAffixes.Add(Roll);
 	}
@@ -1584,10 +1584,10 @@ bool FGameXXKEquipmentRules::IsKnownActiveEffect(const FGameXXKEquipmentActiveEf
 		return false;
 	}
 
-	return FGameXXKAffixCatalog::GetSetDefinitions(Effect.Set).ContainsByPredicate(
+	return FGameXXKAffixCatalog::GetAllDefinitions().ContainsByPredicate(
 		[&Effect](const FGameXXKAffixDefinition& Definition)
 		{
-			return Definition.ModifierKind == Effect.ModifierKind && Definition.Unit == Effect.Unit;
+			return Definition.Set == Effect.Set && Definition.ModifierKind == Effect.ModifierKind && Definition.Unit == Effect.Unit;
 		});
 }
 

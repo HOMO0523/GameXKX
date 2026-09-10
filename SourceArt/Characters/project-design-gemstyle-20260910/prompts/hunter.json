@@ -1,0 +1,14 @@
+{
+  "slug": "hunter",
+  "name": "弓手",
+  "prompt": "Use case: style-transfer. 按项目原角色设计重绘一张全身游戏角色，原设计为准，不重新发明服装、人物身份或装备。第一张宝石图只提供画风，第二张是这个角色在项目里的原始1600×1600全身设计。请严格保留第二张的总体剪影、头身比例、面容特征、发型、衣装结构、道具、原动作和3/4面朝画面左的朝向。重绘的改变集中在画法：必须明显采用第一张宝石icon的干净粗深墨外轮廓、饱满结实的卡通大体块、鲜明但同原色系的配色、3至5组主要平涂明暗、少量宽阔手绘笔刷。去掉旧图密集纸纹、碎细线、模糊水彩纹理和灰脏感，轮廓闭合清楚，缩小后仍易认。不要水墨晕染、写意断线、毛边或泛白褪色，不画写实3D反射。皮肤、布、毛发应保留有机材料特征，不画成真正晶石或三角网格。只输出这一个完整全身单体，不画对照表、文字、标签或宝石本身。正方形画布、人物完整且居中，四周安全留白；输出浅暖米白#F4EFDF干净背景，不沿用旧图洋红底，不画场景、地面或投影。\n弓手必须保留原短黑发、墨棕/橄榄色短披肩、米灰上衣、深灰裤、绑腿、原鞋型、三箭羽箭筒、木弓和箭。保留原低位持弓、斜持箭、屈膝向左的姿态，双手和双臂位置不变；不能改成抬弓满弓瞄准。依照用户已提过的国风要求，只允许在原色披肩上增加一至两处简洁浅色大风纹/云纹，不换成新蓝色盔甲或新款外套。弓弦只有一根，连接上下弓梢的端部，并在原后手的箭尾点形成轻折；箭尾与拉弦点一致，不多弦、不断线、不穿手腕，弓身不变形。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-c3707e80-c41d-4977-9b95-7ed12b15336b.png",
+  "originalDesign": "SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png",
+  "facing": "left",
+  "view": "three-quarter",
+  "phase": "discussion-redraw-not-imported"
+}

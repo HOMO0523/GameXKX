@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "count": 3,
+  "expected": 34,
+  "complete": false,
+  "phase": "design-review-awaiting-user",
+  "userApproved": false,
+  "imported": false,
+  "tool": "built-in image_gen",
+  "records": [
+    {
+      "slug": "hero",
+      "id": "Character.Hero",
+      "name": "主角",
+      "group": "characters",
+      "tier": null,
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/hero.png",
+      "rawSha256": "792e06cb0ab299096abade11829a05909ce6523cbfc279108391015badccc3cd",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/hero.png",
+      "sha256": "5c6a7c59726236290010495cf97411a4c99abb6ab15807ad720df115532ff6a0",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        238,
+        43,
+        1258,
+        1565
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+      "identitySourceSha256": "39fe355f4e42b63d2fb3329a3d4f3b404dfd00be222957230a90df7b75f6270d",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "guard",
+      "id": "Role.Guard",
+      "name": "守卫",
+      "group": "characters",
+      "tier": null,
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/guard.png",
+      "rawSha256": "c023b01fb0e0d5bb5f46c4815d9d3c74d8cb4003cf2f20a49030df4274ead720",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/guard.png",
+      "sha256": "3ea5547c43d678ab85116681b1a4832aab57ee6bad78cc21c5cbb27f66f9bd20",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        65,
+        73,
+        1528,
+        1489
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/02_guard.png",
+      "identitySourceSha256": "a1079cb2e82aaf6bccbb25ab88de1c71926d529cd547f3c9db218ff6c3f88609",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "rooster",
+      "id": "Enemy.Ch1.Rooster",
+      "name": "公鸡",
+      "group": "monsters",
+      "tier": "normal",
+      "raw": "SourceArt/Characters/gemstyle-redesign-20260910/raw-v2/rooster.png",
+      "rawSha256": "f2bbb0788a14f20a0409d79fbe84862a6adbc9c0bd3efc5ca30b79d2504a83e7",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewPng": "SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/monsters/rooster.png",
+      "sha256": "78f29195ad1b9c890f1798decaaf2b1f654dad0ba615100bff2ab0668c108939",
+      "size": [
+        1600,
+        1600
+      ],
+      "mode": "RGB",
+      "background": "warm-ivory-review",
+      "foregroundBounds": [
+        104,
+        44,
+        1399,
+        1542
+      ],
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png",
+      "identitySourceSha256": "f7543ca644d968f8b4f32c6d2ad2317fb57b9597b568692d0b9b04d69c6fedd8",
+      "reviewCanvasResampled": true,
+      "visualReview": "pending",
+      "userApproved": false,
+      "imported": false
+    }
+  ]
+}

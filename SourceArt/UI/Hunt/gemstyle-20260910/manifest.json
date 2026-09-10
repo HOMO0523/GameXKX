@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "styleReference": "SourceArt/UI/Items/Gems/contour-review-20260909/type-icons-v5",
+  "backgroundAndResizeAuthorized": true,
+  "expectedUniqueIcons": 5,
+  "icons": [
+    {
+      "slug": "HuntOrder",
+      "raw": "SourceArt/UI/Hunt/gemstyle-20260910/raw/T_Item_HuntOrder.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-205cf882-bacf-4a2a-9f95-6a43116aaf02.png",
+      "rawSha256": "347fe9727f18866bc71ea9db0c2972f9c44bde839e2da32e2959eb68d0e56b48",
+      "icon": "SourceArt/UI/Hunt/gemstyle-20260910/icons/T_Item_HuntOrder.png",
+      "sha256": "a290af8a0379177842a7b0a8986bf49b42ab282e2508e64da6fa83f376aa38e0",
+      "background": "magenta",
+      "removedBackgroundPixels": 868347,
+      "sourceAlphaBounds": [
+        243,
+        13,
+        1010,
+        1223
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        112,
+        30,
+        399,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "Agent reviewed at 48/64 px: distinct silhouettes and readable outlines; not an individual user-approval record",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Items/T_Item_HuntOrder.T_Item_HuntOrder"
+      ]
+    },
+    {
+      "slug": "TrainingNormalChest",
+      "raw": "SourceArt/UI/Hunt/gemstyle-20260910/raw/T_Item_TrainingNormalChest.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-b181f249-78a7-4eb1-80d8-055d5ac32292.png",
+      "rawSha256": "ad09f66a2999b5becc7817d503c97f51b3ccd312d0eeff31447bd90af2875946",
+      "icon": "SourceArt/UI/Hunt/gemstyle-20260910/icons/T_Item_TrainingNormalChest.png",
+      "sha256": "c7f8eed70bff469aba07a12f588795a9b5f1e456e30cfd49e9383b3b24c2e854",
+      "background": "magenta",
+      "removedBackgroundPixels": 733009,
+      "sourceAlphaBounds": [
+        95,
+        138,
+        1158,
+        1164
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        38,
+        482,
+        474
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "Agent reviewed at 48/64 px: distinct silhouettes and readable outlines; not an individual user-approval record",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Items/T_Item_TrainingNormalChest.T_Item_TrainingNormalChest"
+      ]
+    },
+    {
+      "slug": "RouteRelicChest",
+      "raw": "SourceArt/UI/Hunt/gemstyle-20260910/raw/T_Item_RouteRelicChest.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-fcce1114-e09f-497f-8f69-213ceef9f559.png",
+      "rawSha256": "a48dc90354b723290bcaa76bc4eae9b781f5b9c1dffc98e0be891b17899c16c9",
+      "icon": "SourceArt/UI/Hunt/gemstyle-20260910/icons/T_Item_RouteRelicChest.png",
+      "sha256": "a42e9561868648b4472b77cf43c3dcee1a9d4f3e190c953e0a8479a2c7e4d9bf",
+      "background": "magenta",
+      "removedBackgroundPixels": 660868,
+      "sourceAlphaBounds": [
+        65,
+        153,
+        1204,
+        1118
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        64,
+        482,
+        447
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "Agent reviewed at 48/64 px: distinct silhouettes and readable outlines; not an individual user-approval record",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/RouteMap/T_RouteNodeChest.T_RouteNodeChest",
+        "/Game/GameXXK/UI/Talents/Flat/T_TalentFlat_Chest.T_TalentFlat_Chest"
+      ]
+    },
+    {
+      "slug": "TrainingAdvancedChest",
+      "raw": "SourceArt/UI/Hunt/gemstyle-20260910/raw/T_Item_TrainingAdvancedChest.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-3e821782-22c7-4dce-8312-d0310ade17e0.png",
+      "rawSha256": "dd241165419ee9b48a0d6e11c272b6d05ee5599d8c0ca9042aefba659845e4b7",
+      "icon": "SourceArt/UI/Hunt/gemstyle-20260910/icons/T_Item_TrainingAdvancedChest.png",
+      "sha256": "b286983b6dd146fd02baba93bccfc22e09db9bfabd292c1e5e0bc00ee676f2ed",
+      "background": "magenta",
+      "removedBackgroundPixels": 699264,
+      "sourceAlphaBounds": [
+        86,
+        106,
+        1178,
+        1178
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        34,
+        482,
+        478
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "Agent reviewed at 48/64 px: distinct silhouettes and readable outlines; not an individual user-approval record",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Items/T_Item_TrainingAdvancedChest.T_Item_TrainingAdvancedChest"
+      ]
+    },
+    {
+      "slug": "TrainingHuntChest",
+      "raw": "SourceArt/UI/Hunt/gemstyle-20260910/raw/T_Item_TrainingHuntChest.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-f6ecf812-7ae9-4e0a-8390-13b3a5b0feaf.png",
+      "rawSha256": "33c93dceb2b155a953272dee5448e786f1c6c4bfa1fd84d6841d1e3f57688c61",
+      "icon": "SourceArt/UI/Hunt/gemstyle-20260910/icons/T_Item_TrainingHuntChest.png",
+      "sha256": "5e70056580d87d3fb4c09e6d2e5089de0170326dbd392c69288f985cb4656a41",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 576825,
+      "sourceAlphaBounds": [
+        39,
+        111,
+        1227,
+        1171
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        54,
+        482,
+        457
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "Agent reviewed at 48/64 px: distinct silhouettes and readable outlines; not an individual user-approval record",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Items/T_Item_TrainingHuntChest.T_Item_TrainingHuntChest"
+      ]
+    }
+  ]
+}

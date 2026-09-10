@@ -1,0 +1,296 @@
+{
+  "scope": "3 characters + 3 monsters; one idle and one attack each",
+  "jobCount": 12,
+  "unitCount": 6,
+  "tool": "Dreamina official Windows CLI 1.4.18",
+  "creditBefore": 4079,
+  "sourcePreparation": "deterministic chroma-key and safety framing; no art redesign",
+  "firstLastPolicy": "identical input images",
+  "phase": "user-paused-generation-for-runtime-keyframe-pilot",
+  "imported": false,
+  "sources": [
+    {
+      "slug": "hero",
+      "name": "主角",
+      "source": "SourceArt/Characters/project-design-gemstyle-all-20260910/characters/hero.png",
+      "sourceSha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "input": "inputs/hero.png",
+      "inputSha256": "7aa953319c4e5d02ac3a8563d937f153b49e7eaf3d2ad7cfd7b5c62fb02ff4df",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        276,
+        104,
+        748,
+        884
+      ],
+      "enclosedGapsRemoved": 0,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    },
+    {
+      "slug": "hunter",
+      "name": "弓手",
+      "source": "SourceArt/Characters/project-design-gemstyle-all-20260910/characters/hunter.png",
+      "sourceSha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "input": "inputs/hunter.png",
+      "inputSha256": "9a5f3dc4ea864515f0cff4a10de0c816e33ed4f85f06f2ef03ab63e080b98104",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        140,
+        104,
+        884,
+        884
+      ],
+      "enclosedGapsRemoved": 1,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "source": "SourceArt/Characters/project-design-gemstyle-all-20260910/characters/you_bai.png",
+      "sourceSha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "input": "inputs/you_bai.png",
+      "inputSha256": "dd4367eb24fb7135713cdd47b2c5c151bee0da0c437a26a20d5843f65f9d3769",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        229,
+        122,
+        795,
+        902
+      ],
+      "enclosedGapsRemoved": 0,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    },
+    {
+      "slug": "rooster",
+      "name": "公鸡",
+      "source": "SourceArt/Monsters/project-design-gemstyle-20260910/monsters/rooster.png",
+      "sourceSha256": "61e42e21d710cdcb59304acd6842569ea34b4e73106cda2ac6bab76a3c87fa02",
+      "input": "inputs/rooster.png",
+      "inputSha256": "6391d7d06a0afd91fda315c4f3586003889ea9d057e1032482c4fdd260860bfc",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        189,
+        104,
+        835,
+        884
+      ],
+      "enclosedGapsRemoved": 0,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    },
+    {
+      "slug": "goat",
+      "name": "山羊",
+      "source": "SourceArt/Monsters/project-design-gemstyle-20260910/monsters/goat.png",
+      "sourceSha256": "2214a66077e80eae50d0d2eed2fcf0cc16153d3bceeb6594c62d0b617db6554a",
+      "input": "inputs/goat.png",
+      "inputSha256": "e9152b5ffa8526a536ad1500a0097aedd8864017c1eacc02fc637793aec9731c",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        202,
+        104,
+        822,
+        884
+      ],
+      "enclosedGapsRemoved": 0,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    },
+    {
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "source": "SourceArt/Monsters/project-design-gemstyle-20260910/monsters/moneyrat.png",
+      "sourceSha256": "eae09733017b1fc9e9c1039ddf3875b5472e76bdf8518747f9847a763349ae4c",
+      "input": "inputs/moneyrat.png",
+      "inputSha256": "e9c211eb364b08d3173431339c92b892acdc3ab88772a99ea7aabd6e13f07a54",
+      "size": [
+        1024,
+        1024
+      ],
+      "subjectBounds": [
+        138,
+        104,
+        886,
+        884
+      ],
+      "enclosedGapsRemoved": 0,
+      "method": "existing approved matte + fixed scale/placement; original artwork untouched"
+    }
+  ],
+  "jobs": [
+    {
+      "id": "hero_idle",
+      "slug": "hero",
+      "name": "主角",
+      "facing": "left",
+      "action": "idle",
+      "prompt": "prompts/hero_idle.txt",
+      "input": "inputs/hero.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "hero_attack",
+      "slug": "hero",
+      "name": "主角",
+      "facing": "left",
+      "action": "attack",
+      "prompt": "prompts/hero_attack.txt",
+      "input": "inputs/hero.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "hunter_idle",
+      "slug": "hunter",
+      "name": "弓手",
+      "facing": "left",
+      "action": "idle",
+      "prompt": "prompts/hunter_idle.txt",
+      "input": "inputs/hunter.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "hunter_attack",
+      "slug": "hunter",
+      "name": "弓手",
+      "facing": "left",
+      "action": "attack",
+      "prompt": "prompts/hunter_attack.txt",
+      "input": "inputs/hunter.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "you_bai_idle",
+      "slug": "you_bai",
+      "name": "幽白",
+      "facing": "left",
+      "action": "idle",
+      "prompt": "prompts/you_bai_idle.txt",
+      "input": "inputs/you_bai.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "you_bai_attack",
+      "slug": "you_bai",
+      "name": "幽白",
+      "facing": "left",
+      "action": "attack",
+      "prompt": "prompts/you_bai_attack.txt",
+      "input": "inputs/you_bai.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "rooster_idle",
+      "slug": "rooster",
+      "name": "公鸡",
+      "facing": "right",
+      "action": "idle",
+      "prompt": "prompts/rooster_idle.txt",
+      "input": "inputs/rooster.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "rooster_attack",
+      "slug": "rooster",
+      "name": "公鸡",
+      "facing": "right",
+      "action": "attack",
+      "prompt": "prompts/rooster_attack.txt",
+      "input": "inputs/rooster.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "goat_idle",
+      "slug": "goat",
+      "name": "山羊",
+      "facing": "right",
+      "action": "idle",
+      "prompt": "prompts/goat_idle.txt",
+      "input": "inputs/goat.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "goat_attack",
+      "slug": "goat",
+      "name": "山羊",
+      "facing": "right",
+      "action": "attack",
+      "prompt": "prompts/goat_attack.txt",
+      "input": "inputs/goat.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "moneyrat_idle",
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "facing": "right",
+      "action": "idle",
+      "prompt": "prompts/moneyrat_idle.txt",
+      "input": "inputs/moneyrat.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    },
+    {
+      "id": "moneyrat_attack",
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "facing": "right",
+      "action": "attack",
+      "prompt": "prompts/moneyrat_attack.txt",
+      "input": "inputs/moneyrat.png",
+      "duration": 4,
+      "resolution": "720p",
+      "model": "CLI default (seedance2.0_vip per current help)",
+      "maxSubmissions": 1
+    }
+  ],
+  "submissionsPaused": true,
+  "runtimePilotUnits": [
+    "hero",
+    "rooster"
+  ]
+}

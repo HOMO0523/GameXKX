@@ -1,0 +1,10 @@
+{
+  "slug": "pojun_accessory",
+  "prompt": "Use case: style-transfer. 游戏独立装备icon重绘。第一张图是一排旧装备，其中从左数第1件「破军饰品」是本次目标；只取此件造型身份，绝不能输出整排、多件、文字或表格。第二张宝石图严格作为画风参考。装备形状：一枚朱红短弧刀形护符，顶部小暗绳环和简短米金结扣，吊坠朝下。配色：鲜明朱红、赤橘，炭灰护边，少量米金。画法必须与宝石同系列：粗自然深墨外轮廓、结实饱满略夸张的大体块、3至5个大的平涂明暗区、仅少量宽阔干笔，干净鲜明色块，低光泽低细节。保留装备本身材质类别，不要让装备变成宝石或透明水晶；表面不画细碎多边形网格，保持自然手绘大色块。去掉原图细雕纹、写实金属反光、碎布纹、密集绑带。单个完整物品，正方形1024x1024，主体长边约88%，四边留安全空间，48px仍易辨认。无文字数字、品质框、光环、粒子、地面或投影。背景是完全均匀纯洋红#FF00FF，用于后期脚本去底；不要棋盘格、纹理、渐变、阴影；主体不要洋红色，图标上的镂空也填同样纯洋红。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_accessory_calibration_v1.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-4e4c8b22-2894-4700-9fe2-54ffeba2bb0b.png",
+  "background": "magenta"
+}

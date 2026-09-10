@@ -1,0 +1,82 @@
+{
+  "reviewer": "Codex visual inspection",
+  "scope": "all 13 project characters",
+  "status": "ready-for-user-review",
+  "approvalMeaning": "Three sample characters approved by user; remaining ten await user approval.",
+  "checks": [
+    "各原始1600设计逐张识别和核对",
+    "全部全身与原道具完整",
+    "角色主体3/4面朝画面左",
+    "保留原服装发型配色道具与体型差异",
+    "宝石icon深描边及块面风格",
+    "琼幺儿头部朝向定点修正后复核"
+  ],
+  "records": [
+    {
+      "slug": "hero",
+      "note": "批准样板原样保留；棕外衣灰蓝内搭、竹篓、肩带动作，朝左。",
+      "userApproved": true
+    },
+    {
+      "slug": "blade",
+      "note": "高长马尾、青衣红腰带、单把完整弯刀、原低位持刀稳立；朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "guard",
+      "note": "壮硕体型、圆木盾与木杆长矛、短髻胡须、两脚完整；朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "healer",
+      "note": "原单髻叶饰、米白裤和绿披肩、葫芦及药篓、双手握持清楚；朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "hunter",
+      "note": "批准样板原样保留；低位木弓姿势、原色披肩大云纹，朝左。",
+      "userApproved": true
+    },
+    {
+      "slug": "sorcerer",
+      "note": "眨眼、圆帽、圆环衣饰、两张符纸与短木杆；朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "formation_master",
+      "note": "灰褐长袍、原扇与背后竖旗、从容站姿，朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "tusi_chief",
+      "note": "宽矮体型、不对称斗笠、白弯胡须、橘红披风、U形杖头，朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "song_jin_bao",
+      "note": "瘦高比例、尖斗笠、朱红回纹衣、三张纸牌与腰盒，朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "you_bai",
+      "note": "批准样板原样保留；蓝紫长卷焰及两滴火焰，朝左。",
+      "userApproved": true
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "note": "大扁斗笠、黑长弯胡须、肩上单只狐狸、竹简和宽体型，主角色朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "jin_gui",
+      "note": "红结斗笠、困倦半睁眼与脸疤、竹烟杆、青绿衣与抬脚动作，朝左。",
+      "userApproved": false
+    },
+    {
+      "slug": "qiong_yao_er",
+      "note": "首稿保留右回望已修正；仅头部转向左，保留帽饰、侧辫、前绿铃后金铃、金裙及右飘双带。",
+      "userApproved": false
+    }
+  ],
+  "imported": false
+}

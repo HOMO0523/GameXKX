@@ -1768,9 +1768,23 @@ namespace
 		else if (Has(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor)) Element = EGameXXKCardDamageElement::Frost;
 		const bool ElementalAttack = FGameXXKResistanceRules::IsSpell(Element)
 			&& (Attack || Has(EGameXXKCardEffectType::DamageFlat) || Has(EGameXXKCardEffectType::LightningPerTargetStatusSnapshot) || Has(EGameXXKCardEffectType::DamageAllPercentAttackPerConsumedArmor));
-		if (ElementalAttack) return TEXT("伤害类型：") + FGameXXKCombatGemRules::GetElementLabel(Element) + TEXT("法术（受对应抗性减免）\n") + Text;
-		if (Attack) return TEXT("伤害类型：物理（受防御减免）\n") + Text;
-		return Text;
+		if (!ElementalAttack && !Attack) return Text;
+		TArray<FString> Lines;
+		Text.ParseIntoArray(Lines, TEXT("\n"), false);
+		for (FString& Line : Lines)
+		{
+			// Universal task rewards may list several elemental branches on one card.
+			// Preserve each branch's element instead of stamping the base card onto all rewards.
+			auto LineElement = ElementalAttack ? Element : EGameXXKCardDamageElement::None;
+			if (Line.StartsWith(TEXT("阵赏·普通："))) LineElement = EGameXXKCardDamageElement::None;
+			else if (Line.StartsWith(TEXT("阵赏·炎法："))) LineElement = EGameXXKCardDamageElement::Fire;
+			else if (Line.StartsWith(TEXT("阵赏·寒冰："))) LineElement = EGameXXKCardDamageElement::Frost;
+			else if (Line.StartsWith(TEXT("阵赏·雷法："))) LineElement = EGameXXKCardDamageElement::Lightning;
+			const FString Label = FGameXXKCombatGemRules::GetElementLabel(LineElement);
+			Line.ReplaceInline(TEXT("点伤害"), *(TEXT("点") + Label + TEXT("伤害")));
+			Line.ReplaceInline(TEXT("攻击伤害"), *(TEXT("攻击伤害（") + Label + TEXT("）")));
+		}
+		return FString::Join(Lines, TEXT("\n"));
 	}
 
 	FString DescribeEffectsResolved(

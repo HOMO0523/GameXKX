@@ -1,0 +1,23 @@
+{
+  "slug": "healer",
+  "name": "药师",
+  "id": "Role.Healer",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/03_healer.png",
+  "identitySourceSha256": "6a77b0bc3ab236ca36f42e14649f78a91d01801e90823ed688f196551add0414",
+  "facing": "left",
+  "view": "three-quarter",
+  "userApproved": false,
+  "details": "药师：保留原年轻女子柔和笑脸、黑发单个后上发髻与两片大叶束饰，米白交领上衣和宽裤、橄榄草绿短披肩及两片向右后方飘的宽布尾、原绿腰结与布鞋。一臂抱原木棕色双腹药葫芦，葫芦下腹有单片叶形标记，另一手握肩带；背篓露两卷药卷和少量草叶。不新增手持药枝、不改成双髻、不换裙子。保留原站姿与服装结构，叶子和编织线做减法。",
+  "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：药师：保留原年轻女子柔和笑脸、黑发单个后上发髻与两片大叶束饰，米白交领上衣和宽裤、橄榄草绿短披肩及两片向右后方飘的宽布尾、原绿腰结与布鞋。一臂抱原木棕色双腹药葫芦，葫芦下腹有单片叶形标记，另一手握肩带；背篓露两卷药卷和少量草叶。不新增手持药枝、不改成双髻、不换裙子。保留原站姿与服装结构，叶子和编织线做减法。",
+  "status": "pending-generation",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+    "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\03_healer.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\raw\\healer.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "phase": "new-character-awaiting-user-review",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-89d71dea-ce73-486a-881d-2fdb23be0171.png"
+}

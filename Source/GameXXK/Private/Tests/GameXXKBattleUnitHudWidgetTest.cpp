@@ -69,8 +69,8 @@ bool FGameXXKBattleUnitHudWidgetTest::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("composite HUD embeds the ordinary status widget"), StatusWidget);
 	if (ResourceWidget)
 	{
-		TestEqual(TEXT("hero health text is sourced through the composite HUD"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("气血 72 / 100")));
-		TestEqual(TEXT("hero mana text is sourced through the composite HUD"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("内力 18 / 30")));
+		TestEqual(TEXT("hero health text is sourced through the composite HUD"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("HP 72 / 100")));
+		TestEqual(TEXT("hero mana text is sourced through the composite HUD"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("MP 18 / 30")));
 	}
 	if (StatusWidget)
 	{

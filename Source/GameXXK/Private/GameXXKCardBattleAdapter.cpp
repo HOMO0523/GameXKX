@@ -12,10 +12,12 @@
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKRelicRules.h"
+#include "GameXXKRelicSynergyRules.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRouteEncounterCatalog.h"
 #include "GameXXKTalentRules.h"
 #include "GameXXKTrainingRules.h"
+#include "Narrative/GameXXKMainStoryRules.h"
 #include "Misc/Crc.h"
 
 namespace
@@ -3424,7 +3426,8 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	const EGameXXKCardTerrain Terrain,
 	const int32 InitialRandomSeed,
 	FString* OutError,
-	const int32 EnemyDifficultyDamagePercent)
+	const int32 EnemyDifficultyDamagePercent,
+	const bool bEnemyAttributesIncludeDifficulty)
 {
 	if (OutError)
 	{
@@ -3480,6 +3483,15 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 		return false;
 	}
 	NewRuntime.SourceNodeKind = CardBattleNodeKind(NodeKind);
+	if(bEnemyAttributesIncludeDifficulty)
+	{
+		FGameXXKTrainingStageDefinition Stage;
+		if(!FGameXXKTrainingRules::TryGetStageDefinition(NewState.Training.ActiveChallengeStageId,Stage))
+			return SetFailure(OutError,TEXT("Scaled Training attributes require a valid source stage."));
+		NewRuntime.bEnemyAttributesIncludeDifficulty=true;
+		NewRuntime.EnemyDifficulty=Stage.Difficulty==EGameXXKTrainingDifficulty::Hell?EGameXXKEnemyDifficulty::Hell:
+			Stage.Difficulty==EGameXXKTrainingDifficulty::Hard?EGameXXKEnemyDifficulty::Hard:EGameXXKEnemyDifficulty::Normal;
+	}
 	for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
 	{
 		if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy || Unit.EnemyDefinitionId.IsNone())
@@ -3507,8 +3519,11 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 		{
 			return SetFailure(OutError, TEXT("Training battle initialization cannot resolve its authored encounter."));
 		}
-		const FGameXXKTrainingEncounterDefinition& TrainingEncounter =
+		FGameXXKTrainingEncounterDefinition TrainingEncounter =
 			TrainingEncounters[NewState.Training.ActiveChallengeEncounterIndex];
+		if(FGameXXKMainStoryRules::IsDedicatedJourney(NewState)
+			&&!FGameXXKMainStoryRules::BuildJourneyBattleEncounter(NewState,TrainingEncounter))
+			return SetFailure(OutError,TEXT("Story opening intents have no matching task formation."));
 		for (const FGameXXKCardCombatUnit& Unit : NewRuntime.Units)
 		{
 			if (!Unit.bLiving || Unit.Side != EGameXXKCardTargetSide::Enemy)
@@ -3592,7 +3607,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	Run.NextEnemyIntentIndex = 0;
 	Run.PendingReward = FGameXXKPendingRouteCardReward();
 	Run.bActiveBattleRewardResolved = false;
-	FGameXXKRelicRules::ApplyBattleStart(NewState);
+	if(!FGameXXKRelicRules::ApplyBattleStart(NewState,nullptr,OutError))return false;
 	if (!ApplyCatalogEnemyRoundStartStatuses(Run.ActiveBattle, OutError)
 		|| !BuildEnemyIntents(Run, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -3858,6 +3873,7 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 		return false;
 	}
 
+	const FGameXXKCardPlayResult PrimaryResult=NewResult;
 	const TArray<FGameXXKCardDamageResult> PrimaryDamageResults = NewResult.DamageResults;
 	if (!FGameXXKRelicRules::ApplyCardPlayed(
 		NewState,
@@ -3868,6 +3884,7 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 	{
 		return false;
 	}
+	if(!GameXXKRelicSynergyRules::BeginAction(NewState,InOutState.CardRun.ActiveBattle,PrimaryResult,NewResult,OutError))return false;
 	// Card identities remain locked for this round, while every source/target value is
 	// re-forecast after the complete active-card and relic transaction.
 	if (NewState.CardRun.ActiveBattle.Phase == EGameXXKCardBattlePhase::Player)
@@ -3912,6 +3929,7 @@ bool FGameXXKCardBattleAdapter::SubmitInsightChoice(
 	{
 		return false;
 	}
+	if(!GameXXKRelicSynergyRules::ResumeAction(NewState,ResumedResults,OutError))return false;
 	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -3947,6 +3965,7 @@ bool FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(
 	{
 		return false;
 	}
+	if(!GameXXKRelicSynergyRules::ResumeAction(NewState,ResumedResults,OutError))return false;
 	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -3978,6 +3997,7 @@ bool FGameXXKCardBattleAdapter::SubmitForcedDiscard(
 	{
 		return false;
 	}
+	if(!GameXXKRelicSynergyRules::ResumeAction(NewState,ResumedResults,OutError))return false;
 	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -4007,6 +4027,7 @@ bool FGameXXKCardBattleAdapter::CancelInsight(
 	{
 		return false;
 	}
+	if(!GameXXKRelicSynergyRules::ResumeAction(NewState,ResumedResults,OutError))return false;
 	if(NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -4038,6 +4059,7 @@ bool FGameXXKCardBattleAdapter::ResumeAutomaticResolutionQueue(
 			NewState.CardRun.ActiveBattle,
 			NewResults,
 			OutError)
+		|| !GameXXKRelicSynergyRules::ResumeAction(NewState,NewResults,OutError)
 		|| (NewState.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Player&&!BuildEnemyIntents(NewState.CardRun,OutError))
 		|| !FinalizeLifeSavingTalismanConsumption(NewState, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -4071,8 +4093,11 @@ bool FGameXXKCardBattleAdapter::EndPlayerCardPhase(
 	{
 		return false;
 	}
-	FGameXXKRelicRules::ApplyPlayerRoundEnd(NewState);
-	FGameXXKRelicRules::ApplyDamageTaken(NewState, NewDamageResults);
+	const auto PrimaryEndDamage=NewDamageResults;
+	FGameXXKCardPlayResult RelicOutput;
+	if(!FGameXXKRelicRules::ApplyPlayerRoundEnd(NewState,&RelicOutput,OutError)
+		||!FGameXXKRelicRules::ApplyDamageTaken(NewState,PrimaryEndDamage,&RelicOutput,OutError))return false;
+	NewDamageResults.Append(MoveTemp(RelicOutput.DamageResults));
 	if (!FinalizeLifeSavingTalismanConsumption(NewState, OutError))
 	{
 		return false;
@@ -4287,7 +4312,7 @@ static bool ResolveNextEnemyIntentImpl(
 		}
 		++Run.NextEnemyIntentIndex;
 	}
-	FGameXXKRelicRules::ApplyDamageTaken(InOutState, OutDamageResults);
+	if(!FGameXXKRelicRules::ApplyDamageTaken(InOutState,OutDamageResults,nullptr,OutError))return false;
 	if (!FinalizeLifeSavingTalismanConsumption(InOutState, OutError))
 	{
 		return false;
@@ -4405,8 +4430,10 @@ bool FGameXXKCardBattleAdapter::CompleteEnemyCardPhase(
 		// survived the boundary may advance charges or expire one-phase modifiers.
 		AdvancePendingEnemyCharges(Run.ActiveBattle);
 		ExpireEnemyPhaseTemporaryModifiers(Run.ActiveBattle);
-		FGameXXKRelicRules::ApplyPlayerRoundStart(NewState);
-		FGameXXKRelicRules::ApplyDamageTaken(NewState, NewDamageResults);
+		FGameXXKCardPlayResult RelicOutput;
+		if(!FGameXXKRelicRules::ApplyPlayerRoundStart(NewState,&RelicOutput,OutError)
+			||!FGameXXKRelicRules::ApplyDamageTaken(NewState,NewDamageResults,&RelicOutput,OutError))return false;
+		NewDamageResults.Append(MoveTemp(RelicOutput.DamageResults));
 		if (!ApplyCatalogEnemyRoundStartStatuses(Run.ActiveBattle, OutError))
 		{
 			return false;

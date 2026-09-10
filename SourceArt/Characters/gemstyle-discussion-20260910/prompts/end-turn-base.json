@@ -1,0 +1,12 @@
+{
+  "slug": "end-turn-base",
+  "prompt": "Use case: ui asset. 重新设计独立的「结束回合按钮底」空白底图。第一张宝石只参考干净大块面与自然墨边，第二张项目旧底图只核对外形比例与功能，不沿用旧细碎纹理。一个极简横向长条国风按钮底座，细长比例与第二张原按钮相同，左右圆钝但不做现代胶囊。主体是一整块平稳的深青墨绿色填色，外缘只有一层更深的细墨线，有轻微自然手绘起伏；内面最多两处很宽很淡的手绘明暗，中央90%保持干净平整，便于叠加白色四字标题。不要金边、云纹、角花、描金、立体按钮高光、双框、破碎毛边或喷溅。按钮不要文字、符号或任何图标。 要和本批简洁单层墨线卡底配套，视觉清爽、平面、克制，有少量手绘笔感。禁止厚重装饰、描金角花、纸纹噪点、宝石材质、复杂3D高光。只有这一个独立空白底图，正视，不倾斜，不画透视，不画投影。外部为完全均匀纯洋红#FF00FF用于去底，主体不要洋红。保持第二张原素材的整体宽高比例与轮廓占幅，留安全边，后续按原像素尺寸和透明边距归一化。绝对不能出现数字、文字、图标、游戏场景、卡片套装或其它UI部件。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/docs/ui/main_menu/source_art/ink_button_base.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-fd6f470c-af7b-49d2-8e60-161ce099b616.png",
+  "originalSource": "docs/ui/main_menu/source_art/ink_button_base.png",
+  "background": "magenta",
+  "blank": true
+}

@@ -1,0 +1,480 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.1362b8c65a3fd235",
+      "zh-Hans": "全部护甲；",
+      "en": "All Armor;"
+    },
+    {
+      "key": "Legacy.02b83ec7ccc3e0f1",
+      "zh-Hans": "对",
+      "en": "To"
+    },
+    {
+      "key": "Legacy.b7a385ec00d6bb91",
+      "zh-Hans": "为",
+      "en": "For"
+    },
+    {
+      "key": "Legacy.976d81068861b3c4",
+      "zh-Hans": "提供",
+      "en": "Grant"
+    },
+    {
+      "key": "Legacy.50e1c1152a151782",
+      "zh-Hans": "伤害已计入当前护甲，不消耗护甲。",
+      "en": "Damage already includes current Armor; the Armor is not spent."
+    },
+    {
+      "key": "Legacy.ae61af473e966457",
+      "zh-Hans": "每名存活友方分别攻击；",
+      "en": "Each living ally attacks separately;"
+    },
+    {
+      "key": "Legacy.06bf0224ab364e65",
+      "zh-Hans": "仅当前述结果成功时生效。",
+      "en": "Only applies if the preceding result succeeded."
+    },
+    {
+      "key": "Legacy.f48324d8e76a989d",
+      "zh-Hans": "仅当前述消耗成功时生效。",
+      "en": "Only applies if the preceding cost was paid."
+    },
+    {
+      "key": "Legacy.0c21d993ef253a3b",
+      "zh-Hans": "伤害元素承接前一张法师序牌；火焰／冰霜／雷击，无对应元素时为物理。\n",
+      "en": "Damage element follows the previous Sorcerer sequence card: Fire, Frost or Lightning; Physical if no matching element exists.\n"
+    },
+    {
+      "key": "Legacy.5513ae0856535999",
+      "zh-Hans": "伤害类型：",
+      "en": "Damage type:"
+    },
+    {
+      "key": "Legacy.405eeb3c0cb05c1e",
+      "zh-Hans": "法术（受对应抗性减免）\n",
+      "en": "Spell (reduced by matching resistance)\n"
+    },
+    {
+      "key": "Legacy.8db5b1f7053279eb",
+      "zh-Hans": "伤害类型：物理（受防御减免）\n",
+      "en": "Damage type: Physical (reduced by Defense)\n"
+    },
+    {
+      "key": "Legacy.aea36dc023025a3c",
+      "zh-Hans": "若目标是友方：",
+      "en": "If the target is allied:"
+    },
+    {
+      "key": "Legacy.99ca6987a2c98591",
+      "zh-Hans": "若目标是敌方：",
+      "en": "If the target is hostile:"
+    },
+    {
+      "key": "Legacy.f980146237f34cef",
+      "zh-Hans": "消耗出牌者全部药效；",
+      "en": "Spend all of the caster's Potency;"
+    },
+    {
+      "key": "Legacy.12fe2628c8061865",
+      "zh-Hans": "自动选择标记最高的敌方；同层时选择生命比例最低者。",
+      "en": "Automatically target the enemy with the most Marks; ties choose the lowest HP ratio."
+    },
+    {
+      "key": "Legacy.f855edc09de6f79c",
+      "zh-Hans": "消耗：打出后进入本局消耗区。",
+      "en": "Exhaust: after play, enter the current exhaust pile."
+    },
+    {
+      "key": "Legacy.35b35bd9c4d4b4d4",
+      "zh-Hans": "冲锋：此牌是本回合第一张主动牌打出时触发。",
+      "en": "Opener: triggers if this is the first actively played card this round."
+    },
+    {
+      "key": "Legacy.e398e7aa7307bd90",
+      "zh-Hans": "收招：此牌是本回合最后一张主动牌时触发。",
+      "en": "Finisher: triggers if this is the last actively played card this round."
+    },
+    {
+      "key": "Legacy.c435a5f2b7549cfb",
+      "zh-Hans": "重箭：消耗全部蓄力，逐层触发本牌重箭效果。",
+      "en": "Heavy Arrow: spend all Charge and trigger this card's Heavy Arrow effect per stack."
+    },
+    {
+      "key": "Legacy.b786ba9d4d5e2b00",
+      "zh-Hans": "药效：下一次治疗或治疗反转每层＋1；结算时全部消耗；累计获得每满6层时获得1层气势。",
+      "en": "Potency: +1 to the next heal or Healing Reversal per stack, then spend all; every cumulative 6 stacks gained grants 1 Momentum."
+    },
+    {
+      "key": "Legacy.7e126ccae4d25645",
+      "zh-Hans": "反击：敌方单体攻击牌结算后，造成100%攻击并消耗1次。",
+      "en": "Counter: after an enemy single-target attack card resolves, deal 100% ATK damage and spend 1 charge."
+    },
+    {
+      "key": "Legacy.988bd768a54594bc",
+      "zh-Hans": "格挡：敌方单体攻击牌结算后，造成100%攻击＋当前护甲并消耗1次。",
+      "en": "Block: after an enemy single-target attack card resolves, deal 100% ATK damage plus current Armor and spend 1 charge."
+    },
+    {
+      "key": "Legacy.6b5601207bbf5cc2",
+      "zh-Hans": "地势：按当前地势触发对应效果。",
+      "en": "Terrain: trigger the effect matching the current terrain."
+    },
+    {
+      "key": "Legacy.fd576036677c2fc1",
+      "zh-Hans": "法术任务：4张携带主角法师牌各主动打出一次后，依序重放基础效果并触发阵赏。",
+      "en": "Spell Task: after each of the 4 carried Hero Mage cards is actively played, replay their base effects in order and trigger the Formation Reward."
+    },
+    {
+      "key": "Legacy.9c23f46cfd9dfda7",
+      "zh-Hans": "单体友方",
+      "en": "Single ally"
+    },
+    {
+      "key": "Legacy.fa8064860133072c",
+      "zh-Hans": "基础效果仅作用于自身。",
+      "en": "Base effects affect self only."
+    },
+    {
+      "key": "Legacy.92f52dac5b6842e2",
+      "zh-Hans": "不能选择出牌者自身",
+      "en": "Cannot target the caster"
+    },
+    {
+      "key": "Legacy.e9f36eb905df9372",
+      "zh-Hans": "不包含自身。",
+      "en": "Excludes self."
+    },
+    {
+      "key": "Legacy.1b42768ee904959d",
+      "zh-Hans": "随机选择一名敌方。",
+      "en": "Choose a random enemy."
+    },
+    {
+      "key": "Legacy.842f99f1c923ad93",
+      "zh-Hans": "自动选择生命最低的友方。",
+      "en": "Automatically choose the ally with the lowest HP."
+    },
+    {
+      "key": "Legacy.092cd69979a3b117",
+      "zh-Hans": "自动选择生命最低的其他友方。",
+      "en": "Automatically choose the other ally with the lowest HP."
+    },
+    {
+      "key": "Legacy.0f6e5cd9e7fdc8b5",
+      "zh-Hans": "阵赏·普通：",
+      "en": "Formation Reward · Normal:"
+    },
+    {
+      "key": "Legacy.8b0b0cd73cd49498",
+      "zh-Hans": "阵赏·炎法：",
+      "en": "Formation Reward · Fire:"
+    },
+    {
+      "key": "Legacy.8b3dfe4213820be5",
+      "zh-Hans": "阵赏·寒冰：",
+      "en": "Formation Reward · Ice:"
+    },
+    {
+      "key": "Legacy.0fdd40d1b91b4bac",
+      "zh-Hans": "阵赏·雷法：",
+      "en": "Formation Reward · Lightning:"
+    },
+    {
+      "key": "Legacy.3afcad725963f507",
+      "zh-Hans": "阵赏：任务分支尚未确定（Shift查看）。",
+      "en": "Formation Reward: task branch not decided yet (hold Shift to inspect)."
+    },
+    {
+      "key": "Legacy.1a75036162fc6d1d",
+      "zh-Hans": "冲锋效果：",
+      "en": "Opener effect:"
+    },
+    {
+      "key": "Legacy.127323bc8a3a9cf9",
+      "zh-Hans": "冲锋：",
+      "en": "Opener:"
+    },
+    {
+      "key": "Legacy.6a7ba8e89096d55d",
+      "zh-Hans": "收招效果：",
+      "en": "Finisher effect:"
+    },
+    {
+      "key": "Legacy.626bb8aed5cdc68e",
+      "zh-Hans": "收招：",
+      "en": "Finisher:"
+    },
+    {
+      "key": "Legacy.32312da89ad4b087",
+      "zh-Hans": "冲锋：此牌是本回合第一张主动牌打出时，",
+      "en": "Opener: if this is the first actively played card this round,"
+    },
+    {
+      "key": "Legacy.c19ef0d735440199",
+      "zh-Hans": "收招：此牌是本回合最后一张主动牌时，",
+      "en": "Finisher: if this is the last actively played card this round,"
+    },
+    {
+      "key": "Legacy.ab0a82735d35b3a3",
+      "zh-Hans": "重箭：消耗打出前的全部蓄力；",
+      "en": "Heavy Arrow: spend all Charge held before playing;"
+    },
+    {
+      "key": "Legacy.bc385cb7055a9bc5",
+      "zh-Hans": "重箭：基础效果后，消耗全部蓄力；",
+      "en": "Heavy Arrow: after base effects, spend all Charge;"
+    },
+    {
+      "key": "Legacy.cf335595156e3a03",
+      "zh-Hans": "药方：首次打出本牌时气力+1并激活，本局持续；",
+      "en": "Prescription: first play grants +1 Qi and activates this effect for the run;"
+    },
+    {
+      "key": "Legacy.cd88e0af476239fc",
+      "zh-Hans": "药方：首次额外消耗1气；",
+      "en": "Prescription: first play costs 1 extra Qi;"
+    },
+    {
+      "key": "Legacy.7841a78834686ffb",
+      "zh-Hans": "无合法牌",
+      "en": "No legal card"
+    },
+    {
+      "key": "Legacy.e7bfc2044fcdd9f9",
+      "zh-Hans": "无可检索牌",
+      "en": "No searchable card"
+    },
+    {
+      "key": "Legacy.352f973ff6b32f10",
+      "zh-Hans": "无合法目标",
+      "en": "No legal target"
+    },
+    {
+      "key": "Legacy.669e799a5711aaf5",
+      "zh-Hans": "候选牌",
+      "en": "Candidate cards"
+    },
+    {
+      "key": "Legacy.69d706cd9d40a89c",
+      "zh-Hans": "可选牌",
+      "en": "Selectable cards"
+    },
+    {
+      "key": "Legacy.9c16218a89c4c6d6",
+      "zh-Hans": "按敌方各自标记快照逐层落雷",
+      "en": "Strike with lightning per snapshotted Mark on each enemy"
+    },
+    {
+      "key": "Legacy.dd988933815b1a4e",
+      "zh-Hans": "按各敌人发动前的标记层数落雷",
+      "en": "Strike with lightning per Mark held by each enemy before activation"
+    },
+    {
+      "key": "Legacy.6d8f3d8d9108e68c",
+      "zh-Hans": "按护甲快照层数",
+      "en": "Using the snapshotted Armor count"
+    },
+    {
+      "key": "Legacy.77036038f6f9270f",
+      "zh-Hans": "按本次消耗的护甲值",
+      "en": "Using the Armor spent this time"
+    },
+    {
+      "key": "Legacy.ae20fdc8903507ad",
+      "zh-Hans": "按各目标标记快照逐层",
+      "en": "Per snapshotted Mark on each target"
+    },
+    {
+      "key": "Legacy.652298dce76e04b6",
+      "zh-Hans": "按各目标发动前的标记层数",
+      "en": "Using each target's Mark count before activation"
+    },
+    {
+      "key": "Legacy.f55a26dd44c9ec50",
+      "zh-Hans": "；每次按当前层数造成生命伤害并减少1层",
+      "en": "; each trigger deals HP damage based on current stacks and removes 1 stack"
+    },
+    {
+      "key": "Legacy.1d56657a5c68017b",
+      "zh-Hans": "阵赏：",
+      "en": "Formation Reward:"
+    },
+    {
+      "key": "Legacy.85978623bb3eeff2",
+      "zh-Hans": "阵法",
+      "en": "Formation"
+    },
+    {
+      "key": "Legacy.dbb6d533f1d18e83",
+      "zh-Hans": "重箭：",
+      "en": "Heavy Arrow:"
+    },
+    {
+      "key": "Legacy.58d1273ea56ce779",
+      "zh-Hans": "下回合首次主动攻击指定状态目标时",
+      "en": "On the first active attack against a target with the specified status next round"
+    },
+    {
+      "key": "Legacy.976381f50806400b",
+      "zh-Hans": "对目标造成",
+      "en": "Deal to the target"
+    },
+    {
+      "key": "Legacy.5150be37c26e06cb",
+      "zh-Hans": "对目标施加",
+      "en": "Apply to the target"
+    },
+    {
+      "key": "Legacy.624afd5294efa3af",
+      "zh-Hans": "气力消耗-",
+      "en": "Qi cost -"
+    },
+    {
+      "key": "Legacy.63ed3f984d27cbc4",
+      "zh-Hans": "气力-",
+      "en": "Qi -"
+    },
+    {
+      "key": "Legacy.49c063a34ea4361e",
+      "zh-Hans": "内力消耗-",
+      "en": "Inner Power cost -"
+    },
+    {
+      "key": "Legacy.6c9d26fb90c01001",
+      "zh-Hans": "内力-",
+      "en": "Inner Power -"
+    },
+    {
+      "key": "Legacy.196aeeb0e30bdfb3",
+      "zh-Hans": "下一张主动牌",
+      "en": "The next active card"
+    },
+    {
+      "key": "Legacy.3401bd79b8214910",
+      "zh-Hans": "下一张牌",
+      "en": "The next card"
+    },
+    {
+      "key": "Legacy.be195db94eae1ddb",
+      "zh-Hans": "；仅主动出牌触发",
+      "en": "; triggered only by active card plays"
+    },
+    {
+      "key": "Legacy.1b274880b4553f3e",
+      "zh-Hans": "；不作用于效果来源单位",
+      "en": "; excludes the effect's source unit"
+    },
+    {
+      "key": "Legacy.9d9d09109abd3e99",
+      "zh-Hans": "；触发1次后失效",
+      "en": "; expires after 1 trigger"
+    },
+    {
+      "key": "Legacy.d7f79514b276ffa6",
+      "zh-Hans": "气力消耗",
+      "en": "Qi cost"
+    },
+    {
+      "key": "Legacy.0bc7176a999bf0b4",
+      "zh-Hans": "内力消耗",
+      "en": "Inner Power cost"
+    },
+    {
+      "key": "Legacy.21ee6e3b35b7eb21",
+      "zh-Hans": "需目标有",
+      "en": "Target requires"
+    },
+    {
+      "key": "Legacy.821bfa108ed2e813",
+      "zh-Hans": "主动出牌触发",
+      "en": "Triggered by active play"
+    },
+    {
+      "key": "Legacy.dfb2cebf0dcf0a9d",
+      "zh-Hans": "限1次",
+      "en": "Limited to 1 time"
+    },
+    {
+      "key": "Legacy.273e6fdbc84d5a88",
+      "zh-Hans": "来源除外",
+      "en": "Excludes source"
+    },
+    {
+      "key": "Legacy.d7a796a920b47504",
+      "zh-Hans": "仅指定职业",
+      "en": "Specified class only"
+    },
+    {
+      "key": "Legacy.591416fbfe589d03",
+      "zh-Hans": "仅指定角色",
+      "en": "Specified character only"
+    },
+    {
+      "key": "Legacy.1b4ce19a25dd07c7",
+      "zh-Hans": "登记",
+      "en": "Register"
+    },
+    {
+      "key": "Legacy.9ddd0387a697e281",
+      "zh-Hans": "目标同阵营全体获得",
+      "en": "Grant to all units on the target's side"
+    },
+    {
+      "key": "Legacy.b2fcc443654b9331",
+      "zh-Hans": "全体友方各获得",
+      "en": "Grant to each ally"
+    },
+    {
+      "key": "Legacy.d6a063b4f2f259b0",
+      "zh-Hans": "全体敌方各获得",
+      "en": "Grant to each enemy"
+    },
+    {
+      "key": "Legacy.ae2873ef34d4b2dd",
+      "zh-Hans": "全体友方获得",
+      "en": "Grant to all allies"
+    },
+    {
+      "key": "Legacy.5c70b39bf7eb8e56",
+      "zh-Hans": "全体敌方获得",
+      "en": "Grant to all enemies"
+    },
+    {
+      "key": "Legacy.ec165392faafb556",
+      "zh-Hans": "出牌者获得",
+      "en": "Grant to the caster"
+    },
+    {
+      "key": "Legacy.19fe0c29dad5b034",
+      "zh-Hans": "目标获得",
+      "en": "Grant to the target"
+    },
+    {
+      "key": "Legacy.0e2027c714f7b695",
+      "zh-Hans": "清除目标同阵营全体的全部",
+      "en": "Clear all from every unit on the target's side"
+    },
+    {
+      "key": "Legacy.888ad563f949fc2f",
+      "zh-Hans": "Shift：详述 · Ctrl：术语说明",
+      "en": "Shift: full details · Ctrl: term help"
+    },
+    {
+      "key": "Legacy.f9237cbf842c49e4",
+      "zh-Hans": "单体友方/敌方",
+      "en": "Single ally/enemy"
+    },
+    {
+      "key": "Legacy.6ae8073c14c1ed25",
+      "zh-Hans": "单体敌方",
+      "en": "Single enemy"
+    },
+    {
+      "key": "Legacy.97136ad7543dbfa6",
+      "zh-Hans": "无需选择对象",
+      "en": "No target needed"
+    }
+  ]
+}

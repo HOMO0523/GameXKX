@@ -102,7 +102,12 @@ def main():
             reward = node["reward"]
             review += ["### " + node["id"] + " " + node["title"], "", "简介：" + node["summary"], "", "目标：" + node["objective"], "",
                        "类型：" + node["kind"] + "；全部前置：" + ", ".join(node["requires_all"]) + "；任选前置：" + ", ".join(node["requires_any"]), ""]
+            if node.get('after_battle_lines'):
+                review += ['战前交流（局外）：', '']
             review += ["- **" + CHARACTERS[speaker]["name"] + "：** " + line for speaker, line in node["lines"]]
+            if node.get('after_battle_lines'):
+                review += ['', '任务专属敌人：'+'、'.join(node['enemy_ids']), '', '战后收尾（胜利后）：', '']
+                review += ["- **" + CHARACTERS[speaker]["name"] + "：** " + line for speaker, line in node['after_battle_lines']]
             if node["options"]:
                 review += ["", "调查选项：", ""]
                 review += ["- " + o["text"] + ("【正确】" if o["correct"] else "【可重试】") + " → " + o["feedback"] for o in node["options"]]

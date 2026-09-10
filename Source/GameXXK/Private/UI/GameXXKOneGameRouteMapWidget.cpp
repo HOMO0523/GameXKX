@@ -1,5 +1,6 @@
 #include "UI/GameXXKOneGameRouteMapWidget.h"
 #include "Brushes/SlateColorBrush.h"
+#include "Brushes/SlateNoResource.h"
 #include "Narrative/GameXXKMainStorySubsystem.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKLocalization.h"
@@ -179,7 +180,7 @@ namespace
 		{
 			return;
 		}
-		FallbackLabel->SetText(FText::FromString(TEXT("X")));
+		FallbackLabel->SetText(GameXXKLocalization::Source(TEXT("X")));
 		FallbackLabel->SetJustification(ETextJustify::Center);
 		FallbackLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 		FSlateFontInfo Font = FallbackLabel->GetFont();
@@ -214,23 +215,23 @@ namespace
 		switch (RoomType)
 		{
 		case EGameXXKOneGameRouteRoomType::Start:
-			return FText::FromString(TEXT("起程"));
+			return GameXXKLocalization::Source(TEXT("起程"));
 		case EGameXXKOneGameRouteRoomType::SmallEnemy:
-			return FText::FromString(TEXT("战斗"));
+			return GameXXKLocalization::Source(TEXT("战斗"));
 		case EGameXXKOneGameRouteRoomType::EliteEnemy:
-			return FText::FromString(TEXT("精英"));
+			return GameXXKLocalization::Source(TEXT("精英"));
 		case EGameXXKOneGameRouteRoomType::Camp:
-			return FText::FromString(TEXT("篝火"));
+			return GameXXKLocalization::Source(TEXT("篝火"));
 		case EGameXXKOneGameRouteRoomType::Chest:
-			return FText::FromString(TEXT("宝匣"));
+			return GameXXKLocalization::Source(TEXT("宝匣"));
 		case EGameXXKOneGameRouteRoomType::Merchant:
-			return FText::FromString(TEXT("行商"));
+			return GameXXKLocalization::Source(TEXT("行商"));
 		case EGameXXKOneGameRouteRoomType::RandomEvent:
-			return FText::FromString(TEXT("奇遇"));
+			return GameXXKLocalization::Source(TEXT("奇遇"));
 		case EGameXXKOneGameRouteRoomType::Boss:
-			return FText::FromString(TEXT("首领"));
+			return GameXXKLocalization::Source(TEXT("首领"));
 		default:
-			return FText::FromString(TEXT("节点"));
+			return GameXXKLocalization::Source(TEXT("节点"));
 		}
 	}
 
@@ -348,6 +349,7 @@ float UGameXXKOneGameRouteMapWidget::GetRouteVisibleHeight() const
 
 float UGameXXKOneGameRouteMapWidget::GetRouteBottomScrollPadding() const
 {
+	if(const auto* Subsystem=ResolveMVPSubsystem())if(FGameXXKMainStoryRules::IsDedicatedJourney(Subsystem->GetRuntimeState()))return 0.f;
 	return 0.5f * (RouteMapViewportSize.Y > 0.0f ? RouteMapViewportSize.Y : DefaultRouteViewportHeight);
 }
 
@@ -432,7 +434,9 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteInformation()
 		RouteLegendContainer->SetMinDesiredWidth(340.0f * Scale);
 		if (UOverlaySlot* PresentationSlot = Cast<UOverlaySlot>(RouteLegendContainer->Slot))
 			PresentationSlot->SetPadding(FMargin(0.0f, 90.0f * Scale, 88.0f * Scale, 0.0f));
-		RouteLegendContainer->SetVisibility(bUsingTransientRouteProjection ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
+		const auto* Runtime=ResolveMVPSubsystem();
+		const bool bStoryMap=Runtime&&FGameXXKMainStoryRules::IsDedicatedJourney(Runtime->GetRuntimeState());
+		RouteLegendContainer->SetVisibility(bUsingTransientRouteProjection||bStoryMap ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
 	for (int32 Index = 0; Index < RouteLegendRows.Num(); ++Index)
 	{
@@ -457,7 +461,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteInformation()
 		RouteEntryTitleElapsed = 0.0f;
 		bRouteEntryTitlePlaying = true;
 		++RouteEntryTitlePlayCount;
-		RouteEntryTitle->SetText(BuildRouteSummaryView().StageName);
+		RouteEntryTitle->SetText(GameXXKLocalization::Localize(BuildRouteSummaryView().StageName));
 		RouteEntryTitle->SetRenderOpacity(0.0f);
 		RouteEntryTitle->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
@@ -905,14 +909,14 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteAbandonConfirmation()
 		const int32 TotalNodeCount = State ? State->RouteMapNodes.Num() : 0;
 		const int32 ForfeitedNodeCount = FMath::Max(0, TotalNodeCount - CompletedNodeCount);
 		RouteAbandonPreviewText->SetText(bRouteAbandonPreviewValid
-			? FText::FromString(FString::Printf(
+			? GameXXKLocalization::Source(FString::Printf(
 				TEXT("已获奖励：普通金币 +%d，强化石 +%d\n已完成进度：%d / %d\n未解决或未访问节点：%d，提前结束将失去其中内容"),
 				RouteAbandonPreview.PermanentGoldAward,
 				RouteAbandonPreview.EnhancementStoneAward,
 				CompletedNodeCount,
 				TotalNodeCount,
 				ForfeitedNodeCount))
-			: FText::FromString(TEXT("已获奖励：普通金币 --，强化石 --\n已完成进度：--\n未解决内容不会被结算")));
+			: GameXXKLocalization::Source(TEXT("已获奖励：普通金币 --，强化石 --\n已完成进度：--\n未解决内容不会被结算")));
 	}
 	FString GateReason;
 	const bool bCanConfirm = CanConfirmRouteAbandon(&GateReason);
@@ -927,7 +931,7 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteAbandonConfirmation()
 	if (RouteAbandonErrorText)
 	{
 		const FString DisplayError = RouteAbandonError.IsEmpty() ? GateReason : RouteAbandonError;
-		RouteAbandonErrorText->SetText(FText::FromString(DisplayError));
+		RouteAbandonErrorText->SetText(GameXXKLocalization::Source(DisplayError));
 		RouteAbandonErrorText->SetVisibility(
 			DisplayError.IsEmpty()
 				? ESlateVisibility::Collapsed
@@ -1098,6 +1102,11 @@ void UGameXXKOneGameRouteMapWidget::HandleMainStoryTreeClicked()
 
 void UGameXXKOneGameRouteMapWidget::HandleCloseChallengeClicked()
 {
+	if(auto* Subsystem=ResolveMVPSubsystem())if(FGameXXKMainStoryRules::IsDedicatedJourney(Subsystem->GetRuntimeState()))
+	{
+		if(Subsystem->CancelTrainingChallengeToWorkbench())NotifyPlayerFlowStateChanged();
+		return;
+	}
 	OpenRouteAbandonConfirmation();
 }
 
@@ -1141,6 +1150,11 @@ FGameXXKRouteMapSummaryView UGameXXKOneGameRouteMapWidget::BuildRouteSummaryView
 	FGameXXKTrainingStageDefinition Stage;
 	if (State.Training.bChallengeActive && FGameXXKTrainingRules::TryGetStageDefinition(State.Training.ActiveChallengeStageId, Stage))
 		Summary.StageName = Stage.DisplayName;
+	if(FGameXXKMainStoryRules::IsDedicatedJourney(State))
+	{
+		if(const auto* Task=FGameXXKMainStoryCatalog::FindNode(State.NarrativeProgress.MainStory.JourneyNodeId))
+			Summary.StageName=FText::FromString(FString::Printf(TEXT("任务%d-%d · %s"),(Task->StageNumber-1)/3+1,(Task->StageNumber-1)%3+1,*Task->Title.ToString()));
+	}
 	for (const FGameXXKRouteMapNode& Node : State.RouteMapNodes)
 	{
 		Summary.TotalLegs = FMath::Max(Summary.TotalLegs, Node.LayerIndex);
@@ -1180,6 +1194,14 @@ void UGameXXKOneGameRouteMapWidget::UpdateRouteSummary()
 			? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 	}
 	const FGameXXKRouteMapSummaryView Summary = BuildRouteSummaryView();
+	const auto* Runtime=ResolveMVPSubsystem();
+	const bool bStoryMap=Runtime&&FGameXXKMainStoryRules::IsDedicatedJourney(Runtime->GetRuntimeState());
+	if(RouteMoneySummaryText)RouteMoneySummaryText->SetVisibility(bStoryMap?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+	if(RouteCapacitySummaryText)RouteCapacitySummaryText->SetVisibility(bStoryMap?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+	if(RouteLegendContainer)RouteLegendContainer->SetVisibility(bStoryMap?ESlateVisibility::Collapsed:ESlateVisibility::SelfHitTestInvisible);
+	if(RouteCloseChallengeButton)RouteCloseChallengeButton->SetToolTipText(bStoryMap
+		?FText::FromString(TEXT("返回挂机，保留任务进度"))
+		:NSLOCTEXT("GameXXKRouteMap", "OpenSettlement", "结算本次路线并返回挂机"));
 	if (RouteStageSummaryText) RouteStageSummaryText->SetText(GameXXKLocalization::Localize(Summary.StageName));
 	if (RouteMoneySummaryText)
 	{
@@ -1251,7 +1273,7 @@ TArray<FGameXXKOneGameRouteNode> UGameXXKOneGameRouteMapWidget::BuildAdapterNode
 		if (State && FGameXXKMainStoryRules::IsJourneyGate(*State,RouteNode.NodeIndex))
 		{
 			AdapterNode.NodeKind=EGameXXKNodeKind::Event; AdapterNode.RoomType=MapRoomType(EGameXXKNodeKind::Event);
-			if (const auto* N=FGameXXKMainStoryCatalog::FindNode(State->NarrativeProgress.MainStory.JourneyNodeId)) AdapterNode.Label=N->Title;
+			if (const auto* N=FGameXXKMainStoryCatalog::FindNode(State->NarrativeProgress.MainStory.JourneyNodeId)) AdapterNode.Label=GameXXKLocalization::Localize(N->Title);
 		}
 		AdapterNode.bEnabled = RouteNode.bEnabled;
 		AdapterNode.bVisited = State && State->VisitedRouteNodeIds.Contains(RouteNode.NodeIndex);
@@ -1976,7 +1998,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	{
 		MainStoryTreeButton=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("MainStoryTreeButton"));
 		MainStoryTreeButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(170,52),true));
-		auto* Label=WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(FText::FromString(TEXT("任务树  Q"))); Label->SetFont(FGameXXKInRunUiStyle::Font(22,false,true));
+		auto* Label=WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(GameXXKLocalization::Source(TEXT("任务树  Q"))); Label->SetFont(FGameXXKInRunUiStyle::Font(22,false,true));
 		Label->SetColorAndOpacity(FSlateColor(FLinearColor(.96f,.91f,.79f,1))); Label->SetVisibility(ESlateVisibility::HitTestInvisible);
 		MainStoryTreeButton->SetContent(Label); MainStoryTreeButton->OnClicked.AddDynamic(this,&UGameXXKOneGameRouteMapWidget::HandleMainStoryTreeClicked);
 		if(auto* StoryButtonSlot=RootOverlay->AddChildToOverlay(MainStoryTreeButton)) { StoryButtonSlot->SetHorizontalAlignment(HAlign_Right); StoryButtonSlot->SetVerticalAlignment(VAlign_Top); StoryButtonSlot->SetPadding(FMargin(0,36,160,0)); }
@@ -2603,7 +2625,7 @@ UWidget* UGameXXKOneGameRouteMapWidget::ConstructFallbackNodeVisualWidget(int32 
 	if (NodeText)
 	{
 		NodeText->SetJustification(ETextJustify::Center);
-		NodeText->SetText(FText::FromString(TEXT("Node")));
+		NodeText->SetText(GameXXKLocalization::Source(TEXT("Node")));
 		NodeText->SetAutoWrapText(true);
 		NodeText->SetColorAndOpacity(FSlateColor(FLinearColor(0.12f, 0.15f, 0.16f, 1.0f)));
 		NodeText->SetFontSize(13);
@@ -2703,6 +2725,11 @@ TSoftObjectPtr<UTexture2D> UGameXXKOneGameRouteMapWidget::GetTextureForNode(cons
 
 FVector2D UGameXXKOneGameRouteMapWidget::GetNodeCanvasPosition(const FGameXXKOneGameRouteNode& Node) const
 {
+	if(const auto* Subsystem=ResolveMVPSubsystem())if(FGameXXKMainStoryRules::IsDedicatedJourney(Subsystem->GetRuntimeState()))
+	{
+		const double HalfGap=FMath::Clamp(static_cast<double>(GetRouteVisibleHeight())*.10,64.0,84.0);
+		return FVector2D(RouteContentSize.X*.5,GetRouteVisibleHeight()*.5+(Node.NodeIndex==0?HalfGap:-HalfGap));
+	}
 	const float CenteredLaneWidth = FMath::Min(
 		RouteContentSize.X,
 		FMath::Clamp(
@@ -2723,6 +2750,8 @@ FVector2D UGameXXKOneGameRouteMapWidget::CalculateRouteContentSize(const TArray<
 	int32 MaxLayerIndex = 0;
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
+	if(State&&FGameXXKMainStoryRules::IsDedicatedJourney(*State))
+		return FVector2D(FMath::Max(MinimumRouteContentSize.X,RouteMapViewportSize.X),FMath::Max(480.f,GetRouteVisibleHeight()));
 	if (State && State->bHasGeneratedRouteMap)
 	{
 		for (const FGameXXKRouteMapNode& RouteNode : State->RouteMapNodes)

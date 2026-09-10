@@ -1,0 +1,26 @@
+{
+  "slug": "blackbear",
+  "name": "黑熊",
+  "id": "Enemy.Ch2.BlackBear",
+  "chapter": 2,
+  "tier": "boss",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/20_blackbear_boss.png",
+  "identitySourceSha256": "01f9618a2c5ac68233108c5bc746370db4d967876759b8eb1d52979bf9db64b9",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "pending-generation",
+  "userApproved": false,
+  "details": "黑熊Boss：保留原巨大的黑灰熊、宽肩拱背、厚重前臂大掌、两只小圆耳、短方圆浅棕口鼻、胸口大块米白月牙斑。原两前掌落地的四足前倾姿态，正好四肢、每掌简单短灰爪，头和目光朝右3/4，表情威严；毛发归为大簇，厚重轮廓和力量感强，不改成人形站立，不加甲胄、衣服、王冠或武器。",
+  "prompt": "Use case: style-transfer. 第一张是要修正的怪物，第二张狼王仅示范简洁大块面的画法，绝不能添加狼的造型。保持第一张的身份、剪影、姿态、比例、配色、完整全身和朝右3/4方向。将过碎的笔触与切面合并，体积和厚描边继续保留；均匀米白背景不变，无新物品或文字。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。黑熊的背、胸和两条粗前臂各保留整块黑灰色与一两块宽阴影，清除细碎毛片和笔触；米白胸月牙整块连续。保持原小方眼和宽眉、巨掌及四足稳立。",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-d94e3c83-0116-4131-afad-a831813151c8.png",
+    "C:/Users/shxuw/.codex/generated_images/01a08887-a4ce-7b30-9ef6-22fe546d006d/exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-49cb75ed-ac00-4f2c-b100-c8cab3854ed6.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-49cb75ed-ac00-4f2c-b100-c8cab3854ed6.png",
+  "previousGeneratedPath": "D:/UE5 demo/GameXXK/SourceArt/Monsters/project-design-gemstyle-20260910/refinements/broad-forms/blackbear-before.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：黑熊Boss：保留原巨大的黑灰熊、宽肩拱背、厚重前臂大掌、两只小圆耳、短方圆浅棕口鼻、胸口大块米白月牙斑。原两前掌落地的四足前倾姿态，正好四肢、每掌简单短灰爪，头和目光朝右3/4，表情威严；毛发归为大簇，厚重轮廓和力量感强，不改成人形站立，不加甲胄、衣服、王冠或武器。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

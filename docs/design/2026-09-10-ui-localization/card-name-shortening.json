@@ -1,0 +1,67 @@
+[
+  {
+    "key": "Card.Hero.Generic.GuiYuanShu.Name",
+    "from": "MP Renewal",
+    "to": "Renewal"
+  },
+  {
+    "key": "Card.Hero.Generic.XingQiHuiHuan.Name",
+    "from": "Circling AP",
+    "to": "Flow Cycle"
+  },
+  {
+    "key": "Card.Hero.Blade.XueLuXiangCheng.Name",
+    "from": "Blood Inheritance",
+    "to": "Blood Legacy"
+  },
+  {
+    "key": "Card.Hero.Healer.YiXueCuiFang.Name",
+    "from": "Blood Prescription",
+    "to": "Blood Remedy"
+  },
+  {
+    "key": "Card.Hero.Mage.YanXuLiaoYuan.Name",
+    "from": "Wildfire Sequence",
+    "to": "Wildfire"
+  },
+  {
+    "key": "Card.Npc.ZhouGuangZu.HuangShanFuZhi.Name",
+    "from": "Mountain Poultice",
+    "to": "Hill Remedy"
+  },
+  {
+    "key": "Card.Profession.Blade.JieShiHuiFeng.Name",
+    "from": "Borrowed Momentum",
+    "to": "Borrowed Edge"
+  },
+  {
+    "key": "Card.Profession.Guard.BuDongRuShan.Name",
+    "from": "Unmoving Mountain",
+    "to": "Unshaken"
+  },
+  {
+    "key": "Card.Profession.Healer.YaoYin.Name",
+    "from": "Yin-Yang Catalyst",
+    "to": "Yin-Yang"
+  },
+  {
+    "key": "Card.Profession.Healer.HuiQiXiang.Name",
+    "from": "Heartbane Incense",
+    "to": "Soul Incense"
+  },
+  {
+    "key": "Card.Profession.Sorcerer.NingYanChengRen.Name",
+    "from": "Cloudpiercing Bolt",
+    "to": "Cloud Bolt"
+  },
+  {
+    "key": "Card.Profession.Sorcerer.RanLingHuanYuan.Name",
+    "from": "Eightfold Thunder",
+    "to": "Thunderstorm"
+  },
+  {
+    "key": "Card.Route.Boss.HanDiYiShi.Name",
+    "from": "Earthshaker Legacy",
+    "to": "Earth Echo"
+  }
+]

@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKCardQuality",
+      "key": "Common",
+      "zh-Hans": "普通",
+      "en": "Common"
+    },
+    {
+      "namespace": "GameXXKCardQuality",
+      "key": "Rare",
+      "zh-Hans": "稀有",
+      "en": "Rare"
+    },
+    {
+      "namespace": "GameXXKCardQuality",
+      "key": "Epic",
+      "zh-Hans": "史诗",
+      "en": "Epic"
+    },
+    {
+      "namespace": "GameXXKCardQuality",
+      "key": "Invalid",
+      "zh-Hans": "无效品质",
+      "en": "Invalid Quality"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetPoJun",
+      "zh-Hans": "破军",
+      "en": "Army Breaker"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetXuanJia",
+      "zh-Hans": "玄甲",
+      "en": "Darksteel Guard"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetQingNang",
+      "zh-Hans": "青囊",
+      "en": "Jade Medicine"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetZhuiFeng",
+      "zh-Hans": "追风",
+      "en": "Wind Chaser"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetShiGu",
+      "zh-Hans": "蚀骨",
+      "en": "Bone Corrosion"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SetShanHe",
+      "zh-Hans": "山河",
+      "en": "Mountains and Rivers"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotHead",
+      "zh-Hans": "头冠",
+      "en": "Headgear"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotArmor",
+      "zh-Hans": "护甲",
+      "en": "Armor"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotBelt",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotShoes",
+      "zh-Hans": "鞋履",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "StarterEquipmentNameFormat",
+      "zh-Hans": "基础{0}",
+      "en": "Basic {0}"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyIronSword",
+      "zh-Hans": "青锋短剑",
+      "en": "Blue Edge Shortsword"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyClothArmor",
+      "zh-Hans": "竹编轻甲",
+      "en": "Woven Bamboo Armor"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyCranePatternTalisman",
+      "zh-Hans": "鹤纹护符",
+      "en": "Crane Talisman"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyInkstonePendant",
+      "zh-Hans": "墨砚坠饰",
+      "en": "Inkstone Pendant"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyWoodenSword",
+      "zh-Hans": "木剑",
+      "en": "Wooden Sword"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyStarterClothArmor",
+      "zh-Hans": "布甲",
+      "en": "Cloth Armor"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "LegacyClothTalisman",
+      "zh-Hans": "布护符",
+      "en": "Cloth Talisman"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InvalidRequest",
+      "zh-Hans": "装备操作请求无效",
+      "en": "Invalid equipment request"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InstanceMissing",
+      "zh-Hans": "当前装备实例已不存在",
+      "en": "This equipment is no longer available"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "DefinitionMissing",
+      "zh-Hans": "装备定义不存在",
+      "en": "Equipment definition is missing"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "CollectionInvalid",
+      "zh-Hans": "装备数据校验失败",
+      "en": "Equipment data validation failed"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "WarehouseFull",
+      "zh-Hans": "装备背包已满",
+      "en": "Equipment inventory is full"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InvalidOwner",
+      "zh-Hans": "该角色不能持有装备",
+      "en": "This character cannot equip items"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SlotMismatch",
+      "zh-Hans": "装备部位不匹配",
+      "en": "Equipment slot does not match"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "ItemNotInWarehouse",
+      "zh-Hans": "装备不在背包中",
+      "en": "The equipment is not in your bag"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "ConfirmationRequired",
+      "zh-Hans": "该操作需要确认",
+      "en": "Confirm this action to continue"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InsufficientEnhancementStones",
+      "zh-Hans": "强化石不足",
+      "en": "Not enough Enhancement Stones"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "MaxEnhancementReached",
+      "zh-Hans": "装备已达到最高强化等级",
+      "en": "Maximum enhancement level reached"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InsufficientRefinementSand",
+      "zh-Hans": "洗炼砂不足",
+      "en": "Not enough Refinement Sand"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "PendingReforgeExists",
+      "zh-Hans": "已有待处理的洗炼结果",
+      "en": "Resolve the current refinement first"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "NoPendingReforge",
+      "zh-Hans": "没有待处理的洗炼结果",
+      "en": "No refinement result is pending"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "PendingReforgeStale",
+      "zh-Hans": "洗炼结果已失效",
+      "en": "This refinement result has expired"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "RouteLocked",
+      "zh-Hans": "路线进行中无法更换伙伴",
+      "en": "Companions cannot be changed during a run"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "SaveMigrationFailed",
+      "zh-Hans": "存档迁移失败，已保留原存档。",
+      "en": "Save migration failed. Your original save has been preserved."
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InputLocked",
+      "zh-Hans": "锁定物品不能用于该操作",
+      "en": "Locked items cannot be used for this action"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InputStale",
+      "zh-Hans": "工具输入来源已变化",
+      "en": "The selected tool items have changed"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InvalidRecipe",
+      "zh-Hans": "工具配方不满足要求",
+      "en": "These items do not meet the recipe requirements"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InvalidSocket",
+      "zh-Hans": "镶嵌孔或宝石无效",
+      "en": "Invalid socket or gem"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "InventoryFull",
+      "zh-Hans": "背包或仓库空间不足",
+      "en": "Not enough room in your bag or warehouse"
+    },
+    {
+      "namespace": "GameXXKEquipment",
+      "key": "UnknownError",
+      "zh-Hans": "装备操作失败",
+      "en": "Equipment action failed"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetPoJun",
+      "zh-Hans": "破军",
+      "en": "Army Breaker"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetXuanJia",
+      "zh-Hans": "玄甲",
+      "en": "Darksteel Guard"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetQingNang",
+      "zh-Hans": "青囊",
+      "en": "Jade Medicine"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetZhuiFeng",
+      "zh-Hans": "追风",
+      "en": "Wind Chaser"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetShiGu",
+      "zh-Hans": "蚀骨",
+      "en": "Bone Corrosion"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetShanHe",
+      "zh-Hans": "山河",
+      "en": "Mountains and Rivers"
+    },
+    {
+      "namespace": "GameXXKEquipmentSet",
+      "key": "SetStarter",
+      "zh-Hans": "基础",
+      "en": "Basic"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Common",
+      "zh-Hans": "普通",
+      "en": "Common"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Rare",
+      "zh-Hans": "稀有",
+      "en": "Rare"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Epic",
+      "zh-Hans": "珍稀",
+      "en": "Epic"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Legendary",
+      "zh-Hans": "传奇",
+      "en": "Legendary"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Immortal",
+      "zh-Hans": "不朽",
+      "en": "Immortal"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Treasure",
+      "zh-Hans": "至宝",
+      "en": "Treasure"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Transcendent",
+      "zh-Hans": "超凡",
+      "en": "Transcendent"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Celestial",
+      "zh-Hans": "天界",
+      "en": "Celestial"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Ascendant",
+      "zh-Hans": "登神",
+      "en": "Ascendant"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Cosmic",
+      "zh-Hans": "宇宙",
+      "en": "Cosmic"
+    },
+    {
+      "namespace": "GameXXKEquipmentQuality",
+      "key": "Invalid",
+      "zh-Hans": "未知",
+      "en": "Unknown"
+    }
+  ]
+}

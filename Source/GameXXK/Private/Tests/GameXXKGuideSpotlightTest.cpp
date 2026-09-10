@@ -102,8 +102,8 @@ bool FGameXXKBattleGuideBubbleLayoutTest::RunTest(const FString& Parameters)
 		true);
 	TestTrue(TEXT("battle guide bubble becomes visible"), Bubble->IsBubbleVisible());
 	TestTrue(TEXT("information bubble shows Space hint"), Bubble->IsContinueHintVisible());
-	TestTrue(TEXT("battle guide bubble uses the clean approved item-slot paper"),
-		Bubble->GetPaperTexturePath().Contains(TEXT("T_MasterV2_ItemSlot")));
+	TestTrue(TEXT("battle guide white text has no independent paper background"),
+		Bubble->GetPaperTexturePath().IsEmpty());
 	return true;
 }
 
@@ -225,7 +225,7 @@ bool FGameXXKGuideOverlayDimPaintTintTest::RunTest(const FString& Parameters)
 		if (FMath::IsNearlyZero(Tint.R)
 			&& FMath::IsNearlyZero(Tint.G)
 			&& FMath::IsNearlyZero(Tint.B)
-			&& FMath::IsNearlyEqual(Tint.A, 0.56f, 0.001f))
+			&& FMath::IsNearlyEqual(Tint.A, 0.64f, 0.001f))
 		{
 			bFoundTranslucentBlackDim = true;
 			break;
@@ -307,6 +307,44 @@ bool FGameXXKGuideBubbleAboveDimLayerTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("bubble retains the continue hint"),
 		Bubble && Bubble->IsContinueHintVisible());
 	return true;
+}
+
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKSoftGuideFullscreenMaskTest,
+    "GameXXK.Guide.Widget.SoftFullscreenCutout",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKSoftGuideFullscreenMaskTest::RunTest(const FString&)
+{
+    using namespace GameXXKGuideSpotlightTestPrivate;
+    auto* Spotlight=NewObject<UGameXXKGuideSpotlightWidget>();Spotlight->TakeWidget();
+    const FVector2D Size(1280,720);const FSlateRect Hole(100,120,260,200);
+    const auto Window=SNew(SWindow).ClientSize(Size).CreateTitleBar(false);
+    FHittestGrid Grid;
+    const FGeometry Geometry=FGeometry::MakeRoot(Size,FSlateLayoutTransform());
+    const FPaintArgs Args(&Window.Get(),Grid,FVector2D::ZeroVector,0.0,0.0f);
+    for(bool HasTarget:{true,false})
+    {
+        FGameXXKGuideOutput Output;Output.bActive=true;Output.InputPolicy=EGameXXKGuideInputPolicy::Soft;
+        Spotlight->PresentSpotlight(Output,HasTarget?TArray<FSlateRect>{Hole}:TArray<FSlateRect>{});
+        FSlateWindowElementList Elements(Window);
+        Spotlight->NativePaint(Args,Geometry,FSlateRect(0,0,1280,720),Elements,0,FWidgetStyle(),true);
+        double BlackArea=0;
+        for(const auto& Box:Elements.GetUncachedDrawElements().Get<(uint8)EElementType::ET_Box>())
+        {
+            const auto Tint=Box.GetTint();
+            if(!FMath::IsNearlyZero(Tint.R)||!FMath::IsNearlyZero(Tint.G)||!FMath::IsNearlyZero(Tint.B))continue;
+            TestTrue(TEXT("full-screen dim is translucent black"),FMath::IsNearlyEqual(Tint.A,.64f,.001f));
+            const FVector2D Pos=Box.GetPosition(),Extent=Box.GetLocalSize();
+            const FSlateRect Painted(Pos.X,Pos.Y,Pos.X+Extent.X,Pos.Y+Extent.Y);
+            BlackArea+=Area(Painted);
+            if(HasTarget)TestFalse(TEXT("the actual button/function cutout receives no dim paint"),HasPositiveIntersection(Painted,Hole));
+        }
+        const double Expected=1280.0*720.0-(HasTarget?172.0*92.0:0.0);
+        TestTrue(TEXT("soft guide paints all of the screen except the padded target"),FMath::Abs(BlackArea-Expected)<.1);
+    }
+    Spotlight->DismissSpotlight();FSlateWindowElementList Closed(Window);
+    Spotlight->NativePaint(Args,Geometry,FSlateRect(0,0,1280,720),Closed,0,FWidgetStyle(),true);
+    TestEqual(TEXT("closing removes every mask and outline box"),Closed.GetUncachedDrawElements().Get<(uint8)EElementType::ET_Box>().Num(),0);
+    return true;
 }
 
 #endif

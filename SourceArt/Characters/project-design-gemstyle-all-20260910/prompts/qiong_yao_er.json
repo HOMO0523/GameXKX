@@ -1,0 +1,41 @@
+{
+  "slug": "qiong_yao_er",
+  "name": "琼幺儿",
+  "id": "Npc.QiongMeiEr",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/12_qiong_mei_er.png",
+  "identitySourceSha256": "3fd56fb69e0cbed8b0abd02d2610ff6a9d576263a6a31be5c4ad3694e23d1f8e",
+  "facing": "left",
+  "view": "three-quarter",
+  "userApproved": false,
+  "details": "琼幺儿：保留原年轻女子明亮笑眼、棕黑侧辫与原耳环、乳白圆厚民族帽沿及一排大圆珠、帽顶赭红小方块；朱橘红短上衣、米白交领和袖边、暖金黄长裙、白腰带与两条长白红渐变飘带、绑腿和原棕鞋。前手持原绿色花瓣形小铃灯/法铃，下接小穗，另一只向后舒展的手腕挂一个小金铃。保留轻盈扭身迈步的原动作线，但脸部与胸廓必须转成3/4面向画面左，看向左边而非原图的右边；两条飘带向画面右后延伸。保留高挑灵动比例，不改成小幼童，不新增头冠或莲花台。",
+  "prompt": "Use case: precise-object-edit. 只修这张琼幺儿全身图的头部朝向。当前她的鼻尖、脸和瞳孔向画面右看，请把整颗头连帽子一起自然转向画面左方，使脸成为明确的3/4左侧面，鼻尖朝左，左边是她正在前进的方向，目光也落在左方。不是只把瞳孔移动，不是回头望向右方。保留同一个人物的笑脸、五官身份、乳白圆厚帽沿与大圆珠、赭红帽顶、侧辫和耳环，调整颈部连接自然。除此以外全部保持现图：身体与迈步动作不动，前手向左下持绿色铃灯，后手向右带小金铃，朱橘短衣、金黄长裙、两条白红飘带向画面右后方延展、双鞋与手脚的位置、原图画幅、画风、配色和米白背景都不变。不要整体水平翻转，不新增道具、不改服装，不加文字。输出仍是完整全身单体，头顶和双脚完整。",
+  "status": "pending-generation",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f82c3bd4-b149-4ad2-89d0-0516cbe46bea.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\raw\\qiong_yao_er.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "phase": "new-character-awaiting-user-review",
+  "previousGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f82c3bd4-b149-4ad2-89d0-0516cbe46bea.png",
+  "revision": "face-left-1",
+  "generationHistory": [
+    {
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：琼幺儿：保留原年轻女子明亮笑眼、棕黑侧辫与原耳环、乳白圆厚民族帽沿及一排大圆珠、帽顶赭红小方块；朱橘红短上衣、米白交领和袖边、暖金黄长裙、白腰带与两条长白红渐变飘带、绑腿和原棕鞋。前手持原绿色花瓣形小铃灯/法铃，下接小穗，另一只向后舒展的手腕挂一个小金铃。保留轻盈扭身迈步的原动作线，但脸部与胸廓必须转成3/4面向画面左，看向左边而非原图的右边；两条飘带向画面右后延伸。保留高挑灵动比例，不改成小幼童，不新增头冠或莲花台。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\12_qiong_mei_er.png"
+      ],
+      "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f82c3bd4-b149-4ad2-89d0-0516cbe46bea.png"
+    },
+    {
+      "prompt": "Use case: precise-object-edit. 只修这张琼幺儿全身图的头部朝向。当前她的鼻尖、脸和瞳孔向画面右看，请把整颗头连帽子一起自然转向画面左方，使脸成为明确的3/4左侧面，鼻尖朝左，左边是她正在前进的方向，目光也落在左方。不是只把瞳孔移动，不是回头望向右方。保留同一个人物的笑脸、五官身份、乳白圆厚帽沿与大圆珠、赭红帽顶、侧辫和耳环，调整颈部连接自然。除此以外全部保持现图：身体与迈步动作不动，前手向左下持绿色铃灯，后手向右带小金铃，朱橘短衣、金黄长裙、两条白红飘带向画面右后方延展、双鞋与手脚的位置、原图画幅、画风、配色和米白背景都不变。不要整体水平翻转，不新增道具、不改服装，不加文字。输出仍是完整全身单体，头顶和双脚完整。",
+      "references": [
+        "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f82c3bd4-b149-4ad2-89d0-0516cbe46bea.png"
+      ],
+      "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-ba796c61-7c06-4ff1-af52-3f2d4b89cc30.png"
+    }
+  ],
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-ba796c61-7c06-4ff1-af52-3f2d4b89cc30.png"
+}

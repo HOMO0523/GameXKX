@@ -1,0 +1,15 @@
+{
+  "slug": "hunter",
+  "prompt": "Use case: precise-object-edit. 修改第一张全身弓手设计，让国风更明确。第二张追风套护甲是服装图案与配色参考，第三张宝石是整体画风参考。保持第一张人物身份、脸部、短乱黑发、全身3/4向画面左的朝向、低姿站法、弓与箭、2只手和2条腿不变。重设计衣装：将天青披风前缘改成清楚的中式短云肩，胸口可见米白交领右衽内襟，腰部用宽布腰封与一枚简洁金色如意扣，不用西式皮甲搭扣作为视觉中心。后方大披风改为更平整、干净的两到三块大布面，在天青披风最宽处画两朵米白大祥云和一条宽白风弧，与第二张追风套的祥云/风纹语言一致。云纹是宽大、平面、流畅的如意卷云，不是小碎花、不描金细线、不重复密铺；缩到小尺寸仍可辨。披风保留一处大折面和短飘尾，减少硬三角碎面。靴子改成米白布绑腿和靛青短布靴，护腕保留简洁布带。整体粗墨轮廓、饱满大块手绘卡通，保持人物主色天青+米白，少量墨绿与暖金，低细节。弓身完整、仅一根弓弦连接上下弓端，箭杆笔直，手和弓弦不互相穿插。完整全身，安全留白，浅暖米白#F4EFDF无纹理背景，不画地面或阴影。只有一个弓手，不要文字、标签、额外物件。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/hunter.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Equipment/gemstyle-redesign-20260910/icons/zhuifeng_armor.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-01e4e0e4-8e76-4dc7-916d-5ac90137dd7c.png",
+  "phase": "discussion-sample",
+  "designVersion": 3,
+  "facing": "left",
+  "view": "three-quarter",
+  "revision": "user-requested guofeng clouds and wind motifs matching ZhuiFeng set"
+}

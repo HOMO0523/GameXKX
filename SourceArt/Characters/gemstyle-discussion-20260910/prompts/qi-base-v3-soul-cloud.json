@@ -1,0 +1,11 @@
+{
+  "slug": "qi-base",
+  "prompt": "Use case: ui asset. 从零设计一个游戏“气力数值底片”。只使用这张宝石icon图作为唯一画风参考，不参考任何旧UI、旧圆底或原图。形状只按文字重新创造：主体为饱满圆润的简约灵魂底，像一枚没有脸的浅青魂玉，主腹是一个干净的大圆团，右上角仅伸出一个短小、钝圆、向内轻轻回卷的云角/魂尾，轮廓有一点灵动；云角是连体的，不是漂浮物、尖长火苗或装饰挂件。除右上这一处短云角外，其它边缘收得圆整安静。采用宝石icon同系列的粗而干净的深墨外轮廓、饱满大块面和三至四个明确手绘平涂明暗面：浅青白的大正面，一小块青色亮面，底侧一段深青暗面，少量宽刷笔触。中央75%到80%为光洁、平稳、浅青白的空白区域，将来会叠加深色数字；绝对不画任何眼睛、嘴、数字、文字、刻度、符号或图标。不要圈中套圈，不要复杂边框、金属、金边、云纹花饰、光环、粒子、写实折射、碎切面、纸纹或水彩噪点。浅浅实体感即可，明快克制，简单可辨。单个独立无字底图，正视，正方形画布，完整图形居中，安全边距；背景为完全均匀纯洋红#FF00FF供去底，不画阴影。只画这一枚右上带小云角的简约魂形底片。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-7c6fc6bf-748c-4c3a-96a9-567655964ac4.png",
+  "originalSourceUsedForGeneration": false,
+  "shape": "rounded soul base with one short upper-right curled cloud tip",
+  "blank": true
+}

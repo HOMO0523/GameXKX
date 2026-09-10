@@ -1,0 +1,11 @@
+{
+  "slug": "xuanjia_armor",
+  "prompt": "Use case: precise-object-edit. 修复第一张图的玄甲护甲结构bug。它是本次唯一修改对象，第二张仅作手绘卡通画风参考。必须彻底删除胸口向上伸进领口的金色长尖条，原位置恢复为连续的青蓝胸甲表面。彻底简化上方立领：改为低矮、宽圆、完整的U形领口，只有一圈厚深灰包边；后领缘为顺畅的半椭圆，左右高度合理一致；领口内部有清楚的深蓝暗面，可以真正穿过头部。不要画任何伸入脖颈开口的金属片、尖刺、锁链、悬浮装饰或多层断裂领圈。两块肩甲以短深灰连接片接到衣身两侧，连接清楚，不悬空，不侵占领口。保持宽厚青蓝六角胸甲、圆肩、金色边缘、紧凑身形、整体朝向与现有画风；减少接缝密度，保持3至5个大手绘明暗面和粗墨外轮廓。正方形，完整单件护甲居中，安全边距；纯洋红#FF00FF背景供去底，无背景纹理或投影、无文字、无其它物件。",
+  "references": [
+    "C:/Users/shxuw/AppData/Local/Temp/codex-clipboard-8a846d8d-e720-438c-b5ae-9e70d7a7226b.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-372f1f23-c7a2-4c13-a531-d63eff918adc.png",
+  "background": "magenta",
+  "design": "names-and-themes-only; collar repair after user feedback"
+}

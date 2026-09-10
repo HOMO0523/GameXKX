@@ -1,0 +1,26 @@
+{
+  "slug": "wildcat",
+  "name": "山猫",
+  "id": "Enemy.Ch3.Wildcat",
+  "chapter": 3,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/14_wildcat.png",
+  "identitySourceSha256": "f1a8909ae5e9cb6425ec6d1517c14d66ab52084ad8ce127052c1accce8b3faf2",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "pending-generation",
+  "userApproved": false,
+  "details": "山猫：保留原暖黄褐细瘦山猫，特别高长的尖耳与黑色耳尖、尖簇脸毛、奶白口鼻、圆亮眼，一条短细上挑折弯尾。四足低伏、前爪向右伸、后腿蓄势，3/4朝右。脸型锐利耳朵高，和圆耳圆体环尾的狸猫明确区分；保留少数原棕斑，不画环纹大尾、不添项圈。",
+  "prompt": "Use case: style-transfer. 第一张是要修正的怪物，第二张狼王仅示范简洁大块面的画法，绝不能添加狼的造型。保持第一张的身份、剪影、姿态、比例、配色、完整全身和朝右3/4方向。将过碎的笔触与切面合并，体积和厚描边继续保留；均匀米白背景不变，无新物品或文字。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。山猫眼睛改成原项目那种卡通圆眼：一整块平涂米黄色眼白/眼底、单块深色瞳孔，去掉虹膜亮圈和渐变，最多留一个小白点。保留一大一窄的机敏神态。身体金棕大面完整，腿背去掉细碎毛纹，只在轮廓留少量大毛簇。",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-fd4d2d1b-7ef9-48a4-8621-9067bc5fe101.png",
+    "C:/Users/shxuw/.codex/generated_images/01a08887-a4ce-7b30-9ef6-22fe546d006d/exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-4e33ce56-456e-461d-a958-afd30f8ac16e.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-4e33ce56-456e-461d-a958-afd30f8ac16e.png",
+  "previousGeneratedPath": "D:/UE5 demo/GameXXK/SourceArt/Monsters/project-design-gemstyle-20260910/refinements/broad-forms/wildcat-before.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：山猫：保留原暖黄褐细瘦山猫，特别高长的尖耳与黑色耳尖、尖簇脸毛、奶白口鼻、圆亮眼，一条短细上挑折弯尾。四足低伏、前爪向右伸、后腿蓄势，3/4朝右。脸型锐利耳朵高，和圆耳圆体环尾的狸猫明确区分；保留少数原棕斑，不画环纹大尾、不添项圈。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

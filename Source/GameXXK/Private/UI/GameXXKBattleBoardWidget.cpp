@@ -1,4 +1,5 @@
 #include "UI/GameXXKBattleBoardWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "Audio/GameXXKSfx.h"
 #include "Guide/GameXXKAcademySubsystem.h"
 #include "UI/GameXXKInRunUiStyle.h"
@@ -471,8 +472,8 @@ namespace
 	bool IsPillKeywordText(const FString& Prefix)
 	{
 		const int32 Dot = Prefix.Find(TEXT("·"));
-		const FString Base = Dot == INDEX_NONE ? Prefix : Prefix.Left(Dot);
-		return GameXXKCardPillText::IsKeyword(Base) || Base == TEXT("阵法");
+		const FString Base = (Dot == INDEX_NONE ? Prefix : Prefix.Left(Dot)).TrimStartAndEnd();
+		return GameXXKCardPillText::IsKeyword(Base) || GameXXKCardPillText::CanonicalName(Base) == TEXT("阵法");
 	}
 
 	bool TrySplitKeywordPill(const FString& Line, FString& OutKeyword, FString& OutRest)
@@ -504,8 +505,10 @@ namespace
 	}
 
 	/** Pill fill color: the desaturated profession accent of the ability the keyword belongs to. */
-	FLinearColor ResolvePillFillColor(const FString& Keyword)
+	FLinearColor ResolvePillFillColor(const FString& DisplayKeyword)
 	{
+		const int32 Dot=DisplayKeyword.Find(TEXT("·"));
+		const FString Keyword=GameXXKCardPillText::CanonicalName(Dot==INDEX_NONE?DisplayKeyword:DisplayKeyword.Left(Dot));
 		const auto Desaturate = [](const FLinearColor& Color)
 		{
 			return FMath::Lerp(Color, FLinearColor(0.5f, 0.5f, 0.5f, 1.0f), 0.35f);
@@ -570,14 +573,7 @@ namespace
 		const float KeywordPillFontSize)
 	{
 		// Longer compound names first so e.g. 破绽免疫 never half-matches 破绽.
-		static const TArray<FString> StatusNames = []
-		{
-			TArray<FString> Names = GameXXKCardPillText::InlineNames();
-			// Non-card tooltips may still use the serialized status names.
-			Names.Append({TEXT("本回合地形双效"), TEXT("地形双效"), TEXT("地形免耗"), TEXT("地形减耗"), TEXT("守护")});
-			Names.Sort([](const FString& A, const FString& B) { return A.Len() > B.Len(); });
-			return Names;
-		}();
+		const TArray<FString>& StatusNames=GameXXKCardPillText::DisplayInlineNames();
 
 		/** Length of a trailing quantity run ("8层", "2点", "1回合", "5") or 0. */
 		const auto TrailingQuantityRunLength = [](const FString& S) -> int32
@@ -614,7 +610,7 @@ namespace
 		const auto EmitPill = [&](const FString& Name)
 		{
 			FBodySegment PillSegment;
-			PillSegment.Text = Name;
+			PillSegment.Text = GameXXKLocalization::Source(Name).ToString();
 			PillSegment.bPill = true;
 			// A keyword keeps its battle palette when mentioned inside a sentence,
 			// including equipment affixes and set descriptions using this renderer.
@@ -627,7 +623,7 @@ namespace
 			if (!Value.IsEmpty())
 			{
 				FBodySegment TextSegment;
-				TextSegment.Text = Value;
+				TextSegment.Text = GameXXKLocalization::Source(Value).ToString();
 				Segments.Add(TextSegment);
 			}
 		};
@@ -639,7 +635,7 @@ namespace
 			const FString* BestName = nullptr;
 			for (const FString& Name : StatusNames)
 			{
-				if (Name.Len() > BestLen && Text.Mid(Pos).StartsWith(Name))
+				if (Name.Len() > BestLen && GameXXKCardPillText::MatchesAt(Text,Pos,Name))
 				{
 					BestLen = Name.Len();
 					BestName = &Name;
@@ -650,7 +646,9 @@ namespace
 				int32 Next = Text.Len();
 				for (const FString& Name : StatusNames)
 				{
-					const int32 Index = Text.Find(Name, ESearchCase::CaseSensitive, ESearchDir::FromStart, Pos);
+					int32 Index = Text.Find(Name, ESearchCase::IgnoreCase, ESearchDir::FromStart, Pos);
+					while(Index!=INDEX_NONE&&!GameXXKCardPillText::MatchesAt(Text,Index,Name))
+						Index=Text.Find(Name,ESearchCase::IgnoreCase,ESearchDir::FromStart,Index+1);
 					if (Index != INDEX_NONE && Index < Next)
 					{
 						Next = Index;
@@ -668,7 +666,7 @@ namespace
 					// ("获得8层流血" -> "获得" + [流血] + "8层").
 					// Without a following status, detaching here would silently drop the
 					// final value from ordinary prose such as "气力消耗-1".
-					const int32 QuantityLen = BestName
+					const int32 QuantityLen = BestName && !BestName->IsEmpty() && (*BestName)[0]>=0x3400 && (*BestName)[0]<=0x9fff
 						? TrailingQuantityRunLength(PreText)
 						: 0;
 					if (QuantityLen > 0)
@@ -741,10 +739,7 @@ namespace
 			TextBlock->SetJustification(ETextJustify::Left);
 			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont, bBold);
 			Font.Size = static_cast<int32>(FontSize);
-			if (bBold && !Style.bDisplayBodyFont)
-			{
-				Font.TypefaceFontName = TEXT("Bold");
-			}
+			if(bBold){Font.OutlineSettings.OutlineSize=1;Font.OutlineSettings.OutlineColor=BodyInk;}
 			TextBlock->SetFont(Font);
 			TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 			return TextBlock;
@@ -757,11 +752,11 @@ namespace
 			Pill->SetPadding(Style.PillPadding);
 			Pill->SetVisibility(ESlateVisibility::HitTestInvisible);
 			UTextBlock* PillText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
-			PillText->SetText(FText::FromString(Content));
+			PillText->SetText(GameXXKLocalization::Source(Content));
 			PillText->SetColorAndOpacity(FSlateColor(PillInk));
 			PillText->SetJustification(ETextJustify::Center);
-			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), false, true);
-			Font.TypefaceFontName = TEXT("Bold");
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), false, false);
+			Font.OutlineSettings.OutlineSize=0;
 			PillText->SetFont(Font);
 			PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
 			Pill->SetContent(PillText);
@@ -783,10 +778,7 @@ namespace
 			{
 				FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont && !bPill, bBold);
 				Font.Size = static_cast<int32>(FontSize);
-				if (bBold && (bPill || !Style.bDisplayBodyFont))
-				{
-					Font.TypefaceFontName = TEXT("Bold");
-				}
+				Font.OutlineSettings.OutlineSize=(bBold&&!bPill)?1:0;
 				return FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Content, Font).X;
 			}
 			return EstimateTextWidthUnits(Content, FontSize);
@@ -809,6 +801,7 @@ namespace
 			{
 				return Ch >= TEXT('0') && Ch <= TEXT('9');
 			};
+			const auto IsEnglishLetter=[](TCHAR Ch){return (Ch>=TEXT('A')&&Ch<=TEXT('Z'))||(Ch>=TEXT('a')&&Ch<=TEXT('z'));};
 			const auto IsNumericUnit = [](const TCHAR Ch)
 			{
 				return Ch == TEXT('%') || Ch == TEXT('层') || Ch == TEXT('点')
@@ -819,13 +812,18 @@ namespace
 			int32 SafeCount = ProposedCount;
 			const TCHAR Before = Value[SafeCount - 1];
 			const TCHAR After = Value[SafeCount];
+			if(IsEnglishLetter(Before)&&IsEnglishLetter(After))
+			{
+				while(SafeCount>0&&(IsEnglishLetter(Value[SafeCount-1])||Value[SafeCount-1]==TEXT('\'')))--SafeCount;
+				return SafeCount;
+			}
 			if ((Before == TEXT('-') || Before == TEXT('+')) && IsDigit(After))
 			{
 				return SafeCount - 1;
 			}
-			if (IsDigit(After) && IsDigit(Before))
+			if ((IsDigit(After) || After==TEXT('.')) && (IsDigit(Before) || Before==TEXT('.')))
 			{
-				while (SafeCount > 0 && IsDigit(Value[SafeCount - 1]))
+				while (SafeCount > 0 && (IsDigit(Value[SafeCount - 1]) || Value[SafeCount-1]==TEXT('.')))
 				{
 					--SafeCount;
 				}
@@ -837,7 +835,7 @@ namespace
 			}
 			if (IsNumericUnit(After) && IsDigit(Before))
 			{
-				while (SafeCount > 0 && IsDigit(Value[SafeCount - 1]))
+				while (SafeCount > 0 && (IsDigit(Value[SafeCount - 1]) || Value[SafeCount-1]==TEXT('.')))
 				{
 					--SafeCount;
 				}
@@ -957,7 +955,7 @@ namespace
 						for (int32 Index = Count - 1; Index >= 1; --Index)
 						{
 							const TCHAR Candidate = Remaining[Index];
-							if (Candidate == TEXT('；') || Candidate == TEXT('，') || Candidate == TEXT('。'))
+							if (Candidate == TEXT('；') || Candidate == TEXT('，') || Candidate == TEXT('。') || Candidate==TEXT(';') || Candidate==TEXT(','))
 							{
 								ChunkCount = Index + 1;
 								ConsumeCount = Index + 1;
@@ -975,7 +973,7 @@ namespace
 					// a lone final row after a measured Chinese sentence.
 					int32 PunctuationIndex = INDEX_NONE;
 					if (ChunkCount < Remaining.Len() && ChunkCount > 1
-						&& FString(TEXT("，。；：！？、）】》”’")).FindChar(Remaining[ChunkCount], PunctuationIndex))
+						&& FString(TEXT("，。；：！？、）】》”’,.;:!?)")).FindChar(Remaining[ChunkCount], PunctuationIndex))
 					{
 						const int32 SafeBreak = AdjustBreakToNumericTokenBoundary(Remaining, ChunkCount - 1);
 						if (SafeBreak > 0) ChunkCount = ConsumeCount = SafeBreak;
@@ -1006,19 +1004,24 @@ namespace
 				// shows the name.
 				continue;
 			}
-			if (Line.StartsWith(TEXT("品质：")) && Lines.IsValidIndex(LineIndex + 1)
-				&& Lines[LineIndex + 1].StartsWith(TEXT("费用：")))
+			const bool bChineseQuality=Line.StartsWith(TEXT("品质："));
+			const bool bEnglishQuality=Line.StartsWith(TEXT("Quality:"));
+			if ((bChineseQuality||bEnglishQuality) && Lines.IsValidIndex(LineIndex + 1)
+				&& (Lines[LineIndex + 1].StartsWith(TEXT("费用："))||Lines[LineIndex+1].StartsWith(TEXT("Cost:"))))
 			{
-				const FString Cost = Lines[++LineIndex].Mid(3).Replace(TEXT(" "), TEXT(""));
+				const FString CostLine=Lines[++LineIndex];
+				const bool bChineseCost=CostLine.StartsWith(TEXT("费用："));
+				FString Cost=CostLine.Mid(bChineseCost?3:5).TrimStartAndEnd();
+				if(bChineseCost)Cost.ReplaceInline(TEXT(" "),TEXT(""));
 				UHorizontalBox* MetaRow = WidgetTree->ConstructWidget<UHorizontalBox>();
-				UTextBlock* Meta = MakeTextBlock(Line.Mid(3) + TEXT("  ·  ") + Cost, 17, false);
+				UTextBlock* Meta = MakeTextBlock(Line.Mid(bChineseQuality?3:8).TrimStartAndEnd() + TEXT("  ·  ") + Cost, 17, false);
 				Meta->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::MutedInk()));
 				MetaRow->AddChildToHorizontalBox(Meta);
 				BodyBox->AddChildToVerticalBox(MetaRow)->SetPadding(FMargin(0, 0, 0, 8));
 				TotalEstimatedHeight += 30;
 				continue;
 			}
-			if (Line.StartsWith(TEXT("Shift：")))
+			if (Line.StartsWith(TEXT("Shift："))||Line.StartsWith(TEXT("Shift:"))||Line.StartsWith(TEXT("Ctrl："))||Line.StartsWith(TEXT("Ctrl:")))
 			{
 				UHorizontalBox* HelpRow = WidgetTree->ConstructWidget<UHorizontalBox>();
 				UTextBlock* Help = MakeTextBlock(Line, 15, false);
@@ -1037,10 +1040,11 @@ namespace
 			Line.ParseIntoArray(TargetLabels, TEXT(" · "), false);
 			const bool bTargetHeading = !TargetLabels.IsEmpty() && !TargetLabels.ContainsByPredicate([](const FString& Label)
 			{
-				return Label != TEXT("单体友方") && Label != TEXT("单体敌方") && Label != TEXT("单体友方/敌方")
-					&& Label != TEXT("全体敌方") && Label != TEXT("全体友方") && Label != TEXT("无需选择对象");
+				for(const TCHAR* Native:{TEXT("单体友方"),TEXT("单体敌方"),TEXT("单体友方/敌方"),TEXT("全体敌方"),TEXT("全体友方"),TEXT("无需选择对象")})
+					if(Label==Native||Label.Equals(GameXXKLocalization::Source(Native).ToString(),ESearchCase::IgnoreCase))return false;
+				return true;
 			});
-			if (bTargetHeading || Line == TEXT("本牌术语"))
+			if (bTargetHeading || Line == TEXT("本牌术语")||Line==GameXXKLocalization::Text(TEXT("Pill.HelpHeader")).ToString())
 			{
 				UHorizontalBox* HeadingRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
 				HeadingRow->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -1233,7 +1237,9 @@ float GameXXKCardTooltipPresentation::PopulateBody(
 	const FString& Text,
 	const FGameXXKCardTooltipPresentationStyle& Style)
 {
-	return PopulateHandCardDetailBody(WidgetTree, BodyBox, Title, Text, Style);
+	const FString DisplayTitle=GameXXKLocalization::Source(Title).ToString();
+	const FString DisplayBody=GameXXKLocalization::Source(Text).ToString();
+	return PopulateHandCardDetailBody(WidgetTree, BodyBox, DisplayTitle, DisplayBody, Style);
 }
 
 FString GameXXKCardTooltipPresentation::AppendStatusPillExplanations(const FString& Text)
@@ -1855,13 +1861,13 @@ void UGameXXKBattleBoardWidget::RefreshBattleSettlementLog()
 	{
 		return;
 	}
-	BattleSettlementLogText->SetText(FText::FromString(bBattleSettlementLogExpanded
+	BattleSettlementLogText->SetText(GameXXKLocalization::Source(bBattleSettlementLogExpanded
 		? FString::Join(BattleSettlementLines,TEXT("\n"))
 		: BattleSettlementLines.IsEmpty() ? FString() : BattleSettlementLines.Last()));
 	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::Font(bBattleSettlementLogExpanded ? 18 : 14,true));
 	if (BattleSettlementToggleText)
 	{
-		BattleSettlementToggleText->SetText(FText::FromString(bBattleSettlementLogExpanded ? TEXT("-") : TEXT("+")));
+		BattleSettlementToggleText->SetText(GameXXKLocalization::Source(bBattleSettlementLogExpanded ? TEXT("-") : TEXT("+")));
 		BattleSettlementToggleText->SetColorAndOpacity(FLinearColor(1.0f, 0.96f, 0.86f));
 	}
 	if (BattleSettlementLogScroll)
@@ -2610,7 +2616,7 @@ void UGameXXKBattleBoardWidget::StartPresentationEntry(
 		}
 		if (BattleCinematicReadout)
 		{
-			BattleCinematicReadout->SetText(FText::FromString(FString::Printf(
+			BattleCinematicReadout->SetText(GameXXKLocalization::Source(FString::Printf(
 				TEXT("%+d"),
 				Entry.StatusEvent.StackDelta)));
 			BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -2799,7 +2805,7 @@ void UGameXXKBattleBoardWidget::FirePresentationImpact(FBattlePresentationQueueE
 				FText::AsNumber(Entry.Event.HealthDamage));
 		}
 		if (!Entry.Event.bAvoided && FGameXXKResistanceRules::IsSpell(Entry.Event.Element))
-			Readout = FText::FromString(FGameXXKCombatGemRules::GetElementLabel(Entry.Event.Element) + TEXT(" · ") + Readout.ToString());
+			Readout = GameXXKLocalization::Source(FGameXXKCombatGemRules::GetElementLabel(Entry.Event.Element) + TEXT(" · ") + Readout.ToString());
 		BattleCinematicReadout->SetText(Readout);
 		BattleCinematicReadout->SetColorAndOpacity(GameXXKCardVisualEffects::DamageColor(Entry.Event.DamageCause));
 		BattleCinematicReadout->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -4695,8 +4701,10 @@ bool UGameXXKBattleBoardWidget::SetAutoBattleEnabled(const bool bEnabled)
 	AutoBattleReadySinceRealSeconds = 0.0;
 	if (AutoBattleLabel)
 	{
-		AutoBattleLabel->SetText(FText::FromString(
-			bEnabled ? TEXT("自动战斗：开") : TEXT("自动战斗：关")));
+		const FText StateText = GameXXKLocalization::Source(bEnabled ? TEXT("自动战斗：开") : TEXT("自动战斗：关"));
+		AutoBattleLabel->SetText(GameXXKLocalization::Compact(StateText));
+		AutoBattleLabel->SetColorAndOpacity(bEnabled ? FLinearColor(1.0f,0.86f,0.40f) : FLinearColor::White);
+		if (AutoBattleButton) AutoBattleButton->SetToolTipText(StateText);
 	}
 	if (bEnabled)
 	{
@@ -7361,7 +7369,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleSettlementToggleText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 	LogToggle->SetContent(BattleSettlementToggleText);
 	UHorizontalBox* LogHeader=WidgetTree->ConstructWidget<UHorizontalBox>();
-	UTextBlock* LogCaption=WidgetTree->ConstructWidget<UTextBlock>();LogCaption->SetText(FText::FromString(TEXT("战报")));
+	UTextBlock* LogCaption=WidgetTree->ConstructWidget<UTextBlock>();LogCaption->SetText(GameXXKLocalization::Source(TEXT("战报")));
 	LogCaption->SetFont(FGameXXKInRunUiStyle::Font(15,true));LogCaption->SetColorAndOpacity(FLinearColor(0.89f,0.84f,0.73f));
 	LogHeader->AddChildToHorizontalBox(LogCaption)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	USizeBox* LogZoomSize=WidgetTree->ConstructWidget<USizeBox>();LogZoomSize->SetWidthOverride(26);LogZoomSize->SetHeightOverride(26);LogZoomSize->SetContent(LogToggle);
@@ -7494,11 +7502,13 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	AutoBattleButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleAutoPlayButton"));
 	StyleBattleActionButton(AutoBattleButton, FName(TEXT("BattleAutoPlay")));
 	AutoBattleLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleAutoPlayLabel"));
-	AutoBattleLabel->SetText(FText::FromString(IsAutoBattleEnabled() ? TEXT("自动战斗：开") : TEXT("自动战斗：关")));
+	const FText AutoStateText = GameXXKLocalization::Source(IsAutoBattleEnabled() ? TEXT("自动战斗：开") : TEXT("自动战斗：关"));
+	AutoBattleLabel->SetText(GameXXKLocalization::Compact(AutoStateText));
+	AutoBattleButton->SetToolTipText(AutoStateText);
 	AutoBattleLabel->SetJustification(ETextJustify::Center);
 	AutoBattleLabel->SetFont(FGameXXKInRunUiStyle::Font(22,true));
 	AutoBattleLabel->SetAutoWrapText(false);
-	AutoBattleLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
+	AutoBattleLabel->SetColorAndOpacity(IsAutoBattleEnabled() ? FLinearColor(1.0f,0.86f,0.40f) : FLinearColor::White);
 	AutoBattleButton->AddChild(AutoBattleLabel);
 	AutoBattleButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleAutoBattleClicked);
 	USizeBox* AutoBattleSizeBox = WidgetTree->ConstructWidget<USizeBox>(
@@ -7706,9 +7716,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	PendingChoicePromptText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattlePendingChoicePrompt"));
 	PendingChoicePromptText->SetJustification(ETextJustify::Center);
 	PendingChoicePromptText->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-	FSlateFontInfo PendingChoiceFont = PendingChoicePromptText->GetFont();
-	PendingChoiceFont.Size = 17;
-	PendingChoiceFont.TypefaceFontName = TEXT("Bold");
+	FSlateFontInfo PendingChoiceFont = FGameXXKInRunUiStyle::Font(17,true);
 	PendingChoicePromptText->SetFont(PendingChoiceFont);
 	if (UCanvasPanelSlot* PromptSlot = PendingChoiceCanvas->AddChildToCanvas(PendingChoicePromptText))
 	{
@@ -7822,9 +7830,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleRetreatTitle->SetText(NSLOCTEXT("GameXXKBattle", "RetreatTitle", "退出当前战斗？"));
 	BattleRetreatTitle->SetJustification(ETextJustify::Center);
 	BattleRetreatTitle->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-	FSlateFontInfo BattleRetreatTitleFont = BattleRetreatTitle->GetFont();
-	BattleRetreatTitleFont.Size = 30;
-	BattleRetreatTitleFont.TypefaceFontName = TEXT("Bold");
+	FSlateFontInfo BattleRetreatTitleFont = FGameXXKInRunUiStyle::Font(30,true);
 	BattleRetreatTitle->SetFont(BattleRetreatTitleFont);
 	if (UVerticalBoxSlot* TitleSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatTitle))
 	{
@@ -7984,9 +7990,7 @@ UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FN
 	LabelText->SetJustification(ETextJustify::Center);
 	LabelText->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f));
 	LabelText->SetShadowOffset(FVector2D(1.0f, 1.0f));
-	FSlateFontInfo LabelFont = LabelText->GetFont();
-	LabelFont.Size = 22;
-	LabelFont.TypefaceFontName = TEXT("Bold");
+	FSlateFontInfo LabelFont = FGameXXKInRunUiStyle::Font(22,true);
 	LabelText->SetFont(LabelFont);
 	Button->AddChild(LabelText);
 	if (UVerticalBoxSlot* ButtonSlot = ActionBox->AddChildToVerticalBox(Button))
@@ -8092,7 +8096,7 @@ void UGameXXKBattleBoardWidget::RefreshBattleRetreatConfirmation()
 	if (BattleRetreatErrorText)
 	{
 		const FString DisplayError = BattleRetreatError.IsEmpty() ? GateReason : BattleRetreatError;
-		BattleRetreatErrorText->SetText(FText::FromString(DisplayError));
+		BattleRetreatErrorText->SetText(GameXXKLocalization::Source(DisplayError));
 		BattleRetreatErrorText->SetVisibility(
 			DisplayError.IsEmpty()
 				? ESlateVisibility::Collapsed
@@ -8422,10 +8426,10 @@ void UGameXXKBattleBoardWidget::RefreshHandCards()
 			const FString DisplayName = Definition ? Definition->DisplayName.ToString() : CardInstanceId.ToString();
 			const int32 Energy = bPreviewBuilt ? Preview.EffectiveEnergyCost : (Definition ? Definition->EnergyCost : 0);
 			const int32 Mana = bPreviewBuilt ? Preview.EffectiveManaCost : (Definition ? Definition->ManaCost : 0);
-			CardLabel->SetText(FText::FromString(DisplayName));
+			CardLabel->SetText(GameXXKLocalization::Source(DisplayName));
 			GameXXKCardNameStyle::Apply(CardLabel, CardInstance ? CardInstance->CurrentQuality : EGameXXKCardQuality::Common);
 			if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*(CardLabel->GetName()+TEXT("Cost")))))
-				Cost->SetText(FText::FromString(FString::Printf(TEXT("%d气\n%d内"),Energy,Mana)));
+				Cost->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%d气\n%d内"),Energy,Mana)));
 		}
 	}
 	AdvanceHandCardHoverMotion(0);
@@ -8800,7 +8804,7 @@ FText UGameXXKBattleBoardWidget::ResolveProjectedUnitHudDisplayName(const FName 
 	};
 	if (const FText* const PartyName = ResolveLegacyName(State->ActiveBattleParty))
 	{
-		return FText::FromString(GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,UnitId));
+		return GameXXKLocalization::Source(GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,UnitId));
 	}
 	if (const FText* const EnemyName = ResolveLegacyName(State->ActiveBattleEnemies))
 	{
@@ -8999,7 +9003,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			const FGameXXKRelicDefinition* RelicDefinition = FGameXXKRelicCatalog::FindDefinition(RewardOption.RelicId);
 			if (RelicDefinition)
 			{
-				DirectTooltipText = FText::FromString(FString::Printf(
+				DirectTooltipText = GameXXKLocalization::Source(FString::Printf(
 					TEXT("%s\n%s"),
 					*RelicDefinition->DisplayName.ToString(),
 					*RelicDefinition->Description.ToString()));
@@ -9007,11 +9011,11 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		}
 		else if (RewardOption.Kind == EGameXXKBattleRewardKind::EnergyCapBonus)
 		{
-			DirectTooltipText = FText::FromString(TEXT("气力上限 +1\n玩家回合的气力上限增加1点。"));
+			DirectTooltipText = GameXXKLocalization::Source(TEXT("气力上限 +1\n玩家回合的气力上限增加1点。"));
 		}
 		else if (RewardOption.Kind == EGameXXKBattleRewardKind::DrawBonus)
 		{
-			DirectTooltipText = FText::FromString(TEXT("每回合抽牌 +1\n玩家回合多抽1张牌。"));
+			DirectTooltipText = GameXXKLocalization::Source(TEXT("每回合抽牌 +1\n玩家回合多抽1张牌。"));
 		}
 		else if (!RewardOption.CardId.IsNone())
 		{
@@ -9090,8 +9094,8 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		const FString Raw = DirectTooltipText.GetValue().ToString();
 		if (Raw.Split(TEXT("\n"), &TitlePart, &BodyPart))
 		{
-			TooltipTitle = FText::FromString(TitlePart);
-			TooltipBody = FText::FromString(BodyPart);
+			TooltipTitle = GameXXKLocalization::Source(TitlePart);
+			TooltipBody = GameXXKLocalization::Source(BodyPart);
 		}
 		else
 		{
@@ -9107,15 +9111,15 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			const FString ExpandedBody = TooltipQuality == EGameXXKCardQuality::Invalid
 				? GameXXKCardText::DescribeExpandedTooltipBody(*Definition, Preview, Context)
 				: GameXXKCardText::DescribeExpandedTooltipBody(*Definition, TooltipQuality, Preview, Context);
-			TooltipBody = FText::FromString(ExpandedBody);
+			TooltipBody = GameXXKLocalization::Source(ExpandedBody);
 		}
 		else if (CardTooltipInspection.GetMode() == EGameXXKCardTooltipMode::Pills)
 		{
-			TooltipBody = FText::FromString(GameXXKCardText::DescribePillTooltipBody(*Definition, TooltipQuality, Context));
+			TooltipBody = GameXXKLocalization::Source(GameXXKCardText::DescribePillTooltipBody(*Definition, TooltipQuality, Context));
 		}
 		else
 		{
-			TooltipBody = FText::FromString(
+			TooltipBody = GameXXKLocalization::Source(
 				TooltipQuality == EGameXXKCardQuality::Invalid
 					? GameXXKCardText::DescribeCompactTooltipBody(*Definition, Preview, Context)
 					: GameXXKCardText::DescribeCompactTooltipBody(*Definition, TooltipQuality, Preview, Context));
@@ -9130,7 +9134,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 			const int32 Footer = WithCue.Find(TEXT("\nShift："));
 			if (Footer != INDEX_NONE) WithCue.InsertAt(Footer, TEXT("\n") + Cue);
 			else WithCue += TEXT("\n") + Cue;
-			TooltipBody = FText::FromString(WithCue);
+			TooltipBody = GameXXKLocalization::Source(WithCue);
 		}
 	}
 	if (TooltipBody.IsEmpty() && TooltipTitle.IsEmpty())
@@ -9146,7 +9150,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 	HandCardDetailPanel->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (HandCardDetailTitle)
 	{
-		HandCardDetailTitle->SetText(TooltipTitle);
+		HandCardDetailTitle->SetText(GameXXKLocalization::Localize(TooltipTitle));
 		const EGameXXKCardQuality TitleQuality = TooltipQuality == EGameXXKCardQuality::Invalid && Definition ? Definition->BaseQuality : TooltipQuality;
 		const FLinearColor TitleColor = !Definition ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
 			: TitleQuality == EGameXXKCardQuality::Common ? FLinearColor::White : FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
@@ -9467,7 +9471,7 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentDetail()
 	const float Width = FMath::Clamp(LongestLine + 44, 260.0f, 620.0f);
 	if (UTextBlock* Heading = Cast<UTextBlock>(WidgetTree->FindWidget(TEXT("BattleEnemyIntentDetailTitle"))))
 	{
-		Heading->SetText(FText::FromString(Title));
+		Heading->SetText(GameXXKLocalization::Source(Title));
 		Heading->SetWrapTextAt(Width - 32);
 	}
 	FGameXXKCardTooltipPresentationStyle Style;
@@ -10025,8 +10029,8 @@ void UGameXXKBattleBoardWidget::RefreshCardMechanicFeedback(float DeltaTime)
 		const int32 Index=FMath::Clamp(static_cast<int32>(R.Terrain),0,7);
 		if(LabelChanged)
 		{
-			TerrainFeedbackText->SetText(FText::FromString(FString::Printf(TEXT("地势 · %s"),Names[Index])));
-			TerrainFeedbackText->SetToolTipText(FText::FromString(TEXT("阵师存活时，玩家回合开始自动触发当前地势收益一次。地势牌可额外触发；紫色边光提示换势、双效或减耗。")));
+			TerrainFeedbackText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("地势 · %s"),Names[Index])));
+			TerrainFeedbackText->SetToolTipText(GameXXKLocalization::Source(TEXT("阵师存活时，玩家回合开始自动触发当前地势收益一次。地势牌可额外触发；紫色边光提示换势、双效或减耗。")));
 		}
 		const float Pulse=FMath::Sin(PI*FMath::Clamp(TerrainPulseAge/0.7f,0.0f,1.0f));
 		const FGameXXKBattleHudSafeStageLayout TerrainStage = ResolveBattleHudSafeStageLayoutForTest(BattleSettlementViewportSize);
@@ -10039,7 +10043,7 @@ void UGameXXKBattleBoardWidget::RefreshCardMechanicFeedback(float DeltaTime)
 		const FString Finish=GameXXKCardSynergyPresentation::FinisherHint(R);
 		const float Pulse=Finish.IsEmpty() ? 0 : GameXXKCardVisualEffects::Breath(CardEffectsSeconds)*0.30f;
 		EndTurnButton->SetBackgroundColor(FMath::Lerp(FLinearColor::White,FLinearColor(1,0.35f,0.43f,1),Pulse));
-		if(Finish!=CardFinisherHint) {CardFinisherHint=Finish;EndTurnButton->SetToolTipText(FText::FromString(Finish.IsEmpty() ? TEXT("结束本回合，进入敌方行动") : Finish));}
+		if(Finish!=CardFinisherHint) {CardFinisherHint=Finish;EndTurnButton->SetToolTipText(GameXXKLocalization::Source(Finish.IsEmpty() ? TEXT("结束本回合，进入敌方行动") : Finish));}
 	}
 }
 
@@ -10111,7 +10115,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingCardChoices()
 			: bShowInsight
 				? TEXT("洞察：选择一张加入手牌")
 				: FString::Printf(TEXT("此牌要求弃置 %d 张手牌"), FMath::Max(1, RequiredDiscardCount));
-		PendingChoicePromptText->SetText(FText::FromString(Prompt));
+		PendingChoicePromptText->SetText(GameXXKLocalization::Source(Prompt));
 	}
 	if (PendingChoiceCardBox)
 	{
@@ -10318,7 +10322,7 @@ void UGameXXKBattleBoardWidget::RefreshPendingRewardChoices()
 					}
 				}
 				SetCardFaceCaption(WidgetTree, RewardLabel, RelicName, FString(), FString());
-				if (RelicDescription) { RelicDescription->SetText(FText::FromString(RelicCopy)); RelicDescription->SetVisibility(ESlateVisibility::HitTestInvisible); }
+				if (RelicDescription) { RelicDescription->SetText(GameXXKLocalization::Source(RelicCopy)); RelicDescription->SetVisibility(ESlateVisibility::HitTestInvisible); }
 			}
 			else
 			{
@@ -10396,7 +10400,7 @@ void UGameXXKBattleBoardWidget::RefreshRouteRewardReplacementChoices()
 			const FString Quality = Definition
 				? FGameXXKCardQualityRules::GetDisplayName(Definition->BaseQuality).ToString()
 				: FString();
-			Label->SetText(FText::FromString(FString::Printf(TEXT("%s%s\n[%s]"), *Prefix, *DisplayName, *Quality)));
+			Label->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%s%s\n[%s]"), *Prefix, *DisplayName, *Quality)));
 		}
 		const bool bSelected = EntryId == SelectedRouteRewardReplacementEntryId;
 		CardButton->SetRenderOpacity(bSelected ? 1.0f : 0.74f);
@@ -10731,7 +10735,7 @@ void UGameXXKBattleBoardWidget::ApplyEnemyIntentCardPresentation(
 	auto SetText = [&](const TCHAR* Suffix, const FString& Value) -> UTextBlock*
 	{
 		UTextBlock* Label = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix)));
-		if (Label && Label->GetText().ToString() != Value) Label->SetText(FText::FromString(Value));
+		if (Label && Label->GetText().ToString() != Value) Label->SetText(GameXXKLocalization::Source(Value));
 		return Label;
 	};
 	if (UTextBlock* Title = SetText(TEXT("Title"), Text.Title))
@@ -10767,7 +10771,7 @@ void UGameXXKBattleBoardWidget::ApplyEnemyIntentCardPresentation(
 		if (Row) Row->SetVisibility(Visible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		if (!Visible) return;
 		if (UTextBlock* StatusName = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Name")))))
-			StatusName->SetText(FText::FromString(GameXXKCardText::DescribeStatusName(Status)));
+			StatusName->SetText(GameXXKLocalization::Source(GameXXKCardText::DescribeStatusName(Status)));
 		const auto IconStyle = FGameXXKBattleStatusIconStyle::ResolveStatusIconStyle(Status);
 		const FName Key(*IconStyle.TexturePath.ToString());
 		TObjectPtr<UTexture2D>& Texture = CardPortraitTextures.FindOrAdd(Key);
@@ -10780,12 +10784,15 @@ void UGameXXKBattleBoardWidget::ApplyEnemyIntentCardPresentation(
 		}
 		if (UTextBlock* Fallback = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Fallback")))))
 		{
-			Fallback->SetText(FText::FromString(IconStyle.FallbackGlyph)); Fallback->SetVisibility(Texture ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+			Fallback->SetText(GameXXKLocalization::Source(IconStyle.FallbackGlyph)); Fallback->SetVisibility(Texture ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		}
-		const bool Dot = Status == EGameXXKCardStatus::Bleed || Status == EGameXXKCardStatus::Poison || Status == EGameXXKCardStatus::Burn || Status == EGameXXKCardStatus::DamageOverTime;
 		if (UTextBlock* Value = Cast<UTextBlock>(WidgetTree->FindWidget(*(Prefix + Suffix + TEXT("Value")))))
 		{
-			Value->SetText(Dot ? FText::AsNumber(Amount) : FText::Format(NSLOCTEXT("GameXXKBattle", "IntentStatusStacks", "{0}层"), FText::AsNumber(Amount)));
+			Value->SetText(FText::AsNumber(Amount));
+			FSlateFontInfo NumberFont = Value->GetFont();
+			NumberFont.OutlineSettings.OutlineSize = FMath::Max(3,NumberFont.OutlineSettings.OutlineSize);
+			NumberFont.OutlineSettings.OutlineColor = FLinearColor(0.075f,0.06f,0.04f,1.0f);
+			Value->SetFont(NumberFont);
 			Value->SetColorAndOpacity(GameXXKCardVisualEffects::StatusColor(Status));
 			const float MeasuredWidth = FSlateApplication::IsInitialized()
 				? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Value->GetText(),Value->GetFont()).X
@@ -11140,7 +11147,7 @@ void UGameXXKBattleBoardWidget::ApplyCardOutcomePreview(const FGameXXKCardOutcom
 	{
 		FGameXXKCardOutcomeTextLine FailureLine;
 		FGameXXKCardOutcomeTextSegment& Segment = FailureLine.Segments.AddDefaulted_GetRef();
-		Segment.Text = FText::FromString(Preview.FailureText.IsEmpty() ? TEXT("无法预演") : Preview.FailureText);
+		Segment.Text = GameXXKLocalization::Source(Preview.FailureText.IsEmpty() ? TEXT("无法预演") : Preview.FailureText);
 		Segment.Tone = EGameXXKCardOutcomeTone::Neutral;
 		if (Preview.HoveredTargetUnitId.IsNone())
 		{

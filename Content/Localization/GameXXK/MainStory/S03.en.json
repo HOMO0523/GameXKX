@@ -1,0 +1,270 @@
+{
+  "id": "S03",
+  "title": "Liuzi Temple, Yongzhou · What We Carry, What We Leave",
+  "location": "Yongzhou",
+  "summary": "Jin Gui joins you with an unfinished wish of his own. A porter with an eye for luggage turns a petty scheme into a fire, forcing everyone to decide what truly needs protecting.",
+  "nodes": {
+    "S03-01": {
+      "title": "Leaving Riverbend",
+      "summary": "Before you leave, a villager stuffs more vegetables into your pack. You guard the leaves like treasure, soon attracting a greedy pair of eyes.",
+      "objective": "Say farewell to Riverbend and confirm the way to Yongzhou",
+      "result": "You bid the villagers farewell and follow the verified old road toward Yongzhou.",
+      "lines": [
+        "Follow the old embankment to Yongzhou. Don't miss the road to Liuzi Temple. Here, more greens!",
+        "I remember the directions. The vegetables are starting to remember me too.",
+        "As you turn, the villager tucks greens into your basket. You reach to steady them, nearly tangling yourself in your shoulder strap.",
+        "Splendid technique. Rarely does one see the Backward Vegetable Grapple in the martial world.",
+        "It's called appreciating the villagers. I'm not guarding some priceless treasure.",
+        "Keep the greens aired and the map dry. Holding them properly beats another mile of thanks.",
+        "Will do. Keep that newly cleared inlet clean too.",
+        "The sound of water recedes behind you. The old road stretches toward Yongzhou. Your pack is heavier, but your footing feels surer."
+      ]
+    },
+    "S03-02": {
+      "title": "Onward to Yongzhou",
+      "summary": "A pipe reaches out from the roadside shade to catch your vegetable basket. Jin Gui says he happens to be going your way. His shoes suggest he just hurried here from the opposite direction.",
+      "objective": "Reunite with Jin Gui and agree to travel together",
+      "result": "You reunite with Jin Gui. The three of you set off for Liuzi Temple.",
+      "lines": [
+        "Slow down. Two more shakes and those vegetables will reach Yongzhou without you.",
+        "A pipe gently supports the loose basket cord. Beneath his straw hat, Jin Gui wears his usual half-awake smile.",
+        "Jin Gui? What a coincidence. Going our way?",
+        "Yes. Took a twenty-li detour to go your way.",
+        "I've never heard anyone admit to a detour with such confidence.",
+        "I've reached Liuzi Temple's gate three times. Work called me away every time. This time, I'd like to get inside and sit down.",
+        "Then come along. If anyone sends you on another errand, ask yourself whether you want to go.",
+        "Deal. No running on someone else's clock today. First, tie that basket properly."
+      ]
+    },
+    "S03-03": {
+      "title": "The Ancient Cypress Woods",
+      "summary": "The helpful porter's shortcut has meat on the ground and animal tracks in the grass. The only thing missing is an honest word. Jin Gui lifts a strip of meat, and the man's smile stiffens.",
+      "objective": "Examine the woodland shortcut and the porter's suspicious behavior",
+      "result": "Dried meat and animal tracks reveal the shortcut as a trap. You prepare for the woodland encounter.",
+      "lines": [
+        "Young hero, this way's shorter! Heavy luggage? Let me carry it.",
+        "Dried meat grows on your shortcuts? Hospitable trees around here.",
+        "Jin Gui lifts a strip with his pipe. Animal tracks circle it beneath the grass. The porter's shoulder bag bears matching grease stains.",
+        "A traveler dropped it! Travelers drop things. Everywhere they go.",
+        "Then why watch my map bag so closely without asking where we're headed?",
+        "He's not finding you a shorter route. He's finding the luggage a new owner.",
+        "Stay calm. Keep hold of your things before you start pressing him.",
+        "Right. Read the meat and tracks first. Then decide where to walk."
+      ],
+      "hints": [
+        "Helpfulness alone proves nothing. Examine what the shortcut contains.",
+        "Meat scraps, circling animal tracks, and the porter's eyes on your bag form a suspicious pattern.",
+        "Choose to keep your luggage, watch the meat and tracks, and refuse to hand over the bag."
+      ],
+      "options": [
+        [
+          "Keep the luggage, inspect the meat and tracks, and refuse his offer",
+          "The shortcut is convenient for the porter. You secure your belongings and prepare for trouble."
+        ],
+        [
+          "Hand over the map and travel light",
+          "Jin Gui gently redirects your hand: Let's not gift-wrap the main quest for him."
+        ],
+        [
+          "Follow immediately because the route is shorter",
+          "The road may be short. The regret could be lengthy. Look in the grass again."
+        ]
+      ],
+      "short_title": "Cypress Woods"
+    },
+    "S03-04": {
+      "title": "Liuzi Temple",
+      "summary": "At last, Jin Gui enters the temple. Yet he doesn't sit. Spotting a shadow at the rear door, he quietly moves his waiting stool beside it.",
+      "objective": "Compare old gazetteers and local maps at Liuzi Temple",
+      "result": "You find a lead in the old records and notice suspicious movement behind the hall.",
+      "lines": [
+        "Found it! This passage fits the old Xiao River map.",
+        "Turn gently. Paper corners are not mountain steps.",
+        "You two read. I'll sit by the door. Fresh air.",
+        "Jin Gui moves the stool, wedging its leg beside the half-open rear door. Outside, a shadow carrying a bag hesitates.",
+        "You've wanted to see this place for ages. Come and look first.",
+        "I've had a glance. It isn't going anywhere, and neither am I. Someone else seems in a hurry, though.",
+        "The rear door?",
+        "Mm. Read slowly. Keep the bags close. Let's not let our acquaintance relieve us of any more burdens."
+      ]
+    },
+    "S03-05": {
+      "title": "Rescue from the Fire",
+      "summary": "You see the books first. Jin Gui grabs you first. As the shelf falls, protecting the old records finally gains a proper order of priorities.",
+      "objective": "Get everyone to safety, then work together to save unburned books",
+      "result": "Everyone is safe, the fire is contained, and the key gazetteers and map records are protected.",
+      "lines": [
+        "Flames lick the outer straw screen. You reach for an old volume on a high shelf, but Jin Gui catches your collar.",
+        "Watch your footing! The shelf's tipping!",
+        "The books are still up there—",
+        "The shelf falls into an empty space, throwing up dust. Jin Gui pulls you onto solid ground, wavers himself, and you catch his shoulder.",
+        "Get steady first! We can move the unburned books at the edge. Nobody charges inside!",
+        "Jin Gui, move everyone back. I'll take the outer books. Pass water along!",
+        "That's better. People aren't luggage. You can't carry the lot away in one trip.",
+        "Understood. People first. Then we save the books we can safely reach, together."
+      ],
+      "hints": [
+        "Make sure everyone is safe, then identify books reachable from the safe outer edge.",
+        "The courtyard offers open ground, helpers, buckets, and wet cloths. Share the work instead of rushing in alone.",
+        "Choose to secure everyone's safety, move reachable unburned books together, and contain the fire."
+      ],
+      "options": [
+        [
+          "Secure everyone, move the outer books together, and contain the fire",
+          "For once, action is faster than talk. Everyone and the key records are safe, and the fire is contained."
+        ],
+        [
+          "Rush alone into the smoke and carry everything out at once",
+          "Youbai stops you: Heroism can wait. People can't be taken apart and rebuilt. Stay within the safe area."
+        ],
+        [
+          "Chase the porter and settle the argument before helping",
+          "Jin Gui thrusts a bucket at you: Fire doesn't debate. Quiet it down first."
+        ]
+      ],
+      "short_title": "Fire Rescue"
+    },
+    "S03-06": {
+      "title": "Complete the Yongzhou Map",
+      "summary": "The Yongzhou map is complete, but Jin Gui puts down his pack. This time, staying at the temple isn't someone else's errand. He wants to see this through.",
+      "objective": "Organize the rescued records and complete the Yongzhou map",
+      "result": "The Yongzhou map is complete. You part from Jin Gui for now, carrying a lead to inscriptions in the southwestern settlements.",
+      "lines": [
+        "These Yongzhou routes join up now. Coming southwest with us?",
+        "Later. They need hands here, and the books aren't dry.",
+        "Another errand for someone?",
+        "This time I want to stay. Finally made it through the door. I'd rather not count a fire as my whole visit.",
+        "He sets his pack inside the doorway and accepts a book from you, with more ceremony than his words suggest.",
+        "Then I won't hurry you. We'll keep following the southwestern inscriptions.",
+        "When you're done, you choose the destination. I'll happen to be going your way.",
+        "Within twenty li, and I'll believe you. Walk carefully. There won't always be someone holding your collar."
+      ],
+      "short_title": "Yongzhou Map"
+    },
+    "S03-07": {
+      "title": "Traces of the Tusi Village",
+      "summary": "A familiar mark on an old water trough prompts something new from Youbai: an admission that it once remembered this road incorrectly.",
+      "objective": "Compare inscriptions and gazetteers to confirm the Tusi Village lead",
+      "result": "You confirm the leads to Tusi Village and the sheepskin map, completing Yongzhou's main thread.",
+      "lines": [
+        "The inscription mentions a southwestern Tusi village and this mark by an old trough. Recognize it?",
+        "...I do. The map places it north of the village.",
+        "The inscription means the old site. When the village moved, the trough moved too.",
+        "I probably hurried that copyist along myself. Thought the questions were taking too long.",
+        "Youbai studies the rubbing for a long while, then shifts its light toward the mark awaiting correction.",
+        "Knowing which line went wrong means we can check it. Perhaps the Tusi Chief remembers you.",
+        "Good if he does. If not, I'll start by explaining why we're there. We'll ask him about the sheepskin map in person.",
+        "Now that's a reliable guide talking. Come on. Let's ask the living."
+      ],
+      "short_title": "Village Traces"
+    },
+    "S03-08": {
+      "title": "An Old Acquaintance",
+      "summary": "Jin Gui unfolds a well-worn scrap. No errands from other people, just a few landscapes he has kept for himself.",
+      "objective": "Hear why Jin Gui has returned to the road",
+      "result": "You learn about Jin Gui's hopes for his journey and deepen your old friendship.",
+      "lines": [
+        "Whenever I saw you before, one word from your employer and you vanished on an errand.",
+        "Traveled plenty. Saw little. Every minute on the road belonged on someone else's ledger.",
+        "Now you're free, what grand ambitions await?",
+        "Enter Liuzi Temple. Sit down. Finish reading a page.",
+        "He takes a folded scrap from inside his hat, opens it, then cups it again. Only a few rough landscapes mark the paper.",
+        "That's all?",
+        "For now. I'll add places when I want to go. Don't fill the whole thing in for me.",
+        "I won't. Your road is yours to choose."
+      ]
+    },
+    "S03-09": {
+      "title": "Selective Generosity",
+      "summary": "The porter cannot bear to see you burdened, until a radish peeks from the bag you offer. His chivalry suddenly develops a very selective appetite.",
+      "objective": "Find the flaw in the porter's helpful sales pitch",
+      "result": "You spot his avoidance of route questions and his interest in valuable luggage, and remain alert.",
+      "lines": [
+        "No need for suspicion, young hero. You look tired. I only want to help.",
+        "Wonderful. This bag is the heaviest.",
+        "You offer the vegetables. At the sight of a radish, his already outstretched hand makes an abrupt turn.",
+        "That one... won't damage easily. The map bag needs more careful handling.",
+        "Your kindness comes with a price list?",
+        "I'm worried you'll lose something important!",
+        "Then describe the road. Where is it slippery? Where do we detour?",
+        "He cannot answer. His eyes remain glued to the map bag. You draw both bags back to your side."
+      ]
+    },
+    "S03-10": {
+      "title": "Ambush in the Woods",
+      "summary": "A gray wolf follows the meat scent onto the path. The porter follows your map bag with his eyes. Front and rear both need guarding; Jin Gui puts his pipe away and watches the man.",
+      "objective": "Enter task map 2-1 and defeat the lured animals at the story question mark while protecting the luggage",
+      "result": "The animals retreat. Everyone and the map are safe. The porter flees after his attempted robbery fails.",
+      "lines": [
+        "Fresh dried meat litters the forest edge. A gray wolf's shadow moves behind the trees. The porter urges you onward while watching the map bag.",
+        "What are you afraid of? Scout ahead. Leave the luggage with me.",
+        "Your own meat bag sprang a leak, yet you're so interested in someone else's intact bag.",
+        "Not going in yet. Wolf ahead, grabby hands behind. This road is getting crowded.",
+        "I've counted: one wolf, plus one porter requiring close observation.",
+        "I'll guard the map bag. Clear the way ahead. Don't get distracted chasing him.",
+        "Agreed. We go together. Nobody changes positions without warning.",
+        "All this guarding against thieves is very bad for goodwill."
+      ],
+      "after_battle_lines": [
+        "The wolf retreats. While your pole guarded the path, Jin Gui held the map bag tight. The porter grabbed empty air and slipped into the woods.",
+        "Map safe. Pipe at my waist. It hasn't taken a second job as a carrying pole.",
+        "Count the people and the map first. No risking our necks to chase his little burst of courage.",
+        "All present. One magnificent flame, two people, no missing luggage. We are down one source of goodwill, though.",
+        "He left in a hurry. His tracks won't be tidy. Catch your breath, then look down."
+      ],
+      "hints": [
+        "This encounter needs action. More explanations from the porter won't settle it.",
+        "Enter task map 2-1 and defeat the enemies at the story question mark with your current party.",
+        "Enter the corresponding task map from this node and win the battle at the story question mark."
+      ]
+    },
+    "S03-11": {
+      "title": "A Trail Left Behind",
+      "summary": "The porter walks backward to confuse his tracks, but snags his bag on a branch. The torn strap points like an arrow, more honestly than he ever did.",
+      "objective": "Examine the traces left by the fleeing porter",
+      "result": "A torn strap and shoeprints reveal his route behind the temple, providing a warning of further trouble.",
+      "lines": [
+        "He's gone. These prints seem to point both ways.",
+        "Walked backward a few paces. Thought it made him difficult to follow.",
+        "An ancient martial secret: become more suspicious without going anywhere.",
+        "Jin Gui parts a low branch. A newly torn cloth strap hangs from it, its broken end pointing toward the narrow path behind the temple.",
+        "Even his bag is giving directions.",
+        "Fresh mud goes that way too. Note the direction. Don't lose your companions while chasing him.",
+        "Someone may approach the rear of the temple. Let's warn people and watch our things.",
+        "Record this carefully: he fled. That does not mean he gave up."
+      ]
+    },
+    "S03-12": {
+      "title": "Theft Behind the Flames",
+      "summary": "Fire erupts in the rear hall. The porter grabs a bag in the chaos and finds half a sack of vegetables. You keep his hands occupied with a bucket of firefighting water.",
+      "objective": "Expose the arson-and-theft plot and organize the rescue",
+      "result": "The porter's plot is exposed, and everyone begins an orderly effort to contain the fire.",
+      "lines": [
+        "Flames rise in the rear hall. The porter slips out sideways, hunched over a cloth bag he grabbed in the confusion.",
+        "Save the belongings! I'll take these ahead—",
+        "The bag opens, revealing leafy vegetables. While he stares, you push a bucket into his hands.",
+        "Yes, save things. Start by taking that water over.",
+        "Fresh lamp oil by the door. Fire starting where you hid. Still pretending to help?",
+        "I only meant to scare you off. I didn't mean for it to spread like this...",
+        "A small scheme, a large fire! It won't listen to your excuses. People out first!",
+        "Carry water. Clear the way. We settle the account once everyone is safe."
+      ]
+    },
+    "S03-13": {
+      "title": "Making Amends",
+      "summary": "The porter apologizes quickly but turns wet pages slowly. Nobody applauds his remorse. They wait to see him finish the work.",
+      "objective": "Have the porter return belongings and take responsibility for restoring the records",
+      "result": "He returns the belongings and stays to organize the books, making amends through action.",
+      "lines": [
+        "It's all here. Nothing hidden. I'm sorry...",
+        "Returning it is the minimum. You must answer for what the fire damaged too.",
+        "Promises later. That page is wet. Lift it gently. Don't pull.",
+        "The porter stops fumbling. With his fingertips, he slowly supports a page's corner. The sheet that nearly tore reaches the drying board intact.",
+        "Even a little movement can ruin something.",
+        "You seemed quite comfortable with bigger ones earlier.",
+        "If you want to make amends, stay and do the work. Saying you're sorry doesn't turn the page on this.",
+        "I will. Write down what belongs to whom and what was damaged. I'll answer for it."
+      ]
+    }
+  }
+}

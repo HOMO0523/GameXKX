@@ -5,6 +5,7 @@
 #include "GameXXKTrainingChestRules.generated.h"
 
 struct FGameXXKRuntimeState;
+enum class EGameXXKEquipmentQuality : uint8;
 
 UENUM(BlueprintType)
 enum class EGameXXKTrainingChestOpenError : uint8
@@ -14,7 +15,24 @@ enum class EGameXXKTrainingChestOpenError : uint8
 	BackpackFull,
 	InvalidToken,
 	LootInvalid,
-	Overflow
+	Overflow,
+	PersistenceFailed
+};
+
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKTrainingChestOpenReceipt
+{
+    GENERATED_BODY()
+    UPROPERTY(BlueprintReadOnly) EGameXXKTrainingRewardTier Tier=EGameXXKTrainingRewardTier::NormalChest;
+    UPROPERTY(BlueprintReadOnly) int32 OpenOrdinal=0;
+    UPROPERTY(BlueprintReadOnly) FName SourceStageId;
+    UPROPERTY(BlueprintReadOnly) FName ItemId;
+    UPROPERTY(BlueprintReadOnly) FName EquipmentInstanceId;
+    UPROPERTY(BlueprintReadOnly) FName EquipmentBaseId;
+    UPROPERTY(BlueprintReadOnly) int32 Quantity=0;
+    UPROPERTY(BlueprintReadOnly) int32 QualityRank=0;
+    UPROPERTY(BlueprintReadOnly) int32 ItemLevel=0;
+    UPROPERTY(BlueprintReadOnly) bool bSentToWarehouse=false;
 };
 
 USTRUCT(BlueprintType)
@@ -39,12 +57,19 @@ struct GAMEXXK_API FGameXXKTrainingChestOpenResult
 
 	UPROPERTY(BlueprintReadOnly)
 	FText Message;
+
+    /** One immutable result per successfully committed box, in opening order. */
+    UPROPERTY(BlueprintReadOnly)
+    TArray<FGameXXKTrainingChestOpenReceipt> Receipts;
 };
 
-/** Deterministic, save-authoritative chest opening into Backpack only. */
+/** Deterministic chest loot: new entries enter Backpack; existing stored stacks retain their home. */
 class GAMEXXK_API FGameXXKTrainingChestRules final
 {
 public:
+	/** One exact draw from the approved equipment/gem quality table, in basis points [0,9999]. */
+	static EGameXXKEquipmentQuality ResolveLootQuality(EGameXXKTrainingRewardTier Tier, int32 Roll);
+	static bool ResolveOrderDrop(EGameXXKTrainingRewardTier Tier, int32 Roll);
 	static bool OpenOne(FGameXXKRuntimeState& InOutState, EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
 	static bool OpenAll(FGameXXKRuntimeState& InOutState, EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
 };

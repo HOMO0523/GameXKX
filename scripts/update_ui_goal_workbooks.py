@@ -99,13 +99,15 @@ def main():
     finish(deps)
 
     OUT.mkdir(parents=True, exist_ok=True)
-    wb.save(FILE)
-    reread = load_workbook(FILE, read_only=True, data_only=False)
+    temporary = FILE.with_name(FILE.stem + ".pending.xlsx")
+    wb.save(temporary)
+    reread = load_workbook(temporary, read_only=True, data_only=False)
     actual = {sheet.title: sheet.max_row - 4 for sheet in reread}
     assert actual["01_项目进度"] == len(state["milestones"])
     assert actual["03_遗物素材状态"] == 45
     assert actual["04_共享任务交接"] == len(state["otherTasks"])
     reread.close()
+    temporary.replace(FILE)
     report = {"updatedAt": timestamp, "path": str(FILE), "sheets": actual, "relicArt": len(icons), "relicImported": imported,
               "note": "Workbook reload/count validation only; pending gameplay remains pending."}
     (OUT / "workbook-update-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

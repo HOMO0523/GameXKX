@@ -1,0 +1,23 @@
+{
+  "slug": "blade",
+  "name": "刀客",
+  "id": "Role.Blade",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/01_blade.png",
+  "identitySourceSha256": "f46ee420d092193c8af90bf176120a90c64e01f14af8539659b1014fc5354796",
+  "facing": "left",
+  "view": "three-quarter",
+  "userApproved": false,
+  "details": "刀客：严格保留原图年轻锐利眉眼、红发绳的黑色高长马尾、青绿色交领短武衣与两枚系扣、灰米翻袖与尖分片衣摆、红色长腰带两片飘带、深棕裤、米色绑腿与棕布鞋。一手低持原宽弯刀向左下，另一手握拳自然放低，双腿稳立原姿势。刀的弧形、圆护手、刀柄小红穗保持，只有一把刀，完整露出；不要换成红衣或加盔甲。",
+  "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：刀客：严格保留原图年轻锐利眉眼、红发绳的黑色高长马尾、青绿色交领短武衣与两枚系扣、灰米翻袖与尖分片衣摆、红色长腰带两片飘带、深棕裤、米色绑腿与棕布鞋。一手低持原宽弯刀向左下，另一手握拳自然放低，双腿稳立原姿势。刀的弧形、圆护手、刀柄小红穗保持，只有一把刀，完整露出；不要换成红衣或加盔甲。",
+  "status": "pending-generation",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+    "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\01_blade.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\raw\\blade.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "phase": "new-character-awaiting-user-review",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-d0c6495a-360e-49d3-aad6-98febd1a3316.png"
+}

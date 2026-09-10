@@ -94,8 +94,8 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("repreparing restores wrapper input transparency"), ResourceWidget->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
 
 	ResourceWidget->SetUnitVitals(TEXT("我 1P"), FText::FromString(TEXT("主角")), 0, 0, 0, 0, true);
-	TestEqual(TEXT("zero health snapshot retains its supplied maximum label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("气血 0 / 0")));
-	TestEqual(TEXT("zero mana snapshot retains its supplied maximum label"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("内力 0 / 0")));
+	TestEqual(TEXT("zero health snapshot retains its supplied maximum label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("HP 0 / 0")));
+	TestEqual(TEXT("zero mana snapshot retains its supplied maximum label"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("MP 0 / 0")));
 	TestEqual(TEXT("zero health snapshot uses an empty safe fill"), ResourceWidget->GetHealthPercentForTest(), 0.0f);
 	TestEqual(TEXT("zero mana snapshot uses an empty safe fill"), ResourceWidget->GetManaPercentForTest(), 0.0f);
 	TestTrue(TEXT("zero mana snapshot remains visible when mana is enabled"), ResourceWidget->IsManaRowVisibleForTest());
@@ -104,8 +104,8 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("zero maximum mana always uses an empty safe fill"), ResourceWidget->GetManaPercentForTest(), 0.0f);
 
 	ResourceWidget->SetUnitVitals(TEXT("我 1P"), FText::FromString(TEXT("主角")), 72, 100, 18, 30, true);
-	TestEqual(TEXT("hero health row uses the required readable label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("气血 72 / 100")));
-	TestEqual(TEXT("hero mana row uses the required readable label"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("内力 18 / 30")));
+	TestEqual(TEXT("hero health row uses the required readable label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("HP 72 / 100")));
+	TestEqual(TEXT("hero mana row uses the required readable label"), ResourceWidget->GetManaDisplayTextForTest(), FString(TEXT("MP 18 / 30")));
 	TestEqual(TEXT("hero health fill follows current and maximum health"), ResourceWidget->GetHealthPercentForTest(), 0.72f);
 	TestEqual(TEXT("hero mana fill follows current and maximum mana"), ResourceWidget->GetManaPercentForTest(), 0.60f);
 	UImage* HealthImage = Cast<UImage>(ResourceWidget->WidgetTree->FindWidget(TEXT("HealthBarLegacy")));
@@ -137,7 +137,7 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("mana fill consumes the PSD bar from left to right"), ResourceWidget->IsManaFillLeftToRightForTest());
 
 	ResourceWidget->SetUnitVitals(TEXT("敌 1P"), FText::FromString(TEXT("黑熊")), 240, 240, 99, 100, false);
-	TestEqual(TEXT("enemy health row uses the required readable label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("气血 240 / 240")));
+	TestEqual(TEXT("enemy health row uses the required readable label"), ResourceWidget->GetHealthDisplayTextForTest(), FString(TEXT("HP 240 / 240")));
 	TestEqual(TEXT("enemy mana row collapses despite a mana value"), ResourceWidget->GetManaRowVisibilityForTest(), ESlateVisibility::Collapsed);
 	TestFalse(TEXT("enemy mana row is not visible despite a mana value"), ResourceWidget->IsManaRowVisibleForTest());
 	TestTrue(TEXT("enemy resource content never blocks screen-space targeting"), ResourceWidget->AreContentWidgetsHitTestTransparentForTest());

@@ -15,4 +15,11 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "GameXXK|MVP")
 	FGameXXKSaveState SaveState;
+
+	/** Optional integrity envelope. Legacy saves have schema zero and remain readable. */
+	UPROPERTY(SaveGame)
+	int32 IntegritySchema = 0;
+
+	UPROPERTY(SaveGame)
+	uint32 PayloadChecksum = 0;
 };

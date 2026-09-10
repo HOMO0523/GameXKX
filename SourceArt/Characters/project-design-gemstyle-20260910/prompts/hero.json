@@ -1,0 +1,14 @@
+{
+  "slug": "hero",
+  "name": "主角",
+  "prompt": "Use case: style-transfer. 按项目原角色设计重绘一张全身游戏角色，原设计为准，不重新发明服装、人物身份或装备。第一张宝石图只提供画风，第二张是这个角色在项目里的原始1600×1600全身设计。请严格保留第二张的总体剪影、头身比例、面容特征、发型、衣装结构、道具、原动作和3/4面朝画面左的朝向。重绘的改变集中在画法：必须明显采用第一张宝石icon的干净粗深墨外轮廓、饱满结实的卡通大体块、鲜明但同原色系的配色、3至5组主要平涂明暗、少量宽阔手绘笔刷。去掉旧图密集纸纹、碎细线、模糊水彩纹理和灰脏感，轮廓闭合清楚，缩小后仍易认。不要水墨晕染、写意断线、毛边或泛白褪色，不画写实3D反射。皮肤、布、毛发应保留有机材料特征，不画成真正晶石或三角网格。只输出这一个完整全身单体，不画对照表、文字、标签或宝石本身。正方形画布、人物完整且居中，四周安全留白；输出浅暖米白#F4EFDF干净背景，不沿用旧图洋红底，不画场景、地面或投影。\n主角必须保留原棕褐短外衣、灰蓝交领上衣和裤子、灰色束腰、绑腿及原鞋型；黑发短髻、粗眉与倔强眼神保持。竹背篓、露出的竹子与叶片、侧挂圆形编织水壶保持。原来一手握肩带、另一手自然放下的姿势保持，不能改为叉腰，不能给空手增加竹杖，不能换成天青披风、白袍或金色宝石腰扣。仅将棕、灰蓝与竹黄画得明快，减少编织线和衣褶细节，强化大体块。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-80f444c4-ed74-4806-98a2-3033eab4fd58.png",
+  "originalDesign": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+  "facing": "left",
+  "view": "three-quarter",
+  "phase": "discussion-redraw-not-imported"
+}

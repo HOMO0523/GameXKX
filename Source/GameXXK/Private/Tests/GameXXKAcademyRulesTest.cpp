@@ -6,8 +6,94 @@
 #include "Misc/AutomationTest.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKEquipmentRules.h"
+#include "UI/GameXXKLocalization.h"
+#include "Misc/ScopeExit.h"
+#include "../MVP/GameXXKAcademyStateBuilder.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKAcademyBilingualTest,"GameXXK.Academy.ConciseBilingualMechanisms",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKAcademyBilingualTest::RunTest(const FString&)
+{
+    const FString Original=GameXXKLocalization::GetLanguage();ON_SCOPE_EXIT{GameXXKLocalization::SetLanguage(Original,false);};
+    int32 Lessons=0;
+    for(const auto& Course:FGameXXKAcademyRules::Courses())
+    {
+        for(const TCHAR* Language:{TEXT("en"),TEXT("zh-Hans")})
+        {
+            GameXXKLocalization::SetLanguage(Language,false);
+            TArray<FText> Copy={Course.Title,Course.Summary};
+            for(const auto& Lesson:Course.Lessons)
+            {
+                Copy.Add(Lesson.Title);Copy.Add(Lesson.Instruction);
+                TestTrue(Course.Id.ToString()+TEXT(" explanation is concise"),GameXXKLocalization::Localize(Lesson.Instruction).ToString().Len()<=100);
+                for(const auto& Goal:Lesson.Goals)Copy.Add(Goal.Text);
+            }
+            for(const auto& Item:Copy)
+            {
+                const FString Text=GameXXKLocalization::Localize(Item).ToString();
+                TestFalse(TEXT("all teaching copy exists"),Text.IsEmpty()||Text.StartsWith(TEXT("Academy.")));
+                if(GameXXKLocalization::IsEnglish())for(TCHAR Character:Text)if(Character>=0x3400&&Character<=0x9fff){AddError(Course.Id.ToString()+TEXT(" untranslated: ")+Text);break;}
+            }
+        }
+        Lessons+=Course.Lessons.Num();
+    }
+    TestEqual(TEXT("all hero, six partner and six NPC lessons covered"),Lessons,29);return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKAcademyGuidedObjectivesTest,"GameXXK.Academy.GuidedObjectives",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKAcademyGuidedObjectivesTest::RunTest(const FString&)
+{
+    for(const auto& Course:FGameXXKAcademyRules::Courses())for(int32 Index=0;Index<Course.Lessons.Num();++Index)
+    {
+        FGameXXKRuntimeState State;FName Focus;FString Error;FGameXXKAcademyEvidence Evidence;
+        if(!UGameXXKMVPSubsystem::BuildAcademyBattleState(Course,Index,State,Focus,Error)){AddError(Error);continue;}
+        for(const auto& Unit:State.CardRun.ActiveBattle.Units)if(Unit.Side==EGameXXKCardTargetSide::Enemy)
+        {
+            TestTrue(TEXT("every tutorial enemy has at most 300 HP"),Unit.MaxHP>0&&Unit.MaxHP<=300);
+            TestTrue(TEXT("tutorial attacks are mild"),Unit.Attack<=12);
+        }
+        else TestEqual(TEXT("every borrowed hero, partner and NPC has 300 max HP"),Unit.MaxHP,300);
+        for(int32 Step=0;Step<400;++Step)
+        {
+            const auto Before=State.CardRun.ActiveBattle;
+            if(Before.Phase==EGameXXKCardBattlePhase::Victory||Before.Phase==EGameXXKCardBattlePhase::Defeat)break;
+            TArray<FGameXXKCardDamageResult> Damage;TArray<FGameXXKCardPlayResult> Resumed;FName Played;
+            const auto& Pending=Before.Deck.PendingChoice;
+            if(Pending.Kind==EGameXXKCardPendingChoiceKind::ForcedDiscard)
+            {
+                TArray<FName> Ids;for(const auto& Card:Pending.Candidates)if(Ids.Num()<Pending.RequiredCount)Ids.Add(Card.InstanceId);
+                FGameXXKCardBattleAdapter::SubmitForcedDiscard(State,Ids,&Error,&Resumed);
+            }
+            else if(Pending.Kind==EGameXXKCardPendingChoiceKind::InsightChooseToHand)FGameXXKCardBattleAdapter::CancelInsight(State,&Error,&Resumed);
+            else if(Pending.Kind!=EGameXXKCardPendingChoiceKind::Invalid&&!Pending.Candidates.IsEmpty())FGameXXKCardBattleAdapter::SubmitHeroTaskSearchChoice(State,Pending.Candidates[0].InstanceId,Resumed,&Error);
+            else if(Before.Phase==EGameXXKCardBattlePhase::Enemy)FGameXXKCardBattleAdapter::ResolveEnemyPhase(State,Damage,&Error);
+            else
+            {
+                    FName Target;bool EndTurn=false;
+                    FGameXXKAcademyRules::Recommend(State,Focus,Course.Lessons[Index],Evidence,NAME_None,Played,Target,EndTurn);
+                    if(EndTurn)FGameXXKCardBattleAdapter::EndPlayerCardPhase(State,Damage,&Error);
+                    else
+                    {
+                        FGameXXKCardPlayResult Result;
+                        if(!FGameXXKCardBattleAdapter::ResolveCardPlay(State,Played,Target,Result,&Error)){AddError(TEXT("Visible tutorial recommends an illegal play: ")+Error);break;}
+                        FGameXXKAcademyRules::ObserveCommittedResult(Result,Focus,Evidence);Damage=MoveTemp(Result.DamageResults);
+                    }
+            }
+            for(const auto& Result:Resumed){FGameXXKAcademyRules::ObserveCommittedResult(Result,Focus,Evidence);Damage.Append(Result.DamageResults);}
+            FGameXXKAcademyRules::Observe(Before,State.CardRun.ActiveBattle,Damage,Played,Focus,Evidence);
+        }
+        FString Missing;for(const auto& Goal:Course.Lessons[Index].Goals)if(Evidence.Counts.FindRef(Goal.Kind)<Goal.Required)Missing+=Goal.Text.ToString()+TEXT("; ");
+        TestTrue(FString::Printf(TEXT("visible guidance %s/%d: missing=%s, phase=%d, error=%s"),*Course.Id.ToString(),Index,*Missing,int32(State.CardRun.ActiveBattle.Phase),*Error),
+            Evidence.Satisfies(Course.Lessons[Index])&&State.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Victory);
+        if(Course.Role==EGameXXKCharacterRole::Hero)
+        {
+            TestTrue(FString::Printf(TEXT("hero lesson %d finishes within three rounds (actual %d)"),Index+1,State.CardRun.ActiveBattle.RoundNumber),State.CardRun.ActiveBattle.RoundNumber<=3);
+            UE_LOG(LogTemp,Display,TEXT("[AcademyPacing] Hero lesson=%d rounds=%d victory=%d goals=%d"),Index+1,
+                State.CardRun.ActiveBattle.RoundNumber,State.CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Victory,Evidence.Satisfies(Course.Lessons[Index]));
+        }
+    }
+    return true;
+}
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKAcademyCatalogTest,"GameXXK.Academy.CatalogAndLoadouts",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FGameXXKAcademyCatalogTest::RunTest(const FString& Parameters)
 {
@@ -22,9 +108,38 @@ bool FGameXXKAcademyCatalogTest::RunTest(const FString& Parameters)
 			FGameXXKRuntimeState State;FName Focus;FString Error;
 			TestTrue(*FString::Printf(TEXT("%s lesson %d builds: %s"),*C.Id.ToString(),I,*Error),UGameXXKMVPSubsystem::BuildAcademyBattleState(C,I,State,Focus,Error));
 			if(!Error.IsEmpty())AddError(C.Id.ToString()+TEXT(": ")+Error);
+            TestTrue(TEXT("course battle owns its map identity"),State.CurrentMapId==TEXT("AcademyBattle"));
+            TestFalse(TEXT("course never starts a Training challenge"),State.Training.bChallengeActive);
+            TestTrue(TEXT("course has no Training source stage"),State.Training.ActiveChallengeStageId.IsNone());
+            TestFalse(TEXT("course never imports difficulty-scaled stage attributes"),State.CardRun.ActiveBattle.bEnemyAttributesIncludeDifficulty);
 		}
 	}
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKAcademyIndependentEncounterTest,"GameXXK.Academy.IndependentEncounter",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKAcademyIndependentEncounterTest::RunTest(const FString&)
+{
+    const auto& Course=FGameXXKAcademyRules::Courses()[0];FGameXXKRuntimeState Base;FName Focus;FString Error;
+    if(!GameXXKAcademyStateBuilder::BuildLoadout(Course,0,Base,Focus,Error))return false;
+    auto A=Base;auto B=Base;
+    B.Training.bDevelopmentUnlockAllStages=true;B.Training.bChallengeActive=true;
+    B.Training.SelectedStageId=TEXT("Training.Hell.3-4");B.Training.ActiveChallengeStageId=TEXT("Missing.Stage");
+    B.Training.bTravelActive=true;B.Training.CurrentTravelStageId=TEXT("Missing.Travel");
+    TestTrue(TEXT("ordinary course encounter builds"),GameXXKAcademyStateBuilder::BuildEncounter(Course,0,A,Error));
+    TestTrue(TEXT("unrelated invalid Training state cannot determine a course encounter"),GameXXKAcademyStateBuilder::BuildEncounter(Course,0,B,Error));
+    const auto& Left=A.CardRun.ActiveBattle;const auto& Right=B.CardRun.ActiveBattle;
+    TestEqual(TEXT("same lesson creates the same unit count"),Left.Units.Num(),Right.Units.Num());
+    TestEqual(TEXT("lesson difficulty does not come from Hell"),Right.EnemyDifficulty,EGameXXKEnemyDifficulty::Normal);
+    for(int32 Index=0;Index<FMath::Min(Left.Units.Num(),Right.Units.Num());++Index)
+    {
+        TestEqual(TEXT("same course unit identity"),Left.Units[Index].UnitId,Right.Units[Index].UnitId);
+        TestEqual(TEXT("same course HP"),Left.Units[Index].HP,Right.Units[Index].HP);
+        TestEqual(TEXT("same course ATK"),Left.Units[Index].Attack,Right.Units[Index].Attack);
+    }
+    TestTrue(TEXT("no invalid stage identifier is retained"),B.Training.ActiveChallengeStageId.IsNone());
+    TestFalse(TEXT("course does not start idle travel"),B.Training.bTravelActive);
+    return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKAcademyRewardTest,"GameXXK.Academy.FirstClearReward",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FGameXXKAcademyRewardTest::RunTest(const FString& Parameters)
@@ -42,7 +157,15 @@ bool FGameXXKAcademyRewardTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("repeated completion harmless"),FGameXXKAcademyRules::CompleteLesson(C.Id,I,true,Evidence,Progress,Gold,Award,Error));
 		TestEqual(TEXT("no duplicate reward"),Gold,Before);
 	}
-	TestEqual(TEXT("all courses total"),Gold,1300000);return true;
+	TestEqual(TEXT("all courses total"),Gold,1300000);
+    FGameXXKGuideProgress Legacy;Legacy.AcademyCompletedLessons.Add(TEXT("Academy.Basic"),2);Legacy.AcademyRewardedCourses.Add(TEXT("Academy.Basic"));
+    FGameXXKAcademyEvidence Extra;const auto* Hero=FGameXXKAcademyRules::Find(TEXT("Academy.Basic"));
+    for(const auto& Goal:Hero->Lessons[2].Goals)Extra.Record(Goal.Kind,Goal.Required);
+    const int32 PreviousGold=Gold;
+    TestTrue(TEXT("old rewarded players can finish the new Hero lesson"),FGameXXKAcademyRules::CompleteLesson(TEXT("Academy.Basic"),2,true,Extra,Legacy,Gold,Award,Error));
+    TestEqual(TEXT("new lesson cannot duplicate the old course reward"),Gold,PreviousGold);
+    TestEqual(TEXT("old progress advances without reset"),Legacy.AcademyCompletedLessons.FindRef(TEXT("Academy.Basic")),3);
+    return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDesktopShopCatalogTest,"GameXXK.MetaShop.DesktopCatalog",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FGameXXKDesktopShopCatalogTest::RunTest(const FString& Parameters)

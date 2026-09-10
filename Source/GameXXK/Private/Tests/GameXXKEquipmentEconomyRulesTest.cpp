@@ -199,7 +199,7 @@ bool FGameXXKEquipmentEconomyTenQualityCompatibilityTest::RunTest(const FString&
 		const FGameXXKAffixTierWeights Weights = FGameXXKAffixCatalog::GetTierWeights(Quality);
 		TestTrue(FString::Printf(TEXT("quality %d reforge chooses a weighted tier"), Rank), Weights.GetWeight(Candidate.Tier) > 0);
 		TestTrue(FString::Printf(TEXT("quality %d reforge tier does not exceed quality"), Rank), FGameXXKEquipmentQualityRules::GetRank(Candidate.Tier) <= Rank);
-		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Candidate.Unit, Candidate.Tier);
+		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Candidate.AffixId, Candidate.Tier);
 		TestTrue(FString::Printf(TEXT("quality %d reforge magnitude stays in the exact tier range"), Rank), Candidate.Magnitude >= Range.Minimum && Candidate.Magnitude <= Range.Maximum);
 		TestTrue(FString::Printf(TEXT("quality %d paid preview remains collection-valid"), Rank), FGameXXKEquipmentRules::ValidateCollectionState(State.EquipmentCollection));
 	}

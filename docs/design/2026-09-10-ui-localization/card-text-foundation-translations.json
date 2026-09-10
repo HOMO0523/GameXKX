@@ -1,0 +1,570 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.deb9e0b029c4b577",
+      "zh-Hans": "无状态",
+      "en": "No status"
+    },
+    {
+      "key": "Legacy.974e743272007412",
+      "zh-Hans": "守护",
+      "en": "Guard"
+    },
+    {
+      "key": "Legacy.70ed5cbfd2c2f381",
+      "zh-Hans": "地形双效",
+      "en": "Double Terrain"
+    },
+    {
+      "key": "Legacy.d935d0804f8d1133",
+      "zh-Hans": "地形免耗",
+      "en": "Free Terrain"
+    },
+    {
+      "key": "Legacy.18e5bbba8bc57c35",
+      "zh-Hans": "地形减耗",
+      "en": "Terrain Discount"
+    },
+    {
+      "key": "Legacy.e32d87db022ab71f",
+      "zh-Hans": "本回合地形双效",
+      "en": "Round Double Terrain"
+    },
+    {
+      "key": "Legacy.4e72a1ffe5bf956c",
+      "zh-Hans": "未知状态",
+      "en": "Unknown status"
+    },
+    {
+      "key": "Legacy.f785eb75581f5033",
+      "zh-Hans": "平原",
+      "en": "Plain"
+    },
+    {
+      "key": "Legacy.e4491f87cf7c7e24",
+      "zh-Hans": "断崖",
+      "en": "Cliff"
+    },
+    {
+      "key": "Legacy.8011d3247fa50aba",
+      "zh-Hans": "山林",
+      "en": "Forest"
+    },
+    {
+      "key": "Legacy.2b8fdbe96329d325",
+      "zh-Hans": "水岸",
+      "en": "Shore"
+    },
+    {
+      "key": "Legacy.de507d43074463a4",
+      "zh-Hans": "渡口",
+      "en": "Ferry"
+    },
+    {
+      "key": "Legacy.6629458488c78e07",
+      "zh-Hans": "村镇",
+      "en": "Village"
+    },
+    {
+      "key": "Legacy.039413af64ef5206",
+      "zh-Hans": "洞窟",
+      "en": "Cave"
+    },
+    {
+      "key": "Legacy.0dedaf16f89ecc49",
+      "zh-Hans": "无效地形",
+      "en": "Invalid terrain"
+    },
+    {
+      "key": "Legacy.dbeb4301977dee4e",
+      "zh-Hans": "全体敌方获得2点基础灼烧",
+      "en": "Apply 2 base Burn to all enemies"
+    },
+    {
+      "key": "Legacy.61b532a7ae832090",
+      "zh-Hans": "全体敌方获得2层破绽、1层标记",
+      "en": "Apply 2 Vulnerability and 1 Mark to all enemies"
+    },
+    {
+      "key": "Legacy.980c359607ae0472",
+      "zh-Hans": "全体友方获得10点基础治疗",
+      "en": "Grant 10 base healing to all allies"
+    },
+    {
+      "key": "Legacy.d8b6fd195842b461",
+      "zh-Hans": "全体友方获得3点内力",
+      "en": "Grant 3 Inner Power to all allies"
+    },
+    {
+      "key": "Legacy.a2fcc6d7b97d29bf",
+      "zh-Hans": "抽1张牌；全体友方获得20%触发者防御的护甲",
+      "en": "Draw 1 card; all allies gain Armor equal to 20% of the triggerer's Defense"
+    },
+    {
+      "key": "Legacy.509864ae779cd886",
+      "zh-Hans": "全体友方获得40%触发者防御的护甲并获得1层格挡",
+      "en": "All allies gain Armor equal to 40% of the triggerer's Defense and 1 Block"
+    },
+    {
+      "key": "Legacy.c38144881cc8d4eb",
+      "zh-Hans": "出牌者",
+      "en": "Caster"
+    },
+    {
+      "key": "Legacy.f6d28135039d8e71",
+      "zh-Hans": "所选目标",
+      "en": "Selected target"
+    },
+    {
+      "key": "Legacy.426f21cc899b29b5",
+      "zh-Hans": "全体敌方",
+      "en": "All enemies"
+    },
+    {
+      "key": "Legacy.59a3c70f7d7c3ad8",
+      "zh-Hans": "全体友方",
+      "en": "All allies"
+    },
+    {
+      "key": "Legacy.6e509c39b05ae2fd",
+      "zh-Hans": "其他全体友方",
+      "en": "All other allies"
+    },
+    {
+      "key": "Legacy.7ca7f4b78903b00e",
+      "zh-Hans": "每名存活友方",
+      "en": "Each living ally"
+    },
+    {
+      "key": "Legacy.e7bd017883e69320",
+      "zh-Hans": "生命最低友方",
+      "en": "Ally with the lowest HP"
+    },
+    {
+      "key": "Legacy.fe6560acd15d7795",
+      "zh-Hans": "生命最低的其他友方",
+      "en": "Other ally with the lowest HP"
+    },
+    {
+      "key": "Legacy.b8db34b1974fd39e",
+      "zh-Hans": "攻击者",
+      "en": "Attacker"
+    },
+    {
+      "key": "Legacy.24d48205b9611a51",
+      "zh-Hans": "本次打出的牌",
+      "en": "The card being played"
+    },
+    {
+      "key": "Legacy.8f9c7842fa90b18d",
+      "zh-Hans": "护甲最高友方",
+      "en": "Ally with the most Armor"
+    },
+    {
+      "key": "Legacy.a7a1b026b940d358",
+      "zh-Hans": "攻击最高友方",
+      "en": "Ally with the highest Attack"
+    },
+    {
+      "key": "Legacy.9b4d2707f77d9c32",
+      "zh-Hans": "标记最高敌方（同层优先生命比例最低）",
+      "en": "Enemy with the most Marks (ties: lowest HP ratio)"
+    },
+    {
+      "key": "Legacy.2ca5d16ceef9bbcd",
+      "zh-Hans": "所选目标同阵营全体",
+      "en": "All units on the selected target's side"
+    },
+    {
+      "key": "Legacy.7063c21ff1741554",
+      "zh-Hans": "无效对象",
+      "en": "Invalid recipient"
+    },
+    {
+      "key": "Legacy.393f85286e5de32a",
+      "zh-Hans": "无需选择（直接施放）",
+      "en": "No selection (cast immediately)"
+    },
+    {
+      "key": "Legacy.fc6d45314714612e",
+      "zh-Hans": "自身（直接施放）",
+      "en": "Self (cast immediately)"
+    },
+    {
+      "key": "Legacy.bbc5d5fe47962122",
+      "zh-Hans": "单体敌方（点击后选择目标）",
+      "en": "Single enemy (choose after clicking)"
+    },
+    {
+      "key": "Legacy.05d81c88510175a4",
+      "zh-Hans": "单体友方（点击后选择目标）",
+      "en": "Single ally (choose after clicking)"
+    },
+    {
+      "key": "Legacy.1d7fc1522431c111",
+      "zh-Hans": "其他单体友方（点击后选择目标）",
+      "en": "Other single ally (choose after clicking)"
+    },
+    {
+      "key": "Legacy.b105c6bc1752be69",
+      "zh-Hans": "全体敌方（直接施放）",
+      "en": "All enemies (cast immediately)"
+    },
+    {
+      "key": "Legacy.3d06af15b6813869",
+      "zh-Hans": "全体友方（直接施放）",
+      "en": "All allies (cast immediately)"
+    },
+    {
+      "key": "Legacy.7e58c99b3d26b6bf",
+      "zh-Hans": "除自身外全体友方（直接施放）",
+      "en": "All allies except self (cast immediately)"
+    },
+    {
+      "key": "Legacy.106a3449b31e6705",
+      "zh-Hans": "随机敌方（自动结算）",
+      "en": "Random enemy (automatic)"
+    },
+    {
+      "key": "Legacy.b163ff33d6dcd8f4",
+      "zh-Hans": "生命最低友方（自动结算）",
+      "en": "Ally with the lowest HP (automatic)"
+    },
+    {
+      "key": "Legacy.b630de50c9b1a026",
+      "zh-Hans": "生命最低的其他友方（自动结算）",
+      "en": "Other ally with the lowest HP (automatic)"
+    },
+    {
+      "key": "Legacy.d43ba5cb4a2c2960",
+      "zh-Hans": "任意存活单位（点击后选择目标）",
+      "en": "Any living unit (choose after clicking)"
+    },
+    {
+      "key": "Legacy.5f6b88be3cdd801b",
+      "zh-Hans": "无效目标",
+      "en": "Invalid target"
+    },
+    {
+      "key": "Legacy.25a5d87f338f3500",
+      "zh-Hans": "所选目标具有流血、中毒、灼烧或蚀伤",
+      "en": "Selected target has Bleed, Poison, Burn or Corrosion"
+    },
+    {
+      "key": "Legacy.8d91cb97d8e91384",
+      "zh-Hans": "出牌者具有流血、中毒、灼烧或蚀伤",
+      "en": "Caster has Bleed, Poison, Burn or Corrosion"
+    },
+    {
+      "key": "Legacy.41bdd93eacca4805",
+      "zh-Hans": "所选目标是友方",
+      "en": "Selected target is allied"
+    },
+    {
+      "key": "Legacy.bc79a1d07898299d",
+      "zh-Hans": "所选目标是敌方",
+      "en": "Selected target is hostile"
+    },
+    {
+      "key": "Legacy.97a10a08827bca6a",
+      "zh-Hans": "无效条件",
+      "en": "Invalid condition"
+    },
+    {
+      "key": "Legacy.ce4968b6386e7316",
+      "zh-Hans": "数值按消耗层数结算",
+      "en": "Amount scales with stacks spent"
+    },
+    {
+      "key": "Legacy.ec1a1c7b083ab313",
+      "zh-Hans": "消耗出牌者全部护甲",
+      "en": "Spend all of the caster's Armor"
+    },
+    {
+      "key": "Legacy.705b3d42aadd6fb9",
+      "zh-Hans": "本回合首次受到直接伤害时",
+      "en": "On taking direct damage for the first time this round"
+    },
+    {
+      "key": "Legacy.2344a3ff16af5f70",
+      "zh-Hans": "打出牌时",
+      "en": "On playing a card"
+    },
+    {
+      "key": "Legacy.2fbe568d0a1548d0",
+      "zh-Hans": "下次攻击时",
+      "en": "On the next attack"
+    },
+    {
+      "key": "Legacy.75571a88a0d1b6ba",
+      "zh-Hans": "下次治疗时",
+      "en": "On the next heal"
+    },
+    {
+      "key": "Legacy.1b613f8749a8c84e",
+      "zh-Hans": "回合结束时",
+      "en": "At turn end"
+    },
+    {
+      "key": "Legacy.8f4a45c96fe0e1ee",
+      "zh-Hans": "敌方单体攻击牌结算时",
+      "en": "When an enemy single-target attack card resolves"
+    },
+    {
+      "key": "Legacy.ec00c92a6eda72f3",
+      "zh-Hans": "下一张主动牌结算前",
+      "en": "Before the next active card resolves"
+    },
+    {
+      "key": "Legacy.0f39be59d617edf2",
+      "zh-Hans": "下一张主动牌结算后",
+      "en": "After the next active card resolves"
+    },
+    {
+      "key": "Legacy.86d9ee1735736445",
+      "zh-Hans": "下个玩家回合开始时",
+      "en": "At the start of the next player turn"
+    },
+    {
+      "key": "Legacy.def700c81dd16343",
+      "zh-Hans": "下个玩家回合第一张主动牌结算前",
+      "en": "Before the first active card next player turn resolves"
+    },
+    {
+      "key": "Legacy.8ff1ab93ae2cce24",
+      "zh-Hans": "下个玩家回合第一张主动牌结算后",
+      "en": "After the first active card next player turn resolves"
+    },
+    {
+      "key": "Legacy.af3382f9387c5bc3",
+      "zh-Hans": "下个玩家回合首次主动攻击指定状态目标时",
+      "en": "On the first active attack against a target with the specified status next player turn"
+    },
+    {
+      "key": "Legacy.531496c45d44b526",
+      "zh-Hans": "每张主动牌结算后",
+      "en": "After each active card resolves"
+    },
+    {
+      "key": "Legacy.d24654e11faa23a2",
+      "zh-Hans": "下一次地势收益结算前",
+      "en": "Before the next terrain benefit resolves"
+    },
+    {
+      "key": "Legacy.bf94a686d2522a42",
+      "zh-Hans": "无效触发",
+      "en": "Invalid trigger"
+    },
+    {
+      "key": "Legacy.0160c116c6e8f192",
+      "zh-Hans": "本回合结束时失效",
+      "en": "Expires at round end"
+    },
+    {
+      "key": "Legacy.adf37173c10559a7",
+      "zh-Hans": "无效持续时间",
+      "en": "Invalid duration"
+    },
+    {
+      "key": "Legacy.13f5a71b472de116",
+      "zh-Hans": "未知来源",
+      "en": "Unknown source"
+    },
+    {
+      "key": "Legacy.345e111eff8ec30f",
+      "zh-Hans": "指定状态",
+      "en": "Specified status"
+    },
+    {
+      "key": "Legacy.62e951a692ff8f4e",
+      "zh-Hans": "状态",
+      "en": "Status"
+    },
+    {
+      "key": "Legacy.ab3a497f9ebf3fad",
+      "zh-Hans": "重放本次触发牌的基础效果",
+      "en": "Replay the triggering card's base effects"
+    },
+    {
+      "key": "Legacy.20f9817c2884f411",
+      "zh-Hans": "重放本牌的基础效果",
+      "en": "Replay this card's base effects"
+    },
+    {
+      "key": "Legacy.e6a066c37086c8a7",
+      "zh-Hans": "全队下一次反击或格挡不消耗次数",
+      "en": "The party's next Counter or Block spends no charge"
+    },
+    {
+      "key": "Legacy.4c5481fd3e53d11d",
+      "zh-Hans": "切换地势",
+      "en": "Switch terrain"
+    },
+    {
+      "key": "Legacy.7ff1985f3c483bfb",
+      "zh-Hans": "未知效果",
+      "en": "Unknown effect"
+    },
+    {
+      "key": "Legacy.9a3dc99df8f4a2f7",
+      "zh-Hans": "下一张",
+      "en": "The next card"
+    },
+    {
+      "key": "Legacy.cbd77dc0e931f9b1",
+      "zh-Hans": "本回合后续",
+      "en": "Remaining this round"
+    },
+    {
+      "key": "Legacy.068c69578d501309",
+      "zh-Hans": "后续",
+      "en": "Subsequent"
+    },
+    {
+      "key": "Legacy.b19b5a1e55a8ea51",
+      "zh-Hans": "主动牌",
+      "en": "Active card"
+    },
+    {
+      "key": "Legacy.265dc5ccb6195ff1",
+      "zh-Hans": "牌",
+      "en": "Card"
+    },
+    {
+      "key": "Legacy.f050e288d4a4f3f9",
+      "zh-Hans": "其他角色的",
+      "en": "Other characters'"
+    },
+    {
+      "key": "Legacy.88c2a6a0a7eb84b6",
+      "zh-Hans": "本次打出的牌获得",
+      "en": "The card being played gains"
+    },
+    {
+      "key": "Legacy.99b6546be3fe8108",
+      "zh-Hans": "该牌出牌者获得",
+      "en": "That card's caster gains"
+    },
+    {
+      "key": "Legacy.3d4d3c049d4e68a7",
+      "zh-Hans": "本次打出的牌登记",
+      "en": "Register for the card being played"
+    },
+    {
+      "key": "Legacy.79c44e77b7b2e311",
+      "zh-Hans": "限指定职业触发",
+      "en": "Only the specified class can trigger it"
+    },
+    {
+      "key": "Legacy.d40d55446f1a2c6b",
+      "zh-Hans": "限指定角色触发",
+      "en": "Only the specified character can trigger it"
+    },
+    {
+      "key": "Legacy.610f2606b939bd95",
+      "zh-Hans": "仅主动出牌触发",
+      "en": "Triggered only by active card plays"
+    },
+    {
+      "key": "Legacy.cf706312f809c574",
+      "zh-Hans": "不作用于效果来源单位",
+      "en": "Does not affect the effect's source unit"
+    },
+    {
+      "key": "Legacy.1b4e5898a6a46129",
+      "zh-Hans": "触发状态伤害时不减层",
+      "en": "Triggering status damage does not remove stacks"
+    },
+    {
+      "key": "Legacy.6fe2b410d7dc9cce",
+      "zh-Hans": "生效一次",
+      "en": "Applies a single time"
+    },
+    {
+      "key": "Legacy.159a904c9b80cfe9",
+      "zh-Hans": "无效援护关系",
+      "en": "Invalid protection link"
+    },
+    {
+      "key": "Legacy.86c3696fd8c9275b",
+      "zh-Hans": "无效目标切换条件",
+      "en": "Invalid target-switch condition"
+    },
+    {
+      "key": "Legacy.dd72a5ec9c059196",
+      "zh-Hans": "主角卡",
+      "en": "Hero card"
+    },
+    {
+      "key": "Legacy.a0ad29839e5eea04",
+      "zh-Hans": "伙伴职业卡",
+      "en": "Companion class card"
+    },
+    {
+      "key": "Legacy.f5777d38040814f7",
+      "zh-Hans": "任务 NPC 支援卡",
+      "en": "Task NPC support card"
+    },
+    {
+      "key": "Legacy.0fedcb8742eec4ae",
+      "zh-Hans": "路线临时卡",
+      "en": "Temporary route card"
+    },
+    {
+      "key": "Legacy.3fbf34639fc54283",
+      "zh-Hans": "无效归属",
+      "en": "Invalid ownership"
+    },
+    {
+      "key": "Legacy.f34fcf6d32a9284e",
+      "zh-Hans": "固定",
+      "en": "Permanent"
+    },
+    {
+      "key": "Legacy.264f70230c98a2b7",
+      "zh-Hans": "无效稀有度",
+      "en": "Invalid rarity"
+    },
+    {
+      "key": "Legacy.427d229cc2a4b071",
+      "zh-Hans": "不满足出牌条件",
+      "en": "Play conditions are not met"
+    },
+    {
+      "key": "Legacy.f1e249b0d8457596",
+      "zh-Hans": "选择一名高亮目标后施放。",
+      "en": "Choose a highlighted target to cast."
+    },
+    {
+      "key": "Legacy.6712d8448e60aa80",
+      "zh-Hans": "当前没有可选目标。",
+      "en": "No targets are currently available."
+    },
+    {
+      "key": "Legacy.765c22765b75ecad",
+      "zh-Hans": "点击后自动随机结算",
+      "en": "Click to resolve a random target automatically"
+    },
+    {
+      "key": "Legacy.95f71925e604730c",
+      "zh-Hans": "点击后立即施放",
+      "en": "Click to cast immediately"
+    },
+    {
+      "key": "Legacy.f0eae5845f4c8ee0",
+      "zh-Hans": "（仅当前述结果成功时）",
+      "en": "(Only if the preceding result succeeded)"
+    },
+    {
+      "key": "Legacy.b057c0122a3332ef",
+      "zh-Hans": "（仅当前述消耗成功时）",
+      "en": "(Only if the preceding cost was paid)"
+    },
+    {
+      "key": "Legacy.bbdb6d466fd71e68",
+      "zh-Hans": "每消耗1层，再触发1次毒爆",
+      "en": "Trigger 1 additional Poison Burst per 1 stack spent"
+    }
+  ]
+}

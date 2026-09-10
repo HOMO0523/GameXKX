@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -15,6 +15,30 @@ import ue_tdd_pipeline as pipeline
 
 
 class UETDDPipelineCommandTests(unittest.TestCase):
+    def test_active_pie_keeps_editor_and_runtime_session_open(self) -> None:
+        client = Mock()
+        client.connect.return_value = True
+        client.is_in_pie.return_value = True
+        with patch.object(pipeline, "is_editor_running", return_value=True), patch.object(
+            pipeline, "UnrealMCPClient", return_value=client
+        ), patch.object(pipeline, "kill_editor") as close, patch.object(pipeline, "build_project") as build:
+            result = pipeline.run_tdd_cycle(build=True, launch=True)
+        self.assertFalse(result["success"])
+        client.save_dirty_packages.assert_not_called()
+        close.assert_not_called()
+        build.assert_not_called()
+
+    def test_stopped_pie_still_saves_dirty_packages_before_close(self) -> None:
+        client = Mock()
+        client.connect.return_value = True
+        client.is_in_pie.return_value = False
+        client.save_dirty_packages.return_value = {"save_result": True, "dirty_after": []}
+        with patch.object(pipeline, "is_editor_running", return_value=True), patch.object(
+            pipeline, "UnrealMCPClient", return_value=client
+        ):
+            self.assertTrue(pipeline.save_running_editor_before_close())
+        client.save_dirty_packages.assert_called_once()
+
     def test_build_project_uses_project_and_disables_hot_reload(self) -> None:
         with patch.object(
             pipeline.subprocess,

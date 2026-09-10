@@ -2,6 +2,7 @@
 
 #include "GameXXKMVPRules.h"
 #include "GameXXKTravelMoneyRules.h"
+#include "GameXXKHuntRules.h"
 
 namespace GameXXKInventoryItemPresentationPrivate
 {
@@ -13,6 +14,7 @@ namespace GameXXKInventoryItemPresentationPrivate
 
 FString FGameXXKInventoryItemPresentation::ResolveIconPath(const FName ItemId)
 {
+	if(FGameXXKHuntRules::IsOrder(ItemId))return FGameXXKHuntRules::IconPath;
 	if (ItemId == FGameXXKTravelMoneyRules::ItemId()) return FGameXXKTravelMoneyRules::IconPath;
 	return IsInspectable(ItemId)
 		? FString(GameXXKInventoryItemPresentationPrivate::TutorialMapIcon)

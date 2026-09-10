@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 2,
+  "designBasis": "names-and-themes-only",
+  "expectedUniqueIcons": 2,
+  "count": 2,
+  "complete": true,
+  "tool": "built-in image_gen",
+  "backgroundAndResizeAuthorized": true,
+  "visualReview": "passed",
+  "icons": [
+    {
+      "slug": "strengthening_stone",
+      "name": "强化石",
+      "set": "resources",
+      "slot": "material",
+      "asset": "/Game/GameXXK/UI/Items/strengthening_stone",
+      "raw": "SourceArt/UI/Items/gemstyle-resources-20260910/raw/strengthening_stone.png",
+      "rawSha256": "c81b8c02291548d3324b958d14550599d726a2845b44e3d8b28eb5383dfce4ff",
+      "icon": "SourceArt/UI/Items/gemstyle-resources-20260910/icons/strengthening_stone.png",
+      "sha256": "6e00fd951dcf25936e5c3c2e7ff63db6ae95bead7034d5d2ecad21d5036c6b32",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sourceBGRASha1": "78C0A263B848E1B82AEFA5AD38EA9BE5C9A83EA6",
+      "transparentBorder": true,
+      "alphaBounds": [
+        30,
+        32,
+        482,
+        479
+      ],
+      "opaquePixelCount": 147170,
+      "removedBackgroundPixels": 824307,
+      "method": "magenta-chroma-with-edge-cleanup",
+      "chromaResidualPixels": 0,
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "flipHorizontal": false,
+      "visualReview": "passed",
+      "imported": true
+    },
+    {
+      "slug": "refinement_sand",
+      "name": "洗炼砂",
+      "set": "resources",
+      "slot": "material",
+      "asset": "/Game/GameXXK/UI/Items/refinement_sand",
+      "raw": "SourceArt/UI/Items/gemstyle-resources-20260910/raw/refinement_sand.png",
+      "rawSha256": "21ebd3cbf18f54a2803c8d4fcf9e6a1a889f8734e02b16941168889b4a972d7f",
+      "icon": "SourceArt/UI/Items/gemstyle-resources-20260910/icons/refinement_sand.png",
+      "sha256": "8a13f8c05f48fd0f0afe1c9d7244a195e01c350db37658344584fb1b7cdce3fe",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "sourceBGRASha1": "B9F085D7674749CFB195CAD965DCA5E9B1EFD850",
+      "transparentBorder": true,
+      "alphaBounds": [
+        35,
+        30,
+        477,
+        482
+      ],
+      "opaquePixelCount": 154967,
+      "removedBackgroundPixels": 753651,
+      "method": "magenta-chroma-with-edge-cleanup",
+      "chromaResidualPixels": 0,
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "flipHorizontal": false,
+      "visualReview": "passed",
+      "imported": true
+    }
+  ],
+  "approvedForRuntime": true,
+  "approval": "用户：道具都可以了，切好导入替换吧",
+  "runtimeImported": true,
+  "importReport": "Saved/Diagnostics/EquipmentRedesign-20260910/import.json"
+}

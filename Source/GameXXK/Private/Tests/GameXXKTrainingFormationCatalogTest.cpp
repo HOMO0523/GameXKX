@@ -1,4 +1,5 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKHuntRules.h"
 
 #include "GameXXKEnemyCatalog.h"
 #include "Misc/AutomationTest.h"
@@ -13,17 +14,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKTrainingFormationCatalogTest::RunTest(const FString& Parameters)
 {
 	const TArray<FGameXXKTrainingStageDefinition>& Stages = FGameXXKTrainingRules::GetStageDefinitions();
-	TestEqual(TEXT("there are twenty-seven authored stages"), Stages.Num(), 27);
+	TestEqual(TEXT("twenty-seven base stages plus three Hunts"), Stages.Num(), 30);
 	TSet<FName> SeenEnemyIds;
 	int32 FormationCount = 0;
 	for (int32 StageIndex = 0; StageIndex < Stages.Num(); ++StageIndex)
 	{
 		const FGameXXKTrainingStageDefinition& Stage = Stages[StageIndex];
-		TestEqual(Stage.StageId.ToString() + TEXT(" fixed combat level"), Stage.CombatLevel, (StageIndex + 1) * 5);
+		TestEqual(Stage.StageId.ToString() + TEXT(" fixed combat level"), Stage.CombatLevel, FGameXXKHuntRules::IsHuntStage(Stage.StageId)?(static_cast<int32>(Stage.Difficulty)+1)*45:(StageIndex+1)*5);
 		TestEqual(Stage.StageId.ToString() + TEXT(" has four ordinary identities"), Stage.NormalEnemyPool.Num(), 4);
 		TestEqual(Stage.StageId.ToString() + TEXT(" has two elite identities"), Stage.EliteEnemyPool.Num(), 2);
 		const TArray<FGameXXKTrainingEncounterDefinition> Encounters = FGameXXKTrainingRules::BuildEncounterSequence(Stage.StageId);
-		TestEqual(Stage.StageId.ToString() + TEXT(" has seven authored encounters"), Encounters.Num(), 7);
+		TestEqual(Stage.StageId.ToString() + TEXT(" has the full authored encounter pool"), Encounters.Num(), FGameXXKHuntRules::IsHuntStage(Stage.StageId)?21:7);
 		for (int32 EncounterIndex = 0; EncounterIndex < Encounters.Num(); ++EncounterIndex)
 		{
 			const FGameXXKTrainingEncounterDefinition& Encounter = Encounters[EncounterIndex];
@@ -46,13 +47,13 @@ bool FGameXXKTrainingFormationCatalogTest::RunTest(const FString& Parameters)
 				}));
 				SeenEnemyIds.Add(Slot.EnemyDefinitionId);
 			}
-			const EGameXXKTrainingEncounterKind ExpectedKind = EncounterIndex < 4
+			const EGameXXKTrainingEncounterKind ExpectedKind = EncounterIndex % 7 < 4
 				? EGameXXKTrainingEncounterKind::Normal
-				: EncounterIndex < 6 ? EGameXXKTrainingEncounterKind::Elite : EGameXXKTrainingEncounterKind::Boss;
+				: EncounterIndex % 7 < 6 ? EGameXXKTrainingEncounterKind::Elite : EGameXXKTrainingEncounterKind::Boss;
 			TestEqual(TEXT("encounter kind follows 4/2/1 order"), Encounter.Kind, ExpectedKind);
 		}
 	}
-	TestEqual(TEXT("all 189 formations are materialized"), FormationCount, 189);
+	TestEqual(TEXT("all 252 formations are materialized"), FormationCount, 252);
 	TestEqual(TEXT("all twenty-one enemies appear"), SeenEnemyIds.Num(), 21);
 
 	const FName HellThreeOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Hell, 7);

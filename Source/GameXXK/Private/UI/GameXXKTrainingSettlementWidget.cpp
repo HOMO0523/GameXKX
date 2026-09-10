@@ -1,4 +1,6 @@
 #include "UI/GameXXKTrainingSettlementWidget.h"
+#include "GameXXKHuntRules.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -24,7 +26,7 @@ namespace
 	UTextBlock* Text(UWidgetTree* Tree, const FName Name, const FString& Value, int32 Size, bool Display = false, bool Bold = false)
 	{
 		auto* Block = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-		Block->SetText(FText::FromString(Value)); Block->SetFont(FGameXXKInRunUiStyle::Font(Size, true, Bold));
+		Block->SetText(GameXXKLocalization::Source(Value)); Block->SetFont(FGameXXKInRunUiStyle::Font(Size, true, Bold));
 		Block->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		Block->SetVisibility(ESlateVisibility::HitTestInvisible); Block->SetAutoWrapText(true);
 		return Block;
@@ -111,33 +113,39 @@ void UGameXXKTrainingSettlementWidget::EnsureLayout()
 void UGameXXKTrainingSettlementWidget::RefreshReceipt()
 {
 	if (!Page) return;
-	StageText->SetText(Receipt.StageDisplayName); FirstClearText->SetText(FText::FromString(Receipt.bFirstClear ? TEXT("首次通关") : TEXT("再战告捷")));
-	GoldText->SetText(FText::FromString(TEXT("+") + FText::AsNumber(Receipt.Gold).ToString()));
-	GoldDetail->SetText(FText::FromString(FString::Printf(TEXT("含行旅钱折算金币 +%d"), Receipt.RouteGold)));
-	ExperienceText->SetText(FText::FromString(TEXT("+") + FText::AsNumber(Receipt.Experience).ToString()));
+	StageText->SetText(Receipt.StageDisplayName); FirstClearText->SetText(GameXXKLocalization::Source(Receipt.bFirstClear ? TEXT("首次通关") : TEXT("再战告捷")));
+	GoldText->SetText(GameXXKLocalization::Source(TEXT("+") + FText::AsNumber(Receipt.Gold).ToString()));
+	GoldDetail->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("含行旅钱折算金币 +%d"), Receipt.RouteGold)));
+	ExperienceText->SetText(GameXXKLocalization::Source(TEXT("+") + FText::AsNumber(Receipt.Experience).ToString()));
 	const bool Advanced = Receipt.AdvancedChestCount > 0;
-	ChestImage->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, Advanced
+	const bool Hunt=Receipt.HuntChestCount>0;
+	ChestImage->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr,Hunt?TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingHuntChest.T_Item_TrainingHuntChest"): Advanced
 		? TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingAdvancedChest.T_Item_TrainingAdvancedChest")
 		: TEXT("/Game/GameXXK/UI/Items/T_Item_TrainingNormalChest.T_Item_TrainingNormalChest")));
-	const int32 ChestCount = Receipt.NormalChestCount + Receipt.AdvancedChestCount;
+	const int32 ChestCount = Receipt.NormalChestCount + Receipt.AdvancedChestCount + Receipt.HuntChestCount;
 	ChestImage->SetRenderOpacity(ChestCount > 0 ? 1.f : .25f);
-	ChestText->SetText(FText::FromString(ChestCount > 0 ? FString::Printf(TEXT("%s宝箱 × %d"), Advanced ? TEXT("高级") : TEXT("普通"), ChestCount) : TEXT("本次未掉落")));
+	ChestText->SetText(ChestCount>0?FText::Format(GameXXKLocalization::Text(TEXT("Chest.Count")),GameXXKLocalization::Text(Hunt?TEXT("Chest.Hunt.Name"):Advanced?TEXT("Chest.Advanced.Name"):TEXT("Chest.Normal.Name")),FText::AsNumber(ChestCount)):GameXXKLocalization::Text(TEXT("Chest.NoDrop")));
 	for (int32 I = 0; I < MemberNames.Num(); ++I)
 	{
 		if (!Receipt.Members.IsValidIndex(I)) continue;
 		const auto& M = Receipt.Members[I]; MemberNames[I]->SetText(M.DisplayName);
-		MemberLevels[I]->SetText(FText::FromString(M.LevelAfter > M.LevelBefore ? FString::Printf(TEXT("Lv.%d → %d"), M.LevelBefore, M.LevelAfter) : FString::Printf(TEXT("Lv.%d"), M.LevelAfter)));
-		MemberExperience[I]->SetText(FText::FromString(M.LevelAfter >= 100 ? TEXT("已达满级") : FString::Printf(TEXT("经验 +%d    %d / %d"), M.ExperienceGained, M.ExperienceAfter, UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(M.LevelAfter))));
+		MemberLevels[I]->SetText(GameXXKLocalization::Source(M.LevelAfter > M.LevelBefore ? FString::Printf(TEXT("Lv.%d → %d"), M.LevelBefore, M.LevelAfter) : FString::Printf(TEXT("Lv.%d"), M.LevelAfter)));
+		MemberExperience[I]->SetText(GameXXKLocalization::Source(M.LevelAfter >= 100 ? TEXT("已达满级") : FString::Printf(TEXT("经验 +%d    %d / %d"), M.ExperienceGained, M.ExperienceAfter, UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(M.LevelAfter))));
 		const int32 Needed = UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(M.LevelAfter);
 		MemberBars[I]->SetPercent(Needed > 0 ? FMath::Clamp(static_cast<float>(M.ExperienceAfter) / Needed, 0.f, 1.f) : 1.f);
 	}
 	const auto& S = Receipt.Stats;
-	StatsText->SetText(FText::FromString(S.bComplete
+	StatsText->SetText(GameXXKLocalization::Source(S.bComplete
 		? FString::Printf(TEXT("%d 回合    ·    主动出牌 %d 张    ·    存活 %d / 3\n敌方损失气血 %lld    我方损失气血 %lld    有效治疗 %lld    获得护甲 %lld"), S.Rounds, S.ActiveCardsPlayed, S.SurvivingPartyUnits, S.PartyDamageDealt, S.PartyDamageTaken, S.HealingDone, S.ArmorGenerated)
 		: TEXT("该场战斗的完整统计未记录。")));
 	FGameXXKTrainingStageDefinition Next;
-	UnlockText->SetText(FText::FromString(FGameXXKTrainingRules::TryGetStageDefinition(Receipt.UnlockedStageId, Next)
+	UnlockText->SetText(GameXXKLocalization::Source(FGameXXKTrainingRules::TryGetStageDefinition(Receipt.UnlockedStageId, Next)
 		? TEXT("已解锁：") + Next.DisplayName.ToString() : TEXT("本关已通关，可继续挂机历练")));
+	if(!Receipt.GrantedHuntOrderId.IsNone())
+	{
+		const FText Order=FText::Format(GameXXKLocalization::Text(Receipt.bHuntOrderPendingDelivery?TEXT("Hunt.Settlement.OrderPending"):TEXT("Hunt.Settlement.OrderGranted")),FGameXXKHuntRules::OrderName(Receipt.GrantedHuntOrderId));
+		UnlockText->SetText(FText::Format(GameXXKLocalization::Text(TEXT("Common.TwoLines")),UnlockText->GetText(),Order));
+	}
 	ConfirmButton->SetIsEnabled(Receipt.ReceiptId.IsValid() && !bConfirmed);
 }
 
@@ -147,7 +155,7 @@ bool UGameXXKTrainingSettlementWidget::ConfirmForTest()
 	auto* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->ConfirmTrainingSettlement(Receipt.ReceiptId))
 	{
-		if (ErrorText) ErrorText->SetText(Subsystem ? Subsystem->GetLastSaveLoadError() : FText::FromString(TEXT("无法读取结算，请重试。")));
+		if (ErrorText) ErrorText->SetText(Subsystem ? Subsystem->GetLastSaveLoadError() : GameXXKLocalization::Source(TEXT("无法读取结算，请重试。")));
 		return false;
 	}
 	bConfirmed = true; ConfirmButton->SetIsEnabled(false);

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "expected": 2,
+  "designBasis": "按名称与用途重新设计，使用现有宝石画风",
+  "backgroundAndResizeAuthorized": true,
+  "jobs": [
+    {
+      "slug": "strengthening_stone",
+      "name": "强化石",
+      "set": "resources",
+      "slot": "material",
+      "theme": "装备锻造、提升强度",
+      "palette": "鲜亮钢蓝与青灰矿石，少量暖橙金",
+      "subject": "一块短宽饱满的锻造矿石，外形是不规则圆钝六角大石块，三个主要大块面；中心嵌一块简洁厚实的橙金向上箭头形矿纹，像天然同块矿脉，有实体厚度，箭头短宽有力，四周不镶边、不装金属底座。与彩色宝石区别：是不透明的厚矿石，轮廓略粗犷，只有两处大崩口，不画碎屑",
+      "asset": "/Game/GameXXK/UI/Items/strengthening_stone"
+    },
+    {
+      "slug": "refinement_sand",
+      "name": "洗炼砂",
+      "set": "resources",
+      "slot": "material",
+      "theme": "装备洗炼、细砂、重新淬炼",
+      "palette": "清亮青紫布袋、奶白袋口、明亮橙金砂",
+      "subject": "一个短宽饱满的青紫小布袋，奶白色袋口敞开，清楚可见一小堆明亮橙金洗炼砂；砂堆用三到五块大色面概括，几粒大而清楚的小金石点出颗粒感。袋子底部圆稳，侧面一条短粗奶白系绳，没有长流苏。砂子全部装在袋内，不能有漂浮粒子；轮廓紧凑完整，不加宝石或文字",
+      "asset": "/Game/GameXXK/UI/Items/refinement_sand"
+    }
+  ]
+}

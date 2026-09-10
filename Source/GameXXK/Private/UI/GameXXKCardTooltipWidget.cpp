@@ -1,4 +1,5 @@
 #include "UI/GameXXKCardTooltipWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKCardNameStyle.h"
 
@@ -160,10 +161,12 @@ void UGameXXKCardTooltipWidget::ConfigureDirect(
 	ConfiguredQuality = EGameXXKCardQuality::Invalid;
 	PillBody.Reset();
 	ConfiguredTitle = InTitle;
-	CompactBody = RemoveLeadingTitleLine(InTitle.ToString(), InCompactBody);
+	CompactBody = RemoveLeadingTitleLine(InTitle.BuildSourceString(), InCompactBody);
+	CompactBody = RemoveLeadingTitleLine(InTitle.ToString(),CompactBody);
 	ExpandedBody = RemoveLeadingTitleLine(
-		InTitle.ToString(),
+		InTitle.BuildSourceString(),
 		InExpandedBody.IsEmpty() ? InCompactBody : InExpandedBody);
+	ExpandedBody=RemoveLeadingTitleLine(InTitle.ToString(),ExpandedBody);
 	PresentationWidth = CardTooltipWidth;
 	RefreshPresentation(true);
 }
@@ -175,10 +178,10 @@ float UGameXXKCardTooltipWidget::GetFixedWidthForTest() const
 
 FString UGameXXKCardTooltipWidget::GetDisplayedTextForTest() const
 {
-	const FString Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
+	const FString Body = GameXXKLocalization::Source(bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody).ToString();
 	return ConfiguredTitle.IsEmpty()
 		? Body
-		: ConfiguredTitle.ToString() + TEXT("\n") + Body;
+		: GameXXKLocalization::Localize(ConfiguredTitle).ToString() + TEXT("\n") + Body;
 }
 
 FString UGameXXKCardTooltipWidget::GetRenderedTextForTest() const
@@ -214,7 +217,7 @@ FString UGameXXKCardTooltipWidget::GetRenderedTextForTest() const
 	const FString Body = FString::Join(BodyLines, TEXT("\n"));
 	return ConfiguredTitle.IsEmpty()
 		? Body
-		: ConfiguredTitle.ToString() + TEXT("\n") + Body;
+		: GameXXKLocalization::Localize(ConfiguredTitle).ToString() + TEXT("\n") + Body;
 }
 
 TArray<FString> UGameXXKCardTooltipWidget::GetPillTextsForTest() const
@@ -362,20 +365,22 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 
 void UGameXXKCardTooltipWidget::RefreshPresentation(const bool bForce)
 {
+	const uint64 LanguageRevision=GameXXKLocalization::GetRevision();
 	const bool bResolvedExpanded = ResolveExpandedState();
 	const bool bResolvedPills = !bResolvedExpanded && !PillBody.IsEmpty()
 		&& Inspection.GetMode() == EGameXXKCardTooltipMode::Pills;
-	if (!bForce && bExpanded == bResolvedExpanded && bPillHelpDisplayed == bResolvedPills)
+	if (!bForce && PresentedLanguageRevision==LanguageRevision && bExpanded == bResolvedExpanded && bPillHelpDisplayed == bResolvedPills)
 	{
 		return;
 	}
 	bExpanded = bResolvedExpanded;
 	bPillHelpDisplayed = bResolvedPills;
+	PresentedLanguageRevision=LanguageRevision;
 	if (!TitleText || !BodyBox || !WidgetTree)
 	{
 		return;
 	}
-	TitleText->SetText(ConfiguredTitle);
+	TitleText->SetText(GameXXKLocalization::Localize(ConfiguredTitle));
 	if (!ConfiguredCardId.IsNone()) PresentationWidth = CardTooltipWidth;
 	RootSizeBox->SetWidthOverride(PresentationWidth);
 	TitleText->SetWrapTextAt(PresentationWidth - 44);
@@ -386,7 +391,7 @@ void UGameXXKCardTooltipWidget::RefreshPresentation(const bool bForce)
 	GameXXKCardNameStyle::Apply(TitleText, ConfiguredQuality, 1);
 	TitleText->SetVisibility(ConfiguredTitle.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	const FString& Body = bExpanded ? ExpandedBody : bPillHelpDisplayed ? PillBody : CompactBody;
-	PresentationWidth = GameXXKCardTooltipPresentation::PreferredWidth(Body);
+	PresentationWidth = GameXXKCardTooltipPresentation::PreferredWidth(GameXXKLocalization::Source(Body).ToString());
 	FGameXXKCardTooltipPresentationStyle Style;
 	Style.WrapWidth = PresentationWidth - 44;
 	Style.bPillHelp = bPillHelpDisplayed;

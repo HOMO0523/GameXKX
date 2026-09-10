@@ -1,0 +1,432 @@
+{
+  "count": 21,
+  "tool": "built-in image_gen",
+  "phase": "completing-with-user-broad-forms-and-cartoon-eyes-feedback",
+  "approvalGate": "整批审阅后才进入切图导入",
+  "latestUserFeedback": [
+    "皮毛与明暗不要比原图更碎",
+    "眼睛用卡通图形画法，避免写实虹膜和玻璃反光"
+  ],
+  "jobs": [
+    {
+      "slug": "rooster",
+      "name": "公鸡",
+      "id": "Enemy.Ch1.Rooster",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png",
+      "identitySourceSha256": "f7543ca644d968f8b4f32c6d2ad2317fb57b9597b568692d0b9b04d69c6fedd8",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "公鸡：保留原图米白胸腹、鲜朱红尖鸡冠和肉垂、三条宽弯红色大尾羽、暖黄短喙与双鸡爪、粗斜眉警觉眼神。挺胸双足站立，短翅贴身、原圆三角身体，头和喙明确朝右；羽毛合成少量大块，不加铠甲饰品，尾羽不是火焰。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：公鸡：保留原图米白胸腹、鲜朱红尖鸡冠和肉垂、三条宽弯红色大尾羽、暖黄短喙与双鸡爪、粗斜眉警觉眼神。挺胸双足站立，短翅贴身、原圆三角身体，头和喙明确朝右；羽毛合成少量大块，不加铠甲饰品，尾羽不是火焰。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png"
+      ]
+    },
+    {
+      "slug": "goat",
+      "name": "山羊",
+      "id": "Enemy.Ch1.Goat",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png",
+      "identitySourceSha256": "ad6e09c7fa4b3f90e746912b1ebecd239c7a2292ce84c3360aa7d371020294d7",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "山羊：保留原图拟人两足直立的奶白胖山羊，椭圆大肚、两只很短的前臂和深灰蹄，脚为另外两只短蹄，恰好四肢；一对短厚灰褐盘弯角，横耳、原菱形小胡须，平直浓眉半眯眼和不屑小嘴、短上翘尾。身体与脸转为3/4朝右。不能改成四足普通写实羊，不能变瘦或变成青角羊王的大角。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：山羊：保留原图拟人两足直立的奶白胖山羊，椭圆大肚、两只很短的前臂和深灰蹄，脚为另外两只短蹄，恰好四肢；一对短厚灰褐盘弯角，横耳、原菱形小胡须，平直浓眉半眯眼和不屑小嘴、短上翘尾。身体与脸转为3/4朝右。不能改成四足普通写实羊，不能变瘦或变成青角羊王的大角。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png"
+      ]
+    },
+    {
+      "slug": "weasel",
+      "name": "黄鼬",
+      "id": "Enemy.Ch1.Weasel",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/03_weasel.png",
+      "identitySourceSha256": "2554cdc0d21f5dfce86a4b0b88a92f908d76b37469d41d0e50087b6b1ca672e8",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "黄鼬：保留原细长流线形躯干，金黄毛与奶白下颚腹部，尖小耳和长尖口鼻、狡黠细眼；原背部抬高前半身压低的潜行姿态、四只短腿，深棕脚，一条巨大向左上卷成C弧的长尾且尾尖深棕。头伸向右，四肢对应躯干正确，不能画成狐狸或圆胖松鼠，不加道具或臭气。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：黄鼬：保留原细长流线形躯干，金黄毛与奶白下颚腹部，尖小耳和长尖口鼻、狡黠细眼；原背部抬高前半身压低的潜行姿态、四只短腿，深棕脚，一条巨大向左上卷成C弧的长尾且尾尖深棕。头伸向右，四肢对应躯干正确，不能画成狐狸或圆胖松鼠，不加道具或臭气。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/03_weasel.png"
+      ]
+    },
+    {
+      "slug": "civet",
+      "name": "狸猫",
+      "id": "Enemy.Ch1.Civet",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/04_civet.png",
+      "identitySourceSha256": "f86a3fd209f1ba9e8207e33538e58e70fe7704644588bde705b3aeaa4528bcec",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "狸猫：保留原矮圆梨形身体、很大的圆耳、奶棕毛、眼周两块深棕面罩、大圆眼、短嘴红棕鼻、四只短深棕脚。一条粗大卷起的环纹尾在左后方，奶棕与深棕宽条纹；身体背上只保留少量原斑点。四足站立3/4朝右，别变成细长黄鼬，不加帽衣、项圈或人手。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：狸猫：保留原矮圆梨形身体、很大的圆耳、奶棕毛、眼周两块深棕面罩、大圆眼、短嘴红棕鼻、四只短深棕脚。一条粗大卷起的环纹尾在左后方，奶棕与深棕宽条纹；身体背上只保留少量原斑点。四足站立3/4朝右，别变成细长黄鼬，不加帽衣、项圈或人手。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/04_civet.png"
+      ]
+    },
+    {
+      "slug": "ironfeather",
+      "name": "铁羽斗鸡",
+      "id": "Enemy.Ch1.IronfeatherRooster",
+      "chapter": 1,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/05_ironfeather.png",
+      "identitySourceSha256": "0f47b58e9cdb91754a97bee8a95cb9b285a1193126a0db3db2e94882158c7ab5",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "铁羽斗鸡：保留原高挺黑灰斗鸡，暗红尖冠与肉垂、黄褐喙、侧脸一道交叉短疤、冷峻细眼；翅膀为原阶梯状五块左右宽厚铁灰羽板，尾部四条长而尖的黑灰刀羽，鸡爪厚实。保持两腿两翅一尾、3/4向右挺胸，明显比普通红尾公鸡硬朗，但仍是斗鸡不是机器人；不加头盔兵器。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：铁羽斗鸡：保留原高挺黑灰斗鸡，暗红尖冠与肉垂、黄褐喙、侧脸一道交叉短疤、冷峻细眼；翅膀为原阶梯状五块左右宽厚铁灰羽板，尾部四条长而尖的黑灰刀羽，鸡爪厚实。保持两腿两翅一尾、3/4向右挺胸，明显比普通红尾公鸡硬朗，但仍是斗鸡不是机器人；不加头盔兵器。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/05_ironfeather.png"
+      ]
+    },
+    {
+      "slug": "bluehorn",
+      "name": "青角羊王",
+      "id": "Enemy.Ch1.BluehornGoatKing",
+      "chapter": 1,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/06_bluehorn.png",
+      "identitySourceSha256": "c1e917470b58a450e44aa4050b3b9f168ee0248f31f98b769668579a9eb5a292",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "青角羊王：保留原威严四足长毛羊王，奶白厚肩鬃与胸髯、额前尖束毛、长分叉胡须，恰好两根巨大向后上弯的青灰蓝角，短翘尾、深灰四蹄。四足站稳、头略低3/4朝右，宽胸和巨大角是精英辨识点；羊角用少数宽分节，鬃毛合成大簇，不变成两足胖羊，不戴皇冠、不加第三根角或冰晶。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：青角羊王：保留原威严四足长毛羊王，奶白厚肩鬃与胸髯、额前尖束毛、长分叉胡须，恰好两根巨大向后上弯的青灰蓝角，短翘尾、深灰四蹄。四足站稳、头略低3/4朝右，宽胸和巨大角是精英辨识点；羊角用少数宽分节，鬃毛合成大簇，不变成两足胖羊，不戴皇冠、不加第三根角或冰晶。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/06_bluehorn.png"
+      ]
+    },
+    {
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "id": "Enemy.Ch1.MoneyRat",
+      "chapter": 1,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png",
+      "identitySourceSha256": "d71d6b99bf437562a3bb354356d636520f816cb389769251045f4caffce85814",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "金钱鼠Boss：保留原褐色肥壮鼠商人、尖脸红鼻、露大门牙的狡黠笑、卷长胡须、原铜钱形大耳；赭红金边短披肩与棕衣、红腰带、金色手脚环。两手牢抱胸前一枚巨大的方孔铜钱，背后保持原竹架与青绳串钱的结构，但小钱串合并成三组疏朗大串、减少碎线；一条细卷鼠尾和两只宽脚完整可见。三角头+圆巨钱+厚重身体，3/4朝右，Boss更有重量。只画一个鼠，不添加座椅、地面钱堆、皇冠或背景。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：金钱鼠Boss：保留原褐色肥壮鼠商人、尖脸红鼻、露大门牙的狡黠笑、卷长胡须、原铜钱形大耳；赭红金边短披肩与棕衣、红腰带、金色手脚环。两手牢抱胸前一枚巨大的方孔铜钱，背后保持原竹架与青绳串钱的结构，但小钱串合并成三组疏朗大串、减少碎线；一条细卷鼠尾和两只宽脚完整可见。三角头+圆巨钱+厚重身体，3/4朝右，Boss更有重量。只画一个鼠，不添加座椅、地面钱堆、皇冠或背景。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png"
+      ]
+    },
+    {
+      "slug": "graywolf",
+      "name": "灰狼",
+      "id": "Enemy.Ch2.GrayWolf",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/07_graywolf.png",
+      "identitySourceSha256": "37d6400431a7542d567d0f23e5a9bd84df07a043a5cb008e9484cd1ae2a41ccc",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "灰狼：保留原瘦长敏捷灰狼，灰褐毛、米白短口鼻和颈下毛、尖耳，颈背少数尖鬃块、狭长警惕眼、较低的长尾。一共四条细壮腿，身体略前倾、头低朝右，保留原侧向潜行姿态但有3/4厚度；体型轻、脖子较细，不能画成巨大狼王，不加铠甲或魔法。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：灰狼：保留原瘦长敏捷灰狼，灰褐毛、米白短口鼻和颈下毛、尖耳，颈背少数尖鬃块、狭长警惕眼、较低的长尾。一共四条细壮腿，身体略前倾、头低朝右，保留原侧向潜行姿态但有3/4厚度；体型轻、脖子较细，不能画成巨大狼王，不加铠甲或魔法。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/07_graywolf.png"
+      ]
+    },
+    {
+      "slug": "boar",
+      "name": "野猪",
+      "id": "Enemy.Ch2.Boar",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/08_boar.png",
+      "identitySourceSha256": "8a33e559b7e40a91ead33bc1cdb61662ffef5f2cebe48e1aa1b17e9cef293d9b",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "野猪：保留原土棕色矮胖野猪，椭圆厚背、深棕短硬鬃、小尖耳、圆柱猪鼻两鼻孔、一对短弯米白獠牙、卷小尾，四条短腿。头低3/4朝右，倔强愤怒眼神；普通猪体型圆敦、牙短，不变成赤獠猪王、不添装甲。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：野猪：保留原土棕色矮胖野猪，椭圆厚背、深棕短硬鬃、小尖耳、圆柱猪鼻两鼻孔、一对短弯米白獠牙、卷小尾，四条短腿。头低3/4朝右，倔强愤怒眼神；普通猪体型圆敦、牙短，不变成赤獠猪王、不添装甲。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/08_boar.png"
+      ]
+    },
+    {
+      "slug": "macaque",
+      "name": "猕猴",
+      "id": "Enemy.Ch2.Macaque",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/09_macaque.png",
+      "identitySourceSha256": "33915df28162ec2489f479ff882a5b8923d84d7dc9b9e1346dd996493cdb295b",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "猕猴：保留原金棕活泼小猴，奶白脸胸腹、大圆耳、大眼开心张嘴的顽皮表情，额前短毛冠、一条细长卷尾。原一臂高举一块灰石、另一臂伸低撑地，两条弯曲后腿支撑；正好两臂两腿和一条尾。脸和胸3/4朝右，石头与手掌握紧不漂浮；不加衣服金箍棒、额外石头或烟尘。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：猕猴：保留原金棕活泼小猴，奶白脸胸腹、大圆耳、大眼开心张嘴的顽皮表情，额前短毛冠、一条细长卷尾。原一臂高举一块灰石、另一臂伸低撑地，两条弯曲后腿支撑；正好两臂两腿和一条尾。脸和胸3/4朝右，石头与手掌握紧不漂浮；不加衣服金箍棒、额外石头或烟尘。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/09_macaque.png"
+      ]
+    },
+    {
+      "slug": "porcupine",
+      "name": "豪猪",
+      "id": "Enemy.Ch2.Porcupine",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/10_porcupine.png",
+      "identitySourceSha256": "374912d186675fd6a60836ee01101f3737eabbcbe32659f6de149b69b6089f38",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "豪猪：保留原低矮圆土棕身体、小尖鼻小耳、四只短脚；背后扇形巨大黑棕硬刺带奶金色尖端，硬刺保持原前低后高层次和放射方向，但归为十至十五根有粗细的清楚大刺，不画细针海。口鼻3/4朝右，身体前压蓄势，不能变刺猬的圆球、不加铁甲或武器。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：豪猪：保留原低矮圆土棕身体、小尖鼻小耳、四只短脚；背后扇形巨大黑棕硬刺带奶金色尖端，硬刺保持原前低后高层次和放射方向，但归为十至十五根有粗细的清楚大刺，不画细针海。口鼻3/4朝右，身体前压蓄势，不能变刺猬的圆球、不加铁甲或武器。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/10_porcupine.png"
+      ]
+    },
+    {
+      "slug": "graymane",
+      "name": "苍鬃狼王",
+      "id": "Enemy.Ch2.GraymaneWolfKing",
+      "chapter": 2,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/11_graymane.png",
+      "identitySourceSha256": "447826d5c3a1aaf1f55b2576025bd81a113b8442af399fa1a222918ecf95357b",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "苍鬃狼王：保留原强壮深灰狼王、巨大蓬起的尖簇厚鬃，狭长米白脸罩与白口鼻，凶狠细眼、尖耳、强健四肢和一条长灰尾。原低头前压进攻的四足姿态，但头与口鼻明确向右3/4，不正面直视。鬃毛以五至七个大簇，肩高胸厚、前爪大，与普通灰狼的轻瘦剪影有明显差异；不加皇冠盔甲或魔法。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：苍鬃狼王：保留原强壮深灰狼王、巨大蓬起的尖簇厚鬃，狭长米白脸罩与白口鼻，凶狠细眼、尖耳、强健四肢和一条长灰尾。原低头前压进攻的四足姿态，但头与口鼻明确向右3/4，不正面直视。鬃毛以五至七个大簇，肩高胸厚、前爪大，与普通灰狼的轻瘦剪影有明显差异；不加皇冠盔甲或魔法。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/11_graymane.png"
+      ]
+    },
+    {
+      "slug": "redtusk",
+      "name": "赤獠猪王",
+      "id": "Enemy.Ch2.RedtuskBoarKing",
+      "chapter": 2,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/12_redtusk.png",
+      "identitySourceSha256": "f41afa6eb4a8f23e0d20354ddce8e47e560effedd5d3b6b9e5e221da768dc4ea",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "赤獠猪王：保留原深棕庞大低伏野猪王，高耸赭红扇形背鬃、极宽的方圆猪鼻、两根巨大米白弯獠牙带赤红根部、凶狠小眼，四条短壮腿和小尾。3/4朝右，头和胸更宽更重，獠牙左右各一根并连接嘴两侧，不能多牙、不改机械野猪，不加铠甲。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：赤獠猪王：保留原深棕庞大低伏野猪王，高耸赭红扇形背鬃、极宽的方圆猪鼻、两根巨大米白弯獠牙带赤红根部、凶狠小眼，四条短壮腿和小尾。3/4朝右，头和胸更宽更重，獠牙左右各一根并连接嘴两侧，不能多牙、不改机械野猪，不加铠甲。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/12_redtusk.png"
+      ]
+    },
+    {
+      "slug": "blackbear",
+      "name": "黑熊",
+      "id": "Enemy.Ch2.BlackBear",
+      "chapter": 2,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/20_blackbear_boss.png",
+      "identitySourceSha256": "01f9618a2c5ac68233108c5bc746370db4d967876759b8eb1d52979bf9db64b9",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "黑熊Boss：保留原巨大的黑灰熊、宽肩拱背、厚重前臂大掌、两只小圆耳、短方圆浅棕口鼻、胸口大块米白月牙斑。原两前掌落地的四足前倾姿态，正好四肢、每掌简单短灰爪，头和目光朝右3/4，表情威严；毛发归为大簇，厚重轮廓和力量感强，不改成人形站立，不加甲胄、衣服、王冠或武器。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：黑熊Boss：保留原巨大的黑灰熊、宽肩拱背、厚重前臂大掌、两只小圆耳、短方圆浅棕口鼻、胸口大块米白月牙斑。原两前掌落地的四足前倾姿态，正好四肢、每掌简单短灰爪，头和目光朝右3/4，表情威严；毛发归为大簇，厚重轮廓和力量感强，不改成人形站立，不加甲胄、衣服、王冠或武器。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/20_blackbear_boss.png"
+      ]
+    },
+    {
+      "slug": "snake",
+      "name": "毒蛇",
+      "id": "Enemy.Ch3.VenomSnake",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/13_snake.png",
+      "identitySourceSha256": "e8b3b7d7e500f82e78d119474710887960d1c25f3ed95d2a034c42477e45bc26",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "毒蛇：保留原橄榄灰绿色长蛇，浅米绿腹部，一整条身体盘为原两三圈底座、颈部抬成S形，顶端宽三角蛇头和窄凶眼、两枚小尖毒牙；背部原深绿菱形斑整合成少数大斑。蛇头3/4朝右，颈和盘绕身体连续不交错断裂，尾尖只一处，不画四肢，不加眼镜蛇大颈罩或角、毒液和法阵。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：毒蛇：保留原橄榄灰绿色长蛇，浅米绿腹部，一整条身体盘为原两三圈底座、颈部抬成S形，顶端宽三角蛇头和窄凶眼、两枚小尖毒牙；背部原深绿菱形斑整合成少数大斑。蛇头3/4朝右，颈和盘绕身体连续不交错断裂，尾尖只一处，不画四肢，不加眼镜蛇大颈罩或角、毒液和法阵。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/13_snake.png"
+      ]
+    },
+    {
+      "slug": "wildcat",
+      "name": "山猫",
+      "id": "Enemy.Ch3.Wildcat",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/14_wildcat.png",
+      "identitySourceSha256": "f1a8909ae5e9cb6425ec6d1517c14d66ab52084ad8ce127052c1accce8b3faf2",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "山猫：保留原暖黄褐细瘦山猫，特别高长的尖耳与黑色耳尖、尖簇脸毛、奶白口鼻、圆亮眼，一条短细上挑折弯尾。四足低伏、前爪向右伸、后腿蓄势，3/4朝右。脸型锐利耳朵高，和圆耳圆体环尾的狸猫明确区分；保留少数原棕斑，不画环纹大尾、不添项圈。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：山猫：保留原暖黄褐细瘦山猫，特别高长的尖耳与黑色耳尖、尖簇脸毛、奶白口鼻、圆亮眼，一条短细上挑折弯尾。四足低伏、前爪向右伸、后腿蓄势，3/4朝右。脸型锐利耳朵高，和圆耳圆体环尾的狸猫明确区分；保留少数原棕斑，不画环纹大尾、不添项圈。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/14_wildcat.png"
+      ]
+    },
+    {
+      "slug": "vulture",
+      "name": "秃鹫",
+      "id": "Enemy.Ch3.Vulture",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/15_vulture.png",
+      "identitySourceSha256": "e60b9b2e039afe81aa750ca28b1b677f9242314e1d1c5cfc6cf792b674e6559e",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "秃鹫：保留原弯长光秃红褐颈和小头、黑灰弯钩喙、凶厉半眯眼、大圈米白蓬松颈羽、深褐厚羽身和长垂翅，两个短腿粗钩爪。身体驼背而头朝右3/4，两翅收拢，尾羽合成几片大形，不增加羽毛数量；别画成雄鹰、乌鸦或张开遮满画布的双翼。",
+      "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：秃鹫：保留原弯长光秃红褐颈和小头、黑灰弯钩喙、凶厉半眯眼、大圈米白蓬松颈羽、深褐厚羽身和长垂翅，两个短腿粗钩爪。身体驼背而头朝右3/4，两翅收拢，尾羽合成几片大形，不增加羽毛数量；别画成雄鹰、乌鸦或张开遮满画布的双翼。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/15_vulture.png"
+      ]
+    },
+    {
+      "slug": "toad",
+      "name": "巨蟾",
+      "id": "Enemy.Ch3.GiantToad",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/16_toad.png",
+      "identitySourceSha256": "3f13a228ffab77333de78d276e82d4d4c2c63cf3259888997142c3d8113a29ae",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "巨蟾：保留原极扁宽圆椭圆蟾蜍，灰橄榄褐背、奶米色大下颚腹部、两只很小的浅色顶眼、平直大嘴、两侧原蓝灰圆大疙瘩和少数深斑。四肢短小伏地，后腿粗壮折叠、前脚短且连到身体，整只脸和身体3/4朝右而非正面。圆敦低重心，不新增牙舌、翅膀、王冠或密集疣点。",
+      "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n巨蟾：保留原极扁宽圆椭圆蟾蜍，灰橄榄褐背、奶米色大下颚腹部、两只很小的浅色顶眼、平直大嘴、两侧原蓝灰圆大疙瘩和少数深斑。四肢短小伏地，后腿粗壮折叠、前脚短且连到身体，整只脸和身体3/4朝右而非正面。圆敦低重心，不新增牙舌、翅膀、王冠或密集疣点。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/16_toad.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+      ],
+      "latestStyleRule": "broad connected forms + graphic cartoon eyes"
+    },
+    {
+      "slug": "whiteape",
+      "name": "白猿",
+      "id": "Enemy.Ch3.WhiteApe",
+      "chapter": 3,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/17_whiteape.png",
+      "identitySourceSha256": "ce66d4be9c195d657e70007a0e25d834ad42138ab13cf80d21fea23bbc7df37b",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "白猿精英：保留原灰白蓬长毛的巨大猿，极长粗双臂、宽拱肩、较短两腿、深灰无毛方脸和手脚、严肃厚眉。原一只手撑地，另一只手握一块粗大灰岩石压在地面附近；灰石是握住的道具不是第三只手。3/4朝右，两个肩臂手的连接清楚，四肢完整，毛发合成少数大白簇，不添加尾巴、衣饰、冰晶或皇冠。",
+      "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n白猿精英：保留原灰白蓬长毛的巨大猿，极长粗双臂、宽拱肩、较短两腿、深灰无毛方脸和手脚、严肃厚眉。原一只手撑地，另一只手握一块粗大灰岩石压在地面附近；灰石是握住的道具不是第三只手。3/4朝右，两个肩臂手的连接清楚，四肢完整，毛发合成少数大白簇，不添加尾巴、衣饰、冰晶或皇冠。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/17_whiteape.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+      ],
+      "latestStyleRule": "broad connected forms + graphic cartoon eyes"
+    },
+    {
+      "slug": "spiralhorn_deer",
+      "name": "盘角鹿",
+      "id": "Enemy.Ch3.SpiralHornDeer",
+      "chapter": 3,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/18_deer.png",
+      "identitySourceSha256": "91015d8119ada8770ffacf985a0540e18da658c3cd0ad6ec5d2962adb498ea69",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "盘角鹿精英：保留原奶白高挑鹿，细长颈和四条细长腿、尖长耳、长窄俊秀鹿脸、胸前一撮米白髯，原一对巨大向两侧上方展开的褐青色扇形盘曲鹿角，每侧约四至五个粗长分枝，清楚对称节奏。角仍按原项目鹿角，不改成山羊的盘羊角或树枝冠。头和身体向右3/4，昂首稳立，有灵兽气质，保留短尾，不加宝石珠串或场景。 胸前保留原图那一块蓝灰色菱形毛斑，只是毛色标记而非镶嵌宝石。",
+      "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n盘角鹿精英：保留原奶白高挑鹿，细长颈和四条细长腿、尖长耳、长窄俊秀鹿脸、胸前一撮米白髯，原一对巨大向两侧上方展开的褐青色扇形盘曲鹿角，每侧约四至五个粗长分枝，清楚对称节奏。角仍按原项目鹿角，不改成山羊的盘羊角或树枝冠。头和身体向右3/4，昂首稳立，有灵兽气质，保留短尾，不加宝石珠串或场景。 胸前保留原图那一块蓝灰色菱形毛斑，只是毛色标记而非镶嵌宝石。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/18_deer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+      ],
+      "latestStyleRule": "broad connected forms + graphic cartoon eyes"
+    },
+    {
+      "slug": "tiger",
+      "name": "老虎",
+      "id": "Enemy.Ch3.Tiger",
+      "chapter": 3,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png",
+      "identitySourceSha256": "46047902823c5a57529a525d4c7f9d6dc10dab6c7cfb58fb38f3ddfb698f635f",
+      "facing": "right",
+      "view": "three-quarter",
+      "status": "generated-awaiting-user-review",
+      "userApproved": false,
+      "details": "老虎Boss：保留原巨大橙黄虎、粗黑大条纹、奶白口鼻胸腹和外翻颊毛、大宽头、粗浓虎眉、獠牙露出形成凶狠微龇嘴、短圆耳。四足压低蓄势，两只巨大前爪张稳，宽肩与厚胸，背后一条橙黑粗尾大弧回卷，3/4朝右，不能正面对视。条纹为少数醒目宽纹，别画密碎斑纹，不戴王冠、不加甲胄火焰。",
+      "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n老虎Boss：保留原巨大橙黄虎、粗黑大条纹、奶白口鼻胸腹和外翻颊毛、大宽头、粗浓虎眉、獠牙露出形成凶狠微龇嘴、短圆耳。四足压低蓄势，两只巨大前爪张稳，宽肩与厚胸，背后一条橙黑粗尾大弧回卷，3/4朝右，不能正面对视。条纹为少数醒目宽纹，别画密碎斑纹，不戴王冠、不加甲胄火焰。",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+      ],
+      "latestStyleRule": "broad connected forms + graphic cartoon eyes"
+    }
+  ]
+}

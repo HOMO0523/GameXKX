@@ -1,0 +1,24 @@
+{
+  "slug": "spiralhorn_deer",
+  "name": "盘角鹿",
+  "id": "Enemy.Ch3.SpiralHornDeer",
+  "chapter": 3,
+  "tier": "elite",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/18_deer.png",
+  "identitySourceSha256": "91015d8119ada8770ffacf985a0540e18da658c3cd0ad6ec5d2962adb498ea69",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "盘角鹿精英：保留原奶白高挑鹿，细长颈和四条细长腿、尖长耳、长窄俊秀鹿脸、胸前一撮米白髯，原一对巨大向两侧上方展开的褐青色扇形盘曲鹿角，每侧约四至五个粗长分枝，清楚对称节奏。角仍按原项目鹿角，不改成山羊的盘羊角或树枝冠。头和身体向右3/4，昂首稳立，有灵兽气质，保留短尾，不加宝石珠串或场景。 胸前保留原图那一块蓝灰色菱形毛斑，只是毛色标记而非镶嵌宝石。",
+  "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n盘角鹿精英：保留原奶白高挑鹿，细长颈和四条细长腿、尖长耳、长窄俊秀鹿脸、胸前一撮米白髯，原一对巨大向两侧上方展开的褐青色扇形盘曲鹿角，每侧约四至五个粗长分枝，清楚对称节奏。角仍按原项目鹿角，不改成山羊的盘羊角或树枝冠。头和身体向右3/4，昂首稳立，有灵兽气质，保留短尾，不加宝石珠串或场景。 胸前保留原图那一块蓝灰色菱形毛斑，只是毛色标记而非镶嵌宝石。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/18_deer.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+  ],
+  "latestStyleRule": "broad connected forms + graphic cartoon eyes",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\spiralhorn_deer.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-bb9f3383-e389-4e38-963e-093d5196d17f.png"
+}

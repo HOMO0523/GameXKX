@@ -122,7 +122,8 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 	const FGameXXKCardDefinition* AttackDefinition = FGameXXKCardCatalog::FindCardDefinition(TEXT("Hero.Generic.QingFengYiShi"));
 	const FString CompactAttack = GameXXKCardText::DescribeCompactTooltipBody(*AttackDefinition, EGameXXKCardQuality::Rare, &AttackPreview, Context);
 	const FString DetailAttack = GameXXKCardText::DescribeExpandedTooltipBody(*AttackDefinition, EGameXXKCardQuality::Rare, &AttackPreview, Context);
-	TestTrue(TEXT("compact attack shows generated integer"), CompactAttack.Contains(TEXT("造成120点伤害")));
+	TestTrue(TEXT("compact attack combines the generated integer and its element"), CompactAttack.Contains(TEXT("造成120点物理伤害")));
+	TestFalse(TEXT("damage needs no separate classification or mitigation line"), CompactAttack.Contains(TEXT("伤害类型")) || CompactAttack.Contains(TEXT("受防御减免")));
 	TestTrue(TEXT("detail attack shows only final attack percentage"), DetailAttack.Contains(TEXT("造成120%的攻击伤害")));
 	TestFalse(TEXT("detail attack omits source Attack and arithmetic"), DetailAttack.Contains(TEXT("攻击100")) || DetailAttack.Contains(TEXT("100 ×")) || DetailAttack.Contains(TEXT("= 120")));
 	TestFalse(TEXT("card tooltip omits target mitigation and HP loss"), DetailAttack.Contains(TEXT("防御20")) || DetailAttack.Contains(TEXT("吸收10")) || DetailAttack.Contains(TEXT("损失90")));
@@ -249,7 +250,7 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 		EGameXXKCardQuality::Common,
 		&SorcererAttackPreview,
 		Context);
-	TestTrue(TEXT("special Sorcerer compact text shows generated damage"), SorcererAttackCompact.Contains(TEXT("造成95点伤害")));
+	TestTrue(TEXT("untyped Sorcerer compact attack names physical damage"), SorcererAttackCompact.Contains(TEXT("造成95点物理伤害")));
 	TestTrue(TEXT("special Sorcerer detail keeps only the attack multiplier"), SorcererAttackDetail.Contains(TEXT("造成70%的攻击伤害")));
 	TestFalse(TEXT("special Sorcerer attack sentence omits an inline target"), SorcererAttackDetail.Contains(TEXT("敌方全体造成70%的攻击伤害")));
 
@@ -274,7 +275,7 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 		EGameXXKCardQuality::Common,
 		&FirePreview,
 		Context);
-	TestTrue(TEXT("special Sorcerer fire compact uses actual Attack"), FireCompact.Contains(TEXT("造成82点伤害")));
+	TestTrue(TEXT("special Sorcerer fire compact uses actual Attack and element"), FireCompact.Contains(TEXT("造成82点火焰伤害")));
 	TestTrue(TEXT("special Sorcerer fire compact uses generated DOT"), FireCompact.Contains(TEXT("10点灼烧")));
 	TestTrue(TEXT("special Sorcerer fire detail combines level and quality"), FireDetail.Contains(TEXT("2点灼烧，500%增幅倍率")));
 
@@ -302,7 +303,7 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 		EGameXXKCardQuality::Common,
 		&BladePreview,
 		Context);
-	TestTrue(TEXT("special Blade compact uses actual Attack"), BladeCompact.Contains(TEXT("造成137点伤害")));
+	TestTrue(TEXT("special Blade compact uses actual Attack"), BladeCompact.Contains(TEXT("造成137点物理伤害")));
 	TestTrue(TEXT("special Blade compact uses generated DOT"), BladeCompact.Contains(TEXT("5点流血")));
 	TestTrue(TEXT("special Blade detail combines DOT level and quality"), BladeDetail.Contains(TEXT("1点流血，500%增幅倍率")));
 	const FGameXXKCardDefinition* MultiHitBladeDefinition =
@@ -323,7 +324,7 @@ bool FGameXXKCardResolvedTextBoundaryTest::RunTest(const FString& Parameters)
 		Context);
 	TestTrue(
 		TEXT("multi-hit compact text shows the generated per-hit value"),
-		MultiHitBladeCompact.Contains(TEXT("攻击3次，每次造成116点伤害")));
+		MultiHitBladeCompact.Contains(TEXT("攻击3次，每次造成116点物理伤害")));
 
 	const FGameXXKCardDefinition* IceDefinition =
 		FGameXXKCardCatalog::FindCardDefinition(TEXT("Profession.Sorcerer.SheLingHuo"));

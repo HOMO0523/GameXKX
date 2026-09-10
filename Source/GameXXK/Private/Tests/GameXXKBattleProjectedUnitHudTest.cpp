@@ -425,7 +425,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		PreImpactTargetHud && PreImpactTargetHud->GetResourceWidgetForTest()
 			? PreImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
 			: FString(),
-		FString(TEXT("气血 170 / 180")));
+		FString(TEXT("HP 170 / 180")));
 	TestEqual(TEXT("impact remains hidden before its marker"),
 		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::Hidden);
@@ -438,7 +438,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		PostImpactTargetHud && PostImpactTargetHud->GetResourceWidgetForTest()
 			? PostImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
 			: FString(),
-		FString(TEXT("气血 152 / 180")));
+		FString(TEXT("HP 152 / 180")));
 	TestEqual(TEXT("crossing zero-point-three emits the damage readout"),
 		FPresentationApi::Readout(Board), FString(TEXT("-18")));
 	TestEqual(TEXT("the retired generic impact stays hidden at the damage marker"),
@@ -461,8 +461,8 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	UGameXXKBattleUnitHudWidget* const HeroHud = Board->GetProjectedUnitHudForTest(TEXT("Player"));
 	if (HeroHud && HeroHud->GetResourceWidgetForTest())
 	{
-		TestEqual(TEXT("hero HP uses authoritative card runtime values"), HeroHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest(), FString(TEXT("气血 72 / 100")));
-		TestEqual(TEXT("hero mana uses authoritative card runtime values"), HeroHud->GetResourceWidgetForTest()->GetManaDisplayTextForTest(), FString(TEXT("内力 18 / 30")));
+		TestEqual(TEXT("hero HP uses authoritative card runtime values"), HeroHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest(), FString(TEXT("HP 72 / 100")));
+		TestEqual(TEXT("hero mana uses authoritative card runtime values"), HeroHud->GetResourceWidgetForTest()->GetManaDisplayTextForTest(), FString(TEXT("MP 18 / 30")));
 	}
 	const UCanvasPanelSlot* const HeroInitialSlot = HeroHud ? Cast<UCanvasPanelSlot>(HeroHud->Slot) : nullptr;
 	const FVector2D HeroInitialAnchor = HeroInitialSlot ? HeroInitialSlot->GetAnchors().Minimum : FVector2D::ZeroVector;
@@ -488,8 +488,8 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 			.Equals(FVector2D(HeroInitialOffsets.Right, HeroInitialOffsets.Bottom), 0.001f));
 	if (UpdatedHeroHud && UpdatedHeroHud->GetResourceWidgetForTest() && UpdatedHeroHud->GetStatusEffectsWidgetForTest())
 	{
-		TestEqual(TEXT("a vitals refresh redraws authoritative HP"), UpdatedHeroHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest(), FString(TEXT("气血 49 / 100")));
-		TestEqual(TEXT("a vitals refresh redraws authoritative mana"), UpdatedHeroHud->GetResourceWidgetForTest()->GetManaDisplayTextForTest(), FString(TEXT("内力 6 / 30")));
+		TestEqual(TEXT("a vitals refresh redraws authoritative HP"), UpdatedHeroHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest(), FString(TEXT("HP 49 / 100")));
+		TestEqual(TEXT("a vitals refresh redraws authoritative mana"), UpdatedHeroHud->GetResourceWidgetForTest()->GetManaDisplayTextForTest(), FString(TEXT("MP 6 / 30")));
 		TestEqual(TEXT("a vitals refresh redraws armor plus its status badge"), UpdatedHeroHud->GetStatusEffectsWidgetForTest()->GetIconCountForTest(), 2);
 		TestTrue(TEXT("a vitals refresh rebuilds its status strip"),
 			UpdatedHeroHud->GetStatusEffectsWidgetForTest()->GetIconRebuildGenerationForTest() > HeroInitialStatusGeneration);
@@ -526,7 +526,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		RevivedTigerHud && RevivedTigerHud->GetResourceWidgetForTest()
 			? RevivedTigerHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
 			: FString(),
-		FString(TEXT("气血 141 / 180")));
+		FString(TEXT("HP 141 / 180")));
 	TestEqual(TEXT("a revived fixed-slot unit restores the board HUD count"), Board->GetProjectedUnitHudCountForTest(), 6);
 
 	return true;
@@ -558,7 +558,7 @@ bool FGameXXKBattleProjectedUnitHudIdleSyncTest::RunTest(const FString& Paramete
 	Board->RefreshFromState();
 	TestTrue(TEXT("idle-sync fixture begins a common-stage visual session"), Board->BeginBattleVisualSession(902));
 	TestEqual(TEXT("idle-sync fixture renders the initial authoritative enemy HP"),
-		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("气血 54 / 90")));
+		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("HP 54 / 90")));
 
 	// An external runtime mutation (for example a recovery path that commits
 	// authoritative HP without a Board refresh) must be picked up by the very
@@ -567,13 +567,13 @@ bool FGameXXKBattleProjectedUnitHudIdleSyncTest::RunTest(const FString& Paramete
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[3].HP = 9;
 	Board->AdvanceVisualsAtRealTime(0.10);
 	TestEqual(TEXT("an idle visual sample re-syncs an externally mutated enemy HP number"),
-		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("气血 9 / 90")));
+		RenderedHealth(Board, TEXT("Enemy.MoneyRat")), FString(TEXT("HP 9 / 90")));
 
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[1].HP = 31;
 	const FGeometry TickGeometry = FGeometry::MakeRoot(FVector2D(1280.0f, 720.0f), FSlateLayoutTransform());
 	Board->NativeTick(TickGeometry, 0.016f);
 	TestEqual(TEXT("an idle board tick re-syncs an externally mutated hero HP number"),
-		RenderedHealth(Board, TEXT("Player")), FString(TEXT("气血 31 / 100")));
+		RenderedHealth(Board, TEXT("Player")), FString(TEXT("HP 31 / 100")));
 	return true;
 }
 

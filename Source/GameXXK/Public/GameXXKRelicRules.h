@@ -17,16 +17,17 @@ public:
 	static bool ChoosePendingRelic(FGameXXKRuntimeState& InOutState, FName RelicId, FString* OutError = nullptr);
 	static void ClearRouteRelics(FGameXXKRuntimeState& InOutState);
 
-	static void ApplyBattleStart(FGameXXKRuntimeState& InOutState);
-	static void ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState);
-	static void ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState);
+	static bool ApplyBattleStart(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output = nullptr, FString* OutError = nullptr);
+	static bool ApplyPlayerRoundStart(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output = nullptr, FString* OutError = nullptr);
+	static bool ApplyPlayerRoundEnd(FGameXXKRuntimeState& InOutState, FGameXXKCardPlayResult* Output = nullptr, FString* OutError = nullptr);
 	static bool ApplyCardPlayed(
 		FGameXXKRuntimeState& InOutState,
 		FName OwnerUnitId,
 		const TArray<FGameXXKCardDamageResult>& PrimaryDamageResults,
 		FGameXXKCardPlayResult& InOutCardPlayResult,
 		FString* OutError = nullptr);
-	static void ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults);
+	static bool ApplyDamageTaken(FGameXXKRuntimeState& InOutState, const TArray<FGameXXKCardDamageResult>& DamageResults,
+		FGameXXKCardPlayResult* Output = nullptr, FString* OutError = nullptr);
 
 	/** Pure checked sum of route-travel-money relic effects for one completed node. */
 	static bool CalculateRouteNodeTravelMoneyBonus(

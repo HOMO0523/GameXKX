@@ -1,0 +1,226 @@
+{
+  "count": 13,
+  "newDrawings": 10,
+  "approvedReused": 3,
+  "tool": "built-in image_gen",
+  "scope": "all 13 project characters; monsters not included",
+  "approvalGate": "全批确认后再切透明底、导入或制作动画",
+  "jobs": [
+    {
+      "slug": "hero",
+      "name": "主角",
+      "id": "Character.Hero",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+      "identitySourceSha256": "39fe355f4e42b63d2fb3329a3d4f3b404dfd00be222957230a90df7b75f6270d",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "approvedSha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "status": "approved-reused-exactly"
+    },
+    {
+      "slug": "blade",
+      "name": "刀客",
+      "id": "Role.Blade",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/01_blade.png",
+      "identitySourceSha256": "f46ee420d092193c8af90bf176120a90c64e01f14af8539659b1014fc5354796",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "刀客：严格保留原图年轻锐利眉眼、红发绳的黑色高长马尾、青绿色交领短武衣与两枚系扣、灰米翻袖与尖分片衣摆、红色长腰带两片飘带、深棕裤、米色绑腿与棕布鞋。一手低持原宽弯刀向左下，另一手握拳自然放低，双腿稳立原姿势。刀的弧形、圆护手、刀柄小红穗保持，只有一把刀，完整露出；不要换成红衣或加盔甲。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：刀客：严格保留原图年轻锐利眉眼、红发绳的黑色高长马尾、青绿色交领短武衣与两枚系扣、灰米翻袖与尖分片衣摆、红色长腰带两片飘带、深棕裤、米色绑腿与棕布鞋。一手低持原宽弯刀向左下，另一手握拳自然放低，双腿稳立原姿势。刀的弧形、圆护手、刀柄小红穗保持，只有一把刀，完整露出；不要换成红衣或加盔甲。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\01_blade.png"
+      ]
+    },
+    {
+      "slug": "guard",
+      "name": "守卫",
+      "id": "Role.Guard",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/02_guard.png",
+      "identitySourceSha256": "a1079cb2e82aaf6bccbb25ab88de1c71926d529cd547f3c9db218ff6c3f88609",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "守卫：保留原图方脸、短下巴胡须和鬓角、黑色小髻、粗眉，宽肩壮硕短腿。棕黄色无袖护衣有几块大方形面，内穿灰靛蓝交领衣、深棕裤与米色绑腿、棕鞋。原图画面左侧的手握木杆长矛，画面右侧的臂持一面圆木盾，木盾中心仅一个灰铁圆盾脐；盾形必须是圆形而非方盾，矛杆从手上下延伸成一根直线，矛头为单个灰铁叶形尖。保留双脚稳立与原盾的位置，不添板甲、披风。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：守卫：保留原图方脸、短下巴胡须和鬓角、黑色小髻、粗眉，宽肩壮硕短腿。棕黄色无袖护衣有几块大方形面，内穿灰靛蓝交领衣、深棕裤与米色绑腿、棕鞋。原图画面左侧的手握木杆长矛，画面右侧的臂持一面圆木盾，木盾中心仅一个灰铁圆盾脐；盾形必须是圆形而非方盾，矛杆从手上下延伸成一根直线，矛头为单个灰铁叶形尖。保留双脚稳立与原盾的位置，不添板甲、披风。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\02_guard.png"
+      ]
+    },
+    {
+      "slug": "healer",
+      "name": "药师",
+      "id": "Role.Healer",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/03_healer.png",
+      "identitySourceSha256": "6a77b0bc3ab236ca36f42e14649f78a91d01801e90823ed688f196551add0414",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "药师：保留原年轻女子柔和笑脸、黑发单个后上发髻与两片大叶束饰，米白交领上衣和宽裤、橄榄草绿短披肩及两片向右后方飘的宽布尾、原绿腰结与布鞋。一臂抱原木棕色双腹药葫芦，葫芦下腹有单片叶形标记，另一手握肩带；背篓露两卷药卷和少量草叶。不新增手持药枝、不改成双髻、不换裙子。保留原站姿与服装结构，叶子和编织线做减法。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：药师：保留原年轻女子柔和笑脸、黑发单个后上发髻与两片大叶束饰，米白交领上衣和宽裤、橄榄草绿短披肩及两片向右后方飘的宽布尾、原绿腰结与布鞋。一臂抱原木棕色双腹药葫芦，葫芦下腹有单片叶形标记，另一手握肩带；背篓露两卷药卷和少量草叶。不新增手持药枝、不改成双髻、不换裙子。保留原站姿与服装结构，叶子和编织线做减法。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\03_healer.png"
+      ]
+    },
+    {
+      "slug": "hunter",
+      "name": "弓手",
+      "id": "Role.Hunter",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png",
+      "identitySourceSha256": "faf669d99e53f17f6fb38ee3e7f76fae8c1c3aadd35791d9dd1364a2fe749131",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "approvedSha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "status": "approved-reused-exactly"
+    },
+    {
+      "slug": "sorcerer",
+      "name": "法师",
+      "id": "Role.Sorcerer",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/05_sorcerer.png",
+      "identitySourceSha256": "cdfc8a8b5251bf0720dbece60b034038fffd11f1370fc43dd436f800b1142e55",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "法师：保留原矮圆少年、调皮单眼眨眼微笑，蓝色圆帽带额前圆饰、帽顶小金扣、后侧短系带；原灰靛蓝宽袖长衣、米金色粗衣缘与大圆项圈，胸前一个简洁圆环纹、宽蓝裤和棕鞋。一只手低持短木法杆朝左下，另一手朝上，掌上恰好两张空白米色符纸与少量短金色弧线。不要改成尖帽欧美法师，不加法杖宝石、火球或大量符文，保持原两手动作。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：法师：保留原矮圆少年、调皮单眼眨眼微笑，蓝色圆帽带额前圆饰、帽顶小金扣、后侧短系带；原灰靛蓝宽袖长衣、米金色粗衣缘与大圆项圈，胸前一个简洁圆环纹、宽蓝裤和棕鞋。一只手低持短木法杆朝左下，另一手朝上，掌上恰好两张空白米色符纸与少量短金色弧线。不要改成尖帽欧美法师，不加法杖宝石、火球或大量符文，保持原两手动作。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\05_sorcerer.png"
+      ]
+    },
+    {
+      "slug": "formation_master",
+      "name": "阵师",
+      "id": "Role.FormationMaster",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/06_formation_master.png",
+      "identitySourceSha256": "53ffcba833a954c79f82425f18f2c4ca85baf6ae0112cf5db9c8386afb610b42",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "阵师：保留原黑发小髻与横发簪、半眯眼淡定浅笑，灰褐长外袍、浅米灰交领长衣、黑灰腰带和两条长带尾、原布鞋。画面左侧手向左下伸出持一把原折扇，另一手在身后；背后画面右侧保留一个竹木框的竖长方形米灰阵旗，横杆、竖杆和少数布环结构清晰。折扇和旗面无字，不加八卦地阵、漂浮石头或额外法器，保留原从容站姿。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：阵师：保留原黑发小髻与横发簪、半眯眼淡定浅笑，灰褐长外袍、浅米灰交领长衣、黑灰腰带和两条长带尾、原布鞋。画面左侧手向左下伸出持一把原折扇，另一手在身后；背后画面右侧保留一个竹木框的竖长方形米灰阵旗，横杆、竖杆和少数布环结构清晰。折扇和旗面无字，不加八卦地阵、漂浮石头或额外法器，保留原从容站姿。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\06_formation_master.png"
+      ]
+    },
+    {
+      "slug": "tusi_chief",
+      "name": "土司首领",
+      "id": "Npc.TusiChief",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/07_tusi_chief.png",
+      "identitySourceSha256": "3d1f0c170725345a9b2ea186bc19cf1d9042b5388ac412ba5adb046eacb9ddc1",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "土司首领：保留原宽矮威严身形、黝暖肤色的方脸方鼻、黑色粗眉鬓角、两条巨大向上弯的象牙白胡须和白色尖山羊胡；原一边高翘的不对称大竹斗笠、黑色大衣领与赭红橘色宽厚锯齿下摆披风、米黄内衣、黑裤和棕鞋、胸口一个六角铜扣。一手竖握原木杖，杖头只有一个开口向上的U形月牙。保持短壮稳立，胡须必须像原图属于面部而不是额头的牛角，不改为野兽，不加羽毛铠甲。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：土司首领：保留原宽矮威严身形、黝暖肤色的方脸方鼻、黑色粗眉鬓角、两条巨大向上弯的象牙白胡须和白色尖山羊胡；原一边高翘的不对称大竹斗笠、黑色大衣领与赭红橘色宽厚锯齿下摆披风、米黄内衣、黑裤和棕鞋、胸口一个六角铜扣。一手竖握原木杖，杖头只有一个开口向上的U形月牙。保持短壮稳立，胡须必须像原图属于面部而不是额头的牛角，不改为野兽，不加羽毛铠甲。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\07_tusi_chief.png"
+      ]
+    },
+    {
+      "slug": "song_jin_bao",
+      "name": "宋金宝",
+      "id": "Npc.SongJinBao",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/08_song_jin_bao.png",
+      "identitySourceSha256": "cb686fb677999be32e1a6afdf66dd6c2c589e519b0fa4e6ff97ae90cef365053",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "宋金宝：保留原瘦高成年男子、尖鼻尖下巴、挑眉与露齿狡黠笑容，黑发、原高尖顶斜斗笠；朱橘红交领长短袍、深褐宽衣缘和腰带、米金色前襟大折角回纹、腰侧小方钱盒、棕色宽裤、细绑腿和尖头黑棕鞋。一手举恰好三张空白米色长纸牌在脸左前方，另一手叉后腰，原双腿姿势保持。必须保持瘦高四至五头身差异，不能画成主角一样短胖，不能用西方巫师帽代替原竹编斗笠。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：宋金宝：保留原瘦高成年男子、尖鼻尖下巴、挑眉与露齿狡黠笑容，黑发、原高尖顶斜斗笠；朱橘红交领长短袍、深褐宽衣缘和腰带、米金色前襟大折角回纹、腰侧小方钱盒、棕色宽裤、细绑腿和尖头黑棕鞋。一手举恰好三张空白米色长纸牌在脸左前方，另一手叉后腰，原双腿姿势保持。必须保持瘦高四至五头身差异，不能画成主角一样短胖，不能用西方巫师帽代替原竹编斗笠。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\08_song_jin_bao.png"
+      ]
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "id": "Npc.YueBai",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/09_yue_bai.png",
+      "identitySourceSha256": "4977909d69c2542bd6c536650a56854b1d7a21883f16b909fec9f8b6b67c10c0",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "approvedSha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "status": "approved-reused-exactly"
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "name": "周光祖",
+      "id": "Npc.ZhouGuangZu",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/10_zhou_guang_zu.png",
+      "identitySourceSha256": "90b50b491d716f57e145bdb8ce7c286f57d2bb343aa66d891df326514226d385",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "周光祖：保留原宽肩结实体形、半眯眼老成脸、两边长弯黑胡须与尖下巴胡、小黑髻、巨大扁宽椭圆竹斗笠。黑灰交领长袍、米黄腰绳与宽带尾、墨绿宽裤和原棕鞋。肩头保留恰好一只橙色白下巴白尾尖的小狐狸，原样绕在肩后，画面右侧狐头和一条卷大尾巴能读清；不是第二个人，也不是狐狸披风。前手托原一束卷起的竹简斜向左上，后手收在背后；原屈膝稳立动作，简化竹纹与狐狸毛为大面。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：周光祖：保留原宽肩结实体形、半眯眼老成脸、两边长弯黑胡须与尖下巴胡、小黑髻、巨大扁宽椭圆竹斗笠。黑灰交领长袍、米黄腰绳与宽带尾、墨绿宽裤和原棕鞋。肩头保留恰好一只橙色白下巴白尾尖的小狐狸，原样绕在肩后，画面右侧狐头和一条卷大尾巴能读清；不是第二个人，也不是狐狸披风。前手托原一束卷起的竹简斜向左上，后手收在背后；原屈膝稳立动作，简化竹纹与狐狸毛为大面。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\10_zhou_guang_zu.png"
+      ]
+    },
+    {
+      "slug": "jin_gui",
+      "name": "金贵",
+      "id": "Npc.JinGui",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/11_jin_gui.png",
+      "identitySourceSha256": "5c33014594a54c7eba05fd6cd6ed2fccfbd173ef4a067724a1c457b6a2d30001",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "金贵：保留原矮个淡漠男子、困倦半睁眼、面颊细长疤痕、深棕短发、原宽圆锥竹斗笠与顶端红叶/红布结。穿原淡青绿交领短衣、米白领缘、米黄细腰绳、绿宽裤、腰侧小棕袋、深绿布鞋。一手握原细长竹烟杆近嘴，杆身向左下伸，远端有一个小弯烟斗，另一手背在后面；前脚微抬的闲散原姿势保留。不增加烟雾、酒瓶或武器，不改成富贵金袍。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：金贵：保留原矮个淡漠男子、困倦半睁眼、面颊细长疤痕、深棕短发、原宽圆锥竹斗笠与顶端红叶/红布结。穿原淡青绿交领短衣、米白领缘、米黄细腰绳、绿宽裤、腰侧小棕袋、深绿布鞋。一手握原细长竹烟杆近嘴，杆身向左下伸，远端有一个小弯烟斗，另一手背在后面；前脚微抬的闲散原姿势保留。不增加烟雾、酒瓶或武器，不改成富贵金袍。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\11_jin_gui.png"
+      ]
+    },
+    {
+      "slug": "qiong_yao_er",
+      "name": "琼幺儿",
+      "id": "Npc.QiongMeiEr",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/12_qiong_mei_er.png",
+      "identitySourceSha256": "3fd56fb69e0cbed8b0abd02d2610ff6a9d576263a6a31be5c4ad3694e23d1f8e",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "details": "琼幺儿：保留原年轻女子明亮笑眼、棕黑侧辫与原耳环、乳白圆厚民族帽沿及一排大圆珠、帽顶赭红小方块；朱橘红短上衣、米白交领和袖边、暖金黄长裙、白腰带与两条长白红渐变飘带、绑腿和原棕鞋。前手持原绿色花瓣形小铃灯/法铃，下接小穗，另一只向后舒展的手腕挂一个小金铃。保留轻盈扭身迈步的原动作线，但脸部与胸廓必须转成3/4面向画面左，看向左边而非原图的右边；两条飘带向画面右后延伸。保留高挑灵动比例，不改成小幼童，不新增头冠或莲花台。",
+      "prompt": "Use case: style-transfer. Asset type: Chinese game full-body single character review illustration.\n输入图片1是项目宝石icon，只提供块面、用色和线条画风；图片2是用户刚确认的三名角色风格样板，只参考绘制语言，绝不复制他们的服装或道具；图片3才是本次唯一要画的角色的项目原设计。\n按图片3忠实重绘，保留原身份、性别年龄感、脸部特征、发型、身体比例、服装结构和原配色、标志道具、原动作线，只让画法达到图片2批准稿的统一水平。所有角色面部、目光和身体为3/4朝画面左。轮廓用干净有粗细层次的深墨描边；饱满鲜明的手绘卡通大体块，3至5组主要明暗，布褶整合成少数宽面，少量宽笔触。国风与中国民间江湖服饰的气质，保持各人的比例差异和个性。皮肤、布和毛发仍为有机材质，不把角色做成真正水晶、多边形低模或金属玩具。去掉原图纸纹、碎细线、灰脏纹理、毛糙断线，不加水墨晕染、不画欧美奇幻铠甲。\n单张正方形，只画一个完整全身角色含所有原道具，四周至少8%安全留白，不裁帽子武器脚或飘带。无文字、无标签、无边框、无样板三人、无宝石图标、无场景、无地面投影。干净均匀浅暖米白#F4EFDF背景，不要洋红色或棋盘格。请精修双手与道具接触结构、整齐完整肢体，宁可减少装饰也要剪影清晰。\n本角色锁定要点：琼幺儿：保留原年轻女子明亮笑眼、棕黑侧辫与原耳环、乳白圆厚民族帽沿及一排大圆珠、帽顶赭红小方块；朱橘红短上衣、米白交领和袖边、暖金黄长裙、白腰带与两条长白红渐变飘带、绑腿和原棕鞋。前手持原绿色花瓣形小铃灯/法铃，下接小穗，另一只向后舒展的手腕挂一个小金铃。保留轻盈扭身迈步的原动作线，但脸部与胸廓必须转成3/4面向画面左，看向左边而非原图的右边；两条飘带向画面右后延伸。保留高挑灵动比例，不改成小幼童，不新增头冠或莲花台。",
+      "status": "generated-awaiting-user-review",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\gem-types-review-v5.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-20260910\\three-characters.png",
+        "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\safe_frame_1600\\characters\\12_qiong_mei_er.png"
+      ]
+    }
+  ]
+}

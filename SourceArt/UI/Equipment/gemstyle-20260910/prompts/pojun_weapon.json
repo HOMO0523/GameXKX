@@ -1,0 +1,10 @@
+{
+  "slug": "pojun_weapon",
+  "prompt": "Use case: style-transfer. 为游戏重绘一枚「破军武器」装备icon。第一张是要重绘的旧装备，只保留它的宽弯单刃刀、短柄、朝右上方的轮廓和朱红主色辨识；第二张是严格画风参考，只参考宝石系列的画法，不能输出图表或宝石本身。将刀画成与这些宝石同系列的国风简化手绘卡通图标：粗而自然的深墨色外轮廓，结实饱满、略夸张的大体块，鲜明朱红/橘红大刀身，暗灰护手，米金短缠柄；用3至5个大的平涂明暗块面表达厚度，仅少量宽笔触，低光泽。保留刀型，不要把刀做成晶石材质；删除旧图密集雕花、脏纹理与写实质感。刀身收短加宽，刀尖有力但不细长，侧边只保留1至2个大缺口。只画单件完整装备。正方形1024x1024，主体最大边占88%左右，居中且留安全边距，48像素仍能辨认。背景必须是真正透明alpha PNG，不得画棋盘格、纸底、底色、落地投影。无文字、数字、品质框、光环、粒子、额外装饰或物件。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Content/Equipment/pojun_weapon.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-e554cf96-e141-4aa4-8f16-5025fa9117c0.png",
+  "background": "requested-transparent"
+}

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {"key":"StageCaption.Normal","zh-Hans":"普通 {Chapter}-{Stage}","en":"Norm {Chapter}-{Stage}"},
+    {"key":"StageCaption.Hard","zh-Hans":"困难 {Chapter}-{Stage}","en":"Hard {Chapter}-{Stage}"},
+    {"key":"StageCaption.Hell","zh-Hans":"地狱 {Chapter}-{Stage}","en":"Hell {Chapter}-{Stage}"},
+    {"key":"StageName.Normal","nativePattern":"普通 %d-%d","zh-Hans":"普通 {0}-{1}","en":"Normal {0}-{1}"},
+    {"key":"StageName.Hard","nativePattern":"困难 %d-%d","zh-Hans":"困难 {0}-{1}","en":"Hard {0}-{1}"},
+    {"key":"StageName.Hell","nativePattern":"地狱 %d-%d","zh-Hans":"地狱 {0}-{1}","en":"Hell {0}-{1}"},
+    {"key":"Notice.StageCleared","zh-Hans":"通关 {Stage}","en":"Cleared {Stage}"},
+    {"key":"Notice.StageFailed","zh-Hans":"游历失败：{Stage}","en":"Travel failed: {Stage}"},
+    {"key":"Notice.ChestAcquired","zh-Hans":"获得了{Name}","en":"Obtained {Name}"}
+  ]
+}

@@ -31,7 +31,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_TigerSeal.T_Relic_TigerSeal"
+      ]
     },
     {
       "slug": "InkTalisman",
@@ -60,7 +63,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_InkTalisman.T_Relic_InkTalisman"
+      ]
     },
     {
       "slug": "CloudMirror",
@@ -89,7 +95,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_CloudMirror.T_Relic_CloudMirror"
+      ]
     },
     {
       "slug": "StoneBead",
@@ -118,7 +127,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_StoneBead.T_Relic_StoneBead"
+      ]
     },
     {
       "slug": "AncientCoin",
@@ -147,7 +159,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_AncientCoin.T_Relic_AncientCoin"
+      ]
     },
     {
       "slug": "JadeBell",
@@ -176,7 +191,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_JadeBell.T_Relic_JadeBell"
+      ]
     },
     {
       "slug": "BambooTally",
@@ -205,7 +223,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_BambooTally.T_Relic_BambooTally"
+      ]
     },
     {
       "slug": "IronKnot",
@@ -234,7 +255,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_IronKnot.T_Relic_IronKnot"
+      ]
     },
     {
       "slug": "TeaBrick",
@@ -263,7 +287,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_TeaBrick.T_Relic_TeaBrick"
+      ]
     },
     {
       "slug": "MedicineGourd",
@@ -292,7 +319,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_MedicineGourd.T_Relic_MedicineGourd"
+      ]
     },
     {
       "slug": "CraneFeather",
@@ -321,7 +351,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_CraneFeather.T_Relic_CraneFeather"
+      ]
     },
     {
       "slug": "Compass",
@@ -350,7 +383,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_Compass.T_Relic_Compass"
+      ]
     },
     {
       "slug": "RedCord",
@@ -379,7 +415,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_RedCord.T_Relic_RedCord"
+      ]
     },
     {
       "slug": "BronzeNeedle",
@@ -408,7 +447,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_BronzeNeedle.T_Relic_BronzeNeedle"
+      ]
     },
     {
       "slug": "LotusSeed",
@@ -437,7 +479,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_LotusSeed.T_Relic_LotusSeed"
+      ]
     },
     {
       "slug": "DrumCharm",
@@ -466,7 +511,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_DrumCharm.T_Relic_DrumCharm"
+      ]
     },
     {
       "slug": "RainCape",
@@ -495,7 +543,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_RainCape.T_Relic_RainCape"
+      ]
     },
     {
       "slug": "SwordGuard",
@@ -524,7 +575,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_SwordGuard.T_Relic_SwordGuard"
+      ]
     },
     {
       "slug": "ChessStone",
@@ -553,7 +607,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_ChessStone.T_Relic_ChessStone"
+      ]
     },
     {
       "slug": "OldMap",
@@ -582,7 +639,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_OldMap.T_Relic_OldMap"
+      ]
     },
     {
       "slug": "PineCone",
@@ -611,7 +671,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_PineCone.T_Relic_PineCone"
+      ]
     },
     {
       "slug": "RiverPearl",
@@ -640,7 +703,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_RiverPearl.T_Relic_RiverPearl"
+      ]
     },
     {
       "slug": "WineCup",
@@ -669,7 +735,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_WineCup.T_Relic_WineCup"
+      ]
     },
     {
       "slug": "CandleStub",
@@ -698,7 +767,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_CandleStub.T_Relic_CandleStub"
+      ]
     },
     {
       "slug": "FoxMask",
@@ -727,7 +799,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_FoxMask.T_Relic_FoxMask"
+      ]
     },
     {
       "slug": "HerbBasket",
@@ -756,7 +831,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_HerbBasket.T_Relic_HerbBasket"
+      ]
     },
     {
       "slug": "PaperCrane",
@@ -785,7 +863,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_PaperCrane.T_Relic_PaperCrane"
+      ]
     },
     {
       "slug": "StoneLion",
@@ -814,7 +895,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_StoneLion.T_Relic_StoneLion"
+      ]
     },
     {
       "slug": "BrokenArrow",
@@ -843,7 +927,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_BrokenArrow.T_Relic_BrokenArrow"
+      ]
     },
     {
       "slug": "MoonDisc",
@@ -872,94 +959,10 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
-    },
-    {
-      "slug": "StormChime",
-      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StormChime.png",
-      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-d0678983-dc7d-4ef2-8b21-703980d3069b.png",
-      "rawSha256": "1c5d0f89b8b95fb5fa0a3bc8d4a5543ef20da1e66311caca4a020067c4965515",
-      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StormChime.png",
-      "sha256": "9c0b2a79616ab435889708e43beb49bf2029a5b21a0d88a9aafe29badde8dd0d",
-      "background": "existing-alpha",
-      "removedBackgroundPixels": 770640,
-      "sourceAlphaBounds": [
-        25,
-        47,
-        1200,
-        1204
-      ],
-      "size": [
-        512,
-        512
-      ],
-      "alphaBounds": [
-        57,
-        37,
-        482,
-        478
-      ],
-      "subjectPixelsRecoloredBeforeResize": 0,
-      "visualReview": "pending",
-      "imported": false
-    },
-    {
-      "slug": "FlameCenser",
-      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_FlameCenser.png",
-      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8a98e6bf-769b-4afa-ad6d-544b556d2aa7.png",
-      "rawSha256": "e1a85545b44002469161c7e3263ebdf2b246d4f48da2b2e319ea5a6aa27acddc",
-      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_FlameCenser.png",
-      "sha256": "21ecbfb27ba48f1a83e1aa38e7538b63df266cf5e86b0169fa30b3b35dbf109f",
-      "background": "existing-alpha",
-      "removedBackgroundPixels": 796665,
-      "sourceAlphaBounds": [
-        0,
-        21,
-        1253,
-        1254
-      ],
-      "size": [
-        512,
-        512
-      ],
-      "alphaBounds": [
-        41,
-        40,
-        482,
-        464
-      ],
-      "subjectPixelsRecoloredBeforeResize": 0,
-      "visualReview": "pending",
-      "imported": false
-    },
-    {
-      "slug": "BloodInkSeal",
-      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BloodInkSeal.png",
-      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2f4a336a-2818-4dfb-bd2c-5a026a1d1a20.png",
-      "rawSha256": "f062f7a0528be7a049bc317acaa19d178ca0acb37cf9cd381c8437d0d1b23aa0",
-      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BloodInkSeal.png",
-      "sha256": "bb1517ea8574b64163526083c970bd4613ee3083b95823169d933122111d26fe",
-      "background": "existing-alpha",
-      "removedBackgroundPixels": 663958,
-      "sourceAlphaBounds": [
-        0,
-        53,
-        1236,
-        1254
-      ],
-      "size": [
-        512,
-        512
-      ],
-      "alphaBounds": [
-        42,
-        39,
-        477,
-        456
-      ],
-      "subjectPixelsRecoloredBeforeResize": 0,
-      "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_MoonDisc.T_Relic_MoonDisc"
+      ]
     },
     {
       "slug": "HunterQuiver",
@@ -988,7 +991,463 @@
       ],
       "subjectPixelsRecoloredBeforeResize": 0,
       "visualReview": "pending",
-      "imported": false
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_HunterQuiver.T_Relic_HunterQuiver"
+      ]
+    },
+    {
+      "slug": "MoonDewVial",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_MoonDewVial.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-ffcd9b1f-bf25-4ee0-856a-1848654949a3.png",
+      "rawSha256": "870c8cead589949dd82f7eb2f22972a49b6700bb7fda128eaca019c136a6755c",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_MoonDewVial.png",
+      "sha256": "91fca0bd6269f364bbccbc4d8a1bc6a45d5905a0ba907cc301fe1acdf103cf00",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 721325,
+      "sourceAlphaBounds": [
+        0,
+        26,
+        1206,
+        1238
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        31,
+        30,
+        463,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_MoonDewVial.T_Relic_MoonDewVial"
+      ]
+    },
+    {
+      "slug": "WarBanner",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_WarBanner.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2e37d0b2-01b7-4e09-92bd-9cd393a5043d.png",
+      "rawSha256": "485aaa478a26acb54208f6b6a8f6d8eb84e4103d78734663e594e80f6b2cc53f",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_WarBanner.png",
+      "sha256": "5beef82012a5ffefcbe290f3090d5dcffe32acc44a8a00fa5c4e1601d2caf4e5",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 1048464,
+      "sourceAlphaBounds": [
+        66,
+        19,
+        1192,
+        1224
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        45,
+        30,
+        467,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_WarBanner.T_Relic_WarBanner"
+      ]
+    },
+    {
+      "slug": "SilkFan",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_SilkFan.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-64e6f947-c284-4a5c-b89b-7c649e9021d3.png",
+      "rawSha256": "1eb9a320dee02a1b0b594a342e402b4c8054612b7848e747d26d2fb1301b356b",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_SilkFan.png",
+      "sha256": "517e493a453d15a697a7005c10e9e73b7ef14a5d38604efe7f40f55e414ef9f6",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 748319,
+      "sourceAlphaBounds": [
+        0,
+        65,
+        1240,
+        1216
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        35,
+        55,
+        482,
+        449
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_SilkFan.T_Relic_SilkFan"
+      ]
+    },
+    {
+      "slug": "AmberPestle",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_AmberPestle.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2823d0fc-dd49-4f59-8b19-ae6247d5b88c.png",
+      "rawSha256": "924b0d5a7e538430b7b20f6c2089b0155226b36c3a045683002cf91cb5daa665",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_AmberPestle.png",
+      "sha256": "0cab4737d0b507c6904900ee57951597ba956f927910eeff56909c8d8e4bc851",
+      "background": "magenta",
+      "removedBackgroundPixels": 644089,
+      "sourceAlphaBounds": [
+        83,
+        37,
+        1180,
+        1217
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        46,
+        30,
+        466,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_AmberPestle.T_Relic_AmberPestle"
+      ]
+    },
+    {
+      "slug": "ObsidianScale",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_ObsidianScale.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-69b9ac16-5095-46d6-b68e-c994a0e9d742.png",
+      "rawSha256": "93e2805ab544c79fac8fbecfd4fe0a2d14b0dad23dffa86455caca1fe2dba93b",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_ObsidianScale.png",
+      "sha256": "269b4302adabcbf68111eb50d18642067b84805dc3f7bb3ef12022fb50771c5f",
+      "background": "magenta",
+      "removedBackgroundPixels": 801973,
+      "sourceAlphaBounds": [
+        137,
+        24,
+        1145,
+        1229
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        67,
+        30,
+        445,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_ObsidianScale.T_Relic_ObsidianScale"
+      ]
+    },
+    {
+      "slug": "TwinJade",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_TwinJade.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-c7d2284b-1547-493c-8d31-add9b223faaf.png",
+      "rawSha256": "5de8f89dadfe13085450492d9b9ed87391558a67591204259c3be2440c2f64da",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_TwinJade.png",
+      "sha256": "f45a676426e62eb1690291ec947d35c715f4c827acf7a50a6fac3031532de97c",
+      "background": "magenta",
+      "removedBackgroundPixels": 645847,
+      "sourceAlphaBounds": [
+        71,
+        69,
+        1184,
+        1178
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        31,
+        482,
+        481
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_TwinJade.T_Relic_TwinJade"
+      ]
+    },
+    {
+      "slug": "BloodMoonBlade",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BloodMoonBlade.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-774d6755-a8cd-4802-b8e9-c3d74d7fca41.png",
+      "rawSha256": "5f2b1370380ca75fc3a4ce8451f1b60d054f7ee5ebde21270e52c7fc3f6f2578",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BloodMoonBlade.png",
+      "sha256": "40ac78fa2b00ec8adc4fc251765ee5d1e3e3439dd363ca48e0c57be4472af43f",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 1008941,
+      "sourceAlphaBounds": [
+        29,
+        40,
+        1226,
+        1238
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        30,
+        480,
+        475
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_BloodMoonBlade.T_Relic_BloodMoonBlade"
+      ]
+    },
+    {
+      "slug": "DragonCarapace",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_DragonCarapace.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-68bffd53-2889-47e9-80da-fcd53eca445b.png",
+      "rawSha256": "09a02a4ff9c6299b81bac2068ee9c401d55af1352b9b21e1d4761a0970a85028",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_DragonCarapace.png",
+      "sha256": "3f397cee05b4e60ebb8c29d109253987af4d9459977692c8059f81b9297fb6e5",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 675187,
+      "sourceAlphaBounds": [
+        0,
+        0,
+        1210,
+        1236
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        50,
+        30,
+        477,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_DragonCarapace.T_Relic_DragonCarapace"
+      ]
+    },
+    {
+      "slug": "ThunderSeal",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_ThunderSeal.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-33122f01-de46-4c98-8db6-862b6e93cdaa.png",
+      "rawSha256": "bfbcaeb7a03bb23a07302a8a26b28d715f506afb38dde1165b076a48a495b7b5",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_ThunderSeal.png",
+      "sha256": "b98fb7be28023bbce0d627c51658ca70fbe9bebe1a16205124fe19fa33645884",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 486425,
+      "sourceAlphaBounds": [
+        0,
+        33,
+        1253,
+        1254
+      ],
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        45,
+        482,
+        464
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_ThunderSeal.T_Relic_ThunderSeal"
+      ]
+    },
+    {
+      "slug": "StormChime",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StormChime.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-d0678983-dc7d-4ef2-8b21-703980d3069b.png",
+      "rawSha256": "1c5d0f89b8b95fb5fa0a3bc8d4a5543ef20da1e66311caca4a020067c4965515",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StormChime.png",
+      "sha256": "4610aea9fc1075afffb1571e2d9af2d13c7474ce174dbcd687aea66127a56f39",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 770640,
+      "sourceAlphaBounds": [
+        104,
+        63,
+        1118,
+        1195
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        53,
+        30,
+        458,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_StormChime.T_Relic_StormChime"
+      ]
+    },
+    {
+      "slug": "FlameCenser",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_FlameCenser.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-8a98e6bf-769b-4afa-ad6d-544b556d2aa7.png",
+      "rawSha256": "e1a85545b44002469161c7e3263ebdf2b246d4f48da2b2e319ea5a6aa27acddc",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_FlameCenser.png",
+      "sha256": "23c89920e88d5de27404aaa564a8a43cd1fe9e4914edfd325587fe7bb7d1aafc",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 796665,
+      "sourceAlphaBounds": [
+        64,
+        47,
+        1190,
+        1207
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        36,
+        30,
+        475,
+        482
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_FlameCenser.T_Relic_FlameCenser"
+      ]
+    },
+    {
+      "slug": "BloodInkSeal",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_BloodInkSeal.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-2f4a336a-2818-4dfb-bd2c-5a026a1d1a20.png",
+      "rawSha256": "f062f7a0528be7a049bc317acaa19d178ca0acb37cf9cd381c8437d0d1b23aa0",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_BloodInkSeal.png",
+      "sha256": "e373316d54ae73354bdc0a6edd9dd49292578359491cd24af243caf12acf32e1",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 663958,
+      "sourceAlphaBounds": [
+        63,
+        68,
+        1191,
+        1194
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        30,
+        482,
+        481
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_BloodInkSeal.T_Relic_BloodInkSeal"
+      ]
+    },
+    {
+      "slug": "PhoenixCauldron",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_PhoenixCauldron.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-71aa5c6b-fb27-4f16-a9ed-f31adc87bb00.png",
+      "rawSha256": "22debc0f8cd87452909c23b7e1e4817f709341e424e44ee16058d1540707f5ce",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_PhoenixCauldron.png",
+      "sha256": "3044e4aca226a97412482a34139107c8eebac572a5acae5ec288ddadea2a3216",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 697580,
+      "sourceAlphaBounds": [
+        28,
+        101,
+        1226,
+        1189
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        51,
+        482,
+        461
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_PhoenixCauldron.T_Relic_PhoenixCauldron"
+      ]
+    },
+    {
+      "slug": "StarAbacus",
+      "raw": "SourceArt/UI/Relics/gemstyle-20260910/raw/T_Relic_StarAbacus.png",
+      "sourceGeneratedPath": "D:\\CodexData\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-afc1b0aa-894e-41d9-ac08-9dd16253989a.png",
+      "rawSha256": "4141053d7ae1c3acb551533e7b5fb5a3b82c21b68a4f1b0392419b73f81c8199",
+      "icon": "SourceArt/UI/Relics/gemstyle-20260910/icons/T_Relic_StarAbacus.png",
+      "sha256": "20516f3802f25d8d0145e617f05878f79a3bad695953198e8efaec6a09093fcf",
+      "background": "existing-alpha",
+      "removedBackgroundPixels": 608363,
+      "sourceAlphaBounds": [
+        42,
+        73,
+        1215,
+        1197
+      ],
+      "cropAlphaThreshold": 16,
+      "size": [
+        512,
+        512
+      ],
+      "alphaBounds": [
+        30,
+        39,
+        482,
+        472
+      ],
+      "subjectPixelsRecoloredBeforeResize": 0,
+      "visualReview": "pending",
+      "imported": true,
+      "assetPaths": [
+        "/Game/GameXXK/UI/Relics/Icons/T_Relic_StarAbacus.T_Relic_StarAbacus"
+      ]
     }
   ]
 }

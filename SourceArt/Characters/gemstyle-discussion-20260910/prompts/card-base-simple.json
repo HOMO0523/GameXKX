@@ -1,0 +1,19 @@
+{
+  "prompt": "Use case: precise-object-edit. 按第一张项目原卡底的轮廓比例，重新设计一张更简单的国风空白卡底。第一张原始贴图尺寸452×516，宽高比113:129，是稍竖的近方矩形；新图外形必须保持这个比例，绝不能画成长条塔罗牌。第二张宝石只参考干净块面和粗自然墨边的画风。\n只保留：一张暖米白的平整空白卡纸，四角轻微圆钝，外围一条简洁、连续但有少量自然粗细变化的深棕墨线。墨线不超过整个卡面宽度约1.5%，不要多层边框，不要内外套框，不要青绿色宽边，不要金属厚度，不要描金、云角、卷纹或任何角花。纸面中央约94%保持干净，颜色略有柔和暖变化，边缘只有极少量很淡的大手绘刷痕；不要密集纸纹、噪点、破损、墨迹斑块或网格。整体轻巧、简单、干净、适合在小尺寸上放文字与立绘。无文字、数字、图案、角色、宝石、图标、徽章、按钮、费用圆标和分隔线。单个卡底，正视，无透视，无投影。外部只用均匀纯洋红#FF00FF作为后期去底区域，完整卡底留5%安全空间；卡纸和墨线本身无洋红。最终将对齐原贴图的452×516画布及原透明边距，故务必保持原图近方的外轮廓比例。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/gamexxk-v4/ui-master/RuntimeApproved/T_MasterV2_CardFrame.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f458fa72-5a0c-4a19-9b60-d524b7b38193.png",
+  "targetSize": [
+    452,
+    516
+  ],
+  "targetAlphaBounds": [
+    2,
+    4,
+    448,
+    512
+  ],
+  "revision": "single ink outline; exact original texture canvas and margins"
+}

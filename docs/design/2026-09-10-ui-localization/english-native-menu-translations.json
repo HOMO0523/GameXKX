@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "OccupiedSlotLabel",
+      "nativeSource": "Slot {0}: {1} - Level {2}",
+      "zh-Hans": "存档 {0}：{1} · 等级 {2}",
+      "en": "Slot {0}: {1} - Level {2}"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "EmptySlotLabel",
+      "nativeSource": "Slot {0}: Empty",
+      "zh-Hans": "存档 {0}：空",
+      "en": "Slot {0}: Empty"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "UnreadableSlotLabel",
+      "nativeSource": "Slot {0}: Incompatible Save",
+      "zh-Hans": "存档 {0}：不兼容的存档",
+      "en": "Slot {0}: Incompatible Save"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "IncompatibleSlotLabel",
+      "nativeSource": "Slot {0}: Incompatible Save",
+      "zh-Hans": "存档 {0}：不兼容的存档",
+      "en": "Slot {0}: Incompatible Save"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "QingshanTownScreen",
+      "nativeSource": "Qingshan Town",
+      "zh-Hans": "青山镇",
+      "en": "Qingshan Town"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "RouteMapScreen",
+      "nativeSource": "Route Map",
+      "zh-Hans": "路线地图",
+      "en": "Route Map"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "WorldMapScreen",
+      "nativeSource": "World Map",
+      "zh-Hans": "世界地图",
+      "en": "World Map"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "BattleScreen",
+      "nativeSource": "Battle",
+      "zh-Hans": "战斗",
+      "en": "Battle"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "RouteEventScreen",
+      "nativeSource": "Event",
+      "zh-Hans": "事件",
+      "en": "Event"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "RouteCampScreen",
+      "nativeSource": "Camp",
+      "zh-Hans": "营地",
+      "en": "Camp"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "RouteMerchantScreen",
+      "nativeSource": "Merchant",
+      "zh-Hans": "行商",
+      "en": "Merchant"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "TownScreen",
+      "nativeSource": "Town",
+      "zh-Hans": "城镇",
+      "en": "Town"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "UnknownScreen",
+      "nativeSource": "Unknown",
+      "zh-Hans": "未知",
+      "en": "Unknown"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "ContinueTitle",
+      "nativeSource": "Continue",
+      "zh-Hans": "继续游戏",
+      "en": "Continue"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "DeleteConfirmTitle",
+      "nativeSource": "Delete {0}?",
+      "zh-Hans": "删除 {0}？",
+      "en": "Delete {0}?"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "DeleteButton",
+      "nativeSource": "Delete",
+      "zh-Hans": "删除",
+      "en": "Delete"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "CancelButton",
+      "nativeSource": "Cancel",
+      "zh-Hans": "取消",
+      "en": "Cancel"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "OptionsUnavailable",
+      "nativeSource": "Options are unavailable in this build.",
+      "zh-Hans": "当前版本无法打开设置。",
+      "en": "Options are unavailable in this build."
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "QuitUnavailable",
+      "nativeSource": "Quit is unavailable in this build.",
+      "zh-Hans": "当前版本无法退出。",
+      "en": "Quit is unavailable in this build."
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "LoadButton",
+      "nativeSource": "Load",
+      "zh-Hans": "读取",
+      "en": "Load"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "DeleteSlotButton",
+      "nativeSource": "Delete",
+      "zh-Hans": "删除",
+      "en": "Delete"
+    },
+    {
+      "namespace": "GameXXKMainMenu",
+      "key": "CloseButton",
+      "nativeSource": "Close",
+      "zh-Hans": "关闭",
+      "en": "Close"
+    }
+  ]
+}

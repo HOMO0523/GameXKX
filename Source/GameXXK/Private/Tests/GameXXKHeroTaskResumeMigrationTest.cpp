@@ -1,15 +1,29 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKCardRules.h"
 #include "GameXXKCombatScalingRules.h"
+#include "GameXXKResistanceRules.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveMigration.h"
 
 #include "Misc/AutomationTest.h"
+#include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 namespace
 {
+	FString DescribeUnitDifference(const FGameXXKCardCombatUnit& Before,const FGameXXKCardCombatUnit& After)
+	{
+		TArray<FString> Changes;
+		for(TFieldIterator<FProperty> It(FGameXXKCardCombatUnit::StaticStruct());It;++It)
+		{
+			if(It->Identical_InContainer(&Before,&After))continue;
+			FString A,B;It->ExportText_InContainer(0,A,&Before,nullptr,nullptr,PPF_None);
+			It->ExportText_InContainer(0,B,&After,nullptr,nullptr,PPF_None);
+			Changes.Add(It->GetName()+TEXT(": ")+A.Left(300)+TEXT(" -> ")+B.Left(300));
+		}
+		return FString::Join(Changes,TEXT(" | "));
+	}
 	const FName ResumeHeroId(TEXT("Hero"));
 	const FName ResumeEnemyId(TEXT("Enemy"));
 
@@ -47,6 +61,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKHeroTaskResumeMigrationTest::RunTest(const FString& Parameters)
 {
+	bool bReportedUnitDifference=false;
 	FGameXXKRuntimeState State = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	const TArray<FName> Equipped = ResumeHeroLoadout();
@@ -233,8 +248,17 @@ bool FGameXXKHeroTaskResumeMigrationTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("migration preserves combat random state"), Battle.CombatRandomState, Before.RuntimeState.CardRun.ActiveBattle.CombatRandomState);
 		for (int32 UnitIndex = 0; UnitIndex < Battle.Units.Num(); ++UnitIndex)
 		{
+			FGameXXKCardCombatUnit ExpectedUnit=Before.RuntimeState.CardRun.ActiveBattle.Units[UnitIndex];
+			// v33/v34 predate the authored resistance snapshot. All resources and
+			// other unit data must remain identical after that required initialization.
+			FGameXXKResistanceRules::InitializeUnitProfile(ExpectedUnit);
+			if(!bReportedUnitDifference&&!FGameXXKCardCombatUnit::StaticStruct()->CompareScriptStruct(&Battle.Units[UnitIndex],&ExpectedUnit,PPF_None))
+			{
+				AddWarning(TEXT("First unexpected migration unit difference: ")+DescribeUnitDifference(ExpectedUnit,Battle.Units[UnitIndex]));
+				bReportedUnitDifference=true;
+			}
 			TestTrue(TEXT("migration does not heal, damage, or change unit resources"),
-				FGameXXKCardCombatUnit::StaticStruct()->CompareScriptStruct(&Battle.Units[UnitIndex], &Before.RuntimeState.CardRun.ActiveBattle.Units[UnitIndex], PPF_None));
+				FGameXXKCardCombatUnit::StaticStruct()->CompareScriptStruct(&Battle.Units[UnitIndex], &ExpectedUnit, PPF_None));
 		}
 		if (bReplay)
 		{
@@ -411,6 +435,11 @@ bool FGameXXKHeroPendingModifierMigrationTest::RunTest(const FString& Parameters
 		Expected.Modifiers[0].RecipientUnitIds.Reset();
 		Expected.Modifiers[1].Definition.Expiry = EGameXXKCardModifierExpiry::AfterTriggerCount;
 		Expected.Modifiers[1].Definition.RemainingTriggers = 1;
+		for(auto& Unit:Expected.Units)FGameXXKResistanceRules::InitializeUnitProfile(Unit);
+		// v33/v34 did not record a complete battle report; this metadata change
+		// must not be confused with executing a pending combat effect.
+		Expected.SessionStats=FGameXXKBattleSessionStats();
+		Expected.SessionStats.bComplete=false;
 		FGameXXKSaveState Restored;
 		FGameXXKSaveMigrationReport Report;
 		if (!TestTrue(FString::Printf(TEXT("v%d pending modifiers migrate"), SourceVersion),

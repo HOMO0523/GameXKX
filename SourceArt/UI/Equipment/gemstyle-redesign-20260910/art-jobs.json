@@ -1,0 +1,431 @@
+{
+  "version": 2,
+  "expected": 42,
+  "designBasis": "用户2026-09-10要求：只用名称和主题重新设计，不继承旧装备外形。旧版兼容7件排除。",
+  "backgroundAndResizeAuthorized": true,
+  "styleReference": "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+  "jobs": [
+    {
+      "slug": "pojun_weapon",
+      "name": "破军武器",
+      "set": "pojun",
+      "slot": "weapon",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一柄厚实短柄斩马刀，完整宽刃呈干净单弧，米金宽刀背，红布缠柄，朝右上斜放；只有一处短宽护手",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_weapon"
+    },
+    {
+      "slug": "pojun_head",
+      "name": "破军头冠",
+      "set": "pojun",
+      "slot": "head",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一顶圆顶覆面战盔，额前一条朱红宽脊，左右坚实短护颊，单束短红缨靠后，清楚眼部开口",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_head"
+    },
+    {
+      "slug": "pojun_armor",
+      "name": "破军护甲",
+      "set": "pojun",
+      "slot": "armor",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一件短而宽的朱红武者札甲，三块大胸甲片，圆厚护肩，暗灰腰甲，中央一个简洁金色圆铆",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_armor"
+    },
+    {
+      "slug": "pojun_belt",
+      "name": "破军腰带",
+      "set": "pojun",
+      "slot": "belt",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一圈粗宽红黑战斗束腰，前方一枚厚实金铜方扣，两侧短红护片，完整环形结构",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_belt"
+    },
+    {
+      "slug": "pojun_shoes",
+      "name": "破军鞋履",
+      "set": "pojun",
+      "slot": "shoes",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一双结实短战靴，朱红翻折靴口，暗灰圆鞋头与厚鞋底，前方一条宽金扣带",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_shoes"
+    },
+    {
+      "slug": "pojun_accessory",
+      "name": "破军饰品",
+      "set": "pojun",
+      "slot": "accessory",
+      "theme": "猛攻、破阵、勇猛战士",
+      "palette": "鲜亮朱红与深铁灰，少量暖金",
+      "subject": "一枚厚实朱红虎牙形挂坠，略弯的单个短宽牙身，顶端暖金包帽和短黑绳环；不画脸",
+      "asset": "/Game/GameXXK/UI/Equipment/pojun_accessory"
+    },
+    {
+      "slug": "xuanjia_weapon",
+      "name": "玄甲武器",
+      "set": "xuanjia",
+      "slot": "weapon",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "一柄单手短战锤，干净厚方形蓝钢锤头，顶面稍拱，中央一颗方金钉，粗短深灰柄",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_weapon"
+    },
+    {
+      "slug": "xuanjia_head",
+      "name": "玄甲头冠",
+      "set": "xuanjia",
+      "slot": "head",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "一顶厚实蓝钢盆盔，宽低冠顶与整块前额护板，两个短护颊，一枚方金额钉，开口明确",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_head"
+    },
+    {
+      "slug": "xuanjia_armor",
+      "name": "玄甲护甲",
+      "set": "xuanjia",
+      "slot": "armor",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "宽厚青蓝六角胸甲，低矮完整U形领口与顺畅后领缘，圆肩有清楚短连接片；无伸入领口的金色竖条",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_armor"
+    },
+    {
+      "slug": "xuanjia_belt",
+      "name": "玄甲腰带",
+      "set": "xuanjia",
+      "slot": "belt",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "一圈深海蓝硬皮重腰带，前方青蓝大六角扣，中心单枚金色方铆，结构清楚",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_belt"
+    },
+    {
+      "slug": "xuanjia_shoes",
+      "name": "玄甲鞋履",
+      "set": "xuanjia",
+      "slot": "shoes",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "一双厚重蓝钢甲靴，宽方护胫与深灰圆钝鞋头，金色横扣，低重心",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_shoes"
+    },
+    {
+      "slug": "xuanjia_accessory",
+      "name": "玄甲饰品",
+      "set": "xuanjia",
+      "slot": "accessory",
+      "theme": "坚韧、防守、稳固护甲",
+      "palette": "明亮青蓝与深海蓝，炭灰边，少量金黄",
+      "subject": "一枚厚实青蓝龟甲形佩饰，短宽六角外廓，三条简单大甲缝，顶端金帽和短黑绳",
+      "asset": "/Game/GameXXK/UI/Equipment/xuanjia_accessory"
+    },
+    {
+      "slug": "qingnang_weapon",
+      "name": "青囊武器",
+      "set": "qingnang",
+      "slot": "weapon",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一支短粗药木杖，杖头是一块木质葫芦状圆头，横系两片宽叶和短米色布条，斜向右上，无细枝",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_weapon"
+    },
+    {
+      "slug": "qingnang_head",
+      "name": "青囊头冠",
+      "set": "qingnang",
+      "slot": "head",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一顶绿白医者软帽，宽圆帽顶与米白翻边，帽侧只缀一片宽绿叶，无长带",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_head"
+    },
+    {
+      "slug": "qingnang_armor",
+      "name": "青囊护甲",
+      "set": "qingnang",
+      "slot": "armor",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一件绿白医者短袍，宽松短袖、米白交领、绿色整块衣身，腰侧一个小圆药袋",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_armor"
+    },
+    {
+      "slug": "qingnang_belt",
+      "name": "青囊腰带",
+      "set": "qingnang",
+      "slot": "belt",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一圈米白绿边布腰封，前方简单粗绳结，侧面一只饱满圆药囊和一片宽叶",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_belt"
+    },
+    {
+      "slug": "qingnang_shoes",
+      "name": "青囊鞋履",
+      "set": "qingnang",
+      "slot": "shoes",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一双草绿色软布短靴，米白翻口与厚底，前方一条宽棕绑带，圆润鞋头",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_shoes"
+    },
+    {
+      "slug": "qingnang_accessory",
+      "name": "青囊饰品",
+      "set": "qingnang",
+      "slot": "accessory",
+      "theme": "医者、草药、恢复与温和生命力",
+      "palette": "鲜活草绿、米白、少量暖棕",
+      "subject": "一只圆鼓的绿色药囊挂坠，米白束口和短棕绳，一片大绿叶贴在囊面，轮廓圆整",
+      "asset": "/Game/GameXXK/UI/Equipment/qingnang_accessory"
+    },
+    {
+      "slug": "zhuifeng_weapon",
+      "name": "追风武器",
+      "set": "zhuifeng",
+      "slot": "weapon",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一张短而有力的天青轻弓，两端圆润回卷，宽象牙白握把，清晰单根弓弦，只有一处简洁风弧纹",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_weapon"
+    },
+    {
+      "slug": "zhuifeng_head",
+      "name": "追风头冠",
+      "set": "zhuifeng",
+      "slot": "head",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一顶天青旅行软帽，低圆冠，象牙白宽帽檐，帽侧一片短宽白羽，轮廓轻快",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_head"
+    },
+    {
+      "slug": "zhuifeng_armor",
+      "name": "追风护甲",
+      "set": "zhuifeng",
+      "slot": "armor",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一件天青轻便短衣，白色交领，短而干净的侧摆，腰际一个简单风弧纹扣，布料大折面",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_armor"
+    },
+    {
+      "slug": "zhuifeng_belt",
+      "name": "追风腰带",
+      "set": "zhuifeng",
+      "slot": "belt",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一圈天青窄身宽扣的轻腰带，前方象牙白云朵形厚扣，侧面一个很短的布带尾",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_belt"
+    },
+    {
+      "slug": "zhuifeng_shoes",
+      "name": "追风鞋履",
+      "set": "zhuifeng",
+      "slot": "shoes",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一双天青疾行短靴，象牙白上翘短鞋尖，侧面一条大白色风弧，靴底轻薄但清楚",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_shoes"
+    },
+    {
+      "slug": "zhuifeng_accessory",
+      "name": "追风饰品",
+      "set": "zhuifeng",
+      "slot": "accessory",
+      "theme": "轻盈、疾行、风与云",
+      "palette": "鲜亮天青与淡青，象牙白，少量暖金",
+      "subject": "一枚天青圆润云形玉佩，单个简洁卷云缺口，象牙白亮面，顶部短金环和短青绳",
+      "asset": "/Game/GameXXK/UI/Equipment/zhuifeng_accessory"
+    },
+    {
+      "slug": "shigu_weapon",
+      "name": "蚀骨武器",
+      "set": "shigu",
+      "slot": "weapon",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一柄短宽蓝紫弯匕首，单刃钝弧，深紫短柄，护手一颗大黄绿毒滴形镶块，无瓶罐和碎刃",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_weapon"
+    },
+    {
+      "slug": "shigu_head",
+      "name": "蚀骨头冠",
+      "set": "shigu",
+      "slot": "head",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一顶宽短深紫兜帽，两侧清楚帽耳折面，黄绿窄包边和一个简洁毒滴额扣，面部留空",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_head"
+    },
+    {
+      "slug": "shigu_armor",
+      "name": "蚀骨护甲",
+      "set": "shigu",
+      "slot": "armor",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一件蓝紫毒术短袍，宽黄绿交领，短肩披片，胸前一个大毒滴形扣，无繁杂挂件",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_armor"
+    },
+    {
+      "slug": "shigu_belt",
+      "name": "蚀骨腰带",
+      "set": "shigu",
+      "slot": "belt",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一圈深紫药师宽腰封，前方黄绿毒滴形厚扣，侧面只挂一只短圆毒瓶",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_belt"
+    },
+    {
+      "slug": "shigu_shoes",
+      "name": "蚀骨鞋履",
+      "set": "shigu",
+      "slot": "shoes",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一双蓝紫短软靴，黄绿翻边和单道粗绑带，鞋头短尖但宽实，无细刺",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_shoes"
+    },
+    {
+      "slug": "shigu_accessory",
+      "name": "蚀骨饰品",
+      "set": "shigu",
+      "slot": "accessory",
+      "theme": "毒蚀、阴冷、危险药术",
+      "palette": "鲜明蓝紫、深紫，酸黄绿点缀",
+      "subject": "一只饱满水滴形黄绿毒瓶吊坠，深紫厚瓶盖与短吊环，瓶内单个深色大液面，透明感轻微",
+      "asset": "/Game/GameXXK/UI/Equipment/shigu_accessory"
+    },
+    {
+      "slug": "shanhe_weapon",
+      "name": "山河武器",
+      "set": "shanhe",
+      "slot": "weapon",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一柄厚实石脊重剑，宽直剑身、斜切钝尖，砂金刃沿、暖赭石主体，宽绿护手和短柄，干净单条山脊线",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_weapon"
+    },
+    {
+      "slug": "shanhe_head",
+      "name": "山河头冠",
+      "set": "shanhe",
+      "slot": "head",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一顶砂金山行冠，低矮宽方冠身，顶部两处圆钝山峰起伏，苍绿宽围边，明显佩戴开口",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_head"
+    },
+    {
+      "slug": "shanhe_armor",
+      "name": "山河护甲",
+      "set": "shanhe",
+      "slot": "armor",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一件砂金厚布石甲，胸前一块暖赭山形护板，苍绿宽肩带，短方下摆，形态沉稳",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_armor"
+    },
+    {
+      "slug": "shanhe_belt",
+      "name": "山河腰带",
+      "set": "shanhe",
+      "slot": "belt",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一圈赭石色厚腰带，前方砂金山峰形宽扣，苍绿侧带，只用一条大山脊折线",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_belt"
+    },
+    {
+      "slug": "shanhe_shoes",
+      "name": "山河鞋履",
+      "set": "shanhe",
+      "slot": "shoes",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一双砂金厚底山行靴，暖赭圆鞋头，苍绿短绑腿，宽厚分层鞋底",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_shoes"
+    },
+    {
+      "slug": "shanhe_accessory",
+      "name": "山河饰品",
+      "set": "shanhe",
+      "slot": "accessory",
+      "theme": "厚土、群山、沉稳与守护",
+      "palette": "明亮砂金、暖赭石、少量苍松绿",
+      "subject": "一枚厚实山形石印佩饰，砂金大底座和赭石双山峰顶部，苍绿短挂绳，无文字",
+      "asset": "/Game/GameXXK/UI/Equipment/shanhe_accessory"
+    },
+    {
+      "slug": "starter_weapon",
+      "name": "基础武器",
+      "set": "starter",
+      "slot": "weapon",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一柄简洁宽短铁剑，蓝灰直剑身，浅银宽刃、圆木护手与短木柄，朝右上斜放，无纹样",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_weapon"
+    },
+    {
+      "slug": "starter_head",
+      "name": "基础头冠",
+      "set": "starter",
+      "slot": "head",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一顶圆润蓝灰布帽，米白宽翻边，侧边一个很短的棕布结，简单两道大褶",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_head"
+    },
+    {
+      "slug": "starter_armor",
+      "name": "基础护甲",
+      "set": "starter",
+      "slot": "armor",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一件蓝灰短布衣，米白交领，短袖与方下摆，两枚简单棕布扣",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_armor",
+      "flipHorizontal": true,
+      "userRevision": "用户要求基础护甲左右翻转；仅做水平镜像"
+    },
+    {
+      "slug": "starter_belt",
+      "name": "基础腰带",
+      "set": "starter",
+      "slot": "belt",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一圈暖棕皮腰带，一个厚实灰铁方扣，一截很短的带尾，清楚环形",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_belt"
+    },
+    {
+      "slug": "starter_shoes",
+      "name": "基础鞋履",
+      "set": "starter",
+      "slot": "shoes",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一双蓝灰布鞋，暖棕圆鞋头、米白厚底、宽布鞋口，简单一道绑带",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_shoes"
+    },
+    {
+      "slug": "starter_accessory",
+      "name": "基础饰品",
+      "set": "starter",
+      "slot": "accessory",
+      "theme": "朴素、实用、初入江湖",
+      "palette": "清楚蓝灰、暖木棕、米白",
+      "subject": "一枚朴素圆木珠护身坠，短蓝灰绳环与米白结扣，圆木主体只有一条简洁木纹",
+      "asset": "/Game/GameXXK/UI/StarterEquipment/starter_accessory"
+    }
+  ]
+}

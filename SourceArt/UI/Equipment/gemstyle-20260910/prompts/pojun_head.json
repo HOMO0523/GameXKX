@@ -1,0 +1,10 @@
+{
+  "slug": "pojun_head",
+  "prompt": "Use case: style-transfer. 游戏独立装备icon重绘。第一张图是一排旧装备，其中从左数第1件「破军头冠」是本次目标；只取此件造型身份，绝不能输出整排、多件、文字或表格。第二张宝石图严格作为画风参考。装备形状：朱红护盔，宽面罩开口，额顶一块短而宽的弧刃冠，炭灰护颊；明确是头盔，去掉旧图下方像刀柄的突起。配色：鲜明朱红、赤橘，炭灰护边，少量米金。画法必须与宝石同系列：粗自然深墨外轮廓、结实饱满略夸张的大体块、3至5个大的平涂明暗区、仅少量宽阔干笔，干净鲜明色块，低光泽低细节。保留装备本身材质类别，不要让装备变成宝石或透明水晶。去掉原图细雕纹、写实金属反光、碎布纹、密集绑带。单个完整物品，正方形1024x1024，主体长边约88%，四边留安全空间，48px仍易辨认。无文字数字、品质框、光环、粒子、地面或投影。背景必须为真正透明alpha PNG，不画棋盘格或白底；图标上的孔洞也透明。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/PSD/gamexxk-v4/calibration-v2/Generated/equipment/sixset_head_calibration_v1.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-cdb56c94-8fbf-416b-962a-85dbdba05ca9.png",
+  "background": "requested-transparent"
+}

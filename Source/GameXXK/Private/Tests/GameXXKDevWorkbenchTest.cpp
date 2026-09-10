@@ -16,6 +16,8 @@
 #include "Misc/Paths.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Narrative/GameXXKMainStoryRules.h"
+#include "Narrative/GameXXKMainStoryCatalog.h"
 
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 namespace
@@ -238,5 +240,43 @@ bool FGameXXKDevResumedPhaseTest::RunTest(const FString&)
 		TestEqual(TEXT("resumed packets reconcile to the settlement ledger"),Metrics.DamageLedgerDifference,int64(0));
 	}
 	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDevUnlockTest,"GameXXK.Development.TemporaryProgressUnlocks",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKDevUnlockTest::RunTest(const FString&)
+{
+    FDevFixture F;const auto Original=F.MVP->GetRuntimeState();const FString Before=StateText(Original);
+    TestTrue(TEXT("unlock stages command"),F.OK(TEXT("{\"command\":\"progress.unlock_stages\"}")));
+    const auto& Stages=F.MVP->GetRuntimeState();
+    for(auto Difficulty:{EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Hard,EGameXXKTrainingDifficulty::Hell})
+        for(int32 Chapter=1;Chapter<=3;++Chapter)for(int32 Stage=1;Stage<=(Chapter==3?4:3);++Stage)
+        {
+            const TCHAR* Name=Difficulty==EGameXXKTrainingDifficulty::Normal?TEXT("Normal"):Difficulty==EGameXXKTrainingDifficulty::Hard?TEXT("Hard"):TEXT("Hell");
+            const FName Id(*FString::Printf(TEXT("Training.%s.%d-%d"),Name,Chapter,Stage));
+            TestTrue(Id.ToString()+TEXT(" entry is open"),FGameXXKTrainingRules::CanChallenge(Stages.Training,Id));
+        }
+    TestFalse(TEXT("stages button does not unlock tasks"),Stages.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks);
+    TestEqual(TEXT("unlock is not completion, loot or saved state"),StateText(Stages),Before);
+    TestTrue(TEXT("unlock tasks command"),F.OK(TEXT("{\"command\":\"progress.unlock_tasks\"}")));
+    const auto& Unlocked=F.MVP->GetRuntimeState();
+    for(const auto& Node:FGameXXKMainStoryCatalog::Nodes())
+    {
+        TestTrue(Node.Id.ToString()+TEXT(" can be selected"),FGameXXKMainStoryRules::NodeState(Unlocked,Node.Id)!=EGameXXKTaskState::Locked);
+        auto Trial=Unlocked;FString Error;
+        TestTrue(Node.Id.ToString()+TEXT(" starts without completing predecessors: ")+Error,FGameXXKMainStoryRules::StartNode(Trial,Node.Id,&Error));
+        TestEqual(TEXT("opening a task grants no gold"),Trial.PlayerGold,Unlocked.PlayerGold);
+        TestFalse(TEXT("opening a task does not complete it"),FGameXXKMainStoryRules::IsNodeCompleted(Trial,Node.Id));
+    }
+    TestEqual(TEXT("task bypass is not serialized into player state"),StateText(Unlocked),Before);
+    TestTrue(TEXT("test-mode save remains suppressed"),F.MVP->SaveCurrentGame());TestEqual(TEXT("no player-slot writes"),F.Writes,0);
+    FGameXXKRuntimeState Roundtrip;
+    TestTrue(TEXT("ordinary serialized state loads"),FJsonObjectConverter::JsonObjectStringToUStruct(Before,&Roundtrip));
+    TestFalse(TEXT("stage flag cannot leak via save serialization"),Roundtrip.Training.bDevelopmentUnlockAllStages);
+    TestFalse(TEXT("task flag cannot leak via save serialization"),Roundtrip.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks);
+    TestTrue(TEXT("restore real progress"),F.OK(TEXT("{\"command\":\"session.restore\"}")));
+    TestFalse(TEXT("stage bypass is removed"),F.MVP->GetRuntimeState().Training.bDevelopmentUnlockAllStages);
+    TestFalse(TEXT("task bypass is removed"),F.MVP->GetRuntimeState().NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks);
+    TestEqual(TEXT("all original serialized state is restored"),StateText(F.MVP->GetRuntimeState()),Before);
+    return true;
 }
 #endif

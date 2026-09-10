@@ -1,7 +1,13 @@
 #include "UI/GameXXKBattleAnimationPresentation.h"
+#include "HAL/IConsoleManager.h"
 
 namespace
 {
+    TAutoConsoleVariable<int32> GemstyleKeyframePilot(
+        TEXT("GameXXK.BattleAnimation.GemstyleKeyframes"), 0,
+        TEXT("Preview sibling Hero/Rooster art with 8 idle / 10 attack keyframes. 0 restores production art."),
+        ECVF_Default);
+
 	struct FRuntimeAssetMapping
 	{
 		const TCHAR* RuntimeToken;
@@ -80,6 +86,29 @@ namespace
 
 	FGameXXKBattleAnimationClipDescriptor MakeClip(const FString& AssetId, const float PlaybackRate)
 	{
+        if (GemstyleKeyframePilot.GetValueOnGameThread() != 0
+            && (AssetId.Contains(TEXT("_2k_")) || AssetId.Contains(TEXT("_1k_"))))
+        {
+            const bool bHero = AssetId.StartsWith(TEXT("character_00_hero_"));
+            const bool bRooster = AssetId.StartsWith(TEXT("enemy_01_rooster_"));
+            const bool bIdle = AssetId.EndsWith(TEXT("_idle"));
+            const bool bAttack = AssetId.EndsWith(TEXT("_attack"))
+                || AssetId.EndsWith(TEXT("_attack_punch")) || AssetId.EndsWith(TEXT("_attack_kick"));
+            if ((bHero || bRooster) && (bIdle || bAttack))
+            {
+                FGameXXKBattleAnimationClipDescriptor Pilot;
+                const FString Name = FString::Printf(TEXT("T_Gemstyle_%s_%s"),
+                    bHero ? TEXT("Hero") : TEXT("Rooster"), bIdle ? TEXT("Idle") : TEXT("Attack"));
+                Pilot.AssetId = FString::Printf(TEXT("gemstyle_pilot_%s_%s"),
+                    bHero ? TEXT("hero") : TEXT("rooster"), bIdle ? TEXT("idle") : TEXT("attack"));
+                Pilot.TexturePath = FSoftObjectPath(FString::Printf(
+                    TEXT("/Game/GameXXK/BattleAnimations/GemstylePilot/%s.%s"), *Name, *Name));
+                Pilot.FrameCount = bIdle ? 8 : 10;
+                Pilot.SourceFramesPerSecond = bIdle ? 4.0f : 10.0f;
+                Pilot.PlaybackRate = 1.0f;
+                return Pilot;
+            }
+        }
 		struct FCorrectedClipTiming
 		{
 			const TCHAR* AssetId;

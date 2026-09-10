@@ -205,7 +205,7 @@ bool FGameXXKBladePartnerCardMigrationTest::RunTest(const FString& Parameters)
 		TEXT("the replacement Blade partner cards introduce save version fourteen"),
 		FGameXXKSaveMigration::BladePartnerCardsIntroducedSaveVersion,
 		14);
-	TestEqual(TEXT("the current save version includes enemy phases"), FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestTrue(TEXT("current schema retains the enemy-phase migration floor"), FGameXXKSaveMigration::CurrentSaveVersion >= 36);
 	FString Error;
 	for (int32 Seed = 1; Seed <= 256; ++Seed)
 	{

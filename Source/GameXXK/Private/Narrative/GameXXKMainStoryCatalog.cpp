@@ -4,6 +4,7 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "GameXXKTrainingRules.h"
+#include "GameXXKEnemyCatalog.h"
 
 namespace
 {
@@ -20,6 +21,16 @@ namespace
 	void ReadIds(const TSharedPtr<FJsonObject>& Object, const TCHAR* Key, TArray<FName>& Out)
 	{
 		for (const TSharedPtr<FJsonValue>& Value : Object->GetArrayField(Key)) Out.Add(FName(*Value->AsString()));
+	}
+	bool ReadLines(const TArray<TSharedPtr<FJsonValue>>& Values,const TMap<FName,FText>& Names,TArray<FGameXXKMainStoryLine>& Out)
+	{
+		for(const auto& Value:Values)
+		{
+			const auto& Pair=Value->AsArray();if(Pair.Num()!=2)return false;
+			FGameXXKMainStoryLine Line;Line.SpeakerId=FName(*Pair[0]->AsString());
+			Line.SpeakerName=Names.FindRef(Line.SpeakerId);Line.Text=FText::FromString(Pair[1]->AsString());Out.Add(MoveTemp(Line));
+		}
+		return true;
 	}
 
 	const FStoryContent& Content()
@@ -81,6 +92,11 @@ namespace
 						Line.Text = FText::FromString(Pair[1]->AsString());
 						Node.Lines.Add(MoveTemp(Line));
 					}
+					const TArray<TSharedPtr<FJsonValue>>* AfterLines=nullptr;
+					if(Item->TryGetArrayField(TEXT("after_battle_lines"),AfterLines)
+						&&!ReadLines(*AfterLines,Out.CharacterNames,Node.AfterBattleLines))
+					{Out.Error=TEXT("Post-battle line must have speaker and text.");return Out;}
+					if(Item->HasField(TEXT("enemy_ids")))ReadIds(Item,TEXT("enemy_ids"),Node.EnemyDefinitionIds);
 					for (const auto& OptionValue : Item->GetArrayField(TEXT("options")))
 					{
 						const auto Choice = OptionValue->AsObject();
@@ -124,6 +140,13 @@ bool FGameXXKMainStoryCatalog::Validate(FString* OutError)
 	{
 		if (Node.Id.IsNone() || Seen.Contains(Node.Id) || Node.Lines.Num() < 4 || Node.Hints.Num() != 3 || Node.Illustration.IsNull()) Error = TEXT("Main-story node identity or content is invalid.");
 		Seen.Add(Node.Id);
+		if(Node.Kind==EGameXXKMainStoryNodeKind::JourneyBattle)
+		{
+			if(Node.EnemyDefinitionIds.IsEmpty()||Node.EnemyDefinitionIds.Num()>3||Node.AfterBattleLines.IsEmpty())Error=TEXT("Story battle needs its own enemy roster and aftermath.");
+			for(FName Id:Node.EnemyDefinitionIds)if(!FGameXXKEnemyCatalog::Find(Id))Error=TEXT("Story battle enemy does not exist.");
+		}
+		else if(!Node.EnemyDefinitionIds.IsEmpty()||!Node.AfterBattleLines.IsEmpty())Error=TEXT("Only battle tasks may define an enemy roster or aftermath.");
+		for(const auto& Line:Node.AfterBattleLines)if(Line.SpeakerName.IsEmpty()||Line.Text.IsEmpty())Error=TEXT("Post-battle speaker or text is missing.");
 		for (FName Id : Node.RequiresAll) if (!FindNode(Id) || FindNode(Id)->ChapterId != Node.ChapterId) Error = TEXT("Main-story prerequisite is invalid.");
 		for (FName Id : Node.RequiresAny) if (!FindNode(Id) || FindNode(Id)->ChapterId != Node.ChapterId) Error = TEXT("Main-story branch prerequisite is invalid.");
 		if (Node.IsInvestigation())

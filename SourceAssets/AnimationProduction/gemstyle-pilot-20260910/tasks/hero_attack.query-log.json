@@ -1,0 +1,11 @@
+{
+  "arguments": [
+    "query_result",
+    "--submit_id=0196511c-c635-4ddc-8f15-688d572a9afb",
+    "--download_dir=D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\raw\\hero_attack"
+  ],
+  "exitCode": 0,
+  "stdout": "{\n  \"submit_id\": \"0196511c-c635-4ddc-8f15-688d572a9afb\",\n  \"prompt\": \"这是2D游戏单体精灵帧动画素材，固定正交相机与固定画幅。只让参考图中的主角动起来，不改变设计、体型、脸、服饰、道具、宝石icon手绘块面和深描边。整个身体保持3/4朝画面左，不转身不朝向观众。只做一次攻击：0至0.5秒保持初始姿态，0.5至1秒小幅蓄力，1至1.5秒一次清楚短促攻击，1.5至2.4秒收回，2.4至4秒稳定回到与参考图完全相同的待机姿态。禁止重复攻击。\\n动作：双脚钉在原位置，空着的手收拳后朝画面左前方打出一次短直拳，手臂伸出但不夸张，然后收回原姿势；另一手继续握背篓肩带，不生成兵器。\\n强制保持背景为纯平洋红#FF00FF，全程没有光影变化、地面、投影、文字、粒子、场景或其他生物。画面不推拉、不移动、不旋转、不抖动。所有肢体、角、尾和道具全程完整在画幅内，大小固定，脚底与身体基准位置固定；变化来自关节和小幅末端摆动，不能整张图片缩放、漂移或变形。首尾同一张图是动作循环的起止锚点，动态后必须归位。\",\n  \"gen_status\": \"success\",\n  \"result_json\": {\n    \"images\": [],\n    \"videos\": [\n      {\n        \"path\": \"D:\\\\UE5 demo\\\\GameXXK\\\\SourceAssets\\\\AnimationProduction\\\\gemstyle-pilot-20260910\\\\raw\\\\hero_attack\\\\0196511c-c635-4ddc-8f15-688d572a9afb_video_1.mp4\",\n        \"fps\": 24,\n        \"width\": 960,\n        \"height\": 960,\n        \"format\": \"mp4\",\n        \"duration\": 4.042\n      }\n    ]\n  },\n  \"credit_count\": 56,\n  \"queue_info\": {\n    \"queue_idx\": 0,\n    \"priority\": 1,\n    \"queue_status\": \"Finish\",\n    \"queue_length\": 0,\n    \"debug_info\": \"{\\\"have_no_dreamina_queue_name\\\":false,\\\"dreamina_matrix_queue_name\\\":\\\"dreamina_fusion_video40_pro_vision\\\",\\\"dreamina_matrix_req_key\\\":\\\"DreaminaFusion:Video40_Pro_Vision_end_frame_720p\\\",\\\"dreamina_matrix_second_req_key\\\":\\\"\\\",\\\"have_no_queue_name\\\":true,\\\"queue_name\\\":\\\"\\\",\\\"matrix_req_key\\\":\\\"\\\",\\\"matrix_second_req_key\\\":\\\"\\\"}\"\n  }\n}\n",
+  "stderr": "",
+  "at": "2026-09-10T07:44:28.758828+00:00"
+}

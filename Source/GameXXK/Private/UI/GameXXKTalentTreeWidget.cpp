@@ -1,4 +1,5 @@
 #include "UI/GameXXKTalentTreeWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "Audio/GameXXKSfx.h"
 #include "UI/GameXXKPartyDeckUiStyle.h"
 #include "UI/GameXXKInkScrollBar.h"
@@ -72,7 +73,7 @@ namespace
 		const FName Name = NAME_None)
 	{
 		UTextBlock* Block = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-		Block->SetText(Text);
+		Block->SetText(GameXXKLocalization::Localize(Text));
 		Block->SetColorAndOpacity(FSlateColor(Color));
 		Block->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
 		Block->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -106,7 +107,7 @@ namespace
 
 	FText NodeTooltip(const FGameXXKTalentNodeView& View)
 	{
-		return FText::FromString(FString::Printf(TEXT("%s\n%s\n%s"),
+		return GameXXKLocalization::Source(FString::Printf(TEXT("%s\n%s\n%s"),
 			*View.Definition.DisplayName.ToString(),
 			*FGameXXKTalentRules::DescribeEffect(View.Definition).ToString(),
 			View.State == EGameXXKTalentNodeState::Locked
@@ -463,7 +464,7 @@ void UGameXXKTalentTreeWidget::BuildTotals()
 	const bool Valid=GameXXKTalentTotals::Build(MVPSubsystem->GetRuntimeState().Talents,Groups);
 	if(!Valid || Groups.IsEmpty())
 	{
-		auto* Empty=MakeText(WidgetTree,FText::FromString(Valid?TEXT("尚未学习天赋"):TEXT("暂时无法读取合计")),17,Ink);
+		auto* Empty=MakeText(WidgetTree,GameXXKLocalization::Source(Valid?TEXT("尚未学习天赋"):TEXT("暂时无法读取合计")),17,Ink);
 		TotalsColumn->AddChildToVerticalBox(Empty)->SetPadding(FMargin(0,12));return;
 	}
 	for(const auto& Group:Groups)
@@ -679,7 +680,7 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 		FVector2D(200.0f, 64.0f)));
 	PurchaseButton->SetBackgroundColor(FLinearColor::White);
 	PurchaseButton->OnClicked.AddDynamic(this, &UGameXXKTalentTreeWidget::HandlePurchaseClicked);
-	UTextBlock* PurchaseLabel = MakeText(WidgetTree, FText::FromString(TEXT("升级")),
+	UTextBlock* PurchaseLabel = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("升级")),
 		24, Ink, TEXT("TalentPurchaseLabel"));
 	PurchaseLabel->SetAutoWrapText(false);
 	PurchaseLabel->SetJustification(ETextJustify::Center);
@@ -696,9 +697,9 @@ void UGameXXKTalentTreeWidget::BuildProgrammaticLayout()
 	DetailColumn->AddChildToVerticalBox(PurchaseButtonContainer)->SetPadding(FMargin(0.0f, 6.0f, 0.0f, 0.0f));
 	TotalsButton=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("TalentTotalsButton"));
 	TotalsButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(190,36),true));
-	auto* TotalsLabel=MakeText(WidgetTree,FText::FromString(TEXT("合计属性")),18,FLinearColor(.96f,.92f,.82f,1));
+	auto* TotalsLabel=MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("合计属性")),18,FLinearColor(.96f,.92f,.82f,1));
 	TotalsLabel->SetAutoWrapText(false);TotalsLabel->SetJustification(ETextJustify::Center);TotalsButton->SetContent(TotalsLabel);
-	TotalsButton->SetToolTipText(FText::FromString(TEXT("合并统计已学天赋的有效加成")));
+	TotalsButton->SetToolTipText(GameXXKLocalization::Source(TEXT("合并统计已学天赋的有效加成")));
 	TotalsButton->OnClicked.AddDynamic(this,&UGameXXKTalentTreeWidget::HandleTotalsClicked);
 	DetailColumn->AddChildToVerticalBox(TotalsButton)->SetPadding(FMargin(0,10,0,0));
 
@@ -987,7 +988,7 @@ void UGameXXKTalentTreeWidget::BuildGraph(
 
 		UTextBlock* Rank = MakeText(
 			WidgetTree,
-			FText::FromString(FString::Printf(TEXT("%d/%d"), View.Rank, View.Definition.MaxRank)),
+			GameXXKLocalization::Source(FString::Printf(TEXT("%d/%d"), View.Rank, View.Definition.MaxRank)),
 			14,
 			View.State == EGameXXKTalentNodeState::Locked
 				? GraphMutedText
@@ -1031,24 +1032,24 @@ void UGameXXKTalentTreeWidget::BuildDetails(
 		PurchaseStatusText->SetText(FText::GetEmpty());
 		PurchaseStatusText->GetParent()->SetVisibility(bShowTotals ? ESlateVisibility::Collapsed : ESlateVisibility::SelfHitTestInvisible);
 	}
-	if(TotalsButton)if(auto* Label=Cast<UTextBlock>(TotalsButton->GetContent()))Label->SetText(FText::FromString(bShowTotals?TEXT("返回天赋"):TEXT("合计属性")));
-	if(bShowTotals){DetailNameText->SetText(FText::FromString(TEXT("合计属性")));BuildTotals();return;}
+	if(TotalsButton)if(auto* Label=Cast<UTextBlock>(TotalsButton->GetContent()))Label->SetText(GameXXKLocalization::Source(bShowTotals?TEXT("返回天赋"):TEXT("合计属性")));
+	if(bShowTotals){DetailNameText->SetText(GameXXKLocalization::Source(TEXT("合计属性")));BuildTotals();return;}
 	const FGameXXKTalentNodeView* View = FindSelectedView(Views);
 	if (!View)
 	{
-		DetailNameText->SetText(FText::FromString(TEXT("选择一个天赋")));
+		DetailNameText->SetText(GameXXKLocalization::Source(TEXT("选择一个天赋")));
 		DetailBodyText->SetText(FText::GetEmpty());
 		UpgradePriceText->SetText(FText::GetEmpty());
 		PurchaseButton->SetIsEnabled(false);
 		if (UTextBlock* Label = Cast<UTextBlock>(PurchaseButton->GetContent()))
 		{
-			Label->SetText(FText::FromString(TEXT("升级")));
+			Label->SetText(GameXXKLocalization::Source(TEXT("升级")));
 		}
 		return;
 	}
-	DetailNameText->SetText(View->Definition.DisplayName);
-	DetailBodyText->SetText(FGameXXKTalentRules::DescribeEffect(View->Definition));
-	UpgradePriceText->SetText(FText::FromString(
+	DetailNameText->SetText(GameXXKLocalization::Localize(View->Definition.DisplayName));
+	DetailBodyText->SetText(GameXXKLocalization::Localize(FGameXXKTalentRules::DescribeEffect(View->Definition)));
+	UpgradePriceText->SetText(GameXXKLocalization::Source(
 		View->Rank >= View->Definition.MaxRank
 			? TEXT("升级售价：已满级")
 			: FString::Printf(TEXT("升级售价：%lld"), View->NextPrice)));
@@ -1058,13 +1059,13 @@ void UGameXXKTalentTreeWidget::BuildDetails(
 	if (PurchaseStatusText)
 	{
 		const FText Status = !LastPurchaseError.IsEmpty() ? LastPurchaseError
-			: !bLastPurchaseContextAllowed ? FText::FromString(TEXT("返回桌面后可升级"))
+			: !bLastPurchaseContextAllowed ? GameXXKLocalization::Source(TEXT("返回桌面后可升级"))
 			: !View->LockReason.IsEmpty() ? View->LockReason
-			: FText::FromString(FString::Printf(TEXT("当前等级：%d/%d"), View->Rank, View->Definition.MaxRank));
-		PurchaseStatusText->SetText(Status);
+			: GameXXKLocalization::Source(FString::Printf(TEXT("当前等级：%d/%d"), View->Rank, View->Definition.MaxRank));
+		PurchaseStatusText->SetText(GameXXKLocalization::Localize(Status));
 	}
 	if (UTextBlock* Label = Cast<UTextBlock>(PurchaseButton->GetContent()))
 	{
-		Label->SetText(FText::FromString(TEXT("升级")));
+		Label->SetText(GameXXKLocalization::Source(TEXT("升级")));
 	}
 }

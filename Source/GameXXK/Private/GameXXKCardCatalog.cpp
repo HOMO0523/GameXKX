@@ -1,4 +1,5 @@
 #include "GameXXKCardCatalog.h"
+#include "UI/GameXXKLocalization.h"
 
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCombatScalingRules.h"
@@ -826,7 +827,7 @@ namespace
 	{
 		FGameXXKCardDefinition Definition;
 		Definition.Id = FName(CardId);
-		Definition.DisplayName = FText::FromString(FString(DisplayName));
+		Definition.DisplayName = GameXXKLocalization::Source(FString(DisplayName));
 		Definition.Owner = Owner;
 		Definition.Rarity = Rarity;
 		Definition.BaseQuality = FGameXXKCardQualityRules::GetCardBaseQuality(Definition.Id);

@@ -287,6 +287,10 @@ namespace GameXXKCardRules
 	/** Adds up to the approved cap for a combat status and returns the number of stacks actually applied. */
 	GAMEXXK_API int32 AddCombatStatus(FGameXXKCardCombatUnit& InOutUnit, EGameXXKCardStatus Status, int32 Amount, FName SourceUnitId = NAME_None);
 
+	/** Grants real reaction records from a stable non-card source such as a relic, up to capacity. */
+	GAMEXXK_API bool GrantRelicReaction(FGameXXKCardBattleRuntime& Runtime, FName RelicId,
+		FName RecipientUnitId, EGameXXKCardStatus Status, int32 Uses, FString* OutError = nullptr);
+
 	/** Resolves a card-authored DOT coefficient and adds only the amount that fits this battle's level cap. */
 	GAMEXXK_API int32 AddDotFromCoefficient(
 		FGameXXKCardBattleRuntime& InOutRuntime,

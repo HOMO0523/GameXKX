@@ -1,0 +1,171 @@
+{
+  "count": 4,
+  "units": [
+    "hero",
+    "rooster"
+  ],
+  "enabledBy": "GameXXK.BattleAnimation.GemstyleKeyframes 1",
+  "disableBy": "GameXXK.BattleAnimation.GemstyleKeyframes 0",
+  "records": [
+    {
+      "id": "hero_idle",
+      "textureName": "T_Gemstyle_Hero_Idle",
+      "assetPath": "/Game/GameXXK/BattleAnimations/GemstylePilot/T_Gemstyle_Hero_Idle",
+      "atlas": "SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\keyframe-pilot\\T_Gemstyle_Hero_Idle.png",
+      "sha256": "3742fbf2cf8b5e2f5bee36046420092489845e4ebf3f472afa7fb7e10cd9c509",
+      "frameCount": 8,
+      "fps": 4,
+      "columns": 8,
+      "rows": 8,
+      "cellSize": 256,
+      "atlasSize": 2048,
+      "sourceFrameIndices": [
+        0,
+        6,
+        12,
+        18,
+        24,
+        30,
+        36,
+        42
+      ],
+      "fixedTransform": {
+        "scale": 0.9640102827763496,
+        "offset": [
+          10.659383033419033,
+          -7.092544987146539
+        ],
+        "referenceIdleBounds": [
+          139,
+          53,
+          370,
+          442
+        ],
+        "targetHeightAt512": 375,
+        "footAt512": 419
+      },
+      "note": "Curated poses from existing successful clip."
+    },
+    {
+      "id": "hero_attack",
+      "textureName": "T_Gemstyle_Hero_Attack",
+      "assetPath": "/Game/GameXXK/BattleAnimations/GemstylePilot/T_Gemstyle_Hero_Attack",
+      "atlas": "SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\keyframe-pilot\\T_Gemstyle_Hero_Attack.png",
+      "sha256": "838228f6d0f05efd195fca48de2596f01ebba8b34105c7e884e74413efcb6294",
+      "frameCount": 10,
+      "fps": 10,
+      "columns": 8,
+      "rows": 8,
+      "cellSize": 256,
+      "atlasSize": 2048,
+      "sourceFrameIndices": [
+        0,
+        8,
+        12,
+        16,
+        18,
+        29,
+        32,
+        35,
+        39,
+        47
+      ],
+      "fixedTransform": {
+        "scale": 0.9640102827763496,
+        "offset": [
+          10.659383033419033,
+          -7.092544987146539
+        ],
+        "referenceIdleBounds": [
+          139,
+          53,
+          370,
+          442
+        ],
+        "targetHeightAt512": 375,
+        "footAt512": 419
+      },
+      "note": "Hero attack omits generated pink effect frames; no extra generation."
+    },
+    {
+      "id": "rooster_idle",
+      "textureName": "T_Gemstyle_Rooster_Idle",
+      "assetPath": "/Game/GameXXK/BattleAnimations/GemstylePilot/T_Gemstyle_Rooster_Idle",
+      "atlas": "SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\keyframe-pilot\\T_Gemstyle_Rooster_Idle.png",
+      "sha256": "121e9e9b60794dc91356918300112a451339d5a8ca03b5acce7a3ad34f02c6f4",
+      "frameCount": 8,
+      "fps": 4,
+      "columns": 8,
+      "rows": 8,
+      "cellSize": 256,
+      "atlasSize": 2048,
+      "sourceFrameIndices": [
+        0,
+        6,
+        12,
+        18,
+        24,
+        30,
+        36,
+        42
+      ],
+      "fixedTransform": {
+        "scale": 1.0932642487046633,
+        "offset": [
+          -23.87564766839381,
+          -10.036269430051846
+        ],
+        "referenceIdleBounds": [
+          95,
+          54,
+          417,
+          440
+        ],
+        "targetHeightAt512": 422,
+        "footAt512": 471
+      },
+      "note": "Rooster restored to production idle alpha height 0.824219 and original 41px foot margin."
+    },
+    {
+      "id": "rooster_attack",
+      "textureName": "T_Gemstyle_Rooster_Attack",
+      "assetPath": "/Game/GameXXK/BattleAnimations/GemstylePilot/T_Gemstyle_Rooster_Attack",
+      "atlas": "SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\keyframe-pilot\\T_Gemstyle_Rooster_Attack.png",
+      "sha256": "21bdf59a60255cc95cbc6c77c43b7518a08813d0407147ad3a3da5238950dd68",
+      "frameCount": 10,
+      "fps": 10,
+      "columns": 8,
+      "rows": 8,
+      "cellSize": 256,
+      "atlasSize": 2048,
+      "sourceFrameIndices": [
+        0,
+        8,
+        12,
+        17,
+        20,
+        24,
+        29,
+        34,
+        39,
+        47
+      ],
+      "fixedTransform": {
+        "scale": 1.0932642487046633,
+        "offset": [
+          -23.87564766839381,
+          -10.036269430051846
+        ],
+        "referenceIdleBounds": [
+          95,
+          54,
+          417,
+          440
+        ],
+        "targetHeightAt512": 422,
+        "footAt512": 471
+      },
+      "note": "Rooster restored to production idle alpha height 0.824219 and original 41px foot margin."
+    }
+  ]
+}

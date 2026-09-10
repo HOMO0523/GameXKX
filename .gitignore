@@ -36,6 +36,9 @@ Build/Windows/FileOpenOrder/
 # Regenerable ZIP duplicate; the complete expanded art handoff remains tracked.
 /Deliverables/GameXXK_UI_MainFlow_Art_Handoff_20260828.zip
 
+# Verified duplicate: all 494 entries are preserved in SourceArt/UI/StoryNodes/.
+/SourceArt/UI/StoryNodes.zip
+
 # Visual Studio generated solutions can be regenerated from the uproject
 *.sln
 *.slnx

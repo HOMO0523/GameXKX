@@ -1,6 +1,8 @@
 #include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKToolMaterialAccess.h"
 
 #include "GameXXKAffixCatalog.h"
+#include "GameXXKReforgeCandidates.h"
 #include "GameXXKCharacterStatRules.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEquipmentCatalog.h"
@@ -139,7 +141,7 @@ namespace
 		// Saves written before refinement sand became a backpack material only
 		// carry the collection field. Once the item key exists, the backpack is
 		// authoritative and the collection value is a compatibility mirror.
-		if (!State.Inventory.Contains(SandId) && State.EquipmentCollection.RefinementSand > 0)
+		if (!State.Inventory.Contains(SandId) && !State.DesktopInventory.WarehouseItems.Contains(SandId) && State.EquipmentCollection.RefinementSand > 0)
 		{
 			State.Inventory.Add(SandId, State.EquipmentCollection.RefinementSand);
 		}
@@ -302,38 +304,8 @@ namespace
 		const int32 AffixIndex,
 		FGameXXKEquipmentAffixRoll& OutCandidate)
 	{
-		TSet<EGameXXKEquipmentModifierKind> ExcludedKinds;
-		for (int32 Index = 0; Index < Instance.RolledAffixes.Num(); ++Index)
-		{
-			const FGameXXKAffixDefinition* Affix =
-				FGameXXKAffixCatalog::FindDefinition(Instance.RolledAffixes[Index].AffixId);
-			if (Affix)
-			{
-				ExcludedKinds.Add(Affix->ModifierKind);
-			}
-		}
-
-		TArray<const FGameXXKAffixDefinition*> Candidates;
-		auto AppendCandidates = [&Candidates, &ExcludedKinds](const TArray<FGameXXKAffixDefinition>& Definitions)
-		{
-			for (const FGameXXKAffixDefinition& Definition : Definitions)
-			{
-				if (!ExcludedKinds.Contains(Definition.ModifierKind))
-				{
-					Candidates.Add(&Definition);
-				}
-			}
-		};
-		AppendCandidates(FGameXXKAffixCatalog::GetUniversalDefinitions());
-		AppendCandidates(FGameXXKAffixCatalog::GetSetDefinitions(EquipmentDefinition.Set));
-		Candidates.Sort([](const FGameXXKAffixDefinition& A, const FGameXXKAffixDefinition& B)
-		{
-			return A.Id.LexicalLess(B.Id);
-		});
-		if (Candidates.IsEmpty())
-		{
-			return false;
-		}
+		const auto Candidates=GameXXKReforgeCandidates::Build(Instance,EquipmentDefinition,AffixIndex);
+		if (Candidates.IsEmpty()) return false;
 
 		const FString SeedText = FString::Printf(
 			TEXT("%d|%d|%s|%d"),
@@ -344,7 +316,7 @@ namespace
 		FRandomStream Stream(FCrc::StrCrc32(*SeedText));
 		const FGameXXKAffixDefinition* Chosen = Candidates[Stream.RandRange(0, Candidates.Num() - 1)];
 		const EGameXXKAffixTier Tier = RollTier(Stream, Instance.Quality);
-		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Chosen->Unit, Tier);
+		const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Chosen->Id, Tier);
 		if (Range.Minimum <= 0 || Range.Maximum < Range.Minimum)
 		{
 			return false;
@@ -691,7 +663,7 @@ bool FGameXXKEquipmentEconomyRules::EnhanceInstance(
 	}
 	const int32 Cost = FGameXXKEquipmentCatalog::GetEnhancementStoneCost(Existing->EnhancementLevel);
 	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
-	if (Cost <= 0 || InOutState.Inventory.FindRef(StoneId) < Cost)
+	if (Cost <= 0 || GameXXKToolMaterialAccess::Count(InOutState,StoneId) < Cost)
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InsufficientEnhancementStones);
 		return false;
@@ -699,7 +671,7 @@ bool FGameXXKEquipmentEconomyRules::EnhanceInstance(
 
 	FGameXXKRuntimeState Candidate = InOutState;
 	FGameXXKEquipmentInstance* Enhanced = FindMutableInstance(Candidate.EquipmentCollection, InstanceId);
-	Candidate.Inventory.FindOrAdd(StoneId) -= Cost;
+	if(!GameXXKToolMaterialAccess::Consume(Candidate,StoneId,Cost))return false;
 	Enhanced->EnhancementLevel += 1;
 	if (!SynchronizeAndValidate(Candidate))
 	{
@@ -755,7 +727,7 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 	}
 	const int32 Cost = FGameXXKEquipmentCatalog::GetReforgeSandCost(Existing->Quality);
 	const FName SandItemId = UGameXXKMVPRules::ItemRefinementSand();
-	if (Cost <= 0 || InOutState.Inventory.FindRef(SandItemId) < Cost)
+	if (Cost <= 0 || GameXXKToolMaterialAccess::Count(InOutState,SandItemId) < Cost)
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InsufficientRefinementSand);
 		return false;
@@ -769,6 +741,7 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 		CandidateAffix))
 	{
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::InvalidRequest);
+		OutResult.Message=NSLOCTEXT("GameXXKEquipment","FixedReforge","该词缀固定1%，请选择其他词缀");
 		return false;
 	}
 
@@ -781,9 +754,8 @@ bool FGameXXKEquipmentEconomyRules::BeginReforge(
 	Pending.CandidateAffix = CandidateAffix;
 	Pending.PaidRefinementSand = Cost;
 	Pending.ConsumedReforgeOrdinal = Candidate.EquipmentCollection.NextReforgeOrdinal;
-	// Consume the authoritative backpack material; SynchronizeAndValidate
-	// derives the legacy collection mirror from the resulting balance.
-	Candidate.Inventory.FindOrAdd(SandItemId) = FMath::Max(0, Candidate.Inventory.FindOrAdd(SandItemId) - Cost);
+	// Charge the actual physical stack; a material stored in the warehouse is usable.
+	if(!GameXXKToolMaterialAccess::Consume(Candidate,SandItemId,Cost))return false;
 	Candidate.EquipmentCollection.NextReforgeOrdinal += 1;
 	if (!SynchronizeAndValidate(Candidate))
 	{
@@ -890,8 +862,8 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	}
 	const FName StoneId = UGameXXKMVPRules::ItemEnhancementStone();
 	const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
-	const int64 SandAfterDismantle = static_cast<int64>(InOutState.Inventory.FindRef(SandId)) + SandYieldWide;
-	const int64 StonesAfterDismantle = static_cast<int64>(InOutState.Inventory.FindRef(StoneId)) + StoneRefundWide;
+	const int64 SandAfterDismantle = int64(GameXXKToolMaterialAccess::Count(InOutState,SandId)) + SandYieldWide;
+	const int64 StonesAfterDismantle = int64(GameXXKToolMaterialAccess::Count(InOutState,StoneId)) + StoneRefundWide;
 	const int64 GoldAfterDismantle = static_cast<int64>(InOutState.PlayerGold) + GoldRewardWide;
 	if (SandYieldWide > MAX_int32 || StoneRefundWide > MAX_int32 || GoldRewardWide > MAX_int32
 		|| SandAfterDismantle > MAX_int32 || StonesAfterDismantle > MAX_int32 || GoldAfterDismantle > MAX_int32)
@@ -949,8 +921,7 @@ bool FGameXXKEquipmentEconomyRules::DismantleBatch(
 	{
 		Candidate.EquipmentCollection.bLegacyWarehouseOverflow = false;
 	}
-	Candidate.Inventory.FindOrAdd(StoneId) += StoneRefund;
-	Candidate.Inventory.FindOrAdd(SandId) += SandYield;
+	if(!GameXXKToolMaterialAccess::Add(Candidate,StoneId,StoneRefund)||!GameXXKToolMaterialAccess::Add(Candidate,SandId,SandYield))return false;
 	Candidate.PlayerGold += GoldReward;
 	if (!SynchronizeAndValidate(Candidate))
 	{

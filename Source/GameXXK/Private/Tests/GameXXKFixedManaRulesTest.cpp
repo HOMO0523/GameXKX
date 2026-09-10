@@ -76,7 +76,7 @@ bool FGameXXKFixedManaEquipmentTest::RunTest(const FString& Parameters)
 		FGameXXKEquipmentAffixRoll& Roll = Item->RolledAffixes[ManaAffix];
 		Roll.AffixId = TEXT("Affix.Universal.MaxMana");
 		Roll.Unit = EGameXXKEquipmentMagnitudeUnit::BasisPoints;
-		Roll.Magnitude = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier).Maximum;
+		Roll.Magnitude = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Roll.Tier).Maximum;
 		FGameXXKEquipmentTransactionResult Result;
 		if (!TestTrue(TEXT("equip Mana gear through the authoritative transaction"), FGameXXKEquipmentEconomyRules::Equip(State, FGameXXKEquipmentRules::HeroCharacterId(), Slot, LastItemId, Result))) { AddError(Result.Message.ToString()); return false; }
 	}

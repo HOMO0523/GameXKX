@@ -1,4 +1,5 @@
 #include "UI/GameXXKMetaShopWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
 
 #include "Blueprint/WidgetTree.h"
@@ -95,7 +96,7 @@ namespace
 	FText ShopRoleDisplayName(const EGameXXKCharacterRole Role)
 	{
 		const FString Name = FGameXXKCompanionRules::GetCompanionDisplayName(Role, 0);
-		return Name.IsEmpty() ? FText::FromString(TEXT("未知职业")) : FText::FromString(Name);
+		return Name.IsEmpty() ? GameXXKLocalization::Source(TEXT("未知职业")) : GameXXKLocalization::Source(Name);
 	}
 
 	FText ShopEquipmentSlotText(const EGameXXKEquipmentSlot Slot)
@@ -154,7 +155,7 @@ namespace
 			if (Snapshot.ItemCurrentStats.MaxMana != 0) { Lines.Add(FString::Printf(TEXT("真气 %+d"), Snapshot.ItemCurrentStats.MaxMana)); }
 			if (Snapshot.ItemCurrentStats.Speed != 0) { Lines.Add(FString::Printf(TEXT("身法 %+d"), Snapshot.ItemCurrentStats.Speed)); }
 		}
-		return FText::FromString(FString::Join(Lines, TEXT("\n")));
+		return GameXXKLocalization::Source(FString::Join(Lines, TEXT("\n")));
 	}
 
 	UTextBlock* MakeText(UWidgetTree* Tree, const FName Name, const FText& Text, const int32 Size)
@@ -431,7 +432,7 @@ void UGameXXKMetaShopWidget::RefreshFromState()
 	ApplyProducts(CurrentProducts);
 	if (GoldText)
 	{
-		GoldText->SetText(FText::FromString(FString::Printf(TEXT("元宝：%d"), Subsystem->GetRuntimeState().PlayerGold)));
+		GoldText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("元宝：%d"), Subsystem->GetRuntimeState().PlayerGold)));
 	}
 	if (SelectedProductId == EGameXXKMetaShopProductId::Invalid && !CurrentProducts.IsEmpty())
 	{
@@ -454,7 +455,7 @@ void UGameXXKMetaShopWidget::ApplyProducts(const TArray<FGameXXKMetaShopProductD
 		const FGameXXKMetaShopProductDefinition& Product = Products[Index];
 		ProductButtons[Index]->Configure(this, Product.ProductId);
 		ProductNameTexts[Index]->SetText(Product.DisplayName);
-		ProductPriceTexts[Index]->SetText(FText::FromString(FString::Printf(TEXT("%d"), Product.Price)));
+		ProductPriceTexts[Index]->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%d"), Product.Price)));
 		if (UTexture2D* Texture = Cast<UTexture2D>(Product.IconSoftPath.TryLoad()))
 		{
 			ProductImages[Index]->SetBrushFromTexture(Texture, true);
@@ -482,7 +483,7 @@ void UGameXXKMetaShopWidget::UpdateSelectedProduct()
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	if (!Product || !Subsystem)
 	{
-		DisabledReason = FText::FromString(TEXT("商品不可用。"));
+		DisabledReason = GameXXKLocalization::Source(TEXT("商品不可用。"));
 		PurchaseButton->SetIsEnabled(false);
 		return;
 	}
@@ -541,9 +542,9 @@ FText UGameXXKMetaShopWidget::BuildProductDescription(const FGameXXKMetaShopProd
 {
 	if (Product.Kind == EGameXXKMetaShopProductKind::CompanionPack)
 	{
-		return FText::FromString(TEXT("获得一名永久伙伴。伙伴上限 12 人；满员时进入替换流程，取消候选不退还金币。"));
+		return GameXXKLocalization::Source(TEXT("获得一名永久伙伴。伙伴上限 12 人；满员时进入替换流程，取消候选不退还金币。"));
 	}
-	return FText::FromString(TEXT("随机获得该套装的武器、头部、护甲、腰带、鞋子或饰品之一。\n普通 70% / 稀有 25% / 珍稀 5%"));
+	return GameXXKLocalization::Source(TEXT("随机获得该套装的武器、头部、护甲、腰带、鞋子或饰品之一。\n普通 70% / 稀有 25% / 珍稀 5%"));
 }
 
 bool UGameXXKMetaShopWidget::RequestPurchase()
@@ -625,7 +626,7 @@ bool UGameXXKMetaShopWidget::ConfirmPurchase()
 				if (Instance && Definition)
 				{
 					ResultSlotFrame->SetToolTip(BuildResultTooltip(WidgetTree,
-						FText::FromString(FString::Printf(TEXT("%s\n%s"),
+						GameXXKLocalization::Source(FString::Printf(TEXT("%s\n%s"),
 							*Definition->DisplayName.ToString(),
 							*ShopEquipmentInstanceDetail(Subsystem, *Instance, *Definition).ToString()))));
 				}
@@ -634,7 +635,7 @@ bool UGameXXKMetaShopWidget::ConfirmPurchase()
 			{
 				const FGameXXKPermanentCompanion& Companion = LastPurchaseResult.CompanionResult.Companion;
 				ResultSlotFrame->SetToolTip(BuildResultTooltip(WidgetTree,
-					FText::FromString(FGameXXKCompanionRules::GetCompanionDisplayName(
+					GameXXKLocalization::Source(FGameXXKCompanionRules::GetCompanionDisplayName(
 						Companion.Role,
 						Companion.NameSeed))));
 			}
@@ -654,7 +655,7 @@ FText UGameXXKMetaShopWidget::BuildPurchaseResultText() const
 {
 	if (!LastPurchaseResult.bPurchased)
 	{
-		return LastPurchaseResult.Message.IsEmpty() ? FText::FromString(TEXT("购买失败。")) : LastPurchaseResult.Message;
+		return LastPurchaseResult.Message.IsEmpty() ? GameXXKLocalization::Source(TEXT("购买失败。")) : LastPurchaseResult.Message;
 	}
 	if (!LastPurchaseResult.GeneratedEquipmentId.IsNone())
 	{
@@ -667,22 +668,22 @@ FText UGameXXKMetaShopWidget::BuildPurchaseResultText() const
 			: nullptr;
 		if (Definition)
 		{
-			return FText::FromString(FString::Printf(
+			return GameXXKLocalization::Source(FString::Printf(
 				TEXT("获得装备：%s\n等级 %d，品质：%s"),
 				*Definition->DisplayName.ToString(),
 				Instance->ItemLevel,
 				*ShopEquipmentQualityText(Instance->Quality).ToString()));
 		}
-		return FText::FromString(TEXT("获得装备一件。"));
+		return GameXXKLocalization::Source(TEXT("获得装备一件。"));
 	}
 	if (!LastPurchaseResult.CompanionResult.Companion.InstanceId.IsNone())
 	{
 		const FGameXXKPermanentCompanion& Companion = LastPurchaseResult.CompanionResult.Companion;
-		return FText::FromString(FString::Printf(
+		return GameXXKLocalization::Source(FString::Printf(
 			TEXT("获得伙伴：%s"),
 			*FGameXXKCompanionRules::GetCompanionDisplayName(Companion.Role, Companion.NameSeed)));
 	}
-	return FText::FromString(TEXT("购买成功。"));
+	return GameXXKLocalization::Source(TEXT("购买成功。"));
 }
 
 bool UGameXXKMetaShopWidget::CancelPurchase()

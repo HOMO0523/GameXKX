@@ -1,4 +1,5 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKInkResourceBarStyle.h"
 #include "Components/Overlay.h"
@@ -360,13 +361,14 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 
 	if (IdentityText)
 	{
-		const FString Name = DisplayName.IsEmpty() ? TEXT("Unknown") : DisplayName.ToString();
-		IdentityText->SetText(FText::FromString(FString::Printf(TEXT("%s · %s"), *SlotLabel, *Name)));
+		const FText Name = DisplayName.IsEmpty() ? GameXXKLocalization::Source(TEXT("未知")) : GameXXKLocalization::Localize(DisplayName);
+		IdentityText->SetText(FText::Format(NSLOCTEXT("GameXXKBattle", "UnitIdentity", "{0} · {1}"),
+			GameXXKLocalization::Source(SlotLabel), Name));
 	}
 	if (HealthText)
 	{
 		UE_LOG(LogTemp, Verbose, TEXT("[HpText] outer=%s setHP=%d healthText=%s"), *GetPathName(), CurrentHP, *HealthText->GetPathName());
-		HealthText->SetText(FText::FromString(FString::Printf(TEXT("气血 %d / %d"), CurrentHP, MaxHP)));
+		HealthText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("气血 %d / %d"), CurrentHP, MaxHP)));
 	}
 	HealthPercent = GetSafePercent(CurrentHP, MaxHP);
 	if (HealthProgressBar)
@@ -376,7 +378,7 @@ void UGameXXKBattleUnitResourceWidget::RefreshDisplay()
 	RefreshResourceMask(HealthBar, HealthMaskMaterial, HealthPercent);
 	if (ManaText)
 	{
-		ManaText->SetText(FText::FromString(FString::Printf(TEXT("内力 %d / %d"), CurrentMana, MaxMana)));
+		ManaText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("内力 %d / %d"), CurrentMana, MaxMana)));
 	}
 	ManaPercent = GetSafePercent(CurrentMana, MaxMana);
 	if (ManaProgressBar)

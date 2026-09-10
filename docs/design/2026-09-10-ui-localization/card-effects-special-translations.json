@@ -1,0 +1,557 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.a0a298334d7939df",
+      "nativePattern": "触发当前地势收益%d次（当前%s：%s）；若本回合已实际换场，改为%d次",
+      "zh-Hans": "触发当前地势收益{0}次（当前{1}：{2}）；若本回合已实际换场，改为{3}次",
+      "en": "Trigger the current terrain benefit {0} times (current {1}: {2}); if terrain already changed this round, trigger it {3} times instead"
+    },
+    {
+      "key": "Legacy.2625297b169ff9e6",
+      "nativePattern": "触发当前地势收益%d次（当前%s：%s）",
+      "zh-Hans": "触发当前地势收益{0}次（当前{1}：{2}）",
+      "en": "Trigger the current terrain benefit {0} times (current {1}: {2})"
+    },
+    {
+      "key": "Legacy.41fd0475ac3a1569",
+      "nativePattern": "触发当前地势收益%d次；若本回合已实际换场，改为%d次",
+      "zh-Hans": "触发当前地势收益{0}次；若本回合已实际换场，改为{1}次",
+      "en": "Trigger the current terrain benefit {0} times; if terrain already changed this round, trigger it {1} times instead"
+    },
+    {
+      "key": "Legacy.6464e26b6e5da390",
+      "nativePattern": "回复当前内力的%d%%，向上取整；仅实际溢出按%d%%转为护甲",
+      "zh-Hans": "回复当前内力的{0}%，向上取整；仅实际溢出按{1}%转为护甲",
+      "en": "Restore {0}% of current Inner Power, rounded up; convert only actual overflow to Armor at {1}%"
+    },
+    {
+      "key": "Legacy.82f839bf7bb52b79",
+      "nativePattern": "（前述消耗至少%d层时，仅结算一次）",
+      "zh-Hans": "（前述消耗至少{0}层时，仅结算一次）",
+      "en": "(Applies a single time only if at least {0} stacks were spent above)"
+    },
+    {
+      "key": "Legacy.c4b7ee370fddccd0",
+      "nativePattern": "每消耗1层，追加1段%d%%攻击伤害",
+      "zh-Hans": "每消耗1层，追加1段{0}%攻击伤害",
+      "en": "Add 1 hit of {0}% ATK damage per 1 stack spent"
+    },
+    {
+      "key": "Legacy.be2ad21ddd8558f3",
+      "nativePattern": "每消耗1层，本牌首段攻击倍率+%d个百分点",
+      "zh-Hans": "每消耗1层，本牌首段攻击倍率+{0}个百分点",
+      "en": "Add +{0} percentage points to this card's first attack hit per 1 stack spent"
+    },
+    {
+      "key": "Legacy.87b4c99ba2edc216",
+      "nativePattern": "并抽%d张牌",
+      "zh-Hans": "并抽{0}张牌",
+      "en": "and draw {0} cards"
+    },
+    {
+      "key": "Legacy.33a8ac73ddb6e7d4",
+      "nativePattern": "；消耗至少%d层时回复%d点气力一次",
+      "zh-Hans": "；消耗至少{0}层时回复{1}点气力一次",
+      "en": "; restore {1} Qi a single time if at least {0} stacks were spent"
+    },
+    {
+      "key": "Legacy.f9327e14ede3229f",
+      "nativePattern": "；每消耗%d层蓄力，%s获得%d层%s",
+      "zh-Hans": "；每消耗{0}层蓄力，{1}获得{2}层{3}",
+      "en": "; for every {0} Charge spent, grant {2} stacks of {3} to {1}"
+    },
+    {
+      "key": "Legacy.37e554ae5ac54b7b",
+      "nativePattern": "，本次最多%d层",
+      "zh-Hans": "，本次最多{0}层",
+      "en": ", up to {0} stacks this time"
+    },
+    {
+      "key": "Legacy.73430c700a31aed7",
+      "nativePattern": "；每消耗1层蓄力，本牌首段攻击倍率+%d个百分点",
+      "zh-Hans": "；每消耗1层蓄力，本牌首段攻击倍率+{0}个百分点",
+      "en": "; each 1 Charge spent adds +{0} percentage points to this card's first attack hit"
+    },
+    {
+      "key": "Legacy.dd8812795763047b",
+      "nativePattern": "冰爆，消耗全部护甲，攻击全体敌方（%d%%攻击＋每点护甲1个百分点）",
+      "zh-Hans": "冰爆，消耗全部护甲，攻击全体敌方（{0}%攻击＋每点护甲1个百分点）",
+      "en": "Ice Burst: spend all Armor to attack all enemies ({0}% ATK + 1 percentage point per Armor)"
+    },
+    {
+      "key": "Legacy.65ca5655ddc2f7a5",
+      "nativePattern": "阵赏：%s；回复1点气力，抽1张牌。",
+      "zh-Hans": "阵赏：{0}；回复1点气力，抽1张牌。",
+      "en": "Formation Reward: {0}; restore 1 Qi and draw 1 card."
+    },
+    {
+      "key": "Legacy.296cd60ef75fb046",
+      "nativePattern": "阵赏：%s；本场自身内力上限再+8并补满内力。",
+      "zh-Hans": "阵赏：{0}；本场自身内力上限再+8并补满内力。",
+      "en": "Formation Reward: {0}; gain another +8 Max Inner Power for this battle and fully restore Inner Power."
+    },
+    {
+      "key": "Legacy.ae0ad0042d385f2a",
+      "nativePattern": "阵赏：%s；全体友方各获得所耗护甲的25%%，向下取整。",
+      "zh-Hans": "阵赏：{0}；全体友方各获得所耗护甲的25%，向下取整。",
+      "en": "Formation Reward: {0}; each ally gains 25% of the Armor spent, rounded down."
+    },
+    {
+      "key": "Legacy.56ada5ef192245d4",
+      "nativePattern": "阵赏：%s；敌方全体获得2层虚弱。",
+      "zh-Hans": "阵赏：{0}；敌方全体获得2层虚弱。",
+      "en": "Formation Reward: {0}; apply 2 Weak to all enemies."
+    },
+    {
+      "key": "Legacy.34b17d7cc09a4823",
+      "nativePattern": "阵赏：全体敌方先获得5层标记，再各受到5次%d%%的攻击伤害。",
+      "zh-Hans": "阵赏：全体敌方先获得5层标记，再各受到5次{0}%的攻击伤害。",
+      "en": "Formation Reward: apply 5 Marks to all enemies, then hit each 5 times for {0}% ATK damage."
+    },
+    {
+      "key": "Legacy.66b54a45cc996df7",
+      "nativePattern": "阵赏·普通：对全体敌方造成%d%%的攻击伤害。",
+      "zh-Hans": "阵赏·普通：对全体敌方造成{0}%的攻击伤害。",
+      "en": "Formation Reward · Normal: deal {0}% ATK damage to all enemies."
+    },
+    {
+      "key": "Legacy.b05d58d8f1b7ea4d",
+      "nativePattern": "阵赏·寒冰：消耗全部护甲，对全体敌方造成%d%%的攻击伤害；每点消耗护甲再增加1个百分点。",
+      "zh-Hans": "阵赏·寒冰：消耗全部护甲，对全体敌方造成{0}%的攻击伤害；每点消耗护甲再增加1个百分点。",
+      "en": "Formation Reward · Ice: spend all Armor and deal {0}% ATK damage to all enemies; add 1 percentage point per Armor spent."
+    },
+    {
+      "key": "Legacy.86409ad89268d4d9",
+      "nativePattern": "阵赏·雷法：全体敌方获得3层标记，按各自标记数，每层造成%d%%的攻击伤害。",
+      "zh-Hans": "阵赏·雷法：全体敌方获得3层标记，按各自标记数，每层造成{0}%的攻击伤害。",
+      "en": "Formation Reward · Lightning: apply 3 Marks to all enemies, then deal {0}% ATK damage per Mark on each enemy."
+    },
+    {
+      "key": "Legacy.4482d9e81bd9d0ba",
+      "nativePattern": "阵赏·寒冰：%s，返还25%%所耗护甲；回复1点气力，抽2张牌。",
+      "zh-Hans": "阵赏·寒冰：{0}，返还25%所耗护甲；回复1点气力，抽2张牌。",
+      "en": "Formation Reward · Ice: {0}, refund 25% of Armor spent; restore 1 Qi and draw 2 cards."
+    },
+    {
+      "key": "Legacy.bf6e220a6520ae8b",
+      "nativePattern": "阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；回复1气，抽2张。",
+      "zh-Hans": "阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成{0}%的攻击伤害；回复1气，抽2张。",
+      "en": "Formation Reward · Lightning: apply 2 Marks to all enemies, then deal {0}% ATK damage per Mark on each enemy; restore 1 Qi and draw 2 cards."
+    },
+    {
+      "key": "Legacy.ae65565f01536d19",
+      "nativePattern": "阵赏·普通：全体友方各获得%d%%防御的护甲；全体敌方获得2层虚弱。",
+      "zh-Hans": "阵赏·普通：全体友方各获得{0}%防御的护甲；全体敌方获得2层虚弱。",
+      "en": "Formation Reward · Normal: all allies gain Armor at {0}% DEF; apply 2 Weak to all enemies."
+    },
+    {
+      "key": "Legacy.b9dc46480ad9627b",
+      "nativePattern": "阵赏·炎法：全体友方各获得%d%%防御的护甲；全体敌方获得4点基础灼烧、1层虚弱。",
+      "zh-Hans": "阵赏·炎法：全体友方各获得{0}%防御的护甲；全体敌方获得4点基础灼烧、1层虚弱。",
+      "en": "Formation Reward · Fire: all allies gain Armor at {0}% DEF; apply 4 base Burn and 1 Weak to all enemies."
+    },
+    {
+      "key": "Legacy.90ef32a3ca7a72fc",
+      "nativePattern": "阵赏·寒冰：%s；全体友方各获得所耗护甲的25%%，向下取整。",
+      "zh-Hans": "阵赏·寒冰：{0}；全体友方各获得所耗护甲的25%，向下取整。",
+      "en": "Formation Reward · Ice: {0}; each ally gains 25% of the Armor spent, rounded down."
+    },
+    {
+      "key": "Legacy.e11226f6f5e37973",
+      "nativePattern": "阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成%d%%的攻击伤害；全体友方各获得%d%%防御的护甲。",
+      "zh-Hans": "阵赏·雷法：全体敌方获得2层标记，按各自标记数，每层造成{0}%的攻击伤害；全体友方各获得{1}%防御的护甲。",
+      "en": "Formation Reward · Lightning: apply 2 Marks to all enemies, then deal {0}% ATK damage per Mark on each enemy; all allies gain Armor at {1}% DEF."
+    },
+    {
+      "key": "Legacy.35f0ed6cbe61f90e",
+      "nativePattern": "阵赏·寒冰：额外重放最后一张冰牌，再%s；抽1张牌。",
+      "zh-Hans": "阵赏·寒冰：额外重放最后一张冰牌，再{0}；抽1张牌。",
+      "en": "Formation Reward · Ice: replay the last Ice card again, then {0}; draw 1 card."
+    },
+    {
+      "key": "Legacy.4c7edea7cd02068b",
+      "nativePattern": "阵赏·雷法：全体敌方获得2层标记，额外重放最后一张雷牌；再按剩余标记数，每层造成%d%%的攻击伤害，抽1张。",
+      "zh-Hans": "阵赏·雷法：全体敌方获得2层标记，额外重放最后一张雷牌；再按剩余标记数，每层造成{0}%的攻击伤害，抽1张。",
+      "en": "Formation Reward · Lightning: apply 2 Marks to all enemies and replay the last Lightning card again; then deal {0}% ATK damage per remaining Mark on each enemy and draw 1 card."
+    },
+    {
+      "key": "Legacy.f286472c0d9de63c",
+      "nativePattern": "%d点基础灼烧",
+      "zh-Hans": "{0}点基础灼烧",
+      "en": "{0} base Burn"
+    },
+    {
+      "key": "Legacy.9b6e63c17b77eda4",
+      "nativePattern": "每次造成%s点伤害",
+      "zh-Hans": "每次造成{0}点伤害",
+      "en": "Each hit deals {0} damage"
+    },
+    {
+      "key": "Legacy.e7ff007e064247e8",
+      "nativePattern": "每次造成%d%%的攻击伤害",
+      "zh-Hans": "每次造成{0}%的攻击伤害",
+      "en": "Each hit deals {0}% ATK damage"
+    },
+    {
+      "key": "Legacy.0ec108736edc3aec",
+      "nativePattern": "基础：%s；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。",
+      "zh-Hans": "基础：{0}；检索1张尚未完成的携带法师牌；无合法牌时再结算一次同等伤害。",
+      "en": "Base: {0}; search for 1 unfinished carried Sorcerer card; if no legal card exists, repeat the same damage a single time."
+    },
+    {
+      "key": "Legacy.44aa412052b71e88",
+      "nativePattern": "基础：自身回复%d点内力。",
+      "zh-Hans": "基础：自身回复{0}点内力。",
+      "en": "Base: restore {0} Inner Power to self."
+    },
+    {
+      "key": "Legacy.a9790924585b14ea",
+      "nativePattern": "基础：%s；全体敌方各获得%s。",
+      "zh-Hans": "基础：{0}；全体敌方各获得{1}。",
+      "en": "Base: {0}; apply {1} to all enemies."
+    },
+    {
+      "key": "Legacy.adf1737fad8f07fa",
+      "nativePattern": "基础：全体敌方各获得%s。",
+      "zh-Hans": "基础：全体敌方各获得{0}。",
+      "en": "Base: apply {0} to all enemies."
+    },
+    {
+      "key": "Legacy.8b8b9f986828199e",
+      "nativePattern": "基础：%s。",
+      "zh-Hans": "基础：{0}。",
+      "en": "Base: {0}."
+    },
+    {
+      "key": "Legacy.f6261c7764e0118a",
+      "nativePattern": "编序：第4～5位时，每段改为%d%%的攻击伤害。",
+      "zh-Hans": "编序：第4～5位时，每段改为{0}%的攻击伤害。",
+      "en": "Sequence: in positions 4–5, each hit deals {0}% ATK damage instead."
+    },
+    {
+      "key": "Legacy.b938c67966d7fc36",
+      "nativePattern": "基础：本场内力上限+4，当前内力不变；%s。",
+      "zh-Hans": "基础：本场内力上限+4，当前内力不变；{0}。",
+      "en": "Base: +4 Max Inner Power for this battle, current Inner Power unchanged; {0}."
+    },
+    {
+      "key": "Legacy.70cca35234523a12",
+      "nativePattern": "基础：护甲为0时，%s；已有护甲时翻倍。",
+      "zh-Hans": "基础：护甲为0时，{0}；已有护甲时翻倍。",
+      "en": "Base: at 0 Armor, {0}; double it if you already have Armor."
+    },
+    {
+      "key": "Legacy.1c4c5eb1dfc8d11c",
+      "nativePattern": "基础：%s；检索1张未完成携带法师牌；无合法目标时，再获得一份本次回复产生的护甲。",
+      "zh-Hans": "基础：{0}；检索1张未完成携带法师牌；无合法目标时，再获得一份本次回复产生的护甲。",
+      "en": "Base: {0}; search for 1 unfinished carried Sorcerer card; if no legal target exists, gain another copy of the Armor generated by this recovery."
+    },
+    {
+      "key": "Legacy.bd29b8ac4942dad7",
+      "nativePattern": "基础：%s；伤害后全体敌方获得%d层标记。",
+      "zh-Hans": "基础：{0}；伤害后全体敌方获得{1}层标记。",
+      "en": "Base: {0}; after damage, apply {1} Marks to all enemies."
+    },
+    {
+      "key": "Legacy.80197c31d0644a1b",
+      "nativePattern": "基础：%s；检索1张尚未完成的携带法师牌，随后全体敌方获得%d层标记；无合法牌时再结算一次同等伤害。",
+      "zh-Hans": "基础：{0}；检索1张尚未完成的携带法师牌，随后全体敌方获得{1}层标记；无合法牌时再结算一次同等伤害。",
+      "en": "Base: {0}; search for 1 unfinished carried Sorcerer card, then apply {1} Marks to all enemies; if no legal card exists, repeat the same damage a single time."
+    },
+    {
+      "key": "Legacy.8d043881b69e1d2a",
+      "nativePattern": "基础：按敌方各自标记快照逐层落雷，%s。",
+      "zh-Hans": "基础：按敌方各自标记快照逐层落雷，{0}。",
+      "en": "Base: strike each enemy with lightning per snapshotted Mark; {0}."
+    },
+    {
+      "key": "Legacy.de92184f39561545",
+      "nativePattern": "编序：第4～5位时，每次改为%d%%的攻击伤害。",
+      "zh-Hans": "编序：第4～5位时，每次改为{0}%的攻击伤害。",
+      "en": "Sequence: in positions 4–5, each hit deals {0}% ATK damage instead."
+    },
+    {
+      "key": "Legacy.30d4c88bde00e59e",
+      "nativePattern": "编序：第1～5位攻击倍率依次为%d%%、%d%%、%d%%、%d%%、%d%%。",
+      "zh-Hans": "编序：第1～5位攻击倍率依次为{0}%、{1}%、{2}%、{3}%、{4}%。",
+      "en": "Sequence: attack multipliers in positions 1–5 are {0}%, {1}%, {2}%, {3}% and {4}% respectively."
+    },
+    {
+      "key": "Legacy.e1b68e0251d2b023",
+      "nativePattern": "基础：自身抽%d张牌。",
+      "zh-Hans": "基础：自身抽{0}张牌。",
+      "en": "Base: draw {0} cards for self."
+    },
+    {
+      "key": "Legacy.96a7616783f86a38",
+      "nativePattern": "编序：第3～5位时，额外回复%d点内力。",
+      "zh-Hans": "编序：第3～5位时，额外回复{0}点内力。",
+      "en": "Sequence: in positions 3–5, restore another {0} Inner Power."
+    },
+    {
+      "key": "Legacy.91b02ef4544a24bc",
+      "nativePattern": "基础：仅自身回复%d点内力；全体友方各获得%s点护甲。",
+      "zh-Hans": "基础：仅自身回复{0}点内力；全体友方各获得{1}点护甲。",
+      "en": "Base: restore {0} Inner Power to self only; grant {1} Armor to each ally."
+    },
+    {
+      "key": "Legacy.cbf5ca060cfb47be",
+      "nativePattern": "基础：仅自身回复%d点内力；实际溢出按%d%%转为护甲，%d%%增幅倍率；全体友方各获得等量护甲。",
+      "zh-Hans": "基础：仅自身回复{0}点内力；实际溢出按{1}%转为护甲，{2}%增幅倍率；全体友方各获得等量护甲。",
+      "en": "Base: restore {0} Inner Power to self only; convert actual overflow to Armor at {1}%, with {2}% scaling; grant the same Armor to each ally."
+    },
+    {
+      "key": "Legacy.c5aaf997ec57b413",
+      "nativePattern": "冲锋：此牌是本回合第一张主动牌打出时，%s",
+      "zh-Hans": "冲锋：此牌是本回合第一张主动牌打出时，{0}",
+      "en": "Opener: if this is the first actively played card this round, {0}"
+    },
+    {
+      "key": "Legacy.5f88ff6a6da90212",
+      "nativePattern": "收招：此牌是本回合最后一张主动牌时，%s",
+      "zh-Hans": "收招：此牌是本回合最后一张主动牌时，{0}",
+      "en": "Finisher: if this is the last actively played card this round, {0}"
+    },
+    {
+      "key": "Legacy.c0f97ceaa41535ac",
+      "nativePattern": "%s受到%s点治疗反转伤害",
+      "zh-Hans": "{0}受到{1}点治疗反转伤害",
+      "en": "Deal {1} Healing Reversal damage to {0}"
+    },
+    {
+      "key": "Legacy.ecce08a3c0b52bb8",
+      "nativePattern": "%s获得%s点治疗",
+      "zh-Hans": "{0}获得{1}点治疗",
+      "en": "Grant {1} healing to {0}"
+    },
+    {
+      "key": "Legacy.ed4ee3c444f5a41a",
+      "nativePattern": "%s受到%d点治疗反转，%d%%增幅倍率%s",
+      "zh-Hans": "{0}受到{1}点治疗反转，{2}%增幅倍率{3}",
+      "en": "Deal {1} Healing Reversal to {0}, with {2}% scaling{3}"
+    },
+    {
+      "key": "Legacy.9feb47184deb7552",
+      "nativePattern": "%s获得%d点治疗，%d%%增幅倍率%s",
+      "zh-Hans": "{0}获得{1}点治疗，{2}%增幅倍率{3}",
+      "en": "Grant {1} healing to {0}, with {2}% scaling{3}"
+    },
+    {
+      "key": "Legacy.9020c5261e412ec1",
+      "nativePattern": "%s获得%s点%s",
+      "zh-Hans": "{0}获得{1}点{2}",
+      "en": "Grant {1} {2} to {0}"
+    },
+    {
+      "key": "Legacy.5835526c5f7343af",
+      "nativePattern": "%s获得%d点%s，%d%%增幅倍率",
+      "zh-Hans": "{0}获得{1}点{2}，{3}%增幅倍率",
+      "en": "Grant {1} {2} to {0}, with {3}% scaling"
+    },
+    {
+      "key": "Legacy.e706f6087bc542d8",
+      "nativePattern": "攻击%d次，每次造成%s点伤害。",
+      "zh-Hans": "攻击{0}次，每次造成{1}点伤害。",
+      "en": "Attack {0} times, dealing {1} damage each time."
+    },
+    {
+      "key": "Legacy.f0bfa113b3702fea",
+      "nativePattern": "造成%s点伤害。",
+      "zh-Hans": "造成{0}点伤害。",
+      "en": "Deal {0} damage."
+    },
+    {
+      "key": "Legacy.2d6f57a7a0f82776",
+      "nativePattern": "造成%s点固定伤害。",
+      "zh-Hans": "造成{0}点固定伤害。",
+      "en": "Deal {0} fixed damage."
+    },
+    {
+      "key": "Legacy.254ed4f18a652344",
+      "nativePattern": "施加%s点%s。",
+      "zh-Hans": "施加{0}点{1}。",
+      "en": "Apply {0} {1}."
+    },
+    {
+      "key": "Legacy.58b9eb3864e723b1",
+      "nativePattern": "%d点%s，%d%%增幅倍率。",
+      "zh-Hans": "{0}点{1}，{2}%增幅倍率。",
+      "en": "{0} {1}, with {2}% scaling."
+    },
+    {
+      "key": "Legacy.04ff83c37e23586a",
+      "nativePattern": "%s点治疗或治疗反转，耗尽药效。",
+      "zh-Hans": "{0}点治疗或治疗反转，耗尽药效。",
+      "en": "{0} healing or Healing Reversal; spend all Potency."
+    },
+    {
+      "key": "Legacy.1b31e4bdba87bef9",
+      "nativePattern": "%s点治疗。",
+      "zh-Hans": "{0}点治疗。",
+      "en": "{0} healing."
+    },
+    {
+      "key": "Legacy.de9b54d0471b9481",
+      "nativePattern": "%d点治疗，%d%%增幅倍率；消耗全部药效，等量增加基础治疗。",
+      "zh-Hans": "{0}点治疗，{1}%增幅倍率；消耗全部药效，等量增加基础治疗。",
+      "en": "{0} healing, with {1}% scaling; spend all Potency to add the same amount to base healing."
+    },
+    {
+      "key": "Legacy.f1b2d53cac8ad219",
+      "nativePattern": "获得%s点护甲。",
+      "zh-Hans": "获得{0}点护甲。",
+      "en": "Gain {0} Armor."
+    },
+    {
+      "key": "Legacy.2d81701b7848505b",
+      "nativePattern": "获得出牌者%d%%防御的护甲，%d%%增幅倍率。",
+      "zh-Hans": "获得出牌者{0}%防御的护甲，{1}%增幅倍率。",
+      "en": "Gain Armor equal to {0}% of the caster's Defense, with {1}% scaling."
+    },
+    {
+      "key": "Legacy.a7f0f49e22597a0e",
+      "nativePattern": "回复%s点内力；溢出获得%s点护甲。",
+      "zh-Hans": "回复{0}点内力；溢出获得{1}点护甲。",
+      "en": "Restore {0} Inner Power; overflow grants {1} Armor."
+    },
+    {
+      "key": "Legacy.741dcc683b6b4fbc",
+      "nativePattern": "回复%s点内力。",
+      "zh-Hans": "回复{0}点内力。",
+      "en": "Restore {0} Inner Power."
+    },
+    {
+      "key": "Legacy.ff774f899178640a",
+      "nativePattern": "回复当前内力的%d%%，向上取整；仅实际溢出转为护甲，%d%%增幅倍率。",
+      "zh-Hans": "回复当前内力的{0}%，向上取整；仅实际溢出转为护甲，{1}%增幅倍率。",
+      "en": "Restore {0}% of current Inner Power, rounded up; convert only actual overflow to Armor, with {1}% scaling."
+    },
+    {
+      "key": "Legacy.89544411284947ef",
+      "nativePattern": "回复%d点内力；仅实际溢出转为护甲，%d%%增幅倍率。",
+      "zh-Hans": "回复{0}点内力；仅实际溢出转为护甲，{1}%增幅倍率。",
+      "en": "Restore {0} Inner Power; convert only actual overflow to Armor, with {1}% scaling."
+    },
+    {
+      "key": "Legacy.785e7c24040ef929",
+      "nativePattern": "冲锋效果：%s",
+      "zh-Hans": "冲锋效果：{0}",
+      "en": "Opener effect: {0}"
+    },
+    {
+      "key": "Legacy.624067ded2bba080",
+      "nativePattern": "收招效果：%s",
+      "zh-Hans": "收招效果：{0}",
+      "en": "Finisher effect: {0}"
+    },
+    {
+      "key": "Legacy.1d561677425384f7",
+      "nativePattern": "重箭效果：%s",
+      "zh-Hans": "重箭效果：{0}",
+      "en": "Heavy Arrow effect: {0}"
+    },
+    {
+      "key": "Legacy.713fe1fb946c3d51",
+      "nativePattern": "出牌者抽%d张牌",
+      "zh-Hans": "出牌者抽{0}张牌",
+      "en": "Caster draws {0} cards"
+    },
+    {
+      "key": "Legacy.25e5efb92769a1ac",
+      "nativePattern": "出牌者获得%d层%s",
+      "zh-Hans": "出牌者获得{0}层{1}",
+      "en": "Caster gains {0} stacks of {1}"
+    },
+    {
+      "key": "Legacy.dc4f26747e4d740f",
+      "nativePattern": "打出本牌时，本回合此前每打出%d张主动牌，%s。",
+      "zh-Hans": "打出本牌时，本回合此前每打出{0}张主动牌，{1}。",
+      "en": "When this card is played, for every {0} active cards played earlier this round, {1}."
+    },
+    {
+      "key": "Legacy.9881da60a3449b8d",
+      "nativePattern": "药方：首次打出本牌时气力+1并激活，本局持续；%s",
+      "zh-Hans": "药方：首次打出本牌时气力+1并激活，本局持续；{0}",
+      "en": "Prescription: the first play grants +1 Qi and activates this effect for the run; {0}"
+    },
+    {
+      "key": "Legacy.4758168b85d42dc1",
+      "nativePattern": "来源：%s · %s",
+      "zh-Hans": "来源：{0} · {1}",
+      "en": "Source: {0} · {1}"
+    },
+    {
+      "key": "Legacy.cd206f78f5b10aa0",
+      "nativePattern": "品质：%s",
+      "zh-Hans": "品质：{0}",
+      "en": "Quality: {0}"
+    },
+    {
+      "key": "Legacy.7175b1961a5b8cad",
+      "nativePattern": "费用：%d 气 / %d 内",
+      "zh-Hans": "费用：{0} 气 / {1} 内",
+      "en": "Cost: {0} Qi / {1} Inner"
+    },
+    {
+      "key": "Legacy.c21af8d28311f079",
+      "nativePattern": "效果：\n%s",
+      "zh-Hans": "效果：\n{0}",
+      "en": "Effects:\n{0}"
+    },
+    {
+      "key": "Legacy.eebfddca04cc2def",
+      "nativePattern": "目标需具有%s%d层",
+      "zh-Hans": "目标需具有{0}{1}层",
+      "en": "Target requires {1} stacks of {0}"
+    },
+    {
+      "key": "Legacy.50505469157dc56f",
+      "nativePattern": "目标需具有至少%d点%s",
+      "zh-Hans": "目标需具有至少{0}点{1}",
+      "en": "Target requires at least {0} {1}"
+    },
+    {
+      "key": "Legacy.4469e99b99cb9714",
+      "nativePattern": "费用：%d 气 · %d 内",
+      "zh-Hans": "费用：{0} 气 · {1} 内",
+      "en": "Cost: {0} Qi · {1} Inner"
+    },
+    {
+      "key": "Legacy.bfd64e716810d428",
+      "nativePattern": "当前不可用：%s",
+      "zh-Hans": "当前不可用：{0}",
+      "en": "Unavailable now: {0}"
+    },
+    {
+      "key": "Legacy.c9e243bc2de09d13",
+      "nativePattern": "目标：%s",
+      "zh-Hans": "目标：{0}",
+      "en": "Target: {0}"
+    },
+    {
+      "key": "Legacy.cfc85de28e199ff2",
+      "nativePattern": "目标不能具有%s",
+      "zh-Hans": "目标不能具有{0}",
+      "en": "Target cannot have {0}"
+    },
+    {
+      "key": "Legacy.1e15d35e877bfc75",
+      "nativePattern": "目标生命范围 %.0f%%–%.0f%%",
+      "zh-Hans": "目标生命范围 {0}%–{1}%",
+      "en": "Target HP range: {0}%–{1}%"
+    },
+    {
+      "key": "Legacy.5af1a50302a29260",
+      "nativePattern": "需要地形：%s",
+      "zh-Hans": "需要地形：{0}",
+      "en": "Requires terrain: {0}"
+    },
+    {
+      "key": "Legacy.e6722d3654bf7196",
+      "nativePattern": "需要地形：%s或%s",
+      "zh-Hans": "需要地形：{0}或{1}",
+      "en": "Requires terrain: {0} or {1}"
+    }
+  ]
+}

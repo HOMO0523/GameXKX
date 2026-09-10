@@ -1,5 +1,8 @@
+#include "../GameXXKReforgeCandidates.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "GameXXKEquipmentCatalog.h"
+#include "../GameXXKToolMaterialAccess.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKToolCombineProbability.h"
 #include "GameXXKToolSelectionRules.h"
@@ -148,9 +151,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::BuildToolStatus(FString& Text) cons
     if (Inputs.IsEmpty())
     {
         if (ActiveToolMode == EGameXXKDesktopToolMode::Enhance)
-            Text = FString::Printf(TEXT("强化石 %d"), State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone()));
+            Text = FString::Printf(TEXT("强化石 %d"), GameXXKToolMaterialAccess::Count(State,UGameXXKMVPRules::ItemEnhancementStone()));
         else if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge)
-            Text = FString::Printf(TEXT("洗炼砂 %d"), State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand()));
+            Text = FString::Printf(TEXT("洗炼砂 %d"), GameXXKToolMaterialAccess::Count(State,UGameXXKMVPRules::ItemRefinementSand()));
         else Text.Reset();
         return false;
     }
@@ -188,14 +191,18 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::BuildToolStatus(FString& Text) cons
         if (Item->EnhancementLevel >= FGameXXKEquipmentRules::MaxEnhancementLevel)
         { Text = TEXT("强化已达上限"); return false; }
         const int32 Cost = FGameXXKEquipmentCatalog::GetEnhancementStoneCost(Item->EnhancementLevel);
-        const int32 Held = State.Inventory.FindRef(UGameXXKMVPRules::ItemEnhancementStone());
+        const int32 Held = GameXXKToolMaterialAccess::Count(State,UGameXXKMVPRules::ItemEnhancementStone());
         Text = FString::Printf(TEXT("+%d → +%d\n强化石 %d / %d"), Item->EnhancementLevel, Item->EnhancementLevel + 1, Held, Cost);
         return Held >= Cost;
     }
     if (ActiveToolMode == EGameXXKDesktopToolMode::Reforge)
     {
+        const auto* Definition=FGameXXKEquipmentCatalog::FindDefinition(Item->BaseEquipmentId);
+        if (Definition && Item->RolledAffixes.IsValidIndex(SelectedToolAffixIndex)
+            && GameXXKReforgeCandidates::Build(*Item,*Definition,SelectedToolAffixIndex).IsEmpty())
+        { Text=TEXT("该词缀固定1%，请选择其他词缀"); return false; }
         const int32 Cost = FGameXXKEquipmentCatalog::GetReforgeSandCost(Item->Quality);
-        const int32 Held = State.Inventory.FindRef(UGameXXKMVPRules::ItemRefinementSand());
+        const int32 Held = GameXXKToolMaterialAccess::Count(State,UGameXXKMVPRules::ItemRefinementSand());
         Text = FString::Printf(TEXT("洗炼砂 %d / %d"), Held, Cost);
         return Held >= Cost && Item->RolledAffixes.IsValidIndex(SelectedToolAffixIndex);
     }
@@ -228,7 +235,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::DropCarriedGemInSocket(const int32 
     CarriedEntry.Reset();
     SelectedToolSocketIndex = Index - 1;
     RefreshToolTargetSource();
-    SetNotice(FText::FromString(TEXT("镶嵌完成，可继续放入宝石")), EGameXXKDesktopNoticeCategory::Socket);
+    SetNotice(GameXXKLocalization::Source(TEXT("镶嵌完成，可继续放入宝石")), EGameXXKDesktopNoticeCategory::Socket);
     RefreshLayout();
     return true;
 }

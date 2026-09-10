@@ -105,7 +105,7 @@ bool FGameXXKDesktopHudStableDockPlacementTest::RunTest(const FString& Parameter
 	TestEqual(
 		TEXT("expanded idle strip keeps the collapsed logical footprint"),
 		GetIdleStripRect(),
-		FVector4(318.0f, 0.0f, 1038.0f, 202.0f));
+		FVector4(318.0f, 0.0f, 1118.0f, 202.0f));
 
 	const FDesktopHudResolvedMetrics FullMetrics = ResolveDesktopHudMetrics(WorkArea, 100);
 	const FDesktopOverlayPlacement WorkAreaHost = ResolveDesktopWorkAreaHostPlacement(FullMetrics);
@@ -129,7 +129,7 @@ bool FGameXXKDesktopHudStableDockPlacementTest::RunTest(const FString& Parameter
 			RightDock.Scale,
 			true,
 			true,
-			false).Equals(FVector2D(-304.0f, 0.0f), 0.01f));
+			false).Equals(FVector2D(-224.0f, 0.0f), 0.01f));
 	const FDesktopOverlayPlacement LeftDock = ComputeDesktopOverlayPlacement(
 		WorkArea,
 		FVector2D(0.0f, 0.5f),
@@ -190,6 +190,45 @@ bool FGameXXKDesktopHudUpwardNativeRegionTest::RunTest(const FString& Parameters
 	TestFalse(
 		TEXT("the old unshifted lower content band no longer owns native input"),
 		IsPointInsideDesktopNativeRegionShapes(Shapes, FVector2D(900.0f, 720.0f)));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDesktopSettingsNativeRegionTest,
+	"GameXXK.DesktopTraining.Workbench.SettingsReadingRegion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKDesktopSettingsNativeRegionTest::RunTest(const FString&)
+{
+	using namespace GameXXKDesktopTrainingLayout;
+	for (const int32 Percent : {50, 75, 100})
+	{
+		FDesktopNativeRegionState State;
+		State.bExpanded = true;
+		State.bRightPanelOpen = false;
+		State.Scale = Percent / 100.0f;
+		State.HudScalePercent = Percent;
+		const FVector2D OldFloatingPoint(1630.0f * State.Scale, 276.0f * State.Scale);
+		const auto ClosedShapes = BuildDesktopNativeRegionShapes(State);
+		State.bSettingsOpen = true;
+		TestFalse(TEXT("opening settings never claims the old floating desktop area"),
+			IsPointInsideDesktopNativeRegionShapes(BuildDesktopNativeRegionShapes(State), OldFloatingPoint));
+		TestEqual(TEXT("settings needs no additional native input rectangle"),
+			BuildDesktopNativeRegionShapes(State).Num(), ClosedShapes.Num());
+		const FVector4 ReadingRect = GetHudSettingsRenderedLogicalRect(Percent);
+		TestTrue(TEXT("settings shares the complete backpack rectangle at every scale"), ReadingRect.Equals(GetContentRect()));
+		const FVector2D CloseSidePoint((ReadingRect.X + ReadingRect.Z - 28) * State.Scale,
+			(ReadingRect.Y + 30) * State.Scale);
+		TestTrue(TEXT("the settings close button is inside the central native surface"),
+			IsPointInsideDesktopNativeRegionShapes(BuildDesktopNativeRegionShapes(State), CloseSidePoint));
+		State.bExpandUpward = true;
+		State.BodyOffset = FVector2D(31.0f, -210.0f);
+		TestTrue(TEXT("upward settings use the same body offset as their painted surface"),
+			IsPointInsideDesktopNativeRegionShapes(BuildDesktopNativeRegionShapes(State),
+				CloseSidePoint + State.BodyOffset * State.Scale));
+		State.bSettingsOpen = false;
+		State.bInterfaceHelpOpen = true;
+		const FVector2D HelpCloseSide(1630.0f * State.Scale, 35.0f * State.Scale);
+		TestTrue(TEXT("interface help uses its viewport-local reading region even with upward body offset"),
+			IsPointInsideDesktopNativeRegionShapes(BuildDesktopNativeRegionShapes(State), HelpCloseSide));
+	}
 	return true;
 }
 

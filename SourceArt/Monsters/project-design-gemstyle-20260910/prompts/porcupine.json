@@ -1,0 +1,26 @@
+{
+  "slug": "porcupine",
+  "name": "豪猪",
+  "id": "Enemy.Ch2.Porcupine",
+  "chapter": 2,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/10_porcupine.png",
+  "identitySourceSha256": "374912d186675fd6a60836ee01101f3737eabbcbe32659f6de149b69b6089f38",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "豪猪：保留原低矮圆土棕身体、小尖鼻小耳、四只短脚；背后扇形巨大黑棕硬刺带奶金色尖端，硬刺保持原前低后高层次和放射方向，但归为十至十五根有粗细的清楚大刺，不画细针海。口鼻3/4朝右，身体前压蓄势，不能变刺猬的圆球、不加铁甲或武器。",
+  "prompt": "Use case: style-transfer / precise-object-edit. 修正第一张的绘制密度和眼睛，第二张是项目原图，作为细节上限和卡通眼睛依据。保持第一张的身份、姿态、配色、比例、朝右3/4方向和原道具，全身完整居中、原米白背景不变。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。 豪猪重点：眼睛回到项目原图的简单小黑豆眼，用一个纯深色椭圆加至多一个极小白点，不画棕色虹膜、眼球渐变、玻璃反光、水滴形高光或湿眼眶。不要把眼睛放大成萌眼。保留当前黑棕奶金大刺轮廓及数量分组；每根大刺合并成2至3个长而完整的色面，身体毛发用三块大色面表达，不叠碎毛笔触。 必须重新组织大色面，不是将现图模糊，不增加其它物体或文字。",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-d3a52fe0-e075-43e4-8ef8-c604f04ff764.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/10_porcupine.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\porcupine.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-31a3f907-d638-47ed-8ca6-6a94c66a5a6a.png",
+  "previousGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-d3a52fe0-e075-43e4-8ef8-c604f04ff764.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：豪猪：保留原低矮圆土棕身体、小尖鼻小耳、四只短脚；背后扇形巨大黑棕硬刺带奶金色尖端，硬刺保持原前低后高层次和放射方向，但归为十至十五根有粗细的清楚大刺，不画细针海。口鼻3/4朝右，身体前压蓄势，不能变刺猬的圆球、不加铁甲或武器。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

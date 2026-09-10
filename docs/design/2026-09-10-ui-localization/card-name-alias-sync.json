@@ -1,0 +1,30 @@
+[
+  {
+    "namespace": "GameXXKBattle",
+    "key": "CraneWingSlash",
+    "zh": "鹤羽斩",
+    "old": "Crane Wing Slash",
+    "new": "Crane Cut"
+  },
+  {
+    "namespace": "GameXXKBattle",
+    "key": "GuiyuanArt",
+    "zh": "归元术",
+    "old": "Return to Origin",
+    "new": "Renewal"
+  },
+  {
+    "namespace": "GameXXKEquipment",
+    "key": "SetPoJun",
+    "zh": "破军",
+    "old": "War",
+    "new": "Armybreaker"
+  },
+  {
+    "namespace": "GameXXKEquipmentSet",
+    "key": "SetPoJun",
+    "zh": "破军",
+    "old": "War",
+    "new": "Armybreaker"
+  }
+]

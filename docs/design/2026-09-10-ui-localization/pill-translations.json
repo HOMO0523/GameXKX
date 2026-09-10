@@ -1,0 +1,1053 @@
+{
+  "schemaVersion": 1,
+  "terms": [
+    {
+      "canonical": "冲锋",
+      "id": "Opener",
+      "en": "Opener"
+    },
+    {
+      "canonical": "收招",
+      "id": "Finisher",
+      "en": "Finisher"
+    },
+    {
+      "canonical": "重箭",
+      "id": "HeavyArrow",
+      "en": "Heavy Arrow"
+    },
+    {
+      "canonical": "编序",
+      "id": "Sequence",
+      "en": "Sequence"
+    },
+    {
+      "canonical": "法术任务",
+      "id": "SpellTask",
+      "en": "Spell Task"
+    },
+    {
+      "canonical": "阵赏",
+      "id": "FormationReward",
+      "en": "Formation Reward"
+    },
+    {
+      "canonical": "通用",
+      "id": "Universal",
+      "en": "Universal"
+    },
+    {
+      "canonical": "自动入手",
+      "id": "AutoDraw",
+      "en": "Auto Draw"
+    },
+    {
+      "canonical": "药方",
+      "id": "Prescription",
+      "en": "Prescription"
+    },
+    {
+      "canonical": "检索",
+      "id": "Search",
+      "en": "Search"
+    },
+    {
+      "canonical": "毒爆",
+      "id": "PoisonBurst",
+      "en": "Poison Burst"
+    },
+    {
+      "canonical": "冰爆",
+      "id": "IceBurst",
+      "en": "Ice Burst"
+    },
+    {
+      "canonical": "治疗反转",
+      "id": "HealingReversal",
+      "en": "Healing Reversal"
+    },
+    {
+      "canonical": "无视防御",
+      "id": "IgnoreDefense",
+      "en": "Ignore Defense"
+    },
+    {
+      "canonical": "消耗",
+      "id": "Exhaust",
+      "en": "Exhaust"
+    },
+    {
+      "canonical": "临时复制",
+      "id": "TemporaryCopy",
+      "en": "Temporary Copy"
+    },
+    {
+      "canonical": "藏式",
+      "id": "StoredStance",
+      "en": "Stored Stance"
+    },
+    {
+      "canonical": "开锋",
+      "id": "Unsheathe",
+      "en": "Unsheathe"
+    },
+    {
+      "canonical": "余式",
+      "id": "FollowUpStance",
+      "en": "Follow-up Stance"
+    },
+    {
+      "canonical": "血势",
+      "id": "BloodMomentum",
+      "en": "Blood Momentum"
+    },
+    {
+      "canonical": "乘势",
+      "id": "RideMomentum",
+      "en": "Ride Momentum"
+    },
+    {
+      "canonical": "护甲",
+      "id": "Armor",
+      "en": "Armor"
+    },
+    {
+      "canonical": "气势",
+      "id": "Momentum",
+      "en": "Momentum"
+    },
+    {
+      "canonical": "灵动",
+      "id": "Agility",
+      "en": "Agility"
+    },
+    {
+      "canonical": "破绽",
+      "id": "Vulnerability",
+      "en": "Vulnerability"
+    },
+    {
+      "canonical": "标记",
+      "id": "Mark",
+      "en": "Mark"
+    },
+    {
+      "canonical": "虚弱",
+      "id": "Weak",
+      "en": "Weak"
+    },
+    {
+      "canonical": "流血",
+      "id": "Bleed",
+      "en": "Bleed"
+    },
+    {
+      "canonical": "中毒",
+      "id": "Poison",
+      "en": "Poison"
+    },
+    {
+      "canonical": "灼烧",
+      "id": "Burn",
+      "en": "Burn"
+    },
+    {
+      "canonical": "蚀伤",
+      "id": "Corrosion",
+      "en": "Corrosion"
+    },
+    {
+      "canonical": "药效",
+      "id": "Potency",
+      "en": "Potency"
+    },
+    {
+      "canonical": "蓄力",
+      "id": "Charge",
+      "en": "Charge"
+    },
+    {
+      "canonical": "援护",
+      "id": "Guard",
+      "en": "Guard"
+    },
+    {
+      "canonical": "反击",
+      "id": "Counter",
+      "en": "Counter"
+    },
+    {
+      "canonical": "格挡",
+      "id": "Block",
+      "en": "Block"
+    },
+    {
+      "canonical": "破绽免疫",
+      "id": "VulnerabilityImmunity",
+      "en": "Vulnerability Immunity"
+    },
+    {
+      "canonical": "追击标记",
+      "id": "MarkFollowUp",
+      "en": "Mark Follow-up"
+    },
+    {
+      "canonical": "破绽追击",
+      "id": "VulnerabilityFollowUp",
+      "en": "Vulnerability Follow-up"
+    },
+    {
+      "canonical": "疗愈增幅",
+      "id": "HealingBoost",
+      "en": "Healing Boost"
+    },
+    {
+      "canonical": "地势双效",
+      "id": "DoubleTerrain",
+      "en": "Double Terrain"
+    },
+    {
+      "canonical": "地势免耗",
+      "id": "FreeTerrain",
+      "en": "Free Terrain"
+    },
+    {
+      "canonical": "地势减耗",
+      "id": "TerrainDiscount",
+      "en": "Terrain Discount"
+    },
+    {
+      "canonical": "代挡",
+      "id": "Redirect",
+      "en": "Redirect"
+    },
+    {
+      "canonical": "本回合地势双效",
+      "id": "RoundDoubleTerrain",
+      "en": "Round Double Terrain"
+    },
+    {
+      "canonical": "财富",
+      "id": "Wealth",
+      "en": "Wealth"
+    },
+    {
+      "canonical": "狂怒",
+      "id": "Rage",
+      "en": "Rage"
+    },
+    {
+      "canonical": "猎物",
+      "id": "Prey",
+      "en": "Prey"
+    },
+    {
+      "canonical": "地势",
+      "id": "Terrain",
+      "en": "Terrain"
+    }
+  ],
+  "entries": [
+    {
+      "key": "Pill.Opener.Name",
+      "zh-Hans": "冲锋",
+      "en": "Opener"
+    },
+    {
+      "key": "Pill.Opener.Description",
+      "zh-Hans": "本回合第一张主动牌触发。",
+      "en": "Triggers on the first actively played card this round."
+    },
+    {
+      "key": "Pill.Finisher.Name",
+      "zh-Hans": "收招",
+      "en": "Finisher"
+    },
+    {
+      "key": "Pill.Finisher.Description",
+      "zh-Hans": "结束回合时，最后一张主动牌触发。",
+      "en": "Triggers at turn end if this was the last actively played card."
+    },
+    {
+      "key": "Pill.HeavyArrow.Name",
+      "zh-Hans": "重箭",
+      "en": "Heavy Arrow"
+    },
+    {
+      "key": "Pill.HeavyArrow.Description",
+      "zh-Hans": "消耗全部蓄力，按消耗量强化本牌。",
+      "en": "Spend all Charge to strengthen this card."
+    },
+    {
+      "key": "Pill.Sequence.Name",
+      "zh-Hans": "编序",
+      "en": "Sequence"
+    },
+    {
+      "key": "Pill.Sequence.Description",
+      "zh-Hans": "按本次任务的记录顺序改变效果。",
+      "en": "Changes the effect according to the order recorded for this task."
+    },
+    {
+      "key": "Pill.SpellTask.Name",
+      "zh-Hans": "法术任务",
+      "en": "Spell Task"
+    },
+    {
+      "key": "Pill.SpellTask.Description",
+      "zh-Hans": "本组不同法术各主动打出1次，依序免费重放；每回合限1次。",
+      "en": "Actively play each distinct spell in this set 1 time, then replay them for free in order; limited to 1 time per round."
+    },
+    {
+      "key": "Pill.FormationReward.Name",
+      "zh-Hans": "阵赏",
+      "en": "Formation Reward"
+    },
+    {
+      "key": "Pill.FormationReward.Description",
+      "zh-Hans": "任务重放后，领取首牌奖励。",
+      "en": "After the task replay, gain the reward set by the first recorded card."
+    },
+    {
+      "key": "Pill.Universal.Name",
+      "zh-Hans": "通用",
+      "en": "Universal"
+    },
+    {
+      "key": "Pill.Universal.Description",
+      "zh-Hans": "作首牌时，第2张记录牌决定分支；核心或通用牌对应普通分支。",
+      "en": "If played first, the 2nd recorded card determines the branch; a core or universal card selects the normal branch."
+    },
+    {
+      "key": "Pill.AutoDraw.Name",
+      "zh-Hans": "自动入手",
+      "en": "Auto Draw"
+    },
+    {
+      "key": "Pill.AutoDraw.Description",
+      "zh-Hans": "从抽牌堆或弃牌堆自动加入手牌。",
+      "en": "Automatically add the card to your hand from the draw or discard pile."
+    },
+    {
+      "key": "Pill.Prescription.Name",
+      "zh-Hans": "药方",
+      "en": "Prescription"
+    },
+    {
+      "key": "Pill.Prescription.Description",
+      "zh-Hans": "首次打出开启本场效果；药方互不触发。",
+      "en": "The first play activates its effect for this battle; prescriptions do not trigger each other."
+    },
+    {
+      "key": "Pill.Search.Name",
+      "zh-Hans": "检索",
+      "en": "Search"
+    },
+    {
+      "key": "Pill.Search.Description",
+      "zh-Hans": "从抽牌堆或弃牌堆选牌入手。",
+      "en": "Choose a card from the draw or discard pile and add it to your hand."
+    },
+    {
+      "key": "Pill.PoisonBurst.Name",
+      "zh-Hans": "毒爆",
+      "en": "Poison Burst"
+    },
+    {
+      "key": "Pill.PoisonBurst.Description",
+      "zh-Hans": "依次触发流血、中毒、灼烧和蚀伤各一次。",
+      "en": "Trigger Bleed, Poison, Burn and Corrosion in that order."
+    },
+    {
+      "key": "Pill.IceBurst.Name",
+      "zh-Hans": "冰爆",
+      "en": "Ice Burst"
+    },
+    {
+      "key": "Pill.IceBurst.Description",
+      "zh-Hans": "消耗全部护甲攻击全体敌方；每点护甲增加1个攻击百分点。",
+      "en": "Spend all Armor to attack all enemies; each point of Armor adds 1 attack percentage point."
+    },
+    {
+      "key": "Pill.HealingReversal.Name",
+      "zh-Hans": "治疗反转",
+      "en": "Healing Reversal"
+    },
+    {
+      "key": "Pill.HealingReversal.Description",
+      "zh-Hans": "对敌方使用时，将治疗转为等量生命损失。",
+      "en": "When used on an enemy, turn healing into equal HP loss."
+    },
+    {
+      "key": "Pill.IgnoreDefense.Name",
+      "zh-Hans": "无视防御",
+      "en": "Ignore Defense"
+    },
+    {
+      "key": "Pill.IgnoreDefense.Description",
+      "zh-Hans": "本次攻击忽略指定数值的防御。",
+      "en": "This attack ignores the specified amount of Defense."
+    },
+    {
+      "key": "Pill.Exhaust.Name",
+      "zh-Hans": "消耗",
+      "en": "Exhaust"
+    },
+    {
+      "key": "Pill.Exhaust.Description",
+      "zh-Hans": "打出后，本场不再抽到此牌。",
+      "en": "After being played, this card cannot be drawn again during this battle."
+    },
+    {
+      "key": "Pill.TemporaryCopy.Name",
+      "zh-Hans": "临时复制",
+      "en": "Temporary Copy"
+    },
+    {
+      "key": "Pill.TemporaryCopy.Description",
+      "zh-Hans": "复制原牌；副本在生成它的回合结束时消失。",
+      "en": "Copy the original card; the copy disappears at the end of the round in which it was created."
+    },
+    {
+      "key": "Pill.StoredStance.Name",
+      "zh-Hans": "藏式",
+      "en": "Stored Stance"
+    },
+    {
+      "key": "Pill.StoredStance.Description",
+      "zh-Hans": "保存冲锋效果，供下回合首张主动牌使用；该回合结束时失效。",
+      "en": "Store an Opener effect for the first actively played card next round; it expires at the end of that round."
+    },
+    {
+      "key": "Pill.Unsheathe.Name",
+      "zh-Hans": "开锋",
+      "en": "Unsheathe"
+    },
+    {
+      "key": "Pill.Unsheathe.Description",
+      "zh-Hans": "本牌使用藏式时触发。",
+      "en": "Triggers when this card uses Stored Stance."
+    },
+    {
+      "key": "Pill.FollowUpStance.Name",
+      "zh-Hans": "余式",
+      "en": "Follow-up Stance"
+    },
+    {
+      "key": "Pill.FollowUpStance.Description",
+      "zh-Hans": "供本回合下一张主动牌再使用1次藏式；不会继续复制。",
+      "en": "Let the next actively played card this round reuse Stored Stance 1 time; it does not copy itself again."
+    },
+    {
+      "key": "Pill.BloodMomentum.Name",
+      "zh-Hans": "血势",
+      "en": "Blood Momentum"
+    },
+    {
+      "key": "Pill.BloodMomentum.Description",
+      "zh-Hans": "每点目标流血使指定攻击倍率增加2个百分点。",
+      "en": "Each Bleed on the target adds 2 percentage points to the specified attack multiplier."
+    },
+    {
+      "key": "Pill.RideMomentum.Name",
+      "zh-Hans": "乘势",
+      "en": "Ride Momentum"
+    },
+    {
+      "key": "Pill.RideMomentum.Description",
+      "zh-Hans": "每层自身气势使指定攻击倍率增加10个百分点；未注明则不消耗。",
+      "en": "Each Momentum on self adds 10 percentage points to the specified attack multiplier; it is not spent unless stated."
+    },
+    {
+      "key": "Pill.Armor.Name",
+      "zh-Hans": "护甲",
+      "en": "Armor"
+    },
+    {
+      "key": "Pill.Armor.Description",
+      "zh-Hans": "抵挡攻击与固定伤害；本方回合开始清空。",
+      "en": "Absorbs attacks and fixed damage; clears at the start of your side's turn."
+    },
+    {
+      "key": "Pill.Momentum.Name",
+      "zh-Hans": "气势",
+      "en": "Momentum"
+    },
+    {
+      "key": "Pill.Momentum.Description",
+      "zh-Hans": "每层使每段直接攻击伤害+1；普通攻击不消耗，也不衰减。",
+      "en": "Each stack adds +1 damage to every direct attack hit; ordinary attacks do not spend it, and it does not decay."
+    },
+    {
+      "key": "Pill.Agility.Name",
+      "zh-Hans": "灵动",
+      "en": "Agility"
+    },
+    {
+      "key": "Pill.Agility.Description",
+      "zh-Hans": "25%概率耗1层完美闪避；否则有2层便耗2层闪避。",
+      "en": "25% chance to spend 1 stack for a perfect dodge; otherwise, if you have 2 stacks, spend 2 stacks to dodge."
+    },
+    {
+      "key": "Pill.Vulnerability.Name",
+      "zh-Hans": "破绽",
+      "en": "Vulnerability"
+    },
+    {
+      "key": "Pill.Vulnerability.Description",
+      "zh-Hans": "每层使下一段直接攻击伤害+10%；有效命中后清空。",
+      "en": "Each stack adds +10% damage to the next direct attack hit; clears after a successful hit."
+    },
+    {
+      "key": "Pill.Mark.Name",
+      "zh-Hans": "标记",
+      "en": "Mark"
+    },
+    {
+      "key": "Pill.Mark.Description",
+      "zh-Hans": "所受直接攻击+15%，有效命中耗1层；敌人通常优先攻击有标记的友方。",
+      "en": "Take +15% direct attack damage; a successful hit spends 1 stack. Enemies usually prioritize marked allies."
+    },
+    {
+      "key": "Pill.Weak.Name",
+      "zh-Hans": "虚弱",
+      "en": "Weak"
+    },
+    {
+      "key": "Pill.Weak.Description",
+      "zh-Hans": "直接攻击伤害降低50%；本方回合结束减少1层。",
+      "en": "Direct attack damage is reduced by 50%; lose 1 stack at the end of your side's turn."
+    },
+    {
+      "key": "Pill.Bleed.Name",
+      "zh-Hans": "流血",
+      "en": "Bleed"
+    },
+    {
+      "key": "Pill.Bleed.Description",
+      "zh-Hans": "被攻击命中后，额外失去等同流血值的生命。",
+      "en": "After an attack hits, lose additional HP equal to Bleed."
+    },
+    {
+      "key": "Pill.Poison.Name",
+      "zh-Hans": "中毒",
+      "en": "Poison"
+    },
+    {
+      "key": "Pill.Poison.Description",
+      "zh-Hans": "任意一方回合结束时，失去等同中毒值的生命。",
+      "en": "At the end of either side's turn, lose HP equal to Poison."
+    },
+    {
+      "key": "Pill.Burn.Name",
+      "zh-Hans": "灼烧",
+      "en": "Burn"
+    },
+    {
+      "key": "Pill.Burn.Description",
+      "zh-Hans": "自己的牌或意图结束后，失去等同灼烧值的生命。",
+      "en": "After your own card or intent finishes, lose HP equal to Burn."
+    },
+    {
+      "key": "Pill.Corrosion.Name",
+      "zh-Hans": "蚀伤",
+      "en": "Corrosion"
+    },
+    {
+      "key": "Pill.Corrosion.Description",
+      "zh-Hans": "被毒爆或指定效果触发时，失去等同蚀伤值的生命。",
+      "en": "When triggered by Poison Burst or a specified effect, lose HP equal to Corrosion."
+    },
+    {
+      "key": "Pill.Potency.Name",
+      "zh-Hans": "药效",
+      "en": "Potency"
+    },
+    {
+      "key": "Pill.Potency.Description",
+      "zh-Hans": "治疗前全部消耗，每点使基础治疗+1；累计每获得6点，得到1层气势。",
+      "en": "Spend all before healing; each point adds +1 base healing. Every 6 Potency gained cumulatively grants 1 Momentum."
+    },
+    {
+      "key": "Pill.Charge.Name",
+      "zh-Hans": "蓄力",
+      "en": "Charge"
+    },
+    {
+      "key": "Pill.Charge.Description",
+      "zh-Hans": "用于强化重箭，发动重箭时全部消耗。",
+      "en": "Strengthens Heavy Arrow; all stacks are spent when Heavy Arrow is used."
+    },
+    {
+      "key": "Pill.Guard.Name",
+      "zh-Hans": "援护",
+      "en": "Guard"
+    },
+    {
+      "key": "Pill.Guard.Description",
+      "zh-Hans": "替目标承受单体攻击，每次消耗1次。",
+      "en": "Take single-target attacks in place of the protected target; each use spends 1 charge."
+    },
+    {
+      "key": "Pill.Counter.Name",
+      "zh-Hans": "反击",
+      "en": "Counter"
+    },
+    {
+      "key": "Pill.Counter.Description",
+      "zh-Hans": "对方单体直接攻击牌结算后反击，耗1次；不连锁触发。",
+      "en": "Counter after an opposing single-target direct attack card resolves; spend 1 charge. Counters do not chain."
+    },
+    {
+      "key": "Pill.Block.Name",
+      "zh-Hans": "格挡",
+      "en": "Block"
+    },
+    {
+      "key": "Pill.Block.Description",
+      "zh-Hans": "对方单体直接攻击牌结算后，以攻击加剩余护甲反攻，耗1次；护甲保留。",
+      "en": "After an opposing single-target direct attack card resolves, retaliate with Attack plus remaining Armor; spend 1 charge and keep the Armor."
+    },
+    {
+      "key": "Pill.VulnerabilityImmunity.Name",
+      "zh-Hans": "破绽免疫",
+      "en": "Vulnerability Immunity"
+    },
+    {
+      "key": "Pill.VulnerabilityImmunity.Description",
+      "zh-Hans": "免疫新施加的破绽。",
+      "en": "Immune to newly applied Vulnerability."
+    },
+    {
+      "key": "Pill.MarkFollowUp.Name",
+      "zh-Hans": "追击标记",
+      "en": "Mark Follow-up"
+    },
+    {
+      "key": "Pill.MarkFollowUp.Description",
+      "zh-Hans": "下次攻击的首段命中施加1层标记，出手后耗1次。",
+      "en": "The first hit of the next attack applies 1 Mark; spend 1 charge after attacking."
+    },
+    {
+      "key": "Pill.VulnerabilityFollowUp.Name",
+      "zh-Hans": "破绽追击",
+      "en": "Vulnerability Follow-up"
+    },
+    {
+      "key": "Pill.VulnerabilityFollowUp.Description",
+      "zh-Hans": "下次攻击的首段命中施加1层破绽，出手后耗1次。",
+      "en": "The first hit of the next attack applies 1 Vulnerability; spend 1 charge after attacking."
+    },
+    {
+      "key": "Pill.HealingBoost.Name",
+      "zh-Hans": "疗愈增幅",
+      "en": "Healing Boost"
+    },
+    {
+      "key": "Pill.HealingBoost.Description",
+      "zh-Hans": "下次治疗的每个目标各增加当前数值的治疗量，随后清空。",
+      "en": "Add the current amount to healing for each target of the next heal, then clear it."
+    },
+    {
+      "key": "Pill.DoubleTerrain.Name",
+      "zh-Hans": "地势双效",
+      "en": "Double Terrain"
+    },
+    {
+      "key": "Pill.DoubleTerrain.Description",
+      "zh-Hans": "下一次符合条件的地势收益额外结算1次，触发后耗1次。",
+      "en": "The next qualifying terrain benefit resolves 1 extra time; spend 1 charge after triggering."
+    },
+    {
+      "key": "Pill.FreeTerrain.Name",
+      "zh-Hans": "地势免耗",
+      "en": "Free Terrain"
+    },
+    {
+      "key": "Pill.FreeTerrain.Description",
+      "zh-Hans": "下一张地势牌不消耗气力。",
+      "en": "The next terrain card costs no Qi."
+    },
+    {
+      "key": "Pill.TerrainDiscount.Name",
+      "zh-Hans": "地势减耗",
+      "en": "Terrain Discount"
+    },
+    {
+      "key": "Pill.TerrainDiscount.Description",
+      "zh-Hans": "下一张地势牌少耗1点气力。",
+      "en": "The next terrain card costs 1 less Qi."
+    },
+    {
+      "key": "Pill.Redirect.Name",
+      "zh-Hans": "代挡",
+      "en": "Redirect"
+    },
+    {
+      "key": "Pill.Redirect.Description",
+      "zh-Hans": "下一次敌方单体攻击转向指定友方，触发后耗1次。",
+      "en": "Redirect the next enemy single-target attack to the chosen ally; spend 1 charge after triggering."
+    },
+    {
+      "key": "Pill.RoundDoubleTerrain.Name",
+      "zh-Hans": "本回合地势双效",
+      "en": "Round Double Terrain"
+    },
+    {
+      "key": "Pill.RoundDoubleTerrain.Description",
+      "zh-Hans": "本回合下一次符合条件的地势收益额外结算1次；触发或回合结束后失效。",
+      "en": "The next qualifying terrain benefit this round resolves 1 extra time; expires after triggering or at round end."
+    },
+    {
+      "key": "Pill.Wealth.Name",
+      "zh-Hans": "财富",
+      "en": "Wealth"
+    },
+    {
+      "key": "Pill.Wealth.Description",
+      "zh-Hans": "上限8层，强化或供钱鼠招式消耗；具体收益看意图，转阶段保留。",
+      "en": "Up to 8 stacks. Strengthens or fuels the Coin Rat's moves; see its intent for details. Kept between phases."
+    },
+    {
+      "key": "Pill.Rage.Name",
+      "zh-Hans": "狂怒",
+      "en": "Rage"
+    },
+    {
+      "key": "Pill.Rage.Description",
+      "zh-Hans": "上限5层，强化赤獠招式；每张玩家主动牌造成生命伤害后+1，转阶段保留。",
+      "en": "Up to 5 stacks. Empowers Redtusk's moves; +1 after each actively played player card that deals HP damage. Kept between phases."
+    },
+    {
+      "key": "Pill.Prey.Name",
+      "zh-Hans": "猎物",
+      "en": "Prey"
+    },
+    {
+      "key": "Pill.Prey.Description",
+      "zh-Hans": "老虎锁定的目标；指定猎物的招式优先攻击它。",
+      "en": "The Tiger's chosen target; moves that specify Prey prioritize this unit."
+    },
+    {
+      "key": "Pill.Terrain.Name",
+      "zh-Hans": "地势",
+      "en": "Terrain"
+    },
+    {
+      "key": "Pill.Terrain.Description",
+      "zh-Hans": "卡牌可触发场地收益；阵师伙伴存活时，玩家回合开始自动触发1次。",
+      "en": "Cards can trigger terrain benefits. While the Formation Master companion lives, trigger the benefit 1 time at the start of the player turn."
+    },
+    {
+      "key": "Pill.ChargeHeavyArrow.Name",
+      "zh-Hans": "蓄力／重箭",
+      "en": "Charge / Heavy Arrow"
+    },
+    {
+      "key": "Pill.HelpHeader",
+      "zh-Hans": "本牌术语",
+      "en": "Card terms"
+    },
+    {
+      "key": "Pill.NoTerms",
+      "zh-Hans": "无额外关键词说明。",
+      "en": "No additional terms."
+    },
+    {
+      "key": "Pill.DotFootnote",
+      "zh-Hans": "持续伤害直接损失生命，触发不消耗数值。",
+      "en": "Damage over time removes HP directly. Triggering it does not spend its stacks."
+    },
+    {
+      "key": "Pill.Controls",
+      "zh-Hans": "Ctrl：返回牌面 · Shift：详述",
+      "en": "Ctrl: return to card · Shift: full details"
+    },
+    {
+      "key": "Pill.SpellTask.Dynamic",
+      "nativePattern": "本组%d种牌各主动打出1次，依序免费重放；每回合限1次。",
+      "zh-Hans": "本组{0}种牌各主动打出1次，依序免费重放；每回合限1次。",
+      "en": "Actively play each of the {0} card types in this set 1 time, then replay them for free in order; limited to 1 time per round."
+    },
+    {
+      "key": "Pill.Counter.Dynamic",
+      "nativePattern": "对方单体直接攻击牌结算后反击，%d%%攻击伤害；耗1次，不连锁。",
+      "zh-Hans": "对方单体直接攻击牌结算后反击，{0}%攻击伤害；耗1次，不连锁。",
+      "en": "Counter after an opposing single-target direct attack card resolves, dealing {0}% ATK damage; spend 1 charge. Counters do not chain."
+    },
+    {
+      "key": "Pill.Block.Dynamic",
+      "nativePattern": "对方单体直接攻击牌结算后，以%d%%攻击＋剩余护甲反击；耗1次，护甲保留。",
+      "zh-Hans": "对方单体直接攻击牌结算后，以{0}%攻击＋剩余护甲反击；耗1次，护甲保留。",
+      "en": "After an opposing single-target direct attack card resolves, counter with {0}% ATK plus remaining Armor; spend 1 charge and keep the Armor."
+    },
+    {
+      "key": "Pill.Opener.HelpLine",
+      "zh-Hans": "冲锋：本回合第一张主动牌触发。",
+      "en": "Opener: Triggers on the first actively played card this round."
+    },
+    {
+      "key": "Pill.Finisher.HelpLine",
+      "zh-Hans": "收招：结束回合时，最后一张主动牌触发。",
+      "en": "Finisher: Triggers at turn end if this was the last actively played card."
+    },
+    {
+      "key": "Pill.HeavyArrow.HelpLine",
+      "zh-Hans": "重箭：消耗全部蓄力，按消耗量强化本牌。",
+      "en": "Heavy Arrow: Spend all Charge to strengthen this card."
+    },
+    {
+      "key": "Pill.Sequence.HelpLine",
+      "zh-Hans": "编序：按本次任务的记录顺序改变效果。",
+      "en": "Sequence: Changes the effect according to the order recorded for this task."
+    },
+    {
+      "key": "Pill.SpellTask.HelpLine",
+      "zh-Hans": "法术任务：本组不同法术各主动打出1次，依序免费重放；每回合限1次。",
+      "en": "Spell Task: Actively play each distinct spell in this set 1 time, then replay them for free in order; limited to 1 time per round."
+    },
+    {
+      "key": "Pill.FormationReward.HelpLine",
+      "zh-Hans": "阵赏：任务重放后，领取首牌奖励。",
+      "en": "Formation Reward: After the task replay, gain the reward set by the first recorded card."
+    },
+    {
+      "key": "Pill.Universal.HelpLine",
+      "zh-Hans": "通用：作首牌时，第2张记录牌决定分支；核心或通用牌对应普通分支。",
+      "en": "Universal: If played first, the 2nd recorded card determines the branch; a core or universal card selects the normal branch."
+    },
+    {
+      "key": "Pill.AutoDraw.HelpLine",
+      "zh-Hans": "自动入手：从抽牌堆或弃牌堆自动加入手牌。",
+      "en": "Auto Draw: Automatically add the card to your hand from the draw or discard pile."
+    },
+    {
+      "key": "Pill.Prescription.HelpLine",
+      "zh-Hans": "药方：首次打出开启本场效果；药方互不触发。",
+      "en": "Prescription: The first play activates its effect for this battle; prescriptions do not trigger each other."
+    },
+    {
+      "key": "Pill.Search.HelpLine",
+      "zh-Hans": "检索：从抽牌堆或弃牌堆选牌入手。",
+      "en": "Search: Choose a card from the draw or discard pile and add it to your hand."
+    },
+    {
+      "key": "Pill.PoisonBurst.HelpLine",
+      "zh-Hans": "毒爆：依次触发流血、中毒、灼烧和蚀伤各一次。",
+      "en": "Poison Burst: Trigger Bleed, Poison, Burn and Corrosion in that order."
+    },
+    {
+      "key": "Pill.IceBurst.HelpLine",
+      "zh-Hans": "冰爆：消耗全部护甲攻击全体敌方；每点护甲增加1个攻击百分点。",
+      "en": "Ice Burst: Spend all Armor to attack all enemies; each point of Armor adds 1 attack percentage point."
+    },
+    {
+      "key": "Pill.HealingReversal.HelpLine",
+      "zh-Hans": "治疗反转：对敌方使用时，将治疗转为等量生命损失。",
+      "en": "Healing Reversal: When used on an enemy, turn healing into equal HP loss."
+    },
+    {
+      "key": "Pill.IgnoreDefense.HelpLine",
+      "zh-Hans": "无视防御：本次攻击忽略指定数值的防御。",
+      "en": "Ignore Defense: This attack ignores the specified amount of Defense."
+    },
+    {
+      "key": "Pill.Exhaust.HelpLine",
+      "zh-Hans": "消耗：打出后，本场不再抽到此牌。",
+      "en": "Exhaust: After being played, this card cannot be drawn again during this battle."
+    },
+    {
+      "key": "Pill.TemporaryCopy.HelpLine",
+      "zh-Hans": "临时复制：复制原牌；副本在生成它的回合结束时消失。",
+      "en": "Temporary Copy: Copy the original card; the copy disappears at the end of the round in which it was created."
+    },
+    {
+      "key": "Pill.StoredStance.HelpLine",
+      "zh-Hans": "藏式：保存冲锋效果，供下回合首张主动牌使用；该回合结束时失效。",
+      "en": "Stored Stance: Store an Opener effect for the first actively played card next round; it expires at the end of that round."
+    },
+    {
+      "key": "Pill.Unsheathe.HelpLine",
+      "zh-Hans": "开锋：本牌使用藏式时触发。",
+      "en": "Unsheathe: Triggers when this card uses Stored Stance."
+    },
+    {
+      "key": "Pill.FollowUpStance.HelpLine",
+      "zh-Hans": "余式：供本回合下一张主动牌再使用1次藏式；不会继续复制。",
+      "en": "Follow-up Stance: Let the next actively played card this round reuse Stored Stance 1 time; it does not copy itself again."
+    },
+    {
+      "key": "Pill.BloodMomentum.HelpLine",
+      "zh-Hans": "血势：每点目标流血使指定攻击倍率增加2个百分点。",
+      "en": "Blood Momentum: Each Bleed on the target adds 2 percentage points to the specified attack multiplier."
+    },
+    {
+      "key": "Pill.RideMomentum.HelpLine",
+      "zh-Hans": "乘势：每层自身气势使指定攻击倍率增加10个百分点；未注明则不消耗。",
+      "en": "Ride Momentum: Each Momentum on self adds 10 percentage points to the specified attack multiplier; it is not spent unless stated."
+    },
+    {
+      "key": "Pill.Armor.HelpLine",
+      "zh-Hans": "护甲：抵挡攻击与固定伤害；本方回合开始清空。",
+      "en": "Armor: Absorbs attacks and fixed damage; clears at the start of your side's turn."
+    },
+    {
+      "key": "Pill.Momentum.HelpLine",
+      "zh-Hans": "气势：每层使每段直接攻击伤害+1；普通攻击不消耗，也不衰减。",
+      "en": "Momentum: Each stack adds +1 damage to every direct attack hit; ordinary attacks do not spend it, and it does not decay."
+    },
+    {
+      "key": "Pill.Agility.HelpLine",
+      "zh-Hans": "灵动：25%概率耗1层完美闪避；否则有2层便耗2层闪避。",
+      "en": "Agility: 25% chance to spend 1 stack for a perfect dodge; otherwise, if you have 2 stacks, spend 2 stacks to dodge."
+    },
+    {
+      "key": "Pill.Vulnerability.HelpLine",
+      "zh-Hans": "破绽：每层使下一段直接攻击伤害+10%；有效命中后清空。",
+      "en": "Vulnerability: Each stack adds +10% damage to the next direct attack hit; clears after a successful hit."
+    },
+    {
+      "key": "Pill.Mark.HelpLine",
+      "zh-Hans": "标记：所受直接攻击+15%，有效命中耗1层；敌人通常优先攻击有标记的友方。",
+      "en": "Mark: Take +15% direct attack damage; a successful hit spends 1 stack. Enemies usually prioritize marked allies."
+    },
+    {
+      "key": "Pill.Weak.HelpLine",
+      "zh-Hans": "虚弱：直接攻击伤害降低50%；本方回合结束减少1层。",
+      "en": "Weak: Direct attack damage is reduced by 50%; lose 1 stack at the end of your side's turn."
+    },
+    {
+      "key": "Pill.Bleed.HelpLine",
+      "zh-Hans": "流血：被攻击命中后，额外失去等同流血值的生命。",
+      "en": "Bleed: After an attack hits, lose additional HP equal to Bleed."
+    },
+    {
+      "key": "Pill.Poison.HelpLine",
+      "zh-Hans": "中毒：任意一方回合结束时，失去等同中毒值的生命。",
+      "en": "Poison: At the end of either side's turn, lose HP equal to Poison."
+    },
+    {
+      "key": "Pill.Burn.HelpLine",
+      "zh-Hans": "灼烧：自己的牌或意图结束后，失去等同灼烧值的生命。",
+      "en": "Burn: After your own card or intent finishes, lose HP equal to Burn."
+    },
+    {
+      "key": "Pill.Corrosion.HelpLine",
+      "zh-Hans": "蚀伤：被毒爆或指定效果触发时，失去等同蚀伤值的生命。",
+      "en": "Corrosion: When triggered by Poison Burst or a specified effect, lose HP equal to Corrosion."
+    },
+    {
+      "key": "Pill.Potency.HelpLine",
+      "zh-Hans": "药效：治疗前全部消耗，每点使基础治疗+1；累计每获得6点，得到1层气势。",
+      "en": "Potency: Spend all before healing; each point adds +1 base healing. Every 6 Potency gained cumulatively grants 1 Momentum."
+    },
+    {
+      "key": "Pill.Charge.HelpLine",
+      "zh-Hans": "蓄力：用于强化重箭，发动重箭时全部消耗。",
+      "en": "Charge: Strengthens Heavy Arrow; all stacks are spent when Heavy Arrow is used."
+    },
+    {
+      "key": "Pill.Guard.HelpLine",
+      "zh-Hans": "援护：替目标承受单体攻击，每次消耗1次。",
+      "en": "Guard: Take single-target attacks in place of the protected target; each use spends 1 charge."
+    },
+    {
+      "key": "Pill.Counter.HelpLine",
+      "zh-Hans": "反击：对方单体直接攻击牌结算后反击，耗1次；不连锁触发。",
+      "en": "Counter: Counter after an opposing single-target direct attack card resolves; spend 1 charge. Counters do not chain."
+    },
+    {
+      "key": "Pill.Block.HelpLine",
+      "zh-Hans": "格挡：对方单体直接攻击牌结算后，以攻击加剩余护甲反攻，耗1次；护甲保留。",
+      "en": "Block: After an opposing single-target direct attack card resolves, retaliate with Attack plus remaining Armor; spend 1 charge and keep the Armor."
+    },
+    {
+      "key": "Pill.VulnerabilityImmunity.HelpLine",
+      "zh-Hans": "破绽免疫：免疫新施加的破绽。",
+      "en": "Vulnerability Immunity: Immune to newly applied Vulnerability."
+    },
+    {
+      "key": "Pill.MarkFollowUp.HelpLine",
+      "zh-Hans": "追击标记：下次攻击的首段命中施加1层标记，出手后耗1次。",
+      "en": "Mark Follow-up: The first hit of the next attack applies 1 Mark; spend 1 charge after attacking."
+    },
+    {
+      "key": "Pill.VulnerabilityFollowUp.HelpLine",
+      "zh-Hans": "破绽追击：下次攻击的首段命中施加1层破绽，出手后耗1次。",
+      "en": "Vulnerability Follow-up: The first hit of the next attack applies 1 Vulnerability; spend 1 charge after attacking."
+    },
+    {
+      "key": "Pill.HealingBoost.HelpLine",
+      "zh-Hans": "疗愈增幅：下次治疗的每个目标各增加当前数值的治疗量，随后清空。",
+      "en": "Healing Boost: Add the current amount to healing for each target of the next heal, then clear it."
+    },
+    {
+      "key": "Pill.DoubleTerrain.HelpLine",
+      "zh-Hans": "地势双效：下一次符合条件的地势收益额外结算1次，触发后耗1次。",
+      "en": "Double Terrain: The next qualifying terrain benefit resolves 1 extra time; spend 1 charge after triggering."
+    },
+    {
+      "key": "Pill.FreeTerrain.HelpLine",
+      "zh-Hans": "地势免耗：下一张地势牌不消耗气力。",
+      "en": "Free Terrain: The next terrain card costs no Qi."
+    },
+    {
+      "key": "Pill.TerrainDiscount.HelpLine",
+      "zh-Hans": "地势减耗：下一张地势牌少耗1点气力。",
+      "en": "Terrain Discount: The next terrain card costs 1 less Qi."
+    },
+    {
+      "key": "Pill.Redirect.HelpLine",
+      "zh-Hans": "代挡：下一次敌方单体攻击转向指定友方，触发后耗1次。",
+      "en": "Redirect: Redirect the next enemy single-target attack to the chosen ally; spend 1 charge after triggering."
+    },
+    {
+      "key": "Pill.RoundDoubleTerrain.HelpLine",
+      "zh-Hans": "本回合地势双效：本回合下一次符合条件的地势收益额外结算1次；触发或回合结束后失效。",
+      "en": "Round Double Terrain: The next qualifying terrain benefit this round resolves 1 extra time; expires after triggering or at round end."
+    },
+    {
+      "key": "Pill.Wealth.HelpLine",
+      "zh-Hans": "财富：上限8层，强化或供钱鼠招式消耗；具体收益看意图，转阶段保留。",
+      "en": "Wealth: Up to 8 stacks. Strengthens or fuels the Coin Rat's moves; see its intent for details. Kept between phases."
+    },
+    {
+      "key": "Pill.Rage.HelpLine",
+      "zh-Hans": "狂怒：上限5层，强化赤獠招式；每张玩家主动牌造成生命伤害后+1，转阶段保留。",
+      "en": "Rage: Up to 5 stacks. Empowers Redtusk's moves; +1 after each actively played player card that deals HP damage. Kept between phases."
+    },
+    {
+      "key": "Pill.Prey.HelpLine",
+      "zh-Hans": "猎物：老虎锁定的目标；指定猎物的招式优先攻击它。",
+      "en": "Prey: The Tiger's chosen target; moves that specify Prey prioritize this unit."
+    },
+    {
+      "key": "Pill.Terrain.HelpLine",
+      "zh-Hans": "地势：卡牌可触发场地收益；阵师伙伴存活时，玩家回合开始自动触发1次。",
+      "en": "Terrain: Cards can trigger terrain benefits. While the Formation Master companion lives, trigger the benefit 1 time at the start of the player turn."
+    },
+    {
+      "key": "Pill.SpellTask.DynamicLine",
+      "nativePattern": "法术任务：本组%d种牌各主动打出1次，依序免费重放；每回合限1次。",
+      "zh-Hans": "法术任务：本组{0}种牌各主动打出1次，依序免费重放；每回合限1次。",
+      "en": "Spell Task: Actively play each of the {0} card types in this set 1 time, then replay them for free in order; limited to 1 time per round."
+    },
+    {
+      "key": "Pill.Counter.DynamicLine",
+      "nativePattern": "反击：对方单体直接攻击牌结算后反击，%d%%攻击伤害；耗1次，不连锁。",
+      "zh-Hans": "反击：对方单体直接攻击牌结算后反击，{0}%攻击伤害；耗1次，不连锁。",
+      "en": "Counter: Counter after an opposing single-target direct attack card resolves, dealing {0}% ATK damage; spend 1 charge. Counters do not chain."
+    },
+    {
+      "key": "Pill.Block.DynamicLine",
+      "nativePattern": "格挡：对方单体直接攻击牌结算后，以%d%%攻击＋剩余护甲反击；耗1次，护甲保留。",
+      "zh-Hans": "格挡：对方单体直接攻击牌结算后，以{0}%攻击＋剩余护甲反击；耗1次，护甲保留。",
+      "en": "Block: After an opposing single-target direct attack card resolves, counter with {0}% ATK plus remaining Armor; spend 1 charge and keep the Armor."
+    },
+    {
+      "key": "Pill.ChargeHeavyArrow.HelpLine",
+      "zh-Hans": "蓄力／重箭：消耗全部蓄力，按消耗量强化本牌。",
+      "en": "Charge / Heavy Arrow: Spend all Charge to strengthen this card."
+    }
+  ]
+}

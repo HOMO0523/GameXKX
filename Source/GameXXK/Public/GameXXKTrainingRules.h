@@ -28,7 +28,8 @@ enum class EGameXXKTrainingRewardTier : uint8
 {
 	None,
 	NormalChest,
-	AdvancedChest
+	AdvancedChest,
+	HuntChest
 };
 
 /** Runtime-only phase for the low-cost repeating Travel loop. */
@@ -80,6 +81,9 @@ struct GAMEXXK_API FGameXXKTrainingOfflineReward
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 AdvancedChestCount = 0;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	int32 HuntChestCount = 0;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere)
 	int32 CompletedEncounters = 0;
@@ -347,12 +351,36 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKTrainingProgress
 {
 	GENERATED_BODY()
+    // Native-only test state: never reflected into saves or JSON snapshots.
+    bool bDevelopmentUnlockAllStages = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKTrainingSettlementReceipt PendingSettlement;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGuid LastAppliedSettlementId;
+
+	/** Once-only first-clear grants, including deferred delivery when both containers are full. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TSet<FName> HuntFirstClearOrderGrants;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TMap<FName, int32> PendingHuntOrders;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName ReservedHuntOrderId = NAME_None;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGuid HuntReservationId;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGuid LastCompletedHuntReservationId;
+	/** First-chapter path is the exact single-map3-3 experience reference; paid only after all3 chapters. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 HuntReferenceHeroExperience = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 HuntReferenceCompanionExperience = 0;
+	/** Inventory-derived budget bounds the pure offline runner; state commits consume its receipts. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FName HuntTravelOrderId = NAME_None;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 HuntTravelOrderBudget = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingHuntTravelOrdersConsumed = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	TSet<FName> ClearedStageIds;
@@ -428,6 +456,9 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	int32 PendingTravelAdvancedChestCount = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PendingTravelHuntChestCount = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 PendingTravelCompletedEncounters = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
@@ -478,10 +509,14 @@ public:
 	static FName DifficultyId(EGameXXKTrainingDifficulty Difficulty);
 	static FName MakeStageId(EGameXXKTrainingDifficulty Difficulty, int32 StageNumber);
 	static EGameXXKTrainingDifficulty DifficultyFromStageId(FName StageId);
+	static int32 EnemyAttributePercent(EGameXXKTrainingDifficulty Difficulty);
+	static int32 EnemyHealthPercent(FName StageId);
 
 	static const TArray<FGameXXKTrainingStageDefinition>& GetStageDefinitions();
 	static bool TryGetStageDefinition(FName StageId, FGameXXKTrainingStageDefinition& OutDefinition);
 	static TArray<FGameXXKTrainingEncounterDefinition> BuildEncounterSequence(FName StageId, bool bTravelMode = false);
+	/** Build a separate authored formation at a stage's combat level, without changing its ordinary waves. */
+	static bool BuildFormationEncounter(FName StageId, const TArray<FName>& EnemyIds, FGameXXKTrainingEncounterDefinition& OutEncounter);
 
 	static void InitializeNewGame(FGameXXKTrainingProgress& Progress);
 	static bool IsDifficultyUnlocked(const FGameXXKTrainingProgress& Progress, EGameXXKTrainingDifficulty Difficulty);

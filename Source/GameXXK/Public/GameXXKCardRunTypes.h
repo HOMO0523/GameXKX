@@ -390,6 +390,9 @@ struct GAMEXXK_API FGameXXKCardRunState
 	TArray<FGameXXKRelicInstance> Relics;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	FGameXXKRelicActionEvidence PendingRelicAction;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 NextRelicAcquisitionOrdinal = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)

@@ -31,12 +31,13 @@ BOX_NODES = {"S00-04", "S01-07", "S02-05", "S03-10", "S04-04", "S05-06"}
 
 def n(key, title, summary, objective, lines, result, scene, *, kind="Dialogue",
       all=(), any=(), optional=False, inside=False, options=(), hints=None, cast=None,
-      mood="Lighthearted Chinese wuxia comedy, relaxed relief after a small success.", facts=(), highlight="", camera=""):
+      mood="Lighthearted Chinese wuxia comedy, relaxed relief after a small success.", facts=(), highlight="", camera="",
+      after_battle=(), enemies=()):
     stage = int(key[1:3]) + 1
     speakers = list(dict.fromkeys(speaker for speaker, _ in lines if speaker != "narrator"))
     if hints is None:
         hints = [f"先听清这段交流，留意{objective}。", f"这一步要做的是：{objective}。", f"把本段对话听完并确认结论：{result}"]
-    return {
+    node = {
         "id": key, "title": title, "kind": kind, "summary": summary, "script_revision": 2 if highlight else 1,
         "objective": objective, "requires_all": list(all), "requires_any": list(any),
         "optional": optional, "inside_journey": inside,
@@ -50,6 +51,12 @@ def n(key, title, summary, objective, lines, result, scene, *, kind="Dialogue",
                 "facts": list(facts) if facts else [objective, result],
                 "texture": "/Game/GameXXK/UI/StoryNodes/T_Story_" + key.replace("-", "_") + ".T_Story_" + key.replace("-", "_")},
     }
+    if after_battle:
+        node['after_battle_lines'] = [[a, b] for a, b in after_battle]
+        node['script_revision'] = 3
+    if enemies:
+        node['enemy_ids'] = list(enemies)
+    return node
 
 
 def option(text, correct, feedback):

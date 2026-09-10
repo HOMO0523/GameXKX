@@ -1,5 +1,7 @@
 #include "UI/GameXXKEquipmentTooltipPresentation.h"
+#include "UI/GameXXKLocalization.h"
 #include "GameXXKTravelMoneyRules.h"
+#include "GameXXKHuntRules.h"
 #include "UI/GameXXKEquipmentQualityStyle.h"
 #include "UI/GameXXKCardTooltipPresentation.h"
 #include "UI/GameXXKInRunUiStyle.h"
@@ -116,7 +118,7 @@ namespace
 	}
 	UTextBlock* Text(UWidgetTree* Tree,const FText& Value,int32 Size,FLinearColor Color)
 	{
-		auto* T=Tree->ConstructWidget<UTextBlock>();T->SetText(Value);T->SetFont(FGameXXKInRunUiStyle::Font(Size,true));T->SetColorAndOpacity(Color);T->SetAutoWrapText(true);return T;
+		auto* T=Tree->ConstructWidget<UTextBlock>();T->SetText(GameXXKLocalization::Localize(Value));T->SetFont(FGameXXKInRunUiStyle::Font(Size,true));T->SetColorAndOpacity(Color);T->SetAutoWrapText(true);return T;
 	}
 	float TextWidth(const FString& Value,int32 Size)
 	{
@@ -157,17 +159,18 @@ void GameXXKEquipmentTooltipPresentation::Bind(UWidget* Owner,UWidget* Content)
 
 UWidget* GameXXKEquipmentTooltipPresentation::BuildGem(UWidgetTree* Tree,FName ItemId)
 {
-	EGameXXKGemType Type;EGameXXKGemQuality GemQuality;
-	if(!Tree || !FGameXXKGemRules::TryParseItemId(ItemId,Type,GemQuality))return nullptr;
-	const auto Quality=FGameXXKGemRules::GetPresentationQuality(GemQuality);
+	EGameXXKGemType Type{};EGameXXKGemQuality GemQuality{};
+	const bool bOrder=FGameXXKHuntRules::IsOrder(ItemId);
+	if(!Tree || (!bOrder&&!FGameXXKGemRules::TryParseItemId(ItemId,Type,GemQuality)))return nullptr;
+	const auto Quality=bOrder?FGameXXKHuntRules::OrderQuality(ItemId):FGameXXKGemRules::GetPresentationQuality(GemQuality);
 	auto* Frame=Tree->ConstructWidget<UBorder>();Frame->SetPadding(FMargin(0));Frame->SetVisibility(ESlateVisibility::HitTestInvisible);
 	auto* Layers=Tree->ConstructWidget<UOverlay>();Frame->SetContent(Layers);
 	auto* Bounds=Tree->ConstructWidget<USizeBox>();Bounds->SetWidthOverride(380);
 	auto* Body=Tree->ConstructWidget<UVerticalBox>();Bounds->SetContent(Body);
 	auto* ContentSlot=Layers->AddChildToOverlay(Bounds);ContentSlot->SetPadding(FMargin(18,14));
-	auto* Name=Text(Tree,FGameXXKGemRules::GetDisplayName(Type,GemQuality),24,FGameXXKInRunUiStyle::Ink());
+	auto* Name=Text(Tree,bOrder?FGameXXKHuntRules::OrderName(ItemId):FGameXXKGemRules::GetDisplayName(Type,GemQuality),24,FGameXXKInRunUiStyle::Ink());
 	Name->SetWrapTextAt(380);GameXXKEquipmentQualityStyle::ApplyName(Name,Quality);Body->AddChildToVerticalBox(Name);
-	auto* Description=Text(Tree,FGameXXKGemRules::GetDescription(Type,GemQuality),17,FGameXXKInRunUiStyle::Ink());
+	auto* Description=Text(Tree,bOrder?FGameXXKHuntRules::OrderDescription(ItemId):FGameXXKGemRules::GetDescription(Type,GemQuality),17,FGameXXKInRunUiStyle::Ink());
 	Description->SetWrapTextAt(380);Body->AddChildToVerticalBox(Description)->SetPadding(FMargin(0,12,0,0));
 	Body->TakeWidget()->SlatePrepass(1.f);Name->TakeWidget()->SlatePrepass(1.f);
 	const FVector2D Size(416,Body->GetDesiredSize().Y+28);
@@ -184,7 +187,7 @@ bool GameXXKEquipmentTooltipPresentation::ApplyGem(UWidgetTree* Tree,UButton* Bu
 	if (Button && ItemId == FGameXXKTravelMoneyRules::ItemId())
 	{
 		Button->SetToolTip(nullptr);
-		Button->SetToolTipText(FText::FromString(TEXT("行旅钱\n背包和仓库中的行旅钱均可用于局内行商。\n每个分解固定返还2500金币。")));
+		Button->SetToolTipText(GameXXKLocalization::Source(TEXT("行旅钱\n背包和仓库中的行旅钱均可用于局内行商。\n每个分解固定返还2500金币。")));
 		return true;
 	}
 	const auto Quality=FGameXXKGemRules::GetItemPresentationQuality(ItemId);
@@ -199,13 +202,13 @@ bool GameXXKEquipmentTooltipPresentation::ApplyGem(UWidgetTree* Tree,UButton* Bu
 		}
 	}
 	GameXXKEquipmentQualityStyle::ApplySlot(Tree,Button,Icon,Quality,Size);
-	struct FCachedGem { FName ItemId; TWeakObjectPtr<UWidget> Tooltip; };
+	struct FCachedGem { FName ItemId; TWeakObjectPtr<UWidget> Tooltip; uint64 LanguageRevision=0; };
 	static TMap<TWeakObjectPtr<UButton>,FCachedGem> Cache;
 	for(auto It=Cache.CreateIterator();It;++It)if(!It.Key().IsValid())It.RemoveCurrent();
 	auto& Entry=Cache.FindOrAdd(Button);
-	if(Entry.ItemId!=ItemId || !Entry.Tooltip.IsValid())
+	if(Entry.ItemId!=ItemId || !Entry.Tooltip.IsValid() || Entry.LanguageRevision!=GameXXKLocalization::GetRevision())
 	{
-		Entry.ItemId=ItemId;Entry.Tooltip=BuildGem(Tree,ItemId);
+		Entry.ItemId=ItemId;Entry.Tooltip=BuildGem(Tree,ItemId);Entry.LanguageRevision=GameXXKLocalization::GetRevision();
 	}
 	if(Button->GetToolTip()!=Entry.Tooltip.Get()){Button->SetToolTipText(FText::GetEmpty());Bind(Button,Entry.Tooltip.Get());}
 	return true;
@@ -215,6 +218,11 @@ FString GameXXKEquipmentTooltipPresentation::AffixLine(const FGameXXKEquipmentAf
 {
 	const auto* Definition=FGameXXKAffixCatalog::FindDefinition(Roll.AffixId);
 	if(!Definition || Definition->ModifierKind==EGameXXKEquipmentModifierKind::MaxMana)return {};
+	if(Definition->ModifierKind==EGameXXKEquipmentModifierKind::ZhuiFengLateCardDamage)
+	{
+		return GameXXKLocalization::Localize(NSLOCTEXT("EquipmentAffixUI", "WindMomentum",
+			"每回合全队第3张牌起，自身牌伤每张递增1%；同名叠加，重放不计数。")).ToString();
+	}
 	const auto Label=ModifierLabel(Definition->ModifierKind);
 	if(Label.IsEmpty())return Definition->DisplayName.ToString();
 	return Roll.Unit==EGameXXKEquipmentMagnitudeUnit::BasisPoints?
@@ -245,6 +253,7 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 		AvailableHeight=FMath::Clamp((Area.Bottom-Area.Top)/Scale-48.0f,140.0f,760.0f);
 	}
 	uint32 Signature=GetTypeHash(Detail+CompareCharacterId.ToString());
+	Signature=HashCombine(Signature,GetTypeHash(GameXXKLocalization::GetRevision()));
 	Signature=HashCombine(Signature,GetTypeHash(AvailableWidth));Signature=HashCombine(Signature,GetTypeHash(AvailableHeight));
 	if(HasStats){Signature=HashCombine(Signature,GetTypeHash(Snapshot.CharacterStatDeltas.Attack));Signature=HashCombine(Signature,GetTypeHash(Snapshot.CharacterStatDeltas.Defense));Signature=HashCombine(Signature,GetTypeHash(Snapshot.CharacterStatDeltas.MaxHealth));Signature=HashCombine(Signature,GetTypeHash(Snapshot.CharacterStatDeltas.Speed));}
 	if(const auto* Existing=Cache.Find(Frame);Existing && *Existing==Signature)return;
@@ -270,7 +279,7 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	auto* Contents=Tree->ConstructWidget<UVerticalBox>();Box->SetContent(Contents);
 	auto* Heading=Tree->ConstructWidget<UVerticalBox>();Contents->AddChildToVerticalBox(Heading);
 	auto* Name=Text(Tree,Definition->DisplayName,26,FGameXXKInRunUiStyle::Ink());Name->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(Name);GameXXKEquipmentQualityStyle::ApplyName(Name,Item->Quality);
-	auto* MetaText=Text(Tree,FText::FromString(Meta),15,FGameXXKInRunUiStyle::MutedInk());MetaText->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(MetaText)->SetPadding(FMargin(0,4,0,0));
+	auto* MetaText=Text(Tree,GameXXKLocalization::Source(Meta),15,FGameXXKInRunUiStyle::MutedInk());MetaText->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(MetaText)->SetPadding(FMargin(0,4,0,0));
 	auto* BodyBounds=Tree->ConstructWidget<USizeBox>();Contents->AddChildToVerticalBox(BodyBounds);
 	auto* Fit=Tree->ConstructWidget<UScaleBox>();Fit->SetStretch(EStretch::UserSpecified);Fit->SetUserSpecifiedScale(1);BodyBounds->SetContent(Fit);
 	auto* NaturalBody=Tree->ConstructWidget<USizeBox>();NaturalBody->SetWidthOverride(Width);
@@ -291,7 +300,7 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	{
 		Section(NSLOCTEXT("EquipmentUI","BaseStats","基础属性"));
 		auto* Stats=Tree->ConstructWidget<UUniformGridPanel>();Stats->SetSlotPadding(FMargin(0,1,12,1));Rows->AddChildToVerticalBox(Stats);
-		int32 Index=0;const auto Stat=[&](const TCHAR* Label,int32 Value){if(Value){auto* T=Text(Tree,FText::FromString(FString::Printf(TEXT("%s %+d"),Label,Value)),16,FGameXXKInRunUiStyle::Ink());T->SetAutoWrapText(false);Stats->AddChildToUniformGrid(T,Index/2,Index%2);++Index;}};
+		int32 Index=0;const auto Stat=[&](const TCHAR* Label,int32 Value){if(Value){auto* T=Text(Tree,GameXXKLocalization::Source(FString::Printf(TEXT("%s %+d"),Label,Value)),16,FGameXXKInRunUiStyle::Ink());T->SetAutoWrapText(false);Stats->AddChildToUniformGrid(T,Index/2,Index%2);++Index;}};
 		const auto& S=Snapshot.ItemCurrentStats;Stat(TEXT("攻击"),S.Attack);Stat(TEXT("防御"),S.Defense);Stat(TEXT("气血"),S.MaxHealth);Stat(TEXT("速度"),S.Speed);
 	}
 	TArray<FString> Affixes;for(const auto& Roll:Item->RolledAffixes){const auto Line=AffixLine(Roll);if(!Line.IsEmpty())Affixes.Add(Line);}
@@ -317,9 +326,12 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	}
 	if(HasSetBonuses)
 	{
-		Section(FText::FromString(FGameXXKEquipmentSetCatalog::GetSetDisplayName(Definition->Set).ToString()+TEXT("套装")));
+		Section(FText::Format(GameXXKLocalization::Text(TEXT("Equipment.SetTitle")),
+			FGameXXKEquipmentSetCatalog::GetSetDisplayName(Definition->Set)));
 		for(const auto& Bonus:FGameXXKEquipmentSetCatalog::GetDefinitions())if(Bonus.Set==Definition->Set)
-			Prose(FString::Printf(TEXT("%d件%s：%s"),Bonus.RequiredPieces,HasStats && Snapshot.CurrentSetPieceCounts.FindRef(Definition->Set)>=Bonus.RequiredPieces?TEXT("（已激活）"):TEXT(""),*Bonus.Description.ToString()));
+			Prose(FText::Format(GameXXKLocalization::Text(HasStats && Snapshot.CurrentSetPieceCounts.FindRef(Definition->Set)>=Bonus.RequiredPieces
+				? TEXT("Equipment.SetBonusActive") : TEXT("Equipment.SetBonus")),
+				FText::AsNumber(Bonus.RequiredPieces), GameXXKLocalization::Localize(Bonus.Description)).ToString());
 	}
 	if(HasStats && Snapshot.EquipError==EGameXXKEquipmentTransactionError::None && (Snapshot.CharacterStatDeltas.Attack || Snapshot.CharacterStatDeltas.Defense || Snapshot.CharacterStatDeltas.MaxHealth || Snapshot.CharacterStatDeltas.Speed))
 	{

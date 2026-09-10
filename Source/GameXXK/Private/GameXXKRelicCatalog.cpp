@@ -1,4 +1,6 @@
 #include "GameXXKRelicCatalog.h"
+#include "GameXXKRelicSynergyRules.h"
+#include "UI/GameXXKLocalization.h"
 
 #include "GameXXKCardQualityRules.h"
 
@@ -17,8 +19,8 @@ namespace
 	{
 		FGameXXKRelicDefinition Definition;
 		Definition.Id = FName(Id);
-		Definition.DisplayName = FText::FromString(Name);
-		Definition.Description = FText::FromString(Description);
+		Definition.DisplayName = GameXXKLocalization::Source(Name);
+		Definition.Description = GameXXKLocalization::Source(Description);
 		Definition.IconTexturePath = FSoftObjectPath(FString::Printf(
 			TEXT("/Game/GameXXK/UI/Relics/Icons/T_Relic_%s.T_Relic_%s"), IconSlug, IconSlug));
 		Definition.BaseQuality = FGameXXKCardQualityRules::GetRelicBaseQuality(Definition.Id);
@@ -75,6 +77,7 @@ const TArray<FGameXXKRelicDefinition>& FGameXXKRelicCatalog::GetAllDefinitions()
 	static const TArray<FGameXXKRelicDefinition> Definitions = []
 	{
 		TArray<FGameXXKRelicDefinition> Relics = BuildRelics();
+		GameXXKRelicSynergyRules::ReplaceHighTierDefinitions(Relics);
 		FString QualityValidationError;
 		if (!FGameXXKCardQualityRules::ValidateRelicCatalog(Relics, QualityValidationError))
 		{

@@ -1,0 +1,13 @@
+{
+  "slug": "hunter",
+  "prompt": "Use case: precise-object-edit. 对这张国风弓手全身图做弓箭结构的精确修正。保留人物脸、黑发、天青大祥云披风、交领、如意扣、布靴、粗墨大色块风格以及全身3/4面朝画面左的方向。重点重画弓、弓弦、箭和双手，让真实连接关系完全清楚。弓为一张完整的传统短木弓，弓身是一条向画面左凸出的连续C形木臂，弓梢上端在左上、下端在左下，开口朝右。画面左前方的前手握住木弓正中的握把，画面右侧靠胸的后手拉住箭尾与弓弦。只有一根细深棕弓弦：从上弓梢系弦处拉直到后手的箭尾，再从同一个箭尾拉直到下弓梢系弦处，两段绷直的弦组成朝右的清楚V形；弦的两个端点必须准确附在弓梢端部，不能接到弓身中段。只有一根笔直木箭，箭尖向左，从前手握把上缘搭过，箭尾准确抵住后手拉弦点，不超过拉弦手，不脱离弦。两只手分工清楚，握弓手不抓箭头，后手不抓弓身。弦与弓身留出清楚空隙，不藏在手腕或衣袖中，不穿透手臂，不多出弦或箭。若需要，可小幅调整双臂与弓的位置，为弦留出干净负形；躯干和头部不变。不要增加任何标注或机械图，仅输出修正后的一名完整弓手，浅暖米白无纹理背景，四边安全留白。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/gemstyle-redesign-20260910/fullbody-1600/characters/hunter.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-cc722ab6-dbde-4f06-9dc7-d08f5835b870.png",
+  "phase": "discussion-sample",
+  "designVersion": 4,
+  "facing": "left",
+  "view": "three-quarter",
+  "revision": "bowstring endpoints, V-shaped drawn string and arrow nock alignment"
+}

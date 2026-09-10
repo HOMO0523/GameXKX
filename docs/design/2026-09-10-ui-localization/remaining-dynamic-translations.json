@@ -1,0 +1,323 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.ea06d1337950dbc8",
+      "nativePattern": "我 %dP",
+      "zh-Hans": "我 {0}P",
+      "en": "Ally {0}P"
+    },
+    {
+      "key": "Legacy.8677009bb3d3c273",
+      "nativePattern": "敌 %dP",
+      "zh-Hans": "敌 {0}P",
+      "en": "Enemy {0}P"
+    },
+    {
+      "key": "Legacy.9e9b5fc8e87a4afb",
+      "nativePattern": "效果 %d：%d",
+      "zh-Hans": "效果 {0}：{1}",
+      "en": "Effect {0}: {1}"
+    },
+    {
+      "key": "Legacy.579f227bd8f1414e",
+      "nativePattern": "伤害 %d",
+      "zh-Hans": "伤害 {0}",
+      "en": "Damage {0}"
+    },
+    {
+      "key": "Legacy.40a22dcd2a97f1b8",
+      "nativePattern": "群体伤害 %d",
+      "zh-Hans": "群体伤害 {0}",
+      "en": "Area damage {0}"
+    },
+    {
+      "key": "Legacy.e4b5b620c322426f",
+      "nativePattern": "流血 %d",
+      "zh-Hans": "流血 {0}",
+      "en": "Bleed {0}"
+    },
+    {
+      "key": "Legacy.7a95087fec640d77",
+      "nativePattern": "中毒 %d",
+      "zh-Hans": "中毒 {0}",
+      "en": "Poison {0}"
+    },
+    {
+      "key": "Legacy.a10dd63dc9c5feaf",
+      "nativePattern": "灼烧 %d",
+      "zh-Hans": "灼烧 {0}",
+      "en": "Burn {0}"
+    },
+    {
+      "key": "Legacy.1a8f2b002e5fe8dd",
+      "nativePattern": "毒爆 %d",
+      "zh-Hans": "毒爆 {0}",
+      "en": "Poison Burst {0}"
+    },
+    {
+      "key": "Legacy.778014e15b9ac9c9",
+      "nativePattern": "药效伤害 %d",
+      "zh-Hans": "药效伤害 {0}",
+      "en": "Potency damage {0}"
+    },
+    {
+      "key": "Legacy.f38a83d4f573da51",
+      "nativePattern": "联动伤害 %d",
+      "zh-Hans": "联动伤害 {0}",
+      "en": "Synergy damage {0}"
+    },
+    {
+      "key": "Legacy.fcb37ec077baf4fa",
+      "nativePattern": "治疗 +%d",
+      "zh-Hans": "治疗 +{0}",
+      "en": "Healing +{0}"
+    },
+    {
+      "key": "Legacy.f20e4c4b216d4f0d",
+      "nativePattern": "护甲 +%d",
+      "zh-Hans": "护甲 +{0}",
+      "en": "Armor +{0}"
+    },
+    {
+      "key": "Legacy.1c54b9187bd7cae4",
+      "nativePattern": "合计 %d",
+      "zh-Hans": "合计 {0}",
+      "en": "Total {0}"
+    },
+    {
+      "key": "Legacy.8f0887cf05b42878",
+      "nativePattern": "%d%s伤害 × %d",
+      "zh-Hans": "{0}{1}伤害 × {2}",
+      "en": "{0} {1} damage × {2}"
+    },
+    {
+      "key": "Legacy.daf660d92c1e2752",
+      "nativePattern": "%d%s伤害",
+      "zh-Hans": "{0}{1}伤害",
+      "en": "{0} {1} damage"
+    },
+    {
+      "key": "Legacy.f1aaf91935f67094",
+      "nativePattern": "%+d护甲",
+      "zh-Hans": "{0}护甲",
+      "en": "{0} Armor",
+      "originPattern": "%s护甲",
+      "note": "Argument is produced by EnemyText.Signed(int32), so only a signed integer is accepted."
+    },
+    {
+      "key": "Legacy.4ebabccb1a087ba6",
+      "nativePattern": "回复%d生命",
+      "zh-Hans": "回复{0}生命",
+      "en": "Restore {0} HP"
+    },
+    {
+      "key": "Legacy.005cf2f29d26ded7",
+      "nativePattern": "下回合气力-%d",
+      "zh-Hans": "下回合气力-{0}",
+      "en": "Next round: Qi -{0}"
+    },
+    {
+      "key": "Legacy.445a1266eddab398",
+      "nativePattern": "%s吸取%d点内力%s",
+      "zh-Hans": "{0}吸取{1}点内力{2}",
+      "en": "{0} drains {1} Inner Power{2}"
+    },
+    {
+      "key": "Legacy.a942978ab07eefbb",
+      "nativePattern": "下一张牌气力+%d",
+      "zh-Hans": "下一张牌气力+{0}",
+      "en": "Next card: Qi +{0}"
+    },
+    {
+      "key": "Legacy.17714ad0d46055ca",
+      "nativePattern": "攻击%+d",
+      "zh-Hans": "攻击{0}",
+      "en": "Attack {0}",
+      "originPattern": "攻击%s",
+      "note": "Argument is produced by EnemyText.Signed(int32), so only a signed integer is accepted."
+    },
+    {
+      "key": "Legacy.d030399576d10f61",
+      "nativePattern": "速度%+d",
+      "zh-Hans": "速度{0}",
+      "en": "Speed {0}",
+      "originPattern": "速度%s",
+      "note": "Argument is produced by EnemyText.Signed(int32), so only a signed integer is accepted."
+    },
+    {
+      "key": "Legacy.f2726a344c1b53ed",
+      "nativePattern": "移除%d层增益",
+      "zh-Hans": "移除{0}层增益",
+      "en": "Remove {0} buff stacks"
+    },
+    {
+      "key": "Legacy.8959bc8c13667c33",
+      "nativePattern": "移除%d层减益",
+      "zh-Hans": "移除{0}层减益",
+      "en": "Remove {0} debuff stacks"
+    },
+    {
+      "key": "Legacy.828194744e26b843",
+      "nativePattern": "触发%s%s",
+      "zh-Hans": "触发{0}{1}",
+      "en": "Trigger {0}{1}"
+    },
+    {
+      "key": "Legacy.28f76c1b1b808659",
+      "nativePattern": "下次卷舌回复+%d%%最大生命",
+      "zh-Hans": "下次卷舌回复+{0}%最大生命",
+      "en": "Next Tongue Curl restores another +{0}% Max HP"
+    },
+    {
+      "key": "Legacy.7ea2edb7ddb0f773",
+      "nativePattern": "蓄力%d回合",
+      "zh-Hans": "蓄力{0}回合",
+      "en": "Wind up for {0} turns"
+    },
+    {
+      "key": "Legacy.74d797f7c5c97afb",
+      "nativePattern": "阶段：%d/%d%s",
+      "zh-Hans": "阶段：{0}/{1}{2}",
+      "en": "Phase: {0}/{1}{2}"
+    },
+    {
+      "key": "Legacy.dd4ccd054b6f8afa",
+      "nativePattern": "蓄力：剩余%d回合",
+      "zh-Hans": "蓄力：剩余{0}回合",
+      "en": "Wind-up: {0} turns left"
+    },
+    {
+      "key": "Legacy.9d69dd6946d8e511",
+      "nativePattern": "自身抗性：火 %.2f%% · 冰 %.2f%% · 雷 %.2f%%",
+      "zh-Hans": "自身抗性：火 {0}% · 冰 {1}% · 雷 {2}%",
+      "en": "Innate resistance: Fire {0}% · Frost {1}% · Lightning {2}%"
+    },
+    {
+      "key": "Legacy.305c642880aa0241",
+      "nativePattern": "需要角色达到 %d 级",
+      "zh-Hans": "需要角色达到 {0} 级",
+      "en": "Requires character level {0}"
+    },
+    {
+      "key": "Legacy.d6436b6b0167528e",
+      "nativePattern": "已分解 %lld 个行旅钱，兑换 %lld 金币",
+      "zh-Hans": "已分解 {0} 个行旅钱，兑换 {1} 金币",
+      "en": "Dismantled {0} Travel Coins for {1} Gold"
+    },
+    {
+      "key": "Legacy.04f2b87ac684f9ed",
+      "nativePattern": "已放入 %d/9，需同品质九件",
+      "zh-Hans": "已放入 {0}/9，需同品质九件",
+      "en": "Filled {0}/9; requires nine items of the same quality"
+    },
+    {
+      "key": "Legacy.53a6cca332a3f45a",
+      "nativePattern": "（名义值）\n单颗实际增幅 +%.2f%%",
+      "zh-Hans": "（名义值）\n单颗实际增幅 +{0}%",
+      "en": "(Nominal value)\nActual increase from this gem: +{0}%"
+    },
+    {
+      "key": "Legacy.146398ba3415e099",
+      "nativePattern": "第%d章遭遇的%s。",
+      "zh-Hans": "第{0}章遭遇的{1}。",
+      "en": "{0} chapter encounter: {1}."
+    },
+    {
+      "key": "Legacy.9b87934bcd5174ac",
+      "nativePattern": "行旅钱不足，还差%d。",
+      "zh-Hans": "行旅钱不足，还差{0}。",
+      "en": "Not enough Travel Coins; need {0} more."
+    },
+    {
+      "key": "Legacy.b18614506f170892",
+      "nativePattern": "行旅钱不足，还差%d",
+      "zh-Hans": "行旅钱不足，还差{0}",
+      "en": "Not enough Travel Coins; need {0} more"
+    },
+    {
+      "key": "Legacy.b5f4c1ee4a1ced33",
+      "nativePattern": "仓库第%d页",
+      "zh-Hans": "仓库第{0}页",
+      "en": "Warehouse page {0}"
+    },
+    {
+      "key": "Legacy.8feddc37e2326d34",
+      "nativePattern": "背包总容量达到 %d 格后解锁",
+      "zh-Hans": "背包总容量达到 {0} 格后解锁",
+      "en": "Unlocks at a total backpack capacity of {0} slots"
+    },
+    {
+      "key": "Legacy.77fe86c07be413d0",
+      "nativePattern": "需要先点亮：%s",
+      "zh-Hans": "需要先点亮：{0}",
+      "en": "Unlock first: {0}"
+    },
+    {
+      "key": "Legacy.0a03ccbe6a70cf66",
+      "nativePattern": "全队攻击/生命/防御 +%d",
+      "zh-Hans": "全队攻击/生命/防御 +{0}",
+      "en": "Party Attack / HP / Defense +{0}"
+    },
+    {
+      "key": "Legacy.96707773589c98d3",
+      "nativePattern": "全队攻击 +%d",
+      "zh-Hans": "全队攻击 +{0}",
+      "en": "Party Attack +{0}"
+    },
+    {
+      "key": "Legacy.f4bb7ee399c8144f",
+      "nativePattern": "全队最大生命 +%d",
+      "zh-Hans": "全队最大生命 +{0}",
+      "en": "Party Max HP +{0}"
+    },
+    {
+      "key": "Legacy.9dee662910c8369e",
+      "nativePattern": "全队防御 +%d",
+      "zh-Hans": "全队防御 +{0}",
+      "en": "Party Defense +{0}"
+    },
+    {
+      "key": "Legacy.0419576ffba14f94",
+      "nativePattern": "背包容量 +%d格",
+      "zh-Hans": "背包容量 +{0}格",
+      "en": "Backpack capacity +{0} slots"
+    },
+    {
+      "key": "Legacy.0ee684ad79fc065d",
+      "nativePattern": "离线宝箱累计时间 +%d分钟",
+      "zh-Hans": "离线宝箱累计时间 +{0}分钟",
+      "en": "Offline chest time cap +{0} minutes"
+    },
+    {
+      "key": "Legacy.a643ffaa2611c89a",
+      "nativePattern": "效果 +%d%%",
+      "zh-Hans": "效果 +{0}%",
+      "en": "Effect +{0}%"
+    },
+    {
+      "key": "Legacy.0692a000924f4a41",
+      "nativePattern": "%s\n状态：%s\n普通：%s\n次级精英：%s\n首领：%s\n悬停可查看实际编制",
+      "zh-Hans": "{0}\n状态：{1}\n普通：{2}\n次级精英：{3}\n首领：{4}\n悬停可查看实际编制",
+      "en": "{0}\nState: {1}\nNormal: {2}\nSecondary elites: {3}\nBoss: {4}\nHover to inspect the actual formation"
+    },
+    {
+      "key": "Legacy.4f0db907732afee4",
+      "nativePattern": "点击「%s」。",
+      "zh-Hans": "点击「{0}」。",
+      "en": "Click [{0}]."
+    },
+    {
+      "key": "Legacy.3b440b6ab33ab388",
+      "nativePattern": "路线结算后的挂机状态无法安全保存：%s",
+      "zh-Hans": "路线结算后的挂机状态无法安全保存：{0}",
+      "en": "The idle state after route settlement could not be safely saved: {0}"
+    },
+    {
+      "key": "Enemy.TriggerCount",
+      "nativePattern": "触发%s × %d",
+      "zh-Hans": "触发{0} × {1}",
+      "en": "Trigger {0} × {1}"
+    }
+  ]
+}

@@ -1,0 +1,1043 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Card.Hero.Generic.QingFengYiShi.Name",
+      "cardId": "Hero.Generic.QingFengYiShi",
+      "zh-Hans": "青锋一式",
+      "en": "Azure Edge"
+    },
+    {
+      "key": "Card.Hero.Generic.HeYuZhan.Name",
+      "cardId": "Hero.Generic.HeYuZhan",
+      "zh-Hans": "鹤羽斩",
+      "en": "Crane Cut"
+    },
+    {
+      "key": "Card.Hero.Generic.FengShenBu.Name",
+      "cardId": "Hero.Generic.FengShenBu",
+      "zh-Hans": "风身步",
+      "en": "Windstep"
+    },
+    {
+      "key": "Card.Hero.Generic.SuiYanJi.Name",
+      "cardId": "Hero.Generic.SuiYanJi",
+      "zh-Hans": "碎岩击",
+      "en": "Rockbreaker"
+    },
+    {
+      "key": "Card.Hero.Generic.GuiYuanShu.Name",
+      "cardId": "Hero.Generic.GuiYuanShu",
+      "zh-Hans": "归元术",
+      "en": "Inner Renewal"
+    },
+    {
+      "key": "Card.Hero.Generic.HengJianShouShi.Name",
+      "cardId": "Hero.Generic.HengJianShouShi",
+      "zh-Hans": "横剑守势",
+      "en": "Crossblade Guard"
+    },
+    {
+      "key": "Card.Hero.Generic.NingShenTuNa.Name",
+      "cardId": "Hero.Generic.NingShenTuNa",
+      "zh-Hans": "凝神吐纳",
+      "en": "Still Breath"
+    },
+    {
+      "key": "Card.Hero.Generic.GuanXi.Name",
+      "cardId": "Hero.Generic.GuanXi",
+      "zh-Hans": "观隙",
+      "en": "Read the Gap"
+    },
+    {
+      "key": "Card.Hero.Generic.PoYunYiShan.Name",
+      "cardId": "Hero.Generic.PoYunYiShan",
+      "zh-Hans": "破云一闪",
+      "en": "Cloud Flash"
+    },
+    {
+      "key": "Card.Hero.Generic.XingQiHuiHuan.Name",
+      "cardId": "Hero.Generic.XingQiHuiHuan",
+      "zh-Hans": "行气回环",
+      "en": "Circling Qi"
+    },
+    {
+      "key": "Card.Hero.Generic.JianYiGuanHong.Name",
+      "cardId": "Hero.Generic.JianYiGuanHong",
+      "zh-Hans": "剑意贯虹",
+      "en": "Rainbow Thrust"
+    },
+    {
+      "key": "Card.Hero.Generic.GuiYuanFanZhao.Name",
+      "cardId": "Hero.Generic.GuiYuanFanZhao",
+      "zh-Hans": "归元返照",
+      "en": "Returning Light"
+    },
+    {
+      "key": "Card.Hero.Blade.TongFengYinShi.Name",
+      "cardId": "Hero.Blade.TongFengYinShi",
+      "zh-Hans": "同锋引式",
+      "en": "Shared Edge"
+    },
+    {
+      "key": "Card.Hero.Blade.XueLuXiangCheng.Name",
+      "cardId": "Hero.Blade.XueLuXiangCheng",
+      "zh-Hans": "血路相承",
+      "en": "Blood Inheritance"
+    },
+    {
+      "key": "Card.Hero.Blade.YingFengHuanBu.Name",
+      "cardId": "Hero.Blade.YingFengHuanBu",
+      "zh-Hans": "迎锋换步",
+      "en": "Sidestep Edge"
+    },
+    {
+      "key": "Card.Hero.Blade.TongPaoJuShi.Name",
+      "cardId": "Hero.Blade.TongPaoJuShi",
+      "zh-Hans": "同袍聚势",
+      "en": "Allied Momentum"
+    },
+    {
+      "key": "Card.Hero.Guard.TieBiTongShou.Name",
+      "cardId": "Hero.Guard.TieBiTongShou",
+      "zh-Hans": "铁壁同守",
+      "en": "Shared Ironwall"
+    },
+    {
+      "key": "Card.Hero.Guard.JieJiaHuanFeng.Name",
+      "cardId": "Hero.Guard.JieJiaHuanFeng",
+      "zh-Hans": "借甲还锋",
+      "en": "Borrowed Armor"
+    },
+    {
+      "key": "Card.Hero.Guard.LieZhenChengFeng.Name",
+      "cardId": "Hero.Guard.LieZhenChengFeng",
+      "zh-Hans": "列阵承锋",
+      "en": "Hold the Line"
+    },
+    {
+      "key": "Card.Hero.Guard.XuanJiaZhenYue.Name",
+      "cardId": "Hero.Guard.XuanJiaZhenYue",
+      "zh-Hans": "玄甲镇岳",
+      "en": "Mountain Ward"
+    },
+    {
+      "key": "Card.Hero.Healer.YiXueCuiFang.Name",
+      "cardId": "Hero.Healer.YiXueCuiFang",
+      "zh-Hans": "以血催方",
+      "en": "Blood Prescription"
+    },
+    {
+      "key": "Card.Hero.Healer.HuiChunNiMai.Name",
+      "cardId": "Hero.Healer.HuiChunNiMai",
+      "zh-Hans": "回春逆脉",
+      "en": "Reversed Pulse"
+    },
+    {
+      "key": "Card.Hero.Healer.DuHuoTongLu.Name",
+      "cardId": "Hero.Healer.DuHuoTongLu",
+      "zh-Hans": "毒火同炉",
+      "en": "Venom Crucible"
+    },
+    {
+      "key": "Card.Hero.Healer.BaiCaoJiZhen.Name",
+      "cardId": "Hero.Healer.BaiCaoJiZhen",
+      "zh-Hans": "百草济阵",
+      "en": "Herbal Formation"
+    },
+    {
+      "key": "Card.Hero.Hunter.FengYanDingXian.Name",
+      "cardId": "Hero.Hunter.FengYanDingXian",
+      "zh-Hans": "风眼定弦",
+      "en": "Eye of the Gale"
+    },
+    {
+      "key": "Card.Hero.Hunter.LieYuLianShi.Name",
+      "cardId": "Hero.Hunter.LieYuLianShi",
+      "zh-Hans": "裂羽连矢",
+      "en": "Rending Volley"
+    },
+    {
+      "key": "Card.Hero.Hunter.CuiDuChuanXin.Name",
+      "cardId": "Hero.Hunter.CuiDuChuanXin",
+      "zh-Hans": "淬毒穿心",
+      "en": "Venom Heartshot"
+    },
+    {
+      "key": "Card.Hero.Hunter.HuiFengGuanRi.Name",
+      "cardId": "Hero.Hunter.HuiFengGuanRi",
+      "zh-Hans": "回风贯日",
+      "en": "Sunpiercer"
+    },
+    {
+      "key": "Card.Hero.Mage.YanXuLiaoYuan.Name",
+      "cardId": "Hero.Mage.YanXuLiaoYuan",
+      "zh-Hans": "炎序燎原",
+      "en": "Wildfire Sequence"
+    },
+    {
+      "key": "Card.Hero.Mage.HanXuNingChuan.Name",
+      "cardId": "Hero.Mage.HanXuNingChuan",
+      "zh-Hans": "寒序凝川",
+      "en": "Frozen Sequence"
+    },
+    {
+      "key": "Card.Hero.Mage.LeiXuYinTing.Name",
+      "cardId": "Hero.Mage.LeiXuYinTing",
+      "zh-Hans": "雷序引霆",
+      "en": "Thunder Sequence"
+    },
+    {
+      "key": "Card.Hero.Mage.GuiXuTongXuan.Name",
+      "cardId": "Hero.Mage.GuiXuTongXuan",
+      "zh-Hans": "归序通玄",
+      "en": "Mystic Sequence"
+    },
+    {
+      "key": "Card.Hero.Formation.GuanShiLuoZi.Name",
+      "cardId": "Hero.Formation.GuanShiLuoZi",
+      "zh-Hans": "观势落子",
+      "en": "Read the Ground"
+    },
+    {
+      "key": "Card.Hero.Formation.YiZhenHuiXiang.Name",
+      "cardId": "Hero.Formation.YiZhenHuiXiang",
+      "zh-Hans": "移阵回响",
+      "en": "Shifting Echo"
+    },
+    {
+      "key": "Card.Hero.Formation.LianYingBuShi.Name",
+      "cardId": "Hero.Formation.LianYingBuShi",
+      "zh-Hans": "连营布势",
+      "en": "Linked Camps"
+    },
+    {
+      "key": "Card.Hero.Formation.LiuHeGuiYi.Name",
+      "cardId": "Hero.Formation.LiuHeGuiYi",
+      "zh-Hans": "六合归一",
+      "en": "Sixfold Unity"
+    },
+    {
+      "key": "Card.Npc.TusiChief.ZhaiZhuHaoLing.Name",
+      "cardId": "Npc.TusiChief.ZhaiZhuHaoLing",
+      "zh-Hans": "寨主号令",
+      "en": "Chief's Command"
+    },
+    {
+      "key": "Card.Npc.TusiChief.ShiMenShouShi.Name",
+      "cardId": "Npc.TusiChief.ShiMenShouShi",
+      "zh-Hans": "石门守势",
+      "en": "Stonegate Guard"
+    },
+    {
+      "key": "Card.Npc.TusiChief.TuSiJunLing.Name",
+      "cardId": "Npc.TusiChief.TuSiJunLing",
+      "zh-Hans": "土司军令",
+      "en": "Tusi War Order"
+    },
+    {
+      "key": "Card.Npc.TusiChief.MengZhaiShiYue.Name",
+      "cardId": "Npc.TusiChief.MengZhaiShiYue",
+      "zh-Hans": "盟寨誓约",
+      "en": "Clan Oath"
+    },
+    {
+      "key": "Card.Npc.SongJinBao.ShangQianGuWu.Name",
+      "cardId": "Npc.SongJinBao.ShangQianGuWu",
+      "zh-Hans": "赏钱鼓舞",
+      "en": "Coin Rally"
+    },
+    {
+      "key": "Card.Npc.SongJinBao.ErMuMiBao.Name",
+      "cardId": "Npc.SongJinBao.ErMuMiBao",
+      "zh-Hans": "耳目密报",
+      "en": "Secret Report"
+    },
+    {
+      "key": "Card.Npc.SongJinBao.GuiKeLing.Name",
+      "cardId": "Npc.SongJinBao.GuiKeLing",
+      "zh-Hans": "贵客令",
+      "en": "Guest Token"
+    },
+    {
+      "key": "Card.Npc.SongJinBao.YiNuoQianJin.Name",
+      "cardId": "Npc.SongJinBao.YiNuoQianJin",
+      "zh-Hans": "一诺千金",
+      "en": "Golden Promise"
+    },
+    {
+      "key": "Card.Npc.YueBai.QingYanDianDeng.Name",
+      "cardId": "Npc.YueBai.QingYanDianDeng",
+      "zh-Hans": "青焰点灯",
+      "en": "Spirit Lamp"
+    },
+    {
+      "key": "Card.Npc.YueBai.CanJuanPiZhu.Name",
+      "cardId": "Npc.YueBai.CanJuanPiZhu",
+      "zh-Hans": "残卷批注",
+      "en": "Scroll Notes"
+    },
+    {
+      "key": "Card.Npc.YueBai.YueBaiZhaoYe.Name",
+      "cardId": "Npc.YueBai.YueBaiZhaoYe",
+      "zh-Hans": "幽白照夜",
+      "en": "Pale Night"
+    },
+    {
+      "key": "Card.Npc.YueBai.ShanHeCanTu.Name",
+      "cardId": "Npc.YueBai.ShanHeCanTu",
+      "zh-Hans": "山河残图",
+      "en": "Mountain Map"
+    },
+    {
+      "key": "Card.Npc.ZhouGuangZu.YiCaoBianShi.Name",
+      "cardId": "Npc.ZhouGuangZu.YiCaoBianShi",
+      "zh-Hans": "异草辨识",
+      "en": "Herb Lore"
+    },
+    {
+      "key": "Card.Npc.ZhouGuangZu.HuangShanFuZhi.Name",
+      "cardId": "Npc.ZhouGuangZu.HuangShanFuZhi",
+      "zh-Hans": "黄山敷治",
+      "en": "Mountain Poultice"
+    },
+    {
+      "key": "Card.Npc.ZhouGuangZu.DiZhiMoTu.Name",
+      "cardId": "Npc.ZhouGuangZu.DiZhiMoTu",
+      "zh-Hans": "地志摹图",
+      "en": "Land Survey"
+    },
+    {
+      "key": "Card.Npc.ZhouGuangZu.YanFenFengMai.Name",
+      "cardId": "Npc.ZhouGuangZu.YanFenFengMai",
+      "zh-Hans": "岩粉封脉",
+      "en": "Stone Seal"
+    },
+    {
+      "key": "Card.Npc.JinGui.ShiJingErMu.Name",
+      "cardId": "Npc.JinGui.ShiJingErMu",
+      "zh-Hans": "市井耳目",
+      "en": "Street Eyes"
+    },
+    {
+      "key": "Card.Npc.JinGui.QiaoYanZhouXuan.Name",
+      "cardId": "Npc.JinGui.QiaoYanZhouXuan",
+      "zh-Hans": "巧言周旋",
+      "en": "Silver Tongue"
+    },
+    {
+      "key": "Card.Npc.JinGui.ZaYiChouBei.Name",
+      "cardId": "Npc.JinGui.ZaYiChouBei",
+      "zh-Hans": "杂役筹备",
+      "en": "Handy Errands"
+    },
+    {
+      "key": "Card.Npc.JinGui.HouXiangTuoShen.Name",
+      "cardId": "Npc.JinGui.HouXiangTuoShen",
+      "zh-Hans": "后巷脱身",
+      "en": "Alley Escape"
+    },
+    {
+      "key": "Card.Npc.QiongMeiEr.TengQiaoFeiDu.Name",
+      "cardId": "Npc.QiongMeiEr.TengQiaoFeiDu",
+      "zh-Hans": "藤桥飞渡",
+      "en": "Vine Crossing"
+    },
+    {
+      "key": "Card.Npc.QiongMeiEr.GuWuMiZong.Name",
+      "cardId": "Npc.QiongMeiEr.GuWuMiZong",
+      "zh-Hans": "蛊雾迷踪",
+      "en": "Venom Mist"
+    },
+    {
+      "key": "Card.Npc.QiongMeiEr.YinLingZhenXin.Name",
+      "cardId": "Npc.QiongMeiEr.YinLingZhenXin",
+      "zh-Hans": "银铃镇心",
+      "en": "Silver Chime"
+    },
+    {
+      "key": "Card.Npc.QiongMeiEr.ShanGeHuanLing.Name",
+      "cardId": "Npc.QiongMeiEr.ShanGeHuanLing",
+      "zh-Hans": "山歌唤灵",
+      "en": "Spirit Song"
+    },
+    {
+      "key": "Card.Profession.Blade.LieFengZhan.Name",
+      "cardId": "Profession.Blade.LieFengZhan",
+      "zh-Hans": "裂风斩",
+      "en": "Gale Slash"
+    },
+    {
+      "key": "Card.Profession.Blade.HuiFengJiaShi.Name",
+      "cardId": "Profession.Blade.HuiFengJiaShi",
+      "zh-Hans": "回锋架势",
+      "en": "Returning Stance"
+    },
+    {
+      "key": "Card.Profession.Blade.FengHou.Name",
+      "cardId": "Profession.Blade.FengHou",
+      "zh-Hans": "封喉",
+      "en": "Throat Seal"
+    },
+    {
+      "key": "Card.Profession.Blade.JiYuLianZhan.Name",
+      "cardId": "Profession.Blade.JiYuLianZhan",
+      "zh-Hans": "疾雨连斩",
+      "en": "Rain of Steel"
+    },
+    {
+      "key": "Card.Profession.Blade.YinXueDao.Name",
+      "cardId": "Profession.Blade.YinXueDao",
+      "zh-Hans": "饮血刀",
+      "en": "Blooddrinker"
+    },
+    {
+      "key": "Card.Profession.Blade.LangDuan.Name",
+      "cardId": "Profession.Blade.LangDuan",
+      "zh-Hans": "浪断",
+      "en": "Wave Break"
+    },
+    {
+      "key": "Card.Profession.Blade.DuanYue.Name",
+      "cardId": "Profession.Blade.DuanYue",
+      "zh-Hans": "断岳",
+      "en": "Mountain Cleave"
+    },
+    {
+      "key": "Card.Profession.Blade.PoJun.Name",
+      "cardId": "Profession.Blade.PoJun",
+      "zh-Hans": "破军",
+      "en": "Armybreaker"
+    },
+    {
+      "key": "Card.Profession.Blade.ZhanYiFeiTeng.Name",
+      "cardId": "Profession.Blade.ZhanYiFeiTeng",
+      "zh-Hans": "战意沸腾",
+      "en": "Battle Fervor"
+    },
+    {
+      "key": "Card.Profession.Blade.ZhanJin.Name",
+      "cardId": "Profession.Blade.ZhanJin",
+      "zh-Hans": "斩尽",
+      "en": "Final Cut"
+    },
+    {
+      "key": "Card.Profession.Blade.JieShiHuiFeng.Name",
+      "cardId": "Profession.Blade.JieShiHuiFeng",
+      "zh-Hans": "借势回锋",
+      "en": "Borrowed Momentum"
+    },
+    {
+      "key": "Card.Profession.Blade.ZhuYing.Name",
+      "cardId": "Profession.Blade.ZhuYing",
+      "zh-Hans": "逐影",
+      "en": "Shadowchase"
+    },
+    {
+      "key": "Card.Profession.Blade.PoLangTuJin.Name",
+      "cardId": "Profession.Blade.PoLangTuJin",
+      "zh-Hans": "破浪突进",
+      "en": "Wave Rush"
+    },
+    {
+      "key": "Card.Profession.Blade.YiShiDuanJiang.Name",
+      "cardId": "Profession.Blade.YiShiDuanJiang",
+      "zh-Hans": "一式断江",
+      "en": "River Sever"
+    },
+    {
+      "key": "Card.Profession.Blade.JingHongChuQiao.Name",
+      "cardId": "Profession.Blade.JingHongChuQiao",
+      "zh-Hans": "惊鸿出鞘",
+      "en": "Swift Draw"
+    },
+    {
+      "key": "Card.Profession.Blade.HengYunKaiFeng.Name",
+      "cardId": "Profession.Blade.HengYunKaiFeng",
+      "zh-Hans": "横云开锋",
+      "en": "Cloud Edge"
+    },
+    {
+      "key": "Card.Profession.Blade.LianXiGuiQiao.Name",
+      "cardId": "Profession.Blade.LianXiGuiQiao",
+      "zh-Hans": "敛息归鞘",
+      "en": "Quiet Sheath"
+    },
+    {
+      "key": "Card.Profession.Blade.BaoDaoShouYe.Name",
+      "cardId": "Profession.Blade.BaoDaoShouYe",
+      "zh-Hans": "抱刀守夜",
+      "en": "Night Watch"
+    },
+    {
+      "key": "Card.Profession.Guard.TieBi.Name",
+      "cardId": "Profession.Guard.TieBi",
+      "zh-Hans": "铁壁",
+      "en": "Ironwall"
+    },
+    {
+      "key": "Card.Profession.Guard.HuZhu.Name",
+      "cardId": "Profession.Guard.HuZhu",
+      "zh-Hans": "护主",
+      "en": "Protect Master"
+    },
+    {
+      "key": "Card.Profession.Guard.ZhenDun.Name",
+      "cardId": "Profession.Guard.ZhenDun",
+      "zh-Hans": "震盾",
+      "en": "Shield Quake"
+    },
+    {
+      "key": "Card.Profession.Guard.GuShou.Name",
+      "cardId": "Profession.Guard.GuShou",
+      "zh-Hans": "固守",
+      "en": "Hold Fast"
+    },
+    {
+      "key": "Card.Profession.Guard.FanZhenJia.Name",
+      "cardId": "Profession.Guard.FanZhenJia",
+      "zh-Hans": "反震甲",
+      "en": "Rebound Armor"
+    },
+    {
+      "key": "Card.Profession.Guard.ZhenYueLing.Name",
+      "cardId": "Profession.Guard.ZhenYueLing",
+      "zh-Hans": "镇岳令",
+      "en": "Mountain Seal"
+    },
+    {
+      "key": "Card.Profession.Guard.YuanHuBu.Name",
+      "cardId": "Profession.Guard.YuanHuBu",
+      "zh-Hans": "援护步",
+      "en": "Guardstep"
+    },
+    {
+      "key": "Card.Profession.Guard.PiJiaXingJun.Name",
+      "cardId": "Profession.Guard.PiJiaXingJun",
+      "zh-Hans": "披甲行军",
+      "en": "Armored March"
+    },
+    {
+      "key": "Card.Profession.Guard.QinWangDunJi.Name",
+      "cardId": "Profession.Guard.QinWangDunJi",
+      "zh-Hans": "擒王盾击",
+      "en": "Kingslayer Bash"
+    },
+    {
+      "key": "Card.Profession.Guard.TieBiRuShan.Name",
+      "cardId": "Profession.Guard.TieBiRuShan",
+      "zh-Hans": "铁壁如山",
+      "en": "Mountain Wall"
+    },
+    {
+      "key": "Card.Profession.Guard.BiLeiFanGong.Name",
+      "cardId": "Profession.Guard.BiLeiFanGong",
+      "zh-Hans": "壁垒反攻",
+      "en": "Bulwark Counter"
+    },
+    {
+      "key": "Card.Profession.Guard.BuDongRuShan.Name",
+      "cardId": "Profession.Guard.BuDongRuShan",
+      "zh-Hans": "不动如山",
+      "en": "Unmoving Mountain"
+    },
+    {
+      "key": "Card.Profession.Guard.PanShiTuNa.Name",
+      "cardId": "Profession.Guard.PanShiTuNa",
+      "zh-Hans": "磐石吐纳",
+      "en": "Stone Breath"
+    },
+    {
+      "key": "Card.Profession.Guard.YuanJunBiLei.Name",
+      "cardId": "Profession.Guard.YuanJunBiLei",
+      "zh-Hans": "援军壁垒",
+      "en": "Allied Bulwark"
+    },
+    {
+      "key": "Card.Profession.Guard.DunZhenTuiJin.Name",
+      "cardId": "Profession.Guard.DunZhenTuiJin",
+      "zh-Hans": "盾阵推进",
+      "en": "Shield Advance"
+    },
+    {
+      "key": "Card.Profession.Guard.TieSuoHengJiang.Name",
+      "cardId": "Profession.Guard.TieSuoHengJiang",
+      "zh-Hans": "铁锁横江",
+      "en": "River Chain"
+    },
+    {
+      "key": "Card.Profession.Guard.SuiJiaHuiJi.Name",
+      "cardId": "Profession.Guard.SuiJiaHuiJi",
+      "zh-Hans": "碎甲回击",
+      "en": "Shatter Counter"
+    },
+    {
+      "key": "Card.Profession.Guard.YiFuDangGuan.Name",
+      "cardId": "Profession.Guard.YiFuDangGuan",
+      "zh-Hans": "一夫当关",
+      "en": "Lone Sentinel"
+    },
+    {
+      "key": "Card.Profession.Healer.YaoYin.Name",
+      "cardId": "Profession.Healer.YaoYin",
+      "zh-Hans": "阴阳药引",
+      "en": "Yin-Yang Catalyst"
+    },
+    {
+      "key": "Card.Profession.Healer.XingQiZhen.Name",
+      "cardId": "Profession.Healer.XingQiZhen",
+      "zh-Hans": "行气活血",
+      "en": "Flowing Blood"
+    },
+    {
+      "key": "Card.Profession.Healer.CaoMuFuZhi.Name",
+      "cardId": "Profession.Healer.CaoMuFuZhi",
+      "zh-Hans": "草木敷治",
+      "en": "Herbal Poultice"
+    },
+    {
+      "key": "Card.Profession.Healer.QingXinSan.Name",
+      "cardId": "Profession.Healer.QingXinSan",
+      "zh-Hans": "清心散",
+      "en": "Mindclear Powder"
+    },
+    {
+      "key": "Card.Profession.Healer.LingZhiXuMing.Name",
+      "cardId": "Profession.Healer.LingZhiXuMing",
+      "zh-Hans": "灵芝续命",
+      "en": "Lingzhi Lifeline"
+    },
+    {
+      "key": "Card.Profession.Healer.HuiChunLu.Name",
+      "cardId": "Profession.Healer.HuiChunLu",
+      "zh-Hans": "回春露",
+      "en": "Spring Dew"
+    },
+    {
+      "key": "Card.Profession.Healer.ZhiXueCao.Name",
+      "cardId": "Profession.Healer.ZhiXueCao",
+      "zh-Hans": "止血草",
+      "en": "Clotting Herb"
+    },
+    {
+      "key": "Card.Profession.Healer.WenYangGao.Name",
+      "cardId": "Profession.Healer.WenYangGao",
+      "zh-Hans": "温养膏",
+      "en": "Warm Balm"
+    },
+    {
+      "key": "Card.Profession.Healer.JinChuangXuMing.Name",
+      "cardId": "Profession.Healer.JinChuangXuMing",
+      "zh-Hans": "金疮续命",
+      "en": "Wound Remedy"
+    },
+    {
+      "key": "Card.Profession.Healer.YaoWangGuiYuan.Name",
+      "cardId": "Profession.Healer.YaoWangGuiYuan",
+      "zh-Hans": "药王归元",
+      "en": "Healer's Renewal"
+    },
+    {
+      "key": "Card.Profession.Healer.BaiCaoDu.Name",
+      "cardId": "Profession.Healer.BaiCaoDu",
+      "zh-Hans": "百草毒",
+      "en": "Hundred Herbs"
+    },
+    {
+      "key": "Card.Profession.Healer.FuGuSan.Name",
+      "cardId": "Profession.Healer.FuGuSan",
+      "zh-Hans": "腐骨散",
+      "en": "Bone Rot"
+    },
+    {
+      "key": "Card.Profession.Healer.HuiQiXiang.Name",
+      "cardId": "Profession.Healer.HuiQiXiang",
+      "zh-Hans": "蚀心香",
+      "en": "Heartbane Incense"
+    },
+    {
+      "key": "Card.Profession.Healer.LianQiaoJieDu.Name",
+      "cardId": "Profession.Healer.LianQiaoJieDu",
+      "zh-Hans": "连翘引毒",
+      "en": "Forsythia Venom"
+    },
+    {
+      "key": "Card.Profession.Healer.YaoJiuWenShen.Name",
+      "cardId": "Profession.Healer.YaoJiuWenShen",
+      "zh-Hans": "红花透骨",
+      "en": "Safflower Pierce"
+    },
+    {
+      "key": "Card.Profession.Healer.YaoNangFeiTou.Name",
+      "cardId": "Profession.Healer.YaoNangFeiTou",
+      "zh-Hans": "药囊飞投",
+      "en": "Medicine Toss"
+    },
+    {
+      "key": "Card.Profession.Healer.KuShenMaSan.Name",
+      "cardId": "Profession.Healer.KuShenMaSan",
+      "zh-Hans": "苦参麻散",
+      "en": "Bitterroot Numb"
+    },
+    {
+      "key": "Card.Profession.Healer.WuWeiTiaoHe.Name",
+      "cardId": "Profession.Healer.WuWeiTiaoHe",
+      "zh-Hans": "五毒调和",
+      "en": "Five Venoms"
+    },
+    {
+      "key": "Card.Profession.Hunter.XunXiJian.Name",
+      "cardId": "Profession.Hunter.XunXiJian",
+      "zh-Hans": "寻隙箭",
+      "en": "Gapfinder Arrow"
+    },
+    {
+      "key": "Card.Profession.Hunter.FuBu.Name",
+      "cardId": "Profession.Hunter.FuBu",
+      "zh-Hans": "鹰眼",
+      "en": "Hawkeye"
+    },
+    {
+      "key": "Card.Profession.Hunter.ZhuiLie.Name",
+      "cardId": "Profession.Hunter.ZhuiLie",
+      "zh-Hans": "追猎",
+      "en": "Pursuit"
+    },
+    {
+      "key": "Card.Profession.Hunter.YingYan.Name",
+      "cardId": "Profession.Hunter.YingYan",
+      "zh-Hans": "锐意感知",
+      "en": "Keen Senses"
+    },
+    {
+      "key": "Card.Profession.Hunter.LieWang.Name",
+      "cardId": "Profession.Hunter.LieWang",
+      "zh-Hans": "猎网",
+      "en": "Hunting Net"
+    },
+    {
+      "key": "Card.Profession.Hunter.ChuanYang.Name",
+      "cardId": "Profession.Hunter.ChuanYang",
+      "zh-Hans": "穿杨",
+      "en": "Willowpiercer"
+    },
+    {
+      "key": "Card.Profession.Hunter.LianZhuJian.Name",
+      "cardId": "Profession.Hunter.LianZhuJian",
+      "zh-Hans": "连珠箭",
+      "en": "Arrow Chain"
+    },
+    {
+      "key": "Card.Profession.Hunter.FuZuShi.Name",
+      "cardId": "Profession.Hunter.FuZuShi",
+      "zh-Hans": "淬毒矢",
+      "en": "Venom Arrow"
+    },
+    {
+      "key": "Card.Profession.Hunter.YinZong.Name",
+      "cardId": "Profession.Hunter.YinZong",
+      "zh-Hans": "隐踪",
+      "en": "Vanish"
+    },
+    {
+      "key": "Card.Profession.Hunter.DuanMaiShi.Name",
+      "cardId": "Profession.Hunter.DuanMaiShi",
+      "zh-Hans": "断脉矢",
+      "en": "Veinbreaker"
+    },
+    {
+      "key": "Card.Profession.Hunter.ShouHun.Name",
+      "cardId": "Profession.Hunter.ShouHun",
+      "zh-Hans": "狩魂",
+      "en": "Soulhunt"
+    },
+    {
+      "key": "Card.Profession.Hunter.BaiBuChuanYang.Name",
+      "cardId": "Profession.Hunter.BaiBuChuanYang",
+      "zh-Hans": "百步穿杨",
+      "en": "Perfect Aim"
+    },
+    {
+      "key": "Card.Profession.Hunter.LueYingJian.Name",
+      "cardId": "Profession.Hunter.LueYingJian",
+      "zh-Hans": "掠影箭",
+      "en": "Shadow Arrow"
+    },
+    {
+      "key": "Card.Profession.Hunter.LieHunBiao.Name",
+      "cardId": "Profession.Hunter.LieHunBiao",
+      "zh-Hans": "猎魂标",
+      "en": "Soulhunt Mark"
+    },
+    {
+      "key": "Card.Profession.Hunter.PoJiaDing.Name",
+      "cardId": "Profession.Hunter.PoJiaDing",
+      "zh-Hans": "破甲钉",
+      "en": "Armor Spike"
+    },
+    {
+      "key": "Card.Profession.Hunter.HuiHuanJian.Name",
+      "cardId": "Profession.Hunter.HuiHuanJian",
+      "zh-Hans": "回环箭",
+      "en": "Circling Arrow"
+    },
+    {
+      "key": "Card.Profession.Hunter.FuYeXianJing.Name",
+      "cardId": "Profession.Hunter.FuYeXianJing",
+      "zh-Hans": "腐叶陷阱",
+      "en": "Rotleaf Trap"
+    },
+    {
+      "key": "Card.Profession.Hunter.YingLuo.Name",
+      "cardId": "Profession.Hunter.YingLuo",
+      "zh-Hans": "鹰落",
+      "en": "Hawkfall"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.LingHuoFu.Name",
+      "cardId": "Profession.Sorcerer.LingHuoFu",
+      "zh-Hans": "灵枢引法",
+      "en": "Spirit Conduit"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.JuLing.Name",
+      "cardId": "Profession.Sorcerer.JuLing",
+      "zh-Hans": "周天归元",
+      "en": "Celestial Return"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.LiHuoYin.Name",
+      "cardId": "Profession.Sorcerer.LiHuoYin",
+      "zh-Hans": "灵火点灯",
+      "en": "Flame Lamp"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.YanQiang.Name",
+      "cardId": "Profession.Sorcerer.YanQiang",
+      "zh-Hans": "流焰传薪",
+      "en": "Passing Embers"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.BaoYanShu.Name",
+      "cardId": "Profession.Sorcerer.BaoYanShu",
+      "zh-Hans": "焚脉爆炎",
+      "en": "Flameburst"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.XingHuoLiaoYuan.Name",
+      "cardId": "Profession.Sorcerer.XingHuoLiaoYuan",
+      "zh-Hans": "燎原寻诀",
+      "en": "Wildfire Search"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.SheLingHuo.Name",
+      "cardId": "Profession.Sorcerer.SheLingHuo",
+      "zh-Hans": "寒息回流",
+      "en": "Cold Return"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.FenMaiFu.Name",
+      "cardId": "Profession.Sorcerer.FenMaiFu",
+      "zh-Hans": "玄冰拓脉",
+      "en": "Frost Veins"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.LingYanLianDan.Name",
+      "cardId": "Profession.Sorcerer.LingYanLianDan",
+      "zh-Hans": "霜镜叠甲",
+      "en": "Frost Mirror"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.HuLingMu.Name",
+      "cardId": "Profession.Sorcerer.HuLingMu",
+      "zh-Hans": "冰鉴索法",
+      "en": "Ice Insight"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.ChiXiaoFenXing.Name",
+      "cardId": "Profession.Sorcerer.ChiXiaoFenXing",
+      "zh-Hans": "引雷定标",
+      "en": "Thunder Mark"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.FenTianJue.Name",
+      "cardId": "Profession.Sorcerer.FenTianJue",
+      "zh-Hans": "雷符索敌",
+      "en": "Thunder Search"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.NingYanChengRen.Name",
+      "cardId": "Profession.Sorcerer.NingYanChengRen",
+      "zh-Hans": "连霆穿云",
+      "en": "Cloudpiercing Bolt"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.RanLingHuanYuan.Name",
+      "cardId": "Profession.Sorcerer.RanLingHuanYuan",
+      "zh-Hans": "雷走八方",
+      "en": "Eightfold Thunder"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.YanMuHuTi.Name",
+      "cardId": "Profession.Sorcerer.YanMuHuTi",
+      "zh-Hans": "万法归一",
+      "en": "All Arts as One"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.LieFu.Name",
+      "cardId": "Profession.Sorcerer.LieFu",
+      "zh-Hans": "照见五蕴",
+      "en": "Clear Insight"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.XingHuoHuiShou.Name",
+      "cardId": "Profession.Sorcerer.XingHuoHuiShou",
+      "zh-Hans": "六合护法",
+      "en": "Sixfold Ward"
+    },
+    {
+      "key": "Card.Profession.Sorcerer.ChiYanFengJie.Name",
+      "cardId": "Profession.Sorcerer.ChiYanFengJie",
+      "zh-Hans": "斗转星移",
+      "en": "Shifting Stars"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.GuanShi.Name",
+      "cardId": "Profession.FormationMaster.GuanShi",
+      "zh-Hans": "平野观势",
+      "en": "Read the Plain"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.DingZhen.Name",
+      "cardId": "Profession.FormationMaster.DingZhen",
+      "zh-Hans": "定阵",
+      "en": "Set Formation"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.YinShuiHuiYuan.Name",
+      "cardId": "Profession.FormationMaster.YinShuiHuiYuan",
+      "zh-Hans": "引水回元",
+      "en": "Water Renewal"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.KunZhen.Name",
+      "cardId": "Profession.FormationMaster.KunZhen",
+      "zh-Hans": "困阵",
+      "en": "Entrapment"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.LinYingMiZong.Name",
+      "cardId": "Profession.FormationMaster.LinYingMiZong",
+      "zh-Hans": "林影迷踪",
+      "en": "Forest Mist"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.JieShanWeiZhang.Name",
+      "cardId": "Profession.FormationMaster.JieShanWeiZhang",
+      "zh-Hans": "借山为障",
+      "en": "Mountain Barrier"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.CunZhaiYuanZhen.Name",
+      "cardId": "Profession.FormationMaster.CunZhaiYuanZhen",
+      "zh-Hans": "村寨援阵",
+      "en": "Village Aid"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.HuiShengZhenSha.Name",
+      "cardId": "Profession.FormationMaster.HuiShengZhenSha",
+      "zh-Hans": "回声震杀",
+      "en": "Echo Blast"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.YiWeiZhen.Name",
+      "cardId": "Profession.FormationMaster.YiWeiZhen",
+      "zh-Hans": "易位阵",
+      "en": "Position Swap"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.BaMenLunZhuan.Name",
+      "cardId": "Profession.FormationMaster.BaMenLunZhuan",
+      "zh-Hans": "八门轮转",
+      "en": "Eight Gates"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.ZhenShaZhen.Name",
+      "cardId": "Profession.FormationMaster.ZhenShaZhen",
+      "zh-Hans": "镇煞阵",
+      "en": "Demon Ward"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.WanXiangGuiZhen.Name",
+      "cardId": "Profession.FormationMaster.WanXiangGuiZhen",
+      "zh-Hans": "万象归阵",
+      "en": "Myriad Formation"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.ShanMenFengSuo.Name",
+      "cardId": "Profession.FormationMaster.ShanMenFengSuo",
+      "zh-Hans": "山门封锁",
+      "en": "Mountain Lock"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.ShuiJingZheGuang.Name",
+      "cardId": "Profession.FormationMaster.ShuiJingZheGuang",
+      "zh-Hans": "水镜折光",
+      "en": "Mirror Water"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.LinFengFuZhen.Name",
+      "cardId": "Profession.FormationMaster.LinFengFuZhen",
+      "zh-Hans": "林风拂阵",
+      "en": "Forest Wind"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.ZhenQiGuWu.Name",
+      "cardId": "Profession.FormationMaster.ZhenQiGuWu",
+      "zh-Hans": "阵旗鼓舞",
+      "en": "Rallying Banner"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.DiMaiJieLi.Name",
+      "cardId": "Profession.FormationMaster.DiMaiJieLi",
+      "zh-Hans": "地脉借力",
+      "en": "Earthflow"
+    },
+    {
+      "key": "Card.Profession.FormationMaster.SiXiangLianHuan.Name",
+      "cardId": "Profession.FormationMaster.SiXiangLianHuan",
+      "zh-Hans": "四象连环",
+      "en": "Fourfold Chain"
+    },
+    {
+      "key": "Card.Route.Boss.XiongPiPiJia.Name",
+      "cardId": "Route.Boss.XiongPiPiJia",
+      "zh-Hans": "熊罴皮甲",
+      "en": "Bearhide Armor"
+    },
+    {
+      "key": "Card.Route.Boss.HanDiYiShi.Name",
+      "cardId": "Route.Boss.HanDiYiShi",
+      "zh-Hans": "撼地遗势",
+      "en": "Earthshaker Legacy"
+    },
+    {
+      "key": "Card.Route.Boss.HuPoZhenDan.Name",
+      "cardId": "Route.Boss.HuPoZhenDan",
+      "zh-Hans": "虎魄镇胆",
+      "en": "Tiger Resolve"
+    },
+    {
+      "key": "Card.Route.Boss.DuKouLieFeng.Name",
+      "cardId": "Route.Boss.DuKouLieFeng",
+      "zh-Hans": "渡口猎风",
+      "en": "Ferry Gale"
+    },
+    {
+      "key": "Card.Route.Boss.FuHuDuanJiang.Name",
+      "cardId": "Route.Boss.FuHuDuanJiang",
+      "zh-Hans": "伏虎断江",
+      "en": "Tiger Riverbreak"
+    }
+  ]
+}

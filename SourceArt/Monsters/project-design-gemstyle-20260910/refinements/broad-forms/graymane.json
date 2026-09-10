@@ -1,0 +1,26 @@
+{
+  "slug": "graymane",
+  "name": "苍鬃狼王",
+  "id": "Enemy.Ch2.GraymaneWolfKing",
+  "chapter": 2,
+  "tier": "elite",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/11_graymane.png",
+  "identitySourceSha256": "447826d5c3a1aaf1f55b2576025bd81a113b8442af399fa1a222918ecf95357b",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "pending-generation",
+  "userApproved": false,
+  "details": "苍鬃狼王：保留原强壮深灰狼王、巨大蓬起的尖簇厚鬃，狭长米白脸罩与白口鼻，凶狠细眼、尖耳、强健四肢和一条长灰尾。原低头前压进攻的四足姿态，但头与口鼻明确向右3/4，不正面直视。鬃毛以五至七个大簇，肩高胸厚、前爪大，与普通灰狼的轻瘦剪影有明显差异；不加皇冠盔甲或魔法。",
+  "prompt": "Use case: style-transfer / precise-object-edit. 修正第一张的绘制密度和眼睛，第二张是项目原图，作为细节上限和卡通眼睛依据。保持第一张的身份、姿态、配色、比例、朝右3/4方向和原道具，全身完整居中、原米白背景不变。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。 苍鬃狼王重点：鬃毛内至少去掉八成碎小切块，只留5至7个大毛团形成外剪影，每个大毛团内部连续深灰设色加一块大阴影。背部是一块完整的中灰面，四条腿各用大面明暗，不再满铺细碎白灰毛瓣；尾巴两个大色面，白脸一整块干净面罩。保留当前四足姿势、体型、巨鬃轮廓、缺口耳和朝右方向，依然有厚重体积。 必须重新组织大色面，不是将现图模糊，不增加其它物体或文字。",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-1ae9d355-ee71-4f7d-8bb5-c5ac9f1763c4.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/11_graymane.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png",
+  "previousGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-1ae9d355-ee71-4f7d-8bb5-c5ac9f1763c4.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：苍鬃狼王：保留原强壮深灰狼王、巨大蓬起的尖簇厚鬃，狭长米白脸罩与白口鼻，凶狠细眼、尖耳、强健四肢和一条长灰尾。原低头前压进攻的四足姿态，但头与口鼻明确向右3/4，不正面直视。鬃毛以五至七个大簇，肩高胸厚、前爪大，与普通灰狼的轻瘦剪影有明显差异；不加皇冠盔甲或魔法。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

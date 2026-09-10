@@ -57,6 +57,8 @@ bool UGameXXKMainStorySubsystem::BeginJourney(FGameXXKRuntimeState& Candidate,co
 	{
 		if (S.JourneyNodeId==Node.Id && S.JourneyStageId==Stage && !S.GateNodeIds.IsEmpty())
 		{
+			if(!FGameXXKMainStoryRules::IsDedicatedJourney(Candidate))
+				return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,S.JourneySeed,&Error);
 			S.Phase=S.bGateEntered ? (S.LineIndex<Node.Lines.Num() ? EGameXXKMainStoryActivityPhase::Dialogue : Node.IsInvestigation() ? EGameXXKMainStoryActivityPhase::Choice : EGameXXKMainStoryActivityPhase::ReadyToBattle) : EGameXXKMainStoryActivityPhase::AwaitingGate;
 			S.bShowJourneyTree=S.bGateEntered; return true;
 		}
@@ -68,11 +70,10 @@ bool UGameXXKMainStorySubsystem::BeginJourney(FGameXXKRuntimeState& Candidate,co
 	}
 	const bool Resume=S.JourneyNodeId==Node.Id && S.JourneyId.IsValid() && S.JourneySeed!=0;
 	const int32 Seed=Resume ? S.JourneySeed : FMath::Max(1,static_cast<int32>(GetTypeHash(FGuid::NewGuid())&0x7fffffff));
+	const FName OrdinarySelection=Candidate.Training.SelectedStageId;
 	if (!FGameXXKTrainingRules::StartChallenge(Candidate.Training,Stage)) { Error=TEXT("对应游历关卡还没有开放。"); return false; }
-	FGameXXKTrainingRules::GenerateChallengeRouteMap(Candidate,Stage,Seed);
-	if (!FGameXXKMainStoryRules::InjectJourneyGate(Candidate,Node.Id,&Error)) return false;
-	S.JourneySeed=Seed;
-	return true;
+	Candidate.Training.SelectedStageId=OrdinarySelection;
+	return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,Seed,&Error);
 }
 bool UGameXXKMainStorySubsystem::StartTask(const FName Id)
 {
@@ -80,12 +81,28 @@ bool UGameXXKMainStorySubsystem::StartTask(const FName Id)
 	if(S->DialogueSession.bActive || S->NarrativeSequenceSession.bActive){SetError(TEXT("先把眼前的话说完，再接这段主线。"));return false;}
 	FGameXXKRuntimeState Candidate=*S; FString Error;
 	if (!FGameXXKMainStoryRules::StartNode(Candidate,Id,&Error)) { SetError(Error); return false; }
-	if (Node->IsJourney() && !FGameXXKMainStoryRules::IsNodeCompleted(Candidate,Id))
+	// Starting a task only opens its outside dialogue/departure prompt. An
+	// already active journey resumes in place without generating another map.
+	if (Node->IsJourney() && Candidate.Training.bChallengeActive && !FGameXXKMainStoryRules::IsNodeCompleted(Candidate,Id)
+		&&!FGameXXKMainStoryRules::HasBattleVictory(Candidate,Id))
 		if (!BeginJourney(Candidate,*Node,Error)) { SetError(Error); return false; }
 	if (Candidate.Training.bChallengeActive && Candidate.NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::AwaitingGate)
 		Candidate.NarrativeProgress.MainStory.bShowJourneyTree=true;
 	LastFeedback=FText::GetEmpty(); SelectedChapterId=Node->ChapterId;
 	return Commit(MoveTemp(Candidate),Node->IsJourney());
+}
+bool UGameXXKMainStorySubsystem::BeginTaskJourney()
+{
+	const auto* Current=State();const auto* Node=ActiveNode();
+	if(!Current||!Node||!Node->IsJourney()||Current->Training.bChallengeActive
+		||Current->NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::ReadyToTravel)
+		return false;
+	if(FGameXXKMainStoryRules::HasBattleVictory(*Current,Node->Id))return false;
+	if(Node->Kind==EGameXXKMainStoryNodeKind::JourneyBattle
+		&&Current->NarrativeProgress.MainStory.LineIndex<Node->Lines.Num())return false;
+	FGameXXKRuntimeState Candidate=*Current;FString Error;
+	if(!BeginJourney(Candidate,*Node,Error)){SetError(Error);return false;}
+	LastFeedback=FText::GetEmpty();return Commit(MoveTemp(Candidate),true);
 }
 bool UGameXXKMainStorySubsystem::CompleteNonBattleGate(FGameXXKRuntimeState& Candidate,FString& Error)
 {
@@ -95,6 +112,7 @@ bool UGameXXKMainStorySubsystem::CompleteNonBattleGate(FGameXXKRuntimeState& Can
 	const auto* Node=FGameXXKMainStoryCatalog::FindNode(S.JourneyNodeId);
 	if (!Node || Node->Kind!=EGameXXKMainStoryNodeKind::JourneyInvestigation || !S.bGateEntered
 		|| !FGameXXKMainStoryRules::IsNodeCompleted(Candidate,Node->Id) || Candidate.VisitedRouteNodeIds.Contains(S.GateNodeId)) return true;
+	if(FGameXXKMainStoryRules::IsDedicatedJourney(Candidate))return FGameXXKMainStoryRules::FinishDedicatedJourneyNode(Candidate,&Error);
 	if (!UGameXXKMVPRules::ResolveStoryRouteNode(Candidate,S.GateNodeId)) { Error=TEXT("剧情已得到答案，但路线尚未接续，请重试。"); return false; }
 	return true;
 }
@@ -103,7 +121,11 @@ bool UGameXXKMainStorySubsystem::AdvanceDialogue()
 	const auto* S=State(); if (!S) return false;
 	FGameXXKRuntimeState Candidate=*S; FString Error;
 	if (!FGameXXKMainStoryRules::AdvanceDialogue(Candidate,&Error) || !CompleteNonBattleGate(Candidate,Error)) { SetError(Error); return false; }
-	LastFeedback=FText::GetEmpty(); return Commit(MoveTemp(Candidate));
+	// Old saves may still be partway through the former at-gate dialogue.
+	// Finishing it enters the encounter through the same atomic boundary.
+	const bool bEnterBattle=Candidate.NarrativeProgress.MainStory.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle;
+	if(bEnterBattle&&!PrepareTaskBattle(Candidate,Error)){SetError(Error);return false;}
+	LastFeedback=FText::GetEmpty(); return Commit(MoveTemp(Candidate),bEnterBattle);
 }
 bool UGameXXKMainStorySubsystem::ChooseAnswer(const int32 Index)
 {
@@ -133,28 +155,44 @@ bool UGameXXKMainStorySubsystem::EnterJourneyGate(const int32 Id)
 {
 	const auto* S=State(); if (!S) return false; FGameXXKRuntimeState Candidate=*S; FString Error;
 	if (!FGameXXKMainStoryRules::EnterJourneyGate(Candidate,Id,&Error)) { SetError(Error); return false; }
+	if(Candidate.NarrativeProgress.MainStory.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle
+		&&!PrepareTaskBattle(Candidate,Error)){SetError(Error);return false;}
 	SelectedChapterId=Candidate.NarrativeProgress.MainStory.JourneyChapterId; LastFeedback=FText::GetEmpty();
 	return Commit(MoveTemp(Candidate),true);
 }
 bool UGameXXKMainStorySubsystem::BeginTaskBattle()
 {
-	auto* M=MVP(); const auto* S=State(); const auto* N=ActiveNode();
-	if (!M || !S || !N || N->Kind!=EGameXXKMainStoryNodeKind::JourneyBattle
-		|| S->NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::ReadyToBattle || M->IsAcademySessionActive()) return false;
-	const FGameXXKRuntimeState Before=*S; FGameXXKRuntimeState Candidate=Before;
+	const auto* Current=State();if(!Current)return false;
+	FGameXXKRuntimeState Candidate=*Current;FString Error;
+	if(!PrepareTaskBattle(Candidate,Error)){if(!Error.IsEmpty())SetError(Error);return false;}
+	LastFeedback=FText::GetEmpty();return Commit(MoveTemp(Candidate),true);
+}
+bool UGameXXKMainStorySubsystem::PrepareTaskBattle(FGameXXKRuntimeState& Candidate,FString& Error)
+{
+	auto* M=MVP();const auto* N=FGameXXKMainStoryCatalog::FindNode(Candidate.NarrativeProgress.MainStory.ActiveNodeId);
+	if(!M||!N||N->Kind!=EGameXXKMainStoryNodeKind::JourneyBattle||M->IsAcademySessionActive()
+		||Candidate.CardRun.bHasActiveCardBattle
+		||FGameXXKMainStoryRules::HasBattleVictory(Candidate,N->Id)
+		||Candidate.NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::ReadyToBattle)return false;
 	auto& Session=Candidate.NarrativeProgress.MainStory;
 	const int32 Gate=Session.GateNodeId;
 	auto* RouteNode=Candidate.RouteMapNodes.FindByPredicate([Gate](const auto& R){return R.NodeId==Gate;});
-	if (!RouteNode || !Session.bGateEntered || !Candidate.ReachableRouteNodeIds.Contains(Gate)) return false;
+	if (!RouteNode || !Session.bGateEntered || !FGameXXKMainStoryRules::IsJourneyGate(Candidate,Gate)
+		|| !Candidate.ReachableRouteNodeIds.Contains(Gate)) return false;
 	RouteNode->NodeKind=EGameXXKNodeKind::Battle;
 	Candidate.Training.ChallengeRouteNodeEncounterIndices.Add(Gate,0);
 	Session.bBattleStarted=true; Session.bShowJourneyTree=false; Session.Phase=EGameXXKMainStoryActivityPhase::AwaitingBattle; ++Session.Revision;
-	M->GetMutableRuntimeState()=MoveTemp(Candidate);
-	if (!M->SelectTrainingChallengeRouteNode(Gate)) { M->GetMutableRuntimeState()=Before; SetError(TEXT("遭遇尚未准备好，请重试。")); return false; }
-	Candidate=M->GetRuntimeState();
+	const FGameXXKRuntimeState Before=M->GetRuntimeState();
+	const bool bDedicatedJourney=FGameXXKMainStoryRules::IsDedicatedJourney(Candidate);
+	const FName JourneyMapId=Candidate.CurrentMapId;
+	M->GetMutableRuntimeState()=Candidate;
+	const bool bPrepared=M->SelectTrainingChallengeRouteNode(Gate);
+	if(bPrepared)Candidate=M->GetRuntimeState();
+	if(bPrepared&&bDedicatedJourney)Candidate.CurrentMapId=JourneyMapId;
 	// The ordinary battle bridge prepares the candidate; publish it only after the same save boundary as dialogue and rewards.
 	M->GetMutableRuntimeState()=Before;
-	return Commit(MoveTemp(Candidate),true);
+	if(!bPrepared)Error=TEXT("遭遇尚未准备好，请重试。");
+	return bPrepared;
 }
 void UGameXXKMainStorySubsystem::PauseActivity()
 {
@@ -229,7 +267,8 @@ void UGameXXKMainStorySubsystem::FlushPresentationViews()
 				}));
 				RouteDialoguePanel->SetOptionRequested(FGameXXKDialogueOptionRequested::CreateWeakLambda(this,[this](FName Id)
 				{
-					if(Id==TEXT("MainStory.Battle"))BeginTaskBattle();
+					if(Id==TEXT("MainStory.Travel"))BeginTaskJourney();
+					else if(Id==TEXT("MainStory.Battle"))BeginTaskBattle();
 					else {int32 I=GameXXKMainStoryDialoguePresentation::ChoiceIndex(Id);if(I!=INDEX_NONE)ChooseAnswer(I);}
 				}));
 				RouteDialoguePanel->SetHintRequested(FGameXXKDialogueAdvanceRequested::CreateWeakLambda(this,[this](){RevealHint();}));
@@ -261,6 +300,19 @@ void UGameXXKMainStorySubsystem::FlushPresentationViews()
 void UGameXXKMainStorySubsystem::Tick(float DeltaTime)
 {
 	const auto* S=State(); if (!S || !MVP() || MVP()->IsAcademySessionActive()) return;
+	const auto& Journey=S->NarrativeProgress.MainStory;
+	if(S->Training.bChallengeActive&&!S->CardRun.bHasActiveCardBattle&&!Journey.GateNodeIds.IsEmpty()
+		&&!FGameXXKMainStoryRules::IsDedicatedJourney(*S)&&!FGameXXKMainStoryRules::IsNodeCompleted(*S,Journey.JourneyNodeId)
+		&&!FGameXXKMainStoryRules::HasBattleVictory(*S,Journey.JourneyNodeId)
+		&&LastLegacyMapAttemptRevision!=Journey.Revision)
+	{
+		LastLegacyMapAttemptRevision=Journey.Revision;
+		FGameXXKRuntimeState Candidate=*S;FString Error;
+		if(FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Journey.JourneyNodeId,Journey.JourneySeed,&Error))
+			Commit(MoveTemp(Candidate),true);
+		else SetError(Error);
+		return;
+	}
 	if (S->CardRun.bHasActiveCardBattle && S->CardRun.ActiveBattle.Phase==EGameXXKCardBattlePhase::Victory)
 	{
 		FGameXXKRuntimeState Candidate=*S;
@@ -283,6 +335,7 @@ FString UGameXXKMainStorySubsystem::GetProgressJson() const
 	Root->SetStringField(TEXT("chapter"),PreferredChapter().ToString());
 	Root->SetStringField(TEXT("active_node"),S->NarrativeProgress.MainStory.ActiveNodeId.ToString());
 	Root->SetNumberField(TEXT("phase"),static_cast<int32>(S->NarrativeProgress.MainStory.Phase));
+	Root->SetStringField(TEXT("journey_map"),S->CurrentMapId.ToString());
 	Root->SetStringField(TEXT("journey_node"),S->NarrativeProgress.MainStory.JourneyNodeId.ToString());
 	Root->SetNumberField(TEXT("gate"),S->NarrativeProgress.MainStory.GateNodeId);
 	Root->SetBoolField(TEXT("gate_entered"),S->NarrativeProgress.MainStory.bGateEntered);

@@ -1,0 +1,790 @@
+{
+  "count": 21,
+  "expected": 21,
+  "complete": true,
+  "phase": "awaiting-user-visual-review",
+  "tool": "built-in image_gen",
+  "basis": "project original designs + approved character and gem icon rendering style",
+  "nativeResolutionNote": "原生生成尺寸逐图记录；1600×1600为统一审阅画布",
+  "imported": false,
+  "records": [
+    {
+      "slug": "rooster",
+      "name": "公鸡",
+      "id": "Enemy.Ch1.Rooster",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/01_rooster.png",
+      "identitySourceSha256": "f7543ca644d968f8b4f32c6d2ad2317fb57b9597b568692d0b9b04d69c6fedd8",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/rooster.png",
+      "sha256": "61e42e21d710cdcb59304acd6842569ea34b4e73106cda2ac6bab76a3c87fa02",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/rooster.png",
+      "rawSha256": "a72226f7ec79e1e4f06c5e792ea1f444a2efa8ecfcf02c9f922efa2c4b24a6b7",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        212,
+        121,
+        1350,
+        1499
+      ],
+      "foregroundFraction": 0.2177,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/rooster.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "goat",
+      "name": "山羊",
+      "id": "Enemy.Ch1.Goat",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/02_goat.png",
+      "identitySourceSha256": "ad6e09c7fa4b3f90e746912b1ebecd239c7a2292ce84c3360aa7d371020294d7",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/goat.png",
+      "sha256": "2214a66077e80eae50d0d2eed2fcf0cc16153d3bceeb6594c62d0b617db6554a",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/goat.png",
+      "rawSha256": "8dd7bf7a23c12e396609d80ca8a3a046267c6868d42ce178925decff2a164e2e",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        314,
+        172,
+        1311,
+        1426
+      ],
+      "foregroundFraction": 0.1451,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/goat.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "weasel",
+      "name": "黄鼬",
+      "id": "Enemy.Ch1.Weasel",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/03_weasel.png",
+      "identitySourceSha256": "2554cdc0d21f5dfce86a4b0b88a92f908d76b37469d41d0e50087b6b1ca672e8",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/weasel.png",
+      "sha256": "acc70344e89ebf07871c272a257f731cad3b00f599f7aadd310fa32aa1c889f2",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/weasel.png",
+      "rawSha256": "104cdd9a1c7d9e72de64cd93928b649946faad8eb4f3c27f418e1c97f1989b57",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        94,
+        204,
+        1540,
+        1386
+      ],
+      "foregroundFraction": 0.2621,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/weasel.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "civet",
+      "name": "狸猫",
+      "id": "Enemy.Ch1.Civet",
+      "chapter": 1,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/04_civet.png",
+      "identitySourceSha256": "f86a3fd209f1ba9e8207e33538e58e70fe7704644588bde705b3aeaa4528bcec",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/civet.png",
+      "sha256": "229ea2f93ef54386e26ab150921309bedfa76d3820f1414975168aee3d75dfb5",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/civet.png",
+      "rawSha256": "e5a2136253d24e82554182fcf9a27ee967ee2c1ac529dc804684e306d9481f4b",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        92,
+        196,
+        1552,
+        1419
+      ],
+      "foregroundFraction": 0.3938,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/civet.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "ironfeather",
+      "name": "铁羽斗鸡",
+      "id": "Enemy.Ch1.IronfeatherRooster",
+      "chapter": 1,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/05_ironfeather.png",
+      "identitySourceSha256": "0f47b58e9cdb91754a97bee8a95cb9b285a1193126a0db3db2e94882158c7ab5",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/ironfeather.png",
+      "sha256": "57dd82cfc463bc83511e8191d80007cb5d7bb49c46c36bb7a1a5521e7916f610",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/ironfeather.png",
+      "rawSha256": "a37203f9550d8b09caef354ec5cdb01f122d372e26ee9b525f2be1238596277d",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        126,
+        143,
+        1470,
+        1517
+      ],
+      "foregroundFraction": 0.3615,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/ironfeather.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "bluehorn",
+      "name": "青角羊王",
+      "id": "Enemy.Ch1.BluehornGoatKing",
+      "chapter": 1,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/06_bluehorn.png",
+      "identitySourceSha256": "c1e917470b58a450e44aa4050b3b9f168ee0248f31f98b769668579a9eb5a292",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/bluehorn.png",
+      "sha256": "6fcc27e22336cb81d931d91c74274f98d6c5a6fdcb6e8dd56c6909e0ec1fffed",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/bluehorn.png",
+      "rawSha256": "357e466b9942db963ed5beb2fb40269be073f6ead0fb7a4e9196ce217550cfa2",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        96,
+        133,
+        1535,
+        1498
+      ],
+      "foregroundFraction": 0.222,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/bluehorn.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\bluehorn-before.png",
+      "revisionInputSha256": "4f7b90cffa00375b4b1ac8333a656516fe26c09d79402a7b025fc6fe4e71a142"
+    },
+    {
+      "slug": "moneyrat",
+      "name": "金钱鼠",
+      "id": "Enemy.Ch1.MoneyRat",
+      "chapter": 1,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/19_moneyrat_boss.png",
+      "identitySourceSha256": "d71d6b99bf437562a3bb354356d636520f816cb389769251045f4caffce85814",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/moneyrat.png",
+      "sha256": "eae09733017b1fc9e9c1039ddf3875b5472e76bdf8518747f9847a763349ae4c",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/moneyrat.png",
+      "rawSha256": "23475f9093742e78a34922c474b7ba58001437a6de87a7cdf24bfa593bd127b8",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        146,
+        94,
+        1497,
+        1505
+      ],
+      "foregroundFraction": 0.4383,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/moneyrat.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "graywolf",
+      "name": "灰狼",
+      "id": "Enemy.Ch2.GrayWolf",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/07_graywolf.png",
+      "identitySourceSha256": "37d6400431a7542d567d0f23e5a9bd84df07a043a5cb008e9484cd1ae2a41ccc",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/graywolf.png",
+      "sha256": "aa565b3163d281a487cdee8ffe4dcb570cb1ce8b2f7abf705f6191d4df7a1168",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/graywolf.png",
+      "rawSha256": "4f56f6c6ff6d40a9c4b8667945f0569d6fc18aae97df630afd2ac1c1338f37ca",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        75,
+        393,
+        1509,
+        1229
+      ],
+      "foregroundFraction": 0.1806,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/graywolf.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\graywolf-before.png",
+      "revisionInputSha256": "15270228159fce60f21e467f139b2179b6a2afea824448d13f6e83cc815dfec1"
+    },
+    {
+      "slug": "boar",
+      "name": "野猪",
+      "id": "Enemy.Ch2.Boar",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/08_boar.png",
+      "identitySourceSha256": "8a33e559b7e40a91ead33bc1cdb61662ffef5f2cebe48e1aa1b17e9cef293d9b",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/boar.png",
+      "sha256": "9f64420fb19e178f17735a5acab5d294f4d6a34133b39a1312b3a27958479cac",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/boar.png",
+      "rawSha256": "82e374130e001961fc40c6fe7fb65a0aa505ceff0a405ec99f56643998315247",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        140,
+        358,
+        1496,
+        1250
+      ],
+      "foregroundFraction": 0.3042,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/boar.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\boar-before.png",
+      "revisionInputSha256": "d25dbd816f97e33d28b892c64c2af58d0ec244e136f43852a113f80449e7eb52"
+    },
+    {
+      "slug": "macaque",
+      "name": "猕猴",
+      "id": "Enemy.Ch2.Macaque",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/09_macaque.png",
+      "identitySourceSha256": "33915df28162ec2489f479ff882a5b8923d84d7dc9b9e1346dd996493cdb295b",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/macaque.png",
+      "sha256": "7477a951e0bb9ba3a2ae87b7e07b8db160b38a294c17879cca59bee9d0af2b3c",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/macaque.png",
+      "rawSha256": "72b5ab40133f822db67d9eff6f74ba490c8403e2b03520db2bc74490f4d19c30",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        198,
+        140,
+        1411,
+        1437
+      ],
+      "foregroundFraction": 0.2869,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/macaque.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "porcupine",
+      "name": "豪猪",
+      "id": "Enemy.Ch2.Porcupine",
+      "chapter": 2,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/10_porcupine.png",
+      "identitySourceSha256": "374912d186675fd6a60836ee01101f3737eabbcbe32659f6de149b69b6089f38",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/porcupine.png",
+      "sha256": "44cd6d88105359ed12c1c081c8b0b96b8f38f23121419a38c53520820012058f",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/porcupine.png",
+      "rawSha256": "0ea4c3b9fb77ea6a5b94fb8ac76ba4975e00c85f585351aa40aeb2781a5ece88",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        114,
+        178,
+        1490,
+        1409
+      ],
+      "foregroundFraction": 0.3842,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/porcupine.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\porcupine-before.png",
+      "revisionInputSha256": "75d04ffc760efc9c744cae507528c48d631892b963c5cced575c025c00ecdc0d"
+    },
+    {
+      "slug": "graymane",
+      "name": "苍鬃狼王",
+      "id": "Enemy.Ch2.GraymaneWolfKing",
+      "chapter": 2,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/11_graymane.png",
+      "identitySourceSha256": "447826d5c3a1aaf1f55b2576025bd81a113b8442af399fa1a222918ecf95357b",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/graymane.png",
+      "sha256": "2240f1171fc0f80d2347d79bfc79d5a9a2d984f94c5a7284cf562f0f8c07c242",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/graymane.png",
+      "rawSha256": "a37fa55382de6aa95c5ee70c1c19b27a0b009d3f16445ec94896ca56fd74f830",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        67,
+        184,
+        1555,
+        1439
+      ],
+      "foregroundFraction": 0.3177,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/graymane.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\graymane-before.png",
+      "revisionInputSha256": "8d23e9c7a080beb4fc8af627ffa4b1b9d8e357cda2b8cb63ac13a0f4d360da7e"
+    },
+    {
+      "slug": "redtusk",
+      "name": "赤獠猪王",
+      "id": "Enemy.Ch2.RedtuskBoarKing",
+      "chapter": 2,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/12_redtusk.png",
+      "identitySourceSha256": "f41afa6eb4a8f23e0d20354ddce8e47e560effedd5d3b6b9e5e221da768dc4ea",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/redtusk.png",
+      "sha256": "bbb3d371ebd802405308705e413161f01d68cb87f3a8cbeca6eb67fc4459d76e",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/redtusk.png",
+      "rawSha256": "48b4f9545d74c8b353f6830ca883f258019a5d79dd2cd7dc47af5d5358dfafc0",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        65,
+        238,
+        1548,
+        1358
+      ],
+      "foregroundFraction": 0.4033,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/redtusk.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\redtusk-before.png",
+      "revisionInputSha256": "9001f9a16a484c031329a3b4c97c07fa725914f9a6eda1fb30990183cff6830c"
+    },
+    {
+      "slug": "blackbear",
+      "name": "黑熊",
+      "id": "Enemy.Ch2.BlackBear",
+      "chapter": 2,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/20_blackbear_boss.png",
+      "identitySourceSha256": "01f9618a2c5ac68233108c5bc746370db4d967876759b8eb1d52979bf9db64b9",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/blackbear.png",
+      "sha256": "042cd9151d63335866307c7aeee46f082ea1b9c64e10849e1e7cf4994c4ff370",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/blackbear.png",
+      "rawSha256": "14dd6a923ecef93af8922ee3f9ef1b3c3fb56857dc0f4fa9360f46f598dcc337",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        94,
+        196,
+        1543,
+        1399
+      ],
+      "foregroundFraction": 0.4732,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/blackbear.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\blackbear-before.png",
+      "revisionInputSha256": "bd7d516c8d71c1f31ab4889700983323f3b6fa05245093654faf9720f1669c62"
+    },
+    {
+      "slug": "snake",
+      "name": "毒蛇",
+      "id": "Enemy.Ch3.VenomSnake",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/13_snake.png",
+      "identitySourceSha256": "e8b3b7d7e500f82e78d119474710887960d1c25f3ed95d2a034c42477e45bc26",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/snake.png",
+      "sha256": "50185f91c5c939586aaaac5ea6287b7d341ee49394b278c20a91fddac6c48f97",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/snake.png",
+      "rawSha256": "f4eba985b54a27bc7999cec89b2726f19c4044ad5edf119826c2c4f4a67375be",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        292,
+        182,
+        1311,
+        1400
+      ],
+      "foregroundFraction": 0.2605,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/snake.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\snake-before.png",
+      "revisionInputSha256": "0b7247a1d40ade27c6c9ba8c25e478ece67b6f5659f3c1346ede9e1df5a28dd9"
+    },
+    {
+      "slug": "wildcat",
+      "name": "山猫",
+      "id": "Enemy.Ch3.Wildcat",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/14_wildcat.png",
+      "identitySourceSha256": "f1a8909ae5e9cb6425ec6d1517c14d66ab52084ad8ce127052c1accce8b3faf2",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/wildcat.png",
+      "sha256": "b7f30dd0780a89d151acf6e9740a895011f29f0538505195bd7b9ccf6040aeb3",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/wildcat.png",
+      "rawSha256": "c13c0a8542b4383678b1275741ca0d0c018fcfdd06e01d2457d97c518a282261",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        94,
+        301,
+        1522,
+        1289
+      ],
+      "foregroundFraction": 0.2277,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/wildcat.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\wildcat-before.png",
+      "revisionInputSha256": "c663ffbcbc336f14c8f7b2103cb1618c98e2d873883134183bbbc2cfda6ee30b"
+    },
+    {
+      "slug": "vulture",
+      "name": "秃鹫",
+      "id": "Enemy.Ch3.Vulture",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/15_vulture.png",
+      "identitySourceSha256": "e60b9b2e039afe81aa750ca28b1b677f9242314e1d1c5cfc6cf792b674e6559e",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/vulture.png",
+      "sha256": "f6f99741c5f59537c5ac09fe284dbd4234b099bbfa0d96076d3191c19572c5fd",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/vulture.png",
+      "rawSha256": "20b0c161e578a8495c79c2ab5e2c987600b979cc706b845008a03b6a38676888",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        185,
+        173,
+        1470,
+        1478
+      ],
+      "foregroundFraction": 0.3032,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/vulture.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\vulture-before.png",
+      "revisionInputSha256": "71ebea995a0b138c20e6edd949db4da85ed38d91834b96a118ccd06e2c532533"
+    },
+    {
+      "slug": "toad",
+      "name": "巨蟾",
+      "id": "Enemy.Ch3.GiantToad",
+      "chapter": 3,
+      "tier": "normal",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/16_toad.png",
+      "identitySourceSha256": "3f13a228ffab77333de78d276e82d4d4c2c63cf3259888997142c3d8113a29ae",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/toad.png",
+      "sha256": "c5a4467dc290093798eead5449fe7dd8857b64e425594d9fce2d0bdbb08b78d6",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/toad.png",
+      "rawSha256": "d39eae5ada9cc23962f94535eb43f72359501e322e24b3734b9cd9532af6c280",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        91,
+        468,
+        1518,
+        1183
+      ],
+      "foregroundFraction": 0.2782,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/toad.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "whiteape",
+      "name": "白猿",
+      "id": "Enemy.Ch3.WhiteApe",
+      "chapter": 3,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/17_whiteape.png",
+      "identitySourceSha256": "ce66d4be9c195d657e70007a0e25d834ad42138ab13cf80d21fea23bbc7df37b",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/whiteape.png",
+      "sha256": "a52fe6bf215930f6ad45a4141af0284ebe6e1cdeedd935823771415ea8cff670",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/whiteape.png",
+      "rawSha256": "865963e140bca761638a1331342f6e42e835c1d1d5a8e5abce3130a219477775",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        103,
+        167,
+        1514,
+        1419
+      ],
+      "foregroundFraction": 0.2144,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/whiteape.json",
+      "revision": "broad-forms-cartoon-eyes-v1",
+      "revisionInputSnapshot": "refinements\\broad-forms\\whiteape-before.png",
+      "revisionInputSha256": "f96ecabff64dbd6cd27d4550f192d4b9567b0f45b8e799be0fcbd6041f4b767e"
+    },
+    {
+      "slug": "spiralhorn_deer",
+      "name": "盘角鹿",
+      "id": "Enemy.Ch3.SpiralHornDeer",
+      "chapter": 3,
+      "tier": "elite",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/18_deer.png",
+      "identitySourceSha256": "91015d8119ada8770ffacf985a0540e18da658c3cd0ad6ec5d2962adb498ea69",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/spiralhorn_deer.png",
+      "sha256": "1b008ac2b3bfeda094db9e73f9c34c98ac8132f31355ac6935be5c9327f456aa",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/spiralhorn_deer.png",
+      "rawSha256": "957e9725033cdab174f4784b656256bc0c7f44551d97ee419fe7dd895ffac85c",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        362,
+        49,
+        1368,
+        1533
+      ],
+      "foregroundFraction": 0.1221,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/spiralhorn_deer.json",
+      "revision": "initial-project-design-redraw"
+    },
+    {
+      "slug": "tiger",
+      "name": "老虎",
+      "id": "Enemy.Ch3.Tiger",
+      "chapter": 3,
+      "tier": "boss",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png",
+      "identitySourceSha256": "46047902823c5a57529a525d4c7f9d6dc10dab6c7cfb58fb38f3ddfb698f635f",
+      "facing": "right",
+      "view": "three-quarter",
+      "file": "monsters/tiger.png",
+      "sha256": "4f0a2f125242a07b9fba9e31696dd53b0be15b8db9593598092489f6f6ba55db",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/tiger.png",
+      "rawSha256": "7abeaec420754844bf0b157cbffdddee12252935df30502c4e0f5a6e002e0cf6",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        90,
+        174,
+        1541,
+        1425
+      ],
+      "foregroundFraction": 0.4065,
+      "background": "warm-ivory-review",
+      "userApproved": false,
+      "imported": false,
+      "prompt": "prompts/tiger.json",
+      "revision": "initial-project-design-redraw"
+    }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "entries": [
+    {
+      "key": "Tree.Title",
+      "zh-Hans": "任务树",
+      "en": "Quest tree"
+    },
+    {
+      "key": "Tree.Close",
+      "zh-Hans": "关闭任务树",
+      "en": "Close quest tree"
+    },
+    {
+      "key": "Tree.Empty",
+      "zh-Hans": "当前没有可展开的主线。",
+      "en": "No story path is available to expand."
+    },
+    {
+      "key": "Tree.Browse",
+      "zh-Hans": "向右浏览 · 点选节点",
+      "en": "Browse right · Select a node"
+    },
+    {
+      "key": "State.Available",
+      "zh-Hans": "可进行",
+      "en": "Available"
+    },
+    {
+      "key": "State.Active",
+      "zh-Hans": "进行中",
+      "en": "In progress"
+    },
+    {
+      "key": "State.Completed",
+      "zh-Hans": "待领奖",
+      "en": "Reward pending"
+    },
+    {
+      "key": "State.Rewarded",
+      "zh-Hans": "已领奖",
+      "en": "Reward claimed"
+    },
+    {
+      "key": "State.Locked",
+      "zh-Hans": "未开放",
+      "en": "Unavailable"
+    },
+    {
+      "key": "Start",
+      "zh-Hans": "开始任务",
+      "en": "Start quest"
+    },
+    {
+      "key": "Resume",
+      "zh-Hans": "继续任务",
+      "en": "Continue quest"
+    },
+    {
+      "key": "ContinueMain",
+      "zh-Hans": "继续主线",
+      "en": "Continue story"
+    },
+    {
+      "key": "Return",
+      "zh-Hans": "返回流程树",
+      "en": "Back to quest tree"
+    },
+    {
+      "key": "Replay",
+      "zh-Hans": "回看对白",
+      "en": "Review dialogue"
+    },
+    {
+      "key": "Claim",
+      "zh-Hans": "领取奖励",
+      "en": "Claim reward"
+    },
+    {
+      "key": "AnyPrerequisite",
+      "zh-Hans": "任选：",
+      "en": "Choose any: "
+    },
+    {
+      "key": "Prerequisite",
+      "zh-Hans": "先完成：",
+      "en": "Complete first: "
+    },
+    {
+      "key": "Departure",
+      "zh-Hans": "启程",
+      "en": "Set Out"
+    },
+    {
+      "key": "Fight",
+      "zh-Hans": "迎战",
+      "en": "Fight"
+    },
+    {
+      "key": "Fight.Prompt",
+      "zh-Hans": "眼前的阻拦还未解决，准备迎战。",
+      "en": "The path is still blocked. Prepare to fight."
+    },
+    {
+      "key": "Dialogue.Continue",
+      "zh-Hans": "点击 / 空格继续  ▶",
+      "en": "Click / Space to continue ▶"
+    },
+    {
+      "key": "Dialogue.Pause",
+      "zh-Hans": "暂歇对话",
+      "en": "Pause dialogue"
+    },
+    {
+      "key": "Dialogue.Hint",
+      "zh-Hans": "提示",
+      "en": "Hint"
+    },
+    {
+      "key": "Error.Unfinished",
+      "zh-Hans": "任务目标尚未完成。",
+      "en": "The quest objective is not complete yet."
+    },
+    {
+      "key": "Error.Formation",
+      "zh-Hans": "任务行程的战斗配置不匹配。",
+      "en": "This journey's battle setup does not match the quest."
+    },
+    {
+      "key": "Error.Save",
+      "zh-Hans": "任务进度未能保存，请稍后重试。报酬仍可领取。",
+      "en": "Quest progress could not be saved. Please retry later. Your reward remains available."
+    },
+    {
+      "key": "Error.SettleFirst",
+      "zh-Hans": "先处理眼前的战斗与结算，再动身。",
+      "en": "Finish the current battle and its rewards before setting off."
+    },
+    {
+      "key": "Error.FightFirst",
+      "zh-Hans": "先处理眼前的战斗，再继续这段任务。",
+      "en": "Finish the current battle before continuing this quest."
+    },
+    {
+      "key": "Error.ChapterLocked",
+      "zh-Hans": "先完成上一章主线，并开放这一章对应的游历关卡。",
+      "en": "Complete the previous main story and unlock this chapter's corresponding map first."
+    },
+    {
+      "key": "Error.DialogueFirst",
+      "zh-Hans": "先把眼前的话说完，再接这段主线。",
+      "en": "Finish the current conversation before starting this story."
+    },
+    {
+      "key": "Error.TutorialFirst",
+      "zh-Hans": "先结束当前演武教学，再继续主线。",
+      "en": "Finish the current combat tutorial before continuing the main story."
+    },
+    {
+      "key": "Error.BattleFirst",
+      "zh-Hans": "先结束眼前的战斗，再继续交流。",
+      "en": "Finish the battle before continuing the conversation."
+    },
+    {
+      "key": "Error.RouteContinuation",
+      "zh-Hans": "剧情已得到答案，但路线尚未接续，请重试。",
+      "en": "The story answer is complete, but the route has not resumed. Please retry."
+    },
+    {
+      "key": "Error.StageLocked",
+      "zh-Hans": "对应游历关卡还没有开放。",
+      "en": "The corresponding map is not unlocked yet."
+    },
+    {
+      "key": "Error.CreateJourney",
+      "zh-Hans": "当前无法建立任务行程。",
+      "en": "This quest journey cannot be started right now."
+    },
+    {
+      "key": "Error.NoRoute",
+      "zh-Hans": "当前没有可以接续这段任务的历练路线。",
+      "en": "There is no active route that can continue this quest."
+    },
+    {
+      "key": "Error.NoDialogue",
+      "zh-Hans": "当前没有可以推进的对白。",
+      "en": "There is no dialogue to advance right now."
+    },
+    {
+      "key": "Error.ReturnFirst",
+      "zh-Hans": "当前游历尚未结束，回到桌面后再开启这段行程。",
+      "en": "Your current journey is still active. Return to the workbench before starting this one."
+    },
+    {
+      "key": "Error.MissingGate",
+      "zh-Hans": "当前路线没有可放置剧情的必经层。",
+      "en": "This route has no mandatory stop for the story event."
+    },
+    {
+      "key": "Error.CurrentChoices",
+      "zh-Hans": "请从当前列出的线索判断中选择。",
+      "en": "Choose from the clues currently listed."
+    },
+    {
+      "key": "Error.ReachableGate",
+      "zh-Hans": "请沿当前可走的路线进入剧情问号。",
+      "en": "Follow a reachable route to the story question mark."
+    },
+    {
+      "key": "Error.AlreadyWon",
+      "zh-Hans": "这一战已经得胜，先把余下的话说完。",
+      "en": "This battle is already won. Finish the remaining conversation first."
+    },
+    {
+      "key": "Error.RewardUnavailable",
+      "zh-Hans": "这份报酬尚未可领，或已经领过。",
+      "en": "This reward is not ready, or has already been claimed."
+    },
+    {
+      "key": "Error.GateHandled",
+      "zh-Hans": "这处剧情任务已经处理，或尚未接取。",
+      "en": "This story task is already handled, or has not been accepted yet."
+    },
+    {
+      "key": "Error.RouteBypass",
+      "zh-Hans": "这条路线存在绕过剧情层的连线，任务尚未开始。",
+      "en": "This route bypasses the required story stop. The quest has not started."
+    },
+    {
+      "key": "Error.WrongMap",
+      "zh-Hans": "这段任务与当前关卡不对应。",
+      "en": "This quest does not belong to the current map."
+    },
+    {
+      "key": "Error.NodeLocked",
+      "zh-Hans": "这段任务尚未开放，请先完成前面的线索。",
+      "en": "This quest is locked. Complete the earlier clues first."
+    },
+    {
+      "key": "Error.NotActive",
+      "zh-Hans": "这段任务没有处于进行状态。",
+      "en": "This quest is not active."
+    },
+    {
+      "key": "Error.ObjectiveIncomplete",
+      "zh-Hans": "这段任务的目标还没有完成。",
+      "en": "This quest's objective has not been completed yet."
+    },
+    {
+      "key": "Error.EncounterNotReady",
+      "zh-Hans": "遭遇尚未准备好，请重试。",
+      "en": "The encounter is not ready. Please retry."
+    },
+    {
+      "key": "Reward.Confirmed",
+      "zh-Hans": "金币已入袋。这回不是画饼。",
+      "en": "Gold in the bag. An actual reward, not a promise of lunch."
+    },
+    {
+      "key": "Error.WalletFull",
+      "zh-Hans": "钱袋暂时装不下这份报酬，请稍后再领。",
+      "en": "Your purse cannot hold this reward right now. Claim it later."
+    },
+    {
+      "key": "Error.SaveReason",
+      "zh-Hans": "任务进度暂未保存：{0}",
+      "en": "Quest progress was not saved: {0}",
+      "nativePattern": "任务进度暂未保存：%s"
+    },
+    {
+      "key": "Route.Title",
+      "zh-Hans": "任务{0}-{1} · {2}",
+      "en": "Quest {0}-{1} · {2}",
+      "nativePattern": "任务%d-%d · %s"
+    }
+  ]
+}

@@ -1,0 +1,562 @@
+{
+  "characters": 13,
+  "monsters": 21,
+  "singleImages": 34,
+  "previewSheets": 8,
+  "allPngsByteIdenticalToLatestMasters": true,
+  "sourceDirectories": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910"
+  ],
+  "zipIntegrity": "passed",
+  "fullZip": "D:\\UE5 demo\\GameXXK\\SourceArt\\ReviewPackages\\20260910_新版角色与怪物\\GameXXK_新版角色与怪物_34张分享图包_20260910.zip",
+  "fullBytes": 70209444,
+  "quickZip": "D:\\UE5 demo\\GameXXK\\SourceArt\\ReviewPackages\\20260910_新版角色与怪物\\GameXXK_角色怪物_快速预览_20260910.zip",
+  "quickBytes": 4385904,
+  "records": [
+    {
+      "number": 1,
+      "name": "主角",
+      "slug": "hero",
+      "id": "Character.Hero",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/01_主角.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hero.png"
+    },
+    {
+      "number": 2,
+      "name": "刀客",
+      "slug": "blade",
+      "id": "Role.Blade",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/02_刀客.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "24636046aca1ec415c590c08767e48ce4150870d282525ff5d3ea391f8c6a0b3",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\blade.png"
+    },
+    {
+      "number": 3,
+      "name": "守卫",
+      "slug": "guard",
+      "id": "Role.Guard",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/03_守卫.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "c2e3bb3055dcfc60048d6e0354aa01471cea3b7c80f218ec782e4d7774cb3f35",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\guard.png"
+    },
+    {
+      "number": 4,
+      "name": "药师",
+      "slug": "healer",
+      "id": "Role.Healer",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/04_药师.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "f6c8615628300bfd9b747dce46e14b8f3f4def10c43e3f1da959773bc7a19290",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\healer.png"
+    },
+    {
+      "number": 5,
+      "name": "弓手",
+      "slug": "hunter",
+      "id": "Role.Hunter",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/05_弓手.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hunter.png"
+    },
+    {
+      "number": 6,
+      "name": "法师",
+      "slug": "sorcerer",
+      "id": "Role.Sorcerer",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/06_法师.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "90d20cae2a90e4d7ef63974374b3e338954be714de62b57c78e173eb5ad5205f",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\sorcerer.png"
+    },
+    {
+      "number": 7,
+      "name": "阵师",
+      "slug": "formation_master",
+      "id": "Role.FormationMaster",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/07_阵师.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "e1965aef1b937eea625041acc15d756291222ae623415f881bc6a29308a19df1",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\formation_master.png"
+    },
+    {
+      "number": 8,
+      "name": "土司首领",
+      "slug": "tusi_chief",
+      "id": "Npc.TusiChief",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/08_土司首领.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "819c6c8f0ff3d4569f54b7f7b94e4dc8d2744e37bc36151fbe0b96377cbfd254",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\tusi_chief.png"
+    },
+    {
+      "number": 9,
+      "name": "宋金宝",
+      "slug": "song_jin_bao",
+      "id": "Npc.SongJinBao",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/09_宋金宝.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "4fe98186ae96a86b55d6958ff75d27704e88294e025b19b06898bf2acc696a33",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\song_jin_bao.png"
+    },
+    {
+      "number": 10,
+      "name": "幽白",
+      "slug": "you_bai",
+      "id": "Npc.YueBai",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/10_幽白.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\you_bai.png"
+    },
+    {
+      "number": 11,
+      "name": "周光祖",
+      "slug": "zhou_guang_zu",
+      "id": "Npc.ZhouGuangZu",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/11_周光祖.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "5da5d0e57778e2e0334d8d60f7319bbd63ef1a3c34507c33eb43b212c3b416fe",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\zhou_guang_zu.png"
+    },
+    {
+      "number": 12,
+      "name": "金贵",
+      "slug": "jin_gui",
+      "id": "Npc.JinGui",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/12_金贵.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "4d36ce4b5bc55b537e96540b815ee8821529975880c2cfd60252482006e5913d",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\jin_gui.png"
+    },
+    {
+      "number": 13,
+      "name": "琼幺儿",
+      "slug": "qiong_yao_er",
+      "id": "Npc.QiongMeiEr",
+      "category": "角色",
+      "chapter": "",
+      "tierLabel": "",
+      "file": "01_角色单图/13_琼幺儿.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "eaf6c941596454523134fbaef79840fe349c0d745686ff127a9ed8511e8bdce4",
+      "source": "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\qiong_yao_er.png"
+    },
+    {
+      "number": 1,
+      "name": "公鸡",
+      "slug": "rooster",
+      "id": "Enemy.Ch1.Rooster",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第1章/01_公鸡_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "61e42e21d710cdcb59304acd6842569ea34b4e73106cda2ac6bab76a3c87fa02",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\rooster.png"
+    },
+    {
+      "number": 2,
+      "name": "山羊",
+      "slug": "goat",
+      "id": "Enemy.Ch1.Goat",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第1章/02_山羊_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "2214a66077e80eae50d0d2eed2fcf0cc16153d3bceeb6594c62d0b617db6554a",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\goat.png"
+    },
+    {
+      "number": 3,
+      "name": "黄鼬",
+      "slug": "weasel",
+      "id": "Enemy.Ch1.Weasel",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第1章/03_黄鼬_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "acc70344e89ebf07871c272a257f731cad3b00f599f7aadd310fa32aa1c889f2",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\weasel.png"
+    },
+    {
+      "number": 4,
+      "name": "狸猫",
+      "slug": "civet",
+      "id": "Enemy.Ch1.Civet",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第1章/04_狸猫_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "229ea2f93ef54386e26ab150921309bedfa76d3820f1414975168aee3d75dfb5",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\civet.png"
+    },
+    {
+      "number": 5,
+      "name": "铁羽斗鸡",
+      "slug": "ironfeather",
+      "id": "Enemy.Ch1.IronfeatherRooster",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第1章/05_铁羽斗鸡_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "57dd82cfc463bc83511e8191d80007cb5d7bb49c46c36bb7a1a5521e7916f610",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\ironfeather.png"
+    },
+    {
+      "number": 6,
+      "name": "青角羊王",
+      "slug": "bluehorn",
+      "id": "Enemy.Ch1.BluehornGoatKing",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第1章/06_青角羊王_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "6fcc27e22336cb81d931d91c74274f98d6c5a6fdcb6e8dd56c6909e0ec1fffed",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\bluehorn.png"
+    },
+    {
+      "number": 7,
+      "name": "金钱鼠",
+      "slug": "moneyrat",
+      "id": "Enemy.Ch1.MoneyRat",
+      "category": "怪物",
+      "chapter": 1,
+      "tierLabel": "首领",
+      "file": "02_怪物单图/第1章/07_金钱鼠_首领.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "eae09733017b1fc9e9c1039ddf3875b5472e76bdf8518747f9847a763349ae4c",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\moneyrat.png"
+    },
+    {
+      "number": 8,
+      "name": "灰狼",
+      "slug": "graywolf",
+      "id": "Enemy.Ch2.GrayWolf",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第2章/08_灰狼_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "aa565b3163d281a487cdee8ffe4dcb570cb1ce8b2f7abf705f6191d4df7a1168",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\graywolf.png"
+    },
+    {
+      "number": 9,
+      "name": "野猪",
+      "slug": "boar",
+      "id": "Enemy.Ch2.Boar",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第2章/09_野猪_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "9f64420fb19e178f17735a5acab5d294f4d6a34133b39a1312b3a27958479cac",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\boar.png"
+    },
+    {
+      "number": 10,
+      "name": "猕猴",
+      "slug": "macaque",
+      "id": "Enemy.Ch2.Macaque",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第2章/10_猕猴_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "7477a951e0bb9ba3a2ae87b7e07b8db160b38a294c17879cca59bee9d0af2b3c",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\macaque.png"
+    },
+    {
+      "number": 11,
+      "name": "豪猪",
+      "slug": "porcupine",
+      "id": "Enemy.Ch2.Porcupine",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第2章/11_豪猪_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "44cd6d88105359ed12c1c081c8b0b96b8f38f23121419a38c53520820012058f",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\porcupine.png"
+    },
+    {
+      "number": 12,
+      "name": "苍鬃狼王",
+      "slug": "graymane",
+      "id": "Enemy.Ch2.GraymaneWolfKing",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第2章/12_苍鬃狼王_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "2240f1171fc0f80d2347d79bfc79d5a9a2d984f94c5a7284cf562f0f8c07c242",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\graymane.png"
+    },
+    {
+      "number": 13,
+      "name": "赤獠猪王",
+      "slug": "redtusk",
+      "id": "Enemy.Ch2.RedtuskBoarKing",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第2章/13_赤獠猪王_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "bbb3d371ebd802405308705e413161f01d68cb87f3a8cbeca6eb67fc4459d76e",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\redtusk.png"
+    },
+    {
+      "number": 14,
+      "name": "黑熊",
+      "slug": "blackbear",
+      "id": "Enemy.Ch2.BlackBear",
+      "category": "怪物",
+      "chapter": 2,
+      "tierLabel": "首领",
+      "file": "02_怪物单图/第2章/14_黑熊_首领.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "042cd9151d63335866307c7aeee46f082ea1b9c64e10849e1e7cf4994c4ff370",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\blackbear.png"
+    },
+    {
+      "number": 15,
+      "name": "毒蛇",
+      "slug": "snake",
+      "id": "Enemy.Ch3.VenomSnake",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第3章/15_毒蛇_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "50185f91c5c939586aaaac5ea6287b7d341ee49394b278c20a91fddac6c48f97",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\snake.png"
+    },
+    {
+      "number": 16,
+      "name": "山猫",
+      "slug": "wildcat",
+      "id": "Enemy.Ch3.Wildcat",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第3章/16_山猫_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "b7f30dd0780a89d151acf6e9740a895011f29f0538505195bd7b9ccf6040aeb3",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\wildcat.png"
+    },
+    {
+      "number": 17,
+      "name": "秃鹫",
+      "slug": "vulture",
+      "id": "Enemy.Ch3.Vulture",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第3章/17_秃鹫_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "f6f99741c5f59537c5ac09fe284dbd4234b099bbfa0d96076d3191c19572c5fd",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\vulture.png"
+    },
+    {
+      "number": 18,
+      "name": "巨蟾",
+      "slug": "toad",
+      "id": "Enemy.Ch3.GiantToad",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "普通",
+      "file": "02_怪物单图/第3章/18_巨蟾_普通.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "c5a4467dc290093798eead5449fe7dd8857b64e425594d9fce2d0bdbb08b78d6",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\toad.png"
+    },
+    {
+      "number": 19,
+      "name": "白猿",
+      "slug": "whiteape",
+      "id": "Enemy.Ch3.WhiteApe",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第3章/19_白猿_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "a52fe6bf215930f6ad45a4141af0284ebe6e1cdeedd935823771415ea8cff670",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\whiteape.png"
+    },
+    {
+      "number": 20,
+      "name": "盘角鹿",
+      "slug": "spiralhorn_deer",
+      "id": "Enemy.Ch3.SpiralHornDeer",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "精英",
+      "file": "02_怪物单图/第3章/20_盘角鹿_精英.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "1b008ac2b3bfeda094db9e73f9c34c98ac8132f31355ac6935be5c9327f456aa",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\spiralhorn_deer.png"
+    },
+    {
+      "number": 21,
+      "name": "老虎",
+      "slug": "tiger",
+      "id": "Enemy.Ch3.Tiger",
+      "category": "怪物",
+      "chapter": 3,
+      "tierLabel": "首领",
+      "file": "02_怪物单图/第3章/21_老虎_首领.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "4f0a2f125242a07b9fba9e31696dd53b0be15b8db9593598092489f6f6ba55db",
+      "source": "SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\tiger.png"
+    }
+  ]
+}

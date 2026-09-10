@@ -62,7 +62,8 @@ namespace
 	{
 		static const TArray<FName> Ids = MakeIdList({
 			TEXT("Relic.BambooTally"), TEXT("Relic.CraneFeather"), TEXT("Relic.ChessStone"),
-			TEXT("Relic.DrumCharm"), TEXT("Relic.OldMap")
+			TEXT("Relic.DrumCharm"), TEXT("Relic.OldMap"),
+			TEXT("Relic.BloodMoonBlade"), TEXT("Relic.PhoenixCauldron"), TEXT("Relic.StarAbacus"), TEXT("Relic.DragonCarapace"), TEXT("Relic.ThunderSeal")
 		});
 		return Ids;
 	}
@@ -72,7 +73,9 @@ namespace
 		static const TArray<FName> Ids = MakeIdList({
 			TEXT("Relic.TigerSeal"), TEXT("Relic.InkTalisman"), TEXT("Relic.CloudMirror"), TEXT("Relic.StoneBead"),
 			TEXT("Relic.IronKnot"), TEXT("Relic.Compass"), TEXT("Relic.RedCord"), TEXT("Relic.BronzeNeedle"),
-			TEXT("Relic.LotusSeed"), TEXT("Relic.SwordGuard")
+			TEXT("Relic.LotusSeed"), TEXT("Relic.SwordGuard"),
+			TEXT("Relic.BloodInkSeal"), TEXT("Relic.StormChime"), TEXT("Relic.FlameCenser"), TEXT("Relic.HunterQuiver"), TEXT("Relic.MoonDewVial"),
+			TEXT("Relic.WarBanner"), TEXT("Relic.AmberPestle"), TEXT("Relic.TwinJade"), TEXT("Relic.SilkFan"), TEXT("Relic.ObsidianScale")
 		});
 		return Ids;
 	}
@@ -446,12 +449,12 @@ bool FGameXXKCardQualityRules::ValidateRelicCatalog(
 	return ValidateCatalog(
 		TEXT("Relic"),
 		Definitions,
-		31,
+		46,
 		16,
 		GetRareRelicIds(),
-		10,
+		20,
 		GetEpicRelicIds(),
-		5,
+		10,
 		[](const FName Id) { return FGameXXKCardQualityRules::GetRelicBaseQuality(Id); },
 		OutError);
 }

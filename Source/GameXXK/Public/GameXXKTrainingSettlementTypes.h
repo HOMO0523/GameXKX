@@ -47,6 +47,9 @@ struct GAMEXXK_API FGameXXKTrainingSettlementReceipt
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 Experience = 0;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 NormalChestCount = 0;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 AdvancedChestCount = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 HuntChestCount = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) FName GrantedHuntOrderId = NAME_None;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) bool bHuntOrderPendingDelivery = false;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) int32 ChestItemLevel = 0;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) FName GrantedEquipmentInstanceId = NAME_None;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame) bool bFirstClear = false;

@@ -90,4 +90,5 @@ private:
 	bool bOwnerExpandedState = false;
 	bool bExpandedOverrideForTest = false;
 	bool bUseExpandedOverrideForTest = false;
+	uint64 PresentedLanguageRevision=MAX_uint64;
 };

@@ -1,0 +1,62 @@
+{
+  "count": 3,
+  "tool": "built-in image_gen",
+  "basis": "project original designs + current gem icon rendering style",
+  "phase": "discussion-awaiting-user",
+  "records": [
+    {
+      "slug": "hero",
+      "file": "characters/hero.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "originalDesign": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+      "originalDesignSha256": "39fe355f4e42b63d2fb3329a3d4f3b404dfd00be222957230a90df7b75f6270d",
+      "raw": "raw/hero.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "hunter",
+      "file": "characters/hunter.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "originalDesign": "SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png",
+      "originalDesignSha256": "faf669d99e53f17f6fb38ee3e7f76fae8c1c3aadd35791d9dd1364a2fe749131",
+      "raw": "raw/hunter.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "you_bai",
+      "file": "characters/you_bai.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "originalDesign": "SourceAssets/AnimationProduction/safe_frame_1600/characters/09_yue_bai.png",
+      "originalDesignSha256": "4977909d69c2542bd6c536650a56854b1d7a21883f16b909fec9f8b6b67c10c0",
+      "raw": "raw/you_bai.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "userApproved": false,
+      "imported": false
+    }
+  ]
+}

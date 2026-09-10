@@ -1,0 +1,8 @@
+{
+  "prompt": "Use case: precise-object-edit. 只对这张独立国风纯战斗背景做空气透视与明度调整。用户最新澄清：前景明度不变，远景山体、背景松树、竹子等要变亮一点，不是变暗。请保留战斗地面的暖浅米黄色及左右下角近处石草的原明度与色彩，尽量逐处保持，不改变地面材质与细节密度。将上半部远山、远处植被、背景松冠、竹竿竹叶整体提亮约10%-15%，远景深墨描边减淡为浅灰青，适当降低饱和度和内部对比，用偏浅的青绿、灰蓝和薄雾营造后退感。越远的山越浅，远山与中坡之间的空隙更通透，留下空间层次；不是给全图盖白雾，也不能把前景洗白。左上背景竹子和右上背景松树同样提亮柔化一些，避免黑轮廓抢战斗角色。现有两组三角圆钝山形、卷云雾带、宽阔中央空地、中等手绘岩层、少量边缘石草和松竹构图保持不变。不增加细碎内容、不减少成纯几何矢量；维持宝石icon同系列的清楚大块面与少量宽笔刷。仅调整远景的亮度、色彩对比与雾气分层。严格纯场景，不含人物、动物、怪物、卡牌、UI、文字、数字、按钮或标签。完整横向16:9。",
+  "references": [
+    "SourceArt/Characters/gemstyle-discussion-20260910/revisions/background-pure-v2.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-2134008f-ea75-4b80-970a-678d5145d360.png",
+  "revision": "user correction: foreground unchanged, brighter distant mountains and background pine/bamboo"
+}

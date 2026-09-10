@@ -1794,6 +1794,9 @@ struct GAMEXXK_API FGameXXKCardDamageResult
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MarkStacksBeforeHit = 0;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 BleedStacksBeforeHit = 0;
+
 	/** Fixed additive Mark percentage applied to this hit, or zero. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	int32 MarkDamageBonusPercent = 0;
@@ -2451,6 +2454,10 @@ struct GAMEXXK_API FGameXXKCardBattleRuntime
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 EnemyDifficultyDamagePercent = 100;
 
+	/** New Training encounters carry difficulty in HP/Attack/Defense, with no second damage multiplier. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bEnemyAttributesIncludeDifficulty = false;
+
 	/** Explicit value/status/deck difficulty; must agree with EnemyDifficultyDamagePercent. */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	EGameXXKEnemyDifficulty EnemyDifficulty = EGameXXKEnemyDifficulty::Normal;
@@ -2745,6 +2752,13 @@ struct GAMEXXK_API FGameXXKCardPlayResult
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName CardInstanceId = NAME_None;
+
+	/** Cost actually paid by the active card, before its own restore effects. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 ActiveManaSpent = 0;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bActiveSpentLastMana = false;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FName CardId = NAME_None;

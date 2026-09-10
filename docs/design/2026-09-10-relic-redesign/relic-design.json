@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "design-in-progress",
+  "status": "runtime-integrated-basic-regression-passed-pending-gameplay-balance",
   "counts": {
     "preservedCommonAndSpecial": 16,
     "rare": 20,
@@ -33,7 +33,7 @@
       "secondary": 4,
       "synergy": "Momentum / Charge / first-turn attack",
       "art": "weathered bronze crouching tiger military seal with a vermilion silk cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.InkTalisman",
@@ -53,7 +53,7 @@
       "secondary": 0,
       "synergy": "Poison / Toxic Explosion",
       "art": "ivory talisman paper with a bold abstract black ink ward and a small jade bead",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.CloudMirror",
@@ -73,7 +73,7 @@
       "secondary": 3,
       "synergy": "Armor / Guardian / Frost",
       "art": "round aged bronze hand mirror with a milky jade face and carved cloud rim",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.StoneBead",
@@ -93,7 +93,7 @@
       "secondary": 0,
       "synergy": "Defense / Block / Ice Burst",
       "art": "loop of six irregular dark stone prayer beads and one ochre mountain bead",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.IronKnot",
@@ -113,7 +113,7 @@
       "secondary": 3,
       "synergy": "Armor / Block / Counter",
       "art": "two dark forged iron rings interlocked into an angular knot with restrained silver highlights",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.Compass",
@@ -133,7 +133,7 @@
       "secondary": 1,
       "synergy": "Formation / terrain / spell sequencing",
       "art": "jade green compass plate holding an old brass spoon with a single vermilion pointer",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.RedCord",
@@ -153,7 +153,7 @@
       "secondary": 3,
       "synergy": "Healing / Armor / life recovery",
       "art": "strong red silk double knot binding two pale jade beads",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.BronzeNeedle",
@@ -173,7 +173,7 @@
       "secondary": 3,
       "synergy": "Medicine / healing / Medicine to Momentum",
       "art": "long antiqued bronze acupuncture needle with a curled jade handle and ochre cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.LotusSeed",
@@ -193,7 +193,7 @@
       "secondary": 3,
       "synergy": "Cross-character card chains / energy",
       "art": "opened dark lotus pod cradling a single pale luminous jade seed",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.SwordGuard",
@@ -213,7 +213,7 @@
       "secondary": 50,
       "synergy": "Opener / Charge / defensive setup",
       "art": "aged iron sword guard with a broad crescent silhouette and red tassel",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.BloodInkSeal",
@@ -233,7 +233,7 @@
       "secondary": 3,
       "synergy": "Bleed / multi-hit / Blade",
       "art": "square cinnabar seal stone chipped at one corner with dark red ink pooled in its carving",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.StormChime",
@@ -253,7 +253,7 @@
       "secondary": 2,
       "synergy": "Mark / lightning / Heavy Shot",
       "art": "small bronze bell with a jagged thunder-shaped clapper and dark indigo cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.FlameCenser",
@@ -273,7 +273,7 @@
       "secondary": 3,
       "synergy": "Burn / Toxic Explosion / multi-card",
       "art": "round blackened bronze censer with three broad ember-orange slits and one restrained smoke curl",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.HunterQuiver",
@@ -293,7 +293,7 @@
       "secondary": 3,
       "synergy": "Party rotation / Heavy Shot",
       "art": "compact worn brown leather quiver holding three broad white-feather arrows and a jade clasp",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.MoonDewVial",
@@ -313,7 +313,7 @@
       "secondary": 50,
       "synergy": "Low-health healing / Healer / defensive teams",
       "art": "small moon-white ceramic bottle holding blue-green dew with a deep navy stopper",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.WarBanner",
@@ -333,7 +333,7 @@
       "secondary": 3,
       "synergy": "Mark / offensive card loop",
       "art": "small triangular vermilion battle pennant on a short dark bamboo shaft with torn ink-edged cloth",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.AmberPestle",
@@ -353,7 +353,7 @@
       "secondary": 2,
       "synergy": "Toxic Explosion / DOT / card access",
       "art": "honey amber pestle resting diagonally in a shallow dark green stone mortar",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.TwinJade",
@@ -373,7 +373,7 @@
       "secondary": 1,
       "synergy": "Heavy Shot / resource timing",
       "art": "two interlocking pale jade fish pendants tied with a muted olive cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.SilkFan",
@@ -393,7 +393,7 @@
       "secondary": 1,
       "synergy": "Opener / party rotation / spell access",
       "art": "half-open ivory silk folding fan with bold black wind strokes and an aged bamboo handle",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.ObsidianScale",
@@ -413,7 +413,7 @@
       "secondary": 1,
       "synergy": "Reactive defense / low-health recovery",
       "art": "one broad black dragon scale with angular brushed highlights and a tiny jade edge",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.BambooTally",
@@ -433,7 +433,7 @@
       "secondary": 2,
       "synergy": "Three-card chain / cross-class engine",
       "art": "carved golden bamboo command tally split into two fitted halves with vermilion silk bindings",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.CraneFeather",
@@ -453,7 +453,7 @@
       "secondary": 4,
       "synergy": "Full party rotation / spell sequences",
       "art": "single elegant white crane plume with a dark ink tip bound to a small polished gold ring",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.ChessStone",
@@ -473,7 +473,7 @@
       "secondary": 5,
       "synergy": "Three-person chain / Block / Guardian",
       "art": "large glossy black go stone on a broken corner of a jade chessboard with one red cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.DrumCharm",
@@ -493,7 +493,7 @@
       "secondary": 5,
       "synergy": "Card-chain payoff / multi-character / draw",
       "art": "small imposing vermilion war drum with aged gold studs and a dark braided hanging cord",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.OldMap",
@@ -513,7 +513,7 @@
       "secondary": 100,
       "synergy": "Terrain / Formation / Armor / party pacing",
       "art": "unfurled weathered map scroll with a bold ink mountain silhouette, jade rollers and a single vermilion route trace",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.BloodMoonBlade",
@@ -533,7 +533,7 @@
       "secondary": 1,
       "synergy": "Blade / Burn / DOT detonation",
       "art": "curved broken sword tip in dark iron with a blood-red crescent inlay and weathered gold collar",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.PhoenixCauldron",
@@ -553,7 +553,7 @@
       "secondary": 6,
       "synergy": "Effective healing / Medicine / sustain",
       "art": "small archaic jade-green bronze medicine cauldron with phoenix-wing handles and warm coral ember glow",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.StarAbacus",
@@ -573,7 +573,7 @@
       "secondary": 1,
       "synergy": "Inner Power timing / expensive spells / card access",
       "art": "compact dark rosewood abacus with alternating deep indigo and pale gold stone beads and a small star charm",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.DragonCarapace",
@@ -593,7 +593,7 @@
       "secondary": 1,
       "synergy": "Defense scaling / Counter / Block / armor conversion",
       "art": "broad jade dragon-carapace amulet with dark ink cracks and restrained antique gold raised ridges",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     },
     {
       "id": "Relic.ThunderSeal",
@@ -613,7 +613,7 @@
       "secondary": 3,
       "synergy": "Mark / lightning / sequential attacks",
       "art": "antique gold and indigo thunder seal with a bold forked lightning inlay and one curled vermilion tassel",
-      "status": "draft-pending-runtime-tests"
+      "status": "runtime-integrated-trigger-regression-passed-real-combo-balance-pending"
     }
   ]
 }

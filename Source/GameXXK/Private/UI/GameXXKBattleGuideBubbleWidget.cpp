@@ -7,16 +7,14 @@
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
-#include "Engine/Texture2D.h"
+#include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKLocalization.h"
 
 namespace GameXXKBattleGuideBubblePrivate
 {
 	const FVector2D BubbleSize(420.0f, 132.0f);
 	constexpr float SafeMargin = 16.0f;
 	constexpr float AnchorGap = 18.0f;
-	const FVector2D PaperSourceSize(100.0f, 101.0f);
-	const TCHAR* PaperTexturePath =
-		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
 
 	bool Fits(const FVector2D Position, const FVector2D HostSize)
 	{
@@ -75,7 +73,7 @@ void UGameXXKBattleGuideBubbleWidget::PresentBubble(
 	}
 	if (BodyText)
 	{
-		BodyText->SetText(Text);
+		BodyText->SetText(GameXXKLocalization::Localize(Text));
 	}
 	if (ContinueHintText)
 	{
@@ -147,7 +145,7 @@ bool UGameXXKBattleGuideBubbleWidget::IsContinueHintVisible() const
 
 FString UGameXXKBattleGuideBubbleWidget::GetPaperTexturePath() const
 {
-	return GameXXKBattleGuideBubblePrivate::PaperTexturePath;
+	return FString();
 }
 
 void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
@@ -165,15 +163,8 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 		UBorder::StaticClass(),
 		TEXT("BattleGuideBubblePaper"));
 	PaperFrame->SetPadding(FMargin(34.0f, 24.0f, 34.0f, 18.0f));
-	if (UTexture2D* PaperTexture = LoadObject<UTexture2D>(nullptr, PaperTexturePath))
-	{
-		FSlateBrush PaperBrush;
-		PaperBrush.SetResourceObject(PaperTexture);
-		PaperBrush.DrawAs = ESlateBrushDrawType::Box;
-		PaperBrush.Margin = FMargin(0.065f);
-		PaperBrush.ImageSize = PaperSourceSize;
-		PaperFrame->SetBrush(PaperBrush);
-	}
+	FSlateBrush NoBacking;NoBacking.DrawAs=ESlateBrushDrawType::NoDrawType;
+	PaperFrame->SetBrush(NoBacking);
 	PaperFrame->SetBrushColor(FLinearColor::White);
 	PaperFrame->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (UCanvasPanelSlot* CanvasSlot = RootCanvas->AddChildToCanvas(PaperFrame))
@@ -190,11 +181,8 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 		TEXT("BattleGuideBubbleText"));
 	BodyText->SetAutoWrapText(true);
 	BodyText->SetWrapTextAt(352.0f);
-	BodyText->SetColorAndOpacity(
-		FSlateColor(FLinearColor(0.13f, 0.085f, 0.04f, 1.0f)));
-	FSlateFontInfo BodyFont = BodyText->GetFont();
-	BodyFont.Size = 19;
-	BodyText->SetFont(BodyFont);
+	BodyText->SetColorAndOpacity(FLinearColor::White);
+	BodyText->SetFont(FGameXXKInRunUiStyle::Font(19,true));
 	if (UVerticalBoxSlot* BodySlot = Body->AddChildToVerticalBox(BodyText))
 	{
 		BodySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
@@ -202,13 +190,10 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 	ContinueHintText = WidgetTree->ConstructWidget<UTextBlock>(
 		UTextBlock::StaticClass(),
 		TEXT("BattleGuideBubbleContinueHint"));
-	ContinueHintText->SetText(FText::FromString(TEXT("空格继续")));
+	ContinueHintText->SetText(GameXXKLocalization::Source(TEXT("空格继续")));
 	ContinueHintText->SetJustification(ETextJustify::Right);
-	ContinueHintText->SetColorAndOpacity(
-		FSlateColor(FLinearColor(0.28f, 0.19f, 0.09f, 0.86f)));
-	FSlateFontInfo HintFont = ContinueHintText->GetFont();
-	HintFont.Size = 14;
-	ContinueHintText->SetFont(HintFont);
+	ContinueHintText->SetColorAndOpacity(FLinearColor(1,1,1,.8f));
+	ContinueHintText->SetFont(FGameXXKInRunUiStyle::Font(14,true));
 	if (UVerticalBoxSlot* HintSlot = Body->AddChildToVerticalBox(ContinueHintText))
 	{
 		HintSlot->SetHorizontalAlignment(HAlign_Fill);

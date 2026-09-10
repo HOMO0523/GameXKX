@@ -4,13 +4,21 @@
 #include "GameXXKToolCombineProbability.h"
 #include "GameXXKToolSelectionRules.h"
 #include "GameXXKTalentRules.h"
+#include "GameXXKTravelMoneyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Components/Image.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Engine/GameInstance.h"
+#include "GameXXKTrainingChestRules.h"
+#include "GameXXKEquipmentCatalog.h"
+#include "UI/GameXXKLocalization.h"
+#include "Misc/ScopeExit.h"
+#include "../UI/GameXXKChestReceipt.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 namespace ToolInteractionTest
@@ -442,4 +450,139 @@ bool FGameXXKToolsBestPartialFallbackTest::RunTest(const FString& Parameters)
     return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKToolSlotQualityContinuityTest,
+    "GameXXK.ToolsRedesign.EquipmentSlotQualityContinuity",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKToolSlotQualityContinuityTest::RunTest(const FString&)
+{
+    using namespace ToolInteractionTest;
+    auto* Subsystem=Start(*this);
+    const FName Rare=Equipment(*this,Subsystem->GetMutableRuntimeState(),EGameXXKEquipmentQuality::Rare);
+    const FName Treasure=Equipment(*this,Subsystem->GetMutableRuntimeState(),EGameXXKEquipmentQuality::Treasure);
+    auto* Widget=Open(*this,Subsystem,EGameXXKDesktopToolMode::Dismantle);
+    const auto Check=[&](int32 Index)
+    {
+        const FName Id=Widget->GetToolSlotItemIdForTest(Index);
+        const auto* Item=FGameXXKEquipmentRules::FindInstance(Subsystem->GetRuntimeState().EquipmentCollection,Id);
+        if(!Item)return;
+        for(const TCHAR* Layer:{TEXT("Surface"),TEXT("Frame")})
+        {
+            auto* Image=Cast<UImage>(Widget->WidgetTree->FindWidget(*FString::Printf(TEXT("ToolInputSlot_%dEquipment%s"),Index,Layer)));
+            if(!TestNotNull(TEXT("Tool equipment has the shared quality layers"),Image))return;
+            const auto* Material=Image?Cast<UMaterialInstanceDynamic>(Image->GetBrush().GetResourceObject()):nullptr;
+            if(!TestNotNull(TEXT("Quality layer has its material"),Material))return;
+            TestEqual(TEXT("Tool quality matches the actual equipment instance"),Material->GetName(),
+                FString::Printf(TEXT("EquipmentQuality%d%s"),static_cast<int32>(Item->Quality),Layer));
+            TestEqual(TEXT("Placed equipment visibly retains its quality"),Image->GetVisibility(),ESlateVisibility::HitTestInvisible);
+        }
+    };
+    for(const FName Id:{Rare,Treasure})
+    {
+        if(!Put(*this,Subsystem,Widget,Id,0))return false;
+        for(const auto Mode:{EGameXXKDesktopToolMode::Combine,EGameXXKDesktopToolMode::Enhance,
+            EGameXXKDesktopToolMode::Reforge,EGameXXKDesktopToolMode::Socket,EGameXXKDesktopToolMode::Dismantle})
+        {
+            TestTrue(TEXT("The mode can change with the same equipment"),Widget->SetToolModeForTest(Mode));
+            Widget->TickForTest(0);Check(0);
+        }
+        TestTrue(TEXT("Right-click returns the equipment reservation"),Widget->HandleActionRightClicked(300));
+        Widget->TickForTest(0);
+        TestTrue(TEXT("The cell becomes empty"),Widget->GetToolSlotItemIdForTest(0).IsNone());
+        TestNull(TEXT("An empty dismantle cell retains no quality content"),Button(Widget,TEXT("ToolInputSlot_0"))->GetContent());
+    }
+    Widget->HandleActionClicked(311);Widget->TickForTest(0);
+    TestTrue(TEXT("Auto-fill places equipment"),Widget->GetOccupiedToolSlotCountForTest()>0);
+    for(int32 Index=0;Index<9;++Index)Check(Index);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKChestMaterialsToToolsTest,
+    "GameXXK.ToolsRedesign.ChestMaterialsInStorage",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKChestMaterialsToToolsTest::RunTest(const FString&)
+{
+    using namespace ToolInteractionTest;
+    const FString Language=GameXXKLocalization::GetLanguage();ON_SCOPE_EXIT{GameXXKLocalization::SetLanguage(Language,false);};
+    for(const TCHAR* Culture:{TEXT("zh-Hans"),TEXT("en")})for(auto Tier:{EGameXXKTrainingRewardTier::NormalChest,EGameXXKTrainingRewardTier::AdvancedChest,EGameXXKTrainingRewardTier::HuntChest})for(bool Stone:{true,false})
+    {
+        GameXXKLocalization::SetLanguage(Culture,false);
+        auto* MVP=Start(*this);auto& State=MVP->GetMutableRuntimeState();
+        State.Training.ActiveTravelEncounterIndex=INDEX_NONE;
+        MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return true;}));
+        const FName EquipmentId=Equipment(*this,State,EGameXXKEquipmentQuality::Rare);
+        const FName Id=Stone?UGameXXKMVPRules::ItemEnhancementStone():UGameXXKMVPRules::ItemRefinementSand();
+        State.Inventory.Remove(Id);State.DesktopInventory.WarehouseItems.Add(Id,20);
+        State.Training.OwnedChestTokens.Reset();FString Error;
+        TestTrue(TEXT("stored material fixture normalizes"),FGameXXKDesktopInventoryRules::Normalize(State,&Error));
+        TestTrue(TEXT("test chest added"),FGameXXKTrainingRules::AppendChestToken(State.Training,Tier,TEXT("Training.Normal.1-1"),5,&Error));
+        const auto Base=State;int32 Found=0,DropQuantity=0;
+        for(int32 Seed=1;Seed<1024;++Seed)
+        {
+            auto Preview=Base;Preview.Training.ChallengeRewardSeed=Seed;FGameXXKTrainingChestOpenResult Loot;
+            if(FGameXXKTrainingChestRules::OpenOne(Preview,Tier,Loot)&&Loot.ItemDeltas.FindRef(Id)>0){Found=Seed;DropQuantity=Loot.ItemDeltas.FindRef(Id);break;}
+        }
+        if(!TestTrue(TEXT("both materials are reachable in every chest tier"),Found>0))continue;
+        State.Training.ChallengeRewardSeed=Found;FGameXXKTrainingChestOpenResult Loot;
+        const bool Opened=MVP->OpenOneTrainingChest(Tier,Loot);
+        if(!TestTrue(TEXT("real opening transaction commits: ")+MVP->GetLastSaveLoadError().ToString(),Opened))continue;
+        TestEqual(TEXT("drop keeps material in its existing warehouse stack"),State.DesktopInventory.WarehouseItems.FindRef(Id),20+DropQuantity);
+        TestEqual(TEXT("no false second backpack stack"),State.Inventory.FindRef(Id),0);
+        const FString Receipt=GameXXKChestReceipt::Build(State,Loot).ToString();
+        TestTrue(TEXT("receipt identifies the real destination"),Receipt.Contains(GameXXKLocalization::IsEnglish()?TEXT("in Storage"):TEXT("已入仓库")));
+        TestTrue(TEXT("receipt shows the actual dropped quantity"),Receipt.Contains(FString::FromInt(DropQuantity)));
+        if(GameXXKLocalization::IsEnglish())for(TCHAR Character:Receipt)if(Character>=0x3400&&Character<=0x9fff){AddError(TEXT("Receipt remains Chinese: ")+Receipt);break;}
+        auto* Widget=Open(*this,MVP,Stone?EGameXXKDesktopToolMode::Enhance:EGameXXKDesktopToolMode::Reforge);
+        Widget->OpenWorkbench();Widget->OpenBackpack();Widget->HandleActionClicked(3);
+        Widget->SetToolModeForTest(Stone?EGameXXKDesktopToolMode::Enhance:EGameXXKDesktopToolMode::Reforge);Widget->TickForTest(0);
+        if(!Put(*this,MVP,Widget,EquipmentId,0))continue;
+        Widget->TickForTest(0);
+        TestTrue(TEXT("tool displays warehouse material balance"),Text(Widget,TEXT("ToolRecipePreview")).Contains(FString::Printf(TEXT("%d /"),20+DropQuantity)));
+        TestTrue(TEXT("tool enables with stored materials"),Button(Widget,TEXT("ToolConfirmButton"))->GetIsEnabled());
+        State.DesktopInventory.WarehouseItems[Id]+=7;Widget->TickForTest(1.1f);
+        TestTrue(TEXT("stored quantity refreshes without adding an occupied slot"),Text(Widget,TEXT("ToolRecipePreview")).Contains(FString::Printf(TEXT("%d /"),27+DropQuantity)));
+        State.DesktopInventory.WarehouseItems[Id]-=7;Widget->TickForTest(1.1f);
+        const auto Before=State;
+        MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return false;}));
+        TestFalse(TEXT("failed persistence rejects tool use"),Widget->ConfirmToolForTest());
+        TestTrue(TEXT("failed persistence preserves material, item and ordinal"),FGameXXKRuntimeState::StaticStruct()->CompareScriptStruct(&Before,&State,PPF_None));
+        MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return true;}));
+        TestTrue(TEXT("tool now consumes the material successfully"),Widget->ConfirmToolForTest());
+        const int32 Cost=Stone?FGameXXKEquipmentCatalog::GetEnhancementStoneCost(0):FGameXXKEquipmentCatalog::GetReforgeSandCost(EGameXXKEquipmentQuality::Rare);
+        TestEqual(TEXT("only the real source stack is charged"),State.DesktopInventory.WarehouseItems.FindRef(Id),20+DropQuantity-Cost);
+        TestEqual(TEXT("no backpack material is invented"),State.Inventory.FindRef(Id),0);
+        TestTrue(TEXT("post-tool physical inventory remains valid"),FGameXXKDesktopInventoryRules::Validate(State,&Error));
+        auto ExactCost=Before;ExactCost.DesktopInventory.WarehouseItems[Id]=Cost;FGameXXKEquipmentTransactionResult ExactResult;
+        const auto ExactInput=Ref(ExactCost,FGameXXKDesktopInventoryRules::MakeEquipmentEntry(EquipmentId));
+        TestTrue(TEXT("the last stored material can be spent"),Stone?FGameXXKEquipmentToolRules::Enhance(ExactCost,ExactInput,ExactResult):FGameXXKEquipmentToolRules::BeginReforge(ExactCost,ExactInput,0,ExactResult));
+        TestEqual(TEXT("empty material stack is not resurrected by legacy mirrors"),ExactCost.Inventory.FindRef(Id)+ExactCost.DesktopInventory.WarehouseItems.FindRef(Id),0);
+        if(Stone)TestEqual(TEXT("enhancement actually changes the item"),FGameXXKEquipmentRules::FindInstance(State.EquipmentCollection,EquipmentId)->EnhancementLevel,1);
+        else TestTrue(TEXT("reforge really creates a paid preview"),State.EquipmentCollection.PendingReforge.bActive);
+        const FName Scrap=Equipment(*this,State,EGameXXKEquipmentQuality::Common);FGameXXKEquipmentTransactionResult Dismantled;
+        TestTrue(TEXT("dismantle also works when the output material is stored"),MVP->ExecuteToolDismantle({Ref(State,FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Scrap))},true,Dismantled));
+        TestEqual(TEXT("dismantled material retains its home"),State.DesktopInventory.WarehouseItems.FindRef(Id),20+DropQuantity-Cost+1);
+        TestEqual(TEXT("dismantle does not create a duplicate partition"),State.Inventory.FindRef(Id),0);
+        MVP->ResetSaveSlotWriteDelegateForTest();
+    }
+    return true;
+}
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKWarehousePlainQuantityTest,
+    "GameXXK.ToolsRedesign.WarehousePlainQuantityRefresh",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKWarehousePlainQuantityTest::RunTest(const FString&)
+{
+    using namespace ToolInteractionTest;
+    auto* Subsystem=Start(*this);auto& State=Subsystem->GetMutableRuntimeState();
+    const FName Money=FGameXXKTravelMoneyRules::ItemId();State.DesktopInventory.WarehouseItems.Add(Money,20);
+    if(!TestTrue(TEXT("warehouse stack fixture is valid"),FGameXXKDesktopInventoryRules::Normalize(State)))return false;
+    const int32 Index=FGameXXKDesktopInventoryRules::FindEntrySlot(State,EGameXXKDesktopItemContainer::Warehouse,FGameXXKDesktopInventoryRules::MakeItemEntry(Money));
+    auto* Widget=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();Widget->SetMVPSubsystem(Subsystem);Widget->ConstructForTest();
+    Widget->OpenWorkbench();Widget->OpenBackpack();Widget->HandleActionClicked(0);Widget->TickForTest(0);
+    TestTrue(TEXT("The real warehouse entrance allows live presentation refresh"),Widget->GetVisibility()!=ESlateVisibility::Collapsed&&Widget->GetVisibility()!=ESlateVisibility::Hidden);
+    auto* Count=Cast<UTextBlock>(Widget->WidgetTree->FindWidget(*FString::Printf(TEXT("WarehouseStackCount_%d"),Index)));
+    if(!TestNotNull(TEXT("warehouse money gets a count label"),Count))return false;
+    TestEqual(TEXT("quantity has no x prefix"),Count->GetText().ToString(),FString(TEXT("20")));
+    TestTrue(TEXT("quantity uses Jianghu with a readable outline"),Count->GetFont().FontObject&&Count->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng"))&&Count->GetFont().OutlineSettings.OutlineSize>0);
+    const int32 Builds=Widget->GetProgrammaticLayoutBuildCountForTest();
+    State.DesktopInventory.WarehouseItems[Money]=30;Widget->TickForTest(1.1f);
+    TestEqual(TEXT("same-slot quantity refreshes without occupancy changes"),Count->GetText().ToString(),FString(TEXT("30")));
+    TestEqual(TEXT("count refresh does not rebuild the whole panel"),Widget->GetProgrammaticLayoutBuildCountForTest(),Builds);
+    return true;
+}
 #endif

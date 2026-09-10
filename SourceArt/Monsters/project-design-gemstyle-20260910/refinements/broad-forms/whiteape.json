@@ -1,0 +1,27 @@
+{
+  "slug": "whiteape",
+  "name": "白猿",
+  "id": "Enemy.Ch3.WhiteApe",
+  "chapter": 3,
+  "tier": "elite",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/17_whiteape.png",
+  "identitySourceSha256": "ce66d4be9c195d657e70007a0e25d834ad42138ab13cf80d21fea23bbc7df37b",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "白猿精英：保留原灰白蓬长毛的巨大猿，极长粗双臂、宽拱肩、较短两腿、深灰无毛方脸和手脚、严肃厚眉。原一只手撑地，另一只手握一块粗大灰岩石压在地面附近；灰石是握住的道具不是第三只手。3/4朝右，两个肩臂手的连接清楚，四肢完整，毛发合成少数大白簇，不添加尾巴、衣饰、冰晶或皇冠。",
+  "prompt": "Use case: style-transfer. 第一张是要简化内部绘制的唯一对象；第二张狼王仅参考大片完整设色与简洁毛团画法。不要更换第一张的物种、原设计、姿态、方向、比例或配色。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。白猿的两条长臂每条只是一整块连续乳白亮面和内侧一条宽浅灰阴影，完全清除手臂内部反复的三角毛片。躯干同样大面积乳白加腹下大灰阴影；只在外边缘留少数大毛簇，面部白毛一圈完整大形。不要在白面里刻碎花纹。保留黑灰方脸、方形卡通眼、握灰石的手、四肢、体型和姿态。 请明显减少内部笔触和色块数量，用大明暗面保留体积；不是模糊处理，不增加文字或物体。原暖米白背景、正方形全身构图不变。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\whiteape.png",
+    "C:/Users/shxuw/.codex/generated_images/01a08887-a4ce-7b30-9ef6-22fe546d006d/exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png"
+  ],
+  "latestStyleRule": "broad connected forms + graphic cartoon eyes",
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-305f2c8d-b872-4e9e-9bfb-7c6e268820a8.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-305f2c8d-b872-4e9e-9bfb-7c6e268820a8.png",
+  "previousGeneratedPath": "D:/UE5 demo/GameXXK/SourceArt/Monsters/project-design-gemstyle-20260910/refinements/broad-forms/whiteape-before.png",
+  "previousPrompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n白猿精英：保留原灰白蓬长毛的巨大猿，极长粗双臂、宽拱肩、较短两腿、深灰无毛方脸和手脚、严肃厚眉。原一只手撑地，另一只手握一块粗大灰岩石压在地面附近；灰石是握住的道具不是第三只手。3/4朝右，两个肩臂手的连接清楚，四肢完整，毛发合成少数大白簇，不添加尾巴、衣饰、冰晶或皇冠。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

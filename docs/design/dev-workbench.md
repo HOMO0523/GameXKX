@@ -6,6 +6,7 @@ F10只在游戏窗口获得焦点时响应；收起再打开保留页签、当�
 
 ## 人工操作
 
+- **首页解锁入口**：解锁全部关卡 / Unlock Stages 开放30关的挑战入口；解锁全部任务 / Unlock Tasks 同时开放61个现行剧情任务及对应关卡。只用于临时测试，不补完成记录或首通奖励，讨伐令等实际资源条件仍有效。返回原进度或重开游戏后撤销，命名快照也不保存这两个入口标记。
 - **万物匣**：中文名称检索道具、装备和局内遗物，选择数量后获得。装备可指定等级和品质；遗物在进入局内后添加。
 - **配装台**：在右侧选择主角、伙伴或NPC，设置角色等级；按六件同套、四加二、两加两加两生成装备，选择强化、词缀档位和宝石，再生成至仓库或直接穿戴。
 - **试武场**：选择真实关卡、关内场次和种子，进入现有BattleBoard；同种子重开或返回战前配装状态。批测使用独立状态副本。
@@ -22,6 +23,8 @@ F10只在游戏窗口获得焦点时响应；收起再打开保留页签、当�
 ```powershell
 python scripts/gamexxk_dev_client.py --via mcp call help
 python scripts/gamexxk_dev_client.py --via mcp call inspect
+python scripts/gamexxk_dev_client.py --via mcp call progress.unlock_stages
+python scripts/gamexxk_dev_client.py --via mcp call progress.unlock_tasks
 python scripts/gamexxk_dev_client.py --via mcp call heal
 python scripts/gamexxk_dev_client.py --via mcp export Saved/my-build.json
 python scripts/gamexxk_dev_client.py --via mcp simulate --scene Saved/my-build.json --stage Training.Hell.3-1 --encounter 7 --seed 20260906 --runs 100

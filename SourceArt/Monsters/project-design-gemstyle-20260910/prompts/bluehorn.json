@@ -1,0 +1,26 @@
+{
+  "slug": "bluehorn",
+  "name": "青角羊王",
+  "id": "Enemy.Ch1.BluehornGoatKing",
+  "chapter": 1,
+  "tier": "elite",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/06_bluehorn.png",
+  "identitySourceSha256": "c1e917470b58a450e44aa4050b3b9f168ee0248f31f98b769668579a9eb5a292",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "青角羊王：保留原威严四足长毛羊王，奶白厚肩鬃与胸髯、额前尖束毛、长分叉胡须，恰好两根巨大向后上弯的青灰蓝角，短翘尾、深灰四蹄。四足站稳、头略低3/4朝右，宽胸和巨大角是精英辨识点；羊角用少数宽分节，鬃毛合成大簇，不变成两足胖羊，不戴皇冠、不加第三根角或冰晶。",
+  "prompt": "Use case: style-transfer. 第一张是要简化内部绘制的唯一对象；第二张狼王仅参考大片完整设色与简洁毛团画法。不要更换第一张的物种、原设计、姿态、方向、比例或配色。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。青角羊王的颈部胸髯归成三至五块大白毛团，躯干和腿部内部大片奶白＋宽灰影，不叠细长碎毛；外形仍保留原长髯和蓬鬃辨识点。一对青蓝大弯角每根只两至三个大明暗面、少数宽分节，不铺碎切面。保持四足和原高傲神情。 请明显减少内部笔触和色块数量，用大明暗面保留体积；不是模糊处理，不增加文字或物体。原暖米白背景、正方形全身构图不变。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\bluehorn.png",
+    "C:/Users/shxuw/.codex/generated_images/01a08887-a4ce-7b30-9ef6-22fe546d006d/exec-64f2a13e-f16b-410e-b40c-bf93d0500ad6.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\bluehorn.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-462436bd-1512-4a3b-8c43-f5415f268b82.png",
+  "previousGeneratedPath": "D:/UE5 demo/GameXXK/SourceArt/Monsters/project-design-gemstyle-20260910/refinements/broad-forms/bluehorn-before.png",
+  "previousPrompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：青角羊王：保留原威严四足长毛羊王，奶白厚肩鬃与胸髯、额前尖束毛、长分叉胡须，恰好两根巨大向后上弯的青灰蓝角，短翘尾、深灰四蹄。四足站稳、头略低3/4朝右，宽胸和巨大角是精英辨识点；羊角用少数宽分节，鬃毛合成大簇，不变成两足胖羊，不戴皇冠、不加第三根角或冰晶。",
+  "revision": "broad-forms-cartoon-eyes-v1"
+}

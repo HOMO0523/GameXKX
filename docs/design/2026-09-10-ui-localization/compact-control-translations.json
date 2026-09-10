@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {"key":"Compact.Attributes","usage":"compact","zh-Hans":"属性","en":"Attr"},
+    {"key":"Compact.Equipment","usage":"compact","zh-Hans":"装备","en":"Equip"},
+    {"key":"Compact.Companion","usage":"compact","zh-Hans":"伙伴","en":"Comp"},
+    {"key":"Compact.Tutorials","usage":"compact","zh-Hans":"教程","en":"Tut."},
+    {"key":"Compact.Quests","usage":"compact","zh-Hans":"任务","en":"Quest"},
+    {"key":"Compact.Weapon","usage":"compact","zh-Hans":"武器","en":"Wpn"},
+    {"key":"Compact.Head","usage":"compact","zh-Hans":"头部","en":"Head"},
+    {"key":"Compact.Armor","usage":"compact","zh-Hans":"衣甲","en":"Armor"},
+    {"key":"Compact.Belt","usage":"compact","zh-Hans":"腰带","en":"Belt"},
+    {"key":"Compact.Feet","usage":"compact","zh-Hans":"鞋","en":"Feet"},
+    {"key":"Compact.Accessory","usage":"compact","zh-Hans":"饰品","en":"Acc"},
+    {"key":"Compact.Attack","usage":"compact","zh-Hans":"攻击","en":"ATK"},
+    {"key":"Compact.Defense","usage":"compact","zh-Hans":"防御","en":"DEF"},
+    {"key":"Compact.Speed","usage":"compact","zh-Hans":"速度","en":"SPD"},
+    {"key":"Compact.Health","usage":"compact","zh-Hans":"气血","en":"HP"},
+    {"key":"Compact.InnerPower","usage":"compact","zh-Hans":"内力","en":"MP"},
+    {"key":"Compact.Experience","usage":"compact","zh-Hans":"经验","en":"XP"},
+    {"key":"Compact.Level","usage":"compact","zh-Hans":"等级","en":"Lv."},
+    {"key":"Compact.Quantity","usage":"compact","zh-Hans":"数量","en":"Qty"},
+    {"key":"Compact.Enhancement","usage":"compact","zh-Hans":"强化","en":"Enh"},
+    {"key":"Compact.Refinement","usage":"compact","zh-Hans":"洗炼","en":"Ref"},
+    {"key":"Compact.Settings","usage":"compact","zh-Hans":"设置","en":"Opts"},
+    {"key":"Compact.Previous","usage":"compact","zh-Hans":"上一页","en":"Prev"},
+    {"key":"Compact.Next","usage":"compact","zh-Hans":"下一页","en":"Next"}
+  ]
+}

@@ -656,7 +656,7 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 		{
 			FGameXXKEquipmentAffixRoll& Roll = Created->RolledAffixes[AffixIndex];
 			Roll.Tier = FGameXXKEquipmentQualityRules::AffixTierFromRank(FirstTierRank + AffixIndex);
-			const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier);
+			const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Roll.Tier);
 			Roll.Magnitude = AffixIndex % 2 == 0 ? Range.Minimum : Range.Maximum;
 		}
 		CreatedInstanceIds.Add(InstanceId);

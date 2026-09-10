@@ -23,14 +23,12 @@ FLinearColor FGameXXKInRunUiStyle::MutedInk() { return FLinearColor::FromSRGBCol
 FLinearColor FGameXXKInRunUiStyle::Vermilion() { return FLinearColor::FromSRGBColor(FColor(148, 63, 46)); }
 FLinearColor FGameXXKInRunUiStyle::Jade() { return FLinearColor::FromSRGBColor(FColor(53, 87, 78)); }
 
-FSlateFontInfo FGameXXKInRunUiStyle::Font(const int32 Size, const bool bDisplay, const bool bBold)
+FSlateFontInfo FGameXXKInRunUiStyle::Font(const int32 Size, const bool /*bDisplay*/, const bool bBold)
 {
-	const TCHAR* Path = bDisplay
-		? TEXT("/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font.FF_Trial_ZhHans_JiangHuGuFeng_Font")
-		: TEXT("/Game/GameXXK/UI/Fonts/Readability/F_ReadableCJK.F_ReadableCJK");
+	const TCHAR* Path = TEXT("/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font.FF_Trial_ZhHans_JiangHuGuFeng_Font");
 	if (UFont* FontAsset = LoadObject<UFont>(nullptr, Path, nullptr, LOAD_NoWarn))
 	{
-		return FSlateFontInfo(FontAsset, Size, bDisplay ? FName(TEXT("Default")) : FName(bBold ? TEXT("Bold") : TEXT("Regular")));
+		return FSlateFontInfo(FontAsset, Size, FName(TEXT("Default")));
 	}
 	return FCoreStyle::GetDefaultFontStyle(bBold ? TEXT("Bold") : TEXT("Regular"), Size);
 }

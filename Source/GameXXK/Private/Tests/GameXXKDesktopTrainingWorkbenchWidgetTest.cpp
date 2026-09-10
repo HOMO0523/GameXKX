@@ -593,7 +593,7 @@ bool FGameXXKDesktopTrainingWorkbenchSlateBuildContractTest::RunTest(const FStri
 		&& FMath::IsNearlyEqual(ScaleRoot->GetUserSpecifiedScale(), Widget->GetDesktopPresentationScaleForTest()));
 	USizeBox* ReferenceBox = ScaleRoot ? Cast<USizeBox>(ScaleRoot->GetContent()) : nullptr;
 	TestNotNull(TEXT("ScaleBox owns the fixed reference SizeBox"), ReferenceBox);
-	TestTrue(TEXT("collapsed reference width is 1038"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetWidthOverride(), 1038.0f));
+	TestTrue(TEXT("collapsed reference width is 1118"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetWidthOverride(), 1118.0f));
 	TestTrue(TEXT("collapsed reference reserves one passive notice row"), ReferenceBox && FMath::IsNearlyEqual(ReferenceBox->GetHeightOverride(), 254.0f));
 	return true;
 }
@@ -869,6 +869,8 @@ bool FGameXXKDesktopTrainingWorkbenchApprovedSecondaryControlBindingTest::RunTes
 	};
 
 	Widget->HandleActionClicked(3);
+	Widget->HandleActionClicked(664);
+	Widget->TickForTest(0.0f);
 	TestApprovedButton(TEXT("ToolButton_0"), TEXT("004_tab_2"));
 	TestApprovedButton(TEXT("ToolButton_1"), TEXT("003_tab_1"));
 	return true;
@@ -1018,7 +1020,7 @@ bool FGameXXKDesktopTrainingReferenceGeometryTest::RunTest(const FString& Parame
 	TestEqual(TEXT("warehouse matches the backpack and navigation height"), GetWarehouseRect(), FVector4(10.0f, 244.0f, 363.0f, 681.0f));
 	TestEqual(TEXT("center shell matches the selected layout"), GetCenterShellRect(), FVector4(386.0f, 17.0f, 970.0f, 908.0f));
 	TestEqual(TEXT("right shell matches the backpack and navigation height"), GetRightShellRect(), FVector4(1369.0f, 244.0f, 291.0f, 681.0f));
-	TestEqual(TEXT("expanded idle strip preserves the collapsed dock footprint"), GetIdleStripRect(), FVector4(318.0f, 0.0f, 1038.0f, 202.0f));
+	TestEqual(TEXT("expanded idle strip preserves the collapsed dock footprint"), GetIdleStripRect(), FVector4(318.0f, 0.0f, 1118.0f, 202.0f));
 	TestEqual(TEXT("backpack surface matches the selected layout"), GetContentRect(), FVector4(397.0f, 244.0f, 945.0f, 533.0f));
 	TestEqual(TEXT("navigation matches the selected layout"), GetNavigationRect(), FVector4(397.0f, 788.0f, 945.0f, 137.0f));
 
@@ -1313,7 +1315,7 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 		Widget->WidgetTree ? Widget->WidgetTree->FindWidget(TEXT("BackpackTabToggleButton")) : nullptr);
 	TestTrue(TEXT("Tab/backpack entry opens the formation-backed backpack view"), Widget->OpenBackpack());
 	TestTrue(TEXT("opening backpack expands the center surface"), Widget->IsBackpackExpandedForTest());
-	TestEqual(TEXT("expanded backpack exposes six small top-toolbar controls"), Widget->GetTopToolbarButtonCountForTest(), 6);
+	TestEqual(TEXT("expanded backpack keeps the six toolbar controls; guides belong to Tutorials"), Widget->GetTopToolbarButtonCountForTest(), 6);
 	TestEqual(TEXT("topmost toolbar uses the confirmed black pushpin truth asset"),
 		Widget->GetTopToolbarAlwaysOnTopResourcePathForTest(),
 		FString(TEXT("/Game/GameXXK/UI/ImageTruth/Training/T_TrainingTopToolbarAlwaysOnTop.T_TrainingTopToolbarAlwaysOnTop")));
@@ -1374,7 +1376,7 @@ bool FGameXXKDesktopTrainingWorkbenchLayoutContractTest::RunTest(const FString& 
 	const TArray<FName> VisibleItems = Widget->GetVisibleBackpackItemIdsForTest();
 	TestTrue(TEXT("workbench backpack read model includes healing powder"), VisibleItems.Contains(UGameXXKMVPRules::ItemHealingPowder()));
 	TestTrue(TEXT("workbench backpack read model includes a travel chest"), VisibleItems.Contains(UGameXXKMVPRules::ItemTrainingNormalChest()));
-	TestEqual(TEXT("three difficulty bands each expose nine stage definitions"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 27);
+	TestEqual(TEXT("three difficulty bands preserve27 base stages and add3 Hunt stages"), FGameXXKTrainingRules::GetStageDefinitions().Num(), 30);
 	TestEqual(TEXT("normal 1-1 id remains stable"), FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1), FName(TEXT("Training.Normal.1-1")));
 	TestTrue(TEXT("desktop HUD defaults to topmost z-order"), Widget->IsAlwaysOnTopForTest());
 	Widget->HandleActionClicked(14);
@@ -1515,13 +1517,13 @@ bool FGameXXKDesktopTrainingManualWindowScaleTest::RunTest(const FString& Parame
 				WorkArea.Y),
 			FMath::IsNearlyEqual(ResolveDesktopHudMetrics(WorkArea, 75).Scale, 0.75f));
 	}
-	TestEqual(TEXT("collapsed HUD authored size is 1038x202"),
+	TestEqual(TEXT("collapsed HUD authored size is 1118x202"),
 		GetCollapsedHudLogicalSize(),
-		FVector2D(1038.0f, 202.0f));
-	TestEqual(TEXT("50 percent collapsed HUD resolves to 519x101"),
+		FVector2D(1118.0f, 202.0f));
+	TestEqual(TEXT("50 percent collapsed HUD resolves to 559x101"),
 		GetCollapsedHudLogicalSize()
 			* ResolveDesktopHudMetrics(FVector2D(1920.0f, 1020.0f), 50).Scale,
-		FVector2D(519.0f, 101.0f));
+		FVector2D(559.0f, 101.0f));
 	const FDesktopOverlayPlacement SmallWorkAreaMaximumHost =
 		ComputeDesktopOverlayPlacement(
 			FVector2D(1536.0f, 816.0f),
@@ -1539,13 +1541,13 @@ bool FGameXXKDesktopTrainingManualWindowScaleTest::RunTest(const FString& Parame
 	TestEqual(TEXT("a bottom-docked strip expands upward"),
 		ChooseVerticalExpansionDirection(
 			WorkArea,
-			FVector4(450.0f, 800.0f, 1038.0f, 202.0f),
+			FVector4(450.0f, 800.0f, 1118.0f, 202.0f),
 			941.0f),
 		EGameXXKDesktopVerticalExpansionDirection::Up);
 	TestEqual(TEXT("a top-docked strip expands downward"),
 		ChooseVerticalExpansionDirection(
 			WorkArea,
-			FVector4(450.0f, 0.0f, 1038.0f, 202.0f),
+			FVector4(450.0f, 0.0f, 1118.0f, 202.0f),
 			941.0f),
 		EGameXXKDesktopVerticalExpansionDirection::Down);
 	return true;
@@ -1716,7 +1718,7 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 		FMath::IsNearlyEqual(Collapsed.Scale, Expanded.Scale));
 	TestEqual(TEXT("Tab never changes the collapsed strip's resolved physical size"),
 		Collapsed.StripSize,
-		FVector2D(1038.0f, 202.0f));
+		FVector2D(1118.0f, 202.0f));
 	TestEqual(TEXT("desktop presentation keeps the persisted dragged anchor"),
 		ResolvePresentationAnchor(true, FVector2D(0.35f, 0.45f)),
 		FVector2D(0.35f, 0.45f));
@@ -1725,7 +1727,7 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 		FVector2D(0.5f, 0.08f));
 	FDesktopOverlayPlacement ManualDpiPlacement;
 	ManualDpiPlacement.HudTopLeft = FVector2D(100.0f, 60.0f);
-	ManualDpiPlacement.HudSize = FVector2D(1038.0f, 254.0f);
+	ManualDpiPlacement.HudSize = FVector2D(1118.0f, 254.0f);
 	TestTrue(TEXT("a 96-DPI window needs no internal coordinate conversion"),
 		FMath::IsNearlyEqual(ResolveWindowDpiScale(96), 1.0f));
 	TestTrue(TEXT("a 120-DPI window uses a 1.25 coordinate conversion"),
@@ -1740,7 +1742,7 @@ bool FGameXXKDesktopTrainingStablePresentationScaleTest::RunTest(const FString& 
 	TestTrue(TEXT("manual-DPI desktop host converts the native offset to Slate units"),
 		DesktopHostGeometry.Position.Equals(FVector2D(216.8f, 39.2f), 0.01f));
 	TestTrue(TEXT("manual-DPI desktop host converts physical HUD size to Slate units"),
-		DesktopHostGeometry.Size.Equals(FVector2D(830.4f, 203.2f), 0.01f));
+		DesktopHostGeometry.Size.Equals(FVector2D(894.4f, 203.2f), 0.01f));
 	TestTrue(TEXT("Slate output returns to the requested physical HUD size"),
 		SlateHostUnitsToPhysicalPixels(DesktopHostGeometry.Size, WindowDpiScale)
 			.Equals(ManualDpiPlacement.HudSize, 0.01f));
@@ -1885,14 +1887,14 @@ bool FGameXXKDesktopTrainingTransparentOverlayHostTest::RunTest(const FString& P
 	TestEqual(TEXT("overlay host keeps the complete monitor work area"),
 		CollapsedPlacement.HostSize,
 		HostSize);
-	TestEqual(TEXT("collapsed visible strip remains 1038x202 at 100 percent"),
+	TestEqual(TEXT("collapsed visible strip remains 1118x202 at 100 percent"),
 		CollapsedPlacement.StripSize,
-		FVector2D(1038.0f, 202.0f));
+		FVector2D(1118.0f, 202.0f));
 	TestEqual(TEXT("collapsed notice reservation stays inside the movable HUD group"),
 		CollapsedPlacement.HudSize,
-		FVector2D(1038.0f, 254.0f));
+		FVector2D(1118.0f, 254.0f));
 	TestTrue(TEXT("normalized anchor resolves inside the fixed host"),
-		CollapsedPlacement.HudTopLeft.Equals(FVector2D(441.0f, 65.44f), 0.01f));
+		CollapsedPlacement.HudTopLeft.Equals(FVector2D(401.0f, 65.44f), 0.01f));
 
 	const FDesktopOverlayPlacement HalfPlacement = ComputeDesktopOverlayPlacement(
 		HostSize,
@@ -1901,9 +1903,9 @@ bool FGameXXKDesktopTrainingTransparentOverlayHostTest::RunTest(const FString& P
 		false,
 		false,
 		52.0f);
-	TestEqual(TEXT("50 percent visible strip is exactly 519x101"),
+	TestEqual(TEXT("50 percent visible strip is exactly 559x101"),
 		HalfPlacement.StripSize,
-		FVector2D(519.0f, 101.0f));
+		FVector2D(559.0f, 101.0f));
 	TestEqual(TEXT("HUD scale never changes the native host size"),
 		HalfPlacement.HostSize,
 		HostSize);
@@ -2235,7 +2237,7 @@ bool FGameXXKDesktopTrainingNativeWindowRegionTest::RunTest(const FString& Param
 		FixedContentOffset - FVector2D(RegionPadding, RegionPadding));
 	TestEqual(TEXT("native strip padding expands both physical axes symmetrically"),
 		FVector2D(PaddedStripRect.Z, PaddedStripRect.W),
-		FVector2D(1044.0f, 208.0f));
+		FVector2D(1124.0f, 208.0f));
 	return true;
 }
 
@@ -2551,9 +2553,9 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 		? Cast<USizeBox>(Widget->WidgetTree->FindWidget(TEXT("TrainingIdleGroupReference")))
 		: nullptr;
 	TestNotNull(TEXT("idle strip owns a logical unscaled group reference"), GroupReference);
-	TestTrue(TEXT("idle group reference is 1038x202 before uniform scaling"),
+	TestTrue(TEXT("idle group reference is 1118x202 before uniform scaling"),
 		GroupReference
-		&& FMath::IsNearlyEqual(GroupReference->GetWidthOverride(), 1038.0f)
+		&& FMath::IsNearlyEqual(GroupReference->GetWidthOverride(), 1118.0f)
 		&& FMath::IsNearlyEqual(GroupReference->GetHeightOverride(), 202.0f));
 	UWidget* NoticePanel = Widget->WidgetTree
 		? Widget->WidgetTree->FindWidget(TEXT("DesktopInventoryNoticePanel"))
@@ -3247,8 +3249,14 @@ bool FGameXXKDesktopTrainingItemCarryStateMachineTest::RunTest(const FString& Pa
 
 	Widget->HandleActionClicked(0);
 	TestTrue(TEXT("warehouse and tools can be visible together"), Widget->IsWarehousePanelOpenForTest() && Widget->IsToolsPanelActiveForTest());
-	const int32 EquipmentSlot = Widget->FindFirstBackpackEquipmentSlotForTest();
-	TestTrue(TEXT("fixture finds another backpack equipment entry"), EquipmentSlot != INDEX_NONE);
+	TestFalse(TEXT("a reserved tool input cannot also move to the warehouse"), Widget->RightClickBackpackSlotForTest(ToolEquipmentSlot));
+	int32 EquipmentSlot=INDEX_NONE;
+	const auto& BackpackSlots=Subsystem->GetRuntimeState().DesktopInventory.BackpackSlots;
+	for(int32 Slot=0;Slot<BackpackSlots.Num();++Slot)
+	{
+		if(Slot!=ToolEquipmentSlot&&BackpackSlots[Slot].bEquipmentInstance){EquipmentSlot=Slot;break;}
+	}
+	TestTrue(TEXT("fixture finds another unreserved backpack equipment entry"), EquipmentSlot != INDEX_NONE);
 	TestTrue(TEXT("warehouse wins right-click priority while both side panels are open"), Widget->RightClickBackpackSlotForTest(EquipmentSlot));
 	TestEqual(TEXT("warehouse priority does not add another tool reservation"), Widget->GetOccupiedToolSlotCountForTest(), 1);
 	TestEqual(TEXT("warehouse receives the equipment entry"), Widget->GetWarehouseOccupancyForTest(), 1);

@@ -1,0 +1,13 @@
+{
+  "slug": "hunter",
+  "prompt": "Use case: precise-object-edit. 只修这张弓手原姿势的弓弦，绝对不要改姿势。用户明确喜欢原来的低位持弓、斜持箭姿势：请原样保留头、脸、视线、身体、蹲步、两只手的位置、双臂角度、弓身形状与斜角、箭杆的位置和角度、天青大祥云披风、服装及所有颜色。不要抬手，不要抬弓，不要变成高位瞄准或满弓射击。允许改变的只有那根细细的弓弦和原错误线条底下极窄的被遮像素。\n机械关系：画面左上是现有木弓的上弓梢，画面下方偏中右是现有木弓下弓梢；现有画面右侧那只后手握住的箭尾处，是轻微拉弦的折点。删除原先绕过箭尾、从上梢直接跨向下梢的错误直线。重新画一根细深棕弦，路径严格为「现有上弓梢末端系弦点 → 现有右侧后手的箭尾点 → 现有下弓梢末端系弦点」，两段绷直，在箭尾处轻折成V。上下端点必须落在弓梢末端，不是弓身中段；箭尾与弦的折点同一点。弦从已有双手后方经过，被指尖自然小范围遮挡，不能画在手腕内部、不能多一根线，不能将箭杆当弦。整个弓箭的位置、箭尖朝左下的方向和手部低位姿态都保持不变。保持原来的单人全身、安全边距、浅米白背景。不要添加其它图案、文字、标注或效果。",
+  "references": [
+    "C:/Users/shxuw/.codex/generated_images/01a08887-a4ce-7b30-9ef6-22fe546d006d/exec-01e4e0e4-8e76-4dc7-916d-5ac90137dd7c.png"
+  ],
+  "generatedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-66256f57-6af5-4bbc-807d-f7d6214d6b1e.png",
+  "phase": "discussion-sample",
+  "designVersion": 5,
+  "facing": "left",
+  "view": "three-quarter",
+  "revision": "retain original low bow pose; string only"
+}

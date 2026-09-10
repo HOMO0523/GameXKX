@@ -90,6 +90,7 @@ bool FGameXXKStoryRules::StartTask(
 	}
 	for (const FName PrerequisiteTaskId : Task.PrerequisiteTaskIds)
 	{
+		if(InOutProgress.MainStory.bDevelopmentUnlockAllTasks)break;
 		const FGameXXKTaskProgress* Prerequisite =
 			InOutProgress.TaskProgressById.Find(PrerequisiteTaskId);
 		if (!Prerequisite

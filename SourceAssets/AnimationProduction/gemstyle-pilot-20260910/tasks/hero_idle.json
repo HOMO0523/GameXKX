@@ -1,0 +1,42 @@
+{
+  "id": "hero_idle",
+  "status": "success",
+  "submissionCount": 1,
+  "at": "2026-09-10T07:25:43.956084+00:00",
+  "result": {
+    "submit_id": "57ace1ce-2197-4ec1-9986-559cf08667a2",
+    "prompt": "这是2D游戏单体精灵帧动画素材，固定正交相机与固定画幅。只让参考图中的主角动起来，不改变设计、体型、脸、服饰、道具、宝石icon手绘块面和深描边。整个身体保持3/4朝画面左，不转身不朝向观众。只做一个缓慢微小的待机循环。0秒与4秒严格回到参考图同一姿态，中间自然呼吸；变化很小但不是静止图片。\n动作：小幅胸口呼吸，肩膀仅轻微上下，发髻系带、短衣摆和竹叶末端慢慢摆动，竹篓保持刚性，脚掌不动。\n强制保持背景为纯平洋红#FF00FF，全程没有光影变化、地面、投影、文字、粒子、场景或其他生物。画面不推拉、不移动、不旋转、不抖动。所有肢体、角、尾和道具全程完整在画幅内，大小固定，脚底与身体基准位置固定；变化来自关节和小幅末端摆动，不能整张图片缩放、漂移或变形。首尾同一张图是动作循环的起止锚点，动态后必须归位。",
+    "logid": "2026091015254402602602600133143AA",
+    "gen_status": "querying",
+    "credit_count": 56
+  },
+  "submit_id": "57ace1ce-2197-4ec1-9986-559cf08667a2",
+  "credit_count": 56,
+  "queryResult": {
+    "submit_id": "57ace1ce-2197-4ec1-9986-559cf08667a2",
+    "prompt": "这是2D游戏单体精灵帧动画素材，固定正交相机与固定画幅。只让参考图中的主角动起来，不改变设计、体型、脸、服饰、道具、宝石icon手绘块面和深描边。整个身体保持3/4朝画面左，不转身不朝向观众。只做一个缓慢微小的待机循环。0秒与4秒严格回到参考图同一姿态，中间自然呼吸；变化很小但不是静止图片。\n动作：小幅胸口呼吸，肩膀仅轻微上下，发髻系带、短衣摆和竹叶末端慢慢摆动，竹篓保持刚性，脚掌不动。\n强制保持背景为纯平洋红#FF00FF，全程没有光影变化、地面、投影、文字、粒子、场景或其他生物。画面不推拉、不移动、不旋转、不抖动。所有肢体、角、尾和道具全程完整在画幅内，大小固定，脚底与身体基准位置固定；变化来自关节和小幅末端摆动，不能整张图片缩放、漂移或变形。首尾同一张图是动作循环的起止锚点，动态后必须归位。",
+    "gen_status": "success",
+    "result_json": {
+      "images": [],
+      "videos": [
+        {
+          "path": "D:\\UE5 demo\\GameXXK\\SourceAssets\\AnimationProduction\\gemstyle-pilot-20260910\\raw\\hero_idle\\57ace1ce-2197-4ec1-9986-559cf08667a2_video_1.mp4",
+          "fps": 24,
+          "width": 960,
+          "height": 960,
+          "format": "mp4",
+          "duration": 4.042
+        }
+      ]
+    },
+    "credit_count": 56,
+    "queue_info": {
+      "queue_idx": 0,
+      "priority": 1,
+      "queue_status": "Finish",
+      "queue_length": 0,
+      "debug_info": "{\"have_no_dreamina_queue_name\":false,\"dreamina_matrix_queue_name\":\"dreamina_fusion_video40_pro_vision\",\"dreamina_matrix_req_key\":\"DreaminaFusion:Video40_Pro_Vision_end_frame_720p\",\"dreamina_matrix_second_req_key\":\"\",\"have_no_queue_name\":true,\"queue_name\":\"\",\"matrix_req_key\":\"\",\"matrix_second_req_key\":\"\"}"
+    }
+  },
+  "queriedAt": "2026-09-10T07:31:04.293265+00:00"
+}

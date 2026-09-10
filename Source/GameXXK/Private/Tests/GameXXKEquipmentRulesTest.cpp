@@ -131,7 +131,7 @@ namespace
 				return false;
 			}
 			ModifierKinds.Add(Affix->ModifierKind);
-			const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Roll.Tier);
+			const FGameXXKAffixMagnitudeRange Range = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Roll.Tier);
 			if (Roll.Magnitude < Range.Minimum || Roll.Magnitude > Range.Maximum)
 			{
 				return false;
@@ -600,7 +600,7 @@ bool FGameXXKEquipmentRulesValidationRollbackTest::RunTest(const FString& Parame
 	auto SetLegalMagnitudeForTier = [](FGameXXKEquipmentAffixRoll& Roll, const EGameXXKAffixTier Tier)
 	{
 		Roll.Tier = Tier;
-		Roll.Magnitude = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.Unit, Tier).Minimum;
+		Roll.Magnitude = FGameXXKAffixCatalog::GetMagnitudeRange(Roll.AffixId, Tier).Minimum;
 	};
 	FGameXXKEquipmentCollectionState CommonQuality;
 	const FName CommonQualityId = CreateChecked(*this, CommonQuality, MakeRequest(

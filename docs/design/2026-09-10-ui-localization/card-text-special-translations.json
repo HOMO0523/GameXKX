@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.c0b26363bc657957",
+      "zh-Hans": "阵赏·炎：全体敌方获得8层灼烧，再触发2次灼烧伤害。",
+      "en": "Formation Reward · Fire: apply 8 Burn to all enemies, then trigger Burn damage 2 times."
+    },
+    {
+      "key": "Legacy.2aecfeb695d3545b",
+      "zh-Hans": "阵赏·冰：消耗自身全部护甲；按护甲快照层数，对敌方全体逐段造成20%攻击伤害。",
+      "en": "Formation Reward · Ice: spend all your Armor; deal successive hits of 20% ATK damage to all enemies, using the snapshotted Armor count."
+    },
+    {
+      "key": "Legacy.83ec35ad46b04f65",
+      "zh-Hans": "阵赏·雷：全体敌方获得3层标记，再按各目标标记快照逐层造成60%攻击伤害。",
+      "en": "Formation Reward · Lightning: apply 3 Marks to all enemies, then deal 60% ATK damage per snapshotted Mark on each target."
+    },
+    {
+      "key": "Legacy.b1032a3819b6c1ca",
+      "zh-Hans": "阵赏·通用：抽4张牌、回复2点气力；本回合后续主角牌气力消耗-1。",
+      "en": "Formation Reward · Universal: draw 4 cards and restore 2 Qi; subsequent Hero cards cost 1 less Qi this round."
+    },
+    {
+      "key": "Legacy.445c5c0992fa54d5",
+      "zh-Hans": "阵赏：回复1点气力、8点内力，抽2张牌。",
+      "en": "Formation Reward: restore 1 Qi and 8 Inner Power, then draw 2 cards."
+    },
+    {
+      "key": "Legacy.b584110f4fc6c520",
+      "zh-Hans": "阵赏：我方全体回复8点内力，抽2张牌。",
+      "en": "Formation Reward: restore 8 Inner Power to all allies and draw 2 cards."
+    },
+    {
+      "key": "Legacy.e9c46d0a983ee26e",
+      "zh-Hans": "阵赏：敌方全体当前灼烧翻倍。",
+      "en": "Formation Reward: double the current Burn on all enemies."
+    },
+    {
+      "key": "Legacy.9dd4b2db5e6624a3",
+      "zh-Hans": "阵赏：按场上最高灼烧补齐敌方全体，再各获得3点基础灼烧。",
+      "en": "Formation Reward: raise every enemy's Burn to the highest Burn count on the field, then apply another 3 base Burn to each."
+    },
+    {
+      "key": "Legacy.4835e12afcbd88ec",
+      "zh-Hans": "阵赏：敌方全体结算2次当前灼烧伤害，均不减层。",
+      "en": "Formation Reward: trigger each enemy's current Burn damage 2 times without removing stacks."
+    },
+    {
+      "key": "Legacy.fc772fe6f31e7816",
+      "zh-Hans": "阵赏：敌方全体获得6点基础灼烧；回复1点气力，抽2张牌。",
+      "en": "Formation Reward: apply 6 base Burn to all enemies; restore 1 Qi and draw 2 cards."
+    },
+    {
+      "key": "Legacy.791e1e9dfbbfca6d",
+      "zh-Hans": "阵赏：敌方全体获得5层标记；回复1点气力，抽2张牌。",
+      "en": "Formation Reward: apply 5 Marks to all enemies; restore 1 Qi and draw 2 cards."
+    },
+    {
+      "key": "Legacy.5faf4b7cc85c5b37",
+      "zh-Hans": "阵赏：敌方全体获得3层标记；回复1点气力，抽2张牌。",
+      "en": "Formation Reward: apply 3 Marks to all enemies; restore 1 Qi and draw 2 cards."
+    },
+    {
+      "key": "Legacy.fc4f5e7cd28c3249",
+      "zh-Hans": "阵赏：敌方全体先获得3层标记，再各触发3次60%落雷。",
+      "en": "Formation Reward: apply 3 Marks to all enemies, then strike each with 3 lightning hits at 60% ATK."
+    },
+    {
+      "key": "Legacy.321ccca40d5b7464",
+      "zh-Hans": "阵赏·炎法：敌方全体获得3点基础灼烧，再结算1次灼烧且不减层。",
+      "en": "Formation Reward · Fire: apply 3 base Burn to all enemies, then trigger Burn 1 time without removing stacks."
+    },
+    {
+      "key": "Legacy.95a2ecb045874a57",
+      "zh-Hans": "阵赏·普通：回复2点气力，抽3张牌；我方全体回复6点内力。",
+      "en": "Formation Reward · Normal: restore 2 Qi and draw 3 cards; restore 6 Inner Power to all allies."
+    },
+    {
+      "key": "Legacy.c88a1af51b64b7ae",
+      "zh-Hans": "阵赏·炎法：敌方全体获得4点基础灼烧；回复1点气力，抽3张牌。",
+      "en": "Formation Reward · Fire: apply 4 base Burn to all enemies; restore 1 Qi and draw 3 cards."
+    },
+    {
+      "key": "Legacy.e202af28298ca819",
+      "zh-Hans": "阵赏·普通：额外重放第5张记录牌，抽1张牌。",
+      "en": "Formation Reward · Normal: replay the 5th recorded card again, then draw 1 card."
+    },
+    {
+      "key": "Legacy.39a481cfebc477ff",
+      "zh-Hans": "阵赏·炎法：额外重放最后一张炎牌，其施加灼烧翻倍；敌方全体再获得2点基础灼烧。",
+      "en": "Formation Reward · Fire: replay the last Fire card again with doubled Burn application; apply another 2 base Burn to all enemies."
+    },
+    {
+      "key": "Legacy.11bfe44a7634f440",
+      "zh-Hans": "编序：第1～2位时，检索牌本回合内力消耗-3。",
+      "en": "Sequence: in positions 1–2, the searched card costs 3 less Inner Power this round."
+    },
+    {
+      "key": "Legacy.46f59b43cd0fa44e",
+      "zh-Hans": "编序：再回复此前记录牌实际支付内力总和的50%，向下取整。",
+      "en": "Sequence: also restore 50% of the Inner Power actually spent by previously recorded cards, rounded down."
+    },
+    {
+      "key": "Legacy.50345485d4704e73",
+      "zh-Hans": "编序：第1～2位时，灼烧改为4层。",
+      "en": "Sequence: in positions 1–2, apply 4 Burn instead."
+    },
+    {
+      "key": "Legacy.6aec158cb7746cbf",
+      "zh-Hans": "编序：前一张记录牌为炎牌时，灼烧改为3层。",
+      "en": "Sequence: if the previous recorded card was Fire, apply 3 Burn instead."
+    },
+    {
+      "key": "Legacy.2a1693a87ee48725",
+      "zh-Hans": "编序：第3～5位时，每点灼烧使倍率+2个百分点，不消耗灼烧。",
+      "en": "Sequence: in positions 3–5, each Burn adds +2 percentage points to the multiplier; keep the Burn."
+    },
+    {
+      "key": "Legacy.6fa1bccfc4570ba4",
+      "zh-Hans": "编序：第1～2位时，标记改为3层。",
+      "en": "Sequence: in positions 1–2, apply 3 Marks instead."
+    },
+    {
+      "key": "Legacy.7bb33e2f246fdfb9",
+      "zh-Hans": "编序：第4～5位时，每次改为45%的攻击伤害。",
+      "en": "Sequence: in positions 4–5, each hit deals 45% ATK damage instead."
+    },
+    {
+      "key": "Legacy.5cddbdded95edafd",
+      "zh-Hans": "基础：仅自身回复8点内力；全体友方各获得本次溢出内力转成的护甲。",
+      "en": "Base: restore 8 Inner Power to self only; grant all allies the Armor converted from this recovery's overflow."
+    },
+    {
+      "key": "Legacy.b7d8df3c496eed95",
+      "zh-Hans": "编序：前一张记录牌不含直接伤害时，改为回复16点内力。",
+      "en": "Sequence: if the previous recorded card had no direct damage, restore 16 Inner Power instead."
+    },
+    {
+      "key": "Legacy.2daedd35c8d6473d",
+      "zh-Hans": "未知法师牌规则",
+      "en": "Unknown Sorcerer card rule"
+    },
+    {
+      "key": "Legacy.13aa4c3b362a6e1b",
+      "zh-Hans": "任务分支：本牌作为首牌时，由第二张法师牌决定普通、炎法、寒冰或雷法。",
+      "en": "Task branch: if this is the first card, the second Sorcerer card chooses Normal, Fire, Ice or Lightning."
+    },
+    {
+      "key": "Legacy.95352e78506ed6d0",
+      "zh-Hans": "自动入手：首牌生效后，其余未完成任务牌入手；非首牌随任务开启入手。每张每场1次。",
+      "en": "Auto Draw: after the first card takes effect, add the other unfinished task cards to your hand; other cards enter your hand when the task starts. Each card is limited to 1 time per battle."
+    },
+    {
+      "key": "Legacy.993845a865359701",
+      "zh-Hans": "自动入手：首牌生效后，其余未完成的携带法师牌入手；非首牌在任务开启后入手。均从抽牌或弃牌堆获取，每张每场限1次。",
+      "en": "Auto Draw: after the first card takes effect, add the other unfinished carried Sorcerer cards to your hand; other cards enter after the task starts. Take them from the draw or discard pile, limited to 1 time per card per battle."
+    },
+    {
+      "key": "Legacy.5208b4fe945dee44",
+      "zh-Hans": "阵法：携带的5张法师牌各主动打出一次后，按首次顺序免费重放基础与锁定编序，最后执行阵赏。",
+      "en": "Formation: after each of the 5 carried Sorcerer cards is actively played, replay their base effects and locked Sequence effects for free in first-play order, then grant the Formation Reward."
+    },
+    {
+      "key": "Legacy.e66e7750c0c6d7d7",
+      "zh-Hans": "下一张主动牌基础效果再结算一次。",
+      "en": "Resolve the next active card's base effects one additional time."
+    },
+    {
+      "key": "Legacy.06f810517e45e583",
+      "zh-Hans": "下一张主动牌结算后，加入其0费临时复制。",
+      "en": "After the next active card resolves, add a temporary copy with 0 cost."
+    },
+    {
+      "key": "Legacy.62424a32ffaac2d0",
+      "zh-Hans": "下一张主动牌结算后返回手牌一次。",
+      "en": "Return the next active card to your hand after it resolves, a single time."
+    },
+    {
+      "key": "Legacy.bcbf5108493c5426",
+      "zh-Hans": "记录下一张主动牌，下回合自动重放其基础效果。",
+      "en": "Record the next active card and automatically replay its base effects next round."
+    },
+    {
+      "key": "Legacy.26f965c00ee303e3",
+      "zh-Hans": "下一张主动牌的状态/护甲消耗，结算后恢复。",
+      "en": "Restore the statuses and Armor spent by the next active card after it resolves."
+    },
+    {
+      "key": "Legacy.bac1d54835eac4d9",
+      "zh-Hans": "下一张单体牌同时作用于另一合法目标；否则抽2张。",
+      "en": "The next single-target card also affects another legal target; if none exists, draw 2 cards."
+    },
+    {
+      "key": "Legacy.e1332185fd3528e6",
+      "zh-Hans": "下一张主动牌气力消耗为0。",
+      "en": "The next active card costs 0 Qi."
+    },
+    {
+      "key": "Legacy.b78b20b18f770c7f",
+      "zh-Hans": "下一张主动牌内力消耗为0。",
+      "en": "The next active card costs 0 Inner Power."
+    },
+    {
+      "key": "Legacy.195e0ac13996156c",
+      "zh-Hans": "下一张主动牌结算后，全额返还气力与内力。",
+      "en": "Fully refund Qi and Inner Power after the next active card resolves."
+    },
+    {
+      "key": "Legacy.680e6493e0f66842",
+      "zh-Hans": "下一张主动牌在出牌数与套装门槛中计为2张。",
+      "en": "The next active card counts as 2 cards for play-count and set thresholds."
+    },
+    {
+      "key": "Legacy.323676dcbf7f926a",
+      "zh-Hans": "记录下一张主动牌，下回合加入其0费临时复制。",
+      "en": "Record the next active card; add a temporary copy with 0 cost next round."
+    },
+    {
+      "key": "Legacy.f794ef06bfdc873f",
+      "zh-Hans": "下一张主动牌不弃牌，下回合按原费用返回手牌。",
+      "en": "Do not discard the next active card; return it to your hand next round at its original cost."
+    },
+    {
+      "key": "Legacy.2e980a40a9b07813",
+      "zh-Hans": "下一张主动牌不替换收招候选。",
+      "en": "The next active card does not replace the Finisher candidate."
+    },
+    {
+      "key": "Legacy.91d0527a3fd7a6f8",
+      "zh-Hans": "下一张主动牌结算后，保留其余手牌至下回合。",
+      "en": "After the next active card resolves, retain the rest of your hand until next round."
+    },
+    {
+      "key": "Legacy.ffc36ab5932c29b2",
+      "zh-Hans": "下一张主动牌气力-1（最低0），结算后抽1张。",
+      "en": "The next active card costs 1 less Qi (minimum 0); draw 1 card after it resolves."
+    },
+    {
+      "key": "Legacy.60d7240b0e707a28",
+      "zh-Hans": "下一张主动牌结算后抽2张。",
+      "en": "Draw 2 cards after the next active card resolves."
+    },
+    {
+      "key": "Legacy.b6790c395c94616e",
+      "zh-Hans": "下一张主动牌结算后，抽1张同角色牌（无则普通抽1张）。",
+      "en": "After the next active card resolves, draw 1 card from the same character; if none exists, draw 1 normally."
+    },
+    {
+      "key": "Legacy.0fcc80a4dae3a1aa",
+      "zh-Hans": "下一张主动牌结算后，抽1张其他角色牌（无则普通抽1张）。",
+      "en": "After the next active card resolves, draw 1 card from another character; if none exists, draw 1 normally."
+    },
+    {
+      "key": "Legacy.b33fcfba9cac0795",
+      "zh-Hans": "返还本回合首张主动牌至手牌（原费用）。",
+      "en": "Return this round's first active card to your hand at its original cost."
+    },
+    {
+      "key": "Legacy.2245bdd4796ea2a0",
+      "zh-Hans": "获得2层标记；下个敌方阶段最先以你为目标的2张攻击牌结算前，各获得2层灵动并反击1次。",
+      "en": "Gain 2 Marks; before each of the first 2 attacks targeting you next enemy turn, gain 2 Agility and counter 1 time."
+    },
+    {
+      "key": "Legacy.d4a33eecd58a6d40",
+      "zh-Hans": "下回合结束前最先2次流血不减层。",
+      "en": "The first 2 Bleed triggers before next round ends do not remove stacks."
+    },
+    {
+      "key": "Legacy.d85b541d7a9d6c56",
+      "zh-Hans": "下回合最先3次流血各抽1张。",
+      "en": "The first 3 Bleed triggers next round each draw 1 card."
+    },
+    {
+      "key": "Legacy.f3ec9db0ba36a9b2",
+      "zh-Hans": "下回合结束前刀客触发的流血回复等量生命（累计上限按基础系数20、品质和队伍等级结算）。",
+      "en": "Until next round ends, Bleed triggered by the Blade companion restores equal HP, with a cumulative cap based on a base coefficient of 20, quality and team level."
+    },
+    {
+      "key": "Legacy.18edf7bb43196950",
+      "zh-Hans": "下回合首张以流血敌人为目标的牌结算后返回手牌。",
+      "en": "Return the first card targeting a Bleeding enemy next round to your hand after it resolves."
+    },
+    {
+      "key": "Legacy.f6a3d79c0b685a1a",
+      "zh-Hans": "下回合结束前破绽不减不清；下回合首张以破绽敌人为目标的牌额外重放。",
+      "en": "Vulnerability cannot decrease or clear before next round ends; replay the first card targeting a Vulnerable enemy next round an additional time."
+    },
+    {
+      "key": "Legacy.637a748a91622015",
+      "zh-Hans": "下回合首张消耗敌方状态的牌结算后，生成0费临时复制。",
+      "en": "After the first card that spends enemy statuses next round resolves, create a temporary copy with 0 cost."
+    },
+    {
+      "key": "Legacy.091f9d1319c5d928",
+      "zh-Hans": "下回合首张基础气力≥2的牌返还气力并抽2张。",
+      "en": "The first card with base Qi cost ≥2 next round refunds its Qi and draws 2 cards."
+    },
+    {
+      "key": "Legacy.13b726469395c2eb",
+      "zh-Hans": "下回合首张完成击杀的牌结算后，生成0费临时复制。",
+      "en": "After the first card that kills an enemy next round resolves, create a temporary copy with 0 cost."
+    },
+    {
+      "key": "Legacy.def1699d9aa40c2b",
+      "zh-Hans": "获得2层标记；下个敌方阶段首次反击齐射后，重新登记全部反击来源。",
+      "en": "Gain 2 Marks; after the first counter volley next enemy turn, register all counter sources again."
+    },
+    {
+      "key": "Legacy.00b296b8d1df2ea0",
+      "zh-Hans": "下个敌方阶段最先2次成功闪避不消耗灵动。",
+      "en": "The first 2 successful dodges next enemy turn do not spend Agility."
+    },
+    {
+      "key": "Legacy.f9edfaa481a7ffeb",
+      "zh-Hans": "反击齐射前把标记转移给攻击者（≤待结算反击数），反击获得标记加成。",
+      "en": "Before a counter volley, transfer Marks to the attacker, up to the number of pending counters; counters benefit from Mark."
+    },
+    {
+      "key": "Legacy.1bf6798217caac70",
+      "zh-Hans": "首次反击齐射中，每个反击来源对全体敌人各反击一次。",
+      "en": "During the first counter volley, each counter source counters every enemy a single time."
+    },
+    {
+      "key": "Legacy.936172855d41c060",
+      "zh-Hans": "将冲锋效果保存为「藏式」。",
+      "en": "Store the Opener effect as Stored Stance."
+    },
+    {
+      "key": "Legacy.e54b844d55b7239b",
+      "zh-Hans": "回复本次命中所触发的流血伤害。",
+      "en": "Restore HP equal to the Bleed damage triggered by this hit."
+    },
+    {
+      "key": "Legacy.23afe24263587e26",
+      "zh-Hans": "本次命中所触发的流血不减层。",
+      "en": "Bleed triggered by this hit does not remove stacks."
+    },
+    {
+      "key": "Legacy.61dab5bd398a1ed4",
+      "zh-Hans": "消耗至多3层破绽，每层追加1段50%攻击。",
+      "en": "Spend up to 3 Vulnerability; add 1 hit of 50% ATK per stack spent."
+    },
+    {
+      "key": "Legacy.bf2b0605eb926f9b",
+      "zh-Hans": "若本牌完成击杀，返还全部费用并抽1张。",
+      "en": "If this card kills an enemy, refund all costs and draw 1 card."
+    },
+    {
+      "key": "Legacy.c066ae0155ce8c81",
+      "zh-Hans": "血势：每点目标流血使本段攻击倍率+2个百分点。",
+      "en": "Blood Momentum: each Bleed on the target adds +2 percentage points to this hit's attack multiplier."
+    },
+    {
+      "key": "Legacy.429cb1b7997bc011",
+      "zh-Hans": "乘势：每层自身气势使本段攻击倍率+10%。",
+      "en": "Ride Momentum: each Momentum on self adds +10% to this hit's attack multiplier."
+    },
+    {
+      "key": "Legacy.51412e0f73207967",
+      "zh-Hans": "收招：此牌是本回合最后一张主动牌时，将冲锋效果保存为「藏式」。",
+      "en": "Finisher: if this is the last active card this round, store its Opener effect as Stored Stance."
+    },
+    {
+      "key": "Legacy.0e5e61b498729429",
+      "zh-Hans": "藏式：下回合第一张主动牌消耗；未消耗则回合末失效。",
+      "en": "Stored Stance: consumed by the first active card next round; expires at round end if unused."
+    },
+    {
+      "key": "Legacy.85816cd1e47d6055",
+      "zh-Hans": "开锋：本牌消耗藏式时，追加1段90%攻击。",
+      "en": "Unsheathe: when this card consumes Stored Stance, add 1 hit of 90% ATK."
+    },
+    {
+      "key": "Legacy.0cdf3f68c1f8056a",
+      "zh-Hans": "开锋：本牌消耗藏式时，将该藏式复制为「余式」，继续作用于本回合下一张主动牌；余式不再产生余式。",
+      "en": "Unsheathe: when this card consumes Stored Stance, copy that stance as Follow-up Stance for the next active card this round; Follow-up Stance cannot create another Follow-up Stance."
+    },
+    {
+      "key": "Legacy.9ccef66efd8f10eb",
+      "zh-Hans": "全体友方各",
+      "en": "Each ally"
+    },
+    {
+      "key": "Legacy.32fb01e92309e18c",
+      "zh-Hans": "全体敌方各",
+      "en": "Each enemy"
+    },
+    {
+      "key": "Legacy.941f08313a1de572",
+      "zh-Hans": "目标",
+      "en": "Target"
+    },
+    {
+      "key": "Legacy.565b8c12421a9e1b",
+      "zh-Hans": "；每层药效增加1点基础治疗",
+      "en": "; each Potency adds 1 base healing"
+    },
+    {
+      "key": "Legacy.941ccb3bdd363479",
+      "zh-Hans": "每笔伤害或治疗使任一角色生命变化时，自身获得1点药效。",
+      "en": "Gain 1 Potency whenever damage or healing changes any character's HP."
+    },
+    {
+      "key": "Legacy.2f64d6747777182d",
+      "zh-Hans": "每回合首次打出当前气力消耗至少2的牌时，全体友方失去1点生命（最低保留1点）再恢复2点；每回合累计获得至少6层药效时，回复1点气力（每回合1次；敌方回合触发则下回合开始到账）。",
+      "en": "The first card with current Qi cost at least 2 each round makes all allies lose 1 HP (minimum 1), then restores 2 HP. After gaining at least 6 Potency that round, restore 1 Qi (1 time per round; if triggered during the enemy turn, receive it at the start of next round)."
+    },
+    {
+      "key": "Legacy.4b86923c05842a49",
+      "zh-Hans": "每回合首次完成实际治疗或药效反向伤害时，药师获得2层药效。",
+      "en": "The Apothecary gains 2 Potency on the first effective heal or reversed Potency damage each round."
+    },
+    {
+      "key": "Legacy.ab3a68e350a708cd",
+      "zh-Hans": "友方被清除的流血、中毒、灼烧每累计3层，药师获得1层药效（余数保留）。",
+      "en": "The Apothecary gains 1 Potency per cumulative 3 Bleed, Poison or Burn stacks removed from allies; carry over the remainder."
+    },
+    {
+      "key": "Legacy.a54501e2ad3ca8cf",
+      "zh-Hans": "每回合首次有友方从生命不低于35%降到低于35%时，药师获得3层药效。",
+      "en": "The Apothecary gains 3 Potency the first time an ally falls from at least 35% HP to below 35% each round."
+    },
+    {
+      "key": "Legacy.47e11d4f7a48a552",
+      "zh-Hans": "每回合每完成3次有效友方治疗，抽1张牌（每回合最多2张）。",
+      "en": "Draw 1 card per 3 effective allied heals each round, up to 2 cards per round."
+    },
+    {
+      "key": "Legacy.312f08a6f90ce4a2",
+      "zh-Hans": "每回合首次清除友方流血时，全体友方获得2点护甲。",
+      "en": "The first removal of allied Bleed each round grants 2 Armor to all allies."
+    },
+    {
+      "key": "Legacy.6f791ef88da093b3",
+      "zh-Hans": "每回合首次完成至少10点治疗或药效反向伤害时：对友方目标额外获得4点护甲，对敌方目标施加1层破绽。",
+      "en": "On the first heal or reversed Potency damage of at least 10 each round: grant another 4 Armor to an allied target, or apply 1 Vulnerability to an enemy target."
+    },
+    {
+      "key": "Legacy.5f9a26bef8dd1f03",
+      "zh-Hans": "每回合首次有友方从生命不低于30%降到低于30%时，该友方获得2层灵动。",
+      "en": "The first ally to fall from at least 30% HP to below 30% each round gains 2 Agility."
+    },
+    {
+      "key": "Legacy.c2c9f1d0a0f922ff",
+      "zh-Hans": "同一次结算中至少3个不同单位实际生命变化时，抽1张牌，全体友方获得2点内力（每回合1次）。",
+      "en": "When the same resolution changes the HP of at least 3 different units, draw 1 card and grant 2 Inner Power to all allies (1 time per round)."
+    },
+    {
+      "key": "Legacy.37e8e356ccdf1390",
+      "zh-Hans": "每笔中毒伤害生效时，药师获得1层药效。",
+      "en": "The Apothecary gains 1 Potency each time Poison deals damage."
+    },
+    {
+      "key": "Legacy.33281f52a7e087f4",
+      "zh-Hans": "每回合每名同时具有流血和中毒的敌方，获得1层标记。",
+      "en": "Each round, every enemy with both Bleed and Poison gains 1 Mark."
+    },
+    {
+      "key": "Legacy.fa611b7fc9cccbcd",
+      "zh-Hans": "每回合首次使至少2名敌方获得中毒时，药师获得2层药效并抽1张牌。",
+      "en": "The Apothecary gains 2 Potency and draws 1 card the first time Poison is applied to at least 2 enemies each round."
+    },
+    {
+      "key": "Legacy.5da31ca4e3e2af7e",
+      "zh-Hans": "每次毒爆包含至少2类持续伤害时，药师获得2层药效。",
+      "en": "The Apothecary gains 2 Potency whenever a Poison Burst contains at least 2 damage-over-time types."
+    },
+    {
+      "key": "Legacy.96cf7864cbd72db3",
+      "zh-Hans": "每2笔流血伤害生效，药师获得1层药效（余数保留）。",
+      "en": "The Apothecary gains 1 Potency per 2 Bleed damage events; carry over the remainder."
+    },
+    {
+      "key": "Legacy.5b3b9e919b03e497",
+      "zh-Hans": "每回合首次直接攻击命中至少2名敌方时，回复1点气力。",
+      "en": "Restore 1 Qi the first time a direct attack hits at least 2 enemies each round."
+    },
+    {
+      "key": "Legacy.a24250688370f6a0",
+      "zh-Hans": "每回合首次给已具有中毒的敌方施加破绽时，药师获得1层药效并抽1张牌。",
+      "en": "The Apothecary gains 1 Potency and draws 1 card the first time Vulnerability is applied to an already Poisoned enemy each round."
+    },
+    {
+      "key": "Legacy.9a15e4d53bad90f7",
+      "zh-Hans": "每回合首次毒爆包含流血、中毒、灼烧3类时，药师获得1层气势并抽1张牌。",
+      "en": "The Apothecary gains 1 Momentum and draws 1 card the first time a Poison Burst contains all 3 types, Bleed, Poison and Burn, each round."
+    },
+    {
+      "key": "Legacy.cae96d049ef5ad03",
+      "zh-Hans": "所选友方",
+      "en": "Selected ally"
+    }
+  ]
+}

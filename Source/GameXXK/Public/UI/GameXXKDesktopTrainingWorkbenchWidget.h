@@ -15,6 +15,8 @@
 #include "UI/GameXXKTrainingTravelVisualRuntime.h"
 #include "GameXXKDesktopTrainingWorkbenchWidget.generated.h"
 
+struct FGameXXKTrainingChestOpenResult;
+
 class UBorder;
 class UButton;
 class UCanvasPanel;
@@ -32,6 +34,7 @@ class UGameXXKInventoryWindowWidget;
 class UGameXXKGuideCoordinator;
 class UGameXXKGuideOverlayWidget;
 class UGameXXKGuidePreferenceWidget;
+class UGameXXKInterfaceHelpWidget;
 class UGameXXKMainStoryPanelWidget;
 class UGameXXKDialoguePanelWidget;
 class UGameXXKTalentTreeWidget;
@@ -169,6 +172,7 @@ public:
 
 	FText GetLastDesktopInventoryNoticeForTest() const;
 	EGameXXKDesktopNoticeCategory GetLastNoticeCategoryForTest() const;
+    TArray<FText> GetChestReportsForTest() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|DesktopTraining|Test")
 	bool PickUpBackpackSlotForTest(int32 SlotIndex);
@@ -258,7 +262,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsWorkbenchVisibleForTest() const;
 
-	/** Whether the independent settings surface is open above the backpack. */
+	/** Whether settings is replacing the central backpack/page content. */
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	bool IsSettingsPanelOpenForTest() const;
 
@@ -491,6 +495,10 @@ public:
 	void RefreshBackpackFooterVisibility();
 	void HandleStageClicked(FName StageId);
 	void HandleActionClicked(int32 ActionId);
+	UFUNCTION(BlueprintCallable, Category = "GameXXK|UI")
+	void ShowInterfaceHelp();
+    void PrepareInterfaceTutorialContext(FName Context);
+    bool RecordInterfaceTutorialStep(FName StepId);
 	bool HandleActionAltClicked(int32 ActionId);
 	bool HandleActionRightClicked(int32 ActionId);
 	void HandleActionHoverChanged(int32 ActionId, bool bHovered);
@@ -556,6 +564,7 @@ protected:
 	virtual void NativeConstruct() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual FReply NativeOnPreviewKeyDown(const FGeometry& Geometry, const FKeyEvent& Event) override;
 	virtual FReply NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual FReply NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 	virtual void NativeOnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent) override;
@@ -694,6 +703,7 @@ private:
 		const FText& Notice,
 		EGameXXKDesktopNoticeCategory Category = EGameXXKDesktopNoticeCategory::System);
 	void RefreshNoticePresentation();
+    void PublishChestOpenReports(const FGameXXKTrainingChestOpenResult& Result);
 	void RefreshNoticeControlVisibility();
 	bool IsNoticeAction(int32 ActionId) const;
 	void LoadNoticeCategorySettings();
@@ -718,6 +728,7 @@ private:
 		int32 PendingAdvancedChests = 0;
 		int32 HeldNormalChests = 0;
 		int32 HeldAdvancedChests = 0;
+		int32 HeldHuntChests = 0;
 		int32 NormalChestCooldown = 0;
 		int32 AdvancedChestCooldown = 0;
 		int32 WarehouseOccupancy = 0;
@@ -742,6 +753,7 @@ private:
 				&& PendingAdvancedChests == Other.PendingAdvancedChests
 				&& HeldNormalChests == Other.HeldNormalChests
 				&& HeldAdvancedChests == Other.HeldAdvancedChests
+				&& HeldHuntChests == Other.HeldHuntChests
 				&& NormalChestCooldown == Other.NormalChestCooldown
 				&& AdvancedChestCooldown == Other.AdvancedChestCooldown
 				&& WarehouseOccupancy == Other.WarehouseOccupancy
@@ -755,7 +767,8 @@ private:
 
 	FLivePresentationSnapshot CaptureLivePresentationSnapshot() const;
 	void UpdateWaveProgressPresentation(const FLivePresentationSnapshot& Snapshot);
-	void UpdateTrainingChestPresentation(bool bAdvanced, int32 Count);
+	void UpdateTrainingChestPresentation(EGameXXKTrainingRewardTier Tier, int32 Count);
+	void UpdateTrainingChestPresentation(bool bAdvanced, int32 Count) { UpdateTrainingChestPresentation(bAdvanced?EGameXXKTrainingRewardTier::AdvancedChest:EGameXXKTrainingRewardTier::NormalChest,Count); }
 	void UpdateWarehouseNumericPresentation(const FLivePresentationSnapshot& Snapshot);
 	void UpdateToolNumericPresentation(const FLivePresentationSnapshot& Snapshot);
 
@@ -792,6 +805,9 @@ private:
 		EGameXXKDesktopNoticeCategory Category = EGameXXKDesktopNoticeCategory::System;
 		FText Message;
 		uint64 Ordinal = 0;
+        bool bChestReport = false;
+		/** Keep stable drop data in the closure so old reports rebuild in the current language. */
+		TFunction<FText()> ResolveMessage;
 	};
 
 	UPROPERTY(Transient)
@@ -829,6 +845,9 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKGuideOverlayWidget> GuideOverlayWidget;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInterfaceHelpWidget> InterfaceHelpWidget;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UGameXXKGuidePreferenceWidget> GuidePreferenceWidget;
@@ -875,6 +894,15 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UTextBlock> TrainingAdvancedChestCountText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKDesktopTrainingActionButton> TrainingHuntChestButton;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingHuntChestCountText;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UTextBlock> TrainingFoldedHuntChestText;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UBorder> TrainingWaveProgressFill;
@@ -1042,6 +1070,7 @@ private:
 	bool bStoryTaskRewardTab = false;
 	TMap<int32,float> TutorialListOffsets;
 	bool bTrainingDifficultyDropdownOpen = false;
+	bool bToolModeDropdownOpen = false;
 	bool bRestoreTrainingPanelAfterChallenge = false;
 	FGuid RouteSettlementReceiptAtChallengeStart;
 	bool bCharacterRosterMembersExpanded = false;

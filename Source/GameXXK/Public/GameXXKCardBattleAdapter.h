@@ -32,7 +32,8 @@ public:
 		EGameXXKCardTerrain Terrain,
 		int32 InitialRandomSeed,
 		FString* OutError = nullptr,
-		int32 EnemyDifficultyDamagePercent = 100);
+		int32 EnemyDifficultyDamagePercent = 100,
+		bool bEnemyAttributesIncludeDifficulty = false);
 
 	/** Copies HP/MP/attributes/defeat state from card authority to existing scene/widget-facing battle arrays. */
 	static bool SyncCardBattleToLegacyProjection(FGameXXKRuntimeState& InOutState, FString* OutError = nullptr);

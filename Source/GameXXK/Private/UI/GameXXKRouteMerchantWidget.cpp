@@ -1,4 +1,5 @@
 #include "UI/GameXXKRouteMerchantWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "GameXXKTravelMoneyRules.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKCardNameStyle.h"
@@ -516,7 +517,7 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 	auto* Paper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantPaper"));
 	Paper->SetBrush(FGameXXKInRunUiStyle::Paper({1736, 980})); Paper->SetBrushColor(FLinearColor::White);
 	Paper->SetVisibility(ESlateVisibility::HitTestInvisible); AddCanvasChild(RootCanvas, Paper, {92, 48}, {1736, 980}, 1);
-	auto* Title = MakeText(WidgetTree, FText::FromString(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
+	auto* Title = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
 	AddCanvasChild(RootCanvas, Title, {163, 91}, {990, 76}, 2);
 	OrdinaryGoldText = MakeText(WidgetTree, FText::GetEmpty(), 29, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantOrdinaryGold"));
 	UImage* TravelMoneyIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteMerchantTravelMoneyIcon"));
@@ -524,7 +525,7 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 	TravelMoneyIcon->SetVisibility(ESlateVisibility::HitTestInvisible);
 	AddCanvasChild(RootCanvas, TravelMoneyIcon, {1350, 120}, {40, 40}, 2);
 	OrdinaryGoldText->SetJustification(ETextJustify::Right); AddCanvasChild(RootCanvas, OrdinaryGoldText, {1390, 117}, {350, 50}, 2);
-	auto* CardHeader = MakeText(WidgetTree, FText::FromString(TEXT("卡牌强化")), 23, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantCardRowHeader"));
+	auto* CardHeader = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("卡牌强化")), 23, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantCardRowHeader"));
 	AddCanvasChild(RootCanvas, CardHeader, {161, 193}, {620, 41}, 2);
 	CardOfferRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("RouteMerchantCardRow"));
 	CardOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible); AddCanvasChild(RootCanvas, CardOfferRow, {145, 234}, {1630, 432}, 2);
@@ -536,7 +537,7 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 			LayoutSlot->SetHorizontalAlignment(HAlign_Center); LayoutSlot->SetPadding(FMargin(8, 0));
 		}
 	}
-	AddCanvasChild(RootCanvas, MakeText(WidgetTree, FText::FromString(TEXT("随身遗物")), 25, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantRelicRowHeader")), {161, 671}, {700, 38}, 2);
+	AddCanvasChild(RootCanvas, MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("随身遗物")), 25, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantRelicRowHeader")), {161, 671}, {700, 38}, 2);
 	RelicOfferRow = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("RouteMerchantRelicRow"));
 	RelicOfferRow->SetVisibility(ESlateVisibility::SelfHitTestInvisible); AddCanvasChild(RootCanvas, RelicOfferRow, {145, 719}, {1630, 215}, 2);
 	for (int32 I = 0; I < MerchantRelicSlotCount; ++I)
@@ -557,7 +558,7 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 	AddCanvasChild(RootCanvas, RefreshButton, {1114, 952}, {316, 59}, 3);
 	LeaveButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("RouteMerchantLeaveButton"));
 	LeaveButton->SetStyle(FGameXXKInRunUiStyle::Action({280, 59}));
-	LeaveButtonText = MakeText(WidgetTree, FText::FromString(TEXT("离开商店")), 23, FLinearColor::White, TEXT("RouteMerchantLeaveLabel"));
+	LeaveButtonText = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("离开商店")), 23, FLinearColor::White, TEXT("RouteMerchantLeaveLabel"));
 	LeaveButtonText->SetAutoWrapText(false); LeaveButtonText->SetJustification(ETextJustify::Center);
 	LeaveButton->SetContent(LeaveButtonText); LeaveButton->OnClicked.AddDynamic(this, &UGameXXKRouteMerchantWidget::HandleLeaveClicked);
 	AddCanvasChild(RootCanvas, LeaveButton, {1460, 952}, {280, 59}, 3);
@@ -803,7 +804,7 @@ void UGameXXKRouteMerchantWidget::ApplyView(const FGameXXKRouteMerchantView& Vie
 		RefreshButton->SetIsEnabled(View.bRefreshEnabled);
 		RefreshButton->SetToolTipText(View.bRefreshEnabled
 			? NSLOCTEXT("GameXXKRouteMerchant", "RefreshTooltip", "重抽两排未购买商品；已售槽保留，下一次刷新费用会提高。")
-			: FText::FromString(LocalizeMerchantRuleError(
+			: GameXXKLocalization::Source(LocalizeMerchantRuleError(
 				View.RefreshDisabledReason,
 				TEXT("当前不能刷新商店。"))));
 	}
@@ -834,7 +835,7 @@ void UGameXXKRouteMerchantWidget::UpdateLastActionErrorDisplay()
 	{
 		return;
 	}
-	LastActionErrorText->SetText(FText::FromString(LastActionError));
+	LastActionErrorText->SetText(GameXXKLocalization::Source(LastActionError));
 	LastActionErrorText->SetVisibility(
 		LastActionError.IsEmpty()
 			? ESlateVisibility::Collapsed
@@ -902,11 +903,11 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 		}
 	}
 
-	OfferNameTexts[GlobalOfferIndex]->SetText(FText::FromString(DisplayName));
+	OfferNameTexts[GlobalOfferIndex]->SetText(GameXXKLocalization::Source(DisplayName));
 	OfferNameTexts[GlobalOfferIndex]->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
 	GameXXKCardNameStyle::Apply(OfferNameTexts[GlobalOfferIndex], bCard && !bUnavailable ? Offer->Quality : EGameXXKCardQuality::Common);
 	if (auto* Cost = Cast<UTextBlock>(WidgetTree->FindWidget(*FString::Printf(TEXT("RouteMerchantCardCost%d"),GlobalOfferIndex))))
-		Cost->SetText(CardDefinition ? FText::FromString(FString::Printf(TEXT("%d气\n%d内"),CardDefinition->EnergyCost,CardDefinition->ManaCost)) : FText::GetEmpty());
+		Cost->SetText(CardDefinition ? GameXXKLocalization::Source(FString::Printf(TEXT("%d气\n%d内"),CardDefinition->EnergyCost,CardDefinition->ManaCost)) : FText::GetEmpty());
 	OfferOwnerTexts[GlobalOfferIndex]->SetText(bCard
 		? (bUnavailable
 			? NSLOCTEXT("GameXXKRouteMerchant", "NoOwnerCompact", "暂无持牌角色")
@@ -953,14 +954,14 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 	{
 		EffectPreview = bCard ? TEXT("强化效果资料暂不可用") : TEXT("遗物资料暂不可用");
 	}
-	OfferEffectTexts[GlobalOfferIndex]->SetText(FText::FromString(
+	OfferEffectTexts[GlobalOfferIndex]->SetText(GameXXKLocalization::Source(
 		bUnavailable || !bCard ? EffectPreview : FString::Printf(TEXT("强化后：%s"), *EffectPreview)));
 	OfferPriceTexts[GlobalOfferIndex]->SetText(bUnavailable
 		? NSLOCTEXT("GameXXKRouteMerchant", "NoPrice", "行旅钱 --")
 		: FText::Format(NSLOCTEXT("GameXXKRouteMerchant", "OfferPrice", "行旅钱 {0}"), FText::AsNumber(Offer->Price)));
 	OfferStatusTexts[GlobalOfferIndex]->SetText(DisabledReason.IsEmpty()
 		? NSLOCTEXT("GameXXKRouteMerchant", "Available", "可购买")
-		: FText::FromString(DisabledReason));
+		: GameXXKLocalization::Source(DisabledReason));
 
 	FText PurchaseLabel = bCard
 		? NSLOCTEXT("GameXXKRouteMerchant", "Buy", "强化")
@@ -1050,7 +1051,7 @@ void UGameXXKRouteMerchantWidget::ApplyOffer(
 		PurchaseButton->SetToolTipText(FText::GetEmpty());
 		DisplayButton->SetToolTip(CardTooltip);
 		PurchaseButton->SetToolTip(CardTooltip);
-		OfferTooltips[GlobalOfferIndex] = FText::FromString(CardTooltip->GetDisplayedTextForTest());
+		OfferTooltips[GlobalOfferIndex] = GameXXKLocalization::Source(CardTooltip->GetDisplayedTextForTest());
 	}
 	else
 	{
@@ -1074,7 +1075,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 		const TCHAR* EmptyLabel = ExpectedKind == EGameXXKRouteMerchantOfferKind::Card
 			? TEXT("没有可强化卡牌")
 			: TEXT("没有可购买遗物");
-		return FText::FromString(FString::Printf(
+		return GameXXKLocalization::Source(FString::Printf(
 			TEXT("%s\n%s"),
 			EmptyLabel,
 			DisabledReason.IsEmpty() ? TEXT("本格当前不可用。") : *DisabledReason));
@@ -1088,7 +1089,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 			FGameXXKCardTooltipContext Context;
 			Context.InteractionResult = FString::Printf(TEXT("价格：%d 行旅钱"), Offer.Price);
 			Context.UnavailableReason = DisabledReason;
-			return FText::FromString(FString::Printf(
+			return GameXXKLocalization::Source(FString::Printf(
 				TEXT("%s\n强化至%s：\n%s"),
 				*GameXXKCardText::DescribeTooltip(*Definition, Offer.Quality, nullptr, Context),
 				*FGameXXKCardQualityRules::GetDisplayName(Offer.NextQuality).ToString(),
@@ -1098,7 +1099,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 	else if (const FGameXXKRelicDefinition* Definition =
 		FGameXXKRelicCatalog::FindDefinition(Offer.ContentId))
 	{
-		return FText::FromString(FString::Printf(
+		return GameXXKLocalization::Source(FString::Printf(
 			TEXT("%s\n%s\n品质：%s\n价格：%d 行旅钱%s%s"),
 			*Definition->DisplayName.ToString(),
 			*Definition->Description.ToString(),
@@ -1111,7 +1112,7 @@ FText UGameXXKRouteMerchantWidget::BuildOfferTooltip(
 	const TCHAR* UnknownLabel = ExpectedKind == EGameXXKRouteMerchantOfferKind::Card
 		? TEXT("未知卡牌")
 		: TEXT("未知遗物");
-	return FText::FromString(FString::Printf(
+	return GameXXKLocalization::Source(FString::Printf(
 		TEXT("%s\n价格：%d 行旅钱%s%s"),
 		UnknownLabel,
 		Offer.Price,
@@ -1139,7 +1140,7 @@ FText UGameXXKRouteMerchantWidget::ResolveOwnerLabel(const FName OwnerMemberId) 
 				Companion.NameSeed);
 			if (!DisplayName.IsEmpty())
 			{
-				return FText::FromString(DisplayName);
+				return GameXXKLocalization::Source(DisplayName);
 			}
 		}
 	}

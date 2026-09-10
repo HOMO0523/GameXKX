@@ -1,0 +1,521 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ConfirmChoice",
+      "zh-Hans": "确认选择",
+      "en": "Confirm Choice"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampHint",
+      "zh-Hans": "稍作休整，再赴前路。\n选择后继续本次历练。",
+      "en": "Rest a while, then return to the road.\nChoose an option to continue this run."
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ReturnToRouteMap",
+      "zh-Hans": "返回路线图（本节点不会结算）",
+      "en": "Return to Route Map (Node Remains Unresolved)"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "Close",
+      "zh-Hans": "暂不决定",
+      "en": "Decide Later"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ChooseRelic",
+      "zh-Hans": "选择 · {0}",
+      "en": "Choose · {0}"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ChestTitle",
+      "zh-Hans": "宝匣抉择",
+      "en": "A Treasure Chest"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ChestSpeaker",
+      "zh-Hans": "路边宝匣",
+      "en": "Roadside Chest"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "ChestBody",
+      "zh-Hans": "斑驳的木匣半掩在草丛中。选择带走一份明确的战利品。\n不作选择不会结算该节点。",
+      "en": "A worn wooden chest lies half hidden in the grass. Choose one reward to take.\nThis node remains unresolved until you choose."
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "FallbackChooseRelic",
+      "zh-Hans": "选择 · {0}",
+      "en": "Choose · {0}"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "FallbackUnknownRelic",
+      "zh-Hans": "选择遗物",
+      "en": "Choose Relic"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "EventTitle",
+      "zh-Hans": "山路偶遇",
+      "en": "Mountain Encounter"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "EventSpeaker",
+      "zh-Hans": "江湖来客",
+      "en": "A Traveler"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "EventBody",
+      "zh-Hans": "前方的来客递来一份报酬。选择领取金钱或补给；按 F 本身不会结算事件。 ",
+      "en": "A traveler offers a reward. Choose money or supplies; pressing F alone does not resolve the event. "
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "EventGold",
+      "zh-Hans": "收下 12 金",
+      "en": "Take 12 Gold"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "EventSupply",
+      "zh-Hans": "领取疗伤散",
+      "en": "Take Healing Powder"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampTitle",
+      "zh-Hans": "营火抉择",
+      "en": "Campfire Choices"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampSpeaker",
+      "zh-Hans": "山间营火",
+      "en": "Mountain Campfire"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampRestBody",
+      "zh-Hans": "营火尚温。带上保命护符，再踏前路。",
+      "en": "The campfire is still warm. Take a Life-Saving Talisman before continuing."
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampTalisman",
+      "zh-Hans": "获得保命护符",
+      "en": "Take Life-Saving Talisman"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampContinue",
+      "zh-Hans": "继续前行",
+      "en": "Continue Onward"
+    },
+    {
+      "namespace": "GameXXKRelics",
+      "key": "TalismanOwnedContinue",
+      "zh-Hans": "本局已持有保命护符，可继续前行。",
+      "en": "You already have a Life-Saving Talisman this run. You may continue."
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampContinueTooltip",
+      "zh-Hans": "离开营火，继续路线。",
+      "en": "Leave the campfire and continue the run."
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantTitle",
+      "zh-Hans": "行商驻足",
+      "en": "Traveling Merchant"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantSpeaker",
+      "zh-Hans": "山路行商",
+      "en": "Mountain Merchant"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantBody",
+      "zh-Hans": "行商正在收摊。选择明确离开后才会继续路线；也可以暂不离开，返回查看。 ",
+      "en": "The merchant is packing up. Choose to leave to continue the run, or stay and browse again. "
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantLeave",
+      "zh-Hans": "离开商队",
+      "en": "Leave the Caravan"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantStay",
+      "zh-Hans": "暂不离开",
+      "en": "Stay for Now"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "MerchantClose",
+      "zh-Hans": "返回查看",
+      "en": "Back to Browse"
+    },
+    {
+      "namespace": "GameXXKRelics",
+      "key": "CampTalismanTooltipTitle",
+      "zh-Hans": "保命护符",
+      "en": "Life-Saving Talisman"
+    },
+    {
+      "namespace": "GameXXKRouteEncounter",
+      "key": "CampContinueHint",
+      "zh-Hans": "选择后继续本次历练。",
+      "en": "Choose an option to continue this run."
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcTusiChief",
+      "zh-Hans": "土司首领",
+      "en": "Tusi Chief"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcSongJinBao",
+      "zh-Hans": "宋金宝",
+      "en": "Song Jinbao"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcYueBai",
+      "zh-Hans": "幽白",
+      "en": "Youbai"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcZhouGuangZu",
+      "zh-Hans": "周光祖",
+      "en": "Zhou Guangzu"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcJinGui",
+      "zh-Hans": "金贵",
+      "en": "Jin Gui"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NpcQiongMeiEr",
+      "zh-Hans": "琼幺儿",
+      "en": "Qiong Yaoer"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "QuestNpcFallback",
+      "zh-Hans": "同行角色",
+      "en": "Traveling Companion"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "Buy",
+      "zh-Hans": "强化",
+      "en": "Enhance"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "PhysicalTravelMoney",
+      "zh-Hans": "行旅钱：{0}",
+      "en": "Travel Money: {0}"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "TravelRefreshPrice",
+      "zh-Hans": "刷新 {0} 行旅钱",
+      "en": "Refresh: {0} Travel Money"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "RefreshTooltip",
+      "zh-Hans": "重抽两排未购买商品；已售槽保留，下一次刷新费用会提高。",
+      "en": "Reroll unsold offers in both rows. Sold slots stay empty. The next refresh costs more."
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "LeaveTooltip",
+      "zh-Hans": "离开商店、完成当前商人节点并返回路线图。",
+      "en": "Leave the shop, complete this merchant node, and return to the route map."
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NoOwnerCompact",
+      "zh-Hans": "暂无持牌角色",
+      "en": "No Card Owner"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "RelicOwner",
+      "zh-Hans": "遗物",
+      "en": "Relics"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "NoPrice",
+      "zh-Hans": "行旅钱 --",
+      "en": "Travel Money --"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "OfferPrice",
+      "zh-Hans": "行旅钱 {0}",
+      "en": "Travel Money {0}"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "Available",
+      "zh-Hans": "可购买",
+      "en": "Available"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "BuyRelic",
+      "zh-Hans": "购买",
+      "en": "Buy"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "Unavailable",
+      "zh-Hans": "不可用",
+      "en": "Unavailable"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "Sold",
+      "zh-Hans": "已售出",
+      "en": "Sold"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "Insufficient",
+      "zh-Hans": "行旅钱不足",
+      "en": "Not Enough Travel Money"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "UnavailableArt",
+      "zh-Hans": "没有可强化卡牌",
+      "en": "No Cards to Enhance"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "UnavailableRelicArt",
+      "zh-Hans": "没有可购买遗物",
+      "en": "No Relics Available"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "MissingArt",
+      "zh-Hans": "卡面暂缺",
+      "en": "Card Art Unavailable"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "MissingRelicArt",
+      "zh-Hans": "遗物图标暂缺",
+      "en": "Relic Icon Unavailable"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "HeroOwner",
+      "zh-Hans": "主角",
+      "en": "Hero"
+    },
+    {
+      "namespace": "GameXXKRouteMerchant",
+      "key": "FriendlyOwnerFallback",
+      "zh-Hans": "队伍成员",
+      "en": "Party Member"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "PanelTitle",
+      "zh-Hans": "任务",
+      "en": "Quests"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "MainTab",
+      "zh-Hans": "主线",
+      "en": "Main Story"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "SideTab",
+      "zh-Hans": "支线",
+      "en": "Side Quests"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "NoAvailableTasks",
+      "zh-Hans": "当前分类暂无可接任务",
+      "en": "No available quests in this category"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "NoAcceptedTasks",
+      "zh-Hans": "当前分类暂无已接任务",
+      "en": "No accepted quests in this category"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "AcceptTask",
+      "zh-Hans": "接取",
+      "en": "Accept"
+    },
+    {
+      "namespace": "GameXXKTownHud",
+      "key": "HeroName",
+      "zh-Hans": "小侠客",
+      "en": "Young Warrior"
+    },
+    {
+      "namespace": "GameXXKTownHud",
+      "key": "HeroTitle",
+      "zh-Hans": "青山游侠",
+      "en": "Qingshan Wanderer"
+    },
+    {
+      "namespace": "GameXXKTownHud",
+      "key": "OpenWorldMapFailed",
+      "zh-Hans": "暂时无法返回世界地图。",
+      "en": "Cannot return to the world map right now."
+    },
+    {
+      "namespace": "GameXXKTownHud",
+      "key": "CodexNotAvailable",
+      "zh-Hans": "图鉴尚未开放。",
+      "en": "The codex is not yet available."
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "OpenInventory",
+      "zh-Hans": "背包",
+      "en": "Bag"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "OpenCharacter",
+      "zh-Hans": "角色",
+      "en": "Character"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "ClosePanel",
+      "zh-Hans": "关闭面板",
+      "en": "Close Panel"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "EquipmentHeader",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "WeaponSlotEmpty",
+      "zh-Hans": "武器\n未装备",
+      "en": "Weapon\nUnequipped"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "ArmorSlotEmpty",
+      "zh-Hans": "防具\n未装备",
+      "en": "Armor\nUnequipped"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "AccessorySlotEmpty",
+      "zh-Hans": "饰品\n未装备",
+      "en": "Accessory\nUnequipped"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "ShopStockHeader",
+      "zh-Hans": "商人货架",
+      "en": "Merchant Stock"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "ConfirmPurchase",
+      "zh-Hans": "购买",
+      "en": "Buy"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "CancelPurchase",
+      "zh-Hans": "取消",
+      "en": "Cancel"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "BackpackHeader",
+      "zh-Hans": "背包",
+      "en": "Bag"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "InventoryTitle",
+      "zh-Hans": "背包",
+      "en": "Bag"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "CharacterTitle",
+      "zh-Hans": "角色",
+      "en": "Character"
+    },
+    {
+      "namespace": "GameXXKTownOverlay",
+      "key": "TradeTitle",
+      "zh-Hans": "商店",
+      "en": "Shop"
+    },
+    {
+      "namespace": "GameXXKWorldMap",
+      "key": "WrongScreen",
+      "zh-Hans": "请先进入世界地图。",
+      "en": "Open the world map first."
+    },
+    {
+      "namespace": "GameXXKWorldMap",
+      "key": "UnavailableTown",
+      "zh-Hans": "该城镇暂未开放。",
+      "en": "This town is not yet available."
+    },
+    {
+      "namespace": "GameXXKWorldMap",
+      "key": "LockedTown",
+      "zh-Hans": "该城镇尚未解锁。",
+      "en": "This town is locked."
+    },
+    {
+      "namespace": "GameXXKWorldMap",
+      "key": "QingshanLabel",
+      "zh-Hans": "青山镇",
+      "en": "Qingshan Town"
+    },
+    {
+      "namespace": "GameXXKWorldMap",
+      "key": "TanjiangLabel",
+      "zh-Hans": "潭江渡 · 未开放",
+      "en": "Tanjiang Ferry · Unavailable"
+    }
+  ]
+}

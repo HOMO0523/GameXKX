@@ -4,6 +4,7 @@
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKLocalization.h"
 #include "GameXXKCardCatalog.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -27,20 +28,21 @@ void UGameXXKAcademySubsystem::RefreshPlayerUi()
 }
 bool UGameXXKAcademySubsystem::BeginCourse(FName Id,int32 Index)
 {
-	if(IsActive()){Message=FText::FromString(TEXT("请先退出当前教程。"));return false;}
+	if(IsActive()){Message=GameXXKLocalization::Source(TEXT("请先退出当前教程。"));return false;}
 	auto* MVP=GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>();
 	const auto* C=FGameXXKAcademyRules::Find(Id);
 	if(!MVP || !C)return false;
-	if(MVP->RuntimeState.CardRun.bHasActiveCardBattle){Message=FText::FromString(TEXT("请先结束当前战斗。"));return false;}
+	if(MVP->RuntimeState.CardRun.bHasActiveCardBattle){Message=GameXXKLocalization::Source(TEXT("请先结束当前战斗。"));return false;}
 	const int32 Completed=MVP->RuntimeState.GuideProgress.AcademyCompletedLessons.FindRef(Id);
 	if(Index==INDEX_NONE)Index=Completed<C->Lessons.Num()?Completed:0;
-	if(!C->Lessons.IsValidIndex(Index) || Index>Completed){Message=FText::FromString(TEXT("请按顺序完成教程。"));return false;}
+	if(!C->Lessons.IsValidIndex(Index) || Index>Completed){Message=GameXXKLocalization::Source(TEXT("请按顺序完成教程。"));return false;}
 	FGameXXKRuntimeState Borrowed;FName Focus;FString Error;
-	if(!UGameXXKMVPSubsystem::BuildAcademyBattleState(*C,Index,Borrowed,Focus,Error)){Message=FText::FromString(Error);return false;}
+	if(!UGameXXKMVPSubsystem::BuildAcademyBattleState(*C,Index,Borrowed,Focus,Error)){Message=GameXXKLocalization::Source(Error);return false;}
+    if(!MVP->SaveCurrentGame()){Message=GameXXKLocalization::Text(TEXT("Academy.SaveFailed"));return false;}
 	Original=MVP->RuntimeState;OriginalTravel=MVP->TrainingTravelRuntime;
 	if(auto* PC=Cast<AGameXXKMVPPlayerController>(GetGameInstance()->GetFirstLocalPlayerController()))
 		if(auto* Workbench=PC->GetDesktopTrainingWorkbenchWidgetForTest())OriginalWorkbench=Workbench->CaptureSessionStateForMapTravel();
-	ActiveCourseId=Id;ActiveLessonIndex=Index;FocusUnitId=Focus;Evidence={};Message=FText::GetEmpty();bGuideCueDirty=true;CueMode=0;CueCard=NAME_None;GuideObserveUntil=0;
+	ActiveCourseId=Id;ActiveLessonIndex=Index;FocusUnitId=Focus;Evidence={};Message=FText::GetEmpty();bGuideCueDirty=true;CueMode=0;bPractice=false;CueCard=NAME_None;GuideObserveUntil=0;
 	MVP->bAcademyWriteGuard=true;MVP->RuntimeState=MoveTemp(Borrowed);MVP->TrainingTravelRuntime={};
 	RefreshPlayerUi();return true;
 }
@@ -53,7 +55,7 @@ void UGameXXKAcademySubsystem::RestoreOriginal()
 		MVP->RuntimeState.Training.TravelLastUpdatedUnixSeconds=FDateTime::UtcNow().ToUnixTimestamp();
 		MVP->bAcademyWriteGuard=false;
 	}
-	Original.Reset();if(Overlay)Overlay->RemoveFromParent();Overlay=nullptr;GoalText=nullptr;GuideCaption=nullptr;GuideSpotlight=nullptr;OverlayBoard.Reset();
+	Original.Reset();bPractice=false;if(Overlay)Overlay->RemoveFromParent();Overlay=nullptr;GoalText=nullptr;LessonTitleText=nullptr;MechanismText=nullptr;ObjectiveText=nullptr;GuideCaption=nullptr;GuideSpotlight=nullptr;OverlayBoard.Reset();
 }
 void UGameXXKAcademySubsystem::CancelCourse(){RestoreOriginal();RefreshPlayerUi();}
 void UGameXXKAcademySubsystem::Deinitialize(){RestoreOriginal();Super::Deinitialize();}
@@ -76,15 +78,16 @@ void UGameXXKAcademySubsystem::Observe(const FGameXXKCardBattleRuntime& Before,c
 bool UGameXXKAcademySubsystem::HandleTerminal(EGameXXKCardBattlePhase Phase)
 {
 	if(!IsActive() || (Phase!=EGameXXKCardBattlePhase::Victory && Phase!=EGameXXKCardBattlePhase::Defeat))return false;
-	if(Phase==EGameXXKCardBattlePhase::Defeat){Message=FText::FromString(TEXT("本次未能获胜，可重试本节。"));return true;}
+	bGuideCueDirty=true;
+	if(Phase==EGameXXKCardBattlePhase::Defeat){Message=GameXXKLocalization::Source(TEXT("本次未能获胜，可重试本节。"));return true;}
 	auto* MVP=GetGameInstance()->GetSubsystem<UGameXXKMVPSubsystem>();
 	FGameXXKRuntimeState Candidate=Original.GetValue();FString Error;int32 Award=0;
 	if(!FGameXXKAcademyRules::CompleteLesson(ActiveCourseId,ActiveLessonIndex,true,Evidence,Candidate.GuideProgress,Candidate.PlayerGold,Award,Error))
-	{Message=FText::FromString(Error);return true;}
+	{Message=GameXXKLocalization::Source(Error);return true;}
 	MVP->bAcademyWriteGuard=false;
 	const bool bSaved=MVP->PersistTrainingCheckpoint(Candidate);
 	MVP->bAcademyWriteGuard=true;
-	if(!bSaved){Message=FText::FromString(TEXT("进度保存失败，尚未发放奖励。"));return true;}
+	if(!bSaved){Message=GameXXKLocalization::Source(TEXT("进度保存失败，尚未发放奖励。"));return true;}
 	const FName Id=ActiveCourseId;const int32 Next=ActiveLessonIndex+1;const int32 Count=Course()->Lessons.Num();
 	const auto SavedWorkbench=OriginalWorkbench;
 	Original=MoveTemp(Candidate);RestoreOriginal();

@@ -1,0 +1,17 @@
+{
+  "asset": "/Game/GameXXK/UI/Controls/T_UI_InkDisclosureDown",
+  "source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08751-216a-7382-b034-f256cf2c376b\\exec-43cae89b-2565-4ef7-bdab-eff83336d3ed.png",
+  "tool": "built-in image_gen",
+  "processing": "alpha bounding crop and size only; ink body unchanged",
+  "size": [
+    256,
+    128
+  ],
+  "alphaExtrema": [
+    0,
+    255
+  ],
+  "sha256": "acedf5a596d1400b952826d14e5feb4ed55dc34200420bfdb5279d0593105584",
+  "rejected": "Tab-keycap/button-bottom variants not imported",
+  "prompt": "Single simple charcoal-brown downward triangle, subtle dry ink edges, transparent alpha; no background, frame, text or arrow shaft"
+}

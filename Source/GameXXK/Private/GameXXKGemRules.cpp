@@ -1,4 +1,6 @@
 #include "GameXXKGemRules.h"
+#include "UI/GameXXKLocalization.h"
+#include "GameXXKHuntRules.h"
 
 namespace
 {
@@ -179,6 +181,7 @@ EGameXXKEquipmentQuality FGameXXKGemRules::GetPresentationQuality(const EGameXXK
 
 EGameXXKEquipmentQuality FGameXXKGemRules::GetItemPresentationQuality(FName ItemId)
 {
+	if(FGameXXKHuntRules::IsOrder(ItemId))return FGameXXKHuntRules::OrderQuality(ItemId);
 	EGameXXKGemType Type;
 	EGameXXKGemQuality Quality;
 	return TryParseItemId(ItemId, Type, Quality) ? GetPresentationQuality(Quality) : EGameXXKEquipmentQuality::Invalid;
@@ -186,34 +189,23 @@ EGameXXKEquipmentQuality FGameXXKGemRules::GetItemPresentationQuality(FName Item
 
 FText FGameXXKGemRules::GetSocketText(EGameXXKGemType Type, EGameXXKGemQuality Quality)
 {
-	return FText::FromString(GetQualityDisplayName(Quality).ToString() + TEXT("·") + GetTypeDisplayName(Type).ToString()
-		+ TEXT(" ") + GetBonusText(Type, Quality).ToString());
+    return FText::Format(GameXXKLocalization::Text(TEXT("Gem.SocketLine")),
+        GetQualityDisplayName(Quality), GetTypeDisplayName(Type), GetBonusText(Type, Quality));
 }
 
 FText FGameXXKGemRules::GetDescription(EGameXXKGemType Type, EGameXXKGemQuality Quality)
 {
-	if (!IsValidType(Type) || !IsValidQuality(Quality)) return FText::GetEmpty();
-	FString Text = GetTypeDisplayName(Type).ToString() + TEXT(" ") + GetBonusText(Type, Quality).ToString();
-	if (IsResistanceType(Type))
-		return FText::FromString(Text + TEXT("（名义抗性）\n增加对应抗性，对佩戴者基础抗性按边际递减计算，最终上限75%。\n可在详细属性查看实际抗性；不改变防御与临时护甲。"));
-	if (!IsPercentType(Type)) return FText::FromString(Text + TEXT("\n镶嵌后增加对应属性，固定数值直接相加。"));
-	Text += FString::Printf(TEXT("（名义值）\n单颗实际增幅 +%.2f%%"), GetEffectiveBonusBasisPoints(GetBonusBasisPoints(Type, Quality)) / 100.0);
-	const TCHAR* Scope = TEXT("");
-	switch (Type)
-	{
-	case EGameXXKGemType::AttackPercent: case EGameXXKGemType::DefensePercent: case EGameXXKGemType::MaxHealthPercent:
-		Scope = TEXT("对裸身、装备和固定宝石合计属性生效，再计算永久天赋。"); break;
-	case EGameXXKGemType::DirectDamage: Scope = TEXT("增加本人物理攻击与物理反击伤害，法术伤害另算。"); break;
-	case EGameXXKGemType::ArmorGain: Scope = TEXT("增加本人生成的护甲；复制护甲不重复加成。"); break;
-	case EGameXXKGemType::Healing: Scope = TEXT("增加本人主动治疗；吸血、复活和固定套装恢复除外。"); break;
-	case EGameXXKGemType::CounterDamage: Scope = TEXT("增加本人已有反击与玄甲格挡追击的伤害。"); break;
-	case EGameXXKGemType::FireDamage: Scope = TEXT("增加本人火系直伤、施加的灼烧跳伤及主动引燃伤害。"); break;
-	case EGameXXKGemType::DamageOverTime: Scope = TEXT("增加本人流血、中毒、灼烧的跳伤与主动引爆伤害。"); break;
-	case EGameXXKGemType::FrostDamage: Scope = TEXT("增加本人冰系攻击、冰爆和冰系阵赏伤害。"); break;
-	case EGameXXKGemType::LightningDamage: Scope = TEXT("增加本人雷系攻击与落雷伤害，雷击次数不变。"); break;
-	default: break;
-	}
-	return FText::FromString(Text + TEXT("\n") + Scope + TEXT("\n同次适用的宝石增幅合并后边际递减，额外收益上限75%。"));
+    if (!IsValidType(Type) || !IsValidQuality(Quality)) return FText::GetEmpty();
+    EGameXXKGemType StatType=Type;
+    if(Type==EGameXXKGemType::AttackPercent)StatType=EGameXXKGemType::Attack;
+    if(Type==EGameXXKGemType::DefensePercent)StatType=EGameXXKGemType::Defense;
+    if(Type==EGameXXKGemType::MaxHealthPercent)StatType=EGameXXKGemType::MaxHealth;
+    const FText Base=FText::Format(GameXXKLocalization::Text(TEXT("Gem.BonusLine")),GetTypeDisplayName(StatType),GetBonusText(Type,Quality));
+    const FText Rank=GetQualityDisplayName(Quality);
+    if(IsResistanceType(Type))return FText::Format(GameXXKLocalization::Text(TEXT("Gem.Short.Resistance")),Rank,Base);
+    if(!IsPercentType(Type))return FText::Format(GameXXKLocalization::Text(TEXT("Gem.Short.Flat")),Rank,Base);
+    const FString ScopeKey=TEXT("Gem.Short.Scope.")+FString(TypeToken(Type));
+    return FText::Format(GameXXKLocalization::Text(TEXT("Gem.Short.Percent")),Rank,Base,GameXXKLocalization::Text(*ScopeKey));
 }
 
 FText FGameXXKGemRules::GetTypeDisplayName(const EGameXXKGemType Type)
@@ -265,10 +257,8 @@ FText FGameXXKGemRules::GetDisplayName(const EGameXXKGemType Type, const EGameXX
 	{
 		return FText::GetEmpty();
 	}
-	return FText::Format(
-		NSLOCTEXT("GameXXKGems", "DisplayFormat", "{0}{1}宝石"),
-		GetQualityDisplayName(Quality),
-		GetTypeDisplayName(Type));
+	const FString Key=TEXT("Gem.ShortName.")+FString(TypeToken(Type));
+	return GameXXKLocalization::Text(*Key);
 }
 
 FName FGameXXKGemRules::MakeItemId(const EGameXXKGemType Type, const EGameXXKGemQuality Quality)

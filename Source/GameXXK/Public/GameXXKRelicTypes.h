@@ -120,6 +120,21 @@ struct GAMEXXK_API FGameXXKRelicInstance
 	TSet<FName> SynergyOwners;
 };
 
+/** Immutable primary-action evidence, persisted while a discard/search/replay choice is open. */
+USTRUCT(BlueprintType)
+struct GAMEXXK_API FGameXXKRelicActionEvidence
+{
+	GENERATED_BODY()
+	UPROPERTY(SaveGame) bool bPending = false;
+	UPROPERTY(SaveGame) TArray<FGameXXKCardCombatUnit> BeforeUnits;
+	UPROPERTY(SaveGame) EGameXXKCardTerrain BeforeTerrain = EGameXXKCardTerrain::Invalid;
+	UPROPERTY(SaveGame) EGameXXKCardTerrain AfterTerrain = EGameXXKCardTerrain::Invalid;
+	UPROPERTY(SaveGame) FName PreviousOwner = NAME_None;
+	UPROPERTY(SaveGame) int32 CountBefore = 0;
+	UPROPERTY(SaveGame) int32 CountAfter = 0;
+	UPROPERTY(SaveGame) FGameXXKCardPlayResult Primary;
+};
+
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKPendingRelicOffer
 {

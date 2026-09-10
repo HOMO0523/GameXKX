@@ -1,0 +1,885 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "key": "Legacy.ab3656a956f5b895",
+      "zh-Hans": "提示",
+      "en": "Hint"
+    },
+    {
+      "key": "Legacy.d2ed5ba951c09bf7",
+      "zh-Hans": "行旅钱\n背包和仓库中的行旅钱均可用于局内行商。\n每个分解固定返还2500金币。",
+      "en": "Travel Coins\nTravel Coins in the backpack and warehouse can both be spent at route merchants.\nDismantling each returns exactly 2500 Gold."
+    },
+    {
+      "key": "Legacy.0466c38796599593",
+      "zh-Hans": "行走江湖，兜里有钱。\n背包和仓库中的行旅钱均可用于局内行商。\n普通宝箱材料池可开出10个，局外商店100000金币购入10个。\n分解每个固定返还2500金币。",
+      "en": "Keep some coin for the road.\nTravel Coins in the backpack and warehouse can both be spent at route merchants.\nNormal Chest material rewards can contain 10; the meta shop sells 10 for 100000 Gold.\nDismantling each returns exactly 2500 Gold."
+    },
+    {
+      "key": "Legacy.b36cbe059eebe7b1",
+      "zh-Hans": "\n词缀",
+      "en": "\nAffixes"
+    },
+    {
+      "key": "Legacy.94e9c786236bcfaa",
+      "zh-Hans": "\n镶嵌",
+      "en": "\nSockets"
+    },
+    {
+      "key": "Legacy.585a515bfd42c4d7",
+      "zh-Hans": " · 挑选卡牌",
+      "en": " · Choose cards"
+    },
+    {
+      "key": "Legacy.d582dc376efb939b",
+      "zh-Hans": "缩小 · 4列",
+      "en": "Zoom out · 4 columns"
+    },
+    {
+      "key": "Legacy.5f8656bef01905a4",
+      "zh-Hans": "放大 · 2列",
+      "en": "Zoom in · 2 columns"
+    },
+    {
+      "key": "Legacy.417b69ecd3b3bfae",
+      "zh-Hans": "当前装备已计入 · 不含本局临时加成",
+      "en": "Includes current equipment · Excludes temporary run bonuses"
+    },
+    {
+      "key": "Legacy.588f51c0b9214b3e",
+      "zh-Hans": "返回基础属性",
+      "en": "Back to base stats"
+    },
+    {
+      "key": "Legacy.2feda4227444ac3e",
+      "zh-Hans": "展开选牌",
+      "en": "Open card selection"
+    },
+    {
+      "key": "Legacy.2c768b0b367d937c",
+      "zh-Hans": "返回卡组",
+      "en": "Back to deck"
+    },
+    {
+      "key": "Legacy.f9d6523e1b23fad9",
+      "zh-Hans": " · 属性",
+      "en": " · Stats"
+    },
+    {
+      "key": "Legacy.62b5b688f75382b7",
+      "zh-Hans": "已出战",
+      "en": "Deployed"
+    },
+    {
+      "key": "Legacy.74eae25e9f467eea",
+      "zh-Hans": "未出战",
+      "en": "Not deployed"
+    },
+    {
+      "key": "Legacy.3aed7c47100a0b04",
+      "zh-Hans": " · 未出战",
+      "en": " · Not deployed"
+    },
+    {
+      "key": "Legacy.50da9e8a2e08455d",
+      "zh-Hans": "计算规则",
+      "en": "Calculation rules"
+    },
+    {
+      "key": "Legacy.889047dcc46c4636",
+      "zh-Hans": "加成来源",
+      "en": "Bonus sources"
+    },
+    {
+      "key": "Legacy.c8495f784e62bf3d",
+      "zh-Hans": "当前牌组只读。",
+      "en": "The current deck is read only."
+    },
+    {
+      "key": "Legacy.6625ada58d0dd184",
+      "zh-Hans": "该背包格尚未由永久天赋解锁",
+      "en": "This backpack slot is not unlocked by permanent talents yet"
+    },
+    {
+      "key": "Legacy.8556f02873b47512",
+      "zh-Hans": "空孔位",
+      "en": "Empty socket"
+    },
+    {
+      "key": "Legacy.7c46452b7f5470b4",
+      "zh-Hans": "请先选中一件装备。",
+      "en": "Select an equipment piece first."
+    },
+    {
+      "key": "Legacy.46f151a38add638b",
+      "zh-Hans": "迎战",
+      "en": "Fight"
+    },
+    {
+      "key": "Legacy.6f1972e48ec85566",
+      "zh-Hans": "进行中",
+      "en": "In progress"
+    },
+    {
+      "key": "Legacy.6dae4f22d83c24c5",
+      "zh-Hans": "待领奖",
+      "en": "Reward pending"
+    },
+    {
+      "key": "Legacy.11ed20813fc61d37",
+      "zh-Hans": "已领奖",
+      "en": "Reward claimed"
+    },
+    {
+      "key": "Legacy.530b63f3e0acaef9",
+      "zh-Hans": "未开放",
+      "en": "Unavailable"
+    },
+    {
+      "key": "Legacy.3f3d9f4e45611f0f",
+      "zh-Hans": "支线 · ",
+      "en": "Side quest · "
+    },
+    {
+      "key": "Legacy.151fd9b033506139",
+      "zh-Hans": "关闭任务树",
+      "en": "Close quest tree"
+    },
+    {
+      "key": "Legacy.6d2ac9b0b6cbe90c",
+      "zh-Hans": "任务树",
+      "en": "Quest tree"
+    },
+    {
+      "key": "Legacy.c9dbac421b9f15ed",
+      "zh-Hans": "当前没有可展开的主线。",
+      "en": "No story path is available to expand."
+    },
+    {
+      "key": "Legacy.ba92471ad689a88c",
+      "zh-Hans": "向右浏览 · 点选节点",
+      "en": "Browse right · Select a node"
+    },
+    {
+      "key": "Legacy.82c88acc98ebbd65",
+      "zh-Hans": "任选：",
+      "en": "Choose any: "
+    },
+    {
+      "key": "Legacy.796bd2d56de6ecf0",
+      "zh-Hans": "先完成：",
+      "en": "Complete first: "
+    },
+    {
+      "key": "Legacy.25995999473e3192",
+      "zh-Hans": "继续任务",
+      "en": "Continue quest"
+    },
+    {
+      "key": "Legacy.154a304e87376e5f",
+      "zh-Hans": "开始任务",
+      "en": "Start quest"
+    },
+    {
+      "key": "Legacy.34a798372a476fdc",
+      "zh-Hans": "返回流程树",
+      "en": "Back to quest tree"
+    },
+    {
+      "key": "Legacy.2f2d9375ed1792cf",
+      "zh-Hans": "回看对白",
+      "en": "Review dialogue"
+    },
+    {
+      "key": "Legacy.d4822f224ca204b9",
+      "zh-Hans": "领取奖励",
+      "en": "Claim reward"
+    },
+    {
+      "key": "Legacy.e4492ae05624a4ee",
+      "zh-Hans": "继续主线",
+      "en": "Continue story"
+    },
+    {
+      "key": "Legacy.587b6d4837b358f7",
+      "zh-Hans": "商品不可用。",
+      "en": "Product unavailable."
+    },
+    {
+      "key": "Legacy.e9eeb7c90dfa2c00",
+      "zh-Hans": "获得一名永久伙伴。伙伴上限 12 人；满员时进入替换流程，取消候选不退还金币。",
+      "en": "Gain a permanent companion. Roster capacity: 12. A full roster opens the replacement flow; declining the candidate does not refund Gold."
+    },
+    {
+      "key": "Legacy.bfbe4ccf74a0ce1b",
+      "zh-Hans": "随机获得该套装的武器、头部、护甲、腰带、鞋子或饰品之一。\n普通 70% / 稀有 25% / 珍稀 5%",
+      "en": "Gain a random weapon, headpiece, armor, belt, boots, or accessory from this set.\nCommon 70% / Rare 25% / Epic 5%"
+    },
+    {
+      "key": "Legacy.bd8dfcc88bb32c5e",
+      "zh-Hans": "购买失败。",
+      "en": "Purchase failed."
+    },
+    {
+      "key": "Legacy.edd4b4620640e67f",
+      "zh-Hans": "获得装备一件。",
+      "en": "Gain one equipment piece."
+    },
+    {
+      "key": "Legacy.e840cd6f1e21d370",
+      "zh-Hans": "节点",
+      "en": "Node"
+    },
+    {
+      "key": "Legacy.166baf51409840ff",
+      "zh-Hans": "当前没有可结算的路线挑战。",
+      "en": "No route challenge can be settled right now."
+    },
+    {
+      "key": "Legacy.dac436d804007641",
+      "zh-Hans": "无法计算本次挑战的结算奖励。",
+      "en": "Could not calculate settlement rewards for this challenge."
+    },
+    {
+      "key": "Legacy.98049b62d619143c",
+      "zh-Hans": "路线进度已变化，请关闭弹窗后重新确认结算。",
+      "en": "Route progress changed. Close this dialog and confirm settlement again."
+    },
+    {
+      "key": "Legacy.3ffb75f13eb90788",
+      "zh-Hans": "已获奖励：普通金币 --，强化石 --\n已完成进度：--\n未解决内容不会被结算",
+      "en": "Rewards earned: Gold --, Enhancement Stones --\nProgress: --\nUnresolved content is not settled"
+    },
+    {
+      "key": "Legacy.cded05ac7178f786",
+      "zh-Hans": "结算失败，路线进度与奖励均未改变。",
+      "en": "Settlement failed; route progress and rewards are unchanged."
+    },
+    {
+      "key": "Legacy.fe8619412fbb8a64",
+      "zh-Hans": "任务树  Q",
+      "en": "Quest tree Q"
+    },
+    {
+      "key": "Legacy.5c7f789073e55039",
+      "zh-Hans": "检视",
+      "en": "Inspect"
+    },
+    {
+      "key": "Legacy.35f1290a1ef9ebb2",
+      "zh-Hans": "剧情已暂停",
+      "en": "Story paused"
+    },
+    {
+      "key": "Legacy.1fc1afc5c55ed8c0",
+      "zh-Hans": "继续",
+      "en": "Continue"
+    },
+    {
+      "key": "Legacy.ad79e5c222090f20",
+      "zh-Hans": "返回桌面",
+      "en": "Back to desktop"
+    },
+    {
+      "key": "Legacy.cbda0e68669c2d52",
+      "zh-Hans": "血",
+      "en": "HP"
+    },
+    {
+      "key": "Legacy.b08d2c770a339e53",
+      "zh-Hans": "气",
+      "en": "Qi"
+    },
+    {
+      "key": "Legacy.204efde944c5ba07",
+      "zh-Hans": "根",
+      "en": "Root"
+    },
+    {
+      "key": "Legacy.cf27f6e91a8c0d4f",
+      "zh-Hans": "持牌角色已不再携带这张卡牌，请刷新商店。",
+      "en": "The owner no longer carries this card. Refresh the shop."
+    },
+    {
+      "key": "Legacy.f451c8dbd559d8b4",
+      "zh-Hans": "持牌角色已不在当前队伍中，请刷新商店。",
+      "en": "The card owner is no longer in the current party. Refresh the shop."
+    },
+    {
+      "key": "Legacy.b9e6f3159bc77d8e",
+      "zh-Hans": "卡牌品质已经变化，请刷新商店。",
+      "en": "Card quality changed. Refresh the shop."
+    },
+    {
+      "key": "Legacy.a61c7207f1e94910",
+      "zh-Hans": "这张卡牌已经达到最高品质。",
+      "en": "This card has reached its highest quality."
+    },
+    {
+      "key": "Legacy.bfc6557a4f70443a",
+      "zh-Hans": "这个强化名额已售出。",
+      "en": "This upgrade offer is sold out."
+    },
+    {
+      "key": "Legacy.750df9aa1d896ff2",
+      "zh-Hans": "行旅钱不足，无法完成本次操作。",
+      "en": "Not enough Travel Coins for this action."
+    },
+    {
+      "key": "Legacy.4ba5fd7a31c9415d",
+      "zh-Hans": "当前没有可强化或刷新的卡牌。",
+      "en": "No cards are available to upgrade or refresh."
+    },
+    {
+      "key": "Legacy.5d9d22f21e589669",
+      "zh-Hans": "商品状态已经变化，请刷新商店后重试。",
+      "en": "Product state changed. Refresh the shop and retry."
+    },
+    {
+      "key": "Legacy.7dad47b6105bda65",
+      "zh-Hans": "当前不在有效的路线商店中。",
+      "en": "You are not in a valid route shop."
+    },
+    {
+      "key": "Legacy.31e6aa4d0936a55c",
+      "zh-Hans": "商店数据已经变化，请重新进入商店。",
+      "en": "Shop data changed. Enter the shop again."
+    },
+    {
+      "key": "Legacy.ed57efde49b899bd",
+      "zh-Hans": "这个卡位当前没有可强化卡牌。",
+      "en": "This slot has no card available for upgrade."
+    },
+    {
+      "key": "Legacy.8ba6c7dd3fe44b9b",
+      "zh-Hans": "行旅钱不足，无法购买本次强化。",
+      "en": "Not enough Travel Coins for this upgrade."
+    },
+    {
+      "key": "Legacy.d18cd3c68326008b",
+      "zh-Hans": "卡牌资料暂不可用，请刷新商店。",
+      "en": "Card data is unavailable. Refresh the shop."
+    },
+    {
+      "key": "Legacy.28ce3e924e17f60c",
+      "zh-Hans": "行旅钱计算异常，本次购买未扣款。",
+      "en": "Travel Coin calculation failed; this purchase charged nothing."
+    },
+    {
+      "key": "Legacy.781d1dca1052c85c",
+      "zh-Hans": "旧版商店操作已经失效，请刷新商店。",
+      "en": "The old shop action is no longer valid. Refresh the shop."
+    },
+    {
+      "key": "Legacy.20cd70740d8b4113",
+      "zh-Hans": "购买未能完成，请稍后重试。",
+      "en": "Purchase could not be completed. Please retry."
+    },
+    {
+      "key": "Legacy.ac151946dd860c4a",
+      "zh-Hans": "商店数据暂时无法读取。",
+      "en": "Shop data cannot be read right now."
+    },
+    {
+      "key": "Legacy.58c4cc0b857c14d7",
+      "zh-Hans": "商店购买缺少有效商品或运行状态。",
+      "en": "Shop purchase is missing a valid product or runtime state."
+    },
+    {
+      "key": "Legacy.8fec30f6b8cfa6f8",
+      "zh-Hans": "商店刷新未能完成。",
+      "en": "Shop refresh could not be completed."
+    },
+    {
+      "key": "Legacy.b84d98bff7e35d1e",
+      "zh-Hans": "当前无法离开路线商店。",
+      "en": "You cannot leave the route shop right now."
+    },
+    {
+      "key": "Legacy.0e415c14121ff198",
+      "zh-Hans": "卡牌强化",
+      "en": "Card upgrades"
+    },
+    {
+      "key": "Legacy.c69e08351acfda81",
+      "zh-Hans": "随身遗物",
+      "en": "Carried relics"
+    },
+    {
+      "key": "Legacy.14c90dcd3cd913dd",
+      "zh-Hans": "离开商店",
+      "en": "Leave shop"
+    },
+    {
+      "key": "Legacy.4f872ea6cd0a98e5",
+      "zh-Hans": "当前不能刷新商店。",
+      "en": "The shop cannot be refreshed right now."
+    },
+    {
+      "key": "Legacy.c9e3b5d714621233",
+      "zh-Hans": "未知遗物",
+      "en": "Unknown relic"
+    },
+    {
+      "key": "Legacy.a17d28b1cce27157",
+      "zh-Hans": "当前没有更多可强化的携带卡牌",
+      "en": "No more carried cards are available to upgrade"
+    },
+    {
+      "key": "Legacy.4f052f1586dac5d5",
+      "zh-Hans": "当前没有更多可购买遗物",
+      "en": "No more relics are available to buy"
+    },
+    {
+      "key": "Legacy.2b327337fde4fe7f",
+      "zh-Hans": "强化效果资料暂不可用",
+      "en": "Upgrade effect data is unavailable"
+    },
+    {
+      "key": "Legacy.18b27ab942ce10e4",
+      "zh-Hans": "遗物资料暂不可用",
+      "en": "Relic data is unavailable"
+    },
+    {
+      "key": "Legacy.dd0b238f1bd48e49",
+      "zh-Hans": "本格当前不可用。",
+      "en": "This slot is unavailable right now."
+    },
+    {
+      "key": "Legacy.4498c7e211fd9dc5",
+      "zh-Hans": "当前不能强化这张卡牌。",
+      "en": "This card cannot be upgraded right now."
+    },
+    {
+      "key": "Legacy.067d85d85316c3d7",
+      "zh-Hans": "本格当前没有可售商品。",
+      "en": "This slot has no product for sale."
+    },
+    {
+      "key": "Legacy.2eae02aa52e01541",
+      "zh-Hans": "这件商品已经售出。",
+      "en": "This product is sold out."
+    },
+    {
+      "key": "Legacy.47a5739d1b8cf8f3",
+      "zh-Hans": "行旅钱不足。",
+      "en": "Not enough Travel Coins."
+    },
+    {
+      "key": "Legacy.1ab893f7d6be9d80",
+      "zh-Hans": "当前不能购买这件商品。",
+      "en": "This product cannot be purchased right now."
+    },
+    {
+      "key": "Legacy.d78cde076b67a21a",
+      "zh-Hans": "已开启",
+      "en": "Enabled"
+    },
+    {
+      "key": "Legacy.038cdafc55ef1e14",
+      "zh-Hans": "基础战力",
+      "en": "Base combat power"
+    },
+    {
+      "key": "Legacy.ff3cd21aa86d82cc",
+      "zh-Hans": "游历战力",
+      "en": "Travel combat power"
+    },
+    {
+      "key": "Legacy.6b1fd39a57767a20",
+      "zh-Hans": "攻击增幅",
+      "en": "Attack increase"
+    },
+    {
+      "key": "Legacy.a8d77ca7cac86e7f",
+      "zh-Hans": "最终伤害",
+      "en": "Final damage"
+    },
+    {
+      "key": "Legacy.135095c50ef4dfc6",
+      "zh-Hans": "防御增幅",
+      "en": "Defense increase"
+    },
+    {
+      "key": "Legacy.b2d8972c5002440e",
+      "zh-Hans": "生命增幅",
+      "en": "HP increase"
+    },
+    {
+      "key": "Legacy.7c0dd18b1758948e",
+      "zh-Hans": "暴击伤害",
+      "en": "Critical damage"
+    },
+    {
+      "key": "Legacy.7400be643c251eea",
+      "zh-Hans": "行囊容量",
+      "en": "Carrying capacity"
+    },
+    {
+      "key": "Legacy.60870804aace8fef",
+      "zh-Hans": "背包容量",
+      "en": "Backpack capacity"
+    },
+    {
+      "key": "Legacy.452463f580216c39",
+      "zh-Hans": "格",
+      "en": "slots"
+    },
+    {
+      "key": "Legacy.312e3d7d294cb461",
+      "zh-Hans": "仓库页数",
+      "en": "Warehouse pages"
+    },
+    {
+      "key": "Legacy.73422182ab45a156",
+      "zh-Hans": "页",
+      "en": "pages"
+    },
+    {
+      "key": "Legacy.700bffea94c3764f",
+      "zh-Hans": "游历收益",
+      "en": "Travel income"
+    },
+    {
+      "key": "Legacy.2774b617e9f35fdd",
+      "zh-Hans": "行进耗时",
+      "en": "Movement duration"
+    },
+    {
+      "key": "Legacy.5ee5115798c3f749",
+      "zh-Hans": "挂机金币",
+      "en": "Idle Gold"
+    },
+    {
+      "key": "Legacy.e9d9eed6b0951743",
+      "zh-Hans": "挂机经验",
+      "en": "Idle experience"
+    },
+    {
+      "key": "Legacy.8744a358471355f9",
+      "zh-Hans": "离线收益",
+      "en": "Offline income"
+    },
+    {
+      "key": "Legacy.d523398eb089e34a",
+      "zh-Hans": "离线挂机",
+      "en": "Offline training"
+    },
+    {
+      "key": "Legacy.3175903d927eb2fc",
+      "zh-Hans": "金币时长",
+      "en": "Gold time cap"
+    },
+    {
+      "key": "Legacy.c2576efb0b372f15",
+      "zh-Hans": "经验时长",
+      "en": "Experience time cap"
+    },
+    {
+      "key": "Legacy.c01b33c54e7ada7a",
+      "zh-Hans": "宝箱收获",
+      "en": "Chest rewards"
+    },
+    {
+      "key": "Legacy.38e0ce1a035df14b",
+      "zh-Hans": "普通掉落",
+      "en": "Normal drops"
+    },
+    {
+      "key": "Legacy.4728d35a37d5ec9d",
+      "zh-Hans": "高级掉落",
+      "en": "Advanced drops"
+    },
+    {
+      "key": "Legacy.fc71b60ebe91a5f1",
+      "zh-Hans": "离线时长",
+      "en": "Offline time cap"
+    },
+    {
+      "key": "Legacy.0d7416e2e22207b2",
+      "zh-Hans": "分",
+      "en": "min"
+    },
+    {
+      "key": "Legacy.4a70a7fcb0f8fb5b",
+      "zh-Hans": "百工收益",
+      "en": "Crafting income"
+    },
+    {
+      "key": "Legacy.9769a0ce9a1b49b5",
+      "zh-Hans": "工具收益分支",
+      "en": "Tool income branch"
+    },
+    {
+      "key": "Legacy.f8313f0e3a540625",
+      "zh-Hans": "经验加成",
+      "en": "Experience bonus"
+    },
+    {
+      "key": "Legacy.a0420b2725398922",
+      "zh-Hans": "金币加成",
+      "en": "Gold bonus"
+    },
+    {
+      "key": "Legacy.cdd65356222b75e1",
+      "zh-Hans": "点击查看详情",
+      "en": "Click for details"
+    },
+    {
+      "key": "Legacy.842dc70d041c3dad",
+      "zh-Hans": "尚未学习天赋",
+      "en": "No talents learned"
+    },
+    {
+      "key": "Legacy.e63e4225abf553a8",
+      "zh-Hans": "暂时无法读取合计",
+      "en": "Totals cannot be read right now"
+    },
+    {
+      "key": "Legacy.2e8e70958c4a61ca",
+      "zh-Hans": "升级",
+      "en": "Upgrade"
+    },
+    {
+      "key": "Legacy.b62819e2e640e68f",
+      "zh-Hans": "合计属性",
+      "en": "Total stats"
+    },
+    {
+      "key": "Legacy.bd4dbf5df53380c5",
+      "zh-Hans": "合并统计已学天赋的有效加成",
+      "en": "Combined effective bonuses from learned talents"
+    },
+    {
+      "key": "Legacy.0d45ec08d519234a",
+      "zh-Hans": "返回天赋",
+      "en": "Back to talents"
+    },
+    {
+      "key": "Legacy.09476a436905b3ba",
+      "zh-Hans": "选择一个天赋",
+      "en": "Select a talent"
+    },
+    {
+      "key": "Legacy.1e820ea4a91ff624",
+      "zh-Hans": "升级售价：已满级",
+      "en": "Upgrade price: Max level"
+    },
+    {
+      "key": "Legacy.8e41db279b4e6b5f",
+      "zh-Hans": "返回桌面后可升级",
+      "en": "Return to the desktop to upgrade"
+    },
+    {
+      "key": "Legacy.9c41ac705a0794cb",
+      "zh-Hans": "统御·护阵",
+      "en": "Command · Guard Formation"
+    },
+    {
+      "key": "Legacy.5e5e151d24ad5ba1",
+      "zh-Hans": "寨卫",
+      "en": "Village Guard"
+    },
+    {
+      "key": "Legacy.001652f2c9631213",
+      "zh-Hans": "谋略·情报",
+      "en": "Strategy · Intelligence"
+    },
+    {
+      "key": "Legacy.5ac3f160b3b2c99c",
+      "zh-Hans": "人情面",
+      "en": "Personal Connections"
+    },
+    {
+      "key": "Legacy.a3bf5ad52b4f2b5b",
+      "zh-Hans": "术法·灼印",
+      "en": "Spellcraft · Scorch Mark"
+    },
+    {
+      "key": "Legacy.ce1506768b687db7",
+      "zh-Hans": "残卷先知",
+      "en": "Fragment Seer"
+    },
+    {
+      "key": "Legacy.7516807d322fd309",
+      "zh-Hans": "医术·地志",
+      "en": "Medicine · Local Lore"
+    },
+    {
+      "key": "Legacy.d73c1e8401546264",
+      "zh-Hans": "草木札记",
+      "en": "Herbal Notes"
+    },
+    {
+      "key": "Legacy.bf2f8b4d099ff18b",
+      "zh-Hans": "市井·策应",
+      "en": "Streetcraft · Support"
+    },
+    {
+      "key": "Legacy.93a1de20e580001d",
+      "zh-Hans": "市井门路",
+      "en": "Street Connections"
+    },
+    {
+      "key": "Legacy.b8f93a119e8ed1e1",
+      "zh-Hans": "琼么儿",
+      "en": "Qiong Moer"
+    },
+    {
+      "key": "Legacy.6ce57376d366f3be",
+      "zh-Hans": "山野·灵引",
+      "en": "Wilderness · Spirit Guide"
+    },
+    {
+      "key": "Legacy.f6179c389358cb88",
+      "zh-Hans": "苗岭引路",
+      "en": "Miaoling Guide"
+    },
+    {
+      "key": "Legacy.2369f3ade0d4a317",
+      "zh-Hans": "侠客",
+      "en": "Wanderer"
+    },
+    {
+      "key": "Legacy.83f024a9f226e6f7",
+      "zh-Hans": "仙灵",
+      "en": "Spirit"
+    },
+    {
+      "key": "Legacy.879154b42ef2e4e3",
+      "zh-Hans": "妖怪",
+      "en": "Monster"
+    },
+    {
+      "key": "Legacy.ddbb71455fd220ab",
+      "zh-Hans": "珍兽",
+      "en": "Rare Beast"
+    },
+    {
+      "key": "Legacy.989728e39ebd1cf6",
+      "zh-Hans": "角色图鉴",
+      "en": "Character codex"
+    },
+    {
+      "key": "Legacy.ef29f35bbf93323b",
+      "zh-Hans": "固定 NPC 6 名 · 固定拥有 · 可编入队伍",
+      "en": "6 permanent NPCs · Always owned · Can join formation"
+    },
+    {
+      "key": "Legacy.a3236f5607157fd9",
+      "zh-Hans": "尚未收录",
+      "en": "Not collected"
+    },
+    {
+      "key": "Legacy.4370d4e4e51a458e",
+      "zh-Hans": "选择固定 NPC 查看战斗定位与固定三张牌",
+      "en": "Select a permanent NPC to view their combat role and three fixed cards"
+    },
+    {
+      "key": "Legacy.cf877cd11a576195",
+      "zh-Hans": "永久可用 · 可编入队伍",
+      "en": "Permanently available · Can join formation"
+    },
+    {
+      "key": "Legacy.7ad7a8cdd29a05ff",
+      "zh-Hans": "未装备",
+      "en": "Unequipped"
+    },
+    {
+      "key": "Legacy.82ca4a6ba6356d50",
+      "zh-Hans": "空",
+      "en": "Empty"
+    },
+    {
+      "key": "Legacy.0f98c1b9c53d2287",
+      "zh-Hans": "历练告捷",
+      "en": "Training victory"
+    },
+    {
+      "key": "Legacy.58e7483b347a2e6d",
+      "zh-Hans": "通关所得金币",
+      "en": "Gold from clearing the stage"
+    },
+    {
+      "key": "Legacy.d034fd889e215712",
+      "zh-Hans": "每位出战成员经验",
+      "en": "Experience per deployed member"
+    },
+    {
+      "key": "Legacy.0069edff1b010071",
+      "zh-Hans": "成员的实际成长见下方",
+      "en": "Actual character growth is shown below"
+    },
+    {
+      "key": "Legacy.0e3650b26c630f79",
+      "zh-Hans": "通关宝箱",
+      "en": "Clear reward chests"
+    },
+    {
+      "key": "Legacy.23e7511a4583f2f2",
+      "zh-Hans": "同行成长",
+      "en": "Party growth"
+    },
+    {
+      "key": "Legacy.ad86cc553b25dd96",
+      "zh-Hans": "Boss战表现",
+      "en": "Boss battle performance"
+    },
+    {
+      "key": "Legacy.d081b66e68c181d7",
+      "zh-Hans": "确认 · 返回挂机",
+      "en": "Confirm · Return to idle training"
+    },
+    {
+      "key": "Legacy.3bef31afc5326e61",
+      "zh-Hans": "首次通关",
+      "en": "First clear"
+    },
+    {
+      "key": "Legacy.fb04381c6cb2d2de",
+      "zh-Hans": "再战告捷",
+      "en": "Repeat victory"
+    },
+    {
+      "key": "Legacy.c009d0ab82f9ff14",
+      "zh-Hans": "高级",
+      "en": "Advanced"
+    },
+    {
+      "key": "Legacy.d0b5cd12ab747d6a",
+      "zh-Hans": "已达满级",
+      "en": "Max level reached"
+    },
+    {
+      "key": "Legacy.8dcbab8ddd7afe44",
+      "zh-Hans": "该场战斗的完整统计未记录。",
+      "en": "Full statistics were not recorded for this battle."
+    },
+    {
+      "key": "Legacy.e0aae74f14125582",
+      "zh-Hans": "已解锁：",
+      "en": "Unlocked: "
+    },
+    {
+      "key": "Legacy.57299e1eb55b3e7d",
+      "zh-Hans": "本关已通关，可继续挂机历练",
+      "en": "Stage cleared; idle training can continue"
+    },
+    {
+      "key": "Legacy.01598ffb0ec311a7",
+      "zh-Hans": "无法读取结算，请重试。",
+      "en": "Could not read the settlement. Please retry."
+    },
+    {
+      "key": "Legacy.55cfd97913c0f2db",
+      "zh-Hans": "重新挑战",
+      "en": "Retry challenge"
+    },
+    {
+      "key": "Legacy.0f6d509439864bf3",
+      "zh-Hans": "返回城镇",
+      "en": "Back to town"
+    }
+  ]
+}

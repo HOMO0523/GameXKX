@@ -7,6 +7,10 @@
 namespace GameXXKCardPillText
 {
 	GAMEXXK_API const TArray<FString>& InlineNames();
+	/** Presentation aliases only; the semantic parser above keeps its native Chinese list. */
+	GAMEXXK_API const TArray<FString>& DisplayInlineNames();
+	GAMEXXK_API FString CanonicalName(const FString& Name);
+	GAMEXXK_API bool MatchesAt(const FString& Text,int32 Offset,const FString& Name);
 	GAMEXXK_API bool IsKeyword(const FString& Name);
 	/** The shared player-facing definition, also used by status HUD tooltips. */
 	GAMEXXK_API FString DescribeTerm(const FString& Name);

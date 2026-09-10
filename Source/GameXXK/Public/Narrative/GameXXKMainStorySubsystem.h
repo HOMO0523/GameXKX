@@ -33,6 +33,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool OpenChapter(FName ChapterId);
 	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool StartTask(FName NodeId);
+	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool BeginTaskJourney();
 	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool AdvanceDialogue();
 	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool ChooseAnswer(int32 OptionIndex);
 	UFUNCTION(BlueprintCallable, Category="GameXXK|MainStory") bool RevealHint();
@@ -50,6 +51,7 @@ public:
 private:
 	bool Commit(FGameXXKRuntimeState&& Candidate, bool bRefreshFlow = false);
 	bool BeginJourney(FGameXXKRuntimeState& Candidate, const FGameXXKMainStoryNode& Node, FString& Error);
+	bool PrepareTaskBattle(FGameXXKRuntimeState& Candidate, FString& Error);
 	bool CompleteNonBattleGate(FGameXXKRuntimeState& Candidate, FString& Error);
 	void RefreshViews(bool bRefreshFlow);
 	void FlushPresentationViews();
@@ -60,6 +62,7 @@ private:
 	bool bRefreshingViews = false;
 	bool bPresentationRefreshQueued = false;
 	bool bFlowRefreshPending = false;
+	int32 LastLegacyMapAttemptRevision = INDEX_NONE;
 	UPROPERTY(Transient) TObjectPtr<UGameXXKMVPSubsystem> MVPOverride;
 	UPROPERTY(Transient) TObjectPtr<UGameXXKMainStoryPanelWidget> RoutePanel;
 	UPROPERTY(Transient) TObjectPtr<UGameXXKDialoguePanelWidget> RouteDialoguePanel;

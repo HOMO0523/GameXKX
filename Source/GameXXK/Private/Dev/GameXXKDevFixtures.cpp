@@ -74,7 +74,7 @@ static bool ConfigureSet(FGameXXKRuntimeState& S,FName Owner,EGameXXKEquipmentSe
    Created.Add(Id);Item=S.EquipmentCollection.EquipmentInstances.FindByPredicate([Id](const auto& E){return E.InstanceId==Id;});
   }
   check(Item);Item->ItemLevel=Level;Item->EnhancementLevel=10;
-  for(auto& A:Item->RolledAffixes){const auto Range=FGameXXKAffixCatalog::GetMagnitudeRange(A.Unit,A.Tier);A.Magnitude=Range.Minimum+(Range.Maximum-Range.Minimum)/2;}
+  for(auto& A:Item->RolledAffixes){const auto Range=FGameXXKAffixCatalog::GetMagnitudeRange(A.AffixId,A.Tier);A.Magnitude=Range.Minimum+(Range.Maximum-Range.Minimum)/2;}
   for(auto& G:Item->SocketedGems){G.Type=static_cast<EGameXXKGemType>(1+GemIndex++%3);G.Quality=EGameXXKGemQuality::Treasure;}
   if(!Owner.IsNone()&&Item->OwnerCharacterId!=Owner)
   {FGameXXKEquipmentTransactionResult Result;if(!FGameXXKEquipmentEconomyRules::Equip(S,Owner,Slot,Id,Result)){Error=Result.Message.ToString();return false;}}

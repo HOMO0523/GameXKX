@@ -1,0 +1,425 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKBattle",
+      "key": "Defend",
+      "zh-Hans": "防御",
+      "en": "Defend"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "HealingPowder",
+      "zh-Hans": "金疮药",
+      "en": "Healing Powder"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "TrainingRetreatDescription",
+      "zh-Hans": "将返回 2D 挂机主界面。本场进度与未领取奖励不会保留。",
+      "en": "Return to the 2D idle workbench. Battle progress and unclaimed rewards will be lost."
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "IntentEnemySide",
+      "zh-Hans": "敌方",
+      "en": "Enemies"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "IntentStatusStacks",
+      "zh-Hans": "{0}层",
+      "en": "{0} stacks"
+    },
+    {
+      "namespace": "GameXXKCharacterBackpackModel",
+      "key": "InvalidQuickEquip",
+      "zh-Hans": "无法装备：角色或装备无效",
+      "en": "Cannot equip: invalid character or equipment"
+    },
+    {
+      "namespace": "GameXXKCharacterBackpackModel",
+      "key": "MissingQuickEquipInstance",
+      "zh-Hans": "无法装备：装备实例不存在",
+      "en": "Cannot equip: item is no longer available"
+    },
+    {
+      "namespace": "GameXXKCharacterBackpackModel",
+      "key": "MissingQuickEquipDefinition",
+      "zh-Hans": "无法装备：装备定义不存在",
+      "en": "Cannot equip: equipment definition is missing"
+    },
+    {
+      "namespace": "GameXXKCharacterBackpackModel",
+      "key": "InvalidQuickUnequip",
+      "zh-Hans": "无法卸下：角色或装备槽无效",
+      "en": "Cannot unequip: invalid character or slot"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentHead",
+      "zh-Hans": "头部",
+      "en": "Head"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentArmor",
+      "zh-Hans": "衣甲",
+      "en": "Body Armor"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentBelt",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentShoes",
+      "zh-Hans": "鞋",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "EquipmentAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindConsumable",
+      "zh-Hans": "消耗",
+      "en": "Consumables"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindArmor",
+      "zh-Hans": "防具",
+      "en": "Armor"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindMaterial",
+      "zh-Hans": "材料",
+      "en": "Materials"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindTask",
+      "zh-Hans": "任务",
+      "en": "Quests"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "KindUnknown",
+      "zh-Hans": "物品",
+      "en": "Items"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "Title",
+      "zh-Hans": "伙伴",
+      "en": "Companions"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TabAttributes",
+      "zh-Hans": "属性",
+      "en": "Attributes"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TabEquipment",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TabCards",
+      "zh-Hans": "卡组",
+      "en": "Deck"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TabTalents",
+      "zh-Hans": "天赋",
+      "en": "Talents"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TabTitles",
+      "zh-Hans": "称号",
+      "en": "Titles"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "NoCompanion",
+      "zh-Hans": "尚未招募伙伴",
+      "en": "No companions recruited"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterAll",
+      "zh-Hans": "全部",
+      "en": "All"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterEquipment",
+      "zh-Hans": "装备",
+      "en": "Equipment"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterProps",
+      "zh-Hans": "道具",
+      "en": "Items"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterMaterials",
+      "zh-Hans": "材料",
+      "en": "Materials"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterTasks",
+      "zh-Hans": "任务",
+      "en": "Quests"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "FilterUnavailable",
+      "zh-Hans": "伙伴仓库仅装备，此分类暂无内容",
+      "en": "The companion warehouse holds equipment only. This category is empty."
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "PersonalDeckCaption",
+      "zh-Hans": "个人牌组（18 张，编入 5 张）",
+      "en": "Personal Deck (18 cards; select 5)"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "ApplyLoadout",
+      "zh-Hans": "确认编入 5 张",
+      "en": "Confirm 5 Cards"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "ReplacePendingAction",
+      "zh-Hans": "遣散",
+      "en": "Dismiss"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "NoCompanionDetail",
+      "zh-Hans": "招募后可在此查看属性与个人牌组。",
+      "en": "Recruit a companion to view their attributes and personal deck here."
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "LockedStatus",
+      "zh-Hans": "本次路线已锁定，牌组只读",
+      "en": "The deck is locked during this run."
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "RecruitmentReady",
+      "zh-Hans": "招贤会固定保存候选；满员时不会重掷。",
+      "en": "Recruitment candidates are saved. A full roster does not reroll them."
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TalentsTitle",
+      "zh-Hans": "天赋",
+      "en": "Talents"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "TitlesTitle",
+      "zh-Hans": "称号",
+      "en": "Titles"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "NotOpenYet",
+      "zh-Hans": "尚未开放",
+      "en": "Not Yet Available"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "HeroDeckCaption",
+      "zh-Hans": "主角牌组（36 张，编入 8 张）",
+      "en": "Hero Deck (36 cards; select 8)"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "ReturnPersonalDeck",
+      "zh-Hans": "查看伙伴牌组",
+      "en": "View Companion Deck"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "OpenHeroDeck",
+      "zh-Hans": "编辑主角牌组",
+      "en": "Edit Hero Deck"
+    },
+    {
+      "namespace": "GameXXKCompanionRoster",
+      "key": "HeroDeckLocked",
+      "zh-Hans": "路线已锁定 · 只读",
+      "en": "Run Locked · Read Only"
+    },
+    {
+      "namespace": "EquipmentUI",
+      "key": "BaseStats",
+      "zh-Hans": "基础属性",
+      "en": "Base Attributes"
+    },
+    {
+      "namespace": "EquipmentUI",
+      "key": "Affixes",
+      "zh-Hans": "词缀加成",
+      "en": "Affix Bonuses"
+    },
+    {
+      "namespace": "EquipmentUI",
+      "key": "Sockets",
+      "zh-Hans": "镶嵌",
+      "en": "Sockets"
+    },
+    {
+      "namespace": "EquipmentUI",
+      "key": "Compare",
+      "zh-Hans": "装备后变化",
+      "en": "Changes When Equipped"
+    },
+    {
+      "namespace": "GameXXKGuide",
+      "key": "ExperiencedChoice",
+      "zh-Hans": "我是老玩家，跳过",
+      "en": "Experienced Player: Skip"
+    },
+    {
+      "namespace": "GameXXKGuide",
+      "key": "NewPlayerChoice",
+      "zh-Hans": "我是新手，继续",
+      "en": "New Player: Continue"
+    },
+    {
+      "namespace": "GameXXKGuide",
+      "key": "PreferenceQuestion",
+      "zh-Hans": "是否开启战斗引导？",
+      "en": "Enable the battle guide?"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindConsumable",
+      "zh-Hans": "消耗",
+      "en": "Consumables"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindArmor",
+      "zh-Hans": "防具",
+      "en": "Armor"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindMaterial",
+      "zh-Hans": "材料",
+      "en": "Materials"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindTask",
+      "zh-Hans": "任务",
+      "en": "Quests"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "KindUnknown",
+      "zh-Hans": "物品",
+      "en": "Items"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotWeapon",
+      "zh-Hans": "武器",
+      "en": "Weapon"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotHead",
+      "zh-Hans": "头部",
+      "en": "Head"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotArmor",
+      "zh-Hans": "衣甲",
+      "en": "Body Armor"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotBelt",
+      "zh-Hans": "腰带",
+      "en": "Belt"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotShoes",
+      "zh-Hans": "鞋",
+      "en": "Footwear"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotAccessory",
+      "zh-Hans": "饰品",
+      "en": "Accessory"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "EquipmentSlotUnknown",
+      "zh-Hans": "未知部位",
+      "en": "Unknown Slot"
+    },
+    {
+      "namespace": "GameXXKInventoryWindow",
+      "key": "CharacterTabAttributes",
+      "zh-Hans": "属性",
+      "en": "Attributes"
+    }
+  ]
+}

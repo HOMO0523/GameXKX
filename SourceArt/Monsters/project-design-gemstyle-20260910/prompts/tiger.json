@@ -1,0 +1,24 @@
+{
+  "slug": "tiger",
+  "name": "老虎",
+  "id": "Enemy.Ch3.Tiger",
+  "chapter": 3,
+  "tier": "boss",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png",
+  "identitySourceSha256": "46047902823c5a57529a525d4c7f9d6dc10dab6c7cfb58fb38f3ddfb698f635f",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "老虎Boss：保留原巨大橙黄虎、粗黑大条纹、奶白口鼻胸腹和外翻颊毛、大宽头、粗浓虎眉、獠牙露出形成凶狠微龇嘴、短圆耳。四足压低蓄势，两只巨大前爪张稳，宽肩与厚胸，背后一条橙黑粗尾大弧回卷，3/4朝右，不能正面对视。条纹为少数醒目宽纹，别画密碎斑纹，不戴王冠、不加甲胄火焰。",
+  "prompt": "Use case: style-transfer. 第一张是本只怪物的项目原设计，第二张是用户已确认的宝石icon画风角色，只参考画法。请保留第一张的物种、比例、原配色与标志特征，优化成完整单体游戏怪物，3/4朝画面右。内部细节密度不高于项目原设计，每个身体大部位只用2至3个连续明暗色面。不要铺满小三角、碎毛、锯齿色斑和反复叠加的笔触。毛发只由少数外缘大毛簇和一两条结构线表达，毛团内部大块完整设色。保留宝石icon的深描边、明确体积和饱满颜色。眼睛采用原游戏的卡通图形：清楚的一条深色上眼睑、简洁白/米白眼白与单块纯深色瞳孔，必要时最多一个小白点；不画虹膜渐变、玻璃球感、湿润反射或写实眼窝。保持物种原有神态，不把所有眼睛改成同样的大萌眼。\n体积以大阴影和宽阔亮面表现，保留轻手绘质感；不要碎切面，也不要简化成扁平logo。只输出一个完整全身，均匀暖米白#F4EFDF背景，四周8%留白，不裁尾、角、脚，不画文字、地面、投影、场景或粒子。\n老虎Boss：保留原巨大橙黄虎、粗黑大条纹、奶白口鼻胸腹和外翻颊毛、大宽头、粗浓虎眉、獠牙露出形成凶狠微龇嘴、短圆耳。四足压低蓄势，两只巨大前爪张稳，宽肩与厚胸，背后一条橙黑粗尾大弧回卷，3/4朝右，不能正面对视。条纹为少数醒目宽纹，别画密碎斑纹，不戴王冠、不加甲胄火焰。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/21_tiger_boss.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png"
+  ],
+  "latestStyleRule": "broad connected forms + graphic cartoon eyes",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\tiger.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-f64215d1-0141-4d46-9eb3-dad17ef47167.png"
+}

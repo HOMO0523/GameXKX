@@ -84,7 +84,9 @@ def process(source, slug, background, group="relic"):
     if not np.array_equal(rgb, rgba[:, :, :3]):
         raise AssertionError("Cleanup must not recolor the object")
     cleaned = Image.fromarray(rgba)
-    bounds = cleaned.getchannel("A").getbbox()
+    # Generators can leave almost invisible alpha noise well outside the object.
+    # Use a meaningful coverage boundary for cropping, retaining RGB/alpha inside.
+    bounds = cleaned.getchannel("A").point(lambda value: 255 if value >= 16 else 0).getbbox()
     if not bounds:
         raise ValueError("The cleanup removed the whole image")
     cropped = cleaned.crop(bounds)
@@ -102,7 +104,7 @@ def process(source, slug, background, group="relic"):
               "sourceGeneratedPath": str(source.resolve()), "rawSha256": digest(raw_path),
               "icon": str(output.relative_to(ROOT)).replace("\\", "/"), "sha256": digest(output),
               "background": background, "removedBackgroundPixels": removed,
-              "sourceAlphaBounds": list(bounds), "size": [512, 512], "alphaBounds": list(final.getchannel("A").getbbox()),
+              "sourceAlphaBounds": list(bounds), "cropAlphaThreshold": 16, "size": [512, 512], "alphaBounds": list(final.getchannel("A").getbbox()),
               "subjectPixelsRecoloredBeforeResize": 0, "visualReview": "pending", "imported": False}
     manifest_path = output_root / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {

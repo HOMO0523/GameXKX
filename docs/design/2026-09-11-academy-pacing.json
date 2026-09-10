@@ -1,0 +1,22 @@
+{
+  "scope": "Academy only",
+  "heroEnemyHP": [
+    240,
+    180,
+    300
+  ],
+  "otherEnemyMaxHP": 300,
+  "enemyAttack": 12,
+  "enemyDefense": 0,
+  "partyMaxHP": 300,
+  "partyStartingHP": 210,
+  "partyAttack": 70,
+  "partyDefense": 35,
+  "heroWinRounds": [
+    2,
+    3,
+    1
+  ],
+  "allLessons": 29,
+  "passedTests": 6
+}

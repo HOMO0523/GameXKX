@@ -1,0 +1,455 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "namespace": "GameXXKGems",
+      "key": "Attack",
+      "zh-Hans": "攻击",
+      "en": "Attack"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Defense",
+      "zh-Hans": "防御",
+      "en": "Defense"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "MaxHealth",
+      "zh-Hans": "生命",
+      "en": "Health"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "AttackPercent",
+      "zh-Hans": "攻击百分比",
+      "en": "Attack %"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "DefensePercent",
+      "zh-Hans": "防御百分比",
+      "en": "Defense %"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "MaxHealthPercent",
+      "zh-Hans": "生命百分比",
+      "en": "Health %"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "DirectDamage",
+      "zh-Hans": "物理伤害",
+      "en": "Physical Damage"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "ArmorGain",
+      "zh-Hans": "护甲获得量",
+      "en": "Armor Gain"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Healing",
+      "zh-Hans": "治疗效果",
+      "en": "Healing"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "CounterDamage",
+      "zh-Hans": "反击伤害",
+      "en": "Counter Damage"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "FireDamage",
+      "zh-Hans": "火焰伤害",
+      "en": "Fire Damage"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "DamageOverTime",
+      "zh-Hans": "持续伤害",
+      "en": "Damage over Time"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "FrostDamage",
+      "zh-Hans": "冰霜伤害",
+      "en": "Frost Damage"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "LightningDamage",
+      "zh-Hans": "雷击伤害",
+      "en": "Lightning Damage"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "FireResistance",
+      "zh-Hans": "火焰抗性",
+      "en": "Fire Resistance"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "FrostResistance",
+      "zh-Hans": "冰霜抗性",
+      "en": "Frost Resistance"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "LightningResistance",
+      "zh-Hans": "雷击抗性",
+      "en": "Lightning Resistance"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Common",
+      "zh-Hans": "普通",
+      "en": "Common"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Rare",
+      "zh-Hans": "稀有",
+      "en": "Rare"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Epic",
+      "zh-Hans": "珍稀",
+      "en": "Epic"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Legendary",
+      "zh-Hans": "传奇",
+      "en": "Legendary"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Immortal",
+      "zh-Hans": "不朽",
+      "en": "Immortal"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Treasure",
+      "zh-Hans": "至宝",
+      "en": "Treasure"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Transcendent",
+      "zh-Hans": "超凡",
+      "en": "Transcendent"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Celestial",
+      "zh-Hans": "天界",
+      "en": "Celestial"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Ascendant",
+      "zh-Hans": "登神",
+      "en": "Ascendant"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "Cosmic",
+      "zh-Hans": "宇宙",
+      "en": "Cosmic"
+    },
+    {
+      "namespace": "GameXXKGems",
+      "key": "DisplayFormat",
+      "zh-Hans": "{0}{1}宝石",
+      "en": "{0} {1} Gem"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "QingshanMainTitle",
+      "zh-Hans": "初入江湖",
+      "en": "First Steps in Jianghu"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "QingshanMainNotAcceptedDescription",
+      "zh-Hans": "前往青山镇寻找引路人",
+      "en": "Find the guide in Qingshan Town"
+    },
+    {
+      "namespace": "GameXXKTaskPanel",
+      "key": "QingshanMainAcceptedDescription",
+      "zh-Hans": "与引路人同行，前往北门出口",
+      "en": "Follow the guide to the north gate"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "EquipmentPackDescription",
+      "zh-Hans": "随机获得对应套装的一个装备部位",
+      "en": "Receive one random equipment piece from this set"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "CompanionPackName",
+      "zh-Hans": "伙伴包",
+      "en": "Companion Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "CompanionPackDescription",
+      "zh-Hans": "获得一名永久伙伴；名册满员（12 人）时不可购买",
+      "en": "Recruit a permanent companion. Unavailable when the roster is full (12 members)"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "PoJunPackName",
+      "zh-Hans": "破军装备包",
+      "en": "Army Breaker Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "XuanJiaPackName",
+      "zh-Hans": "玄甲装备包",
+      "en": "Darksteel Guard Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "QingNangPackName",
+      "zh-Hans": "青囊装备包",
+      "en": "Jade Medicine Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "ZhuiFengPackName",
+      "zh-Hans": "追风装备包",
+      "en": "Wind Chaser Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "ShiGuPackName",
+      "zh-Hans": "蚀骨装备包",
+      "en": "Bone Corrosion Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "ShanHePackName",
+      "zh-Hans": "山河装备包",
+      "en": "Mountains and Rivers Pack"
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "InvalidProduct",
+      "zh-Hans": "商品无效。",
+      "en": "Invalid product."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "NotInTown",
+      "zh-Hans": "只能在城镇商店购买。",
+      "en": "Purchase this at the town shop."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "InsufficientGold",
+      "zh-Hans": "局外金币不足。",
+      "en": "Not enough Gold."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "WarehouseFull",
+      "zh-Hans": "装备仓库已满。",
+      "en": "Equipment warehouse is full."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "RosterFull",
+      "zh-Hans": "名册已满（12 人），无法招募更多伙伴。",
+      "en": "The roster is full (12 members). No more companions can be recruited."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "PendingCompanionExists",
+      "zh-Hans": "请先处理待替换的伙伴。",
+      "en": "Resolve the pending companion replacement first."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "PurchaseOrdinalExhausted",
+      "zh-Hans": "商店购买序列已耗尽。",
+      "en": "The shop purchase counter has reached its limit."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "EquipmentCreationFailed",
+      "zh-Hans": "装备生成失败。",
+      "en": "Could not create equipment."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "CompanionCreationFailed",
+      "zh-Hans": "伙伴生成失败。",
+      "en": "Could not create a companion."
+    },
+    {
+      "namespace": "GameXXKMetaShop",
+      "key": "InvalidRuntimeState",
+      "zh-Hans": "当前存档状态无效。",
+      "en": "The current save state is invalid."
+    },
+    {
+      "namespace": "GameXXKSaveMigration",
+      "key": "RollbackFailed",
+      "zh-Hans": "存档迁移失败，原存档仍保存在迁移备份中，请勿覆盖当前存档。",
+      "en": "Save migration failed. The original save remains in the migration backup. Do not overwrite the current save."
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterNoSubsystem",
+      "zh-Hans": "无法读取流程状态",
+      "en": "Cannot read the current game state"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterWrongScreen",
+      "zh-Hans": "当前节点不匹配",
+      "en": "The current node does not match"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterOpenFailed",
+      "zh-Hans": "无法打开遭遇选择",
+      "en": "Cannot open encounter choices"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterEventLabel",
+      "zh-Hans": "F: 查看事件选择",
+      "en": "F: View Event Choices"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterCampLabel",
+      "zh-Hans": "F: 查看营火选择",
+      "en": "F: View Camp Choices"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "RouteEncounterMerchantLabel",
+      "zh-Hans": "F: 查看行商选择",
+      "en": "F: View Merchant Choices"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "TownExitNoSubsystem",
+      "zh-Hans": "请先接任务",
+      "en": "Accept the quest first"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "TownExitQuestRequired",
+      "zh-Hans": "请先接任务",
+      "en": "Accept the quest first"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "BattlePresentationAvoid",
+      "zh-Hans": "闪避",
+      "en": "Evaded"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "BattlePresentationArmorAndHealthDamage",
+      "zh-Hans": "护甲 -{0} · 气血 -{1}",
+      "en": "Armor -{0} · Health -{1}"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "BattlePresentationArmorDamage",
+      "zh-Hans": "护甲 -{0}",
+      "en": "Armor -{0}"
+    },
+    {
+      "namespace": "GameXXK",
+      "key": "BattleUnitIdleLoading",
+      "zh-Hans": "{0}\n载入中",
+      "en": "{0}\nLoading"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "RetryEnemyIntentCompletion",
+      "zh-Hans": "重试敌方结算",
+      "en": "Retry Enemy Resolution"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "EndTurn",
+      "zh-Hans": "结束回合",
+      "en": "End Turn"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "CloseBattle",
+      "zh-Hans": "关闭",
+      "en": "Close"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "SkipReward",
+      "zh-Hans": "跳过奖励",
+      "en": "Skip Reward"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "CancelInsight",
+      "zh-Hans": "取消洞察",
+      "en": "Cancel Insight"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "RetreatTitle",
+      "zh-Hans": "退出当前战斗？",
+      "en": "Leave this battle?"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "RetreatDescription",
+      "zh-Hans": "将返回进入本场前的路线节点。本场进度与未领取奖励不会保留。",
+      "en": "Return to the route node before this battle. Battle progress and unclaimed rewards will be lost."
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "RetreatConfirm",
+      "zh-Hans": "退出战斗",
+      "en": "Leave Battle"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "RetreatCancel",
+      "zh-Hans": "继续战斗",
+      "en": "Continue Battle"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "BasicAttack",
+      "zh-Hans": "普攻",
+      "en": "Basic Attack"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "CraneWingSlash",
+      "zh-Hans": "鹤羽斩",
+      "en": "Crane Wing Slash"
+    },
+    {
+      "namespace": "GameXXKBattle",
+      "key": "GuiyuanArt",
+      "zh-Hans": "归元术",
+      "en": "Return to Origin"
+    }
+  ]
+}

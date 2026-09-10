@@ -212,7 +212,7 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 		FText::FromString(TEXT("9876")));
 	TalentTree->RebuildForTest();
 
-	UWidget* ToolModeButton = Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0"));
+	UWidget* ToolModeButton = Workbench->WidgetTree->FindWidget(TEXT("ToolModeDropdownButton"));
 	TestTrue(TEXT("tool controls are visible without purchasing the branch"),
 		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Visible);
 	TestTrue(TEXT("real root button purchases"), TalentTree->ClickPurchaseButtonForTest());
@@ -229,7 +229,7 @@ bool FGameXXKTalentWorkbenchCrossPanelRefreshTest::RunTest(const FString& Parame
 	TestTrue(TEXT("unlocking tools restores the existing controls without rebuilding the talent graph"),
 		ToolModeButton && ToolModeButton->GetVisibility() == ESlateVisibility::Visible);
 	TestNotNull(TEXT("five-mode tool controls remain ready behind the overlay"),
-		Workbench->WidgetTree->FindWidget(TEXT("ToolButton_0")));
+		Workbench->WidgetTree->FindWidget(TEXT("ToolModeDropdownButton")));
 	return true;
 }
 

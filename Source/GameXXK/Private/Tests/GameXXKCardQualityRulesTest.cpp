@@ -227,7 +227,22 @@ namespace
 			{ TEXT("Relic.PaperCrane"), EGameXXKCardQuality::Common },
 			{ TEXT("Relic.BrokenArrow"), EGameXXKCardQuality::Common },
 			{ TEXT("Relic.MoonDisc"), EGameXXKCardQuality::Common },
-			{ TEXT("Relic.LifeSavingTalisman"), EGameXXKCardQuality::Common }
+			{ TEXT("Relic.LifeSavingTalisman"), EGameXXKCardQuality::Common },
+			{ TEXT("Relic.BloodInkSeal"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.StormChime"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.FlameCenser"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.HunterQuiver"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.MoonDewVial"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.WarBanner"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.AmberPestle"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.TwinJade"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.SilkFan"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.ObsidianScale"), EGameXXKCardQuality::Rare },
+			{ TEXT("Relic.BloodMoonBlade"), EGameXXKCardQuality::Epic },
+			{ TEXT("Relic.PhoenixCauldron"), EGameXXKCardQuality::Epic },
+			{ TEXT("Relic.StarAbacus"), EGameXXKCardQuality::Epic },
+			{ TEXT("Relic.DragonCarapace"), EGameXXKCardQuality::Epic },
+			{ TEXT("Relic.ThunderSeal"), EGameXXKCardQuality::Epic }
 		};
 		return Expected;
 	}
@@ -432,7 +447,7 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		FGameXXKCardQualityRules::GetCardBaseQuality(MissingCard), EGameXXKCardQuality::Common);
 
 	const TArray<FExpectedQuality>& ExpectedRelicEntries = GetExpectedRelicQualities();
-	TestEqual(TEXT("independent relic authority contains exactly 31 entries"), ExpectedRelicEntries.Num(), 31);
+	TestEqual(TEXT("independent relic authority contains exactly 46 entries"), ExpectedRelicEntries.Num(), 46);
 	TMap<FName, EGameXXKCardQuality> ExpectedRelics;
 	int32 ExpectedCommonRelics = 0;
 	int32 ExpectedRareRelics = 0;
@@ -454,11 +469,11 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("independent Common relic count"), ExpectedCommonRelics, 16);
-	TestEqual(TEXT("independent Rare relic count"), ExpectedRareRelics, 10);
-	TestEqual(TEXT("independent Epic relic count"), ExpectedEpicRelics, 5);
+	TestEqual(TEXT("independent Rare relic count"), ExpectedRareRelics, 20);
+	TestEqual(TEXT("independent Epic relic count"), ExpectedEpicRelics, 10);
 
 	const TArray<FGameXXKRelicDefinition>& RelicDefinitions = FGameXXKRelicCatalog::GetAllDefinitions();
-	TestEqual(TEXT("relic catalog contains exactly 31 definitions"), RelicDefinitions.Num(), 31);
+	TestEqual(TEXT("relic catalog contains exactly 46 definitions"), RelicDefinitions.Num(), 46);
 	TSet<FName> ActualRelicIds;
 	int32 ActualCommonRelics = 0;
 	int32 ActualRareRelics = 0;
@@ -490,8 +505,8 @@ bool FGameXXKCardQualityRulesTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("actual relic catalog has no missing or extra unique IDs"), ActualRelicIds.Num(), ExpectedRelics.Num());
 	TestEqual(TEXT("Common relic count"), ActualCommonRelics, 16);
-	TestEqual(TEXT("Rare relic count"), ActualRareRelics, 10);
-	TestEqual(TEXT("Epic relic count"), ActualEpicRelics, 5);
+	TestEqual(TEXT("Rare relic count"), ActualRareRelics, 20);
+	TestEqual(TEXT("Epic relic count"), ActualEpicRelics, 10);
 
 	FString RelicValidationError;
 	TestTrue(TEXT("production relic quality invariants accept the real catalog"),

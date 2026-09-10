@@ -1,4 +1,5 @@
 #include "MVP/GameXXKSaveMigration.h"
+#include "GameXXKHuntRules.h"
 #include "GameXXKTrainingSettlementRules.h"
 #include "Narrative/GameXXKMainStoryRules.h"
 
@@ -745,6 +746,7 @@ namespace
 		Progress.PendingTravelExperience = FMath::Max(0, Progress.PendingTravelExperience);
 		Progress.PendingTravelNormalChestCount = FMath::Max(0, Progress.PendingTravelNormalChestCount);
 		Progress.PendingTravelAdvancedChestCount = FMath::Max(0, Progress.PendingTravelAdvancedChestCount);
+		Progress.PendingTravelHuntChestCount=FMath::Max(0,Progress.PendingTravelHuntChestCount);
 		Progress.PendingTravelCompletedEncounters = FMath::Max(0, Progress.PendingTravelCompletedEncounters);
 		Progress.PendingTravelCompletedStages = FMath::Max(0, Progress.PendingTravelCompletedStages);
 		Progress.PendingTravelSimulatedSeconds = FMath::Max(0, Progress.PendingTravelSimulatedSeconds);
@@ -2242,6 +2244,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 				QuestNpcProgressionSeed,
 				&ValidationError)
 			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+			|| !FGameXXKEquipmentRules::NormalizeRetiredResourceAffixes(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError)
 			|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, ValidationError)
@@ -2291,6 +2294,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 				QuestNpcProgressionSeed,
 				&ValidationError)
 			|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
+			|| !FGameXXKEquipmentRules::NormalizeRetiredResourceAffixes(Candidate.RuntimeState.EquipmentCollection, &ValidationError)
 			|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 			|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, ValidationError)
 			|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, ValidationError)
@@ -2564,6 +2568,16 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			for (auto& Effect : Intent.Effects) if (Effect.Type == EGameXXKEnemyIntentEffectType::DirectDamage) Effect.DamageElement = Element;
 		}
 	}
+	if(Source.SaveVersion<HuntExpansionIntroducedSaveVersion)
+	{
+		// Untraceable legacy sources use the approved Normal fallback.
+		for(auto& Token:Candidate.RuntimeState.Training.OwnedChestTokens)
+		{
+			FGameXXKTrainingStageDefinition SourceStage;
+			if(!FGameXXKTrainingRules::TryGetStageDefinition(Token.SourceStageId,SourceStage))
+				Token.SourceStageId=FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,1);
+		}
+	}
 	NormalizeTrainingProgress(Candidate.RuntimeState.Training);
 	const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 		? Candidate.RuntimeState.CardRun.RouteRandomSeed
@@ -2573,6 +2587,7 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			QuestNpcProgressionSeed,
 			&MigrationError)
 		|| !FGameXXKEquipmentRules::NormalizeSocketArrays(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
+			|| !FGameXXKEquipmentRules::NormalizeRetiredResourceAffixes(Candidate.RuntimeState.EquipmentCollection, &MigrationError)
 		|| !FGameXXKEquipmentToolRules::NormalizeProgress(Candidate.RuntimeState.ToolProgress)
 		|| !MigrateLegacyTrainingChestStacks(Candidate.RuntimeState, MigrationError)
 		|| !MigratePermanentNpcFormation(Candidate.RuntimeState, OutReport, MigrationError)
@@ -2592,6 +2607,16 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 	{
 		Fail(OutReport, MigrationError);
 		return false;
+	}
+	if(Source.SaveVersion<HuntExpansionIntroducedSaveVersion)
+	{
+		for(auto Difficulty:{EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Hard,EGameXXKTrainingDifficulty::Hell})
+		{
+			const FName StageId=FGameXXKTrainingRules::MakeStageId(Difficulty,9);
+			if(Candidate.RuntimeState.Training.ClearedStageIds.Contains(StageId)
+				&&!FGameXXKHuntRules::GrantFirstClear(Candidate.RuntimeState,StageId,&MigrationError))
+			{Fail(OutReport,MigrationError);return false;}
+		}
 	}
 	if (!ValidateRuntimeState(Candidate.RuntimeState, MigrationError))
 	{
@@ -2837,6 +2862,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		|| State.Training.PendingTravelExperience < 0
 		|| State.Training.PendingTravelNormalChestCount < 0
 		|| State.Training.PendingTravelAdvancedChestCount < 0
+		|| State.Training.PendingTravelHuntChestCount < 0
 		|| State.Training.PendingTravelCompletedEncounters < 0
 		|| State.Training.PendingTravelCompletedStages < 0
 		|| State.Training.PendingTravelSimulatedSeconds < 0
@@ -2913,6 +2939,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		return false;
 	}
 	TSet<FName> SeenRelicIds;
+	if(!FGameXXKHuntRules::Validate(State,&OutError))return false;
 	TSet<int32> SeenRelicOrdinals;
 	for (const FGameXXKRelicInstance& Relic : State.CardRun.Relics)
 	{

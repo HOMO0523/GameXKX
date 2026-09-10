@@ -1,0 +1,24 @@
+{
+  "slug": "graywolf",
+  "name": "灰狼",
+  "id": "Enemy.Ch2.GrayWolf",
+  "chapter": 2,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/07_graywolf.png",
+  "identitySourceSha256": "37d6400431a7542d567d0f23e5a9bd84df07a043a5cb008e9484cd1ae2a41ccc",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "灰狼：保留原瘦长敏捷灰狼，灰褐毛、米白短口鼻和颈下毛、尖耳，颈背少数尖鬃块、狭长警惕眼、较低的长尾。一共四条细壮腿，身体略前倾、头低朝右，保留原侧向潜行姿态但有3/4厚度；体型轻、脖子较细，不能画成巨大狼王，不加铠甲或魔法。",
+  "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：灰狼：保留原瘦长敏捷灰狼，灰褐毛、米白短口鼻和颈下毛、尖耳，颈背少数尖鬃块、狭长警惕眼、较低的长尾。一共四条细壮腿，身体略前倾、头低朝右，保留原侧向潜行姿态但有3/4厚度；体型轻、脖子较细，不能画成巨大狼王，不加铠甲或魔法。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/07_graywolf.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\graywolf.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-880a8f29-8a7a-4c67-8e33-90138342e176.png"
+}

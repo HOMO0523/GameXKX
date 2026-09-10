@@ -1,0 +1,266 @@
+{
+  "id": "S04",
+  "title": "Tusi Village · Trust Isn't a Shouting Contest",
+  "location": "Tusi Village",
+  "summary": "Youbai's old acquaintance cannot simply open the gate. An old carving, read upside down, gets the conversation moving. An ox, a channel, and a sheepskin map reveal the village's changes—and the willing worker beneath Song Jinbao's finery.",
+  "nodes": {
+    "S04-01": {
+      "title": "Stopped at the Gate",
+      "summary": "Youbai plays the old friend. The chief holds his staff across the gate: another visitor with an ancestral treasure map once stole the village's channel-repair funds.",
+      "objective": "Explain your purpose to the Tusi Chief",
+      "result": "You explain that you seek to verify the map. The chief agrees to hear Youbai's account of the past.",
+      "lines": [
+        "Old friend! I have returned! This young hero enters with—",
+        "A wooden staff bars the gate. The chief looks at Youbai, then your map bag, and does not move.",
+        "The last visitor called himself an old friend too. Brought an ancestral treasure map.",
+        "What happened?",
+        "The man left with the money. The channel stayed behind, dry. Should I recognize a face or ask a question first?",
+        "I... understand. We came to verify old routes and a sheepskin map. Not to collect money.",
+        "No hurry to open the gate. We brought a lead from Yongzhou's inscriptions. Please hear us out.",
+        "If you're willing to speak plainly, take your time and speak here."
+      ]
+    },
+    "S04-02": {
+      "title": "A Way Through the Gate",
+      "summary": "Youbai's carving never matches until you turn the paper halfway around. The spirit once hovered over the trough. Its view had been upside down all along.",
+      "objective": "Earn entry with verifiable details from the past",
+      "result": "The old trough and its carving provide corroborating evidence, and you are allowed into the village.",
+      "lines": [
+        "Three marks on the old trough: broad above, narrow below, with a chipped corner.",
+        "Narrow above, broad below. You remember that backward and claim you've been here?",
+        "Wait. Youbai, which side were you looking from?",
+        "I was floating over the trough, looking down...",
+        "You rotate the rubbing halfway around. Marks and chipped corner align. The chief's tight eyebrows finally ease.",
+        "Its memory may be sound. The viewpoint is rather ungrounded.",
+        "So it is you. Brought your old habits too. Come in. We still need to check the map.",
+        "This time, I'll provide light. Directions belong to those with feet."
+      ],
+      "short_title": "Enter the Village"
+    },
+    "S04-03": {
+      "title": "A Cup at Every Step",
+      "summary": "Offered welcoming wine, you nudge the full bowl back. The chief isn't testing your boasts. He wants to know whether you can admit you can't hold your drink.",
+      "objective": "Respond politely to the welcome while staying clear-headed",
+      "result": "You complete the welcome, enter sober, and can continue investigating the old map.",
+      "lines": [
+        "Welcome wine at the gate. One bowl for every step. Dare you?",
+        "I dare to tell the truth. I can't drink much. If I fall over, you'll have to carry me.",
+        "Young hero, that declaration lacks a certain—",
+        "Sobriety? We're here to study waterways, not add a drunk to one.",
+        "You gently return the full bowl, keeping only a sip. The chief watches, then laughs first.",
+        "The last fellow downed three bowls and loudly invented his own surname. Admitting your limit is better.",
+        "I accept the welcome, with less wine. Once the work is done, I'll thank you properly.",
+        "Agreed. Enter with a clear head. Work with a clear head."
+      ],
+      "short_title": "Welcome Wine"
+    },
+    "S04-04": {
+      "title": "Survey the Village Outskirts",
+      "summary": "Song Jinbao wants his ox found. Villagers want their water back. Two urgent problems collide, but fresh hoofprints and the old channel point to the same place.",
+      "objective": "Enter task map 2-2 and inspect the ox tracks and interrupted water supply",
+      "result": "The survey confirms that ox tracks and the old channel lead to the same low ground. Both the ox-search and water-investigation branches open.",
+      "lines": [
+        "Find the ox first! If it doesn't come back, I'll be the only one left to pull tomorrow's plow.",
+        "The fields need water too. While you check the old road, check the channel.",
+        "Before we rank the emergencies: where did the ox go, and where did the water stop?",
+        "Fresh hoofprints mark wet ground. Water can still be heard in the low old channel. Both trails lead to the same hollow outside the village.",
+        "One has hooves, one has no feet, yet they've arranged a meeting before we have.",
+        "Then let's go!",
+        "Read the clues first. Follow a high dry ditch and neither ox nor water will join us uphill.",
+        "Take people through the low ground. Report what you find. Don't rush to blame anyone."
+      ],
+      "hints": [
+        "Compare the ox's trail with the traces left by flowing water.",
+        "Fresh hoofprints in wet mud and water sounds in the low old channel point to the same area.",
+        "Choose to follow the fresh hoofprints and the low old channel with running-water sounds."
+      ],
+      "options": [
+        [
+          "Follow the fresh hoofprints and the low, flowing old channel",
+          "Both trails lead to the same low ground. You can continue the ox search and water investigation during this journey."
+        ],
+        [
+          "Search only along the new dry ditch on the high slope",
+          "An ambitious ditch, but it has neither water nor fresh hoofprints."
+        ],
+        [
+          "Calculate the ox's location from the thickness of Jinbao's debt slips",
+          "Youbai considers this: Even I cannot assist with that discipline. Let's examine the actual ground."
+        ]
+      ],
+      "short_title": "Village Outskirts"
+    },
+    "S04-05": {
+      "title": "The Missing Ox / Dry Fields",
+      "summary": "Song Jinbao imagines a tragic fate for his ox. The ox is calmly eating by the channel. When it lifts its head, the bamboo fence really blocking the water comes into view.",
+      "objective": "Follow the tracks to the missing ox and identify the nearby blockage",
+      "result": "You find the ox and confirm that fallen bamboo fencing and debris block the water. The ox is led safely onto dry ground.",
+      "lines": [
+        "Where's my ox? Was it swept away?",
+        "In the grass beside the low bank, the ox slowly lifts its head, a mouthful of grass hanging from its lips. Song Jinbao's panic catches in his throat.",
+        "It's having a steadier meal than we are. Don't startle it.",
+        "Ox found. What's that lump at the inlet?",
+        "Beside the ox, a fallen bamboo fence and debris jam the channel mouth, holding water back. Dry ground lies close by.",
+        "I thought it was blocking the water... It only came for the banquet.",
+        "Lead it slowly onto dry ground, then inspect how the fence is wedged. Don't tangle rope and channel together.",
+        "Right. Ox safe first, then my hands are free to help."
+      ],
+      "hints": [
+        "The ox stands in shallow water. The actual inlet is beside it.",
+        "Fallen fencing, bamboo, and debris block the channel. Lead the ox onto dry ground first.",
+        "Choose to lead the ox to dry ground, then inspect the inlet blocked by fencing and debris."
+      ],
+      "options": [
+        [
+          "Lead the ox ashore, then inspect the fence and debris at the inlet",
+          "The ox is found, and the cause of the dry fields is identified. Two problems finally share one answer."
+        ],
+        [
+          "Blame the ox for blocking the river and reason with it",
+          "The ox chews slowly through your argument. It has no plans to become a river deity."
+        ],
+        [
+          "Dig every nearby ditch a little deeper",
+          "Find the real blockage first. Don't turn an investigation into a village-wide earthworks project."
+        ]
+      ],
+      "short_title": "Ox and Water"
+    },
+    "S04-06": {
+      "title": "Follow the Flow / Reopen the Channel",
+      "summary": "Song Jinbao rolls up his sleeves to carve a spectacular underground river. You stop his first swing. The outlet that needs opening is under the old fence at his feet.",
+      "objective": "Identify the low old outlet and restore the hidden irrigation channel",
+      "result": "You reopen the low inlet, confirm the routes of both water and ox, and restore water to the fields.",
+      "lines": [
+        "I've got it! Cut a new channel from up there. I've even named it—",
+        "Names later. The old outlet by your feet is still blocked.",
+        "The high ground is dry; old watermarks trace the low ground. A fallen fence jams the outlet while water squeezes through gaps behind it.",
+        "Your grand underground-river project may be defeated by lifting one fence.",
+        "Then I'll lift it magnificently.",
+        "Steady is better than magnificent. Clear the original slope. Don't ruin the banks with random digging.",
+        "All right. I brace the fence, you watch the water. The ox is on that dry grass nearby.",
+        "People, water, ox—all accounted for. Now we work."
+      ],
+      "hints": [
+        "Water follows low ground. The old outlet's position matters more than the loudest sound.",
+        "The low outlet beneath the fallen fence connects to the original field channel.",
+        "Choose to clear the low old outlet and restore water along its original slope."
+      ],
+      "options": [
+        [
+          "Clear the low old outlet and restore the original downhill flow",
+          "The old watercourse opens. Water returns to the fields, and the findings agree with the ox tracks."
+        ],
+        [
+          "Keep chiseling toward the loudest water behind the rock wall",
+          "Youbai reminds you: We're correcting a map, not installing a skylight in a mountain. Find the old outlet."
+        ],
+        [
+          "Divert the water into the higher new ditch",
+          "This plan requires water to master lightness skills first. For now, respect the slope."
+        ]
+      ],
+      "short_title": "Reopen the Channel"
+    },
+    "S04-07": {
+      "title": "The Ox Returns",
+      "summary": "The ox returns to the village, water to the fields. Song Jinbao tries to hide, but the ox follows grass in the chief's hand and pushes him forward, rope and all.",
+      "objective": "Report the ox search and water investigation to the village",
+      "result": "The ox returns safely, the old channel flows again, and the village confirms your findings.",
+      "lines": [
+        "With the ox home and the old channel flowing, everyone compares the tracks and blocked inlet found along the way. The report finally rests on facts.",
+        "Ox home. Water in the fields. Jinbao, why are you still hiding at the back?",
+        "Standing back makes my contribution look modest.",
+        "Smelling the grass in the chief's hand, the ox gently nudges Jinbao's back and pushes him before the crowd.",
+        "The ox has other plans for your modesty.",
+        "I admit it. I was too busy panicking to check the inlet. I'll keep doing the work I owe.",
+        "We have the facts now. Check the old inlet regularly. Ox eats grass, channel carries water. Each has its proper path.",
+        "Good. With that settled, we can bring out the sheepskin scroll."
+      ]
+    },
+    "S04-08": {
+      "title": "The Chief's Sheepskin Scroll",
+      "summary": "A strange beast on the scroll excites Youbai. The chief turns it over. The useful waterways are on the back; the front is an ancestor's idle drawing of an ox.",
+      "objective": "Verify the village roads and irrigation marks on the sheepskin scroll",
+      "result": "You verify the scroll and copy its village routes and water records into your own map.",
+      "lines": [
+        "Those horns! That presence! A portrait of the village's guardian beast?",
+        "Grandfather's ox. He drew rather enthusiastically as a child.",
+        "Where are the roads and channels?",
+        "The chief flips the scroll. Clear channel lines, village paths, and repair marks cover the reverse.",
+        "This side. The front makes it memorable. The back makes the journey intelligible.",
+        "I was merely appreciating the artistic style.",
+        "I'll compare it with the inlet we checked, then copy the routes into our map. The original stays here.",
+        "Exactly. An heirloom isn't beyond correction. Nor is it yours to carry away."
+      ],
+      "short_title": "Sheepskin Scroll"
+    },
+    "S04-09": {
+      "title": "Traces of the Tusi Village",
+      "summary": "The old map puts the gate north of the mountain. Today's cooking smoke rises to the south. The chief doesn't defend the map: people moved, and the map must move with them.",
+      "objective": "Match the village's old landmarks to inscriptions along the route",
+      "result": "The village landmarks confirm the previous chapter's inscriptions, giving you a clear lead toward Cangshan.",
+      "lines": [
+        "Yongzhou's inscription names the old northern site. The sheepskin map starts there too. But we entered a southern village.",
+        "The inlet changed, so people moved. The place ancestors left isn't always somewhere their descendants can stay forever.",
+        "That explains why the old trough moved too.",
+        "The chief points his staff at the old northern wall, then at smoke rising to the south. A short distance holds two generations' lives.",
+        "I'll mark the old site and current village separately, with the move noted. No leaving travelers knocking at an empty gate.",
+        "Mark the road to Cangshan as it can be walked today. Don't copy the abandoned mountain line.",
+        "Understood. A map must follow the lives of its people.",
+        "Connected at last. Next stop: Cangshan."
+      ],
+      "short_title": "Village Traces"
+    },
+    "S04-10": {
+      "title": "A Farewell Toast",
+      "summary": "As the farewell cup rises, the ox stretches toward grass beside your basket. You guard the map, Jinbao the rope. Laughing, the chief shortens his blessing: hold steady.",
+      "objective": "Bid Tusi Village farewell and continue with the verified map",
+      "result": "The farewell completes Tusi Village's main thread. You set off toward Cangshan.",
+      "lines": [
+        "A parting sip. May your mountain roads—",
+        "The ox smells grass beside your basket and stretches its neck. You guard the map bag while Jinbao steadies the rope.",
+        "Don't eat that! They're going to Cangshan, not delivering hay!",
+        "One moment with the blessing, Chief. One listener here is particularly hungry.",
+        "Then I'll shorten it: hold steady. Steady hands on the road, steady thoughts within.",
+        "Fewer words, and every one on the path.",
+        "The map is clear, and we'll remember the people. Leave word if anything changes.",
+        "We will. I'll still ask your purpose next visit. But the staff can wait beside the gate."
+      ]
+    },
+    "S04-11": {
+      "title": "Why the Gate Stays Guarded",
+      "summary": "The chief doesn't omit the embarrassing parts of being cheated. The swindler's treasure map now props up a short table leg. At last, it has some practical value.",
+      "objective": "Understand the worries behind the questions at the gate",
+      "result": "You understand the village's caution and record how evidence can build trust.",
+      "lines": [
+        "Those questions at the gate had a history, then.",
+        "They did. I once trusted a loud talker myself. Praised his knowledge, too.",
+        "What became of his treasure map?",
+        "The chief lifts a low table, revealing a thickly folded paper corner beneath one leg.",
+        "Here. Useless for directions, excellent for tables. We recovered some channel money. I kept the rest as a lesson.",
+        "Telling people how you were fooled can warn whoever comes next.",
+        "That's why I ask for evidence and give people room to explain. One swindler doesn't make every visitor a thief.",
+        "A harder skill than raising one's voice."
+      ],
+      "short_title": "A Guarded Gate"
+    },
+    "S04-12": {
+      "title": "Trouble Behind the Finery",
+      "summary": "Song Jinbao dresses finely but tears off his best trim to mend the ox rope. The animal is more than property. Next year's meals depend on it.",
+      "objective": "Hear about Jinbao's family troubles and how the ox went missing",
+      "result": "You understand his situation and learn that the ox followed the old channel. You agree to investigate together.",
+      "lines": [
+        "I talk fancy sometimes. This time I'm truly out of ideas. Without that ox, how do we work the fields?",
+        "What are you cutting there?",
+        "Song Jinbao tears off a handsome strip of hem and wraps it carefully around the worn lead rope, using his teeth to tighten the knot.",
+        "Old rope. Should've replaced it. Kept saving it for one more day. Saved myself a disaster.",
+        "Yet you can spare the fine clothes.",
+        "Lose some trim and I can still face people. Lose the ox and we face empty bowls next year.",
+        "Tell us where the last tracks were. We'll check the low ground by the old channel together.",
+        "Good. Once it's home, I'll get a proper rope. This bit of finery is my first apology."
+      ],
+      "short_title": "Behind the Finery"
+    }
+  }
+}

@@ -9,7 +9,7 @@
 
 namespace GameXXKGuideOverlayWidgetPrivate
 {
-	constexpr float DimAlpha = 0.56f;
+	constexpr float DimAlpha = 0.64f;
 	constexpr float OutlineThickness = 3.0f;
 	const FVector2D DefaultHostSize(1920.0f, 1080.0f);
 
@@ -93,8 +93,9 @@ void UGameXXKGuideSpotlightWidget::PresentSpotlight(
 	BuildProgrammaticLayout();
 	CurrentOutput = Output;
 	CurrentTargetRects = LocalTargetRects;
-	bSpotlightVisible = Output.bActive && !CurrentTargetRects.IsEmpty();
+	bSpotlightVisible = Output.bActive;
 	SetVisibility(ESlateVisibility::HitTestInvisible);
+	InvalidateLayoutAndVolatility();
 }
 
 void UGameXXKGuideSpotlightWidget::DismissSpotlight()
@@ -103,6 +104,7 @@ void UGameXXKGuideSpotlightWidget::DismissSpotlight()
 	CurrentOutput = FGameXXKGuideOutput();
 	CurrentTargetRects.Reset();
 	SetVisibility(ESlateVisibility::HitTestInvisible);
+	InvalidateLayoutAndVolatility();
 }
 
 TSharedRef<SWidget> UGameXXKGuideOverlayWidget::RebuildWidget()
@@ -131,12 +133,13 @@ int32 UGameXXKGuideSpotlightWidget::NativePaint(
 {
 	using namespace GameXXKGuideOverlayWidgetPrivate;
 	int32 ChildLayer = LayerId;
-	if (bSpotlightVisible && !CurrentTargetRects.IsEmpty())
+	if (bSpotlightVisible)
 	{
 		const FVector2D HostSize = AllottedGeometry.GetLocalSize();
 		const TArray<FSlateRect> PaddedCutouts =
 			ClampCutouts(HostSize, CurrentTargetRects, 6.0f);
-		if (CurrentOutput.InputPolicy == EGameXXKGuideInputPolicy::Forced)
+		// Presentation is independent of the input policy. Soft UI lessons still
+		// dim the whole surface and leave their current target genuinely unpainted.
 		{
 			FSlateBrush DimBrush;
 			DimBrush.DrawAs = ESlateBrushDrawType::Box;

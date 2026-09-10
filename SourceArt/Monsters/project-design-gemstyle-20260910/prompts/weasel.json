@@ -1,0 +1,24 @@
+{
+  "slug": "weasel",
+  "name": "黄鼬",
+  "id": "Enemy.Ch1.Weasel",
+  "chapter": 1,
+  "tier": "normal",
+  "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/enemies/03_weasel.png",
+  "identitySourceSha256": "2554cdc0d21f5dfce86a4b0b88a92f908d76b37469d41d0e50087b6b1ca672e8",
+  "facing": "right",
+  "view": "three-quarter",
+  "status": "generated-awaiting-user-review",
+  "userApproved": false,
+  "details": "黄鼬：保留原细长流线形躯干，金黄毛与奶白下颚腹部，尖小耳和长尖口鼻、狡黠细眼；原背部抬高前半身压低的潜行姿态、四只短腿，深棕脚，一条巨大向左上卷成C弧的长尾且尾尖深棕。头伸向右，四肢对应躯干正确，不能画成狐狸或圆胖松鼠，不加道具或臭气。",
+  "prompt": "Use case: style-transfer. 中国国风游戏的完整单体怪物审阅图。\n图1是宝石icon画风参考；图2是用户批准的角色画风参考，只取画法，不复制人物或道具；图3是本次怪物的项目原设计，物种、身份、身体比例、轮廓与标志特征以图3为准。\n把图3重绘优化到图2相同完成度：干净有粗细变化的深墨外轮廓，饱满清晰的大体块，3至5组主明暗，少量宽手绘笔触；同原色系更鲜明，表情与图形感清楚。毛、羽、角、皮肤保持各自材质，不画成真正晶石、密集三角低模或机械玩具。减少碎毛线、密斑点、纸纹、灰脏水彩和琐碎高光。保留原设计的国风灵兽趣味，不新增欧美盔甲或不属于原设计的道具。\n鼻尖、面部和主体3/4面向画面右，视线朝右；不能朝左或正面直视。原动作可微调使肢体、爪和握持关系正确。保留普通/精英/首领的体型和特征差异。\n只画指定这一个完整全身怪物，单张正方形画布居中，完整包含尾、角、爪、翅和原道具，周围至少8%安全留白。均匀暖米白#F4EFDF干净背景，无文字、标记、边框、色卡、UI、场景、地面或投影，不用洋红底或棋盘格。\n本怪物特征：黄鼬：保留原细长流线形躯干，金黄毛与奶白下颚腹部，尖小耳和长尖口鼻、狡黠细眼；原背部抬高前半身压低的潜行姿态、四只短腿，深棕脚，一条巨大向左上卷成C弧的长尾且尾尖深棕。头伸向右，四肢对应躯干正确，不能画成狐狸或圆胖松鼠，不加道具或臭气。",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+    "D:/UE5 demo/GameXXK/SourceAssets/AnimationProduction/safe_frame_1600/enemies/03_weasel.png"
+  ],
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\raw\\weasel.png",
+  "tool": "built-in image_gen",
+  "imported": false,
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-7ba6428f-59ef-4a11-8916-2f8a56aaed34.png"
+}

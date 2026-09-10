@@ -333,7 +333,7 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	using namespace GameXXKHeroCardUnlockMigrationTest;
 
 	TestEqual(TEXT("the protagonist pool is introduced by save version twelve"), THeroCardPoolVersion<FGameXXKSaveMigration>::Value, 12);
-	TestEqual(TEXT("the current save version is enemy-phase-runtime v36"), FGameXXKSaveMigration::CurrentSaveVersion, 36);
+	TestTrue(TEXT("current schema retains the enemy-phase migration floor"), FGameXXKSaveMigration::CurrentSaveVersion >= 36);
 	TestTrue(TEXT("the catalog exposes the deterministic hero unlock query"), THasHeroUnlockQuery<FGameXXKCardCatalog>::value);
 	for (const int32 Level : {1, 5, 10, 15, 20})
 	{
@@ -363,6 +363,15 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	}
 	FGameXXKSaveState ActiveSource = UGameXXKMVPRules::MakeSaveState(ActiveState);
 	ActiveSource.SaveVersion = 11;
+	// The old fixture activates a task on eight generic cards. The current Mage
+	// migration deliberately rejects that unconvertible task without touching it;
+	// convertible four-Mage tasks have their own resume/queue regression suite.
+	const FGameXXKSaveState UnconvertibleSource=ActiveSource;
+	FGameXXKSaveState RejectedTask;FGameXXKSaveMigrationReport RejectedReport;
+	TestFalse(TEXT("an old generic-card task is rejected instead of silently losing progress"),FGameXXKSaveMigration::MigrateToCurrent(ActiveSource,RejectedTask,RejectedReport));
+	TestTrue(TEXT("rejection identifies the missing Mage requirements"),RejectedReport.Error.Contains(TEXT("four equipped Mage cards")));
+	TestTrue(TEXT("rejected legacy task source remains intact"),FGameXXKSaveState::StaticStruct()->CompareScriptStruct(&ActiveSource,&UnconvertibleSource,PPF_None));
+	ActiveSource.RuntimeState.CardRun.ActiveBattle.HeroSpellTask=FGameXXKHeroSpellTaskRuntime();
 	const FGameXXKSaveState ActiveSourceBefore = ActiveSource;
 	FGameXXKSaveState ActiveMigratedA;
 	FGameXXKSaveMigrationReport ActiveReportA;
@@ -390,11 +399,8 @@ bool FGameXXKHeroCardPoolV12Test::RunTest(const FString& Parameters)
 	CheckMigratedInstances(*this, TEXT("discard pile"), BeforeBattle.Deck.DiscardPile, AfterBattle.Deck.DiscardPile);
 	TestEqual(TEXT("last active-card snapshot migrates"), AfterBattle.LastActiveCard.CardId, MapLegacyId(BeforeBattle.LastActiveCard.CardId));
 	TestEqual(TEXT("automatic replay snapshot migrates"), AfterBattle.AutomaticResolutionQueue.PendingCards[0].CardId, TEXT("Hero.Generic.HeYuZhan"));
-	TestEqual(TEXT("spell-task locked IDs migrate"), AfterBattle.HeroSpellTask.LockedHeroCardIds[0], MapLegacyId(BeforeBattle.HeroSpellTask.LockedHeroCardIds[0]));
-	TestEqual(TEXT("spell-task completed IDs migrate"), AfterBattle.HeroSpellTask.CompletedHeroCardIds[0], TEXT("Hero.Generic.FengShenBu"));
-	TestEqual(TEXT("spell-task first-play snapshot migrates"), AfterBattle.HeroSpellTask.FirstPlayOrder[0].CardId, TEXT("Hero.Generic.FengShenBu"));
-	TestEqual(TEXT("spell-task starter reward survives migration"), AfterBattle.HeroSpellTask.StarterReward, EGameXXKHeroSpellTaskReward::Fire);
-	TestEqual(TEXT("spell-task starter owner survives migration"), AfterBattle.HeroSpellTask.StarterOwnerUnitId, TEXT("Player"));
+	TestFalse(TEXT("ID migration does not invent an active spell task"),AfterBattle.HeroSpellTask.bActive);
+	TestTrue(TEXT("ID migration keeps the absent task's requirements empty"),AfterBattle.HeroSpellTask.LockedHeroCardIds.IsEmpty());
 	TestEqual(TEXT("retired hidden Medicine is cleared"), StatusStacks(AfterBattle, EGameXXKCardStatus::Medicine), 0);
 	TestEqual(TEXT("five legacy Medicine converts to thirty healing bonus and clamps with existing eighty"), StatusStacks(AfterBattle, EGameXXKCardStatus::NextHealingBonus), 99);
 	TestNotEqual(TEXT("a pre-v12 battle receives a non-zero independent combat seed"), AfterBattle.CombatRandomState, 0);

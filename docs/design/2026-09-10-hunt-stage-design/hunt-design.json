@@ -95,7 +95,7 @@
     "preservedBaseStagesPerDifficulty": 9,
     "finalStageCount": 30,
     "chestQualityWeights": {
-      "unit": "basis points; equipment/gem quality only",
+      "unit": "basis points CONDITIONAL on equipment/gem reward; order replacement roll happens first",
       "Advanced": {
         "Rare": 9000,
         "Epic": 800,
@@ -115,16 +115,23 @@
     },
     "orderAndAllChestsArtStyle": "approved gem type-icons-v5",
     "huntChestColors": "red and gold",
-    "hud": "new chest region to the right of existing chests, same left/right mouse behavior"
+    "hud": "new chest region to the right of existing chests, same left/right mouse behavior",
+    "orderQualityFromChest": {
+      "Normal": "Common",
+      "Hard": "Epic",
+      "Hell": "Immortal",
+      "basis": "saved chest source difficulty; source captured on acquisition, not current difficulty when opened",
+      "shop": "selected unlocked difficulty when bought",
+      "legacyUnknownSource": "Normal"
+    },
+    "orderDropMode": "replacement: roll the order chance first; a success awards only one order and skips equipment/gem/material reward",
+    "incomeScope": "entire three-chapter run total is150% of the corresponding3-3 run, not150% per battle/chapter"
   },
-  "awaitingClarification": {
-    "orderQualityFromChest": "Question pending: source difficulty versus random distribution",
-    "orderExtraDrop": "Question pending: extra independent reward versus replacing the original item"
-  },
+  "awaitingClarification": {},
   "implementationAssumptions": {
     "difficultyStats": "Apply Hard 150%, Hell 200% to same-level HP/Attack/Defense; avoid stacking the old damage multiplier again. Keep speed and behavior counts unless the user requests otherwise.",
     "huntHealth": "Scale each selected monster at the corresponding 3-3 combat level and difficulty, then apply the hunt-only 150% HP multiplier to all phases.",
-    "huntEconomy": "Verify the whole-run gold/XP settlement is 150% of corresponding 3-3; do not accidentally pay 150% once per chapter.",
+    "huntEconomy": "Gold settles once after final Boss:3×source3-3 TravelGold (=150% of normal challenge Boss gold). Ordinary/elite experience is deferred: first-chapter selected path records the matching3-3 reference amounts; final payout is150% of that reference plus150% of normal Boss experience, per party role. Travel pays150% of the complete7-encounter3-3 cycle once at the end of21 encounters.",
     "travelConsumption": "Reserve a matching order while a hunt is active; atomically consume on successful full-run settlement; release on failure/exit.",
     "legacyClear": "Preserve existing cleared stages; once-only retroactive 3-3 grant needed so old saves can use the new feature.",
     "routeContinuity": "Carry party/deck/relic run state between the three chapter segments, settle the hunt after the final boss."

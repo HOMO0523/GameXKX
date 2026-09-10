@@ -1,0 +1,224 @@
+{
+  "id": "S01",
+  "title": "Huangshan · Even Immortals Need Footpaths",
+  "location": "Huangshan",
+  "summary": "Bright lights can mislead, and experts can be stubborn. A cry for help leads to someone who admits his limits, then proves with firsthand signs that a good route needs more than one kind of evidence.",
+  "nodes": {
+    "S01-01": {
+      "title": "Misty Huangshan Foothills",
+      "summary": "A voice in the mist offers heavenly guidance. Youbai rushes to meet a fellow expert. The woodcutter stops it: that's its own echo.",
+      "objective": "Confirm the way into the mountain and the mystery of the hidden stream",
+      "result": "You find the woodcutter and agree to check the paths and hidden-stream clues first.",
+      "lines": [
+        "At Huangshan's foot, the abbot's copied page shows two outlets for one hidden stream. From the mist comes a drawn-out call: This... waaay...",
+        "A fellow practitioner dwells here! I shall seek their counsel.",
+        "Hold off on the networking. Doesn't that voice sound rather like you?",
+        "It is. The echo goes round the ridge and comes back a little late.",
+        "Youbai floats a few paces away, then hears its own pompous introduction. It drifts back, its flame a little smaller.",
+        "I was primarily testing the mountain's acoustic properties.",
+        "Then rest those properties. If you're checking the hidden stream, learn the path in front of you first.",
+        "Come on, elder. Your fellow expert only seems to repeat things."
+      ],
+      "short_title": "Huangshan Foothills"
+    },
+    "S01-02": {
+      "title": "Rest Below the Mountain",
+      "summary": "The harder Youbai shines, the whiter the fog becomes. The woodcutter drapes a headcloth over the glare, turning divine radiance into useful light.",
+      "objective": "Ask the woodcutter how to read the trail reliably",
+      "result": "You learn to combine three signs: shoeprints, old stone steps, and the sound of water.",
+      "lines": [
+        "Thick fog is no trouble. I shall shine brighter.",
+        "The blue flame flares. Everything turns whiter. You nearly mistake the woodcutter's woodpile for the mountain gate.",
+        "I can see nothing much more clearly now!",
+        "Less light. Keep it close. The path is under your feet, not in your grand entrance.",
+        "The woodcutter hangs his old headcloth on the bamboo pole to shade the glare. Cracks, shoeprints, and worn steps become visible together.",
+        "Have you... built me a canopy?",
+        "Canopies have their uses. Hear the stream to the left, find the old steps by the pine roots, and check the fresh prints. Walk when all three agree.",
+        "Bear with it, elder. You're considerably more useful like this."
+      ],
+      "short_title": "Mountain Rest"
+    },
+    "S01-03": {
+      "title": "Paths Beneath the Pines",
+      "summary": "The glowing mist looks fit for immortals, but nobody seems to have walked there. The real steps are muddy and damp. They lead to a very real cry for help.",
+      "objective": "Choose a route using the steps, shoeprints, and stream sounds",
+      "result": "You follow the old steps on the left through the fog and hear a hunter calling for help.",
+      "lines": [
+        "Three routes divide ahead. The middle has the brightest mist. The right offers a short scree slope. The left has old steps marked with muddy shoeprints.",
+        "For sheer atmosphere, the middle route is exceptional.",
+        "We're finding a path, not choosing a landscape cover shot.",
+        "You tap the right slope with your pole. A loose stone tumbles away. On the left, the stream runs close below the slope; fresh prints continue along the steps without turning back.",
+        "All three signs point left. This time, I lead with evidence.",
+        "Good. We can discuss heavenly atmosphere once we arrive.",
+        "Beyond the fog, the call becomes clear: Save me! And, if convenient, save my cakes!",
+        "Sounds real enough. Immortals rarely add that last request."
+      ],
+      "hints": [
+        "Consider all three signs the woodcutter mentioned.",
+        "Only the left route has old steps, fresh shoeprints, and stream sounds close below the slope.",
+        "Choose the left route with shoeprints, old steps, and nearby running water."
+      ],
+      "options": [
+        [
+          "Follow the left route: shoeprints, old steps, nearby water",
+          "All three clues agree. You pass through the fog and hear a call for help."
+        ],
+        [
+          "Follow the brightest mist in the middle",
+          "Brightness isn't a path. Youbai's silence provides a useful footnote."
+        ],
+        [
+          "Take the shortcut up the right-hand scree slope",
+          "A stone scouts the route for you by falling down it. The findings do not recommend following."
+        ]
+      ]
+    },
+    "S01-04": {
+      "title": "Sketch the Huangshan Route",
+      "summary": "The hunter produces his own stream notes. Youbai almost mistakes a chewed hole for a second outlet. The expert is rescued; his map still needs checking.",
+      "objective": "Add the verified path and hidden-stream entrance to the sketch",
+      "result": "The mountain-route sketch is ready. You mark the hidden-stream entrance and leave the downhill course for verification.",
+      "lines": [
+        "The stream bends behind that rock wall. Here, my own notes. No immortal middlemen involved.",
+        "He unfolds the notebook. A round hole sits beside the mountain outline. Youbai leans closer, eyes bright.",
+        "A second outlet! Both old maps had evidence after all.",
+        "That bit was just chewed off.",
+        "The paper has a tunnel, elder. The mountain doesn't, yet.",
+        "The notes on the back still record water sounds, damp marks, and old steps. You mark the entrance you've verified and leave the outlet blank.",
+        "Master Zhou studies the plants downhill. Master Willow knows the old names by the stream. Don't rely on me alone.",
+        "That's valuable advice. Someone who knows the way can also admit which parts they don't know."
+      ],
+      "short_title": "Huangshan Sketch"
+    },
+    "S01-05": {
+      "title": "Trace the Stream",
+      "summary": "The floating leaves circle back. Youbai is about to announce uphill-flowing water when the real outlet sends them downstream. Let the evidence finish its journey.",
+      "objective": "Complete the hidden stream's course using the flow and terrain",
+      "result": "You connect the hidden stream to the lower outlet on the left and complete the Huangshan sketch.",
+      "lines": [
+        "You place three broad leaves upstream. They circle in an eddy, then drift back toward you.",
+        "Look! Reversing waters! Perhaps the old map conceals a deeper mystery—",
+        "Let it finish the lap first.",
+        "The current carries the leaves down and left. One by one, all three emerge from the lower outlet. The high channel on the right stays dry, its old moss unmoved.",
+        "So that first bend was an eddy, not another river.",
+        "You will note my very precise use of 'perhaps.'",
+        "Lucky you left yourself those two syllables. Otherwise we'd need a bridge-sized patch for your dignity.",
+        "Leaves, watermarks, and elevation agree. You draw the hidden stream's connection. This time, nobody finishes their speech before the water does."
+      ],
+      "hints": [
+        "Watch where the floating leaves actually emerge.",
+        "The lower-left outlet is low and wet. The right-hand channel is dry, with old moss.",
+        "Choose to connect the hidden stream to the lower outlet on the left."
+      ],
+      "options": [
+        [
+          "Connect the stream to the lower-left outlet",
+          "The leaves and terrain confirm each other. The watercourse is complete."
+        ],
+        [
+          "Connect it to the higher dry channel on the right",
+          "Water has ambitions, but it hasn't signed up for climbing. Check the height and damp marks again."
+        ],
+        [
+          "Draw both outlets for a more impressive map",
+          "This is a map, not a menu. You can't order everything that looks nice. Draw only what the evidence supports."
+        ]
+      ]
+    },
+    "S01-06": {
+      "title": "Mountain Lost in Fog",
+      "summary": "The woodcutter advises waiting out the fog. Youbai recalls a place-name nobody uses anymore. This time its memory is useful; it merely forgot to ask what people call it now.",
+      "objective": "Learn how to travel safely in thick mountain fog",
+      "result": "You record fog-weather trail advice and further details behind the mountain-path rumors.",
+      "lines": [
+        "When the fog closes in, wait. Don't charge up a slope you don't know. Mountains rarely rush people. People do that themselves.",
+        "This place was called Echo Hollow. Wind turns in from the west; sound arrives from the east.",
+        "Echo Hollow? The old folk mentioned that. We call it Resting Bend now.",
+        "No wonder shouting only made things worse. That memory is useful, elder.",
+        "Youbai perks up and nearly flares again. You gently lift the shading cloth back into place.",
+        "Yes, yes. Light the feet. A little praise won't make me forget.",
+        "Keep the old name, and note today's route. Together they'll save the next traveler's knees.",
+        "Both go on the map. One of you knows yesterday, one knows today. That makes a sound path."
+      ]
+    },
+    "S01-07": {
+      "title": "Rescue the Hunter",
+      "summary": "The hunter whistles for help. Animals drawn by his cakes arrive first. He wants to save his expert reputation. You need to save the expert.",
+      "objective": "Enter task map 1-2 and defeat the animals at the story question mark to rescue the hunter",
+      "result": "The animals retreat. The hunter and his notebook are rescued, providing a reliable clue to the hidden-stream entrance.",
+      "lines": [
+        "A short whistle sounds deep in the pines, followed by an even more urgent shout.",
+        "Over here! Twisted ankle! My lunch has invited half the mountain's stomachs!",
+        "You sent dinner invitations with your distress call?",
+        "Weasel, rooster, civet. A full table already. I'm about to be the table!",
+        "Brace yourself against a rock. Stop holding up the food and competing for height.",
+        "My notebook slid down to the water too. Save the man and the notes if you can. Cakes come last!",
+        "At least the priorities are right. Stay there. We'll take the firm path over.",
+        "Prepare before entering the mountain. Don't add another person in need of rescue."
+      ],
+      "after_battle_lines": [
+        "The animals retreat into the pines. You brace your pole across the wet ground, retrieve the notebook, and help the hunter onto dry stone.",
+        "You fished out both my life and my notes today.",
+        "And the cakes?",
+        "Don't mention the cakes. One of us has to learn a lesson, and it won't be the flour.",
+        "Excellent. Our expert has progressed from a firm opinion to firm footing.",
+        "I know the hidden-stream entrance. Once I catch my breath, I'll tell you what I'm sure of, and what I'm not."
+      ],
+      "hints": [
+        "You must enter the task map to answer the hunter's plea.",
+        "Defeat the enemies at the story question mark in task map 1-2 to complete the rescue.",
+        "Enter task map 1-2 from this node, trigger the story battle, and win."
+      ]
+    },
+    "S01-08": {
+      "title": "Lessons from a Hunter",
+      "summary": "You expect a peerless fighting technique. The hunter first moves his dried meat farther away. Lesson one: don't hang what the enemy wants around your neck.",
+      "objective": "Learn the hunter's advice on reading enemies and preparing for danger",
+      "result": "You hear the hunter's survival and preparation advice. No purchase or item consumption is required.",
+      "lines": [
+        "A debt is a debt. I know a mountain skill that really can save your life.",
+        "Let's hear it. Preferably not whistling.",
+        "The hunter unhooks the food from his chest and puts it on a rock behind him. Then he points to animal tracks and the downwind slope.",
+        "First, see what it's watching and which way it's about to move. Whatever you're holding, keep something in reserve.",
+        "So plain a lesson counts as a secret art?",
+        "I failed at the plain part earlier. That's why you had to do the spectacular part.",
+        "I already fought your tuition fee. I'm not paying twice today.",
+        "No charge. Staying alive long enough to use it is better thanks than telling me it sounded impressive."
+      ]
+    },
+    "S01-09": {
+      "title": "Zhou Guangzu by the Stream",
+      "summary": "Zhou Guangzu lectures on the flow of plants and water. The fox on his shoulder jumps down for a drink. A thirsty mouth finds the fresh watermarks first.",
+      "objective": "Ask Zhou Guangzu to distinguish plants and old and fresh watermarks",
+      "result": "Zhou Guangzu supplies corroborating evidence about the watermarks, improving your notes on the plants.",
+      "lines": [
+        "Plants have their pulse, waterways their course. Distinguish old from new before discussing where they lead.",
+        "Before he finishes, the fox on his shoulder darts down his sleeve, flattens a damp tuft of grass, and drinks from the lower water.",
+        "Your assistant has already handed in its answer.",
+        "It dislikes showing its working.",
+        "Wet roots below, fresh grass pressed downstream. The old channel above is dry.",
+        "Precisely. A fox finding water doesn't excuse you from examining the evidence.",
+        "After drinking, the fox climbs under his broad hat. Zhou steadies the brim, restoring his sage-like bearing by half an inch.",
+        "Understood. You explain the principle; it demonstrates it. I'll credit both of you."
+      ],
+      "short_title": "Zhou Guangzu"
+    },
+    "S01-10": {
+      "title": "Master Willow by the Stream",
+      "summary": "The old map turned one stream into two. Master Willow's explanation is simple: both villages named the river. The river itself never split up.",
+      "objective": "Verify the hidden stream's outlet and local old names",
+      "result": "You confirm that Hidden Water and Willow Bend are local names for the same watercourse, and add a note.",
+      "lines": [
+        "The upper village calls it Hidden Water. The lower calls it Willow Bend. A copyist asked both, then dutifully drew two streams.",
+        "The river stayed together. Its paperwork split into two households.",
+        "Different names may have different origins. Our ancestors were not always without deeper meaning.",
+        "Master Willow bends a long willow branch over the two old labels on the map, then points to the same current flowing at your feet.",
+        "Ponder the deeper meaning if you like. First establish where the water comes from and where it goes.",
+        "Put the other name in a note and join the stream. For once, the loudest voice hasn't won the map.",
+        "I also contributed valid evidence today.",
+        "Then record it. And leave a thought for the next traveler heading to the Xiang River: rivers have many names, and people have many versions."
+      ],
+      "short_title": "Master Willow"
+    }
+  }
+}

@@ -17,6 +17,7 @@
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "MVP/GameXXKSaveStorage.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Styling/SlateBrush.h"
 #include "Styling/SlateTypes.h"
@@ -327,7 +328,7 @@ FGameXXKMainMenuSaveSlotRow UGameXXKMainMenuWidget::BuildSaveSlotRow(int32 SlotI
 	FGameXXKMainMenuSaveSlotRow Row;
 	Row.SlotIndex = SlotIndex;
 	Row.SlotName = IsValidManualSlotIndex(SlotIndex) ? GetManualSlotNameChecked(SlotIndex) : FString();
-	Row.bOccupied = !Row.SlotName.IsEmpty() && UGameplayStatics::DoesSaveGameExist(Row.SlotName, SaveSlotUserIndex);
+	Row.bOccupied = !Row.SlotName.IsEmpty() && DoesSaveGameExist(Row.SlotName, SaveSlotUserIndex);
 	Row.bCanLoad = Row.bOccupied;
 	Row.bCanDelete = Row.bOccupied;
 
@@ -339,7 +340,8 @@ FGameXXKMainMenuSaveSlotRow UGameXXKMainMenuWidget::BuildSaveSlotRow(int32 SlotI
 		return Row;
 	}
 
-	const UGameXXKSaveGame* SaveGame = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromSlot(Row.SlotName, SaveSlotUserIndex));
+	bool bRecovered=false;
+	const UGameXXKSaveGame* SaveGame = FGameXXKSaveStorage::Load(Row.SlotName,SaveSlotUserIndex,bRecovered);
 	if (!SaveGame)
 	{
 		Row.Label = FText::Format(

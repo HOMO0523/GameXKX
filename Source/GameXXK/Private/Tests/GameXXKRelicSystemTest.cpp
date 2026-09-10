@@ -226,7 +226,7 @@ bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 #else
 	TestTrue(TEXT("relic definitions remain eligible for ordinary offers by default"), FGameXXKRelicDefinition().bOfferEligible);
 	const TArray<FGameXXKRelicDefinition>& Definitions = FGameXXKRelicCatalog::GetAllDefinitions();
-	TestEqual(TEXT("the relic catalog exposes thirty ordinary relics plus the camp-exclusive charm"), Definitions.Num(), 31);
+	TestEqual(TEXT("the relic catalog retains16 common and special plus30 high-tier relics"), Definitions.Num(), 46);
 	TSet<FName> UniqueIds;
 	int32 OfferEligibleRelicCount = 0;
 	for (const FGameXXKRelicDefinition& Definition : Definitions)
@@ -238,8 +238,8 @@ bool FGameXXKRelicCatalogTest::RunTest(const FString& Parameters)
 		UniqueIds.Add(Definition.Id);
 		OfferEligibleRelicCount += Definition.bOfferEligible ? 1 : 0;
 	}
-	TestEqual(TEXT("all thirty-one relic ids are distinct"), UniqueIds.Num(), 31);
-	TestEqual(TEXT("exactly thirty relics remain eligible for ordinary offers"), OfferEligibleRelicCount, 30);
+	TestEqual(TEXT("all forty-six relic ids are distinct"), UniqueIds.Num(), 46);
+	TestEqual(TEXT("forty-four relics are eligible; WineCup and the camp charm stay excluded"), OfferEligibleRelicCount, 44);
 
 	const FName LifeSavingTalismanId(TEXT("Relic.LifeSavingTalisman"));
 	const FGameXXKRelicDefinition* LifeSavingTalisman = FGameXXKRelicCatalog::FindDefinition(LifeSavingTalismanId);
@@ -1351,16 +1351,17 @@ bool FGameXXKNonCardRelicTriggerCompatibilityTest::RunTest(const FString& Parame
 	Hero.MaxHP = 100;
 	Hero.HP = 50;
 	Hero.bLiving = true;
+	Hero.MaxMana=10;Hero.Mana=1;
 	FGameXXKCardCombatUnit Ally = Hero;
 	Ally.UnitId = TEXT("Relic.Legacy.Ally");
 	Ally.HP = 70;
 	State.CardRun.ActiveBattle.Units = {Hero, Ally};
 	TestTrue(TEXT("the compatibility fixture acquires the battle-start armor relic"),
 		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.AncientCoin")));
-	TestTrue(TEXT("the compatibility fixture acquires the round-start owner armor relic"),
-		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.StoneBead")));
-	TestTrue(TEXT("the compatibility fixture acquires the round-end healing relic"),
-		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.RedCord")));
+	TestTrue(TEXT("the compatibility fixture acquires the round-start owner mana relic"),
+		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.TeaBrick")));
+	TestTrue(TEXT("the compatibility fixture acquires the round-end armor relic"),
+		FGameXXKRelicRules::AcquireRelic(State, TEXT("Relic.RainCape")));
 
 	FGameXXKRelicRules::ApplyBattleStart(State);
 	FGameXXKRelicRules::ApplyPlayerRoundStart(State);
@@ -1378,10 +1379,11 @@ bool FGameXXKNonCardRelicTriggerCompatibilityTest::RunTest(const FString& Parame
 	{
 		return false;
 	}
-	TestEqual(TEXT("battle-start plus round-start relics preserve hero armor timing"), HeroAfter->Armor, 7);
-	TestEqual(TEXT("battle-start relic preserves ally armor timing"), AllyAfter->Armor, 4);
-	TestEqual(TEXT("round-end relic preserves hero healing"), HeroAfter->HP, 53);
-	TestEqual(TEXT("round-end relic preserves ally healing"), AllyAfter->HP, 73);
+	TestEqual(TEXT("common armor relics preserve hero armor timing"), HeroAfter->Armor, 6);
+	TestEqual(TEXT("common armor relics preserve ally armor timing"), AllyAfter->Armor, 6);
+	TestEqual(TEXT("armor relics preserve hero health"), HeroAfter->HP, 50);
+	TestEqual(TEXT("armor relics preserve ally health"), AllyAfter->HP, 70);
+	TestEqual(TEXT("Common tea restores owner mana at round start"),HeroAfter->Mana,3);
 	return true;
 #endif
 }

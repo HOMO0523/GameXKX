@@ -69,6 +69,11 @@ namespace
 		return {
 			MakeAffix(TEXT("Affix.Universal.MaxMana"), TEXT("纳息"), EGameXXKEquipmentSet::Invalid, K::MaxMana, U::BasisPoints),
 			MakeAffix(TEXT("Affix.Universal.Speed"), TEXT("轻身"), EGameXXKEquipmentSet::Invalid, K::Speed, U::BasisPoints),
+			MakeAffix(TEXT("Affix.ZhuiFeng.Draw"), TEXT("掠影"), EGameXXKEquipmentSet::ZhuiFeng, K::Draw, U::FlatCount),
+			MakeAffix(TEXT("Affix.ZhuiFeng.SharedEnergy"), TEXT("聚势"), EGameXXKEquipmentSet::ZhuiFeng, K::SharedEnergy, U::FlatCount),
+			MakeAffix(TEXT("Affix.ZhuiFeng.ComboCount"), TEXT("疾连"), EGameXXKEquipmentSet::ZhuiFeng, K::ComboCount, U::FlatCount),
+			MakeAffix(TEXT("Affix.ZhuiFeng.TemporaryCostReduction"), TEXT("省力"), EGameXXKEquipmentSet::ZhuiFeng, K::TemporaryCostReduction, U::FlatCount),
+			MakeAffix(TEXT("Affix.ShanHe.TerrainCostReduction"), TEXT("循地"), EGameXXKEquipmentSet::ShanHe, K::TerrainCostReduction, U::FlatCount),
 		};
 	}
 
@@ -104,11 +109,8 @@ namespace
 			};
 		case EGameXXKEquipmentSet::ZhuiFeng:
 			return {
-				MakeAffix(TEXT("Affix.ZhuiFeng.Draw"), TEXT("掠影"), Set, K::Draw, U::FlatCount),
 				MakeAffix(TEXT("Affix.ZhuiFeng.LowCostBonus"), TEXT("轻策"), Set, K::LowCostBonus, U::BasisPoints),
-				MakeAffix(TEXT("Affix.ZhuiFeng.SharedEnergy"), TEXT("聚势"), Set, K::SharedEnergy, U::FlatCount),
-				MakeAffix(TEXT("Affix.ZhuiFeng.ComboCount"), TEXT("疾连"), Set, K::ComboCount, U::FlatCount),
-				MakeAffix(TEXT("Affix.ZhuiFeng.TemporaryCostReduction"), TEXT("省力"), Set, K::TemporaryCostReduction, U::FlatCount),
+				MakeAffix(TEXT("Affix.ZhuiFeng.LateCardDamage"), TEXT("乘风"), Set, K::ZhuiFengLateCardDamage, U::BasisPoints),
 			};
 		case EGameXXKEquipmentSet::ShiGu:
 			return {
@@ -121,7 +123,6 @@ namespace
 		case EGameXXKEquipmentSet::ShanHe:
 			return {
 				MakeAffix(TEXT("Affix.ShanHe.TerrainPower"), TEXT("借势"), Set, K::TerrainPower, U::BasisPoints),
-				MakeAffix(TEXT("Affix.ShanHe.TerrainCostReduction"), TEXT("循地"), Set, K::TerrainCostReduction, U::FlatCount),
 				MakeAffix(TEXT("Affix.ShanHe.AdjacentAllyPower"), TEXT("连营"), Set, K::AdjacentAllyPower, U::BasisPoints),
 				MakeAffix(TEXT("Affix.ShanHe.FormationPower"), TEXT("布阵"), Set, K::FormationPower, U::BasisPoints),
 				MakeAffix(TEXT("Affix.ShanHe.TeamTerrainPower"), TEXT("山河同势"), Set, K::TeamTerrainPower, U::BasisPoints),
@@ -298,4 +299,31 @@ FGameXXKAffixMagnitudeRange FGameXXKAffixCatalog::GetMagnitudeRange(
 		}
 	}
 	return Range;
+}
+
+FGameXXKAffixMagnitudeRange FGameXXKAffixCatalog::GetMagnitudeRange(
+    const FName AffixId, const EGameXXKAffixTier Tier)
+{
+    const FGameXXKAffixDefinition* Definition = FindDefinition(AffixId);
+    if (!Definition || !FGameXXKEquipmentQualityRules::IsValid(Tier)) return {};
+    if (Definition->ModifierKind == EGameXXKEquipmentModifierKind::ZhuiFengLateCardDamage)
+    {
+        FGameXXKAffixMagnitudeRange Range;
+        Range.Minimum = Range.Maximum = 100;
+        return Range;
+    }
+    return GetMagnitudeRange(Definition->Unit, Tier);
+}
+
+bool FGameXXKAffixCatalog::IsRetiredResourceAffix(const FName AffixId)
+{
+    const auto* Definition = FindDefinition(AffixId);
+    if (!Definition) return false;
+    using K = EGameXXKEquipmentModifierKind;
+    switch (Definition->ModifierKind)
+    {
+    case K::Draw: case K::SharedEnergy: case K::ComboCount:
+    case K::TemporaryCostReduction: case K::TerrainCostReduction: return true;
+    default: return false;
+    }
 }

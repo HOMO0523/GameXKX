@@ -9,12 +9,12 @@ namespace GameXXKDesktopTrainingLayout
 		const FVector4 WarehouseRect(10.0f, 244.0f, 363.0f, 681.0f);
 		const FVector4 CenterShellRect(386.0f, 17.0f, 970.0f, 908.0f);
 		const FVector4 RightShellRect(1369.0f, 244.0f, 291.0f, 681.0f);
-		const FVector4 IdleStripRect(318.0f, 0.0f, 1038.0f, 202.0f);
+		const FVector4 IdleStripRect(318.0f, 0.0f, 1118.0f, 202.0f);
 		const FVector4 ContentRect(397.0f, 244.0f, 945.0f, 533.0f);
 		const FVector4 NavigationRect(397.0f, 788.0f, 945.0f, 137.0f);
-		const FVector2D CollapsedHudLogicalSize(1038.0f, 202.0f);
+		const FVector2D CollapsedHudLogicalSize(1118.0f, 202.0f);
 		const FVector2D SummaryControlRailSize(1025.0f, 24.0f);
-		const FVector2D FoldedHudInteractiveSize(1217.0f, 24.0f);
+		const FVector2D FoldedHudInteractiveSize(1313.0f, 24.0f);
 		constexpr float UpwardContentShift = 210.0f;
 		constexpr float IdleStripChestControlX = 953.0f;
 		const FVector2D TownToggleButtonSize(144.0f, 144.0f);
@@ -453,6 +453,30 @@ namespace GameXXKDesktopTrainingLayout
 		return FVector4(Content.X,Content.Y+20,945,430);
 	}
 
+	FVector4 GetHudSettingsReferenceRect()
+	{
+		return GetContentRect();
+	}
+
+	FVector4 GetInterfaceHelpReferenceRect()
+	{
+		return FVector4(1115.0f, 30.0f, 520.0f, 350.0f);
+	}
+
+	FVector4 GetInterfaceHelpRenderedLogicalRect(const int32 HudScalePercent)
+	{
+		const FVector4 Reference = GetInterfaceHelpReferenceRect();
+		const float ReadingScale = 100.0f / FMath::Max(50, HudScalePercent);
+		return FVector4(Reference.X + Reference.Z * (1.0f - ReadingScale), Reference.Y,
+			Reference.Z * ReadingScale, Reference.W * ReadingScale);
+	}
+
+	FVector4 GetHudSettingsRenderedLogicalRect(const int32 /*HudScalePercent*/)
+	{
+		// Settings shares the backpack host and its single desktop scale.
+		return GetHudSettingsReferenceRect();
+	}
+
 	TArray<FDesktopNativeRegionShape> BuildDesktopNativeRegionShapes(
 		const FDesktopNativeRegionState& State)
 	{
@@ -571,6 +595,10 @@ namespace GameXXKDesktopTrainingLayout
 			return Result;
 		}
 		AddLogicalRect(GetContentRect(), BodyContentOffset);
+		if (State.bInterfaceHelpOpen)
+		{
+			AddLogicalRect(State.InterfaceHelpRect.Z>0?State.InterfaceHelpRect:GetInterfaceHelpRenderedLogicalRect(State.HudScalePercent), State.ContentOffset);
+		}
 		for (int32 NavigationIndex = 0; NavigationIndex < 5; ++NavigationIndex)
 		{
 			AddLogicalRect(

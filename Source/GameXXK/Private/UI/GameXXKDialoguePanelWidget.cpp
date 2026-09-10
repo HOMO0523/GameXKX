@@ -1,5 +1,6 @@
 #include "UI/GameXXKDialoguePanelWidget.h"
 #include "Audio/GameXXKSfx.h"
+#include "UI/GameXXKLocalization.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
@@ -87,8 +88,8 @@ void UGameXXKDialoguePanelWidget::Present(const FGameXXKDialoguePresentationView
 	const bool bNodeChanged=CurrentView.NodeId!=View.NodeId;
 	const bool bTextChanged=!CurrentView.Text.EqualTo(View.Text);
 	CurrentView = View;
-	if (SpeakerText) SpeakerText->SetText(View.SpeakerDisplayName);
-	if (BodyText) BodyText->SetText(View.Text);
+	if (SpeakerText) SpeakerText->SetText(GameXXKLocalization::Localize(View.SpeakerDisplayName));
+	if (BodyText) BodyText->SetText(GameXXKLocalization::Localize(View.Text));
 	if (PortraitImage && (bPortraitChanged || !PortraitImage->GetBrush().GetResourceObject()))
 	{
 		UTexture2D* Portrait = View.PortraitPath.IsNull()
@@ -111,11 +112,12 @@ void UGameXXKDialoguePanelWidget::Present(const FGameXXKDialoguePresentationView
 		{
 			Button->SetVisibility(bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			Button->SetIsEnabled(bVisible && View.Options[Index].bEnabled);
-			Button->SetToolTipText(bVisible ? View.Options[Index].DisabledReason : FText::GetEmpty());
+			Button->SetToolTipText(bVisible ? GameXXKLocalization::Localize(View.Options[Index].DisabledReason) : FText::GetEmpty());
 		}
 		if (Label)
 		{
-			Label->SetText(bVisible ? View.Options[Index].Text : FText::GetEmpty());
+			Label->SetText(bVisible ? GameXXKLocalization::Localize(View.Options[Index].Text) : FText::GetEmpty());
+			Label->SetAutoWrapText(true);
 			Label->SetColorAndOpacity(FSlateColor(
 				bVisible && View.Options[Index].bEnabled
 					? FLinearColor(.96f,.92f,.81f,1)
@@ -135,7 +137,7 @@ void UGameXXKDialoguePanelWidget::Present(const FGameXXKDialoguePresentationView
 		else if(bTextChanged && !View.Options.IsEmpty())Reading->ScrollToEnd();
 	}
 	if(CloseButton)CloseButton->SetVisibility(PauseRequested.IsBound()?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
-	if(HintButton)HintButton->SetVisibility(HintRequested.IsBound() && !CurrentView.Options.IsEmpty() && CurrentView.Options[0].OptionId!=TEXT("MainStory.Battle")?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
+	if(HintButton)HintButton->SetVisibility(HintRequested.IsBound() && !CurrentView.Options.IsEmpty() && CurrentView.Options[0].OptionId.ToString().StartsWith(TEXT("MainStory.Choice."))?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	SetVisibility(ESlateVisibility::Visible);
 }
 
@@ -147,7 +149,7 @@ void UGameXXKDialoguePanelWidget::ClearPresentation()
 }
 
 void UGameXXKDialoguePanelWidget::SetPauseRequested(FGameXXKDialogueAdvanceRequested Delegate){PauseRequested=MoveTemp(Delegate);if(CloseButton)CloseButton->SetVisibility(PauseRequested.IsBound()?ESlateVisibility::Visible:ESlateVisibility::Collapsed);}
-void UGameXXKDialoguePanelWidget::SetHintRequested(FGameXXKDialogueAdvanceRequested Delegate){HintRequested=MoveTemp(Delegate);if(HintButton)HintButton->SetVisibility(HintRequested.IsBound() && !CurrentView.Options.IsEmpty() && CurrentView.Options[0].OptionId!=TEXT("MainStory.Battle")?ESlateVisibility::Visible:ESlateVisibility::Collapsed);}
+void UGameXXKDialoguePanelWidget::SetHintRequested(FGameXXKDialogueAdvanceRequested Delegate){HintRequested=MoveTemp(Delegate);if(HintButton)HintButton->SetVisibility(HintRequested.IsBound() && !CurrentView.Options.IsEmpty() && CurrentView.Options[0].OptionId.ToString().StartsWith(TEXT("MainStory.Choice."))?ESlateVisibility::Visible:ESlateVisibility::Collapsed);}
 
 void UGameXXKDialoguePanelWidget::SetCompactLayout(bool bCompact)
 {
@@ -205,6 +207,7 @@ void UGameXXKDialoguePanelWidget::RefreshCompactLayout()
 	ContinueIndicator->SetFont(FGameXXKInRunUiStyle::Font(15,true));
 	ContinueIndicator->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::MutedInk()));
 	for(int32 I=0;I<OptionButtons.Num();++I)Move(OptionButtons[I],FVector2D(TextLeft,154+I*48),FVector2D(TextWidth,43));
+	for(UTextBlock* Option:OptionTexts)if(Option){Option->SetWrapTextAt(TextWidth-24);Option->SetLineHeightPercentage(1.f);}
 	Move(CloseButton,FVector2D(868,15),FVector2D(40,40));
 	Move(HintButton,FVector2D(TextLeft,Height-39),FVector2D(88,28));
 }
@@ -349,17 +352,17 @@ void UGameXXKDialoguePanelWidget::BuildProgrammaticLayout()
 		OptionTexts.Add(Label);
 	}
 	ContinueIndicator = Text(WidgetTree, TEXT("DialogueContinueIndicator"), 18);
-	ContinueIndicator->SetText(FText::FromString(TEXT("点击 / 空格继续  ▶")));
+	ContinueIndicator->SetText(GameXXKLocalization::Source(TEXT("点击 / 空格继续  ▶")));
 	ContinueIndicator->SetJustification(ETextJustify::Right);
 	Place(Content, ContinueIndicator, FVector2D(1030.0f, 258.0f), FVector2D(330.0f, 34.0f), 1);
 	CloseButton=WidgetTree->ConstructWidget<UGameXXKDialogueOptionButton>();CloseButton->Configure(this,-2);
 	FButtonStyle CloseStyle; FGameXXKSfx::SetButtonSound(CloseStyle);FSlateBrush NoBox;NoBox.DrawAs=ESlateBrushDrawType::NoDrawType;
 	CloseStyle.SetNormal(NoBox);CloseStyle.SetHovered(NoBox);CloseStyle.SetPressed(NoBox);CloseStyle.SetNormalPadding(FMargin(0));CloseStyle.SetPressedPadding(FMargin(0));CloseButton->SetStyle(CloseStyle);
 	auto* CloseIcon=WidgetTree->ConstructWidget<UImage>();CloseIcon->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr,TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk")),false);
-	CloseIcon->SetVisibility(ESlateVisibility::HitTestInvisible);CloseButton->SetContent(CloseIcon);CloseButton->SetToolTipText(FText::FromString(TEXT("暂歇对话")));
+	CloseIcon->SetVisibility(ESlateVisibility::HitTestInvisible);CloseButton->SetContent(CloseIcon);CloseButton->SetToolTipText(GameXXKLocalization::Source(TEXT("暂歇对话")));
 	Place(Content,CloseButton,FVector2D(1372,8),FVector2D(54,54),3);
 	HintButton=WidgetTree->ConstructWidget<UGameXXKDialogueOptionButton>();HintButton->Configure(this,-3);HintButton->SetStyle(CloseStyle);
-	auto* HintText=Text(WidgetTree,TEXT("DialogueHintText"),18);HintText->SetText(FText::FromString(TEXT("提示")));HintText->SetJustification(ETextJustify::Center);HintButton->SetContent(HintText);
+	auto* HintText=Text(WidgetTree,TEXT("DialogueHintText"),18);HintText->SetText(GameXXKLocalization::Source(TEXT("提示")));HintText->SetJustification(ETextJustify::Center);HintButton->SetContent(HintText);
 	Place(Content,HintButton,FVector2D(910,260),FVector2D(100,32),3);
 	CloseButton->SetVisibility(ESlateVisibility::Collapsed);HintButton->SetVisibility(ESlateVisibility::Collapsed);
 	ClearPresentation();

@@ -1,4 +1,5 @@
 #include "UI/GameXXKCompanionRosterWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "UI/GameXXKCardNameStyle.h"
 #include "UI/GameXXKCardPortraitImage.h"
@@ -325,7 +326,7 @@ namespace
 	FText GetRoleDisplayName(const EGameXXKCharacterRole Role)
 	{
 		const FString Name = FGameXXKCompanionRules::GetCompanionDisplayName(Role, 0);
-		return Name.IsEmpty() ? FText::FromString(TEXT("未知职业")) : FText::FromString(Name);
+		return Name.IsEmpty() ? GameXXKLocalization::Source(TEXT("未知职业")) : GameXXKLocalization::Source(Name);
 	}
 
 	FString ResolveCompanionPortraitResourcePath(const EGameXXKCharacterRole Role, const bool bActive)
@@ -365,7 +366,7 @@ namespace
 
 	FText ResolveCompanionDisplayName(const EGameXXKCharacterRole Role, const int32 NameSeed)
 	{
-		return FText::FromString(FGameXXKCompanionRules::GetCompanionDisplayName(Role, NameSeed));
+		return GameXXKLocalization::Source(FGameXXKCompanionRules::GetCompanionDisplayName(Role, NameSeed));
 	}
 
 	// The partner warehouse window mirrors the hero backpack's content source:
@@ -530,7 +531,7 @@ namespace
 			if (Snapshot.ItemCurrentStats.MaxMana != 0) { Lines.Add(FString::Printf(TEXT("真气 %+d"), Snapshot.ItemCurrentStats.MaxMana)); }
 			if (Snapshot.ItemCurrentStats.Speed != 0) { Lines.Add(FString::Printf(TEXT("身法 %+d"), Snapshot.ItemCurrentStats.Speed)); }
 		}
-		return FText::FromString(FString::Join(Lines, TEXT("\n")));
+		return GameXXKLocalization::Source(FString::Join(Lines, TEXT("\n")));
 	}
 
 	FString ResolveCardPortraitResourcePath(const FGameXXKCardDefinition& Definition)
@@ -2115,7 +2116,7 @@ void UGameXXKCompanionRosterWidget::RefreshRosterSlots()
 				SlotFrameMargin));
 			SlotButton->SetIsEnabled(Companion != nullptr);
 			SlotButton->SetToolTipText(Companion
-				? FText::FromString(FString::Printf(
+				? GameXXKLocalization::Source(FString::Printf(
 					TEXT("%s · Lv.%d · ★%d"),
 					*FGameXXKCompanionRules::GetCompanionDisplayName(Companion->Role, Companion->NameSeed),
 					Companion->Level,
@@ -2150,7 +2151,7 @@ void UGameXXKCompanionRosterWidget::RefreshRosterSlots()
 	}
 	if (RosterCountText)
 	{
-		RosterCountText->SetText(FText::FromString(FString::Printf(TEXT("%d / %d · %d / %d 页"), CachedRoster.Num(), RosterCapacity, CurrentRosterPage + 1, RosterPageCount)));
+		RosterCountText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%d / %d · %d / %d 页"), CachedRoster.Num(), RosterCapacity, CurrentRosterPage + 1, RosterPageCount)));
 	}
 	if (RosterPageLeftButton)
 	{
@@ -2179,7 +2180,7 @@ void UGameXXKCompanionRosterWidget::RefreshProfilePanel()
 			const FText CompanionName = Companion
 				? ResolveCompanionDisplayName(Companion->Role, Companion->NameSeed)
 				: GetRoleDisplayName(SelectedCompanionProfile.Role);
-			ProfileTitleText->SetText(FText::FromString(FString::Printf(TEXT("%s%s"),
+			ProfileTitleText->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%s%s"),
 				*CompanionName.ToString(),
 				SelectedCompanionProfile.bIsActive ? TEXT(" · 已出战") : TEXT(""))));
 		}
@@ -2191,7 +2192,7 @@ void UGameXXKCompanionRosterWidget::RefreshProfilePanel()
 	if (ProfileDetailText)
 	{
 		ProfileDetailText->SetText(bHasSelectedCompanion
-			? FText::FromString(FString::Printf(
+			? GameXXKLocalization::Source(FString::Printf(
 				TEXT("职业  %s\n等级  Lv.%d\n%s\n星级  ★%d\n\n气血  %d\n攻击  %d\n防御  %d\n内力  %d"),
 				*GetRoleDisplayName(SelectedCompanionProfile.Role).ToString(),
 				SelectedCompanionProfile.Level,
@@ -2207,7 +2208,7 @@ void UGameXXKCompanionRosterWidget::RefreshProfilePanel()
 	{
 		LoadoutStatusText->SetText(bLoadoutReadOnly
 			? NSLOCTEXT("GameXXKCompanionRoster", "LockedStatus", "本次路线已锁定，牌组只读")
-			: FText::FromString(FString::Printf(TEXT("已选 %d / 5 张 · 升星印 %d"), PendingPersonalCardIds.Num(), SigilCount)));
+			: GameXXKLocalization::Source(FString::Printf(TEXT("已选 %d / 5 张 · 升星印 %d"), PendingPersonalCardIds.Num(), SigilCount)));
 	}
 	if (ApplyLoadoutButton)
 	{
@@ -2235,7 +2236,7 @@ void UGameXXKCompanionRosterWidget::RefreshProfilePanel()
 	}
 	if (PromoteStarButtonText)
 	{
-		PromoteStarButtonText->SetText(FText::FromString(bHasSelectedCompanion
+		PromoteStarButtonText->SetText(GameXXKLocalization::Source(bHasSelectedCompanion
 			? FString::Printf(TEXT("升星 · 消耗 %d 枚升星印"), RequiredSigils)
 			: TEXT("升星 · 请选择伙伴")));
 	}
@@ -2247,12 +2248,12 @@ void UGameXXKCompanionRosterWidget::RefreshRecruitmentPanel()
 	if (RecruitmentStatusText)
 	{
 		const FText DefaultStatus = bHasPendingCandidate
-			? FText::FromString(FString::Printf(
+			? GameXXKLocalization::Source(FString::Printf(
 				TEXT("待决定：%s · 个人牌组 %d 张\n选择左侧伙伴替换，或放弃候选。"),
 				*GetRoleDisplayName(PendingRecruitmentCandidate.Role).ToString(),
 				PendingRecruitmentCandidate.PersonalCardIds.Num()))
 			: NSLOCTEXT("GameXXKCompanionRoster", "RecruitmentReady", "招贤会固定保存候选；满员时不会重掷。");
-		RecruitmentStatusText->SetText(RecruitmentFeedback.IsEmpty() ? DefaultStatus : FText::FromString(RecruitmentFeedback));
+		RecruitmentStatusText->SetText(RecruitmentFeedback.IsEmpty() ? DefaultStatus : GameXXKLocalization::Source(RecruitmentFeedback));
 	}
 	if (RecruitButton)
 	{
@@ -2293,7 +2294,7 @@ void UGameXXKCompanionRosterWidget::RefreshRecruitmentPanel()
 		const FString TooltipText = RecruitmentFeedback.IsEmpty()
 			? DismissReason
 			: FString::Printf(TEXT("%s\n%s"), *RecruitmentFeedback, *DismissReason);
-		ReplacePendingButton->SetToolTipText(FText::FromString(TooltipText));
+		ReplacePendingButton->SetToolTipText(GameXXKLocalization::Source(TooltipText));
 	}
 	if (DiscardPendingButton)
 	{
@@ -2360,13 +2361,13 @@ void UGameXXKCompanionRosterWidget::RefreshPersonalCards()
 		{
 			CostLabel->SetText(CardId.IsNone() || !Definition
 				? FText::GetEmpty()
-				: FText::FromString(FString::Printf(TEXT("%d气"), Definition->EnergyCost)));
+				: GameXXKLocalization::Source(FString::Printf(TEXT("%d气"), Definition->EnergyCost)));
 		}
 		if (UTextBlock* ManaCostLabel = PersonalCardManaCostLabels.IsValidIndex(CardIndex) ? PersonalCardManaCostLabels[CardIndex].Get() : nullptr)
 		{
 			ManaCostLabel->SetText(CardId.IsNone() || !Definition
 				? FText::GetEmpty()
-				: FText::FromString(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
+				: GameXXKLocalization::Source(FString::Printf(TEXT("%d内"), Definition->ManaCost)));
 		}
 		if (UImage* LockedIcon = PersonalCardLockedIcons.IsValidIndex(CardIndex) ? PersonalCardLockedIcons[CardIndex].Get() : nullptr)
 		{
@@ -2517,7 +2518,7 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 			Entry.Quantity = InventoryEntry.Quantity;
 			Entry.IconPath = CompanionResolveItemIconTexturePath(InventoryEntry.ItemId);
 			Entry.DisplayName = InventoryEntry.Definition.DisplayName;
-			Entry.DetailText = FText::FromString(CompanionItemStatsText(InventoryEntry.Definition, Subsystem->GetItemEnhancementLevel(InventoryEntry.ItemId)));
+			Entry.DetailText = GameXXKLocalization::Source(CompanionItemStatsText(InventoryEntry.Definition, Subsystem->GetItemEnhancementLevel(InventoryEntry.ItemId)));
 			BackpackEntries.Add(MoveTemp(Entry));
 		}
 	}
@@ -2556,7 +2557,7 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 		}
 		if (UTextBlock* Label = BackpackSlotLabels.IsValidIndex(WarehouseIndex) ? BackpackSlotLabels[WarehouseIndex].Get() : nullptr)
 		{
-			Label->SetText(bHasItem && Entry->Quantity > 1 ? FText::FromString(FString::Printf(TEXT("x%d"), Entry->Quantity)) : FText::GetEmpty());
+			Label->SetText(bHasItem && Entry->Quantity > 1 ? GameXXKLocalization::Source(FString::Printf(TEXT("x%d"), Entry->Quantity)) : FText::GetEmpty());
 		}
 		if (UImage* SlotIcon = EquipmentWarehouseSlotIcons.IsValidIndex(WarehouseIndex) ? EquipmentWarehouseSlotIcons[WarehouseIndex].Get() : nullptr)
 		{
@@ -2598,7 +2599,7 @@ void UGameXXKCompanionRosterWidget::RefreshEquipmentBackpack()
 				}
 				if (UTextBlock* Row = (*CompareRows)[CompareRowIndex])
 				{
-					Row->SetText(FText::FromString(FString::Printf(TEXT("%s %+d"), *Label, Delta)));
+					Row->SetText(GameXXKLocalization::Source(FString::Printf(TEXT("%s %+d"), *Label, Delta)));
 					Row->SetColorAndOpacity(FSlateColor(Delta > 0
 						? FLinearColor(0.85f, 0.15f, 0.15f, 1.0f)
 						: FLinearColor(0.10f, 0.65f, 0.25f, 1.0f)));
@@ -2940,7 +2941,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckSummaries()
 {
 	if (HeroDeckSummaryText)
 	{
-		HeroDeckSummaryText->SetText(FText::FromString(FString::Printf(
+		HeroDeckSummaryText->SetText(GameXXKLocalization::Source(FString::Printf(
 			TEXT("主角牌组  %d / 8\n%s"),
 			HeroCardSummary.Num(),
 			*BuildCardSummary(HeroCardSummary))));
@@ -2948,7 +2949,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckSummaries()
 	if (TaskNpcDeckSummaryText)
 	{
 		const FString NpcTitle = TaskNpcCardSummary.NpcId.IsNone() ? TEXT("任务 NPC 未加入") : TaskNpcCardSummary.NpcId.ToString();
-		TaskNpcDeckSummaryText->SetText(FText::FromString(FString::Printf(
+		TaskNpcDeckSummaryText->SetText(GameXXKLocalization::Source(FString::Printf(
 			TEXT("任务 NPC · %s\n固定支援牌组  %d / 3 · 只读\n%s"),
 			*NpcTitle,
 			TaskNpcCardSummary.SelectedCardIds.Num(),
@@ -2981,7 +2982,7 @@ void UGameXXKCompanionRosterWidget::RefreshDeckEditorControls()
 		HeroDeckStatusText->SetText(bEditingHeroDeck
 			? (bLoadoutReadOnly
 				? NSLOCTEXT("GameXXKCompanionRoster", "HeroDeckLocked", "路线已锁定 · 只读")
-				: FText::FromString(FString::Printf(TEXT("已选 %d / 8 张"), PendingHeroCardIds.Num())))
+				: GameXXKLocalization::Source(FString::Printf(TEXT("已选 %d / 8 张"), PendingHeroCardIds.Num())))
 			: FText::GetEmpty());
 	}
 }

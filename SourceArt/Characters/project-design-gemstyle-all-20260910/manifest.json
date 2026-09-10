@@ -1,0 +1,427 @@
+{
+  "count": 13,
+  "expected": 13,
+  "complete": true,
+  "phase": "awaiting-full-set-visual-approval",
+  "tool": "built-in image_gen",
+  "nativeResolutionNote": "原始生成分辨率逐张记录；1600×1600为统一审阅画布",
+  "imported": false,
+  "records": [
+    {
+      "slug": "hero",
+      "name": "主角",
+      "id": "Character.Hero",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/00_hero.png",
+      "identitySourceSha256": "39fe355f4e42b63d2fb3329a3d4f3b404dfd00be222957230a90df7b75f6270d",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "file": "characters/hero.png",
+      "sha256": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/hero.png",
+      "rawSha256": "9153224aeef2749383bbf5041c852e0dc9f2011d6a87aace47d4552d42386265",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        341,
+        65,
+        1238,
+        1544
+      ],
+      "foregroundFraction": 0.2665,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "blade",
+      "name": "刀客",
+      "id": "Role.Blade",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/01_blade.png",
+      "identitySourceSha256": "f46ee420d092193c8af90bf176120a90c64e01f14af8539659b1014fc5354796",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/blade.png",
+      "sha256": "24636046aca1ec415c590c08767e48ce4150870d282525ff5d3ea391f8c6a0b3",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/blade.png",
+      "rawSha256": "efa2246fd7cc12bcb41c5cde358f703ad69430dcec5282412154ef938b8a753a",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        96,
+        89,
+        1439,
+        1530
+      ],
+      "foregroundFraction": 0.2418,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "guard",
+      "name": "守卫",
+      "id": "Role.Guard",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/02_guard.png",
+      "identitySourceSha256": "a1079cb2e82aaf6bccbb25ab88de1c71926d529cd547f3c9db218ff6c3f88609",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/guard.png",
+      "sha256": "c2e3bb3055dcfc60048d6e0354aa01471cea3b7c80f218ec782e4d7774cb3f35",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/guard.png",
+      "rawSha256": "b8ad21a1215890bc47afb0d8c85506b6a7e72894ef7d42d11550f7dc97914ed4",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        263,
+        64,
+        1416,
+        1534
+      ],
+      "foregroundFraction": 0.3477,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "healer",
+      "name": "药师",
+      "id": "Role.Healer",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/03_healer.png",
+      "identitySourceSha256": "6a77b0bc3ab236ca36f42e14649f78a91d01801e90823ed688f196551add0414",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/healer.png",
+      "sha256": "f6c8615628300bfd9b747dce46e14b8f3f4def10c43e3f1da959773bc7a19290",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/healer.png",
+      "rawSha256": "22e79c1673bacd7ab0be46ef0ef7e67a9b13a602bfe766ff74223fd25f0ae7cd",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        241,
+        51,
+        1458,
+        1520
+      ],
+      "foregroundFraction": 0.29,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "hunter",
+      "name": "弓手",
+      "id": "Role.Hunter",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/04_hunter.png",
+      "identitySourceSha256": "faf669d99e53f17f6fb38ee3e7f76fae8c1c3aadd35791d9dd1364a2fe749131",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "file": "characters/hunter.png",
+      "sha256": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/hunter.png",
+      "rawSha256": "a44dcb08010cb23cf8f1f795130fa652e569c5245299e2ea177d9a21d99d32b9",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        116,
+        144,
+        1398,
+        1487
+      ],
+      "foregroundFraction": 0.3047,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "sorcerer",
+      "name": "法师",
+      "id": "Role.Sorcerer",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/05_sorcerer.png",
+      "identitySourceSha256": "cdfc8a8b5251bf0720dbece60b034038fffd11f1370fc43dd436f800b1142e55",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/sorcerer.png",
+      "sha256": "90d20cae2a90e4d7ef63974374b3e338954be714de62b57c78e173eb5ad5205f",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/sorcerer.png",
+      "rawSha256": "3a5575e6c5985bcfe51cb6b3161499b1e176c8696c0c32da95d3c4314eece408",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        113,
+        94,
+        1484,
+        1517
+      ],
+      "foregroundFraction": 0.3206,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "formation_master",
+      "name": "阵师",
+      "id": "Role.FormationMaster",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/06_formation_master.png",
+      "identitySourceSha256": "53ffcba833a954c79f82425f18f2c4ca85baf6ae0112cf5db9c8386afb610b42",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/formation_master.png",
+      "sha256": "e1965aef1b937eea625041acc15d756291222ae623415f881bc6a29308a19df1",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/formation_master.png",
+      "rawSha256": "442b9dff671d5b519db6519ff367df04807ce81eafd848b2b122d3d63f7d32b4",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        122,
+        140,
+        1471,
+        1504
+      ],
+      "foregroundFraction": 0.2792,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "tusi_chief",
+      "name": "土司首领",
+      "id": "Npc.TusiChief",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/07_tusi_chief.png",
+      "identitySourceSha256": "3d1f0c170725345a9b2ea186bc19cf1d9042b5388ac412ba5adb046eacb9ddc1",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/tusi_chief.png",
+      "sha256": "819c6c8f0ff3d4569f54b7f7b94e4dc8d2744e37bc36151fbe0b96377cbfd254",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/tusi_chief.png",
+      "rawSha256": "8e865870590a9b1810ca03e79534b551f8ad0866947c253c96598b8cc60ccb6a",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        211,
+        186,
+        1455,
+        1486
+      ],
+      "foregroundFraction": 0.3815,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "song_jin_bao",
+      "name": "宋金宝",
+      "id": "Npc.SongJinBao",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/08_song_jin_bao.png",
+      "identitySourceSha256": "cb686fb677999be32e1a6afdf66dd6c2c589e519b0fa4e6ff97ae90cef365053",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/song_jin_bao.png",
+      "sha256": "4fe98186ae96a86b55d6958ff75d27704e88294e025b19b06898bf2acc696a33",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/song_jin_bao.png",
+      "rawSha256": "6cc41466d4071a5abd734b568a655010c5e55bef29ab0951e3dc575261c793ac",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        352,
+        18,
+        1263,
+        1549
+      ],
+      "foregroundFraction": 0.2056,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "id": "Npc.YueBai",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/09_yue_bai.png",
+      "identitySourceSha256": "4977909d69c2542bd6c536650a56854b1d7a21883f16b909fec9f8b6b67c10c0",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": true,
+      "file": "characters/you_bai.png",
+      "sha256": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/you_bai.png",
+      "rawSha256": "88fc1a02d4e78e77a790f7341b4f854030170c61d6ef01e94d4ac2ee6aa59cba",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        297,
+        87,
+        1336,
+        1516
+      ],
+      "foregroundFraction": 0.2814,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "name": "周光祖",
+      "id": "Npc.ZhouGuangZu",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/10_zhou_guang_zu.png",
+      "identitySourceSha256": "90b50b491d716f57e145bdb8ce7c286f57d2bb343aa66d891df326514226d385",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/zhou_guang_zu.png",
+      "sha256": "5da5d0e57778e2e0334d8d60f7319bbd63ef1a3c34507c33eb43b212c3b416fe",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/zhou_guang_zu.png",
+      "rawSha256": "3f7ffa2692f11f7607747c9e714acd199a4dff871e8016ee2dd4d5998541cf48",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        224,
+        52,
+        1430,
+        1547
+      ],
+      "foregroundFraction": 0.41,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "jin_gui",
+      "name": "金贵",
+      "id": "Npc.JinGui",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/11_jin_gui.png",
+      "identitySourceSha256": "5c33014594a54c7eba05fd6cd6ed2fccfbd173ef4a067724a1c457b6a2d30001",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/jin_gui.png",
+      "sha256": "4d36ce4b5bc55b537e96540b815ee8821529975880c2cfd60252482006e5913d",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/jin_gui.png",
+      "rawSha256": "ef23b8a9e1827202943679dcd5894c745424518fb0ca6e7e92b696f3101da43e",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        238,
+        93,
+        1339,
+        1504
+      ],
+      "foregroundFraction": 0.2439,
+      "background": "warm-ivory-review",
+      "imported": false
+    },
+    {
+      "slug": "qiong_yao_er",
+      "name": "琼幺儿",
+      "id": "Npc.QiongMeiEr",
+      "identityReference": "SourceAssets/AnimationProduction/safe_frame_1600/characters/12_qiong_mei_er.png",
+      "identitySourceSha256": "3fd56fb69e0cbed8b0abd02d2610ff6a9d576263a6a31be5c4ad3694e23d1f8e",
+      "facing": "left",
+      "view": "three-quarter",
+      "userApproved": false,
+      "file": "characters/qiong_yao_er.png",
+      "sha256": "eaf6c941596454523134fbaef79840fe349c0d745686ff127a9ed8511e8bdce4",
+      "size": [
+        1600,
+        1600
+      ],
+      "raw": "raw/qiong_yao_er.png",
+      "rawSha256": "339a9820dceaf4e5d69ead188786aa643d93a45caf83bf1efdcb59df4ecc76d7",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "resampledReviewCanvas": true,
+      "foregroundBounds": [
+        312,
+        55,
+        1492,
+        1544
+      ],
+      "foregroundFraction": 0.2217,
+      "background": "warm-ivory-review",
+      "imported": false
+    }
+  ]
+}

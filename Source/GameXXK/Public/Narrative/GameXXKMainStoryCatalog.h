@@ -40,11 +40,20 @@ struct GAMEXXK_API FGameXXKMainStoryNode
 	TArray<FName> RequiresAll;
 	TArray<FName> RequiresAny;
 	TArray<FGameXXKMainStoryLine> Lines;
+	TArray<FGameXXKMainStoryLine> AfterBattleLines;
+	TArray<FName> EnemyDefinitionIds;
 	TArray<FGameXXKMainStoryOption> Options;
 	TArray<FText> Hints;
 	FSoftObjectPath Illustration;
 	bool IsJourney() const { return Kind == EGameXXKMainStoryNodeKind::JourneyBattle || Kind == EGameXXKMainStoryNodeKind::JourneyInvestigation; }
 	bool IsInvestigation() const { return Kind == EGameXXKMainStoryNodeKind::Investigation || Kind == EGameXXKMainStoryNodeKind::JourneyInvestigation; }
+	int32 ReplayLineCount() const { return Lines.Num()+AfterBattleLines.Num(); }
+	const FGameXXKMainStoryLine* ReplayLine(int32 Index) const
+	{
+		if(Lines.IsValidIndex(Index))return &Lines[Index];
+		const int32 PostIndex=Index-Lines.Num();
+		return AfterBattleLines.IsValidIndex(PostIndex)?&AfterBattleLines[PostIndex]:nullptr;
+	}
 };
 
 struct GAMEXXK_API FGameXXKMainStoryChapter

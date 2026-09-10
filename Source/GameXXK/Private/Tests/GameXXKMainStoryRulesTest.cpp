@@ -155,19 +155,21 @@ bool FGameXXKMainStoryJourneyTest::RunTest(const FString& Parameters)
 	auto* Instance=NewObject<UGameInstance>();auto* M=NewObject<UGameXXKMVPSubsystem>(Instance);if(!M->StartGame())return false;
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	for(FName Id:{FName(TEXT("S00-01")),FName(TEXT("S00-02")),FName(TEXT("S00-03"))})if(!FinishStoryNode(M->GetMutableRuntimeState(),Id))return false;
-	TestTrue(TEXT("task starts the corresponding route"),Story->StartTask(TEXT("S00-04")));
+	TestTrue(TEXT("task opens the outside prelude"),Story->StartTask(TEXT("S00-04")));
+	const auto* N=FGameXXKMainStoryCatalog::FindNode(TEXT("S00-04"));
+	for(int32 I=0;I<N->Lines.Num();++I)if(!Story->AdvanceDialogue())return false;
+	TestTrue(TEXT("explicit departure starts the corresponding route"),Story->BeginTaskJourney());
 	const auto Journey=M->GetRuntimeState().NarrativeProgress.MainStory.JourneyId;
 	const auto Gates=M->GetRuntimeState().NarrativeProgress.MainStory.GateNodeIds;
 	if(!TestFalse(TEXT("gate row exists"),Gates.IsEmpty()))return false;
 	TestTrue(TEXT("pausing and resuming uses existing route"),Story->StartTask(TEXT("S00-04")));
 	TestEqual(TEXT("journey identity retained"),M->GetRuntimeState().NarrativeProgress.MainStory.JourneyId,Journey);
-	TestFalse(TEXT("cannot enter a distant gate"),Story->EnterJourneyGate(Gates.Array()[0]));
+	TestFalse(TEXT("cannot enter an unrelated gate"),Story->EnterJourneyGate(9999));
 	const int32 Gate=Gates.Array()[0];M->GetMutableRuntimeState().ReachableRouteNodeIds={Gate};
 	TestTrue(TEXT("actual reachable story gate opens"),Story->EnterJourneyGate(Gate));
-	const auto* N=FGameXXKMainStoryCatalog::FindNode(TEXT("S00-04"));for(int32 I=0;I<N->Lines.Num();++I)Story->AdvanceDialogue();
 	TestFalse(TEXT("dialogue is not battle victory"),FGameXXKMainStoryRules::IsNodeCompleted(M->GetRuntimeState(),N->Id));
 	const auto Formation=M->GetRuntimeState().CardRun.OrderedFormation;
-	TestTrue(TEXT("uses real training battle entry"),Story->BeginTaskBattle());
+	TestFalse(TEXT("already entered task battle cannot be started twice"),Story->BeginTaskBattle());
 	if(!TestTrue(TEXT("real card battle exists"),M->GetRuntimeState().CardRun.bHasActiveCardBattle)){AddError(Story->Feedback().ToString());return false;}
 	TestEqual(TEXT("battle belongs to selected story gate"),M->GetRuntimeState().CardRun.ActiveBattleSourceNodeId,Gate);
 	auto& S=M->GetMutableRuntimeState();
@@ -178,6 +180,10 @@ bool FGameXXKMainStoryJourneyTest::RunTest(const FString& Parameters)
 	S.CardRun.ActiveBattleSourceNodeId=Gate;
 	TestTrue(TEXT("matching terminal victory completes once"),FGameXXKMainStoryRules::ObserveBattleVictory(S));
 	TestFalse(TEXT("duplicate victory is ignored"),FGameXXKMainStoryRules::ObserveBattleVictory(S));
+	bool StageCleared=false;FGameXXKTrainingReward BattleReward;
+	if(!M->AdvanceTrainingChallengeEncounter(StageCleared,BattleReward))return false;
+	TestFalse(TEXT("victory waits for the post-battle exchange before rewarding"),Story->ClaimReward(N->Id));
+	for(int32 I=0;I<N->AfterBattleLines.Num();++I)if(!Story->AdvanceDialogue())return false;
 	const int32 Normal=FGameXXKTrainingRules::CountChestTokens(S.Training,EGameXXKTrainingRewardTier::NormalChest);
 	const int32 Advanced=FGameXXKTrainingRules::CountChestTokens(S.Training,EGameXXKTrainingRewardTier::AdvancedChest);
 	TestTrue(TEXT("journey reward can be claimed once"),FGameXXKMainStoryRules::ClaimReward(S,N->Id));
@@ -208,21 +214,28 @@ bool FGameXXKMainStoryCampaignTest::RunTest(const FString& Parameters)
 			if(!Story->StartTask(Next)){AddError(Next.ToString()+TEXT(": ")+Story->Feedback().ToString());return false;}
 			if(N->IsJourney())
 			{
+				if(N->Kind==EGameXXKMainStoryNodeKind::JourneyBattle)
+					for(int32 I=0;I<N->Lines.Num();++I)if(!Story->AdvanceDialogue()){AddError(Next.ToString()+TEXT(": outside prelude failed"));return false;}
+				if(!Story->BeginTaskJourney()){AddError(Next.ToString()+TEXT(": departure failed: ")+Story->Feedback().ToString());return false;}
 				const auto& Session=M->GetRuntimeState().NarrativeProgress.MainStory;Journeys.Add(Session.JourneyId);
 				if(Session.GateNodeIds.IsEmpty()){AddError(TEXT("missing story gate"));return false;}
 				const int32 Gate=Session.GateNodeIds.Array()[0];M->GetMutableRuntimeState().ReachableRouteNodeIds={Gate};
 				if(!Story->EnterJourneyGate(Gate)){AddError(Story->Feedback().ToString());return false;}
 			}
-			for(int32 I=0;I<N->Lines.Num();++I)if(!Story->AdvanceDialogue()){AddError(Next.ToString()+TEXT(": ")+Story->Feedback().ToString());return false;}
+			if(N->Kind!=EGameXXKMainStoryNodeKind::JourneyBattle)
+				for(int32 I=0;I<N->Lines.Num();++I)if(!Story->AdvanceDialogue()){AddError(Next.ToString()+TEXT(": ")+Story->Feedback().ToString());return false;}
 			if(N->IsInvestigation())for(int32 I=0;I<N->Options.Num();++I)if(N->Options[I].bCorrect){if(!Story->ChooseAnswer(I)){AddError(Story->Feedback().ToString());return false;}break;}
 			if(N->Kind==EGameXXKMainStoryNodeKind::JourneyBattle)
 			{
-				if(!Story->BeginTaskBattle()){AddError(Story->Feedback().ToString());return false;}
+				if(!M->GetRuntimeState().CardRun.bHasActiveCardBattle){AddError(TEXT("story gate did not enter battle"));return false;}
 				// Inject a terminal outcome only in this automation fixture, through the real battle instance.
 				M->GetMutableRuntimeState().CardRun.ActiveBattle.Phase=EGameXXKCardBattlePhase::Victory;
 				bool StageDone=false;FGameXXKTrainingReward Reward;FString Error;
 				if(!M->AdvanceTrainingChallengeEncounter(StageDone,Reward)){AddError(TEXT("battle completion bridge failed"));return false;}
-				if(!M->SkipPendingRouteRewardAndFinish(&Error)){AddError(Error);return false;}
+				TestFalse(TEXT("task battle never clears the ordinary stage"),StageDone);
+				TestTrue(TEXT("task battle creates no ordinary route reward offer"),M->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty()
+					&&M->GetRuntimeState().CardRun.PendingReward.CardIds.IsEmpty());
+				for(int32 I=0;I<N->AfterBattleLines.Num();++I)if(!Story->AdvanceDialogue()){AddError(Next.ToString()+TEXT(": aftermath failed"));return false;}
 			}
 			if(!TestTrue(*FString::Printf(TEXT("%s actual objective completed"),*Next.ToString()),FGameXXKMainStoryRules::IsNodeCompleted(M->GetRuntimeState(),Next)))return false;
 			const int32 Gold=M->GetRuntimeState().PlayerGold;
@@ -257,6 +270,9 @@ bool FGameXXKMainStoryExitSaveTest::RunTest(const FString& Parameters)
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	for(FName Id:{FName(TEXT("S00-01")),FName(TEXT("S00-02")),FName(TEXT("S00-03"))})if(!FinishStoryNode(M->GetMutableRuntimeState(),Id))return false;
 	if(!Story->StartTask(TEXT("S00-04")))return false;
+	const auto* BattleNode=FGameXXKMainStoryCatalog::FindNode(TEXT("S00-04"));
+	for(int32 I=0;I<BattleNode->Lines.Num();++I)if(!Story->AdvanceDialogue())return false;
+	if(!Story->BeginTaskJourney())return false;
 	const int32 Gold=M->GetRuntimeState().PlayerGold;
 	M->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return false;}));
 	FGameXXKRouteSettlementReceipt Receipt;FString Error;

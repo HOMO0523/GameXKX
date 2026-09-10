@@ -1,0 +1,85 @@
+{
+  "count": 4,
+  "tool": "built-in image_gen",
+  "phase": "style-exploration-awaiting-user",
+  "currentLayoutUnchanged": true,
+  "userApproved": false,
+  "records": [
+    {
+      "slug": "A_block_ink",
+      "label": "A · 块面勾线",
+      "file": "characters/A_block_ink.png",
+      "raw": "raw/A_block_ink.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "rawSha256": "ac43d27ca8fcbd6ef3dd02a0707f4947558400554b5e08a5ab1a8afd5c9517df",
+      "sha256": "41608ff15256d29385e92f1ac0894fd77a2335825eabaf0dd2a2ec50186503e3",
+      "independentlyGenerated": true,
+      "postprocessing": "canvas fit only; no style filters",
+      "userApproved": false
+    },
+    {
+      "slug": "B_line_color",
+      "label": "B · 线描设色",
+      "file": "characters/B_line_color.png",
+      "raw": "raw/B_line_color.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "rawSha256": "ca4afc78e5f65f42567ba411f515569c6acee7870d3545b8c52b9d3916769396",
+      "sha256": "d41fb36e2232beeb69f3709742d253202e5398769fe1380cc031e5a242309638",
+      "independentlyGenerated": true,
+      "postprocessing": "canvas fit only; no style filters",
+      "userApproved": false
+    },
+    {
+      "slug": "C_light_ink",
+      "label": "C · 淡彩水墨",
+      "file": "characters/C_light_ink.png",
+      "raw": "raw/C_light_ink.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "rawSha256": "deaa264a1259772d17d511be2abf899598f71163c65aa73df04e3c5c66d04f6f",
+      "sha256": "7663de9f247e8aac9949af93e828b91097cbda3699baf731b2eedece65e3c4f0",
+      "independentlyGenerated": true,
+      "postprocessing": "canvas fit only; no style filters",
+      "userApproved": false
+    },
+    {
+      "slug": "D_freehand_ink",
+      "label": "D · 轻写意水墨",
+      "file": "characters/D_freehand_ink.png",
+      "raw": "raw/D_freehand_ink.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "rawSha256": "c32af59d58abea861822fc3d3611b40749cc2e0ecb57e89c2c42324c3a40e474",
+      "sha256": "b990bd252618f2aec16ad93567bda06d9e03864211d089c9403424ee7d23b018",
+      "independentlyGenerated": true,
+      "postprocessing": "canvas fit only; no style filters",
+      "userApproved": false
+    }
+  ]
+}

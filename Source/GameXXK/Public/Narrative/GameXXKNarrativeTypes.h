@@ -139,6 +139,8 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKMainStorySession
 {
 	GENERATED_BODY()
+    // Native-only F10 test gate; ordinary saves never contain this flag.
+    bool bDevelopmentUnlockAllTasks = false;
 	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> SeenChapters;
 	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> MainlineCompletedChapters;
 	UPROPERTY(BlueprintReadWrite, SaveGame) TSet<FName> JourneyStartedNodes;

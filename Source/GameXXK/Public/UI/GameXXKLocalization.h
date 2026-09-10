@@ -8,6 +8,8 @@ namespace GameXXKLocalization
     DECLARE_MULTICAST_DELEGATE(FOnLanguageChanged);
 
     GAMEXXK_API bool Initialize(FString* OutError = nullptr);
+    /** Reload only reviewed text data; preserve language, player state and preferences. */
+    GAMEXXK_API bool ReloadTextCatalog(FString* OutError = nullptr);
     GAMEXXK_API FString GetLanguage();
     GAMEXXK_API bool IsEnglish();
     GAMEXXK_API bool IsSupportedLanguage(const FString& Language);
@@ -21,6 +23,10 @@ namespace GameXXKLocalization
     /** Exact, complete source strings only. Call at a presentation boundary, after rule parsing. */
     GAMEXXK_API FText Source(const FString& NativeText);
     GAMEXXK_API FText Localize(const FText& NativeText);
+    /** Contextual labels for compact controls. Tooltips must still use Localize. */
+    GAMEXXK_API FText Compact(const FText& NativeText);
+    /** Read-only English glossary form; never changes the active game language. */
+    GAMEXXK_API FString EnglishText(const TCHAR* Key);
     GAMEXXK_API TArray<FString> GetMissingSources();
 
     GAMEXXK_API FString GetPreferencePath();

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {"key": "Save.Error.OfflineCommit", "zh-Hans": "离线进度未能保存，本次读档未生效。请重试，原存档仍可读取。", "en": "Offline progress could not be saved, so the load was not applied. Please retry; the original save remains available."},
+    {"key": "Save.Error.ClaimCommit", "zh-Hans": "收益未能保存，待领奖励已保留，请重试。", "en": "Rewards could not be saved. Your unclaimed rewards are kept; please retry."},
+    {"key": "Save.Error.ChestCommit", "zh-Hans": "开箱结果未能保存，宝箱和原奖励种子已保留，请重试。", "en": "Chest rewards could not be saved. The chest and its original reward seed are kept; please retry."},
+    {"key": "Save.Error.Write", "zh-Hans": "保存失败，请检查存储空间或写入权限后重试。", "en": "Save failed. Check storage space or write permissions, then retry."},
+    {"key": "Save.Error.Exit", "zh-Hans": "最新进度未能保存，暂未退出。请重试保存。", "en": "Your latest progress could not be saved. The game is still open; please retry saving."},
+    {"key": "Save.Saving", "zh-Hans": "正在保存…", "en": "Saving…"},
+    {"key": "Save.Saved", "zh-Hans": "进度已保存", "en": "Progress saved"},
+    {"key": "Save.Auto", "zh-Hans": "自动存档", "en": "Autosave"},
+    {"key": "Save.Manual", "zh-Hans": "手动存档", "en": "Manual saves"},
+    {"key": "Save.Error.FutureVersion", "zh-Hans": "该存档来自较新版本，请更新游戏后读取。", "en": "This save is from a newer version. Update the game before loading it."},
+    {"key": "Save.Error.NoValidCopy", "zh-Hans": "未找到有效存档或备份，原文件已保留。", "en": "No valid save or backup was found. The original files have been kept."},
+    {"key": "Save.Recovered", "zh-Hans": "已从最近的有效备份恢复进度。", "en": "Progress restored from the latest valid backup."}
+  ]
+}
