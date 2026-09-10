@@ -6,6 +6,8 @@ source_commit: 004c45f
 working_tree: UI, localization, Wind affix and chest reports under cold-build verification; full goal remains unfinished
 ---
 
+> **2026-09-11 纯2D Shipping+F10试玩包**：专用目标保留完整F10，仅包含桌面主地图，排除旧3D环境与218张不用的图；压缩包645.15MiB。正常存档读取、游戏内退出保存和F10试验前保存已修复，35/35定向回归及最终实包30命令/30关、132次检查通过。旧广回归仍有18项未通过，不宣称总目标完成。见[打包与验证记录](2026-09-11-shipping-f10-package.md)。
+
 > **2026-09-11 教学血量与回合压缩完成**：借用主角/伙伴/NPC最大300HP，怪物180/240/300HP、攻击12；主角三节实际2/3/1回合获胜，29节目标/胜利及HP约束通过，最终冷UBT通过。总表新增教学数值页，正常试玩已恢复，见[数值与证据](2026-09-11-academy-short-demo.md)。
 
 

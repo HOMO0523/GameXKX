@@ -1,0 +1,766 @@
+{
+  "source_commit": "de668aed49a0c68ea3af806fc909e45de20d2d81",
+  "branch": "codex/ui-visual-optimization",
+  "target": "GameXXKDev Win64 Shipping",
+  "archive": {
+    "path": "D:\\UE5 demo\\GameXXK\\Packaged\\GameXXK-2D-Shipping-F10-20260911.zip",
+    "bytes": 676493796,
+    "MiB": 645.15,
+    "sha256": "a5a38ce0af3427de60549372fcabb0904af9a2d9c4fd04d8854eb9a01a99f881",
+    "unpacked_bytes": 832376928,
+    "files": 30,
+    "crc_verified": true
+  },
+  "container": {
+    "ok": true,
+    "project_maps": [
+      "/Game/GameXXK/Maps/L_DesktopTrainingHUD"
+    ],
+    "excluded_image_count": 218,
+    "excluded_image_leaks": [],
+    "missing_runtime_2k_atlases": [],
+    "legacy_3d_assets": [],
+    "elemental_hits": [
+      "/Game/GameXXK/UI/Battle/VFX/ElementalHits/T_FireHit",
+      "/Game/GameXXK/UI/Battle/VFX/ElementalHits/T_FrostHit"
+    ]
+  },
+  "f10": {
+    "ok": true,
+    "calls": 132,
+    "commands": [
+      "battle.auto",
+      "battle.restart",
+      "battle.return",
+      "battle.start",
+      "benchmark.prepare",
+      "cards.set",
+      "catalog",
+      "character.level",
+      "equipment.create",
+      "equipment.loadout",
+      "equipment.recommend_all",
+      "heal",
+      "help",
+      "inspect",
+      "item.give",
+      "party.select",
+      "progress.unlock_stages",
+      "progress.unlock_tasks",
+      "session.begin",
+      "session.restore",
+      "settings.key",
+      "simulate.cancel",
+      "simulate.run",
+      "simulate.start",
+      "simulate.status",
+      "snapshot.export",
+      "snapshot.import",
+      "snapshot.list",
+      "snapshot.load",
+      "snapshot.save"
+    ],
+    "stages": [
+      "Training.Normal.1-1",
+      "Training.Normal.1-2",
+      "Training.Normal.1-3",
+      "Training.Normal.2-1",
+      "Training.Normal.2-2",
+      "Training.Normal.2-3",
+      "Training.Normal.3-1",
+      "Training.Normal.3-2",
+      "Training.Normal.3-3",
+      "Training.Hard.1-1",
+      "Training.Hard.1-2",
+      "Training.Hard.1-3",
+      "Training.Hard.2-1",
+      "Training.Hard.2-2",
+      "Training.Hard.2-3",
+      "Training.Hard.3-1",
+      "Training.Hard.3-2",
+      "Training.Hard.3-3",
+      "Training.Hell.1-1",
+      "Training.Hell.1-2",
+      "Training.Hell.1-3",
+      "Training.Hell.2-1",
+      "Training.Hell.2-2",
+      "Training.Hell.2-3",
+      "Training.Hell.3-1",
+      "Training.Hell.3-2",
+      "Training.Hell.3-3",
+      "Training.Normal.3-4",
+      "Training.Hard.3-4",
+      "Training.Hell.3-4"
+    ],
+    "binary_md5": "0f5665400103728856dd2a1be620d1a7",
+    "restored": true
+  },
+  "persistence": {
+    "focused_tests_passed": 35,
+    "focused_tests_failed": 0,
+    "warning_count": 8,
+    "warnings": "The isolated default-slot backup fixture reads eight absent files; no test errors.",
+    "packaged_exit_restart": {
+      "ok": true,
+      "normal_exit_process_completed": true,
+      "level_before": 2,
+      "level_after": 3,
+      "gold_before": 14830,
+      "gold_after": 15670,
+      "equipment_preserved": true,
+      "session_active": false,
+      "binary_md5": "0f5665400103728856dd2a1be620d1a7"
+    }
+  },
+  "protected_original_save_files": 33,
+  "historical_regression": {
+    "total": 711,
+    "initial_passed": 692,
+    "initial_failed": 19,
+    "elemental_asset_failure_fixed_and_retested": true,
+    "remaining_failed": 18,
+    "failures": [
+      {
+        "test": "GameXXK.Data.CardOutcomePreview.Audit.RelicLinkedDamage",
+        "errors": [
+          "Expected 'Drum removes exactly one HP from Outcome.EnemyA' to be 99, but it was 100.",
+          "Expected 'Drum removes exactly one HP from Outcome.EnemyB' to be 99, but it was 100.",
+          "Expected 'Drum removes exactly one HP from Outcome.EnemyC' to be 99, but it was 100.",
+          "Expected 'Drum appends exactly three linked damage packets' to be 3, but it was 0."
+        ]
+      },
+      {
+        "test": "GameXXK.Data.CardOutcomePreview.Rules.DotToxicMedicineRelic",
+        "errors": [
+          "Expected 'Drum creates actual linked health damage' to be true.",
+          "Expected 'Medicine plus linked damage gets a row per type plus one total row' to be 3, but it was 1."
+        ]
+      },
+      {
+        "test": "GameXXK.Data.CardOutcomePreview.Rules.GroupPositions",
+        "errors": [
+          "Expected '3P receives its own linked Drum health damage' to be 1, but it was 0.",
+          "Expected '3P row includes only its own category total' to be \"3P · 群体伤害 13 · 流血 4 · 联动伤害 1 · 合计 18\", but it was \"3P · 群体伤害 13 · 流血 4 · 合计 17\"."
+        ]
+      },
+      {
+        "test": "GameXXK.Data.CardDocumentation",
+        "errors": [
+          "Expected 'Markdown card catalog matches the live catalog exactly' to be true.",
+          "Expected 'plain-text card catalog matches the live catalog exactly' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Development.AuthoredBattleAndSimulation",
+        "errors": [
+          "Expected 'Hell uses actual 150 percent enemy damage' to be 150, but it was 100."
+        ]
+      },
+      {
+        "test": "GameXXK.Equipment.Gems.Mechanics.EquipmentAndPartyProjection",
+        "errors": [
+          "Expected 'each deployed companion including the second owns its healing gem' to be 8600, but it was 0."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardAutoPlayPendingChoices",
+        "errors": [
+          "Expected 'Hero-task search fixture remains valid: An active protagonist spell task has invalid locked IDs, progress, or starter metadata.' to be true.",
+          "Expected 'auto play submits the first stable Hero-task candidate' to be true.",
+          "Hero-task search clears through the Board path: The two values are not equal.",
+          "Expected 'the stable Hero-task pick moves into hand' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardAutoPlayToggle",
+        "errors": [
+          "Expected 'the fresh-session button reports off' to be \"自动战斗：关\", but it was \"自动\".",
+          "Expected 'the enabled button reports on' to be \"自动战斗：开\", but it was \"自动\"."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardBossCardReward",
+        "errors": [
+          "the boss reward opens with a boss-card option: The two values are not equal.",
+          "the boss reward follows with a deck-card upgrade option: The two values are not equal.",
+          "the boss reward ends with a relic option: The two values are not equal.",
+          "Expected 'the boss-card option names a route boss card' to be true.",
+          "Expected 'a free boss slot previews the boss option as directly committable: The selected boss card is not part of the saved boss reward offer.' to be true.",
+          "Expected 'the committed boss card occupies one of the three boss slots' to be true.",
+          "Expected 'the boss slot stays within the three-card cap' to be 1, but it was 0."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardEnemyIntentPresentation",
+        "errors": [
+          "Expected 'status-only intentions have a real icon beside a one-line stack count' to be true.",
+          "Expected 'damage number remains centered with a small suffix on its right' to be true.",
+          "Expected 'the pending intent tooltip uses its resolved damage' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardPendingHeroTaskSearch",
+        "errors": [
+          "Expected 'Mage-search fixture is a valid saved runtime: An active protagonist spell task has invalid locked IDs, progress, or starter metadata.' to be true.",
+          "clicking the Mage candidate clears the blocking search: The two values are not equal.",
+          "Expected 'clicking the Mage candidate moves the same real instance into hand' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardPresentationGate",
+        "errors": [
+          "Expected 'the idle tick discards the stale snapshot and re-syncs the HP number to live runtime' to be \"气血 42 / 100\", but it was \"HP 42 / 100\"."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardRewardAtomicFacade",
+        "errors": [
+          "Expected 'choose-and-finish reports a deliberately failed victory settlement' to be false.",
+          "Expected 'failed post-choice victory settlement rolls back the complete runtime' to be true.",
+          "Expected 'skip-and-finish reports a deliberately failed victory settlement' to be false.",
+          "Expected 'failed post-skip victory settlement rolls back the complete runtime' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardRewards",
+        "errors": [
+          "Expected 'the relic reward tooltip states the relic description' to be true.",
+          "Expected 'a short upgrade explanation follows the hovered third reward' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Integration.CardBattle.BoardTargeting",
+        "errors": [
+          "Expected 'general route cards resolve their shared ink-command crest' to be \"/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General\", but it was \"\".",
+          "Expected 'terrain route cards resolve their shared landscape crest' to be \"/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain\", but it was \"\".",
+          "Expected 'rare route cards resolve their shared relic crest' to be \"/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare\", but it was \"\".",
+          "Expected 'all thirty route-card definitions resolve a non-empty category portrait' to be 30, but it was 5.",
+          "Expected 'enemy intent width remains compact instead of inheriting the player hand size' to be 178.000000, but it was 206.000000 and outside tolerance 0.000100.",
+          "Expected 'enemy intent height remains compact instead of inheriting the player hand size' to be 202.000000, but it was 285.000000 and outside tolerance 0.000100.",
+          "Expected 'the saved enemy intent tooltip identifies the persisted base damage' to be true."
+        ]
+      },
+      {
+        "test": "GameXXK.Narrative.SaveMigration.V29",
+        "errors": [
+          "Expected 'enemy-phase runtime advances the current schema to v36' to be 36, but it was 41."
+        ]
+      },
+      {
+        "test": "GameXXK.SaveMigration.CombatScalingFoundationV33",
+        "errors": [
+          "Expected 'the active card-pool migration follows combat scaling' to be 36, but it was 41.",
+          "Expected 'migration reports current v36 as its target' to be 36, but it was 41.",
+          "Expected 'migration writes current v36' to be 36, but it was 41."
+        ]
+      },
+      {
+        "test": "GameXXK.SaveMigration.RetiredRouteCardsV34",
+        "errors": [
+          "Expected 'enemy phases are current schema v36' to be 36, but it was 41.",
+          "Expected 'retirement migration writes v36' to be 36, but it was 41."
+        ]
+      }
+    ]
+  },
+  "unused_images": [
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_character_09_yue_bai_outro_1k_atlas",
+      "source_bytes": 407809,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_character_09_yue_bai_outro_2k_atlas",
+      "source_bytes": 1253422,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_carriage_post_stop_idle_1k_atlas",
+      "source_bytes": 730210,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_carriage_run_stop_1k_atlas",
+      "source_bytes": 822231,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_horse_idle_1k_atlas",
+      "source_bytes": 1115171,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_horse_start_run_stop_1k_atlas",
+      "source_bytes": 939468,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Cinematics/Prologue/Atlases/T_cinematic_horse_start_run_stop_2k_atlas",
+      "source_bytes": 2919269,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_00",
+      "source_bytes": 38998,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_01",
+      "source_bytes": 59704,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_02",
+      "source_bytes": 68635,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_03",
+      "source_bytes": 70006,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_04",
+      "source_bytes": 65649,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_05",
+      "source_bytes": 75761,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_06",
+      "source_bytes": 93916,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_07",
+      "source_bytes": 78097,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_08",
+      "source_bytes": 88435,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_09",
+      "source_bytes": 86748,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_10",
+      "source_bytes": 122593,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/Generated/battle_target_ink_dab_11",
+      "source_bytes": 95201,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/battle_target_arrow_head",
+      "source_bytes": 731570,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/battle_target_arrow_head_chromakey",
+      "source_bytes": 1752357,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/battle_target_ink_dots_atlas",
+      "source_bytes": 782174,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Battle/battle_target_ink_dots_atlas_chromakey",
+      "source_bytes": 1807082,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/Inventory/ink_inventory_contact_sheet",
+      "source_bytes": 2798512,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/MainMenu/ink_button_base_alpha_raw",
+      "source_bytes": 1276599,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/SourceArt/UI/MainMenu/ink_button_base_chromakey",
+      "source_bytes": 1970479,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Sprites/Generated/follower_blue_scholar_walk_8dir",
+      "source_bytes": 1431383,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Sprites/Generated/hero_deepblue_high_ponytail_walk_8dir",
+      "source_bytes": 1404948,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/Sprites/Generated/merchant_teal_robed_walk_8dir",
+      "source_bytes": 1441299,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthFill",
+      "source_bytes": 19839,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthFull",
+      "source_bytes": 30077,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_HealthTrack",
+      "source_bytes": 29774,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaFill",
+      "source_bytes": 19879,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaFull",
+      "source_bytes": 28916,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Battle/ResourceBars/T_BattlePsd_ManaTrack",
+      "source_bytes": 28028,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_01",
+      "source_bytes": 78120,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_02",
+      "source_bytes": 77063,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_03",
+      "source_bytes": 76129,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_04",
+      "source_bytes": 77691,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_05",
+      "source_bytes": 76075,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_06",
+      "source_bytes": 77204,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_07",
+      "source_bytes": 77729,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_08",
+      "source_bytes": 75775,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18CardFinal_09",
+      "source_bytes": 54596,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_01",
+      "source_bytes": 73948,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_02",
+      "source_bytes": 74816,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_03",
+      "source_bytes": 74314,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_04",
+      "source_bytes": 77320,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_05",
+      "source_bytes": 75728,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_06",
+      "source_bytes": 76035,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_07",
+      "source_bytes": 79375,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_08",
+      "source_bytes": 77347,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Cards/Page18/T_Page18Card_09",
+      "source_bytes": 71244,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_PoJunPack",
+      "source_bytes": 146854,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_QingNangPack",
+      "source_bytes": 134346,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShanHePack",
+      "source_bytes": 150460,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ShiGuPack",
+      "source_bytes": 162946,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_XuanJiaPack",
+      "source_bytes": 191631,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/MetaShop/V2/T_MetaShop_ZhuiFengPack",
+      "source_bytes": 157439,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollInkThumb",
+      "source_bytes": 28496,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollInkThumb_PSD051",
+      "source_bytes": 90209,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollPaperTrack",
+      "source_bytes": 27165,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/PartyDeck/Scrollbars/T_PartyDeck_ScrollPaperTrack_PSD019",
+      "source_bytes": 401548,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Talents/T_TalentIconAtlas_v1",
+      "source_bytes": 2927744,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Jianghu/T_TownJianghu_Adventure",
+      "source_bytes": 304561,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Jianghu/T_TownJianghu_Banner",
+      "source_bytes": 844572,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Jianghu/T_TownJianghu_Challenge",
+      "source_bytes": 286591,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Jianghu/T_TownJianghu_Explore",
+      "source_bytes": 301541,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Jianghu/T_TownJianghu_Sword",
+      "source_bytes": 286379,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Map/T_TownMap_BackArrow",
+      "source_bytes": 17600,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_ActionGo",
+      "source_bytes": 49631,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_ActionTrack",
+      "source_bytes": 51093,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_BackArrow",
+      "source_bytes": 18971,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_RewardCoin",
+      "source_bytes": 23067,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_RewardExp",
+      "source_bytes": 22350,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_RewardToken",
+      "source_bytes": 23334,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_TabAdventure",
+      "source_bytes": 59034,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_TabDaily",
+      "source_bytes": 56690,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_TabMain",
+      "source_bytes": 62131,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_TabSide",
+      "source_bytes": 57589,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Town/Textures/Task/T_TownTask_Title",
+      "source_bytes": 23389,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/T_TrainingIdleStrip_Background",
+      "source_bytes": 935696,
+      "referencers": [],
+      "native_runtime_reference": false
+    },
+    {
+      "package": "/Game/GameXXK/UI/Training/Generated/walkloop_pilot_v1/character_00_hero_walk_left/atlas_2K/T_TrainingHeroWalkLeft_2K",
+      "source_bytes": 2706847,
+      "referencers": [],
+      "native_runtime_reference": false
+    }
+  ]
+}
