@@ -25,7 +25,7 @@ bool FGameXXKAllShortCardNamesTest::RunTest(const FString&)
     ON_SCOPE_EXIT{GameXXKLocalization::SetLanguage(Previous,false);};
     GameXXKLocalization::SetLanguage(TEXT("en"),false);
     const auto Measure=FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-    const auto Font=FGameXXKInRunUiStyle::Font(30,true);
+    const auto Font=FGameXXKInRunUiStyle::TitleFont(30,true);
     FString Report(TEXT("CardId\tEnglish\tWords\tWidthAt30\n"));
     TSet<FString> Names;int32 Count=0;
     for(const auto& Card:FGameXXKCardCatalog::GetAllCardDefinitions())

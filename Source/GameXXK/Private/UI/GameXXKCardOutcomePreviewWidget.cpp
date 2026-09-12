@@ -65,7 +65,7 @@ namespace
 		TextBlock->SetAutoWrapText(false);
 		TextBlock->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.36f));
 		TextBlock->SetShadowOffset(FVector2D(0.5f, 0.5f));
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(OutcomeFontSize,true);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(OutcomeFontSize);
 		Font.OutlineSettings.OutlineSize = 1;
 		Font.OutlineSettings.OutlineColor = FLinearColor(0.07f, 0.055f, 0.04f, 0.78f);
 		TextBlock->SetFont(Font);
@@ -91,7 +91,7 @@ void UGameXXKCardOutcomePreviewWidget::SetLines(const TArray<FGameXXKCardOutcome
 
 FVector2D UGameXXKCardOutcomePreviewWidget::GetPreferredPanelSize() const
 {
-	const FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(OutcomeFontSize,true);
+	const FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(OutcomeFontSize);
 	const auto Measure = [&](const FText& Text)
 	{
 		return FSlateApplication::IsInitialized()

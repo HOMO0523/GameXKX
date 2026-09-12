@@ -7,6 +7,7 @@
 #include "GameXXKTravelMoneyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
@@ -581,7 +582,7 @@ bool FGameXXKWarehousePlainQuantityTest::RunTest(const FString&)
     auto* Count=Cast<UTextBlock>(Widget->WidgetTree->FindWidget(*FString::Printf(TEXT("WarehouseStackCount_%d"),Index)));
     if(!TestNotNull(TEXT("warehouse money gets a count label"),Count))return false;
     TestEqual(TEXT("quantity has no x prefix"),Count->GetText().ToString(),FString(TEXT("20")));
-    TestTrue(TEXT("quantity uses Jianghu with a readable outline"),Count->GetFont().FontObject&&Count->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng"))&&Count->GetFont().OutlineSettings.OutlineSize>0);
+    TestTrue(TEXT("quantity uses the body font with a readable outline"),Count->GetFont().FontObject&&Count->GetFont().FontObject->GetPathName()==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body)&&Count->GetFont().OutlineSettings.OutlineSize>0);
     const int32 Builds=Widget->GetProgrammaticLayoutBuildCountForTest();
     State.DesktopInventory.WarehouseItems[Money]=30;Widget->TickForTest(1.1f);
     TestEqual(TEXT("same-slot quantity refreshes without occupancy changes"),Count->GetText().ToString(),FString(TEXT("30")));

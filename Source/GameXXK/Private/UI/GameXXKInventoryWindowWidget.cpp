@@ -388,7 +388,8 @@ namespace
 		const FText& Text,
 		int32 FontSize = 16,
 		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
-		const FName Name = NAME_None)
+		const FName Name = NAME_None,
+		const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		if (!WidgetTree)
 		{
@@ -399,7 +400,7 @@ namespace
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
 		// Button labels (分解/页签等) must never wrap into vertical stacked glyphs.
 		TextBlock->SetAutoWrapText(false);
-		TextBlock->SetFont(FGameXXKInRunUiStyle::Font(FontSize,true));
+		TextBlock->SetFont(FGameXXKInRunUiStyle::Font(Role, FontSize));
 		return TextBlock;
 	}
 
@@ -1973,7 +1974,7 @@ void UGameXXKInventoryWindowWidget::RefreshHeroDeckLayout()
 		auto* Cell=HeroDeckCardCells[I].Get();
 		Cell->SetWidthOverride(ResolvedDeckCardSize.X); Cell->SetHeightOverride(ResolvedDeckCardSize.Y);
 		if(auto* GridSlot=Cast<UUniformGridSlot>(Cell->Slot)) { GridSlot->SetRow(I/ResolvedDeckColumns); GridSlot->SetColumn(I%ResolvedDeckColumns); }
-		HeroDeckCardLabels[I]->SetFont(FGameXXKInRunUiStyle::Font(Expanded ? 30 : 24,true));
+		HeroDeckCardLabels[I]->SetFont(FGameXXKInRunUiStyle::TitleFont(Expanded ? 30 : 24));
         const auto* Definition=HeroCardBackpackIds.IsValidIndex(I)?FGameXXKCardCatalog::FindCardDefinition(HeroCardBackpackIds[I]):nullptr;
         GameXXKCardNameStyle::Apply(HeroDeckCardLabels[I],Definition?Definition->BaseQuality:EGameXXKCardQuality::Common);
 		FSlateBrush SelectionBrush=HeroDeckSelectedInks[I]->GetBrush();
@@ -2210,7 +2211,8 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		FText::GetEmpty(),
 		TitleFontSize,
 		FLinearColor(0.08f, 0.06f, 0.04f, 1.0f),
-		TEXT("InventoryWindowTitleText"));
+		TEXT("InventoryWindowTitleText"),
+		EGameXXKFontRole::Title);
 	AddCanvasChild(FrameCanvas, TitleTextBlock, TitlePosition, TitleSize);
 
 	// The town HUD already renders the ingot currency strip on this screen;
@@ -2654,7 +2656,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			InkSlot->SetPadding(FMargin(0.0f, 14.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(24, true));
+		CardLabel->SetFont(FGameXXKInRunUiStyle::TitleFont(24));
 		CardLabel->SetAutoWrapText(false);
 		CardLabel->SetJustification(ETextJustify::Center);
 		GameXXKCardNameStyle::AttachFrame(WidgetTree, CardOverlay, CardLabel, HeroDeckCardSize);
@@ -2666,7 +2668,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		}
 		// Cost summary: second line "x气", third line "x内", left-aligned.
 		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(22, true));
+		CostQiLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(22));
 		CostQiLabel->SetAutoWrapText(false);
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
@@ -2676,7 +2678,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			CostSlot->SetPadding(FMargin(14.0f, 84.0f, 0.0f, 0.0f));
 		}
 		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(22, true));
+		CostManaLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(22));
 		CostManaLabel->SetAutoWrapText(false);
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
@@ -2757,7 +2759,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 			FLinearColor::White,
 			*FString::Printf(TEXT("InventoryBackpackStackCount_%02d"), SlotIndex));
 		SlotLabel->SetJustification(ETextJustify::Right);
-		FSlateFontInfo StackCountFont = FGameXXKInRunUiStyle::Font(StackCountFontSize,true);
+		FSlateFontInfo StackCountFont = FGameXXKInRunUiStyle::BodyFont(StackCountFontSize);
 		StackCountFont.OutlineSettings.OutlineSize = 2;
 		StackCountFont.OutlineSettings.OutlineColor = FLinearColor::Black;
 		SlotLabel->SetFont(StackCountFont);
@@ -2792,10 +2794,10 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		TooltipWidth->AddChild(TooltipBox);
 		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::TitleFont(28));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19,true));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::BodyFont(19));
 		TooltipDetail->SetWrapTextAt(416);
 		TooltipDetail->SetLineHeightPercentage(0.80f);
 		TooltipDetail->SetApplyLineHeightToBottomLine(true);
@@ -2809,7 +2811,7 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		for (int32 CompareIndex = 0; CompareIndex < 5; ++CompareIndex)
 		{
 			UTextBlock* CompareRow = MakeText(WidgetTree, FText::GetEmpty(), 11, FLinearColor::White);
-			CompareRow->SetFont(FGameXXKInRunUiStyle::Font(17, true, true));
+			CompareRow->SetFont(FGameXXKInRunUiStyle::BodyFont(17, true));
 			CompareRow->SetVisibility(ESlateVisibility::Collapsed);
 			TooltipBox->AddChildToVerticalBox(CompareRow);
 			CompareRows.Add(CompareRow);
@@ -2939,10 +2941,10 @@ void UGameXXKInventoryWindowWidget::BuildProgrammaticLayout()
 		TooltipWidth->AddChild(TooltipBox);
 		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::TitleFont(28));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19,true));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::BodyFont(19));
 		TooltipDetail->SetWrapTextAt(416);
 		TooltipDetail->SetLineHeightPercentage(0.80f);
 		TooltipDetail->SetApplyLineHeightToBottomLine(true);

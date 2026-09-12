@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "GameXXKMainStoryPanelWidget.generated.h"
 
 class UCanvasPanel;
@@ -79,7 +80,7 @@ private:
 	void BuildDetail();
 	void BuildResult();
 	void BuildHeader(const FText& Title);
-	void AddText(const FText& Text, FVector2D Position, FVector2D Size, int32 FontSize, bool bBold = false, FLinearColor Color = FLinearColor(-1,-1,-1,-1));
+	void AddText(const FText& Text, FVector2D Position, FVector2D Size, int32 FontSize, bool bBold = false, EGameXXKFontRole Role = EGameXXKFontRole::Body, FLinearColor Color = FLinearColor(-1,-1,-1,-1));
 	void AddScrollableText(const FText& Text, FVector2D Position, FVector2D Size, int32 FontSize, bool bBold = false);
 	UGameXXKMainStoryActionButton* AddAction(FName Name, const FText& Text, int32 Action, FVector2D Position, FVector2D Size, bool bPrimary = true, FName NodeId = NAME_None);
 	void ClosePanel();

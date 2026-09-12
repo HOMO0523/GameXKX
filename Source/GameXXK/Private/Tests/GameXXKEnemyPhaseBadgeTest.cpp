@@ -31,9 +31,9 @@ bool FGameXXKEnemyPhaseBadgeTest::RunTest(const FString& Parameters)
 		Badge->SetBadgeModel(Model);
 		const UTextBlock* Glyph = Cast<UTextBlock>(Badge->GetWidgetFromName(TEXT("BattleStatusIconGlyph")));
 		const UWidget* Counter = Badge->GetWidgetFromName(TEXT("BattleStatusIconStackSeal"));
-		TestTrue(TEXT("phase is a single large JiangHu character without a duplicate corner number"),
+		TestTrue(TEXT("phase is a single large body-face character without a duplicate corner number"),
 			Glyph && Glyph->GetText().ToString() == Model.Style.FallbackGlyph
-			&& Glyph->GetFont().FontObject == FGameXXKInRunUiStyle::Font(30,true).FontObject
+			&& Glyph->GetFont().FontObject == FGameXXKInRunUiStyle::BodyFont(30,true).FontObject
 			&& Glyph->GetFont().Size == 30 && Counter && Counter->GetVisibility() == ESlateVisibility::Collapsed);
 	}
 

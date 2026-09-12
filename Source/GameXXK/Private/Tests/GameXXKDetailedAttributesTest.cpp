@@ -11,6 +11,7 @@
 #include "GameXXKTalentCatalog.h"
 #include "UI/GameXXKCharacterDetailedAttributes.h"
 #include "UI/GameXXKCharacterUiPresentation.h"
+#include "UI/GameXXKInRunUiStyle.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
@@ -264,7 +265,7 @@ bool FGameXXKDetailedAttributeTooltipTest::RunTest(const FString& Parameters)
 		{
 			auto* Text = FindObject<UTextBlock>(Inventory->WidgetTree, *FString::Printf(TEXT("InventoryDetailTooltip%s_%d"), Part, I));
 			if (TestNotNull(TEXT("tooltip sections use explicit text widgets"), Text))
-				TestTrue(TEXT("all tooltip text uses the JiangHu font"), Text->GetFont().FontObject && Text->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng")));
+				TestTrue(TEXT("all detailed-attribute tooltip text uses the body font"), Text->GetFont().FontObject && Text->GetFont().FontObject->GetPathName()==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body));
 		}
 	}
 	const auto* Armor = Rows.FindByPredicate([](const auto& Row) { return Row.Id == FName(TEXT("ArmorGain")); });

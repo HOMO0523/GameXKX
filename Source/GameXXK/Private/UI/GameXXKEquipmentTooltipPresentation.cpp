@@ -116,14 +116,14 @@ namespace
 		}
 #undef LABEL
 	}
-	UTextBlock* Text(UWidgetTree* Tree,const FText& Value,int32 Size,FLinearColor Color)
+	UTextBlock* Text(UWidgetTree* Tree,const FText& Value,int32 Size,FLinearColor Color,const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
-		auto* T=Tree->ConstructWidget<UTextBlock>();T->SetText(GameXXKLocalization::Localize(Value));T->SetFont(FGameXXKInRunUiStyle::Font(Size,true));T->SetColorAndOpacity(Color);T->SetAutoWrapText(true);return T;
+		auto* T=Tree->ConstructWidget<UTextBlock>();T->SetText(GameXXKLocalization::Localize(Value));T->SetFont(FGameXXKInRunUiStyle::Font(Role,Size));T->SetColorAndOpacity(Color);T->SetAutoWrapText(true);return T;
 	}
-	float TextWidth(const FString& Value,int32 Size)
+	float TextWidth(const FString& Value,int32 Size,const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		return FSlateApplication::IsInitialized()
-			? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Value,FGameXXKInRunUiStyle::Font(Size,true)).X
+			? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Value,FGameXXKInRunUiStyle::Font(Role,Size)).X
 			: Value.Len()*Size*1.3f;
 	}
 	UImage* QualityLayer(UWidgetTree* Tree,EGameXXKEquipmentQuality Quality,const TCHAR* Layer,FVector2D Size)
@@ -168,7 +168,7 @@ UWidget* GameXXKEquipmentTooltipPresentation::BuildGem(UWidgetTree* Tree,FName I
 	auto* Bounds=Tree->ConstructWidget<USizeBox>();Bounds->SetWidthOverride(380);
 	auto* Body=Tree->ConstructWidget<UVerticalBox>();Bounds->SetContent(Body);
 	auto* ContentSlot=Layers->AddChildToOverlay(Bounds);ContentSlot->SetPadding(FMargin(18,14));
-	auto* Name=Text(Tree,bOrder?FGameXXKHuntRules::OrderName(ItemId):FGameXXKGemRules::GetDisplayName(Type,GemQuality),24,FGameXXKInRunUiStyle::Ink());
+	auto* Name=Text(Tree,bOrder?FGameXXKHuntRules::OrderName(ItemId):FGameXXKGemRules::GetDisplayName(Type,GemQuality),24,FGameXXKInRunUiStyle::Ink(),EGameXXKFontRole::Title);
 	Name->SetWrapTextAt(380);GameXXKEquipmentQualityStyle::ApplyName(Name,Quality);Body->AddChildToVerticalBox(Name);
 	auto* Description=Text(Tree,bOrder?FGameXXKHuntRules::OrderDescription(ItemId):FGameXXKGemRules::GetDescription(Type,GemQuality),17,FGameXXKInRunUiStyle::Ink());
 	Description->SetWrapTextAt(380);Body->AddChildToVerticalBox(Description)->SetPadding(FMargin(0,12,0,0));
@@ -259,7 +259,7 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	if(const auto* Existing=Cache.Find(Frame);Existing && *Existing==Signature)return;
 	for(auto It=Cache.CreateIterator();It;++It)if(!It.Key().IsValid())It.RemoveCurrent();Cache.Add(Frame,Signature);
 	FSlateBrush Paper;Paper.SetResourceObject(LoadObject<UTexture2D>(nullptr,FGameXXKInRunUiStyle::SlotPath));Paper.DrawAs=ESlateBrushDrawType::Box;Paper.Margin=FMargin(.065);Frame->SetBrush(Paper);Frame->SetPadding(FMargin(0));Frame->SetVisibility(ESlateVisibility::HitTestInvisible);
-	const float NameWidth=TextWidth(Definition->DisplayName.ToString(),26)+12;
+	const float NameWidth=TextWidth(Definition->DisplayName.ToString(),26,EGameXXKFontRole::Title)+12;
 	// Do NOT use StaticEnum<>()->GetDisplayNameTextByValue(): UEnum::GetDisplayNameTextByIndex
 	// reads the DisplayName metadata inside #if WITH_EDITOR and otherwise falls through to the
 	// raw C++ entry name, so a packaged build would render "Common"/"Epic" here. The rule helper
@@ -282,7 +282,7 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	auto* ContentSlot=Layers->AddChildToOverlay(Box);ContentSlot->SetPadding(FMargin(16,12));ContentSlot->SetHorizontalAlignment(HAlign_Left);ContentSlot->SetVerticalAlignment(VAlign_Top);
 	auto* Contents=Tree->ConstructWidget<UVerticalBox>();Box->SetContent(Contents);
 	auto* Heading=Tree->ConstructWidget<UVerticalBox>();Contents->AddChildToVerticalBox(Heading);
-	auto* Name=Text(Tree,Definition->DisplayName,26,FGameXXKInRunUiStyle::Ink());Name->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(Name);GameXXKEquipmentQualityStyle::ApplyName(Name,Item->Quality);
+	auto* Name=Text(Tree,Definition->DisplayName,26,FGameXXKInRunUiStyle::Ink(),EGameXXKFontRole::Title);Name->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(Name);GameXXKEquipmentQualityStyle::ApplyName(Name,Item->Quality);
 	auto* MetaText=Text(Tree,GameXXKLocalization::Source(Meta),15,FGameXXKInRunUiStyle::MutedInk());MetaText->SetWrapTextAt(Width);Heading->AddChildToVerticalBox(MetaText)->SetPadding(FMargin(0,4,0,0));
 	auto* BodyBounds=Tree->ConstructWidget<USizeBox>();Contents->AddChildToVerticalBox(BodyBounds);
 	auto* Fit=Tree->ConstructWidget<UScaleBox>();Fit->SetStretch(EStretch::UserSpecified);Fit->SetUserSpecifiedScale(1);BodyBounds->SetContent(Fit);

@@ -98,10 +98,11 @@ namespace
 		return Style;
 	}
 
-	UTextBlock* MakeText(
+	UTextBlock* MakeRoleText(
 		UWidgetTree* WidgetTree,
 		const FText& Text,
 		const int32 FontSize,
+		const EGameXXKFontRole Role,
 		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
 		const FName Name = NAME_None)
 	{
@@ -114,9 +115,31 @@ namespace
 		TextBlock->SetColorAndOpacity(FSlateColor(Color));
 		TextBlock->SetAutoWrapText(true);
 		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize, true, FontSize >= 20);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(Role, FontSize);
 		TextBlock->SetFont(Font);
 		return TextBlock;
+	}
+
+	/** Body default: row headers, prices, statuses, hints and buttons. */
+	UTextBlock* MakeText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		const int32 FontSize,
+		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
+		const FName Name = NAME_None)
+	{
+		return MakeRoleText(WidgetTree, Text, FontSize, EGameXXKFontRole::Body, Color, Name);
+	}
+
+	/** Merchant panel heading and the offered card/relic name. */
+	UTextBlock* MakeTitleText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		const int32 FontSize,
+		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
+		const FName Name = NAME_None)
+	{
+		return MakeRoleText(WidgetTree, Text, FontSize, EGameXXKFontRole::Title, Color, Name);
 	}
 
 	void AddCanvasChild(
@@ -517,7 +540,7 @@ void UGameXXKRouteMerchantWidget::BuildProgrammaticLayout()
 	auto* Paper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("RouteMerchantPaper"));
 	Paper->SetBrush(FGameXXKInRunUiStyle::Paper({1736, 980})); Paper->SetBrushColor(FLinearColor::White);
 	Paper->SetVisibility(ESlateVisibility::HitTestInvisible); AddCanvasChild(RootCanvas, Paper, {92, 48}, {1736, 980}, 1);
-	auto* Title = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
+	auto* Title = MakeTitleText(WidgetTree, GameXXKLocalization::Source(TEXT("山路行商")), 44, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantTitle"));
 	AddCanvasChild(RootCanvas, Title, {163, 91}, {990, 76}, 2);
 	OrdinaryGoldText = MakeText(WidgetTree, FText::GetEmpty(), 29, FGameXXKInRunUiStyle::Ink(), TEXT("RouteMerchantOrdinaryGold"));
 	UImage* TravelMoneyIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RouteMerchantTravelMoneyIcon"));
@@ -667,7 +690,7 @@ USizeBox* UGameXXKRouteMerchantWidget::BuildOfferCell(
 		ChildSlot->SetPadding(bCard ? FMargin(8.0f, 14.0f, 8.0f, 0.0f) : FMargin(110.0f, 0.0f, 14.0f, 0.0f));
 	}
 	OfferTitleBars.Add(TitleBar);
-	UTextBlock* NameText = MakeText(
+	UTextBlock* NameText = MakeTitleText(
 		WidgetTree,
 		FText::GetEmpty(),
 		(bCard ? 22 : 20),

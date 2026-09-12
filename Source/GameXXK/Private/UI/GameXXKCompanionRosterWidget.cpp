@@ -284,7 +284,8 @@ namespace
 		const FText& Text,
 		const int32 FontSize = 16,
 		const FLinearColor& Color = FLinearColor(0.12f, 0.09f, 0.06f, 1.0f),
-		const FName WidgetName = NAME_None)
+		const FName WidgetName = NAME_None,
+		const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		if (!WidgetTree)
 		{
@@ -297,7 +298,7 @@ namespace
 		// Same convention as the hero backpack: no auto wrap by default so narrow
 		// boxes never stack Chinese characters into a vertical column.
 		TextBlock->SetAutoWrapText(false);
-		TextBlock->SetFont(FCoreStyle::GetDefaultFontStyle(TEXT("Regular"), FontSize));
+		TextBlock->SetFont(FGameXXKInRunUiStyle::Font(Role, FontSize));
 		return TextBlock;
 	}
 
@@ -1488,7 +1489,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("CompanionRosterFrameCanvas"));
 	AddCanvasChild(RootCanvas, FrameCanvas, FVector2D::ZeroVector, FVector2D(1920.0f, 1080.0f));
 
-	TitleText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "Title", "伙伴"), 28, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterTitle"));
+	TitleText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "Title", "伙伴"), 28, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterTitle"), EGameXXKFontRole::Title);
 	AddCanvasChild(FrameCanvas, TitleText, FVector2D(383.0f, 230.0f), FVector2D(84.0f, 42.0f));
 
 	// Five tabs at page 03/18 positions: 属性/装备/卡组 are functional;
@@ -1550,7 +1551,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	CenterCompanionPortraitImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("CompanionRosterCenterPortrait"));
 	CenterCompanionPortraitImage->SetBrush(MakeTextureBrush(*ResolveCompanionFullBodyResourcePath(EGameXXKCharacterRole::Blade), CompanionCenterPortraitSize));
 	AddCanvasChild(FrameCanvas, CenterCompanionPortraitImage, CompanionCenterPortraitPos, CompanionCenterPortraitSize);
-	CenterCompanionNameText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterCenterName"));
+	CenterCompanionNameText = MakeText(WidgetTree, FText::GetEmpty(), 20, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterCenterName"), EGameXXKFontRole::Title);
 	CenterCompanionNameText->SetJustification(ETextJustify::Center);
 	AddCanvasChild(FrameCanvas, CenterCompanionNameText, CompanionCenterNamePos, CompanionCenterNameSize);
 
@@ -1586,10 +1587,10 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		TooltipWidth->AddChild(TooltipBox);
 		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::TitleFont(28));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::BodyFont(19));
 		TooltipDetail->SetWrapTextAt(416);
 		TooltipDetail->SetLineHeightPercentage(0.80f);
 		TooltipDetail->SetApplyLineHeightToBottomLine(true);
@@ -1624,7 +1625,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 	AttributesBodyPanel->SetPadding(FMargin(24.0f, 20.0f));
 	UVerticalBox* AttributesBodyBox = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("CompanionRosterAttributesBodyBox"));
 	AttributesBodyPanel->SetContent(AttributesBodyBox);
-	ProfileTitleText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "NoCompanion", "尚未招募伙伴"), 21, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterProfileTitle"));
+	ProfileTitleText = MakeText(WidgetTree, NSLOCTEXT("GameXXKCompanionRoster", "NoCompanion", "尚未招募伙伴"), 21, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f), TEXT("CompanionRosterProfileTitle"), EGameXXKFontRole::Title);
 	AttributesBodyBox->AddChildToVerticalBox(ProfileTitleText);
 	ProfileDetailText = MakeText(WidgetTree, FText::GetEmpty(), 15, FLinearColor(0.12f, 0.09f, 0.06f, 1.0f), TEXT("CompanionRosterProfileDetail"));
 	if (UVerticalBoxSlot* DetailSlot = AttributesBodyBox->AddChildToVerticalBox(ProfileDetailText))
@@ -1726,10 +1727,10 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		TooltipWidth->AddChild(TooltipBox);
 		TooltipFrame->AddChild(TooltipWidth);
 		UTextBlock* TooltipName = MakeText(WidgetTree, FText::GetEmpty(), 18, FLinearColor(0.08f, 0.06f, 0.04f, 1.0f));
-		TooltipName->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+		TooltipName->SetFont(FGameXXKInRunUiStyle::TitleFont(28));
 		TooltipBox->AddChildToVerticalBox(TooltipName);
 		UTextBlock* TooltipDetail = MakeText(WidgetTree, FText::GetEmpty(), 13, FLinearColor(0.14f, 0.11f, 0.08f, 1.0f));
-		TooltipDetail->SetFont(FGameXXKInRunUiStyle::Font(19));
+		TooltipDetail->SetFont(FGameXXKInRunUiStyle::BodyFont(19));
 		TooltipDetail->SetWrapTextAt(416);
 		TooltipDetail->SetLineHeightPercentage(0.80f);
 		TooltipDetail->SetApplyLineHeightToBottomLine(true);
@@ -1743,7 +1744,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		for (int32 CompareIndex = 0; CompareIndex < 5; ++CompareIndex)
 		{
 			UTextBlock* CompareRow = MakeText(WidgetTree, FText::GetEmpty(), 11, FLinearColor::White);
-			CompareRow->SetFont(FGameXXKInRunUiStyle::Font(17, false, true));
+			CompareRow->SetFont(FGameXXKInRunUiStyle::BodyFont(17, true));
 			CompareRow->SetVisibility(ESlateVisibility::Collapsed);
 			TooltipBox->AddChildToVerticalBox(CompareRow);
 			CompareRows.Add(CompareRow);
@@ -1851,7 +1852,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		}
 
 		UTextBlock* CardLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CardLabel->SetFont(FGameXXKInRunUiStyle::Font(16, true));
+		CardLabel->SetFont(FGameXXKInRunUiStyle::TitleFont(16));
 		CardLabel->SetJustification(ETextJustify::Center);
 		GameXXKCardNameStyle::AttachFrame(WidgetTree, CardOverlay, CardLabel, PersonalCardSize);
 		if (UOverlaySlot* LabelSlot = CardOverlay->AddChildToOverlay(CardLabel))
@@ -1862,7 +1863,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		}
 
 		UTextBlock* CostQiLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostQiLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
+		CostQiLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(15));
 		CostQiLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostQiLabel))
 		{
@@ -1872,7 +1873,7 @@ void UGameXXKCompanionRosterWidget::BuildProgrammaticLayout()
 		}
 
 		UTextBlock* CostManaLabel = MakeText(WidgetTree, FText::GetEmpty(), 12, FLinearColor(0.10f, 0.07f, 0.04f, 1.0f));
-		CostManaLabel->SetFont(FGameXXKInRunUiStyle::Font(15, true));
+		CostManaLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(15));
 		CostManaLabel->SetJustification(ETextJustify::Left);
 		if (UOverlaySlot* CostSlot = CardOverlay->AddChildToOverlay(CostManaLabel))
 		{

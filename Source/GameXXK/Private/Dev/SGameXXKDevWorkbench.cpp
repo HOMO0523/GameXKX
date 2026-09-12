@@ -56,7 +56,10 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Scroller(TSharedRef<SWidget> Content)
 
 TSharedRef<SWidget> SGameXXKDevWorkbench::Text(const FString& Value,int32 Size,bool bDisplay,FLinearColor Color)
 {
-	const auto Font=FGameXXKInRunUiStyle::Font(Size,bDisplay);
+	// bDisplay already meant "display lettering" here: panel/section headings keep
+	// the brush face, every field, log and readout uses the readable body face.
+	const auto Font=FGameXXKInRunUiStyle::Font(
+		bDisplay ? EGameXXKFontRole::Title : EGameXXKFontRole::Body, Size);
 	if (Font.FontObject) Resources.AddUnique(const_cast<UObject*>(Font.FontObject.Get()));
 	return SNew(STextBlock).Text(GameXXKLocalization::Source(Value)).Font(Font)
 		.ColorAndOpacity(Color==FLinearColor::Black ? FGameXXKInRunUiStyle::Ink() : Color).AutoWrapText(true);
@@ -66,7 +69,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Button(const FString& Label,TFunction<
 	return SNew(SButton).ButtonStyle(bPrimary?&ActionStyle:&QuietStyle)
 		.HAlign(HAlign_Center).VAlign(VAlign_Center)
 		.OnClicked_Lambda([Action=MoveTemp(Action)](){Action();return FReply::Handled();})
-		[SNew(STextBlock).Text(GameXXKLocalization::Source(Label)).Font(FGameXXKInRunUiStyle::Font(16,true)).AutoWrapText(false)
+		[SNew(STextBlock).Text(GameXXKLocalization::Source(Label)).Font(FGameXXKInRunUiStyle::BodyFont(16)).AutoWrapText(false)
 			.ColorAndOpacity(bPrimary?FLinearColor(0.98f,0.94f,0.83f):FGameXXKInRunUiStyle::Ink())];
 }
 TSharedRef<SWidget> SGameXXKDevWorkbench::Field(const FString& Key,const FString& Label,const FString& Default,float Width)
@@ -76,7 +79,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Field(const FString& Key,const FString
 	auto W=SNew(SVerticalBox)
 		+SVerticalBox::Slot().AutoHeight().Padding(0,0,0,5)[Text(Label,13,false,FGameXXKInRunUiStyle::MutedInk())]
 		+SVerticalBox::Slot().AutoHeight()[SNew(SBox).WidthOverride(Width).HeightOverride(36)
-			[SAssignNew(Edit,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::Font(17)).Text(FText::FromString(Initial)).SelectAllTextWhenFocused(true)]];
+			[SAssignNew(Edit,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::BodyFont(17)).Text(FText::FromString(Initial)).SelectAllTextWhenFocused(true)]];
 	Fields.Add(Key,Edit);return W;
 }
 TSharedRef<SWidget> SGameXXKDevWorkbench::Choice(const FString& Key,const FString& Label,const TArray<TPair<FString,FString>>& Options,const FString& Default)
@@ -97,13 +100,13 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::Choice(const FString& Key,const FStrin
 		+SVerticalBox::Slot().AutoHeight()[SNew(SBox).HeightOverride(36)
 		[SNew(SComboBox<TSharedPtr<FString>>).ComboBoxStyle(&ComboStyle).ItemStyle(&ComboRowStyle).ScrollBarStyle(&ScrollStyle).MaxListHeight(540)
 		.OptionsSource(Values.Get()).InitiallySelectedItem(Selected)
-		.OnGenerateWidget_Lambda([this,Name,Values](TSharedPtr<FString> V){return SNew(SBox).MinDesiredWidth(230).Padding(FMargin(5,2))[SNew(STextBlock).Text(FText::FromString(Name(*V))).Font(FGameXXKInRunUiStyle::Font(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink()).AutoWrapText(false)];})
+		.OnGenerateWidget_Lambda([this,Name,Values](TSharedPtr<FString> V){return SNew(SBox).MinDesiredWidth(230).Padding(FMargin(5,2))[SNew(STextBlock).Text(FText::FromString(Name(*V))).Font(FGameXXKInRunUiStyle::BodyFont(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink()).AutoWrapText(false)];})
 		.OnSelectionChanged_Lambda([this,Key,Values](TSharedPtr<FString> V,ESelectInfo::Type How)
 		{
 			if(!V)return;Choices[Key]=*V;
 			if(Key==TEXT("character")&&How!=ESelectInfo::Direct){CharacterId=*V;Object A=Obj();A->SetStringField(TEXT("character"),CharacterId);A->SetBoolField(TEXT("compact"),true);InspectorState=Data(Tools.Get(),TEXT("inspect"),A);}
 		})
-		[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
+		[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
 		.Text_Lambda([this,Name,Key](){return FText::FromString(Name(Choices.FindRef(Key)));})]]];
 }
 FString SGameXXKDevWorkbench::Value(const FString& Key) const
@@ -164,7 +167,7 @@ void SGameXXKDevWorkbench::Construct(const FArguments& Args)
 		[SNew(SHorizontalBox)
 			+SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[Text(TEXT("试炼手札"),30,true)]
 			+SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16,0)[Text(TEXT("DEV"),15,false,FGameXXKInRunUiStyle::Vermilion())]
-			+SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Jade())
+			+SHorizontalBox::Slot().FillWidth(1).VAlign(VAlign_Center)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(14)).ColorAndOpacity(FGameXXKInRunUiStyle::Jade())
 				.Text_Lambda([this](){return FText::FromString(Tools.IsValid()?Tools->GetStatusText():FString());})]
 			+SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[Text(TEXT("F10 开关  ·  Esc 关闭"),13,false,FGameXXKInRunUiStyle::MutedInk())]]
 		+SVerticalBox::Slot().AutoHeight().Padding(0,0,0,15)[SNew(SBox).HeightOverride(1)[SNew(SBorder).BorderImage(&DividerBrush)]]
@@ -176,7 +179,7 @@ void SGameXXKDevWorkbench::Construct(const FArguments& Args)
 				[SNew(SBorder).BorderImage(&ShadeBrush).Padding(16)[SAssignNew(Inspector,SVerticalBox)]]]]
 		+SVerticalBox::Slot().AutoHeight().Padding(0,15,0,0)
 		[SNew(SBorder).BorderImage(&ShadeBrush).Padding(FMargin(12,9))
-		[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(14)).ColorAndOpacity_Lambda([this](){return Tools.IsValid()&&Tools->WasLastCommandSuccessful()?FGameXXKInRunUiStyle::Jade():FGameXXKInRunUiStyle::Vermilion();}).AutoWrapText(true)
+		[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(14)).ColorAndOpacity_Lambda([this](){return Tools.IsValid()&&Tools->WasLastCommandSuccessful()?FGameXXKInRunUiStyle::Jade():FGameXXKInRunUiStyle::Vermilion();}).AutoWrapText(true)
 			.Text_Lambda([this](){return GameXXKLocalization::Source(Tools.IsValid()?Tools->GetLastMessage():FString());})]]]];
 	Rebuild();RebuildInspector();
 }
@@ -214,9 +217,9 @@ void SGameXXKDevWorkbench::RebuildInspector()
 	{ CharacterId=Characters[0].Key;Choices.Add(TEXT("character"),CharacterId);A->SetStringField(TEXT("character"),CharacterId);D=Data(Tools.Get(),TEXT("inspect"),A);InspectorState=D; }
 	Inspector->AddSlot().AutoHeight().Padding(0,0,0,14)[Choice(TEXT("character"),TEXT("当前操作角色"),Characters,CharacterId)];
 	Inspector->AddSlot().AutoHeight().Padding(0,0,0,6)[Text(TEXT("角色面板"),19,true)];
-	Inspector->AddSlot().AutoHeight().Padding(0,0,0,12)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(16,false,true)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
+	Inspector->AddSlot().AutoHeight().Padding(0,0,0,12)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(16, true)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
 		.Text_Lambda([this](){const Object* O=nullptr;if(!InspectorState||!InspectorState->TryGetObjectField(TEXT("final"),O))return FText::GetEmpty();return FText::FromString(FString::Printf(TEXT("血 %d   内 %d\n攻 %d  防 %d  速 %d"),Num(*O,TEXT("health")),Num(*O,TEXT("mana")),Num(*O,TEXT("attack")),Num(*O,TEXT("defense")),Num(*O,TEXT("speed"))));})];
-	Inspector->AddSlot().AutoHeight().Padding(0,0,0,13)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(13)).ColorAndOpacity(FGameXXKInRunUiStyle::Jade()).AutoWrapText(true)
+	Inspector->AddSlot().AutoHeight().Padding(0,0,0,13)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(13)).ColorAndOpacity(FGameXXKInRunUiStyle::Jade()).AutoWrapText(true)
 		.Text_Lambda([this](){const Object* O=nullptr;if(!InspectorState||!InspectorState->TryGetObjectField(TEXT("live"),O)||Str(*O,TEXT("context")).IsEmpty())return FText::GetEmpty();return FText::FromString(Str(*O,TEXT("context"))+FString::Printf(TEXT("\n现有气血 %d  ·  护甲 %d"),Num(*O,TEXT("health")),Num(*O,TEXT("armor"))));})];
 	Inspector->AddSlot().AutoHeight().Padding(0,0,0,8)[Text(TEXT("来源拆分"),16,true)];
 	const TCHAR* Keys[]={TEXT("bare"),TEXT("equipment"),TEXT("gems"),TEXT("modifiers")};
@@ -228,7 +231,7 @@ void SGameXXKDevWorkbench::RebuildInspector()
 		StatsList->AddSlot().AutoHeight().Padding(0,0,8,10)
 		[SNew(SVerticalBox)
 			+SVerticalBox::Slot().AutoHeight()[Text(Labels[I],12,false,FGameXXKInRunUiStyle::MutedInk())]
-			+SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::Font(13)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
+			+SVerticalBox::Slot().AutoHeight().Padding(0,3,0,0)[SNew(STextBlock).Font(FGameXXKInRunUiStyle::BodyFont(13)).ColorAndOpacity(FGameXXKInRunUiStyle::Ink())
 			.Text_Lambda([this,Key=FString(Keys[I])](){const Object* O=nullptr;if(!InspectorState||!InspectorState->TryGetObjectField(Key,O))return FText::GetEmpty();return FText::FromString(FString::Printf(TEXT("血 %d   内 %d\n攻 %d   防 %d   速 %d"),Num(*O,TEXT("health")),Num(*O,TEXT("mana")),Num(*O,TEXT("attack")),Num(*O,TEXT("defense")),Num(*O,TEXT("speed"))));})]];
 	}
 	Inspector->AddSlot().FillHeight(1).Padding(0,0,0,10)[Scroller(StatsList)];
@@ -302,7 +305,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::BuildItems()
 		Categories->AddSlot().FillWidth(1).Padding(0,0,8,0)[Button(C.Value,[this,Id=C.Key](){Choices[TEXT("item_kind")]=Id;ActiveItem.Empty();Rebuild();},Choices[TEXT("item_kind")]==C.Key)];
 	Content->AddSlot().AutoHeight().Padding(0,0,0,12)[Categories];
 	Content->AddSlot().AutoHeight().Padding(0,0,0,15)
-	[SAssignNew(Search,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::Font(16)).HintText(FText::FromString(TEXT("输入中文名称检索 · 回车搜索")))
+	[SAssignNew(Search,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::BodyFont(16)).HintText(FText::FromString(TEXT("输入中文名称检索 · 回车搜索")))
 		.Text(FText::FromString(SearchText)).OnTextCommitted_Lambda([this](const FText& V,ETextCommit::Type How){if(How==ETextCommit::OnEnter){SearchText=V.ToString();Rebuild();}})];
 	Content->AddSlot().FillHeight(1)
 	[SNew(SHorizontalBox)
@@ -421,7 +424,7 @@ TSharedRef<SWidget> SGameXXKDevWorkbench::BuildRecords()
 	if(Choices.FindRef(TEXT("advanced"))==TEXT("open"))
 	{
 	Content->AddSlot().AutoHeight().Padding(0,0,0,9)
-	[SAssignNew(CommandInput,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::Font(13)).Text(FText::FromString(TEXT("{\"command\":\"help\"}")))];
+	[SAssignNew(CommandInput,SEditableTextBox).Style(&EditStyle).Font(FGameXXKInRunUiStyle::BodyFont(13)).Text(FText::FromString(TEXT("{\"command\":\"help\"}")))];
 	Content->AddSlot().AutoHeight()
 	[SNew(SHorizontalBox)
 		+SHorizontalBox::Slot().FillWidth(1).Padding(0,0,10,0)[Button(TEXT("执行指令"),[this](){if(Tools.IsValid()&&CommandInput){LastResponse=Tools->ExecuteJson(CommandInput->GetText().ToString());RebuildInspector();}})]

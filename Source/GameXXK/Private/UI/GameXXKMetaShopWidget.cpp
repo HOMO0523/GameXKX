@@ -201,7 +201,7 @@ namespace
 		UBorder* Frame = WidgetTree->ConstructWidget<UBorder>();
 		Frame->SetBrush(TextureBrush(ItemSlotTexturePath)); Frame->SetPadding(FMargin(16,12));
 		UTextBlock* Block = MakeText(WidgetTree, NAME_None, Text, 19);
-		Block->SetFont(FGameXXKInRunUiStyle::Font(19)); Block->SetJustification(ETextJustify::Left);
+		Block->SetFont(FGameXXKInRunUiStyle::BodyFont(19)); Block->SetJustification(ETextJustify::Left);
 		Block->SetAutoWrapText(true); Block->SetWrapTextAt(416);
 		Block->SetLineHeightPercentage(0.8f); Block->SetApplyLineHeightToBottomLine(true);
 		Frame->SetContent(Block); return Frame;

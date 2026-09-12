@@ -16,12 +16,12 @@ float GameXXKCardTooltipPresentation::CompactWidth(const FString& Title, const F
 	if (FSlateApplication::IsInitialized())
 	{
 		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-		Width = Measure->Measure(Title, FGameXXKInRunUiStyle::Font(28, true)).X;
+		Width = Measure->Measure(Title, FGameXXKInRunUiStyle::TitleFont(28)).X;
 		TArray<FString> Lines;
 		Text.ParseIntoArrayLines(Lines, false);
 		for (const FString& Line : Lines)
 		{
-			Width = FMath::Max(Width, static_cast<float>(Measure->Measure(Line, FGameXXKInRunUiStyle::Font(20, true)).X));
+			Width = FMath::Max(Width, static_cast<float>(Measure->Measure(Line, FGameXXKInRunUiStyle::BodyFont(20)).X));
 		}
 	}
 	// PopulateBody reserves another 12px for composite-font overhang.
@@ -48,7 +48,7 @@ UWidget* GameXXKCardTooltipPresentation::BuildCompactTooltip(UWidgetTree* Tree, 
 	Size->SetContent(Contents);
 	UTextBlock* TitleText = Tree->ConstructWidget<UTextBlock>();
 	TitleText->SetText(Title);
-	FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(28, true);
+	FSlateFontInfo Font = FGameXXKInRunUiStyle::TitleFont(28);
 	Font.OutlineSettings.OutlineSize = 1;
 	Font.OutlineSettings.OutlineColor = FLinearColor(0.08f,0.06f,0.04f,1);
 	TitleText->SetFont(Font);

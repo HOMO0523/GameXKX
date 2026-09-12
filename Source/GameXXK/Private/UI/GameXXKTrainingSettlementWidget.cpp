@@ -23,10 +23,10 @@ namespace
 	{
 		if (auto* Slot = Canvas->AddChildToCanvas(Widget)) { Slot->SetPosition(Position); Slot->SetSize(Size); Slot->SetZOrder(Z); }
 	}
-	UTextBlock* Text(UWidgetTree* Tree, const FName Name, const FString& Value, int32 Size, bool Display = false, bool Bold = false)
+	UTextBlock* Text(UWidgetTree* Tree, const FName Name, const FString& Value, int32 Size, EGameXXKFontRole Role = EGameXXKFontRole::Body, bool Bold = false)
 	{
 		auto* Block = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-		Block->SetText(GameXXKLocalization::Source(Value)); Block->SetFont(FGameXXKInRunUiStyle::Font(Size, true, Bold));
+		Block->SetText(GameXXKLocalization::Source(Value)); Block->SetFont(FGameXXKInRunUiStyle::Font(Role, Size, Bold));
 		Block->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		Block->SetVisibility(ESlateVisibility::HitTestInvisible); Block->SetAutoWrapText(true);
 		return Block;
@@ -62,9 +62,10 @@ void UGameXXKTrainingSettlementWidget::EnsureLayout()
 	auto* Paper = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), TEXT("TrainingSettlementPaper"));
 	Paper->SetBrush(FGameXXKInRunUiStyle::Paper(FVector2D(1472, 812))); Paper->SetBrushColor(FLinearColor::White);
 	Paper->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, Paper, {64, 42}, {1472, 812});
-	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementTitle"), TEXT("历练告捷"), 44, true), {144, 89}, {870, 72});
+	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementTitle"), TEXT("历练告捷"), 44, EGameXXKFontRole::Title), {144, 89}, {870, 72});
 	StageText = Text(WidgetTree, TEXT("TrainingSettlementStage"), TEXT(""), 22); Place(Page, StageText, {148, 166}, {960, 40});
-	FirstClearText = Text(WidgetTree, TEXT("TrainingSettlementFirstClear"), TEXT(""), 28, true);
+	// "首次通关 / 再战告捷" is a status badge, not a heading: body face.
+	FirstClearText = Text(WidgetTree, TEXT("TrainingSettlementFirstClear"), TEXT(""), 28, EGameXXKFontRole::Body);
 	FirstClearText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Vermilion())); Place(Page, FirstClearText, {1248, 110}, {190, 56});
 	for (int32 I = 0; I < 3; ++I)
 	{
@@ -77,19 +78,19 @@ void UGameXXKTrainingSettlementWidget::EnsureLayout()
 	Coin->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot")));
 	Coin->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, Coin, {169, 284}, {65, 62});
 	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementGoldCaption"), TEXT("通关所得金币"), 18), {255, 258}, {287, 30});
-	GoldText = Text(WidgetTree, TEXT("TrainingSettlementGold"), TEXT(""), 32, false, true); Place(Page, GoldText, {255, 299}, {287, 47});
+	GoldText = Text(WidgetTree, TEXT("TrainingSettlementGold"), TEXT(""), 32, EGameXXKFontRole::Body, true); Place(Page, GoldText, {255, 299}, {287, 47});
 	GoldDetail = Text(WidgetTree, TEXT("TrainingSettlementGoldDetail"), TEXT(""), 15); Place(Page, GoldDetail, {166, 357}, {373, 25});
 	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementExperienceCaption"), TEXT("每位出战成员经验"), 18), {619, 259}, {355, 30});
-	ExperienceText = Text(WidgetTree, TEXT("TrainingSettlementExperience"), TEXT(""), 32, false, true); Place(Page, ExperienceText, {619, 300}, {354, 48});
+	ExperienceText = Text(WidgetTree, TEXT("TrainingSettlementExperience"), TEXT(""), 32, EGameXXKFontRole::Body, true); Place(Page, ExperienceText, {619, 300}, {354, 48});
 	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementExperienceHint"), TEXT("成员的实际成长见下方"), 16), {619, 354}, {355, 28});
 	ChestImage = WidgetTree->ConstructWidget<UImage>(); ChestImage->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, ChestImage, {1064, 272}, {86, 86});
 	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementChestCaption"), TEXT("通关宝箱"), 18), {1170, 258}, {272, 30});
-	ChestText = Text(WidgetTree, TEXT("TrainingSettlementChest"), TEXT(""), 25, false, true); Place(Page, ChestText, {1170, 304}, {272, 71});
-	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementMembersTitle"), TEXT("同行成长"), 27, true), {145, 418}, {450, 43});
+	ChestText = Text(WidgetTree, TEXT("TrainingSettlementChest"), TEXT(""), 25, EGameXXKFontRole::Body, true); Place(Page, ChestText, {1170, 304}, {272, 71});
+	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementMembersTitle"), TEXT("同行成长"), 27, EGameXXKFontRole::Title), {145, 418}, {450, 43});
 	for (int32 I = 0; I < 3; ++I)
 	{
 		const float X = 145 + I * 448;
-		auto* Name = Text(WidgetTree, *FString::Printf(TEXT("TrainingSettlementMember%d"), I), TEXT(""), 23, false, true);
+		auto* Name = Text(WidgetTree, *FString::Printf(TEXT("TrainingSettlementMember%d"), I), TEXT(""), 23, EGameXXKFontRole::Body, true);
 		auto* Level = Text(WidgetTree, NAME_None, TEXT(""), 20);
 		auto* Xp = Text(WidgetTree, NAME_None, TEXT(""), 18);
 		MemberNames.Add(Name); MemberLevels.Add(Level); MemberExperience.Add(Xp);
@@ -97,12 +98,12 @@ void UGameXXKTrainingSettlementWidget::EnsureLayout()
 		auto* Bar = WidgetTree->ConstructWidget<UProgressBar>(); Bar->SetFillColorAndOpacity(FGameXXKInRunUiStyle::Jade());
 		Bar->SetVisibility(ESlateVisibility::HitTestInvisible); MemberBars.Add(Bar); Place(Page, Bar, {X, 568}, {400, 8});
 	}
-	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementStatsTitle"), TEXT("Boss战表现"), 26, true), {145, 610}, {450, 42});
+	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementStatsTitle"), TEXT("Boss战表现"), 26, EGameXXKFontRole::Title), {145, 610}, {450, 42});
 	StatsText = Text(WidgetTree, TEXT("TrainingSettlementStats"), TEXT(""), 19); Place(Page, StatsText, {148, 663}, {1284, 71});
 	UnlockText = Text(WidgetTree, TEXT("TrainingSettlementUnlock"), TEXT(""), 20); UnlockText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Jade())); Place(Page, UnlockText, {148, 759}, {850, 60});
 	ConfirmButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("TrainingSettlementConfirm"));
 	ConfirmButton->SetStyle(FGameXXKInRunUiStyle::Action({306, 65}));
-	auto* Label = Text(WidgetTree, NAME_None, TEXT("确认 · 返回挂机"), 24, false, true);
+	auto* Label = Text(WidgetTree, NAME_None, TEXT("确认 · 返回挂机"), 24, EGameXXKFontRole::Body, true);
 	Label->SetAutoWrapText(false); Label->SetJustification(ETextJustify::Center); Label->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	ConfirmButton->SetContent(Label); ConfirmButton->OnClicked.AddDynamic(this, &UGameXXKTrainingSettlementWidget::HandleConfirm);
 	Place(Page, ConfirmButton, {1131, 747}, {306, 65});

@@ -161,6 +161,23 @@ def main():
                ['四式 / Spell task · Enemy',300,300,12,0,'实际1回合；完成四牌任务与重放'],
                ['其余教学 / Other courses · Enemy',300,300,12,0,'29节目标/胜利与最大HP检查全部通过']],
               '仅角色教学演示；所有角色最大HP300，敌人不超过300。见2026-09-11-academy-short-demo.md。')
+    role_table=ROOT/'docs/design/2026-09-12-body-font-rollout/font-roles.tsv'
+    role_rows=[]
+    for raw in role_table.read_text(encoding='utf-8').splitlines():
+        line=raw.rstrip()
+        if not line.strip() or line.lstrip().startswith('#'):continue
+        parts=[p.strip() for p in line.split('\t')]
+        if len(parts)<3:raise SystemExit('bad role row: '+repr(raw))
+        role_rows.append([parts[0],int(parts[1]),parts[2],parts[3] if len(parts)>3 else ''])
+    role_counts={kind:sum(1 for r in role_rows if r[2]==kind) for kind in ('Title','Body','Manual')}
+    check=RULES['rules'][1][2]
+    sheet(wb,'14_文本排版角色',['调用文件','原行号','角色','理由'],[64,10,12,86],role_rows,
+          'L02双字体：标题保留江湖古风体，其余文本用荆南圆体（KeinannMaruPOP，2026-09-12替换芝士奶盖乌龙宋）。'
+          f"共{len(role_rows)}处调用点：Title {role_counts['Title']}、Body {role_counts['Body']}、"
+          f"Manual {role_counts['Manual']}（由带角色参数的helper分派）。"
+          'Manual行在源码中经TitleFont/BodyFont或Font(Role,…)分派，静态守卫见 '
+          'scripts/gamexxk_font_roles_check.py。主界面大按钮（导航盘、教程/任务、挑战/游历）按用户要求归Title。'
+          '规则原文：'+check)
     path=OUT/'GameXXK_本地化总表_2026-09-10.xlsx';counts=save_verified(wb,path)
     assert counts['01_全部文本']==len(ENTRIES)+4
     master=sync_design_names()

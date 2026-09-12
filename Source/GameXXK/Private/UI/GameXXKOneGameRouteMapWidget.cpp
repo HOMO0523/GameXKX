@@ -425,9 +425,9 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteInformation()
 		if (UOverlaySlot* PresentationSlot = Cast<UOverlaySlot>(RouteSummaryBorder->Slot))
 			PresentationSlot->SetPadding(FMargin(112.0f * Scale, 40.0f * Scale, 0.0f, 0.0f));
 	}
-	if (RouteStageSummaryText) RouteStageSummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(28.0f * Scale), true));
-	if (RouteMoneySummaryText) RouteMoneySummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(22.0f * Scale), false, true));
-	if (RouteProgressSummaryText) RouteProgressSummaryText->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(18.0f * Scale)));
+	if (RouteStageSummaryText) RouteStageSummaryText->SetFont(FGameXXKInRunUiStyle::TitleFont(FMath::RoundToInt(28.0f * Scale)));
+	if (RouteMoneySummaryText) RouteMoneySummaryText->SetFont(FGameXXKInRunUiStyle::BodyFont(FMath::RoundToInt(22.0f * Scale), true));
+	if (RouteProgressSummaryText) RouteProgressSummaryText->SetFont(FGameXXKInRunUiStyle::BodyFont(FMath::RoundToInt(18.0f * Scale)));
 	if (RouteLegendContainer)
 	{
 		RouteLegendContainer->ClearWidthOverride();
@@ -444,14 +444,14 @@ void UGameXXKOneGameRouteMapWidget::RefreshRouteInformation()
 		RouteLegendRows[Index]->ClearHeightOverride();
 		RouteLegendRows[Index]->SetMinDesiredHeight(44.0f * Scale);
 		RouteLegendIcons[Index]->SetDesiredSizeOverride(FVector2D(38.0f, 38.0f) * Scale);
-		RouteLegendNames[Index]->SetFont(FGameXXKInRunUiStyle::Font(FMath::Max(16, FMath::RoundToInt(21.0f * Scale)), true));
+		RouteLegendNames[Index]->SetFont(FGameXXKInRunUiStyle::BodyFont(FMath::Max(16, FMath::RoundToInt(21.0f * Scale))));
 	}
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
 	const FGameXXKRuntimeState* State = Subsystem ? &Subsystem->GetRuntimeState() : nullptr;
 	const bool bSessionActive = State && !bUsingTransientRouteProjection && State->bDungeonActive && State->bHasGeneratedRouteMap;
 	if (!bSessionActive) bHasPresentedRouteIdentity = false;
 	if (!RouteEntryTitle) return;
-	RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(64.0f * Scale), true));
+	RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::TitleFont(FMath::RoundToInt(64.0f * Scale)));
 	const bool bMapVisible = bSessionActive && State->Screen == EGameXXKScreen::DungeonMap;
 	const uint32 Identity = State ? HashCombine(GetRouteSelectionIdentity(), GetTypeHash(State->Training.ActiveChallengeStageId)) : 0;
 	if (bMapVisible && (!bHasPresentedRouteIdentity || PresentedRouteIdentity != Identity))
@@ -1868,19 +1868,21 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		RouteSummaryStack->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 		RouteSummaryBorder->SetContent(RouteSummaryStack);
 
-		auto AddSummaryLine = [this](const FName Name, TObjectPtr<UTextBlock>& OutText)
+		auto AddSummaryLine = [this](const FName Name, TObjectPtr<UTextBlock>& OutText, const EGameXXKFontRole Role)
 		{
 			OutText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 			OutText->SetVisibility(ESlateVisibility::HitTestInvisible);
 			OutText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
-			OutText->SetFont(FGameXXKInRunUiStyle::Font(20));
+			OutText->SetFont(FGameXXKInRunUiStyle::Font(Role, 20));
 			if (UVerticalBoxSlot* LineSlot = RouteSummaryStack->AddChildToVerticalBox(OutText))
 			{
 				LineSlot->SetPadding(FMargin(0.0f, 2.0f));
 			}
 		};
-		AddSummaryLine(TEXT("GameXXKRouteStageSummary"), RouteStageSummaryText);
-		AddSummaryLine(TEXT("GameXXKRouteMoneySummary"), RouteMoneySummaryText);
+		// The stage line carries the stage name, so it follows the title face; money
+		// and progress are numeric readouts on the body face.
+		AddSummaryLine(TEXT("GameXXKRouteStageSummary"), RouteStageSummaryText, EGameXXKFontRole::Title);
+		AddSummaryLine(TEXT("GameXXKRouteMoneySummary"), RouteMoneySummaryText, EGameXXKFontRole::Body);
 		RouteMoneySummaryText->RemoveFromParent();
 		UHorizontalBox* MoneyLine = WidgetTree->ConstructWidget<UHorizontalBox>();
 		UImage* MoneyIcon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("RoutePhysicalMoneyIcon"));
@@ -1890,7 +1892,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		MoneyLine->AddChildToHorizontalBox(MoneyIcon)->SetPadding(FMargin(0.0f, 0.0f, 6.0f, 0.0f));
 		MoneyLine->AddChildToHorizontalBox(RouteMoneySummaryText)->SetVerticalAlignment(VAlign_Center);
 		RouteSummaryStack->AddChildToVerticalBox(MoneyLine)->SetPadding(FMargin(0.0f, 2.0f));
-		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText);
+		AddSummaryLine(TEXT("GameXXKRouteProgressSummary"), RouteProgressSummaryText, EGameXXKFontRole::Body);
 		UpdateRouteSummary();
 	}
 
@@ -1914,7 +1916,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 		UTextBlock* Heading = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RouteLegendHeading"));
 		Heading->SetText(GameXXKLocalization::Text(TEXT("Route.Legend.Title")));
 		Heading->SetToolTipText(GameXXKLocalization::Text(TEXT("Route.Legend.States")));
-		Heading->SetFont(FGameXXKInRunUiStyle::Font(26, true));
+		Heading->SetFont(FGameXXKInRunUiStyle::TitleFont(26));
 		Heading->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		LegendStack->AddChildToVerticalBox(Heading)->SetPadding(FMargin(0, 0, 0, 8));
 		for (int32 Index = 0; Index < UE_ARRAY_COUNT(RouteLegendDefinitions); ++Index)
@@ -1942,7 +1944,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 			WordSlot->SetVerticalAlignment(VAlign_Center);
 			UTextBlock* Name = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *FString::Printf(TEXT("RouteLegendName%d"), Index));
 			Name->SetText(GameXXKLocalization::Source(Definition.Name));
-			Name->SetFont(FGameXXKInRunUiStyle::Font(21, true));
+			Name->SetFont(FGameXXKInRunUiStyle::BodyFont(21));
 			Name->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 			Words->AddChildToVerticalBox(Name);
 			RouteLegendRows.Add(RowSize);
@@ -1953,7 +1955,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	if (RootOverlay && !RouteEntryTitle)
 	{
 		RouteEntryTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("RouteEntryTitle"));
-		RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::Font(64, true));
+		RouteEntryTitle->SetFont(FGameXXKInRunUiStyle::TitleFont(64));
 		RouteEntryTitle->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		RouteEntryTitle->SetJustification(ETextJustify::Center);
 		RouteEntryTitle->SetVisibility(ESlateVisibility::Collapsed);
@@ -1998,7 +2000,7 @@ void UGameXXKOneGameRouteMapWidget::BuildProgrammaticLayout()
 	{
 		MainStoryTreeButton=WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),TEXT("MainStoryTreeButton"));
 		MainStoryTreeButton->SetStyle(FGameXXKInRunUiStyle::Action(FVector2D(170,52),true));
-		auto* Label=WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(GameXXKLocalization::Source(TEXT("任务树  Q"))); Label->SetFont(FGameXXKInRunUiStyle::Font(22,false,true));
+		auto* Label=WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(GameXXKLocalization::Source(TEXT("任务树  Q"))); Label->SetFont(FGameXXKInRunUiStyle::BodyFont(22, true));
 		Label->SetColorAndOpacity(FSlateColor(FLinearColor(.96f,.91f,.79f,1))); Label->SetVisibility(ESlateVisibility::HitTestInvisible);
 		MainStoryTreeButton->SetContent(Label); MainStoryTreeButton->OnClicked.AddDynamic(this,&UGameXXKOneGameRouteMapWidget::HandleMainStoryTreeClicked);
 		if(auto* StoryButtonSlot=RootOverlay->AddChildToOverlay(MainStoryTreeButton)) { StoryButtonSlot->SetHorizontalAlignment(HAlign_Right); StoryButtonSlot->SetVerticalAlignment(VAlign_Top); StoryButtonSlot->SetPadding(FMargin(0,36,160,0)); }

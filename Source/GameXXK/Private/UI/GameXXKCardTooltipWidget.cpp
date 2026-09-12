@@ -343,7 +343,7 @@ void UGameXXKCardTooltipWidget::BuildProgrammaticLayout()
 		TEXT("CardTooltipTitle"));
 	TitleText->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
 	TitleText->SetJustification(ETextJustify::Left);
-	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28,true);
+	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::TitleFont(28);
 	TitleFont.OutlineSettings.OutlineSize = 1;
 	TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 	TitleText->SetFont(TitleFont);

@@ -33,10 +33,10 @@ namespace
 	{
 		if (UCanvasPanelSlot* Slot = Canvas->AddChildToCanvas(Widget)) { Slot->SetPosition(Position); Slot->SetSize(Size); }
 	}
-	UTextBlock* Label(UWidgetTree* Tree, const FText& Text, int32 Size, bool Bold = false)
+	UTextBlock* Label(UWidgetTree* Tree, const FText& Text, int32 Size, bool Bold = false, EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		auto* Result = Tree->ConstructWidget<UTextBlock>();
-		Result->SetText(GameXXKLocalization::Localize(Text)); Result->SetFont(FGameXXKInRunUiStyle::Font(Size, true, Bold));
+		Result->SetText(GameXXKLocalization::Localize(Text)); Result->SetFont(FGameXXKInRunUiStyle::Font(Role, Size, Bold));
 		Result->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 		Result->SetAutoWrapText(true); Result->SetVisibility(ESlateVisibility::HitTestInvisible);
 		return Result;
@@ -129,7 +129,7 @@ void UGameXXKMainStoryGraphWidget::BuildGraph()
 		Art->SetVisibility(ESlateVisibility::HitTestInvisible);Art->SetRenderOpacity(Status==EGameXXKTaskState::Locked?.42f:1.f);
 		Place(Card,Art,FVector2D(4,4),FVector2D(246,82));
 		const bool bEnglish=GameXXKLocalization::IsEnglish();
-		auto* Title=Label(WidgetTree,GameXXKLocalization::Compact(N->Title),FMath::RoundToInt((bEnglish?17:21)*FMath::Min(TextScale,1.15f)),true);
+		auto* Title=Label(WidgetTree,GameXXKLocalization::Compact(N->Title),FMath::RoundToInt((bEnglish?17:21)*FMath::Min(TextScale,1.15f)),true,EGameXXKFontRole::Title);
 		Title->SetAutoWrapText(false);Title->SetJustification(ETextJustify::Center);
 		if(bEnglish)
 		{
@@ -241,12 +241,12 @@ void UGameXXKMainStoryPanelWidget::OnStoryChanged()
 		}));
 	}
 }
-void UGameXXKMainStoryPanelWidget::AddText(const FText& Text, FVector2D Position, FVector2D Size, int32 FontSize, bool Bold, FLinearColor Color)
+void UGameXXKMainStoryPanelWidget::AddText(const FText& Text, FVector2D Position, FVector2D Size, int32 FontSize, bool Bold, EGameXXKFontRole Role, FLinearColor Color)
 {
 	int32 ActualFont=FMath::RoundToInt(FontSize*TextScale);
 	const FText Localized=GameXXKLocalization::Localize(Text);
 	if(Size.Y<=65 && !Localized.IsEmpty())ActualFont=FMath::Min(ActualFont,FMath::Max(12,FMath::FloorToInt(Size.X*.72f/Localized.ToString().Len())));
-	auto* TextWidget = Label(WidgetTree, Text, ActualFont, Bold);
+	auto* TextWidget = Label(WidgetTree, Text, ActualFont, Bold, Role);
 	if(Size.Y<=65)TextWidget->SetAutoWrapText(false);
 	if (Color.A >= 0) TextWidget->SetColorAndOpacity(FSlateColor(Color));
 	Place(Canvas, TextWidget, Position, Size);
@@ -287,19 +287,19 @@ void UGameXXKMainStoryPanelWidget::BuildHeader(const FText& Title)
 		FString Location,Subtitle;
 		if(GameXXKLocalization::Localize(Title).ToString().Split(TEXT(" · "),&Location,&Subtitle))
 		{
-			auto* Name=Label(WidgetTree,FText::FromString(Location),22,true);Name->SetAutoWrapText(false);
+			auto* Name=Label(WidgetTree,FText::FromString(Location),22,true,EGameXXKFontRole::Title);Name->SetAutoWrapText(false);
 			auto* Sub=Label(WidgetTree,FText::FromString(Subtitle),14);Sub->SetAutoWrapText(false);
 			Place(Canvas,Name,FVector2D(28,8),FVector2D(520,32));
 			Place(Canvas,Sub,FVector2D(28,41),FVector2D(520,20));
 		}
 		else
 		{
-			auto* Heading=Label(WidgetTree,Title,20,true);Heading->SetAutoWrapText(false);
+			auto* Heading=Label(WidgetTree,Title,20,true,EGameXXKFontRole::Title);Heading->SetAutoWrapText(false);
 			auto* Fit=WidgetTree->ConstructWidget<UScaleBox>();Fit->SetStretch(EStretch::ScaleToFit);Fit->SetStretchDirection(EStretchDirection::DownOnly);Fit->SetContent(Heading);
 			Place(Canvas,Fit,FVector2D(28,12),FVector2D(520,48));
 		}
 	}
-	else AddText(Title,FVector2D(28,12),FVector2D(520,48),28,true);
+	else AddText(Title,FVector2D(28,12),FVector2D(520,48),28,true,EGameXXKFontRole::Title);
 	auto* Close=AddAction(TEXT("StoryPanelClose"),FText::GetEmpty(),0,FVector2D(871,8),FVector2D(54,54),false);
 	FSlateBrush Empty; Empty.DrawAs=ESlateBrushDrawType::NoDrawType;
 	FButtonStyle CloseStyle; FGameXXKSfx::SetButtonSound(CloseStyle); CloseStyle.SetNormal(Empty); CloseStyle.SetHovered(Empty); CloseStyle.SetPressed(Empty);
@@ -350,7 +350,7 @@ void UGameXXKMainStoryPanelWidget::BuildTree()
 	FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(TreeScroll,7);TreeScroll->SetScrollbarThickness(FVector2D(7,7));
 	auto* Graph = WidgetTree->ConstructWidget<UGameXXKMainStoryGraphWidget>(); Graph->SetContext(this,Story,ChapterId,TextScale);
 	TreeScroll->AddChild(Graph); Place(Canvas,TreeScroll,FVector2D(24,90),FVector2D(897,410)); TreeScroll->SetScrollOffset(TreeScrollOffset);
-	AddText(FText::FromString(TEXT("向右浏览 · 点选节点")),FVector2D(32,504),FVector2D(480,23),14,false,FGameXXKInRunUiStyle::MutedInk());
+	AddText(FText::FromString(TEXT("向右浏览 · 点选节点")),FVector2D(32,504),FVector2D(480,23),14,false,EGameXXKFontRole::Body,FGameXXKInRunUiStyle::MutedInk());
 }
 FText UGameXXKMainStoryPanelWidget::RewardText(FName NodeId) const
 {
@@ -383,7 +383,7 @@ void UGameXXKMainStoryPanelWidget::BuildDetail()
 		Objective=GameXXKLocalization::Source(TEXT("先完成：")).ToString()+FString::Join(Missing,GameXXKLocalization::IsEnglish()?TEXT(", "):TEXT("、"));
 	}
 	else if(!Story->Feedback().IsEmpty())Objective=Story->Feedback().ToString();
-	AddText(FText::FromString(Objective),FVector2D(36,440),FVector2D(873,27),16,false,FGameXXKInRunUiStyle::MutedInk());
+	AddText(FText::FromString(Objective),FVector2D(36,440),FVector2D(873,27),16,false,EGameXXKFontRole::Body,FGameXXKInRunUiStyle::MutedInk());
 	AddText(RewardText(Node->Id),FVector2D(36,472),FVector2D(590,28),16);
 	auto* Start=AddAction(TEXT("StoryStartTask"),FText::FromString(Status==EGameXXKTaskState::Active?TEXT("继续任务"):TEXT("开始任务")),1,FVector2D(668,470),FVector2D(236,46),true,Node->Id);
 	Start->SetIsEnabled(Status!=EGameXXKTaskState::Locked);

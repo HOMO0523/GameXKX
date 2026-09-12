@@ -83,7 +83,7 @@ namespace
 			return;
 		}
 
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,true);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(FontSize);
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
 		TextBlock->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
@@ -248,7 +248,7 @@ void UGameXXKBattleUnitResourceWidget::EnsureWidgetTree()
 
 	IdentityText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("IdentityText"));
 	ConfigureReadableText(IdentityText, 18);
-	IdentityText->SetFont(FGameXXKInRunUiStyle::Font(18,true));
+	IdentityText->SetFont(FGameXXKInRunUiStyle::BodyFont(18));
 	IdentityText->SetJustification(ETextJustify::Center);
 	if (UVerticalBoxSlot* const IdentitySlot = RootBox->AddChildToVerticalBox(IdentityText))
 	{

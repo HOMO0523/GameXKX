@@ -1,0 +1,58 @@
+{
+  "created": "2026-09-12",
+  "purpose": "GameXXK body/reading font (non-title text); source files unmodified",
+  "selected": "KeinannMaruPOP (けいなんポップ体.ttf)",
+  "selectionReason": "User rejected the Cheese Foam Oolong Song body face as too thin and asked for this rounded pop face. Full project-corpus coverage (1799/1799 unique characters) with no fallback needed, and it renders visibly heavier than the Song face at the same size.",
+  "files": [
+    {
+      "file": "fonts/KeinannMaruPOP.ttf",
+      "source": "User-provided archive: 荆南圆体(けいなん丸ポップ体)_猫啃网.zip (D:\\360Downloads)",
+      "originalFilename": "けいなんポップ体.ttf",
+      "bytes": 8459780,
+      "sha256": "30c3536a7459a963a0260ada5a84300a905dfb93db2822d1f243950505e59427",
+      "familyName": "KeinannMaruPOP",
+      "subFamily": "Regular",
+      "postScriptName": "KeinannMaruPOP",
+      "version": "Version 1.0",
+      "glyphCount": 21110,
+      "cmapCodepoints": 20518,
+      "cjkAdvance": "1.0em (1000/1000 upem) for sampled CJK glyphs",
+      "license": "SIL Open Font License 1.1",
+      "licenseEvidence": [
+        "licenses/KeinannMaruPOP-Readme.pdf states '(KeinannMaruPOP) SIL Open Font License 1.1' with http://scripts.sil.org/OFL and https://licenses.opensource.jp/OFL-1.1/OFL-1.1.html",
+        "licenses/maoken-license-note.txt: the Maoken packaging note states the font is free for personal and commercial use"
+      ],
+      "derivation": "Derived from KNBobohei (Kingnam Type Foundry / NightFurySL2001, https://github.com/maoken-fonts/KNBobohei); Reserved Font Names must not be reused for modified versions."
+    },
+    {
+      "file": "licenses/KeinannMaruPOP-Readme.pdf",
+      "bytes": 47190,
+      "sha256": "94bd063203a3c6c3d943f200805c845d0e58d3af232174560b897407ee69d0fb"
+    },
+    {
+      "file": "licenses/maoken-license-note.txt",
+      "bytes": 264,
+      "sha256": "3c824e0c8b47590f6e7b1b7be39b96c6c1e728c553f87e18c0b4cf2ed8e0934f"
+    }
+  ],
+  "rejected": [
+    {
+      "file": "けいなん丸ポップ体JP.ttf",
+      "bytes": 10107792,
+      "glyphCount": 10221,
+      "reason": "Japanese-only subset: missing 542 CJK characters used by the project (专业、丛、东、丝 ...). Not usable for Simplified Chinese UI text."
+    }
+  ],
+  "coverageAudit": {
+    "corpus": "Content/Localization/GameXXK/strings.json (all zh/en strings)",
+    "uniqueCharacters": 1799,
+    "missing": 0,
+    "fallbackFace": "/Game/GameXXK/UI/Fonts/Trial/FF_Trial_Fallback_SourceHanSansCN_Regular",
+    "fallbackStillConfigured": true
+  },
+  "superseded": {
+    "font": "CheeseFoamOolongSongLite-Bold",
+    "package": "Saved/FontPreview/20260912-cheese-foam-oolong-song",
+    "reason": "User judged the Song body face too thin on 2026-09-12; assets removed from /Game/GameXXK/UI/Fonts/Body after the swap."
+  }
+}

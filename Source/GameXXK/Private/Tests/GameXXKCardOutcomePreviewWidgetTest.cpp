@@ -209,7 +209,7 @@ bool FGameXXKCardOutcomePreviewWidgetTest::RunTest(const FString& Parameters)
 				TextBlock->GetColorAndOpacity().GetSpecifiedColor() == ExpectedToneColor(ExpectedSegment.Tone));
 			TestEqual(*FString::Printf(TEXT("focused row %d segment %d uses font size 20"), LineIndex, SegmentIndex),
 				TextBlock->GetFont().Size, 20.0f);
-			TestTrue(TEXT("outcome text and slot identifiers use JiangHu lettering"), TextBlock->GetFont().FontObject == FGameXXKInRunUiStyle::Font(20,true).FontObject);
+			TestTrue(TEXT("outcome text and slot identifiers use the body font"), TextBlock->GetFont().FontObject == FGameXXKInRunUiStyle::BodyFont(20,true).FontObject);
 			TestEqual(*FString::Printf(TEXT("focused row %d segment %d uses one-pixel outline"), LineIndex, SegmentIndex),
 				TextBlock->GetFont().OutlineSettings.OutlineSize, 1);
 			TestEqual(*FString::Printf(TEXT("focused row %d segment %d never intercepts input"), LineIndex, SegmentIndex),

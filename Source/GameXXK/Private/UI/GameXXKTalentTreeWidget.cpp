@@ -75,7 +75,7 @@ namespace
 		UTextBlock* Block = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		Block->SetText(GameXXKLocalization::Localize(Text));
 		Block->SetColorAndOpacity(FSlateColor(Color));
-		Block->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
+		Block->SetFont(FGameXXKInRunUiStyle::BodyFont(Size));
 		Block->SetVisibility(ESlateVisibility::HitTestInvisible);
 		Block->SetAutoWrapText(true);
 		return Block;

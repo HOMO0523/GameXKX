@@ -23,22 +23,68 @@ FLinearColor FGameXXKInRunUiStyle::MutedInk() { return FLinearColor::FromSRGBCol
 FLinearColor FGameXXKInRunUiStyle::Vermilion() { return FLinearColor::FromSRGBColor(FColor(148, 63, 46)); }
 FLinearColor FGameXXKInRunUiStyle::Jade() { return FLinearColor::FromSRGBColor(FColor(53, 87, 78)); }
 
-FSlateFontInfo FGameXXKInRunUiStyle::Font(const int32 Size, const bool /*bDisplay*/, const bool bBold)
+namespace
 {
-	const TCHAR* Path = TEXT("/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font.FF_Trial_ZhHans_JiangHuGuFeng_Font");
-	if (UFont* FontAsset = LoadObject<UFont>(nullptr, Path, nullptr, LOAD_NoWarn))
+	/** Both project fonts stay loaded for the process lifetime; a weak cache keeps re-resolves cheap. */
+	UFont* LoadProjectFont(const TCHAR* Path)
+	{
+		static TMap<FString, TWeakObjectPtr<UFont>> Cache;
+		const FString Key(Path);
+		if (const TWeakObjectPtr<UFont>* Found = Cache.Find(Key))
+		{
+			if (Found->IsValid())
+			{
+				return Found->Get();
+			}
+		}
+		UFont* FontAsset = LoadObject<UFont>(nullptr, Path, nullptr, LOAD_NoWarn);
+		Cache.Add(Key, FontAsset);
+		return FontAsset;
+	}
+}
+
+const TCHAR* FGameXXKInRunUiStyle::FontPath(const EGameXXKFontRole Role)
+{
+	return Role == EGameXXKFontRole::Body ? BodyFontPath : TitleFontPath;
+}
+
+FSlateFontInfo FGameXXKInRunUiStyle::Font(const EGameXXKFontRole Role, const int32 Size, const bool bBold)
+{
+	if (UFont* FontAsset = LoadProjectFont(FontPath(Role)))
 	{
 		return FSlateFontInfo(FontAsset, Size, FName(TEXT("Default")));
 	}
+	// Missing-asset fallback only. Keeps headless commandlets and a project
+	// opened before the fonts are imported rendering text instead of nothing.
 	return FCoreStyle::GetDefaultFontStyle(bBold ? TEXT("Bold") : TEXT("Regular"), Size);
 }
 
-FSlateFontInfo FGameXXKInRunUiStyle::OutlinedFont(int32 Size, int32 OutlineSize)
+FSlateFontInfo FGameXXKInRunUiStyle::TitleFont(const int32 Size, const bool bBold)
 {
-	FSlateFontInfo Result = Font(Size, true);
+	return Font(EGameXXKFontRole::Title, Size, bBold);
+}
+
+FSlateFontInfo FGameXXKInRunUiStyle::BodyFont(const int32 Size, const bool bBold)
+{
+	return Font(EGameXXKFontRole::Body, Size, bBold);
+}
+
+FSlateFontInfo FGameXXKInRunUiStyle::OutlinedFont(const EGameXXKFontRole Role, const int32 Size, const int32 OutlineSize)
+{
+	FSlateFontInfo Result = Font(Role, Size, true);
 	Result.OutlineSettings.OutlineSize = OutlineSize;
 	Result.OutlineSettings.OutlineColor = FLinearColor(0.025f, 0.02f, 0.015f, 1.0f);
 	return Result;
+}
+
+FSlateFontInfo FGameXXKInRunUiStyle::OutlinedTitleFont(const int32 Size, const int32 OutlineSize)
+{
+	return OutlinedFont(EGameXXKFontRole::Title, Size, OutlineSize);
+}
+
+FSlateFontInfo FGameXXKInRunUiStyle::OutlinedBodyFont(const int32 Size, const int32 OutlineSize)
+{
+	return OutlinedFont(EGameXXKFontRole::Body, Size, OutlineSize);
 }
 
 FSlateBrush FGameXXKInRunUiStyle::Paper(const FVector2D& Size)

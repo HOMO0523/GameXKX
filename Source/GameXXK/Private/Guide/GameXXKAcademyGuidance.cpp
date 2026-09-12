@@ -81,23 +81,25 @@ void UGameXXKAcademySubsystem::RefreshOverlay(UGameXXKBattleBoardWidget* Board)
         FSlateBrush NoBacking;NoBacking.DrawAs=ESlateBrushDrawType::NoDrawType;
         GuideCaption->SetBrush(NoBacking);GuideCaption->SetPadding(FMargin(18,12));
         auto* Stack=NewObject<UVerticalBox>(Board);GuideCaption->SetContent(Stack);
-        auto AddLine=[&](const TCHAR* Name,int32 Size,FLinearColor Color,bool Wrap)
+        // The lesson heading is a title; the mechanism, action cue and objective
+        // counter are body text.
+        auto AddLine=[&](const TCHAR* Name,int32 Size,FLinearColor Color,bool Wrap,EGameXXKFontRole Role)
         {
-            auto* Text=NewObject<UTextBlock>(Board,Name);Text->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
+            auto* Text=NewObject<UTextBlock>(Board,Name);Text->SetFont(FGameXXKInRunUiStyle::Font(Role,Size));
             Text->SetColorAndOpacity(Color);Text->SetAutoWrapText(Wrap);
             Stack->AddChildToVerticalBox(Text)->SetPadding(FMargin(0,0,0,4));return Text;
         };
-        LessonTitleText=AddLine(TEXT("AcademyLessonTitle"),21,FLinearColor::White,false);
-        MechanismText=AddLine(TEXT("AcademyMechanism"),19,FLinearColor::White,true);
-        GoalText=AddLine(TEXT("AcademyAction"),24,FLinearColor::White,false);
-        ObjectiveText=AddLine(TEXT("AcademyObjective"),18,FLinearColor(1,1,1,.75f),false);
+        LessonTitleText=AddLine(TEXT("AcademyLessonTitle"),21,FLinearColor::White,false,EGameXXKFontRole::Title);
+        MechanismText=AddLine(TEXT("AcademyMechanism"),19,FLinearColor::White,true,EGameXXKFontRole::Body);
+        GoalText=AddLine(TEXT("AcademyAction"),24,FLinearColor::White,false,EGameXXKFontRole::Body);
+        ObjectiveText=AddLine(TEXT("AcademyObjective"),18,FLinearColor(1,1,1,.75f),false,EGameXXKFontRole::Body);
 		auto* CaptionSlot=Overlay->AddChildToCanvas(GuideCaption);CaptionSlot->SetZOrder(2);
 		for(int32 I=0;I<2;++I)
 		{
 			auto* B=NewObject<UButton>(Board);FButtonStyle Style;
             Style.SetNormal(FSlateRoundedBoxBrush(FLinearColor(.025f,.03f,.035f,.78f),4.f));
             Style.SetHovered(FSlateRoundedBoxBrush(FLinearColor(.15f,.16f,.17f,.9f),4.f));Style.SetPressed(FSlateRoundedBoxBrush(FLinearColor(.2f,.21f,.22f,.95f),4.f));B->SetStyle(Style);
-			auto* Text=NewObject<UTextBlock>(Board);Text->SetText(GameXXKLocalization::Text(I==0?TEXT("Academy.Cue.Exit"):TEXT("Academy.Cue.Retry")));Text->SetFont(FGameXXKInRunUiStyle::Font(22,true));Text->SetColorAndOpacity(FLinearColor::White);B->SetContent(Text);
+			auto* Text=NewObject<UTextBlock>(Board);Text->SetText(GameXXKLocalization::Text(I==0?TEXT("Academy.Cue.Exit"):TEXT("Academy.Cue.Retry")));Text->SetFont(FGameXXKInRunUiStyle::BodyFont(22));Text->SetColorAndOpacity(FLinearColor::White);B->SetContent(Text);
 			auto* BS=Overlay->AddChildToCanvas(B);BS->SetPosition(FVector2D(1510+I*180,22));BS->SetSize(FVector2D(164,44));BS->SetZOrder(3);
 			if(I==0)B->OnClicked.AddDynamic(this,&UGameXXKAcademySubsystem::OnExit);else B->OnClicked.AddDynamic(this,&UGameXXKAcademySubsystem::OnRetry);
 		}

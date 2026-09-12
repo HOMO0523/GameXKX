@@ -26,7 +26,7 @@ namespace
 	{
 		auto* Result=Tree->ConstructWidget<UTextBlock>();
 		Result->SetText(FText::FromString(Text));
-		Result->SetFont(FGameXXKInRunUiStyle::OutlinedFont(Size,1));
+		Result->SetFont(FGameXXKInRunUiStyle::OutlinedBodyFont(Size, 1));
 		Result->SetColorAndOpacity(FLinearColor(1.0f,0.98f,0.89f));
 		Result->SetJustification(ETextJustify::Center);
 		Result->SetVisibility(ESlateVisibility::HitTestInvisible);

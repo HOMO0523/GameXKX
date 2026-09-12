@@ -121,7 +121,7 @@ void UGameXXKRelicBarWidget::RefreshFromState()
 			UTextBlock* StackText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass());
 			StackText->SetText(FText::AsNumber(Instance.Stacks));
 			StackText->SetColorAndOpacity(FSlateColor(FLinearColor(0.10f, 0.08f, 0.05f, 1.0f)));
-			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(18, false, true);
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(18, true);
 			StackText->SetFont(Font);
 			StackText->SetVisibility(ESlateVisibility::HitTestInvisible);
 			if (UOverlaySlot* TextSlot = Overlay->AddChildToOverlay(StackText))

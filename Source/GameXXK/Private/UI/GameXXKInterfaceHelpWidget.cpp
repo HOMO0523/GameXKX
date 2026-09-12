@@ -55,15 +55,15 @@ void UGameXXKInterfaceHelpWidget::Build()
 	auto* Stack = WidgetTree->ConstructWidget<UVerticalBox>(); ReadingPanel->SetContent(Stack);
 	auto* Header = WidgetTree->ConstructWidget<UHorizontalBox>();Stack->AddChildToVerticalBox(Header);
 	Heading = WidgetTree->ConstructWidget<UTextBlock>();
-	Heading->SetFont(FGameXXKInRunUiStyle::Font(20, true)); Heading->SetColorAndOpacity(FLinearColor::White);
+	Heading->SetFont(FGameXXKInRunUiStyle::TitleFont(20)); Heading->SetColorAndOpacity(FLinearColor::White);
 	Header->AddChildToHorizontalBox(Heading)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	Counter = WidgetTree->ConstructWidget<UTextBlock>();
-	Counter->SetFont(FGameXXKInRunUiStyle::Font(12, true)); Counter->SetColorAndOpacity(FLinearColor(1,1,1,.75f));
+	Counter->SetFont(FGameXXKInRunUiStyle::BodyFont(12)); Counter->SetColorAndOpacity(FLinearColor(1,1,1,.75f));
 	Header->AddChildToHorizontalBox(Counter)->SetVerticalAlignment(VAlign_Center);
 	BodySize = WidgetTree->ConstructWidget<USizeBox>(); BodySize->SetHeightOverride(64);
 	Stack->AddChildToVerticalBox(BodySize)->SetPadding(FMargin(0,8,0,0));
 	Body = WidgetTree->ConstructWidget<UTextBlock>(); Body->SetAutoWrapText(true);
-	Body->SetFont(FGameXXKInRunUiStyle::Font(18, true)); Body->SetColorAndOpacity(FLinearColor::White);
+	Body->SetFont(FGameXXKInRunUiStyle::BodyFont(18)); Body->SetColorAndOpacity(FLinearColor::White);
 	BodySize->SetContent(Body);
 	auto* Actions = WidgetTree->ConstructWidget<UHorizontalBox>();
 	Stack->AddChildToVerticalBox(Actions)->SetPadding(FMargin(0, 4, 0, 0));
@@ -73,7 +73,7 @@ void UGameXXKInterfaceHelpWidget::Build()
         FButtonStyle Style;Style.SetNormal(FSlateRoundedBoxBrush(FLinearColor(1,1,1,.10f),3.f));
         Style.SetHovered(FSlateRoundedBoxBrush(FLinearColor(1,1,1,.2f),3.f));Style.SetPressed(FSlateRoundedBoxBrush(FLinearColor(1,1,1,.3f),3.f));Button->SetStyle(Style);
 		auto* Label = WidgetTree->ConstructWidget<UTextBlock>(); Label->SetText(GameXXKLocalization::Text(Key));
-		Label->SetFont(FGameXXKInRunUiStyle::Font(16, true)); Label->SetColorAndOpacity(FLinearColor::White); Label->SetJustification(ETextJustify::Center);
+		Label->SetFont(FGameXXKInRunUiStyle::BodyFont(16)); Label->SetColorAndOpacity(FLinearColor::White); Label->SetJustification(ETextJustify::Center);
 		Button->SetContent(Label);
 		auto* ButtonSize = WidgetTree->ConstructWidget<USizeBox>(); ButtonSize->SetWidthOverride(96); ButtonSize->SetHeightOverride(30); ButtonSize->SetContent(Button);
 		Actions->AddChildToHorizontalBox(ButtonSize)->SetPadding(FMargin(0, 0, 6, 0));

@@ -45,8 +45,8 @@ bool FGameXXKEnglishCompactTabsTest::RunTest(const FString&)
         TestEqual(TEXT("English compact caption"),Label->GetText().ToString(),FString(Short[Index]));
         TestEqual(TEXT("Hover keeps the full English name"),Button->GetToolTipText().ToString(),FString(Full[Index]));
         const auto Rect=GameXXKDesktopTrainingLayout::GetEmbeddedCharacterTabRect(Index);
-        TestTrue(TEXT("Actual Jianghu glyph width fits the tab with padding"),Measure->Measure(Label->GetText(),Label->GetFont()).X<=Rect.Z-12);
-        TestTrue(TEXT("Tab uses the selected Jianghu font"),Label->GetFont().FontObject&&Label->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng")));
+        TestTrue(TEXT("Actual body glyph width fits the tab with padding"),Measure->Measure(Label->GetText(),Label->GetFont()).X<=Rect.Z-12);
+        TestTrue(TEXT("Tab uses the body font"),Label->GetFont().FontObject&&Label->GetFont().FontObject->GetPathName()==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body));
     }
     GameXXKLocalization::SetLanguage(TEXT("zh-Hans"),false);
     auto* Attr=Cast<UButton>(Inventory->WidgetTree->FindWidget(TEXT("InventoryCharacterTab_0")));
@@ -88,8 +88,10 @@ bool FGameXXKEnglishTooltipRefreshTest::RunTest(const FString&)
     {
         if(const auto* Text=Cast<UTextBlock>(Widget);Text&&!Text->GetText().IsEmpty())
         {
-            TestTrue(TEXT("Every rendered tooltip row uses Jianghu"),Text->GetFont().FontObject&&Text->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng")));
-            TestEqual(TEXT("No nonexistent Bold face overrides Jianghu"),Text->GetFont().TypefaceFontName,FName(TEXT("Default")));
+            const FString FontPath=Text->GetFont().FontObject?Text->GetFont().FontObject->GetPathName():FString();
+            TestTrue(TEXT("Every rendered tooltip row uses one of the two project fonts"),
+                FontPath==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Title)||FontPath==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body));
+            TestEqual(TEXT("No nonexistent Bold face overrides the assigned font"),Text->GetFont().TypefaceFontName,FName(TEXT("Default")));
         }
     });
     Tooltip->ConfigureDirect(FText::FromString(TEXT("Wrap")),TEXT("antidisestablishmentarianism antidisestablishmentarianism"));
@@ -105,7 +107,7 @@ bool FGameXXKEnglishMaterialAspectTest::RunTest(const FString&)
     const FString Previous=GameXXKLocalization::GetLanguage();
     ON_SCOPE_EXIT{GameXXKLocalization::SetLanguage(Previous,false);};
     GameXXKLocalization::SetLanguage(TEXT("zh-Hans"),false);
-    auto* Text=NewObject<UTextBlock>();Text->SetFont(FGameXXKInRunUiStyle::Font(24,true));
+    auto* Text=NewObject<UTextBlock>();Text->SetFont(FGameXXKInRunUiStyle::TitleFont(24,true));
     Text->SetText(GameXXKLocalization::Source(TEXT("装备等级 37")));
     GameXXKCardNameStyle::Apply(Text,EGameXXKCardQuality::Rare);
     auto* Fill=Cast<UMaterialInstanceDynamic>(Text->GetFont().FontMaterial.Get());

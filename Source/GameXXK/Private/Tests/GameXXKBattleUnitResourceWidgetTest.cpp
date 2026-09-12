@@ -129,7 +129,7 @@ bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 	for (const FName TextName : {FName(TEXT("HealthText")), FName(TEXT("ManaText"))})
 	{
 		const UTextBlock* Text = Cast<UTextBlock>(ResourceWidget->WidgetTree->FindWidget(TextName));
-		TestTrue(TEXT("resource numbers use JiangHu font"), Text && Text->GetFont().FontObject == FGameXXKInRunUiStyle::Font(18,true).FontObject);
+		TestTrue(TEXT("resource numbers use the body font"), Text && Text->GetFont().FontObject == FGameXXKInRunUiStyle::BodyFont(18,true).FontObject);
 	}
 	TestTrue(TEXT("hero mana row is visible when mana is enabled"), ResourceWidget->IsManaRowVisibleForTest());
 	TestTrue(TEXT("hero resource content never blocks screen-space targeting"), ResourceWidget->AreContentWidgetsHitTestTransparentForTest());

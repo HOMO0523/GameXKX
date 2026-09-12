@@ -270,10 +270,10 @@ bool FGameXXKCardBattleBoardEnemyIntentPresentationTest::RunTest(const FString& 
 		&& DamageLabelSlot->GetPosition().X > 103.0f
 		&& PrimaryDamageLabel && PrimaryDamageLabel->GetText().ToString() == TEXT("伤害")
 		&& PrimaryDamageLabel->GetFont().Size == 18 && !PrimaryDamageLabel->GetAutoWrapText());
-	TestTrue(TEXT("damage is larger than the supporting text and uses the JiangHu font"),
+	TestTrue(TEXT("damage is larger than the supporting text and uses the body font"),
 		PrimaryValue && FirstIntentBody && PrimaryValue->GetFont().Size >= 29
 		&& PrimaryValue->GetFont().Size > FirstIntentBody->GetFont().Size
-		&& PrimaryValue->GetFont().FontObject == FGameXXKInRunUiStyle::Font(34, true).FontObject);
+		&& PrimaryValue->GetFont().FontObject == FGameXXKInRunUiStyle::BodyFont(34, true).FontObject);
 
 	RichIntent = OriginalIntent;
 	RichIntent.CardDisplayName = TEXT("毒牙突袭");

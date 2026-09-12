@@ -308,10 +308,11 @@ bool FGameXXKCardTooltipTargetHeadingTest::RunTest(const FString& Parameters)
 				bBoldTarget |= Label->GetText().ToString() == Row.Value
 					&& Label->GetFont().TypefaceFontName == TEXT("Default")
 					&& Label->GetFont().OutlineSettings.OutlineSize>=1
-					&& Label->GetFont().FontObject&&Label->GetFont().FontObject->GetPathName().Contains(TEXT("JiangHuGuFeng"));
+					&& Label->GetFont().FontObject
+					&& Label->GetFont().FontObject->GetPathName()==FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body);
 			}
 		});
-		TestTrue(TEXT("recipient text is emphasized without leaving the Jianghu face"), bBoldTarget);
+		TestTrue(TEXT("recipient text is emphasized on the body face"), bBoldTarget);
 	}
 	return true;
 }

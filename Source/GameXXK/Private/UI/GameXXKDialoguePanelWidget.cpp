@@ -37,11 +37,11 @@ namespace GameXXKDialoguePanelPrivate
 		return FGameXXKInRunUiStyle::Action(FVector2D(620,46),true);
 	}
 
-	UTextBlock* Text(UWidgetTree* Tree, const FName Name, const int32 Size)
+	UTextBlock* Text(UWidgetTree* Tree, const FName Name, const int32 Size, const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
 		Result->SetColorAndOpacity(FSlateColor(FLinearColor(0.12f, 0.085f, 0.045f, 1.0f)));
-		Result->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
+		Result->SetFont(FGameXXKInRunUiStyle::Font(Role, Size));
 		return Result;
 	}
 
@@ -197,14 +197,14 @@ void UGameXXKDialoguePanelWidget::RefreshCompactLayout()
 	Move(CompactPortraitScale,FVector2D(24,18),FVector2D(210,Height-38));
 	CompactPortraitScale->SetVisibility(PortraitVisible?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
 	Move(SpeakerText,FVector2D(TextLeft,22),FVector2D(TextWidth-42,36));
-	SpeakerText->SetFont(FGameXXKInRunUiStyle::Font(25,true));
+	SpeakerText->SetFont(FGameXXKInRunUiStyle::TitleFont(25));
 	SpeakerText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Jade()));
 	Move(WidgetTree->FindWidget(TEXT("DialogueBodyScroll")),FVector2D(TextLeft,70),FVector2D(TextWidth,bChoices?76:88));
-	BodyText->SetFont(FGameXXKInRunUiStyle::Font(22,true));
+	BodyText->SetFont(FGameXXKInRunUiStyle::BodyFont(22));
 	BodyText->SetWrapTextAt(TextWidth-12);
 	BodyText->SetLineHeightPercentage(1.22f);
 	Move(ContinueIndicator,FVector2D(654,Height-42),FVector2D(232,26));
-	ContinueIndicator->SetFont(FGameXXKInRunUiStyle::Font(15,true));
+	ContinueIndicator->SetFont(FGameXXKInRunUiStyle::BodyFont(15));
 	ContinueIndicator->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::MutedInk()));
 	for(int32 I=0;I<OptionButtons.Num();++I)Move(OptionButtons[I],FVector2D(TextLeft,154+I*48),FVector2D(TextWidth,43));
 	for(UTextBlock* Option:OptionTexts)if(Option){Option->SetWrapTextAt(TextWidth-24);Option->SetLineHeightPercentage(1.f);}
@@ -329,7 +329,7 @@ void UGameXXKDialoguePanelWidget::BuildProgrammaticLayout()
 	GameXXKDesktopPaperStyle::SetPanelContent(PaperFrame,Content,FMargin(0));
 	PortraitImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("DialoguePortrait"));
 	Place(Content, PortraitImage, FVector2D(34.0f, 44.0f), FVector2D(180.0f, 220.0f), 1);
-	SpeakerText = Text(WidgetTree, TEXT("DialogueSpeaker"), 24);
+	SpeakerText = Text(WidgetTree, TEXT("DialogueSpeaker"), 24, EGameXXKFontRole::Title);
 	Place(Content, SpeakerText, FVector2D(238.0f, 28.0f), FVector2D(650.0f, 42.0f), 1);
 	BodyText = Text(WidgetTree, TEXT("DialogueBody"), 22);
 	BodyText->SetAutoWrapText(true);

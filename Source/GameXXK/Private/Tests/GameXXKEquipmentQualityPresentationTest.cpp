@@ -29,7 +29,7 @@ bool FGameXXKEquipmentQualityLayersTest::RunTest(const FString& Parameters)
 {
 	auto* Tree=NewObject<UWidgetTree>();auto* Button=Tree->ConstructWidget<UButton>();auto* Overlay=Tree->ConstructWidget<UOverlay>();auto* Art=Tree->ConstructWidget<UImage>();
 	Overlay->AddChildToOverlay(Art);Button->SetContent(Overlay);Tree->RootWidget=Button;
-	auto* Name=Tree->ConstructWidget<UTextBlock>();Name->SetText(FText::FromString(TEXT("破军护手")));Name->SetFont(FGameXXKInRunUiStyle::Font(26,true));
+	auto* Name=Tree->ConstructWidget<UTextBlock>();Name->SetText(FText::FromString(TEXT("破军护手")));Name->SetFont(FGameXXKInRunUiStyle::TitleFont(26,true));
 	for(int32 Rank=1;Rank<=10;++Rank)
 	{
 		const auto Q=static_cast<EGameXXKEquipmentQuality>(Rank);

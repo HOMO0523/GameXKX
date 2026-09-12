@@ -230,7 +230,7 @@ void UGameXXKBattleStatusIconWidget::EnsureWidgetTree()
 	TooltipPaper->SetVisibility(GetTooltipVisibilityForTest());
 	UTextBlock* const TooltipText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleStatusIconTooltipText"));
 	ConfigureCenteredText(TooltipText, 20, InkColor);
-	TooltipText->SetFont(FGameXXKInRunUiStyle::Font(20));
+	TooltipText->SetFont(FGameXXKInRunUiStyle::BodyFont(20));
 	TooltipText->SetJustification(ETextJustify::Left);
 	TooltipText->SetWrapTextAt(360);
 	TooltipText->SetAutoWrapText(true);
@@ -288,7 +288,7 @@ void UGameXXKBattleStatusIconWidget::RefreshDisplay()
 			? TEXT("+")
 			: (CachedBadgeModel.Style.FallbackGlyph.IsEmpty() ? TEXT("?") : CachedBadgeModel.Style.FallbackGlyph);
 		GlyphText->SetText(FText::FromString(Glyph));
-		GlyphText->SetFont(FGameXXKInRunUiStyle::Font(bPhaseMark ? 30 : 19, bPhaseMark));
+		GlyphText->SetFont(FGameXXKInRunUiStyle::BodyFont(bPhaseMark ? 30 : 19));
 		GlyphText->SetLineHeightPercentage(bPhaseMark ? 0.72f : 1.0f);
 		GlyphText->SetApplyLineHeightToBottomLine(bPhaseMark);
 		GlyphText->SetColorAndOpacity(FSlateColor(bPhaseMark ? InkColor : CachedBadgeModel.Style.Tint));

@@ -43,7 +43,7 @@ namespace
 			return;
 		}
 
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize,true);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(FontSize);
 		Font.Size = FontSize;
 		TextBlock->SetFont(Font);
 		TextBlock->SetColorAndOpacity(FSlateColor(PartyQiInkColor));

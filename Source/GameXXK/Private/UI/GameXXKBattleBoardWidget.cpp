@@ -737,7 +737,11 @@ namespace
 			TextBlock->SetLineHeightPercentage(0.80f);
 			TextBlock->SetApplyLineHeightToBottomLine(true);
 			TextBlock->SetJustification(ETextJustify::Left);
-			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont, bBold);
+			// Short battle hints use the brush display face; long card prose keeps the
+			// readable body face (see FGameXXKCardTooltipPresentationStyle).
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(
+				Style.bDisplayBodyFont ? EGameXXKFontRole::Title : EGameXXKFontRole::Body,
+				static_cast<int32>(FontSize), bBold);
 			Font.Size = static_cast<int32>(FontSize);
 			if(bBold){Font.OutlineSettings.OutlineSize=1;Font.OutlineSettings.OutlineColor=BodyInk;}
 			TextBlock->SetFont(Font);
@@ -755,7 +759,7 @@ namespace
 			PillText->SetText(GameXXKLocalization::Source(Content));
 			PillText->SetColorAndOpacity(FSlateColor(PillInk));
 			PillText->SetJustification(ETextJustify::Center);
-			FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), false, false);
+			FSlateFontInfo Font = FGameXXKInRunUiStyle::BodyFont(static_cast<int32>(FontSize), false);
 			Font.OutlineSettings.OutlineSize=0;
 			PillText->SetFont(Font);
 			PillText->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -776,7 +780,9 @@ namespace
 			}
 			if (FSlateApplication::IsInitialized())
 			{
-				FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(static_cast<int32>(FontSize), Style.bDisplayBodyFont && !bPill, bBold);
+				FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(
+					Style.bDisplayBodyFont && !bPill ? EGameXXKFontRole::Title : EGameXXKFontRole::Body,
+					static_cast<int32>(FontSize), bBold);
 				Font.Size = static_cast<int32>(FontSize);
 				Font.OutlineSettings.OutlineSize=(bBold&&!bPill)?1:0;
 				return FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Content, Font).X;
@@ -1189,7 +1195,7 @@ namespace
 	{
 		if (!Tree || !Label) return;
 		Label->SetText(FText::FromString(Title));
-		Label->SetFont(FGameXXKInRunUiStyle::Font(Title.Len() > 6 ? 20 : 24, true));
+		Label->SetFont(FGameXXKInRunUiStyle::TitleFont(Title.Len() > 6 ? 20 : 24));
 		GameXXKCardNameStyle::Apply(Label, EGameXXKCardQuality::Common);
 		const FString Prefix = Label->GetName().LeftChop(5);
 		if (auto* Meta = Cast<UTextBlock>(Tree->FindWidget(*(Prefix + TEXT("Subtitle")))))
@@ -1864,7 +1870,7 @@ void UGameXXKBattleBoardWidget::RefreshBattleSettlementLog()
 	BattleSettlementLogText->SetText(GameXXKLocalization::Source(bBattleSettlementLogExpanded
 		? FString::Join(BattleSettlementLines,TEXT("\n"))
 		: BattleSettlementLines.IsEmpty() ? FString() : BattleSettlementLines.Last()));
-	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::Font(bBattleSettlementLogExpanded ? 18 : 14,true));
+	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::BodyFont(bBattleSettlementLogExpanded ? 18 : 14));
 	if (BattleSettlementToggleText)
 	{
 		BattleSettlementToggleText->SetText(GameXXKLocalization::Source(bBattleSettlementLogExpanded ? TEXT("-") : TEXT("+")));
@@ -7165,7 +7171,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		TEXT("BattleCinematicReadout"));
 	if (BattleCinematicReadout && BattleDesignStage)
 	{
-		FSlateFontInfo ReadoutFont = FGameXXKInRunUiStyle::Font(86,true);
+		FSlateFontInfo ReadoutFont = FGameXXKInRunUiStyle::BodyFont(86);
 		ReadoutFont.OutlineSettings.OutlineSize=3;ReadoutFont.OutlineSettings.OutlineColor=FLinearColor(0.08f,0.04f,0.02f,1);
 		BattleCinematicReadout->SetFont(ReadoutFont);
 		BattleCinematicReadout->SetJustification(ETextJustify::Center);
@@ -7210,7 +7216,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 			*FString::Printf(TEXT("BattleEnemyIntentSlotLabel_%02d"), SlotIndex));
 		SideLabel->SetJustification(ETextJustify::Center);
 		SideLabel->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-		SideLabel->SetFont(FGameXXKInRunUiStyle::Font(18, true));
+		SideLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(18));
 		SideLabel->SetAutoWrapText(false);
 		UVerticalBox* SideStack = WidgetTree->ConstructWidget<UVerticalBox>();
 		SideLabelSizeBox->AddChild(SideStack);
@@ -7222,7 +7228,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		SideStack->AddChildToVerticalBox(SideWordHeight);
 		UTextBlock* SideNumber = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),
 			*FString::Printf(TEXT("BattleEnemyIntentSlotNumber_%02d"), SlotIndex));
-		SideNumber->SetFont(FGameXXKInRunUiStyle::OutlinedFont(22, 1));
+		SideNumber->SetFont(FGameXXKInRunUiStyle::OutlinedBodyFont(22, 1));
 		SideNumber->SetColorAndOpacity(FLinearColor(1,0.95f,0.82f,1));
 		SideNumber->SetJustification(ETextJustify::Center); SideNumber->SetAutoWrapText(false);
 		SideNumber->SetLineHeightPercentage(0.85f); SideNumber->SetApplyLineHeightToBottomLine(true);
@@ -7328,7 +7334,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	EnemyIntentDetailBody = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("BattleEnemyIntentDetailBody"));
 	UVerticalBox* IntentTooltipStack = WidgetTree->ConstructWidget<UVerticalBox>();
 	UTextBlock* IntentTooltipTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEnemyIntentDetailTitle"));
-	IntentTooltipTitle->SetFont(FGameXXKInRunUiStyle::Font(28, true));
+	IntentTooltipTitle->SetFont(FGameXXKInRunUiStyle::TitleFont(28));
 	IntentTooltipTitle->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
 	IntentTooltipTitle->SetWrapTextAt(EnemyIntentTooltipSize.X - 32);
 	IntentTooltipTitle->SetLineHeightPercentage(0.85f);
@@ -7365,12 +7371,12 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	LogToggleStyle.SetNormalPadding(FMargin(0));LogToggleStyle.SetPressedPadding(FMargin(0));LogToggle->SetStyle(LogToggleStyle);
 	LogToggle->OnClicked.AddDynamic(this,&UGameXXKBattleBoardWidget::HandleBattleSettlementLogToggle);
 	BattleSettlementToggleText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleSettlementSummary"));
-	BattleSettlementToggleText->SetFont(FGameXXKInRunUiStyle::Font(18,true));BattleSettlementToggleText->SetAutoWrapText(false);
+	BattleSettlementToggleText->SetFont(FGameXXKInRunUiStyle::BodyFont(18));BattleSettlementToggleText->SetAutoWrapText(false);
 	BattleSettlementToggleText->SetTextOverflowPolicy(ETextOverflowPolicy::Ellipsis);
 	LogToggle->SetContent(BattleSettlementToggleText);
 	UHorizontalBox* LogHeader=WidgetTree->ConstructWidget<UHorizontalBox>();
 	UTextBlock* LogCaption=WidgetTree->ConstructWidget<UTextBlock>();LogCaption->SetText(GameXXKLocalization::Source(TEXT("战报")));
-	LogCaption->SetFont(FGameXXKInRunUiStyle::Font(15,true));LogCaption->SetColorAndOpacity(FLinearColor(0.89f,0.84f,0.73f));
+	LogCaption->SetFont(FGameXXKInRunUiStyle::BodyFont(15));LogCaption->SetColorAndOpacity(FLinearColor(0.89f,0.84f,0.73f));
 	LogHeader->AddChildToHorizontalBox(LogCaption)->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	USizeBox* LogZoomSize=WidgetTree->ConstructWidget<USizeBox>();LogZoomSize->SetWidthOverride(26);LogZoomSize->SetHeightOverride(26);LogZoomSize->SetContent(LogToggle);
 	LogHeader->AddChildToHorizontalBox(LogZoomSize);LogContent->AddChildToVerticalBox(LogHeader);
@@ -7379,7 +7385,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleSettlementLogScroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
 	BattleSettlementLogScroll->SetVisibility(ESlateVisibility::Collapsed);
 	BattleSettlementLogText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleSettlementLogText"));
-	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::Font(18,true));BattleSettlementLogText->SetAutoWrapText(true);
+	BattleSettlementLogText->SetFont(FGameXXKInRunUiStyle::BodyFont(18));BattleSettlementLogText->SetAutoWrapText(true);
 	BattleSettlementLogText->SetWrapTextAt(650);BattleSettlementLogText->SetColorAndOpacity(FLinearColor(1.0f,0.96f,0.86f));
 	BattleSettlementLogText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	BattleSettlementLogScroll->AddChild(BattleSettlementLogText);
@@ -7393,7 +7399,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 
 	HandCardBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("BattleHandCardBox"));
 	TerrainFeedbackText=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("BattleTerrainFeedback"));
-	TerrainFeedbackText->SetFont(FGameXXKInRunUiStyle::Font(21,true));
+	TerrainFeedbackText->SetFont(FGameXXKInRunUiStyle::BodyFont(21));
 	TerrainFeedbackText->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink());
 	TerrainFeedbackText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	TerrainFeedbackText->SetJustification(ETextJustify::Center);
@@ -7485,7 +7491,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	UTextBlock* EndTurnLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleEndTurnLabel"));
 	EndTurnLabel->SetText(NSLOCTEXT("GameXXKBattle", "EndTurn", "结束回合"));
 	EndTurnLabel->SetJustification(ETextJustify::Center);
-	EndTurnLabel->SetFont(FGameXXKInRunUiStyle::Font(30,true));
+	EndTurnLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(30));
 	EndTurnLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	EndTurnButton->AddChild(EndTurnLabel);
 	EndTurnButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleEndTurnClicked);
@@ -7506,7 +7512,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	AutoBattleLabel->SetText(GameXXKLocalization::Compact(AutoStateText));
 	AutoBattleButton->SetToolTipText(AutoStateText);
 	AutoBattleLabel->SetJustification(ETextJustify::Center);
-	AutoBattleLabel->SetFont(FGameXXKInRunUiStyle::Font(22,true));
+	AutoBattleLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(22));
 	AutoBattleLabel->SetAutoWrapText(false);
 	AutoBattleLabel->SetColorAndOpacity(IsAutoBattleEnabled() ? FLinearColor(1.0f,0.86f,0.40f) : FLinearColor::White);
 	AutoBattleButton->AddChild(AutoBattleLabel);
@@ -7530,7 +7536,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		TEXT("BattleCloseLabel"));
 	BattleCloseLabel->SetText(NSLOCTEXT("GameXXKBattle", "CloseBattle", "关闭"));
 	BattleCloseLabel->SetJustification(ETextJustify::Center);
-	BattleCloseLabel->SetFont(FGameXXKInRunUiStyle::Font(26,true));
+	BattleCloseLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(26));
 	BattleCloseLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	BattleCloseButton->AddChild(BattleCloseLabel);
 	BattleCloseButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleBattleCloseClicked);
@@ -7570,7 +7576,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	HandCardDetailPanel->SetContent(TooltipBox);
 	HandCardDetailTitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleHandCardDetailTitle"));
 	HandCardDetailTitle->SetColorAndOpacity(FSlateColor(FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)));
-	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28, true);
+	FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::TitleFont(28);
 	HandCardDetailTitle->SetFont(TitleFont);
 	HandCardDetailTitle->SetLineHeightPercentage(0.85f);
 	HandCardDetailTitle->SetApplyLineHeightToBottomLine(true);
@@ -7680,7 +7686,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	UTextBlock* SkipRewardLabel = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattleSkipRewardLabel"));
 	SkipRewardLabel->SetText(NSLOCTEXT("GameXXKBattle", "SkipReward", "跳过奖励"));
 	SkipRewardLabel->SetJustification(ETextJustify::Center);
-	SkipRewardLabel->SetFont(FGameXXKInRunUiStyle::Font(24, true));
+	SkipRewardLabel->SetFont(FGameXXKInRunUiStyle::BodyFont(24));
 	SkipRewardLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
 	SkipRewardButton->AddChild(SkipRewardLabel);
 	SkipRewardButton->OnClicked.AddDynamic(this, &UGameXXKBattleBoardWidget::HandleSkipRewardClicked);
@@ -7716,7 +7722,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	PendingChoicePromptText = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), TEXT("BattlePendingChoicePrompt"));
 	PendingChoicePromptText->SetJustification(ETextJustify::Center);
 	PendingChoicePromptText->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-	FSlateFontInfo PendingChoiceFont = FGameXXKInRunUiStyle::Font(17,true);
+	FSlateFontInfo PendingChoiceFont = FGameXXKInRunUiStyle::BodyFont(17);
 	PendingChoicePromptText->SetFont(PendingChoiceFont);
 	if (UCanvasPanelSlot* PromptSlot = PendingChoiceCanvas->AddChildToCanvas(PendingChoicePromptText))
 	{
@@ -7830,7 +7836,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleRetreatTitle->SetText(NSLOCTEXT("GameXXKBattle", "RetreatTitle", "退出当前战斗？"));
 	BattleRetreatTitle->SetJustification(ETextJustify::Center);
 	BattleRetreatTitle->SetColorAndOpacity(FSlateColor(BattleStatusInkColor));
-	FSlateFontInfo BattleRetreatTitleFont = FGameXXKInRunUiStyle::Font(30,true);
+	FSlateFontInfo BattleRetreatTitleFont = FGameXXKInRunUiStyle::TitleFont(30);
 	BattleRetreatTitle->SetFont(BattleRetreatTitleFont);
 	if (UVerticalBoxSlot* TitleSlot = BattleRetreatBody->AddChildToVerticalBox(BattleRetreatTitle))
 	{
@@ -7990,7 +7996,7 @@ UButton* UGameXXKBattleBoardWidget::AddBattleActionButton(const FText& Label, FN
 	LabelText->SetJustification(ETextJustify::Center);
 	LabelText->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.75f));
 	LabelText->SetShadowOffset(FVector2D(1.0f, 1.0f));
-	FSlateFontInfo LabelFont = FGameXXKInRunUiStyle::Font(22,true);
+	FSlateFontInfo LabelFont = FGameXXKInRunUiStyle::BodyFont(22);
 	LabelText->SetFont(LabelFont);
 	Button->AddChild(LabelText);
 	if (UVerticalBoxSlot* ButtonSlot = ActionBox->AddChildToVerticalBox(Button))
@@ -9155,7 +9161,7 @@ void UGameXXKBattleBoardWidget::RefreshCardTooltip()
 		const FLinearColor TitleColor = !Definition ? FLinearColor(0.08f, 0.06f, 0.04f, 1.0f)
 			: TitleQuality == EGameXXKCardQuality::Common ? FLinearColor::White : FGameXXKCardQualityRules::GetDisplayColor(TitleQuality);
 		HandCardDetailTitle->SetColorAndOpacity(FSlateColor(TitleColor));
-		FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::Font(28,true);
+		FSlateFontInfo TitleFont = FGameXXKInRunUiStyle::TitleFont(28);
 		TitleFont.OutlineSettings.OutlineSize = 1;
 		TitleFont.OutlineSettings.OutlineColor = FLinearColor(0.08f, 0.06f, 0.04f, 1.0f);
 		HandCardDetailTitle->SetFont(TitleFont);
@@ -9464,8 +9470,8 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentDetail()
 	if (FSlateApplication::IsInitialized())
 	{
 		const auto Measure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
-		LongestLine = Measure->Measure(Title,FGameXXKInRunUiStyle::Font(28,true)).X;
-		for (const auto& Line : BodyLines) LongestLine = FMath::Max(LongestLine,Measure->Measure(Line,FGameXXKInRunUiStyle::Font(20,true)).X);
+		LongestLine = Measure->Measure(Title,FGameXXKInRunUiStyle::TitleFont(28)).X;
+		for (const auto& Line : BodyLines) LongestLine = FMath::Max(LongestLine,Measure->Measure(Line,FGameXXKInRunUiStyle::BodyFont(20)).X);
 	}
 	else for (const auto& Line : BodyLines) LongestLine = FMath::Max(LongestLine,Line.Len()*20.0f);
 	const float Width = FMath::Clamp(LongestLine + 44, 260.0f, 620.0f);
@@ -10555,7 +10561,7 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 	// Ink card text: all in-battle card faces use black text on the parchment frame.
 	Label->SetShadowColorAndOpacity(FLinearColor(0.0f, 0.0f, 0.0f, 0.18f));
 	Label->SetShadowOffset(FVector2D(0.5f, 0.5f));
-	Label->SetFont(FGameXXKInRunUiStyle::Font(24, true));
+	Label->SetFont(FGameXXKInRunUiStyle::TitleFont(24));
 	Label->SetColorAndOpacity(FSlateColor(ResolveCardFaceLabelColor()));
 	if (UCanvasPanelSlot* LabelSlot = FaceCanvas->AddChildToCanvas(Label))
 	{
@@ -10577,18 +10583,18 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 	}
 
 	UTextBlock* Cost = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*FString::Printf(TEXT("%sLabelCost"),*NamePrefix));
-	Cost->SetFont(FGameXXKInRunUiStyle::OutlinedFont(24)); Cost->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.95f, 0.82f, 1.0f)));
+	Cost->SetFont(FGameXXKInRunUiStyle::OutlinedBodyFont(24)); Cost->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.95f, 0.82f, 1.0f)));
 	Cost->SetVisibility(ESlateVisibility::HitTestInvisible); Cost->SetAutoWrapText(false);
 	Cost->SetLineHeightPercentage(0.85f); Cost->SetApplyLineHeightToBottomLine(true);
 	if (auto* CostSlot = FaceCanvas->AddChildToCanvas(Cost)) { CostSlot->SetOffsets(FMargin(13,78,70,95)); CostSlot->SetZOrder(3); }
 	UTextBlock* Subtitle = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + TEXT("Subtitle")));
-	Subtitle->SetFont(FGameXXKInRunUiStyle::Font(17, true));
+	Subtitle->SetFont(FGameXXKInRunUiStyle::BodyFont(17));
 	Subtitle->SetJustification(ETextJustify::Center); Subtitle->SetColorAndOpacity(FGameXXKInRunUiStyle::MutedInk());
 	Subtitle->SetVisibility(ESlateVisibility::Collapsed);
 	if (auto* MetaSlot = FaceCanvas->AddChildToCanvas(Subtitle)) { MetaSlot->SetOffsets(FMargin(8,50,190,26)); MetaSlot->SetZOrder(3); }
 	GameXXKCardNameStyle::AttachFrame(WidgetTree, FaceCanvas, Label);
 	UTextBlock* RelicDescription = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),*(NamePrefix+TEXT("RelicDescription")));
-	RelicDescription->SetFont(FGameXXKInRunUiStyle::Font(14,true));
+	RelicDescription->SetFont(FGameXXKInRunUiStyle::BodyFont(14));
 	RelicDescription->SetColorAndOpacity(FGameXXKInRunUiStyle::MutedInk());
 	RelicDescription->SetJustification(ETextJustify::Center);RelicDescription->SetAutoWrapText(false);RelicDescription->SetWrapTextAt(172);
 	RelicDescription->SetLineHeightPercentage(0.9f);RelicDescription->SetApplyLineHeightToBottomLine(true);
@@ -10610,7 +10616,7 @@ void UGameXXKBattleBoardWidget::BuildCardFace(
 		Back->SetBrush(FGameXXKInRunUiStyle::Choice(RewardCardSize).Normal);
 		Back->SetBrushColor(FLinearColor(0.30f,0.38f,0.34f,1));Back->SetPadding(FMargin(0));
 		auto* Seal=WidgetTree->ConstructWidget<UTextBlock>();Seal->SetText(FText::FromString(TEXT("缘")));
-		Seal->SetFont(FGameXXKInRunUiStyle::Font(56,true));Seal->SetColorAndOpacity(FLinearColor(0.92f,0.85f,0.65f,1));
+		Seal->SetFont(FGameXXKInRunUiStyle::TitleFont(56));Seal->SetColorAndOpacity(FLinearColor(0.92f,0.85f,0.65f,1));
 		Seal->SetJustification(ETextJustify::Center);Back->SetContent(Seal);
 		Back->SetVerticalAlignment(VAlign_Center);Back->SetHorizontalAlignment(HAlign_Fill);
 		Back->SetVisibility(ESlateVisibility::Collapsed);
@@ -10643,10 +10649,10 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		*FString::Printf(TEXT("%sFace"), *NamePrefix));
 	CardButton->AddChild(FaceCanvas);
 	const float Scale = bShowcase ? EnemyIntentShowcaseCardSize.X / EnemyIntentCardSize.X : 1.0f;
-	auto AddText = [&](const TCHAR* Suffix, int32 FontSize, const FMargin& Bounds, ETextJustify::Type Align)
+	auto AddText = [&](const TCHAR* Suffix, int32 FontSize, const FMargin& Bounds, ETextJustify::Type Align, const EGameXXKFontRole Role = EGameXXKFontRole::Body)
 	{
 		UTextBlock* Text = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix));
-		Text->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize * Scale), bShowcase ? 2 : 1));
+		Text->SetFont(FGameXXKInRunUiStyle::OutlinedFont(Role, FMath::RoundToInt(FontSize * Scale), bShowcase ? 2 : 1));
 		Text->SetColorAndOpacity(FSlateColor(FLinearColor(1.0f, 0.95f, 0.82f, 1.0f)));
 		Text->SetAutoWrapText(true);
 		Text->SetLineHeightPercentage(0.80f);
@@ -10669,7 +10675,7 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		PortraitSlot->SetOffsets(FMargin(114.0f * Scale, 170.0f * Scale, 84.0f * Scale, 101.0f * Scale));
 		PortraitSlot->SetAlignment(FVector2D::ZeroVector);
 	}
-	AddText(TEXT("Title"), 28, FMargin(10, 10, 186, 50), ETextJustify::Center);
+	AddText(TEXT("Title"), 28, FMargin(10, 10, 186, 50), ETextJustify::Center, EGameXXKFontRole::Title);
 	AddText(TEXT("Target"), 18, FMargin(12, 64, 182, 28), ETextJustify::Center);
 	UTextBlock* Primary = AddText(TEXT("Primary"), 34, FMargin(13, 94, 180, 44), ETextJustify::Center);
 	Primary->SetAutoWrapText(false);
@@ -10694,7 +10700,7 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		UScaleBox* NameFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix + Suffix + TEXT("NameFit")));
 		NameFit->SetStretch(EStretch::ScaleToFit); NameFit->SetStretchDirection(EStretchDirection::DownOnly);
 		UTextBlock* StatusName = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Name")));
-		FSlateFontInfo NameFont = FGameXXKInRunUiStyle::Font(FMath::RoundToInt(22*Scale),true);
+		FSlateFontInfo NameFont = FGameXXKInRunUiStyle::BodyFont(FMath::RoundToInt(22*Scale));
 		NameFont.OutlineSettings.OutlineSize = bShowcase ? 2 : 1;
 		NameFont.OutlineSettings.OutlineColor = FLinearColor(0.98f,0.94f,0.84f,1);
 		StatusName->SetFont(NameFont); StatusName->SetColorAndOpacity(FGameXXKInRunUiStyle::Ink()); StatusName->SetAutoWrapText(false);
@@ -10703,7 +10709,7 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		UScaleBox* ValueFit = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), *(NamePrefix + Suffix + TEXT("ValueFit")));
 		ValueFit->SetStretch(EStretch::ScaleToFit); ValueFit->SetStretchDirection(EStretchDirection::DownOnly);
 		UTextBlock* Value = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Value")));
-		Value->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize*Scale),bShowcase ? 2 : 1));
+		Value->SetFont(FGameXXKInRunUiStyle::OutlinedBodyFont(FMath::RoundToInt(FontSize*Scale), bShowcase ? 2 : 1));
 		Value->SetAutoWrapText(false); Value->SetLineHeightPercentage(0.8f); Value->SetApplyLineHeightToBottomLine(true);
 		ValueFit->AddChild(Value);
 		// The numeric centre is always x=103 in the full 206px card.
@@ -10714,7 +10720,7 @@ void UGameXXKBattleBoardWidget::BuildEnemyIntentCardFace(
 		UImage* Icon = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), *(NamePrefix + Suffix + TEXT("Icon")));
 		IconLayers->AddChildToOverlay(Icon)->SetHorizontalAlignment(HAlign_Fill);
 		UTextBlock* Fallback = WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), *(NamePrefix + Suffix + TEXT("Fallback")));
-		Fallback->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt(IconSize*Scale),true)); Fallback->SetJustification(ETextJustify::Center);
+		Fallback->SetFont(FGameXXKInRunUiStyle::BodyFont(FMath::RoundToInt(IconSize*Scale))); Fallback->SetJustification(ETextJustify::Center);
 		IconLayers->AddChildToOverlay(Fallback)->SetHorizontalAlignment(HAlign_Fill);
 		Row->AddChildToCanvas(IconBox)->SetOffsets(FMargin(130*Scale,(Bounds.Bottom-IconSize)*0.5f*Scale,IconSize*Scale,IconSize*Scale));
 	};
@@ -10740,14 +10746,14 @@ void UGameXXKBattleBoardWidget::ApplyEnemyIntentCardPresentation(
 	};
 	if (UTextBlock* Title = SetText(TEXT("Title"), Text.Title))
 	{
-		Title->SetFont(FGameXXKInRunUiStyle::Font(FMath::RoundToInt((Text.Title.Len() > 6 ? 23 : 28) * Scale), true));
+		Title->SetFont(FGameXXKInRunUiStyle::TitleFont(FMath::RoundToInt((Text.Title.Len() > 6 ? 23 : 28) * Scale)));
 		Title->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Ink()));
 	}
 	SetText(TEXT("Target"), Text.Target);
 	if (UTextBlock* Primary = SetText(TEXT("Primary"), Text.Primary))
 	{
 		const int32 FontSize = Text.bDamage ? (Text.Primary.Len() > 7 ? 29 : 34) : (Text.Primary.Len() > 7 ? 19 : 25);
-		Primary->SetFont(FGameXXKInRunUiStyle::OutlinedFont(FMath::RoundToInt(FontSize * Scale), 2));
+		Primary->SetFont(FGameXXKInRunUiStyle::OutlinedBodyFont(FMath::RoundToInt(FontSize * Scale), 2));
 		Primary->SetColorAndOpacity(FSlateColor(Text.bDamage ? FLinearColor(1.0f, 0.69f, 0.34f, 1) : FLinearColor(1.0f, 0.95f, 0.82f, 1)));
 		const float NumberWidth = FSlateApplication::IsInitialized()
 			? FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Text.Primary, Primary->GetFont()).X

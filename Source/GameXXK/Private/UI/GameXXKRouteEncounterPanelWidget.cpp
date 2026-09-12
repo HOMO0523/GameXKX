@@ -123,10 +123,11 @@ namespace
 		}
 	}
 
-	UTextBlock* MakeInkText(
+	UTextBlock* MakeRoleInkText(
 		UWidgetTree* WidgetTree,
 		const FText& Text,
 		const int32 FontSize,
+		const EGameXXKFontRole Role,
 		const FLinearColor& Ink = FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
 		const FName WidgetName = NAME_None)
 	{
@@ -138,10 +139,32 @@ namespace
 		TextBlock->SetText(Text);
 		TextBlock->SetColorAndOpacity(FSlateColor(Ink));
 		TextBlock->SetAutoWrapText(true);
-		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(FontSize, true, FontSize >= 28);
+		FSlateFontInfo Font = FGameXXKInRunUiStyle::Font(Role, FontSize);
 		TextBlock->SetVisibility(ESlateVisibility::HitTestInvisible);
 		TextBlock->SetFont(Font);
 		return TextBlock;
+	}
+
+	/** Body default: prose, choice descriptions, disabled reasons and buttons. */
+	UTextBlock* MakeInkText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		const int32 FontSize,
+		const FLinearColor& Ink = FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
+		const FName WidgetName = NAME_None)
+	{
+		return MakeRoleInkText(WidgetTree, Text, FontSize, EGameXXKFontRole::Body, Ink, WidgetName);
+	}
+
+	/** Event title, speaker name, choice sigil and card/relic name in a choice. */
+	UTextBlock* MakeTitleInkText(
+		UWidgetTree* WidgetTree,
+		const FText& Text,
+		const int32 FontSize,
+		const FLinearColor& Ink = FLinearColor(0.10f, 0.075f, 0.045f, 1.0f),
+		const FName WidgetName = NAME_None)
+	{
+		return MakeRoleInkText(WidgetTree, Text, FontSize, EGameXXKFontRole::Title, Ink, WidgetName);
 	}
 
 	const FGameXXKRouteMapNode* FindPendingRouteNode(const FGameXXKRuntimeState& State)
@@ -415,11 +438,11 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 	if (auto* LayoutSlot = Page->AddChildToOverlay(Paper)) { LayoutSlot->SetHorizontalAlignment(HAlign_Fill); LayoutSlot->SetVerticalAlignment(VAlign_Fill); }
 	FrameCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RouteEncounterPaperContent"));
 	if (auto* LayoutSlot = Page->AddChildToOverlay(FrameCanvas)) { LayoutSlot->SetHorizontalAlignment(HAlign_Fill); LayoutSlot->SetVerticalAlignment(VAlign_Fill); LayoutSlot->SetPadding(FMargin(54,38)); }
-	TitleTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 44);
+	TitleTextBlock = MakeTitleInkText(WidgetTree, FText::GetEmpty(), 44);
 	AddCanvasChild(FrameCanvas, TitleTextBlock, FVector2D(8,8), FVector2D(1100,70));
 	auto* Divider = WidgetTree->ConstructWidget<UBorder>(); Divider->SetBrushColor(FGameXXKInRunUiStyle::MutedInk() * FLinearColor(1,1,1,0.25f)); Divider->SetVisibility(ESlateVisibility::HitTestInvisible);
 	AddCanvasChild(FrameCanvas, Divider, FVector2D(12,99), FVector2D(1380,1));
-	SpeakerTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 32, FGameXXKInRunUiStyle::Jade());
+	SpeakerTextBlock = MakeTitleInkText(WidgetTree, FText::GetEmpty(), 32, FGameXXKInRunUiStyle::Jade());
 	AddCanvasChild(FrameCanvas, SpeakerTextBlock, FVector2D(16,154), FVector2D(338,58));
 	BodyTextBlock = MakeInkText(WidgetTree, FText::GetEmpty(), 24, FGameXXKInRunUiStyle::MutedInk());
 	BodyTextBlock->SetLineHeightPercentage(1.3f);
@@ -435,10 +458,10 @@ void UGameXXKRouteEncounterPanelWidget::BuildProgrammaticLayout()
 		Art->SetCardFace(Face);
 		Art->SetVisibility(ESlateVisibility::HitTestInvisible);
 		AddCanvasChild(Face,Art,FVector2D(72,94),FVector2D(156,156));
-		auto* Sigil = MakeInkText(WidgetTree,FText::GetEmpty(),64,FGameXXKInRunUiStyle::Jade(),*FString::Printf(TEXT("RouteEncounterChoiceSigil%d"),Index));
+		auto* Sigil = MakeTitleInkText(WidgetTree,FText::GetEmpty(),64,FGameXXKInRunUiStyle::Jade(),*FString::Printf(TEXT("RouteEncounterChoiceSigil%d"),Index));
 		Sigil->SetJustification(ETextJustify::Center);
 		AddCanvasChild(Face,Sigil,FVector2D(72,94),FVector2D(156,156));
-		auto* Name = MakeInkText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteEncounterChoiceName%d"),Index));
+		auto* Name = MakeTitleInkText(WidgetTree,FText::GetEmpty(),28,FGameXXKInRunUiStyle::Ink(),*FString::Printf(TEXT("RouteEncounterChoiceName%d"),Index));
 		Name->SetJustification(ETextJustify::Center); AddCanvasChild(Face,Name,FVector2D(24,22),FVector2D(252,54));
 		Cast<UCanvasPanelSlot>(Name->Slot)->SetZOrder(3);
 		auto* Description = MakeInkText(WidgetTree,FText::GetEmpty(),22,FGameXXKInRunUiStyle::MutedInk(),*FString::Printf(TEXT("RouteEncounterChoiceDescription%d"),Index));

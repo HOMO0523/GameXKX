@@ -182,7 +182,7 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 	BodyText->SetAutoWrapText(true);
 	BodyText->SetWrapTextAt(352.0f);
 	BodyText->SetColorAndOpacity(FLinearColor::White);
-	BodyText->SetFont(FGameXXKInRunUiStyle::Font(19,true));
+	BodyText->SetFont(FGameXXKInRunUiStyle::BodyFont(19));
 	if (UVerticalBoxSlot* BodySlot = Body->AddChildToVerticalBox(BodyText))
 	{
 		BodySlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
@@ -193,7 +193,7 @@ void UGameXXKBattleGuideBubbleWidget::BuildProgrammaticLayout()
 	ContinueHintText->SetText(GameXXKLocalization::Source(TEXT("空格继续")));
 	ContinueHintText->SetJustification(ETextJustify::Right);
 	ContinueHintText->SetColorAndOpacity(FLinearColor(1,1,1,.8f));
-	ContinueHintText->SetFont(FGameXXKInRunUiStyle::Font(14,true));
+	ContinueHintText->SetFont(FGameXXKInRunUiStyle::BodyFont(14));
 	if (UVerticalBoxSlot* HintSlot = Body->AddChildToVerticalBox(ContinueHintText))
 	{
 		HintSlot->SetHorizontalAlignment(HAlign_Fill);

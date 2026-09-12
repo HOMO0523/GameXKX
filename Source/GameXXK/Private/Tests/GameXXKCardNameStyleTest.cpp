@@ -19,7 +19,7 @@ bool FGameXXKCardNameQualityStyleTest::RunTest(const FString&)
 	UTextBlock* Text = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("QualityTestTitle"));
 	Face->AddChild(Text);
 	GameXXKCardNameStyle::AttachFrame(Tree,Face,Text);
-	Text->SetFont(FGameXXKInRunUiStyle::Font(24,true));
+	Text->SetFont(FGameXXKInRunUiStyle::TitleFont(24,true));
 	Text->SetColorAndOpacity(FLinearColor(0.1f,0.07f,0.04f,1));
 	GameXXKCardNameStyle::Apply(Text,EGameXXKCardQuality::Rare);
 	const FSlateFontInfo RareFont = Text->GetFont();

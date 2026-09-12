@@ -16,6 +16,7 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKToolbarGlyphWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
+#include "UI/GameXXKInRunUiStyle.h"
 
 #include "Engine/GameInstance.h"
 #include "Blueprint/WidgetTree.h"
@@ -1649,10 +1650,11 @@ bool FGameXXKDesktopTrainingWorkbenchSelectedRuntimeFontTest::RunTest(const FStr
 		return false;
 	}
 
-	const FString ExpectedFontPath = TEXT(
-		"/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font."
-		"FF_Trial_ZhHans_JiangHuGuFeng_Font");
+	const FString ExpectedTitleFontPath = FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Title);
+	const FString ExpectedBodyFontPath = FGameXXKInRunUiStyle::FontPath(EGameXXKFontRole::Body);
 	int32 TextBlockCount = 0;
+	int32 TitleFontCount = 0;
+	int32 BodyFontCount = 0;
 	TArray<FString> Mismatches;
 	Widget->WidgetTree->ForEachWidgetAndDescendants([&](UWidget* Child)
 	{
@@ -1664,8 +1666,15 @@ bool FGameXXKDesktopTrainingWorkbenchSelectedRuntimeFontTest::RunTest(const FStr
 		++TextBlockCount;
 		const UObject* FontObject = TextBlock->GetFont().FontObject.Get();
 		const FString ActualFontPath = FontObject ? FontObject->GetPathName() : TEXT("None");
-		if (ActualFontPath != ExpectedFontPath
-			&& ActualFontPath != TEXT("/Game/GameXXK/UI/Fonts/Readability/F_ReadableCJK.F_ReadableCJK"))
+		if (ActualFontPath == ExpectedTitleFontPath)
+		{
+			++TitleFontCount;
+		}
+		else if (ActualFontPath == ExpectedBodyFontPath)
+		{
+			++BodyFontCount;
+		}
+		else
 		{
 			Mismatches.Add(FString::Printf(
 				TEXT("%s -> %s"),
@@ -1678,11 +1687,13 @@ bool FGameXXKDesktopTrainingWorkbenchSelectedRuntimeFontTest::RunTest(const FStr
 	if (Mismatches.Num() > 0)
 	{
 		AddError(FString::Printf(
-			TEXT("%d/%d workbench text blocks do not use the selected Runtime Font; first: %s"),
+			TEXT("%d/%d workbench text blocks use neither the title face nor the body face; first: %s"),
 			Mismatches.Num(),
 			TextBlockCount,
 			*Mismatches[0]));
 	}
+	TestTrue(TEXT("workbench keeps the brush face for headings and proper names"), TitleFontCount > 0);
+	TestTrue(TEXT("workbench routes buttons, labels and prose to the body face"), BodyFontCount > 0);
 	return true;
 }
 

@@ -101,37 +101,36 @@
 
 	namespace
 {
-	constexpr const TCHAR* SelectedRuntimeFontPath =
-		TEXT("/Game/GameXXK/UI/Fonts/Trial/FF_Trial_ZhHans_JiangHuGuFeng_Font."
-			"FF_Trial_ZhHans_JiangHuGuFeng_Font");
-
-	UFont* ResolveSelectedRuntimeFont()
+	/**
+	 * Safety net only. Every workbench string with a typography role sets its own
+	 * Title/Body font while it is built; this pass fills in the ones that never
+	 * called the style at all, which would otherwise render with Roboto. It must
+	 * never overwrite an already-assigned project font, or the body face would be
+	 * flattened back into the title face for the whole desktop HUD.
+	 */
+	void ApplyMissingRuntimeFonts(UWidgetTree* Tree)
 	{
-		static TWeakObjectPtr<UFont> CachedFont;
-		if (!CachedFont.IsValid())
-		{
-			CachedFont = LoadObject<UFont>(nullptr, SelectedRuntimeFontPath);
-		}
-		return CachedFont.Get();
-	}
-
-	void ApplySelectedRuntimeFont(UWidgetTree* Tree)
-	{
-		UFont* SelectedFont = ResolveSelectedRuntimeFont();
-		if (!Tree || !SelectedFont)
+		UFont* BodyFontObject = LoadObject<UFont>(
+			nullptr, FGameXXKInRunUiStyle::BodyFontPath, nullptr, LOAD_NoWarn);
+		if (!Tree || !BodyFontObject)
 		{
 			return;
 		}
-		Tree->ForEachWidgetAndDescendants([SelectedFont](UWidget* Child)
+		Tree->ForEachWidgetAndDescendants([BodyFontObject](UWidget* Child)
 		{
 			UTextBlock* TextBlock = Cast<UTextBlock>(Child);
 			if (!TextBlock)
 			{
 				return;
 			}
-			FSlateFontInfo FontInfo = TextBlock->GetFont();
-			// The selected Jianghu face includes both Latin and Chinese glyphs.
-			FontInfo.FontObject = SelectedFont;
+			const FSlateFontInfo Existing = TextBlock->GetFont();
+			const FString ExistingPath = Existing.FontObject ? Existing.FontObject->GetPathName() : FString();
+			if (ExistingPath.StartsWith(TEXT("/Game/GameXXK/UI/Fonts/")))
+			{
+				return;
+			}
+			FSlateFontInfo FontInfo = Existing;
+			FontInfo.FontObject = BodyFontObject;
 			FontInfo.TypefaceFontName = TEXT("Default");
 			TextBlock->SetFont(FontInfo);
 		});
@@ -925,6 +924,23 @@
 		return Style;
 	}
 
+	UTextBlock* MakeRoleText(
+		UWidgetTree* Tree,
+		const FText& Text,
+		int32 Size,
+		const EGameXXKFontRole Role,
+		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f),
+		const FName Name = NAME_None)
+	{
+		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
+		Result->SetText(GameXXKLocalization::Localize(Text));
+		Result->SetColorAndOpacity(Color);
+		Result->SetFont(FGameXXKInRunUiStyle::Font(Role, Size));
+		Result->SetAutoWrapText(true);
+		return Result;
+	}
+
+	/** Body default: buttons, labels, counts, hints and panel sub-captions. */
 	UTextBlock* MakeText(
 		UWidgetTree* Tree,
 		const FText& Text,
@@ -932,12 +948,18 @@
 		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f),
 		const FName Name = NAME_None)
 	{
-		UTextBlock* Result = Tree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(), Name);
-		Result->SetText(GameXXKLocalization::Localize(Text));
-		Result->SetColorAndOpacity(Color);
-		Result->SetFont(FGameXXKInRunUiStyle::Font(Size,true));
-		Result->SetAutoWrapText(true);
-		return Result;
+		return MakeRoleText(Tree, Text, Size, EGameXXKFontRole::Body, Color, Name);
+	}
+
+	/** Panel and page headings, stage names and character names. */
+	UTextBlock* MakeTitleText(
+		UWidgetTree* Tree,
+		const FText& Text,
+		int32 Size,
+		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f),
+		const FName Name = NAME_None)
+	{
+		return MakeRoleText(Tree, Text, Size, EGameXXKFontRole::Title, Color, Name);
 	}
 
 	UTextBlock* MakeButtonText(
@@ -947,6 +969,19 @@
 		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f))
 	{
 		UTextBlock* Result = MakeText(Tree, GameXXKLocalization::Compact(Text), Size, Color);
+		Result->SetAutoWrapText(false);
+		Result->SetJustification(ETextJustify::Center);
+		return Result;
+	}
+
+	/** Button-shaped name plate that carries a proper name (card, equipment, character). */
+	UTextBlock* MakeTitleButtonText(
+		UWidgetTree* Tree,
+		const FText& Text,
+		const int32 Size,
+		const FLinearColor& Color = FLinearColor(0.06f, 0.045f, 0.035f, 0.98f))
+	{
+		UTextBlock* Result = MakeTitleText(Tree, GameXXKLocalization::Compact(Text), Size, Color);
 		Result->SetAutoWrapText(false);
 		Result->SetJustification(ETextJustify::Center);
 		return Result;
@@ -1135,7 +1170,7 @@
 		UVerticalBoxSlot* IconSlot = Content->AddChildToVerticalBox(DiscBox);
 		IconSlot->SetPadding(FMargin(0.0f, 2.0f, 0.0f, 0.0f));
 		IconSlot->SetHorizontalAlignment(HAlign_Center);
-		UTextBlock* Label = MakeButtonText(Tree, NavText(Nav), 20, bSelected ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink);
+		UTextBlock* Label = MakeTitleButtonText(Tree, NavText(Nav), 20, bSelected ? FLinearColor(0.48f, 0.12f, 0.07f, 1.0f) : Ink);
 		Label->SetJustification(ETextJustify::Center);
 		UVerticalBoxSlot* LabelSlot = Content->AddChildToVerticalBox(Label);
 		LabelSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, 2.0f));
@@ -1267,8 +1302,7 @@
 			LabelText->SetJustification(bQuantityLabel ? ETextJustify::Right : ETextJustify::Center);
 			if (bQuantityLabel)
 			{
-				FSlateFontInfo QuantityFont = FCoreStyle::GetDefaultFontStyle(TEXT("Bold"), 14);
-				QuantityFont.OutlineSettings.OutlineSize = 2;
+				FSlateFontInfo QuantityFont = FGameXXKInRunUiStyle::OutlinedBodyFont(14, 2);
 				QuantityFont.OutlineSettings.OutlineColor = FLinearColor::Black;
 				LabelText->SetFont(QuantityFont);
 			}
@@ -1570,7 +1604,7 @@ TSharedRef<SWidget> UGameXXKDesktopTrainingWorkbenchWidget::RebuildWidget()
 		BuildProgrammaticLayout();
 	}
 	TSharedRef<SWidget> RebuiltWidget = Super::RebuildWidget();
-	ApplySelectedRuntimeFont(WidgetTree);
+	ApplyMissingRuntimeFonts(WidgetTree);
 	return RebuiltWidget;
 }
 
@@ -3868,7 +3902,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildProgrammaticLayout()
 	ActionButtons.Reset();
 	WarehouseInkScrollbar=nullptr;
 	BuildWorkbenchShell();
-	ApplySelectedRuntimeFont(WidgetTree);
+	ApplyMissingRuntimeFonts(WidgetTree);
 	bDesktopNativeInputRegionDirty = true;
 	UpdateTownPresentationInputLock();
 }
@@ -4052,7 +4086,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTownToggleButton()
 		TexturePath,
 		GameXXKDesktopTrainingLayout::GetTownToggleButtonSize()));
 	TownToggleButton->SetBackgroundColor(FLinearColor::White);
-	TownToggleButton->SetContent(MakeButtonText(WidgetTree,
+	// Main-interface navigation button: the brush face, like its panel heading.
+	TownToggleButton->SetContent(MakeTitleButtonText(WidgetTree,
 		GameXXKLocalization::Compact(GameXXKLocalization::Source(TEXT("教程"))), GameXXKLocalization::IsEnglish()?30:36));
 	TownToggleButton->SetToolTipText(GameXXKLocalization::Source(TEXT("教程")));
 	TownToggleButton->SetScaleOnPress(true);
@@ -4084,7 +4119,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
 		TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_NavDiscTask.T_MasterV2_NavDiscTask"),
 		GameXXKDesktopTrainingLayout::GetStoryQuestButtonSize()));
 	StoryQuestButton->SetBackgroundColor(FLinearColor::White);
-	StoryQuestButton->SetContent(MakeButtonText(WidgetTree,
+	// Main-interface navigation button: the brush face, like its panel heading.
+	StoryQuestButton->SetContent(MakeTitleButtonText(WidgetTree,
 		GameXXKLocalization::Compact(GameXXKLocalization::Source(TEXT("任务"))), GameXXKLocalization::IsEnglish()?30:36));
 	StoryQuestButton->SetToolTipText(GameXXKLocalization::Source(TEXT("任务")));
 	StoryQuestButton->SetScaleOnPress(true);
@@ -4102,7 +4138,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
 	ActionButtons.Add(StoryQuestButton);
 	const FVector4 Area=DesktopOverlayPlacement.StoryQuestRect;
 	auto* Dot=WidgetTree->ConstructWidget<UTextBlock>(UTextBlock::StaticClass(),TEXT("MainStoryRedDot"));
-	Dot->SetText(GameXXKLocalization::Source(TEXT("●"))); Dot->SetFont(FGameXXKInRunUiStyle::Font(24));
+	Dot->SetText(GameXXKLocalization::Source(TEXT("●"))); Dot->SetFont(FGameXXKInRunUiStyle::BodyFont(24));
 	Dot->SetColorAndOpacity(FSlateColor(FLinearColor(.76f,.08f,.05f,1))); Dot->SetVisibility(ESlateVisibility::Collapsed);
 	AddCanvas(RootCanvas,Dot,FVector2D(Area.X+Area.Z-23,Area.Y+5),FVector2D(27,30));
 }
@@ -4652,7 +4688,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildDesktopShopPanel()
 	const bool bResults=!ShopPurchaseResults.IsEmpty();
 	const auto* Subsystem=ResolveMVPSubsystem();
 	AddCanvasRect(RootCanvas,MakePanel(WidgetTree,Panel,TEXT("ShopPaper"),true),GameXXKDesktopTrainingLayout::GetContentRect());
-	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(bResults?TEXT("获得物品"):TEXT("商店")),32,Ink),FVector2D(425,260),FVector2D(380,48));
+	AddCanvas(RootCanvas,MakeTitleText(WidgetTree,GameXXKLocalization::Source(bResults?TEXT("获得物品"):TEXT("商店")),32,Ink),FVector2D(425,260),FVector2D(380,48));
 	BuildPanelCloseButton(TEXT("ShopCloseButton"),bResults?1964:1965,FVector2D(1272,252));
 	auto PriceText=[](int32 Value){return FText::AsNumber(Value);};
 	auto ProductIcon=[](const FGameXXKMetaShopProductDefinition& P)
@@ -4675,7 +4711,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildDesktopShopPanel()
 			AddCanvas(Content,InkStrip,FVector2D(10,10),FVector2D(138,36));
 		}
 		auto* TitleFit=WidgetTree->ConstructWidget<UScaleBox>();TitleFit->SetStretch(EStretch::ScaleToFit);TitleFit->SetStretchDirection(EStretchDirection::DownOnly);
-		auto* NameText=MakeButtonText(WidgetTree,GameXXKLocalization::Source(Name),20,bSelected?FLinearColor::White:Ink);
+		auto* NameText=MakeTitleButtonText(WidgetTree,GameXXKLocalization::Source(Name),20,bSelected?FLinearColor::White:Ink);
 		if(Quality!=EGameXXKEquipmentQuality::Invalid)GameXXKEquipmentQualityStyle::ApplyName(NameText,Quality);
 		TitleFit->SetContent(NameText);
 		AddCanvas(Content,TitleFit,FVector2D(12,17),FVector2D(134,26));
@@ -4724,7 +4760,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildDesktopShopPanel()
 	}
 	for(int32 I=0;I<Products.Num();++I)DrawCard(I,Products[I].DisplayName.ToString().Replace(TEXT("装备包"),TEXT("套装")),ProductIcon(Products[I]),TEXT(""),1970+I,I==SelectedShopProductIndex,Products[I].Price);
 	const auto& Selected=Products[SelectedShopProductIndex];
-	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(Selected.DisplayName.ToString().Replace(TEXT("装备包"),TEXT("套装"))),23,Ink),FVector2D(438,692),FVector2D(225,32));
+	AddCanvas(RootCanvas,MakeTitleText(WidgetTree,GameXXKLocalization::Source(Selected.DisplayName.ToString().Replace(TEXT("装备包"),TEXT("套装"))),23,Ink),FVector2D(438,692),FVector2D(225,32));
 	const FString ItemHint=Selected.Kind==EGameXXKMetaShopProductKind::EquipmentPack?FString::Printf(TEXT("Lv.%d · 随机1件"),Subsystem?FGameXXKMetaShopRules::EquipmentItemLevel(Subsystem->GetRuntimeState()):1):Selected.Kind==EGameXXKMetaShopProductKind::GemPack?TEXT("每份1颗宝石"):Selected.Kind==EGameXXKMetaShopProductKind::TravelMoney?TEXT("每份10个行旅钱"):TEXT("每份1个宝箱");
 	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(ItemHint),19,Ink),FVector2D(438,725),FVector2D(225,27));
 	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Compact(GameXXKLocalization::Source(TEXT("数量"))),20,Ink),FVector2D(667,699),FVector2D(55,32));
@@ -4757,7 +4793,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildHudSettingsPanel()
     UCanvasPanel* Canvas = WidgetTree->ConstructWidget<UCanvasPanel>(
         UCanvasPanel::StaticClass(), TEXT("DesktopHudSettingsCanvas"));
     GameXXKDesktopPaperStyle::SetPanelContent(SettingsPanel, Canvas, FMargin(32.0f, 8.0f, 32.0f, 24.0f));
-    UTextBlock* Title = MakeText(WidgetTree, GameXXKLocalization::Text(TEXT("Settings.Title")), 32, Ink, TEXT("HudSettingsTitle"));
+    UTextBlock* Title = MakeTitleText(WidgetTree, GameXXKLocalization::Text(TEXT("Settings.Title")), 32, Ink, TEXT("HudSettingsTitle"));
     Title->SetAutoWrapText(false);
     AddCanvas(Canvas, Title, FVector2D(0, 0), FVector2D(480, 50));
 
@@ -6512,7 +6548,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ReleaseTravelAtlasSession()
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryTaskDrawer()
 {
 	AddCanvasRect(RootCanvas,MakePanel(WidgetTree,Panel,TEXT("StoryTaskPanel"),true),GameXXKDesktopTrainingLayout::GetWarehouseRect());
-	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(bAcademyDrawer?TEXT("教程"):TEXT("任务")),30,Ink),FVector2D(30,258),FVector2D(270,40));
+	AddCanvas(RootCanvas,MakeTitleText(WidgetTree,GameXXKLocalization::Source(bAcademyDrawer?TEXT("教程"):TEXT("任务")),30,Ink),FVector2D(30,258),FVector2D(270,40));
 	BuildPanelCloseButton(TEXT("StoryTaskCloseButton"),ActionCloseWarehouse,FVector2D(314,254));
 	auto Button=[&](FName Name,int32 Action,const FString& Label,FVector2D Position,FVector2D Size,bool Selected)
 	{
@@ -6543,8 +6579,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryTaskDrawer()
 			auto* Labels=WidgetTree->ConstructWidget<UVerticalBox>(); Labels->SetVisibility(ESlateVisibility::HitTestInvisible);
 			for(const auto& Pair:TArray<TPair<FString,int32>>{{Location,24},{Status,14}})
 			{
-				auto* Caption=MakeText(WidgetTree,GameXXKLocalization::Source(Pair.Key),Pair.Value,Ink,Pair.Value==14?FName(*FString::Printf(TEXT("MainStoryChapterStatus_%d"),I)):NAME_None);
-				Caption->SetFont(FGameXXKInRunUiStyle::Font(Pair.Value,true)); if(C.Id==SelectedMainStoryChapter)Caption->SetColorAndOpacity(FSlateColor(FLinearColor(.96f,.92f,.82f,1))); Caption->SetJustification(ETextJustify::Center);
+				// 24 is the chapter name (brush face); 14 is the "3/4 已完成 · 待领奖" status line (body face).
+				const EGameXXKFontRole CaptionRole = Pair.Value == 14 ? EGameXXKFontRole::Body : EGameXXKFontRole::Title;
+				auto* Caption=MakeRoleText(WidgetTree,GameXXKLocalization::Source(Pair.Key),Pair.Value,CaptionRole,Ink,Pair.Value==14?FName(*FString::Printf(TEXT("MainStoryChapterStatus_%d"),I)):NAME_None);
+				if(C.Id==SelectedMainStoryChapter)Caption->SetColorAndOpacity(FSlateColor(FLinearColor(.96f,.92f,.82f,1))); Caption->SetJustification(ETextJustify::Center);
 				Caption->SetAutoWrapText(false);
 				Labels->AddChildToVerticalBox(Caption)->SetPadding(FMargin(8,0));
 			}
@@ -6560,7 +6598,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryTaskDrawer()
 		Empty->SetVisibility(Visible==0?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
 		AddCanvas(RootCanvas,Empty,FVector2D(55,426),FVector2D(265,60));
 		auto* Help=MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("支线可回头补做")),15,Ink);
-		Help->SetFont(FGameXXKInRunUiStyle::Font(15,true));Help->SetAutoWrapText(false);
+		Help->SetFont(FGameXXKInRunUiStyle::BodyFont(15));Help->SetAutoWrapText(false);
 		AddCanvas(RootCanvas,Help,FVector2D(38,838),FVector2D(288,75));
 		return;
 	}
@@ -6631,7 +6669,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildWarehousePanel()
 	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
 	ShelfDivider->SetBrush(ShelfDividerBrush);
 	AddCanvas(RootCanvas, ShelfDivider, FVector2D(20.0f, 786.0f), FVector2D(343.0f, 2.0f));
-	UTextBlock* Title = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("仓库")), 28, Ink);
+	UTextBlock* Title = MakeTitleText(WidgetTree, GameXXKLocalization::Source(TEXT("仓库")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(30.0f, 258.0f), FVector2D(323.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("WarehouseCloseButton"), ActionCloseWarehouse, FVector2D(314.0f, 254.0f));
 	const UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -6960,7 +6998,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 		AddCanvasRect(RootCanvas, Guard, Area);
 		const TCHAR* CategoryTitle = CharacterPickerRoster == EGameXXKDesktopTrainingCharacterRoster::Npcs ? TEXT("选择同行角色") : TEXT("选择伙伴");
 		const FLinearColor PickerText(0.94f,0.88f,0.76f,1.0f);
-		AddCanvas(RootCanvas, MakeText(WidgetTree,GameXXKLocalization::Source(CategoryTitle),24,PickerText,TEXT("CharacterPickerTitle")), FVector2D(Area.X+24,CardY-46), FVector2D(300,36));
+		AddCanvas(RootCanvas, MakeTitleText(WidgetTree,GameXXKLocalization::Source(CategoryTitle),24,PickerText,TEXT("CharacterPickerTitle")), FVector2D(Area.X+24,CardY-46), FVector2D(300,36));
 		AddCanvas(RootCanvas, MakeText(WidgetTree,FText::Format(GameXXKLocalization::Text(TEXT("Picker.ViewingCharacter")),
 			GameXXKLocalization::Source(GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,ActiveBackpackCharacterId))),
 			16,PickerText,TEXT("CharacterPickerViewingLabel")), FVector2D(Area.X+335,CardY-39), FVector2D(380,28));
@@ -7039,7 +7077,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 		const float ArtWidth = ArtHeight*(171.0f/205.0f);
 		Portrait->SetBrush(MakeTextureBrush(*PortraitPath,FVector2D(ArtWidth,ArtHeight))); Portrait->SetVisibility(ESlateVisibility::HitTestInvisible);
 		AddCanvas(Face,Portrait,FVector2D(CardWidth-ArtWidth-(bRoomierNpc ? 6.0f : 8.0f),CardHeight-ArtHeight-10.0f),FVector2D(ArtWidth,ArtHeight));
-		auto* Title=MakeText(WidgetTree,GameXXKLocalization::Compact(GameXXKLocalization::Source(Name)),20,Ink,
+		auto* Title=MakeTitleText(WidgetTree,GameXXKLocalization::Compact(GameXXKLocalization::Source(Name)),20,Ink,
 			*FString::Printf(TEXT("CharacterPickerName_%d"),I)); Title->SetVisibility(ESlateVisibility::HitTestInvisible); Title->SetJustification(ETextJustify::Center); Title->SetAutoWrapText(false);
 		AddCanvas(Face,Title,FVector2D(10,13),FVector2D(CardWidth-20,30));
 		auto* Caption=MakeText(WidgetTree,GameXXKLocalization::Compact(GameXXKLocalization::Source(TEXT("等级"))),12,FGameXXKInRunUiStyle::MutedInk()); Caption->SetVisibility(ESlateVisibility::HitTestInvisible); Caption->SetAutoWrapText(false);
@@ -7146,7 +7184,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 			AddCanvas(Face,Art,FVector2D(Size.X-ArtSize.X-8,Size.Y-ArtSize.Y-10),ArtSize);
 		}
 		const FString Name=CharacterId.IsNone() ? TEXT("尚未结伴") : GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,CharacterId);
-		auto* Title=MakeButtonText(WidgetTree,GameXXKLocalization::Source(Name),Size.X>180 ? 26 : 20,Ink);
+		auto* Title=MakeTitleButtonText(WidgetTree,GameXXKLocalization::Source(Name),Size.X>180 ? 26 : 20,Ink);
 		Title->SetVisibility(ESlateVisibility::HitTestInvisible);
 		AddCanvas(Face,Title,FVector2D(8,12),FVector2D(Size.X-16,36));
 		auto* Caption=MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("等级")),12,FGameXXKInRunUiStyle::MutedInk());
@@ -7169,7 +7207,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	AddCanvas(RootCanvas,Body,FVector2D::ZeroVector,GameXXKDesktopTrainingLayout::GetReferenceCanvasSize());
 	Body->SetRenderOpacity(bFormationPickerOpen ? 0.20f : 1.0f);
 	Body->SetVisibility(bFormationPickerOpen ? ESlateVisibility::HitTestInvisible : ESlateVisibility::SelfHitTestInvisible);
-	AddCanvas(Body,MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("编队")),30,Ink),FVector2D(Area.X+24,Area.Y+14),FVector2D(160,42));
+	AddCanvas(Body,MakeTitleText(WidgetTree,GameXXKLocalization::Source(TEXT("编队")),30,Ink),FVector2D(Area.X+24,Area.Y+14),FVector2D(160,42));
 	AddCanvas(Body,MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("出战三人 · 卡组随角色保存")),16,FGameXXKInRunUiStyle::MutedInk()),FVector2D(Area.X+160,Area.Y+25),FVector2D(420,27));
 	const FName PartyIds[]={FGameXXKEquipmentRules::HeroCharacterId(),State ? State->CardRun.PartySelection.ActivePermanentCompanionInstanceId : NAME_None,ResolveWorkbenchNpcId(Subsystem)};
 	const TCHAR* Names[]={TEXT("FormationHeroSlot"),TEXT("FormationCompanionSlot"),TEXT("FormationNpcSlot")};
@@ -7191,7 +7229,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	AddCanvasRect(Picker,Guard,Area);
 	const FLinearColor Light(0.96f,0.91f,0.80f,1);
 	const bool Companions=ActiveFormationRoster==EGameXXKDesktopTrainingCharacterRoster::Companions;
-	AddCanvas(Picker,MakeText(WidgetTree,GameXXKLocalization::Source(Companions ? TEXT("选择伙伴") : TEXT("选择同行角色")),26,Light),FVector2D(Area.X+24,Area.Y+145),FVector2D(430,40));
+	AddCanvas(Picker,MakeTitleText(WidgetTree,GameXXKLocalization::Source(Companions ? TEXT("选择伙伴") : TEXT("选择同行角色")),26,Light),FVector2D(Area.X+24,Area.Y+145),FVector2D(430,40));
 	const auto Candidates=Companions ? GetCompanionCharacterIdsForTest() : GetNpcCharacterIdsForTest();
 	const int32 Pages=FMath::Max(1,FMath::DivideAndRoundUp(Candidates.Num(),6));
 	FormationPickerPageIndex=FMath::Clamp(FormationPickerPageIndex,0,Pages-1);
@@ -7221,7 +7259,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTalentsPanel()
 {
 	UBorder* PanelBorder = MakePanel(WidgetTree, PanelAlt, TEXT("TalentsPanel"), true);
 	AddCanvasRect(RootCanvas, PanelBorder, GameXXKDesktopTrainingLayout::GetContentRect());
-	UTextBlock* Title = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("天赋修行")), 25, Ink);
+	UTextBlock* Title = MakeTitleText(WidgetTree, GameXXKLocalization::Source(TEXT("天赋修行")), 25, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(417.0f, 254.0f), FVector2D(700.0f, 36.0f));
 	BuildPanelCloseButton(TEXT("TalentsCloseButton"), ActionCloseCentralPage, FVector2D(1284.0f, 258.0f));
 	UTextBlock* Notice = MakeText(
@@ -7271,7 +7309,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	DividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.45f));
 	Divider->SetBrush(DividerBrush);
 	AddCanvas(RootCanvas, Divider, FVector2D(1379, 786), FVector2D(271, 2));
-	AddCanvas(RootCanvas, MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("工具")), 28, Ink), FVector2D(1387, 258), FVector2D(255, 38));
+	AddCanvas(RootCanvas, MakeTitleText(WidgetTree, GameXXKLocalization::Source(TEXT("工具")), 28, Ink), FVector2D(1387, 258), FVector2D(255, 38));
 	BuildPanelCloseButton(TEXT("ToolsCloseButton"), ActionCloseRightPanel, FVector2D(1602, 254));
 	const TCHAR* Labels[] = {TEXT("分解"), TEXT("合成"), TEXT("强化"), TEXT("洗炼"), TEXT("镶嵌")};
     auto* ModeLabel=MakeText(WidgetTree,GameXXKLocalization::Source(Labels[static_cast<int32>(ActiveToolMode)]),21,Ink,TEXT("ToolModeLabel"));
@@ -7489,7 +7527,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	ShelfDividerBrush.TintColor = FSlateColor(FLinearColor(0.18f, 0.14f, 0.09f, 0.70f));
 	ShelfDivider->SetBrush(ShelfDividerBrush);
 	AddCanvas(RootCanvas, ShelfDivider, FVector2D(1379.0f, 786.0f), FVector2D(271.0f, 2.0f));
-	UTextBlock* Title = MakeText(WidgetTree, GameXXKLocalization::Source(TEXT("历练地图")), 28, Ink);
+	UTextBlock* Title = MakeTitleText(WidgetTree, GameXXKLocalization::Source(TEXT("历练地图")), 28, Ink);
 	AddCanvas(RootCanvas, Title, FVector2D(1387.0f, 258.0f), FVector2D(255.0f, 38.0f));
 	BuildPanelCloseButton(TEXT("TrainingCloseButton"), ActionCloseRightPanel, FVector2D(1602.0f, 254.0f));
 	UGameXXKMVPSubsystem* Subsystem = ResolveMVPSubsystem();
@@ -7698,7 +7736,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 			IconSlot->SetHorizontalAlignment(HAlign_Center);
 			IconSlot->SetVerticalAlignment(VAlign_Center);
 		}
-		UTextBlock* StageLabel = MakeText(
+		UTextBlock* StageLabel = MakeTitleText(
 			WidgetTree,
 			GameXXKLocalization::Source(FString::Printf(TEXT("%d-%d"), Definition.Chapter,
 				bHunt?4:((Definition.StageNumber - 1) % 3) + 1)),
@@ -7739,7 +7777,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	Challenge->Configure(this, 6);
 	Challenge->SetStyle(MakeTextureButtonStyle(CharacterTabSelectedTexturePath, FVector2D(116.0f, 58.0f), FMargin(0.08f)));
 	Challenge->SetBackgroundColor(FLinearColor::White);
-	Challenge->SetContent(MakeButtonText(WidgetTree, GameXXKLocalization::Source(TEXT("挑战")), 22));
+	Challenge->SetContent(MakeTitleButtonText(WidgetTree, GameXXKLocalization::Source(TEXT("挑战")), 22));
 	if (Subsystem)
 	{
 		const bool bCanChallenge = FGameXXKHuntRules::IsHuntStage(SelectedStageId)?FGameXXKHuntRules::CanEnter(Subsystem->GetRuntimeState(),SelectedStageId):FGameXXKTrainingRules::CanChallenge(Progress, SelectedStageId);
@@ -7757,7 +7795,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTrainingMapPanel()
 	Travel->Configure(this, 7);
 	Travel->SetStyle(MakeTextureButtonStyle(CharacterTabSelectedTexturePath, FVector2D(116.0f, 58.0f), FMargin(0.08f)));
 	Travel->SetBackgroundColor(FLinearColor::White);
-	Travel->SetContent(MakeButtonText(WidgetTree, GameXXKLocalization::Source(TEXT("游历")), 22));
+	Travel->SetContent(MakeTitleButtonText(WidgetTree, GameXXKLocalization::Source(TEXT("游历")), 22));
 	const bool bCanTravel = Subsystem
 		&& !SelectedStageId.IsNone()
 		&& (FGameXXKHuntRules::IsHuntStage(SelectedStageId)?FGameXXKHuntRules::CanEnter(Subsystem->GetRuntimeState(),SelectedStageId):FGameXXKTrainingRules::CanTravel(Subsystem->GetTrainingProgressCopy(),SelectedStageId));
@@ -10831,7 +10869,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshNoticePresentation()
                 auto MakeDetail=[&](UObject* TooltipOwner)->UWidget*
                 {
                     auto* Detail=NewObject<UTextBlock>(TooltipOwner);Detail->SetText(FullMessage);
-                    Detail->SetFont(FGameXXKInRunUiStyle::Font(16,true));Detail->SetColorAndOpacity(FLinearColor::White);
+                    Detail->SetFont(FGameXXKInRunUiStyle::BodyFont(16));Detail->SetColorAndOpacity(FLinearColor::White);
                     Detail->SetAutoWrapText(true);Detail->SetWrapTextAt(480);
                     auto* Backing=NewObject<UBorder>(TooltipOwner);Backing->SetBrush(FSlateRoundedBoxBrush(FLinearColor(.025f,.03f,.035f,.88f),5.f));
                     Backing->SetPadding(FMargin(12,10));Backing->SetContent(Detail);

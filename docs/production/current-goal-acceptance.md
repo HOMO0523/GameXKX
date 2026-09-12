@@ -1,10 +1,12 @@
 ---
 status: active
 owner: codex
-updated_at: 2026-09-11T00:42:00+08:00
-source_commit: 004c45f
-working_tree: UI, localization, Wind affix and chest reports under cold-build verification; full goal remains unfinished
+updated_at: 2026-09-12T16:20:00+08:00
+source_commit: de296d0
+working_tree: 双字体排版改造（标题江湖体／正文荆南圆体）已冷编译与回归；逐页实拍待用户确认
 ---
+
+> **2026-09-12 双字体排版落地：标题江湖体 + 正文荆南圆体**：本地化总表原无标题/正文角色列，本轮新建 `docs/design/2026-09-12-body-font-rollout/font-roles.tsv`（114 个字体调用点：Title 25、Body 73、Manual 16）并导出为总表第 14 页。`FGameXXKInRunUiStyle` 删除被忽略的 `bDisplay` 参数、改为 `EGameXXKFontRole{Title,Body}` + `TitleFont/BodyFont/Outlined*Font/FontPath`，编译器强制每个调用点表态；桌面工作台的"整树刷成江湖体"改为只补缺失字体的安全网；两处引擎默认字体正文并入统一入口；5 个测试的字体断言改为按角色。正文字体先用芝士奶盖乌龙宋 Lite（OFL 1.1），**用户判定过细，当日换成荆南圆体 KeinannMaruPOP**（OFL 1.1，1799 个语料字符零缺字，且自带旧江湖体缺失的 ●◆▼▲✓★·×→≤≥＋／～％）。主界面大按钮（教程/任务/挑战/游历与五个导航盘）按用户追加要求保留江湖体。冷 UBT 通过；8 桶 682 项自动化**新增失败 0**（15 项既有失败与 `20260911-proposalB` 基线逐项同名同状态，DesktopTraining 2 项经 HEAD 基线复跑确认为既有失败）；运行期逐控件审计外源字体 0，仅剩 1 处约 2% 的 NPC 页签字宽溢出。真实 PIE 实拍 6 张已取（可见编辑器 + Win32 `PrintWindow` 抓 `GameXXKDesktopOverlay` 窗口，1536×816、1.0–1.5MB；注意 `HighResShot` 对该覆盖窗口只返回空图，且该抓法不含遮罩后的游戏视口）。见[决策与实现](../design/2026-09-12-body-font-rollout/README.md)与[验收](../design/2026-09-12-body-font-rollout/acceptance.md)。
 
 > **2026-09-11 三箱品质表 + 宇宙获取路径（最终版）**：用户指出普通箱不应只出普通品质，并要求三箱一起重列、修掉合成概率的非平滑衰减、补上讨伐箱缺失的天界/登神。最终批准：**九合一提案B**（每档只前进一档或保持原品质，无跨档跳变，成功率 100/100/100/90/85/80/75/70/60% 单一平滑递减，期望前进档数从旧表的 1.00→1.503→1.100→0.500 断点改为无断点单调曲线）；**讨伐箱乙方案**（基点域每列精确 10000，珍稀及以上严格 1:4:16；天界 80bp、登神 40bp 不分难度，宇宙 16bp 仅地狱——讨伐箱是唯一直出顶三档的来源，顶端 200>100>80>40>16 不倒挂）。实测挂机全队 18 件宇宙约 **1.84 年**（批准目标 1–2 年），其中直出贡献约 84%；非地狱路径约 11.3 年。游戏内 `Chest.Hunt.Odds` 中英文本、设计总表 sheet02/sheet04、本地化总表、运行时契约同步。冷 UBT 通过（首次因交互编辑器占用 DLL 链接失败，关闭后通过）；Hunt 10/10、Training 50/50、ToolsRedesign 14/14、Localization 21/21，10 桶 609 项回归 591 通过、失败集与改动前完全一致。见[三箱品质表与宇宙路径](2026-09-11-three-chest-quality-table.md)。
 
