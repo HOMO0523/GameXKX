@@ -1,0 +1,12 @@
+// Icon resource for the root-level GameXXK launcher.
+//
+// Resource id 1 is deliberately the lowest id in the executable: Explorer shows
+// the lowest-numbered icon resource as the file's icon.
+//
+// The .ico is generated from SourceArt/UI/AppIcon/GameXXK-icon-source.png by
+// scripts/build_launcher.ps1; it carries 16/32/48/64/128/256 sizes so Explorer
+// picks a crisp one for every view.
+
+#include <windows.h>
+
+1 ICON "GameXXK.ico"
