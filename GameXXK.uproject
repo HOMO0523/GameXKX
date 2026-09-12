@@ -89,6 +89,10 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
+			"Name": "NNEDenoiser",
+			"Enabled": false
 		}
 	]
 }
