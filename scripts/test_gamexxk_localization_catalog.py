@@ -106,5 +106,37 @@ class LocalizationCatalogTests(unittest.TestCase):
                          "Retired reset-guide action must not return as player copy")
 
 
+    def test_shipped_presentation_never_uses_reflected_enum_names(self):
+        """Reflected enum display names are an editor-only truth.
+
+        CoreUObject's UEnum::GetDisplayNameTextByIndex reads the UMETA(DisplayName)
+        metadata inside `#if WITH_EDITOR` and otherwise falls through to
+        `FText::FromString(GetNameStringByIndex(...))`, i.e. the raw C++ entry name.
+        A packaged build therefore renders "Common"/"Epic"/"Legendary" where the
+        editor showed the approved label, which is exactly how the equipment
+        tooltip shipped an English quality name under zh-Hans.
+
+        Presentation must resolve through the catalogue instead, e.g.
+        FGameXXKEquipmentQualityRules::GetDisplayName(). The editor module may still
+        use reflection freely, and test fixtures are ignored.
+        """
+        call = re.compile(r"GetDisplayNameTextBy(Value|Index)\s*\(|\bGetValueOrBitfieldAsDisplayNameText\s*\(")
+        offenders = []
+        runtime = ROOT / "Source/GameXXK"
+        for path in sorted(list(runtime.rglob("*.cpp")) + list(runtime.rglob("*.h"))):
+            if "Tests" in path.parts:
+                continue
+            source = path.read_text(encoding="utf-8", errors="replace")
+            source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)   # block comments
+            source = re.sub(r"//[^\n]*", "", source)                 # line comments
+            for number, line in enumerate(source.splitlines(), 1):
+                if call.search(line):
+                    offenders.append(f"{path.relative_to(ROOT).as_posix()}:{number}")
+        self.assertEqual(
+            [], offenders,
+            "Reflected enum display names degrade to raw C++ entry names in a packaged build; "
+            "resolve player-facing text through the localization catalogue instead")
+
+
 if __name__ == "__main__":
     unittest.main()

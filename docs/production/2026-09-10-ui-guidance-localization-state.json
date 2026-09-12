@@ -213,6 +213,16 @@
       "progress": "乘风及产甲已生效；其余24项分系词缀的未实现状态保留在总表，不冒充已接入。",
       "next": "实际工具窄行与完整Tooltip视觉复核；其余词缀独立继续审查。",
       "evidence": "docs/design/2026-09-11-affix-wind-ramp.md"
+    },
+    {
+      "id": "G5P",
+      "name": "三箱品质概率与宇宙获取路径",
+      "design": "用户批准三箱一起重列：基点域每列精确10000，珍稀及以上严格1:4:16。讨伐箱采用乙方案：宇宙16bp、天界80bp、登神40bp，是唯一直出顶三档的来源，顶端逐级递减不倒挂；普通箱止于至宝、高级箱止于超凡。九合一采用提案B：每档只前进一档或保持原品质，无跨档跳变，成功率单一平滑递减100/100/100/90/85/80/75/70/60%",
+      "implementation": "ResolveLootQuality 改为十档四列（含来源难度）；OpenOneInternal 对普通箱也掷真实随机品质；ToolCombineProbability 改为提案B；设计总表sheet02+sheet04、运行时契约、游戏内 Chest.*.Odds 文本与本地化总表同步",
+      "validation": "冷UBT通过（首次因编辑器占用DLL链接失败，关闭后通过）；GameXXK.Hunt 10/10、Training 50/50、ToolsRedesign 14/14、Localization 21/21；本地化目录测试7/7；10桶609项回归591通过、失败集与改动前完全一致（18项既有红项）",
+      "progress": "实测全队18件宇宙约1.84年（承诺1-2年），其中直出贡献约84%；非地狱讨伐箱路径约11.3年，故地狱讨伐是关键",
+      "next": "开箱与九合一实机手感复核；用新经济重跑744场矩阵重新判定地狱3-3/3-4定位",
+      "evidence": "docs/production/2026-09-11-three-chest-quality-table.md"
     }
   ],
   "otherTasks": [
@@ -260,5 +270,5 @@
     "latestGuide": "Saved/Codex/UIGuidanceLocalization-20260910/academy-short-final-tests.json"
   },
   "coordination": "用户21:06明确其他对话均完成，不再发送跨对话消息。",
-  "updatedAt": "2026-09-11T01:46:34"
+  "updatedAt": "2026-09-11T15:35:00"
 }
