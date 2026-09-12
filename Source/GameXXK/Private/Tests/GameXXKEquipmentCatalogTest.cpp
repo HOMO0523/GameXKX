@@ -123,11 +123,20 @@ bool FGameXXKEquipmentCatalogTest::RunTest(const FString& Parameters)
 		TestEqual(Label + TEXT(" affix helper display"), FGameXXKEquipmentQualityRules::GetDisplayName(Expected.Tier).ToString(), FString(Expected.DisplayName));
 		TestEqual(Label + TEXT(" equipment from rank"), FGameXXKEquipmentQualityRules::EquipmentQualityFromRank(Expected.Rank), Expected.Quality);
 		TestEqual(Label + TEXT(" affix from rank"), FGameXXKEquipmentQualityRules::AffixTierFromRank(Expected.Rank), Expected.Tier);
+#if WITH_EDITOR
+		// The reflected display name is an EDITOR-ONLY truth. UEnum::GetDisplayNameTextByIndex
+		// (CoreUObject Enum.cpp) reads the UMETA(DisplayName) metadata inside #if WITH_EDITOR and
+		// otherwise returns the raw C++ entry name, so a packaged build reports "Common"/"Epic"
+		// instead of the approved label. Presentation must go through
+		// FGameXXKEquipmentQualityRules::GetDisplayName (asserted above), never through reflection.
+		// This block is kept so the metadata stays aligned with the catalog, not as a contract the
+		// shipped build can rely on.
 		if (EquipmentQualityEnum && AffixTierEnum)
 		{
 			TestEqual(Label + TEXT(" reflected equipment display"), EquipmentQualityEnum->GetDisplayNameTextByValue(Expected.Rank).ToString(), FString(Expected.DisplayName));
 			TestEqual(Label + TEXT(" reflected affix display"), AffixTierEnum->GetDisplayNameTextByValue(Expected.Rank).ToString(), FString(Expected.DisplayName));
 		}
+#endif
 		const EGameXXKEquipmentQuality ExpectedNextQuality = Index + 1 < static_cast<int32>(UE_ARRAY_COUNT(QualityExpectations))
 			? QualityExpectations[Index + 1].Quality
 			: EGameXXKEquipmentQuality::Invalid;

@@ -3865,18 +3865,18 @@
     },
     {
       "key": "Chest.Normal.Odds",
-      "zh-Hans": "2%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。",
-      "en": "2% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty."
+      "zh-Hans": "2%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。\n装备/宝石品质：普通70%、稀有25%、珍稀4%、传奇0.9%、不朽0.09%、至宝0.01%。",
+      "en": "2% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty.\nEquipment/gem quality: Common70%, Rare25%, Epic4%, Legendary0.9%, Immortal0.09%, Treasure0.01%."
     },
     {
       "key": "Chest.Advanced.Odds",
-      "zh-Hans": "8%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。\n装备/宝石品质：稀有90%、珍稀8%、传奇1.5%、不朽0.5%。",
-      "en": "8% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty.\nEquipment/gem quality: Rare90%, Epic8%, Legendary1.5%, Immortal0.5%."
+      "zh-Hans": "8%获得讨伐令，替代本次原奖励；令品质取决于箱子保存的来源难度。\n装备/宝石品质：普通55%、稀有25%、珍稀12%、传奇6%、不朽1.5%、至宝0.4%、超凡0.1%。",
+      "en": "8% chance for a Hunt Order instead of the normal reward. Order quality follows the chest’s saved source difficulty.\nEquipment/gem quality: Common55%, Rare25%, Epic12%, Legendary6%, Immortal1.5%, Treasure0.4%, Transcendent0.1%."
     },
     {
       "key": "Chest.Hunt.Odds",
-      "zh-Hans": "装备/宝石品质：稀有60%、珍稀32%、传奇6%、不朽2%。",
-      "en": "Equipment/gem quality: Rare60%, Epic32%, Legendary6%, Immortal2%."
+      "zh-Hans": "装备/宝石品质：普通2.8%、稀有15%、珍稀48%、传奇24%、不朽6%、至宝2%、超凡1%、天界0.8%、登神0.4%。\n地狱讨伐箱的普通为2.64%，并额外有0.16%直接产出宇宙。",
+      "en": "Equipment/gem quality: Common2.8%, Rare15%, Epic48%, Legendary24%, Immortal6%, Treasure2%, Transcendent1%, Celestial0.8%, Ascendant0.4%.\nThe Hell Hunt Chest drops Common at 2.64% and additionally rolls a direct Cosmic at 0.16%."
     },
     {
       "key": "Hunt.Settlement.OrderGranted",

@@ -67,8 +67,15 @@ struct GAMEXXK_API FGameXXKTrainingChestOpenResult
 class GAMEXXK_API FGameXXKTrainingChestRules final
 {
 public:
-	/** One exact draw from the approved equipment/gem quality table, in basis points [0,9999]. */
-	static EGameXXKEquipmentQuality ResolveLootQuality(EGameXXKTrainingRewardTier Tier, int32 Roll);
+	/** Exact draw domain for every chest roll, in basis points. Each approved column sums to this. */
+	static constexpr int32 LootRollDomain = 10000;
+
+	/**
+	 * One exact draw from the approved equipment/gem quality table, in basis points
+	 * [0,LootRollDomain-1]. The source difficulty only feeds the 宇宙 row, which is reachable
+	 * exclusively from a Hell hunt chest.
+	 */
+	static EGameXXKEquipmentQuality ResolveLootQuality(EGameXXKTrainingRewardTier Tier, EGameXXKTrainingDifficulty SourceDifficulty, int32 Roll);
 	static bool ResolveOrderDrop(EGameXXKTrainingRewardTier Tier, int32 Roll);
 	static bool OpenOne(FGameXXKRuntimeState& InOutState, EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
 	static bool OpenAll(FGameXXKRuntimeState& InOutState, EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);

@@ -260,7 +260,11 @@ void GameXXKEquipmentTooltipPresentation::Populate(UBorder* Frame,UWidgetTree* T
 	for(auto It=Cache.CreateIterator();It;++It)if(!It.Key().IsValid())It.RemoveCurrent();Cache.Add(Frame,Signature);
 	FSlateBrush Paper;Paper.SetResourceObject(LoadObject<UTexture2D>(nullptr,FGameXXKInRunUiStyle::SlotPath));Paper.DrawAs=ESlateBrushDrawType::Box;Paper.Margin=FMargin(.065);Frame->SetBrush(Paper);Frame->SetPadding(FMargin(0));Frame->SetVisibility(ESlateVisibility::HitTestInvisible);
 	const float NameWidth=TextWidth(Definition->DisplayName.ToString(),26)+12;
-	const auto QualityName=StaticEnum<EGameXXKEquipmentQuality>()->GetDisplayNameTextByValue(static_cast<int64>(Item->Quality));
+	// Do NOT use StaticEnum<>()->GetDisplayNameTextByValue(): UEnum::GetDisplayNameTextByIndex
+	// reads the DisplayName metadata inside #if WITH_EDITOR and otherwise falls through to the
+	// raw C++ entry name, so a packaged build would render "Common"/"Epic" here. The rule helper
+	// resolves through the localization catalog and is correct in every build.
+	const FText QualityName=FGameXXKEquipmentQualityRules::GetDisplayName(Item->Quality);
 	FString Meta=FString::Printf(TEXT("%s · 等级 %d"),*QualityName.ToString(),Item->ItemLevel);if(Item->EnhancementLevel>0)Meta+=FString::Printf(TEXT(" · 强化 +%d"),Item->EnhancementLevel);
 	float NaturalWidth=FMath::Max(NameWidth,TextWidth(Meta,15));
 	for(const auto& Roll:Item->RolledAffixes)NaturalWidth=FMath::Max(NaturalWidth,TextWidth(AffixLine(Roll),16)+24);

@@ -252,11 +252,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKToolsProbabilityTableTest,
     "GameXXK.ToolsRedesign.ExactProbabilityTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FGameXXKToolsProbabilityTableTest::RunTest(const FString& Parameters)
 {
-    // Design section 14, indexed by input and output quality rank (1..10).
+    // Design section 14, revised 2026-09-11 (proposal B), indexed by input and output rank (1..10).
+    // Every rank either keeps its quality or advances exactly one step; success falls smoothly
+    // 100/100/100/90/85/80/75/70/60 percent.
     const int32 Expected[9][10] = {
         {0,1000,0,0,0,0,0,0,0,0}, {0,0,1000,0,0,0,0,0,0,0}, {0,0,0,1000,0,0,0,0,0,0},
-        {0,0,0,0,499,499,2,0,0,0}, {0,0,0,0,0,499,499,2,0,0}, {0,0,0,0,0,0,499,499,2,0},
-        {0,0,0,0,0,0,659,339,2,0}, {0,0,0,0,0,0,0,659,339,2}, {0,0,0,0,0,0,0,0,750,250}};
+        {0,0,0,100,900,0,0,0,0,0}, {0,0,0,0,150,850,0,0,0,0}, {0,0,0,0,0,200,800,0,0,0},
+        {0,0,0,0,0,0,250,750,0,0}, {0,0,0,0,0,0,0,300,700,0}, {0,0,0,0,0,0,0,0,400,600}};
     for (int32 Input = 1; Input <= 9; ++Input)
     {
         int32 Actual[10] = {};
@@ -271,8 +273,9 @@ bool FGameXXKToolsProbabilityTableTest::RunTest(const FString& Parameters)
     }
     TestEqual(TEXT("cosmic input cannot combine"), FGameXXKToolCombineProbability::Resolve(10, 0), 0);
     TestEqual(TEXT("out-of-range draw is rejected"), FGameXXKToolCombineProbability::Resolve(4, 1000), 0);
-    TestTrue(TEXT("legendary preview shows rare cross-tier result"), FGameXXKToolCombineProbability::Describe(4).ToString().Contains(TEXT("0.2%")));
-    TestTrue(TEXT("high-tier preview explicitly shows unchanged quality"), FGameXXKToolCombineProbability::Describe(7).ToString().Contains(TEXT("原品质")));
+    TestTrue(TEXT("legendary preview shows its exact eighty-five percent advance"), FGameXXKToolCombineProbability::Describe(5).ToString().Contains(TEXT("85%")));
+    TestTrue(TEXT("celestial preview shows the unchanged-quality outcome"), FGameXXKToolCombineProbability::Describe(7).ToString().Contains(TEXT("原品质")));
+    TestTrue(TEXT("ascendant preview still shows the final unchanged-quality gamble"), FGameXXKToolCombineProbability::Describe(9).ToString().Contains(TEXT("原品质")));
     return true;
 }
 

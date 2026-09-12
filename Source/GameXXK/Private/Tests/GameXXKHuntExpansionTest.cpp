@@ -70,17 +70,30 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKHuntQualityWeightsTest,
     "GameXXK.Hunt.ExactQualityWeights",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
 bool FGameXXKHuntQualityWeightsTest::RunTest(const FString&)
 {
-    const EGameXXKEquipmentQuality Ranks[]={EGameXXKEquipmentQuality::Rare,EGameXXKEquipmentQuality::Epic,EGameXXKEquipmentQuality::Legendary,EGameXXKEquipmentQuality::Immortal};
-    const int32 Approved[2][4]={{9000,800,150,50},{6000,3200,600,200}};
-    for(int32 Box=0;Box<2;++Box)
+    // Approved 2026-09-11 three-chest table, in basis points. All columns sum to
+    // FGameXXKTrainingChestRules::LootRollDomain and the 珍稀-and-above mass is a strict x4 ladder
+    // (500 -> 2000 -> 8000, i.e. 1:4:16). The hunt chest is the only source of the top three ranks:
+    // 天界 80bp / 登神 40bp on every difficulty, plus 宇宙 16bp from 地狱 only. The hunt column top
+    // decays monotonically (200 > 100 > 80 > 40 > 16). 普通箱 stops at 至宝 because the design's
+    // 0.001% 超凡 tail is below one basis point; 高级箱 stops at 超凡.
+    const EGameXXKEquipmentQuality Ranks[]={EGameXXKEquipmentQuality::Common,EGameXXKEquipmentQuality::Rare,EGameXXKEquipmentQuality::Epic,EGameXXKEquipmentQuality::Legendary,EGameXXKEquipmentQuality::Immortal,EGameXXKEquipmentQuality::Treasure,EGameXXKEquipmentQuality::Transcendent,EGameXXKEquipmentQuality::Celestial,EGameXXKEquipmentQuality::Ascendant,EGameXXKEquipmentQuality::Cosmic};
+    const EGameXXKTrainingRewardTier Tiers[4]={EGameXXKTrainingRewardTier::NormalChest,EGameXXKTrainingRewardTier::AdvancedChest,EGameXXKTrainingRewardTier::HuntChest,EGameXXKTrainingRewardTier::HuntChest};
+    const EGameXXKTrainingDifficulty Difficulties[4]={EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Hell};
+    const int32 Approved[4][10]={
+        {7000,2500,400,90,9,1,0,0,0,0},               // 普通箱  珍稀及以上合计 500
+        {5500,2500,1200,600,150,40,10,0,0,0},         // 高级箱  珍稀及以上合计 2000 (x4)
+        {280,1500,4800,2400,600,200,100,80,40,0},     // 讨伐箱(非地狱)  珍稀及以上合计 8000 (x16)
+        {264,1500,4800,2400,600,200,100,80,40,16}};   // 讨伐箱(地狱) 多一枚 16bp 宇宙直出
+    // The normal chest stops at 至宝; only the hunt chest reaches 天界/登神, and only 地狱 reaches 宇宙.
+    const int32 ExpectedRanks[4]={6,7,9,10};
+    for(int32 Box=0;Box<4;++Box)
     {
         TMap<EGameXXKEquipmentQuality,int32> Counts;
-        const auto Tier=Box==0?EGameXXKTrainingRewardTier::AdvancedChest:EGameXXKTrainingRewardTier::HuntChest;
-        for(int32 Roll=0;Roll<10000;++Roll)++Counts.FindOrAdd(FGameXXKTrainingChestRules::ResolveLootQuality(Tier,Roll));
-        TestEqual(TEXT("Only four approved ranks"),Counts.Num(),4);
-        for(int32 Rank=0;Rank<4;++Rank)TestEqual(TEXT("Complete basis-point domain matches approved table"),Counts.FindRef(Ranks[Rank]),Approved[Box][Rank]);
+        for(int32 Roll=0;Roll<FGameXXKTrainingChestRules::LootRollDomain;++Roll)++Counts.FindOrAdd(FGameXXKTrainingChestRules::ResolveLootQuality(Tiers[Box],Difficulties[Box],Roll));
+        TestEqual(TEXT("Only approved ranks are reachable"),Counts.Num(),ExpectedRanks[Box]);
+        for(int32 Rank=0;Rank<10;++Rank)TestEqual(TEXT("Complete basis-point domain matches approved table"),Counts.FindRef(Ranks[Rank]),Approved[Box][Rank]);
     }
-    TestEqual(TEXT("Malformed draw is rejected"),FGameXXKTrainingChestRules::ResolveLootQuality(EGameXXKTrainingRewardTier::HuntChest,10000),EGameXXKEquipmentQuality::Invalid);
+    TestEqual(TEXT("Malformed draw is rejected"),FGameXXKTrainingChestRules::ResolveLootQuality(EGameXXKTrainingRewardTier::HuntChest,EGameXXKTrainingDifficulty::Hell,FGameXXKTrainingChestRules::LootRollDomain),EGameXXKEquipmentQuality::Invalid);
     return true;
 }
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKHuntOrderReplacementTest,
@@ -89,7 +102,7 @@ bool FGameXXKHuntOrderReplacementTest::RunTest(const FString&)
 {
     for(auto Tier:{EGameXXKTrainingRewardTier::NormalChest,EGameXXKTrainingRewardTier::AdvancedChest,EGameXXKTrainingRewardTier::HuntChest})
     {
-        int32 Count=0;for(int32 Roll=0;Roll<10000;++Roll)Count+=FGameXXKTrainingChestRules::ResolveOrderDrop(Tier,Roll);
+        int32 Count=0;for(int32 Roll=0;Roll<FGameXXKTrainingChestRules::LootRollDomain;++Roll)Count+=FGameXXKTrainingChestRules::ResolveOrderDrop(Tier,Roll);
         TestEqual(TEXT("Exact replacement probability"),Count,Tier==EGameXXKTrainingRewardTier::NormalChest?200:Tier==EGameXXKTrainingRewardTier::AdvancedChest?800:0);
     }
     for(auto Difficulty:{EGameXXKTrainingDifficulty::Normal,EGameXXKTrainingDifficulty::Hard,EGameXXKTrainingDifficulty::Hell})

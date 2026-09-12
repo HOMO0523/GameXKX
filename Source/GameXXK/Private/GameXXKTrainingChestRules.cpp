@@ -79,6 +79,7 @@ namespace
 			return false;
 		}
 		const FGameXXKTrainingChestToken Token = InOutState.Training.OwnedChestTokens[TokenIndex];
+		const EGameXXKTrainingDifficulty SourceDifficulty = FGameXXKTrainingRules::DifficultyFromStageId(Token.SourceStageId);
 		FString Error;
 		if (!FGameXXKTrainingRules::ValidateChestTokens(InOutState.Training, &Error))
 		{
@@ -89,7 +90,7 @@ namespace
 		FGameXXKRuntimeState Candidate = InOutState;
 		FGameXXKTrainingChestOpenResult Step;
 		const bool bHigherTier=Tier!=EGameXXKTrainingRewardTier::NormalChest;
-		const bool bOrder=FGameXXKTrainingChestRules::ResolveOrderDrop(Tier,Stream.RandRange(0,9999));
+		const bool bOrder=FGameXXKTrainingChestRules::ResolveOrderDrop(Tier,Stream.RandRange(0,FGameXXKTrainingChestRules::LootRollDomain-1));
 		const bool bEquipment = !bOrder && Stream.RandRange(0, 1) == 0;
 		if(bOrder)
 		{
@@ -106,7 +107,7 @@ namespace
 			}
 			FGameXXKEquipmentCreateRequest Request;
 			Request.Set = static_cast<EGameXXKEquipmentSet>(Stream.RandRange(static_cast<int32>(EGameXXKEquipmentSet::PoJun), static_cast<int32>(EGameXXKEquipmentSet::ShanHe)));
-			Request.Quality = FGameXXKTrainingChestRules::ResolveLootQuality(Tier,bHigherTier?Stream.RandRange(0,9999):0);
+			Request.Quality = FGameXXKTrainingChestRules::ResolveLootQuality(Tier,SourceDifficulty,Stream.RandRange(0,FGameXXKTrainingChestRules::LootRollDomain-1));
 			Request.ItemLevel = Token.SourceItemLevel;
 			Request.bForceSlot = true;
 			Request.ForcedSlot = static_cast<EGameXXKEquipmentSlot>(Stream.RandRange(1, 6));
@@ -130,7 +131,7 @@ namespace
 			if (Outcome <= 2)
 			{
 				const auto Type=static_cast<EGameXXKGemType>(Stream.RandRange(1,FGameXXKGemRules::MaximumTypeRank));
-				const auto Quality=FGameXXKTrainingChestRules::ResolveLootQuality(Tier,bHigherTier?Stream.RandRange(0,9999):0);
+				const auto Quality=FGameXXKTrainingChestRules::ResolveLootQuality(Tier,SourceDifficulty,Stream.RandRange(0,FGameXXKTrainingChestRules::LootRollDomain-1));
 				ItemId=FGameXXKGemRules::MakeItemId(Type,static_cast<EGameXXKGemQuality>(Quality));
 			}
 			else if (MaterialOutcome == 0)
@@ -196,21 +197,58 @@ namespace
 
 bool FGameXXKTrainingChestRules::ResolveOrderDrop(EGameXXKTrainingRewardTier Tier,int32 Roll)
 {
-	if(Roll<0||Roll>=10000)return false;
+	if(Roll<0||Roll>=LootRollDomain)return false;
 	return Tier==EGameXXKTrainingRewardTier::NormalChest?Roll<200:
 		Tier==EGameXXKTrainingRewardTier::AdvancedChest&&Roll<800;
 }
 
-EGameXXKEquipmentQuality FGameXXKTrainingChestRules::ResolveLootQuality(EGameXXKTrainingRewardTier Tier,int32 Roll)
+EGameXXKEquipmentQuality FGameXXKTrainingChestRules::ResolveLootQuality(EGameXXKTrainingRewardTier Tier,EGameXXKTrainingDifficulty SourceDifficulty,int32 Roll)
 {
-	if(Roll<0||Roll>=10000)return EGameXXKEquipmentQuality::Invalid;
-	if(Tier==EGameXXKTrainingRewardTier::NormalChest)return EGameXXKEquipmentQuality::Common;
-	if(Tier!=EGameXXKTrainingRewardTier::AdvancedChest&&Tier!=EGameXXKTrainingRewardTier::HuntChest)return EGameXXKEquipmentQuality::Invalid;
-	const bool bHunt=Tier==EGameXXKTrainingRewardTier::HuntChest;
-	if(Roll<(bHunt?6000:9000))return EGameXXKEquipmentQuality::Rare;
-	if(Roll<(bHunt?9200:9800))return EGameXXKEquipmentQuality::Epic;
-	if(Roll<(bHunt?9800:9950))return EGameXXKEquipmentQuality::Legendary;
-	return EGameXXKEquipmentQuality::Immortal;
+	if(Roll<0||Roll>=LootRollDomain)return EGameXXKEquipmentQuality::Invalid;
+	// Approved 2026-09-11 three-chest table, in basis points. Every column sums to exactly
+	// LootRollDomain. The 珍稀-and-above mass is a strict x4 ladder: normal 500 -> advanced 2000 ->
+	// hunt 8000 (1:4:16). The hunt chest is the only source that reaches the top three ranks:
+	// 天界 80bp and 登神 40bp are droppable on every difficulty, and 宇宙 16bp only from 地狱.
+	// The top of the column decays monotonically (至宝200 > 超凡100 > 天界80 > 登神40 > 宇宙16),
+	// so no tier is more common than the one below it. 普通箱 stops at 至宝 because the design's
+	// 0.001% 超凡 tail is below one basis point; 高级箱 stops at 超凡.
+	struct FQualityRow { int32 NormalChest; int32 AdvancedChest; int32 HuntChest; int32 HellHuntChest; };
+	static constexpr FQualityRow Rows[]={
+		{7000,5500, 280, 264}, // 普通
+		{2500,2500,1500,1500}, // 稀有
+		{ 400,1200,4800,4800}, // 珍稀
+		{  90, 600,2400,2400}, // 传奇
+		{   9, 150, 600, 600}, // 不朽
+		{   1,  40, 200, 200}, // 至宝
+		{   0,  10, 100, 100}, // 超凡
+		{   0,   0,  80,  80}, // 天界
+		{   0,   0,  40,  40}, // 登神
+		{   0,   0,   0,  16}, // 宇宙（仅地狱讨伐箱）
+	};
+	static constexpr EGameXXKEquipmentQuality Qualities[]={
+		EGameXXKEquipmentQuality::Common,
+		EGameXXKEquipmentQuality::Rare,
+		EGameXXKEquipmentQuality::Epic,
+		EGameXXKEquipmentQuality::Legendary,
+		EGameXXKEquipmentQuality::Immortal,
+		EGameXXKEquipmentQuality::Treasure,
+		EGameXXKEquipmentQuality::Transcendent,
+		EGameXXKEquipmentQuality::Celestial,
+		EGameXXKEquipmentQuality::Ascendant,
+		EGameXXKEquipmentQuality::Cosmic,
+	};
+	if(Tier!=EGameXXKTrainingRewardTier::NormalChest&&Tier!=EGameXXKTrainingRewardTier::AdvancedChest&&Tier!=EGameXXKTrainingRewardTier::HuntChest)
+		return EGameXXKEquipmentQuality::Invalid;
+	int32 Remaining=Roll;
+	for(int32 Index=0;Index<UE_ARRAY_COUNT(Rows);++Index)
+	{
+		const int32 Weight=Tier==EGameXXKTrainingRewardTier::NormalChest?Rows[Index].NormalChest:
+			Tier==EGameXXKTrainingRewardTier::AdvancedChest?Rows[Index].AdvancedChest:
+			SourceDifficulty==EGameXXKTrainingDifficulty::Hell?Rows[Index].HellHuntChest:Rows[Index].HuntChest;
+		if(Remaining<Weight)return Qualities[Index];
+		Remaining-=Weight;
+	}
+	return EGameXXKEquipmentQuality::Invalid;
 }
 
 bool FGameXXKTrainingChestRules::OpenOne(

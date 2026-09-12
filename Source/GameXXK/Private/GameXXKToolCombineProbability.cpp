@@ -3,11 +3,17 @@
 
 TArray<FGameXXKToolCombineOutcome> FGameXXKToolCombineProbability::GetOutcomes(const int32 Rank)
 {
-    // Frozen nine-to-one table, 2026-08-28 design section 14.
+    // Frozen nine-to-one table, 2026-08-28 design section 14, revised 2026-09-11 (proposal B).
+    // Every rank advances by exactly one quality or keeps its quality; there are no multi-rank
+    // jumps, so the expected advance per combine (success rate / 1000) is a single smooth
+    // monotonically decreasing curve: 1.00 / 1.00 / 1.00 / 0.90 / 0.85 / 0.80 / 0.75 / 0.70 / 0.60.
     if (Rank >= 1 && Rank <= 3) return {{Rank + 1, 1000}};
-    if (Rank >= 4 && Rank <= 6) return {{Rank + 1, 499}, {Rank + 2, 499}, {Rank + 3, 2}};
-    if (Rank == 7 || Rank == 8) return {{Rank, 659}, {Rank + 1, 339}, {Rank + 2, 2}};
-    if (Rank == 9) return {{9, 750}, {10, 250}};
+    if (Rank == 4) return {{4, 100}, {5, 900}};
+    if (Rank == 5) return {{5, 150}, {6, 850}};
+    if (Rank == 6) return {{6, 200}, {7, 800}};
+    if (Rank == 7) return {{7, 250}, {8, 750}};
+    if (Rank == 8) return {{8, 300}, {9, 700}};
+    if (Rank == 9) return {{9, 400}, {10, 600}};
     return {};
 }
 

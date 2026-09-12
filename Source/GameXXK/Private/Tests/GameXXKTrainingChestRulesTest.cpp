@@ -88,7 +88,12 @@ bool FGameXXKTrainingChestLootMatrixTest::RunTest(const FString& Parameters)
 			TestNotNull(TEXT("advanced chest equipment exists"), Equipment);
 			if (Equipment)
 			{
-				TestEqual(TEXT("advanced chest equipment is Rare"), Equipment->Quality, EGameXXKEquipmentQuality::Rare);
+				// The exact table is pinned exhaustively by GameXXK.Hunt.ExactQualityWeights; this
+				// sweep only proves the equipment branch is reached and stays inside the approved
+				// ranks. Hunt chests now reach 宇宙, and advanced chests carry a Common row.
+				TestTrue(TEXT("advanced chest equipment uses an approved rank"),
+					static_cast<int32>(Equipment->Quality)>=static_cast<int32>(EGameXXKEquipmentQuality::Common)
+					&&static_cast<int32>(Equipment->Quality)<=static_cast<int32>(EGameXXKEquipmentQuality::Cosmic));
 				TestEqual(TEXT("chest preserves source item level"), Equipment->ItemLevel, 37);
 			}
 		}
@@ -99,7 +104,9 @@ bool FGameXXKTrainingChestLootMatrixTest::RunTest(const FString& Parameters)
 			{
 				EGameXXKGemType Type; EGameXXKGemQuality Quality;
 				if (FGameXXKGemRules::TryParseItemId(Pair.Key, Type, Quality))
-					TestEqual(TEXT("advanced chest gem is Rare"), Quality, EGameXXKGemQuality::Rare);
+					TestTrue(TEXT("advanced chest gem uses an approved rank"),
+						static_cast<int32>(Quality)>=static_cast<int32>(EGameXXKGemQuality::Common)
+						&&static_cast<int32>(Quality)<=static_cast<int32>(EGameXXKGemQuality::Cosmic));
 				else
 					TestEqual(TEXT("advanced chest material quantity is three"), Pair.Value, 3);
 			}

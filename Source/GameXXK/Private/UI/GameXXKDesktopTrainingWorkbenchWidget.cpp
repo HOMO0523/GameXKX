@@ -4707,7 +4707,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildDesktopShopPanel()
 				{
 					Quality=Item->Quality;
 					if(const auto* Definition=FGameXXKEquipmentCatalog::FindDefinition(Item->BaseEquipmentId)){Name=Definition->DisplayName.ToString();Icon=Definition->IconSoftPath.ToString();}
-					Footer=StaticEnum<EGameXXKEquipmentQuality>()->GetDisplayNameTextByValue(static_cast<int64>(Item->Quality)).ToString();
+					// Catalog-backed name, not StaticEnum<>()->GetDisplayNameTextByValue():
+					// the reflected display name is editor-only and degrades to the raw
+					// C++ entry name ("Common"/"Epic") in a packaged build.
+					Footer=FGameXXKEquipmentQualityRules::GetDisplayName(Item->Quality).ToString();
 				}
 			}
 			else if(!Result.GrantedItemId.IsNone()){Name=ItemDisplayName(Result.GrantedItemId);Icon=InventoryItemIconTexturePath(Result.GrantedItemId);Quality=FGameXXKGemRules::GetItemPresentationQuality(Result.GrantedItemId);if(Result.GrantedItemId==FGameXXKTravelMoneyRules::ItemId())Footer=TEXT("×10");}
