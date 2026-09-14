@@ -30,7 +30,7 @@ material = unreal.load_asset("/Game/GameXXK/UI/Battle/Materials/M_BattleTargetAr
 texture = unreal.load_asset("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetArrowHead_GemV1")
 assert material and texture
 capture_group = sys.argv[2] if len(sys.argv) > 2 else "GemTargetArrow"
-assert capture_group in ("GemTargetArrow", "GemTrapezoidTrail")
+assert capture_group in ("GemTargetArrow", "GemTrapezoidTrail", "GemTrapezoidDirection")
 out = Path(str(unreal.Paths.project_dir())).resolve() / "Saved" / capture_group / "Live"
 out.mkdir(parents=True, exist_ok=True)
 path = out / (mode + ".png")

@@ -255,14 +255,14 @@ bool FGameXXKTargetTrapezoidTrailTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("the trail uses at most eight separated blocks"), Trail.Num() >= 1 && Trail.Num() <= 8);
 		const FVector2D Direction = (End - Start).GetSafeNormal();
 		float PreviousEnd = 0;
-		float PreviousWidth = MAX_flt;
+		float PreviousWidth = 0;
 		for (const auto& Dash : Trail)
 		{
 			const float Back = FVector2D::DotProduct(Dash.Start - Start, Direction);
 			const float Front = FVector2D::DotProduct(Dash.End - Start, Direction);
 			TestTrue(TEXT("trapezoids progress toward the pointer with visible gaps"), Back > PreviousEnd && Front > Back);
-			TestTrue(TEXT("each trapezoid narrows at its forward edge"), Dash.BackHalfWidth > Dash.FrontHalfWidth && Dash.FrontHalfWidth > 0);
-			TestTrue(TEXT("successive blocks become thinner"), Dash.BackHalfWidth < PreviousWidth);
+			TestTrue(TEXT("each trapezoid widens toward the arrowhead"), Dash.FrontHalfWidth > Dash.BackHalfWidth && Dash.BackHalfWidth > 0);
+			TestTrue(TEXT("successive blocks become thicker toward the arrowhead"), Dash.BackHalfWidth > PreviousWidth);
 			PreviousEnd = Front;
 			PreviousWidth = Dash.BackHalfWidth;
 		}

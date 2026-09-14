@@ -66,10 +66,11 @@ namespace GameXXKTargetingPresentation
 		for (int32 Index = 0; Index < Count; ++Index)
 		{
 			const float Progress = Count > 1 ? static_cast<float>(Index) / (Count - 1) : .5f;
-			const float Length = FMath::Min(CellLength * .74f, FMath::Lerp(58.0f, 28.0f, Progress));
+			const float Length = FMath::Min(CellLength * .74f, FMath::Lerp(28.0f, 58.0f, Progress));
 			const float Center = SourceGap + (Index + .5f) * CellLength;
-			const float Width = FMath::Lerp(14.0f, 5.0f, Progress);
-			Result.Add({Point(Center - Length * .5f), Point(Center + Length * .5f), Width, Width * .72f});
+			// The trail grows from the character toward the arrowhead.
+			const float Width = FMath::Lerp(5.0f, 14.0f, Progress);
+			Result.Add({Point(Center - Length * .5f), Point(Center + Length * .5f), Width * .72f, Width});
 		}
 		return Result;
 	}
