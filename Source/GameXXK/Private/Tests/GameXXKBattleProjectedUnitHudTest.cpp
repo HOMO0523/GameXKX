@@ -201,15 +201,15 @@ namespace
 		const FVector2D PartyInnerAnchor = Board->GetProjectedUnitHudAnchorPositionForTest(TEXT("Npc.TusiChief"));
 		const FVector2D EnemyOuterAnchor = Board->GetProjectedUnitHudAnchorPositionForTest(TEXT("Enemy.MoneyRat"));
 		const FVector2D PartyOuterAnchor = Board->GetProjectedUnitHudAnchorPositionForTest(TEXT("Partner.Blade"));
-		const float EnemyInnerRight = EnemyInnerAnchor.X * SafeStageWidth + HalfPlateWidth;
-		const float PartyInnerLeft = PartyInnerAnchor.X * SafeStageWidth - HalfPlateWidth;
-		const float GapAtCurrentPie = (PartyInnerLeft - EnemyInnerRight) * CurrentPieWidth / SafeStageWidth;
-		const float EnemyOuterLeft = EnemyOuterAnchor.X * SafeStageWidth - HalfPlateWidth;
-		const float PartyOuterRight = PartyOuterAnchor.X * SafeStageWidth + HalfPlateWidth;
+		const float EnemyInnerLeft = EnemyInnerAnchor.X * SafeStageWidth - HalfPlateWidth;
+		const float PartyInnerRight = PartyInnerAnchor.X * SafeStageWidth + HalfPlateWidth;
+		const float GapAtCurrentPie = (EnemyInnerLeft - PartyInnerRight) * CurrentPieWidth / SafeStageWidth;
+		const float EnemyOuterRight = EnemyOuterAnchor.X * SafeStageWidth + HalfPlateWidth;
+		const float PartyOuterLeft = PartyOuterAnchor.X * SafeStageWidth - HalfPlateWidth;
 
 		Test.TestTrue(TEXT("inner enemy and party HUD plates have at least 40 physical pixels of clearance at 1114-wide PIE"), GapAtCurrentPie >= 40.0f);
-		Test.TestTrue(TEXT("outer enemy HUD remains inside the 1920-wide safe stage"), EnemyOuterLeft >= 0.0f);
-		Test.TestTrue(TEXT("outer party HUD remains inside the 1920-wide safe stage"), PartyOuterRight <= SafeStageWidth);
+		Test.TestTrue(TEXT("outer enemy HUD remains inside the 1920-wide safe stage"), EnemyOuterRight <= SafeStageWidth);
+		Test.TestTrue(TEXT("outer party HUD remains inside the 1920-wide safe stage"), PartyOuterLeft >= 0.0f);
 	}
 }
 
@@ -303,12 +303,12 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	TestNull(TEXT("a living unit without a valid P-slot has no HUD plate"), Board->GetProjectedUnitHudForTest(TEXT("Party.InvalidSlot")));
 	TestNull(TEXT("a living unit without a valid P-slot has no formation visual"), Board->GetUnitVisualForTest(TEXT("Party.InvalidSlot")));
 
-	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.905f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.755f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Npc.TusiChief"), EGameXXKCardTargetSide::Party, 3, FVector2D(0.605f, 0.44f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.095f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.BlackBear"), EGameXXKCardTargetSide::Enemy, 2, FVector2D(0.245f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.095f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.245f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Npc.TusiChief"), EGameXXKCardTargetSide::Party, 3, FVector2D(0.395f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.905f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.BlackBear"), EGameXXKCardTargetSide::Enemy, 2, FVector2D(0.755f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.605f, 0.44f));
 	const FName FormationUnitIds[] = {
 		TEXT("Partner.Blade"), TEXT("Player"), TEXT("Npc.TusiChief"),
 		TEXT("Enemy.MoneyRat"), TEXT("Enemy.BlackBear"), TEXT("Enemy.Tiger")};
@@ -371,17 +371,17 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
 	TestTrue(TEXT("cinematic target size is exactly two times formation"),
 		CinematicTarget && CinematicTarget->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
-	TestTrue(TEXT("party cinematic participant uses the stable right-side X anchor"),
-		CinematicAttacker && FMath::IsNearlyEqual(CinematicAttacker->GetStageCenter().X, 1330.0f, 0.01f));
-	TestTrue(TEXT("enemy cinematic participant uses the stable left-side X anchor"),
-		CinematicTarget && FMath::IsNearlyEqual(CinematicTarget->GetStageCenter().X, 590.0f, 0.01f));
+	TestTrue(TEXT("party cinematic participant uses the stable left-side X anchor"),
+		CinematicAttacker && FMath::IsNearlyEqual(CinematicAttacker->GetStageCenter().X, 590.0f, 0.01f));
+	TestTrue(TEXT("enemy cinematic participant uses the stable right-side X anchor"),
+		CinematicTarget && FMath::IsNearlyEqual(CinematicTarget->GetStageCenter().X, 1330.0f, 0.01f));
 	TestTrue(TEXT("party cinematic participant remains vertically centered for Task 10"),
 		CinematicAttacker && FMath::IsNearlyEqual(CinematicAttacker->GetStageCenter().Y, 540.0f, 0.01f));
 	TestTrue(TEXT("enemy cinematic participant remains vertically centered for Task 10"),
 		CinematicTarget && FMath::IsNearlyEqual(CinematicTarget->GetStageCenter().Y, 540.0f, 0.01f));
-	TestTrue(TEXT("party cinematic participant keeps positive X scale without mirroring"),
+	TestTrue(TEXT("party cinematic participant keeps outer geometry positive while the child image is reflected"),
 		CinematicAttacker && CinematicAttacker->GetRenderTransform().Scale.X > 0.0f);
-	TestTrue(TEXT("enemy cinematic participant keeps positive X scale without mirroring"),
+	TestTrue(TEXT("enemy cinematic participant keeps outer geometry positive while the child image is reflected"),
 		CinematicTarget && CinematicTarget->GetRenderTransform().Scale.X > 0.0f);
 	for (const FName UnitId : FormationUnitIds)
 	{
@@ -501,13 +501,13 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	Board->RegisterBattleUnitHudScreenPosition(TEXT("Player"), FVector2D(12.0f, 1060.0f));
 	Board->RegisterBattleUnitHudScreenPosition(TEXT("Enemy.Tiger"), FVector2D(1910.0f, 8.0f));
 	Board->NativeTick(WideGeometry, 0.0f);
-	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.755f, 0.52f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Player"), EGameXXKCardTargetSide::Party, 2, FVector2D(0.245f, 0.52f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.605f, 0.44f));
 
 	const FGeometry NarrowGeometry = FGeometry::MakeRoot(FVector2D(1280.0f, 1024.0f), FSlateLayoutTransform());
 	Board->NativeTick(NarrowGeometry, 0.0f);
-	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.905f, 0.60f));
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.095f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Partner.Blade"), EGameXXKCardTargetSide::Party, 1, FVector2D(0.095f, 0.60f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.MoneyRat"), EGameXXKCardTargetSide::Enemy, 1, FVector2D(0.905f, 0.60f));
 
 	Subsystem->GetMutableRuntimeState().CardRun.ActiveBattle.Units[5].bLiving = false;
 	Board->RefreshFromState();
@@ -521,7 +521,7 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	Board->RefreshFromState();
 	UGameXXKBattleUnitHudWidget* const RevivedTigerHud = Board->GetProjectedUnitHudForTest(TEXT("Enemy.Tiger"));
 	TestNotNull(TEXT("a revived valid P-slot reconstructs its fixed HUD"), RevivedTigerHud);
-	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.395f, 0.44f));
+	AssertFixedHudSlot(*this, Board, TEXT("Enemy.Tiger"), EGameXXKCardTargetSide::Enemy, 3, FVector2D(0.605f, 0.44f));
 	TestEqual(TEXT("a revived fixed-slot HUD redraws current HP"),
 		RevivedTigerHud && RevivedTigerHud->GetResourceWidgetForTest()
 			? RevivedTigerHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()

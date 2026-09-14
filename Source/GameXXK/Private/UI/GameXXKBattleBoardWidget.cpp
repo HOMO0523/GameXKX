@@ -131,8 +131,8 @@ namespace
 	static constexpr float FormationVisualVerticalOffsetNormalized = FormationVisualVerticalOffsetPixels / 1080.0f;
 	static const FVector2D CinematicImpactVisualSize(360.0f, 360.0f);
 	static const FVector2D CinematicHitEffectVisualSize(720.0f, 720.0f);
-	static const FVector2D CinematicEnemyAnchor(590.0f / 1920.0f, 0.5f);
-	static const FVector2D CinematicPartyAnchor(1330.0f / 1920.0f, 0.5f);
+	static const FVector2D CinematicEnemyAnchor(1330.0f / 1920.0f, 0.5f);
+	static const FVector2D CinematicPartyAnchor(590.0f / 1920.0f, 0.5f);
 	static const FVector2D CinematicImpactAnchor(0.5f, 0.5f);
 	// Formation Master terrain adaptation: each battle terrain owns a generated
 	// v2 backdrop; Invalid (and any unknown terrain) falls back to the approved riverside asset.
@@ -168,7 +168,9 @@ namespace
 	static constexpr int32 PartyQiWidgetZOrder = 35;
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
 	static constexpr float PartyQiEndTurnVerticalLead = 70.0f;
-	static const FVector2D BattleTopRightToolbarPosition(1430.0f, 86.0f);
+	// Keep the existing toolbar identity, but use the free area between the
+	// left terrain/log column and the right-side enemy intent rail.
+	static const FVector2D BattleTopRightToolbarPosition(300.0f, 86.0f);
 	static const FVector2D BattleTopRightToolbarSize(384.0f, 60.0f);
 	static const FVector2D BattleTopRightButtonSize(186.0f, 60.0f);
 	static constexpr float BattleTopRightButtonGap = 12.0f;
@@ -188,14 +190,14 @@ namespace
 	static constexpr float EnemyIntentCardGap = 8.0f;
 	static constexpr float EnemyIntentStride = 274.0f;
 	static const FVector2D EnemyIntentRailSize(822.0f, 285.0f);
-	static constexpr float EnemyIntentRailAnchorX = 0.32f;
+	static constexpr float EnemyIntentRailAnchorX = 0.68f;
 	static const FVector2D EnemyIntentTooltipSize(GameXXKCardTooltipPresentation::MinimumWidth, 256.0f);
 	static const FVector2D HandCardDetailPanelSize(GameXXKCardTooltipPresentation::MinimumWidth, 320.0f);
 	static const FLinearColor BattleStatusInkColor(0.12f, 0.09f, 0.06f, 1.0f);
 	static constexpr float BattleStatusFrameMarginRatio = 5.0f / 368.0f;
 	static constexpr float EnemyIntentRevealDuration = 0.55f;
 	static constexpr float EnemyIntentResolveDuration = 0.18f;
-	static const FVector2D GroupOutcomePreviewAnchor(0.245f, 0.34f);
+	static const FVector2D GroupOutcomePreviewAnchor(0.755f, 0.34f);
 	static constexpr float SingleOutcomePreviewTargetGap = 12.0f;
 	static const float SingleOutcomePreviewTopOffset =
 		-(FormationVisualSize.Y * 0.5f + SingleOutcomePreviewTargetGap);
@@ -237,9 +239,9 @@ namespace
 		{
 			switch (View.SlotNumber)
 			{
-			case 1: Anchor = FVector2D(0.905f, 0.60f); break; // Permanent companion, outer lane.
-			case 2: Anchor = FVector2D(0.755f, 0.52f); break; // Hero, middle lane.
-			case 3: Anchor = FVector2D(0.605f, 0.44f); break; // Temporary task NPC, inner lane.
+			case 1: Anchor = FVector2D(0.095f, 0.60f); break; // Permanent companion, outer lane.
+			case 2: Anchor = FVector2D(0.245f, 0.52f); break; // Hero, middle lane.
+			case 3: Anchor = FVector2D(0.395f, 0.44f); break; // Formation NPC, inner lane.
 			default: return false;
 			}
 		}
@@ -247,9 +249,9 @@ namespace
 		{
 			switch (View.SlotNumber)
 			{
-			case 1: Anchor = FVector2D(0.095f, 0.60f); break;
-			case 2: Anchor = FVector2D(0.245f, 0.52f); break;
-			case 3: Anchor = FVector2D(0.395f, 0.44f); break;
+			case 1: Anchor = FVector2D(0.905f, 0.60f); break;
+			case 2: Anchor = FVector2D(0.755f, 0.52f); break;
+			case 3: Anchor = FVector2D(0.605f, 0.44f); break;
 			default: return false;
 			}
 		}
@@ -6102,12 +6104,12 @@ int32 UGameXXKBattleBoardWidget::GetPartySlotCount() const
 
 FString UGameXXKBattleBoardWidget::GetEnemySlotSide() const
 {
-	return TEXT("Left");
+	return TEXT("Right");
 }
 
 FString UGameXXKBattleBoardWidget::GetPartySlotSide() const
 {
-	return TEXT("Right");
+	return TEXT("Left");
 }
 
 UGameXXKBattlePartyQiWidget* UGameXXKBattleBoardWidget::GetPartyQiWidgetForTest() const
@@ -7552,9 +7554,9 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	}
 	if (UCanvasPanelSlot* ToolbarSlot = RootCanvas->AddChildToCanvas(BattleTopRightToolbar))
 	{
-		ToolbarSlot->SetAnchors(FAnchors(1.0f, 0.0f, 1.0f, 0.0f));
+		ToolbarSlot->SetAnchors(FAnchors(0.0f, 0.0f));
 		ToolbarSlot->SetOffsets(FMargin(
-			BattleTopRightToolbarPosition.X - BattleHudSafeStageDesignSize.X,
+			BattleTopRightToolbarPosition.X,
 			BattleTopRightToolbarPosition.Y,
 			BattleTopRightToolbarSize.X,
 			BattleTopRightToolbarSize.Y));
@@ -9297,8 +9299,10 @@ void UGameXXKBattleBoardWidget::RefreshEnemyIntentCards()
 		{
 			const FGameXXKCardEnemyIntent& Left = Run->EnemyIntents[LeftIndex];
 			const FGameXXKCardEnemyIntent& Right = Run->EnemyIntents[RightIndex];
+			// Display order follows the mirrored formation; authoritative intent
+			// indices and their execution order remain unchanged.
 			return Left.SourceSlotNumber != Right.SourceSlotNumber
-				? Left.SourceSlotNumber < Right.SourceSlotNumber
+				? Left.SourceSlotNumber > Right.SourceSlotNumber
 				: LeftIndex < RightIndex;
 		});
 		for (const int32 IntentIndex : OrderedIntentIndices)

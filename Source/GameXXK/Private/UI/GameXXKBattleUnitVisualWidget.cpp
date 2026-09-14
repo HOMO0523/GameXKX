@@ -222,7 +222,15 @@ void UGameXXKBattleUnitVisualWidget::ConfigureUnit(
 	CurrentAnchor = FormationAnchor;
 	IdlePlaybackClip = IdleClip;
 	BuildProgrammaticLayout();
-	if(UnitImage){const float Scale=IdleClip.AssetId.Contains(TEXT("enemy_16_toad"))?0.80f:1.0f;UnitImage->SetRenderTransformPivot(FVector2D(0.5f,0.70f));UnitImage->SetRenderScale(FVector2D(Scale,Scale));}
+	if (UnitImage)
+	{
+		const float Scale = IdleClip.AssetId.Contains(TEXT("enemy_16_toad")) ? 0.80f : 1.0f;
+		// Reflect only authored character art. The shared hit/status effect widget
+		// and the outer layout/targeting geometry retain their normal orientation.
+		const float Facing = UnitId == FName(TEXT("Battle.GenericImpact")) ? 1.0f : -1.0f;
+		UnitImage->SetRenderTransformPivot(FVector2D(0.5f, 0.70f));
+		UnitImage->SetRenderScale(FVector2D(Facing * Scale, Scale));
+	}
 	bConfigured = !ConfiguredUnitId.IsNone();
 	ResetProceduralPresentation();
 	SetPlaybackClip(IdlePlaybackClip, true);

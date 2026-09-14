@@ -35,6 +35,7 @@
 #include "HAL/IConsoleManager.h"
 #include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
+#include "GameXXKHuntRules.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/FileHelper.h"
 #include "Misc/PackageName.h"
@@ -2623,13 +2624,13 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 		AdvancedChestIcon && AdvancedChestIcon->GetBrush().ImageSize == FVector2D(66.0f, 66.0f));
 
 	const TCHAR* ExpectedWaveMarkerAssets[] = {
-		TEXT("T_TrainingWaveMarkerBoss"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerNormal"),
+		TEXT("T_TrainingWaveMarkerNormal"),
 		TEXT("T_TrainingWaveMarkerElite"),
 		TEXT("T_TrainingWaveMarkerElite"),
-		TEXT("T_TrainingWaveMarkerNormal"),
-		TEXT("T_TrainingWaveMarkerNormal"),
-		TEXT("T_TrainingWaveMarkerNormal"),
-		TEXT("T_TrainingWaveMarkerNormal")};
+		TEXT("T_TrainingWaveMarkerBoss")};
 	for (int32 MarkerIndex = 0; MarkerIndex < UE_ARRAY_COUNT(ExpectedWaveMarkerAssets); ++MarkerIndex)
 	{
 		UImage* Marker = Widget->WidgetTree
@@ -2637,7 +2638,7 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 				*FString::Printf(TEXT("TrainingWaveMarker_%d"), MarkerIndex)))
 			: nullptr;
 		TestTrue(
-			*FString::Printf(TEXT("wave marker %d follows the approved right-to-left sequence"), MarkerIndex),
+			*FString::Printf(TEXT("wave marker %d follows the encounter sequence left-to-right"), MarkerIndex),
 			Marker && GetImageResourcePath(Marker).Contains(ExpectedWaveMarkerAssets[MarkerIndex]));
 	}
 	UTextBlock* StageLabel = Widget->WidgetTree
@@ -5773,9 +5774,9 @@ bool FGameXXKDesktopTrainingWorkbenchTravelVisualStripTest::RunTest(const FStrin
 			TestTrue(
 				TEXT("background Y keeps the authored yellow road line on the character foot plane"),
 				FMath::Abs(CenterSlot->GetPosition().Y) <= 8.0f);
-			TestEqual(TEXT("rightward loop starts with one tile left of the viewport"), LeftSlot->GetPosition().X, -TileSize.X);
-			TestEqual(TEXT("rightward loop keeps the middle tile at the origin"), CenterSlot->GetPosition().X, 0.0);
-			TestEqual(TEXT("rightward loop keeps one tile to the right"), RightSlot->GetPosition().X, TileSize.X);
+			TestEqual(TEXT("leftward loop starts its first tile at the origin"), LeftSlot->GetPosition().X, 0.0);
+			TestEqual(TEXT("leftward loop keeps one tile to the right"), CenterSlot->GetPosition().X, TileSize.X);
+			TestEqual(TEXT("leftward loop reserves the next right-side tile"), RightSlot->GetPosition().X, TileSize.X * 2);
 		}
 	}
 
@@ -5787,8 +5788,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelVisualStripTest::RunTest(const FStrin
 		if (Tile)
 		{
 			TestTrue(
-				TEXT("left-walking hero drives the seamless scene to the right"),
-				Tile->GetRenderTransform().Translation.X > 0.0f);
+				TEXT("right-walking hero drives the seamless scene to the left"),
+				Tile->GetRenderTransform().Translation.X < 0.0f);
 		}
 	}
 
@@ -5980,8 +5981,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			HeroImage->GetRenderTransformPivot(),
 			FVector2D(0.5f, 1.0f));
 		TestTrue(
-			TEXT("walking hero uses the authored left-facing atlas without mirroring"),
-			HeroImage->GetRenderTransform().Scale.Equals(FVector2D(1.0f, 1.0f), 0.001f));
+			TEXT("walking hero reflects the original atlas to face right"),
+			HeroImage->GetRenderTransform().Scale.Equals(FVector2D(-1.0f, 1.0f), 0.001f));
 	}
 	if (EnemyImage)
 	{
@@ -6104,11 +6105,11 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		const FVector2D IdleScale = HeroImage->GetRenderTransform().Scale;
 		TestTrue(
-			TEXT("battle idle preserves the production atlas facing instead of reversing the hero"),
-			IdleScale.X > 0.0f);
+			TEXT("battle idle reflects the hero to face enemies on the right"),
+			IdleScale.X < 0.0f);
 		TestTrue(
 			TEXT("battle idle uses a uniform content normalization scale"),
-			FMath::IsNearlyEqual(IdleScale.X, IdleScale.Y, 0.001f));
+			FMath::IsNearlyEqual(-IdleScale.X, IdleScale.Y, 0.001f));
 		TestTrue(
 			TEXT("battle idle normalizes its corrected alpha height to the 90.6 percent walk height"),
 			FMath::IsNearlyEqual(IdleScale.Y, 1.094f, 0.01f));
@@ -6117,11 +6118,11 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		const FVector2D EnemyIdleScale = EnemyImage->GetRenderTransform().Scale;
 		TestTrue(
-			TEXT("enemy idle preserves the battle-board authored facing toward the hero"),
-			EnemyIdleScale.X > 0.0f);
+			TEXT("enemy idle reflects the atlas to face the hero on the left"),
+			EnemyIdleScale.X < 0.0f);
 		TestTrue(
 			TEXT("enemy idle uses a uniform content-normalization scale"),
-			FMath::IsNearlyEqual(EnemyIdleScale.X, EnemyIdleScale.Y, 0.001f));
+			FMath::IsNearlyEqual(-EnemyIdleScale.X, EnemyIdleScale.Y, 0.001f));
 		TestTrue(
 			TEXT("enemy idle is enlarged to approximately the normalized hero height"),
 			EnemyIdleScale.Y >= 1.09f);
@@ -6137,10 +6138,10 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 			QuestCompanionImage->GetVisibility(),
 			ESlateVisibility::SelfHitTestInvisible);
 		TestTrue(
-			TEXT("permanent companion uses a positive uniform authored-facing scale"),
-			PermanentCompanionImage->GetRenderTransform().Scale.X > 0.0f
+			TEXT("permanent companion reflects X and preserves its uniform body scale"),
+			PermanentCompanionImage->GetRenderTransform().Scale.X < 0.0f
 			&& FMath::IsNearlyEqual(
-				PermanentCompanionImage->GetRenderTransform().Scale.X,
+				-PermanentCompanionImage->GetRenderTransform().Scale.X,
 				PermanentCompanionImage->GetRenderTransform().Scale.Y,
 				0.001f));
 		TestEqual(TEXT("selected permanent companion health bar joins the encounter"), PermanentCompanionHealth->GetVisibility(), ESlateVisibility::SelfHitTestInvisible);
@@ -6163,8 +6164,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		const FVector2D AttackScale = HeroImage->GetRenderTransform().Scale;
 		TestTrue(
-			TEXT("hero attack keeps its authored left-facing direction"),
-			AttackScale.X > 0.0f);
+			TEXT("hero attack faces right toward the enemy"),
+			AttackScale.X < 0.0f);
 		TestTrue(
 			TEXT("hero attack normalizes its corrected attack alpha height to the 90.6 percent walk height"),
 			FMath::IsNearlyEqual(AttackScale.Y, 1.160f, 0.01f));
@@ -6185,8 +6186,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 		const FVector2D EnemyHitScale = EnemyImage->GetRenderTransform().Scale;
 		TestTrue(
 			TEXT("enemy hit keeps the authored direction and uniform scale"),
-			EnemyHitScale.X > 0.0f
-			&& FMath::IsNearlyEqual(EnemyHitScale.X, EnemyHitScale.Y, 0.001f));
+			EnemyHitScale.X < 0.0f
+			&& FMath::IsNearlyEqual(-EnemyHitScale.X, EnemyHitScale.Y, 0.001f));
 		TestTrue(
 			TEXT("procedural enemy hit retains its Idle body size"),
 			FMath::IsNearlyEqual(EnemyHitScale.Y,EnemyIdleScale));
@@ -7998,6 +7999,85 @@ bool FGameXXKTravelRetiredMissingAtlasTest::RunTest(const FString&)
  auto* Texture=Loader->CompleteLoaded(Pair.Fallback.TexturePath);TestNotNull(TEXT("fallback reentry completes"),Texture);
  TestTrue(TEXT("reentry restores its texture"),Fixture.PermanentImage->GetBrush().GetResourceObject()==Texture);TestEqual(TEXT("reentry restores 100 percent opacity"),Fixture.PermanentImage->GetRenderOpacity(),1.0f);
  return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKPartyLeftTravelLayoutTest,
+	"GameXXK.Presentation.PartyLeft.TravelLayout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPartyLeftTravelLayoutTest::RunTest(const FString& Parameters)
+{
+	auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	if (!Subsystem->StartGame() || !Subsystem->StartTrainingTravel(TEXT("Training.Normal.1-1"))) return false;
+	auto* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Widget->SetMVPSubsystem(Subsystem);
+	if (!Widget->OpenWorkbench()) return false;
+	const auto Find = [Widget](const TCHAR* Name) { return Widget->WidgetTree->FindWidget(FName(Name)); };
+	for (int32 Step = 0; Step < 2; ++Step)
+	{
+		Widget->TickForTest(.05f);
+		for (const TCHAR* Name : {TEXT("TravelHeroAnimatedUnit"), TEXT("TravelCompanionAnimatedUnit_0"), TEXT("TravelCompanionAnimatedUnit_1"),
+			TEXT("TravelEnemyAnimatedUnit_0"), TEXT("TravelEnemyAnimatedUnit_1"), TEXT("TravelEnemyAnimatedUnit_2")})
+		{
+			UWidget* Unit = Find(Name);
+			const auto* Slot = Unit ? Cast<UCanvasPanelSlot>(Unit->Slot) : nullptr;
+			if (!TestNotNull(Name, Slot)) continue;
+			const bool bEnemy = FString(Name).Contains(TEXT("Enemy"));
+			const double Center = Slot->GetPosition().X + Slot->GetSize().X * .5;
+			TestTrue(TEXT("travel actors face each other on their correct side"), bEnemy ? Center > 476.5 : Center < 476.5);
+			if (Unit->GetVisibility() != ESlateVisibility::Collapsed)
+				TestTrue(TEXT("visible travel actors use mirrored image content"), Unit->GetRenderTransform().Scale.X < 0);
+		}
+	}
+	// The complete scroll cycle must cover the 953px viewport, including just before wrapping.
+	for (const double Offset : {0.0, 375.0, 749.9})
+	{
+		double RightEdge = 0;
+		for (int32 TileIndex = 0; TileIndex < 3; ++TileIndex)
+		{
+			auto* Tile = Find(*FString::Printf(TEXT("TravelBackgroundTile_%d"), TileIndex));
+			const auto* Slot = Tile ? Cast<UCanvasPanelSlot>(Tile->Slot) : nullptr;
+			if (!TestNotNull(TEXT("loop tile exists"), Slot)) continue;
+			const double Left = Slot->GetPosition().X - Offset;
+			TestTrue(TEXT("leftward background tiles join without gaps"), Left <= RightEdge + .01);
+			RightEdge = FMath::Max(RightEdge, Left + Slot->GetSize().X);
+			TestTrue(TEXT("walking scenery moves left"), Tile->GetRenderTransform().Translation.X < 0);
+		}
+		TestTrue(TEXT("full scroll cycle covers the right viewport edge"), RightEdge >= 953);
+	}
+	auto* First = Cast<UImage>(Find(TEXT("TrainingWaveMarker_0")));
+	auto* Last = Cast<UImage>(Find(TEXT("TrainingWaveMarker_6")));
+	TestTrue(TEXT("left-to-right progression starts with normal encounter"), First && GetImageResourcePath(First).Contains(TEXT("MarkerNormal")));
+	TestTrue(TEXT("left-to-right progression ends with boss"), Last && GetImageResourcePath(Last).Contains(TEXT("MarkerBoss")));
+	Widget->CloseWorkbench();
+	for (int32 Stage = 1; Stage <= 10; ++Stage)
+		Subsystem->GetMutableRuntimeState().Training.ClearedStageIds.Add(
+			FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, Stage));
+	TestTrue(TEXT("whole-chapter fixture owns its required hunt order"), FGameXXKHuntRules::Grant(
+		Subsystem->GetMutableRuntimeState(), FGameXXKHuntRules::OrderId(EGameXXKTrainingDifficulty::Normal), 1, false));
+	if (!TestTrue(TEXT("whole-chapter travel starts"), Subsystem->StartTrainingTravel(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 10)))) return false;
+	auto* WholeChapter = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	WholeChapter->SetMVPSubsystem(Subsystem);
+	if (!WholeChapter->OpenWorkbench()) return false;
+	const auto Encounters = FGameXXKTrainingRules::BuildEncounterSequence(
+		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 10), true);
+	TestEqual(TEXT("whole chapter contains 21 encounters"), Encounters.Num(), 21);
+	double PreviousX = -1;
+	for (int32 Index = 0; Index < Encounters.Num(); ++Index)
+	{
+		auto* Marker = Cast<UImage>(WholeChapter->WidgetTree->FindWidget(
+			*FString::Printf(TEXT("TrainingWaveMarker_%d"), Index)));
+		const auto* Slot = Marker ? Cast<UCanvasPanelSlot>(Marker->Slot) : nullptr;
+		if (!TestNotNull(TEXT("every whole-chapter marker exists"), Slot)) continue;
+		TestTrue(TEXT("all 21 markers advance left to right"), Slot->GetPosition().X > PreviousX);
+		PreviousX = Slot->GetPosition().X;
+		const TCHAR* Kind = Encounters[Index].Kind == EGameXXKTrainingEncounterKind::Boss ? TEXT("MarkerBoss")
+			: Encounters[Index].Kind == EGameXXKTrainingEncounterKind::Elite ? TEXT("MarkerElite") : TEXT("MarkerNormal");
+		TestTrue(TEXT("each marker retains the actual encounter kind"), GetImageResourcePath(Marker).Contains(Kind));
+	}
+	WholeChapter->CloseWorkbench();
+	return true;
 }
 
 #endif

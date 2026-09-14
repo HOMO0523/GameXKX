@@ -108,7 +108,7 @@ bool FGameXXKBattleUnitVisualWidgetIdentityTest::RunTest(const FString& Paramete
 	TestEqual(TEXT("targeting center converts the current anchor into 1920 by 1080 stage pixels"),
 		Widget->GetStageCenter(),
 		FVector2D(FormationAnchor.X * 1920.0f, FormationAnchor.Y * 1080.0f));
-	TestTrue(TEXT("party art keeps its authored orientation without mirroring"),
+	TestTrue(TEXT("party outer layout keeps a positive scale"),
 		Widget->GetRenderTransform().Scale.X > 0.0f && Widget->GetRenderTransform().Scale.Y > 0.0f);
 
 	Widget->ShowCinematic(AttackClip, CinematicAnchor);
@@ -126,7 +126,7 @@ bool FGameXXKBattleUnitVisualWidgetIdentityTest::RunTest(const FString& Paramete
 	TestEqual(TEXT("cinematic targeting center follows the current stage anchor"),
 		Widget->GetStageCenter(),
 		FVector2D(CinematicAnchor.X * 1920.0f, CinematicAnchor.Y * 1080.0f));
-	TestTrue(TEXT("cinematic retains authored orientation"),
+	TestTrue(TEXT("cinematic outer layout retains a positive scale"),
 		Widget->GetRenderTransform().Scale.X > 0.0f && Widget->GetRenderTransform().Scale.Y > 0.0f);
 
 	Widget->HideForCinematic();
@@ -147,7 +147,7 @@ bool FGameXXKBattleUnitVisualWidgetIdentityTest::RunTest(const FString& Paramete
 	EnemyWidget->ConfigureUnit(TEXT("Enemy.Ch1.Rooster"), true, FVector2D(0.245f, 0.52f), IdleClip);
 	EnemyWidget->SetAtlas(NewObject<UTexture2D>(EnemyWidget));
 	EnemyWidget->ShowFormationIdle();
-	TestTrue(TEXT("enemy art also keeps its authored orientation without mirroring"),
+	TestTrue(TEXT("enemy outer layout also keeps a positive scale"),
 		EnemyWidget->GetRenderTransform().Scale.X > 0.0f && EnemyWidget->GetRenderTransform().Scale.Y > 0.0f);
 
 	return true;
@@ -279,6 +279,41 @@ bool FGameXXKBattleUnitVisualWidgetLifecycleTest::RunTest(const FString& Paramet
 		Widget->GetFrameParameterWriteCountForTest(),
 		WritesBeforeRemoval);
 
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKPartyLeftFacingTest,
+	"GameXXK.Presentation.PartyLeft.FacingAndRecoil",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPartyLeftFacingTest::RunTest(const FString& Parameters)
+{
+	for (const bool bEnemy : {false, true})
+	{
+		UCanvasPanel* Host = nullptr;
+		auto* Visual = MakeAttachedUnitVisual(Host);
+		const auto Idle = MakeUnitVisualClip(bEnemy ? TEXT("enemy_01_rooster_2k_idle") : TEXT("character_00_hero_2k_idle"));
+		Visual->ConfigureUnit(bEnemy ? TEXT("Enemy.Ch1.Rooster") : TEXT("Player"), bEnemy,
+			FVector2D(bEnemy ? .755 : .245, .52), Idle);
+		Visual->SetAtlas(NewObject<UTexture2D>(Visual));
+		for (int32 Phase = 0; Phase < 3; ++Phase)
+		{
+			if (Phase == 1) Visual->ShowCinematic(Idle, FVector2D(bEnemy ? .69 : .31, .5));
+			else Visual->RestoreFormation();
+			TestTrue(TEXT("only the sprite is mirrored through formation, closeup and restore"),
+				Visual->GetUnitImageForTest()->GetRenderTransform().Scale.X < 0
+				&& Visual->GetUnitImageForTest()->GetRenderTransform().Scale.Y > 0
+				&& Visual->GetRenderTransform().Scale.X > 0);
+		}
+		const auto Recoil = FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(bEnemy, .5f);
+		TestTrue(TEXT("recoil moves away from the opposing side"), bEnemy ? Recoil.X > 0 : Recoil.X < 0);
+		TestTrue(TEXT("recoil restores the original position"),
+			FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(bEnemy, 1).IsNearlyZero(.001));
+	}
+	UCanvasPanel* EffectHost = nullptr;
+	auto* Effect = MakeAttachedUnitVisual(EffectHost);
+	Effect->ConfigureUnit(TEXT("Battle.GenericImpact"), false, FVector2D(.5,.5), MakeUnitVisualClip(TEXT("impact_ink_2k_generic")));
+	TestTrue(TEXT("generic hit/status effects keep their authored orientation"), Effect->GetUnitImageForTest()->GetRenderTransform().Scale.X > 0);
 	return true;
 }
 

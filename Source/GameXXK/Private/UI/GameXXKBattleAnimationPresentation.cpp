@@ -817,7 +817,7 @@ FVector2D FGameXXKBattleAnimationPresentation::CalculateProceduralHitOffset(
 	const float Progress = FMath::IsFinite(NormalizedProgress)
 		? FMath::Clamp(NormalizedProgress, 0.0f, 1.0f)
 		: 0.0f;
-	const float Direction = bTargetEnemy ? -1.0f : 1.0f;
+	const float Direction = bTargetEnemy ? 1.0f : -1.0f;
 	const float Distance = GetProceduralHitRetreatDistance()
 		* FMath::Sin(PI * Progress);
 	return FVector2D(Direction * Distance, 0.0f);

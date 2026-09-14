@@ -901,19 +901,19 @@ bool FGameXXKCardBattleBoardRetreatTopRightToolbarTest::RunTest(const FString& P
 		const FBox2D ToolbarRect = Board->ResolveBattleTopRightToolbarRectForTest(ViewportSize);
 		const FBox2D SafeStageRect(SafeStage.Offset, SafeStage.Offset + SafeStage.Size);
 		const FBox2D EnemyIntentRailRect(
-			SafeStage.Offset + FVector2D(660.0f, 24.0f) * SafeStage.Scale,
-			SafeStage.Offset + FVector2D(1260.0f, 195.0f) * SafeStage.Scale);
+			SafeStage.Offset + FVector2D(894.6f, 24.0f) * SafeStage.Scale,
+			SafeStage.Offset + FVector2D(1716.6f, 309.0f) * SafeStage.Scale);
 		const FBox2D RightUnitHudRect(
 			SafeStage.Offset + FVector2D(1286.0f, 300.0f) * SafeStage.Scale,
 			SafeStage.Offset + FVector2D(1810.0f, 820.0f) * SafeStage.Scale);
 		TestTrue(TEXT("toolbar rectangle is valid"), ToolbarRect.bIsValid);
 		TestTrue(TEXT("toolbar remains inside safe-stage left/top"), ToolbarRect.Min.X >= SafeStageRect.Min.X && ToolbarRect.Min.Y >= SafeStageRect.Min.Y);
 		TestTrue(TEXT("toolbar remains inside safe-stage right/bottom"), ToolbarRect.Max.X <= SafeStageRect.Max.X && ToolbarRect.Max.Y <= SafeStageRect.Max.Y);
-		TestFalse(TEXT("toolbar avoids the centered enemy-intent rail"), RectanglesOverlap(ToolbarRect, EnemyIntentRailRect));
+		TestFalse(TEXT("toolbar avoids the right-side enemy-intent rail"), RectanglesOverlap(ToolbarRect, EnemyIntentRailRect));
 		TestFalse(TEXT("toolbar avoids the right-side unit HUD"), RectanglesOverlap(ToolbarRect, RightUnitHudRect));
 	}
 	const FBox2D FullHdToolbar = Board->ResolveBattleTopRightToolbarRectForTest(FVector2D(1920.0f, 1080.0f));
-	TestTrue(TEXT("full-HD toolbar begins at Luna-reviewed x"), FMath::IsNearlyEqual(FullHdToolbar.Min.X, 1430.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar uses the free left-side area"), FMath::IsNearlyEqual(FullHdToolbar.Min.X, 300.0, 0.01));
 	TestTrue(TEXT("full-HD toolbar begins at Luna-reviewed y"), FMath::IsNearlyEqual(FullHdToolbar.Min.Y, 86.0, 0.01));
 	TestTrue(TEXT("full-HD toolbar width is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().X, 384.0, 0.01));
 	TestTrue(TEXT("full-HD toolbar height is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().Y, 60.0, 0.01));
@@ -3472,7 +3472,7 @@ bool FGameXXKTargetOutcomePreviewLayoutInvariantTest::RunTest(const FString& Par
 				ESlateVisibility::HitTestInvisible);
 		}
 	}
-	TestEqual(TEXT("group outcome keeps the fixed 0.245/0.34 anchor"), GroupBoard->GetGroupOutcomePreviewAnchorForTest(), FVector2D(0.245f, 0.34f));
+	TestEqual(TEXT("group outcome follows the enemy half"), GroupBoard->GetGroupOutcomePreviewAnchorForTest(), FVector2D(0.755f, 0.34f));
 	TestEqual(TEXT("group outcome uses exact alignment"), GroupBoard->GetGroupOutcomePreviewAlignmentForTest(), FVector2D(0.5f, 1.0f));
 	const FMargin GroupOffsets = GroupBoard->GetGroupOutcomePreviewOffsetsForTest();
 	TestTrue(TEXT("group outcome retains its anchor but no longer reserves a 620px empty strip"),
@@ -4232,6 +4232,62 @@ bool FGameXXKCardBattleBoardRewardAtomicFacadeTest::RunTest(const FString& Param
 	TestTrue(TEXT("one rules facade call skips and finishes victory"),
 		UGameXXKMVPRules::SkipPendingRouteRewardAndFinish(SkipState, &Error));
 	TestEqual(TEXT("skip facade returns to the route map"), SkipState.Screen, EGameXXKScreen::DungeonMap);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKPartyLeftBattleLayoutTest,
+	"GameXXK.Presentation.PartyLeft.BattleLayout",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKPartyLeftBattleLayoutTest::RunTest(const FString& Parameters)
+{
+	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+	FName CardId, TargetId, OwnerId;
+	FString Error;
+	if (!TestTrue(TEXT("party-left fixture enters a real route battle"),
+		BuildRouteRewardFixture(Subsystem, CardId, TargetId, OwnerId, Error))) return false;
+	UGameXXKBattleBoardWidget* Board = NewObject<UGameXXKBattleBoardWidget>();
+	Board->SetMVPSubsystem(Subsystem);
+	Board->Initialize();
+	Board->NativeConstruct();
+	Board->RefreshFromState();
+	TestTrue(TEXT("party-left fixture starts the unit visual session"), Board->BeginBattleVisualSession(20260914));
+	const auto Before = Subsystem->GetRuntimeStateCopy().CardRun.ActiveBattle;
+	for (const auto& Unit : Before.Units)
+	{
+		auto* Visual = Board->GetUnitVisualForTest(Unit.UnitId);
+		auto* Hud = Board->GetProjectedUnitHudForTest(Unit.UnitId);
+		auto* Proxy = Board->GetUnitTargetProxyForTest(Unit.UnitId);
+		if (!TestNotNull(TEXT("unit has a visual"), Visual)
+			|| !TestNotNull(TEXT("unit has a HUD"), Hud)
+			|| !TestNotNull(TEXT("unit has a target proxy"), Proxy)) continue;
+		const bool bEnemy = Unit.Side == EGameXXKCardTargetSide::Enemy;
+		const FVector2D Center = Visual->GetStageCenter();
+		TestTrue(TEXT("party occupies left half and enemies occupy right half"), bEnemy ? Center.X > 960 : Center.X < 960);
+		const auto* HudSlot = Cast<UCanvasPanelSlot>(Hud->Slot);
+		const auto* ProxySlot = Cast<UCanvasPanelSlot>(Proxy->Slot);
+		TestTrue(TEXT("HUD and target proxy stay with their unit"), HudSlot && ProxySlot
+			&& FMath::IsNearlyEqual(HudSlot->GetAnchors().Minimum.X * 1920.0, Center.X)
+			&& FMath::IsNearlyEqual(ProxySlot->GetAnchors().Minimum.X * 1920.0, Center.X));
+		TestTrue(TEXT("HUD text is never reflected"), Hud->GetRenderTransform().Scale.X > 0);
+		TestTrue(TEXT("card arrow source stays at its actual owner"),
+			Board->ResolveCardTargetingSourcePositionForTest(Unit.UnitId).Equals(Center, 0.1));
+	}
+	const UWidget* Intent = Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCardBox"));
+	const auto* IntentSlot = Intent ? Cast<UCanvasPanelSlot>(Intent->Slot) : nullptr;
+	TestTrue(TEXT("enemy intent rail follows enemies to the right"), IntentSlot && IntentSlot->GetAnchors().Minimum.X > 0.5);
+	for (const FVector2D Viewport : {FVector2D(1280,720), FVector2D(1920,1080), FVector2D(1280,900)})
+	{
+		const auto Stage = Board->ResolveBattleHudSafeStageLayoutForTest(Viewport);
+		const auto Toolbar = Board->ResolveBattleTopRightToolbarRectForTest(Viewport);
+		TestTrue(TEXT("toolbar uses the free left area above combat"), Toolbar.Max.X < Stage.Offset.X + Stage.Size.X * 0.5);
+	}
+	Board->RefreshFromState();
+	const auto After = Subsystem->GetRuntimeStateCopy().CardRun.ActiveBattle;
+	TestEqual(TEXT("layout does not change combat unit count"), After.Units.Num(), Before.Units.Num());
+	for (int32 Index = 0; Index < Before.Units.Num(); ++Index)
+		TestEqual(TEXT("layout preserves authoritative unit order"), After.Units[Index].UnitId, Before.Units[Index].UnitId);
+	Board->NativeDestruct();
 	return true;
 }
 

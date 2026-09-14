@@ -11,7 +11,8 @@ class UTexture2D;
 
 /**
  * One persistent battle-unit image that moves between formation and cinematic
- * layout without being duplicated, mirrored, or reparented.
+ * layout without being duplicated or reparented. Facing is applied to the
+ * child image so the outer layout and targeting geometry stay unreflected.
  */
 UCLASS()
 class GAMEXXK_API UGameXXKBattleUnitVisualWidget : public UUserWidget

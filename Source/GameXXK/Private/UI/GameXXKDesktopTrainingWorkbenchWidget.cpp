@@ -563,6 +563,11 @@
 	const FVector2D TravelHeroWalkVisualSize(112.0f, 112.0f);
 	const FVector2D TravelHealthBarSize(124.0f, 18.0f);
 
+	float MirrorTravelSceneX(const float AuthoredX, const float Width)
+	{
+		return TravelVisualSize.X - AuthoredX - Width;
+	}
+
 	FName MakeTravelOneKUnitId(const FName UnitId)
 	{
 		if (UnitId.IsNone())
@@ -4270,7 +4275,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildIdleSummaryControls(
 	AddCanvas(
 		ProgressCanvas,
 		TrainingWaveProgressFill.Get(),
-		FVector2D(WaveTrackX + TrackWidth - 2.0f, 10.0f),
+		FVector2D(WaveTrackX, 10.0f),
 		FVector2D(2.0f, 4.0f));
 
 	const TArray<FGameXXKTrainingEncounterDefinition> Encounters =
@@ -4278,7 +4283,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildIdleSummaryControls(
 	TrainingWaveMarkerImages.Reset();
 	for (int32 MarkerIndex = 0; MarkerIndex < Encounters.Num(); ++MarkerIndex)
 	{
-		const EGameXXKTrainingEncounterKind Kind = Encounters[Encounters.Num() - 1 - MarkerIndex].Kind;
+		const EGameXXKTrainingEncounterKind Kind = Encounters[MarkerIndex].Kind;
 		const TCHAR* MarkerPath = Kind == EGameXXKTrainingEncounterKind::Boss
 			? TrainingWaveMarkerBossTexturePath
 			: (Kind == EGameXXKTrainingEncounterKind::Elite
@@ -5228,7 +5233,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* TileSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(Tile));
 			if (TileSlot)
 			{
-				TileSlot->SetPosition(FVector2D((TileIndex - 1) * TravelBackgroundImageSize.X, 0.0f));
+				// Reserve two tiles to the right for the complete leftward wrap.
+				TileSlot->SetPosition(FVector2D(TileIndex * TravelBackgroundImageSize.X, 0.0f));
 				TileSlot->SetSize(TravelBackgroundImageSize);
 				TileSlot->SetZOrder(0);
 			}
@@ -5263,7 +5269,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* EnemySlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(EnemyImage));
 			if (EnemySlot)
 			{
-				EnemySlot->SetPosition(FVector2D(20.0f + EnemySlotIndex * 125.0f, 23.0f));
+				EnemySlot->SetPosition(FVector2D(MirrorTravelSceneX(20.0f + EnemySlotIndex * 125.0f, TravelCombatVisualSize.X), 23.0f));
 				EnemySlot->SetSize(TravelCombatVisualSize);
 				EnemySlot->SetZOrder(2);
 			}
@@ -5280,7 +5286,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* HeroSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(TravelHeroImage));
 			if (HeroSlot)
 			{
-				HeroSlot->SetPosition(FVector2D(520.0f, 23.0f));
+				HeroSlot->SetPosition(FVector2D(MirrorTravelSceneX(520.0f, TravelCombatVisualSize.X), 23.0f));
 				HeroSlot->SetSize(TravelCombatVisualSize);
 				HeroSlot->SetZOrder(2);
 			}
@@ -5302,7 +5308,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* CompanionSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(CompanionImage));
 			if (CompanionSlot)
 			{
-				CompanionSlot->SetPosition(FVector2D(645.0f + CompanionIndex * 125.0f, 23.0f));
+				CompanionSlot->SetPosition(FVector2D(MirrorTravelSceneX(645.0f + CompanionIndex * 125.0f, TravelCombatVisualSize.X), 23.0f));
 				CompanionSlot->SetSize(TravelCombatVisualSize);
 				CompanionSlot->SetZOrder(2);
 			}
@@ -5314,7 +5320,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 
 		for (int32 EnemySlotIndex = 0; EnemySlotIndex < 3; ++EnemySlotIndex)
 		{
-			const FVector2D HealthPosition(33.0f + EnemySlotIndex * 125.0f, 174.0f);
+			const FVector2D HealthPosition(MirrorTravelSceneX(33.0f + EnemySlotIndex * 125.0f, TravelHealthBarSize.X), 174.0f);
 			FSlateBrush SolidBarBrush;
 			SolidBarBrush.DrawAs = ESlateBrushDrawType::Box;
 			SolidBarBrush.ImageSize = TravelHealthBarSize;
@@ -5371,7 +5377,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(TravelHeroHealth));
 			if (HealthSlot)
 			{
-				HealthSlot->SetPosition(FVector2D(533.0f, 174.0f));
+				HealthSlot->SetPosition(FVector2D(MirrorTravelSceneX(533.0f, TravelHealthBarSize.X), 174.0f));
 				HealthSlot->SetSize(TravelHealthBarSize);
 				HealthSlot->SetZOrder(3);
 			}
@@ -5394,7 +5400,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 			UCanvasPanelSlot* HealthSlot = Cast<UCanvasPanelSlot>(TravelCanvas->AddChild(CompanionHealth));
 			if (HealthSlot)
 			{
-				HealthSlot->SetPosition(FVector2D(658.0f + CompanionIndex * 125.0f, 174.0f));
+				HealthSlot->SetPosition(FVector2D(MirrorTravelSceneX(658.0f + CompanionIndex * 125.0f, TravelHealthBarSize.X), 174.0f));
 				HealthSlot->SetSize(TravelHealthBarSize);
 				HealthSlot->SetZOrder(3);
 			}
@@ -5546,9 +5552,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 	{
 		if (BackgroundImage)
 		{
-			// The authored hero walks left, so scenery must travel right to convey
-			// forward movement while the hero remains anchored in the HUD strip.
-			BackgroundImage->SetRenderTranslation(FVector2D(ScrollOffset, 0.0f));
+			// The reflected hero walks right while scenery travels left.
+			BackgroundImage->SetRenderTranslation(FVector2D(-ScrollOffset, 0.0f));
 		}
 	}
 
@@ -5605,7 +5610,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 			TravelAppliedHeroAtlasPath = WalkAtlasPath;
 			TravelAppliedHeroFrame = WalkFrame;
 		}
-		TravelHeroImage->SetRenderScale(FVector2D(1.0f, 1.0f));
+		TravelHeroImage->SetRenderScale(FVector2D(-1.0f, 1.0f));
 	}
 	else
 	{
@@ -5650,12 +5655,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 			TravelAppliedHeroAtlasPath.Reset();
 			TravelAppliedHeroFrame = INDEX_NONE;
 		}
-		// The compact strip uses the same enemy-left / party-right formation as
-		// the battle board.  Preserve the authored left-facing hero action and
-		// compensate for each action atlas's authored alpha-bounds difference.
+		// Reflect the authored hero action while retaining each action atlas's
+		// calibrated scale and the bottom-center ground pivot.
 		const float HeroContentScale = ResolveTravelHeroContentScale(HeroDisplayAction);
 		TravelHeroImage->SetRenderScale(FVector2D(
-			HeroContentScale,
+			-HeroContentScale,
 			HeroContentScale));
 		TravelHeroImage->SetRenderTranslation(FVector2D::ZeroVector);
 		if (HeroAction == EGameXXKBattleAnimationAction::Hit)
@@ -5763,12 +5767,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 			TravelAppliedEnemyAtlasPaths[EnemySlotIndex],
 			TravelAppliedEnemyFrames[EnemySlotIndex]);
 		const float EnemyContentScale = ResolveTravelEnemyContentScale(EnemyId, EnemyDisplayAction);
-		EnemyImage->SetRenderScale(FVector2D(EnemyContentScale, EnemyContentScale));
+		EnemyImage->SetRenderScale(FVector2D(-EnemyContentScale, EnemyContentScale));
 		EnemyImage->SetRenderTranslation(FVector2D::ZeroVector);
 		if(bPresentedTarget&&EnemyAction==EGameXXKBattleAnimationAction::Attack&&EnemyDisplayAction==EGameXXKBattleAnimationAction::Idle)
 		{
 			const float Progress=FMath::Clamp(TravelVisualRuntime.GetVisualPhaseElapsedSeconds()/FGameXXKTrainingTravelVisualRuntime::EnemyAttackSeconds,0.0f,1.0f);
-			EnemyImage->SetRenderTranslation(FVector2D(FMath::Sin(Progress*PI)*14.0f,0));
+			EnemyImage->SetRenderTranslation(FVector2D(-FMath::Sin(Progress*PI)*14.0f,0));
 		}
 		else if (bPresentedTarget && EnemyAction == EGameXXKBattleAnimationAction::Hit)
 		{
@@ -5901,7 +5905,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 		const float CompanionContentScale = ResolveTravelPartyContentScale(
 			CompanionUnitId,
 			CompanionDisplayAction);
-		CompanionImage->SetRenderScale(FVector2D(CompanionContentScale, CompanionContentScale));
+		CompanionImage->SetRenderScale(FVector2D(-CompanionContentScale, CompanionContentScale));
 		CompanionImage->SetRenderTranslation(FVector2D::ZeroVector);
 		if (CompanionAction == EGameXXKBattleAnimationAction::Hit)
 		{
@@ -6010,7 +6014,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateWaveProgressPresentation(
 		if (UCanvasPanelSlot* FillSlot = Cast<UCanvasPanelSlot>(TrainingWaveProgressFill->Slot))
 		{
 			FillSlot->SetPosition(FVector2D(
-				WaveTrackX + TrackWidth - FillWidth,
+				WaveTrackX,
 				10.0f));
 			FillSlot->SetSize(FVector2D(FillWidth, 4.0f));
 		}
@@ -6022,7 +6026,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::UpdateWaveProgressPresentation(
 		{
 			continue;
 		}
-		const int32 EncounterIndex = TrainingWaveMarkerImages.Num() - 1 - VisualIndex;
+		const int32 EncounterIndex = VisualIndex;
 		const bool bCurrent = EncounterIndex == CurrentEncounter;
 		const bool bCompleted = EncounterIndex < CurrentEncounter;
 		Marker->SetColorAndOpacity(bCurrent

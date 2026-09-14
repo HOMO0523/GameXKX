@@ -56,6 +56,10 @@ bool UGameXXKBattleBoardWidget::BeginLightningUltimate(double AbsoluteSeconds)
 		LightningUltimateImage->SetBrushFromMaterial(LightningUltimateMaterial);
 	}
 	if (!LightningUltimateMaterial) return false;
+	// Mirror the complete painted shot, including its asymmetric cloud mask,
+	// while retaining the approved material's internal crop and placement.
+	LightningUltimateImage->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+	LightningUltimateImage->SetRenderScale(FVector2D(-1.0f, 1.0f));
 	LightningUltimateMaterial->SetScalarParameterValue(TEXT("FlipX"), 1);
 	LightningUltimateMaterial->SetScalarParameterValue(TEXT("OffsetX"), .12f);
 	LightningUltimateMaterial->SetScalarParameterValue(TEXT("EdgeFeather"), .09f);
