@@ -1,0 +1,43 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\leaf-healer-v8-proportion.png",
+    "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\3f95aededa47c197cb359f8a683dfb49.png",
+    "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\0bd1ab8fd227b313b8ca2f4da0e9fa43.png",
+    "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\8973b95a88f55869978031d1a2eb2ef9.png"
+  ],
+  "prompt": "Refine ONLY the selected green MEDICINE-CASE HEALER in IMAGE1 so she belongs naturally beside the three EXACT cast references supplied by the user (images2 sword fighter, 3 archer, 4 butterfly mage). Output ONE healer only. Other characters are style/scale/view-direction references, not to redraw or copy.\n\nKEEP THE USER-SELECTED DESIGN:\nSame youthful gentle leaf-green bob, two sprout leaves on top, short side leaf locks with little white ties, violet eyes, soft smile, front three-quarter LEFT face. Same green leaf-petal shoulder cape, ivory/green modest long layered dress, dark forest sash, dark wooden ROUND MEDICINE CASE with a leaf symbol held by BOTH HANDS at waist, small herbal sachet, opaque white lower-leg covering and low green shoes. Preserve whole standing pose, color identity and all original coverage, no adult anatomy or sexualized styling. No gourd, backpack, sword, bow, scroll or butterfly cloak.\n\nMATCH THE TEAM'S PROPORTION AND PRESENCE:\nMaintain approximately FOUR actual head heights crown-to-sole EXCLUDING the sprout leaves, like images3/4. The previous adjustment is close; avoid another big head enlargement or drastically shortening the character. Keep warm youthful face and light compact frame. A slight natural shoulder/hip counter-angle, both feet stable and clearly separate, all body direction coherently left three-quarter. Near cheek/eye and far cheek/eye correctly foreshortened. No front-facing tilted head or crossed legs.\nKeep head ornament compact enough to be a signature, not a huge extra head. Two leaf forms, not extra sprouts.\nSubtly reduce excessive skirt side width about 8 percent while preserving its selected layered curved cut, long coverage and relaxed drape. This is a refinement of shape organization, not a new outfit. Show clear shoulder/waist/hem rhythm and a readable medicine-case silhouette with credible supporting fingers.\n\nMAIN STYLE CLEANUP — MATCH THE CLEAR CAST SAMPLES:\n1. Hair: replace the many tiny green angular pieces with FOUR big coherent leaf-green hair locks. Each has one broad medium-green base, one deep-green side shadow and at most one broad light face. Keep the sprout leaves as one lit face plus one shadow each. No tiny triangular mosaic. Use fresh GREEN rather than excessive neon yellow highlights.\n2. Clothing: quiet large ivory areas; 2–3 coherent value groups per material. Use clearer deep forest-green folds and side planes to match the team's strong dark/light separation. Maintain matte clean painted shapes, no fine texture or noisy facets.\n3. Shoulder cape: 3–4 broad overlapping leaf-petal shapes, reduce repeated miniature scallops. Crisp organic outline with purposeful curve/angle contrast, comparable line strength to images2/3.\n4. Ornament economy: medicinal LEAF theme concentrated on the medicine-case lid and ONE large leaf motif on a lower skirt panel. Remove duplicate printed leaves from both sleeve cuffs and the little sachet, leave those surfaces plain ivory with a simple green edge. Keep small gold collar closure and case latch. Do not add decorative chains.\n5. Case: one broad dark-brown lid, clear warm-brown side plane, simple leaf mark and latch; no fine woodgrain rings or multiple thin outlines. It should read as her distinctive healing prop at small size.\n6. Face/hands: gentle simple graphic features and one quiet skin shadow. Same identity and warm expression, no realistic iris, makeup change, glitter or tiny highlights.\n\nRetain the project gem-icon/cartoon design language visible in all three supplied references: bold controlled dark silhouette, few substantial form-defining light/shadow masses, sparse inner lines, clean cloth structure and low visual noise. It is not photoreal gemstone material, watercolor texture, 3D rendering or a flat featureless sticker.\nFull complete healer only on square uniform warm ivory background, matching the other characters' native review canvas and clear foot baseline. Full sprout and both shoes with safe margins. No rulers, captions, collage, additional people or background shadows.",
+  "purpose": "Refine selected medicine-case healer against user-provided blade, archer and butterfly cast references; preserve selected identity, simplify detail and align team presentation.",
+  "output": "SourceArt/Characters/healer-review-20260913/cast-alignment-v9/healer-optimized.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-347705b9-99d5-4ea2-ab38-abee6b935a66.png",
+  "visual_review": "Healer hair planes consolidated, shoulder layering simplified, repeated sleeve motifs reduced; selected sprout/medicine-case identity and green palette retained.",
+  "additional_comparison_reference": "C:\\Users\\shxuw\\AppData\\Local\\Temp\\codex-clipboard-4c4d4ea0-ff31-410e-8d9a-7d0a6778c2d4.png",
+  "comparison_files": [
+    {
+      "label": "刀客",
+      "file": "blade-reference.png",
+      "source": "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\3f95aededa47c197cb359f8a683dfb49.png"
+    },
+    {
+      "label": "弓手",
+      "file": "archer-reference.png",
+      "source": "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\0bd1ab8fd227b313b8ca2f4da0e9fa43.png"
+    },
+    {
+      "label": "蝴蝶角色",
+      "file": "butterfly-reference.png",
+      "source": "C:\\Users\\shxuw\\xwechat_files\\wxid_g90er9r4o8p312_cd3c\\temp\\RWTemp\\2026-09\\1f0f6da890b579e80094c634191d562a\\8973b95a88f55869978031d1a2eb2ef9.png"
+    },
+    {
+      "label": "卷轴角色",
+      "file": "scroll-reference.png",
+      "source": "C:\\Users\\shxuw\\AppData\\Local\\Temp\\codex-clipboard-4c4d4ea0-ff31-410e-8d9a-7d0a6778c2d4.png"
+    },
+    {
+      "label": "药师·优化",
+      "file": "healer-optimized.png",
+      "source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-347705b9-99d5-4ea2-ab38-abee6b935a66.png"
+    }
+  ]
+}
+

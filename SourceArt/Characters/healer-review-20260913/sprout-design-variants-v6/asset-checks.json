@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 芽型·药匣",
+    "file": "A-sprout-medicine-case.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "82A7212F887A3CE889D5C1568072737233743392A5A0A0E0A4C60E5A3EC468C2",
+    "source_sha256": "82A7212F887A3CE889D5C1568072737233743392A5A0A0E0A4C60E5A3EC468C2"
+  },
+  {
+    "label": "B 芽型·竹篓",
+    "file": "B-sprout-bamboo.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "4B7AF1EFE735D0844DAD517CA2817649C7D659CB5B5A41DED4F52138CD8B4EFB",
+    "source_sha256": "4B7AF1EFE735D0844DAD517CA2817649C7D659CB5B5A41DED4F52138CD8B4EFB"
+  },
+  {
+    "label": "C 芽型·葫芦",
+    "file": "C-sprout-gourd.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "B8096231468AD21A1B653E0D1CDCCF5B23136C0867DBE27A1F004DE1CE2E5672",
+    "source_sha256": "B8096231468AD21A1B653E0D1CDCCF5B23136C0867DBE27A1F004DE1CE2E5672"
+  }
+]

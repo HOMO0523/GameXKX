@@ -1,0 +1,32 @@
+{
+  "status": "trial-proportion-review",
+  "user_constraint": "Preserve original hairstyles; no further regeneration during this comparison step.",
+  "records": [
+    {
+      "mode": "built-in image_gen",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/07-male-hero.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/guard-trial-v2-larger-head.png"
+      ],
+      "prompt": "Redraw ONLY the male protagonist in IMAGE1 in the unified Chinese fantasy game character GEM ICON style of IMAGES2-5 (approved blade, archer, butterfly taoist and latest young guard). Image1 is the identity/costume/pose source. Other images are rendering/face/proportion references only: do not copy their armor or weapons.\nKeep the recognizable humble young male traveler: black hair swept into compact topknot with simple brown ribbon, thick brows, serious mildly determined expression, brown short outer jacket, slate blue crossed inner tunic and loose trousers, ivory front cloth, dark slate cloth sash, ivory calf wraps, plain brown cloth shoes. Keep bamboo back basket with a few bamboo shoots/leaves at upper right and round woven travel container at left hip. Preserve exact 3/4-left standing stance, one hand gripping shoulder strap at chest, other arm relaxed down-right, same knee angles and grounded feet. Retain youthful but competent face, use clean attractive anime-icon eye design with more defined upper eyelid like cast references, less oversized white googly eyes. Do not turn him into the guard or a toddler. Match cast's compact stylized actual head/body proportions, no realistic long body, no giant balloon head.\nMain change is a CLEAR style transfer: thicker confident dark outer silhouette, simpler internal lines, big angular yet organic coherent cel shadow shapes. Remove scratchy fine hair strands, fabric crosshatching, dense tiny triangular facets and many soft gradients. Hair in 4-6 big locks/masses, clothing with 2-3 large purposeful light/shadow regions per piece. Simplify basket to wide woven bands with few broad crossings, no tiny mesh; leg wraps to few graphic bands, round container no intricate rope net. Preserve materials as cloth/bamboo, not crystal. Keep modest earthy brown/slate/ivory/leaf green palette but strengthen clear light-dark/color separation so he belongs alongside the cast. No expensive armor, jewels, capes, new ornaments, extra weapons. Clean 2D finished game character icon, not storybook sketch or glossy 3D render. Single full figure at comparable canvas occupancy to approved cast, all hair/bamboo/feet visible, simple warm ivory square background WITHOUT inset paper rectangle/frame. No text, collage or additional characters.",
+      "file": "male-hero-style-v1.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-f82992b0-6dc7-4154-b810-539114effa76.png"
+    },
+    {
+      "mode": "built-in image_gen",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/08-female-hero.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly.png",
+        "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-f82992b0-6dc7-4154-b810-539114effa76.png"
+      ],
+      "prompt": "Redraw ONLY the female protagonist in IMAGE1 to match the unified Chinese fantasy game character GEM ICON style of approved images2/3/4 and newly unified male protagonist image5. Image1 is sole identity/costume/pose target. Image5 is companion rendering reference only, do not change her into him. Keep her distinct cheerful young female traveler identity: TWO black round hair buns with brown ribbons, black bangs and cheek locks, happy open smiling mouth, lively eyes, sage green crossed tunic with ivory border and simple bamboo-leaf hem motif, dark slate cloth sash, loose slate cropped trousers, ivory calf wraps, plain brown shoes, small bamboo back basket with shoot and leaves and round woven container at left hip. Preserve fully clothed outfit coverage, same left-facing 3/4 head, one hand holding shoulder strap, other hand at hip, standing pelvis/knee angles and existing feet arrangement. Do not turn into a fighter pose, replace clothes or add weapons/jewelry. Preserve compact stylized head/body proportion consistent with image5 and approved cast, don't make a toddler or realistic long-legged body.\nMain task a clear STYLE TRANSFER: confident dark outer contours of similar relative thickness as image5 and archer, simplified expressive anime icon eyes rather than enormous white circles, attractive clean graphic face with a few clear skin shadow planes. Hair in large cohesive masses, no thin hairline scratches or tiny triangle facets. Clothing shadows broad and purposeful like approved archer/blade, no fine texture, no random geometric mosaic. Simplify bamboo weave/rope wrapping into a few wide recognizable crossings, not intricate net. Keep cloth matte and bamboo natural; gem-icon does not mean clothing made of jewels. Preserve sage/ivory/slate/brown palette with clear light-dark separation; don't copy bright purple or red from style references. Same finish and simplification level as newly redrawn male in image5 while preserving her cheerful character. Single full character on plain warm ivory SQUARE background, WITHOUT inset paper border or background panel; fill canvas to comparable scale as male/reference cast, feet and hair safely in frame. No text, collage or other characters.",
+      "file": "female-hero-style-v1.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-2419edc7-ea68-46fb-814b-5135c941bc33.png"
+    }
+  ]
+}

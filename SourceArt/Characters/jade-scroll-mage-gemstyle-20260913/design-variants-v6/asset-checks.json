@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 方折青墨",
+    "file": "A-angular-jade.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "18C3DB1E08007DEAAF4FE41B74FA51C6CBCECA323287A06FAB1D945370410B61",
+    "source_sha256": "18C3DB1E08007DEAAF4FE41B74FA51C6CBCECA323287A06FAB1D945370410B61"
+  },
+  {
+    "label": "B 流云朱砂",
+    "file": "B-vermilion-cloud.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "AC4879401046E8D3C6E1A687308ACA470B0C798346C01C16B3E9D97B53CB3276",
+    "source_sha256": "AC4879401046E8D3C6E1A687308ACA470B0C798346C01C16B3E9D97B53CB3276"
+  },
+  {
+    "label": "C 飞白玄金",
+    "file": "C-ivory-ink-gold.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "401BDE45FB4752FD5538F86BF489834D7DFD60406660E8B340B1F3435292C298",
+    "source_sha256": "401BDE45FB4752FD5538F86BF489834D7DFD60406660E8B340B1F3435292C298"
+  }
+]

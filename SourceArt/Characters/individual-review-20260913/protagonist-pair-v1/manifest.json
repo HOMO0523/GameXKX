@@ -1,0 +1,16 @@
+{
+  "size": [
+    1600,
+    1600
+  ],
+  "maleBounds": [
+    432,
+    158,
+    1169,
+    1407
+  ],
+  "maleSha256": "6db961b89da93b8474e06334119c30e1dc084250550640a47c38b4fa47e6a6a5",
+  "femalePreservedExactly": true,
+  "femaleSha256": "0beb9ecf69706aa98afa2458c45f4696f77b7c4bb46c3944977062ccea0a1344",
+  "imported": false
+}

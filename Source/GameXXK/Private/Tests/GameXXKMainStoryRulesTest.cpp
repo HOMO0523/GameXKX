@@ -162,11 +162,11 @@ bool FGameXXKMainStoryJourneyTest::RunTest(const FString& Parameters)
 	const auto Journey=M->GetRuntimeState().NarrativeProgress.MainStory.JourneyId;
 	const auto Gates=M->GetRuntimeState().NarrativeProgress.MainStory.GateNodeIds;
 	if(!TestFalse(TEXT("gate row exists"),Gates.IsEmpty()))return false;
-	TestTrue(TEXT("pausing and resuming uses existing route"),Story->StartTask(TEXT("S00-04")));
+	TestFalse(TEXT("cannot restart an active special battle"),Story->StartTask(TEXT("S00-04")));
 	TestEqual(TEXT("journey identity retained"),M->GetRuntimeState().NarrativeProgress.MainStory.JourneyId,Journey);
 	TestFalse(TEXT("cannot enter an unrelated gate"),Story->EnterJourneyGate(9999));
 	const int32 Gate=Gates.Array()[0];M->GetMutableRuntimeState().ReachableRouteNodeIds={Gate};
-	TestTrue(TEXT("actual reachable story gate opens"),Story->EnterJourneyGate(Gate));
+	TestTrue(TEXT("departure already opened the authored battle"),M->GetRuntimeState().CardRun.bHasActiveCardBattle);
 	TestFalse(TEXT("dialogue is not battle victory"),FGameXXKMainStoryRules::IsNodeCompleted(M->GetRuntimeState(),N->Id));
 	const auto Formation=M->GetRuntimeState().CardRun.OrderedFormation;
 	TestFalse(TEXT("already entered task battle cannot be started twice"),Story->BeginTaskBattle());
@@ -220,7 +220,7 @@ bool FGameXXKMainStoryCampaignTest::RunTest(const FString& Parameters)
 				const auto& Session=M->GetRuntimeState().NarrativeProgress.MainStory;Journeys.Add(Session.JourneyId);
 				if(Session.GateNodeIds.IsEmpty()){AddError(TEXT("missing story gate"));return false;}
 				const int32 Gate=Session.GateNodeIds.Array()[0];M->GetMutableRuntimeState().ReachableRouteNodeIds={Gate};
-				if(!Story->EnterJourneyGate(Gate)){AddError(Story->Feedback().ToString());return false;}
+				if(!M->GetRuntimeState().CardRun.bHasActiveCardBattle && !Story->EnterJourneyGate(Gate)){AddError(Story->Feedback().ToString());return false;}
 			}
 			if(N->Kind!=EGameXXKMainStoryNodeKind::JourneyBattle)
 				for(int32 I=0;I<N->Lines.Num();++I)if(!Story->AdvanceDialogue()){AddError(Next.ToString()+TEXT(": ")+Story->Feedback().ToString());return false;}
@@ -272,7 +272,10 @@ bool FGameXXKMainStoryExitSaveTest::RunTest(const FString& Parameters)
 	if(!Story->StartTask(TEXT("S00-04")))return false;
 	const auto* BattleNode=FGameXXKMainStoryCatalog::FindNode(TEXT("S00-04"));
 	for(int32 I=0;I<BattleNode->Lines.Num();++I)if(!Story->AdvanceDialogue())return false;
-	if(!Story->BeginTaskJourney())return false;
+	// Preserve an explicit pre-update waiting-map fixture for legacy route-exit coverage.
+    auto& Legacy=M->GetMutableRuntimeState();
+    if(!FGameXXKTrainingRules::StartChallenge(Legacy.Training,TEXT("Training.Normal.1-1")) ||
+       !FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Legacy,TEXT("S00-04"),1937))return false;
 	const int32 Gold=M->GetRuntimeState().PlayerGold;
 	M->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return false;}));
 	FGameXXKRouteSettlementReceipt Receipt;FString Error;

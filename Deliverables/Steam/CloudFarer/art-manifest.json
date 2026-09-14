@@ -1,0 +1,112 @@
+[
+  {
+    "file": "01_store/01_HeaderCapsule_920x430.png",
+    "purpose": "商店形象图片 Header Capsule",
+    "width": 920,
+    "height": 430,
+    "required": true,
+    "count": 1,
+    "sha256": "45968519336fe6d64e7ac2a383f5464e32e9be9c8449d693840281cb3012374a",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "01_store/02_SmallCapsule_462x174.png",
+    "purpose": "商店小宣传图 Small Capsule",
+    "width": 462,
+    "height": 174,
+    "required": true,
+    "count": 1,
+    "sha256": "1c303ecda5a7f9c0cc6fa08c1c697ad70c61b7a4d9e549af714294b7389d5c87",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "01_store/03_MainCapsule_1232x706.png",
+    "purpose": "商店主宣传图 Main Capsule",
+    "width": 1232,
+    "height": 706,
+    "required": true,
+    "count": 1,
+    "sha256": "f08e2320096d3c3d9e76fbac967bd5fd3789155a20d8b6dab8a4a006059acb4c",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "01_store/04_VerticalCapsule_748x896.png",
+    "purpose": "商店竖向宣传图 Vertical Capsule",
+    "width": 748,
+    "height": 896,
+    "required": true,
+    "count": 1,
+    "sha256": "66a10e813abfff7f9e3c8b30cda3c801b328dbef76d6c370a506599243432b3e",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "02_library/05_LibraryCapsule_600x900.png",
+    "purpose": "库宣传图 Library Capsule",
+    "width": 600,
+    "height": 900,
+    "required": true,
+    "count": 1,
+    "sha256": "34ad073b2e6b7a71288d1bc56596ae6cce4556c7c9f4280a28b44f7c23b6e4f1",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "02_library/06_LibraryHeader_920x430.png",
+    "purpose": "库形象图片 Library Header",
+    "width": 920,
+    "height": 430,
+    "required": true,
+    "count": 1,
+    "sha256": "45968519336fe6d64e7ac2a383f5464e32e9be9c8449d693840281cb3012374a",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "02_library/07_LibraryHero_NO_TEXT_3840x1240.png",
+    "purpose": "库主页背景 Library Hero（无文字）",
+    "width": 3840,
+    "height": 1240,
+    "required": true,
+    "count": 1,
+    "sha256": "4edf404d908dafa56fe46361d00f79f1a5ebc7bf26d76f79e97459ea3a5aef1b",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "02_library/08_LibraryLogo_TRANSPARENT_1280x720.png",
+    "purpose": "库徽标 Library Logo（透明）",
+    "width": 1280,
+    "height": 720,
+    "required": true,
+    "count": 1,
+    "sha256": "c721cc6688b51bf890ecceed06c6ac153a9e511706e6a50f5113ba0b346bc947",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "03_icons/09_ShortcutIcon_512x512.png",
+    "purpose": "快捷方式图标 Shortcut Icon",
+    "width": 512,
+    "height": 512,
+    "required": true,
+    "count": 1,
+    "sha256": "5a2d114bf0dc4e7dd05e66d8b60eb8f0ac017c80a7843a13b8e332e2bf4edefa",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "03_icons/10_AppIcon_184x184.jpg",
+    "purpose": "应用图标 App Icon",
+    "width": 184,
+    "height": 184,
+    "required": true,
+    "count": 1,
+    "sha256": "9264c8a7adacca983f97d1a0830cba7b49dfd7b9b5e0403b4fe3261b2d39c016",
+    "status": "exported; artistic review pending"
+  },
+  {
+    "file": "04_optional/11_StoreBackground_OPTIONAL_1438x810.png",
+    "purpose": "商店页面背景（可选）",
+    "width": 1438,
+    "height": 810,
+    "required": false,
+    "count": 1,
+    "sha256": "677b742fa0732e53b857bc61670aa97387600db00996bd53a57b020d371e1d52",
+    "status": "exported; artistic review pending"
+  }
+]

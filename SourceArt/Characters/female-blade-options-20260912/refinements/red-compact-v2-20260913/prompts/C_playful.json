@@ -1,0 +1,13 @@
+{
+  "slug": "C_playful",
+  "name": "C · 俏皮灵动",
+  "detail": "Preserve adult playful winking grin, asymmetric short bob, twin short curved dao, short wrap top, dark shorts, exposed knees and asym side panel. Change orange clothing and ties to clear crimson red. Preserve lively triangular silhouette and soft feminine curves.",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/female-blade-options-20260912/raw/C_playful.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-20260910/three-characters.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "prompt": "Use case: style-transfer and precise character redesign. Produce ONE full-body standalone Chinese wuxia female dao fighter, clearly an ADULT woman. Image1 is the target candidate: preserve her individual identity, personality, outfit cut, feminine bust-waist-hip curves, weapon identity and pose idea. Image2 is AUTHORITATIVE for compact game-character proportions, stylized eyes and outline/shading. Image3 is gem-icon painting style. Redraw the whole figure to unify with image2: visibly larger head, short neck, compact torso and MUCH SHORTER legs, about 3.5 head heights crown-to-sole (not counting ponytail). Keep an adult woman's face and mature soft curvy physique; never a child. Do not retain the 6-7 head tall anime fashion proportions from image1. Keep curving feminine silhouette, avoid muscular pectoral anatomy or hard polygonal skin. Bold consistent dark contour; large coherent colored planes, only 2-3 purposeful shadow shapes per material; a few broad bevel highlights. No noisy tiny triangles, no fragmented folds or hair strands, no realistic eyes. Chinese costume design, red color accents only with black, ivory, muted gold/silver neutrals. Sparse large ornament; clear shape rhythm. Three-quarter view facing SCREEN LEFT. Preserve adult playful winking grin, asymmetric short bob, twin short curved dao, short wrap top, dark shorts, exposed knees and asym side panel. Change orange clothing and ties to clear crimson red. Preserve lively triangular silhouette and soft feminine curves. Entire head, weapon tips and feet inside square canvas with generous 8% margin. Warm ivory plain background, no floor shadow, no lettering, no panel, no extra figures. The output must look from the SAME compact stylized RPG roster as image2, with gem-icon graphic clarity.",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-blade-options-20260912\\refinements\\red-compact-v2-20260913\\raw\\C_playful.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-26a58730-6d37-46e1-93b7-43dacfcb5c5c.png"
+}

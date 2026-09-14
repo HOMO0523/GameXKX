@@ -1,0 +1,155 @@
+{
+  "mode": "built-in image_gen for six NPC cleanup edits; existing cast copied intact",
+  "status": "review",
+  "user_reference": "C:/Users/shxuw/Desktop/24477bd0cef66fc8187be5279a62f1da.png",
+  "reference_resolution_note": "Exact matching NPC raw images located in project-design-gemstyle-all-20260910; no alternate later redesigns used.",
+  "characters": [
+    {
+      "name": "男主",
+      "slug": "male-hero",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-clean-v7.png",
+      "file": "male-hero.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "女主",
+      "slug": "female-hero",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/female-hero-refined-v2.png",
+      "file": "female-hero.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "刀客",
+      "slug": "blade",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+      "file": "blade.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "弓手",
+      "slug": "archer",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+      "file": "archer.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "蝴蝶道士",
+      "slug": "butterfly",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly-refined-v2.png",
+      "file": "butterfly.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "阵师",
+      "slug": "formation",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/formation-trial-v1.png",
+      "file": "formation.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "药师",
+      "slug": "healer",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/healer-trial-v1.png",
+      "file": "healer.png",
+      "group": "当前阵容"
+    },
+    {
+      "name": "守卫",
+      "slug": "guard",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/guard-trial-v2-larger-head.png",
+      "file": "guard.png",
+      "group": "当前阵容"
+    },
+    {
+      "slug": "tusi_chief",
+      "name": "土司首领",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/tusi_chief.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-clean-v7.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target is Tusi chief: retain squat broad elderly man, HUGE flat angular ochre hat, black brows, red square nose, giant curved ivory moustache and small pointed ivory beard, black fur collar, large orange-red angular cape with hexagonal clasp, black baggy pants, brown boots, crescent-topped wooden staff on left. Do not modernize or slim him, do not replace crescent staff with a rock staff, no armor added. Biggest cleanup on hat and red cape: remove small tessellated triangles, keep few large geometric fold/shadow groups. Retain expressive stern eyes and original strong caricature.",
+      "file": "tusi_chief-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-2015debb-4415-4bae-ba10-c7977219f5ed.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/tusi_chief.png",
+      "original_file": "tusi_chief-original.png",
+      "group": "NPC"
+    },
+    {
+      "slug": "song_jin_bao",
+      "name": "宋金宝",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/song_jin_bao.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-clean-v7.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target Song Jin Bao: preserve TALL SLIM lanky man with angular sharp face and long nose, crooked confident grin, black spiky hair under distinctive orange pointed wide hat, orange-red robe with black lapels, bold ochre/red graphic front panel, brown pants, narrow calf wraps and curled-toe shoes. Exactly THREE blank ivory cards fanned in raised left hand, other hand on hip, small rectangular waist pouch, same stance. Do not round his face or shorten him to match childlike protagonists; his lankiness is his identity. Simplify busy hat weave to sparse major bands and reduce small cloth triangles, keep all big original decorative shapes.",
+      "file": "song_jin_bao-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-d6afb136-494d-44c7-b043-aefbe07375ce.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/song_jin_bao.png",
+      "original_file": "song_jin_bao-original.png",
+      "group": "NPC"
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/you_bai.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly-refined-v2.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/guard-trial-v2-larger-head.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target You Bai is a FLOATING BLUE/PURPLE FLAME SPIRIT, not humanoid. Preserve exact swooping flame silhouette, facial position lower-left, mischievous eyes/smile, tall curling blue top flame, blue side flame lobes, curled tapering tail and TWO detached round flame droplets. Keep vivid cyan/azure/purple color map and same expression; do not add limbs, clothes, props or a human body. Consolidate dense mottled painted patches into broad flowing flame-shaped color regions following flame direction, about 4-5 main color values. Smooth crisp boundaries, gentle limited transition only where needed, no small noisy triangles, no glow haze or sparkles. Existing dark blue outer outline kept at controlled consistent thickness. Preserve all flame tips, negative spaces and overall shape, slight cleanup only.",
+      "file": "you_bai-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-a4f93323-5d9f-4d65-960f-055e02eef84f.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/you_bai.png",
+      "original_file": "you_bai-original.png",
+      "group": "NPC"
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "name": "周光祖",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/zhou_guang_zu.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-clean-v7.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target Zhou Guang Zu: preserve middle-aged large man, EXTREMELY WIDE oval straw hat and small hair knot above, sleepy eyes, long curled black moustache and pointed beard, dark charcoal loose robe, teal-green baggy trousers, tan sash/wraps/shoes. Orange FOX rests across his shoulders, with visible sleepy fox head on right and big orange/white tail curling behind to right; retain fox exactly, don't turn it into fur trim or remove. Keep rolled bamboo scroll/cylinder held across front with hand, same grounded broad stance and proportions. Biggest cleanup: dense triangle mosaics on huge hat, robe and pants, fox hair tufts. Retain a few large straw hat structural bands and broad fur shapes, same face and silhouette. No armor or additional decorations.",
+      "file": "zhou_guang_zu-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-0bf41b97-3d8a-4feb-9586-ac73ebee1bc4.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/zhou_guang_zu.png",
+      "original_file": "zhou_guang_zu-original.png",
+      "group": "NPC"
+    },
+    {
+      "slug": "jin_gui",
+      "name": "金贵",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/jin_gui.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-clean-v7.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target Jin Gui: keep the small youthful-looking short traveler with half-lidded bored eyes, existing single cheek scar, exact short black hair under broad straw hat with red tied fabric sprig on top, turquoise/mint loose robe and dark green pants, tan sash and hip pouch, dark flat slip-on shoes. He carries a LONG BRASS PIPE resting across shoulder, held in raised hand, other hand hidden behind body; keep pipe as existing prop and add no smoke. Preserve exact one-foot-raised relaxed walking stance, all body proportions and character expression. Do not make him tall or change age. Simplify hat/cloth tiny facets and repeated noisy planes, keep broad main seams/folds, scar and red hat ornament. Do not change clothing cut or add decorations.",
+      "file": "jin_gui-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-a9078891-36a1-4c44-bcac-f0744d2c5a46.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/jin_gui.png",
+      "original_file": "jin_gui-original.png",
+      "group": "NPC"
+    },
+    {
+      "slug": "qiong_yao_er",
+      "name": "琼幺儿",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/qiong_yao_er.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png"
+      ],
+      "prompt": "MINIMAL STYLE CLEANUP to integrate this exact NPC into an existing Chinese fantasy gem-icon cast. Image1 is the user-selected NPC design and must be preserved very closely. Images2/3 are only rendering references. Keep original face identity, age, build, anatomical proportions, pose, hairstyle/hat, clothing, props and palette; do not copy reference costume or change silhouette. Only unify dark contour weight with the current cast and consolidate noisy small triangular facets/brush mottling into a few broad matte cel-shaded regions. Keep purposeful angular form planes; do not turn flat lifeless or glossy 3D. No new ornaments or costume redesign. Same full figure on clean uniform warm ivory square background, all tips/feet visible, no text or collage. Target Qiong Yao Er: preserve smiling young woman, round cream traditional cap with pearl row and red angular ornament on top, side braided dark hair, gold hoop earring, orange-red blouse with ivory cuff/lapel, long golden-yellow skirt, tan sash, two long ivory/red ribbons flowing to right, wrapped ankles and simple brown shoes. Same turned 3/4-left body/head and gentle stepping pose, one hand carries green lotus-shaped bell/lantern with blue tassel to lower-left, other extends back with small gold bell. Keep garment coverage and pose exactly, no redesign or leg exposure. Main cleanup only: consolidate tiny triangles on orange sleeves, yellow skirt, cream/red ribbons and hat into broad cloth-fold planes; pearl row and green bell still recognizable but fewer micro highlights. Preserve elegant original face and all original hat, braid, bell and ribbon silhouettes. Do not replace her with an archer or add weapons.",
+      "file": "qiong_yao_er-aligned-v1.png",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-b621fcfa-095a-4e9f-b950-f581a4171d4c.png",
+      "original": "D:/UE5 demo/GameXXK/SourceArt/Characters/project-design-gemstyle-all-20260910/raw/qiong_yao_er.png",
+      "original_file": "qiong_yao_er-original.png",
+      "group": "NPC"
+    }
+  ],
+  "imported": false
+}

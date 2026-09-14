@@ -8,6 +8,8 @@
 #include "GameXXKMVPRules.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Misc/Optional.h"
+#include "Containers/Ticker.h"
+#include "MVP/GameXXKSaveStorage.h"
 #include "GameXXKMVPSubsystem.generated.h"
 
 class USaveGame;
@@ -32,6 +34,10 @@ class GAMEXXK_API UGameXXKMVPSubsystem : public UGameInstanceSubsystem
 
 public:
 	UGameXXKMVPSubsystem();
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+    virtual void Deinitialize() override;
+    /** Thirty-second, change-aware checkpoint; forced calls are for orderly lifecycle exits. */
+    bool TickPersistence(float DeltaSeconds, bool bForce = false);
 	static bool BuildAcademyBattleState(const FGameXXKAcademyCourse& Course,int32 LessonIndex,FGameXXKRuntimeState& OutState,FName& OutFocus,FString& Error);
 	bool IsAcademySessionActive() const { return bAcademyWriteGuard; }
 
@@ -673,6 +679,15 @@ public:
 	TArray<FName> BuildTurnOrder(bool bBossBattle) const;
 
 private:
+    FGameXXKSaveCommit PersistenceCommit;
+    FString ActiveSaveSlot;
+    int32 ActiveSaveUserIndex = 0;
+    bool bPlayerProgressReady = false;
+    bool bSavingAutomatically = false;
+    float AutoSaveElapsedSeconds = 0;
+    TArray<uint8> LastPersistedRuntimeBytes;
+    FTSTicker::FDelegateHandle PersistenceTicker;
+    FDelegateHandle PersistenceExitHandle;
 #if GAMEXXK_WITH_DEV_TOOLS
 	bool bDevelopmentWritesSuppressed = false;
 #endif

@@ -1,6 +1,8 @@
 #include "GameXXKEditorCaptureAutomationLibrary.h"
 
 #include "Blueprint/WidgetTree.h"
+#include "Blueprint/UserWidget.h"
+#include "Engine/World.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
 #include "Components/PanelWidget.h"
@@ -783,4 +785,26 @@ FString UGameXXKEditorCaptureAutomationLibrary::CaptureDesktopHudLayerAudit(
 		TJsonWriterFactory<TCHAR, TCondensedJsonPrintPolicy<TCHAR>>::Create(&CondensedJson);
 	FJsonSerializer::Serialize(Result, CondensedWriter);
 	return CondensedJson;
+}
+
+
+bool UGameXXKEditorCaptureAutomationLibrary::CaptureLiveGameWidget(
+    UUserWidget* Widget, const FString& Filename, int32 Width, int32 Height)
+{
+    if (!Widget || !Widget->GetWorld() || !Widget->GetWorld()->IsGameWorld() ||
+        Width < 1 || Height < 1 || Width > 3840 || Height > 2160) return false;
+    const FString Output = FPaths::ConvertRelativePathToFull(Filename);
+    if (!FPaths::IsUnderDirectory(Output, FPaths::ConvertRelativePathToFull(FPaths::ProjectDir()))) return false;
+    if (!IFileManager::Get().MakeDirectory(*FPaths::GetPath(Output), true)) return false;
+    if (Widget->WidgetTree) PrimeWidgetTextureResources(Widget->WidgetTree);
+    FHudLayerFrame Frame;
+    FString Error;
+    // A neutral matte is part of this offscreen presentation of the real transparent
+    // desktop UI. It excludes the user's desktop and does not modify gameplay state.
+    const TSharedRef<SWidget> Surface = SNew(SBorder)
+        .BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
+        .BorderBackgroundColor(FLinearColor(0.88f, 0.86f, 0.81f, 1.0f))
+        .Padding(0.0f)
+        [Widget->TakeWidget()];
+    return CaptureWidgetFrame(Surface,FIntPoint(Width,Height),Frame,Error) && SavePng(Output,Frame);
 }

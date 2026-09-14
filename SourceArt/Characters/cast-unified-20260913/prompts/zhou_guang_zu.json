@@ -1,0 +1,16 @@
+{
+  "slug": "zhou_guang_zu",
+  "name": "周光祖",
+  "group": "剧情伙伴",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\zhou_guang_zu.png",
+  "sourceHash": "5da5d0e57778e2e0334d8d60f7319bbd63ef1a3c34507c33eb43b212c3b416fe",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 周光祖：成熟宽肩男性，半眯老成眼，长弯黑胡须、尖下巴胡、黑小髻、非常宽扁竹斗笠。新设计黑灰宽交领短长外袍、大米黄腰绳结、墨绿宽裤、朴素棕鞋。图形方向宽扁椭圆、横向肩线和大厚梯形袍面；宽厚沉稳，区别土司锐利倒三角。肩后恰好一只橙色小狐狸，白下巴白尾尖，狐狸身体绕在肩背，头与单条大尾清楚，不是狐狸披风。前手托卷竹简，另一手负后，略屈膝稳立。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\zhou_guang_zu.png"
+  ],
+  "redesignDirection": "周光祖：成熟宽肩男性，半眯老成眼，长弯黑胡须、尖下巴胡、黑小髻、非常宽扁竹斗笠。新设计黑灰宽交领短长外袍、大米黄腰绳结、墨绿宽裤、朴素棕鞋。图形方向宽扁椭圆、横向肩线和大厚梯形袍面；宽厚沉稳，区别土司锐利倒三角。肩后恰好一只橙色小狐狸，白下巴白尾尖，狐狸身体绕在肩背，头与单条大尾清楚，不是狐狸披风。前手托卷竹简，另一手负后，略屈膝稳立。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\zhou_guang_zu.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-cec505b7-7832-4f0b-88a9-4f7da5b79d2a.png"
+}

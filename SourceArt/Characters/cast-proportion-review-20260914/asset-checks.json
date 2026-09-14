@@ -1,0 +1,22 @@
+[
+  {
+    "label": "守卫",
+    "file": "guard-proportion-v1.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "74CE2F3301B9EBEC589D6FFB685EE6A2873AD29C28B3B1500405BE7E6EB01D1E",
+    "source_sha256": "74CE2F3301B9EBEC589D6FFB685EE6A2873AD29C28B3B1500405BE7E6EB01D1E"
+  },
+  {
+    "label": "阵师",
+    "file": "formation-master-proportion-v1.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "1DF1B5CE75E8549617A7776E2F6F667333AFF2BF7A234D3AB50A070E4FDADE29",
+    "source_sha256": "1DF1B5CE75E8549617A7776E2F6F667333AFF2BF7A234D3AB50A070E4FDADE29"
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "file": "05_screenshots/12_Desktop_1920x1080_schinese.png",
+    "purpose": "桌面挂机与背包",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "ed8a60ad4ba55043c7d52acd88f78653d40b0f0128367d65aa093a0464b6137f",
+    "capture": "live PIE widget render on neutral matte"
+  },
+  {
+    "file": "05_screenshots/13_Warehouse_1920x1080_schinese.png",
+    "purpose": "仓库与装备整理",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "a1f5e2bdf238c9fe304750f2c1d32aa2a29175637910ada2bc4ae010ea2bf9fc",
+    "capture": "live PIE widget render on neutral matte"
+  },
+  {
+    "file": "05_screenshots/14_Formation_1920x1080_schinese.png",
+    "purpose": "角色编队",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "0b197e6e983684d293199facc509ab9e5b0975f0bd056ab1b392839041f9657d",
+    "capture": "live PIE widget render on neutral matte"
+  },
+  {
+    "file": "05_screenshots/15_Talents_1920x1080_schinese.png",
+    "purpose": "天赋成长",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "2ae7e8ca7258b9441e0cd31fb5a1661911762ed07feb7c3f3c4d14f82a6b7927",
+    "capture": "live PIE widget render on neutral matte"
+  },
+  {
+    "file": "05_screenshots/16_EquipmentTools_1920x1080_schinese.png",
+    "purpose": "装备工具",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "97634aa8db743d5d7117de4da0285b976725265a5e1bd88178b3234b8265a8b1",
+    "capture": "live PIE widget render on neutral matte"
+  },
+  {
+    "file": "05_screenshots/17_CardBattle_1920x1080_schinese.png",
+    "purpose": "卡牌战斗",
+    "width": 1920,
+    "height": 1080,
+    "count": 1,
+    "sha256": "f24913e080d512990d0313a26098e0d0fdf51f9273ce9f54e5681a326b11a087",
+    "capture": "live PIE widget render on neutral matte"
+  }
+]

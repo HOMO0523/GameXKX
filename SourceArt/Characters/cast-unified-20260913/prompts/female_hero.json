@@ -1,0 +1,16 @@
+{
+  "slug": "female_hero",
+  "name": "女主角",
+  "group": "主角",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_hero.png",
+  "sourceHash": "b2e48ab74068a3d1e073e38c646614747afdf3334c01b431f22e156356d8c963",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 女主角：明确成年女性，亲和机灵、有倔强劲的江湖旅人。新设计要区别女刀客的冷艳：柔和上挑笑眼，黑色齐颈短发配后侧小半髻，棕色短宽发带，绝不复制大长马尾。棕褐灰蓝与竹黄，短款斜襟棕外套、灰蓝贴体内衣、自然饱满女性曲线，腰部一条灰布结，两片不等长短外摆覆在窄束口蓝裤外，绑腿布靴。背轻竹篓露一竹杆两组宽叶，腰侧圆竹编水壶。图形为明快短斜线、梯形短摆与圆壶对比。轻迈步，一手提肩带另一手轻握衣襟，两腿可读。不要做女刀客换色。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_hero.png"
+  ],
+  "redesignDirection": "女主角：明确成年女性，亲和机灵、有倔强劲的江湖旅人。新设计要区别女刀客的冷艳：柔和上挑笑眼，黑色齐颈短发配后侧小半髻，棕色短宽发带，绝不复制大长马尾。棕褐灰蓝与竹黄，短款斜襟棕外套、灰蓝贴体内衣、自然饱满女性曲线，腰部一条灰布结，两片不等长短外摆覆在窄束口蓝裤外，绑腿布靴。背轻竹篓露一竹杆两组宽叶，腰侧圆竹编水壶。图形为明快短斜线、梯形短摆与圆壶对比。轻迈步，一手提肩带另一手轻握衣襟，两腿可读。不要做女刀客换色。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\female_hero.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-d795a402-2dc1-45b4-bcf1-7149ddf37cee.png"
+}

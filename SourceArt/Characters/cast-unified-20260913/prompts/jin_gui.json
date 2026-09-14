@@ -1,0 +1,16 @@
+{
+  "slug": "jin_gui",
+  "name": "金贵",
+  "group": "剧情伙伴",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\jin_gui.png",
+  "sourceHash": "4d36ce4b5bc55b537e96540b815ee8821529975880c2cfd60252482006e5913d",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 金贵：成年精瘦男子，倦怠半睁眼、面颊细疤，深棕短发。宽圆锥竹斗笠顶一小红布结。新设计淡青绿斜襟短衣、米白滚边、轻腰绳、小棕腰袋、宽松绿裤和深绿布鞋。图形方向垂落弧线、松弛弯折Z形，帽低身斜，区别阵师端正梯形。手握竹烟杆近嘴，细竹杆完整到小弯烟斗，不加烟雾，另一手背后；前脚轻抬但腿不交叉藏没，轻巧闲散有辨识度。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\jin_gui.png"
+  ],
+  "redesignDirection": "金贵：成年精瘦男子，倦怠半睁眼、面颊细疤，深棕短发。宽圆锥竹斗笠顶一小红布结。新设计淡青绿斜襟短衣、米白滚边、轻腰绳、小棕腰袋、宽松绿裤和深绿布鞋。图形方向垂落弧线、松弛弯折Z形，帽低身斜，区别阵师端正梯形。手握竹烟杆近嘴，细竹杆完整到小弯烟斗，不加烟雾，另一手背后；前脚轻抬但腿不交叉藏没，轻巧闲散有辨识度。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\jin_gui.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-a303458c-0fbb-4ea2-a292-54c912f06e11.png"
+}

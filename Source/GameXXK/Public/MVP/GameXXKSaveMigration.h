@@ -82,7 +82,9 @@ public:
 	static constexpr int32 ElementalResistanceIntroducedSaveVersion = 40;
 	/** v41 adds inventory-backed Hunt Orders, receipts and attribute-scaled Training encounters. */
 	static constexpr int32 HuntExpansionIntroducedSaveVersion = 41;
-	static constexpr int32 CurrentSaveVersion = 41;
+	/** v42 requires the raw-byte envelope; v41 executables must reject it instead of recovering stale backups. */
+	static constexpr int32 RawIntegrityEnvelopeIntroducedSaveVersion = 42;
+	static constexpr int32 CurrentSaveVersion = 42;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

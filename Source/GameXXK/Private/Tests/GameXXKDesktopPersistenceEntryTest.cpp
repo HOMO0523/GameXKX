@@ -90,4 +90,37 @@ bool FGameXXKDesktopExitSaveGateTest::RunTest(const FString&)
     MVP->ResetSaveSlotWriteDelegateForTest();
     return true;
 }
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKPeriodicPersistenceTest,
+    "GameXXK.Persistence.PeriodicSaveRetriesAndSkipsUnchanged",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKPeriodicPersistenceTest::RunTest(const FString&)
+{
+    auto* MVP=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+    int32 Writes=0;bool CanWrite=false;
+    MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda(
+        [&Writes,&CanWrite](USaveGame*,const FString&,int32){++Writes;return CanWrite;}));
+    TestFalse(TEXT("Never save before player state is ready"),MVP->TickPersistence(30));
+    if(!MVP->StartNewGame())return false;
+    TestTrue(TEXT("Wait for interval"),MVP->TickPersistence(29));
+    TestEqual(TEXT("No early disk writes"),Writes,0);
+    TestFalse(TEXT("Write failure is reported"),MVP->TickPersistence(1));
+    TestEqual(TEXT("One failed attempt"),Writes,1);
+    CanWrite=true;
+    TestTrue(TEXT("Pending changes retry on next interval"),MVP->TickPersistence(30));
+    TestEqual(TEXT("Retry reached writer"),Writes,2);
+    TestTrue(TEXT("Unchanged state is a no-op"),MVP->TickPersistence(30));
+    TestEqual(TEXT("No redundant save"),Writes,2);
+#if GAMEXXK_WITH_DEV_TOOLS
+    MVP->SetDevelopmentWritesSuppressed(true);
+    MVP->GetMutableRuntimeState().PlayerGold+=1;
+    TestFalse(TEXT("Dev state cannot autosave"),MVP->TickPersistence(30,true));
+    TestEqual(TEXT("Dev guard prevents even attempted writes"),Writes,2);
+    MVP->SetDevelopmentWritesSuppressed(false);
+#endif
+    MVP->GetMutableRuntimeState().PlayerGold+=1;
+    TestTrue(TEXT("Orderly exit flushes dirty state immediately"),MVP->TickPersistence(0,true));
+    TestEqual(TEXT("Exit writes one final snapshot"),Writes,3);
+    MVP->ResetSaveSlotWriteDelegateForTest();
+    return true;
+}
 #endif

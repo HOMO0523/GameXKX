@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 青叶药匣",
+    "file": "A-green-medicine-case.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "3247589EAC9304AB3AFD99C0FF36BE138FD07E0EC1FEF93C179FD98116220494",
+    "source_sha256": "3247589EAC9304AB3AFD99C0FF36BE138FD07E0EC1FEF93C179FD98116220494"
+  },
+  {
+    "label": "B 青竹采药",
+    "file": "B-green-bamboo.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "81F2EDA84599D98F07DDFD4F22874E974F677327056491BBBA002B05830B5C0A",
+    "source_sha256": "81F2EDA84599D98F07DDFD4F22874E974F677327056491BBBA002B05830B5C0A"
+  },
+  {
+    "label": "C 青衣葫芦",
+    "file": "C-green-gourd.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "1D0034BF291E48D3D6E83CBECFF40D5B4F673602CF209F06F8E3AFA3B84FAD63",
+    "source_sha256": "1D0034BF291E48D3D6E83CBECFF40D5B4F673602CF209F06F8E3AFA3B84FAD63"
+  }
+]

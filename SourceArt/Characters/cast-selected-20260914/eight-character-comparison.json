@@ -1,0 +1,55 @@
+{
+  "characters": [
+    {
+      "label": "男主",
+      "file": "07-male-hero.png",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/individual-review-20260913/protagonist-pair-v1/male_hero_1600.png",
+      "top": 0.09875,
+      "bottom": 0.879375
+    },
+    {
+      "label": "女主",
+      "file": "08-female-hero.png",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/individual-review-20260913/protagonist-pair-v1/female_hero_1600.png",
+      "top": 0.094375,
+      "bottom": 0.899375
+    },
+    {
+      "label": "刀客",
+      "file": "01-blade.png",
+      "top": 0.0430622009569378,
+      "bottom": 0.9792663476874003
+    },
+    {
+      "label": "弓手",
+      "file": "02-archer.png",
+      "top": 0.019936204146730464,
+      "bottom": 0.9728867623604466
+    },
+    {
+      "label": "蝴蝶术师",
+      "file": "03-butterfly.png",
+      "top": 0.01594896331738437,
+      "bottom": 0.9832535885167464
+    },
+    {
+      "label": "阵师",
+      "file": "04-formation.png",
+      "top": 0.03189792663476874,
+      "bottom": 0.9330143540669856
+    },
+    {
+      "label": "药师",
+      "file": "05-healer.png",
+      "top": 0.02073365231259968,
+      "bottom": 0.9808612440191388
+    },
+    {
+      "label": "青年守卫",
+      "file": "06-guard-young-v2.png",
+      "top": 0.04784688995215311,
+      "bottom": 0.9784688995215312
+    }
+  ],
+  "notes": "Visual comparison only. Original images copied intact; CSS equalizes approximate full silhouette height. No image generation or redraw."
+}

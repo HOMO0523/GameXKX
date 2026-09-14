@@ -1,0 +1,99 @@
+{
+  "count": 4,
+  "imported": false,
+  "phase": "themed-weapons-awaiting-review",
+  "records": [
+    {
+      "slug": "C_apricot",
+      "name": "杏风 · 流云轻弓",
+      "file": "characters\\C_apricot.png",
+      "raw": "raw\\C_apricot.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        230,
+        142,
+        1290,
+        1449
+      ],
+      "sha256": "3117a3930df35312f88618d733b4b53d62fdf5cffd874882be3788ddb0727b00",
+      "rawSha256": "0e4d116deab0b3fe7b42045cee4dd2f20c5d2c00627daac518b36e89247e4b94",
+      "referenceSha256": "170ba3ec785e41235948190c49b1bbabdacbf10acb371251909190271b4eb687"
+    },
+    {
+      "slug": "A_swallow",
+      "name": "燕羽 · 燕翎风弓",
+      "file": "characters\\A_swallow.png",
+      "raw": "raw\\A_swallow.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        215,
+        146,
+        1402,
+        1443
+      ],
+      "sha256": "5924e59516567bb6ca1fb925aaae4565c40298a107cd4b577bf508ff555e0e42",
+      "rawSha256": "bf9b600ec07c2cf03dc269a8f4c34df5f8f3d935b54f620f7c5c3999b8789a85",
+      "referenceSha256": "ede82d9d53f57eb0732a432b1e6eac214cb9014709c30b4d962da91b163c74a4"
+    },
+    {
+      "slug": "B_bamboo",
+      "name": "竹锋 · 劲竹战弓",
+      "file": "characters\\B_bamboo.png",
+      "raw": "raw\\B_bamboo.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        258,
+        155,
+        1217,
+        1446
+      ],
+      "sha256": "e07247ce91cbc595d6ccf95c138ac5cbf2ca765ffb2071f2e1a6f2005642766b",
+      "rawSha256": "f5ab43ebc6c815f450dd2bf4b058d230c8b7cb9d7014461e178380b6b7a1d974",
+      "referenceSha256": "b242b3d74a13a6d7f592c01a42b3c9b56e1d864d3f60fe4c30bcaf064eaab99e"
+    },
+    {
+      "slug": "D_moon",
+      "name": "月竹 · 素月弧弓",
+      "file": "characters\\D_moon.png",
+      "raw": "raw\\D_moon.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        245,
+        148,
+        1285,
+        1444
+      ],
+      "sha256": "dbdd7b3f21d8ceb55822a7b9ea465d886bc535159cca2b0285844b9798930ed8",
+      "rawSha256": "b4bb7e337f28bcb1493bdaf1ac8322fabab99614c26d873b16f7e434174a5b27",
+      "referenceSha256": "348e53b4ab22647700d20241dc8fcd587d1835070b86960db2de45b2e64588f0"
+    }
+  ]
+}

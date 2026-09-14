@@ -78,4 +78,49 @@ bool FGameXXKSaveStorageFaultTest::RunTest(const FString&)
     TestTrue(TEXT("Slot path traversal is rejected"),FGameXXKSaveStorage::SlotPath(TEXT("../outside")).IsEmpty());
     return true;
 }
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKSaveStorageEnvelopeTest,
+    "GameXXK.SaveIntegrity.Storage.RawEnvelopeRejectsTrailingDamage",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKSaveStorageEnvelopeTest::RunTest(const FString&)
+{
+    const FString Slot=TEXT("GameXXK_Automation_Envelope_")+FGuid::NewGuid().ToString(EGuidFormats::Digits);
+    ON_SCOPE_EXIT{CleanStorageSlots(Slot);};
+    FString Error;bool Recovered=false;
+    if(!TestTrue(TEXT("Write fixture"),FGameXXKSaveStorage::Write(MakeStorageSave(811),Slot,0,&Error)))return false;
+    auto* Standard=Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromSlot(Slot,0));
+    if(!TestNotNull(TEXT("Standard UE reader still understands the save"),Standard))return false;
+    TestEqual(TEXT("New files use the raw-byte integrity schema"),Standard->IntegritySchema,2);
+    TestTrue(TEXT("The released v41 executable must reject this new save version"),Standard->SaveState.SaveVersion > 41);
+    TArray<uint8> Bytes;FFileHelper::LoadFileToArray(Bytes,*FGameXXKSaveStorage::SlotPath(Slot));
+    Bytes.Add(0x79);
+    FFileHelper::SaveArrayToFile(Bytes,*FGameXXKSaveStorage::SlotPath(Slot));
+    TestNull(TEXT("Trailing corruption is rejected before applying state"),FGameXXKSaveStorage::Load(Slot,0,Recovered,&Error));
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKSaveResumeGenerationTest,
+    "GameXXK.SaveIntegrity.Storage.ResumeUsesNewestMatchingProfile",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKSaveResumeGenerationTest::RunTest(const FString&)
+{
+    const FString Slot=TEXT("GameXXK_Automation_Generation_")+FGuid::NewGuid().ToString(EGuidFormats::Digits);
+    const FString Checkpoint=Slot+TEXT("_Checkpoint");
+    ON_SCOPE_EXIT{CleanStorageSlots(Slot);CleanStorageSlots(Checkpoint);};
+    FGameXXKSaveCommit Commit;Commit.ProfileId=FGuid::NewGuid();Commit.OwnerSlot=Slot;
+    FString Error;
+    if(!FGameXXKSaveStorage::Write(MakeStorageSave(10),Slot,0,&Error,&Commit))return false;
+    if(!FGameXXKSaveStorage::Write(MakeStorageSave(20),Checkpoint,0,&Error,&Commit))return false;
+    TestEqual(TEXT("Newest checkpoint resumes"),FGameXXKSaveStorage::SelectResumeSlot(Slot,Checkpoint),Checkpoint);
+    if(!FGameXXKSaveStorage::Write(MakeStorageSave(30),Slot,0,&Error,&Commit))return false;
+    TestEqual(TEXT("Newer main wins over stale checkpoint"),FGameXXKSaveStorage::SelectResumeSlot(Slot,Checkpoint),Slot);
+    FGameXXKSaveCommit Other;Other.ProfileId=FGuid::NewGuid();Other.OwnerSlot=Slot;
+    if(!FGameXXKSaveStorage::Write(MakeStorageSave(40),Checkpoint,0,&Error,&Other))return false;
+    TestEqual(TEXT("Different character never overrides current main"),FGameXXKSaveStorage::SelectResumeSlot(Slot,Checkpoint),Slot);
+    Other.ProfileId=Commit.ProfileId;Other.OwnerSlot=TEXT("AnotherManualSlot");
+    if(!FGameXXKSaveStorage::Write(MakeStorageSave(50),Checkpoint,0,&Error,&Other))return false;
+    TestEqual(TEXT("Other manual slot checkpoint is isolated"),FGameXXKSaveStorage::SelectResumeSlot(Slot,Checkpoint),Slot);
+    auto* Legacy=MakeStorageSave(60);Legacy->SaveState.SaveVersion=41;
+    if(!UGameplayStatics::SaveGameToSlot(Legacy,Checkpoint,0))return false;
+    IFileManager::Get().SetTimeStamp(*FGameXXKSaveStorage::SlotPath(Checkpoint),FDateTime::UtcNow()+FTimespan::FromDays(30));
+    TestEqual(TEXT("Unowned legacy checkpoint cannot override a committed profile even with a future timestamp"),FGameXXKSaveStorage::SelectResumeSlot(Slot,Checkpoint),Slot);
+    return true;
+}
 #endif

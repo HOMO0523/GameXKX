@@ -1,0 +1,111 @@
+{
+  "count": 4,
+  "phase": "design-directions-awaiting-group-selection",
+  "tool": "built-in image_gen",
+  "records": [
+    {
+      "slug": "A_bold",
+      "name": "A · 张扬妩媚",
+      "summary": "红黑 · S形曲线 · 斜肩长摆",
+      "file": "characters\\A_bold.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "raw": "raw\\A_bold.png",
+      "rawSha256": "5482d94a4ecaff0dc0b0cf51dc13c899c7bac2869ff91d199ded4bca3ac8104a",
+      "sha256": "eec66e489dd41ecffe34779318a15eaddd1488fceb261ac5e5cb948b1d1ba511",
+      "foregroundBounds": [
+        172,
+        165,
+        1359,
+        1438
+      ],
+      "prompt": "prompts\\A_bold.json",
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "B_cool",
+      "name": "B · 冷艳克制",
+      "summary": "月白靛青 · 竖向月牙 · 长襟窄袖",
+      "file": "characters\\B_cool.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "raw": "raw\\B_cool.png",
+      "rawSha256": "e46b1f67f9347cbae263c904be68cfa41f08f1c8d033843aa26f96385ab951ca",
+      "sha256": "fd55a5a6244115f316dd6ed93bb88c827c80ce61ff43c1e35cee7b44aea24303",
+      "foregroundBounds": [
+        276,
+        166,
+        1225,
+        1432
+      ],
+      "prompt": "prompts\\B_cool.json",
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "C_playful",
+      "name": "C · 俏皮灵动",
+      "summary": "朱橙墨黑 · 活泼三角 · 短衣双刀",
+      "file": "characters\\C_playful.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "raw": "raw\\C_playful.png",
+      "rawSha256": "f422114135d418e8d0a30f0a2ca4e14ef34eae0659a2a9d9eddc6f9180375dab",
+      "sha256": "ee453fc425189719d07d01b965f90a187be0afd2a46679cdfeb77fa410633b7b",
+      "foregroundBounds": [
+        194,
+        176,
+        1422,
+        1430
+      ],
+      "prompt": "prompts\\C_playful.json",
+      "userApproved": false,
+      "imported": false
+    },
+    {
+      "slug": "D_languid",
+      "name": "D · 慵懒危险",
+      "summary": "酒红暖灰 · 松弛圆弧 · 垂袖大刀",
+      "file": "characters\\D_languid.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "raw": "raw\\D_languid.png",
+      "rawSha256": "7813172c7d5f13b8c8ba6e91cff68ee7fc0b698287b11dd3af71225f40254dbc",
+      "sha256": "6b43753a7fae1f7814d036b360be896d398f6abd941ae2714213ef4c81f1b67e",
+      "foregroundBounds": [
+        285,
+        161,
+        1419,
+        1439
+      ],
+      "prompt": "prompts\\D_languid.json",
+      "userApproved": false,
+      "imported": false
+    }
+  ]
+}

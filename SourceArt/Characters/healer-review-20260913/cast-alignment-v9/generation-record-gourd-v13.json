@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "C:\\Users\\shxuw\\AppData\\Local\\Temp\\codex-clipboard-a9f2b74b-8e10-4c9e-9748-ac699d0d9fd0.png"
+  ],
+  "prompt": "Precise local gourd refinement of the attached healer artwork.\nEnlarge ONLY the existing medicinal gourd by approximately 20–25 percent in linear size and TILT its long axis upward toward SCREEN RIGHT by approximately 25–30 degrees from horizontal. Large belly stays LOWER LEFT at waist height resting in the supporting forearm, while small bulb and stoppered mouth rise toward UPPER RIGHT near the shoulder level but remain clear of her face. The result is clearly diagonally cradled, neither flat-horizontal nor upright.\nKeep the same continuous double-bellied warm ochre-brown gourd, dark green neck cord and single leaf mark. Its enlarged belly rests against her body and along the forearm, not balanced on fingertips. Adapt only the supporting forearm/hand/cuff as necessary: elbow close to screen-right waist, forearm under the big belly, hand gently cups its near lower-left side, proper continuous anatomy and believable load bearing.\nPreserve the free arm on screen-left in its current relaxed bent-elbow gesture with loosely curled fingers; it must not touch the gourd. Exactly two hands and only one arm supports the gourd.\nAll other details are locked to this selected reference: green sprout hairstyle and leaves, face/expression, actual head/body proportions, three-quarter left direction, standing feet, leaf shoulder cape, green/ivory dress and coverage, sachet, shoes, palette, clean project icon contours/large shading planes and background. No added ornaments, glossy highlights, tiny facets or new props. Entire gourd, face, leaf tips and feet remain in the same square warm ivory composition.",
+  "purpose": "Increase the gourd moderately and tilt mouth upward-right while retaining one-arm cradling and the relaxed free hand.",
+  "output": "SourceArt/Characters/healer-review-20260913/cast-alignment-v9/healer-tilted-gourd-v13.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-92336914-5ddc-4ffe-a2d5-0e5b976760ca.png",
+  "visual_review": "Gourd visibly enlarged and diagonally tilted with mouth upper-right; large belly rests on single supporting arm; free-hand gesture retained."
+}
+

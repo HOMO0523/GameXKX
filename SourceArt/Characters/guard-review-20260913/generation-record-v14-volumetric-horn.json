@@ -1,0 +1,13 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\guard-review-20260913\\user-fang-shield-paintover.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\guard-review-20260913\\guard-v10-clear-beard.png"
+  ],
+  "prompt": "把图1用户草图完整精修为干净的项目宝石icon角色立绘。图1是造型与空间关系的唯一依据；图2只参考人物未涂改部分的完成度。不要恢复图2顶部的长蓝色弯冠。\n\n最关键的新说明：盾牌最下方那块银色造型，是与鬼面头顶主角一样的“立体鬼角结构”，绝对不能画成盾牌底边、银色V形包边、平面刀刃或普通盾尖。\n\n下方鬼角要这样画：\n- 从蓝色盾身下腹生出一个厚实的银灰色角根，往画面左下方弯曲延伸，角身有饱满的体积，逐渐收成尖端。\n- 其截面、弯曲规律、银灰材质和造型语言与上方鬼面额头的主角一致，形成上下呼应。是能转着看的独立立体角体，不是一张薄板。\n- 清楚表现一块宽亮面、一块中灰转面、一块深灰侧面；在角根与蓝色盾体接触处有小范围遮挡暗面。弯曲处有厚度，角尖略向前探出。\n- 按草图中下方大银色曲面的大小与落点重建，不要额外添很多新角。下方鬼角应成为盾轮廓的主形之一。\n\n整个盾的空间：\n依据左肩“蓝色鬼面”的朝向延展，与人物正面不强行共面。鬼面的额甲、颊甲、下颌和盾体共享同一组透视。靠身体的画面右侧近面较宽，左侧远端被压缩；甲片上缘右高左低，整个盾中轴向左下偏移。保留草图宽而斜展的蓝色盾体与叠甲关系。\n鬼面压住第一块盾甲，上甲遮下甲，盾挡在承托手臂和部分腿前；左臂在盾后合理固定，不出现穿透盾面的拳头。\n蓝色盾体必须是完整有厚度的保护面。银色只用于鬼角和少量连接甲，不要画成上下重复的两道巨大V形刀片。不要将下方重构成直立门板、常规尖底盾或扁平贴片。\n保留草图顶部短银色鬼角和现有鬼面，不要把最下方也画成第二张鬼脸。\n\n人物仍是原蓝色重甲男性：同样的脸、全深色简化胡须、黑发髻、蓝/深蓝/银灰配色、少量冰青鬼焰、宽肩壮实体型与稳立姿势；右手空拳自然下垂。无剑、无矛、无另加盾牌。两只完整脚可见。\n\n用项目宝石icon画法完成：强而干净的深色轮廓、少量饱满大体块、2至3组主要明暗。最下方鬼角的体积靠宽大明暗转面表现，不靠纹理或小碎切面。整体无噪点、无细碎三角拼花、无写实金属反射。把用户所有粗涂、擦除白边、断线和草稿痕迹重新画干净。完整全身单图、正方形暖米白背景、四边安全留白，无标注、文字、背景场景或投影。",
+  "purpose": "Reinterpret the lowest shield structure as a full volumetric ghost horn echoing the upper horn, with coherent oblique ghost-mask perspective.",
+  "output": "SourceArt/Characters/guard-review-20260913/guard-v14-volumetric-horn.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-309448ef-250d-45ce-9064-f9e5e7c809ce.png",
+  "visual_review": "Lowest silver form redrawn with a broad curved horn body, visible light/side planes and tapered tip echoing upper ghost horn; oblique shield construction retained."
+}
+

@@ -1,0 +1,141 @@
+{
+  "count": 4,
+  "tool": "built-in image_gen",
+  "phase": "first-draft-awaiting-user-references",
+  "naming": "本批统一采用道士称呼",
+  "next": "用户参考图调整定稿后，再优化其他男性角色并安排接入",
+  "records": [
+    {
+      "slug": "female_blade",
+      "name": "女刀客",
+      "role": "刀客伙伴",
+      "summary": "青衣红束腰 · 利落叠摆 · 饱满健美",
+      "file": "characters\\female_blade.png",
+      "sha256": "ed2bfd843f883e57998a2bcaeaedf3ac5cc59df03c12e1f30830e60148947c9d",
+      "raw": "raw\\female_blade.png",
+      "rawSha256": "36deb75fc8aa6091c8ab007a6214d603b177bc255c68d9eac8fe3b9239cbe3b1",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewSize": [
+        1600,
+        1600
+      ],
+      "reviewResampled": true,
+      "background": "warm ivory review",
+      "facing": "left",
+      "view": "three-quarter",
+      "prompt": "prompts\\female_blade.json",
+      "userApproved": false,
+      "imported": false,
+      "foregroundBounds": [
+        83,
+        44,
+        1485,
+        1546
+      ],
+      "foregroundFraction": 0.2715,
+      "visualReview": "first draft ready for reference-led refinement"
+    },
+    {
+      "slug": "female_archer",
+      "name": "女弓箭手",
+      "role": "弓手伙伴",
+      "summary": "风纹短披风 · 斜襟束袖 · 丰满轻灵",
+      "file": "characters\\female_archer.png",
+      "sha256": "a7d22c6f0e498e4733437c902d2756c56aa3df683b88b3dc158f15dcf6cf9ea6",
+      "raw": "raw\\female_archer.png",
+      "rawSha256": "e228434f038780ebd1a10ffd8e69093cb089f893e2cf7575300f815180c7e2d3",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewSize": [
+        1600,
+        1600
+      ],
+      "reviewResampled": true,
+      "background": "warm ivory review",
+      "facing": "left",
+      "view": "three-quarter",
+      "prompt": "prompts\\female_archer.json",
+      "userApproved": false,
+      "imported": false,
+      "foregroundBounds": [
+        132,
+        77,
+        1430,
+        1513
+      ],
+      "foregroundFraction": 0.3065,
+      "visualReview": "first draft ready for reference-led refinement"
+    },
+    {
+      "slug": "female_taoist",
+      "name": "女道士",
+      "role": "道士伙伴",
+      "summary": "靛蓝道袍 · 宽窄袖对比 · 圆润灵巧",
+      "file": "characters\\female_taoist.png",
+      "sha256": "df9c389448e6167497321407d30d0119c32c5192605939e3e32803301ffe9b00",
+      "raw": "raw\\female_taoist.png",
+      "rawSha256": "99d537c5e3564fc55da71a2475e7aa95003a78653c374d8b34311177258cda2f",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewSize": [
+        1600,
+        1600
+      ],
+      "reviewResampled": true,
+      "background": "warm ivory review",
+      "facing": "left",
+      "view": "three-quarter",
+      "prompt": "prompts\\female_taoist.json",
+      "userApproved": false,
+      "imported": false,
+      "foregroundBounds": [
+        273,
+        34,
+        1506,
+        1545
+      ],
+      "foregroundFraction": 0.3116,
+      "visualReview": "first draft ready for reference-led refinement"
+    },
+    {
+      "slug": "female_hero",
+      "name": "女主角",
+      "role": "女主角",
+      "summary": "棕短衣灰蓝内搭 · 竹篓旅人 · 丰盈亲和",
+      "file": "characters\\female_hero.png",
+      "sha256": "b2e48ab74068a3d1e073e38c646614747afdf3334c01b431f22e156356d8c963",
+      "raw": "raw\\female_hero.png",
+      "rawSha256": "bcc7ecf6540baa67cad06106de21f23f203331092dcd670f33b0594871fa7b8a",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "reviewSize": [
+        1600,
+        1600
+      ],
+      "reviewResampled": true,
+      "background": "warm ivory review",
+      "facing": "left",
+      "view": "three-quarter",
+      "prompt": "prompts\\female_hero.json",
+      "userApproved": false,
+      "imported": false,
+      "foregroundBounds": [
+        382,
+        29,
+        1271,
+        1561
+      ],
+      "foregroundFraction": 0.2754,
+      "visualReview": "first draft ready for reference-led refinement"
+    }
+  ]
+}

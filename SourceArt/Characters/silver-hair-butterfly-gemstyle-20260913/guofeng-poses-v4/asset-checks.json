@@ -1,0 +1,62 @@
+[
+  {
+    "label": "A 执扇侧立",
+    "file": "A-fan-standing.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "corner_alpha": [
+      255,
+      255,
+      255,
+      255
+    ],
+    "sha256": "009080EDF975BB4F544625810ACCA80FEEBEE1D133BD806E9E2E88700DAECD95",
+    "source_sha256": "009080EDF975BB4F544625810ACCA80FEEBEE1D133BD806E9E2E88700DAECD95"
+  },
+  {
+    "label": "B 拢袖浅礼",
+    "file": "B-sleeve-greeting.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "corner_alpha": [
+      255,
+      255,
+      255,
+      255
+    ],
+    "sha256": "C610235A2669DE33BB33B72860AE9CA15D4ED598155B9238554F0F7FB0F7731D",
+    "source_sha256": "C610235A2669DE33BB33B72860AE9CA15D4ED598155B9238554F0F7FB0F7731D"
+  },
+  {
+    "label": "C 提袖轻步",
+    "file": "C-sleeve-step.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "corner_alpha": [
+      255,
+      255,
+      255,
+      255
+    ],
+    "sha256": "AB4B9909F702FF3945C22394DA41FDAAD70A4E15D4DFBCA6F9D46D9597D6AB8E",
+    "source_sha256": "AB4B9909F702FF3945C22394DA41FDAAD70A4E15D4DFBCA6F9D46D9597D6AB8E"
+  },
+  {
+    "label": "D 托蝶凝望",
+    "file": "D-butterfly-gaze.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "corner_alpha": [
+      255,
+      255,
+      255,
+      255
+    ],
+    "sha256": "3178106B136ADB2C3FF696F0673F26A9E815053B5EA3B7A09C0A67BD5E04151A",
+    "source_sha256": "3178106B136ADB2C3FF696F0673F26A9E815053B5EA3B7A09C0A67BD5E04151A"
+  }
+]

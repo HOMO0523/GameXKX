@@ -8,6 +8,7 @@
 #include "Misc/Paths.h"
 #include "Misc/ScopeExit.h"
 #include "Serialization/MemoryWriter.h"
+#include "Serialization/MemoryReader.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
 #if PLATFORM_WINDOWS
 #include "Windows/WindowsHWrapper.h"
@@ -78,15 +79,82 @@ namespace
         return FGameXXKSaveMigration::MigrateToCurrent(Save->SaveState,Migrated,Report);
     }
 
-    UGameXXKSaveGame* Read(const FString& Path)
+    constexpr uint64 EnvelopeMagic = 0x32455641534B5858ull;
+    constexpr int32 FooterSize = 20;
+    constexpr int32 MaximumSaveBytes = 64 * 1024 * 1024;
+    int64 LastCommitTicks = 0; // All storage entry points run on the game thread.
+
+    void Seal(TArray<uint8>& Bytes, FGameXXKSaveCommit& Commit)
     {
-        if(Path.IsEmpty()||!FPlatformFileManager::Get().GetPlatformFile().FileExists(*Path))return nullptr;
+        const uint32 PayloadSize = Bytes.Num();
+        FMemoryWriter Writer(Bytes, true);
+        Writer.Seek(Bytes.Num());
+        Writer << Commit.ProfileId << Commit.OwnerSlot << Commit.Revision << Commit.UtcTicks;
+        uint32 MetadataSize = Bytes.Num() - PayloadSize;
+        uint32 Size = PayloadSize;
+        Writer << Size << MetadataSize;
+        uint32 Checksum = FCrc::MemCrc32(Bytes.GetData(), Bytes.Num());
+        uint64 Magic = EnvelopeMagic;
+        Writer << Checksum << Magic;
+    }
+
+    UGameXXKSaveGame* Decode(const TArray<uint8>& Bytes, FGameXXKSaveCommit* OutCommit)
+    {
+        if (OutCommit) *OutCommit = {};
+        if (Bytes.Num() < 16 || Bytes.Num() > MaximumSaveBytes) return nullptr;
+        FMemoryReader Reader(Bytes, true);
+        uint32 GvasMagic = 0; Reader << GvasMagic;
+        if (GvasMagic != 0x53415647) return nullptr;
+        uint64 Magic = 0;
+        Reader.Seek(Bytes.Num() - sizeof(Magic)); Reader << Magic;
+        FGameXXKSaveCommit Commit;
+        if (Magic == EnvelopeMagic)
+        {
+            if (Bytes.Num() < FooterSize) return nullptr;
+            uint32 PayloadSize = 0, MetadataSize = 0, Checksum = 0;
+            Reader.Seek(Bytes.Num() - FooterSize);
+            Reader << PayloadSize << MetadataSize << Checksum;
+            if (PayloadSize < 16 || MetadataSize > 2048 ||
+                uint64(PayloadSize) + MetadataSize + FooterSize != uint64(Bytes.Num()) ||
+                FCrc::MemCrc32(Bytes.GetData(), Bytes.Num() - 12) != Checksum) return nullptr;
+            TArray<uint8> Metadata;
+            Metadata.Append(Bytes.GetData() + PayloadSize, MetadataSize);
+            FMemoryReader MetadataReader(Metadata, true);
+            MetadataReader.ArMaxSerializeSize = 2048;
+            MetadataReader << Commit.ProfileId << Commit.OwnerSlot << Commit.Revision << Commit.UtcTicks;
+            if (MetadataReader.IsError() || MetadataReader.Tell() != Metadata.Num() ||
+                !Commit.ProfileId.IsValid() || !ValidSlot(Commit.OwnerSlot) ||
+                Commit.Revision <= 0 || Commit.UtcTicks <= 0) return nullptr;
+            Commit.bSealed = true;
+        }
+        auto* Save = Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes));
+        if (!Save) return nullptr;
+        if (Commit.bSealed)
+        {
+            if (Save->IntegritySchema != 2) return nullptr;
+            // The raw bytes were checked BEFORE deserialization. Seal only this in-memory
+            // representation for callers' mutation checks; never compare new class layouts
+            // with the old program's serialized checksum.
+            Save->IntegritySchema = 1;
+            Save->PayloadChecksum = PayloadChecksum(Save);
+        }
+        else if (Save->IntegritySchema == 2) return nullptr; // Missing/damaged footer, never a legacy save.
+        if (OutCommit) *OutCommit = Commit;
+        return Save;
+    }
+
+    UGameXXKSaveGame* Read(const FString& Path, FGameXXKSaveCommit* OutCommit=nullptr)
+    {
+        if (OutCommit) *OutCommit = {};
+        auto& Files = FPlatformFileManager::Get().GetPlatformFile();
+        const int64 Size = Path.IsEmpty() ? -1 : Files.FileSize(*Path);
+        if (Size < 16 || Size > MaximumSaveBytes) return nullptr;
         TArray<uint8> Bytes;
-        if(!FFileHelper::LoadFileToArray(Bytes,*Path)||Bytes.Num()<16||Bytes.Num()>64*1024*1024)return nullptr;
-        // Reject obvious truncation/foreign files before handing them to UE's archive reader.
-        const uint32 Magic=static_cast<uint32>(Bytes[0])|(static_cast<uint32>(Bytes[1])<<8)|(static_cast<uint32>(Bytes[2])<<16)|(static_cast<uint32>(Bytes[3])<<24);
-        if(Magic!=0x53415647)return nullptr;
-        return Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes));
+        if (!FFileHelper::LoadFileToArray(Bytes, *Path)) return nullptr;
+        auto* Save = Decode(Bytes, OutCommit);
+        if (Save && OutCommit && !OutCommit->bSealed)
+            OutCommit->UtcTicks = Files.GetTimeStamp(*Path).GetTicks();
+        return Save;
     }
 }
 
@@ -101,33 +169,34 @@ bool FGameXXKSaveStorage::Verify(const UGameXXKSaveGame* Save)
     return PayloadChecksum(Save)==Save->PayloadChecksum;
 }
 
-bool FGameXXKSaveStorage::Write(USaveGame* Save,const FString& Slot,int32 UserIndex,FString* Error)
+bool FGameXXKSaveStorage::Write(USaveGame* Save,const FString& Slot,int32 UserIndex,FString* Error,FGameXXKSaveCommit* InOutCommit)
 {
     if(Error)Error->Reset();
     const FString Path=SlotPath(Slot);
     if(Path.IsEmpty()||UserIndex<0||!Save)return Fail(Error,TEXT("Invalid save slot."));
     UGameXXKSaveGame* Typed=Cast<UGameXXKSaveGame>(Save);
     if(!Typed)return Fail(Error,TEXT("Unexpected save object type."));
-    // Preserve a legacy migration backup byte-for-byte. New runtime snapshots use the
-    // current schema and receive an integrity seal without mutating the caller's object.
-    UGameXXKSaveGame* Copy=DuplicateObject<UGameXXKSaveGame>(Typed,GetTransientPackage());
+    FGameXXKSaveCommit PreviousCommit;
+    const auto* Existing = Read(Path, &PreviousCommit);
+    if (Existing && Existing->SaveState.SaveVersion > FGameXXKSaveMigration::CurrentSaveVersion)
+        return Fail(Error,TEXT("A newer game version owns this save; refusing to overwrite it."));
+    FGameXXKSaveCommit Commit = InOutCommit ? *InOutCommit : PreviousCommit;
+    if (!Commit.ProfileId.IsValid()) Commit.ProfileId = FGuid::NewGuid();
+    if (Commit.OwnerSlot.IsEmpty()) Commit.OwnerSlot = Slot;
+    if (!ValidSlot(Commit.OwnerSlot)) return Fail(Error,TEXT("Invalid owner slot."));
+    const int64 LastRevision = FMath::Max(Commit.Revision, PreviousCommit.Revision);
+    const int64 LastTicks = FMath::Max3(Commit.UtcTicks, PreviousCommit.UtcTicks, LastCommitTicks);
+    if (LastRevision == MAX_int64 || LastTicks == MAX_int64) return Fail(Error,TEXT("Invalid commit sequence."));
+    Commit.Revision = LastRevision + 1;
+    Commit.UtcTicks = FMath::Max(FDateTime::UtcNow().GetTicks(), LastTicks + 1);
+    Commit.bSealed = true;
+    UGameXXKSaveGame* Copy = DuplicateObject<UGameXXKSaveGame>(Typed,GetTransientPackage());
+    Copy->IntegritySchema = 2;
+    Copy->PayloadChecksum = 0;
     TArray<uint8> Bytes;
-    if(Copy->SaveState.SaveVersion==FGameXXKSaveMigration::CurrentSaveVersion)
-    {
-        Copy->IntegritySchema=1;Copy->PayloadChecksum=0;
-        // The first persistent serialization can assign identities to freshly
-        // created FText (for example encounter unit names). Seal the round-trip
-        // representation, otherwise those generated keys invalidate our own
-        // checksum when the save is read back. The caller and legacy verifier
-        // remain unchanged.
-        TArray<uint8> CanonicalBytes;
-        if(!UGameplayStatics::SaveGameToMemory(Copy,CanonicalBytes))return Fail(Error,TEXT("Save canonicalization failed."));
-        Copy=Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(CanonicalBytes));
-        if(!Copy)return Fail(Error,TEXT("Canonical save could not be read back."));
-        Copy->PayloadChecksum=PayloadChecksum(Copy);
-    }
-    if(!UGameplayStatics::SaveGameToMemory(Copy,Bytes))return Fail(Error,TEXT("Save serialization failed."));
-    if(!Verify(Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes))))return Fail(Error,TEXT("Serialized save did not pass integrity verification."));
+    if (!UGameplayStatics::SaveGameToMemory(Copy, Bytes)) return Fail(Error,TEXT("Save serialization failed."));
+    Seal(Bytes, Commit);
+    if (!Verify(Decode(Bytes, nullptr))) return Fail(Error,TEXT("Serialized save did not pass integrity verification."));
 
     if(const UGameXXKSaveGame* Previous=Read(Path);Previous&&ValidRuntime(Previous))
     {
@@ -140,15 +209,18 @@ bool FGameXXKSaveStorage::Write(USaveGame* Save,const FString& Slot,int32 UserIn
             if(!FFileHelper::LoadFileToArray(PreviousBytes,*Source)||!WriteBytes(SlotPath(Slot+FString::Printf(TEXT(".Previous%d"),Index)),PreviousBytes,false,Error))return false;
         }
     }
-    return WriteBytes(Path,Bytes,true,Error);
+    if (!WriteBytes(Path,Bytes,true,Error)) return false;
+    LastCommitTicks = Commit.UtcTicks;
+    if (InOutCommit) *InOutCommit = Commit;
+    return true;
 }
 
-UGameXXKSaveGame* FGameXXKSaveStorage::Load(const FString& Slot,int32 UserIndex,bool& bRecovered,FString* Error)
+UGameXXKSaveGame* FGameXXKSaveStorage::Load(const FString& Slot,int32 UserIndex,bool& bRecovered,FString* Error,FGameXXKSaveCommit* OutCommit)
 {
-    bRecovered=false;if(Error)Error->Reset();
+    bRecovered=false;if(Error)Error->Reset();if(OutCommit)*OutCommit={};
     const FString Path=SlotPath(Slot);
     if(Path.IsEmpty()||UserIndex<0){Fail(Error,TEXT("Invalid save slot."));return nullptr;}
-    UGameXXKSaveGame* Primary=Read(Path);
+    UGameXXKSaveGame* Primary=Read(Path,OutCommit);
     // A future version is not corruption and must never be replaced by an older backup.
     if(Primary&&Primary->SaveState.SaveVersion>FGameXXKSaveMigration::CurrentSaveVersion)return Primary;
     // The version dispatcher must preserve and verify a migration backup before it
@@ -157,8 +229,9 @@ UGameXXKSaveGame* FGameXXKSaveStorage::Load(const FString& Slot,int32 UserIndex,
     if(Primary&&ValidRuntime(Primary))return Primary;
     for(int32 Index=1;Index<=BackupCount;++Index)
     {
-        UGameXXKSaveGame* Backup=Read(SlotPath(Slot+FString::Printf(TEXT(".Previous%d"),Index)));
-        if(Backup&&ValidRuntime(Backup)){bRecovered=true;return Backup;}
+        FGameXXKSaveCommit BackupCommit;
+        UGameXXKSaveGame* Backup=Read(SlotPath(Slot+FString::Printf(TEXT(".Previous%d"),Index)),&BackupCommit);
+        if(Backup&&ValidRuntime(Backup)){bRecovered=true;if(OutCommit)*OutCommit=BackupCommit;return Backup;}
     }
     if(Primary&&Verify(Primary))return Primary; // Let semantic validation provide its precise error.
     Fail(Error,TEXT("No valid save or backup was found."));return nullptr;
@@ -167,3 +240,28 @@ UGameXXKSaveGame* FGameXXKSaveStorage::Load(const FString& Slot,int32 UserIndex,
 #if WITH_DEV_AUTOMATION_TESTS
 void FGameXXKSaveStorage::SetFaultForTest(EFault Fault){InjectedFault=Fault;}
 #endif
+
+FString FGameXXKSaveStorage::SelectResumeSlot(const FString& RegularSlot,const FString& CheckpointSlot)
+{
+    bool Recovered=false;
+    FGameXXKSaveCommit RegularCommit, CheckpointCommit;
+    auto* Regular=Load(RegularSlot,0,Recovered,nullptr,&RegularCommit);
+    auto* Checkpoint=Load(CheckpointSlot,0,Recovered,nullptr,&CheckpointCommit);
+    if (Regular && Regular->SaveState.SaveVersion > FGameXXKSaveMigration::CurrentSaveVersion) return RegularSlot;
+    const bool HasRegular=Regular && ValidRuntime(Regular);
+    const bool HasCheckpoint=Checkpoint && ValidRuntime(Checkpoint);
+    if (CheckpointCommit.bSealed && CheckpointCommit.OwnerSlot != RegularSlot) return RegularSlot;
+    // Once a main slot has an explicit generation, an unowned legacy checkpoint
+    // must not resurrect another character, even if its filesystem time is ahead.
+    if (HasRegular && RegularCommit.bSealed && !CheckpointCommit.bSealed) return RegularSlot;
+    if (HasRegular && RegularCommit.bSealed && CheckpointCommit.bSealed &&
+        RegularCommit.ProfileId != CheckpointCommit.ProfileId) return RegularSlot;
+    if (Checkpoint && Checkpoint->SaveState.SaveVersion > FGameXXKSaveMigration::CurrentSaveVersion) return CheckpointSlot;
+    if (!HasCheckpoint) return RegularSlot;
+    if (!HasRegular) return CheckpointSlot;
+    if (RegularCommit.bSealed && CheckpointCommit.bSealed)
+        return CheckpointCommit.Revision > RegularCommit.Revision ? CheckpointSlot : RegularSlot;
+    // Legacy files have no generation counter. Use the selected copy's file time,
+    // including when Load recovered a backup, instead of blindly preferring checkpoints.
+    return CheckpointCommit.UtcTicks > RegularCommit.UtcTicks ? CheckpointSlot : RegularSlot;
+}

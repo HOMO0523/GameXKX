@@ -1,0 +1,108 @@
+{
+  "count": 4,
+  "phase": "butterfly-element-review",
+  "coreElement": "butterfly silhouette/wing panels/vein divisions/antenna curves",
+  "imported": false,
+  "records": [
+    {
+      "slug": "A_purple",
+      "name": "A · 紫蝶清幽",
+      "summary": "上翼肩领 · 下翼垂摆 · 清冷神秘",
+      "file": "characters\\A_purple.png",
+      "raw": "raw\\A_purple.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        427,
+        143,
+        1151,
+        1447
+      ],
+      "sha256": "8f0cdc76ccb23277a3964b6e9e02ac9f4f0160eb8aaeb1039fcb803beb29df7e",
+      "rawSha256": "bf25805628c3ab62bc87100d38847bccbe72989a36022c190bc1a66167dd3734",
+      "approved": false
+    },
+    {
+      "slug": "B_ink",
+      "name": "B · 墨蝶利落",
+      "summary": "折翼斜襟 · 短装收袖 · 干练坚定",
+      "file": "characters\\B_ink.png",
+      "raw": "raw\\B_ink.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        417,
+        218,
+        1101,
+        1425
+      ],
+      "sha256": "acc5d25122159940a5f15b4c0d03fde01a80e97f6ccd6b407eb651d3421cf675",
+      "rawSha256": "c4ca3a77982af37143e81e9b4e53ba4d57b4cc2077b60ec3789e36202c5ed09d",
+      "approved": false
+    },
+    {
+      "slug": "C_peach",
+      "name": "C · 粉蝶灵巧",
+      "summary": "圆翼短袖 · 花瓣叠摆 · 俏皮亲和",
+      "file": "characters\\C_peach.png",
+      "raw": "raw\\C_peach.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        548,
+        196,
+        1173,
+        1430
+      ],
+      "sha256": "c9952e573f5b8cafe28c2377cb17cc2d21541dc4955352c0371374297898c4fb",
+      "rawSha256": "e8eb2e5d735a043c5becd9f7f59a7b9c9f259babc8ab5d070e0311cf40117315",
+      "approved": false
+    },
+    {
+      "slug": "D_blue",
+      "name": "D · 青蝶沉静",
+      "summary": "窄翼直襟 · 长短叠片 · 沉稳内敛",
+      "file": "characters\\D_blue.png",
+      "raw": "raw\\D_blue.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        573,
+        208,
+        1102,
+        1442
+      ],
+      "sha256": "c60d2ff04a3e98591912067c6a4cee0fc1c50525cff9a3b092294b05337613d5",
+      "rawSha256": "b1aacc7f6ccf9bc8dd5d9437e46105f6c61b6de4f84a147d5ffe836579b15570",
+      "approved": false
+    }
+  ],
+  "sourceHashes": {
+    "style": "30fc2d57d036cc1edd2319d97428cf9b2f5b72b2a4c9e2c2fc502ef4a379fa1a",
+    "userReference": "0eee07a4da7752740eaca9c77cdbbaa0d850f5d8a46a3c377c23b3752231649a"
+  }
+}

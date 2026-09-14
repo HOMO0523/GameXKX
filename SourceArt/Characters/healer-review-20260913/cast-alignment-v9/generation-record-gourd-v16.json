@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "C:\\Users\\shxuw\\AppData\\Local\\Temp\\codex-clipboard-ba98220c-334d-4e50-acda-5a7a069d3ba7.png"
+  ],
+  "prompt": "Tiny precise LOCAL RETOUCH of the attached image. Remove ONLY the pale white/celadon LEAF EMBLEM and its thin gold outline on the FRONT CENTER of the large green gourd belly. Seamlessly replace that small emblem area with the surrounding original bright yellow-green/jade gemstone planes, matching their existing light direction and color. No trace of leaf shape, gold outline, engraving, sticker or replacement symbol remains. Preserve the gourd's EXACT existing bright chartreuse/green palette, original size, double-belly silhouette, tilt, gold cap, green waist cord and existing large facets. Do not redesign or desaturate the gourd. Preserve ALL other artwork, especially character face/hair/proportions/pose/arms/hands/clothing/sachet/shoes, the botanical motifs on the dress and sachet, background and framing. Only the single pale emblem ON THE GOURD is removed. Output same complete square full-body illustration, no other changes.",
+  "purpose": "Remove only the pale leaf emblem/gold rim from user-selected bright green gourd, preserving its original design and palette.",
+  "output": "SourceArt/Characters/healer-review-20260913/cast-alignment-v9/healer-gourd-no-leaf-v16.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-9f4f2b6f-157a-4196-be43-8b018b929add.png",
+  "visual_review": "Pale leaf and gold outline removed from gourd belly; original bright yellow-green facets and gold cap retained."
+}
+

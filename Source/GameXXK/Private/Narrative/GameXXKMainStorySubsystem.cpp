@@ -52,15 +52,23 @@ bool UGameXXKMainStorySubsystem::OpenChapter(const FName Id)
 bool UGameXXKMainStorySubsystem::BeginJourney(FGameXXKRuntimeState& Candidate,const FGameXXKMainStoryNode& Node,FString& Error)
 {
 	auto& S=Candidate.NarrativeProgress.MainStory;
+    const auto EnterSpecialBattle = [this,&Candidate,&Node,&Error,&S]()
+    {
+        if (Node.Kind != EGameXXKMainStoryNodeKind::JourneyBattle) return true;
+        if (Candidate.CardRun.bHasActiveCardBattle)
+        { S.Phase=EGameXXKMainStoryActivityPhase::AwaitingBattle; S.bShowJourneyTree=false; return true; }
+        if (!S.bGateEntered && !FGameXXKMainStoryRules::EnterJourneyGate(Candidate,1,&Error)) return false;
+        return S.Phase != EGameXXKMainStoryActivityPhase::ReadyToBattle || PrepareTaskBattle(Candidate,Error);
+    };
 	const FName Stage=FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal,Node.StageNumber);
 	if (Candidate.Training.bChallengeActive)
 	{
 		if (S.JourneyNodeId==Node.Id && S.JourneyStageId==Stage && !S.GateNodeIds.IsEmpty())
 		{
 			if(!FGameXXKMainStoryRules::IsDedicatedJourney(Candidate))
-				return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,S.JourneySeed,&Error);
+				return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,S.JourneySeed,&Error) && EnterSpecialBattle();
 			S.Phase=S.bGateEntered ? (S.LineIndex<Node.Lines.Num() ? EGameXXKMainStoryActivityPhase::Dialogue : Node.IsInvestigation() ? EGameXXKMainStoryActivityPhase::Choice : EGameXXKMainStoryActivityPhase::ReadyToBattle) : EGameXXKMainStoryActivityPhase::AwaitingGate;
-			S.bShowJourneyTree=S.bGateEntered; return true;
+			S.bShowJourneyTree=S.bGateEntered; return EnterSpecialBattle();
 		}
 		Error=TEXT("当前游历尚未结束，回到桌面后再开启这段行程。"); return false;
 	}
@@ -73,7 +81,7 @@ bool UGameXXKMainStorySubsystem::BeginJourney(FGameXXKRuntimeState& Candidate,co
 	const FName OrdinarySelection=Candidate.Training.SelectedStageId;
 	if (!FGameXXKTrainingRules::StartChallenge(Candidate.Training,Stage)) { Error=TEXT("对应游历关卡还没有开放。"); return false; }
 	Candidate.Training.SelectedStageId=OrdinarySelection;
-	return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,Seed,&Error);
+	return FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Node.Id,Seed,&Error) && EnterSpecialBattle();
 }
 bool UGameXXKMainStorySubsystem::StartTask(const FName Id)
 {
@@ -86,7 +94,7 @@ bool UGameXXKMainStorySubsystem::StartTask(const FName Id)
 	if (Node->IsJourney() && Candidate.Training.bChallengeActive && !FGameXXKMainStoryRules::IsNodeCompleted(Candidate,Id)
 		&&!FGameXXKMainStoryRules::HasBattleVictory(Candidate,Id))
 		if (!BeginJourney(Candidate,*Node,Error)) { SetError(Error); return false; }
-	if (Candidate.Training.bChallengeActive && Candidate.NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::AwaitingGate)
+	if (Candidate.Training.bChallengeActive && !Candidate.CardRun.bHasActiveCardBattle && Candidate.NarrativeProgress.MainStory.Phase!=EGameXXKMainStoryActivityPhase::AwaitingGate)
 		Candidate.NarrativeProgress.MainStory.bShowJourneyTree=true;
 	LastFeedback=FText::GetEmpty(); SelectedChapterId=Node->ChapterId;
 	return Commit(MoveTemp(Candidate),Node->IsJourney());
@@ -301,15 +309,22 @@ void UGameXXKMainStorySubsystem::Tick(float DeltaTime)
 {
 	const auto* S=State(); if (!S || !MVP() || MVP()->IsAcademySessionActive()) return;
 	const auto& Journey=S->NarrativeProgress.MainStory;
+    if(!S->Training.bChallengeActive || S->CardRun.bHasActiveCardBattle) LastLegacyMapAttemptRevision=INDEX_NONE;
 	if(S->Training.bChallengeActive&&!S->CardRun.bHasActiveCardBattle&&!Journey.GateNodeIds.IsEmpty()
-		&&!FGameXXKMainStoryRules::IsDedicatedJourney(*S)&&!FGameXXKMainStoryRules::IsNodeCompleted(*S,Journey.JourneyNodeId)
+        &&(!FGameXXKMainStoryRules::IsDedicatedJourney(*S) ||
+            ((Journey.Phase==EGameXXKMainStoryActivityPhase::AwaitingGate || Journey.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle)
+             && FGameXXKMainStoryCatalog::FindNode(Journey.JourneyNodeId)
+             && FGameXXKMainStoryCatalog::FindNode(Journey.JourneyNodeId)->Kind==EGameXXKMainStoryNodeKind::JourneyBattle))
+        &&!FGameXXKMainStoryRules::IsNodeCompleted(*S,Journey.JourneyNodeId)
 		&&!FGameXXKMainStoryRules::HasBattleVictory(*S,Journey.JourneyNodeId)
 		&&LastLegacyMapAttemptRevision!=Journey.Revision)
 	{
 		LastLegacyMapAttemptRevision=Journey.Revision;
 		FGameXXKRuntimeState Candidate=*S;FString Error;
-		if(FGameXXKMainStoryRules::GenerateDedicatedJourneyMap(Candidate,Journey.JourneyNodeId,Journey.JourneySeed,&Error))
-			Commit(MoveTemp(Candidate),true);
+		if(const auto* Node=FGameXXKMainStoryCatalog::FindNode(Journey.JourneyNodeId);Node && BeginJourney(Candidate,*Node,Error))
+        {
+            if(Commit(MoveTemp(Candidate),true)) LastLegacyMapAttemptRevision=INDEX_NONE;
+        }
 		else SetError(Error);
 		return;
 	}

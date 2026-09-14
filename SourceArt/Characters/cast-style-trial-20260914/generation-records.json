@@ -1,0 +1,45 @@
+{
+  "mode": "built-in image_gen",
+  "status": "trial-awaiting-user-review",
+  "records": [
+    {
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/04-formation.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly.png"
+      ],
+      "prompt": "STYLE HARMONIZATION TRIAL, one full-body Chinese scroll mage. Image 1 is the edit target; images 2/3/4 are the APPROVED art-style anchors (blade, archer, butterfly taoist). Redraw image 1 to belong to their exact game character icon set. Their shared language is clean expressive anime faces, confident dark outer contours, broad purposeful cel shadow shapes and simplified graphic clothing silhouettes. Gem-icon here does NOT mean a tessellated crystal surface. Avoid noisy triangular facets, soft glossy 3D modeling, fine painting detail.\nPreserve image1 teal bob with ivory forelock, feather ornament, flower hairpin, cloud-shaped black/ivory shoulder, jade belt, black/ivory wrap robe, teal cloud tails, brush, giant landscape scroll. Preserve its EXACT elegant narrow overlapping STANDING POSE and 3/4 left face, hand near chin, brush held diagonally right. Do not spread feet, make action pose, reverse body or change hand gestures. Slightly compact torso and leg segment lengths in the same pose to match approved archer's stylization, without inflating the head again; preserve adult elegance and natural knees. Most important is actual style agreement, not aggressive anatomy change.\nMake cloth shading larger and simpler, fewer thin subdivisions, graphic dark-to-light grouping like image3. Replace many little scroll mountain/cloud brush patches with a few larger simple mountain silhouettes and 2 bird marks, retain original continuous paper and rollers, lower scroll placement and perspective. No black seam through left scroll paper. Keep all selected costume features, amount of coverage, palette, prop size and recognizable silhouette. Reduce small polish details; keep attractive finished quality and same strong outline weight as archer. Single complete character on plain warm ivory square background, no text/collage. Images2-4 are only style reference, do not borrow their weapons/clothes or depict them.",
+      "label": "阵师",
+      "file": "formation-trial-v1.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-46f6882e-60d3-4a28-9415-e06faaa96f0f.png",
+      "review": "Broad clothing and landscape shapes; narrow stance retained, but scroll sits lower than original and long-legged proportion persists."
+    },
+    {
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/05-healer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly.png"
+      ],
+      "prompt": "Redraw image1 HEALER to MATCH THE APPROVED CHARACTER ICON ART STYLE of images2/3/4. Image1 is the only character/design/pose target; the other three only set rendering style. Main correction: remove excessive random triangular crystal facets across green hair, sprout leaves, cape, gourd and skirt. Gem-icon means readable stylized game character, not crystalline tessellation. Use the archer's broad directional light/shadow blocks and dark clean contour, butterfly's simple strong graphic shapes, blade's expressive face. Keep a little material distinction with only 2-3 broad angular highlights on the healing-jade gourd. It remains a beautiful GREEN JADE gourd, not wood, no white leaf emblem on it. Hair becomes coherent grouped green locks with one main highlight and shadow, NO mosaic of tiny triangles. Simplify leaf cape to a few overlapping large lobes; preserve leaf motifs and garment silhouette, merge minor folds/shadow patches. Skin flat clean anime cell shading, purple eyes and warm gentle face.\nSTRICTLY retain image1 head-body ratio, youthful fully clothed character, green sprout hairstyle with TWO top leaf shapes and short tied side locks, ivory/green long robe and full skirt, leaf cape, shoes and herb pouch. Preserve same 3/4-left face, exact calm standing pose, large diagonally cradled gourd on image RIGHT with mouth pointing upper-right, one arm supports it and free hand hangs gently down-left. Do not change pose, gourd size/angle, outfit coverage or palette. No weapons or unrelated props. Keep same full-body framing and plain warm ivory square background. Single character only, no labels or collage. Finish must feel like same illustrator and visual detail density as the three approved style anchors, more clean graphic cel shaded than the current faceted target.",
+      "label": "药师",
+      "file": "healer-trial-v1.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-b5931245-4943-4173-9441-d704f928d02a.png",
+      "review": "Hair and gourd tessellation reduced substantially; green hue slightly muted. Pose and key design retained."
+    },
+    {
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/06-guard-young-v2.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/03-butterfly.png"
+      ],
+      "prompt": "STYLE MATCH TRIAL. Image1 is the young male giant-shield GUARD to edit. Images2,3,4 are the USER APPROVED Chinese game character icon rendering anchors: blade, archer and butterfly taoist. Make the guard convincingly the same illustrated set, not a glossy 3D mobile-game armor render. Retain ALL design and pose identity of image1. His huge asymmetric-on-screen blue ghost-mask shield stays on image RIGHT, face facing LEFT and empty closed fist LEFT. Preserve shield size, exact oblique perspective, ghost face/cyan eyes, upper horn and lower outward-curved VOLUMETRIC SILVER HORN, thickness and border silhouette. Do not flatten its structural perspective: simplify the SHADING, not the physical geometry. Still a strong adult man with youthful CLEAN-SHAVEN face, tied black hair, broad shoulders, full navy heavy armor, same compact head/body proportion and planted standing pose. No beard, weapon, new ornament or outfit redesign.\nRendering corrections: cohesive broad cel shadow masses like approved archer; each blue armor plate only one base and one large shadow, no random triangular mosaic, no smooth airbrush modeling. Silver borders use a broad light face and one clean dark side, only sparse reserved highlights. Keep ghost face sculptural readable through few big purposeful shapes instead of many carved facets. Simplify fluffy collar into a small number of broad pale blue tufts with the existing flat cyan flame curls, less fuzzy crystalline texture. Give the young human face an expressive clean anime icon treatment like male equivalent of references, simplified brows/eyes/nose with 2 skin values, no long modeled cheek gradients. Crisp slightly organic dark contours matched to approved references, controlled cobalt/navy/silver/cyan palette, no color borrowing from female references. Chest/clothes remain subdued so the shield remains focal point. Do not add detail to compensate for simplification. Full single character square image on plain warm ivory background, same framing; no collage or text.",
+      "label": "守卫",
+      "file": "guard-trial-v1.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-8c1ebf35-2fc1-4df6-8fa2-a158b3605bcf.png",
+      "review": "Larger shadow groups on shield and collar. Huge shield, young face and left-facing stance retained."
+    }
+  ]
+}

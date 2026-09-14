@@ -1,0 +1,45 @@
+{
+  "name": "女刀客·宝石图形强化版",
+  "prompt": "Use case: style-transfer + character design refinement. 只重绘第一张女刀客。第二张是本项目宝石icon的明确画风标准，必须让她与这些icon看起来出自同一套美术。保留第一张的成年女性身份、丰满有力量的体态、红黑配色、旧金点缀、低位持弯刀站姿和3/4朝左方向。重点改变画风的统一性、形体组织和发型，输出新的完整全身单体。\n首要目标是强图形感：减少上一版偏纤长的二次元插画比例，改成约4头身的成年女性游戏卡通比例，头部、手、靴适度概括放大，肩胸腰胯与大腿饱满结实，腰不过细。用四五个主形建立剪影：头发的一道上挑弧、红色上身体块、黑色宽武裤的两块结实体积、宽月牙弯刀、右后方两片大红布尾。空隙清楚，手臂与腰、双腿、刀身之间不能黏成一片。保留身姿的爽利和危险又顽皮的个性。\n完全去掉胸前麻花辫、任何辫子/编织发束和散乱碎发。设计有性格的短高束发：头顶偏后的发束用一条宽红布扎起，向右后上方挑出短而厚的扇形翘尾，只有两三片大束，整体像一道利落火舌，长度不超过后颈太多。前额用一片偏分斜刘海，另一侧露出挑起的眉和太阳穴，一处较短尖鬓发点到颊旁即可。头发是两三块完整黑色/冷灰大面，不画细发丝、复杂盘髻或长马尾，更不能残留麻花辫。\n脸保持上版的挑眉、小虎牙、不对称笑意和眼下小痣，但脸形更饱满，鼻口线更精练，稍长的卡通杏眼配厚上眼睑、单块深赭红瞳孔，眼白一整块，最多一粒小高光。不要写实虹膜、鼻翼和嘴唇细节，不要尖下巴网红脸或幼童脸。头部看向画面左，神态精明、洒脱、带点坏笑。\n严格匹配宝石icon的画法：更厚实且闭合清楚的深墨外描边，主形轮廓有明确转折；饱和朱红/暗红、深黑/冷炭灰、少量旧金，受光与暗部对比清楚。每个大部位只用2至3个宽阔色面，关键转折可用一两块大切面，像宝石icon的清楚块面，不是铺满碎三角。表面只留少量宽手绘笔触；去掉柔软空气刷渐变、复杂小褶皱、局部细线和大片发丝纹。布料与皮肤仍为有机体积，不能变成真正石头、水晶人或低多边形3D。\n衣装保留红色斜叠上衣、黑腰封和宽束口黑武裤的设计，保持原服装覆盖程度；红色外摆合成两块完整斜面，腰封米白刀风纹简化成一个大标记。网格护臂改成三条有力的宽斜缠带，脚踝绑腿仅三四段；颈链归成简洁金色短弧，珍珠耳坠只一点。装饰集中头部和腰扣两处，裤子和大布尾留出完整大色面。弯刀保留一把在手里，刀刃只一块宽亮面、一块灰面和一条深边；背后备用刀只露简洁刀柄，不加新武器和碎挂饰。\n只画这个角色，不画宝石图标、对照表或其他角色。正方形，完整头发、刀、双脚、布尾，四周至少8%安全留白，干净均匀浅暖米白#F4EFDF背景，无地面、投影、场景、文字、边框。",
+  "references": [
+    "C:/Users/shxuw/AppData/Local/Temp/codex-clipboard-cf297da8-5b9b-4796-b40a-7c13a3aa29ef.png",
+    "D:/UE5 demo/GameXXK/SourceArt/UI/Items/Gems/contour-review-20260909/gem-types-review-v5.png"
+  ],
+  "tool": "built-in image_gen",
+  "userApproved": false,
+  "imported": false,
+  "scope": "only female blade; graphic forms + new non-braided hairstyle",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\refinements\\blade-gem-graphic-v3\\raw.png",
+  "nativeSize": [
+    1254,
+    1254
+  ],
+  "reviewSize": [
+    1600,
+    1600
+  ],
+  "fullbodyFile": "female_blade_v3.png",
+  "headDetailFile": "head-detail.png",
+  "comparisonFile": "comparison.png",
+  "foregroundBounds": [
+    145,
+    146,
+    1446,
+    1439
+  ],
+  "sha256": "ca736a6c3c865d4c62933e4e4e2704d5b6909d651741165df1700a3d58760a18",
+  "referenceSnapshot": "before.png",
+  "visualReview": {
+    "braidRemoved": true,
+    "hair": "short upswept tied tuft, broad swept fringe",
+    "rendering": "thicker dark contour, broad red/black value groups, simplified wraps",
+    "identityPreserved": [
+      "adult full figure",
+      "red/black palette",
+      "mischievous expression",
+      "left-facing stance",
+      "held curved dao"
+    ]
+  },
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-7c795b2e-21fc-42d1-8b07-a02cb71435ee.png"
+}

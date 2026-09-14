@@ -1,0 +1,37 @@
+{
+  "mode": "built-in image_gen",
+  "purpose": "Three left-facing front-three-quarter head/expression alternatives.",
+  "records": [
+    {
+      "label": "A 平视含笑",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\jade-scroll-mage-gemstyle-20260913\\jade-scroll-mage-v2.png"
+      ],
+      "prompt": "LOCAL HEAD-ONLY variation of this exact adult teal-haired ink-scroll mage. Preserve actual head size, neck position, full body proportions, costume, all hands/arms, stance, giant flowing landscape scroll and both rollers, large calligraphy brush, trailing teal cloth, colors, clean simplified game-icon style and square composition. Do not mirror the image or redesign anything below the neck. Retain the teal asymmetric bob, broad ivory forelock, black/teal hair ornament and small dull-gold clasp.\nThe input head is too close to a pure side profile. Redraw it as a FRONT THREE-QUARTER LEFT head: face turned only about 30–40 degrees LEFT from facing camera. We must see the front face plane, BOTH eye positions, the near cheek and a foreshortened far cheek. Nose points left but is inside the face silhouette rather than projecting as an extreme profile. Near eye full size, far eye narrower but visibly present, not completely hidden by hair. Adapt the sweeping fringe to reveal a small clear portion of the far eye. Neck connects naturally to unchanged shoulders. Same recognizable calm adult face and green eyes, no baby features. Simple graphic eyes, clean 2–3 broad shading planes, no noisy facets, realistic skin, fine hair strands or glossy rendering. Full original composition on uniform warm ivory background, no labels, additional props, panels or crop. ONE finished full-body variant only.\nVARIANT A — LEVEL, GENTLE KNOWING SMILE: yaw about 30 degrees toward screen-left, head upright without tilting, chin level. Both eyes softly gaze forward-left at eye height. Small relaxed closed-mouth smile, composed friendly scholar. Far eye clearly visible as a narrower eye under the fringe. Keep head centered naturally above neck, no looking back over shoulder.",
+      "file": "A-level-smile.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-69569c80-069b-4be8-9656-8756b0acdd50.png"
+    },
+    {
+      "label": "B 微俯柔和",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\jade-scroll-mage-gemstyle-20260913\\jade-scroll-mage-v2.png"
+      ],
+      "prompt": "LOCAL HEAD-ONLY variation of this exact adult teal-haired ink-scroll mage. Preserve actual head size, neck position, full body proportions, costume, all hands/arms, stance, giant flowing landscape scroll and both rollers, large calligraphy brush, trailing teal cloth, colors, clean simplified game-icon style and square composition. Do not mirror the image or redesign anything below the neck. Retain the teal asymmetric bob, broad ivory forelock, black/teal hair ornament and small dull-gold clasp.\nThe input head is too close to a pure side profile. Redraw it as a FRONT THREE-QUARTER LEFT head: face turned only about 30–40 degrees LEFT from facing camera. We must see the front face plane, BOTH eye positions, the near cheek and a foreshortened far cheek. Nose points left but is inside the face silhouette rather than projecting as an extreme profile. Near eye full size, far eye narrower but visibly present, not completely hidden by hair. Adapt the sweeping fringe to reveal a small clear portion of the far eye. Neck connects naturally to unchanged shoulders. Same recognizable calm adult face and green eyes, no baby features. Simple graphic eyes, clean 2–3 broad shading planes, no noisy facets, realistic skin, fine hair strands or glossy rendering. Full original composition on uniform warm ivory background, no labels, additional props, panels or crop. ONE finished full-body variant only.\nVARIANT B — SLIGHTLY LOWERED, SOFT THOUGHTFUL EXPRESSION: front three-quarter LEFT yaw about 35 degrees. Lower chin about 8 degrees and gently incline head about 5 degrees toward screen-left. Both eyes look softly down-left, relaxed eyelids, small tender closed-mouth smile, thoughtful scholarly mood. Far eye visibly present beneath fringe; do not revert to pure side profile. Show a little more upper hair plane due to the slight downward tilt, while retaining the same head size and natural neck attachment. This must be visibly different from a level upright head.",
+      "file": "B-soft-downward.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-2c63fbcb-dd7b-4fe2-b1f7-b4c852edfe45.png"
+    },
+    {
+      "label": "C 抬眸从容",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\jade-scroll-mage-gemstyle-20260913\\jade-scroll-mage-v2.png"
+      ],
+      "prompt": "LOCAL HEAD-ONLY variation of this exact adult teal-haired ink-scroll mage. Preserve actual head size, neck position, full body proportions, costume, all hands/arms, stance, giant flowing landscape scroll and both rollers, large calligraphy brush, trailing teal cloth, colors, clean simplified game-icon style and square composition. Do not mirror the image or redesign anything below the neck. Retain the teal asymmetric bob, broad ivory forelock, black/teal hair ornament and small dull-gold clasp.\nThe input head is too close to a pure side profile. Redraw it as a FRONT THREE-QUARTER LEFT head: face turned only about 30–40 degrees LEFT from facing camera. We must see the front face plane, BOTH eye positions, the near cheek and a foreshortened far cheek. Nose points left but is inside the face silhouette rather than projecting as an extreme profile. Near eye full size, far eye narrower but visibly present, not completely hidden by hair. Adapt the sweeping fringe to reveal a small clear portion of the far eye. Neck connects naturally to unchanged shoulders. Same recognizable calm adult face and green eyes, no baby features. Simple graphic eyes, clean 2–3 broad shading planes, no noisy facets, realistic skin, fine hair strands or glossy rendering. Full original composition on uniform warm ivory background, no labels, additional props, panels or crop. ONE finished full-body variant only.\nVARIANT C — SLIGHTLY LIFTED CHIN, COMPOSED CONFIDENCE: front three-quarter LEFT yaw about 35 degrees, chin subtly raised about 6 degrees, eyes looking calmly forward-left with a little upward focus. Relaxed confident eyelids and a small knowing asymmetrical smile, elegant poised scholar rather than stern/angry. BOTH eye positions readable with far eye narrower, nose inside the face silhouette, clear front cheek plane. Natural neck, no extreme backward neck bend. Distinct from lowered/downcast head or upright level expression. Keep the existing hand beside the chin comfortably separated if the chin rises slightly.",
+      "file": "C-poised-upward.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-c62a1b8e-87ec-49e1-85ae-958166eb95cb.png"
+    }
+  ]
+}
+

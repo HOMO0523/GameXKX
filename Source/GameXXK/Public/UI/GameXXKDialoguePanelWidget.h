@@ -49,6 +49,16 @@ public:
 	void SetPauseRequested(FGameXXKDialogueAdvanceRequested Delegate);
 	void SetHintRequested(FGameXXKDialogueAdvanceRequested Delegate);
 	void SetCompactLayout(bool bCompact);
+    UFUNCTION(BlueprintCallable, Category="GameXXK|Dialogue")
+    void SetAutoPlayEnabled(bool bEnabled);
+    UFUNCTION(BlueprintPure, Category="GameXXK|Dialogue")
+    bool IsAutoPlayEnabled() const { return bAutoPlayEnabled; }
+    UFUNCTION(BlueprintPure, Category="GameXXK|Dialogue")
+    float GetAutoPlayDelaySeconds() const { return AutoPlayDelaySeconds; }
+    UFUNCTION(BlueprintPure, Category="GameXXK|Testing")
+    FString GetAutoPlayStatusForTest() const;
+    static float CalculateAutoPlaySeconds(const FString& Text);
+    bool TickAutoPlay(float DeltaSeconds);
 	const FGameXXKDialoguePresentationView& GetPresentationView() const { return CurrentView; }
 
 	int32 GetPaperFrameCountForTest() const;
@@ -68,6 +78,9 @@ private:
 	friend class UGameXXKDialogueOptionButton;
 	void BuildProgrammaticLayout();
 	void RefreshCompactLayout();
+    void RefreshAutoPlayControl();
+    virtual void NativeTick(const FGeometry& Geometry, float DeltaSeconds) override;
+    virtual void NativeDestruct() override;
 	bool RequestOption(int32 OptionIndex);
 	virtual FReply NativeOnKeyDown(const FGeometry& Geometry,const FKeyEvent& Event) override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& Geometry,const FPointerEvent& Event) override;
@@ -104,5 +117,15 @@ private:
 	FGameXXKDialogueOptionRequested OptionRequested;
 	FGameXXKDialogueAdvanceRequested PauseRequested;
 	FGameXXKDialogueAdvanceRequested HintRequested;
+    UPROPERTY(Transient) TObjectPtr<UGameXXKDialogueOptionButton> AutoPlayButton;
+    UPROPERTY(Transient) TObjectPtr<UTextBlock> AutoPlayLabel;
+    FString AutoPlayText;
+    float AutoPlayElapsedSeconds = 0.0f;
+    bool bAutoAdvanceIssued = false;
+    int32 AutoPlayNativeTickCount = 0;
+    double LastAutoPlayTickTime = 0.0;
+    bool bHasPresentation = false;
+    bool bAutoPlayEnabled = false;
+    float AutoPlayDelaySeconds = 5.0f;
 	bool bCompactLayout = false;
 };

@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 斜襟叠裁",
+    "file": "A-diagonal-wrap.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "334E0D08A7995B1D7F9CCD4F523D3F0DA8590323A70FA565DB9748ED2F95CDC7",
+    "source_sha256": "334E0D08A7995B1D7F9CCD4F523D3F0DA8590323A70FA565DB9748ED2F95CDC7"
+  },
+  {
+    "label": "B 云肩曲裾",
+    "file": "B-cloud-wrap.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "183F1EFBBA5673F8D8ED88C2538C360AF54FEA600D0260E58F431557DE1B023C",
+    "source_sha256": "183F1EFBBA5673F8D8ED88C2538C360AF54FEA600D0260E58F431557DE1B023C"
+  },
+  {
+    "label": "C 书页方折",
+    "file": "C-folded-pages.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "FED17B6C01F330C5D96F9776A48A5B367996E6B957C54D0AE022569C0BD74C71",
+    "source_sha256": "FED17B6C01F330C5D96F9776A48A5B367996E6B957C54D0AE022569C0BD74C71"
+  }
+]

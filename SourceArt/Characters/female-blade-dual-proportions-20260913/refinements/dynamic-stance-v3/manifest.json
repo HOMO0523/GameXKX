@@ -1,0 +1,38 @@
+{
+  "records": [
+    {
+      "slug": "idle_chibi",
+      "label": "挂机条 · Q版",
+      "file": "characters\\idle_chibi_1600.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        212,
+        178,
+        1319,
+        1445
+      ],
+      "sha256": "72e813cca51f377f6557711f48b1aa6fd4d27a57cad3f12a7daaa8a1f34f4135"
+    },
+    {
+      "slug": "battle_tall",
+      "label": "局内战斗 · 修长版",
+      "file": "characters\\battle_tall_1600.png",
+      "size": [
+        1600,
+        1600
+      ],
+      "bounds": [
+        231,
+        134,
+        1301,
+        1457
+      ],
+      "sha256": "710e9dec28b7f5e6fdab40d7a404c92856884df67a5c31911ebf68bf1113f488"
+    }
+  ],
+  "imported": false,
+  "phase": "stance-repair-review"
+}

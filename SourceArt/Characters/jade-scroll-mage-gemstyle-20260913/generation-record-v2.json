@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\jade-scroll-mage-gemstyle-20260913\\jade-scroll-mage-v1.png"
+  ],
+  "prompt": "Precise LOCAL HEAD ORIENTATION correction of this exact adult teal-haired ink-scroll mage. Turn her head and gaze clearly toward SCREEN LEFT into a natural front three-quarter left view, about 35–45 degrees. Her nose tip and chin project toward the left side of the canvas; the eye looks left, not at viewer and not right. Redraw facial perspective, jawline, ears and the hair framing coherently around the rotated skull, with a natural neck connection to the existing shoulders. Preserve the same calm gentle knowing expression, green eyes, jade/teal asymmetrical bob, broad white forelock and black/jade/gold hair ornament, along with the same actual head size and body proportions. The fringe can still partially cover the far eye, but do not conceal the whole face or rotate the head to a rear view. Adjust the small near-chin hand minimally only if necessary to maintain believable clearance from the new chin position. Preserve the whole body pose, costume, brush and gripping hand, flowing teal cloth, large two-roller ink scroll, its landscape art, color palette, clean simplified project icon rendering and square composition. DO NOT mirror the entire image, move the scroll, change the brush direction or redesign the character. Output the same complete full-body image with only the head/neck and necessary tiny adjacent hair/hand adjustments. Plain ivory background, no text or extra objects.",
+  "purpose": "Turn the head and gaze naturally toward screen-left without mirroring or redesigning the composition.",
+  "output": "SourceArt/Characters/jade-scroll-mage-gemstyle-20260913/jade-scroll-mage-v2.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-f25cbdf6-22ce-4a41-9a78-5b87b2ad5de7.png",
+  "visual_review": "Face and gaze now clearly point screen-left; neck and near-chin gesture reconnected, scroll and brush composition retained."
+}
+

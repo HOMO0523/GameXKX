@@ -1,0 +1,47 @@
+{
+  "date": "2026-09-14",
+  "purpose": "当前六角色美术版本整理；独立副本，未导入 UE。",
+  "characters": [
+    {
+      "id": "01-blade",
+      "label": "刀客",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/healer-review-20260913/cast-alignment-v9/blade-reference.png",
+      "file": "01-blade.png"
+    },
+    {
+      "id": "02-archer",
+      "label": "弓手",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/healer-review-20260913/cast-alignment-v9/archer-reference.png",
+      "file": "02-archer.png"
+    },
+    {
+      "id": "03-butterfly",
+      "label": "蝴蝶术师",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/healer-review-20260913/cast-alignment-v9/butterfly-reference.png",
+      "file": "03-butterfly.png"
+    },
+    {
+      "id": "04-formation",
+      "label": "阵师",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-proportion-review-20260914/formation-master-v6-original-stance.png",
+      "file": "04-formation.png"
+    },
+    {
+      "id": "05-healer",
+      "label": "药师",
+      "source": "D:/UE5 demo/GameXXK/SourceArt/Characters/healer-review-20260913/cast-alignment-v9/healer-gourd-no-leaf-v16.png",
+      "file": "05-healer.png"
+    },
+    {
+      "id": "06-guard",
+      "label": "守卫 · 已翻转",
+      "source": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-bf7623fa-1db7-4667-8086-43079c6179ec.png",
+      "file": "06-guard.png"
+    }
+  ],
+  "guard_edit": {
+    "mode": "built-in image_gen",
+    "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-proportion-review-20260914\\guard-proportion-v1.png",
+    "prompt": "Horizontally mirror / flip the ENTIRE supplied image left-to-right. This is exclusively a horizontal mirror operation. The huge ghost-face blue and silver shield must now be on the RIGHT side of the image, the man's face must face toward the LEFT, and the empty clenched gauntlet must be on the LEFT. Preserve the image's exact character design, head/body proportions, shield size and silhouette, full armor, ghost flame shapes, colors, shading, square dimensions and pale background. Do not redesign or change the pose. No additional objects or text. Output the same complete image with horizontal orientation reversed."
+  }
+}

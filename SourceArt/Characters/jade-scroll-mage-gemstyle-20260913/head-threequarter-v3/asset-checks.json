@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 平视含笑",
+    "file": "A-level-smile.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "1862D724077464F4638FA79FC49865DEBD2BBD7FE8D7C6C40ED107CDEC093503",
+    "source_sha256": "1862D724077464F4638FA79FC49865DEBD2BBD7FE8D7C6C40ED107CDEC093503"
+  },
+  {
+    "label": "B 微俯柔和",
+    "file": "B-soft-downward.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "173E25543FF546A66FB675CC6765A4F7B0E537C16CB76B723B3650551D92C0EE",
+    "source_sha256": "173E25543FF546A66FB675CC6765A4F7B0E537C16CB76B723B3650551D92C0EE"
+  },
+  {
+    "label": "C 抬眸从容",
+    "file": "C-poised-upward.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "C6A3E9432CE2306CA80B93A02C9941E5985527CA9E6C606CB2427320993EFB4A",
+    "source_sha256": "C6A3E9432CE2306CA80B93A02C9941E5985527CA9E6C606CB2427320993EFB4A"
+  }
+]

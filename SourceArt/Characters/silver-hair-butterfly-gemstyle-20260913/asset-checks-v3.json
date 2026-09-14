@@ -1,0 +1,34 @@
+{
+  "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\silver-hair-butterfly-gemstyle-20260913\\silver-hair-butterfly-v3.png",
+  "width": 1254,
+  "height": 1254,
+  "pixel_format": "Format24bppRgb",
+  "corner_alpha": [
+    255,
+    255,
+    255,
+    255
+  ],
+  "background": "Opaque warm ivory review canvas",
+  "sha256": "344ECDE5AC4371D1C0BFACE5D873B88FBFD46B82473B36F604FE465CC093644E",
+  "generation_source_sha256": "344ECDE5AC4371D1C0BFACE5D873B88FBFD46B82473B36F604FE465CC093644E",
+  "previous_v2_sha256": "41551FD3DD163186EEA3D4DC5FD6D947701C897B007B07D839E13DF32AEC69D8",
+  "references": [
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\silver-hair-butterfly-gemstyle-20260913\\silver-hair-butterfly-v2.png",
+      "sha256": "41551FD3DD163186EEA3D4DC5FD6D947701C897B007B07D839E13DF32AEC69D8"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\individual-review-20260913\\female-archer-swallow-v5-bow\\female_archer_bow_fixed_1600.png",
+      "sha256": "3D10916DEAAE05173E12D1CB4BAE398333C994E3CB30E867547BCE5D1968FC9A"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+      "sha256": "30FC2D57D036CC1EDD2319D97428CF9B2F5B72B2A4C9E2C2FC502EF4A379FA1A"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v5\\T_Item_Gem_DamageOverTime.png",
+      "sha256": "A8F13BBB4CA19E5DB51B908C416802F9A1AD0FF31B273FCEF2726D2774BFFB03"
+    }
+  ]
+}

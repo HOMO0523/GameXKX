@@ -1,0 +1,199 @@
+{
+  "count": 14,
+  "new": 13,
+  "approvedReused": 1,
+  "phase": "one-set-distinct-redesigns-for-user-review",
+  "imported": false,
+  "jobs": [
+    {
+      "slug": "hero",
+      "name": "男主角",
+      "group": "主角",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hero.png",
+      "sourceHash": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 男主角：年轻成年男性，坚毅亲和的竹篓旅人。保留棕褐灰蓝竹黄识别色、黑色小髻、竹篓与圆编织水壶。重新设计短款棕色无对称斜襟外衣、灰蓝内层、窄腰带、束口旅裤与绑腿，衣摆只有少数斜切大片。图形方向为稳定上窄下宽三角与短折线，干练而非华丽，手握肩带、另一手松垂，轻微前进重心。不同于女刀客的长马尾和长开衩裙。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hero.png"
+      ],
+      "redesignDirection": "男主角：年轻成年男性，坚毅亲和的竹篓旅人。保留棕褐灰蓝竹黄识别色、黑色小髻、竹篓与圆编织水壶。重新设计短款棕色无对称斜襟外衣、灰蓝内层、窄腰带、束口旅裤与绑腿，衣摆只有少数斜切大片。图形方向为稳定上窄下宽三角与短折线，干练而非华丽，手握肩带、另一手松垂，轻微前进重心。不同于女刀客的长马尾和长开衩裙。"
+    },
+    {
+      "slug": "female_hero",
+      "name": "女主角",
+      "group": "主角",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_hero.png",
+      "sourceHash": "b2e48ab74068a3d1e073e38c646614747afdf3334c01b431f22e156356d8c963",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 女主角：明确成年女性，亲和机灵、有倔强劲的江湖旅人。新设计要区别女刀客的冷艳：柔和上挑笑眼，黑色齐颈短发配后侧小半髻，棕色短宽发带，绝不复制大长马尾。棕褐灰蓝与竹黄，短款斜襟棕外套、灰蓝贴体内衣、自然饱满女性曲线，腰部一条灰布结，两片不等长短外摆覆在窄束口蓝裤外，绑腿布靴。背轻竹篓露一竹杆两组宽叶，腰侧圆竹编水壶。图形为明快短斜线、梯形短摆与圆壶对比。轻迈步，一手提肩带另一手轻握衣襟，两腿可读。不要做女刀客换色。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_hero.png"
+      ],
+      "redesignDirection": "女主角：明确成年女性，亲和机灵、有倔强劲的江湖旅人。新设计要区别女刀客的冷艳：柔和上挑笑眼，黑色齐颈短发配后侧小半髻，棕色短宽发带，绝不复制大长马尾。棕褐灰蓝与竹黄，短款斜襟棕外套、灰蓝贴体内衣、自然饱满女性曲线，腰部一条灰布结，两片不等长短外摆覆在窄束口蓝裤外，绑腿布靴。背轻竹篓露一竹杆两组宽叶，腰侧圆竹编水壶。图形为明快短斜线、梯形短摆与圆壶对比。轻迈步，一手提肩带另一手轻握衣襟，两腿可读。不要做女刀客换色。"
+    },
+    {
+      "slug": "blade",
+      "name": "女刀客",
+      "group": "职业伙伴",
+      "approved": true,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+      "sourceHash": "30fc2d57d036cc1edd2319d97428cf9b2f5b72b2a4c9e2c2fc502ef4a379fa1a"
+    },
+    {
+      "slug": "guard",
+      "name": "守卫",
+      "group": "职业伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\guard.png",
+      "sourceHash": "c2e3bb3055dcfc60048d6e0354aa01471cea3b7c80f218ec782e4d7774cb3f35",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 守卫：成年壮实男性，方下颌、短黑下巴胡须、短髻，稳重可靠。重设计赭黄无袖厚布护衣与靛灰交领，胸口一块完整梯形布面、低宽腰封，深棕宽束腿裤、绑腿与厚布靴。图形主题方形、矩形、稳定水平线，轮廓厚重但非胖。左前持单根直木长矛，右臂圆木盾仅一个铁盾脐；矛杆连续、圆盾不变方盾。盾与身体错开保持辨识，双脚前后略错稳定护卫姿势。不加欧美板甲。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\guard.png"
+      ],
+      "redesignDirection": "守卫：成年壮实男性，方下颌、短黑下巴胡须、短髻，稳重可靠。重设计赭黄无袖厚布护衣与靛灰交领，胸口一块完整梯形布面、低宽腰封，深棕宽束腿裤、绑腿与厚布靴。图形主题方形、矩形、稳定水平线，轮廓厚重但非胖。左前持单根直木长矛，右臂圆木盾仅一个铁盾脐；矛杆连续、圆盾不变方盾。盾与身体错开保持辨识，双脚前后略错稳定护卫姿势。不加欧美板甲。"
+    },
+    {
+      "slug": "healer",
+      "name": "药师",
+      "group": "职业伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\healer.png",
+      "sourceHash": "f6c8615628300bfd9b747dce46e14b8f3f4def10c43e3f1da959773bc7a19290",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 药师：成年女性，温柔有主见，圆润笑眼但成熟，柔和丰满曲线不过分粗厚。黑色低后盘髻配两片叶饰，区别高马尾。米白、鼠尾草绿与木棕。全新短圆弧云肩、米白斜交领束腰衣、圆弧层叠及膝裙片覆束口宽裤，绿布鞋。图形方向为圆形、椭圆和大柔和弧线。怀抱木棕双腹药葫芦一片叶标，另一手提草药布袋肩带，简洁背药篓两卷药卷。叶子、药包不堆碎，多留大白面。微侧重心、脚踝与双鞋清楚。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\healer.png"
+      ],
+      "redesignDirection": "药师：成年女性，温柔有主见，圆润笑眼但成熟，柔和丰满曲线不过分粗厚。黑色低后盘髻配两片叶饰，区别高马尾。米白、鼠尾草绿与木棕。全新短圆弧云肩、米白斜交领束腰衣、圆弧层叠及膝裙片覆束口宽裤，绿布鞋。图形方向为圆形、椭圆和大柔和弧线。怀抱木棕双腹药葫芦一片叶标，另一手提草药布袋肩带，简洁背药篓两卷药卷。叶子、药包不堆碎，多留大白面。微侧重心、脚踝与双鞋清楚。"
+    },
+    {
+      "slug": "hunter",
+      "name": "女弓手",
+      "group": "职业伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_archer.png",
+      "sourceHash": "a7d22c6f0e498e4733437c902d2756c56aa3df683b88b3dc158f15dcf6cf9ea6",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 女弓手：明确成年女性，专注敏锐、轻盈干练，自然丰满但纤敏曲线。重新设计利落黑色中短高束马尾一整束、小侧刘海，不麻花辫、不复制刀客超长马尾。橄榄绿、米白、深墨绿、棕木，少量青绿边。图形趋势为斜向箭头、后掠三角和大风纹：非对称短披风只有一到两处巨大米白云风纹，呼应追风套；斜襟贴体短衣、窄护腕、侧开短叠摆、轻束口骑射裤、低皮靴。低位持木弓和箭、浅弯膝侧步，背箭筒三支箭羽。必须一根连续绷紧弓弦从上弓梢到箭尾再到下弓梢，两段共同组成唯一弦；一根笔直箭杆箭尖左下，箭尾与弦接触，握弓手正确握木弓把，另一手轻持箭尾，不多出交叉弦，不满弓。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_archer.png"
+      ],
+      "redesignDirection": "女弓手：明确成年女性，专注敏锐、轻盈干练，自然丰满但纤敏曲线。重新设计利落黑色中短高束马尾一整束、小侧刘海，不麻花辫、不复制刀客超长马尾。橄榄绿、米白、深墨绿、棕木，少量青绿边。图形趋势为斜向箭头、后掠三角和大风纹：非对称短披风只有一到两处巨大米白云风纹，呼应追风套；斜襟贴体短衣、窄护腕、侧开短叠摆、轻束口骑射裤、低皮靴。低位持木弓和箭、浅弯膝侧步，背箭筒三支箭羽。必须一根连续绷紧弓弦从上弓梢到箭尾再到下弓梢，两段共同组成唯一弦；一根笔直箭杆箭尖左下，箭尾与弦接触，握弓手正确握木弓把，另一手轻持箭尾，不多出交叉弦，不满弓。"
+    },
+    {
+      "slug": "sorcerer",
+      "name": "女道士",
+      "group": "职业伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_taoist.png",
+      "sourceHash": "df9c389448e6167497321407d30d0119c32c5192605939e3e32803301ffe9b00",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 女道士：明确成年女性，平静聪慧、略带神秘笑意，半眯简洁凤眼，自然女性曲线、干练不过胖。黑色高道髻加木簪与小玉道冠、两条短宽蓝系带。靛蓝米白旧金朱砂小点缀，重新设计垂直长交领道袍、稍收腰、长短错落前后袍片，一侧宽垂袖另一侧束袖，蓝束裤布鞋。图形方向垂直线、修长矩形与一个大S形拂尘，保持与刀客近似紧凑头身比。腰一个太极圆章、袖边一块大云纹，不满身符文。前手举恰好两张分开的朱砂符纸仅少量图形笔画，另一手低持木柄拂尘一整束白尾，像中国道士而非西方魔法师。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_taoist.png"
+      ],
+      "redesignDirection": "女道士：明确成年女性，平静聪慧、略带神秘笑意，半眯简洁凤眼，自然女性曲线、干练不过胖。黑色高道髻加木簪与小玉道冠、两条短宽蓝系带。靛蓝米白旧金朱砂小点缀，重新设计垂直长交领道袍、稍收腰、长短错落前后袍片，一侧宽垂袖另一侧束袖，蓝束裤布鞋。图形方向垂直线、修长矩形与一个大S形拂尘，保持与刀客近似紧凑头身比。腰一个太极圆章、袖边一块大云纹，不满身符文。前手举恰好两张分开的朱砂符纸仅少量图形笔画，另一手低持木柄拂尘一整束白尾，像中国道士而非西方魔法师。"
+    },
+    {
+      "slug": "formation_master",
+      "name": "阵师",
+      "group": "职业伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\formation_master.png",
+      "sourceHash": "e1965aef1b937eea625041acc15d756291222ae623415f881bc6a29308a19df1",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 阵师：成年男性，清瘦斯文、淡定半眯眼，黑色整齐小髻横木簪。灰褐米白与墨灰，重新设计几何折襟宽外袍、清楚叠襟、宽窄带组合与不对称梯形外摆、墨裤软鞋。图形方向大梯形、扇面放射、宽袖和窄腰对比。前手展开朴素折扇，后手从容背后，背一面简单矩形米灰阵旗，木框杆子结构清楚。原身份不变但重设裁片和姿态，整体文雅从容，不加地面法阵或繁复符文。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\formation_master.png"
+      ],
+      "redesignDirection": "阵师：成年男性，清瘦斯文、淡定半眯眼，黑色整齐小髻横木簪。灰褐米白与墨灰，重新设计几何折襟宽外袍、清楚叠襟、宽窄带组合与不对称梯形外摆、墨裤软鞋。图形方向大梯形、扇面放射、宽袖和窄腰对比。前手展开朴素折扇，后手从容背后，背一面简单矩形米灰阵旗，木框杆子结构清楚。原身份不变但重设裁片和姿态，整体文雅从容，不加地面法阵或繁复符文。"
+    },
+    {
+      "slug": "tusi_chief",
+      "name": "土司首领",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\tusi_chief.png",
+      "sourceHash": "819c6c8f0ff3d4569f54b7f7b94e4dc8d2744e37bc36151fbe0b96377cbfd254",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 土司首领：年长威严男性，深暖肤色、粗黑眉、两侧巨大象牙白上弯胡须和短白山羊胡。保留非常宽的上翘竹斗笠及开口朝上的U形木杖。新设计黑大领、赭红宽厚短披风、米黄内衣、少数金铜块扣、短黑裤厚布鞋。图形方向强烈倒三角、大肩小腿与锐利大披风折角，和守卫矩形区别，强壮有威压但不鼓肚。单手竖持木杖另一手叉腰，短稳步。民族江湖气质，胡须属于脸不能画成额角。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\tusi_chief.png"
+      ],
+      "redesignDirection": "土司首领：年长威严男性，深暖肤色、粗黑眉、两侧巨大象牙白上弯胡须和短白山羊胡。保留非常宽的上翘竹斗笠及开口朝上的U形木杖。新设计黑大领、赭红宽厚短披风、米黄内衣、少数金铜块扣、短黑裤厚布鞋。图形方向强烈倒三角、大肩小腿与锐利大披风折角，和守卫矩形区别，强壮有威压但不鼓肚。单手竖持木杖另一手叉腰，短稳步。民族江湖气质，胡须属于脸不能画成额角。"
+    },
+    {
+      "slug": "song_jin_bao",
+      "name": "宋金宝",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\song_jin_bao.png",
+      "sourceHash": "4fe98186ae96a86b55d6958ff75d27704e88294e025b19b06898bf2acc696a33",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 宋金宝：成年瘦削机敏男性，尖鼻小尖下巴，挑眉狡黠露齿笑。保留高尖斜竹斗笠、朱红赭色与深棕米金、手中三张长纸牌和腰边钱盒。重新设计斜向交襟短长拼袍，前身一处大折角回纹，窄裤绑腿尖布鞋，轮廓上尖下尖中间折出的菱形和细折线，四头身附近略比常人瘦长但不超过风格样板太多。身体略倾斜，一脚轻点，三张纸恰好三张且分开。不要西方巫师帽。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\song_jin_bao.png"
+      ],
+      "redesignDirection": "宋金宝：成年瘦削机敏男性，尖鼻小尖下巴，挑眉狡黠露齿笑。保留高尖斜竹斗笠、朱红赭色与深棕米金、手中三张长纸牌和腰边钱盒。重新设计斜向交襟短长拼袍，前身一处大折角回纹，窄裤绑腿尖布鞋，轮廓上尖下尖中间折出的菱形和细折线，四头身附近略比常人瘦长但不超过风格样板太多。身体略倾斜，一脚轻点，三张纸恰好三张且分开。不要西方巫师帽。"
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\you_bai.png",
+      "sourceHash": "c86b0902298f0245180d416438252a4231e8ac792d19da76482f4f5f121b064b",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 幽白：纯蓝紫灵火精灵，无人类肢体服装。保留蓝紫面部、机灵带坏笑的大图形眼睛与一条卷云火尾。重新组织成清晰偏斜的大S形涡旋，脸为单个圆润水滴，三到四片大火舌和恰好两个小火星，深紫到亮蓝连续大面，外轮廓深蓝粗线，少量宽亮面。区别所有人形伙伴的独立流动轮廓。眼神3/4朝左，无写实虹膜，不变火焰碎团。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\you_bai.png"
+      ],
+      "redesignDirection": "幽白：纯蓝紫灵火精灵，无人类肢体服装。保留蓝紫面部、机灵带坏笑的大图形眼睛与一条卷云火尾。重新组织成清晰偏斜的大S形涡旋，脸为单个圆润水滴，三到四片大火舌和恰好两个小火星，深紫到亮蓝连续大面，外轮廓深蓝粗线，少量宽亮面。区别所有人形伙伴的独立流动轮廓。眼神3/4朝左，无写实虹膜，不变火焰碎团。"
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "name": "周光祖",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\zhou_guang_zu.png",
+      "sourceHash": "5da5d0e57778e2e0334d8d60f7319bbd63ef1a3c34507c33eb43b212c3b416fe",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 周光祖：成熟宽肩男性，半眯老成眼，长弯黑胡须、尖下巴胡、黑小髻、非常宽扁竹斗笠。新设计黑灰宽交领短长外袍、大米黄腰绳结、墨绿宽裤、朴素棕鞋。图形方向宽扁椭圆、横向肩线和大厚梯形袍面；宽厚沉稳，区别土司锐利倒三角。肩后恰好一只橙色小狐狸，白下巴白尾尖，狐狸身体绕在肩背，头与单条大尾清楚，不是狐狸披风。前手托卷竹简，另一手负后，略屈膝稳立。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\zhou_guang_zu.png"
+      ],
+      "redesignDirection": "周光祖：成熟宽肩男性，半眯老成眼，长弯黑胡须、尖下巴胡、黑小髻、非常宽扁竹斗笠。新设计黑灰宽交领短长外袍、大米黄腰绳结、墨绿宽裤、朴素棕鞋。图形方向宽扁椭圆、横向肩线和大厚梯形袍面；宽厚沉稳，区别土司锐利倒三角。肩后恰好一只橙色小狐狸，白下巴白尾尖，狐狸身体绕在肩背，头与单条大尾清楚，不是狐狸披风。前手托卷竹简，另一手负后，略屈膝稳立。"
+    },
+    {
+      "slug": "jin_gui",
+      "name": "金贵",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\jin_gui.png",
+      "sourceHash": "4d36ce4b5bc55b537e96540b815ee8821529975880c2cfd60252482006e5913d",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 金贵：成年精瘦男子，倦怠半睁眼、面颊细疤，深棕短发。宽圆锥竹斗笠顶一小红布结。新设计淡青绿斜襟短衣、米白滚边、轻腰绳、小棕腰袋、宽松绿裤和深绿布鞋。图形方向垂落弧线、松弛弯折Z形，帽低身斜，区别阵师端正梯形。手握竹烟杆近嘴，细竹杆完整到小弯烟斗，不加烟雾，另一手背后；前脚轻抬但腿不交叉藏没，轻巧闲散有辨识度。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\jin_gui.png"
+      ],
+      "redesignDirection": "金贵：成年精瘦男子，倦怠半睁眼、面颊细疤，深棕短发。宽圆锥竹斗笠顶一小红布结。新设计淡青绿斜襟短衣、米白滚边、轻腰绳、小棕腰袋、宽松绿裤和深绿布鞋。图形方向垂落弧线、松弛弯折Z形，帽低身斜，区别阵师端正梯形。手握竹烟杆近嘴，细竹杆完整到小弯烟斗，不加烟雾，另一手背后；前脚轻抬但腿不交叉藏没，轻巧闲散有辨识度。"
+    },
+    {
+      "slug": "qiong_yao_er",
+      "name": "琼幺儿",
+      "group": "剧情伙伴",
+      "approved": false,
+      "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\qiong_yao_er.png",
+      "sourceHash": "eaf6c941596454523134fbaef79840fe349c0d745686ff127a9ed8511e8bdce4",
+      "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 琼幺儿：成年女性，明亮爽朗笑眼和亲切圆脸，健康自然女性曲线，轻盈。重新设计棕黑短侧辫、乳白圆厚民族帽檐加少量大珠，赭红方形小帽顶。朱橘短上衣、米白交领宽袖边、暖金黄前短后长层叠裙、白腰结、两条宽白红渐变飘带与棕鞋。图形方向铃铛形轮廓、圆帽与放射弧摆，明快起舞节奏，和药师安静圆弧区别。前手持绿色花瓣小法铃，下短穗，另一手舒展腕挂小金铃。轻扭身迈步，但脸胸朝左3/4、两腿两脚读清，不幼态。",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\qiong_yao_er.png"
+      ],
+      "redesignDirection": "琼幺儿：成年女性，明亮爽朗笑眼和亲切圆脸，健康自然女性曲线，轻盈。重新设计棕黑短侧辫、乳白圆厚民族帽檐加少量大珠，赭红方形小帽顶。朱橘短上衣、米白交领宽袖边、暖金黄前短后长层叠裙、白腰结、两条宽白红渐变飘带与棕鞋。图形方向铃铛形轮廓、圆帽与放射弧摆，明快起舞节奏，和药师安静圆弧区别。前手持绿色花瓣小法铃，下短穗，另一手舒展腕挂小金铃。轻扭身迈步，但脸胸朝左3/4、两腿两脚读清，不幼态。"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "slug": "qiong_yao_er",
+  "name": "琼幺儿",
+  "group": "剧情伙伴",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\qiong_yao_er.png",
+  "sourceHash": "eaf6c941596454523134fbaef79840fe349c0d745686ff127a9ed8511e8bdce4",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 琼幺儿：成年女性，明亮爽朗笑眼和亲切圆脸，健康自然女性曲线，轻盈。重新设计棕黑短侧辫、乳白圆厚民族帽檐加少量大珠，赭红方形小帽顶。朱橘短上衣、米白交领宽袖边、暖金黄前短后长层叠裙、白腰结、两条宽白红渐变飘带与棕鞋。图形方向铃铛形轮廓、圆帽与放射弧摆，明快起舞节奏，和药师安静圆弧区别。前手持绿色花瓣小法铃，下短穗，另一手舒展腕挂小金铃。轻扭身迈步，但脸胸朝左3/4、两腿两脚读清，不幼态。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\qiong_yao_er.png"
+  ],
+  "redesignDirection": "琼幺儿：成年女性，明亮爽朗笑眼和亲切圆脸，健康自然女性曲线，轻盈。重新设计棕黑短侧辫、乳白圆厚民族帽檐加少量大珠，赭红方形小帽顶。朱橘短上衣、米白交领宽袖边、暖金黄前短后长层叠裙、白腰结、两条宽白红渐变飘带与棕鞋。图形方向铃铛形轮廓、圆帽与放射弧摆，明快起舞节奏，和药师安静圆弧区别。前手持绿色花瓣小法铃，下短穗，另一手舒展腕挂小金铃。轻扭身迈步，但脸胸朝左3/4、两腿两脚读清，不幼态。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\qiong_yao_er.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-e97475e6-f478-44fc-bd5f-8c51400c64e4.png"
+}

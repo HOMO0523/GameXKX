@@ -1,0 +1,16 @@
+{
+  "slug": "formation_master",
+  "name": "阵师",
+  "group": "职业伙伴",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\formation_master.png",
+  "sourceHash": "e1965aef1b937eea625041acc15d756291222ae623415f881bc6a29308a19df1",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 阵师：成年男性，清瘦斯文、淡定半眯眼，黑色整齐小髻横木簪。灰褐米白与墨灰，重新设计几何折襟宽外袍、清楚叠襟、宽窄带组合与不对称梯形外摆、墨裤软鞋。图形方向大梯形、扇面放射、宽袖和窄腰对比。前手展开朴素折扇，后手从容背后，背一面简单矩形米灰阵旗，木框杆子结构清楚。原身份不变但重设裁片和姿态，整体文雅从容，不加地面法阵或繁复符文。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\formation_master.png"
+  ],
+  "redesignDirection": "阵师：成年男性，清瘦斯文、淡定半眯眼，黑色整齐小髻横木簪。灰褐米白与墨灰，重新设计几何折襟宽外袍、清楚叠襟、宽窄带组合与不对称梯形外摆、墨裤软鞋。图形方向大梯形、扇面放射、宽袖和窄腰对比。前手展开朴素折扇，后手从容背后，背一面简单矩形米灰阵旗，木框杆子结构清楚。原身份不变但重设裁片和姿态，整体文雅从容，不加地面法阵或繁复符文。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\formation_master.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-ca4c1f99-ff3d-47fa-958b-3b5faa6bfca7.png"
+}

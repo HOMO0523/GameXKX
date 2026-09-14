@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "C:\\Users\\shxuw\\AppData\\Local\\Temp\\codex-clipboard-897c8bc0-b662-4ef9-885f-71e239800a21.png"
+  ],
+  "prompt": "Precise local proportion edit of the EXACT selected shield in this reference. User likes THIS version and only wants the WHOLE SHIELD A LITTLE WIDER.\n\nIncrease the integrated ghost-face shield's lateral width by approximately 15 percent, perpendicular to its existing oblique long axis. Widen the complete assembly coherently: upper blue ghost mask and cheek frame, mid blue protective faces, silver side structures and lower volumetric ghost horn. Maintain the current total shield HEIGHT, silhouette design, curved edges, notch shapes and proportions of individual motif details; this is a broader version of this SAME design, not a redesign.\nExpand mainly toward the open screen-left side and a little toward the body, keeping the same shoulder/arm attachment and existing perspective. The nearer/right side remains broader in projection and the far/left side foreshortened. Do not flatten the mask or turn shield front-on. Organically repaint broad planes and silver thickness for the increased width; no simple distorted horizontal image stretch.\nPreserve the lower horn as the same full three-dimensional curved horn with thick root and taper, including its current light/side faces. Keep the upper short silver horn, cyan eyes and simple ghost face. Do not add new points, rims, plate layers, emblems, weapons or decorations.\nThe HUMAN CHARACTER is unchanged: face, solid dark beard, hairstyle, body/head ratio, blue/navy/silver heavy armor, cyan collar curls, pose, free right fist and both boots. No body widening or global zoom. Retain warm ivory background and full original square composition; leave safety margin around the expanded shield rather than cropping its edge. Same clean project gem-icon large matte color planes and dark outline. One full-body result only, no text or collage.",
+  "purpose": "Widen the user's selected integrated ghost-face shield while preserving its height, curved design and spatial orientation.",
+  "output": "SourceArt/Characters/guard-review-20260913/guard-v16-wider-shield.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-8c44b951-20c7-450a-b0df-67f3e98e430b.png",
+  "visual_review": "Selected ghost-mask shield expanded laterally including mask, blue body and lower horn; character and overall shield height retained."
+}
+

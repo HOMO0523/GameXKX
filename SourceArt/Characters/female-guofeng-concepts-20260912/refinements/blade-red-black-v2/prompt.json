@@ -1,0 +1,39 @@
+{
+  "name": "女刀客·红黑参考调整版",
+  "prompt": "Use case: stylized-concept / reference-led redesign. 为中国国风回合制游戏重新设计一位成年女刀客。输入图1是用户指定的造型气质参考：红黑服饰、松束黑发与侧辫、爽利狡黠的女子气质、少量旧金配饰；输入图2只参考本项目的手绘卡通渲染、丰满体态、完整全身构图与3/4朝左方向。不要沿用图2的绿衣、高马尾和泛用脸，而是设计鲜明的新面容与红黑衣装。\n脸部是重点：成年年轻女子，脸颊有肉、略宽的小鹅蛋脸，颧部有结构但下颌圆润，不能尖瘦网红V脸。眉形利落，其中一边轻挑；略长的杏眼、上眼线有力度、眼尾稍扬，米白眼白配单块深赭红/深棕瞳孔，至多一个小高光，完全卡通图形化，不画写实虹膜或湿亮眼球。短而略圆的鼻尖；嘴角不对称地扬起，带点促狭的笑，笑时可露一颗小虎牙，显得精明、有胆量、有江湖生活气。近侧外眼角下只点一颗小痣作为易记特征，不加复杂面纹。脸必须与前一版明显不同，表情读得清，不做夸张恶鬼或媚俗表情。\n黑发松松盘起，保留三四束成组的额前侧发，一条粗侧辫垂至胸侧，发丝归成大束，只有少数飘散线。耳侧一枚小珍珠坠，颈上只一条短旧金链，简化参考中的多层珠链。\n体型：明确成年女性，健康丰满，胸部、腰胯、大腿有饱满体量，腰适度收束不极细；保持游戏角色的轻度Q版约4头身气质，站姿稳而洒脱，3/4朝画面左，眼神向左前方。\n服装取参考图的红黑对比与剪裁感觉：朱红色贴合但有布料余量的上衣、窄黑肩带/黑色领缘，黑色较宽高腰封和斜叠前襟，前襟只一处米白的大块抽象刀风纹，不能复制参考图文字或任何品牌字样。宽松黑色束口武裤体现饱满胯腿，红色分片外摆和一条宽红腰带尾向右后方舒展，露出棕黑色短武靴与少量米色绑腿。参考里的网袖只提炼为一侧前臂的粗疏交叉绳护臂，至多4至6格，另一侧简单黑护腕；头部与腰部稍密，其余红黑衣面大片留白。旧金只在腰扣、刀镡和耳坠上点缀，不堆小牌签、链条、挂饰或密花纹。\n一手低持一把完整宽弯刀朝左下，刀刃两三组大明暗面；另一手自然放在腰侧。背后可有一把简洁备用刀鞘露出刀柄，仅一处短红结，武器总数最多两把，主刀不被衣摆遮住。不要参考原图的弯腰姿势，保持游戏战斗立绘的完整站姿与清楚四肢。\n画风必须与项目宝石icon一致：深色有粗细的外轮廓、大面积清楚设色、2至4组主要明暗，宽笔触少而准，皮肤与布料仍是有机质感。不能满铺小三角、碎切面、碎发、密首饰，不做写实插画/3D或欧美铠甲。只输出这一个完整全身单体，无文字、无面部小窗、无对照表、无边框、无场景地面投影。正方形，头发、武器、双脚全部完整，四周至少8%安全留白，干净均匀暖米白#F4EFDF背景。",
+  "references": [
+    "C:/Users/shxuw/AppData/Local/Temp/codex-clipboard-c3a70d07-5441-4010-8c90-e913eecbd7f4.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/female-guofeng-concepts-20260912/characters/female_blade.png"
+  ],
+  "tool": "built-in image_gen",
+  "phase": "awaiting-reference-led-review",
+  "userApproved": false,
+  "imported": false,
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\refinements\\blade-red-black-v2\\raw.png",
+  "nativeSize": [
+    1254,
+    1254
+  ],
+  "fullbodyFile": "female_blade_v2.png",
+  "reviewSize": [
+    1600,
+    1600
+  ],
+  "faceDetailFile": "face-detail.png",
+  "faceCropInRaw": [
+    477,
+    107,
+    752,
+    295
+  ],
+  "foregroundBounds": [
+    135,
+    152,
+    1466,
+    1443
+  ],
+  "sha256": "211f00a43a8b33e0b8c2d77993c026c84de074e0fde88dbeaf66df5029564828",
+  "referenceSnapshot": "user-reference.png",
+  "visualReview": "red/black palette, side braid, stylized narrow eyes, asymmetric grin, sparse costume accents; ready for user review",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-a0d82b60-f8fa-4fd1-a2e2-9d890919ebbc.png"
+}

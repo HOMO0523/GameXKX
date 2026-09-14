@@ -1,0 +1,35 @@
+{
+  "records": [
+    {
+      "slug": "idle_chibi",
+      "label": "挂机条 · Q版",
+      "path": "characters\\idle_chibi_1600.png",
+      "sha256": "0e5f7d50314f1517c2b83bf91af7ad8dc7086fa02c121f9578411300733c62ad",
+      "bounds": [
+        212,
+        179,
+        1314,
+        1445
+      ]
+    },
+    {
+      "slug": "battle_tall",
+      "label": "局内战斗 · 修长版",
+      "path": "characters\\battle_tall_1600.png",
+      "sha256": "6e36d98d1435139d57e77bfc7f41ed704a53951e08e3ada879d7967143f15b01",
+      "bounds": [
+        231,
+        134,
+        1275,
+        1452
+      ]
+    }
+  ],
+  "chibiPreservedExactly": true,
+  "imported": false,
+  "phase": "tall-variant-review",
+  "canvasSize": [
+    1600,
+    1600
+  ]
+}

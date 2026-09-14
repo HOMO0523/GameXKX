@@ -87,6 +87,16 @@ void UGameXXKDialoguePanelWidget::Present(const FGameXXKDialoguePresentationView
 	const bool bOptionLayoutChanged=CurrentView.Options.Num()!=View.Options.Num();
 	const bool bNodeChanged=CurrentView.NodeId!=View.NodeId;
 	const bool bTextChanged=!CurrentView.Text.EqualTo(View.Text);
+    const FString DisplayText=GameXXKLocalization::Localize(View.Text).ToString();
+    if (!bHasPresentation || bNodeChanged || !CurrentView.SpeakerDisplayName.EqualTo(View.SpeakerDisplayName) || AutoPlayText != DisplayText || bOptionLayoutChanged)
+    {
+        AutoPlayElapsedSeconds=0;
+        LastAutoPlayTickTime=FPlatformTime::Seconds();
+        bAutoAdvanceIssued=false;
+        AutoPlayText=DisplayText;
+        AutoPlayDelaySeconds=CalculateAutoPlaySeconds(DisplayText);
+    }
+    bHasPresentation=true;
 	CurrentView = View;
 	if (SpeakerText) SpeakerText->SetText(GameXXKLocalization::Localize(View.SpeakerDisplayName));
 	if (BodyText) BodyText->SetText(GameXXKLocalization::Localize(View.Text));
@@ -139,10 +149,15 @@ void UGameXXKDialoguePanelWidget::Present(const FGameXXKDialoguePresentationView
 	if(CloseButton)CloseButton->SetVisibility(PauseRequested.IsBound()?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	if(HintButton)HintButton->SetVisibility(HintRequested.IsBound() && !CurrentView.Options.IsEmpty() && CurrentView.Options[0].OptionId.ToString().StartsWith(TEXT("MainStory.Choice."))?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	SetVisibility(ESlateVisibility::Visible);
+    RefreshAutoPlayControl();
 }
 
 void UGameXXKDialoguePanelWidget::ClearPresentation()
 {
+    bHasPresentation=false;
+    AutoPlayElapsedSeconds=0;
+    bAutoAdvanceIssued=false;
+    AutoPlayText.Reset();
 	CurrentView = FGameXXKDialoguePresentationView();
 	if(PortraitImage)PortraitImage->SetBrushFromTexture(nullptr,false);
 	SetVisibility(ESlateVisibility::Collapsed);
@@ -196,7 +211,7 @@ void UGameXXKDialoguePanelWidget::RefreshCompactLayout()
 	const float TextWidth=884.f-TextLeft;
 	Move(CompactPortraitScale,FVector2D(24,18),FVector2D(210,Height-38));
 	CompactPortraitScale->SetVisibility(PortraitVisible?ESlateVisibility::HitTestInvisible:ESlateVisibility::Collapsed);
-	Move(SpeakerText,FVector2D(TextLeft,22),FVector2D(TextWidth-42,36));
+	Move(SpeakerText,FVector2D(TextLeft,22),FVector2D(FMath::Min(TextWidth-42,724.f-TextLeft),36));
 	SpeakerText->SetFont(FGameXXKInRunUiStyle::TitleFont(25));
 	SpeakerText->SetColorAndOpacity(FSlateColor(FGameXXKInRunUiStyle::Jade()));
 	Move(WidgetTree->FindWidget(TEXT("DialogueBodyScroll")),FVector2D(TextLeft,70),FVector2D(TextWidth,bChoices?76:88));
@@ -209,12 +224,13 @@ void UGameXXKDialoguePanelWidget::RefreshCompactLayout()
 	for(int32 I=0;I<OptionButtons.Num();++I)Move(OptionButtons[I],FVector2D(TextLeft,154+I*48),FVector2D(TextWidth,43));
 	for(UTextBlock* Option:OptionTexts)if(Option){Option->SetWrapTextAt(TextWidth-24);Option->SetLineHeightPercentage(1.f);}
 	Move(CloseButton,FVector2D(868,15),FVector2D(40,40));
+    Move(AutoPlayButton,FVector2D(736,20),FVector2D(120,32));
 	Move(HintButton,FVector2D(TextLeft,Height-39),FVector2D(88,28));
 }
 
 FReply UGameXXKDialoguePanelWidget::NativeOnKeyDown(const FGeometry& Geometry,const FKeyEvent& Event)
 {
-	if(Event.GetKey()==EKeys::Escape && PauseRequested.IsBound()){PauseRequested.Execute();return FReply::Handled();}
+	if(Event.GetKey()==EKeys::Escape && PauseRequested.IsBound()){SetAutoPlayEnabled(false);PauseRequested.Execute();return FReply::Handled();}
 	if((Event.GetKey()==EKeys::SpaceBar || Event.GetKey()==EKeys::Enter) && CurrentView.Options.IsEmpty())
 	{RequestAdvanceForTest();return FReply::Handled();}
 	return Super::NativeOnKeyDown(Geometry,Event);
@@ -291,13 +307,16 @@ void UGameXXKDialoguePanelWidget::RequestAdvanceForTest()
 {
 	if (CurrentView.Options.IsEmpty() && AdvanceRequested.IsBound())
 	{
+        AutoPlayElapsedSeconds=0;
+        bAutoAdvanceIssued=true;
 		AdvanceRequested.Execute();
 	}
 }
 
 bool UGameXXKDialoguePanelWidget::RequestOption(const int32 OptionIndex)
 {
-	if(OptionIndex==-2 && PauseRequested.IsBound()){PauseRequested.Execute();return true;}
+	if(OptionIndex==-4){SetAutoPlayEnabled(!bAutoPlayEnabled);return true;}
+	if(OptionIndex==-2 && PauseRequested.IsBound()){SetAutoPlayEnabled(false);PauseRequested.Execute();return true;}
 	if(OptionIndex==-3 && HintRequested.IsBound()){HintRequested.Execute();return true;}
 	if (!CurrentView.Options.IsValidIndex(OptionIndex)
 		|| !CurrentView.Options[OptionIndex].bEnabled
@@ -364,6 +383,102 @@ void UGameXXKDialoguePanelWidget::BuildProgrammaticLayout()
 	HintButton=WidgetTree->ConstructWidget<UGameXXKDialogueOptionButton>();HintButton->Configure(this,-3);HintButton->SetStyle(CloseStyle);
 	auto* HintText=Text(WidgetTree,TEXT("DialogueHintText"),18);HintText->SetText(GameXXKLocalization::Source(TEXT("提示")));HintText->SetJustification(ETextJustify::Center);HintButton->SetContent(HintText);
 	Place(Content,HintButton,FVector2D(910,260),FVector2D(100,32),3);
+    AutoPlayButton=WidgetTree->ConstructWidget<UGameXXKDialogueOptionButton>(UGameXXKDialogueOptionButton::StaticClass(),TEXT("DialogueAutoPlayButton"));
+    AutoPlayButton->Configure(this,-4);AutoPlayButton->SetStyle(CloseStyle);
+    AutoPlayLabel=Text(WidgetTree,TEXT("DialogueAutoPlayLabel"),16);
+    AutoPlayLabel->SetJustification(ETextJustify::Center);
+    AutoPlayButton->SetContent(AutoPlayLabel);
+    Place(Content,AutoPlayButton,FVector2D(238,266),FVector2D(130,32),3);
+    RefreshAutoPlayControl();
 	CloseButton->SetVisibility(ESlateVisibility::Collapsed);HintButton->SetVisibility(ESlateVisibility::Collapsed);
 	ClearPresentation();
+}
+
+void UGameXXKDialoguePanelWidget::SetAutoPlayEnabled(bool bEnabled)
+{
+    LastAutoPlayTickTime=FPlatformTime::Seconds();
+    bAutoPlayEnabled=bEnabled;
+    AutoPlayElapsedSeconds=0;
+    bAutoAdvanceIssued=false;
+    RefreshAutoPlayControl();
+}
+
+void UGameXXKDialoguePanelWidget::RefreshAutoPlayControl()
+{
+    if(!AutoPlayLabel || !AutoPlayButton)return;
+    const bool English=GameXXKLocalization::IsEnglish();
+    const TCHAR* Label=!bAutoPlayEnabled ? (English?TEXT("Auto: Off"):TEXT("自动：关")) :
+        !CurrentView.Options.IsEmpty() ? (English?TEXT("Auto: Paused"):TEXT("自动：暂停")) : (English?TEXT("Auto: On"):TEXT("自动：开"));
+    AutoPlayLabel->SetText(FText::FromString(Label));
+    AutoPlayLabel->SetColorAndOpacity(FSlateColor(bAutoPlayEnabled?FGameXXKInRunUiStyle::Jade():FGameXXKInRunUiStyle::MutedInk()));
+    AutoPlayButton->SetToolTipText(FText::FromString(English ?
+        TEXT("Advance dialogue after its reading time (at least 5 seconds). Choices require a click.") :
+        TEXT("按阅读时长自动翻页，至少停留5秒；选项仍需手动点击。")));
+}
+
+float UGameXXKDialoguePanelWidget::CalculateAutoPlaySeconds(const FString& Text)
+{
+    int32 Characters=0,Words=0;
+    bool InWord=false;
+    float Pauses=0;
+    for(int32 Index=0;Index<Text.Len();++Index)
+    {
+        const TCHAR C=Text[Index];
+        if(C<128 && FChar::IsAlnum(C))
+        {if(!InWord)++Words;InWord=true;continue;}
+        InWord=false;
+        if(FChar::IsWhitespace(C)){if(C==TEXT('\n'))Pauses+=.35f;continue;}
+        if(FString(TEXT("。！？.!?…")).Contains(FString::Chr(C))){Pauses+=.3f;continue;}
+        if(FString(TEXT("，、；：,;:")).Contains(FString::Chr(C))){Pauses+=.15f;continue;}
+        if(C<128)continue; // ASCII quotes/brackets do not add reading units.
+        ++Characters;
+        if(C>=0xD800 && C<=0xDBFF && Index+1<Text.Len() && Text[Index+1]>=0xDC00 && Text[Index+1]<=0xDFFF)++Index;
+    }
+    return FMath::Max(5.f,Characters/5.f+Words/3.f+Pauses);
+}
+
+bool UGameXXKDialoguePanelWidget::TickAutoPlay(float DeltaSeconds)
+{
+    if(!bAutoPlayEnabled || !bHasPresentation || !IsVisible() || GetRenderOpacity()<=0 ||
+       !CurrentView.Options.IsEmpty() || AutoPlayText.TrimStartAndEnd().IsEmpty() || !AdvanceRequested.IsBound())
+    {AutoPlayElapsedSeconds=0;return false;}
+    if(bAutoAdvanceIssued)return false;
+    AutoPlayElapsedSeconds+=FMath::Max(0.f,DeltaSeconds);
+    if(AutoPlayElapsedSeconds<AutoPlayDelaySeconds)return false;
+    // Set the guard before calling the owner: it may synchronously Present a new line.
+    bAutoAdvanceIssued=true;
+    AutoPlayElapsedSeconds=0;
+    AdvanceRequested.Execute();
+    return true;
+}
+
+void UGameXXKDialoguePanelWidget::NativeTick(const FGeometry& Geometry,float DeltaSeconds)
+{
+    ++AutoPlayNativeTickCount;
+    Super::NativeTick(Geometry,DeltaSeconds);
+    // Slate's delta can be clamped by background throttling. Reading uses real
+    // time, with a one-second cap so a suspended window cannot skip a line.
+    const double Now=FPlatformTime::Seconds();
+    const float ReadingDelta=LastAutoPlayTickTime>0 ? static_cast<float>(FMath::Clamp(Now-LastAutoPlayTickTime,0.0,1.0)) : 0.f;
+    LastAutoPlayTickTime=Now;
+    if(Geometry.GetLocalSize().X<=0 || Geometry.GetLocalSize().Y<=0){AutoPlayElapsedSeconds=0;return;}
+    // Resume after a hitch without consuming an entire unread line in one frame.
+    TickAutoPlay(ReadingDelta);
+}
+
+FString UGameXXKDialoguePanelWidget::GetAutoPlayStatusForTest() const
+{
+    return FString::Printf(TEXT("ticks=%d elapsed=%.3f presentation=%d issued=%d options=%d bound=%d geometry=%s"),
+        AutoPlayNativeTickCount,AutoPlayElapsedSeconds,bHasPresentation,bAutoAdvanceIssued,
+        CurrentView.Options.Num(),AdvanceRequested.IsBound(),*GetCachedGeometry().GetLocalSize().ToString());
+}
+
+void UGameXXKDialoguePanelWidget::NativeDestruct()
+{
+    LastAutoPlayTickTime=0;
+    // Reparenting the desktop layout can destruct Slate while retaining this view.
+    // ClearPresentation owns the logical close; a detached widget receives no NativeTick.
+    AutoPlayElapsedSeconds=0;
+    bAutoAdvanceIssued=false;
+    Super::NativeDestruct();
 }

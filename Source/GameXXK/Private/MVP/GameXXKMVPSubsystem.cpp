@@ -37,6 +37,9 @@
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Crc.h"
+#include "Misc/CoreDelegates.h"
+#include "Misc/ScopeExit.h"
+#include "Serialization/MemoryWriter.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogGameXXKMVPSubsystem, Log, All);
 
@@ -1694,6 +1697,54 @@ namespace
 	}
 }
 
+namespace
+{
+    TArray<uint8> CapturePersistenceRuntime(const FGameXXKRuntimeState& State)
+    {
+        FGameXXKRuntimeState Copy = State;
+        TArray<uint8> Bytes;
+        FMemoryWriter Writer(Bytes, true);
+        FGameXXKRuntimeState::StaticStruct()->SerializeItem(Writer, &Copy, nullptr);
+        return Bytes;
+    }
+}
+void UGameXXKMVPSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+    Super::Initialize(Collection);
+    PersistenceTicker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this,
+        [this](float DeltaSeconds) { TickPersistence(DeltaSeconds); return true; }), 1.0f);
+    PersistenceExitHandle = FCoreDelegates::OnPreExit.AddWeakLambda(this, [this]() { TickPersistence(0, true); });
+}
+void UGameXXKMVPSubsystem::Deinitialize()
+{
+    TickPersistence(0, true);
+    FTSTicker::GetCoreTicker().RemoveTicker(PersistenceTicker);
+    FCoreDelegates::OnPreExit.Remove(PersistenceExitHandle);
+    Super::Deinitialize();
+}
+bool UGameXXKMVPSubsystem::TickPersistence(float DeltaSeconds, bool bForce)
+{
+    bool bAllowedWorld = IsTrainingCheckpointWorld();
+#if WITH_DEV_AUTOMATION_TESTS
+    bAllowedWorld |= SaveSlotWriteDelegateForTest.IsBound();
+#endif
+    if (!bAllowedWorld || !bPlayerProgressReady || bSavingAutomatically || bAcademyWriteGuard) return false;
+#if GAMEXXK_WITH_DEV_TOOLS
+    if (bDevelopmentWritesSuppressed) return false;
+#endif
+    AutoSaveElapsedSeconds += FMath::Max(0.0f, DeltaSeconds);
+    if (!bForce && AutoSaveElapsedSeconds < 30.0f) return true;
+    AutoSaveElapsedSeconds = 0;
+    if (CapturePersistenceRuntime(RuntimeState) == LastPersistedRuntimeBytes) return true;
+    TGuardValue<bool> ReentryGuard(bSavingAutomatically, true);
+    if (!SaveCurrentGame(ActiveSaveSlot, ActiveSaveUserIndex))
+    {
+        UE_LOG(LogGameXXKMVPSubsystem, Warning, TEXT("Automatic save failed; pending progress will be retried."));
+        return false;
+    }
+    return true;
+}
+
 UGameXXKMVPSubsystem::UGameXXKMVPSubsystem()
 {
 	RuntimeState = UGameXXKMVPRules::CreateNewGame();
@@ -2325,11 +2376,26 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 		{
 			// Story encounters pay through their authored task receipt only. They
 			// never clear an ordinary stage or open its random route-reward offer.
-			if(!Candidate.NarrativeProgress.MainStory.bBattleWon
-				||!FGameXXKMainStoryRules::FinishDedicatedJourneyNode(Candidate,&Error)
-				||!PersistTrainingCheckpoint(Candidate))return false;
-			BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
-			RuntimeState=MoveTemp(Candidate);LastSaveLoadError=FText::GetEmpty();return true;
+            if(!Candidate.NarrativeProgress.MainStory.bBattleWon
+                ||!FGameXXKMainStoryRules::FinishDedicatedJourneyNode(Candidate,&Error))return false;
+            const auto StoryOutcome=Candidate.NarrativeProgress.MainStory;
+            const auto BeforeReturn=RuntimeState;
+            const auto BeforeTravel=TrainingTravelRuntime;
+            RuntimeState=Candidate;
+            const bool bReturned=CancelTrainingChallengeToWorkbench();
+            if(bReturned)Candidate=RuntimeState;
+            auto ResumedTravel=TrainingTravelRuntime;
+            RuntimeState=BeforeReturn;
+            TrainingTravelRuntime=BeforeTravel;
+            if(!bReturned)return false;
+            // The authored victory/aftermath receipt survives route cleanup. No ordinary
+            // route rewards are issued and no map is shown between battle and story result.
+            Candidate.NarrativeProgress.MainStory=StoryOutcome;
+            Candidate.NarrativeProgress.MainStory.bShowJourneyTree=false;
+            if(!PersistTrainingCheckpoint(Candidate))return false;
+            BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+            RuntimeState=MoveTemp(Candidate);TrainingTravelRuntime=MoveTemp(ResumedTravel);
+            LastSaveLoadError=FText::GetEmpty();return true;
 		}
 		// The Boss is the route terminal. It skips the ordinary three-choice battle
 		// reward and atomically applies the cleared-route settlement before the
@@ -3729,16 +3795,25 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 		return false;
 	}
 #endif
-	if (IsTrainingCheckpointWorld()
+    FGameXXKSaveCommit NewCommit;
+    NewCommit.ProfileId = FGuid::NewGuid();
+    NewCommit.OwnerSlot = ActiveSaveSlot.IsEmpty() ? GetDefaultSaveSlotName() : ActiveSaveSlot;
+    bool bWriteNewGame = IsTrainingCheckpointWorld() && !bAcademyWriteGuard;
 #if GAMEXXK_WITH_DEV_TOOLS
-		&& !bDevelopmentWritesSuppressed
+    bWriteNewGame &= !bDevelopmentWritesSuppressed;
 #endif
-		&& UGameplayStatics::DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0)
-		&& !UGameplayStatics::DeleteGameInSlot(GetTrainingCheckpointSlotName(), 0))
-	{
-		LastSaveLoadError = FText::FromString(TEXT("无法清除上次历练恢复点，新游戏尚未开始。"));
-		return false;
-	}
+    if (bWriteNewGame)
+    {
+        auto* NewSave = NewObject<UGameXXKSaveGame>();
+        NewSave->SaveState = UGameXXKMVPRules::MakeSaveState(Candidate);
+        FString StorageError;
+        if (!FGameXXKSaveStorage::Write(NewSave, NewCommit.OwnerSlot, ActiveSaveUserIndex, &StorageError, &NewCommit))
+        { LastSaveLoadError = GameXXKLocalization::Text(TEXT("Save.Error.Write")); return false; }
+    }
+    PersistenceCommit = NewCommit;
+    ActiveSaveSlot = NewCommit.OwnerSlot;
+    bPlayerProgressReady = true;
+    LastPersistedRuntimeBytes.Reset();
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
 	LastSaveLoadError = FText::GetEmpty();
 	RuntimeState = MoveTemp(Candidate);
@@ -3759,6 +3834,15 @@ bool UGameXXKMVPSubsystem::ContinueGameFromSlot(FString SlotName, int32 UserInde
 bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 {
 	if (bAcademyWriteGuard) {LastSaveLoadError=FText::FromString(TEXT("教学阵容不会写入玩家存档。"));return false;}
+    const FGameXXKSaveCommit PriorCommit = PersistenceCommit;
+    const FString PriorSlot = ActiveSaveSlot;
+    const int32 PriorUser = ActiveSaveUserIndex;
+    bool bSaveCommitted = false;
+    ON_SCOPE_EXIT { if (!bSaveCommitted) { PersistenceCommit=PriorCommit; ActiveSaveSlot=PriorSlot; ActiveSaveUserIndex=PriorUser; } };
+    if (SlotName.IsEmpty()) SlotName = ActiveSaveSlot.IsEmpty() ? GetDefaultSaveSlotName() : ActiveSaveSlot;
+    PersistenceCommit.OwnerSlot = SlotName;
+    ActiveSaveSlot = SlotName;
+    ActiveSaveUserIndex = UserIndex;
 	PersistenceBoundaryDelegate.Broadcast();
 	LastSaveLoadError = FText::GetEmpty();
 	FGameXXKRuntimeState Candidate = RuntimeState;
@@ -3798,7 +3882,9 @@ bool UGameXXKMVPSubsystem::SaveCurrentGame(FString SlotName, int32 UserIndex)
 		if (!PersistTrainingCheckpoint(RuntimeState))
 			UE_LOG(LogGameXXKMVPSubsystem, Warning, TEXT("Manual save succeeded, but the desktop recovery checkpoint could not be refreshed."));
 	}
-	return true;
+    bSaveCommitted = true;
+    LastPersistedRuntimeBytes = CapturePersistenceRuntime(RuntimeState);
+    return true;
 }
 
 bool UGameXXKMVPSubsystem::DoesSaveGameExist(FString SlotName, int32 UserIndex) const
@@ -3839,12 +3925,24 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 
 	bool bRecoveredBackup=false;
 	FString StorageError;
-	UGameXXKSaveGame* OriginalSaveGame = FGameXXKSaveStorage::Load(ResolvedSlotName,UserIndex,bRecoveredBackup,&StorageError);
+    FGameXXKSaveCommit LoadedCommit;
+	UGameXXKSaveGame* OriginalSaveGame = FGameXXKSaveStorage::Load(ResolvedSlotName,UserIndex,bRecoveredBackup,&StorageError,&LoadedCommit);
 	if (!OriginalSaveGame)
 	{
 		LastSaveLoadError=GameXXKLocalization::Text(TEXT("Save.Error.NoValidCopy"));
 		return false;
 	}
+
+    const auto PriorCommit = PersistenceCommit;
+    const auto PriorSlot = ActiveSaveSlot;
+    const int32 PriorUser = ActiveSaveUserIndex;
+    bool bLoadCommitted = false;
+    ON_SCOPE_EXIT { if (!bLoadCommitted) { PersistenceCommit=PriorCommit; ActiveSaveSlot=PriorSlot; ActiveSaveUserIndex=PriorUser; } };
+    PersistenceCommit = LoadedCommit;
+    if (!PersistenceCommit.ProfileId.IsValid()) PersistenceCommit.ProfileId = FGuid::NewGuid();
+    if (PersistenceCommit.OwnerSlot.IsEmpty()) PersistenceCommit.OwnerSlot = ResolvedSlotName == GetTrainingCheckpointSlotName() ? GetDefaultSaveSlotName() : ResolvedSlotName;
+    ActiveSaveSlot = PersistenceCommit.OwnerSlot;
+    ActiveSaveUserIndex = UserIndex;
 
 	FGameXXKSaveState MigratedSaveState;
 	FGameXXKSaveMigrationReport MigrationReport;
@@ -3879,7 +3977,10 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 		RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 		TrainingTravelRuntime = MoveTemp(LoadedTravelRuntime);
 		if (IsTrainingCheckpointWorld() && !bRecoveringTrainingCheckpoint) PersistTrainingCheckpoint(RuntimeState);
-		return true;
+        bLoadCommitted = true;
+        bPlayerProgressReady = true;
+        LastPersistedRuntimeBytes = CapturePersistenceRuntime(RuntimeState);
+        return true;
 	}
 
 	// Invalid/future versions are rejected before any backup or main-slot write.
@@ -4025,6 +4126,9 @@ bool UGameXXKMVPSubsystem::LoadGameFromSlot(FString SlotName, int32 UserIndex)
 	RuntimeState = MoveTemp(MigratedSaveState.RuntimeState);
 	TrainingTravelRuntime = MoveTemp(MigratedTravelRuntime);
 	if (IsTrainingCheckpointWorld() && !bRecoveringTrainingCheckpoint) PersistTrainingCheckpoint(RuntimeState);
+    bLoadCommitted = true;
+    bPlayerProgressReady = true;
+    LastPersistedRuntimeBytes = CapturePersistenceRuntime(RuntimeState);
 	return true;
 }
 
@@ -4760,7 +4864,8 @@ bool UGameXXKMVPSubsystem::WriteSaveGameToSlot(USaveGame* SaveGame, const FStrin
 	}
 #endif
 	FString Error;
-	const bool bSaved=FGameXXKSaveStorage::Write(SaveGame,SlotName,UserIndex,&Error);
+	const bool bPlayerSlot = SlotName == ActiveSaveSlot || SlotName == GetTrainingCheckpointSlotName();
+    const bool bSaved=FGameXXKSaveStorage::Write(SaveGame,SlotName,UserIndex,&Error,bPlayerSlot ? &PersistenceCommit : nullptr);
 	if(!bSaved)LastSaveLoadError=GameXXKLocalization::Text(TEXT("Save.Error.Write"));
 	return bSaved;
 }
@@ -4861,7 +4966,7 @@ bool UGameXXKMVPSubsystem::EnsureDesktopTrainingRuntimeForDirectMap()
 		if (IsTrainingCheckpointWorld() && DoesSaveGameExist(GetTrainingCheckpointSlotName(), 0))
 		{
 			TGuardValue<bool> RecoveryGuard(bRecoveringTrainingCheckpoint, true);
-			return LoadGameFromSlot(GetTrainingCheckpointSlotName(), 0);
+			return LoadGameFromSlot(FGameXXKSaveStorage::SelectResumeSlot(GetDefaultSaveSlotName(), GetTrainingCheckpointSlotName()), 0);
 		}
 		// The packaged game opens this map directly. A regular save remains the
 		// resume source when no in-progress training checkpoint exists. Do not

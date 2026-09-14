@@ -1,0 +1,13 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\guard-review-20260913\\user-fang-shield-paintover.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v5\\T_Item_Gem_Defense.png"
+  ],
+  "prompt": "重新完整绘制图1的中式蓝色重甲守卫。图1是用户亲手修改的设计示意，应理解其结构并重新完成，不能照抄粗涂像素，也不能退回普通门板盾。图2只提供项目宝石icon的大体块画法。\n\n这次重点是左侧鬼面向下生长成一块有整体感、厚实的盾：\n1. 鬼面与下方盾身是同一个器物。鬼面下颌向下过渡为鼓起的宽蓝色护面，护面再以两到三块大叠甲向左下延伸。蓝色表面必须连续封闭、能真实挡住攻击，不是几把V字刀刃的组合。\n2. 保留用户草图“上部宽、向左下偏斜、叠甲有咬合”的主要形势。盾从左肩鬼面延伸到左膝下附近，不能画成又长又窄的直立条形。\n3. 银灰部分是厚实包边和叠甲断面，不是外露刀刃。明显收短外伸尖角，转成结实的短獠牙形凸角与大倒角。全盾只有两处主要外轮廓转折；中间小尖角并入整体。下端有分量、有厚度，避免细长锐利枪尖。\n4. 大蓝面约占盾面积七成，银边三成以内。用一个大亮面、一个中间面、一个深侧面表现体积，叠甲之间只留两条明确的遮挡暗边。不要贯穿盾面的两道巨大亮银V字，也不要新的徽章、晶石、文字和雕刻。\n5. 在盾靠身体的一侧露出少量后侧厚度及合理的手臂固定结构：左臂在盾后弯曲承托，盾面前不要凭空出现旧拳头。盾不能像直接从肩膀悬空长出来的刀片。右拳自然下垂，无任何其他武器。\n6. 鬼面大轮廓保留，顶部仅保留用户示意中的短银色主角，不恢复原先向上伸很长的蓝色弯冠。鬼面下颌和盾甲的中轴、透视一致，连接处自然。\n\n人物保持原成熟男性面孔、全深色简化胡须、黑发髻、壮实紧凑的头身比例、蓝/深蓝/银灰主色、少量冰青鬼焰和现在的稳立姿态。保留两只完整脚，人脸清楚可见。人物不要换脸、变性、改变服装设计或增加配饰。\n画风为项目宝石icon式简化手绘卡通：强而清楚的深色外轮廓，饱满结实的大体块，少量宽面转折，2至3组主要明暗。深蓝护面与低光泽银灰金属有材质区别。不要碎三角拼花、噪点、脏笔触、精细高光和写实3D渲染。\n从头到脚整体重新画干净，所有草稿涂抹痕迹、白色擦除区、断线和粗糙接缝必须消失。单张正方形暖米白底完整立绘，盾和人物四周都有安全留白，无文字、无标注、无背景场景、无投影。重点让大盾真正厚重、整合、有设计感，同时准确保留用户的斜向叠甲思路。",
+  "purpose": "Redraw from user's paintover to strengthen continuous shield mass and structural support, reduce blade-like silver V strips and refine graphic form.",
+  "output": "SourceArt/Characters/guard-review-20260913/guard-v13-redraw-shield.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-cb5da4c8-9373-4ea0-b043-087bdc855eb0.png",
+  "visual_review": "Shield redrawn with broader continuous blue protective faces, shorter side projections and thicker turned borders; ghost face remains integrated above oblique overlapping plates."
+}
+

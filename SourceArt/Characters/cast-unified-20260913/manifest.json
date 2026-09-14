@@ -1,0 +1,344 @@
+{
+  "count": 14,
+  "imported": false,
+  "phase": "awaiting-user-review",
+  "approvedBladeExact": true,
+  "records": [
+    {
+      "slug": "hero",
+      "name": "男主角",
+      "group": "主角",
+      "file": "characters\\hero.png",
+      "raw": "raw\\hero.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "66ab4f0c44aeba18c98f1618e113ba11445324212188500d108ad0ffe6988721",
+      "rawSha256": "53fc1cb6e34c8be6d9023355c36d877bb1cdc287326480a971f529a2313aafb9",
+      "bounds": [
+        446,
+        160,
+        1263,
+        1437
+      ],
+      "approved": false
+    },
+    {
+      "slug": "female_hero",
+      "name": "女主角",
+      "group": "主角",
+      "file": "characters\\female_hero.png",
+      "raw": "raw\\female_hero.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "dfe5f851c09e61587e2477c8a7a4b20b98d310a2b5b84b2072b10ff468137266",
+      "rawSha256": "a5938339d233285ccbf473acc481166039e831af30cbbabc722b9f6979651a16",
+      "bounds": [
+        464,
+        156,
+        1305,
+        1441
+      ],
+      "approved": false
+    },
+    {
+      "slug": "blade",
+      "name": "女刀客",
+      "group": "职业伙伴",
+      "file": "characters\\blade.png",
+      "raw": "raw\\blade.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "72e813cca51f377f6557711f48b1aa6fd4d27a57cad3f12a7daaa8a1f34f4135",
+      "rawSha256": "30fc2d57d036cc1edd2319d97428cf9b2f5b72b2a4c9e2c2fc502ef4a379fa1a",
+      "bounds": [
+        212,
+        178,
+        1319,
+        1445
+      ],
+      "approved": true
+    },
+    {
+      "slug": "guard",
+      "name": "守卫",
+      "group": "职业伙伴",
+      "file": "characters\\guard.png",
+      "raw": "raw\\guard.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "215788215a4202cd2127f6b9f379b7407aaad9c4e05f171cff2ddb330be80838",
+      "rawSha256": "2e7b80e0348fcdd9de8f82ecd1ec845ec2afbf79ef8f3f6f9e0f0b5908a5c231",
+      "bounds": [
+        348,
+        155,
+        1353,
+        1432
+      ],
+      "approved": false
+    },
+    {
+      "slug": "healer",
+      "name": "药师",
+      "group": "职业伙伴",
+      "file": "characters\\healer.png",
+      "raw": "raw\\healer.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "bc997d812a3326889354941fac28a6adea3ae3156a646902a07077ae2ec3883d",
+      "rawSha256": "ba675fc7b331f4c7263658076ea1e4ac4f31ebd4471b9a32226b5db890c5e463",
+      "bounds": [
+        410,
+        154,
+        1173,
+        1431
+      ],
+      "approved": false
+    },
+    {
+      "slug": "hunter",
+      "name": "女弓手",
+      "group": "职业伙伴",
+      "file": "characters\\hunter.png",
+      "raw": "raw\\hunter.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "41e1b3c17cfda75fc9682acb871a3e48bf885fe1d35f729fb9fbeebde6483132",
+      "rawSha256": "0ae891d1e5b2f9a482d9a76b5095177242bdba229fc9d03bd3d1ba315a2c18d7",
+      "bounds": [
+        262,
+        155,
+        1372,
+        1446
+      ],
+      "approved": false
+    },
+    {
+      "slug": "sorcerer",
+      "name": "女道士",
+      "group": "职业伙伴",
+      "file": "characters\\sorcerer.png",
+      "raw": "raw\\sorcerer.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "3bf5bf79f8ea11ea608ab04a73eb2cbebbe7abab92b67728017cfcb1affa3b6b",
+      "rawSha256": "1ef2619ee4937651105f1fd1aaad85f2ad4ee504d23f7f147cc1b841f6650801",
+      "bounds": [
+        354,
+        146,
+        1402,
+        1442
+      ],
+      "approved": false
+    },
+    {
+      "slug": "formation_master",
+      "name": "阵师",
+      "group": "职业伙伴",
+      "file": "characters\\formation_master.png",
+      "raw": "raw\\formation_master.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "a41ad4dea4042395e1fecd26d58d5edd5d3687039766c3af4c0daf067590cea6",
+      "rawSha256": "18f982191d5127cfc2d040ebdd185c6a004b427ac03394f59e26fb389f7b01c5",
+      "bounds": [
+        244,
+        186,
+        1358,
+        1424
+      ],
+      "approved": false
+    },
+    {
+      "slug": "tusi_chief",
+      "name": "土司首领",
+      "group": "剧情伙伴",
+      "file": "characters\\tusi_chief.png",
+      "raw": "raw\\tusi_chief.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "5e5d5a487f5c01a6a7f094be11be2febd155d642509bf7a7ca607d5627770fd0",
+      "rawSha256": "2368c1eb71b1f2f4b3490d763fb1a2bb94e22d97d270d85019441cbe65f4cec7",
+      "bounds": [
+        258,
+        200,
+        1394,
+        1406
+      ],
+      "approved": false
+    },
+    {
+      "slug": "song_jin_bao",
+      "name": "宋金宝",
+      "group": "剧情伙伴",
+      "file": "characters\\song_jin_bao.png",
+      "raw": "raw\\song_jin_bao.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "b34e770840e70aa5e00f012ddd9a0ffa8424458a8d31fe8ea4fc9842c850b87b",
+      "rawSha256": "ecff16de522f9049e1183e1e6a677fd2aabf7e155a689ad799d873de85ae04b2",
+      "bounds": [
+        393,
+        139,
+        1264,
+        1454
+      ],
+      "approved": false
+    },
+    {
+      "slug": "you_bai",
+      "name": "幽白",
+      "group": "剧情伙伴",
+      "file": "characters\\you_bai.png",
+      "raw": "raw\\you_bai.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "fc13cc9e9a5faa7ed5c5851297ec592671760a5d00f331507108046271a42734",
+      "rawSha256": "cb721debe5788d24d12bfd1c3dde484ea61ffff36f08c4072896d9b3f89b65c4",
+      "bounds": [
+        404,
+        189,
+        1289,
+        1412
+      ],
+      "approved": false
+    },
+    {
+      "slug": "zhou_guang_zu",
+      "name": "周光祖",
+      "group": "剧情伙伴",
+      "file": "characters\\zhou_guang_zu.png",
+      "raw": "raw\\zhou_guang_zu.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "ab732d4887abf77002896232954a67fac92334eacf388d8227723a64341e549f",
+      "rawSha256": "19cd6b93d6de1ea6bd58cf81f60d0a202d768e4a6a0f2307635b3ffd46055039",
+      "bounds": [
+        328,
+        160,
+        1323,
+        1458
+      ],
+      "approved": false
+    },
+    {
+      "slug": "jin_gui",
+      "name": "金贵",
+      "group": "剧情伙伴",
+      "file": "characters\\jin_gui.png",
+      "raw": "raw\\jin_gui.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "9ef2e9fd22b4c8ab8478a4464e10a3ff075dbc98e2fc217d96a8da18fc72685e",
+      "rawSha256": "98a5a12f3f944d93f3ac6980f56b5cde49e69228457f9516e9743dbdc34d4338",
+      "bounds": [
+        387,
+        146,
+        1206,
+        1434
+      ],
+      "approved": false
+    },
+    {
+      "slug": "qiong_yao_er",
+      "name": "琼幺儿",
+      "group": "剧情伙伴",
+      "file": "characters\\qiong_yao_er.png",
+      "raw": "raw\\qiong_yao_er.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "a08a49cf45ef071d58061c787d1fb493934941c76507d46cd8d78e4025c67067",
+      "rawSha256": "f3e711c5f5869c9fbd489c00fba3d05cf776f0d87c22f9107ce392e4e7f75f6d",
+      "bounds": [
+        312,
+        148,
+        1427,
+        1433
+      ],
+      "approved": false
+    }
+  ]
+}

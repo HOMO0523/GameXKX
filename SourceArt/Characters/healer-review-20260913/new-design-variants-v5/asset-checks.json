@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 花瓣药匣",
+    "file": "A-peony-medicine-case.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "13522F63A10D298D675109664D3B230120FD79121DB42653D96E699C592565D2",
+    "source_sha256": "13522F63A10D298D675109664D3B230120FD79121DB42653D96E699C592565D2"
+  },
+  {
+    "label": "B 竹篓采药",
+    "file": "B-bamboo-herbalist.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "3ADC8D653BAE7087960144637CCDBA821E2E859169C5205E9FBD82B11C96FE15",
+    "source_sha256": "3ADC8D653BAE7087960144637CCDBA821E2E859169C5205E9FBD82B11C96FE15"
+  },
+  {
+    "label": "C 葫芦行医",
+    "file": "C-cinnabar-gourd.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "36F191FEB34008A19F59B75C6AB81F2088BDC424CCDD3C6C8DF5BC372B2630CB",
+    "source_sha256": "36F191FEB34008A19F59B75C6AB81F2088BDC424CCDD3C6C8DF5BC372B2630CB"
+  }
+]

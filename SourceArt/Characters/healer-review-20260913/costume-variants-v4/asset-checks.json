@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 叠叶披肩",
+    "file": "A-layered-leaves.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "DCA8D1FE123A29E4DA072DBEA4D871F17DEC788B3106ADE1F7C6D7F8B12AEBCC",
+    "source_sha256": "DCA8D1FE123A29E4DA072DBEA4D871F17DEC788B3106ADE1F7C6D7F8B12AEBCC"
+  },
+  {
+    "label": "B 花苞云袖",
+    "file": "B-bud-sleeves.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "5AB07AED5C8083952D31C97D5CB25E2DD9791832B1B3CF08B9E496804FECF154",
+    "source_sha256": "5AB07AED5C8083952D31C97D5CB25E2DD9791832B1B3CF08B9E496804FECF154"
+  },
+  {
+    "label": "C 青芽斜襟",
+    "file": "C-diagonal-sprout.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "25792D5E9E56A23373D1774D002FF300A716856CF2B4243451DA63C4E5690B78",
+    "source_sha256": "25792D5E9E56A23373D1774D002FF300A716856CF2B4243451DA63C4E5690B78"
+  }
+]

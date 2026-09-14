@@ -83,7 +83,7 @@ bool FGameXXKMainStoryActualPlaythrough::RunTest(const FString&)
                 if(!Require(FGameXXKMainStoryRules::IsDedicatedJourney(MVP->GetRuntimeState()),Next.ToString()+TEXT(" dedicated map")))return false;
                 const int32 Gate=MVP->GetRuntimeState().NarrativeProgress.MainStory.GateNodeIds.Array()[0];
                 // The short map exposes the task naturally: do not fake reachability.
-                if(!Require(MVP->GetRuntimeState().ReachableRouteNodeIds.Contains(Gate)&&Story->EnterJourneyGate(Gate),Next.ToString()+TEXT(" reachable task gate")))return false;
+                if(!Require(MVP->GetRuntimeState().CardRun.bHasActiveCardBattle || (MVP->GetRuntimeState().ReachableRouteNodeIds.Contains(Gate)&&Story->EnterJourneyGate(Gate)),Next.ToString()+TEXT(" reachable task gate")))return false;
             }
             if(Node->Kind!=EGameXXKMainStoryNodeKind::JourneyBattle)
                 for(int32 I=0;I<Node->Lines.Num();++I)if(!Require(Story->AdvanceDialogue(),Next.ToString()+TEXT(" dialogue")))return false;

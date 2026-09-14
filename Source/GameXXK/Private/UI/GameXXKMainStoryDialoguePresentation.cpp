@@ -1,5 +1,6 @@
 #include "UI/GameXXKMainStoryDialoguePresentation.h"
 #include "GameXXKMVPRules.h"
+#include "UI/GameXXKLocalization.h"
 #include "Narrative/GameXXKMainStoryRules.h"
 
 namespace
@@ -72,7 +73,12 @@ FGameXXKDialoguePresentationView GameXXKMainStoryDialoguePresentation::Build(con
 		{
 			View.SpeakerDisplayName=FText::FromString(TEXT("启程"));View.PortraitPath=FSoftObjectPath();
 			FGameXXKDialogueVisibleOption Option;Option.OptionId=TEXT("MainStory.Travel");
-			Option.Text=FText::FromString(FString::Printf(TEXT("进入%d-%d"),(Node->StageNumber-1)/3+1,(Node->StageNumber-1)%3+1));
+			const bool bBattle=Node->Kind==EGameXXKMainStoryNodeKind::JourneyBattle;
+            FString ButtonText=GameXXKLocalization::IsEnglish()
+                ? FString::Printf(TEXT("Enter %d-%d"),(Node->StageNumber-1)/3+1,(Node->StageNumber-1)%3+1)
+                : FString::Printf(TEXT("进入%d-%d"),(Node->StageNumber-1)/3+1,(Node->StageNumber-1)%3+1);
+            if(bBattle)ButtonText+=GameXXKLocalization::IsEnglish()?TEXT(" battle"):TEXT("战斗");
+            Option.Text=FText::FromString(ButtonText);
 			View.Options.Add(Option);
 		}
 		else if(Session.Phase==EGameXXKMainStoryActivityPhase::ReadyToBattle)

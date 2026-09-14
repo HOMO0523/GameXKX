@@ -1,0 +1,7 @@
+{
+  "mode": "built-in image_gen",
+  "reference": "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-style-trial-20260914/guard-trial-v1.png",
+  "prompt": "Precisely edit the supplied young male Chinese guardian icon. Make ONLY his HUMAN HEAD moderately larger, about 10 percent in width and height relative to the unchanged body. Enlarge the actual skull, face and hair mass together, anchored at the neck attachment, preserve natural short strong neck and the same 3/4 LEFT face angle, clean-shaven youthful masculine face, amber eyes, determined expression, bold brows and black tied hairstyle. The topknot should stay compact and within canvas; enlargement must read in the face/skull, not just bigger hair. Make minimal adjacent collar adjustment only if needed for natural attachment. The giant blue ghost mask is the SHIELD, NOT the head being enlarged; do not resize it. Strictly keep all other artwork unchanged: same massive shield at image RIGHT with exact perspective, scale, curved lower silver horn and upper horn, cyan ghost eyes, same navy armor, flat simplified broad light/shadow shapes, cyan flame collar, left empty fist, standing pose, body and limb proportions, boots and foot positions, square framing and plain warm ivory background. Do not zoom the full figure, shrink torso/legs, turn the pose or redesign costume. No text or collage.",
+  "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-5a0205d4-ec0e-411d-a554-4248d2048440.png",
+  "output": "guard-trial-v2-larger-head.png"
+}

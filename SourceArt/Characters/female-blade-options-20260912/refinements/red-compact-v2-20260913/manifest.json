@@ -1,0 +1,99 @@
+{
+  "count": 4,
+  "phase": "review-only",
+  "records": [
+    {
+      "slug": "A_bold",
+      "name": "A · 张扬妩媚",
+      "file": "characters\\A_bold.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "23d6a65589b204040457d3e466ca20d802bea96f549857acfb99bbaf51187bd0",
+      "rawSha256": "ac513a88ed79beff1f46055aee7f44f4644a76acf398ef355c38685c46ded4c7",
+      "foregroundBounds": [
+        180,
+        170,
+        1372,
+        1446
+      ],
+      "imported": false
+    },
+    {
+      "slug": "B_cool",
+      "name": "B · 冷艳克制",
+      "file": "characters\\B_cool.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "64d98876bafe2e407f5da3547a8363801fd731fb36673f3ed153b3b01585599d",
+      "rawSha256": "60e14281256788f06c7e481b48330555aa362034c211acc42595ffff5416e342",
+      "foregroundBounds": [
+        212,
+        179,
+        1312,
+        1444
+      ],
+      "imported": false
+    },
+    {
+      "slug": "C_playful",
+      "name": "C · 俏皮灵动",
+      "file": "characters\\C_playful.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "4a34a01917da58ed71af5cdf9912e5c882283079a26fcb4d8e9222d20fa3ec79",
+      "rawSha256": "7180495d1a479da13cd2e8064a9e5cbd70075a719dfc41093e94ca37aec00dde",
+      "foregroundBounds": [
+        180,
+        200,
+        1426,
+        1428
+      ],
+      "imported": false
+    },
+    {
+      "slug": "D_languid",
+      "name": "D · 慵懒危险",
+      "file": "characters\\D_languid.png",
+      "nativeSize": [
+        1254,
+        1254
+      ],
+      "size": [
+        1600,
+        1600
+      ],
+      "sha256": "bb5f8614560bdd719b68614e78e1110539b8715b0099f432cf4b493fc8f4efa7",
+      "rawSha256": "9f5b8cefbbb960e635b6633cd1aa2dc40deb117f0d83c58e6a1a7fb8e1713cd0",
+      "foregroundBounds": [
+        188,
+        195,
+        1407,
+        1432
+      ],
+      "imported": false
+    }
+  ],
+  "referenceHashes": {
+    "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hero.png": "8a08aed83d8b351c083aa2f9e19e53ebb4437cb07d63c01abf70663c82ac4ccf",
+    "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hunter.png": "bf69e960f6055b18b39723725b44f49c23b1ce05f32151402f97d8254d48f2f5",
+    "SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\healer.png": "f6c8615628300bfd9b747dce46e14b8f3f4def10c43e3f1da959773bc7a19290"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "mode": "built-in image_gen",
+  "purpose": "Retain the required original green double-leaf sprout hairstyle across three healer designs.",
+  "records": [
+    {
+      "label": "A 芽型·药匣",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\new-design-variants-v5\\A-peony-medicine-case.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\leaf-healer-v3-standing.png"
+      ],
+      "prompt": "Head/hairstyle identity harmonization of a healer design. IMAGE1 supplies the costume, medicinal prop and standing composition to keep. IMAGE2 supplies the REQUIRED GREEN SPROUT HAIRSTYLE: rounded leaf-green bob with chunky fringe, exactly TWO LARGE leaf-shaped sprout forms growing from the top of the hair (one upward, one angled outward), two longer leaf-shaped side locks tied with simple white round pom-poms. Make these part of the character's hair silhouette, not a small plant stuck onto an unrelated bun.\nReplace image1's entire old hair design and hair accessories with image2's sprout hairstyle; remove old flower/bun/headband entirely. Harmonize the face into a gentle friendly youthful cartoon healer with violet eyes and compact project proportions, fully wholesome. Preserve image1's distinct clothing tailoring and medicine prop, original pose and head/body size as closely as possible. All outfits stay fully opaque, no sexualized anatomy or pose.\nKeep the new leafy green hair as the COMMON recognizable identity. Slightly harmonize clothing accent colors with the green hair if needed while retaining the distinct variant palette and design. Project gem-icon finish: bold controlled dark contour, few broad matte color/value planes, no noisy tiny facets, glitter or realistic texture. Both feet planted, front three-quarter left standing, correct hands holding props. Full leaves/prop/boots inside square plain warm ivory, no text, panels, scenery or added items. VARIANT A: keep the ivory/dusty-rose petal shoulder cape, plum sash, long layered ivory/rose skirt, low shoes and round medicine case cradled in both hands from image1. Replace white bob and peony ornament completely with the green sprout hair from image2. Keep flower motifs sparse and broad. New head must connect naturally to the original neck, both upper sprout leaves entirely in frame.",
+      "file": "A-sprout-medicine-case.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-c2f915ed-90e7-4a7c-8cb7-5196de970542.png"
+    },
+    {
+      "label": "B 芽型·竹篓",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\new-design-variants-v5\\B-bamboo-herbalist.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\leaf-healer-v3-standing.png"
+      ],
+      "prompt": "Head/hairstyle identity harmonization of a healer design. IMAGE1 supplies the costume, medicinal prop and standing composition to keep. IMAGE2 supplies the REQUIRED GREEN SPROUT HAIRSTYLE: rounded leaf-green bob with chunky fringe, exactly TWO LARGE leaf-shaped sprout forms growing from the top of the hair (one upward, one angled outward), two longer leaf-shaped side locks tied with simple white round pom-poms. Make these part of the character's hair silhouette, not a small plant stuck onto an unrelated bun.\nReplace image1's entire old hair design and hair accessories with image2's sprout hairstyle; remove old flower/bun/headband entirely. Harmonize the face into a gentle friendly youthful cartoon healer with violet eyes and compact project proportions, fully wholesome. Preserve image1's distinct clothing tailoring and medicine prop, original pose and head/body size as closely as possible. All outfits stay fully opaque, no sexualized anatomy or pose.\nKeep the new leafy green hair as the COMMON recognizable identity. Slightly harmonize clothing accent colors with the green hair if needed while retaining the distinct variant palette and design. Project gem-icon finish: bold controlled dark contour, few broad matte color/value planes, no noisy tiny facets, glitter or realistic texture. Both feet planted, front three-quarter left standing, correct hands holding props. Full leaves/prop/boots inside square plain warm ivory, no text, panels, scenery or added items. VARIANT B: retain image1's moss-green/ivory practical crossover coat, tapered ivory trousers, flat green boots, back bamboo medicine basket and herbal tray held at waist, other hand on strap. Replace dark high bun and bamboo pin completely with image2's bright-green sprout bob, exactly two big top leaf forms, white pom-poms and leaf-like side locks. Keep the large sprout leaves clearly distinct from the medicinal leaves inside basket. Basket remains behind shoulder, uncluttered 3–4 big bamboo bands and few herbs. Preserve grounded pose and working-clothes silhouette, no dress or gourd.",
+      "file": "B-sprout-bamboo.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-e2543a4f-1afa-46bf-ab69-3d58ee62209c.png"
+    },
+    {
+      "label": "C 芽型·葫芦",
+      "mode": "built-in image_gen",
+      "references": [
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\new-design-variants-v5\\C-cinnabar-gourd.png",
+        "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\leaf-healer-v3-standing.png"
+      ],
+      "prompt": "Head/hairstyle identity harmonization of a healer design. IMAGE1 supplies the costume, medicinal prop and standing composition to keep. IMAGE2 supplies the REQUIRED GREEN SPROUT HAIRSTYLE: rounded leaf-green bob with chunky fringe, exactly TWO LARGE leaf-shaped sprout forms growing from the top of the hair (one upward, one angled outward), two longer leaf-shaped side locks tied with simple white round pom-poms. Make these part of the character's hair silhouette, not a small plant stuck onto an unrelated bun.\nReplace image1's entire old hair design and hair accessories with image2's sprout hairstyle; remove old flower/bun/headband entirely. Harmonize the face into a gentle friendly youthful cartoon healer with violet eyes and compact project proportions, fully wholesome. Preserve image1's distinct clothing tailoring and medicine prop, original pose and head/body size as closely as possible. All outfits stay fully opaque, no sexualized anatomy or pose.\nKeep the new leafy green hair as the COMMON recognizable identity. Slightly harmonize clothing accent colors with the green hair if needed while retaining the distinct variant palette and design. Project gem-icon finish: bold controlled dark contour, few broad matte color/value planes, no noisy tiny facets, glitter or realistic texture. Both feet planted, front three-quarter left standing, correct hands holding props. Full leaves/prop/boots inside square plain warm ivory, no text, panels, scenery or added items. VARIANT C: retain image1's cinnabar-red Chinese short wrap coat, ivory collar/cuffs, black asymmetric shoulder shawl, ivory roomy trousers, dark travel boots and large double-bellied medicine gourd hugged in both hands. Replace chestnut hair, half-up knot and ivory headband completely with image2's green sprout bob, two large top leaves and side leaf locks with white pom-poms. Keep gourd warm brown with one clear leaf emblem and simple thick cord, no extra props. Friendly youthful calm smile, full opaque costume, correct gentle standing weight and supporting hands. Green sprout hair is dominant identity; red/ivory outfit distinguishes this variant.",
+      "file": "C-sprout-gourd.png",
+      "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-e26404b9-1e5a-4b5e-a7f3-b797281d0611.png"
+    }
+  ]
+}
+

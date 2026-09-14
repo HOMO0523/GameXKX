@@ -1,0 +1,16 @@
+{
+  "slug": "hunter",
+  "name": "女弓手",
+  "group": "职业伙伴",
+  "approved": false,
+  "reference": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_archer.png",
+  "sourceHash": "a7d22c6f0e498e4733437c902d2756c56aa3df683b88b3dc158f15dcf6cf9ea6",
+  "prompt": "Use case: stylized-concept character redesign. Image1 is the user's approved unified STYLE AND COMPACT PROPORTION sample. Image2 is the previous identity/theme reference, NOT a costume to trace. Redesign the named subject into a distinctive new Chinese game character design using the direction below. Keep recognizable identity/theme, gender/age, palette and key props but intentionally refresh costume tailoring, silhouette rhythm, hair shape and personality-specific pose. Never clone the female blade sample's red outfit/face/hair across the cast. Match image1's bold controlled contours, coherent large gem-icon handpainted planes, 2-4 simple material shadows, graphic cartoon eyes with one small highlight max, no fragmented triangle mosaic, realistic eyes or 3D gloss. Humans approximately the SAME compact crown-to-sole head/body ratio as image1 (about four heads excluding hair/hats), retaining reasonable lean/stocky identity differences, no long-legged six-head fashion proportions. All women clearly adult, attractive natural full feminine curves and tailored garments but agile rather than heavy/barrel-thick; men retain distinct age/physique. Faces and bodies three-quarter facing SCREEN LEFT. Mild dynamic weight shift, two anatomically coherent separate legs and both feet readable, no parallel stiff pose or hidden extra leg. Props and hands structurally correct. Entire single full-body subject and ALL props safely inside a square canvas with 8% margins. Plain warm ivory #F4EFDF background, no shadows/scene/text/panels/extra people. Strong broad shape contrast, detail concentrated in only one or two zones. SPECIFIC DESIGN: 女弓手：明确成年女性，专注敏锐、轻盈干练，自然丰满但纤敏曲线。重新设计利落黑色中短高束马尾一整束、小侧刘海，不麻花辫、不复制刀客超长马尾。橄榄绿、米白、深墨绿、棕木，少量青绿边。图形趋势为斜向箭头、后掠三角和大风纹：非对称短披风只有一到两处巨大米白云风纹，呼应追风套；斜襟贴体短衣、窄护腕、侧开短叠摆、轻束口骑射裤、低皮靴。低位持木弓和箭、浅弯膝侧步，背箭筒三支箭羽。必须一根连续绷紧弓弦从上弓梢到箭尾再到下弓梢，两段共同组成唯一弦；一根笔直箭杆箭尖左下，箭尾与弦接触，握弓手正确握木弓把，另一手轻持箭尾，不多出交叉弦，不满弓。",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\references\\approved_blade.png",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-guofeng-concepts-20260912\\characters\\female_archer.png"
+  ],
+  "redesignDirection": "女弓手：明确成年女性，专注敏锐、轻盈干练，自然丰满但纤敏曲线。重新设计利落黑色中短高束马尾一整束、小侧刘海，不麻花辫、不复制刀客超长马尾。橄榄绿、米白、深墨绿、棕木，少量青绿边。图形趋势为斜向箭头、后掠三角和大风纹：非对称短披风只有一到两处巨大米白云风纹，呼应追风套；斜襟贴体短衣、窄护腕、侧开短叠摆、轻束口骑射裤、低皮靴。低位持木弓和箭、浅弯膝侧步，背箭筒三支箭羽。必须一根连续绷紧弓弦从上弓梢到箭尾再到下弓梢，两段共同组成唯一弦；一根笔直箭杆箭尖左下，箭尾与弦接触，握弓手正确握木弓把，另一手轻持箭尾，不多出交叉弦，不满弓。",
+  "generatedPath": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\cast-unified-20260913\\raw\\hunter.png",
+  "originalGeneratedPath": "C:\\Users\\shxuw\\.codex\\generated_images\\01a08887-a4ce-7b30-9ef6-22fe546d006d\\exec-1e60259a-f649-47e2-a2c8-e24828087c1b.png"
+}

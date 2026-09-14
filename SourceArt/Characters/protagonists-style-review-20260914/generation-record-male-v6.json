@@ -1,0 +1,10 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-integrated-panel-v5.png",
+    "C:/Users/shxuw/AppData/Local/Temp/codex-clipboard-7bacf43c-74a3-4f8d-9c3f-61fb6d3a3458.png"
+  ],
+  "prompt": "Make ONE tiny local correction to the FULL CHARACTER in image1. Image2 is a magnified location reference only, not the output crop. On the blue-gray short front tunic panel hanging below his waist, the bottom hem near its RIGHT end has a small triangular upward V NOTCH / slit cutting into the ivory border. REMOVE THAT NOTCH: fill the little missing triangular area with matching blue-gray fabric and extend the ivory binding across it. Make the bottom hem a continuous gently smooth sloping edge from the lower-left corner to the right corner, with a clean rounded transition at the right corner. Uniform-width ivory binding follows this uninterrupted smooth hem. No triangular bite, slit, gap, tooth or protruding mini-tab at this location. Preserve bamboo sprig motif above the border and current panel overall dimensions, color and angle. This is a minimal local repair only. Keep every other part of image1 exactly: round face, hairstyle, head/body proportions, clothing design, pose, backpack, props, palette and background; do not redraw the face, rescale figure or reframe. Output the same complete full-body square character image, not a close-up, no text or collage.",
+  "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-920bbeba-c393-4ac1-9914-cdba65cad3c0.png",
+  "output": "male-hero-smooth-hem-v6.png"
+}

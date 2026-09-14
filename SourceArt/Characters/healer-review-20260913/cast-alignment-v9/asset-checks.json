@@ -1,0 +1,47 @@
+[
+  {
+    "label": "刀客",
+    "file": "blade-reference.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "sha256": "FF235F018DC9242B5B836F9BF024493E799C9636EF2E3AEB7C36CE92F43A10D9",
+    "source_sha256": "FF235F018DC9242B5B836F9BF024493E799C9636EF2E3AEB7C36CE92F43A10D9"
+  },
+  {
+    "label": "弓手",
+    "file": "archer-reference.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "sha256": "E287952E7412FAC50DA94DD29688E1063027304F52C9A1A9C400B2182A7026AC",
+    "source_sha256": "E287952E7412FAC50DA94DD29688E1063027304F52C9A1A9C400B2182A7026AC"
+  },
+  {
+    "label": "蝴蝶角色",
+    "file": "butterfly-reference.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "sha256": "E637958B1F8AE58E3D84C37A5F1DAF35E898BD4F691F0C8E20E2055A31AA9926",
+    "source_sha256": "E637958B1F8AE58E3D84C37A5F1DAF35E898BD4F691F0C8E20E2055A31AA9926"
+  },
+  {
+    "label": "卷轴角色",
+    "file": "scroll-reference.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "sha256": "BF297B8D8C5A1FF6E3A48B136EF1CEA3ABF384BD2EE157487DBB38C3D3799F42",
+    "source_sha256": "BF297B8D8C5A1FF6E3A48B136EF1CEA3ABF384BD2EE157487DBB38C3D3799F42"
+  },
+  {
+    "label": "药师·优化",
+    "file": "healer-optimized.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "sha256": "F4A1800D525E63440D2A9FC8F60C99A39C49C9D383648168A28F6138FCB92C3C",
+    "source_sha256": "F4A1800D525E63440D2A9FC8F60C99A39C49C9D383648168A28F6138FCB92C3C"
+  }
+]

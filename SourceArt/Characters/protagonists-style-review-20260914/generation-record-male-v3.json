@@ -1,0 +1,10 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-refined-v2.png",
+    "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/07-male-hero.png"
+  ],
+  "prompt": "Precisely edit IMAGE1 male protagonist. User prefers his ORIGINAL ROUND CUTE FACE in IMAGE2, and rejects the sharp chin of image1. Change ONLY the face to restore image2's rounded facial silhouette and cute youthful identity: fuller rounded cheeks, shorter broad rounded chin, smooth U-shaped jaw contour instead of a pointed V, softer small nose/mouth, original charming round cheek proportions. Keep thick eyebrows and quietly determined expression, 3/4 facing LEFT, not a big smile. Reference image2 for facial construction; do not exaggerate into baby cheeks or inflate the whole head. Keep current skull/head scale and neck attachment. Keep the ORIGINAL swept-back exposed forehead hairstyle already restored in image1, tied compact bun, brown ribbon, exact hairline, no forward fringe. Lock everything else to image1: refined brown jacket with hem motif, layered ivory/slate collar and cuff piping, bronze waist fastener, slate trousers, calf wraps, shoes, bamboo backpack and round container, current body proportions, hand holding strap, other hand relaxed, identical standing pose and composition. Preserve the clean broad cel-shaded gem-icon rendering and line weight, background, colors and all outfit improvements. Only restore softer round face matching image2. One full-body character on same warm ivory square background, no text or collage.",
+  "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-cba8ff5e-81a4-4980-b20e-7a21d012dfe0.png",
+  "output": "male-hero-round-face-v3.png"
+}

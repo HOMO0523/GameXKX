@@ -1,0 +1,11 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-54211452-163b-44c4-95b6-6dab919754c5.png"
+  ],
+  "prompt": "Use case: precise-object-edit. Edit the supplied existing Chinese fantasy formation mage game character icon, making ONLY TWO subtle spatial corrections. 1) Her actual head including face, bob haircut and attached ornaments is a little too large: uniformly reduce the head group by approximately 5 percent, anchored near the chin/neck connection. Retain exactly the same 3/4 left head angle, expression and hair design; make minimal natural attachment corrections at neck/chin-hand contact. Do NOT shrink the body or shorten the legs. 2) Translate the entire background landscape scroll DOWN slightly, about 25 pixels on this 1254 square composition (2 percent of canvas height). Move the paper, mountain artwork, both rollers and the black reverse surface together as one rigid group. Keep its size, curvature, perspective and continuous paper design identical; no black seam crossing the left paper face. Strict invariants: keep the existing standing pose exactly, identical torso orientation, shoulder angles, elbows, wrists, one hand near chin and the other holding the same brush, identical pelvis/knee angles and feet placement; preserve all body lengths and widths, clothing shapes, ornament designs, brush position and direction, and composition framing. This is a micro proportion adjustment, not a redesign or new pose. Preserve the exact clean gem-icon art language of the reference: bold dark outline, broad simplified light/shadow planes, controlled teal/black/ivory/gold palette, uncluttered surfaces, clean warm ivory background. Output one full character, same square canvas, no text, no labels, no collage.",
+  "output": "SourceArt/Characters/cast-proportion-review-20260914/formation-master-v5-fine-proportion.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-6455256a-0c63-4ff5-aa91-287f511437ab.png",
+  "visual_review": "Head appears smaller and scroll lower. Standing joint arrangement, chin-hand gesture and brush-holding gesture remain visually consistent. Generative redraw is not a pixel-exact spatial transform; requested 5 percent is a target, not measured output."
+}
+

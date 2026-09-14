@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\healer-review-20260913\\cast-alignment-v9\\healer-optimized.png"
+  ],
+  "prompt": "Precise LOCAL PROP REPLACEMENT in this exact healer artwork. Replace ONLY the round wooden medicine CASE she holds at waist height with ONE double-bellied medicinal GOURD lying SIDEWAYS across her two hands.\n\nGourd orientation is critical: its long axis is almost HORIZONTAL, only about 10–15 degrees tilted upward toward SCREEN LEFT. Stoppered mouth and small upper bulb point LEFT, large round lower belly sits to the RIGHT. It must NOT stand upright or be hugged vertically. The small bulb, pinched waist and large belly form a continuous recognizable gourd silhouette. Warm natural ochre-brown body, one simple dark-green cord around the narrow middle and ONE small green leaf mark on the large belly. Simple cork stopper, no spout, elaborate tassels or extra bottles. Size approximately the old case's width or modestly wider, staying below the chest and away from her face.\nHer screen-left hand supports the small bulb/neck from below; screen-right hand cups the lower large belly from below and side. Redraw fingers/palms and adjacent cuff folds only as needed so the object has believable weight and both hands are visibly attached to their arms. Exactly two hands, no third hand. Remove all old case lid, hinge, box latch and round box contours completely.\nPaint the gourd in the SAME simple project icon language as the current character: strong clean dark contour, 2–3 large matte ochre/brown value planes, sparse detail, no noisy tiny facets or glossy reflections. Cloth, hair, face, sprout hairstyle, proportions, standing pose, green/ivory costume, sachet, shoes, other motifs and background remain unchanged in design.\nKeep full square composition with all leaf tips and both feet in frame on uniform warm ivory. Output one finished full-body character, no text, added props, collage or framing.",
+  "purpose": "Replace medicine case with a sideways two-bellied medicinal gourd supported by both hands.",
+  "output": "SourceArt/Characters/healer-review-20260913/cast-alignment-v9/healer-sideways-gourd.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-7526c3d3-29be-44f8-aa41-2a01b1fdbe38.png",
+  "visual_review": "Sideways gourd has mouth/smaller bulb at left and larger belly at right; both hands support it. Medicine case removed."
+}
+

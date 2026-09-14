@@ -1,0 +1,32 @@
+[
+  {
+    "label": "A 门阙方盾",
+    "file": "A-spirit-gate.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "4D16950DF280D7E5669DFF779D6A3C54164F3C8EACAA4D5F9ACD67C3A5399621",
+    "source_sha256": "4D16950DF280D7E5669DFF779D6A3C54164F3C8EACAA4D5F9ACD67C3A5399621"
+  },
+  {
+    "label": "B 獠牙收尖盾",
+    "file": "B-descending-fangs.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "B15BC37BA00615D51D7B899F085A048341E5CB7ED8C9513C27C6B277C7234071",
+    "source_sha256": "B15BC37BA00615D51D7B899F085A048341E5CB7ED8C9513C27C6B277C7234071"
+  },
+  {
+    "label": "C 叠甲重盾",
+    "file": "C-layered-bulwark.png",
+    "width": 1254,
+    "height": 1254,
+    "pixel_format": "Format24bppRgb",
+    "background": "Opaque warm ivory",
+    "sha256": "363F1B124998740FC7093D4B2C1BFCC5103ACD0124303442BE69D32142E6F1AA",
+    "source_sha256": "363F1B124998740FC7093D4B2C1BFCC5103ACD0124303442BE69D32142E6F1AA"
+  }
+]

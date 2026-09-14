@@ -1,0 +1,33 @@
+{
+  "file": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\silver-hair-butterfly-gemstyle-20260913\\silver-hair-butterfly-v1.png",
+  "width": 1254,
+  "height": 1254,
+  "pixel_format": "Format24bppRgb",
+  "corner_alpha": [
+    255,
+    255,
+    255,
+    255
+  ],
+  "background": "Opaque warm off-white review canvas",
+  "sha256": "DE2A2DD17CD2B72675FAEC6D619BC8C03E95E33822881338E117234D44EC89D1",
+  "generation_source_sha256": "DE2A2DD17CD2B72675FAEC6D619BC8C03E95E33822881338E117234D44EC89D1",
+  "references": [
+    {
+      "path": "C:\\Users\\shxuw\\Desktop\\download.png",
+      "sha256": "0EEE07A4DA7752740EACA9C77CDBBAA0D850F5D8A46A3C377C23B3752231649A"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v5\\T_Item_Gem_DamageOverTime.png",
+      "sha256": "A8F13BBB4CA19E5DB51B908C416802F9A1AD0FF31B273FCEF2726D2774BFFB03"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\UI\\Items\\Gems\\contour-review-20260909\\type-icons-v5\\T_Item_Gem_Defense.png",
+      "sha256": "2BF21AAF00C14F776CBB801691DCA2457115DC3FE202BC03F867331BBD648FAA"
+    },
+    {
+      "path": "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\project-design-gemstyle-all-20260910\\characters\\hunter.png",
+      "sha256": "BF69E960F6055B18B39723725B44F49C23B1CE05F32151402F97D8254D48F2F5"
+    }
+  ]
+}

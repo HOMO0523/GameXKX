@@ -1,0 +1,12 @@
+{
+  "mode": "built-in image_gen",
+  "references": [
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\silver-hair-butterfly-gemstyle-20260913\\silver-hair-butterfly-v13.png"
+  ],
+  "prompt": "Precise local object removal. Remove ONLY the THREE floating elemental effects above the raised palm: the yellow lightning on the left, orange-red flame above, and blue ice shape beside the hair. Fill their former areas seamlessly with the same plain warm ivory background. Restore the tiny natural hair contour behind the blue ice effect if necessary. Leave the raised hand EMPTY in exactly the same pose. Preserve the entire character, face, head/body proportions, hands, clothing, silver hair, purple antenna ornaments, yin-yang clasp, huge triangular butterfly cloak and its long tails, colors, gem-icon painted style, framing and dimensions. No replacement objects, no particles, no glow or residual colored marks, no talismans. Output the same complete square character artwork with only these three effects removed.",
+  "purpose": "Remove all three floating elemental effects; retain the raised empty hand.",
+  "output": "SourceArt/Characters/silver-hair-butterfly-gemstyle-20260913/silver-hair-butterfly-v14.png",
+  "generated_path": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09969-fc15-7a33-92ca-d1ca08a2766f\\exec-03e52637-6039-4a33-8359-31ea3827953f.png",
+  "visual_review": "All three floating elemental effects removed; empty raised palm and full character silhouette visible."
+}
+

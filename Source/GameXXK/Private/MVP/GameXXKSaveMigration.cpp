@@ -2230,9 +2230,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, TEXT("Unsupported save version."));
 		return false;
 	}
-	if (Source.SaveVersion == CurrentSaveVersion)
+	if (Source.SaveVersion == CurrentSaveVersion || Source.SaveVersion == HuntExpansionIntroducedSaveVersion)
 	{
 		FGameXXKSaveState Candidate = Source;
+        Candidate.SaveVersion = CurrentSaveVersion;
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0

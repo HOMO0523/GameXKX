@@ -1,0 +1,20 @@
+{
+  "size": [
+    1600,
+    1600
+  ],
+  "bounds": [
+    181,
+    152,
+    1360,
+    1455
+  ],
+  "sha256": "ebe20e078d6440a1aa98622ea49fb829ee53be0939977965a3e43c6de2613054",
+  "referenceHashes": {
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Characters\\female-blade-dual-proportions-20260913\\refinements\\medium-proportion-v4\\raw.png": "20626ff0bf6a9d366c41f6d935d1a52cc53ea5e865b947e78d39cd281b00b74f",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\moneyrat.png": "eae09733017b1fc9e9c1039ddf3875b5472e76bdf8518747f9847a763349ae4c",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\macaque.png": "7477a951e0bb9ba3a2ae87b7e07b8db160b38a294c17879cca59bee9d0af2b3c",
+    "D:\\UE5 demo\\GameXXK\\SourceArt\\Monsters\\project-design-gemstyle-20260910\\monsters\\rooster.png": "61e42e21d710cdcb59304acd6842569ea34b4e73106cda2ac6bab76a3c87fa02"
+  },
+  "imported": false
+}

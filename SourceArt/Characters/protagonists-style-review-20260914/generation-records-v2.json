@@ -1,0 +1,33 @@
+{
+  "mode": "built-in image_gen",
+  "status": "refinement-awaiting-review",
+  "records": [
+    {
+      "mode": "built-in image_gen",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/male-hero-style-v1.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/07-male-hero.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png"
+      ],
+      "prompt": "Refine the MALE protagonist in IMAGE1 for this Chinese gem-icon character set. IMAGE2 is the mandatory ORIGINAL HAIRSTYLE/identity reference; images3/4 are approved style and proportion anchors. Single full-body male only.\nCRITICAL restore exact hair design from IMAGE2: swept-back black hair exposing the forehead, compact rear/top bun tied with brown ribbon, small short wisps only at the frontal hairline. NO hanging bangs, NO split curtain fringe or large forward triangular locks from image1. Retain image1 clean expressive face and determined eyes, youthful identity.\nAdjust anatomy moderately toward approved blade/archer compact elegant proportions: reduce ballooning trouser width approximately 12%, subtly lengthen leg segments about 6% relative to torso, slightly tidy broad waist/hips. Do NOT simply grow the head or stretch whole image. Preserve original 3/4-left standing pose, elbow/knee angles, hand gripping shoulder strap, other arm relaxed, same grounded stance.\nClothes should look more carefully DESIGNED AND REFINED but still an approachable young traveler. Preserve brown jacket, slate-blue cross-collar tunic/trousers, ivory accents, cloth waist sash, brown shoes, bamboo backpack and woven round travel container. Upgrade tailoring: clean layered ivory/slate collar with a narrow warm tan edge, neatly finished cuffs, more structured short jacket hem with slightly beveled/slit corners, a composed waist sash with one small plain bronze fastening and tidy hanging ends. One restrained large geometric bamboo/scroll motif near lower jacket hem, no all-over embroidery. Use grouped tapered trouser folds and more deliberate tidy ankle wraps/shoe trims. Refinement through cut, layering, edge rhythm and restrained accents, NOT extra tiny filigree or luxury armor. Keep accessories simple, backpack and round container stay same size/placement and identity. No sword, cape, expensive jewelry, extra props. Keep dark confident outlines and broad coherent matte cell-shaded light/shadow planes matching anchors; avoid triangular noise, fine texture, realistic skin or glossy 3D. Full figure neatly framed on plain warm ivory square background, no inset paper border, labels or collage.",
+      "file": "male-hero-refined-v2.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-1cd0758a-37d4-48be-aaf6-aa5942aff771.png",
+      "review": "Exposed forehead swept-back original hair restored. Collar/cuffs/hem and belt refined; modestly slimmer trouser silhouette."
+    },
+    {
+      "mode": "built-in image_gen",
+      "references": [
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/protagonists-style-review-20260914/female-hero-style-v1.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/08-female-hero.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/02-archer.png",
+        "D:/UE5 demo/GameXXK/SourceArt/Characters/cast-selected-20260914/01-blade.png",
+        "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-1cd0758a-37d4-48be-aaf6-aa5942aff771.png"
+      ],
+      "prompt": "Refine the FEMALE protagonist in IMAGE1, one full-body Chinese game character icon. IMAGE2 is her mandatory ORIGINAL HAIRSTYLE reference: keep exactly her two rounded black buns, their asymmetrical perspective placement, brown ties/ribbons, original front bangs and side locks. User explicitly said do not change hairstyle. Do not add ornaments or bigger buns. Images3/4 approved style and body-proportion anchors, image5 updated male partner shows intended tasteful clothing refinement; don't copy his hairstyle or outfit.\nPreserve her lively smile, left-facing 3/4 head, youthful fully clothed traveler identity, hand gripping shoulder strap and other hand at hip, same STANDING pose, knee angles and foot arrangement. Gently improve proportion toward approved cast: reduce bulky trouser silhouette about 10-12%, modestly extend leg segments about 6% relative to torso with natural joints, make waist/hip transition cleaner, do not inflate her head or give realistic elongated anatomy. Keep original head identity and expressive clean anime eyes.\nClothing a little more refined through good tailoring rather than detail clutter: same sage green cross-collar tunic, ivory border, slate sash and cropped trousers, calf wraps, brown shoes, bamboo backpack/shoot and round woven hip container. Add composed double-layer ivory/slate collar edges, clean narrow muted warm-gold/tan piping at selected seams, refined cuff facings, a small simple bronze fastener integrated with cloth waist tie, and beautifully cut overlapping tunic skirt panels with clear ivory lining. Preserve one large stylized bamboo-leaf motif at hem; simplify to readable graphic design, no dense embroidery or all-over pattern. Subtly coordinated footwear edge trim. A modest traveling protagonist with thoughtfully crafted clothes, no luxury armor, cape, jewelry collection, weapons or new props. Keep backpack and container, simplified broad bamboo bands and rope. Consolidate trouser shadows to 2-3 broad purposeful planes, no dense triangles or scratchy texture. Match male companion and approved archer/blade dark contour weight, matte clean cel shaded shape language and detail density. Same sage/ivory/slate/brown palette, more polished composition of shapes. Single full character square warm ivory background without inset frame, full buns and feet within margins, no text or collage.",
+      "file": "female-hero-refined-v2.png",
+      "generated_path": "C:/Users/shxuw/.codex/generated_images/01a09969-fc15-7a33-92ca-d1ca08a2766f/exec-227866a3-33fa-4fc8-9205-e945681be47d.png",
+      "review": "Twin buns, cheerful pose and palette retained; cleaner tunic layers, collar/hem piping and belt clasp; proportional change is subtle."
+    }
+  ]
+}
