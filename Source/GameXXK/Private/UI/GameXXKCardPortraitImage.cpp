@@ -23,8 +23,18 @@ namespace
 			const FSlateBrush* Source = GetImageAttribute().Get();
 			if (!Owner.IsValid() || !Source || Source->DrawAs == ESlateBrushDrawType::NoDrawType)
 				return SImage::OnPaint(Args,Geometry,Culling,Elements,Layer,Style,ParentEnabled);
-			const FGeometry PaintGeometry = bFlipForRightToLeftFlowDirection && GSlateFlowDirection == EFlowDirection::RightToLeft
+			FGeometry PaintGeometry = bFlipForRightToLeftFlowDirection && GSlateFlowDirection == EFlowDirection::RightToLeft
 				? Geometry.MakeChild(FSlateRenderTransform(FScale2D(-1,1))) : Geometry;
+			// Reflect card illustrations inside their existing art rectangle. The
+			// card frame/text keep their layout, and the mask receives the reflected
+			// geometry so its rounded clipping still follows the unreflected card.
+			// This image class also hosts non-card item/roster icons: keep those as authored.
+			if (const UObject* Resource = Source->GetResourceObject();
+				Resource && Resource->GetName().StartsWith(TEXT("T_CardPortrait_")))
+			{
+				// MakeChild already defaults to the image's center pivot.
+				PaintGeometry = PaintGeometry.MakeChild(FSlateRenderTransform(FScale2D(-1, 1)));
+			}
 			const FSlateBrush* Brush = Owner->PrepareMaskedBrush(PaintGeometry,*Source);
 			const FLinearColor Tint = Style.GetColorAndOpacityTint()
 				* GetColorAndOpacityAttribute().Get().GetColor(Style) * Brush->GetTint(Style);

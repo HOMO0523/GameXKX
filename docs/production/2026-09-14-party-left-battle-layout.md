@@ -69,3 +69,16 @@
 - 17 项既有失败涉及通知/关闭栈、旧卡牌/奖励/动画/HUD 断言；没有削弱它们来制造全绿，完整名单见 `comparison.json`。
 - 未打 Shipping 包、未逐套实播全部 34 套外观、未进行 3D/旧城镇回归。
 - 其他任务新增的 `SourceArt/Characters/cast-with-npcs-20260914/` 内容保留在原工作区，不纳入本任务提交。
+
+## 追加：卡面插图左右翻转
+
+按用户追加要求，共用 `UGameXXKCardPortraitImage` 的 `T_CardPortrait_*` 插图在自己的绘制矩形中心水平翻转；覆盖手牌、敌意图/展示牌、奖励/待选牌及复用控件的卡组、商店等卡面。卡框、名称、费用和其他文字不翻转，不修改纹理资产。
+
+圆角遮罩仍读取插图到原卡面的相对绘制变换。首轮视觉复核发现多补了一次图宽平移，使插图被裁掉；移除额外平移后，使用 `MakeChild` 自带的中心枢轴完成镜像。已保留失败几何记录，并在探针中增加两端均位于卡面水平范围内的断言。
+
+- `Saved/CardArtMirror/build-fixed.log`：修正版冷 UBT 成功，无 Live Coding / Hot Reload。
+- `painted-card-mask-check.json` 与 `selected-card-mask-check.json`：实际 PIE 的 5 张手牌、3 张敌意图均为负水平绘制轴，使用真实卡面几何且两端不越界；选中放大状态同样通过。
+- 已检查实际浮动窗口与 1920×1080 控件导出；卡图、文字及圆角正常显示。
+- 最终截图：`Saved/PartyLeft/Live/card-art-mirrored-final.png`，放大截图：`card-art-mirrored-selected.png`。
+- 当前 43 份现有玩家存档哈希保持，见 `Saved/CardArtMirror/player-saves-after.json`。隔离 Dev 会话还原、PIE 停止、MCP 保存脏包 0。
+- 本次是显示追加，未重复整套数值/战斗回归，也未更新 Shipping 包。
