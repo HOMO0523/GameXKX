@@ -1,0 +1,39 @@
+{
+  "generator": "built-in image_gen",
+  "source": "C:\\Users\\shxuw\\.codex\\generated_images\\01a09dc1-0248-7491-97b2-7a8c99a89ce2\\exec-714d3286-0653-4a93-9171-33d64f13810b.png",
+  "file": "T_BattleTargetArrowHead_GemV1_Keyed.png",
+  "size": [
+    1254,
+    1254
+  ],
+  "source_mode": "RGB",
+  "display_alpha": "UI material magenta key; original image bytes preserved",
+  "key_rgb": [
+    255,
+    0,
+    255
+  ],
+  "alpha_formula": "1 - smoothstep(0.04, 0.60, max(0,min(linear.r,linear.b)-linear.g))",
+  "visible_bounds_px": [
+    132,
+    120,
+    1149,
+    1121
+  ],
+  "tip_hotspot_px": [
+    1148.5,
+    625.0
+  ],
+  "tip_hotspot_uv": [
+    0.9158692185007975,
+    0.4984051036682616
+  ],
+  "sha256": "89a55ae8d3b2433c0d58eaf68c0ebdd4d5fbd3a4c485659ae16899e5d04bcd48",
+  "corner_alpha": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "border_max_alpha": 0.0
+}

@@ -1368,6 +1368,9 @@ private:
 	TObjectPtr<UTexture2D> TargetingArrowHeadTexture;
 
 	UPROPERTY(Transient)
+	TObjectPtr<class UMaterialInterface> TargetingArrowHeadMaterial;
+
+	UPROPERTY(Transient)
 	TArray<TObjectPtr<UTexture2D>> TargetingInkDabTextures;
 
 	UPROPERTY(Transient)

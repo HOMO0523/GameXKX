@@ -7,6 +7,7 @@
 #include "UI/GameXXKCardVisualEffects.h"
 #include "UI/GameXXKCardNameStyle.h"
 #include "UI/GameXXKCardPortraitImage.h"
+#include "UI/GameXXKTargetingPresentation.h"
 #include "UI/GameXXKCardSynergyPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
@@ -348,7 +349,8 @@ namespace
 	static constexpr const TCHAR* RouteGeneralCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_General.T_CardPortrait_Route_General");
 	static constexpr const TCHAR* RouteTerrainCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Terrain.T_CardPortrait_Route_Terrain");
 	static constexpr const TCHAR* RouteRareCardPortraitTexturePath = TEXT("/Game/GameXXK/UI/PartyDeck/CardArt/T_CardPortrait_Route_Rare.T_CardPortrait_Route_Rare");
-	static constexpr const TCHAR* TargetingArrowHeadTexturePath = TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetArrowHead.T_BattleTargetArrowHead");
+	static constexpr const TCHAR* TargetingArrowHeadTexturePath = TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetArrowHead_GemV1.T_BattleTargetArrowHead_GemV1");
+	static constexpr const TCHAR* TargetingArrowHeadMaterialPath = TEXT("/Game/GameXXK/UI/Battle/Materials/M_BattleTargetArrowHead_GemV1.M_BattleTargetArrowHead_GemV1");
 
 	FString ResolveEnemyPortraitPathByDefinitionId(const FName EnemyDefinitionId)
 	{
@@ -3565,13 +3567,8 @@ FVector2D UGameXXKBattleBoardWidget::ResolveTargetingArrowHeadTopLeftForTest(
 	const FVector2D ArrowSize)
 {
 	static_cast<void>(TargetingStart);
-	// The approved 1254x1254 source has its visible right-facing tip at
-	// (1082, 608), not at the image center. Keep that visible tip on the live
-	// pointer and rotate around the same local hotspot in NativePaint.
-	const FVector2D ScaledTipHotspot(
-		ArrowSize.X * (1082.0f / 1254.0f),
-		ArrowSize.Y * (608.0f / 1254.0f));
-	return TargetingEnd - ScaledTipHotspot;
+	// Position and rotation use the same measured visible tip, independent of aim direction.
+	return TargetingEnd - GameXXKTargetingPresentation::ArrowTipHotspot(ArrowSize);
 }
 
 FString UGameXXKBattleBoardWidget::GetBattleBoardDebugStateForTest() const
@@ -3924,7 +3921,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 	bool bParentEnabled) const
 {
 	int32 MaxLayerId = Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
-	if (!IsTargetingBattleActionForTest() || !TargetingArrowHeadTexture || TargetingInkDabTextures.IsEmpty())
+	if (!IsTargetingBattleActionForTest() || !TargetingArrowHeadTexture || !TargetingArrowHeadMaterial || TargetingInkDabTextures.IsEmpty())
 	{
 		return MaxLayerId;
 	}
@@ -3944,10 +3941,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 		return MaxLayerId;
 	}
 
-	const FVector2D Direction = Delta / Distance;
-	const FVector2D Normal(-Direction.Y, Direction.X);
-	const float BowAmount = FMath::Clamp(Distance * 0.16f, 22.0f, 96.0f);
-	const FVector2D Control = (Start + End) * 0.5f + Normal * BowAmount;
+	const FVector2D Control = GameXXKTargetingPresentation::CurveControl(Start, End);
 	const int32 SegmentCount = FMath::Clamp(FMath::RoundToInt(Distance / 58.0f), 5, 24);
 	const int32 DabLayer = MaxLayerId + 1;
 
@@ -3972,17 +3966,19 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 			FLinearColor::White);
 	}
 
-	const FVector2D ArrowSize(74.0f, 56.0f);
+	const FVector2D ArrowSize = GameXXKTargetingPresentation::ArrowSize();
 	const FVector2D ArrowPosition = ResolveTargetingArrowHeadTopLeftForTest(Start, End, ArrowSize);
 	const FVector2D ArrowTipHotspot = End - ArrowPosition;
 	FSlateBrush ArrowBrush = BuildTextureBrush(TargetingArrowHeadTexture.Get(), ArrowSize, FLinearColor(1.0f, 1.0f, 1.0f, 0.96f));
+	ArrowBrush.SetResourceObject(TargetingArrowHeadMaterial.Get());
+	const FVector2D EndTangent = (End - Control).GetSafeNormal();
 	FSlateDrawElement::MakeRotatedBox(
 		OutDrawElements,
 		DabLayer + 1,
 		AllottedGeometry.ToPaintGeometry(ArrowSize, FSlateLayoutTransform(ArrowPosition)),
 		&ArrowBrush,
 		ESlateDrawEffect::None,
-		FMath::Atan2(Direction.Y, Direction.X),
+		FMath::Atan2(EndTangent.Y, EndTangent.X),
 		TOptional<FVector2f>(FVector2f(
 			static_cast<float>(ArrowTipHotspot.X),
 			static_cast<float>(ArrowTipHotspot.Y))),
@@ -10444,6 +10440,10 @@ void UGameXXKBattleBoardWidget::EnsureBattleVisualResourcesLoaded()
 	if (!TargetingArrowHeadTexture)
 	{
 		TargetingArrowHeadTexture = LoadObject<UTexture2D>(nullptr, TargetingArrowHeadTexturePath);
+	}
+	if (!TargetingArrowHeadMaterial)
+	{
+		TargetingArrowHeadMaterial = LoadObject<UMaterialInterface>(nullptr, TargetingArrowHeadMaterialPath);
 	}
 	if (TargetingInkDabTextures.Num() != TargetingInkDabCount)
 	{

@@ -13,6 +13,7 @@
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
+#include "UI/GameXXKTargetingPresentation.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleBoardWidget.h"
 #include "UI/GameXXKBattlePartyQiWidget.h"
@@ -190,10 +191,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKBattleTargetArrowAlignmentTest::RunTest(const FString& Parameters)
 {
 	const FVector2D End(640.0f, 360.0f);
-	const FVector2D ArrowSize(74.0f, 56.0f);
+	const FVector2D ArrowSize(132.0f, 132.0f);
 	const FVector2D ExpectedTipHotspot(
-		ArrowSize.X * (1082.0f / 1254.0f),
-		ArrowSize.Y * (608.0f / 1254.0f));
+		ArrowSize.X * (1148.5 / 1254.0),
+		ArrowSize.Y * (625.0 / 1254.0));
 	const FVector2D ExpectedTopLeft = End - ExpectedTipHotspot;
 
 	const auto VerifyDirection = [this, End, ArrowSize, ExpectedTipHotspot, ExpectedTopLeft](
@@ -213,8 +214,31 @@ bool FGameXXKBattleTargetArrowAlignmentTest::RunTest(const FString& Parameters)
 	};
 
 	VerifyDirection(TEXT("horizontal"), FVector2D(320.0f, 360.0f));
+	VerifyDirection(TEXT("right-to-left"), FVector2D(960.0f, 360.0f));
 	VerifyDirection(TEXT("vertical"), FVector2D(640.0f, 40.0f));
 	VerifyDirection(TEXT("diagonal"), FVector2D(320.0f, 120.0f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTargetArcUpwardTest,
+	"GameXXK.MVP.Battle.TargetArcUpward",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetArcUpwardTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Start(200, 500);
+	for (const FVector2D End : {FVector2D(1000,500), FVector2D(1000,200), FVector2D(1000,800), FVector2D(200,100)})
+	{
+		const FVector2D Control = GameXXKTargetingPresentation::CurveControl(Start, End);
+		const FVector2D Reverse = GameXXKTargetingPresentation::CurveControl(End, Start);
+		const FVector2D Midpoint = (Start + End) * .25 + Control * .5;
+		TestTrue(TEXT("target arc bows above its straight chord in screen coordinates"), Midpoint.Y < (Start.Y + End.Y) * .5);
+		TestTrue(TEXT("swapping sides preserves the same upward arc"), Control.Equals(Reverse, .001));
+		TestTrue(TEXT("bow does not displace the curve horizontally"), FMath::IsNearlyEqual(Control.X, (Start.X + End.X) * .5, .001));
+	}
+	const FVector2D ShortUp(200, 480);
+	TestTrue(TEXT("short upward aims do not turn back at the pointer"),
+		GameXXKTargetingPresentation::CurveControl(Start, ShortUp).Y > ShortUp.Y);
 	return true;
 }
 
