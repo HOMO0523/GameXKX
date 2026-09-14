@@ -876,7 +876,7 @@ bool FGameXXKCardBattleBoardRetreatTopRightToolbarTest::RunTest(const FString& P
 	Board->NativeConstruct();
 	Board->RefreshFromState();
 
-	UHorizontalBox* Toolbar = Board->GetBattleTopRightToolbarForTest();
+	UVerticalBox* Toolbar = Board->GetBattleTopRightToolbarForTest();
 	UButton* AutoButton = Board->GetAutoBattleButtonForTest();
 	UButton* CloseButton = Board->GetBattleCloseButtonForTest();
 	TestNotNull(TEXT("BattleBoard owns one top-right toolbar"), Toolbar);
@@ -887,8 +887,8 @@ bool FGameXXKCardBattleBoardRetreatTopRightToolbarTest::RunTest(const FString& P
 	{
 		const USizeBox* AutoSize = Cast<USizeBox>(Toolbar->GetChildAt(0));
 		const USizeBox* CloseSize = Cast<USizeBox>(Toolbar->GetChildAt(1));
-		TestTrue(TEXT("auto battle is the left toolbar control"), AutoSize && AutoSize->GetContent() == AutoButton);
-		TestTrue(TEXT("Close is the right toolbar control"), CloseSize && CloseSize->GetContent() == CloseButton);
+		TestTrue(TEXT("auto battle is the upper toolbar control"), AutoSize && AutoSize->GetContent() == AutoButton);
+		TestTrue(TEXT("Close is the lower toolbar control"), CloseSize && CloseSize->GetContent() == CloseButton);
 	}
 	TestNull(TEXT("auto battle no longer owns a bottom-right canvas slot"), AutoButton ? Cast<UCanvasPanelSlot>(AutoButton->Slot) : nullptr);
 
@@ -913,10 +913,10 @@ bool FGameXXKCardBattleBoardRetreatTopRightToolbarTest::RunTest(const FString& P
 		TestFalse(TEXT("toolbar avoids the right-side unit HUD"), RectanglesOverlap(ToolbarRect, RightUnitHudRect));
 	}
 	const FBox2D FullHdToolbar = Board->ResolveBattleTopRightToolbarRectForTest(FVector2D(1920.0f, 1080.0f));
-	TestTrue(TEXT("full-HD toolbar uses the free left-side area"), FMath::IsNearlyEqual(FullHdToolbar.Min.X, 300.0, 0.01));
-	TestTrue(TEXT("full-HD toolbar begins at Luna-reviewed y"), FMath::IsNearlyEqual(FullHdToolbar.Min.Y, 86.0, 0.01));
-	TestTrue(TEXT("full-HD toolbar width is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().X, 384.0, 0.01));
-	TestTrue(TEXT("full-HD toolbar height is fixed in design units"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().Y, 60.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar uses the right edge beside the intent rail"), FMath::IsNearlyEqual(FullHdToolbar.Min.X, 1722.0, 0.01));
+	TestTrue(TEXT("full-HD toolbar begins near the top edge"), FMath::IsNearlyEqual(FullHdToolbar.Min.Y, 36.0, 0.01));
+	TestTrue(TEXT("toolbar is one button wide"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().X, 186.0, 0.01));
+	TestTrue(TEXT("toolbar fits two buttons and their vertical gap"), FMath::IsNearlyEqual(FullHdToolbar.GetSize().Y, 168.0, 0.01));
 	return true;
 }
 
@@ -4276,11 +4276,20 @@ bool FGameXXKPartyLeftBattleLayoutTest::RunTest(const FString& Parameters)
 	const UWidget* Intent = Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentCardBox"));
 	const auto* IntentSlot = Intent ? Cast<UCanvasPanelSlot>(Intent->Slot) : nullptr;
 	TestTrue(TEXT("enemy intent rail follows enemies to the right"), IntentSlot && IntentSlot->GetAnchors().Minimum.X > 0.5);
+	TestTrue(TEXT("enemy cards are stage siblings below the formation"), Intent && IntentSlot
+		&& Intent->GetParent() == Board->GetBattleDesignStageForTest()
+		&& IntentSlot->GetZOrder() < Board->GetLayerZ(EGameXXKBattleHudLayer::Formation));
+	const UWidget* Showcase = Board->WidgetTree->FindWidget(TEXT("BattleEnemyIntentShowcaseCard"));
+	const auto* ShowcaseSlot = Showcase ? Cast<UCanvasPanelSlot>(Showcase->Slot) : nullptr;
+	TestTrue(TEXT("enlarged enemy cards also stay below the formation"), Showcase && ShowcaseSlot
+		&& Showcase->GetParent() == Board->GetBattleDesignStageForTest()
+		&& ShowcaseSlot->GetZOrder() < Board->GetLayerZ(EGameXXKBattleHudLayer::Formation));
 	for (const FVector2D Viewport : {FVector2D(1280,720), FVector2D(1920,1080), FVector2D(1280,900)})
 	{
 		const auto Stage = Board->ResolveBattleHudSafeStageLayoutForTest(Viewport);
 		const auto Toolbar = Board->ResolveBattleTopRightToolbarRectForTest(Viewport);
-		TestTrue(TEXT("toolbar uses the free left area above combat"), Toolbar.Max.X < Stage.Offset.X + Stage.Size.X * 0.5);
+		TestTrue(TEXT("toolbar stays at the right edge above combat"), Toolbar.Min.X > Stage.Offset.X + Stage.Size.X * .85
+			&& Toolbar.Max.X <= Stage.Offset.X + Stage.Size.X);
 	}
 	Board->RefreshFromState();
 	const auto After = Subsystem->GetRuntimeStateCopy().CardRun.ActiveBattle;

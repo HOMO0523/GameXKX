@@ -603,7 +603,7 @@ public:
 	FGameXXKBattlePartyQiLayout ResolvePartyQiLayoutForTest(FVector2D CanvasSize) const;
 	/** Runs the same responsive Party Qi refresh used when NativeTick observes settled or resized canvas geometry. */
 	void RefreshPartyQiForCanvasSizeForTest(FVector2D CanvasSize);
-	UHorizontalBox* GetBattleTopRightToolbarForTest() const;
+	UVerticalBox* GetBattleTopRightToolbarForTest() const;
 	UButton* GetAutoBattleButtonForTest() const;
 	UButton* GetBattleCloseButtonForTest() const;
 	FBox2D ResolveBattleTopRightToolbarRectForTest(FVector2D ViewportSize) const;
@@ -1232,7 +1232,7 @@ private:
 	TObjectPtr<UButton> EndTurnButton;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UHorizontalBox> BattleTopRightToolbar;
+	TObjectPtr<UVerticalBox> BattleTopRightToolbar;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UButton> AutoBattleButton;

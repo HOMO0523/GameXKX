@@ -158,6 +158,7 @@ namespace
 	static constexpr int32 BattleSafeStageRootZOrder = 1;
 	static constexpr int32 BattleCinematicViewportCoverZOrder = 2;
 	static constexpr int32 BattleFormationZOrder = 10;
+	static constexpr int32 BattleEnemyCardZOrder = BattleFormationZOrder - 1;
 	static constexpr int32 BattleTargetProxyBaseZOrder = 10;
 	static constexpr int32 BattleControlsZOrder = 20;
 	static constexpr int32 BattleCinematicDimmerZOrder = 30;
@@ -168,12 +169,10 @@ namespace
 	static constexpr int32 PartyQiWidgetZOrder = 35;
 	static constexpr float PartyQiHandSafetyGap = 12.0f;
 	static constexpr float PartyQiEndTurnVerticalLead = 70.0f;
-	// Keep the existing toolbar identity, but use the free area between the
-	// left terrain/log column and the right-side enemy intent rail.
-	static const FVector2D BattleTopRightToolbarPosition(300.0f, 86.0f);
-	static const FVector2D BattleTopRightToolbarSize(384.0f, 60.0f);
+	static const FVector2D BattleTopRightToolbarPosition(1722.0f, 36.0f);
+	static const FVector2D BattleTopRightToolbarSize(186.0f, 168.0f);
 	static const FVector2D BattleTopRightButtonSize(186.0f, 60.0f);
-	static constexpr float BattleTopRightButtonGap = 12.0f;
+	static constexpr float BattleTopRightButtonGap = 48.0f;
 	static constexpr int32 BattleTopRightToolbarZOrder = 90;
 	static constexpr int32 BattleRetreatModalZOrder = 200;
 	static constexpr float PlayerHandSelectedScale = 1.20f;
@@ -6128,7 +6127,7 @@ UButton* UGameXXKBattleBoardWidget::GetEndTurnButtonForTest() const
 }
 
 #if WITH_DEV_AUTOMATION_TESTS
-UHorizontalBox* UGameXXKBattleBoardWidget::GetBattleTopRightToolbarForTest() const
+UVerticalBox* UGameXXKBattleBoardWidget::GetBattleTopRightToolbarForTest() const
 {
 	return BattleTopRightToolbar;
 }
@@ -7193,11 +7192,14 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 
 	EnemyIntentCardBox = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("BattleEnemyIntentCardBox"));
 	EnemyIntentCardBox->SetVisibility(ESlateVisibility::Collapsed);
-	if (UCanvasPanelSlot* IntentRailSlot = RootCanvas->AddChildToCanvas(EnemyIntentCardBox))
+	// The rail must share the formation's parent; lowering its local Z inside
+	// the controls layer would still leave all enemy cards above the actors.
+	if (UCanvasPanelSlot* IntentRailSlot = BattleDesignStage->AddChildToCanvas(EnemyIntentCardBox))
 	{
 		IntentRailSlot->SetAnchors(FAnchors(EnemyIntentRailAnchorX, 0.0f));
 		IntentRailSlot->SetOffsets(FMargin(-EnemyIntentRailSize.X * 0.5f, 24.0f, EnemyIntentRailSize.X, EnemyIntentRailSize.Y));
 		IntentRailSlot->SetAlignment(FVector2D::ZeroVector);
+		IntentRailSlot->SetZOrder(BattleEnemyCardZOrder);
 	}
 	EnemyIntentCardButtons.Reserve(MaximumVisibleEnemyIntentCards);
 	EnemyIntentSlotLabels.Reserve(MaximumVisibleEnemyIntentCards);
@@ -7301,13 +7303,13 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		ShowcaseBody, ShowcasePortrait, true);
 	EnemyIntentShowcaseBody = ShowcaseBody;
 	EnemyIntentShowcasePortrait = ShowcasePortrait;
-	if (UCanvasPanelSlot* ShowcaseSlot = RootCanvas->AddChildToCanvas(EnemyIntentShowcaseCard))
+	if (UCanvasPanelSlot* ShowcaseSlot = BattleDesignStage->AddChildToCanvas(EnemyIntentShowcaseCard))
 	{
 		ShowcaseSlot->SetAnchors(FAnchors(0.5f, 0.5f, 0.5f, 0.5f));
 		ShowcaseSlot->SetOffsets(FMargin(-EnemyIntentShowcaseCardSize.X * 0.5f, -EnemyIntentShowcaseCardSize.Y * 0.5f,
 			EnemyIntentShowcaseCardSize.X, EnemyIntentShowcaseCardSize.Y));
 		ShowcaseSlot->SetAlignment(FVector2D::ZeroVector);
-		ShowcaseSlot->SetZOrder(40);
+		ShowcaseSlot->SetZOrder(BattleEnemyCardZOrder);
 	}
 
 	EnemyIntentRecoveryButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleEnemyIntentRecoveryButton"));
@@ -7504,8 +7506,8 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		EndTurnSlot->SetAlignment(FVector2D(0.0f, 0.0f));
 	}
 
-	BattleTopRightToolbar = WidgetTree->ConstructWidget<UHorizontalBox>(
-		UHorizontalBox::StaticClass(),
+	BattleTopRightToolbar = WidgetTree->ConstructWidget<UVerticalBox>(
+		UVerticalBox::StaticClass(),
 		TEXT("BattleTopRightToolbar"));
 	AutoBattleButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleAutoPlayButton"));
 	StyleBattleActionButton(AutoBattleButton, FName(TEXT("BattleAutoPlay")));
@@ -7525,10 +7527,10 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	AutoBattleSizeBox->SetWidthOverride(BattleTopRightButtonSize.X);
 	AutoBattleSizeBox->SetHeightOverride(BattleTopRightButtonSize.Y);
 	AutoBattleSizeBox->AddChild(AutoBattleButton);
-	if (UHorizontalBoxSlot* AutoToolbarSlot = BattleTopRightToolbar->AddChildToHorizontalBox(AutoBattleSizeBox))
+	if (UVerticalBoxSlot* AutoToolbarSlot = BattleTopRightToolbar->AddChildToVerticalBox(AutoBattleSizeBox))
 	{
-		AutoToolbarSlot->SetPadding(FMargin(0.0f, 0.0f, BattleTopRightButtonGap, 0.0f));
-		AutoToolbarSlot->SetVerticalAlignment(VAlign_Fill);
+		AutoToolbarSlot->SetPadding(FMargin(0.0f, 0.0f, 0.0f, BattleTopRightButtonGap));
+		AutoToolbarSlot->SetHorizontalAlignment(HAlign_Fill);
 	}
 
 	BattleCloseButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleCloseButton"));
@@ -7548,9 +7550,9 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 	BattleCloseSizeBox->SetWidthOverride(BattleTopRightButtonSize.X);
 	BattleCloseSizeBox->SetHeightOverride(BattleTopRightButtonSize.Y);
 	BattleCloseSizeBox->AddChild(BattleCloseButton);
-	if (UHorizontalBoxSlot* CloseToolbarSlot = BattleTopRightToolbar->AddChildToHorizontalBox(BattleCloseSizeBox))
+	if (UVerticalBoxSlot* CloseToolbarSlot = BattleTopRightToolbar->AddChildToVerticalBox(BattleCloseSizeBox))
 	{
-		CloseToolbarSlot->SetVerticalAlignment(VAlign_Fill);
+		CloseToolbarSlot->SetHorizontalAlignment(HAlign_Fill);
 	}
 	if (UCanvasPanelSlot* ToolbarSlot = RootCanvas->AddChildToCanvas(BattleTopRightToolbar))
 	{
