@@ -242,6 +242,38 @@ bool FGameXXKTargetArcUpwardTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTargetTrapezoidTrailTest,
+	"GameXXK.MVP.Battle.TargetTrapezoidTrail",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FGameXXKTargetTrapezoidTrailTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Start(200, 500);
+	for (const FVector2D End : {FVector2D(1400,500), FVector2D(20,700), FVector2D(200,100)})
+	{
+		const auto Trail = GameXXKTargetingPresentation::BuildTrapezoidTrail(Start, End);
+		TestTrue(TEXT("the trail uses at most eight separated blocks"), Trail.Num() >= 1 && Trail.Num() <= 8);
+		const FVector2D Direction = (End - Start).GetSafeNormal();
+		float PreviousEnd = 0;
+		float PreviousWidth = MAX_flt;
+		for (const auto& Dash : Trail)
+		{
+			const float Back = FVector2D::DotProduct(Dash.Start - Start, Direction);
+			const float Front = FVector2D::DotProduct(Dash.End - Start, Direction);
+			TestTrue(TEXT("trapezoids progress toward the pointer with visible gaps"), Back > PreviousEnd && Front > Back);
+			TestTrue(TEXT("each trapezoid narrows at its forward edge"), Dash.BackHalfWidth > Dash.FrontHalfWidth && Dash.FrontHalfWidth > 0);
+			TestTrue(TEXT("successive blocks become thinner"), Dash.BackHalfWidth < PreviousWidth);
+			PreviousEnd = Front;
+			PreviousWidth = Dash.BackHalfWidth;
+		}
+		TestTrue(TEXT("the final block leaves space for the large gemstone head"),
+			Trail.IsEmpty() || (End - Trail.Last().End).Size() > 100);
+	}
+	TestTrue(TEXT("very short aims do not cram blocks into the arrowhead"),
+		GameXXKTargetingPresentation::BuildTrapezoidTrail(Start, Start + FVector2D(70, 0)).IsEmpty());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 	FGameXXKBattleTargetPointerViewportCoordinatesTest,
 	"GameXXK.MVP.Battle.TargetPointerViewportCoordinates",
@@ -536,7 +568,7 @@ bool FGameXXKBattleBoardWidgetTest::RunTest(const FString& Parameters)
 		ScaledWidgetLocalSize);
 	TestEqual(TEXT("battle board converts scaled Slate absolute cursor to widget-local targeting coordinates"), ScaledLocalCursorPosition, FVector2D(400.0f, 200.0f));
 	TestTrue(TEXT("battle targeting arrow head asset is loaded"), BattleWidget->GetTargetingArrowHeadResourcePathForTest().Contains(TEXT("T_BattleTargetArrowHead")));
-	TestEqual(TEXT("battle targeting uses all generated ink dab pieces"), BattleWidget->GetTargetingInkDabTextureCountForTest(), 12);
+	TestEqual(TEXT("gemstone targeting does not load retired ink dots"), BattleWidget->GetTargetingInkDabTextureCountForTest(), 0);
 	TestEqual(TEXT("the active battle hand preserves the approved current PSD card size"), BattleWidget->GetCardFrameRuntimeSizeForTest(), FVector2D(206.0f, 285.0f));
 	{
 		// The reward row shares the same 206x285 card faces, so its container must

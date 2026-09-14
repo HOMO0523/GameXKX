@@ -19,4 +19,58 @@ namespace GameXXKTargetingPresentation
 		// Measured visible tip of the versioned 1254px gemstone sprite.
 		return FVector2D(Size.X * (1148.5 / 1254.0), Size.Y * (625.0 / 1254.0));
 	}
+
+	struct FTrapezoidDash
+	{
+		FVector2D Start;
+		FVector2D End;
+		float BackHalfWidth;
+		float FrontHalfWidth;
+	};
+
+	inline TArray<FTrapezoidDash> BuildTrapezoidTrail(const FVector2D Start, const FVector2D End)
+	{
+		TArray<FTrapezoidDash> Result;
+		const float Distance = static_cast<float>((End - Start).Size());
+		const float SourceGap = 20.0f;
+		const float HeadGap = ArrowSize().X * .86f;
+		if (Distance < 8.0f) return Result;
+		const FVector2D Control = CurveControl(Start, End);
+		constexpr int32 SampleCount = 48;
+		FVector2D Samples[SampleCount + 1];
+		float Lengths[SampleCount + 1] = {};
+		Samples[0] = Start;
+		for (int32 Index = 1; Index <= SampleCount; ++Index)
+		{
+			const float T = static_cast<float>(Index) / SampleCount;
+			const float U = 1 - T;
+			Samples[Index] = Start * (U * U) + Control * (2 * U * T) + End * (T * T);
+			Lengths[Index] = Lengths[Index - 1] + static_cast<float>((Samples[Index] - Samples[Index - 1]).Size());
+		}
+		const float Available = Lengths[SampleCount] - SourceGap - HeadGap;
+		if (Available < 36.0f) return Result;
+		const int32 Count = FMath::Clamp(FMath::RoundToInt(Available / 140.0f), 1, 8);
+		const float CellLength = Available / Count;
+		const auto Point = [&](const float AlongCurve)
+		{
+			for (int32 Index = 1; Index <= SampleCount; ++Index)
+			{
+				if (Lengths[Index] >= AlongCurve)
+				{
+					const float T = (AlongCurve - Lengths[Index - 1]) / FMath::Max(Lengths[Index] - Lengths[Index - 1], .001f);
+					return FMath::Lerp(Samples[Index - 1], Samples[Index], T);
+				}
+			}
+			return End;
+		};
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			const float Progress = Count > 1 ? static_cast<float>(Index) / (Count - 1) : .5f;
+			const float Length = FMath::Min(CellLength * .74f, FMath::Lerp(58.0f, 28.0f, Progress));
+			const float Center = SourceGap + (Index + .5f) * CellLength;
+			const float Width = FMath::Lerp(14.0f, 5.0f, Progress);
+			Result.Add({Point(Center - Length * .5f), Point(Center + Length * .5f), Width, Width * .72f});
+		}
+		return Result;
+	}
 }

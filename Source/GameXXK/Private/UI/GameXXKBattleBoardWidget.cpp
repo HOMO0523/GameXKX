@@ -52,6 +52,7 @@
 #include "Input/Events.h"
 #include "InputCoreTypes.h"
 #include "Rendering/DrawElementTypes.h"
+#include "Rendering/SlateRenderer.h"
 #include "MVP/GameXXKLevelFlow.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -100,7 +101,6 @@ namespace
 	static const FName TutorialPlayerTurnReadyEvent(TEXT("Event.Tutorial01.PlayerTurnReady"));
 	static const FName TutorialAutoEnabledEvent(TEXT("Event.Tutorial01.AutoBattleEnabled"));
 	static constexpr int32 TutorialGuideOverlayZOrder = 1000;
-	static constexpr int32 TargetingInkDabCount = 12;
 	static constexpr int32 MaximumVisibleHandCards = 5;
 	static constexpr int32 MaximumVisibleEnemyIntentCards = 3;
 	static constexpr int32 MaximumVisibleRewardCards = 3;
@@ -1124,20 +1124,6 @@ namespace
 			return MeasuredSize.Y;
 		}
 		return TotalEstimatedHeight;
-	}
-
-	static FString BuildTargetingInkDabTexturePath(int32 DabIndex)
-	{
-		return FString::Printf(
-			TEXT("/Game/GameXXK/UI/Battle/Textures/T_BattleTargetInkDab_%02d.T_BattleTargetInkDab_%02d"),
-			DabIndex,
-			DabIndex);
-	}
-
-	static FVector2D QuadraticBezierPoint(const FVector2D& Start, const FVector2D& Control, const FVector2D& End, float T)
-	{
-		const float OneMinusT = 1.0f - T;
-		return OneMinusT * OneMinusT * Start + 2.0f * OneMinusT * T * Control + T * T * End;
 	}
 
 	FString DescribeEnemyIntentStatus(const EGameXXKCardStatus Status)
@@ -3921,7 +3907,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 	bool bParentEnabled) const
 {
 	int32 MaxLayerId = Super::NativePaint(Args, AllottedGeometry, MyCullingRect, OutDrawElements, LayerId, InWidgetStyle, bParentEnabled);
-	if (!IsTargetingBattleActionForTest() || !TargetingArrowHeadTexture || !TargetingArrowHeadMaterial || TargetingInkDabTextures.IsEmpty())
+	if (!IsTargetingBattleActionForTest() || !TargetingArrowHeadTexture || !TargetingArrowHeadMaterial)
 	{
 		return MaxLayerId;
 	}
@@ -3942,28 +3928,54 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 	}
 
 	const FVector2D Control = GameXXKTargetingPresentation::CurveControl(Start, End);
-	const int32 SegmentCount = FMath::Clamp(FMath::RoundToInt(Distance / 58.0f), 5, 24);
-	const int32 DabLayer = MaxLayerId + 1;
-
-	for (int32 SegmentIndex = 0; SegmentIndex < SegmentCount; ++SegmentIndex)
+	const int32 TrailLayer = MaxLayerId + 1;
+	TArray<FSlateVertex> TrailVertices;
+	TArray<SlateIndex> TrailIndices;
+	const auto Fill = [&](const TArray<FVector2D>& Points, const FLinearColor Color)
 	{
-		UTexture2D* DabTexture = TargetingInkDabTextures[SegmentIndex % TargetingInkDabTextures.Num()].Get();
-		if (!DabTexture)
+		const SlateIndex Base = static_cast<SlateIndex>(TrailVertices.Num());
+		for (const FVector2D Point : Points)
 		{
-			continue;
+			TrailVertices.Add(FSlateVertex::Make<ESlateVertexRounding::Disabled>(
+				AllottedGeometry.GetAccumulatedRenderTransform(), FVector2f(Point), FVector2f(.5f, .5f), Color.ToFColor(true)));
 		}
-
-		const float T = (static_cast<float>(SegmentIndex) + 0.5f) / static_cast<float>(SegmentCount);
-		const FVector2D Point = QuadraticBezierPoint(Start, Control, End, T);
-		const float Size = FMath::Lerp(18.0f, 30.0f, FMath::Sin(T * PI));
-		FSlateBrush DabBrush = BuildTextureBrush(DabTexture, FVector2D(Size, Size), FLinearColor(1.0f, 1.0f, 1.0f, 0.88f));
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			DabLayer,
-			AllottedGeometry.ToPaintGeometry(FVector2D(Size, Size), FSlateLayoutTransform(Point - FVector2D(Size * 0.5f, Size * 0.5f))),
-			&DabBrush,
-			ESlateDrawEffect::None,
-			FLinearColor::White);
+		for (int32 Index = 1; Index + 1 < Points.Num(); ++Index)
+		{
+			TrailIndices.Add(Base);
+			TrailIndices.Add(Base + static_cast<SlateIndex>(Index));
+			TrailIndices.Add(Base + static_cast<SlateIndex>(Index + 1));
+		}
+	};
+	for (const auto& Dash : GameXXKTargetingPresentation::BuildTrapezoidTrail(Start, End))
+	{
+		const FVector2D Axis = (Dash.End - Dash.Start).GetSafeNormal();
+		const FVector2D Normal(-Axis.Y, Axis.X);
+		const float DashLength = static_cast<float>((Dash.End - Dash.Start).Size());
+		const auto Corners = [&](const float Inset)
+		{
+			const float Fraction = Inset / FMath::Max(DashLength, 1.0f);
+			const FVector2D Back = FMath::Lerp(Dash.Start, Dash.End, Fraction);
+			const FVector2D Front = FMath::Lerp(Dash.Start, Dash.End, 1.0f - Fraction);
+			const float BackWidth = FMath::Max(.5f, Dash.BackHalfWidth - Inset);
+			const float FrontWidth = FMath::Max(.5f, Dash.FrontHalfWidth - Inset);
+			return TArray<FVector2D>{Back - Normal * BackWidth, Front - Normal * FrontWidth,
+				Front + Normal * FrontWidth, Back + Normal * BackWidth};
+		};
+		Fill(Corners(0), FLinearColor(.008f, .008f, .012f, .98f));
+		Fill(Corners(1.1f), FLinearColor(1.0f, .55f, .06f, .98f));
+		const TArray<FVector2D> Face = Corners(2.3f);
+		const FVector2D Center = (Dash.Start + Dash.End) * .5;
+		Fill({Face[0], Face[1], Center}, FLinearColor(.30f, .78f, 1.0f, .98f));
+		Fill({Face[1], Face[2], Center}, FLinearColor(.02f, .32f, .80f, .98f));
+		Fill({Face[2], Face[3], Center}, FLinearColor(.015f, .065f, .22f, .98f));
+		Fill({Face[3], Face[0], Center}, FLinearColor(.01f, .17f, .55f, .98f));
+	}
+	if (!TrailVertices.IsEmpty())
+	{
+		const FSlateResourceHandle White = FSlateApplication::Get().GetRenderer()->GetResourceHandle(
+			*FCoreStyle::Get().GetBrush(TEXT("WhiteBrush")));
+		FSlateDrawElement::MakeCustomVerts(OutDrawElements, TrailLayer, White,
+			TrailVertices, TrailIndices, nullptr, 0, 0);
 	}
 
 	const FVector2D ArrowSize = GameXXKTargetingPresentation::ArrowSize();
@@ -3974,7 +3986,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 	const FVector2D EndTangent = (End - Control).GetSafeNormal();
 	FSlateDrawElement::MakeRotatedBox(
 		OutDrawElements,
-		DabLayer + 1,
+		TrailLayer + 1,
 		AllottedGeometry.ToPaintGeometry(ArrowSize, FSlateLayoutTransform(ArrowPosition)),
 		&ArrowBrush,
 		ESlateDrawEffect::None,
@@ -3985,7 +3997,7 @@ int32 UGameXXKBattleBoardWidget::NativePaint(
 		FSlateDrawElement::RelativeToElement,
 		FLinearColor::White);
 
-	return DabLayer + 1;
+	return TrailLayer + 1;
 }
 
 void UGameXXKBattleBoardWidget::RefreshFromState()
@@ -6501,16 +6513,8 @@ FString UGameXXKBattleBoardWidget::GetTargetingArrowHeadResourcePathForTest()
 
 int32 UGameXXKBattleBoardWidget::GetTargetingInkDabTextureCountForTest()
 {
-	EnsureBattleVisualResourcesLoaded();
-	int32 LoadedCount = 0;
-	for (const TObjectPtr<UTexture2D>& DabTexture : TargetingInkDabTextures)
-	{
-		if (DabTexture)
-		{
-			++LoadedCount;
-		}
-	}
-	return LoadedCount;
+	// Legacy diagnostic seam: the gemstone trail no longer loads ink atlases.
+	return 0;
 }
 
 FString UGameXXKBattleBoardWidget::GetCardFrameResourcePathForTest()
@@ -10444,14 +10448,6 @@ void UGameXXKBattleBoardWidget::EnsureBattleVisualResourcesLoaded()
 	if (!TargetingArrowHeadMaterial)
 	{
 		TargetingArrowHeadMaterial = LoadObject<UMaterialInterface>(nullptr, TargetingArrowHeadMaterialPath);
-	}
-	if (TargetingInkDabTextures.Num() != TargetingInkDabCount)
-	{
-		TargetingInkDabTextures.Reset(TargetingInkDabCount);
-		for (int32 DabIndex = 0; DabIndex < TargetingInkDabCount; ++DabIndex)
-		{
-			TargetingInkDabTextures.Add(LoadObject<UTexture2D>(nullptr, *BuildTargetingInkDabTexturePath(DabIndex)));
-		}
 	}
 	if (RelicIconTextures.IsEmpty())
 	{

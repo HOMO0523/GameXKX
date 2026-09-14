@@ -1371,9 +1371,6 @@ private:
 	TObjectPtr<class UMaterialInterface> TargetingArrowHeadMaterial;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<UTexture2D>> TargetingInkDabTextures;
-
-	UPROPERTY(Transient)
 	EGameXXKBattleInteractionMode InteractionMode = EGameXXKBattleInteractionMode::Hidden;
 
 	UPROPERTY(Transient)
