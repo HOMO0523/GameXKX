@@ -13,6 +13,8 @@
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKRelicBarWidget.h"
+#include "Components/CanvasPanelSlot.h"
+#include "Components/SizeBox.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/MemoryWriter.h"
 #include "Serialization/ObjectAndNameAsStringProxyArchive.h"
@@ -337,6 +339,21 @@ bool FGameXXKRelicBarWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the bar has a fixed six-column contract"), Bar->GetColumnCountForTest(), 6);
 	TestEqual(TEXT("seven relics wrap to two rows"), Bar->CalculateRowCountForTest(7), 2);
 	TestTrue(TEXT("every generated icon owns a hover tooltip"), Bar->UsesTooltipsForTest());
+	const UWidget* Overflow = Bar->GetWidgetFromName(TEXT("RelicBarOverflow"));
+	const auto* Slot = Overflow ? Cast<UCanvasPanelSlot>(Overflow->Slot) : nullptr;
+	const auto* DesignSize = Cast<USizeBox>(Bar->GetWidgetFromName(TEXT("RelicBarDesignSize")));
+	TestTrue(TEXT("relics use the battle's 1920x1080 design stage"), DesignSize
+		&& DesignSize->GetWidthOverride() == 1920 && DesignSize->GetHeightOverride() == 1080);
+	if (TestNotNull(TEXT("relic strip has a positioned canvas slot"), Slot))
+	{
+		const FVector2D Min = Slot->GetPosition();
+		const FVector2D Max = Min + Slot->GetSize();
+		TestTrue(TEXT("relics lie within the user's upper-left marked area"),
+			Min.X >= 340 && Min.Y >= 24 && Max.X <= 880 && Max.Y <= 232);
+		TestTrue(TEXT("relics clear the compact battle log horizontally"), Min.X > 246);
+		TestTrue(TEXT("relics clear the expanded battle log vertically"), Max.Y < 334);
+		TestEqual(TEXT("relics stay two rows high before scrolling"), Slot->GetSize().Y, 116.0);
+	}
 	return true;
 #endif
 }

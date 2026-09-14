@@ -8,6 +8,8 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/SizeBox.h"
+#include "Components/ScaleBox.h"
+#include "Components/ScaleBoxSlot.h"
 #include "Components/ScrollBox.h"
 #include "UI/GameXXKInRunUiStyle.h"
 #include "Components/TextBlock.h"
@@ -50,17 +52,43 @@ void UGameXXKRelicBarWidget::EnsureWidgetTree()
 	if (!WidgetTree || RootCanvas) return;
 	RootCanvas = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RelicBarRootCanvas"));
 	WidgetTree->RootWidget = RootCanvas;
+	RootCanvas->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	// Match the battle's centered 1920x1080 safe stage, including letterboxing.
+	// Only the compact icon panel receives input; the full-screen host stays transparent.
+	UScaleBox* SafeStage = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("RelicBarSafeStage"));
+	SafeStage->SetStretch(EStretch::ScaleToFit);
+	SafeStage->SetStretchDirection(EStretchDirection::Both);
+	SafeStage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	USizeBox* DesignSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("RelicBarDesignSize"));
+	DesignSize->SetWidthOverride(1920.0f);
+	DesignSize->SetHeightOverride(1080.0f);
+	DesignSize->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UCanvasPanel* DesignStage = WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(), TEXT("RelicBarDesignStage"));
+	DesignStage->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	DesignSize->SetContent(DesignStage);
+	SafeStage->SetContent(DesignSize);
+	if (auto* ContentSlot = Cast<UScaleBoxSlot>(DesignSize->Slot))
+	{
+		ContentSlot->SetHorizontalAlignment(HAlign_Center);
+		ContentSlot->SetVerticalAlignment(VAlign_Center);
+	}
+	if (auto* SafeStageSlot = RootCanvas->AddChildToCanvas(SafeStage))
+	{
+		SafeStageSlot->SetAnchors(FAnchors(0, 0, 1, 1));
+		SafeStageSlot->SetOffsets(FMargin(0));
+	}
 	RelicGrid = WidgetTree->ConstructWidget<UUniformGridPanel>(UUniformGridPanel::StaticClass(), TEXT("RelicBarSixColumnGrid"));
 	RelicGrid->SetSlotPadding(FMargin(SlotGap * 0.5f));
 	UScrollBox* Scroll = WidgetTree->ConstructWidget<UScrollBox>(UScrollBox::StaticClass(),TEXT("RelicBarOverflow"));
 	Scroll->SetOrientation(Orient_Vertical); FGameXXKPartyDeckUiStyle::ApplyBackpackInkScrollBar(Scroll,12.0f,36.0f);
 	Scroll->SetConsumeMouseWheel(EConsumeMouseWheel::WhenScrollingPossible);
 	Scroll->AddChild(RelicGrid);
-	if (UCanvasPanelSlot* GridCanvasSlot = RootCanvas->AddChildToCanvas(Scroll))
+	if (UCanvasPanelSlot* GridCanvasSlot = DesignStage->AddChildToCanvas(Scroll))
 	{
-		GridCanvasSlot->SetAnchors(FAnchors(1.0f,0.0f));
-		GridCanvasSlot->SetAlignment(FVector2D(1.0f,0.0f));
-		GridCanvasSlot->SetPosition(FVector2D(-24.0f,175.0f));
+		GridCanvasSlot->SetAnchors(FAnchors(0.0f,0.0f));
+		GridCanvasSlot->SetAlignment(FVector2D::ZeroVector);
+		// Compact log ends at X=246; expanded log starts at Y=334.
+		GridCanvasSlot->SetPosition(FVector2D(352.0f,36.0f));
 		GridCanvasSlot->SetSize(FVector2D(ColumnCount*(IconSize+SlotGap)+20.0f,116.0f));
 		GridCanvasSlot->SetZOrder(1);
 	}

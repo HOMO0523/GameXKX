@@ -96,3 +96,15 @@
 - 截图：`Saved/PartyLeft/Live/right-toolbar-behind-cards.png`。
 - 同一编辑器先执行 ControllerInputBridge 再运行 PIE 时，停止阶段出现 `/Engine/Transient.Texture2DArray_0` 引用断言。该旧测试在 `GetTransientPackage()` 中 `CreateWorld(EWorldType::PIE)`，引擎会标记该包为 PIE；记录保留在 `mixed-automation-pie-stop.log`。新进程不预跑自动化，重复战斗、自动、还原、停止后通过，见 `clean-process-lifecycle.json`，未改动这项既有夹具。
 - 现有 43 份玩家存档哈希不变；新进程 PIE 停止、MCP 保存脏包 0。未更新 Shipping 包。
+
+## 追加：遗物栏移到左上并避开战报
+
+按照用户红框，遗物栏在统一的 1920×1080 安全舞台内放到 (352,36)，尺寸维持 368×116，六列两行，超过十二件仍可滚动。独立遗物层增加与战斗相同的居中 ScaleToFit 布局，随分辨率、DPI 和留黑一起缩放；满屏容器均为 SelfHitTestInvisible，不拦截外侧战报或战斗控件。
+
+遗物区域为 (352,36)～(720,152)。收起战报最右端 X=246，水平留空至少 106；展开战报从 Y=334 开始，垂直留空 182。因此战报原有位置、尺寸、展开方式和点击功能无需改变。
+
+- `Saved/RelicBarPlacement/build.log`：冷 UBT 成功。
+- `automation-results.json`：SixColumnWrapAndTooltip、FullscreenRootDoesNotBlockBattleClicks 2/2，通过位置/两行布局/战报避让/全屏输入透明断言，无错误或警告。
+- 隔离 Dev 会话实际取得 13 件遗物，并真实结算攻击生成战报；普通与展开态可见，布局探针 `compact.json`、`expanded.json` 均不重叠。比较使用共用设计空间；非 Tick 遗物控件的缓存几何可能为零，没有拿零矩形充当屏幕测量。
+- 完整 Slate 窗口截图：`Saved/RelicBarPlacement/compact.png`、`expanded.png`，包含独立遗物层和战报，已做视觉检查。
+- 现有 43 份玩家存档哈希不变；Dev 会话还原、PIE 停止、脏包 0，并正常关闭隔离编辑器。未更改遗物规则、原始美术或 Shipping 包。

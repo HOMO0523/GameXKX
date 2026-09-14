@@ -7,7 +7,7 @@
 class UCanvasPanel;
 class UUniformGridPanel;
 
-/** Shared upper-right route/battle relic inventory. Newest relics render first, six per row. */
+/** Shared upper-left route/battle relic inventory, clear of the battle log. Six icons per row. */
 UCLASS(Blueprintable)
 class GAMEXXK_API UGameXXKRelicBarWidget : public UGameXXKMVPWidgetBase
 {
