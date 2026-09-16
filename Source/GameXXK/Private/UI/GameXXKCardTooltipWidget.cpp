@@ -47,6 +47,23 @@ namespace
 		}
 		return Brush;
 	}
+
+	/**
+	 * Slate-tracked modifier state.
+	 *
+	 * These used to poll ::GetAsyncKeyState on Windows, which reads the physical
+	 * keyboard outside Slate's event stream: a key-up delivered while the user was
+	 * hovering a rebuilt card could be missed, leaving the tooltip stuck in the
+	 * detail/pill mode. The card hosts already synchronize from a heartbeat every
+	 * tick, so reading Slate's own modifier state keeps press and release in the
+	 * same event system that delivers the hover and the key events.
+	 */
+	FModifierKeysState ReadSlateModifierKeys()
+	{
+		return FSlateApplication::IsInitialized()
+			? FSlateApplication::Get().GetModifierKeys()
+			: FModifierKeysState();
+	}
 }
 
 TSharedRef<SWidget> UGameXXKCardTooltipWidget::RebuildWidget()
@@ -57,28 +74,18 @@ TSharedRef<SWidget> UGameXXKCardTooltipWidget::RebuildWidget()
 
 bool UGameXXKCardTooltipWidget::IsPhysicalShiftDown()
 {
-#if PLATFORM_WINDOWS
-	return (::GetAsyncKeyState(VK_LSHIFT) & 0x8000) != 0
-		|| (::GetAsyncKeyState(VK_RSHIFT) & 0x8000) != 0;
-#else
-	return FSlateApplication::IsInitialized()
-		&& FSlateApplication::Get().GetModifierKeys().IsShiftDown();
-#endif
+	return ReadSlateModifierKeys().IsShiftDown();
 }
 
 bool UGameXXKCardTooltipWidget::IsPhysicalControlDown()
 {
-#if PLATFORM_WINDOWS
-	return (::GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0
-		|| (::GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
-#else
-	return FSlateApplication::IsInitialized()
-		&& FSlateApplication::Get().GetModifierKeys().IsControlDown();
-#endif
+	return ReadSlateModifierKeys().IsControlDown();
 }
 
 bool UGameXXKCardTooltipWidget::IsPhysicalEscapeDown()
 {
+	// Escape is not a modifier and is outside this change's scope; keep the
+	// existing platform behaviour exactly as it was.
 #if PLATFORM_WINDOWS
 	return (::GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0;
 #else

@@ -7155,19 +7155,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryTaskDrawer()
 	for(int32 Index:Visible)
 	{
 		const auto& C=Courses[Index];const bool Selected=Index==SelectedAcademyCourseIndex;
+		// Locked courses stay visible but non-interactive, with the missing
+		// prerequisite as the tooltip, instead of failing silently on click.
+		const FGameXXKAcademyEligibility Eligibility=Subsystem
+			?FGameXXKAcademyRules::EvaluateEligibility(Subsystem->GetRuntimeState(),C)
+			:FGameXXKAcademyEligibility();
 		auto* Row=WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass(),*FString::Printf(TEXT("TaskCourse_%d"),Index));
-		Row->SetToolTipText(GameXXKLocalization::Localize(C.Summary));
+		Row->SetToolTipText(Eligibility.bAvailable
+			?GameXXKLocalization::Localize(C.Summary)
+			:GameXXKLocalization::Localize(Eligibility.Reason));
 		Row->Configure(this,1920+Index);Row->SetStyle(MakeTextureButtonStyle(Selected?CharacterTabSelectedTexturePath:CharacterTabNormalTexturePath,FVector2D(280,62),FMargin(.08f)));
+		Row->SetIsEnabled(Eligibility.bAvailable);
 		auto* Layout=WidgetTree->ConstructWidget<UHorizontalBox>();Row->SetContent(Layout);
 		auto* Art=WidgetTree->ConstructWidget<UImage>();Art->SetBrush(MakeTextureBrush(*Portrait(C),FVector2D(42,42)));
+		if(!Eligibility.bAvailable)Art->SetColorAndOpacity(FLinearColor(1,1,1,0.45f));
 		auto* ArtSlot=Layout->AddChildToHorizontalBox(Art);ArtSlot->SetPadding(FMargin(3,0,12,0));ArtSlot->SetVerticalAlignment(VAlign_Center);
-		auto* Text=MakeText(WidgetTree,GameXXKLocalization::Source(ShortName(C)),24,Ink);Text->SetAutoWrapText(false);
+		auto* Text=MakeText(WidgetTree,GameXXKLocalization::Source(ShortName(C)),24,Eligibility.bAvailable?Ink:FLinearColor(Ink.R,Ink.G,Ink.B,0.45f));Text->SetAutoWrapText(false);
 		auto* TextSlot=Layout->AddChildToHorizontalBox(Text);TextSlot->SetVerticalAlignment(VAlign_Center);TextSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 		Layout->SetVisibility(ESlateVisibility::HitTestInvisible);
 		auto* RowSize=WidgetTree->ConstructWidget<USizeBox>();RowSize->SetHeightOverride(62);RowSize->SetContent(Row);
 		Scroll->AddChild(RowSize);ActionButtons.Add(Row);
 	}
 	const auto& Selected=Courses[SelectedAcademyCourseIndex];
+	const FGameXXKAcademyEligibility SelectedEligibility=Subsystem
+		?FGameXXKAcademyRules::EvaluateEligibility(Subsystem->GetRuntimeState(),Selected)
+		:FGameXXKAcademyEligibility();
 	const int32 Completed=Progress?Progress->AcademyCompletedLessons.FindRef(Selected.Id):0;
 	const bool Rewarded=Progress && Progress->AcademyRewardedCourses.Contains(Selected.Id);
 	auto* PortraitImage=WidgetTree->ConstructWidget<UImage>();PortraitImage->SetBrush(MakeTextureBrush(*Portrait(Selected),FVector2D(112,112)));
@@ -7179,7 +7191,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryTaskDrawer()
 	AddCanvas(RootCanvas,Coin,FVector2D(37,832),FVector2D(34,34));
 	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("100000")),30,FLinearColor(.55f,.30f,.055f,1)),FVector2D(81,829),FVector2D(149,40));
 	AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Source(Rewarded?TEXT("已领取"):TEXT("首通")),20,Ink),FVector2D(238,837),FVector2D(94,28));
-	Button(TEXT("TaskBeginCourse"),1902,Completed>=Selected.Lessons.Num()?TEXT("重温教程"):Completed>0?TEXT("继续教程"):TEXT("开始教程"),FVector2D(40,878),FVector2D(282,40),true);
+	auto* BeginCourse=Button(TEXT("TaskBeginCourse"),1902,Completed>=Selected.Lessons.Num()?TEXT("重温教程"):Completed>0?TEXT("继续教程"):TEXT("开始教程"),FVector2D(40,878),FVector2D(282,40),SelectedEligibility.bAvailable);
+	if(!SelectedEligibility.bAvailable)
+	{
+		// Say which prerequisite is missing; the button stays disabled.
+		BeginCourse->SetToolTipText(GameXXKLocalization::Localize(SelectedEligibility.Reason));
+		AddCanvas(RootCanvas,MakeText(WidgetTree,GameXXKLocalization::Localize(SelectedEligibility.Reason),18,Ink),FVector2D(30,922),FVector2D(304,30));
+	}
 }
 
 
@@ -7472,6 +7490,18 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildBackpackPanel(const bool bForm
 		AccessibleLabel->SetRenderOpacity(0.0f);
 		CloseButton->SetContent(AccessibleLabel);
 	}
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::IsAcademyCourseAvailableForTest(const FName CourseId) const
+{
+	const UGameXXKMVPSubsystem* Subsystem=ResolveMVPSubsystem();
+	return Subsystem && FGameXXKAcademyRules::EvaluateEligibility(Subsystem->GetRuntimeState(),CourseId).bAvailable;
+}
+
+FText UGameXXKDesktopTrainingWorkbenchWidget::GetAcademyCourseBlockReasonForTest(const FName CourseId) const
+{
+	const UGameXXKMVPSubsystem* Subsystem=ResolveMVPSubsystem();
+	return Subsystem ? FGameXXKAcademyRules::EvaluateEligibility(Subsystem->GetRuntimeState(),CourseId).Reason : FText::GetEmpty();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::BuildSharedGoldIndicator()

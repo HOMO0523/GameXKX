@@ -5,6 +5,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKEnemyCatalog.h"
 #include "GameXXKEnemyText.h"
+#include "GameXXKEquipmentRules.h"
 #include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKResistanceRules.h"
 #include "Serialization/MemoryReader.h"
@@ -23,18 +24,38 @@ namespace
 	{
 		State=GameXXKPermanentPartyTestFixtures::MakeStartedState();State.PlayerLevel=100;
 		const auto* Sorcerer=State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([](const auto& C){return C.Role==EGameXXKCharacterRole::Sorcerer;});
-		const auto* Healer=State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([](const auto& C){return C.Role==EGameXXKCharacterRole::Healer;});
-		if(!Sorcerer || !Healer){Test.AddError(TEXT("Siphon fixture requires the two named role templates"));return false;}
-		Party={TEXT("Hero"),Sorcerer->InstanceId,Healer->InstanceId};
-		State.CardRun.OrderedFormation.Members={{EGameXXKPartyMemberKind::Hero,Party[0]},{EGameXXKPartyMemberKind::PermanentCompanion,Party[1]},{EGameXXKPartyMemberKind::PermanentCompanion,Party[2]}};
+		if(!Sorcerer){Test.AddError(TEXT("Siphon fixture requires the sorcerer role template"));return false;}
+		// A formation carries at most one PermanentCompanion, so the third member
+		// must come from the QuestNpc slot. Two companions silently left the second
+		// one unmaterialized, which made Find() return null.
+		const FName NpcId(TEXT("Npc.YueBai"));
+		FString Error;
+		// Pick the NPC's mana-cost cards explicitly. The auto-picked three-card
+		// loadout can include the single zero-cost card, and the save-resume case
+		// needs a carried card that can actually be paid for.
+		TArray<FName> NpcCards;
+		for(const FGameXXKCardDefinition& Card:FGameXXKCardCatalog::GetCardDefinitionsForOwner(NpcId))
+			if(Card.ManaCost>0 && NpcCards.Num()<3)NpcCards.Add(Card.Id);
+		if(NpcCards.Num()!=3){Test.AddError(TEXT("Siphon fixture needs three mana-cost task-NPC cards"));return false;}
+		if(!FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(State,NpcId,NpcCards,&Error))
+		{Test.AddError(Error.IsEmpty()?TEXT("Siphon fixture could not deploy its task NPC"):Error);return false;}
+		// The hero's battle UnitId is the hero character id ("Player"), not the
+		// card-owner key "Hero"; using the latter made Find() return null.
+		Party={FGameXXKEquipmentRules::HeroCharacterId(),Sorcerer->InstanceId,NpcId};
+		State.CardRun.OrderedFormation.Members={{EGameXXKPartyMemberKind::Hero,Party[0]},{EGameXXKPartyMemberKind::PermanentCompanion,Party[1]},{EGameXXKPartyMemberKind::QuestNpc,Party[2]}};
 		FGameXXKPartyFormationRules::ProjectCompatibility(State);
+		State.CardRun.PartySelection.QuestNpcProgressions.FindOrAdd(Party[2]).Level=100;
 		const auto* Definition=FGameXXKEnemyCatalog::Find(DefinitionId);if(!Definition)return false;
 		FGameXXKBattleRuntimeUnit Enemy;Enemy.Id=EnemyId;Enemy.EnemyDefinitionId=DefinitionId;Enemy.DisplayName=Definition->DisplayName;
 		Enemy.HP=Enemy.MaxHP=10000;Enemy.Attack=100;Enemy.Defense=0;Enemy.Speed=8;Enemy.bEnemy=true;Enemy.BattleSlotNumber=1;Enemy.CombatLevel=100;
 		State.ActiveBattleEnemies={Enemy};State.bHasActiveBattle=true;State.ActiveBattleNodeId=INDEX_NONE;State.Screen=EGameXXKScreen::Battle;
-		FString Error;const int32 Percent=Difficulty==EGameXXKEnemyDifficulty::Hell?150:Difficulty==EGameXXKEnemyDifficulty::Hard?125:100;
+		const int32 Percent=Difficulty==EGameXXKEnemyDifficulty::Hell?150:Difficulty==EGameXXKEnemyDifficulty::Hard?125:100;
 		if(!FGameXXKCardBattleAdapter::BeginCardBattle(State,Definition->Tier==EGameXXKEnemyTier::Boss?EGameXXKNodeKind::Boss:EGameXXKNodeKind::Battle,EGameXXKCardTerrain::Plain,71831,&Error,Percent)){Test.AddError(Error);return false;}
 		auto& Runtime=State.CardRun.ActiveBattle;
+		// Fail as a test error rather than aborting the whole Automation process
+		// if the party ids ever stop matching the materialized battle UnitIds.
+		for(const FName Expected:Party)
+			if(!Find(State,Expected)){Test.AddError(FString::Printf(TEXT("siphon fixture is missing party unit %s"),*Expected.ToString()));return false;}
 		for(auto& U:Runtime.Units)if(U.Side==EGameXXKCardTargetSide::Party){U.HP=U.MaxHP=10000;U.Defense=0;U.Armor=0;U.Attack=1;U.Mana=U.MaxMana=20;U.Statuses.Reset();}
 		TArray<FGameXXKCardDamageResult> Dots;
 		if(!GameXXKCardRules::EndPlayerCardPhase(Runtime,Dots,&Error)){Test.AddError(Error);return false;}
@@ -115,13 +136,34 @@ bool FGameXXKManaSiphonSaveTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("saved intent drains only the remaining three"),Find(Resumed,Party[1])->Mana,0);
 	TestEqual(TEXT("source profile survives the save"),Find(Resumed,EnemyId)->InnateResistanceBasisPoints.FindRef(EGameXXKCardDamageElement::Fire),2000);
 	auto Check=Resumed.CardRun.ActiveBattle;Check.Phase=EGameXXKCardBattlePhase::Player;Check.Deck.SharedEnergy=20;
-	const int32 Index=Check.Deck.DiscardPile.IndexOfByPredicate([&Party](const auto& Card){const auto* D=FGameXXKCardCatalog::FindCardDefinition(Card.CardId);return Card.OwnerUnitId==Party[1] && D && D->ManaCost>0;});
+	// Deal a real hand through the production draw entry, then pick a sorcerer card
+	// that actually costs mana. Searching only the discard pile made this flaky,
+	// because the shuffle can leave just the zero-cost sorcerer cards there.
+	if(!GameXXKCardRules::DrawCards(Check.Deck,10,0,&Error)){AddError(Error);return false;}
+	const int32 Index=Check.Deck.Hand.IndexOfByPredicate([&Party](const auto& Card)
+	{
+		const auto* D=FGameXXKCardCatalog::FindCardDefinition(Card.CardId);
+		return Card.OwnerUnitId==Party[1] && D && D->ManaCost>0;
+	});
 	if(!TestTrue(TEXT("the victim has a carried mana-cost card"),Index!=INDEX_NONE))return false;
-	const auto Card=Check.Deck.DiscardPile[Index];Check.Deck.DiscardPile.RemoveAt(Index);Check.Deck.Hand.Add(Card);
+	const auto Card=Check.Deck.Hand[Index];
+	const int32 ManaCost=FGameXXKCardCatalog::FindCardDefinition(Card.CardId)->ManaCost;
+	// Control: with mana restored the same card is legal, so the depleted-mana
+	// failure below cannot be blamed on energy, targets, or the phase.
+	Check.Deck.SharedEnergy=ManaCost+20;
+	Check.Units.FindByPredicate([&Party](const auto& U){return U.UnitId==Party[1];})->Mana=ManaCost+5;
+	FGameXXKCardPlayPreview Funded;
+	TestTrue(TEXT("the same card is playable while its owner has mana"),
+		GameXXKCardRules::BuildCardPlayPreview(Check,Card.InstanceId,Funded,&Error));
+	// Now the drained state the saved intent actually produced.
+	Check.Deck.SharedEnergy=20;
+	Check.Units.FindByPredicate([&Party](const auto& U){return U.UnitId==Party[1];})->Mana=0;
 	FGameXXKCardPlayPreview Preview;
-	TestTrue(TEXT("existing legality check evaluates the depleted mana"),GameXXKCardRules::BuildCardPlayPreview(Check,Card.InstanceId,Preview,&Error));
+	TestFalse(TEXT("existing legality check evaluates the depleted mana"),
+		GameXXKCardRules::BuildCardPlayPreview(Check,Card.InstanceId,Preview,&Error));
 	TestFalse(TEXT("a mana-cost card cannot be played after its source was drained to zero"),Preview.bCanPlay);
-	TestTrue(TEXT("the failure is specifically mana rather than a different rule"),Preview.FailureReason.Contains(TEXT("内力")) || Preview.FailureReason.Contains(TEXT("Mana")));
+	TestTrue(TEXT("the failure is specifically mana rather than a different rule"),
+		Error.Contains(TEXT("内力")) || Error.Contains(TEXT("Mana")) || Error.Contains(TEXT("mana")));
 	return true;
 }
 #endif

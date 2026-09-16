@@ -1,7 +1,9 @@
 #include "Guide/GameXXKAcademyRules.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 
 void FGameXXKAcademyRules::ObserveCommittedResult(const FGameXXKCardPlayResult& Result,FName FocusUnitId,FGameXXKAcademyEvidence& Evidence)
 {
@@ -21,6 +23,66 @@ bool FGameXXKAcademyEvidence::Satisfies(const FGameXXKAcademyLesson& Lesson) con
 const FGameXXKAcademyCourse* FGameXXKAcademyRules::Find(FName Id)
 {
 	return Courses().FindByPredicate([Id](const auto& Course){return Course.Id==Id;});
+}
+
+FGameXXKAcademyEligibility FGameXXKAcademyRules::EvaluateEligibility(const FGameXXKRuntimeState& State,const FGameXXKAcademyCourse& Course)
+{
+	FGameXXKAcademyEligibility Result;
+	// A course cannot borrow the battle while the player is already in one.
+	if (State.CardRun.bHasActiveCardBattle || State.bHasActiveBattle)
+	{
+		Result.Block=EGameXXKAcademyBlock::ActiveBattle;
+		Result.Reason=FText::FromString(TEXT("请先结束当前战斗。"));
+		return Result;
+	}
+	// The borrowed loadout always deploys one permanent companion, so the course
+	// needs the same slot the ordinary party uses plus an owned companion of the
+	// course role. The hero course borrows the blade partner.
+	if (!FGameXXKPartyFormationRules::IsSlotUnlocked(State,EGameXXKPartyMemberKind::PermanentCompanion))
+	{
+		Result.Block=EGameXXKAcademyBlock::CompanionSlotLocked;
+		Result.Reason=FText::FromString(TEXT("需要先解锁伙伴出战槽。"));
+		return Result;
+	}
+	const EGameXXKCharacterRole Role=Course.Role==EGameXXKCharacterRole::Hero?EGameXXKCharacterRole::Blade:Course.Role;
+	const bool bHasRole=State.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+		[Role](const FGameXXKPermanentCompanion& Companion){return Companion.Role==Role;});
+	if (!bHasRole)
+	{
+		Result.Block=EGameXXKAcademyBlock::CompanionNotRecruited;
+		Result.Reason=FText::FromString(TEXT("需要先招募该职业的伙伴。"));
+		return Result;
+	}
+	// NPC courses additionally borrow the task-NPC slot and a specific definition.
+	if (!Course.NpcId.IsNone())
+	{
+		if (!FGameXXKPartyFormationRules::IsSlotUnlocked(State,EGameXXKPartyMemberKind::QuestNpc))
+		{
+			Result.Block=EGameXXKAcademyBlock::NpcSlotLocked;
+			Result.Reason=FText::FromString(TEXT("需要先解锁任务伙伴出战槽。"));
+			return Result;
+		}
+		if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(Course.NpcId))
+		{
+			Result.Block=EGameXXKAcademyBlock::NpcNotOwned;
+			Result.Reason=FText::FromString(TEXT("尚未认识这位任务伙伴。"));
+			return Result;
+		}
+	}
+	Result.bAvailable=true;
+	return Result;
+}
+
+FGameXXKAcademyEligibility FGameXXKAcademyRules::EvaluateEligibility(const FGameXXKRuntimeState& State,FName CourseId)
+{
+	if (const FGameXXKAcademyCourse* Course=Find(CourseId))
+	{
+		return EvaluateEligibility(State,*Course);
+	}
+	FGameXXKAcademyEligibility Result;
+	Result.Block=EGameXXKAcademyBlock::CourseMissing;
+	Result.Reason=FText::FromString(TEXT("教学任务不存在。"));
+	return Result;
 }
 
 bool FGameXXKAcademyRules::CompleteLesson(FName CourseId,int32 LessonIndex,bool bWon,const FGameXXKAcademyEvidence& Evidence,

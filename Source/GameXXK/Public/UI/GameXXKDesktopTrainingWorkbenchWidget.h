@@ -493,6 +493,9 @@ public:
 	int32 GetEmbeddedInventoryWidgetCountForTest() const;
 	EGameXXKCharacterBackpackTab GetEmbeddedBackpackTabForTest() const;
 	TArray<FName> GetEmbeddedPendingDeckIdsForTest() const;
+	/** Automation probe: how the academy drawer renders a course right now. */
+	bool IsAcademyCourseAvailableForTest(FName CourseId) const;
+	FText GetAcademyCourseBlockReasonForTest(FName CourseId) const;
 
 	void RefreshBackpackFooterVisibility();
 	void HandleStageClicked(FName StageId);

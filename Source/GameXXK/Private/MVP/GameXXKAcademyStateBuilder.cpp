@@ -12,6 +12,12 @@ bool GameXXKAcademyStateBuilder::BuildLoadout(const FGameXXKAcademyCourse& Cours
 {
 	if(!Course.Lessons.IsValidIndex(LessonIndex))return false;
 	State=UGameXXKMVPRules::CreateNewGame();State.PlayerLevel=100;State.PlayerXP=0;State.PlayerGold=0;
+	// This is a borrowed teaching battle, not onboarding. New games gate the
+	// companion/NPC slots behind talents, and the player's real progress was
+	// already checked by FGameXXKAcademyRules::EvaluateEligibility before a course
+	// can start; re-applying the onboarding gate to this throwaway state only made
+	// every course fail to build.
+	State.Training.bProgressivePartySlots=false;
 	const auto Role=Course.Role==EGameXXKCharacterRole::Hero ? EGameXXKCharacterRole::Blade : Course.Role;
 	const auto* Recruit=FGameXXKCompanionCatalog::GetRecruitTemplates().FindByPredicate([Role](const auto& T){return T.Role==Role && T.TemplateId.ToString().EndsWith(TEXT(".01"));});
 	if(!Recruit){Error=TEXT("教学伙伴配置缺失。");return false;}

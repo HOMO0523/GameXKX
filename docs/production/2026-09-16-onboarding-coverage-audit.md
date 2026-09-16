@@ -2,6 +2,14 @@
 
 本次为代码与已有实测证据核对，没有重新完整游玩或修改游戏行为。
 
+> **2026-09-16 复核更正（代码核对，勿按原文施工）**：本文第 1、3 条结论对当前代码**已过期**，照原文修改会主动引入缺陷。
+> - 第 1 条「`OfferPartyProgressionGuide` 要求 `Preference == NewPlayer`，默认 `Unset` 被阻断」**不成立**。`GameXXKDesktopTrainingWorkbenchWidget.cpp:1882` 只在 `Preference == ExperiencedPlayer` 时 `return`，默认 `Unset` 是放行的。要求 `NewPlayer` 的是 `HandleGuideEvent`（`:5518`），那是**另一条旧叙事引导链**，不是伙伴/主线进度短链。若把 `!= ExperiencedPlayer` 改成 `== NewPlayer`，反而会制造“默认新档被阻断”的真缺陷。
+> - 第 3 条「`OfferedPartyProgressionGuides` 未找到清空调用」**不成立**。`ResetPresentationForNewGame()` 已在 `GameXXKDesktopTrainingWorkbenchWidget.cpp:2643` 调用 `OfferedPartyProgressionGuides.Reset();`。
+> - 仍然有效的是第 2、4、5 条（旧任务门槛 `Step.Main.XuXiake.CombatTutorial`、学习证据模型未统一、计划含旧开场段落）。
+> - 因此原文「优先顺序建议」第 1 项「先修默认触发条件、提示偏好的职责和重置去重」**已无待修内容**；建议直接从第 2 项（首次正式挑战的独立短课）开始。
+>
+> 另注：`docs/superpowers/plans/2026-09-15-full-onboarding-rollout.md` 建议新建的 `Guide/GameXXKOnboardingCatalog.*` 与 `Guide/GameXXKOnboardingRules.*` 目前**仍不存在**（全库搜 `Onboarding` 无源码命中），统一派发层尚未实现。
+
 ## 结论
 
 局外开箱与工具入门已接通；完整的新档渐进学习链尚未达到验收条件。应分别记录内容存在、自然触发、操作完成、连续体验验证，不能以某批自动化通过数代表全流程完成率。

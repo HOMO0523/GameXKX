@@ -36,6 +36,10 @@ bool UGameXXKAcademySubsystem::BeginCourse(FName Id,int32 Index)
 	const int32 Completed=MVP->RuntimeState.GuideProgress.AcademyCompletedLessons.FindRef(Id);
 	if(Index==INDEX_NONE)Index=Completed<C->Lessons.Num()?Completed:0;
 	if(!C->Lessons.IsValidIndex(Index) || Index>Completed){Message=GameXXKLocalization::Source(TEXT("请按顺序完成教程。"));return false;}
+	// Same prerequisite gate the drawer renders; a course the player cannot see as
+	// available must not be startable through any other entry point either.
+	const FGameXXKAcademyEligibility Eligibility=FGameXXKAcademyRules::EvaluateEligibility(MVP->RuntimeState,*C);
+	if(!Eligibility.bAvailable){Message=GameXXKLocalization::Localize(Eligibility.Reason);return false;}
 	FGameXXKRuntimeState Borrowed;FName Focus;FString Error;
 	if(!UGameXXKMVPSubsystem::BuildAcademyBattleState(*C,Index,Borrowed,Focus,Error)){Message=GameXXKLocalization::Source(Error);return false;}
     if(!MVP->SaveCurrentGame()){Message=GameXXKLocalization::Text(TEXT("Academy.SaveFailed"));return false;}

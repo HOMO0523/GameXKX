@@ -160,6 +160,62 @@ bool FGameXXKCardTooltipControlTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The deck page rebuilds its host window on structural refresh, destroying and
+ * recreating every card button and its tooltip. Shift used to be polled from the
+ * physical keyboard, so a key-up delivered during that gap could be missed and
+ * the tooltip stayed in the detail mode. These checks pin the two properties
+ * that keep the shift reading recoverable across a rebuild.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipRebuildRecoveryTest,
+	"GameXXK.UI.CardTooltip.RebuildRecovery", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FGameXXKCardTooltipRebuildRecoveryTest::RunTest(const FString&)
+{
+	using EMode = EGameXXKCardTooltipMode;
+
+	// 1. Losing hover must clear the mode even while Shift is still reported down.
+	// This is what happens when a rebuild destroys the hovered button before the
+	// key-up reaches it: the release itself is never observed.
+	{
+		FGameXXKCardTooltipInteraction Stuck;
+		Stuck.Update(true, false, false, false);
+		Stuck.Update(true, true, false, false);
+		TestEqual(TEXT("holding Shift shows the detail body"), Stuck.GetMode(), EMode::Detail);
+		// Rebuild: the button is gone, so the host reports no hover. Shift is read
+		// as still down because the key-up was missed.
+		Stuck.Update(false, true, false, false);
+		TestEqual(TEXT("losing hover clears the detail mode without a key-up"), Stuck.GetMode(), EMode::Compact);
+	}
+
+	// 2. A rebuilt tooltip is a fresh object and must not inherit the old mode,
+	// even if the previous instance was left in the pill mode.
+	{
+		FGameXXKCardTooltipInteraction Old;
+		Old.Update(true, false, false, false);
+		Old.Update(true, false, true, false);
+		TestEqual(TEXT("the old tooltip opened pill help"), Old.GetMode(), EMode::Pills);
+
+		FGameXXKCardTooltipInteraction Rebuilt;
+		TestEqual(TEXT("a rebuilt tooltip starts compact"), Rebuilt.GetMode(), EMode::Compact);
+		Rebuilt.Update(true, true, false, false);
+		TestEqual(TEXT("the rebuilt tooltip still reads the held Shift"), Rebuilt.GetMode(), EMode::Detail);
+		Rebuilt.Update(true, false, false, false);
+		TestEqual(TEXT("and returns to compact on release"), Rebuilt.GetMode(), EMode::Compact);
+	}
+
+	// 3. The physical-modifier readers must be safe in a headless context and
+	// must not latch: two consecutive reads with no input agree.
+	{
+		const bool bShiftFirst = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+		const bool bShiftSecond = UGameXXKCardTooltipWidget::IsPhysicalShiftDown();
+		TestEqual(TEXT("the Shift reader does not latch between reads"), bShiftFirst, bShiftSecond);
+		const bool bControlFirst = UGameXXKCardTooltipWidget::IsPhysicalControlDown();
+		const bool bControlSecond = UGameXXKCardTooltipWidget::IsPhysicalControlDown();
+		TestEqual(TEXT("the Ctrl reader does not latch between reads"), bControlFirst, bControlSecond);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKCardTooltipUnresolvedBranchTest,
 	"GameXXK.UI.CardTooltip.UnresolvedBranchAndLongLayout", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FGameXXKCardTooltipUnresolvedBranchTest::RunTest(const FString&)
