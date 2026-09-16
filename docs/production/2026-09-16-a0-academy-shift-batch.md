@@ -63,6 +63,24 @@ siphon fixture is missing party unit CompanionInstance.Companion_Healer_01.00004
 
 这 170 项为**既有失败**，不是本批引入。已另开专项 triage（`docs/production/2026-09-16-baseline-failure-triage.md`）。
 
+### 分诊修正（勿用本文早先的口径）
+
+专项分诊对 170 项的结论，修正了本节早先的两处判断：
+
+1. **`CurrentMapId` 不是独立缺陷。** 没有任何代码覆盖它。29 条 map-identity 断言失败**纯粹是级联**：
+   `GameXXKMVPSubsystem.cpp:6297` 在 `BuildLoadout` 失败后直接 return，
+   `GameXXKAcademyStateBuilder.cpp:65` 根本没执行，状态保留 `CreateNewGame` 的 `MainMenu`。
+   `index.json` 显示 109/110/112 三行各 29 次失败，与构建失败 **1:1 完全对应**。
+2. **170 项并非全部来自 09-13～16 窗口。** 分诊恢复了 09-12 基线
+   （`Saved/Automation/FontRollout20260912`，覆盖 682/1258）并回查 3369 份历史报告：
+   **16 项在 09-12 就已是 Fail**、**74 项历史上从未有过成功记录**、**93 项上一次为绿**。
+   且 09-12 基线只有 9 个前缀，**未覆盖** `MVP.Battle.*`、`Presentation.*`、`UI.*`、`Interaction.*`，
+   因此动画节奏、锚点、本地化那几组**不能**用“09-12 是绿的”推断。
+
+最大单项收益：**A1+A2（渐进出战槽门禁与编队塌缩）共 74 项（44%）**，
+根因是**夹具过时而非设计缺陷**（门禁是有意设计，已有两项通过测试证明），
+正确夹具已存在于 `GameXXKPermanentPartyTestFixtures.h:36`。
+
 ---
 
 ## 3. A-1 学院课程权限（方案 B）
