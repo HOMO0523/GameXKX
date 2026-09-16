@@ -368,10 +368,28 @@ void UGameXXKOneGameRouteMapWidget::AdvanceRoutePresentation(float DeltaSeconds)
 	const bool bMapInteractive = Subsystem && Subsystem->GetRuntimeState().Screen == EGameXXKScreen::DungeonMap
 		&& GetVisibility() == ESlateVisibility::Visible && !bRouteAbandonConfirmationOpen;
 	const TArray<FGameXXKOneGameRouteNode> Nodes = BuildAdapterNodes();
+	bool bNodePresentationChanged = false;
 	for (int32 Index = 0; Index < NodeVisualImages.Num(); ++Index)
 	{
 		UImage* Icon = NodeVisualImages[Index];
 		if (!Icon) continue;
+		// Click dispatch reads current route state. Keep its visual projection in
+		// sync even when an encounter returns without a full controller refresh.
+		if (Nodes.IsValidIndex(Index))
+		{
+			const auto& Node = Nodes[Index];
+			const FLinearColor Tint = Node.bEnabled || Node.bVisited ? FLinearColor::White : FLinearColor(0.82f,0.82f,0.80f,0.44f);
+			const bool Enabled = Node.bEnabled && PendingSelectionNodeId == INDEX_NONE && !bRouteAbandonConfirmationOpen;
+			const auto* Button = NodeButtons.IsValidIndex(Index) ? NodeButtons[Index].Get() : nullptr;
+			const auto* Visual = NodeVisualWidgets.IsValidIndex(Index) ? NodeVisualWidgets[Index].Get() : nullptr;
+			if (!Icon->GetColorAndOpacity().Equals(Tint)
+				|| (Button && Button->GetIsEnabled() != Enabled)
+				|| (Visual && !FMath::IsNearlyEqual(Visual->GetRenderOpacity(),Node.bVisited ? 0.76f : 1.0f)))
+			{
+				ConfigureNodeButton(Index,&Node);
+				bNodePresentationChanged=true;
+			}
+		}
 		float Angle = 0.0f;
 		float Lift = 0.0f;
 		if (bMapInteractive && PendingSelectionNodeId == INDEX_NONE && Nodes.IsValidIndex(Index)
@@ -388,6 +406,11 @@ void UGameXXKOneGameRouteMapWidget::AdvanceRoutePresentation(float DeltaSeconds)
 		}
 		Icon->SetRenderTransformAngle(Angle);
 		Icon->SetRenderTranslation(FVector2D(0.0f, Lift));
+	}
+	if (bNodePresentationChanged)
+	{
+		for (int32 Index=0;Index<LineVisualWidgets.Num();++Index) ConfigureLineVisual(Index,Nodes);
+		RefreshSelectionCircles();
 	}
 	if (bRouteEntryTitlePlaying && RouteEntryTitle)
 	{
@@ -2347,7 +2370,7 @@ void UGameXXKOneGameRouteMapWidget::ConfigureNodeButton(int32 ButtonIndex, const
 	}
 
 	Button->SetVisibility(Node ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-	Button->SetIsEnabled(Node && Node->bEnabled && PendingSelectionNodeId == INDEX_NONE);
+	Button->SetIsEnabled(Node && Node->bEnabled && PendingSelectionNodeId == INDEX_NONE && !bRouteAbandonConfirmationOpen);
 	Button->SetRenderOpacity(1.0f);
 	if (NodeButtonIndices.IsValidIndex(ButtonIndex))
 	{

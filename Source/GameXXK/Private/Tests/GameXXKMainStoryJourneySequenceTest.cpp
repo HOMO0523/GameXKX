@@ -1,3 +1,4 @@
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -9,6 +10,10 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/ScopeExit.h"
 #include "UI/GameXXKOneGameRouteMapWidget.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKMainStoryPanelWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "Components/Image.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 namespace
@@ -39,6 +44,7 @@ bool FGameXXKMainStoryOutsideDepartureTest::RunTest(const FString&)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(MVP);
 	TestFalse(TEXT("task cannot bypass earlier outside prerequisites"),Story->StartTask(TEXT("S00-04")));
 	if(!CompleteOutsidePrerequisites(MVP->GetMutableRuntimeState())||!Story->StartTask(TEXT("S00-04")))return false;
@@ -88,10 +94,22 @@ bool FGameXXKMainStoryOutsideDepartureTest::RunTest(const FString&)
 	TestEqual(TEXT("no ordinary battle gold is granted"),MVP->GetRuntimeState().PlayerGold,GoldBefore);
 	TestTrue(TEXT("no ordinary card reward is granted"),MVP->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
 	TestTrue(TEXT("victory opens the aftermath"),FGameXXKMainStoryRules::HasPendingAfterBattleDialogue(MVP->GetRuntimeState(),TEXT("S00-04")));
+	auto* Workbench=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();Workbench->SetMVPSubsystem(MVP);Workbench->ConstructForTest();
+	if(!TestTrue(TEXT("workbench returns after task battle"),Workbench->OpenWorkbench()))return false;
+	TestTrue(TEXT("task battle return reopens the task surface"),Workbench->IsBackpackExpandedForTest());
+	TestEqual(TEXT("task battle returns to story instead of an unrelated tab"),Workbench->GetActiveCenterPageForTest(),EGameXXKDesktopTrainingCenterPage::MainStory);
 	TestFalse(TEXT("reward cannot bypass the aftermath"),Story->ClaimReward(TEXT("S00-04")));
 	const auto* BattleNode=FGameXXKMainStoryCatalog::FindNode(TEXT("S00-04"));
 	for(int32 I=0;I<BattleNode->AfterBattleLines.Num();++I)if(!Story->AdvanceDialogue())return false;
 	TestTrue(TEXT("task completes after the aftermath"),FGameXXKMainStoryRules::IsNodeCompleted(MVP->GetRuntimeState(),TEXT("S00-04")));
+	TestEqual(TEXT("objective describes the actual direct battle"),BattleNode->Objective.ToString(),FString(TEXT("进入战斗，击败兽群")));
+	auto* ResultPanel=NewObject<UGameXXKMainStoryPanelWidget>();ResultPanel->SetContext(Story,TEXT("S00"));ResultPanel->SelectNode(TEXT("S00-04"));
+	const auto ResultSlate=ResultPanel->TakeWidget();ResultSlate->SlatePrepass();
+	for(FName Name:{FName(TEXT("StoryRewardGoldIcon")),FName(TEXT("StoryRewardNormalIcon")),FName(TEXT("StoryRewardAdvancedIcon"))})
+	{
+		auto* Icon=Cast<UImage>(ResultPanel->WidgetTree->FindWidget(Name));
+		if(TestNotNull(TEXT("Each actual reward has its own icon"),Icon))TestTrue(TEXT("Reward icons are large enough to read"),Icon->GetBrush().ImageSize.X>=64);
+	}
 	return true;
 }
 
@@ -101,6 +119,7 @@ bool FGameXXKMainStoryAtomicGateEntryTest::RunTest(const FString&)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(MVP);
 	if(!CompleteOutsidePrerequisites(MVP->GetMutableRuntimeState())||!Story->StartTask(TEXT("S00-04"))||!ReadPrelude(Story))return false;
 	const auto Before=MVP->GetRuntimeStateCopy();
@@ -122,6 +141,7 @@ bool FGameXXKMainStoryLegacyGateDialogueTest::RunTest(const FString&)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(MVP);
 	if(!CompleteOutsidePrerequisites(MVP->GetMutableRuntimeState())||!Story->StartTask(TEXT("S00-04"))||!ReadPrelude(Story))return false;
 	auto& State=MVP->GetMutableRuntimeState();
@@ -152,6 +172,7 @@ bool FGameXXKMainStoryGateRealStorageTest::RunTest(const FString&)
 	};
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString StorageError;
 	// Route the real checkpoint object through the real file writer in a unique
 	// test slot. A successful stub would hide a serialization/checksum failure.
@@ -192,6 +213,7 @@ bool FGameXXKMainStoryAftermathResumeTest::RunTest(const FString&)
 	};
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FString Error;
 	MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda(
 		[&](USaveGame* Save,const FString&,int32 UserIndex){return FGameXXKSaveStorage::Write(Save,Slot,UserIndex,&Error);}));
@@ -287,6 +309,7 @@ bool FGameXXKStoryDirectBattleEntryTest::RunTest(const FString&)
 {
     auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
     if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
     auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(MVP);
     if(!CompleteOutsidePrerequisites(MVP->GetMutableRuntimeState())||!Story->StartTask(TEXT("S00-04"))||!ReadPrelude(Story))return false;
     const auto ClearedBefore=MVP->GetRuntimeState().Training.ClearedStageIds;
@@ -312,6 +335,7 @@ bool FGameXXKStoryRepeatedLegacyResumeTest::RunTest(const FString&)
 {
     auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
     if(!MVP->StartGame())return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
     auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(MVP);
     if(!CompleteOutsidePrerequisites(MVP->GetMutableRuntimeState())||!Story->StartTask(TEXT("S00-04"))||!ReadPrelude(Story))return false;
     auto& State=MVP->GetMutableRuntimeState();

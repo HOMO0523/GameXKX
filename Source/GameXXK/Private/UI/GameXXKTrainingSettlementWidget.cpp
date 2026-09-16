@@ -1,4 +1,6 @@
 #include "UI/GameXXKTrainingSettlementWidget.h"
+#include "UI/GameXXKRewardPresentation.h"
+#include "Components/HorizontalBox.h"
 #include "GameXXKHuntRules.h"
 #include "UI/GameXXKLocalization.h"
 #include "UI/GameXXKInRunUiStyle.h"
@@ -74,9 +76,9 @@ void UGameXXKTrainingSettlementWidget::EnsureLayout()
 		RewardPaper->SetBrush(Brush); RewardPaper->SetBrushColor(FLinearColor(1, .93f, .77f, .38f));
 		RewardPaper->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, RewardPaper, {144.f + I * 448.f, 240}, {416, 151});
 	}
-	auto* Coin = WidgetTree->ConstructWidget<UImage>();
-	Coin->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot")));
-	Coin->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, Coin, {169, 284}, {65, 62});
+	auto* Coin = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),TEXT("SettlementGoldIcon"));
+	Coin->SetBrushFromTexture(LoadObject<UTexture2D>(nullptr, TEXT("/Game/GameXXK/UI/Items/T_Item_GoldCoin.T_Item_GoldCoin")));
+	Coin->SetVisibility(ESlateVisibility::HitTestInvisible); Place(Page, Coin, {169, 273}, {80, 80});
 	Place(Page, Text(WidgetTree, TEXT("TrainingSettlementGoldCaption"), TEXT("通关所得金币"), 18), {255, 258}, {287, 30});
 	GoldText = Text(WidgetTree, TEXT("TrainingSettlementGold"), TEXT(""), 32, EGameXXKFontRole::Body, true); Place(Page, GoldText, {255, 299}, {287, 47});
 	GoldDetail = Text(WidgetTree, TEXT("TrainingSettlementGoldDetail"), TEXT(""), 15); Place(Page, GoldDetail, {166, 357}, {373, 25});
@@ -126,9 +128,20 @@ void UGameXXKTrainingSettlementWidget::RefreshReceipt()
 	const int32 ChestCount = Receipt.NormalChestCount + Receipt.AdvancedChestCount + Receipt.HuntChestCount;
 	ChestImage->SetRenderOpacity(ChestCount > 0 ? 1.f : .25f);
 	ChestText->SetText(ChestCount>0?FText::Format(GameXXKLocalization::Text(TEXT("Chest.Count")),GameXXKLocalization::Text(Hunt?TEXT("Chest.Hunt.Name"):Advanced?TEXT("Chest.Advanced.Name"):TEXT("Chest.Normal.Name")),FText::AsNumber(ChestCount)):GameXXKLocalization::Text(TEXT("Chest.NoDrop")));
+	// A mixed receipt must display every awarded type instead of combining them under one icon.
+	if(auto* Old=WidgetTree->FindWidget(TEXT("SettlementRow")))Old->RemoveFromParent();
+	ChestImage->SetVisibility(ESlateVisibility::Collapsed);
+	ChestText->SetVisibility(ChestCount>0?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+	const int32 Types=(Receipt.NormalChestCount>0)+(Receipt.AdvancedChestCount>0)+(Receipt.HuntChestCount>0);
+	const FGameXXKRewardBundle Chests{0,Receipt.NormalChestCount,Receipt.AdvancedChestCount,Receipt.HuntChestCount,Receipt.ChestItemLevel};
+	Place(Page,GameXXKRewardPresentation::BuildRow(WidgetTree,Chests,TEXT("Settlement"),Types>2?64:80,true),{1060,295},{395,86});
 	for (int32 I = 0; I < MemberNames.Num(); ++I)
 	{
-		if (!Receipt.Members.IsValidIndex(I)) continue;
+		const bool Present=Receipt.Members.IsValidIndex(I);
+		const auto MemberVisibility=Present ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed;
+		MemberNames[I]->SetVisibility(MemberVisibility);MemberLevels[I]->SetVisibility(MemberVisibility);
+		MemberExperience[I]->SetVisibility(MemberVisibility);MemberBars[I]->SetVisibility(MemberVisibility);
+		if (!Present) continue;
 		const auto& M = Receipt.Members[I]; MemberNames[I]->SetText(M.DisplayName);
 		MemberLevels[I]->SetText(GameXXKLocalization::Source(M.LevelAfter > M.LevelBefore ? FString::Printf(TEXT("Lv.%d → %d"), M.LevelBefore, M.LevelAfter) : FString::Printf(TEXT("Lv.%d"), M.LevelAfter)));
 		MemberExperience[I]->SetText(GameXXKLocalization::Source(M.LevelAfter >= 100 ? TEXT("已达满级") : FString::Printf(TEXT("经验 +%d    %d / %d"), M.ExperienceGained, M.ExperienceAfter, UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(M.LevelAfter))));
@@ -137,7 +150,7 @@ void UGameXXKTrainingSettlementWidget::RefreshReceipt()
 	}
 	const auto& S = Receipt.Stats;
 	StatsText->SetText(GameXXKLocalization::Source(S.bComplete
-		? FString::Printf(TEXT("%d 回合    ·    主动出牌 %d 张    ·    存活 %d / 3\n敌方损失气血 %lld    我方损失气血 %lld    有效治疗 %lld    获得护甲 %lld"), S.Rounds, S.ActiveCardsPlayed, S.SurvivingPartyUnits, S.PartyDamageDealt, S.PartyDamageTaken, S.HealingDone, S.ArmorGenerated)
+		? FString::Printf(TEXT("%d 回合    ·    主动出牌 %d 张    ·    存活 %d / %d\n敌方损失气血 %lld    我方损失气血 %lld    有效治疗 %lld    获得护甲 %lld"), S.Rounds, S.ActiveCardsPlayed, S.SurvivingPartyUnits, Receipt.Members.Num(), S.PartyDamageDealt, S.PartyDamageTaken, S.HealingDone, S.ArmorGenerated)
 		: TEXT("该场战斗的完整统计未记录。")));
 	FGameXXKTrainingStageDefinition Next;
 	UnlockText->SetText(GameXXKLocalization::Source(FGameXXKTrainingRules::TryGetStageDefinition(Receipt.UnlockedStageId, Next)
@@ -153,6 +166,7 @@ void UGameXXKTrainingSettlementWidget::RefreshReceipt()
 bool UGameXXKTrainingSettlementWidget::ConfirmForTest()
 {
 	if (bConfirmed || !Receipt.ReceiptId.IsValid()) return false;
+	const auto Origins=GameXXKRewardPresentation::Capture(WidgetTree,TEXT("Settlement"));
 	auto* Subsystem = ResolveMVPSubsystem();
 	if (!Subsystem || !Subsystem->ConfirmTrainingSettlement(Receipt.ReceiptId))
 	{
@@ -160,6 +174,8 @@ bool UGameXXKTrainingSettlementWidget::ConfirmForTest()
 		return false;
 	}
 	bConfirmed = true; ConfirmButton->SetIsEnabled(false);
+	GameXXKRewardPresentation::Play(this,{Receipt.Gold,Receipt.NormalChestCount,Receipt.AdvancedChestCount,Receipt.HuntChestCount,Receipt.ChestItemLevel},
+		Origins,FName(*(TEXT("Settlement.")+Receipt.ReceiptId.ToString()+TEXT(".")+FGuid::NewGuid().ToString())));
 	if (UWorld* World = GetWorld())
 	{
 		TWeakObjectPtr<UGameXXKTrainingSettlementWidget> WeakThis(this);

@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKGemRules.h"
@@ -16,6 +17,7 @@ bool FGameXXKChestStoredStackTest::RunTest(const FString&)
     auto* MVP = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
     if (!TestTrue(TEXT("fixture starts"), MVP->StartGame())) return false;
     auto Base = MVP->GetRuntimeStateCopy();
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Base);
     FString Error;
     const auto Tier = EGameXXKTrainingRewardTier::NormalChest;
     if (!TestTrue(TEXT("append chest"), FGameXXKTrainingRules::AppendChestToken(Base.Training, Tier,

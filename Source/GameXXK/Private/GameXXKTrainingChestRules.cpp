@@ -1,4 +1,6 @@
 #include "GameXXKTrainingChestRules.h"
+#include "GameXXKTeachingChestRules.h"
+#include "GameXXKEquipmentCatalog.h"
 
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentRules.h"
@@ -33,6 +35,9 @@ namespace
 
 	int32 FindOldestToken(const FGameXXKTrainingProgress& Progress, const EGameXXKTrainingRewardTier Tier)
 	{
+        if(Tier==EGameXXKTrainingRewardTier::NormalChest)
+            for(int32 Index=0;Index<Progress.OwnedChestTokens.Num();++Index)
+                if(Progress.OwnedChestTokens[Index].Tier==Tier&&!Progress.OwnedChestTokens[Index].FixedDropId.IsNone())return Index;
 		for (int32 Index = 0; Index < Progress.OwnedChestTokens.Num(); ++Index)
 			if (Progress.OwnedChestTokens[Index].Tier == Tier) return Index;
 		return INDEX_NONE;
@@ -65,14 +70,16 @@ namespace
 	bool OpenOneInternal(
 		FGameXXKRuntimeState& InOutState,
 		const EGameXXKTrainingRewardTier Tier,
-		FGameXXKTrainingChestOpenResult& Out)
+		FGameXXKTrainingChestOpenResult& Out,
+        const int32 CapturedOrdinal=INDEX_NONE)
 	{
 		if (Tier != EGameXXKTrainingRewardTier::NormalChest && Tier != EGameXXKTrainingRewardTier::AdvancedChest && Tier != EGameXXKTrainingRewardTier::HuntChest)
 		{
 			SetFailure(Out, EGameXXKTrainingChestOpenError::InvalidToken, TEXT("宝箱类型无效"));
 			return false;
 		}
-		const int32 TokenIndex = FindOldestToken(InOutState.Training, Tier);
+		const int32 TokenIndex = CapturedOrdinal==INDEX_NONE?FindOldestToken(InOutState.Training, Tier):
+            InOutState.Training.OwnedChestTokens.IndexOfByPredicate([=](const auto& Entry){return Entry.Tier==Tier&&Entry.AcquisitionOrdinal==CapturedOrdinal;});
 		if (TokenIndex == INDEX_NONE)
 		{
 			SetFailure(Out, EGameXXKTrainingChestOpenError::NoChest, TEXT("没有该类型宝箱"));
@@ -86,6 +93,40 @@ namespace
 			SetFailure(Out, EGameXXKTrainingChestOpenError::InvalidToken, TEXT("宝箱钱包数据无效"));
 			return false;
 		}
+        if(!Token.FixedDropId.IsNone())
+        {
+            auto Candidate=InOutState;int32 Opened=0;
+            const bool Material=Token.FixedDropId.ToString().StartsWith(TEXT("TeachingChest.Material."));
+            if(!FGameXXKTeachingChestRules::Open(Candidate,Material,false,Opened,Error))
+            {
+                SetFailure(Out,Error.Contains(TEXT("背包已满"))
+                    ?EGameXXKTrainingChestOpenError::BackpackFull:EGameXXKTrainingChestOpenError::LootInvalid,*Error);return false;
+            }
+            FGameXXKTrainingChestOpenResult Step;Step.bSucceeded=true;Step.OpenedCount=1;
+            for(const auto& Item:Candidate.EquipmentCollection.EquipmentInstances)
+                if(!FGameXXKEquipmentRules::FindInstance(InOutState.EquipmentCollection,Item.InstanceId))Step.EquipmentInstanceIds.Add(Item.InstanceId);
+            TSet<FName> Keys;for(const auto& Pair:Candidate.Inventory)Keys.Add(Pair.Key);
+            for(const auto& Pair:Candidate.DesktopInventory.WarehouseItems)Keys.Add(Pair.Key);
+            for(FName Id:Keys)
+            {
+                const int32 Delta=Candidate.Inventory.FindRef(Id)+Candidate.DesktopInventory.WarehouseItems.FindRef(Id)
+                    -InOutState.Inventory.FindRef(Id)-InOutState.DesktopInventory.WarehouseItems.FindRef(Id);
+                if(Delta>0&&!FGameXXKEquipmentCatalog::FindDefinition(Id))Step.ItemDeltas.Add(Id,Delta);
+            }
+            auto& Receipt=Step.Receipts.AddDefaulted_GetRef();Receipt.Tier=Tier;Receipt.FixedDropId=Token.FixedDropId;
+            Receipt.OpenOrdinal=Candidate.Training.NextChestOpenOrdinal;Receipt.SourceStageId=Token.SourceStageId;Receipt.Quantity=1;Receipt.QualityRank=1;
+            if(!Step.EquipmentInstanceIds.IsEmpty())
+            {
+                const auto* Item=FGameXXKEquipmentRules::FindInstance(Candidate.EquipmentCollection,Step.EquipmentInstanceIds[0]);
+                Receipt.EquipmentInstanceId=Item->InstanceId;Receipt.EquipmentBaseId=Item->BaseEquipmentId;Receipt.ItemLevel=Item->ItemLevel;
+                Receipt.QualityRank=FGameXXKEquipmentQualityRules::GetRank(Item->Quality);
+            }
+            if(!Step.ItemDeltas.IsEmpty())
+            {const auto Pair=*Step.ItemDeltas.CreateConstIterator();Receipt.ItemId=Pair.Key;Receipt.Quantity=Pair.Value;Receipt.bSentToWarehouse=Candidate.DesktopInventory.WarehouseItems.FindRef(Pair.Key)>0;}
+            if(Token.FixedDropId==FGameXXKTeachingChestRules::StageName(6))
+            {Receipt.ItemId=UGameXXKMVPRules::ItemTrainingNormalChest();Receipt.Quantity=8;}
+            InOutState=MoveTemp(Candidate);Out=MoveTemp(Step);return true;
+        }
 		FRandomStream Stream(static_cast<int32>(BuildSeed(InOutState, Token)));
 		FGameXXKRuntimeState Candidate = InOutState;
 		FGameXXKTrainingChestOpenResult Step;
@@ -275,10 +316,15 @@ bool FGameXXKTrainingChestRules::OpenAll(
 		return false;
 	}
 	FGameXXKRuntimeState Candidate = InOutState;
+
+    // Freeze the actual boxes owned at click time; a lesson may issue its next box.
+    TArray<FGameXXKTrainingChestToken> Captured;
+    for(const auto& Token:InOutState.Training.OwnedChestTokens)if(Token.Tier==Tier)Captured.Add(Token);
+    Captured.StableSort([](const auto& A,const auto& B){return !A.FixedDropId.IsNone()&&B.FixedDropId.IsNone();});
 	for (int32 Index = 0; Index < Bound; ++Index)
 	{
 		FGameXXKTrainingChestOpenResult Step;
-		if (!OpenOneInternal(Candidate, Tier, Step))
+		if (!OpenOneInternal(Candidate, Tier, Step,Captured[Index].AcquisitionOrdinal))
 		{
 			if (Step.Error == EGameXXKTrainingChestOpenError::BackpackFull && OutResult.OpenedCount > 0)
 			{

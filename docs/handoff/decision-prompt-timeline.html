@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light">
+<title>霞客行 · 决策时间轴</title>
+<style>
+:root{--bg:#f2f3ef;--surface:#fcfcf8;--ink:#23382f;--muted:#778078;--line:#d9ded5;--green:#45674c;--orange:#b96540;--gold:#a38c54;--purple:#8881a0}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.65 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}button,input,select,textarea{font:inherit}button{cursor:pointer;color:inherit;background:transparent;border:0}a{color:var(--green);text-underline-offset:3px}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--orange);outline-offset:4px}button:disabled{opacity:.35;cursor:default}.wrap{max-width:1400px;margin:0 auto;padding:0 38px}
+header{display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line);padding:21px 0 17px}.identity{display:flex;gap:15px;align-items:center}.seal{width:32px;height:36px;border:1px solid #ac664c;color:#ac664c;border-radius:3px;font:14px/1.1 SimSun,serif;display:grid;place-content:center;text-align:center;letter-spacing:2px;flex-shrink:0}.identity h1{margin:0;font-size:21px;font-weight:600;letter-spacing:.01em}.identity h1 span{font-size:13px;font-weight:400;color:var(--muted);margin-left:12px}.edition{font:11px/1.6 Consolas,monospace;color:var(--muted);text-align:right}.subtitle{color:var(--muted);font-size:12px;margin:15px 0 12px;display:flex;justify-content:space-between;gap:20px}.subtitle strong{color:var(--green);font-weight:500}.filters{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}.stages{display:flex;gap:3px;flex:1}.stage{font-size:12px;padding:6px 13px;border-radius:5px;white-space:nowrap}.stage:hover{background:#e5e9e0}.stage.active{background:var(--ink);color:#fff}.inputs{display:flex;gap:7px;align-items:center}input,select{border:1px solid var(--line);border-radius:5px;background:var(--surface);color:var(--ink);font-size:12px;padding:7px 9px;height:34px}input{width:205px}input:focus,select:focus{outline:1px solid #81947f}.reset{font-size:12px;color:var(--muted);padding:5px}.timeline-box{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;box-shadow:0 4px 20px #20382b03}.axis-head{padding:13px 19px 5px;display:flex;align-items:center;justify-content:space-between;gap:12px}.axis-head .label{font-size:11px;color:var(--muted);letter-spacing:.05em}.axis-head .label strong{color:var(--ink);font-weight:600;margin-right:10px}.axis-controls{display:flex;gap:5px;align-items:center}.axis-controls button{width:28px;height:27px;border:1px solid var(--line);border-radius:5px;font-size:17px;line-height:1;background:#fff}.axis-controls button:hover{background:var(--bg)}.axis-controls span{color:var(--muted);font:11px Consolas,monospace;min-width:46px;text-align:center}.axis-scroll{overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:#b5c2b2 transparent;overscroll-behavior-x:contain;padding:0 12px 4px;outline:none}.rail{display:flex;width:max-content;min-width:100%;position:relative;padding:0 10px;height:164px}.node{flex:0 0 126px;width:126px;height:158px;position:relative;text-align:left;border-radius:6px;padding:0;background:transparent;isolation:isolate;--node-color:#899984}.node:before{content:"";position:absolute;left:0;right:0;top:64px;height:2px;background:#d7dfd3;z-index:-1}.node:first-child:before{left:21px}.node:last-child:before{right:105px}.node .point{position:absolute;top:59px;left:16px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--node-color);transition:transform .15s,box-shadow .15s}.node .when{position:absolute;top:29px;left:17px;color:var(--muted);font:11px Consolas,monospace;letter-spacing:.025em}.node .month-label{position:absolute;left:17px;top:8px;color:var(--green);font:10px Consolas,monospace;letter-spacing:.14em}.node .node-title{position:absolute;top:85px;left:17px;width:100px;font-size:12px;line-height:1.55;font-weight:500;word-break:keep-all;overflow-wrap:anywhere}.node .node-id{position:absolute;top:126px;left:17px;color:#959d94;font:10px Consolas,monospace}.node:hover .point{transform:scale(1.2);box-shadow:0 0 0 5px #e9eee5}.node:hover .node-title{color:var(--green)}.node.selected .point{background:var(--node-color);box-shadow:0 0 0 5px #eef0e8,0 0 0 6px var(--node-color);transform:scale(1.05)}.node.selected .node-title{font-weight:700;color:var(--ink)}.node.selected .when{color:var(--ink)}.node.historical{--node-color:var(--gold)}.node.revision{--node-color:var(--green)}.node.todo{--node-color:var(--orange)}.node.raw{--node-color:var(--purple)}.node.selected:after{content:"";position:absolute;bottom:0;left:15px;width:15px;height:2px;background:var(--node-color)}
+.axis-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;border-top:1px solid #edf0e8;padding:9px 18px;font-size:10px;color:var(--muted)}.legend{display:flex;gap:13px;flex-wrap:wrap}.legend span{display:inline-flex;gap:5px;align-items:center}.legend i{width:6px;height:6px;border-radius:50%;display:inline-block}.hint{font-size:10px}.selection{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:22px;margin-top:19px;min-height:280px}.prompt-panel{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:23px 26px;position:relative;min-width:0}.prompt-meta{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:11px;flex-wrap:wrap}.code{font:11px Consolas,monospace;letter-spacing:.07em}.tag{padding:1px 7px;border-radius:4px;background:#e9eee5;color:var(--green);font-size:10px}.tag.historical{background:#f1ecdf;color:#867343}.tag.revision{background:#e5eee4;color:#456b48}.tag.todo{background:#f6e9e0;color:#a25d36}.tag.raw{background:#eeeaf3;color:#7c708d}.prompt-panel h2{font-size:22px;line-height:1.45;margin:12px 0 15px;font-weight:600}.prompt-body{font-size:14px;line-height:1.9;white-space:pre-line;margin:0;overflow-wrap:anywhere;max-height:340px;overflow:auto;padding-right:4px;scrollbar-width:thin}.panel-footer{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid #e8ece4;padding-top:14px;margin-top:20px}.position{font-size:11px;color:var(--muted)}.button{padding:7px 12px;border-radius:5px;border:1px solid var(--line);font-size:12px;background:var(--surface)}.button:hover{background:#e8ede3}.button.primary{background:var(--ink);border-color:var(--ink);color:#fff}.button.primary:hover{background:var(--green)}.panel-actions{display:flex;gap:6px}.context{padding:8px 0}.context-label{font-size:10px;letter-spacing:.1em;color:var(--muted);margin:0 0 11px}.context h3{font-size:13px;margin:0 0 7px;font-weight:500}.context p{font-size:12px;color:var(--muted);margin:0 0 15px;line-height:1.9;overflow-wrap:anywhere}.context .note{border-left:2px solid #bbcaaf;padding-left:12px}.relations{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0 17px}.relations a{font:11px Consolas,monospace;text-decoration:none;background:#e7ece2;padding:2px 7px;border-radius:3px}.source summary{font-size:12px;cursor:pointer;color:var(--green);margin:10px 0}.source p{font-size:11px;margin-bottom:7px}.source-path{font:10px/1.6 Consolas,monospace;color:var(--muted);overflow-wrap:anywhere}.empty{padding:50px 20px;text-align:center;color:var(--muted);font-size:13px}.bottom-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);padding:16px 0 20px;margin-top:20px}.archive-note{font-size:10px;color:var(--muted);max-width:690px}.archive-tools{display:flex;align-items:center;gap:9px;flex-shrink:0}.text-button{color:var(--muted);font-size:11px;padding:3px}.text-button:hover{color:var(--ink);text-decoration:underline}.status{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:6px;padding:9px 16px;font-size:12px;z-index:20}[hidden]{display:none!important}dialog{border:1px solid var(--line);border-radius:9px;padding:22px;color:var(--ink);width:min(650px,90vw);background:var(--surface)}dialog::backdrop{background:#22382b66}dialog h2{font-size:18px;margin-top:0}dialog textarea{width:100%;height:300px;border:1px solid var(--line);padding:12px;line-height:1.7;font-size:13px}.dialog-foot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-top:10px}.print-archive{display:none}noscript{display:block;padding:30px}.mobile-date{display:none}
+@media(min-width:1600px){.wrap{max-width:1500px;padding:0 55px}.selection{grid-template-columns:minmax(0,1fr) 290px}.node{flex-basis:135px;width:135px}.node:last-child:before{right:114px}}
+@media(max-width:1100px){.wrap{padding:0 25px}.filters{gap:9px}.stages{flex-basis:100%}.inputs{width:100%}.inputs input{flex:1;width:auto}.selection{grid-template-columns:minmax(0,1fr) 210px;gap:20px}.edition{font-size:10px}.prompt-panel{padding:21px}.subtitle span:last-child{display:none}}
+@media(max-width:740px){.wrap{padding:0 16px}header{padding:16px 0 13px;gap:10px}.identity{gap:10px}.identity h1{font-size:18px}.identity h1 span{font-size:11px;margin-left:6px}.edition{font-size:9px}.seal{width:25px;height:30px;font-size:12px}.subtitle{font-size:11px;margin:12px 0 10px}.filters{margin-bottom:12px}.stages{gap:1px}.stage{padding:5px 10px;font-size:11px}.inputs{gap:5px;flex-wrap:wrap}.inputs input{min-width:155px;font-size:11px}.inputs select{max-width:92px;padding:5px;font-size:11px}.inputs input,.inputs select{height:31px}.reset{font-size:11px}.axis-head{padding:10px 13px 2px}.axis-head .label{font-size:10px}.axis-head .label strong{margin-right:6px}.axis-scroll{padding-left:3px;padding-right:3px}.rail{height:150px}.node{flex-basis:116px;width:116px;height:146px}.node .node-title{width:89px;font-size:11px;top:82px}.node .node-id{top:123px}.node:last-child:before{right:95px}.axis-foot{padding:8px 12px}.legend{gap:9px;font-size:9px}.hint{display:none}.selection{display:block;margin-top:13px;min-height:0}.prompt-panel{padding:18px}.prompt-panel h2{font-size:18px;margin:10px 0 12px}.prompt-body{font-size:13px;line-height:1.85;max-height:295px}.panel-footer{margin-top:16px;padding-top:12px}.position{font-size:10px}.button{font-size:11px;padding:6px 10px}.context{margin-top:14px;padding:0 3px}.context-label{display:none}.context p{font-size:11px;line-height:1.8;margin-bottom:10px}.context h3{font-size:12px}.context .note{margin-bottom:9px}.source summary{font-size:11px}.bottom-bar{margin-top:13px;flex-wrap:wrap;padding:12px 0 18px}.archive-tools{order:-1;width:100%;justify-content:flex-end}.archive-note{font-size:9px}.prompt-meta{font-size:10px}}
+@media(max-width:390px){.wrap{padding:0 11px}.edition{display:none}.inputs input{flex-basis:100%}.stage{padding:5px 9px}.identity h1 span{font-size:10px}.axis-head .label strong{display:block}.selection{margin-top:11px}.prompt-panel{padding:15px}.panel-actions{gap:3px}.button{padding:6px 8px}.legend{gap:7px}}
+@media(prefers-reduced-motion:reduce){.axis-scroll{scroll-behavior:auto}.node .point{transition:none}}
+@media print{.wrap{max-width:none;padding:0}header{padding:0 0 12px}.filters,.timeline-box,.selection,.bottom-bar,.subtitle,.status,dialog{display:none!important}.print-archive{display:block}.print-archive article{break-inside:avoid;border-bottom:1px solid #ccc;padding:14px 0}.print-archive h2{font-size:14pt;margin:0 0 10px}.print-archive p{white-space:pre-line;font-size:10pt;line-height:1.7}.print-archive small{font-size:9pt;color:#666}body{background:#fff}a{color:inherit;text-decoration:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="identity"><div class="seal" aria-hidden="true">霞<br>行</div><h1>决策时间轴<span>霞客行 / Prompt 档案</span></h1></div><div class="edition">2026.07.01 — 09.16<br>47 DECISIONS</div></header>
+<div class="subtitle"><span><strong>冒险原型 → 队伍卡牌 → 桌面挂机 → 构筑与开箱</strong></span><span>沿时间轴点选，阅读每次改变。</span></div>
+<section class="filters" aria-label="筛选决策">
+<nav class="stages" id="stages" aria-label="阶段"></nav>
+<div class="inputs"><input id="search" type="search" aria-label="搜索决策" placeholder="搜索：1-2、技能点、女主…" autocomplete="off">
+<select id="kind" aria-label="决策类型"><option value="">全部类型</option><option value="原文记录">原文记录</option><option value="阶段决策">阶段决策</option><option value="修订决策">修订决策</option><option value="历史版本">历史版本</option><option value="待做决策">待做决策</option></select>
+<select id="month" aria-label="月份"><option value="">全部月份</option><option value="2026-07">7 月</option><option value="2026-08">8 月</option><option value="2026-09">9 月</option></select><button id="reset" class="reset">重置</button></div>
+</section>
+<section class="timeline-box" aria-label="横向决策时间线">
+<div class="axis-head"><div class="label"><strong id="count" role="status" aria-live="polite">47 个节点</strong><span>按记录顺序 · 节点等距</span></div><div class="axis-controls"><button id="prev" aria-label="上一条决策" title="上一条 / ←">‹</button><span id="ordinal">01 / 47</span><button id="next" aria-label="下一条决策" title="下一条 / →">›</button></div></div>
+<div class="axis-scroll" id="axis-scroll" tabindex="0" aria-label="横向滚动时间轴，左右键切换节点"><div class="rail" id="rail"></div></div>
+<div class="empty" id="empty" hidden>没有匹配的节点，换个关键词或重置筛选。</div>
+<div class="axis-foot"><div class="legend"><span><i style="background:var(--gold)"></i>历史版本</span><span><i style="background:var(--green)"></i>修订</span><span><i style="background:var(--orange)"></i>待做</span><span><i style="background:var(--purple)"></i>原文</span></div><span class="hint">横向滑动 · 点节点查看 · ← → 切换</span></div>
+</section>
+<section class="selection" id="selection" aria-label="选中决策详情">
+<div class="prompt-panel"><div class="prompt-meta" id="prompt-meta"></div><h2 id="prompt-title"></h2><p class="prompt-body" id="prompt-body"></p><div class="panel-footer"><span class="position" id="position"></span><div class="panel-actions"><button id="origin" class="button">回到初始</button><button id="copy" class="button primary">复制 Prompt</button></div></div></div>
+<aside class="context"><div class="context-label">CONTEXT / 决策背景</div><div id="context"></div><details class="source" id="source-details"><summary>查看来源与记录说明</summary><div id="sources"></div></details></aside>
+</section>
+<div class="bottom-bar"><div class="archive-note">初始 Prompt 依据 7 月 1 日已确认设计归纳，非逐字首条聊天。同日不虚构时分；历史与待做标签不表示当前实现。</div><div class="archive-tools"><button id="copy-visible" class="text-button">复制筛选结果</button><button id="export" class="text-button">导出 TXT</button><button id="print" class="text-button">打印 / PDF</button></div></div>
+<div class="print-archive" id="print-archive"></div>
+<noscript>时间轴需要启用 JavaScript，所有决策数据已内嵌，无需联网。</noscript>
+</div>
+<div id="toast" class="status" role="status" aria-live="polite" hidden></div>
+<dialog id="copy-dialog"><h2>复制 Prompt</h2><textarea id="copy-text" readonly aria-label="待复制文本"></textarea><div class="dialog-foot"><span>按 Ctrl / ⌘ + C 复制</span><button id="close-dialog" class="button">关闭</button></div></dialog>
+<script id="decision-data" type="application/json">[
+  {
+    "id": "P01",
+    "date": "2026-07-01",
+    "phase": "\u8d77\u6b65",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u5148\u505a\u4e00\u6761\u5b8c\u6574\u53ef\u73a9\u7684\u5192\u9669\u95ed\u73af",
+    "prompt": "\u7528 UE 5.8 \u5236\u4f5c\u300a\u971e\u5ba2\u884c\u300b\u7684\u9996\u4e2a\u53ef\u73a9 MVP\uff1a\u4e3b\u83dc\u5355\u2192\u4e16\u754c\u5730\u56fe\u2192\u9009\u62e9\u5df2\u89e3\u9501\u5730\u533a\u2192\u8fdb\u5165\u9752\u5c71\u9a7f\u7ad9\u2192\u63a5\u4efb\u52a1\u5e76\u8ba9\u4e34\u65f6 NPC \u8ddf\u968f\u2192\u8fdb\u5165\u8282\u70b9\u5730\u7262\u2192\u6218\u6597\u3001\u4e8b\u4ef6\u3001\u8425\u5730\u548c Boss\u3002\u5931\u8d25\u540e\u56de\u57ce\uff0c\u4fdd\u7559\u5df2\u5f97\u7ecf\u9a8c\u548c\u91d1\u5e01\uff0c\u8865\u7ed9\u540e\u91cd\u8bd5\uff1b\u51fb\u8d25 Boss \u540e\u5b8c\u6210\u4efb\u52a1\u5e76\u89e3\u9501\u4e0b\u4e00\u5730\u533a\u3002\n\u6838\u5fc3\u89c4\u5219\u4e0e\u5b58\u6863\u7531 C++ \u7ef4\u62a4\uff0cUMG\u3001\u84dd\u56fe\u3001Paper2D\u3001PaperZD \u8d1f\u8d23\u754c\u9762\u548c\u8868\u73b0\u3002\u53c2\u8003 TestMap \u7684\u754c\u9762\u4e0e\u5730\u56fe\u539f\u578b\uff0c\u4f46\u4e0d\u8ba9\u53c2\u8003\u9879\u76ee\u63a5\u7ba1\u8fd0\u884c\u72b6\u6001\u3002\n\u7b2c\u4e00\u9636\u6bb5\u53ea\u505a\u4e3b\u89d2\u4e0e\u4e00\u540d\u4e34\u65f6\u968f\u4ece\u3001\u4e24\u7c7b\u666e\u901a\u654c\u4eba\u548c\u4e00\u4e2a Boss\uff1b\u6218\u6597\u5148\u91c7\u7528\u653b\u51fb\uff0f\u6280\u80fd\uff0f\u9632\u5fa1\uff0f\u9053\u5177\u53ca\u7b80\u5316 BP\u3001\u5f31\u70b9\u7834\u9632\u3002\u5148\u9a8c\u8bc1\u95ed\u73af\uff0c\u6682\u4e0d\u505a\u5b8c\u6574\u6c38\u4e45\u4f19\u4f34\u6210\u957f\u3001\u5b8c\u6574\u6253\u9020\u548c\u6218\u6597\u4e2d\u9014\u5b58\u6863\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-07-01-gamexxk-mvp-design.md",
+      "label": "7 \u6708 1 \u65e5\u7528\u6237\u786e\u8ba4\u7684 MVP \u8bbe\u8ba1"
+    },
+    "note": "\u6700\u65e9\u53ef\u6838\u5bf9\u7684\u5df2\u786e\u8ba4\u8bbe\u8ba1\u5f52\u7eb3\uff0c\u4e0d\u662f\u9010\u5b57\u9996\u6761\u804a\u5929\u3002\u6b64\u65f6\u5c1a\u672a\u4ee5\u6302\u673a\u548c\u5f00\u7bb1\u4e3a\u6838\u5fc3\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P02",
+    "date": "2026-07-03",
+    "phase": "\u8d77\u6b65",
+    "kind": "\u539f\u6587\u8bb0\u5f55",
+    "title": "\u6240\u6709\u573a\u666f\u5165\u53e3\u5fc5\u987b\u7531\u771f\u5b9e\u64cd\u4f5c\u6253\u901a",
+    "prompt": "\u4eff\u7167\u81ea\u52a8\u5316\u6d41\u7a0b\u8fc1\u79fb\u5230\u8fd9\u4e2a\u9879\u76ee\u4e2d\uff0c\u7136\u540e\u9a8c\u6536\uff1aL_Main \u8fdb PIE \u6709\u4e3b\u83dc\u5355\u3001Start \u53ef\u70b9\u51fb\u5e76 OpenLevel \u5230\u9547\u5b50\u3001\u9547\u5b50 UI \u53ef\u89c1\u3001F \u63a5\u4efb\u52a1\u3001NPC \u72b6\u6001\u4fdd\u5b58\u3001\u8fdb\u5165\u5c0f\u5730\u56fe\u548c\u6218\u6597\u56fe\u90fd\u7531\u6309\u94ae\u771f\u5b9e\u5207\u6362\u3002",
+    "source": {
+      "path": "../production/2026-07-03-playable-entry-flow/00-raw-input.md",
+      "label": "\u4fdd\u5b58\u5728 Raw Input \u4e2d\u7684\u7528\u6237\u539f\u6587"
+    },
+    "note": "\u672c\u6761\u4e3a\u539f\u6587\u30023D \u5165\u53e3\u540e\u6765\u88ab\u4fee\u8ba2\uff1b\u201c\u6309\u94ae\u5fc5\u987b\u771f\u6b63\u63a5\u901a\u201d\u7684\u539f\u5219\u4fdd\u7559\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P03",
+    "date": "2026-07-16",
+    "phase": "\u6784\u7b51",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u4ece\u56fa\u5b9a\u52a8\u4f5c\u8f6c\u4e3a\u961f\u4f0d\u5361\u724c\u6784\u7b51",
+    "prompt": "\u628a\u56fa\u5b9a\u52a8\u4f5c\u6218\u6597\u5347\u7ea7\u4e3a\u53ef\u4fdd\u5b58\u7684\u5361\u724c\u5192\u9669\u3002\u961f\u4f0d\u6700\u591a\u7531\u4e3b\u89d2\u3001\u6c38\u4e45\u4f19\u4f34\u3001\u4efb\u52a1 NPC \u4e09\u7c7b\u6210\u5458\u7ec4\u6210\uff1b\u4e3b\u89d2\u9009 8 \u5f20\uff0c\u4f19\u4f34\u9009 5 \u5f20\uff0cNPC \u5e26 3 \u5f20\u3002\u4f19\u4f34\u62e5\u6709\u6309\u79cd\u5b50\u751f\u6210\u7684\u4e2a\u4eba\u5361\u6c60\uff0c\u53ef\u62db\u52df\u548c\u517b\u6210\u3002\n\u7edf\u4e00\u4f7f\u7528\u6570\u636e\u5b9a\u4e49\u76ee\u6807\u548c\u6548\u679c\uff0c\u5408\u6cd5\u6027\u68c0\u67e5\u901a\u8fc7\u540e\u624d\u51fa\u724c\uff1b\u6218\u540e\u63d0\u4f9b\u4e09\u9009\u4e00\u5956\u52b1\u3002\u5361\u9762\u3001\u724c\u6846\u548c\u80cc\u5305\u6cbf\u7528\u5df2\u6279\u51c6 PSD \u7684\u7eb8\u58a8\u8bed\u8a00\uff0c\u4fdd\u7559\u624b\u8c03\u8d44\u4ea7\u3002",
+    "source": {
+      "path": "../production/2026-07-16-party-deck-full-optimization-goal.md",
+      "label": "7 \u6708 16 \u65e5\u5361\u724c\uff0f\u4f19\u4f34\u4f18\u5316\u76ee\u6807"
+    },
+    "note": "\u6309\u6807\u9898\u65e5\u671f\u5f52\u6863\uff0c\u6587\u4ef6\u4e8e 7 \u6708 28 \u65e5\u8865\u5f55\u3002\u65e9\u671f\u4e2a\u4eba\u5361\u6c60\u3001\u8d77\u59cb\u724c\u6570\u548c\u4e34\u65f6 NPC \u89c4\u5219\u540e\u6765\u5747\u6709\u8c03\u6574\u3002",
+    "replaces": [
+      "P01"
+    ]
+  },
+  {
+    "id": "P04",
+    "date": "2026-07-20",
+    "phase": "\u6784\u7b51",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u961f\u4f0d\u8d44\u6e90\u548c\u51fa\u724c\u53cd\u9988\u8981\u770b\u5f97\u61c2",
+    "prompt": "\u5c06\u6c14\u529b\u8bbe\u8ba1\u4e3a\u5168\u961f\u5171\u4eab\u8d44\u6e90\uff0c\u4e0e\u89d2\u8272\u5404\u81ea\u7684\u751f\u547d\u3001\u5185\u529b\u5206\u5f00\u663e\u793a\u3002\u6bcf\u4e2a\u5355\u4f4d\u7684\u751f\u547d\u3001\u72b6\u6001\u3001\u6765\u6e90\u548c\u4f4d\u7f6e\u5e94\u6e05\u695a\uff1b\u654c\u65b9\u610f\u56fe\u63d0\u524d\u53ef\u89c1\uff0c\u6309\u884c\u52a8\u9010\u4e2a\u5c55\u793a\u3002\n\u51fa\u724c\u3001\u53d7\u51fb\u3001\u62a4\u7532\u3001\u6cbb\u7597\u3001\u6301\u7eed\u4f24\u5bb3\u3001\u62bd\u724c\u548c\u56de\u5408\u5207\u6362\u90fd\u6709\u5bf9\u5e94\u53cd\u9988\uff0c\u8868\u73b0\u8ddf\u968f\u5b9e\u9645\u7ed3\u7b97\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-07-20-battle-actor-hud-and-shared-qi-design.md",
+      "label": "\u89d2\u8272 HUD \u4e0e\u5171\u4eab\u6c14\u529b\u8bbe\u8ba1"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P05",
+    "date": "2026-07-22",
+    "phase": "\u6784\u7b51",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u6269\u5c55\u4e09\u7ae0\u5192\u9669\u4e0e\u88c5\u5907\u7ecf\u6d4e",
+    "prompt": "\u4fdd\u7559\u968f\u673a\u8def\u7ebf\u7ed3\u6784\uff0c\u6269\u5145\u4e09\u7ae0\uff1a\u666e\u901a\u6218\u3001\u7cbe\u82f1\u3001\u4e8b\u4ef6\u3001\u5b9d\u7bb1\u3001\u5546\u5e97\u548c Boss \u8fde\u7eed\u63a8\u8fdb\uff0c\u7ae0\u672b Boss \u4f9d\u6b21\u4e3a\u91d1\u94b1\u9f20\u3001\u9ed1\u718a\u3001\u8001\u864e\u3002\n\u589e\u52a0\u9057\u7269\u3001\u8def\u7ebf\u5546\u5e97\u53ca\u4e0e\u6c38\u4e45\u91d1\u5e01\u5206\u79bb\u7684\u8def\u7ebf\u8d27\u5e01\uff1b\u4e3b\u89d2\u548c\u6c38\u4e45\u4f19\u4f34\u62e5\u6709\u72ec\u7acb\u516d\u69fd\u88c5\u5907\uff0c\u652f\u6301\u4ed3\u5e93\u3001\u8bcd\u7f00\u3001\u5957\u88c5\u3001\u5f3a\u5316\u3001\u6d17\u70bc\u548c\u5206\u89e3\u3002\u6240\u6709\u5956\u52b1\u3001\u4ea4\u6613\u3001\u89d2\u8272\u548c\u5361\u7ec4\u53d8\u5316\u5fc5\u987b\u53ef\u4fdd\u5b58\u6062\u590d\uff0c\u7981\u6b62\u5047\u6309\u94ae\u3002",
+    "source": {
+      "path": "../production/2026-07-22-project-expansion-overall-goal.md",
+      "label": "7 \u6708 22 \u65e5\u9501\u5b9a\u7684\u603b\u4f53\u76ee\u6807"
+    },
+    "note": "\u5f53\u65f6\u4ecd\u4ee5\u57ce\u9547\u548c\u4e34\u65f6\u4efb\u52a1 NPC \u4e3a\u6846\u67b6\uff1b\u7b49\u7ea7\u3001\u54c1\u8d28\u548c\u8def\u7ebf\u4e34\u65f6\u724c\u4e0d\u662f\u4eca\u5929\u7684\u6700\u7ec8\u53e3\u5f84\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P06",
+    "date": "2026-07-26",
+    "phase": "\u8f6c\u578b",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u6218\u6597\u6539\u7531\u5168\u5c4f HUD \u627f\u8f7d",
+    "prompt": "\u7528\u4e00\u5957\u5168\u5c4f HUD \u8868\u73b0\u8def\u7ebf\u6218\u6597\uff0c\u7edf\u4e00\u9635\u5bb9 idle\u3001\u51fa\u62db\u3001\u53d7\u51fb\u4e0e\u6b7b\u4ea1\u5c55\u793a\u3002\u8fdb\u5165\u6218\u6597\u4e0d\u518d\u989d\u5916\u52a0\u8f7d\u6218\u6597\u5730\u56fe\uff1b\u9000\u51fa\u540e\u6b63\u786e\u6062\u590d\u8def\u7ebf\u3001\u8f93\u5165\u548c\u9875\u9762\u72b6\u6001\u3002\n\u590d\u7528\u5df2\u6279\u51c6\u52a8\u753b\u56fe\u96c6\u4e0e\u63d2\u753b\u80cc\u666f\uff0c\u4e0d\u91cd\u65b0\u5236\u4f5c\u4e00\u5957\u5e73\u884c\u89d2\u8272\u8868\u73b0\uff0c\u4e5f\u4e0d\u501f\u8fc1\u79fb\u66f4\u6539\u5361\u724c\u89c4\u5219\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-07-26-fullscreen-hud-battle-visual-system-design.md",
+      "label": "\u5168\u5c4f HUD \u6218\u6597\u89c6\u89c9\u7cfb\u7edf\u8bbe\u8ba1"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P07",
+    "date": "2026-08-11",
+    "phase": "\u6784\u7b51",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u7edf\u4e00\u804c\u4e1a\u673a\u5236\u548c\u5168\u9879\u76ee\u603b\u7eb2",
+    "prompt": "\u628a\u4e3b\u89d2\u3001\u516d\u804c\u4e1a\u4f19\u4f34\u3001NPC\u3001\u654c\u4eba\u3001\u88c5\u5907\u3001\u72b6\u6001\u548c\u5b58\u6863\u89c4\u5219\u6c47\u6210\u7edf\u4e00\u8bbe\u8ba1\u3002\u4e0d\u540c\u804c\u4e1a\u5f3a\u5ea6\u53ef\u4ee5\u63a5\u8fd1\uff0c\u4f46\u51b3\u7b56\u65b9\u5f0f\u8981\u4e0d\u540c\uff1a\u5200\u5ba2\u770b\u987a\u5e8f\u3001\u5b88\u536b\u7ecf\u8425\u62a4\u7532\u3001\u836f\u5e08\u7ecf\u8425\u751f\u547d\u53d8\u5316\u3001\u5f13\u624b\u84c4\u529b\u91ca\u653e\u3001\u6cd5\u5e08\u7ec4\u7ec7\u4efb\u52a1\u3001\u9635\u5e08\u5207\u6362\u5730\u52bf\u3002\n\u89c4\u5219\u3001\u6570\u503c\u3001\u6587\u6848\u548c\u9884\u89c8\u4fdd\u6301\u4e00\u81f4\uff1b\u6761\u4ef6\u4e0d\u6ee1\u8db3\u65f6\u4ecd\u80fd\u6e05\u695a\u7406\u89e3\u57fa\u7840\u6548\u679c\uff0c\u4e0d\u51fa\u73b0\u6307\u5411\u5931\u8d25\u6216\u5361\u5728\u624b\u4e2d\u3002",
+    "source": {
+      "path": "../design/2026-08-11-gamexxk-full-project-plan-all-in-one.md",
+      "label": "8 \u6708 11 \u65e5\u5168\u9879\u76ee\u89c4\u5212\u5168\u96c6"
+    },
+    "note": "\u5f53\u65f6\u6c47\u7f16\u4e3a 198 \u5f20\u5361\uff0c\u540e\u7eed\u6d3b\u52a8\u76ee\u5f55\u4e0e\u9ed8\u8ba4\u5165\u53e3\u5df2\u53d8\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P08",
+    "date": "2026-08-12",
+    "phase": "\u8f6c\u578b",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u660e\u786e\u8f6c\u5411\u684c\u9762\u653e\u7f6e\u6e38\u620f",
+    "prompt": "\u4ece 3D \u57ce\u9547\u4e3b\u5165\u53e3\u9010\u6b65\u8fc1\u79fb\u4e3a\u4ee5 2D \u5386\u7ec3\u653e\u7f6e\u4e3a\u6838\u5fc3\u7684\u684c\u9762\u6e38\u620f\u3002\u4e3b\u52a8\u6311\u6218\u4fdd\u7559\u8def\u7ebf\u3001\u4e8b\u4ef6\u3001\u5546\u5e97\u548c\u5361\u724c\u6218\u6597\uff0c\u81ea\u52a8\u6218\u6597\u53ea\u4ee3\u4e3a\u51fa\u724c\uff1b\u901a\u5173\u540e\u5f00\u653e\u5386\u7ec3\uff0c\u6301\u7eed\u63d0\u4f9b\u91d1\u5e01\u3001\u7ecf\u9a8c\u548c\u5b9d\u7bb1\u3002\n\u652f\u6301\u684c\u9762\u5e38\u9a7b\u4e0e\u79bb\u7ebf\u6536\u76ca\u3002\u5b9d\u7bb1\u4fdd\u7559\u53d6\u5f97\u65f6\u7684\u6765\u6e90\u548c\u79cd\u5b50\uff0c\u4e0d\u901a\u8fc7\u6362\u5173\u3001\u8bfb\u6863\u62ac\u9ad8\u5956\u52b1\u3002\u63a5\u53d7\u4efb\u52a1\u4e0e NPC \u5165\u961f\u5206\u5f00\uff0c\u5355\u673a\u5faa\u73af\u4e0d\u4f9d\u8d56\u670d\u52a1\u5668\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-12-gamexxk-idle-desktop-migration-design.md",
+      "label": "\u5386\u7ec3\u653e\u7f6e\u4e0e\u684c\u9762\u8fc1\u79fb\u8bbe\u8ba1"
+    },
+    "note": "\u6302\u673a\u65b9\u5411\u7684\u660e\u786e\u8f6c\u6298\u3002\u6b64\u7a3f\u7684\u53cc\u7bb1\u7c7b\u578b\u3001\u8ff7\u4f60\u7a97\u5c3a\u5bf8\u548c\u90e8\u5206\u6536\u76ca\u65b9\u6848\u968f\u540e\u88ab\u66ff\u6362\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P09",
+    "date": "2026-08-14",
+    "phase": "\u6784\u7b51",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u79fb\u9664\u8def\u7ebf\u4e34\u65f6\u5361\uff0c\u6536\u7d27\u6218\u540e\u6210\u957f",
+    "prompt": "\u9000\u51fa\u8def\u7ebf\u4e34\u65f6\u5361\u4f53\u7cfb\uff0c\u4e0d\u518d\u7531\u4e8b\u4ef6\u3001\u5b9d\u7bb1\u6216\u5546\u4eba\u5411\u4e34\u65f6\u8def\u7ebf\u724c\u5e93\u53d1\u724c\u3002\u65b0\u589e 3 \u4e2a\u9996\u9886\u5361\u69fd\uff0c\u53ea\u6709\u9996\u9886\u724c\u53ef\u4ee5\u8fdb\u5165\u3002\n\u6218\u540e\u56f4\u7ed5\u89d2\u8272\u643a\u5e26\u724c\u5347\u54c1\u8d28\u3001\u9057\u7269\u3001\u6c14\u529b\u4e0a\u9650\u3001\u62bd\u724c\u6570\u548c\u9996\u9886\u724c\u4f5c\u9009\u62e9\uff1a\u666e\u901a\u6218\u4fa7\u91cd\u9057\u7269\u4e0e\u724c\u5347\u7ea7\uff0c\u7cbe\u82f1\u589e\u52a0\u8d44\u6e90\u6210\u957f\uff0cBoss \u63d0\u4f9b\u9996\u9886\u724c\u3002\u5546\u5e97\u3001\u5956\u52b1\u548c\u5b58\u6863\u8fc1\u79fb\u540c\u6b65\u8c03\u6574\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-14-route-card-removal-boss-slots-design.md",
+      "label": "\u8def\u7ebf\u4e34\u65f6\u5361\u9000\u51fa\u4e0e\u9996\u9886\u5361\u69fd\u91cd\u8bbe\u8ba1"
+    },
+    "note": "\u66ff\u6362\u65e9\u671f\u4e0d\u65ad\u5411\u8def\u7ebf\u724c\u5e93\u52a0\u724c\u7684\u65b9\u5411\uff1b\u4e0d\u7b49\u4e8e\u6280\u80fd\u70b9\u5347\u7ea7\u5361\u724c\u3002",
+    "replaces": [
+      "P03",
+      "P05"
+    ]
+  },
+  {
+    "id": "P10",
+    "date": "2026-08-17",
+    "phase": "\u8f6c\u578b",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u684c\u9762\u5de5\u4f5c\u53f0\u6574\u5408\u51c6\u5907\u5165\u53e3",
+    "prompt": "\u4ee5\u5e38\u9a7b 2D \u5de5\u4f5c\u53f0\u7ec4\u7ec7\u5c40\u5916\u64cd\u4f5c\uff1a\u5de6\u4fa7\u4ed3\u5e93\u3001\u4e2d\u95f4\u89d2\u8272\u80cc\u5305\u3001\u53f3\u4fa7\u5386\u7ec3\u5730\u56fe\uff0c\u4e0a\u65b9\u6302\u673a\u6761\u3001\u4e0b\u65b9\u5168\u5c40\u6309\u94ae\u3002\u7f16\u961f\u3001\u5929\u8d4b\u3001\u5de5\u5177\u3001\u5546\u5e97\u4fdd\u6301\u7edf\u4e00\u7eb8\u58a8\u754c\u9762\u3002\n\u5f53\u65f6\u65b9\u6848\u62df\u628a\u80cc\u5305\u533a\u4e0e\u6302\u673a\u6761\u5408\u5e76\u6210\u5c40\u5185\u5927\u753b\u5e03\uff0c\u627f\u8f7d\u8def\u7ebf\u548c\u6218\u6597\u3002\u590d\u7528 PSD \u7ec4\u4ef6\uff0c\u907f\u514d\u53cd\u590d\u751f\u6210\u6574\u5f20 UI \u5bfc\u81f4\u98ce\u683c\u548c\u6e05\u6670\u5ea6\u6f02\u79fb\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-17-gamexxk-desktop-training-workbench-design.md",
+      "label": "\u684c\u9762\u5de5\u4f5c\u53f0\u8bbe\u8ba1"
+    },
+    "note": "\u5de5\u4f5c\u53f0\u65b9\u5411\u4fdd\u7559\uff1b\u201c\u5185\u5d4c\u6218\u6597\u5927\u753b\u5e03\u201d\u5728 8 \u6708 19 \u65e5\u660e\u786e\u5e9f\u6b62\u3002",
+    "replaces": [
+      "P08"
+    ]
+  },
+  {
+    "id": "P11",
+    "date": "2026-08-19",
+    "phase": "\u8f6c\u578b",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u7ea0\u6b63\uff1a\u6311\u6218\u4f7f\u7528\u73b0\u6709\u5168\u5c4f\u5c40\u5185\u6d41\u7a0b",
+    "prompt": "\u53d6\u6d88\u5de5\u4f5c\u53f0\u5185\u5d4c ChallengeViewport \u4e0e\u53ea\u8bfb\u6311\u6218\u58f3\u3002\u4e3b\u52a8\u6311\u6218\u590d\u7528\u73b0\u6709\u8def\u7ebf\u56fe\u548c\u5168\u5c4f BattleBoard\uff1a\u73a9\u5bb6\u9009\u62e9\u8def\u7ebf\u3001\u4e8b\u4ef6\u3001\u5546\u5e97\u548c\u5956\u52b1\uff0c\u81ea\u52a8\u6309\u94ae\u53ea\u5728\u602a\u7269\u6218\u4e2d\u6267\u884c\u5408\u6cd5\u51fa\u724c\u3002\n\u6e38\u5386\u6761\u4e0e\u5c40\u5185\u6311\u6218\u4fdd\u6301\u5404\u81ea\u6d41\u7a0b\uff0c\u4e0d\u4e3a\u5408\u5e76\u754c\u9762\u628a\u4e3b\u52a8\u73a9\u6cd5\u53d8\u6210\u65c1\u89c2\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-19-route-owned-auto-battle-correction-design.md",
+      "label": "\u5c40\u5185\u8def\u7ebf\u4e0e\u81ea\u52a8\u6218\u6597\u7ea0\u504f"
+    },
+    "note": "\u66ff\u6362 P10 \u7684\u5185\u5d4c\u6311\u6218\u63d0\u6848\u3002",
+    "replaces": [
+      "P10"
+    ]
+  },
+  {
+    "id": "P12",
+    "date": "2026-08-21",
+    "phase": "\u8f6c\u578b",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u9ed8\u8ba4\u5165\u53e3\u6b63\u5f0f\u843d\u5230\u7eaf 2D",
+    "prompt": "\u7f16\u8f91\u5668\u548c\u6e38\u620f\u9ed8\u8ba4\u8fdb\u5165 L_DesktopTrainingHUD\u3002\u6311\u6218\u4e0d\u9700\u8981\u5148\u53bb\u9752\u5c71\u9547\u63a5\u4efb\u52a1\uff0c\u5728\u540c\u4e00\u5730\u56fe\u663e\u793a\u73b0\u6709\u5168\u5c4f\u6218\u6597\uff1b\u9000\u51fa\u540e\u56de\u5230\u540c\u4e00\u5de5\u4f5c\u53f0\u3002\n\u65e7\u4e3b\u83dc\u5355\uff0f\u9752\u5c71\u9547 3D \u6d41\u7a0b\u53ea\u4f5c\u4e3a\u660e\u786e\u8981\u6c42\u65f6\u7684\u5386\u53f2\u56de\u5f52\u5165\u53e3\uff0c\u4e0d\u80fd\u518d\u6210\u4e3a\u9ed8\u8ba4\u73a9\u5bb6\u6d41\u7a0b\u3002",
+    "source": {
+      "path": "../production/2026-08-21-desktop-2d-default-pointer-acceptance.md",
+      "label": "\u7eaf 2D \u9ed8\u8ba4\u5165\u53e3\u9a8c\u6536"
+    },
+    "note": "\u8986\u76d6\u6700\u521d 3D \u57ce\u9547\u5fc5\u7ecf\u7684\u5165\u53e3\u3002",
+    "replaces": [
+      "P01",
+      "P02"
+    ]
+  },
+  {
+    "id": "P13",
+    "date": "2026-08-23",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u5386\u53f2\u7248\u672c",
+    "title": "\u5c06\u67e5\u770b\u89d2\u8272\u4e0e\u51fa\u6218\u7f16\u961f\u5206\u5f00",
+    "prompt": "\u89d2\u8272\u9875\u9762\u8d1f\u8d23\u67e5\u770b\uff0c\u7f16\u961f\u8d1f\u8d23\u9009\u62e9\u4e0a\u573a\u6210\u5458\u548c\u7ad9\u4f4d\uff1b\u5207\u6362\u80cc\u5305\u89d2\u8272\u4e0d\u81ea\u52a8\u6362\u4eba\u51fa\u6218\u3002\u5f53\u65f6\u6309\u4e3b\u89d2\u3001\u4f19\u4f34\u3001NPC \u4e09\u7c7b\u6210\u5458\u5404\u4e00\u4f4d\u914d\u7f6e\uff0c\u5e76\u7528\u72ec\u7acb\u4f4d\u7f6e\u987a\u5e8f\u7ec4\u7ec7\u9635\u5bb9\u3002\n\u89d2\u8272\u9009\u62e9\u901a\u8fc7\u5408\u6cd5\u6027\u68c0\u67e5\uff0c\u4e0d\u56e0 UI \u5207\u9875\u8bef\u5199\u51fa\u6218\u8eab\u4efd\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-23-decoupled-party-formation-design.md",
+      "label": "\u89d2\u8272\u9009\u62e9\u4e0e\u7ad9\u4f4d\u89e3\u8026\u8bbe\u8ba1"
+    },
+    "note": "\u67e5\u770b\u4e0e\u7f16\u961f\u89e3\u8026\u4fdd\u7559\uff1b\u5f3a\u5236\u4e09\u7c7b\u9f50\u5168\u4e8e 9 \u6708 15 \u65e5\u88ab\u53ef\u7a7a\u69fd\u89c4\u5219\u66ff\u6362\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P14",
+    "date": "2026-08-24",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u63a8\u8fdb\u767e\u7ea7\u517b\u6210\u4e0e\u5168\u961f\u6210\u957f",
+    "prompt": "\u4e3b\u89d2\u3001\u4f19\u4f34\u3001\u4efb\u52a1 NPC \u4f7f\u7528\u53ef\u4fdd\u5b58\u7684\u7b49\u7ea7\u4e0e\u7ecf\u9a8c\u6210\u957f\uff1b\u5386\u7ec3\u6536\u76ca\u6309\u5b9e\u9645\u51fa\u6218\u540d\u5355\u53d1\u653e\uff0c\u672a\u51fa\u6218\u6210\u5458\u4e0d\u5206\u7ecf\u9a8c\u3002\u88c5\u5907\u7a7f\u6234\u68c0\u67e5\u76ee\u6807\u89d2\u8272\u7b49\u7ea7\uff0c\u67e5\u770b\u9501\u5b9a\u96be\u5ea6\u53ea\u5207\u6d4f\u89c8\u72b6\u6001\uff0c\u4e0d\u91cd\u5f00\u6e38\u5386\u6216\u91cd\u7f6e\u751f\u547d\u3002\n\u6210\u957f\u5e94\u6539\u53d8\u5b9e\u9645\u5c5e\u6027\u548c\u540e\u7eed\u906d\u9047\uff0c\u4e0d\u662f\u53ea\u4fee\u6539\u9875\u9762\u6570\u5b57\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-24-party-progression-locked-deck-and-level-gates-design.md",
+      "label": "\u89d2\u8272\u6210\u957f\u4e0e\u88c5\u5907\u7b49\u7ea7\u95e8\u69db"
+    },
+    "note": "\u6b64\u9636\u6bb5\u8f6c\u5411 1\u2013100 \u7ea7\uff0c\u8986\u76d6\u6700\u521d\u4ec5\u4e3b\u89d2\u6210\u957f\u3001NPC \u4e0d\u6210\u957f\u7684\u9650\u5236\u3002",
+    "replaces": [
+      "P01",
+      "P05"
+    ]
+  },
+  {
+    "id": "P15",
+    "date": "2026-08-24",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u5171\u4eab\u80cc\u5305\u4e0e\u4e94\u5de5\u5177\u5f62\u6210\u95ed\u73af",
+    "prompt": "\u80cc\u5305\u548c\u4ed3\u5e93\u7531\u5168\u961f\u5171\u4eab\uff0c\u89d2\u8272\u62e5\u6709\u72ec\u7acb\u516d\u69fd\u88c5\u5907\u3002\u5207\u6362\u67e5\u770b\u5bf9\u8c61\u5fc5\u987b\u663e\u793a\u6b63\u786e\u4eba\u7269\u3001\u5c5e\u6027\u3001\u724c\u7ec4\u4e0e\u88c5\u5907\uff0c\u4e0d\u4e32\u7528\u4e3b\u89d2\u8d44\u6e90\u3002\n\u6253\u901a\u9576\u5d4c\u3001\u5f3a\u5316\u3001\u91cd\u94f8\u3001\u5206\u89e3\u3001\u5408\u6210\u4e94\u5de5\u5177\uff0c\u52a0\u5165\u7269\u54c1\u9501\u5b9a\u3001\u54c1\u8d28\u548c\u5b54\u4f4d\u89c4\u5219\uff1b\u5b9d\u7bb1\u62e5\u6709\u786e\u5b9a\u6027\u6389\u843d\uff0c\u5e93\u5b58\u79fb\u52a8\u548c\u4ea4\u6613\u7531\u7edf\u4e00\u89c4\u5219\u539f\u5b50\u5b8c\u6210\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-24-shared-inventory-equipment-tools-chests-design.md",
+      "label": "\u5171\u4eab\u5e93\u5b58\u3001\u88c5\u5907\u3001\u5de5\u5177\u4e0e\u5b9d\u7bb1\u8bbe\u8ba1"
+    },
+    "note": "\u8bb0\u5f55\u7cfb\u7edf\u65b9\u5411\uff1b\u4ed3\u5e93\u6392\u5e8f\u3001\u6ee1\u5305\u6559\u5b66\u548c\u89d2\u8272 idle \u540e\u6765\u4ecd\u88ab\u5217\u4e3a\u5f85\u505a\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P16",
+    "date": "2026-08-29",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u5267\u60c5\u8fc1\u5165\u684c\u9762\u4efb\u52a1\u5c42",
+    "prompt": "\u5267\u60c5\u4efb\u52a1\u5728\u684c\u9762\u5de5\u4f5c\u53f0\u6253\u5f00\u4efb\u52a1\u62bd\u5c49\u548c 2D \u53d9\u4e8b\u5c42\uff0c\u627f\u63a5\u6b63\u5f0f\u5bf9\u8bdd\u3001\u9009\u62e9\u3001\u6682\u505c\u3001\u5386\u53f2\u4e0e\u624b\u52a8\u9886\u53d6\u62a5\u916c\uff0c\u4e0d\u518d\u901a\u8fc7\u8fdb\u5165 3D \u57ce\u9547\u5b8c\u6210\u3002\n\u4efb\u52a1\u3001\u5bf9\u767d\u548c\u6218\u6597\u7ed3\u679c\u5e94\u6709\u53ef\u6062\u590d\u7684\u72b6\u6001\uff1b\u5173\u95ed\u754c\u9762\u53ea\u5173\u95ed\u5c55\u793a\uff0c\u4e0d\u81ea\u52a8\u63a8\u8fdb\u4efb\u52a1\u6216\u518d\u6b21\u9886\u5956\u3002",
+    "source": {
+      "path": "../superpowers/specs/2026-08-29-desktop-2d-narrative-task-drawer-design.md",
+      "label": "\u684c\u9762 2D \u5267\u60c5\u5c42\u8bbe\u8ba1"
+    },
+    "note": "\u8be5\u6587\u4e8e 8 \u6708 30 \u65e5\u7ee7\u7eed\u7ea0\u6b63\u53d9\u4e8b\u4e0e\u6302\u673a\u6761\u6240\u6709\u6743\uff1b\u672c\u6761\u53ea\u6458\u684c\u9762\u53d9\u4e8b\u4e3b\u65b9\u5411\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P17",
+    "date": "2026-09-03",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u6574\u7406\u5361\u724c\u6587\u672c\uff0c\u964d\u4f4e\u8bfb\u724c\u8d1f\u62c5",
+    "prompt": "\u68b3\u7406\u5168\u90e8\u6d3b\u52a8\u5361\u7684\u4e3b\u6548\u679c\u3001\u6761\u4ef6\u6536\u76ca\u548c\u5173\u952e\u8bcd\u8bf4\u660e\uff0c\u7edf\u4e00\u5361\u7ec4\u3001\u6218\u6597\u3001\u5956\u52b1\u754c\u9762\u7684 Tooltip\u3002\u7b80\u5316\u9996\u5c4f\u6587\u5b57\uff0c\u5fc5\u8981\u7ec6\u8282\u653e\u8be6\u7ec6\u8bf4\u660e\uff1b\u4e2d\u6587\u548c\u82f1\u6587\u90fd\u5e94\u53ef\u8bfb\u3002\n\u5148\u6574\u7406\u9010\u5361\u7a3f\uff0c\u518d\u63a5\u5165\u771f\u5b9e\u663e\u793a\uff0c\u4e0d\u4ee5\u8bc4\u5ba1\u6587\u4ef6\u5b58\u5728\u4ee3\u8868\u6587\u672c\u7b80\u5316\u5df2\u7ecf\u5b8c\u6210\u3002",
+    "source": {
+      "path": "../design/2026-09-03-card-tooltip-text-review-draft.md",
+      "label": "\u5361\u724c Tooltip \u6587\u672c\u8bc4\u5ba1\u7a3f"
+    },
+    "note": "9 \u6708 16 \u65e5\u7528\u6237\u518d\u6b21\u660e\u786e\uff1aTooltip \u6587\u672c\u7b80\u5316\u672a\u505a\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P18",
+    "date": "2026-09-09",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u5267\u60c5\u63d2\u56fe\u4fdd\u6301\u89d2\u8272\u8eab\u4efd\u4e0e\u7eb8\u58a8\u753b\u98ce",
+    "prompt": "\u5267\u60c5\u63d2\u56fe\u4f7f\u7528\u786e\u8ba4\u8fc7\u7684\u89d2\u8272\u539f\u8bbe\u9501\u5b9a\u8138\u578b\u3001\u53d1\u578b\u3001\u670d\u88c5\u4e0e\u914d\u8272\uff0c\u4fdd\u7559\u514b\u5236\u7b14\u89e6\u3001\u7d20\u7eb8\u7559\u767d\u548c\u56db\u8fb9\u67d4\u5316\u3002\u4e0d\u8981\u6574\u5e45\u6a21\u7cca\uff0c\u4e0d\u4e3a\u538b\u7f29\u4f53\u79ef\u64c5\u81ea\u6362\u753b\u98ce\u3002\n\u5404\u5730\u5ba2\u6808\u6cbf\u7528\u76f8\u540c\u5efa\u7b51\u548c\u8001\u677f\uff0c\u53ea\u66f4\u6362\u56db\u5b57\u62db\u724c\uff0c\u6682\u4e0d\u89e3\u91ca\u8fd9\u4e00\u91cd\u590d\u73b0\u8c61\u7684\u6765\u5386\u3002",
+    "source": {
+      "path": "../design/2026-09-09-story-image-budget-and-hero-lock.md",
+      "label": "\u5267\u60c5\u56fe\u4f53\u79ef\u4e0e\u4e3b\u89d2\u4e00\u81f4\u6027"
+    },
+    "note": "\u5ba2\u6808\u8bbe\u5b9a\u89c1\u540c\u65e5\u300a\u56db\u5b57\u62db\u724c\uff0c\u540c\u4e00\u95f4\u5ba2\u6808\u300b\uff1b\u4e0d\u8868\u793a\u6240\u6709 61 \u5f20\u56fe\u5df2\u66f4\u65b0\u3002",
+    "replaces": [],
+    "extraSource": {
+      "path": "../design/2026-09-09-recurring-inn-world-setting.md",
+      "label": "\u56db\u5b57\u62db\u724c\uff0c\u540c\u4e00\u95f4\u5ba2\u6808"
+    }
+  },
+  {
+    "id": "P19",
+    "date": "2026-09-10",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u8ba8\u4f10\u63d0\u4f9b\u66f4\u6df1\u7684\u6301\u7eed\u76ee\u6807",
+    "prompt": "\u5728\u539f\u5173\u5361\u57fa\u7840\u4e0a\u589e\u52a0\u5404\u96be\u5ea6\u8ba8\u4f10\u5165\u53e3\uff0c\u8fde\u63a5\u4e09\u7ae0\u5730\u56fe\uff0c\u524d\u4e24\u7ae0\u4fdd\u7559\u961f\u4f0d\u4f24\u52bf\u4e0e\u5c40\u5185\u79ef\u7d2f\uff0c\u6700\u540e\u4e00\u7ae0\u7ed3\u7b97\u6574\u6b21\u8ba8\u4f10\u3002\n\u4f7f\u7528\u5bf9\u5e94\u8ba8\u4f10\u4ee4\uff0c\u8fdb\u573a\u9884\u7559\u3001\u6210\u529f\u6d88\u8d39\uff0c\u5931\u8d25\u548c\u9000\u51fa\u4e0d\u8017\uff1b\u6536\u76ca\u548c\u8ba8\u4f10\u7bb1\u4e0e\u7968\u636e\u4e00\u540c\u8bb0\u8d26\u3002\u666e\u901a\uff0f\u9ad8\u7ea7\u7bb1\u51fa\u4ee4\u65f6\u6309\u6279\u51c6\u89c4\u5219\u66ff\u4ee3\u539f\u5956\u52b1\uff0c\u6765\u6e90\u5728\u53d6\u5f97\u65f6\u56fa\u5b9a\u3002",
+    "source": {
+      "path": "../design/2026-09-10-hunt-stage-design/runtime-contract.md",
+      "label": "\u8ba8\u4f10\u8fd0\u884c\u65f6\u63a5\u5165\u5951\u7ea6"
+    },
+    "note": "\u6587\u6863\u542b 9 \u6708 11 \u65e5\u6570\u503c\u4fee\u8ba2\uff1b\u672c\u6761\u4e0d\u628a\u540e\u6539\u6982\u7387\u63d0\u524d\u5f52\u5230 9 \u6708 10 \u65e5\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P20",
+    "date": "2026-09-10",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u7528\u5b9e\u9645\u6e38\u5386\u9884\u7b97\u6821\u51c6\u91d1\u5e01\u548c\u5929\u8d4b",
+    "prompt": "\u4fdd\u7559\u666e\u901a\u91d1\u5e01\u7684\u65e2\u5b9a\u500d\u7387\uff0c\u6821\u51c6\u56f0\u96be\u81f3\u5730\u72f1\u589e\u957f\u4e0e\u5929\u8d4b\u4ef7\u683c\uff0c\u8ba9\u79ef\u7d2f\u652f\u6301\u5b9e\u9645\u5347\u7ea7\u548c\u8d2d\u4e70\u3002\u7528\u771f\u5b9e\u76ee\u5f55\u4e0e\u8d2d\u4e70\u89c4\u5219\u590d\u6838\u9884\u7b97\uff0c\u4e0d\u53ea\u505a\u8868\u683c\u81ea\u8bc1\u3002\n\u7a33\u5b9a\u5237\u9ad8\u96be\u7684\u9884\u7b97\u6a21\u578b\u4e0d\u7b49\u4e8e\u65b0\u73a9\u5bb6\u603b\u6210\u957f\u65f6\u95f4\uff1b\u4fdd\u7559\u5df2\u8d2d\u4e70\u5929\u8d4b\uff0c\u4e0d\u81ea\u52a8\u91cd\u7f6e\u6216\u9000\u6b3e\u3002",
+    "source": {
+      "path": "../design/2026-09-10-training-gold-talent-calibration.md",
+      "label": "\u6302\u673a\u91d1\u5e01\u4e0e\u5929\u8d4b\u4ef7\u683c\u6821\u51c6"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P21",
+    "date": "2026-09-10",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u53ef\u9760\u6062\u590d\u5df2\u53cd\u9988\u7684\u6210\u957f",
+    "prompt": "\u6302\u673a\u5b9a\u671f\u4fdd\u5b58\uff0c\u9886\u53d6\u3001\u5f00\u7bb1\u3001\u8d2d\u4e70\u3001\u5de5\u5177\u3001\u5929\u8d4b\u3001\u7f16\u961f\u548c\u5267\u60c5\u7b49\u5173\u952e\u4ea4\u6613\u6210\u529f\u540e\u53ef\u9760\u6301\u4e45\u5316\u3002\u7528\u6863\u6848\u8eab\u4efd\u3001\u63d0\u4ea4\u987a\u5e8f\u3001\u6821\u9a8c\u4e0e\u5907\u4efd\u9009\u62e9\u6b63\u786e\u6062\u590d\u70b9\u3002\n\u79bb\u7ebf\u533a\u95f4\u53ea\u7ed3\u7b97\u4e00\u6b21\uff1b\u4fdd\u5b58\u5931\u8d25\u4e0d\u6263\u8d44\u6e90\u5374\u4e22\u6536\u76ca\u3002\u4e2d\u9014\u6311\u6218\u6062\u590d\u5f53\u524d\u8fdb\u5ea6\uff0c\u4e0d\u514d\u8d39\u91cd\u5f00\u3001\u4e0d\u91cd\u590d\u6263\u7968\u6216\u53d1\u5956\u3002",
+    "source": {
+      "path": "../design/2026-09-10-idle-save-system.md",
+      "label": "\u6302\u673a\u5b58\u6863\u5b8c\u6574\u6027\u8bbe\u8ba1"
+    },
+    "note": "\u8bb0\u5f55\u8bbe\u8ba1\u8981\u6c42\uff0c\u4e0d\u5ba3\u79f0\u6240\u6709\u4fdd\u5b58\u8def\u5f84\u5df2\u7ecf\u8bc1\u660e\u65e0\u7f3a\u9677\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P22",
+    "date": "2026-09-11",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u6389\u843d\u4e0e\u5408\u6210\u6210\u957f\u5f62\u6210\u6e05\u6670\u9636\u68af",
+    "prompt": "\u666e\u901a\u3001\u9ad8\u7ea7\u3001\u8ba8\u4f10\u7bb1\u4f7f\u7528\u4e0d\u540c\u54c1\u8d28\u5206\u5e03\uff0c\u9ad8\u9636\u76f4\u51fa\u96c6\u4e2d\u5728\u8ba8\u4f10\u7bb1\uff1b\u6765\u6e90\u96be\u5ea6\u5728\u53d6\u5f97\u65f6\u56fa\u5b9a\u3002\n\u4e5d\u5408\u4e00\u53ea\u4fdd\u6301\u539f\u54c1\u8d28\u6216\u524d\u8fdb\u4e00\u6863\uff0c\u4e0d\u8de8\u6863\u8df3\u53d8\uff1b\u9ad8\u6863\u6210\u529f\u7387\u9010\u6b65\u964d\u4f4e\uff0c\u5931\u8d25\u4ecd\u6309\u65e2\u5b9a\u89c4\u5219\u6d88\u8017\u6750\u6599\u3002\u6982\u7387\u8868\u3001\u5b9e\u9645\u6389\u843d\u548c\u5c55\u793a\u7edf\u4e00\uff0c\u4e0d\u628a\u6761\u4ef6\u6982\u7387\u5f53\u6bcf\u7bb1\u65e0\u6761\u4ef6\u6982\u7387\u3002",
+    "source": {
+      "path": "../design/2026-09-10-hunt-stage-design/runtime-contract.md",
+      "label": "\u6587\u5185 9 \u6708 11 \u65e5\u4e09\u7bb1\u8868\u4e0e\u63d0\u6848 B"
+    },
+    "note": "\u6309\u6587\u5185\u4fee\u8ba2\u65e5\u671f\u5f52\u6863\uff0c\u4e0d\u6309\u6587\u4ef6\u540d\u5012\u63a8\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P23",
+    "date": "2026-09-11",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u7528\u8fde\u6253\u6536\u76ca\u66ff\u6362\u6307\u5b9a\u968f\u673a\u8d44\u6e90\u8bcd\u7f00",
+    "prompt": "\u65b0\u589e\u201c\u4e58\u98ce\u201d\uff1a\u6bcf\u6761\u56fa\u5b9a 1%\uff0c\u524d\u4e24\u5f20\u4e3b\u52a8\u724c\u65e0\u52a0\u6210\uff0c\u4ece\u7b2c\u4e09\u5f20\u8d77\u6309\u51fa\u724c\u5e8f\u53f7\u9012\u589e\uff0c\u53ea\u63d0\u9ad8\u7a7f\u6234\u8005\u5f53\u524d\u724c\u7684\u76f4\u63a5\u653b\u51fb\u4f24\u5bb3\u3002\u540c\u540d\u76f8\u52a0\uff0c\u56de\u5408\u91cd\u7f6e\uff0c\u4e0d\u8bef\u7b97\u6301\u7eed\u4f24\u5bb3\u548c\u53cd\u5e94\u3002\n\u9000\u4f11\u6307\u5b9a\u968f\u673a\u8d44\u6e90\u8bcd\u7f00\uff0c\u4fdd\u7559\u56fa\u5b9a\u5957\u88c5\u548c\u9057\u7269\uff1b\u65e7\u88c5\u5907\u53ea\u8fc1\u79fb\u53d7\u5f71\u54cd\u8bcd\u6761\uff0c\u4e0d\u91cd\u7f6e\u8d44\u4ea7\u548c\u6b63\u5728\u8fdb\u884c\u7684\u6218\u6597\u3002",
+    "source": {
+      "path": "../design/2026-09-11-affix-wind-ramp.md",
+      "label": "\u4e58\u98ce\u8bcd\u7f00\u4e0e\u9000\u4f11\u6c60\u89c4\u5219"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P24",
+    "date": "2026-09-13",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u539f\u6587\u8bb0\u5f55",
+    "title": "\u95ee\u9898\u4e0d\u662f\u5c11\u8bf4\u660e\uff0c\u800c\u662f\u5f00\u5c40\u592a\u590d\u6742",
+    "prompt": "\u6302\u673a\u6e38\u620f\u5e94\u8be5\u662f\u4ece\u4e00\u4e2a\u975e\u5e38\u7b80\u5355\u4e14\u5bb9\u6613\u7406\u89e3\u7684\u7cfb\u7edf\u4e00\u6b65\u6b65\u52a0\u8981\u7d20\u8ba9\u73a9\u5bb6\u73a9\u5230\u4f60\u7684\u6240\u6709\u5185\u5bb9\u3002\n\u800c\u4e0d\u662f\u4f60\u4e0a\u6765\u4e22\u4e2a\u8bf4\u660e\u4e66\uff1a\u81ea\u5df1\u770b\u3002\n\u6bcf\u4e2a\u9636\u6bb5\u4e0d\u8981\u8ba9\u73a9\u5bb6\u6ce8\u610f\u5230\u7684\u4e1c\u897f\u592a\u591a\u3002",
+    "source": {
+      "path": null,
+      "label": "\u7528\u6237\u7c98\u8d34\u7684\u591c\u3005\uff0f\u5317\u658b\u804a\u5929\uff0c2026-09-13 00:50\u201301:18"
+    },
+    "note": "\u804a\u5929\u539f\u53e5\u8282\u9009\u62fc\u63a5\u3002\u53cd\u9988\u63d0\u51fa\u5148\u4e00\u4e2a\u89d2\u8272\u3001\u518d\u52a0\u4f19\u4f34\u548c NPC\uff1b\u4e0d\u662f\u5f53\u5929\u5df2\u7ecf\u5b8c\u6210\u7684\u5f00\u53d1\u8bb0\u5f55\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P25",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u6838\u5fc3\u4e50\u8da3\u660e\u786e\u4e3a\u6784\u7b51\u4e0e\u5f00\u7bb1",
+    "prompt": "\u56f4\u7ed5\u6784\u7b51\u548c\u5f00\u7bb1\u723d\u611f\u7ec4\u7ec7\u524d\u671f\u4f53\u9a8c\uff0c\u4efb\u52a1\u7684\u5927\u91cf\u91d1\u5e01\u548c\u5b9d\u7bb1\u7528\u4e8e\u652f\u6301\u73a9\u5bb6\u5c1d\u8bd5\u88c5\u5907\u3001\u5de5\u5177\u4e0e\u5361\u7ec4\u3002\n\u6e38\u5386\uff0f\u4efb\u52a1\u4ea7\u8d44\u6e90\u2192\u5f00\u7bb1\u4e0e\u6784\u7b51\u2192\u4e3b\u52a8\u6311\u6218\u9a8c\u8bc1\u2192\u5f00\u653e\u66f4\u6df1\u7684\u6e38\u5386\u76ee\u6807\u3002\u73a9\u5bb6\u53ef\u4ee5\u5148\u7ee7\u7eed\u6302\u673a\uff0c\u4e0d\u8981\u6c42\u4e00\u6b21\u5b66\u5b8c\u6240\u6709\u7cfb\u7edf\u3002",
+    "source": {
+      "path": "../design/2026-09-15-three-layer-player-flow-v2.md",
+      "label": "\u4e09\u5c42\u6d41\u7a0b\u4e2d\u8bb0\u5f55\u7684\u7528\u6237\u6838\u5fc3\u4e50\u8da3"
+    },
+    "note": "\u65e5\u671f\u4e3a\u8bbe\u8ba1\u6574\u7406\u65e5\uff0c\u4e0d\u5ba3\u79f0\u6700\u521d\u8bf4\u51fa\u8fd9\u53e5\u8bdd\u7684\u5177\u4f53\u65f6\u523b\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P26",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u6302\u673a\u6761\u4e0e\u5c40\u5185\u5206\u5f00\uff0c\u6311\u6218\u6682\u505c\u6302\u673a",
+    "prompt": "\u6302\u673a\u6761\u662f\u6302\u673a\u6761\uff0c\u5c40\u5185\u662f\u5c40\u5185\u3002\u53ef\u4ee5\u5171\u4eab\u89d2\u8272\u3001\u88c5\u5907\u548c\u7f16\u961f\uff0c\u4f46\u5206\u522b\u7ef4\u62a4\u8fd0\u884c\u8fc7\u7a0b\u3002\n\u6311\u6218\u671f\u95f4\u6682\u505c\u6302\u673a\uff0c\u5305\u542b\u672c\u6b21\u8def\u7ebf\u3001\u6218\u6597\u3001\u5546\u5e97\u3001\u4e8b\u4ef6\u548c\u5956\u52b1\u9009\u62e9\uff1b\u8fd4\u56de\u684c\u9762\u540e\u6309\u539f\u89c4\u5219\u6062\u590d\u3002\u6682\u505c\u533a\u95f4\u4e0d\u8865\u53d1\u6302\u673a\u6536\u5165\uff0c\u6311\u6218\u524d\u6536\u76ca\u4fdd\u7559\u3002",
+    "source": {
+      "path": "../design/2026-09-15-three-layer-player-flow-v2.md",
+      "label": "\u540c\u65e5\u6700\u7ec8\u51b3\u5b9a\uff1a\u6311\u6218\u671f\u95f4\u6682\u505c\u6302\u673a"
+    },
+    "note": "\u65e9\u5148\u5e76\u884c\u8fd0\u884c\u8ba8\u8bba\u5df2\u88ab\u7528\u6237\u660e\u786e\u64a4\u56de\uff1b\u8fd9\u91cc\u53ea\u4fdd\u7559\u6700\u7ec8\u53ef\u6267\u884c prompt\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P27",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u6309 1-1\uff0f1-2\uff0f1-3 \u9010\u6b65\u52a0\u961f\u5458",
+    "prompt": "\u65b0\u6863\u53ea\u6709\u4e3b\u89d2\uff0c\u5c3d\u91cf\u6309 1-1 \u4e3b\u89d2\u30011-2 \u89e3\u9501\u4f19\u4f34\u30011-3 \u89e3\u9501 NPC \u7684\u8282\u594f\u5c55\u5f00\u3002\u4f19\u4f34\u4e0e NPC \u69fd\u9010\u6b65\u5f00\u653e\uff0c\u89e3\u9501\u540e\u4e5f\u53ef\u5378\u4e0b\uff0c\u6309\u5b9e\u9645\u540d\u5355\u8fdb\u5165\u5c40\u5185\u3002\n\u65b0\u9636\u6bb5\u7531\u73a9\u5bb6\u82b1\u91d1\u5e01\u70b9\u5929\u8d4b\uff0c\u518d\u9ad8\u4eae\u7f16\u961f\u56fe\u6807\uff0c\u5206\u4e00\u5230\u4e24\u6b65\u9009\u4eba\u5165\u961f\u3002\u5c1a\u672a\u5f00\u653e\u53ea\u663e\u793a\u9501\u56fe\u6807\uff0c\u4e0d\u94fa\u89e3\u91ca\u6587\u5b57\u3002",
+    "source": {
+      "path": "../production/2026-09-15-party-slot-onboarding.md",
+      "label": "\u51fa\u6218\u69fd\u4e0e\u4e3b\u7ebf\u5206\u6b65\u5f15\u5bfc"
+    },
+    "note": "\u66ff\u6362\u4e09\u7c7b\u961f\u5458\u5fc5\u987b\u9f50\u5168\u7684\u7ea6\u675f\uff1b1-2 \u6311\u6218\u8d44\u683c\u540e\u6765\u5728 P37 \u6821\u6b63\u3002",
+    "replaces": [
+      "P13"
+    ]
+  },
+  {
+    "id": "P28",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "1-3 \u63a5\u4e3b\u7ebf\uff0c\u8ba9\u6708\u767d\u81ea\u7136\u5165\u573a",
+    "prompt": "\u5728 1-3 \u9636\u6bb5\u5f00\u542f\u4e3b\u7ebf\uff0c\u9996\u4e2a NPC \u4f7f\u7528\u6708\u767d\u3002\u628a\u8ba4\u8bc6\u5979\u3001\u4efb\u52a1\u6d41\u7a0b\u3001\u5b9e\u9645\u9886\u5956\u3001NPC \u69fd\u4f4d\u89e3\u9501\u548c\u7f16\u961f\u4e32\u8d77\u6765\u3002\n\u5df2\u4e70\u69fd\u8df3\u8fc7\u4ed8\u8d39\uff0c\u5df2\u5165\u961f\u8df3\u8fc7\u9009\u4eba\uff0c\u4e0d\u56e0\u63d0\u524d\u64cd\u4f5c\u91cd\u65b0\u6536\u8d39\u6216\u91cd\u590d\u9886\u53d6\u3002",
+    "source": {
+      "path": "../design/2026-09-15-stage-onboarding-operations.md",
+      "label": "\u9636\u6bb5\u5f15\u5bfc\u64cd\u4f5c\u8bbe\u8ba1"
+    },
+    "note": "\u4ee3\u7801\u6807\u8bc6 Npc.YueBai\uff1b\u90e8\u5206\u53d9\u4e8b\u663e\u793a\u201c\u5e7d\u767d\u201d\uff0c\u540d\u79f0\u9700\u7edf\u4e00\u6838\u5bf9\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P29",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u7528\u666e\u901a\u7bb1\u627f\u8f7d\u56fa\u5b9a\u6559\u5b66\u8d44\u6e90",
+    "prompt": "\u524d\u51e0\u4e2a\u7bb1\u5b50\u590d\u7528\u666e\u901a\u5b9d\u7bb1\u5165\u53e3\uff0c\u540e\u53f0\u56fa\u5b9a\u914d\u5957\u88c5\u5907\u3001\u5b9d\u77f3\u548c\u6750\u6599\u3002\u5f00\u5c40\u53ef\u53d6\u5f97\u7b2c\u4e00\u53ea\uff0c\u540e\u7eed\u9010\u53ea\u7ed9\uff1b\u73a9\u5bb6\u70b9\u5f00\u5f53\u524d\u7bb1\u624d\u89e6\u53d1\u76f8\u5e94\u6559\u5b66\u3002\n\u6709\u6559\u5b66\u6389\u843d\u65f6\u4f18\u5148\u5f00\u542f\uff0c\u53f3\u952e\u6279\u5f00\u4e0d\u80fd\u628a\u65b0\u53d1\u7684\u4e0b\u4e00\u53ea\u541e\u6389\u3002\u6587\u6848\u81ea\u7136\uff0c\u4e0d\u5199\u201c\u5b8c\u6210\u8fd9\u4e00\u8bfe\u518d\u7ed9\u4e0b\u4e00\u53ea\u201d\u7b49\u5185\u90e8\u6d41\u7a0b\u3002",
+    "source": {
+      "path": "../design/2026-09-15-starting-teaching-chests.md",
+      "label": "\u5f00\u5c40\u56fa\u5b9a\u6559\u5b66\u7bb1\u65b9\u6848"
+    },
+    "note": "\u4ece\u5f00\u5c40\u62e5\u6709\u4e00\u6279\u7bb1\u7684\u8ba8\u8bba\uff0c\u4fee\u8ba2\u4e3a\u9010\u53ea\u63a5\u7eed\u4ee5\u907f\u514d\u8fde\u7eed\u6279\u5f00\u8df3\u8bfe\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P30",
+    "date": "2026-09-15",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u5f3a\u5316\u770b\u53d8\u5316\uff0c\u5206\u89e3\u4e0e\u5408\u6210\u4e0d\u5f3a\u8feb",
+    "prompt": "\u5f3a\u5316\u540e\u5f15\u5bfc\u60ac\u505c\u521a\u5f3a\u5316\u7684\u88c5\u5907\uff0c\u770b\u771f\u5b9e\u5c5e\u6027\u6548\u679c\uff0c\u5173\u95ed\u540e\u81ea\u7136\u63a5\u4e0b\u4e00\u7bb1\u3002\u5206\u89e3\u53ea\u9700\u8ba9\u73a9\u5bb6\u7406\u89e3\uff0c\u662f\u5426\u6267\u884c\u81ea\u5df1\u51b3\u5b9a\u3002\n\u5408\u6210\u6bb5\u6309\u4e5d\u4ef6\u7269\u54c1\u9700\u6c42\u914d\u9f50\u8d44\u6e90\uff0c\u89e6\u53d1\u540e\u7ed9\u5269\u4f59\u516b\u53ea\u666e\u901a\u7bb1\uff1b\u53ea\u5f15\u5bfc\u70b9\u51fb\u81ea\u52a8\u586b\u5165\uff0c\u4e0d\u4ee3\u70b9\u6700\u7ec8\u5408\u6210\uff0c\u5141\u8bb8\u5173\u95ed\u3002\n\u6574\u4e2a\u7bb1\u5b50\u6559\u5b66\u671f\u95f4\u7ee7\u7eed 1-1 \u6e38\u5386\u3002",
+    "source": {
+      "path": "../production/2026-09-15-teaching-chests.md",
+      "label": "\u666e\u901a\u6559\u5b66\u7bb1\u6700\u7ec8\u4fee\u8ba2"
+    },
+    "note": "\u66ff\u6362\u5f3a\u8feb\u5206\u89e3\uff0f\u5408\u6210\u3001\u53e6\u5f00\u6bd4\u8f83\u9875\u53ca\u66b4\u9732\u5185\u90e8\u8bfe\u7a0b\u6d41\u7a0b\u7684\u505a\u6cd5\u3002",
+    "replaces": [
+      "P29"
+    ]
+  },
+  {
+    "id": "P31",
+    "date": "2026-09-16",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u7528\u7cbe\u82f1\u95e8\u69db\u8bc1\u660e\u57fa\u7840\u88c5\u5907\u7684\u4ef7\u503c",
+    "prompt": "\u6821\u51c6 1-1 \u6e38\u5386\uff1a\u4e0d\u7a7f\u88c5\u5907\u80fd\u8fc7\u666e\u901a\u602a\uff0c\u5728\u7cbe\u82f1\u5173\u6218\u8d25\uff1b\u7a7f\u9f50\u57fa\u7840\u88c5\u5907\u540e\u80fd\u6218\u80dc\u7cbe\u82f1\u548c Boss\u3002\u57fa\u7840\u88c5\u5907\u57fa\u7840\u5c5e\u6027\u4e58 2\uff0c\u5e76\u7528\u5b9e\u9645\u6e38\u5386\u9a8c\u8bc1\u3002\n\u9996\u6b21\u7f3a\u88c5\u5907\u6218\u8d25\u65f6\u6559\u7a7f\u9f50\u57fa\u7840\u88c5\u5907\uff0c\u518d\u624b\u52a8\u51fa\u53d1\uff1b\u5df2\u7a7f\u597d\u6216\u6ca1\u6709\u5931\u8d25\u7684\u73a9\u5bb6\u4e0d\u7528\u5236\u9020\u4e00\u6b21\u5931\u8d25\u3002",
+    "source": {
+      "path": "../production/2026-09-16-starter-equipment-gate.md",
+      "label": "\u9996\u5173\u88c5\u5907\u95e8\u69db\u4e0e\u5b9e\u6d4b"
+    },
+    "note": "\u6e38\u5386\u5e73\u8861\u8981\u6c42\uff0c\u4e0d\u662f\u5c40\u5185\u6311\u6218\u5fc5\u80dc\u627f\u8bfa\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P32",
+    "date": "2026-09-16",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u8865\u5168\u6ca1\u5931\u8d25\u548c\u9519\u8fc7\u5f15\u5bfc\u7684\u8def\u5f84",
+    "prompt": "\u6bcf\u9879\u57fa\u7840\u77e5\u8bc6\u6709\u81ea\u7136\u89e6\u53d1\u4e0e\u4fdd\u5e95\u3002\u7a7f\u6234\u7ed3\u675f\u540e\u5f15\u5bfc\u770b\u89d2\u8272\u5c5e\u6027\uff1b\u6709\u5408\u6cd5\u5019\u9009\u724c\u65f6\u6559\u9009\u62e9\u5e76\u5e94\u7528\u5361\u7ec4\uff1b\u6ca1\u5728 1-1 \u6218\u8d25\uff0c\u4e5f\u5e94\u5728\u6574\u8f6e\u6210\u529f\u6216\u4e0b\u4e00\u6b21\u80cc\u5305\u8bbf\u95ee\u8865\u67e5\u3002\n\u53ea\u8865\u672a\u5b8c\u6210\u76ee\u6807\uff0c\u5b9e\u9645\u505a\u8fc7\u5c31\u8ba4\u53ef\u3002\u6218\u6597\u3001\u62d6\u62fd\u3001\u5bf9\u767d\u6216\u7f16\u8f91\u4e2d\u4e0d\u62a2\u64cd\u4f5c\uff1b\u660e\u786e\u7ee7\u7eed\u6311\u6218\u65f6\u4e0d\u8f6e\u6d41\u62e6\u4f4f\u8865\u8bfe\u3002",
+    "source": {
+      "path": "../design/2026-09-16-onboarding-trigger-and-fallback-plan.md",
+      "label": "\u81ea\u7136\u89e6\u53d1\u4e0e\u4fdd\u5e95\u65b9\u6848"
+    },
+    "note": "\u5b8c\u6574\u5c5e\u6027\uff0f\u5361\u7ec4\u8865\u8bfe\u94fe\u4ecd\u5f85\u8865\uff0c\u4e0d\u56e0\u65b9\u6848\u5199\u5b8c\u5c31\u6807\u4e3a\u5b8c\u6210\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P33",
+    "date": "2026-09-16",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u7b2c\u4e00\u6b21\u5b9e\u9645\u70b9\u602a\u540e\u518d\u6559\u6218\u6597",
+    "prompt": "\u9996\u6b21\u666e\u901a\u6311\u6218\u4e2d\uff0c\u70b9\u602a\u8fdb\u5165\u771f\u5b9e\u6218\u6597\u3001\u624b\u724c\u5c31\u7eea\u540e\u5f00\u59cb\u6559\u5b66\u3002\u4fdd\u8bc1\u653b\u51fb\u793a\u4f8b\u724c\u9996\u56de\u5408\u4e0a\u624b\uff1b\u4e3b\u89d2\u62a4\u7532\u548c\u6cbb\u7597\u724c\u9996\u56de\u5408\u5148\u4e0d\u62bd\u5230\uff0c\u5728\u602a\u7269\u884c\u52a8\u540e\u7684\u4e0b\u4e00\u624b\u8865\u9f50\u3002\n\u81ea\u5b9a\u4e49\u5361\u7ec4\u7f3a\u793a\u4f8b\u724c\u65f6\u53ea\u672c\u573a\u4e34\u65f6\u8865\u724c\uff0c\u6c38\u4e45\u5361\u7ec4\u4e0d\u53d8\u3002",
+    "source": {
+      "path": "../design/2026-09-16-first-normal-challenge-battle-guide.md",
+      "label": "\u9996\u6b21\u666e\u901a\u6311\u6218\u57fa\u7840\u6559\u5b66"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P34",
+    "date": "2026-09-16",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u652f\u6301\u724c\u540c\u573a\u7eed\u63a5\uff0c\u53ea\u8ba4\u53ef\u771f\u5b9e\u7ed3\u679c",
+    "prompt": "\u653b\u51fb\u540e\u770b\u6c14\u529b\u5e76\u7ed3\u675f\u9996\u56de\u5408\uff1b\u602a\u7269\u884c\u52a8\u540e\u7684\u7b2c\u4e8c\u56de\u5408\u4f18\u5148\u6559\u6cbb\u7597\uff0c\u518d\u6559\u62a4\u7532\u3001\u67e5\u770b\u771f\u5b9e\u62a4\u7532\u56fe\u6807\uff0c\u6700\u540e\u4ecb\u7ecd\u81ea\u52a8\u3002\u4e0d\u80fd\u56e0\u6f0f\u6389\u65e7\u7ed3\u675f\u56de\u5408\u63d0\u793a\uff0c\u53c8\u5148\u8ba9\u73a9\u5bb6\u7ed3\u675f\u7b2c\u4e8c\u56de\u5408\u3002\n\u4f7f\u7528\u5176\u4ed6\u724c\u8fbe\u6210\u653b\u51fb\u3001\u6709\u6548\u6cbb\u7597\u6216\u4ea7\u7532\u4e5f\u8ba4\u53ef\u7ed3\u679c\u3002\u5173\u95ed\u53ea\u6536\u8d77\u5f53\u524d\u6bb5\uff0c\u5feb\u901f\u83b7\u80dc\u6b63\u5e38\u7ed3\u7b97\uff0c\u4e0d\u6263\u7740\u80dc\u5229\u5f3a\u8feb\u6559\u5b66\u3002",
+    "source": {
+      "path": "../production/2026-09-16-first-battle-same-fight-followup.md",
+      "label": "\u7b2c\u4e8c\u56de\u5408\u540c\u573a\u7eed\u63a5\u4fee\u6b63"
+    },
+    "note": "\u89e3\u51b3\u6cbb\u7597\uff0f\u62a4\u7532\u62d6\u5230 Boss \u624d\u51fa\u73b0\u7684\u95ee\u9898\u3002",
+    "replaces": [
+      "P33"
+    ]
+  },
+  {
+    "id": "P35",
+    "date": "2026-09-16",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "\u6389\u843d\u4ece\u602a\u7269\u8eab\u4e0a\u7206\u51fa\u5e76\u98de\u5165\u5165\u53e3",
+    "prompt": "\u5143\u5b9d\u6362\u6210\u4e0e\u5b9d\u77f3\u540c\u753b\u98ce\u7684\u5706\u5f62\u91d1\u8272\u65b9\u5b54\u94dc\u94b1\u3002\u51fb\u6740\u540e\u91d1\u5e01\u548c\u5b9d\u7bb1\u4ece\u602a\u7269\u8eab\u4e0a\u7206\u51fa\uff0c\u518d\u805a\u62e2\u98de\u5411\u5bf9\u5e94\u5165\u53e3\uff1b\u91d1\u5e01\u4e0e\u5b9d\u7bb1\u7279\u6548\u5728\u539f\u57fa\u7840\u4e0a\u653e\u5927\u4e00\u500d\u3002\n\u91d1\u5e01\u5438\u6536\u5230\u6302\u673a\u6761\u5e95\u90e8 Tab \u5e76\u6d88\u5931\uff0c\u4e0d\u65b0\u589e\u5e38\u9a7b\u91d1\u5e01\u6570\u5b57\u3002\u6298\u53e0\u65f6\u6536\u76ca\u7ee7\u7eed\uff0c\u88c1\u6389\u4e0d\u53ef\u89c1\u7279\u6548\uff0c\u4e0d\u5728\u5c55\u5f00\u65f6\u8865\u64ad\u4e00\u5927\u5806\u3002",
+    "source": {
+      "path": "../production/2026-09-16-travel-loot-presentation.md",
+      "label": "\u6302\u673a\u6761\u6389\u843d\u8868\u73b0"
+    },
+    "note": "\u4f7f\u7528\u6700\u7ec8\u5438\u6536\u76ee\u6807\uff0c\u8986\u76d6\u5148\u524d\u5e95\u90e8\u91d1\u5e01\u6570\u5b57\u4f4d\u7f6e\u7684\u8ba8\u8bba\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P36",
+    "date": "2026-09-16",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u9636\u6bb5\u51b3\u7b56",
+    "title": "F10 \u4e00\u952e\u56de\u5230\u5b8c\u6574\u65b0\u6863",
+    "prompt": "\u5728 F10 \u5f00\u53d1\u754c\u9762\u63d0\u4f9b\u4e00\u952e\u91cd\u7f6e\u5f53\u524d\u5b58\u6863\uff0c\u590d\u7528\u5b8c\u6574\u65b0\u6863\u521d\u59cb\u5316\uff0c\u6062\u590d\u521d\u59cb\u8d44\u6e90\u3001\u5355\u4e3b\u89d2\u30011-1 \u548c\u9996\u7bb1\u5f15\u5bfc\uff0c\u6e05\u6389\u65e7\u4e34\u65f6\u6062\u590d\u70b9\u3002\n\u6b64\u5165\u53e3\u5c5e\u4e8e\u5f00\u53d1\u529f\u80fd\uff0c\u666e\u901a Shipping \u4e0d\u5305\u542b\uff1b\u5e26 F10 \u7684\u4e13\u7528\u6d4b\u8bd5 Shipping \u4e0e\u666e\u901a\u53d1\u5e03\u5305\u660e\u786e\u533a\u5206\u3002",
+    "source": {
+      "path": "../production/2026-09-16-f10-reset-save.md",
+      "label": "F10 \u4e00\u952e\u91cd\u7f6e\u8bb0\u5f55"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P37",
+    "date": "2026-09-16",
+    "phase": "\u5f15\u5bfc",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u5f00\u5c40 1-1 \u7b97\u5df2\u901a\u5173\uff0c1-2 \u53ef\u76f4\u63a5\u6311\u6218",
+    "prompt": "\u521d\u59cb\u5316\u5c06 1-1 \u8bb0\u4e3a\u6311\u6218\u901a\u5173\uff1a\u53ef\u6e38\u5386\u548c\u91cd\u6253 1-1\uff0c\u7acb\u5373\u5f00\u653e 1-2 \u6311\u6218\uff1b\u672a\u6311\u6218\u901a\u5173 1-2 \u524d\u4e0d\u80fd\u6e38\u5386 1-2\u3002\n\u6e38\u5386 1-1 \u9996\u6b21\u6210\u529f\u53ea\u63a8\u8350\u51c6\u5907\u4f19\u4f34\u5e76\u6311\u6218 1-2\uff0c\u4e0d\u662f\u6311\u6218\u8bb8\u53ef\u3002\u9996\u6b21\u5b9e\u6218\u53ef\u80fd\u76f4\u63a5\u5728 1-2\uff0c\u4e0d\u80fd\u628a\u521d\u59cb\u5316\u901a\u5173\u5f53\u6210\u5df2\u5b66\u4f1a\u6218\u6597\u3002",
+    "source": {
+      "path": "../production/2026-09-16-travel-to12-guidance.md",
+      "label": "\u5f00\u5c40\u8d44\u683c\u4e0e 1-2 \u5f15\u5bfc\u6700\u7ec8\u89c4\u5219"
+    },
+    "note": "\u8986\u76d6\u5fc5\u987b\u5b9e\u9645\u6311\u6218\u901a\u5173 1-1 \u624d\u5f00\u653e 1-2 \u7684\u4e2d\u95f4\u7248\u672c\u3002",
+    "replaces": [
+      "P27"
+    ]
+  },
+  {
+    "id": "P38",
+    "date": "2026-09-16",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u4efb\u52a1\u6218\u540e\u56de\u5230\u4efb\u52a1\uff0c\u5956\u52b1\u56fe\u6807\u5316",
+    "prompt": "\u8fdb\u5165 1-1 \u7684\u8fc7\u65f6\u4efb\u52a1\u63cf\u8ff0\u6539\u4e3a\u201c\u8fdb\u5165\u6218\u6597\uff0c\u51fb\u8d25\u517d\u7fa4\u201d\u3002\u4efb\u52a1\u6218\u540e\u56de\u5230\u5bf9\u5e94\u4efb\u52a1\u6d41\u7a0b\uff0c\u63a5\u6218\u540e\u5bf9\u767d\u4e0e\u9886\u5956\u3002\n\u91d1\u5e01\u548c\u5404\u7c7b\u7bb1\u5b50\u4f7f\u7528\u7edf\u4e00\u753b\u98ce\u7684\u5927\u56fe\u6807\u548c\u6e05\u695a\u6570\u91cf\uff1b\u9886\u53d6\u6210\u529f\u540e\u4ece\u5956\u52b1\u4f4d\u7f6e\u98de\u5230\u5b9e\u9645\u91d1\u5e01\uff0f\u7bb1\u5165\u53e3\u3002\u6218\u540e\u7bb1\u5b50\u6309\u771f\u5b9e\u7c7b\u578b\u914d\u9f50\uff0c\u98de\u884c\u4e0d\u91cd\u590d\u53d1\u5956\u3002",
+    "source": {
+      "path": "../production/2026-09-16-story-return-reward-presentation.md",
+      "label": "\u4efb\u52a1\u8fd4\u56de\u4e0e\u5956\u52b1\u8868\u73b0"
+    },
+    "note": "\u7528\u6237\u968f\u540e\u660e\u786e\uff1a\u52a8\u6548\u9a8c\u6536\u901a\u8fc7\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P39",
+    "date": "2026-09-16",
+    "phase": "\u5b8c\u5584",
+    "kind": "\u4fee\u8ba2\u51b3\u7b56",
+    "title": "\u610f\u56fe\u524d\u666f\u5c55\u793a\uff0c\u884c\u52a8\u540e\u6b63\u786e\u707c\u70e7",
+    "prompt": "\u6b63\u5728\u89e6\u53d1\u7684\u602a\u7269\u610f\u56fe\u5361\u663e\u793a\u5728\u89d2\u8272\u548c\u76f8\u5173\u7279\u6548\u524d\uff0c\u907f\u514d\u88ab\u906e\u6321\u3002\u602a\u7269\u5b9e\u9645\u4f7f\u7528\u4e00\u5f20\u610f\u56fe\u540e\u627f\u53d7\u81ea\u8eab\u707c\u70e7\u4f24\u5bb3\uff1b\u591a\u6bb5\u610f\u56fe\u4e0d\u6309\u6bcf\u6bb5\u91cd\u590d\u89e6\u53d1\uff0c\u8df3\u8fc7\u6b7b\u4ea1\u6765\u6e90\u4e0d\u7b97\u51fa\u724c\u3002\n\u4f24\u5bb3\u8fdb\u5165\u6b63\u5e38\u7ed3\u7b97\u548c\u8868\u73b0\u94fe\uff0c\u4e0d\u53ea\u8865\u4e00\u4e2a\u98d8\u5b57\u3002",
+    "source": {
+      "path": "../production/2026-09-16-enemy-intent-foreground-burn.md",
+      "label": "\u610f\u56fe\u5c42\u7ea7\u4e0e\u884c\u52a8\u540e\u707c\u70e7"
+    },
+    "note": "\u5df2\u63d0\u51fa\u5e76\u5b9a\u5411\u4fee\u590d\uff1b\u4e0d\u8868\u793a\u5176\u4ed6\u610f\u56fe UI \u95ee\u9898\u5168\u90e8\u6d88\u5931\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P40",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u8865\u9f50\u6280\u80fd\u70b9\u5347\u7ea7\u5361\u724c\u95ed\u73af",
+    "prompt": "\u89d2\u8272\u5347\u7ea7\u540e\u83b7\u5f97\u5c5e\u4e8e\u8be5\u89d2\u8272\u7684\u6280\u80fd\u70b9\uff0c\u82b1\u70b9\u5347\u7ea7\u4e2a\u4eba\u5361\u724c\uff0c\u6548\u679c\u9010\u7ea7\u589e\u52a0\u3002\u66f4\u65b0\u6bcf\u4e2a\u54c1\u8d28\u89e3\u9501\u529f\u80fd\u7684\u8868\u683c\uff0c\u8be6\u7ec6\u5c55\u793a 1\u30012\u30013 \u7ea7\uff0c\u660e\u786e\u5f53\u524d\u3001\u4e0b\u4e00\u7ea7\u548c\u6d88\u8017\u3002\n\u6709\u672a\u5206\u914d\u70b9\u6570\u65f6\u5361\u7ec4\u6309\u94ae\u663e\u793a\u7ea2\u70b9\uff1b\u5347\u7ea7\u540e\u5728\u5408\u9002\u65f6\u70b9\u5f15\u5bfc\u5347\u7ea7\u4e00\u5f20\u724c\u3002\u4e0d\u80fd\u628a\u6218\u540e\u5347\u54c1\u8d28\u5f53\u6210\u8be5\u7cfb\u7edf\u5df2\u5b8c\u6210\uff1b\u53d1\u70b9\u6570\u3001\u82b1\u8d39\u548c\u54c1\u8d28\uff0f\u7b49\u7ea7\u5173\u7cfb\u5148\u5b9a\u7a3f\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u7528\u6237\u8981\u6c42\u4fdd\u7559\u7684\u672a\u5b8c\u6210\u4e8b\u9879"
+    },
+    "note": "\u5f52\u6863\u65e5\u4e3a 9 \u6708 16 \u65e5\uff1b\u5f85\u505a\u76ee\u6807\uff0c\u4e0d\u662f\u5f53\u524d\u5b9e\u73b0\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P41",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u4fee\u590d\u5361\u7ec4\u8fde\u7eed\u8f93\u5165\u548c\u89d2\u8272\u73a9\u6cd5\u6559\u7a0b",
+    "prompt": "\u4fee\u590d\u5361\u7ec4\u53cd\u590d Shift \u70b9\u51fb\u540e\u5361\u4f4f\u7684\u95ee\u9898\uff0c\u786e\u4fdd\u53ef\u4ee5\u7ee7\u7eed\u9009\u62e9\u3001\u5e94\u7528\u3001\u5173\u95ed\u4e0e\u91cd\u5f00\uff1b\u7b80\u5316\u5361\u724c Tooltip\u3002\n\u4e3b\u89d2\u548c\u5404\u4f19\u4f34\u73a9\u6cd5\u6559\u7a0b\u76ee\u524d\u70b9\u51fb\u4e0d\u4e86\uff0c\u9700\u8981\u91cd\u65b0\u63a5\u901a\u5165\u53e3\u3001\u5408\u6cd5\u64cd\u4f5c\u3001\u5b9e\u9645\u6548\u679c\u3001\u5173\u95ed\u4e0e\u91cd\u8fdb\u6d41\u7a0b\uff0c\u4e0d\u53ea\u65b0\u589e\u9759\u6001\u8bf4\u660e\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u5361\u7ec4\uff0fTooltip\uff0f\u89d2\u8272\u5f15\u5bfc\u5f85\u529e"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P42",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u4ed3\u5e93\u6392\u5e8f\u4e0e\u6ee1\u5305\u5b58\u653e\u6559\u5b66",
+    "prompt": "\u7ed9\u89d2\u8272\u4ed3\u5e93\u589e\u52a0\u6392\u5e8f\u6309\u94ae\u3002\u89d2\u8272\u80cc\u5305\u6ee1\u65f6\u63d0\u793a\u5e76\u6253\u5f00\u4ed3\u5e93\uff0c\u7531\u73a9\u5bb6\u70b9\u51fb\u201c\u653e\u5165\u201d\uff0c\u5b9e\u9645\u91ca\u653e\u7a7a\u95f4\u540e\u7ed3\u675f\u5f15\u5bfc\u3002\n\u6ee1\u5305\u8bfb\u53d6\u771f\u5b9e\u683c\u5b50\u4e0e\u5806\u53e0\u89c4\u5219\uff1b\u4ed3\u5e93\u4e5f\u6ee1\u65f6\u53ef\u8fd4\u56de\u5904\u7406\uff0c\u4e0d\u5f3a\u5236\u5206\u89e3\u3001\u4e0d\u4ee3\u70b9\u3001\u4e0d\u541e\u5f85\u9886\u5956\u52b1\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u89d2\u8272\u4ed3\u5e93\u53ca\u6ee1\u5305\u5f15\u5bfc\u5f85\u529e"
+    },
+    "note": "\u89d2\u8272\u4ed3\u5e93\u6682\u6309\u73b0\u6709\u7269\u54c1\u4ed3\u5e93\u7406\u89e3\uff1b\u82e5\u6307\u4f19\u4f34\u540d\u5355\u4ed3\u5e93\uff0c\u9700\u53e6\u5b9a\u8303\u56f4\u3002",
+    "replaces": []
+  },
+  {
+    "id": "P43",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u8865\u5546\u5e97\u3001\u97f3\u91cf\u548c\u7f6e\u9876\u6559\u5b66",
+    "prompt": "\u8865\u80cc\u5305\u5546\u5e97\u5f15\u5bfc\u3001\u97f3\u91cf\u5f00\u5173\u5f15\u5bfc\u3001\u7f6e\u9876\uff0f\u53d6\u6d88\u7f6e\u9876\u5f15\u5bfc\uff0c\u6bcf\u6b21\u53ea\u6559\u4e00\u5230\u4e24\u6b65\uff0c\u5728\u5b9e\u9645\u8bbf\u95ee\u6216\u9700\u8981\u65f6\u51fa\u73b0\u3002\n\u5b9e\u73b0\u97f3\u6548\u4e0e BGM \u97f3\u91cf\u72ec\u7acb\u8c03\u8282\u5e76\u4fdd\u5b58\u3002\u6309\u94ae\u72b6\u6001\u5bf9\u5e94\u771f\u5b9e\u58f0\u97f3\u548c\u7a97\u53e3\u7f6e\u9876\u72b6\u6001\uff0c\u4e0d\u53ea\u6539\u56fe\u6807\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u5546\u5e97\u3001\u58f0\u97f3\u8bbe\u7f6e\u4e0e\u7f6e\u9876\u5f85\u529e"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P44",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u8d44\u6e90\u66f4\u65b0\u4e0e\u5f3a\u654c\uff0f\u6e05\u527f\u6a2a\u5e45",
+    "prompt": "\u66f4\u65b0\u6240\u6709\u89d2\u8272\u52a8\u753b\u548c\u5361\u9762\uff0c\u89d2\u8272\u80cc\u5305\u64ad\u653e\u5bf9\u5e94 idle\u3002\u6e38\u5386\u9047\u7cbe\u82f1\u6216 Boss \u65f6\u663e\u793a\u6a2a\u5411\u5927\u5b57\u201c\u5f3a\u654c\u201d\uff0f\u201cwarning\u201d\uff1b\u51fb\u8d25 Boss \u663e\u793a\u201c\u6e05\u527f\u201d\uff0f\u201cclear\u201d\u3002\n\u6309\u771f\u5b9e\u906d\u9047\u548c\u80dc\u5229\u89e6\u53d1\uff0c\u4e0d\u91cd\u590d\u7ed3\u7b97\u3001\u4e0d\u6321\u5173\u952e\u6309\u94ae\u3002\u8d44\u6e90\u672a\u9f50\u7684\u9879\u76ee\u4fdd\u6301\u5f85\u505a\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u540e\u7eed\u8868\u73b0\u4e0e\u8d44\u6e90\u9700\u6c42"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P45",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u5973\u4e3b\u72ec\u7acb\u73a9\u6cd5\u4e0e\u5267\u60c5\u89c6\u89c9",
+    "prompt": "\u4e3a\u5973\u4e3b\u8bbe\u8ba1 30 \u5f20\u4e0e\u7537\u4e3b\u6253\u6cd5\u4e0d\u540c\u7684\u4e3b\u89d2\u5361\uff0c\u5dee\u5f02\u4f53\u73b0\u5728\u51b3\u7b56\u548c\u914d\u5408\uff0c\u4e0d\u53ea\u6362\u56fe\u6216\u6539\u540d\u3002\n\u751f\u6210\u5973\u4e3b 61 \u5f20\u5267\u60c5\u63d2\u56fe\uff0c\u5efa\u7acb\u5267\u60c5\u8282\u70b9\u4e0e\u4e3b\u89d2\u8eab\u4efd\u7684\u5bf9\u5e94\uff1b\u5207\u6362\u4e3b\u89d2\u540e\uff0c\u8fdb\u5165\u5267\u60c5\u3001\u56de\u770b\u3001\u6218\u540e\u8fd4\u56de\u548c\u8bfb\u6863\u90fd\u663e\u793a\u76f8\u5e94\u7248\u672c\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u5973\u4e3b\u5361\u724c\u4e0e 61 \u5f20\u5267\u60c5\u63d2\u56fe\u9700\u6c42"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P46",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u56fe\u9274\u5206\u4f19\u4f34\u4e0e\u602a\u7269\u9875\u7b7e",
+    "prompt": "\u4f19\u4f34\u5347\u7ea7\u5230 20 \u7ea7\u89e3\u9501\u7acb\u7ed8\uff0c\u653e\u8fdb\u56fe\u9274\u67e5\u770b\uff0c\u5e76\u5236\u4f5c\u5bf9\u5e94\u9b45\u529b\u7acb\u7ed8\u3002\n\u602a\u7269\u5b9e\u9645\u906d\u9047\u540e\u89e3\u9501\uff0c\u53ef\u67e5\u770b\u6280\u80fd\uff0f\u610f\u56fe\u5361\uff0c\u6309\u4e00\u3001\u4e8c\u3001\u4e09\u9636\u6bb5\u5206\u7c7b\u3002\u89e3\u9501\u53ef\u4fdd\u5b58\uff0c\u8d44\u6e90\u4e0e\u9875\u7b7e\u6ca1\u63a5\u9f50\u4e0d\u80fd\u5199\u6210\u56fe\u9274\u5b8c\u6210\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u56fe\u9274\u7cfb\u7edf\u5f85\u529e"
+    },
+    "note": "",
+    "replaces": []
+  },
+  {
+    "id": "P47",
+    "date": "2026-09-16",
+    "phase": "\u540e\u7eed",
+    "kind": "\u5f85\u505a\u51b3\u7b56",
+    "title": "\u540e\u671f\u6269\u5c55\u5bf9\u6218\u3001\u5f02\u6b65\u5339\u914d\u548c UGC",
+    "prompt": "\u5355\u72ec\u8bbe\u8ba1\u7a7f\u88c5\u5907\uff0f\u4e0d\u7a7f\u88c5\u5907\u7684\u5c40\u57df\u7f51\u5bf9\u6218\u3001\u7c7b\u5927\u5df4\u624e\u670d\u52a1\u5668\u5f02\u6b65\u5339\u914d\uff0c\u5148\u660e\u786e\u6218\u6597\u89c4\u5219\u3001\u5feb\u7167\u548c\u7ed3\u7b97\u6743\u5a01\uff0c\u4e0d\u628a\u8054\u7f51\u4f9d\u8d56\u585e\u8fdb\u5f53\u524d\u5355\u673a\u5faa\u73af\u3002\n\u589e\u52a0\u73a9\u5bb6\u4e0a\u4f20\u5361\u56fe\u3001\u62a0\u56fe\u5e76\u653e\u7f6e\u5728\u6302\u673a\u80cc\u666f\u5c42\u7684 UGC \u529f\u80fd\uff1bDLC \u6269\u5c55\u65b0\u89d2\u8272\u548c NPC\u3002\u4ee5\u4e0a\u5747\u4e3a\u5927\u540e\u671f\u672a\u505a\u5185\u5bb9\u3002",
+    "source": {
+      "path": null,
+      "label": "\u672c\u6b21\u4f1a\u8bdd\uff1a\u8054\u673a\u3001\u5f02\u6b65\u5339\u914d\u3001UGC \u4e0e DLC \u9700\u6c42"
+    },
+    "note": "",
+    "replaces": []
+  }
+]</script>
+<script>
+"use strict";
+const decisions=JSON.parse(document.getElementById("decision-data").textContent);
+const shortTitles=["初始冒险闭环","真实入口与存档","转向队伍卡牌","共享气力与反馈","三章与装备经济","全屏 HUD 战斗","统一职业机制","转向桌面放置","临时卡 → 首领槽","整合桌面工作台","取消内嵌挑战","纯 2D 默认入口","查看与编队分离","百级与全队成长","共享库存与工具","桌面剧情任务","简化卡牌文本","锁定剧情画风","加入三章讨伐","金币与天赋校准","可靠保存与恢复","掉落与合成阶梯","乘风替换随机词缀","开局必须简单","构筑 × 开箱爽感","挑战暂停挂机","1 → 2 → 3 人","主线与月白入场","普通箱固定教学","工具教学不强迫","装备突破精英","自然触发与补课","首场实战发牌","治疗与护甲同场","击杀掉落飞入","F10 完整重置","1-2 开局可挑战","任务返回与领奖","意图前景与灼烧","技能点升级卡牌","卡组与教程修复","满包与仓库排序","商店／声音／置顶","动画与强敌横幅","女主卡牌与剧情","伙伴与怪物图鉴","联机／UGC／DLC"];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kinds={"历史版本":"historical","修订决策":"revision","待做决策":"todo","原文记录":"raw"};
+const phases=["全部","起步","构筑","转型","完善","引导","后续"];
+let phase="全部",visible=decisions.slice(),selected=decisions.find(d=>"#"+d.id===location.hash)||decisions[0],timer;
+function format(d){return "【"+d.date+" · "+d.id+" · "+d.kind+"】"+d.title+"\n"+d.prompt+(d.note?"\n\n说明："+d.note:"")+"\n来源："+d.source.label;}
+function exportText(){return "《霞客行》决策 Prompt 时间线\n按记录日期排列，历史版本不可与后续修订同时当作现行规则。\n除原文记录外均为归纳，待做不代表已实现。\n\n"+visible.map(format).join("\n\n"+"—".repeat(32)+"\n\n");}
+function toast(t){$("toast").textContent=t;$("toast").hidden=false;clearTimeout(timer);timer=setTimeout(()=>$("toast").hidden=true,2000);}
+async function copyText(t){try{if(!navigator.clipboard)throw new Error("Unavailable");await navigator.clipboard.writeText(t);toast("已复制");}catch(e){$("copy-text").value=t;$("copy-dialog").showModal();$("copy-text").focus();$("copy-text").select();}}
+function sourceHTML(s){return s.path?'<p><a href="'+esc(s.path)+'" target="_blank" rel="noopener">'+esc(s.label)+'</a></p><div class="source-path">'+esc(s.path)+'</div>':'<p>'+esc(s.label)+'。会话内容已归档于本页。</p>';}
+function stages(){ $("stages").innerHTML=phases.map(p=>'<button class="stage '+(p===phase?"active":"")+'" data-phase="'+p+'" aria-pressed="'+(phase===p)+'">'+p+'</button>').join(""); }
+function drawRail(){
+ let priorMonth="";
+ $("rail").innerHTML=visible.map(d=>{
+  const m=d.date.slice(0,7),isNew=m!==priorMonth;priorMonth=m;
+  return '<button class="node '+(kinds[d.kind]||"")+(selected&&selected.id===d.id?" selected":"")+'" id="node-'+d.id+'" data-node="'+d.id+'" aria-pressed="'+(selected&&selected.id===d.id)+'" aria-label="'+d.date+' '+d.id+' '+esc(d.title)+'" title="'+esc(d.title)+' · '+d.kind+'">'+(isNew?'<span class="month-label">'+m.replace("-"," / ")+'</span>':"")+'<span class="when">'+d.date.slice(5).replace("-",".")+'</span><span class="point" aria-hidden="true"></span><span class="node-title">'+esc(shortTitles[decisions.indexOf(d)]||d.title)+'</span><span class="node-id">'+d.id+'</span></button>';
+ }).join("");
+}
+function syncSelected(center){
+ document.querySelectorAll("[data-node]").forEach(n=>{const active=selected&&n.dataset.node===selected.id;n.classList.toggle("selected",active);n.setAttribute("aria-pressed",String(active));});
+ const i=selected?visible.findIndex(d=>d.id===selected.id):-1;
+ $("ordinal").textContent=(i<0?"00":String(i+1).padStart(2,"0"))+" / "+String(visible.length).padStart(2,"0");
+ $("prev").disabled=i<=0;$("next").disabled=i<0||i>=visible.length-1;
+ $("selection").hidden=i<0;
+ if(i<0)return;
+ $("prompt-meta").innerHTML='<span class="code">'+selected.id+'</span><span>／ '+selected.date.replaceAll("-",".")+'</span><span class="tag '+(kinds[selected.kind]||"")+'">'+selected.kind+'</span><span>· '+selected.phase+'</span>';
+ $("prompt-title").textContent=selected.title;$("prompt-body").textContent=selected.prompt;$("prompt-body").scrollTop=0;
+ $("position").textContent="决策 "+String(i+1).padStart(2,"0")+" / "+visible.length;
+ const successors=decisions.filter(d=>d.replaces.includes(selected.id));
+ let context=selected.note?'<h3>这一条怎么看</h3><p class="note">'+esc(selected.note)+'</p>':'<h3>'+selected.phase+'阶段</h3><p>先读本条决策，再沿时间轴查看后续变化。</p>';
+ if(selected.replaces.length)context+='<h3>承接／修订此前</h3><div class="relations">'+selected.replaces.map(id=>'<a href="#'+id+'" data-jump="'+id+'">'+id+'</a>').join("")+'</div>';
+ if(successors.length)context+='<h3>后续变化</h3><div class="relations">'+successors.map(d=>'<a href="#'+d.id+'" data-jump="'+d.id+'" title="'+esc(d.title)+'">'+d.id+' ↗</a>').join("")+'</div>';
+ $("context").innerHTML=context;
+ $("sources").innerHTML=sourceHTML(selected.source)+(selected.extraSource?sourceHTML(selected.extraSource):"")+'<p>'+(selected.kind==="原文记录"?(selected.id==="P24"?"聊天原句节选拼接。":"原文保留。"):"依据记录整理为决策 Prompt，非逐字原始聊天。")+'</p>';
+ try{history.replaceState(null,"","#"+selected.id);}catch(e){}
+ if(center){const n=$("node-"+selected.id),scroller=$("axis-scroll");if(n)scroller.scrollTo({left:n.offsetLeft-scroller.clientWidth/2+n.offsetWidth/2,behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"instant":"smooth"});}
+}
+function render(){
+ const q=$("search").value.trim().toLowerCase(),kind=$("kind").value,month=$("month").value;
+ visible=decisions.filter(d=>(phase==="全部"||d.phase===phase)&&(!kind||d.kind===kind)&&(!month||d.date.startsWith(month))&&(!q||[d.id,d.date,d.title,d.prompt,d.note,d.phase,d.source.label].join(" ").toLowerCase().includes(q)));
+ if(!selected||!visible.some(d=>d.id===selected.id))selected=visible[0]||null;
+ $("count").textContent=visible.length+" / "+decisions.length+" 个节点";
+ $("empty").hidden=visible.length>0;$("axis-scroll").hidden=visible.length===0;
+ $("copy-visible").disabled=$("export").disabled=$("print").disabled=visible.length===0;
+ stages();drawRail();syncSelected(true);
+ $("print-archive").innerHTML=visible.map(d=>'<article><h2>'+esc(d.date+' · '+d.id+' '+d.title)+'</h2><small>'+esc(d.kind)+' / '+esc(d.phase)+'</small><p>'+esc(d.prompt)+'</p><small>'+esc((d.note?d.note+' · ':"")+'来源：'+d.source.label)+'</small></article>').join("");
+}
+function select(id,center=true){const d=visible.find(x=>x.id===id);if(!d)return;selected=d;syncSelected(center);}
+function reset(){phase="全部";$("search").value="";$("kind").value="";$("month").value="";render();}
+function jump(id){if(!decisions.some(d=>d.id===id))return;if(!visible.some(d=>d.id===id))reset();select(id);}
+function step(delta){if(!selected)return;const i=visible.findIndex(d=>d.id===selected.id),next=visible[i+delta];if(next)select(next.id);}
+$("stages").addEventListener("click",e=>{const b=e.target.closest("[data-phase]");if(b){phase=b.dataset.phase;render();}});
+$("search").addEventListener("input",render);$("kind").addEventListener("change",render);$("month").addEventListener("change",render);$("reset").addEventListener("click",reset);
+$("rail").addEventListener("click",e=>{const n=e.target.closest("[data-node]");if(n)select(n.dataset.node);});
+$("context").addEventListener("click",e=>{const a=e.target.closest("[data-jump]");if(a){e.preventDefault();jump(a.dataset.jump);}});
+$("prev").addEventListener("click",()=>step(-1));$("next").addEventListener("click",()=>step(1));
+$("origin").addEventListener("click",()=>{reset();select("P01");});
+$("copy").addEventListener("click",()=>selected&&copyText(format(selected)));
+$("copy-visible").addEventListener("click",()=>copyText(exportText()));
+$("export").addEventListener("click",()=>{const url=URL.createObjectURL(new Blob(["\ufeff"+exportText()],{type:"text/plain;charset=utf-8"})),a=document.createElement("a");a.href=url;a.download="霞客行-决策Prompt-"+(phase==="全部"?"时间线":phase)+".txt";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast("已导出 "+visible.length+" 条决策");});
+$("print").addEventListener("click",()=>window.print());$("close-dialog").addEventListener("click",()=>$("copy-dialog").close());
+$("axis-scroll").addEventListener("wheel",e=>{const el=e.currentTarget;if(Math.abs(e.deltaY)<=Math.abs(e.deltaX)||el.scrollWidth<=el.clientWidth)return;const delta=e.deltaY;if((delta<0&&el.scrollLeft<=0)||(delta>0&&el.scrollLeft>=el.scrollWidth-el.clientWidth-1))return;e.preventDefault();el.scrollLeft+=delta;},{passive:false});
+document.addEventListener("keydown",e=>{if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement.tagName)||$("copy-dialog").open)return;if(e.key==="ArrowRight"){e.preventDefault();step(1);}else if(e.key==="ArrowLeft"){e.preventDefault();step(-1);}else if(e.key==="/"){e.preventDefault();$("search").focus();}});
+window.addEventListener("hashchange",()=>{const id=location.hash.slice(1);if(selected&&selected.id===id)return;jump(id);});
+render();
+</script>
+</body></html>

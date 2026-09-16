@@ -35,7 +35,7 @@ namespace
 		{
 			return false;
 		}
-		OutState = Subsystem->GetRuntimeStateCopy();
+		OutState = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 		return true;
 	}
 
@@ -114,7 +114,9 @@ bool FGameXXKPartyFormationOrderValidationTest::RunTest(const FString& Parameter
 
 	FGameXXKOrderedPartyFormation WrongCount = State.CardRun.OrderedFormation;
 	WrongCount.Members.Pop(EAllowShrinking::No);
-	TestRejected(TEXT("wrong member count is rejected"), WrongCount);
+	TestTrue(TEXT("an empty optional NPC slot is legal"),FGameXXKPartyFormationRules::Validate(State,WrongCount));
+    WrongCount.Members.Reset();
+    TestRejected(TEXT("empty party is rejected"),WrongCount);
 	FGameXXKOrderedPartyFormation Duplicate = State.CardRun.OrderedFormation;
 	Duplicate.Members[2] = Duplicate.Members[1];
 	TestRejected(TEXT("duplicate entity is rejected"), Duplicate);
@@ -171,12 +173,11 @@ bool FGameXXKPartyFormationFallbackRulesTest::RunTest(const FString& Parameters)
 		State.CardRun.PartySelection.QuestNpc.NpcId);
 
 	FGameXXKRuntimeState Insufficient = UGameXXKMVPRules::CreateNewGame();
-	const FGameXXKRuntimeState InsufficientBefore = Insufficient;
-	TestFalse(TEXT("normalization fails without an owned permanent companion"),
+	TestTrue(TEXT("normalization permits no deployed companion"),
 		FGameXXKPartyFormationRules::Normalize(Insufficient, &Error));
-	TestFalse(TEXT("failed sparse normalization reports an error"), Error.IsEmpty());
-	TestTrue(TEXT("failed sparse normalization is atomic"),
-		RuntimeStatesMatch(Insufficient, InsufficientBefore));
+    TestTrue(TEXT("optional formation remains valid"),FGameXXKPartyFormationRules::Validate(Insufficient,Insufficient.CardRun.OrderedFormation));
+    TestFalse(TEXT("normalization does not invent an owned companion"),Insufficient.CardRun.OrderedFormation.Members.ContainsByPredicate(
+        [](const auto& Member){return Member.Kind==EGameXXKPartyMemberKind::PermanentCompanion;}));
 	return true;
 }
 

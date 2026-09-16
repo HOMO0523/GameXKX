@@ -31,6 +31,8 @@ namespace
 		{
 			return Node.GraphPosition.IsNearlyZero();
 		}
+        if(Node.Id==TEXT("Talent.Party.CompanionSlot"))return Node.GraphPosition.Equals(FVector2D(-180,0));
+        if(Node.Id==TEXT("Talent.Party.NpcSlot"))return Node.GraphPosition.Equals(FVector2D(180,0));
 		switch (Node.Branch)
 		{
 		case EGameXXKTalentBranch::Combat:

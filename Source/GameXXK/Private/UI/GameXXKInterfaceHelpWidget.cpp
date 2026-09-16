@@ -87,10 +87,18 @@ void UGameXXKInterfaceHelpWidget::Build()
 	SetVisibility(ESlateVisibility::Collapsed);
 }
 
+#include "UI/GameXXKTalentTreeWidget.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+
 UWidget* UGameXXKInterfaceHelpWidget::FindTarget(const FStep& Step) const
 {
+	if (Step.DirectTarget.IsValid()) return Step.DirectTarget.Get();
+    if(Step.bNoTarget)return nullptr;
 	UUserWidget* Host = TargetHost.Get();
 	if (!Host || !Host->WidgetTree) return nullptr;
+    if(bTeachingChestGuide)if(auto* Workbench=Cast<UGameXXKDesktopTrainingWorkbenchWidget>(Host))
+        for(FName Name:Step.WidgetNames)if(Name.ToString().StartsWith(TEXT("TeachingTarget."))||Name.ToString().StartsWith(TEXT("StarterItem."))||Name.ToString().StartsWith(TEXT("StarterSlot.")))
+            if(auto* Target=Workbench->ResolveTeachingChestTarget(Name))return Target;
 	UWidget* Result = nullptr;
 	// UE's ForEachWidgetAndDescendants descends into a UUserWidget instead of
 	// visiting that wrapper. Whole embedded panels are guide targets too.
@@ -101,6 +109,10 @@ UWidget* UGameXXKInterfaceHelpWidget::FindTarget(const FStep& Step) const
 	Host->WidgetTree->ForEachWidgetAndDescendants([&](UWidget* Candidate)
 	{
 		if (!Result && Step.WidgetNames.Contains(Candidate->GetFName()) && VisibleWithParents(Candidate)) Result = Candidate;
+        if(!Result && VisibleWithParents(Candidate) && Step.WidgetNames.Contains(FName(*Candidate->GetFName().GetPlainNameString())))Result=Candidate;
+        if (!Result && VisibleWithParents(Candidate))
+            if (auto* Node = Cast<UGameXXKTalentNodeButton>(Candidate))
+                if (Step.WidgetNames.Contains(Node->GetNodeId())) Result = Candidate;
 	});
 	return Result;
 }
@@ -127,6 +139,7 @@ void UGameXXKInterfaceHelpWidget::AddVisibleStep(const TCHAR* Key, TArray<FName>
 
 void UGameXXKInterfaceHelpWidget::ShowForHost(UUserWidget* Host, const FName Surface, const bool bDesktopFrame, const int32 HudPercent)
 {
+    bTeachingChestGuide=false;
 	Build();ClearTargetBinding();bTutorial=false; TargetHost = Host; bUseDesktopFrame = bDesktopFrame; DesktopHudPercent = HudPercent;
 	bBrowseAllInterfaces = Surface == TEXT("InterfaceCatalog");
 	Steps.Reset(); StepIndex = 0;
@@ -165,6 +178,7 @@ void UGameXXKInterfaceHelpWidget::ShowForHost(UUserWidget* Host, const FName Sur
 void UGameXXKInterfaceHelpWidget::ShowTutorial(UUserWidget* Host,const TSet<FName>& Completed,int32 HudPercent,
     TFunction<void(FName)> PrepareContext,TFunction<bool(FName)> RecordCompletion)
 {
+    bTeachingChestGuide=false;
     Build();ClearTargetBinding();TargetHost=Host;bUseDesktopFrame=true;DesktopHudPercent=HudPercent;
     PrepareContextCallback=MoveTemp(PrepareContext);RecordCompletionCallback=MoveTemp(RecordCompletion);
     bTutorial=true;bBrowseAllInterfaces=false;bAdvancePending=false;Steps.Reset();
@@ -203,6 +217,132 @@ void UGameXXKInterfaceHelpWidget::ShowTutorial(UUserWidget* Host,const TSet<FNam
     RefreshPage();UpdateReadingLayout();
 }
 
+void UGameXXKInterfaceHelpWidget::ShowProgressionTutorial(UUserWidget* Host, FName Group,
+    const TSet<FName>& Completed, int32 HudPercent, TFunction<void(FName)> PrepareContext,
+    TFunction<bool(FName)> RecordCompletion)
+{
+    Build(); ClearTargetBinding(); TargetHost=Host; bUseDesktopFrame=true; DesktopHudPercent=HudPercent;
+    PrepareContextCallback=MoveTemp(PrepareContext); RecordCompletionCallback=MoveTemp(RecordCompletion);
+    bTutorial=true; bBrowseAllInterfaces=false; bReplay=false; bAdvancePending=false; Steps.Reset();
+    const FString Name=Group.ToString();
+    bTeachingChestGuide=Name.StartsWith(TEXT("Teaching."));
+    if(bTeachingChestGuide)
+    {
+        TArray<FString> Parts;Name.ParseIntoArray(Parts,TEXT("."));
+        if(Parts.Num()!=3){Dismiss();return;}
+        const int32 Stage=FCString::Atoi(*Parts[1]);const FString Part=Parts[2];
+        const auto Add=[&](const TCHAR* Target,const TCHAR* Body,bool StateDriven=false,bool Action=true)
+        {
+            FStep Step;Step.HeadingKey=FString::Printf(TEXT("TeachingChest.Stage.%d"),Stage);Step.BodyKey=Body;
+            Step.WidgetNames.Add(Target);Step.Context=Group;Step.bAction=Action;Step.bStateDriven=StateDriven;
+            Step.CompletionId=FName(*(Name+FString::Printf(TEXT(".%d"),Steps.Num())));Steps.Add(MoveTemp(Step));
+        };
+        if(Stage==0)
+        {
+            if(Part==TEXT("Open"))Add(TEXT("TeachingTarget.Chest"),TEXT("StarterGear.Open"),true);
+            else if(Part==TEXT("Map"))Add(TEXT("BottomNavigationButton_4"),TEXT("StarterGear.Map"));
+            else if(Part==TEXT("Retry"))Add(TEXT("TrainingTravelButton"),TEXT("StarterGear.Retry"),true);
+            else
+            {
+                Add(*(TEXT("StarterItem.")+Part),TEXT("StarterGear.Pick"),true);
+                Add(*(TEXT("StarterSlot.")+Part),TEXT("StarterGear.Equip"),true);
+            }
+            for(auto& Step:Steps)Step.HeadingKey=TEXT("StarterGear.Title");
+        }
+        else if(Part==TEXT("Open"))Add(TEXT("TeachingTarget.Chest"),TEXT("TeachingChest.Open"),true);
+        else if(Part==TEXT("Equip")){Add(TEXT("TeachingTarget.Item"),TEXT("TeachingChest.Equip"),true);Add(TEXT("TeachingTarget.Equipped"),TEXT("TeachingChest.EquipPlace"),true);}
+        else if(Part==TEXT("Unequip"))Add(TEXT("TeachingTarget.Equipped"),TEXT("TeachingChest.Unequip"),true);
+        else if(Part==TEXT("Tools"))Add(TEXT("BottomNavigationButton_3"),TEXT("TeachingChest.Tools"));
+        else if(Part==TEXT("Mode"))
+        {
+            Add(TEXT("ToolModeDropdownButton"),TEXT("TeachingChest.ModeMenu"));
+            const int32 Mode=Stage==2?4:Stage==3?2:Stage==4?3:Stage==5?0:1;
+            Add(*FString::Printf(TEXT("ToolButton_%d"),Mode),TEXT("TeachingChest.Mode"));
+        }
+        else if(Part==TEXT("Target")){Add(TEXT("TeachingTarget.Item"),TEXT("TeachingChest.PickEquipment"),true);Add(TEXT("ToolInputSlot_0"),TEXT("TeachingChest.PlaceEquipment"),true);}
+        else if(Part==TEXT("Gem")){Add(TEXT("TeachingTarget.Gem"),TEXT("TeachingChest.PickGem"),true);Add(TEXT("ToolInputSlot_1"),TEXT("TeachingChest.PlaceGem"),true);}
+        else if(Part==TEXT("Generate"))Add(TEXT("ToolConfirmButton"),TEXT("TeachingChest.Reforge"),true);
+        else if(Part==TEXT("Resolve"))Add(TEXT("TeachingReforgeChoices"),TEXT("TeachingChest.Resolve"),true);
+        else if(Part==TEXT("Commit"))Add(TEXT("ToolConfirmButton"),Stage==3?TEXT("TeachingChest.Enhance"):TEXT("TeachingChest.Dismantle"),true);
+        else if(Part==TEXT("Materials"))Add(TEXT("TeachingTarget.Chest"),TEXT("TeachingChest.Materials"),true);
+        else if(Part==TEXT("Fill"))Add(TEXT("ToolAutoFill"),TEXT("TeachingChest.Fill"));
+        else if(Part==TEXT("Review")&&Stage==3)
+        {Add(TEXT("TeachingTarget.EnhancedItem"),TEXT("TeachingChest.HoverEnhanced"),false,false);Steps.Last().bHover=true;Steps.Last().bCloseCompletes=true;Steps.Last().HeadingKey=TEXT("TeachingChest.InspectHeading");}
+        else if(Part==TEXT("Intro")&&Stage==5)
+        {Add(TEXT("ToolModeLabel"),TEXT("TeachingChest.DismantleIntro"),false,false);Steps.Last().bCloseCompletes=true;}
+        else if(Part==TEXT("Review"))Add(TEXT("ToolAutoFill"),TEXT("TeachingChest.Review"),false,false);
+        StepIndex=0;bOpen=!Steps.IsEmpty();bPreparePending=bOpen;HoverSeconds=0;bHoverObserved=false;
+        SetVisibility(bOpen?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
+        if(bOpen){RefreshPage();UpdateReadingLayout();}return;
+    }
+    if(Name==TEXT("FirstChallenge12"))
+    {
+        if(!Completed.Contains(TEXT("UI.Progression.V1.FirstChallenge12.Commit")))
+        for(int32 I=0;I<2;++I)
+        {
+            FStep Step;Step.HeadingKey=TEXT("UI.Progression.FirstChallenge12.Heading");
+            Step.BodyKey=I==0?TEXT("UI.Progression.FirstChallenge12.Select"):TEXT("UI.Progression.FirstChallenge12.Start");
+            Step.CompletionId=I==0?TEXT("UI.Progression.V1.FirstChallenge12.Select"):TEXT("UI.Progression.V1.FirstChallenge12.Commit");
+            Step.WidgetNames.Add(I==0?FName(TEXT("TrainingNode_2")):FName(TEXT("TrainingChallengeButton")));
+            Step.Context=TEXT("Progression.FirstChallenge12");Step.bAction=true;Steps.Add(MoveTemp(Step));
+        }
+        StepIndex=0;bOpen=!Steps.IsEmpty();bPreparePending=bOpen;HoverSeconds=0;bHoverObserved=false;
+        SetVisibility(bOpen?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
+        if(bOpen){RefreshPage();UpdateReadingLayout();}return;
+    }
+    const bool Companion=Name.StartsWith(TEXT("Companion"));
+    const bool Unlock=Name.EndsWith(TEXT("Unlock"));
+    if(Name.EndsWith(TEXT("Formation")))
+    {
+        FStep Step;Step.CompletionId=FName(*(TEXT("UI.Progression.V1.")+Name+TEXT(".Commit")));
+        if(!Completed.Contains(Step.CompletionId))
+        {
+            Step.HeadingKey=Companion?TEXT("UI.Progression.Companion"):TEXT("UI.Progression.Npc");
+            Step.BodyKey=TEXT("UI.Progression.OpenFormation");Step.WidgetNames.Add(TEXT("BottomNavigationButton_1"));
+            Step.Context=TEXT("Progression.Formation");Step.bAction=true;Steps.Add(MoveTemp(Step));
+        }
+        StepIndex=0;bOpen=!Steps.IsEmpty();bPreparePending=bOpen;HoverSeconds=0;bHoverObserved=false;
+        SetVisibility(bOpen?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
+        if(bOpen){RefreshPage();UpdateReadingLayout();}return;
+    }
+    if(Name.StartsWith(TEXT("Story")))
+    {
+        const bool Reward=Name.StartsWith(TEXT("StoryReward"));
+        const TCHAR* Targets[2]={TEXT("StoryQuestButton"),TEXT("MainStoryChapter_0")};
+        const TCHAR* Bodies[2]={TEXT("UI.Progression.Story.Open"),TEXT("UI.Progression.Story.Chapter")};
+        if(Name==TEXT("StoryFirst")){Targets[0]=TEXT("StoryNode_S00-01");Targets[1]=TEXT("StoryStartTask");Bodies[0]=TEXT("UI.Progression.Story.First");Bodies[1]=TEXT("UI.Progression.Story.Start");}
+        if(Name==TEXT("StoryMeet")){Targets[0]=TEXT("StoryContinueMainline");Targets[1]=TEXT("StoryStartTask");Bodies[0]=TEXT("UI.Progression.Story.Continue");Bodies[1]=TEXT("UI.Progression.Story.Meet");}
+        if(Reward){Targets[0]=TEXT("StoryClaimReward");Bodies[0]=TEXT("UI.Progression.Story.Reward");}
+        for(int32 I=0;I<(Reward?1:2);++I)
+        {
+            FStep Step;Step.CompletionId=FName(*(TEXT("UI.Progression.V1.")+Name+((Reward||I==1)?TEXT(".Commit"):TEXT(".Select"))));
+            if(Completed.Contains(Step.CompletionId))continue;
+            Step.HeadingKey=TEXT("UI.Progression.Story.Heading");Step.BodyKey=Bodies[I];Step.WidgetNames.Add(Targets[I]);
+            Step.Context=FName(*(TEXT("Progression.")+Name));Step.bAction=true;Steps.Add(MoveTemp(Step));
+        }
+        StepIndex=0;bOpen=!Steps.IsEmpty();bPreparePending=bOpen;HoverSeconds=0;bHoverObserved=false;
+        SetVisibility(bOpen?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
+        if(bOpen){RefreshPage();UpdateReadingLayout();}return;
+    }
+    const FString Context=FString(Unlock?TEXT("Progression.Talent."):TEXT("Progression.Party."))+(Companion?TEXT("Companion"):TEXT("Npc"));
+    for(int32 I=0;I<2;++I)
+    {
+        FStep Step;
+        Step.CompletionId=FName(*(TEXT("UI.Progression.V1.")+Name+(I==0?TEXT(".Select"):TEXT(".Commit"))));
+        if(Completed.Contains(Step.CompletionId))continue;
+        Step.HeadingKey=Companion?TEXT("UI.Progression.Companion"):TEXT("UI.Progression.Npc");
+        Step.BodyKey=Unlock?(I==0?TEXT("UI.Progression.SelectTalent"):TEXT("UI.Progression.Pay"))
+            :(I==0?TEXT("UI.Progression.SelectMember"):TEXT("UI.Progression.Deploy"));
+        Step.Context=FName(*Context); Step.bAction=true;
+        Step.WidgetNames.Add(Unlock?(I==0?FName(Companion?TEXT("Talent.Party.CompanionSlot"):TEXT("Talent.Party.NpcSlot")):FName(TEXT("TalentPurchaseButton")))
+            :FName(I==0?TEXT("FormationCandidateButton_0"):TEXT("FormationApplyButton")));
+        Steps.Add(MoveTemp(Step));
+    }
+    StepIndex=0; bOpen=!Steps.IsEmpty(); bPreparePending=bOpen; HoverSeconds=0; bHoverObserved=false;
+    SetVisibility(bOpen?ESlateVisibility::SelfHitTestInvisible:ESlateVisibility::Collapsed);
+    if(bOpen){RefreshPage();UpdateReadingLayout();}
+}
+
 FName UGameXXKInterfaceHelpWidget::GetCurrentCompletionIdForTest() const
 {
     return Steps.IsValidIndex(StepIndex)?Steps[StepIndex].CompletionId:NAME_None;
@@ -224,7 +364,9 @@ void UGameXXKInterfaceHelpWidget::PrepareCurrentStep()
 
 void UGameXXKInterfaceHelpWidget::TargetClicked()
 {
-    if(bOpen&&bTutorial&&!bPreparing&&BoundTargetButton&&BoundTargetButton->GetIsEnabled())bAdvancePending=true;
+    // The gameplay handler can disable the button after a successful purchase.
+    // Validate the resulting state in RecordCompletion rather than its new enabled state.
+    if(bOpen&&bTutorial&&!bPreparing&&BoundTargetButton)bAdvancePending=true;
 }
 
 bool UGameXXKInterfaceHelpWidget::CompleteCurrentStep()
@@ -232,27 +374,30 @@ bool UGameXXKInterfaceHelpWidget::CompleteCurrentStep()
     if(!bOpen||!Steps.IsValidIndex(StepIndex))return false;
     if(bTutorial&&RecordCompletionCallback&&!RecordCompletionCallback(Steps[StepIndex].CompletionId))
     {
-        Body->SetText(GameXXKLocalization::Text(TEXT("UI.Guide.SaveFailed")));return false;
+        if(!bTeachingChestGuide)Body->SetText(GameXXKLocalization::Text(TEXT("UI.Guide.SaveFailed")));return false;
     }
     ClearTargetBinding();bAdvancePending=false;HoverSeconds=0;bHoverObserved=false;++StepIndex;
     if(!Steps.IsValidIndex(StepIndex)){Dismiss();return true;}
     RefreshPage();return true;
 }
 
-void UGameXXKInterfaceHelpWidget::RecoverTarget(){if(bOpen&&bTutorial){bPreparePending=true;HoverSeconds=0;}}
+void UGameXXKInterfaceHelpWidget::RecoverTarget(){if(bOpen&&bTutorial){if(bTeachingChestGuide){StepIndex=0;RefreshPage();}bPreparePending=true;HoverSeconds=0;}}
 void UGameXXKInterfaceHelpWidget::ConfirmReadingForTest(){Next();}
 
 void UGameXXKInterfaceHelpWidget::RefreshPage()
 {
 	if (!Steps.IsValidIndex(StepIndex)) { Dismiss(); return; }
 	Heading->SetText(GameXXKLocalization::Text(*Steps[StepIndex].HeadingKey));
-	Body->SetText(GameXXKLocalization::Text(*Steps[StepIndex].BodyKey));
+	Body->SetText(Steps[StepIndex].OverrideText.IsEmpty()?GameXXKLocalization::Text(*Steps[StepIndex].BodyKey):Steps[StepIndex].OverrideText);
+    if(BodySize)BodySize->SetHeightOverride(64.f);
 	FFormatNamedArguments Arguments; Arguments.Add(TEXT("Current"), StepIndex + 1); Arguments.Add(TEXT("Total"), Steps.Num());
 	Counter->SetText(GameXXKLocalization::Format(TEXT("UI.Guide.Progress"), Arguments));
+	Counter->SetVisibility(Steps[StepIndex].DirectTarget.IsValid()?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
     PreviousLabel->SetText(GameXXKLocalization::Text(TEXT("UI.Guide.Back")));
     NextLabel->SetText(GameXXKLocalization::Text(bTutorial?TEXT("UI.Guide.GotIt"):TEXT("Common.Next")));
     PreviousButton->GetParent()->SetVisibility(bTutorial?ESlateVisibility::Collapsed:ESlateVisibility::Visible);
     NextButton->GetParent()->SetVisibility(bTutorial&&(Steps[StepIndex].bAction||(Steps[StepIndex].bHover&&!bHoverObserved))?ESlateVisibility::Collapsed:ESlateVisibility::Visible);
+    if(Steps[StepIndex].bCloseCompletes)NextButton->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 	PreviousButton->SetIsEnabled(StepIndex > 0); NextButton->SetIsEnabled(bTutorial||StepIndex + 1 < Steps.Num());
     PresentedLanguageRevision=GameXXKLocalization::GetRevision();
     // Includes the close label, which remains visible across language switches.
@@ -307,6 +452,16 @@ void UGameXXKInterfaceHelpWidget::NativeTick(const FGeometry& Geometry, const fl
     if(bPreparePending)PrepareCurrentStep();
     if(bAdvancePending){bAdvancePending=false;CompleteCurrentStep();if(!bOpen)return;}
     if(PresentedLanguageRevision!=GameXXKLocalization::GetRevision())RefreshPage();
+    if(bTeachingChestGuide&&Steps.IsValidIndex(StepIndex)&&Steps[StepIndex].bStateDriven)
+    {
+        HoverSeconds+=FMath::Max(0.f,DeltaTime);
+        if(HoverSeconds>=.15f)
+        {
+            HoverSeconds=0;
+            if(RecordCompletionCallback&&RecordCompletionCallback(Steps[StepIndex].CompletionId))
+            {CompleteCurrentStep();if(!bOpen)return;}
+        }
+    }
     if(bTutorial&&Steps.IsValidIndex(StepIndex))
     {
         const auto& Step=Steps[StepIndex];UWidget* Target=FindTarget(Step);
@@ -326,11 +481,11 @@ void UGameXXKInterfaceHelpWidget::NativeTick(const FGeometry& Geometry, const fl
             HoverSeconds=Target&&Target->IsHovered()?HoverSeconds+FMath::Max(0.f,DeltaTime):0;
             if(HoverSeconds>=1.0f)
             {
-                bHoverObserved=true;NextButton->GetParent()->SetVisibility(ESlateVisibility::Visible);
+                bHoverObserved=true;NextButton->GetParent()->SetVisibility(Step.bCloseCompletes?ESlateVisibility::Collapsed:ESlateVisibility::Visible);
                 NextLabel->SetText(GameXXKLocalization::Text(TEXT("UI.Guide.GotIt")));
             }
         }
-        if(!Target)
+        if(!Target&&!Step.bNoTarget)
         {
             NextButton->GetParent()->SetVisibility(ESlateVisibility::Visible);
             NextLabel->SetText(GameXXKLocalization::Text(TEXT("UI.Guide.Show")));
@@ -355,15 +510,42 @@ void UGameXXKInterfaceHelpWidget::Next()
     if(bTutorial)
     {
         if(!Steps.IsValidIndex(StepIndex))return;
-        if(!FindTarget(Steps[StepIndex])){RecoverTarget();return;}
+        if(Steps[StepIndex].bCloseCompletes)return;
+        if(!Steps[StepIndex].bNoTarget&&!FindTarget(Steps[StepIndex])){RecoverTarget();return;}
         if(!Steps[StepIndex].bAction&&(!Steps[StepIndex].bHover||bHoverObserved))CompleteCurrentStep();
     }
     else if(StepIndex + 1 < Steps.Num()){++StepIndex;RefreshPage();}
 }
-void UGameXXKInterfaceHelpWidget::CloseClicked() { Dismiss(); }
+void UGameXXKInterfaceHelpWidget::CloseClicked()
+{
+    if(bOpen && Steps.IsValidIndex(StepIndex) && Steps[StepIndex].DirectTarget.IsValid()
+        && !Steps[StepIndex].bAction && (!Steps[StepIndex].bHover || bHoverObserved))
+    {
+        // Reading and then closing a battle explanation completes that explanation,
+        // not the rest of the battle's lessons. Failed saves keep the current prompt.
+        CompleteCurrentStep();return;
+    }
+    if(bOpen&&bTeachingChestGuide&&Steps.IsValidIndex(StepIndex)&&Steps[StepIndex].bCloseCompletes)
+    {if(CompleteCurrentStep())return;}
+    Dismiss();
+}
+
+void UGameXXKInterfaceHelpWidget::ShowBattleStep(UUserWidget* Host,FName Topic,UWidget* Target,const FText& Text,
+	bool Action,bool Hover,TFunction<bool(FName)> RecordCompletion,FSimpleDelegate OnDismiss)
+{
+	Build();ClearTargetBinding();TargetHost=Host;bUseDesktopFrame=false;DesktopHudPercent=100;
+	bTeachingChestGuide=false;bTutorial=true;bBrowseAllInterfaces=false;bReplay=false;bAdvancePending=false;
+	bPreparePending=false;PrepareContextCallback=nullptr;RecordCompletionCallback=MoveTemp(RecordCompletion);Dismissed=MoveTemp(OnDismiss);
+	Steps.Reset();FStep Step;Step.HeadingKey=TEXT("FirstBattle.Heading");Step.OverrideText=Text;
+	Step.CompletionId=Topic;Step.DirectTarget=Target;Step.bAction=Action;Step.bHover=Hover;
+	Steps.Add(MoveTemp(Step));StepIndex=0;HoverSeconds=0;bHoverObserved=false;bOpen=true;
+	SetVisibility(ESlateVisibility::SelfHitTestInvisible);RefreshPage();UpdateReadingLayout();
+}
 void UGameXXKInterfaceHelpWidget::Dismiss()
 {
 	const bool bWasOpen = bOpen; bOpen = false; SetVisibility(ESlateVisibility::Collapsed);
+    if(bWasOpen&&bTeachingChestGuide&&StepIndex<Steps.Num())
+        if(auto* Host=Cast<UGameXXKDesktopTrainingWorkbenchWidget>(TargetHost.Get()))Host->RecordTeachingChestStep(TEXT("Teaching.Dismiss"));
     ClearTargetBinding();bAdvancePending=false;bPreparePending=false;HoverSeconds=0;
 	if (Spotlight) Spotlight->DismissSpotlight();
 	if (bWasOpen) Dismissed.ExecuteIfBound();
@@ -373,7 +555,7 @@ FReply UGameXXKInterfaceHelpWidget::NativeOnPreviewKeyDown(const FGeometry& Geom
 {
 	if (bOpen && (Event.GetKey() == EKeys::Escape || Event.GetKey() == EKeys::F1 || Event.GetKey() == EKeys::F10))
 	{
-		Dismiss(); if (Event.GetKey() != EKeys::F10) return FReply::Handled();
+		CloseClicked(); if (Event.GetKey() != EKeys::F10) return FReply::Handled();
 	}
 	return Super::NativeOnPreviewKeyDown(Geometry, Event);
 }

@@ -318,6 +318,18 @@ bool UGameXXKTalentTreeWidget::ClickPurchaseButtonForTest()
 	return MVPSubsystem->GetRuntimeState().Talents.NodeRanks.FindRef(SelectedNodeId) > RankBefore;
 }
 
+void UGameXXKTalentTreeWidget::FocusNodeForGuide(const FName NodeId, const bool bSelect)
+{
+    RebuildForTest();
+    const auto* Node=FGameXXKTalentCatalog::Find(NodeId);
+    if(!Node||!VisibleNodeIds.Contains(NodeId)||!HorizontalScroll||!VerticalScroll)return;
+    RequestedGraphScrollOffset=SlotCenterForGraphPosition(Node->GraphPosition)
+        -FVector2D(GraphViewportWidth*.5f,WidgetHeight*.5f);
+    HorizontalScroll->SetScrollOffset(RequestedGraphScrollOffset.X);
+    VerticalScroll->SetScrollOffset(RequestedGraphScrollOffset.Y);
+    if(bSelect)SelectNodeForTest(NodeId);
+}
+
 bool UGameXXKTalentTreeWidget::SelectNodeForTest(const FName NodeId)
 {
 	if (!VisibleNodeIds.Contains(NodeId))

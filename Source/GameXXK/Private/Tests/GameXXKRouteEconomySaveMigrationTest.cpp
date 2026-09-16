@@ -1,4 +1,5 @@
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKMVPRules.h"
@@ -34,10 +35,7 @@ namespace
 {
 	FGameXXKRuntimeState MakeStartedState()
 	{
-		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-		return Subsystem && Subsystem->StartGame()
-			? Subsystem->GetRuntimeStateCopy()
-			: FGameXXKRuntimeState();
+        return GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	}
 
 	FGameXXKRuntimeState MakeActiveRouteState(const int32 Chapter)

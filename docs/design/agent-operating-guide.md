@@ -3,6 +3,7 @@
 ## Read by Task
 
 - Start with applicable AGENTS.md constraints.
+- For whole-project onboarding or programmer handoff, read [the 2026-09-16 handoff package](../handoff/README.md): architecture, gameplay intent, and the explicit unfinished-work register are separate documents.
 - For gameplay semantics or goal completion, consult docs/production/current-goal-acceptance.md and the active unit semantics.
 - Read the matching plan when executing that plan; recent verification evidence is useful only for the affected area.
 - Small text or localized edits do not require reading all production documents.

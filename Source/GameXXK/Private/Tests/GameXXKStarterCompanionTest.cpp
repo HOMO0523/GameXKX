@@ -177,8 +177,8 @@ bool FGameXXKStartNewGameAtomicTransactionTest::RunTest(const FString& Parameter
 	const FGameXXKRuntimeState& Repeated = Subsystem->GetRuntimeState();
 	TestEqual(TEXT("repeated new-game owns exactly six starter companions"),
 		Repeated.CardRun.CompanionRoster.PermanentCompanions.Num(), 6);
-	TestEqual(TEXT("repeated new-game owns exact three-member formation"),
-		Repeated.CardRun.OrderedFormation.Members.Num(), FGameXXKPartyFormationRules::PartySize);
+	TestEqual(TEXT("repeated new-game starts with only the hero deployed"),
+		Repeated.CardRun.OrderedFormation.Members.Num(), 1);
 	FString ValidationError;
 	TestTrue(TEXT("repeated new-game remains save-authoritatively valid"),
 		FGameXXKSaveMigration::ValidateRuntimeState(Repeated, ValidationError));

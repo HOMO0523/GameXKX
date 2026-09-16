@@ -111,6 +111,7 @@ bool FGameXXKCharacterStatRulesTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKRuntimeState HeroCapState = UGameXXKMVPRules::CreateNewGame();
+    HeroCapState.Training.bProgressivePartySlots=false;
 	FString HeroCapSetupError;
 	FGameXXKCompanionRecruitResult HeroCapRecruit;
 	if (!TestTrue(TEXT("cap fixture recruits an active partner"), FGameXXKCompanionRules::RecruitPermanentCompanion(HeroCapState.CardRun.CompanionRoster, TEXT("Companion.Blade.01"), 7311, HeroCapRecruit, &HeroCapSetupError))

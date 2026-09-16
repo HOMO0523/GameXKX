@@ -325,6 +325,14 @@ namespace
 		FGameXXKCharacterStats Result = Instance.ScalingRule == EGameXXKEquipmentScalingRule::LegacyFlatPerEnhancement
 			? Instance.LegacyBaseStatSnapshot
 			: Definition.BaseStatCoefficients.Resolve(Instance.ItemLevel);
+        if(Definition.Set==EGameXXKEquipmentSet::Starter)
+        {
+            // Double the resolved starter base values, retaining the curve's rounding.
+            Result.MaxHealth=AddClamped(Result.MaxHealth,Result.MaxHealth);
+            Result.Attack=AddClamped(Result.Attack,Result.Attack);
+            Result.Defense=AddClamped(Result.Defense,Result.Defense);
+            Result.Speed=AddClamped(Result.Speed,Result.Speed);
+        }
 		// Legacy snapshots remain readable; no equipment supplies effective Mana.
 		Result.MaxMana = 0;
 		return Result;

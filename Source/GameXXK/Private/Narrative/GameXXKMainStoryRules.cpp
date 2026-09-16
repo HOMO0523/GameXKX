@@ -48,6 +48,7 @@ bool FGameXXKMainStoryRules::IsChapterUnlocked(const FGameXXKRuntimeState& State
 {
  const auto* C=FGameXXKMainStoryCatalog::FindChapter(Id);if(!C)return false;
  if(State.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks)return true;
+ if(State.Training.bProgressivePartySlots&&State.Training.PartyProgressionStep<2)return false;
  if(!FGameXXKTrainingRules::CanChallenge(State.Training,FGameXXKMainStoryCatalog::StageId(*C)))return false;
  if(C->StageNumber==1)return true;
  const int32 Previous=C->StageNumber-2;

@@ -144,6 +144,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKFixedManaBattleProjectionTest,
 bool FGameXXKFixedManaBattleProjectionTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+    State.Training.bProgressivePartySlots=false;
 	FString Error;
 	if (!TestTrue(TEXT("card run initializes"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error))) { AddError(Error); return false; }
 	FGameXXKCompanionRosterState& Roster = State.CardRun.CompanionRoster;

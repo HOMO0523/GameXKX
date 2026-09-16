@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKGemRules.h"
@@ -223,6 +224,7 @@ bool FGameXXKGemV25MigrationTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState Runtime = FixtureSubsystem->GetRuntimeStateCopy();
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Runtime);
 	FGameXXKEquipmentCreateRequest Request;
 	Request.Set = EGameXXKEquipmentSet::PoJun;
 	Request.Quality = EGameXXKEquipmentQuality::Treasure;

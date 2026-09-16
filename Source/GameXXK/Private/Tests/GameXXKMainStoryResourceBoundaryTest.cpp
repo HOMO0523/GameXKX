@@ -19,6 +19,7 @@ bool FGameXXKMainStoryAfterTalentTravelTest::RunTest(const FString&)
 	auto* Instance=NewObject<UGameInstance>();auto* MVP=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!TestTrue(TEXT("valid game starts"),MVP->StartGame()))return false;
 	auto& State=MVP->GetMutableRuntimeState();
+    State.Training.bProgressivePartySlots=false; // Existing profile entering story after idle/talent changes.
 	State.Talents.NodeRanks.Add(TEXT("Talent.Root"),1);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Combat"),1);
 	const int32 BaselineMax=State.PlayerMaxHP;

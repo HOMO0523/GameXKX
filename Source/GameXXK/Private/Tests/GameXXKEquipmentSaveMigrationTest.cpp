@@ -15,6 +15,7 @@
 #include "GameXXKRouteMerchantRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveGame.h"
 
 #include "Engine/GameInstance.h"
@@ -211,6 +212,7 @@ namespace
 			return false;
 		}
 		OutState = Subsystem->GetRuntimeStateCopy();
+        GameXXKPermanentPartyTestFixtures::SkipTeachingChests(OutState);
 		return true;
 	}
 
@@ -619,6 +621,7 @@ bool FGameXXKEquipmentTenQualitySaveRoundTripTest::RunTest(const FString& Parame
 		return false;
 	}
 	FGameXXKRuntimeState Runtime = FixtureSubsystem->GetRuntimeStateCopy();
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Runtime);
 	TArray<FName> CreatedInstanceIds;
 	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(Qualities)); ++Index)
 	{
@@ -798,7 +801,7 @@ bool FGameXXKInventoryLocksSaveMigrationTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	FGameXXKRuntimeState VersionTwentyFourRuntime = FixtureSubsystem->GetRuntimeStateCopy();
+	FGameXXKRuntimeState VersionTwentyFourRuntime = GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FGameXXKDesktopInventoryEntryKey ItemEntry =
 		FGameXXKDesktopInventoryRules::MakeItemEntry(UGameXXKMVPRules::ItemEnhancementStone());
 	if (!TestTrue(TEXT("v24 fixture has unequipped equipment"),
@@ -995,6 +998,7 @@ bool FGameXXKInventoryLocksV24RefinementSandCompatibilityTest::RunTest(const FSt
 	}
 	FGameXXKSaveState VersionTwentyFour = UGameXXKMVPRules::MakeSaveState(
 		FixtureSubsystem->GetRuntimeStateCopy());
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(VersionTwentyFour.RuntimeState);
 	VersionTwentyFour.SaveVersion = 24;
 	const FName SandId = UGameXXKMVPRules::ItemRefinementSand();
 

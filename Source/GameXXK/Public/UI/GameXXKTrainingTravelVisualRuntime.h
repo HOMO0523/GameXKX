@@ -18,6 +18,15 @@ enum class EGameXXKTrainingTravelVisualPhase : uint8
 	Paused
 };
 
+/** Immutable paid reward attached to its death presentation. Never grants currency. */
+struct FGameXXKTravelLootBurst
+{
+	FGameXXKTrainingReward Reward;
+	int32 EnemySlotIndex = 0;
+	uint32 Ordinal = 0;
+	float Age = 0.0f;
+};
+
 /**
  * Presentation-only state for the desktop Training travel strip.
  *
@@ -58,7 +67,8 @@ public:
 		const FGameXXKTrainingTravelRuntime& After,
 		bool bEncounterCompleted,
 		bool bStageCompleted,
-		bool bDefeated);
+		bool bDefeated,
+		const FGameXXKTrainingReward& Reward = FGameXXKTrainingReward());
 
 	/** Compatibility wrapper retained until every workbench call site supplies snapshots. */
 	void NotifyTravelStep(bool bEncounterCompleted, bool bStageCompleted);
@@ -67,6 +77,7 @@ public:
 	float GetScrollVelocity() const { return CurrentScrollSpeed; }
 	int32 GetWalkFrameIndex() const { return WalkFrameIndex; }
 	int32 GetCompletedLoopCount() const { return CompletedLoopCount; }
+	const TArray<FGameXXKTravelLootBurst>& GetLootBursts() const { return LootBursts; }
 	EGameXXKTrainingTravelVisualPhase GetVisualPhase() const { return VisualPhase; }
 	float GetVisualPhaseElapsedSeconds() const { return VisualPhaseElapsedSeconds; }
 	EGameXXKBattleAnimationAction GetHeroAction() const;
@@ -105,6 +116,7 @@ private:
 		int32 DamagedPartyIndex = INDEX_NONE;
 		bool bEnemyDefeated = false;
 		bool bHeroDefeated = false;
+		FGameXXKTrainingReward Reward;
 	};
 
 	void ApplyLatestAuthoritativePhase();
@@ -112,7 +124,8 @@ private:
 		const FGameXXKTrainingTravelRuntime& Before,
 		const FGameXXKTrainingTravelRuntime& After,
 		bool bEncounterCompleted,
-		bool bDefeated);
+		bool bDefeated,
+		const FGameXXKTrainingReward& Reward);
 	void StartNextCombatEvent();
 	void CompleteActiveCombatEvent();
 	void SetVisualPhase(EGameXXKTrainingTravelVisualPhase Phase);
@@ -122,6 +135,8 @@ private:
 	float GetPhaseProgress(float DurationSeconds) const;
 
 	FGameXXKTrainingTravelRuntime LatestRuntime;
+	TArray<FGameXXKTravelLootBurst> LootBursts;
+	uint32 NextLootOrdinal = 0;
 	TArray<FCombatEvent> PendingCombatEvents;
 	FCombatEvent ActiveCombatEvent;
 	EGameXXKTrainingTravelVisualPhase VisualPhase = EGameXXKTrainingTravelVisualPhase::Paused;

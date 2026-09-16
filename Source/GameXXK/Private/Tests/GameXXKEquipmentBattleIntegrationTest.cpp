@@ -92,6 +92,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKEquipmentBattleIntegrationTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+    State.Training.bProgressivePartySlots=false;
 	State.Screen = EGameXXKScreen::Town;
 	FString Error;
 	if (!TestTrue(TEXT("new state initializes the shared card-run data"), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error)))

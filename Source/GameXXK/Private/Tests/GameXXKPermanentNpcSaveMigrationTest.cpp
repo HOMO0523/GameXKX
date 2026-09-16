@@ -1,3 +1,4 @@
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -34,7 +35,7 @@ namespace
 		{
 			return false;
 		}
-		OutSave = UGameXXKMVPRules::MakeSaveState(Subsystem->GetRuntimeState());
+		OutSave = UGameXXKMVPRules::MakeSaveState(GameXXKPermanentPartyTestFixtures::MakeStartedState());
 		OutSave.SaveVersion = 29;
 		return true;
 	}

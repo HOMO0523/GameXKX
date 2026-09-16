@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKEquipmentEconomyRules.h"
@@ -51,6 +52,7 @@ namespace
 		UGameXXKMVPSubsystem* FixtureSubsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 		FixtureSubsystem->StartGame();
 		FGameXXKRuntimeState State = FixtureSubsystem->GetRuntimeStateCopy();
+        GameXXKPermanentPartyTestFixtures::SkipTeachingChests(State);
 		// Migration-transaction fixtures exercise disk/version semantics, not
 		// TravelRunner reconstruction. Keep the generated legacy snapshot in an
 		// inactive, valid state so loading it does not require the post-v22
@@ -118,6 +120,10 @@ namespace
 			return false;
 		}
 		OutState = Subsystem->GetRuntimeStateCopy();
+        GameXXKPermanentPartyTestFixtures::SkipTeachingChests(OutState);
+        OutState.Training.bProgressivePartySlots=false;
+        FGameXXKPartyFormationRules::BuildLegacyProjection(OutState,OutState.CardRun.OrderedFormation);
+        FGameXXKPartyFormationRules::ProjectCompatibility(OutState);
 		return true;
 	}
 
@@ -157,6 +163,7 @@ bool FGameXXKSaveGameSlotRoundTripTest::RunTest(const FString& Parameters)
 	}
 
 	FGameXXKRuntimeState& SourceState = SourceSubsystem->GetMutableRuntimeState();
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(SourceState);
 	SourceState.Screen = EGameXXKScreen::Battle;
 	SourceState.QuestState = EGameXXKQuestState::Completed;
 	SourceState.CurrentRegion = UGameXXKMVPRules::RegionHuangshan();

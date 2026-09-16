@@ -153,7 +153,7 @@ void SGameXXKDevWorkbench::Construct(const FArguments& Args)
 		[Button(Tab.Value,[this,Id=Tab.Key](){ActiveTab=Id;Rebuild();})];
 	}
 	Navigation->AddSlot().FillHeight(1)[SNew(SSpacer)];
-	Navigation->AddSlot().AutoHeight().Padding(0,0,0,14)[Text(TEXT("试验进度独立\n可随时恢复"),13,false,FGameXXKInRunUiStyle::MutedInk())];
+	Navigation->AddSlot().AutoHeight().Padding(0,0,0,14)[Text(TEXT("临时试验可恢复\n重置存档会覆盖"),13,false,FGameXXKInRunUiStyle::MutedInk())];
 	Navigation->AddSlot().AutoHeight()[Button(TEXT("收起 · F10"),[this](){if(Tools.IsValid())Tools->ClosePanel();})];
 	ChildSlot
 	[SNew(SOverlay)
@@ -200,7 +200,12 @@ void SGameXXKDevWorkbench::Tick(const FGeometry& Geometry,double CurrentTime,flo
 void SGameXXKDevWorkbench::Run(const FString& Command,const Object& Args)
 {
 	if(!Tools.IsValid())return;Object Request=Obj();Request->SetStringField(TEXT("command"),Command);if(Args)Request->SetObjectField(TEXT("args"),Args);
-	LastResponse=Tools->ExecuteJson(Json(Request));RebuildInspector();
+	LastResponse=Tools->ExecuteJson(Json(Request));
+	if(Command==TEXT("save.reset") && Tools->WasLastCommandSuccessful())
+	{
+		CharacterId=TEXT("Player");Choices.Add(TEXT("character"),CharacterId);
+	}
+	RebuildInspector();
 }
 void SGameXXKDevWorkbench::Rebuild()
 {
@@ -242,6 +247,10 @@ void SGameXXKDevWorkbench::RebuildInspector()
 TSharedRef<SWidget> SGameXXKDevWorkbench::BuildHome()
 {
 	auto Content=SNew(SVerticalBox);
+    Content->AddSlot().AutoHeight().Padding(0,0,0,8)
+    [Button(TEXT("一键重置存档"),[this](){Run(TEXT("save.reset"));if(Tools.IsValid()&&Tools->WasLastCommandSuccessful())Tools->ClosePanel();})];
+    Content->AddSlot().AutoHeight().Padding(0,0,0,16)
+    [Text(TEXT("覆盖当前存档，角色、资源、解锁和引导全部回到初始状态。"),13,false,FGameXXKInRunUiStyle::Vermilion())];
     Content->AddSlot().AutoHeight().Padding(0,0,0,12)
     [SNew(SHorizontalBox)
         +SHorizontalBox::Slot().FillWidth(1).Padding(0,0,8,0)[Button(TEXT("解锁全部关卡"),[this](){Run(TEXT("progress.unlock_stages"),Obj());})]

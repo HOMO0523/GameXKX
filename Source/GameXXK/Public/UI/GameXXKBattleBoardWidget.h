@@ -35,6 +35,7 @@ class UGameXXKBattleBoardWidget;
 class UGameXXKCardOutcomePreviewWidget;
 class UGameXXKGuideAsset;
 class UGameXXKGuideOverlayWidget;
+class UGameXXKInterfaceHelpWidget;
 
 DECLARE_DELEGATE_RetVal_OneParam(
 	bool,
@@ -409,6 +410,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|Battle|Cards")
 	bool IsCardTargetingActive() const;
+	UFUNCTION(BlueprintPure,Category="GameXXK|Battle|Guide")
+	FName GetFirstBattleGuideStepForTest() const { return FirstBattleStep; }
 
 	/** Commits one tiered battle reward option (card upgrade, boss card, relic, or attribute bonus). */
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Battle|Rewards")
@@ -1378,6 +1381,12 @@ private:
 
 	UPROPERTY(Transient)
 	FName TargetingActionName;
+	UPROPERTY(Transient)
+	TObjectPtr<UGameXXKInterfaceHelpWidget> FirstBattleHelp;
+	FName FirstBattleStep;
+	TWeakObjectPtr<UWidget> FirstBattleTarget;
+	bool bChangingFirstBattleStep=false;
+	void TickFirstBattleGuide();
 
 	UPROPERTY(Transient)
 	FGameXXKCardPlayPreview PendingCardPreview;

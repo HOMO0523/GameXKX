@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKGemRules.h"
@@ -16,7 +17,8 @@ namespace
 	{
 		UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 		Test.TestTrue(TEXT("chest fixture starts"), Subsystem && Subsystem->StartGame());
-		return Subsystem ? Subsystem->GetRuntimeStateCopy() : FGameXXKRuntimeState();
+        auto State=Subsystem ? Subsystem->GetRuntimeStateCopy() : FGameXXKRuntimeState();
+        GameXXKPermanentPartyTestFixtures::SkipTeachingChests(State);return State;
 	}
 
 	bool AppendToken(FAutomationTestBase& Test, FGameXXKRuntimeState& State, EGameXXKTrainingRewardTier Tier, int32 Level = 17)

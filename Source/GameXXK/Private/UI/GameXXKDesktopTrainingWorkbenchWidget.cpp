@@ -1,7 +1,11 @@
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "GameXXKChestReceipt.h"
+#include "UI/GameXXKTravelLootWidget.h"
+#include "UI/GameXXKRewardPresentation.h"
 #include "Audio/GameXXKSfx.h"
 #include "UI/GameXXKMainStoryPanelWidget.h"
+#include "GameXXKTeachingChestRules.h"
+#include "GameXXKEquipmentCatalog.h"
 #include "UI/GameXXKMainStoryDialoguePresentation.h"
 #include "UI/GameXXKDialoguePanelWidget.h"
 #include "Narrative/GameXXKMainStorySubsystem.h"
@@ -321,6 +325,10 @@
 	constexpr int32 ActionFormationPickerBack = 904;
 	constexpr int32 ActionFormationPickerPrevious = 905;
 	constexpr int32 ActionFormationPickerNext = 906;
+    constexpr int32 ActionUnlockCompanionSlot = 907;
+    constexpr int32 ActionUnlockNpcSlot = 908;
+    constexpr int32 ActionRemoveCompanion = 909;
+    constexpr int32 ActionRemoveNpc = 910;
 	constexpr int32 NoticeHistoryCapacity = 200;
 	constexpr float NoticeLineHeight = 24.0f;
 	constexpr float NoticeRecordsBarHeight = 28.0f;
@@ -717,7 +725,7 @@
 	static constexpr const TCHAR* LockedIconTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CardLockedIcon.T_MasterV2_CardLockedIcon");
 	static constexpr const TCHAR* HeroFullBodyTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_HeroFullBody.T_MasterV2_HeroFullBody");
 	static constexpr const TCHAR* CloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
-	static constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot");
+	static constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_GoldCoin.T_Item_GoldCoin");
 	static constexpr const TCHAR* CharacterTabNormalTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/003_tab_1.003_tab_1");
 	static constexpr const TCHAR* CharacterTabSelectedTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/004_tab_2.004_tab_2");
 	static constexpr const TCHAR* SettingsTexturePath = TEXT("/Game/GameXXK/UI/Town/Textures/PSD/HUD/T_TownPsd_HudSettings.T_TownPsd_HudSettings");
@@ -1644,6 +1652,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeConstruct()
 void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+    OfferTeachingChestGuide();
+    OfferPartyProgressionGuide();
 	const bool bDialogueDesired=ShouldShowMainStoryDialogue();
 	if(bDialogueDesired!=bMainStoryDialogueLayoutActive)
 	{
@@ -1689,6 +1699,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::NativeTick(const FGeometry& MyGeome
 		else RebuildLayoutNow();
 	}
 	++TravelVisualNativeTickCount;
+    // Navigation may defer building the talent page until this tick. Bind the
+    // guide only after that page exists, including hosts without a Slate window.
+    if(InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen()&&InterfaceHelpWidget->IsTutorial()
+        &&ActiveCenterPage==EGameXXKDesktopTrainingCenterPage::Talents&&CachedTalentTree
+        &&!InterfaceHelpWidget->GetCurrentTargetForTest())
+    {
+        const FString Step=InterfaceHelpWidget->GetCurrentCompletionIdForTest().ToString();
+        if(Step.StartsWith(TEXT("UI.Progression.V1."))&&Step.Contains(TEXT("Unlock")))
+            CachedTalentTree->FocusNodeForGuide(FGameXXKPartyFormationRules::SlotTalentId(
+                Step.Contains(TEXT("Companion"))?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc),Step.EndsWith(TEXT(".Commit")));
+    }
 	UpdateCarriedItemVisualPosition();
 	TGuardValue<bool> NativeTickGuard(bNativeTickActive, true);
 	TickCollapsedResourceUnload(InDeltaTime);
@@ -1834,8 +1855,385 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ShowInterfaceHelp()
 	}
 }
 
+void UGameXXKDesktopTrainingWorkbenchWidget::ShowPartyProgressionGuide(FName Group)
+{
+    auto* Subsystem=ResolveMVPSubsystem(); if(!Subsystem)return;
+    OfferedPartyProgressionGuides.Add(Group);
+    if(!bBackpackExpanded)OpenBackpack(); EnsureGuideSurfaces();
+    const TWeakObjectPtr<UGameXXKDesktopTrainingWorkbenchWidget> WeakThis(this);
+    InterfaceHelpWidget->ShowProgressionTutorial(this,Group,Subsystem->GetRuntimeState().GuideProgress.CompletedGuideStepIds,HudScalePercent,
+        [WeakThis](FName Context){if(auto* Host=WeakThis.Get()){if(Context.ToString().StartsWith(TEXT("Teaching.")))Host->PrepareTeachingChestContext(Context);else Host->PrepareInterfaceTutorialContext(Context);}},
+        [WeakThis](FName Step){return WeakThis.IsValid()&&(Step.ToString().StartsWith(TEXT("Teaching."))?WeakThis->RecordTeachingChestStep(Step):WeakThis->RecordInterfaceTutorialStep(Step));});
+    bDesktopNativeInputRegionDirty=true;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::OfferPartyProgressionGuide(const bool bAllowTestHost)
+{
+    auto* Subsystem=ResolveMVPSubsystem();
+    if(!Subsystem || (!GetWorld()&&!bAllowTestHost)
+        || GetVisibility()==ESlateVisibility::Collapsed || GetVisibility()==ESlateVisibility::Hidden
+        || bInActionCallback || bLayoutRefreshPending
+        || CarriedEntry.IsValid() || bSettingsPanelOpen
+        || (InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen()))return;
+    const auto& State=Subsystem->GetRuntimeState();
+    if(!State.Training.bProgressivePartySlots || State.Screen!=EGameXXKScreen::Town
+        || State.bDungeonActive || State.Training.bChallengeActive || State.CardRun.bHasActiveCardBattle
+        || !State.GuideProgress.ActiveGuideId.IsNone()
+        || State.GuideProgress.Preference==EGameXXKGuidePreference::ExperiencedPlayer)return;
+    if(ShouldShowMainStoryDialogue())return;
+    if(State.Training.PartyProgressionStep>=2)
+    {
+        FName Group;
+        const auto First=FGameXXKMainStoryRules::NodeState(State,TEXT("S00-01"));
+        const auto Meet=FGameXXKMainStoryRules::NodeState(State,TEXT("S00-02"));
+        const bool StoryVisible=ActiveCenterPage==EGameXXKDesktopTrainingCenterPage::MainStory;
+        if(!State.NarrativeProgress.MainStory.SeenChapters.Contains(TEXT("S00")))Group=TEXT("StoryOpen");
+        else if(StoryVisible&&First==EGameXXKTaskState::Available)Group=TEXT("StoryFirst");
+        else if(StoryVisible&&First==EGameXXKTaskState::Completed)Group=TEXT("StoryRewardFirst");
+        else if(StoryVisible&&First==EGameXXKTaskState::Rewarded&&Meet==EGameXXKTaskState::Available)Group=TEXT("StoryMeet");
+        else if(StoryVisible&&Meet==EGameXXKTaskState::Completed)Group=TEXT("StoryRewardMeet");
+        if(!Group.IsNone()&&!OfferedPartyProgressionGuides.Contains(Group)
+            && !State.GuideProgress.CompletedGuideStepIds.Contains(FName(*(TEXT("UI.Progression.V1.")+Group.ToString()+TEXT(".Commit")))))
+        {ShowPartyProgressionGuide(Group);return;}
+    }
+    if(bStoryTaskDrawerOpen&&ActiveCenterPage!=EGameXXKDesktopTrainingCenterPage::MainStory)return;
+    for(const auto Kind:{EGameXXKPartyMemberKind::PermanentCompanion,EGameXXKPartyMemberKind::QuestNpc})
+    {
+        if(!FGameXXKPartyFormationRules::IsSlotEligible(State,Kind))continue;
+        const bool Companion=Kind==EGameXXKPartyMemberKind::PermanentCompanion;
+        if(!Companion&&FGameXXKMainStoryRules::NodeState(State,TEXT("S00-02"))!=EGameXXKTaskState::Rewarded)continue;
+        const bool Unlocked=FGameXXKPartyFormationRules::IsSlotUnlocked(State,Kind);
+        if(Companion && !Unlocked && State.Training.TravelVictories==0 && State.Training.PartyProgressionStep==0
+            && State.Training.SelectedStageId==TEXT("Training.Normal.1-1"))continue;
+        const bool Deployed=Companion?!State.CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone()
+            :!State.CardRun.PartySelection.QuestNpc.NpcId.IsNone();
+        if(Deployed || (!Unlocked&&State.PlayerGold<200))continue;
+        const FString Group=FString(Companion?TEXT("Companion"):TEXT("Npc"))+(Unlocked?
+            (ActiveCenterPage==EGameXXKDesktopTrainingCenterPage::Formation?TEXT("Deploy"):TEXT("Formation")):TEXT("Unlock"));
+        if(OfferedPartyProgressionGuides.Contains(FName(*Group))
+            || State.GuideProgress.CompletedGuideStepIds.Contains(FName(*(TEXT("UI.Progression.V1.")+Group+TEXT(".Commit")))))continue;
+        ShowPartyProgressionGuide(FName(*Group)); return;
+    }
+    const FName ChallengeGroup(TEXT("FirstChallenge12"));
+    if(State.Training.TravelVictories>0
+        && FGameXXKTrainingRules::CanChallenge(State.Training,TEXT("Training.Normal.1-2"))
+        && !FGameXXKTrainingRules::IsStageCleared(State.Training,TEXT("Training.Normal.1-2"))
+        && !State.GuideProgress.CompletedGuideStepIds.Contains(TEXT("UI.Progression.V1.FirstChallenge12.Commit"))
+        && !OfferedPartyProgressionGuides.Contains(ChallengeGroup))
+        ShowPartyProgressionGuide(ChallengeGroup);
+}
+
+namespace
+{
+const TCHAR* StarterSlotName(int32 Index)
+{static const TCHAR* Names[]={TEXT("Weapon"),TEXT("Head"),TEXT("Armor"),TEXT("Belt"),TEXT("Shoes"),TEXT("Accessory")};return Index>=1&&Index<=6?Names[Index-1]:TEXT("");}
+EGameXXKEquipmentSlot StarterSlot(const FString& Name)
+{for(int32 I=1;I<=6;++I)if(Name==StarterSlotName(I))return static_cast<EGameXXKEquipmentSlot>(I);return EGameXXKEquipmentSlot::Invalid;}
+bool HeroSlotFilled(const FGameXXKRuntimeState& S,EGameXXKEquipmentSlot Slot)
+{
+    const auto* Loadout=S.EquipmentCollection.CharacterLoadouts.Find(TEXT("Player"));
+    return Loadout&&!FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(*Loadout,Slot).IsNone();
+}
+EGameXXKEquipmentSlot FirstEmptyHeroSlot(const FGameXXKRuntimeState& S)
+{for(int32 I=1;I<=6;++I)if(!HeroSlotFilled(S,static_cast<EGameXXKEquipmentSlot>(I)))return static_cast<EGameXXKEquipmentSlot>(I);return EGameXXKEquipmentSlot::Invalid;}
+const FGameXXKEquipmentInstance* StarterCandidate(const FGameXXKRuntimeState& S,EGameXXKEquipmentSlot Slot)
+{
+    const FGameXXKEquipmentInstance* Other=nullptr;
+    for(const auto& Item:S.EquipmentCollection.EquipmentInstances)
+        if(Item.OwnerKind==EGameXXKEquipmentOwnerKind::Warehouse&&Item.ItemLevel<=S.PlayerLevel)
+            if(const auto* D=FGameXXKEquipmentCatalog::FindDefinition(Item.BaseEquipmentId);D&&D->Slot==Slot)
+            {if(D->Set==EGameXXKEquipmentSet::Starter)return &Item;if(!Other)Other=&Item;}
+    return Other;
+}
+bool NeedsStarterRecovery(const FGameXXKRuntimeState& S)
+{
+    return S.GuideProgress.TeachingChests.bEnabled&&S.Training.bProgressivePartySlots
+        &&S.Training.PartyProgressionStep==0&&S.Training.TravelFailures>0
+        &&S.Training.CurrentTravelStageId==TEXT("Training.Normal.1-1")
+        &&!S.GuideProgress.CompletedGuideStepIds.Contains(TEXT("Teaching.0.Retry.0"));
+}
+EGameXXKDesktopToolMode TeachingToolMode(int32 Stage)
+{return Stage==2?EGameXXKDesktopToolMode::Socket:Stage==3?EGameXXKDesktopToolMode::Enhance:Stage==4?EGameXXKDesktopToolMode::Reforge:Stage==5?EGameXXKDesktopToolMode::Dismantle:EGameXXKDesktopToolMode::Combine;}
+}
+
+FText UGameXXKDesktopTrainingWorkbenchWidget::BuildTeachingEnhancementReviewText() const
+{
+    const auto* M=ResolveMVPSubsystem();if(!M)return FText::GetEmpty();
+    const auto& P=M->GetRuntimeState().GuideProgress.TeachingChests;
+    const auto* D=FGameXXKEquipmentCatalog::FindDefinition(P.EnhancementBaseEquipmentId);
+    FText Text=FText::Format(GameXXKLocalization::Text(TEXT("TeachingChest.EnhanceResult")),
+        D?GameXXKLocalization::Localize(D->DisplayName):GameXXKLocalization::Text(TEXT("Chest.Report.Gear")),P.BaselineEnhancement,P.EnhancementAfterLevel);
+    const auto Add=[&](const TCHAR* Key,int32 Before,int32 After)
+    {
+        if(Before||After)Text=FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Lines")),Text,
+            FText::Format(GameXXKLocalization::Text(TEXT("TeachingChest.StatChange")),GameXXKLocalization::Text(Key),Before,After));
+    };
+    Add(TEXT("TeachingChest.Stat.Health"),P.EnhancementBeforeStats.MaxHealth,P.EnhancementAfterStats.MaxHealth);
+    Add(TEXT("TeachingChest.Stat.Mana"),P.EnhancementBeforeStats.MaxMana,P.EnhancementAfterStats.MaxMana);
+    Add(TEXT("TeachingChest.Stat.Attack"),P.EnhancementBeforeStats.Attack,P.EnhancementAfterStats.Attack);
+    Add(TEXT("TeachingChest.Stat.Defense"),P.EnhancementBeforeStats.Defense,P.EnhancementAfterStats.Defense);
+    Add(TEXT("TeachingChest.Stat.Speed"),P.EnhancementBeforeStats.Speed,P.EnhancementAfterStats.Speed);
+    return FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Lines")),Text,GameXXKLocalization::Text(TEXT("TeachingChest.ReviewThenContinue")));
+}
+
+UWidget* UGameXXKDesktopTrainingWorkbenchWidget::ResolveTeachingChestTarget(FName Target) const
+{
+    const auto* M=ResolveMVPSubsystem();if(!M)return nullptr;
+    const auto& S=M->GetRuntimeState();const auto& P=S.GuideProgress.TeachingChests;
+    if(Target.ToString().StartsWith(TEXT("StarterSlot.")))
+        return EmbeddedInventoryWidget?EmbeddedInventoryWidget->WidgetTree->FindWidget(*FString::Printf(TEXT("InventoryEquipmentSlot_%s"),*Target.ToString().RightChop(12))):nullptr;
+    if(Target.ToString().StartsWith(TEXT("StarterItem.")))
+    {
+        const auto* Item=StarterCandidate(S,StarterSlot(Target.ToString().RightChop(12)));if(!Item)return nullptr;
+        const auto Key=FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Item->InstanceId);
+        const int32 BagIndex=FGameXXKDesktopInventoryRules::FindEntrySlot(S,EGameXXKDesktopItemContainer::Backpack,Key);
+        if(BagIndex!=INDEX_NONE&&EmbeddedInventoryWidget)return EmbeddedInventoryWidget->WidgetTree->FindWidget(*FString::Printf(TEXT("InventoryBackpackSlot_%02d"),BagIndex));
+        const int32 StorageIndex=FGameXXKDesktopInventoryRules::FindEntrySlot(S,EGameXXKDesktopItemContainer::Warehouse,Key);
+        return StorageIndex!=INDEX_NONE&&bWarehousePanelOpen?WidgetTree->FindWidget(*FString::Printf(TEXT("WarehouseSlot_%d"),StorageIndex%WarehousePageSize)):nullptr;
+    }
+    if(Target==TEXT("TeachingTarget.Chest"))return WidgetTree->FindWidget(bIdleStripFolded?TEXT("TrainingFoldedNormalChestButton"):TEXT("TrainingNormalChestButton"));
+    if(Target==TEXT("TeachingTarget.EnhancedItem"))
+    {
+        if(const auto* ToolItem=GetToolEquipment();ToolItem&&ToolItem->InstanceId==P.TargetId)
+            return WidgetTree->FindWidget(TEXT("ToolInputSlot_0"));
+        const auto* Item=FGameXXKEquipmentRules::FindInstance(S.EquipmentCollection,P.TargetId);
+        return ResolveTeachingChestTarget(Item&&Item->OwnerKind!=EGameXXKEquipmentOwnerKind::Warehouse?TEXT("TeachingTarget.Equipped"):TEXT("TeachingTarget.Item"));
+    }
+    const bool Gem=Target==TEXT("TeachingTarget.Gem");
+    const FName Id=Gem?P.GemId:P.TargetId;
+    if(Target==TEXT("TeachingTarget.Equipped"))
+    {
+        const auto* Item=FGameXXKEquipmentRules::FindInstance(S.EquipmentCollection,Id);
+        const auto* D=Item?FGameXXKEquipmentCatalog::FindDefinition(Item->BaseEquipmentId):nullptr;
+        if(!D||!EmbeddedInventoryWidget)return nullptr;
+        const TCHAR* Keys[]={TEXT(""),TEXT("Weapon"),TEXT("Head"),TEXT("Armor"),TEXT("Belt"),TEXT("Shoes"),TEXT("Accessory")};
+        return EmbeddedInventoryWidget->WidgetTree->FindWidget(*FString::Printf(TEXT("InventoryEquipmentSlot_%s"),Keys[static_cast<int32>(D->Slot)]));
+    }
+    const auto Key=Gem?FGameXXKDesktopInventoryRules::MakeItemEntry(Id):FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Id);
+    const int32 Bag=FGameXXKDesktopInventoryRules::FindEntrySlot(S,EGameXXKDesktopItemContainer::Backpack,Key);
+    if(Bag!=INDEX_NONE&&EmbeddedInventoryWidget)
+        return EmbeddedInventoryWidget->WidgetTree->FindWidget(*FString::Printf(TEXT("InventoryBackpackSlot_%02d"),Bag));
+    const int32 Stored=FGameXXKDesktopInventoryRules::FindEntrySlot(S,EGameXXKDesktopItemContainer::Warehouse,Key);
+    return Stored!=INDEX_NONE&&bWarehousePanelOpen&&Stored/WarehousePageSize==WarehousePageIndex
+        ?WidgetTree->FindWidget(*FString::Printf(TEXT("WarehouseSlot_%d"),Stored%WarehousePageSize)):nullptr;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::PrepareTeachingChestContext(FName Context)
+{
+    TArray<FString> Parts;Context.ToString().ParseIntoArray(Parts,TEXT("."));if(Parts.Num()!=3)return;
+    ActiveTeachingGroup=Context;
+    const int32 Stage=FCString::Atoi(*Parts[1]);const FString Part=Parts[2];
+    auto* M=ResolveMVPSubsystem();if(!M)return;
+    const auto& P=M->GetRuntimeState().GuideProgress.TeachingChests;
+    if(Stage==0)
+    {
+        if(Part==TEXT("Open")){OpenBackpack();return;}
+        if(Part==TEXT("Map")){OpenBackpack();return;}
+        if(Part==TEXT("Retry"))
+        {if(RightPanel!=EGameXXKDesktopTrainingRightPanel::TrainingMap)HandleActionClicked(4);SelectStageForTest(TEXT("Training.Normal.1-1"));return;}
+        const auto EquipmentSlot=StarterSlot(Part);if(EquipmentSlot==EGameXXKEquipmentSlot::Invalid)return;
+        if(!InterfaceHelpWidget||InterfaceHelpWidget->GetCurrentStepForTest()==0)
+        {CancelCarryForStructuralChange();ReturnAllToolEntries();}
+        RightPanel=EGameXXKDesktopTrainingRightPanel::None;bStoryTaskDrawerOpen=false;bAcademyDrawer=false;
+        if(ActiveCenterPage!=EGameXXKDesktopTrainingCenterPage::Backpack||GetActiveBackpackCharacterIdForTest()!=TEXT("Player"))SelectBackpackCharacterForTest(TEXT("Player"));
+        if(!bBackpackExpanded)OpenBackpack();
+        const auto* Item=StarterCandidate(M->GetRuntimeState(),EquipmentSlot);
+        if(Item)
+        {
+            const int32 StorageIndex=FGameXXKDesktopInventoryRules::FindEntrySlot(M->GetRuntimeState(),EGameXXKDesktopItemContainer::Warehouse,FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Item->InstanceId));
+            bWarehousePanelOpen=StorageIndex!=INDEX_NONE;if(bWarehousePanelOpen)WarehousePageIndex=StorageIndex/WarehousePageSize;
+        }
+        RefreshLayout();
+        if(EmbeddedInventoryWidget)
+        {
+            EmbeddedInventoryWidget->HandleInventoryFilterClicked(EGameXXKInventoryFilter::All);
+            if(auto* Scroll=Cast<UScrollBox>(EmbeddedInventoryWidget->WidgetTree->FindWidget(TEXT("InventoryBackpackScrollBox"))))
+                Scroll->ScrollWidgetIntoView(ResolveTeachingChestTarget(FName(*(TEXT("StarterItem.")+Part))),false,EDescendantScrollDestination::IntoView);
+        }
+        return;
+    }
+    if(Part==TEXT("Open")||Part==TEXT("Materials")){if(!bBackpackExpanded)OpenBackpack();return;}
+    bStoryTaskDrawerOpen=false;bAcademyDrawer=false;
+    const auto* Item=FGameXXKEquipmentRules::FindInstance(M->GetRuntimeState().EquipmentCollection,P.TargetId);
+    const FName Owner=(Part==TEXT("Unequip")||(Stage==3&&Part==TEXT("Review")))&&Item&&!Item->OwnerCharacterId.IsNone()?Item->OwnerCharacterId:FName(TEXT("Player"));
+    if(ActiveCenterPage!=EGameXXKDesktopTrainingCenterPage::Backpack||GetActiveBackpackCharacterIdForTest()!=Owner)
+        SelectBackpackCharacterForTest(Owner);
+    if(!bBackpackExpanded)OpenBackpack();
+    if(Part!=TEXT("Equip")&&Part!=TEXT("Unequip")&&Part!=TEXT("Tools"))
+    {
+        if(RightPanel!=EGameXXKDesktopTrainingRightPanel::Tools)HandleActionClicked(3);
+        if(Part!=TEXT("Mode")&&ActiveToolMode!=TeachingToolMode(Stage))HandleActionClicked(30+static_cast<int32>(TeachingToolMode(Stage)));
+    }
+    if(Part==TEXT("Target")||Part==TEXT("Gem")||Part==TEXT("Equip")||(Stage==3&&Part==TEXT("Review")))
+    {
+        const auto Key=Part==TEXT("Gem")?FGameXXKDesktopInventoryRules::MakeItemEntry(P.GemId):FGameXXKDesktopInventoryRules::MakeEquipmentEntry(P.TargetId);
+        const int32 SourceSlotIndex=FGameXXKDesktopInventoryRules::FindEntrySlot(M->GetRuntimeState(),EGameXXKDesktopItemContainer::Warehouse,Key);
+        if(SourceSlotIndex!=INDEX_NONE){bWarehousePanelOpen=true;WarehousePageIndex=SourceSlotIndex/WarehousePageSize;RefreshLayout();}
+        if(EmbeddedInventoryWidget)
+        {
+            EmbeddedInventoryWidget->HandleInventoryFilterClicked(EGameXXKInventoryFilter::All);
+            if(SourceSlotIndex==INDEX_NONE)
+                if(auto* Scroll=Cast<UScrollBox>(EmbeddedInventoryWidget->WidgetTree->FindWidget(TEXT("InventoryBackpackScrollBox"))))
+                    Scroll->ScrollWidgetIntoView(ResolveTeachingChestTarget(Part==TEXT("Gem")?TEXT("TeachingTarget.Gem"):TEXT("TeachingTarget.Item")),false,EDescendantScrollDestination::IntoView);
+        }
+    }
+    bDesktopNativeInputRegionDirty=true;
+}
+
+bool UGameXXKDesktopTrainingWorkbenchWidget::RecordTeachingChestStep(FName Step)
+{
+    auto* M=ResolveMVPSubsystem();if(!M)return false;
+    const auto& S=M->GetRuntimeState();const auto& P=S.GuideProgress.TeachingChests;
+    if(Step==TEXT("Teaching.Dismiss"))
+    {
+        TArray<FString> Group;ActiveTeachingGroup.ToString().ParseIntoArray(Group,TEXT("."));
+        if(Group.Num()!=3||(FCString::Atoi(*Group[1])!=0&&FCString::Atoi(*Group[1])!=P.Stage))return true;
+        FString Error;return M->SetTeachingChestDismissed(true,Error);
+    }
+    TArray<FString> Parts;Step.ToString().ParseIntoArray(Parts,TEXT("."));if(Parts.Num()!=4||!P.bEnabled)return false;
+    const int32 Stage=FCString::Atoi(*Parts[1]);const FString Part=Parts[2];const int32 Index=FCString::Atoi(*Parts[3]);
+    if(Stage==0)
+    {
+        bool Done=false;const auto EquipmentSlot=StarterSlot(Part);
+        if(Part==TEXT("Open"))Done=P.ReservedWeapon.InstanceId.IsNone();
+        else if(Part==TEXT("Map"))Done=RightPanel==EGameXXKDesktopTrainingRightPanel::TrainingMap;
+        else if(Part==TEXT("Retry"))Done=S.Training.bTravelActive&&!S.Training.bTravelPausedAtDefeat&&S.Training.CurrentTravelStageId==TEXT("Training.Normal.1-1")&&FirstEmptyHeroSlot(S)==EGameXXKEquipmentSlot::Invalid;
+        else if(EquipmentSlot!=EGameXXKEquipmentSlot::Invalid)
+        {
+            Done=HeroSlotFilled(S,EquipmentSlot);
+            if(!Done&&Index==0&&CarriedEntry.IsValid()&&CarriedEntry.Payload.Entry.bEquipmentInstance)
+                if(const auto* Item=FGameXXKEquipmentRules::FindInstance(S.EquipmentCollection,CarriedEntry.Payload.Entry.EntryId))
+                    if(const auto* D=FGameXXKEquipmentCatalog::FindDefinition(Item->BaseEquipmentId))Done=D->Slot==EquipmentSlot;
+        }
+        if(!Done)return false;FString Error;return M->RecordTeachingGuideStep(Step,Error);
+    }
+    bool Done=P.CompletedStages>=Stage;
+    if(Part==TEXT("Review"))Done=Stage==3?(P.CompletedStages>=3||P.bEnhancementReviewPending):true;
+    else if(Part==TEXT("Open"))Done=P.Stage>Stage||(P.Stage==Stage&&P.bOpened);
+    else if(!Done)
+    {
+        const auto* Item=FGameXXKEquipmentRules::FindInstance(S.EquipmentCollection,P.TargetId);
+        if(Part==TEXT("Equip"))Done=Index==0&&CarriedEntry.IsValid()&&CarriedEntry.Payload.Entry.bEquipmentInstance;
+        else if(Part==TEXT("Unequip"))Done=Item&&Item->OwnerKind==EGameXXKEquipmentOwnerKind::Warehouse;
+        else if(Part==TEXT("Tools"))Done=RightPanel==EGameXXKDesktopTrainingRightPanel::Tools;
+        else if(Part==TEXT("Mode"))Done=Index==0?(bToolModeDropdownOpen||ActiveToolMode==TeachingToolMode(Stage)):ActiveToolMode==TeachingToolMode(Stage);
+        else if(Part==TEXT("Target"))Done=Index==0?(CarriedEntry.IsValid()&&CarriedEntry.Payload.Entry.bEquipmentInstance)||GetToolEquipment()!=nullptr:GetToolEquipment()!=nullptr;
+        else if(Part==TEXT("Gem"))Done=Index==0&&CarriedEntry.IsValid()&&CarriedEntry.Payload.Entry.EntryId==P.GemId;
+        else if(Part==TEXT("Generate"))Done=S.EquipmentCollection.PendingReforge.bActive;
+        else if(Part==TEXT("Commit")&&Stage==3)Done=P.bEnhancementReviewPending;
+        else if(Part==TEXT("Intro")&&Stage==5)Done=P.Stage==5&&P.bOpened&&RightPanel==EGameXXKDesktopTrainingRightPanel::Tools&&ActiveToolMode==EGameXXKDesktopToolMode::Dismantle;
+        else if(Part==TEXT("Materials"))Done=P.MaterialBoxesRemaining==0;
+        else if(Part==TEXT("Fill"))Done=P.bAutoFillPracticed;
+    }
+    if(!Done)return false;
+    FString Error;return M->RecordTeachingGuideStep(Step,Error);
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::OfferTeachingChestGuide(bool bAllowTestHost)
+{
+    auto* M=ResolveMVPSubsystem();if(!M||(!GetWorld()&&!bAllowTestHost)||!WidgetTree||bInActionCallback||bLayoutRefreshPending)return;
+    const auto& S=M->GetRuntimeState();const auto& P=S.GuideProgress.TeachingChests;if(!P.bEnabled)return;
+    if(ObservedTeachingStage!=P.Stage)
+    {
+        if(InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen()&&InterfaceHelpWidget->IsTeachingChestGuide()&&!ActiveTeachingGroup.ToString().StartsWith(TEXT("Teaching.0.")))InterfaceHelpWidget->Dismiss();
+        ObservedTeachingStage=P.Stage;RefreshLayout();return;
+    }
+    if(P.bDismissed||S.Screen!=EGameXXKScreen::Town||S.Training.bChallengeActive||S.CardRun.bHasActiveCardBattle
+        ||S.bDungeonActive||ShouldShowMainStoryDialogue()||!S.GuideProgress.ActiveGuideId.IsNone()||bSettingsPanelOpen
+        ||(InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen())||GetVisibility()==ESlateVisibility::Collapsed)return;
+    FString Part;
+    if(NeedsStarterRecovery(S))
+    {
+        const auto Empty=FirstEmptyHeroSlot(S);
+        if(Empty==EGameXXKEquipmentSlot::Weapon&&!P.ReservedWeapon.InstanceId.IsNone())Part=TEXT("Open");
+        else if(Empty!=EGameXXKEquipmentSlot::Invalid)
+        {if(!StarterCandidate(S,Empty))return;Part=StarterSlotName(static_cast<int32>(Empty));}
+        else if(S.Training.bTravelActive&&!S.Training.bTravelPausedAtDefeat)
+        {FString Error;M->RecordTeachingGuideStep(TEXT("Teaching.0.Retry.0"),Error);return;}
+        else Part=RightPanel==EGameXXKDesktopTrainingRightPanel::TrainingMap?TEXT("Retry"):TEXT("Map");
+        ActiveTeachingGroup=FName(*(TEXT("Teaching.0.")+Part));ShowPartyProgressionGuide(ActiveTeachingGroup);return;
+    }
+    if(!P.bOpened)
+    {
+        if(P.Stage!=1)return;
+        Part=TEXT("Open");
+    }
+    else if(P.Stage==1)Part=TEXT("Equip");
+    else if(P.Stage==3&&P.bEnhancementReviewPending)Part=TEXT("Review");
+    else if(P.Stage==5)
+    {
+        if(RightPanel!=EGameXXKDesktopTrainingRightPanel::Tools)Part=TEXT("Tools");
+        else if(ActiveToolMode!=EGameXXKDesktopToolMode::Dismantle)Part=TEXT("Mode");
+        else Part=TEXT("Intro");
+    }
+    else
+    {
+        if(P.Stage==6&&(P.bAutoFillPracticed||P.bCombinePracticed))return;
+        const auto* Target=FGameXXKEquipmentRules::FindInstance(S.EquipmentCollection,P.TargetId);
+        if(P.Stage<6&&Target&&Target->OwnerKind!=EGameXXKEquipmentOwnerKind::Warehouse)Part=TEXT("Unequip");
+        else if(P.Stage==6&&P.MaterialBoxesRemaining>0)Part=TEXT("Materials");
+        else if(RightPanel!=EGameXXKDesktopTrainingRightPanel::Tools)Part=TEXT("Tools");
+        else if(ActiveToolMode!=TeachingToolMode(P.Stage))Part=TEXT("Mode");
+        else if(P.Stage==6)Part=TEXT("Fill");
+        else if(P.Stage==4&&S.EquipmentCollection.PendingReforge.bActive)Part=TEXT("Resolve");
+        else if(!GetToolEquipment())Part=TEXT("Target");
+        else if(P.Stage==2)Part=TEXT("Gem");
+        else if(P.Stage==4)Part=TEXT("Generate");
+        else Part=TEXT("Commit");
+    }
+    ActiveTeachingGroup=FName(*FString::Printf(TEXT("Teaching.%d.%s"),P.Stage,*Part));
+    ShowPartyProgressionGuide(ActiveTeachingGroup);
+}
+
 void UGameXXKDesktopTrainingWorkbenchWidget::PrepareInterfaceTutorialContext(const FName Context)
 {
+    const FString ProgressionContext=Context.ToString();
+    if(ProgressionContext.StartsWith(TEXT("Progression.")))
+    {
+        if(ProgressionContext==TEXT("Progression.FirstChallenge12"))
+        {
+            bStoryTaskDrawerOpen=false;bAcademyDrawer=false;
+            ActiveTrainingDifficultyIndex=0;ActiveTrainingChapter=1;
+            HandleActionClicked(4);return;
+        }
+        if(ProgressionContext==TEXT("Progression.Formation"))
+        {if(!bBackpackExpanded)OpenBackpack();return;}
+        if(ProgressionContext.StartsWith(TEXT("Progression.Story")))
+        {
+            const bool Commit=InterfaceHelpWidget&&InterfaceHelpWidget->GetCurrentCompletionIdForTest().ToString().EndsWith(TEXT(".Commit"));
+            if(ProgressionContext==TEXT("Progression.StoryOpen"))
+            {
+                OpenBackpack();
+                if(Commit&&!bStoryTaskDrawerOpen)HandleActionClicked(ActionStoryQuest);
+                if(!Commit&&bStoryTaskDrawerOpen){bStoryTaskDrawerOpen=false;RefreshLayout();}
+                return;
+            }
+            if(ActiveCenterPage!=EGameXXKDesktopTrainingCenterPage::MainStory)HandleActionClicked(2100);
+            if(MainStoryCentralPanel)
+            {
+                if(ProgressionContext==TEXT("Progression.StoryFirst")&&Commit)MainStoryCentralPanel->SelectNode(TEXT("S00-01"));
+                if(ProgressionContext==TEXT("Progression.StoryMeet"))MainStoryCentralPanel->SelectNode(Commit?TEXT("S00-02"):TEXT("S00-01"));
+                if(ProgressionContext==TEXT("Progression.StoryRewardFirst"))MainStoryCentralPanel->SelectNode(TEXT("S00-01"));
+                if(ProgressionContext==TEXT("Progression.StoryRewardMeet"))MainStoryCentralPanel->SelectNode(TEXT("S00-02"));
+            }
+            return;
+        }
+        const bool Companion=ProgressionContext.EndsWith(TEXT("Companion"));
+        bStoryTaskDrawerOpen=false;bAcademyDrawer=false;
+        if(ProgressionContext.StartsWith(TEXT("Progression.Talent.")))
+        {
+            HandleActionClicked(2);
+            if(CachedTalentTree)CachedTalentTree->FocusNodeForGuide(FGameXXKPartyFormationRules::SlotTalentId(
+                Companion?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc),
+                InterfaceHelpWidget&&InterfaceHelpWidget->GetCurrentCompletionIdForTest().ToString().EndsWith(TEXT(".Commit")));
+        }
+        else
+        {
+            HandleActionClicked(1);
+            if(!bFormationPickerOpen)HandleActionClicked(Companion?83:84);
+        }
+        return;
+    }
     TGuardValue<bool> Guard(bInActionCallback,true);
     CaptureExpandedSessionState();CancelCarryForStructuralChange();
     bStoryTaskDrawerOpen=false;bAcademyDrawer=false;
@@ -1871,7 +2269,54 @@ void UGameXXKDesktopTrainingWorkbenchWidget::PrepareInterfaceTutorialContext(con
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::RecordInterfaceTutorialStep(const FName StepId)
 {
-    auto* Subsystem=ResolveMVPSubsystem();if(!Subsystem||!StepId.ToString().StartsWith(TEXT("UI.Basics.V1.")))return false;
+    auto* Subsystem=ResolveMVPSubsystem(); if(!Subsystem)return false;
+    const FString Name=StepId.ToString();
+    if(Name.StartsWith(TEXT("UI.Progression.V1.")))
+    {
+        if(Name.StartsWith(TEXT("UI.Progression.V1.FirstChallenge12.")))
+        {
+            const auto& State=Subsystem->GetRuntimeState();
+            if(Name.EndsWith(TEXT(".Commit")))
+            {if(!State.Training.bChallengeActive || State.Training.ActiveChallengeStageId!=TEXT("Training.Normal.1-2"))return false;}
+            else if(State.Training.SelectedStageId!=TEXT("Training.Normal.1-2"))return false;
+        }
+        else if(Name.StartsWith(TEXT("UI.Progression.V1.Story")))
+        {
+            const auto& State=Subsystem->GetRuntimeState();
+            const bool Commit=Name.EndsWith(TEXT(".Commit"));
+            if(Name.Contains(TEXT("StoryOpen")))
+            {if(Commit?!State.NarrativeProgress.MainStory.SeenChapters.Contains(TEXT("S00")):!bStoryTaskDrawerOpen)return false;}
+            else if(Name.Contains(TEXT("StoryReward")))
+            {if(FGameXXKMainStoryRules::NodeState(State,Name.Contains(TEXT("Meet"))?TEXT("S00-02"):TEXT("S00-01"))!=EGameXXKTaskState::Rewarded)return false;}
+            else
+            {
+                const FName Node=Name.Contains(TEXT("Meet"))?TEXT("S00-02"):TEXT("S00-01");
+                if(Commit?(State.NarrativeProgress.MainStory.ActiveNodeId!=Node || FGameXXKMainStoryRules::NodeState(State,Node)!=EGameXXKTaskState::Active)
+                    :(!MainStoryCentralPanel||MainStoryCentralPanel->GetSelectedNode()!=Node))return false;
+            }
+        }
+        else
+        {
+        const bool Companion=Name.Contains(TEXT("Companion"));
+        const auto Kind=Companion?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc;
+        const auto& State=Subsystem->GetRuntimeState();
+        if(Name.Contains(TEXT("Unlock")))
+        {
+            if(Name.EndsWith(TEXT(".Commit")))
+            { if(!FGameXXKPartyFormationRules::IsSlotUnlocked(State,Kind))return false; }
+            else if(!CachedTalentTree || CachedTalentTree->GetSelectedNodeIdForTest()!=FGameXXKPartyFormationRules::SlotTalentId(Kind))return false;
+        }
+        else if(Name.Contains(TEXT("Formation")))
+        {if(ActiveCenterPage!=EGameXXKDesktopTrainingCenterPage::Formation||!FGameXXKPartyFormationRules::IsSlotUnlocked(State,Kind))return false;}
+        else if(Name.EndsWith(TEXT(".Commit")))
+        {
+            if(Companion?State.CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone():State.CardRun.PartySelection.QuestNpc.NpcId.IsNone())return false;
+        }
+        else if(FormationCandidateCharacterId.IsNone()
+            || (Companion?!GetCompanionCharacterIdsForTest().Contains(FormationCandidateCharacterId):!GetNpcCharacterIdsForTest().Contains(FormationCandidateCharacterId)))return false;
+        }
+    }
+    else if(!Name.StartsWith(TEXT("UI.Basics.V1.")))return false;
     auto Candidate=Subsystem->GetRuntimeState().GuideProgress;
     if(Candidate.CompletedGuideStepIds.Contains(StepId))return true;
     Candidate.CompletedGuideStepIds.Add(StepId);
@@ -1882,6 +2327,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::RecordInterfaceTutorialStep(const F
         return false;
     }
     if(StepId==TEXT("UI.Basics.V1.Done"))SetNotice(GameXXKLocalization::Text(TEXT("UI.Guide.Completed")));
+    if(Name.Contains(TEXT("Unlock.Commit")))SetNotice(GameXXKLocalization::Source(TEXT("出战位已解锁，打开编队选择同行角色")));
     return true;
 }
 
@@ -2117,6 +2563,13 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 		&& CurrentSettlementReceipt != RouteSettlementReceiptAtChallengeStart;
 	const bool bRestoreTrainingPanel = bRestoreTrainingPanelAfterChallenge
 		&& !bCompletedSettlementSinceChallenge;
+	const auto& ReturnState=Subsystem->GetRuntimeState();
+	const auto& StoryReturn=ReturnState.NarrativeProgress.MainStory;
+	const auto* ReturnNode=FGameXXKMainStoryCatalog::FindNode(StoryReturn.JourneyNodeId);
+	const bool bRestoreStory=ReturnNode && StoryReturn.bBattleWon
+		&& StoryReturn.ActiveNodeId==StoryReturn.JourneyNodeId && !ReturnState.Training.bChallengeActive
+		&& (FGameXXKMainStoryRules::HasPendingAfterBattleDialogue(ReturnState,ReturnNode->Id)
+			|| FGameXXKMainStoryRules::NodeState(ReturnState,ReturnNode->Id)==EGameXXKTaskState::Completed);
 	bRestoreTrainingPanelAfterChallenge = false;
 	RouteSettlementReceiptAtChallengeStart = CurrentSettlementReceipt;
 	const TArray<FName> CharacterIds = GetBackpackCharacterIdsForTest();
@@ -2127,13 +2580,18 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 			: FGameXXKEquipmentRules::HeroCharacterId();
 	}
 	bSettingsPanelOpen = false;
-	bBackpackExpanded = bRestoreTrainingPanel;
+	bBackpackExpanded = bRestoreTrainingPanel || bRestoreStory;
+	if(bRestoreStory)
+	{
+		ActiveCenterPage=EGameXXKDesktopTrainingCenterPage::MainStory;
+		SelectedMainStoryChapter=ReturnNode->ChapterId;bStoryTaskDrawerOpen=true;bAcademyDrawer=false;
+	}
 	bIdleStripFolded = false;
 	bWarehousePanelOpen = false;
-	RightPanel = bRestoreTrainingPanel
+	RightPanel = bRestoreTrainingPanel && !bRestoreStory
 		? EGameXXKDesktopTrainingRightPanel::TrainingMap
 		: EGameXXKDesktopTrainingRightPanel::None;
-	ActiveNav = bRestoreTrainingPanel
+	ActiveNav = bRestoreTrainingPanel && !bRestoreStory
 		? EGameXXKDesktopTrainingNav::Training
 		: EGameXXKDesktopTrainingNav::None;
 	bTrainingDifficultyDropdownOpen = false;
@@ -2143,6 +2601,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::OpenWorkbench()
 	TravelVisualRuntime.Reset();
 	bDesktopNativeLayoutDirty = true;
 	RefreshLayout();
+	if(bRestoreStory && MainStoryCentralPanel)MainStoryCentralPanel->SelectNode(ReturnNode->Id);
 	SetVisibility(ESlateVisibility::Visible);
 	UpdateTownPresentationInputLock();
 	return true;
@@ -2170,6 +2629,24 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::CloseWorkbench()
 	bDesktopNativeLayoutDirty = true;
 	ReleaseDesktopNativeWindow();
 	return bWasVisible;
+}
+
+void UGameXXKDesktopTrainingWorkbenchWidget::ResetPresentationForNewGame()
+{
+	GameXXKRewardPresentation::Reset(this);
+	if (InterfaceHelpWidget) InterfaceHelpWidget->DiscardForNewGame();
+	if (GuideCoordinator) GuideCoordinator->SuspendPresentation();
+	GuideCoordinator=nullptr;
+	CloseWorkbench();
+	NoticeHistory.Reset(); LastNotice=FText::GetEmpty();
+	ObservedTeachingStage=INDEX_NONE; ActiveTeachingGroup=NAME_None;
+	OfferedPartyProgressionGuides.Reset();
+	bRestoreTrainingPanelAfterChallenge=false;
+	RouteSettlementReceiptAtChallengeStart={};
+	bHasLivePresentationSnapshot=false;
+	bCharacterRosterMembersExpanded=false; bAcademyDrawer=false;
+	TutorialListOffsets.Reset();
+	OpenWorkbench();
 }
 
 bool UGameXXKDesktopTrainingWorkbenchWidget::OpenBackpack()
@@ -2470,6 +2947,8 @@ TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetCompanionCharacterIdsFo
 
 TArray<FName> UGameXXKDesktopTrainingWorkbenchWidget::GetNpcCharacterIdsForTest() const
 {
+    if(const auto* Subsystem=ResolveMVPSubsystem(); Subsystem&&FGameXXKPartyFormationRules::IsFirstNpcPending(Subsystem->GetRuntimeState()))
+        return {FName(TEXT("Npc.YueBai"))};
 	TArray<FName> CharacterIds;
 	for (const FGameXXKQuestNpcDefinition& Definition : FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
 	{
@@ -2625,6 +3104,10 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::SelectFormationCandidateForTest(con
 	{
 		return false;
 	}
+    const auto* Subsystem=ResolveMVPSubsystem();
+    if(!Subsystem || Subsystem->IsCompanionLoadoutMutationLocked()
+        || !FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),
+            bCompanion?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc))return false;
 	ActiveFormationRoster = bCompanion
 		? EGameXXKDesktopTrainingCharacterRoster::Companions
 		: EGameXXKDesktopTrainingCharacterRoster::Npcs;
@@ -3446,6 +3929,7 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 		return false;
 	}
 	const FGameXXKTrainingTravelRuntime Before = Subsystem->GetTrainingTravelRuntimeCopy();
+	const int32 GoldBeforeStep = Subsystem->GetRuntimeState().PlayerGold;
 	bool bEncounterCompleted = false;
 	bool bCompleted = false;
 	bool bDefeated = false;
@@ -3455,7 +3939,9 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 		return false;
 	}
 	const FGameXXKTrainingTravelRuntime AfterStep = Subsystem->GetTrainingTravelRuntimeCopy();
-	TravelVisualRuntime.NotifyTravelStep(Before, AfterStep, bEncounterCompleted, bCompleted, bDefeated);
+	FGameXXKTrainingReward PaidReward = Reward;
+	PaidReward.Gold = FMath::Max(0, Subsystem->GetRuntimeState().PlayerGold - GoldBeforeStep);
+	TravelVisualRuntime.NotifyTravelStep(Before, AfterStep, bEncounterCompleted, bCompleted, bDefeated, PaidReward);
 	if (bEncounterCompleted && Reward.bChestRolled)
 	{
 		FFormatNamedArguments Args;
@@ -3479,6 +3965,11 @@ bool UGameXXKDesktopTrainingWorkbenchWidget::AdvanceTravelForTest(const int32 El
 			GameXXKLocalization::Format(TEXT("Notice.StageFailed"),Args),
 			EGameXXKDesktopNoticeCategory::StageFailed);
 		Subsystem->ResolveTrainingTravelFailure();
+        if(NeedsStarterRecovery(Subsystem->GetRuntimeState()))
+        {
+            if(InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen())InterfaceHelpWidget->Dismiss();
+            FString Error;Subsystem->SetTeachingChestDismissed(false,Error);
+        }
 	}
 	TravelVisualRuntime.Synchronize(Subsystem->GetTrainingTravelRuntimeCopy());
 	RefreshLivePresentation(false);
@@ -3649,6 +4140,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyUpwardExpansionTransforms()
 		UWidget* Child = RootCanvas->GetChildAt(ChildIndex);
 		if (!Child
 			|| Child->GetFName() == TEXT("TrainingTravelStrip")
+			|| Child->GetFName() == TEXT("TravelLootEffects")
 			|| Child->GetFName() == TEXT("DesktopInventoryNoticePanel")
 			|| Child->GetFName() == TEXT("IdleStripFoldButton")
 			|| Child->GetFName() == TEXT("TrainingWaveProgressPanel")
@@ -4130,7 +4622,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildStoryQuestButton()
 	StoryQuestButton->SetToolTipText(GameXXKLocalization::Source(TEXT("任务")));
 	StoryQuestButton->SetScaleOnPress(true);
 	StoryQuestButton->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-	StoryQuestButton->SetIsEnabled(!bTownMapTravelPending);
+    const auto* StoryMvp=ResolveMVPSubsystem();
+    const bool StoryUnlocked=StoryMvp&&FGameXXKMainStoryRules::IsChapterUnlocked(StoryMvp->GetRuntimeState(),TEXT("S00"));
+	StoryQuestButton->SetIsEnabled(!bTownMapTravelPending&&StoryUnlocked);
+    StoryQuestButton->SetVisibility(StoryUnlocked?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	AddCanvasRect(
 		RootCanvas,
 		StoryQuestButton.Get(),
@@ -4459,7 +4954,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildNoticeRail()
 		NoticeCanvas,
 		NoticeSurfaceButton.Get(),
 		FVector2D::ZeroVector,
-		FVector2D(420.0f, LineCount * NoticeLineHeight));
+		FVector2D(NoticePaperWidth, LineCount * NoticeLineHeight));
 	ActionButtons.Add(NoticeSurfaceButton);
 
 	if (bShowSettings)
@@ -5537,11 +6032,31 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildTopIdleStrip()
 		FVector2D(ChestControlX - 60.0f, ChestControlY + 18.0f),
 		FVector2D(52.0f, 52.0f));
 	ActionButtons.Add(RetryButton);
+	auto* Loot = WidgetTree->ConstructWidget<UGameXXKTravelLootWidget>(UGameXXKTravelLootWidget::StaticClass(), TEXT("TravelLootEffects"));
+	Loot->Configure(this, {MakeTextureBrush(IngotTexturePath,FVector2D(32,32)),
+		MakeTextureBrush(TrainingNormalChestTexturePath,FVector2D(40,40)),
+		MakeTextureBrush(TrainingAdvancedChestTexturePath,FVector2D(40,40)),
+		MakeTextureBrush(TrainingHuntChestTexturePath,FVector2D(40,40))});
+	// Include the existing bottom Tab row; never fly into the backpack body.
+	AddCanvasRect(RootCanvas, Loot, FVector4(StripRect.X,StripRect.Y,StripRect.Z,StripRect.W+NoticeLineHeight));
+	if (auto* LootCanvasSlot = Cast<UCanvasPanelSlot>(Loot->Slot)) LootCanvasSlot->SetZOrder(8);
 	UpdateTravelVisuals();
 }
 
 void UGameXXKDesktopTrainingWorkbenchWidget::UpdateTravelVisuals()
 {
+	for (auto Tier : {EGameXXKTrainingRewardTier::NormalChest,EGameXXKTrainingRewardTier::AdvancedChest,EGameXXKTrainingRewardTier::HuntChest})
+	{
+		UWidget* Button = Tier==EGameXXKTrainingRewardTier::NormalChest ? TrainingNormalChestButton.Get()
+			: Tier==EGameXXKTrainingRewardTier::AdvancedChest ? TrainingAdvancedChestButton.Get() : TrainingHuntChestButton.Get();
+		if (!Button) continue;
+		float Pulse=0;
+		for (const auto& Burst : TravelVisualRuntime.GetLootBursts())
+			if (Burst.Reward.bChestRolled && Burst.Reward.ChestTier==Tier)
+				Pulse=FMath::Max(Pulse,GameXXKTravelLoot::Pulse(Burst.Age-GameXXKTravelLoot::Arrival(true)));
+		Button->SetRenderTransformPivot(FVector2D(0.5f,0.5f));
+		Button->SetRenderScale(FVector2D(1+0.12f*Pulse,1+0.12f*Pulse));
+	}
 	if (!HasTravelVisualStripForTest())
 	{
 		return;
@@ -6168,7 +6683,13 @@ void UGameXXKDesktopTrainingWorkbenchWidget::RefreshBackpackFooterVisibility()
 		const bool Expanded = EmbeddedInventoryWidget->IsDeckExpandedForTest();
 		for (const TCHAR* Name : {TEXT("CharacterRosterHeroButton"),TEXT("CharacterRosterCompanionButton"),TEXT("CharacterRosterNpcButton"),TEXT("FormationDeckBack")})
 		{
-			if (UWidget* Control=WidgetTree->FindWidget(Name)) Control->SetVisibility(Expanded ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+            bool Unlocked=true;
+            if(const auto* Subsystem=ResolveMVPSubsystem())
+            {
+                if(FString(Name)==TEXT("CharacterRosterCompanionButton"))Unlocked=FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),EGameXXKPartyMemberKind::PermanentCompanion);
+                if(FString(Name)==TEXT("CharacterRosterNpcButton"))Unlocked=FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),EGameXXKPartyMemberKind::QuestNpc);
+            }
+			if (UWidget* Control=WidgetTree->FindWidget(Name)) Control->SetVisibility(Expanded||!Unlocked ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
 		}
 		if (UWidget* Sort=WidgetTree->FindWidget(TEXT("BackpackSortButton")))
 		{
@@ -7021,6 +7542,9 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildCharacterRosterTabs()
 	{
 		auto* Button = WidgetTree->ConstructWidget<UGameXXKDesktopTrainingActionButton>(UGameXXKDesktopTrainingActionButton::StaticClass(),Names[I]);
 		Button->Configure(this,80+I);
+        if(I>0&&Subsystem&&!FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),
+            I==1?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc))
+            Button->SetVisibility(ESlateVisibility::Collapsed);
 		const bool Selected = static_cast<int32>(Category)==I;
 		Button->SetStyle(MakeTextureButtonStyle(Selected ? CharacterTabSelectedTexturePath : CharacterTabNormalTexturePath,FVector2D(106,42)));
 		Button->SetContent(MakeButtonText(WidgetTree,GameXXKLocalization::Source(Labels[I]),20,Ink));
@@ -7187,15 +7711,19 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 			Art->SetBrush(MakeTextureBrush(*Path,ArtSize)); Art->SetVisibility(ESlateVisibility::HitTestInvisible);
 			AddCanvas(Face,Art,FVector2D(Size.X-ArtSize.X-8,Size.Y-ArtSize.Y-10),ArtSize);
 		}
-		const FString Name=CharacterId.IsNone() ? TEXT("尚未结伴") : GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,CharacterId);
+		const FString Name=CharacterId.IsNone() ? TEXT("空位") : GameXXKCharacterUiPresentation::GetDisplayName(Subsystem,CharacterId);
 		auto* Title=MakeTitleButtonText(WidgetTree,GameXXKLocalization::Source(Name),Size.X>180 ? 26 : 20,Ink);
 		Title->SetVisibility(ESlateVisibility::HitTestInvisible);
+        if(CharacterId.IsNone()&&State&&!FGameXXKPartyFormationRules::IsSlotUnlocked(*State,
+            WidgetName==TEXT("FormationCompanionSlot")?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc))
+            Title->SetVisibility(ESlateVisibility::Collapsed);
 		AddCanvas(Face,Title,FVector2D(8,12),FVector2D(Size.X-16,36));
 		auto* Caption=MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("等级")),12,FGameXXKInRunUiStyle::MutedInk());
 		Caption->SetVisibility(ESlateVisibility::HitTestInvisible); AddCanvas(Face,Caption,FVector2D(13,53),FVector2D(45,21));
 		auto* Value=MakeText(WidgetTree,FText::AsNumber(Level),24,Ink);
-		Value->SetVisibility(ESlateVisibility::HitTestInvisible); AddCanvas(Face,Value,FVector2D(13,75),FVector2D(66,38));
-		const bool Deployed=State && (CharacterId==TEXT("Player") || CharacterId==State->CardRun.PartySelection.ActivePermanentCompanionInstanceId || CharacterId==ResolveWorkbenchNpcId(Subsystem));
+		Caption->SetVisibility(CharacterId.IsNone()?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible);
+		Value->SetVisibility(CharacterId.IsNone()?ESlateVisibility::Collapsed:ESlateVisibility::HitTestInvisible); AddCanvas(Face,Value,FVector2D(13,75),FVector2D(66,38));
+		const bool Deployed=State && !CharacterId.IsNone() && (CharacterId==TEXT("Player") || CharacterId==State->CardRun.PartySelection.ActivePermanentCompanionInstanceId || CharacterId==ResolveWorkbenchNpcId(Subsystem));
 		if (Selected || Deployed)
 		{
 			auto* Mark=MakeText(WidgetTree,GameXXKLocalization::Source(Selected ? TEXT("已选") : TEXT("出战")),14,FGameXXKInRunUiStyle::Jade());
@@ -7212,18 +7740,43 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 	Body->SetRenderOpacity(bFormationPickerOpen ? 0.20f : 1.0f);
 	Body->SetVisibility(bFormationPickerOpen ? ESlateVisibility::HitTestInvisible : ESlateVisibility::SelfHitTestInvisible);
 	AddCanvas(Body,MakeTitleText(WidgetTree,GameXXKLocalization::Source(TEXT("编队")),30,Ink),FVector2D(Area.X+24,Area.Y+14),FVector2D(160,42));
-	AddCanvas(Body,MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("出战三人 · 卡组随角色保存")),16,FGameXXKInRunUiStyle::MutedInk()),FVector2D(Area.X+160,Area.Y+25),FVector2D(420,27));
+	AddCanvas(Body,MakeText(WidgetTree,GameXXKLocalization::Source(TEXT("主角与同行角色 · 空位可保留 · 卡组随角色保存")),16,FGameXXKInRunUiStyle::MutedInk()),FVector2D(Area.X+160,Area.Y+25),FVector2D(420,27));
 	const FName PartyIds[]={FGameXXKEquipmentRules::HeroCharacterId(),State ? State->CardRun.PartySelection.ActivePermanentCompanionInstanceId : NAME_None,ResolveWorkbenchNpcId(Subsystem)};
 	const TCHAR* Names[]={TEXT("FormationHeroSlot"),TEXT("FormationCompanionSlot"),TEXT("FormationNpcSlot")};
 	for(int32 I=0;I<3;++I)
 	{
 		const float X=Area.X+96+I*270;
-		MakeCard(Body,PartyIds[I],Names[I],ActionFormationDeckFirst+I,FVector2D(X,Area.Y+84),FVector2D(216,298),false);
+		auto* MemberCard=MakeCard(Body,PartyIds[I],Names[I],ActionFormationDeckFirst+I,FVector2D(X,Area.Y+84),FVector2D(216,298),false);
 		auto* Edit=MakeControl(Body,*FString::Printf(TEXT("FormationEditDeck_%d"),I),ActionFormationDeckFirst+I,TEXT("编辑卡组"),FVector2D(X,Area.Y+396),FVector2D(216,40));
 		Edit->SetIsEnabled(!PartyIds[I].IsNone());
 		if(I>0)
 		{
-			MakeControl(Body,I==1 ? TEXT("FormationCompanionRosterButton") : TEXT("FormationNpcRosterButton"),I==1 ? 83 : 84,I==1 ? TEXT("更换伙伴") : TEXT("更换NPC"),FVector2D(X+22,Area.Y+452),FVector2D(172,40));
+            const auto Kind=I==1?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc;
+            const bool Eligible=State&&FGameXXKPartyFormationRules::IsSlotEligible(*State,Kind);
+            const bool Unlocked=State&&FGameXXKPartyFormationRules::IsSlotUnlocked(*State,Kind);
+            const bool Editable=Subsystem&&!Subsystem->IsCompanionLoadoutMutationLocked();
+            auto* Choose=MakeControl(Body,I==1?TEXT("FormationCompanionRosterButton"):TEXT("FormationNpcRosterButton"),
+                Unlocked?(I==1?83:84):(I==1?ActionUnlockCompanionSlot:ActionUnlockNpcSlot),
+                I==1?TEXT("选择伙伴"):TEXT("选择NPC"),
+                FVector2D(X,Area.Y+452),FVector2D(216,40));
+            Choose->SetIsEnabled(Editable&&Eligible);
+            Choose->SetVisibility(Unlocked?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
+            if(!Unlocked)
+            {
+                Edit->SetVisibility(ESlateVisibility::Collapsed);
+                auto* Lock=WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(),*FString::Printf(TEXT("FormationSlotLock_%d"),I));
+                Lock->SetBrush(MakeTextureBrush(LockedIconTexturePath,FVector2D(64,64)));
+                Lock->SetVisibility(ESlateVisibility::HitTestInvisible);
+                AddCanvas(Body,Lock,FVector2D(X+76,Area.Y+190),FVector2D(64,64));
+                MemberCard->Configure(this,I==1?ActionUnlockCompanionSlot:ActionUnlockNpcSlot);
+                MemberCard->SetIsEnabled(Editable&&Eligible);
+            }
+            if(!PartyIds[I].IsNone())
+            {
+                auto* Remove=MakeControl(Body,I==1?TEXT("FormationRemoveCompanion"):TEXT("FormationRemoveNpc"),
+                    I==1?ActionRemoveCompanion:ActionRemoveNpc,TEXT("卸下"),FVector2D(X+50,Area.Y+498),FVector2D(116,32));
+                Remove->SetIsEnabled(Editable);
+            }
 		}
 	}
 	auto* Picker=WidgetTree->ConstructWidget<UCanvasPanel>(UCanvasPanel::StaticClass(),TEXT("FormationPickerLayer"));
@@ -7245,8 +7798,10 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildFormationPanel()
 		MakeCard(Picker,Candidates[Index],FString::Printf(TEXT("FormationCandidateButton_%d"),I),(Companions ? 440 : 460)+I,
 			FVector2D(Area.X+24+I*(CardWidth+12),Area.Y+195),FVector2D(CardWidth,CardWidth*285.0f/206.0f),Candidates[Index]==FormationCandidateCharacterId);
 	}
-	MakeControl(Picker,TEXT("FormationPickerCompanionTab"),83,TEXT("伙伴"),FVector2D(Area.X+340,Area.Y+406),FVector2D(106,42));
-	MakeControl(Picker,TEXT("FormationPickerNpcTab"),84,TEXT("NPC"),FVector2D(Area.X+458,Area.Y+406),FVector2D(106,42));
+	MakeControl(Picker,TEXT("FormationPickerCompanionTab"),83,TEXT("伙伴"),FVector2D(Area.X+340,Area.Y+406),FVector2D(106,42))->SetVisibility(
+        State&&FGameXXKPartyFormationRules::IsSlotUnlocked(*State,EGameXXKPartyMemberKind::PermanentCompanion)?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
+	MakeControl(Picker,TEXT("FormationPickerNpcTab"),84,TEXT("NPC"),FVector2D(Area.X+458,Area.Y+406),FVector2D(106,42))->SetVisibility(
+        State&&FGameXXKPartyFormationRules::IsSlotUnlocked(*State,EGameXXKPartyMemberKind::QuestNpc)?ESlateVisibility::Visible:ESlateVisibility::Collapsed);
 	auto* Apply=MakeControl(Picker,TEXT("FormationApplyButton"),85,TEXT("编入队伍"),FVector2D(Area.X+24,Area.Y+467),FVector2D(176,44));
 	Apply->SetIsEnabled(Subsystem && !Subsystem->IsCompanionLoadoutMutationLocked() && !FormationCandidateCharacterId.IsNone());
 	MakeControl(Picker,TEXT("FormationPickerBack"),ActionFormationPickerBack,TEXT("返回编队"),FVector2D(Area.X+Area.Z-188,Area.Y+467),FVector2D(164,44),true);
@@ -7445,7 +8000,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 	AddCanvas(RootCanvas, ToolRecipeText.Get(), FVector2D(1396, Reforge ? (ReforgePending ? 873 : 798) : 612), FVector2D(238, Reforge ? 38 : 112));
 	if (ActiveToolMode == EGameXXKDesktopToolMode::Combine || ActiveToolMode == EGameXXKDesktopToolMode::Dismantle)
 	{
-		Control(TEXT("ToolAutoFill"), 311, TEXT("自动放置"), 1396, 801, 122)->SetToolTipText(GameXXKLocalization::Text(TEXT("Tool.AutoFillHint")));
+		Control(TEXT("ToolAutoFill"), 311, TEXT("自动填入"), 1396, 801, 122)->SetToolTipText(GameXXKLocalization::Text(TEXT("Tool.AutoFillHint")));
 		const bool IncludeWarehouse = State && State->DesktopInventory.bToolAutoFillIncludesWarehouse;
 		Control(TEXT("ToolIncludeWarehouse"), 312, IncludeWarehouse ? TEXT("仓库 ✓") : TEXT("仓库 ×"), 1526, 801, 108, 36, 16)->SetToolTipText(GameXXKLocalization::Text(TEXT("Tool.IncludeStorageHint")));
 	}
@@ -7475,6 +8030,7 @@ void UGameXXKDesktopTrainingWorkbenchWidget::BuildToolsPanel()
 		if (ReforgePending)
 		{
 			Divider->SetVisibility(ESlateVisibility::Collapsed);
+            AddCanvas(RootCanvas,MakeTransparentPanel(WidgetTree,TEXT("TeachingReforgeChoices")),FVector2D(1396,613),FVector2D(238,232));
 			const auto& Preview = State->EquipmentCollection.PendingReforge;
 			for (int32 Index = 0; Index < 2; ++Index)
 			{
@@ -10088,6 +10644,11 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	}
 	if (ActionId == ActionStoryQuest || ActionId == ActionToggleTown)
 	{
+        if(ActionId==ActionStoryQuest)
+        {
+            const auto* StoryMvp=ResolveMVPSubsystem();
+            if(!StoryMvp||!FGameXXKMainStoryRules::IsChapterUnlocked(StoryMvp->GetRuntimeState(),TEXT("S00")))return;
+        }
 		CancelCarryForStructuralChange();
 		const bool bRequestedAcademy=ActionId==ActionToggleTown;
 		bStoryTaskDrawerOpen = !bStoryTaskDrawerOpen || bAcademyDrawer!=bRequestedAcademy;
@@ -10117,7 +10678,17 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
         bToolModeDropdownOpen=false;RefreshLayout();
     }
 	if (ActionId == 655) return;
-	if (ActionId == ActionInterfaceHelp) { ShowInterfaceHelp(); return; }
+    if(ActionId==ActionInterfaceHelp)
+    {
+        const auto& P=Subsystem->GetRuntimeState().GuideProgress.TeachingChests;
+        if(P.bEnabled&&((P.CompletedStages<6&&(P.bDismissed||P.bOpened))||(NeedsStarterRecovery(Subsystem->GetRuntimeState())&&P.bDismissed)))
+        {
+            if(InterfaceHelpWidget&&InterfaceHelpWidget->IsOpen())InterfaceHelpWidget->Dismiss();
+            FString Error;if(!Subsystem->SetTeachingChestDismissed(false,Error))SetNotice(GameXXKLocalization::Source(Error));
+            return;
+        }
+        ShowInterfaceHelp();return;
+    }
 	if (ActionId == ActionLanguageChinese || ActionId == ActionLanguageEnglish)
 	{
 		FString Error;
@@ -10328,6 +10899,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 	{
 		CancelCarryForStructuralChange();
 		const auto Requested = static_cast<EGameXXKDesktopTrainingCharacterRoster>(ActionId-80);
+        if(ActionId>80&&!FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),
+            ActionId==81?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc))return;
 		if (Requested == EGameXXKDesktopTrainingCharacterRoster::Hero) { SelectBackpackCharacterForTest(FGameXXKEquipmentRules::HeroCharacterId()); return; }
 		CaptureExpandedSessionState();
 		if (bCharacterRosterMembersExpanded && CharacterPickerRoster==Requested) bCharacterRosterMembersExpanded=false;
@@ -10337,6 +10910,8 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 
 	if (ActionId == 83 || ActionId == 84)
 	{
+        const auto Kind=ActionId==83?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc;
+        if(Subsystem->IsCompanionLoadoutMutationLocked()||!FGameXXKPartyFormationRules::IsSlotUnlocked(Subsystem->GetRuntimeState(),Kind))return;
 		CancelCarryForStructuralChange();
 		bFormationPickerOpen = true;
 		FormationPickerPageIndex = 0;
@@ -10348,6 +10923,20 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 		RefreshLayout();
 		return;
 	}
+    if(ActionId==ActionUnlockCompanionSlot||ActionId==ActionUnlockNpcSlot)
+    {
+        const bool Companion=ActionId==ActionUnlockCompanionSlot;
+        if(!Subsystem->IsCompanionLoadoutMutationLocked()&&FGameXXKPartyFormationRules::IsSlotEligible(Subsystem->GetRuntimeState(),
+            Companion?EGameXXKPartyMemberKind::PermanentCompanion:EGameXXKPartyMemberKind::QuestNpc))
+            ShowPartyProgressionGuide(Companion?TEXT("CompanionUnlock"):TEXT("NpcUnlock"));
+        return;
+    }
+    if(ActionId==ActionRemoveCompanion||ActionId==ActionRemoveNpc)
+    {
+        const bool Removed=ActionId==ActionRemoveCompanion?Subsystem->ClearActivePermanentCompanion():Subsystem->SelectTownQuestNpcForParty(NAME_None);
+        if(Removed)SetNotice(GameXXKLocalization::Source(TEXT("已卸下，装备与个人卡组已保留")));
+        RefreshLayout();return;
+    }
 	if (ActionId == 85)
 	{
 		ApplyFormationCandidateForTest();
@@ -10658,9 +11247,30 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 			const bool IncludeWarehouse = Subsystem->GetRuntimeState().DesktopInventory.bToolAutoFillIncludesWarehouse;
 			const TArray<FGameXXKToolInputRef> Existing = BuildToolInputs();
 			const bool Dismantle = ActiveToolMode == EGameXXKDesktopToolMode::Dismantle;
-			const bool Filled = FGameXXKToolSelectionRules::BuildAutoFillForSelection(Subsystem->GetRuntimeState(),
-				Dismantle ? EGameXXKToolCombineKind::Equipment : ActiveToolCombineKind,
-				IncludeWarehouse, Dismantle, Existing, Inputs, &Error);
+            const auto& Teaching=Subsystem->GetRuntimeState().GuideProgress.TeachingChests;
+            const bool TeachingFill=!Dismantle&&ActiveToolCombineKind==EGameXXKToolCombineKind::Equipment
+                &&Teaching.bEnabled&&Teaching.Stage==6&&Teaching.bOpened&&!Teaching.bDismissed&&!Teaching.bAutoFillPracticed;
+            bool Filled=false;
+            if(TeachingFill)
+            {
+                Inputs=Existing;TSet<FName> Selected;for(const auto& Ref:Existing)Selected.Add(Ref.ExpectedEntry.EntryId);
+                for(FName Id:Teaching.CombineInputIds)
+                {
+                    if(Inputs.Num()>=9)break;
+                    const auto Key=FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Id);
+                    if(Selected.Contains(Id)||FGameXXKDesktopInventoryRules::IsEntryLocked(Subsystem->GetRuntimeState(),Key))continue;
+                    for(auto Container:{EGameXXKDesktopItemContainer::Backpack,EGameXXKDesktopItemContainer::Warehouse})
+                    {
+                        const int32 StoredSlotIndex=FGameXXKDesktopInventoryRules::FindEntrySlot(Subsystem->GetRuntimeState(),Container,Key);
+                        if(StoredSlotIndex==INDEX_NONE)continue;
+                        FGameXXKToolInputRef Ref;Ref.Container=Container;Ref.SlotIndex=StoredSlotIndex;Ref.ExpectedEntry=Key;Ref.Quantity=1;
+                        Inputs.Add(Ref);Selected.Add(Id);break;
+                    }
+                }
+                Filled=!Inputs.IsEmpty();if(!Filled)Error=TEXT("没有可用的装备，请检查物品是否已穿戴或锁定");
+            }
+            else Filled=FGameXXKToolSelectionRules::BuildAutoFillForSelection(Subsystem->GetRuntimeState(),
+                Dismantle?EGameXXKToolCombineKind::Equipment:ActiveToolCombineKind,IncludeWarehouse,Dismantle,Existing,Inputs,&Error);
 			if (!Filled)
 			{
 				SetNotice(GameXXKLocalization::Source(Error));
@@ -10680,6 +11290,12 @@ void UGameXXKDesktopTrainingWorkbenchWidget::ApplyAction(const int32 ActionId)
 					? EquipmentIconTexturePath(Subsystem->GetRuntimeState().EquipmentCollection, Input.ExpectedEntry.EntryId)
 					: InventoryItemIconTexturePath(Input.ExpectedEntry.EntryId);
 			}
+            if(!Dismantle&&ActiveToolCombineKind==EGameXXKToolCombineKind::Equipment)
+            {
+                TArray<FName> Ids;for(const auto& Entry:ToolSlots)if(Entry.IsValid()&&Entry.Entry.bEquipmentInstance)Ids.Add(Entry.Entry.EntryId);
+                FString SaveError;Subsystem->RecordTeachingAutoFill(Ids,SaveError);
+                if(!SaveError.IsEmpty()){SetNotice(GameXXKLocalization::Source(SaveError));RefreshLayout();break;}
+            }
 			SetNotice(GameXXKLocalization::Source(Existing.IsEmpty()
 				? (Inputs.Num() == 9 ? FString(TEXT("已放入最低可凑齐品质的九件物品"))
 					: FString::Printf(TEXT("已放入最接近九件的品质组，共 %d/9 格"), Inputs.Num()))

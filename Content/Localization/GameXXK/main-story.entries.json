@@ -459,8 +459,8 @@
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.objective",
-      "zh-Hans": "进入1-1，在剧情问号处击退拦路兽群",
-      "en": "Enter task map 1-1 and defeat the animals at the story question mark"
+      "zh-Hans": "进入战斗，击败兽群",
+      "en": "Enter battle and defeat the beasts"
     },
     {
       "namespace": "GameXXKMainStoryUI",
@@ -555,20 +555,20 @@
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.0",
-      "zh-Hans": "这一段得实际进图，先护住山客和手稿。",
-      "en": "This step requires entering the task map. Protect the traveler and his manuscript."
+      "zh-Hans": "准备好队伍，进入战斗，护住山客和手稿。",
+      "en": "Prepare your party and enter battle to protect the traveler and manuscript."
     },
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.1",
-      "zh-Hans": "到1-1剧情问号，用当前队伍击退拦路兽群。",
-      "en": "Reach the story question mark in task map 1-1 and defeat the animals with your current party."
+      "zh-Hans": "用当前队伍击败拦路兽群。",
+      "en": "Defeat the blocking beasts with your current party."
     },
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.2",
-      "zh-Hans": "在必经剧情问号完成任务战斗并获胜，手稿才算保住。",
-      "en": "Win the task battle at the mandatory story question mark to secure the manuscript."
+      "zh-Hans": "战胜兽群后继续战后对白，再领取任务报酬。",
+      "en": "After winning, continue the aftermath dialogue and collect the task reward."
     },
     {
       "namespace": "GameXXKMainStoryUI",

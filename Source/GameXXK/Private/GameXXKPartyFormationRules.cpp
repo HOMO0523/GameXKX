@@ -3,6 +3,7 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
+#include "Narrative/GameXXKMainStoryRules.h"
 
 namespace
 {
@@ -188,6 +189,38 @@ namespace
 	}
 }
 
+FName FGameXXKPartyFormationRules::SlotTalentId(const EGameXXKPartyMemberKind Kind)
+{
+	if (Kind == EGameXXKPartyMemberKind::PermanentCompanion) return TEXT("Talent.Party.CompanionSlot");
+	if (Kind == EGameXXKPartyMemberKind::QuestNpc) return TEXT("Talent.Party.NpcSlot");
+	return NAME_None;
+}
+
+bool FGameXXKPartyFormationRules::IsSlotEligible(const FGameXXKRuntimeState& State, const EGameXXKPartyMemberKind Kind)
+{
+	if (Kind == EGameXXKPartyMemberKind::Hero) return true;
+	if (SlotTalentId(Kind).IsNone()) return false;
+	if (!State.Training.bProgressivePartySlots) return true;
+    if(Kind==EGameXXKPartyMemberKind::PermanentCompanion)
+        return FGameXXKTrainingRules::CanChallenge(State.Training,TEXT("Training.Normal.1-2"));
+    return State.Training.PartyProgressionStep >= (Kind == EGameXXKPartyMemberKind::PermanentCompanion ? 1 : 2)
+        && (Kind!=EGameXXKPartyMemberKind::QuestNpc || FGameXXKMainStoryRules::IsNodeCompleted(State,TEXT("S00-02")));
+}
+
+bool FGameXXKPartyFormationRules::IsFirstNpcPending(const FGameXXKRuntimeState& State)
+{
+    const auto* Task=State.NarrativeProgress.TaskProgressById.Find(TEXT("S00-02"));
+    return State.Training.bProgressivePartySlots
+        && (!Task || Task->ObjectiveCounts.FindRef(TEXT("Party.FirstNpcDeployed"))==0);
+}
+
+bool FGameXXKPartyFormationRules::IsSlotUnlocked(const FGameXXKRuntimeState& State, const EGameXXKPartyMemberKind Kind)
+{
+	return IsSlotEligible(State, Kind)
+		&& (Kind == EGameXXKPartyMemberKind::Hero || !State.Training.bProgressivePartySlots
+			|| State.Talents.NodeRanks.FindRef(SlotTalentId(Kind)) > 0);
+}
+
 bool FGameXXKPartyFormationRules::BuildLegacyProjection(
 	const FGameXXKRuntimeState& State,
 	FGameXXKOrderedPartyFormation& OutFormation)
@@ -199,19 +232,20 @@ bool FGameXXKPartyFormationRules::BuildLegacyProjection(
 
 	const TArray<FName> StableOwnedCompanionIds = GetStableOwnedCompanionIds(State);
 	const FName LegacyCompanionId = FindLegacyCompanionId(State, StableOwnedCompanionIds);
-	if (!LegacyCompanionId.IsNone())
+	if (!LegacyCompanionId.IsNone() && IsSlotUnlocked(State, EGameXXKPartyMemberKind::PermanentCompanion))
 	{
 		AddUniqueMember(
 			Candidate,
 			MakeMember(EGameXXKPartyMemberKind::PermanentCompanion, LegacyCompanionId));
 	}
 
-	const FName LegacyQuestNpcId = FindLegacyQuestNpcId(State);
-	AddUniqueMember(
-		Candidate,
-		MakeMember(EGameXXKPartyMemberKind::QuestNpc, LegacyQuestNpcId));
+	const FName LegacyQuestNpcId = IsFirstNpcPending(State)?FName(TEXT("Npc.YueBai")):FindLegacyQuestNpcId(State);
+	if (IsSlotUnlocked(State, EGameXXKPartyMemberKind::QuestNpc))
+	{
+		AddUniqueMember(Candidate, MakeMember(EGameXXKPartyMemberKind::QuestNpc, LegacyQuestNpcId));
+	}
 
-	if (Candidate.Members.Num() != PartySize || !Validate(State, Candidate))
+	if (!Validate(State, Candidate))
 	{
 		return false;
 	}
@@ -261,8 +295,8 @@ bool FGameXXKPartyFormationRules::ResolveQuestNpcId(
 			return true;
 		}
 	}
-	SetError(OutError, TEXT("Ordered formation has no approved NPC."));
-	return false;
+	// A missing optional NPC is a valid resolution, represented by NAME_None.
+	return true;
 }
 
 bool FGameXXKPartyFormationRules::SetQuestNpc(
@@ -281,7 +315,8 @@ bool FGameXXKPartyFormationRules::SetQuestNpc(
 		SetError(OutError, TEXT("NPC formation cannot change during a route or battle."));
 		return false;
 	}
-	if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId))
+	if (!QuestNpcId.IsNone() && (!IsSlotUnlocked(InOutState, EGameXXKPartyMemberKind::QuestNpc)
+		|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId)))
 	{
 		SetError(OutError, TEXT("Selected NPC is not one of the six owned definitions."));
 		return false;
@@ -297,12 +332,13 @@ bool FGameXXKPartyFormationRules::SetQuestNpc(
 		{
 			return Ref.Kind == EGameXXKPartyMemberKind::QuestNpc;
 		});
-	if (!NpcSlot)
+	if (QuestNpcId.IsNone())
 	{
-		SetError(OutError, TEXT("Normalized formation has no NPC slot."));
-		return false;
+		Candidate.CardRun.OrderedFormation.Members.RemoveAll([](const auto& Member)
+			{ return Member.Kind == EGameXXKPartyMemberKind::QuestNpc; });
 	}
-	NpcSlot->MemberId = QuestNpcId;
+	else if (NpcSlot) NpcSlot->MemberId = QuestNpcId;
+	else Candidate.CardRun.OrderedFormation.Members.Add(MakeMember(EGameXXKPartyMemberKind::QuestNpc, QuestNpcId));
 	ProjectCompatibility(Candidate);
 	if (!Validate(Candidate, Candidate.CardRun.OrderedFormation, OutError)
 		|| !ValidateCompatibilityProjection(Candidate, OutError))
@@ -319,9 +355,9 @@ bool FGameXXKPartyFormationRules::Validate(
 	FString* OutError)
 {
 	ResetError(OutError);
-	if (Formation.Members.Num() != PartySize)
+	if (Formation.Members.IsEmpty() || Formation.Members.Num() > PartySize)
 	{
-		SetError(OutError, TEXT("Party formation must contain exactly three members."));
+		SetError(OutError, TEXT("Party formation must contain one to three members."));
 		return false;
 	}
 
@@ -358,6 +394,15 @@ bool FGameXXKPartyFormationRules::Validate(
 					*Ref.MemberId.ToString()));
 			return false;
 		}
+		if (!IsSlotUnlocked(State, Ref.Kind))
+		{
+			SetError(OutError, TEXT("This optional party slot has not been unlocked."));
+			return false;
+		}
+        if(Ref.Kind==EGameXXKPartyMemberKind::QuestNpc && IsFirstNpcPending(State) && Ref.MemberId!=TEXT("Npc.YueBai"))
+        {
+            SetError(OutError,TEXT("Meet and deploy the map spirit as the first NPC."));return false;
+        }
 
 		SeenMemberIds.Add(Ref.MemberId);
 		switch (Ref.Kind)
@@ -377,11 +422,11 @@ bool FGameXXKPartyFormationRules::Validate(
 		}
 	}
 
-	if (HeroCount != 1 || CompanionCount != 1 || QuestNpcCount != 1)
+	if (HeroCount != 1 || CompanionCount > 1 || QuestNpcCount > 1)
 	{
 		SetError(
 			OutError,
-			TEXT("Party formation requires exactly one hero, one permanent companion, and one NPC."));
+			TEXT("Party formation requires one hero and at most one companion and one NPC."));
 		return false;
 	}
 	return true;
@@ -486,4 +531,8 @@ void FGameXXKPartyFormationRules::ProjectCompatibility(FGameXXKRuntimeState& InO
 	}
 	InOutState.CardRun.PartySelection.QuestNpc.NpcId = FirstQuestNpcId;
 	InOutState.CardRun.PartySelection.QuestNpc.SelectedCardIds = MoveTemp(ProjectedQuestNpcCards);
+    if(InOutState.Training.bProgressivePartySlots && FirstQuestNpcId==TEXT("Npc.YueBai")
+        && IsSlotUnlocked(InOutState,EGameXXKPartyMemberKind::QuestNpc))
+        if(auto* Task=InOutState.NarrativeProgress.TaskProgressById.Find(TEXT("S00-02")))
+            Task->ObjectiveCounts.Add(TEXT("Party.FirstNpcDeployed"),1);
 }

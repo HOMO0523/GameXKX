@@ -2,6 +2,7 @@
 
 #include "GameXXKTalentCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPartyFormationRules.h"
 
 int32 FGameXXKTalentRules::ComputeProjectedMaxHP(const int32 BaselineMaxHP,const int32 RouteFlatHP,const FGameXXKTalentProjection& Projection)
 {
@@ -18,6 +19,12 @@ int32 FGameXXKTalentRules::GetEffectiveHeroMaxHP(const FGameXXKRuntimeState& Sta
 
 namespace
 {
+	EGameXXKPartyMemberKind PartySlotKind(const FName Id)
+	{
+		if (Id == FGameXXKPartyFormationRules::SlotTalentId(EGameXXKPartyMemberKind::PermanentCompanion)) return EGameXXKPartyMemberKind::PermanentCompanion;
+		if (Id == FGameXXKPartyFormationRules::SlotTalentId(EGameXXKPartyMemberKind::QuestNpc)) return EGameXXKPartyMemberKind::QuestNpc;
+		return EGameXXKPartyMemberKind::Invalid;
+	}
 	void SetError(FString* OutError, const FString& Error)
 	{
 		if (OutError)
@@ -195,6 +202,8 @@ bool FGameXXKTalentRules::BuildProjection(const FGameXXKTalentProgress& Progress
 		case EGameXXKTalentEffect::OfflineChestMinutes: OutProjection.OfflineChestMinutes += Value; break;
 		case EGameXXKTalentEffect::ToolExperiencePercent: OutProjection.ToolExperiencePercent += Value; break;
 		case EGameXXKTalentEffect::ToolGoldPercent: OutProjection.ToolGoldPercent += Value; break;
+		case EGameXXKTalentEffect::UnlockCompanionSlot:
+		case EGameXXKTalentEffect::UnlockNpcSlot: break; // Deployment reads the saved rank and chapter eligibility together.
 		default: break;
 		}
 	}
@@ -257,6 +266,23 @@ TArray<FGameXXKTalentNodeView> FGameXXKTalentRules::BuildNodeViews(const FGameXX
 		View.Definition = Node;
 		View.Rank = RankOf(State.Talents, Node.Id);
 		View.NextPrice = GetRankPrice(Node, View.Rank);
+		const auto SlotKind = PartySlotKind(Node.Id);
+		if (SlotKind != EGameXXKPartyMemberKind::Invalid)
+		{
+			if (!State.Training.bProgressivePartySlots)
+			{
+				View.Rank = 1;
+				View.State = EGameXXKTalentNodeState::Maxed;
+				continue;
+			}
+			if (!FGameXXKPartyFormationRules::IsSlotEligible(State, SlotKind))
+			{
+				View.State = EGameXXKTalentNodeState::Hidden;
+				View.LockReason = FText::FromString(SlotKind == EGameXXKPartyMemberKind::PermanentCompanion
+					? TEXT("实际通关普通1-1后可解锁") : TEXT("进入1-3阶段，在主线拾回卷轴并认识幽白后可解锁"));
+				continue;
+			}
+		}
 		if (!IsRevealed(State.Talents, Node))
 		{
 			View.State = EGameXXKTalentNodeState::Hidden;
@@ -300,6 +326,13 @@ bool FGameXXKTalentRules::Purchase(FGameXXKRuntimeState& InOutState, const FName
 		return FailPurchase(OutResult, TEXT("未知天赋节点"));
 	}
 	const int32 RankBefore = RankOf(InOutState.Talents, NodeId);
+	const auto SlotKind = PartySlotKind(NodeId);
+	if (SlotKind != EGameXXKPartyMemberKind::Invalid)
+	{
+		if (FGameXXKPartyFormationRules::IsSlotUnlocked(InOutState, SlotKind)) return FailPurchase(OutResult, TEXT("该出战位已开放"));
+		if (!FGameXXKPartyFormationRules::IsSlotEligible(InOutState, SlotKind)) return FailPurchase(OutResult,
+			SlotKind == EGameXXKPartyMemberKind::PermanentCompanion ? TEXT("实际通关普通1-1后可解锁") : TEXT("进入1-3阶段，在主线拾回卷轴并认识幽白后可解锁"));
+	}
 	if (RankBefore >= Node->MaxRank)
 	{
 		return FailPurchase(OutResult, TEXT("该天赋已满级"));
@@ -361,6 +394,8 @@ FText FGameXXKTalentRules::DescribeEffect(const FGameXXKTalentNodeDefinition& No
 	case EGameXXKTalentEffect::UnlockWarehousePage: return FText::FromString(TEXT("仓库页数 +1"));
 	case EGameXXKTalentEffect::UnlockOfflineRewards: return FText::FromString(TEXT("解锁离线奖励"));
 	case EGameXXKTalentEffect::UnlockTools: return FText::FromString(TEXT("开启工具收益加成分支"));
+	case EGameXXKTalentEffect::UnlockCompanionSlot: return FText::FromString(TEXT("开放伙伴出战位，可自由编入或卸下"));
+	case EGameXXKTalentEffect::UnlockNpcSlot: return FText::FromString(TEXT("开放NPC出战位，可自由编入或卸下"));
 	case EGameXXKTalentEffect::CombatFoundation: return FText::FromString(FString::Printf(TEXT("全队攻击/生命/防御 +%d"), Value));
 	case EGameXXKTalentEffect::FlatAttack: return FText::FromString(FString::Printf(TEXT("全队攻击 +%d"), Value));
 	case EGameXXKTalentEffect::FlatMaxHP: return FText::FromString(FString::Printf(TEXT("全队最大生命 +%d"), Value));

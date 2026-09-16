@@ -1325,6 +1325,15 @@ struct GAMEXXK_API FGameXXKBattleDeckState
 {
 	GENERATED_BODY()
 
+	/** Only a live first-battle teaching session may schedule these cards. No new owning zone. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bFirstBattleGuidance = false;
+	/** 0: ordinary draw, 1: opening support holdback, 2: support delivery completed. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 FirstBattleDrawPhase = 0;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	TArray<FName> FirstBattleDeferredCardIds;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 InitialRandomSeed = 0;
 

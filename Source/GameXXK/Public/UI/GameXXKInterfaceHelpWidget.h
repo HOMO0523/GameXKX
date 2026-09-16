@@ -24,7 +24,14 @@ public:
     void ShowTutorial(UUserWidget* Host, const TSet<FName>& Completed, int32 HudPercent,
         TFunction<void(FName)> PrepareContext, TFunction<bool(FName)> RecordCompletion);
     bool IsTutorial() const { return bTutorial; }
+    bool IsTeachingChestGuide() const { return bTeachingChestGuide; }
+    void ShowProgressionTutorial(UUserWidget* Host, FName Group, const TSet<FName>& Completed, int32 HudPercent,
+        TFunction<void(FName)> PrepareContext, TFunction<bool(FName)> RecordCompletion);
 	void Dismiss();
+	void ShowBattleStep(UUserWidget* Host,FName Topic,UWidget* Target,const FText& Text,bool bAction,bool bHover,
+		TFunction<bool(FName)> RecordCompletion,FSimpleDelegate OnDismiss);
+	/** Retire an old profile's overlay without recording a pause in the new profile. */
+	void DiscardForNewGame() { bTeachingChestGuide=false; Dismiss(); }
 	bool IsOpen() const { return bOpen; }
 	void SetDesktopHudPercent(int32 Percent) { DesktopHudPercent = Percent; }
 	int32 GetStepCountForTest() const { return Steps.Num(); }
@@ -32,6 +39,7 @@ public:
     FName GetCurrentCompletionIdForTest() const;
     UWidget* GetCurrentTargetForTest() const;
     void ConfirmReadingForTest();
+    void CloseForTest() { CloseClicked(); }
     FVector4 GetReadingRectForTest() const { return ReadingRect; }
 	void SetLayoutChangedDelegate(FSimpleDelegate Delegate) { LayoutChanged = MoveTemp(Delegate); }
 	void SetDismissedDelegate(FSimpleDelegate Delegate) { Dismissed = MoveTemp(Delegate); }
@@ -46,6 +54,11 @@ private:
         FName Context;
         bool bAction = false;
         bool bHover = false;
+        bool bStateDriven = false;
+        bool bNoTarget = false;
+        bool bCloseCompletes = false;
+		TWeakObjectPtr<UWidget> DirectTarget;
+		FText OverrideText;
 	};
 	void Build();
 	void AddVisibleStep(const TCHAR* Key, TArray<FName> Names, FName RegisteredTarget = NAME_None);
@@ -83,6 +96,7 @@ private:
 	bool bOpen = false;
 	bool bBrowseAllInterfaces = false;
     bool bTutorial = false;
+    bool bTeachingChestGuide = false;
     bool bReplay = false;
     bool bAdvancePending = false;
     bool bPreparePending = false;

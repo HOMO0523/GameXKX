@@ -33,6 +33,7 @@ struct GAMEXXK_API FGameXXKTrainingChestOpenReceipt
     UPROPERTY(BlueprintReadOnly) int32 QualityRank=0;
     UPROPERTY(BlueprintReadOnly) int32 ItemLevel=0;
     UPROPERTY(BlueprintReadOnly) bool bSentToWarehouse=false;
+    UPROPERTY(BlueprintReadOnly) FName FixedDropId;
 };
 
 USTRUCT(BlueprintType)

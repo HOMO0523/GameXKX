@@ -1,4 +1,5 @@
 #include "GameXXKEquipmentToolRules.h"
+#include "GameXXKTeachingChestRules.h"
 
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKToolCombineProbability.h"
@@ -11,6 +12,9 @@
 
 namespace
 {
+    TArray<FName> TeachingInputIds(const TArray<FGameXXKToolInputRef>& Inputs)
+    {TArray<FName> Ids;for(const auto& Input:Inputs)Ids.Add(Input.ExpectedEntry.EntryId);return Ids;}
+
 	void SetError(FString* OutError, const FString& Error)
 	{
 		if (OutError) *OutError = Error;
@@ -310,6 +314,7 @@ bool FGameXXKEquipmentToolRules::Dismantle(
 	if (MoneyQuantity > 0) OutResult.Message = FText::FromString(FString::Printf(
 		TEXT("已分解 %lld 个行旅钱，兑换 %lld 金币"), MoneyQuantity,
 		MoneyQuantity * FGameXXKTravelMoneyRules::DismantleGoldPerUnit));
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Dismantle,TeachingInputIds(Inputs));
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -407,6 +412,7 @@ bool FGameXXKEquipmentToolRules::CombineEquipment(
 	OutResult.AffectedInstanceIds = Ids;
 	OutResult.AffectedInstanceIds.Add(OutputId);
 	OutResult.OutputEntryId = OutputId;
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Combine,TeachingInputIds(Inputs));
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -568,6 +574,7 @@ bool FGameXXKEquipmentToolRules::Enhance(
 	const int64 Award = GetQualityExperienceMultiplier(Rank);
 	if (!AddAward(Candidate, Award, OutResult) || !Finish(Candidate, OutResult)) return false;
 	OutResult.bSucceeded = true;
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Enhance,{Input.ExpectedEntry.EntryId});
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -608,6 +615,7 @@ bool FGameXXKEquipmentToolRules::ResolveReforge(
 		|| !FGameXXKEquipmentEconomyRules::ResolvePendingReforge(Candidate, bAccept, OutResult)
 		|| !Finish(Candidate, OutResult)) return false;
 	OutResult.bSucceeded = true;
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Reforge,{InOutState.EquipmentCollection.PendingReforge.InstanceId});
 	InOutState = MoveTemp(Candidate);
 	return true;
 }
@@ -678,6 +686,7 @@ bool FGameXXKEquipmentToolRules::SocketGem(
 	}
 	OutResult.bSucceeded = true;
 	OutResult.OutputEntryId = Request.EquipmentInput.ExpectedEntry.EntryId;
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Socket,{Request.EquipmentInput.ExpectedEntry.EntryId});
 	InOutState = MoveTemp(Candidate);
 	return true;
 }

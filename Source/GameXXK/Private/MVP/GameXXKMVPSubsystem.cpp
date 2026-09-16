@@ -3,6 +3,9 @@
 #include "UI/GameXXKLocalization.h"
 #include "Audio/GameXXKSfx.h"
 #include "Guide/GameXXKAcademyRules.h"
+#include "Guide/GameXXKFirstBattleGuideRules.h"
+#include "Guide/GameXXKAcademySubsystem.h"
+#include "UI/GameXXKDesktopHudSessionSubsystem.h"
 #include "MVP/GameXXKAcademyStateBuilder.h"
 
 #include "GameXXKCardBattleAdapter.h"
@@ -131,11 +134,11 @@ namespace
 		}
 
 		FName ActiveNpcId;
-		if (!ResolveDeployedQuestNpcId(State, ActiveNpcId, &Error)
-			|| !FGameXXKCompanionCatalog::FindQuestNpcDefinition(ActiveNpcId))
+		if (!ResolveDeployedQuestNpcId(State, ActiveNpcId, &Error))
 		{
 			return false;
 		}
+		if (ActiveNpcId.IsNone()) return true;
 		FGameXXKQuestNpcProgression& ActiveNpc =
 			State.CardRun.PartySelection.QuestNpcProgressions.FindOrAdd(ActiveNpcId);
 		AwardUnifiedNpcExperience(ActiveNpc, ExperienceAmount);
@@ -453,37 +456,40 @@ namespace
 		{
 			return false;
 		}
-		FGameXXKCompanionAttributes NpcAttributes;
-		if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
-				ActiveNpcId,
-				ResolveQuestNpcProgressionLevel(State, ActiveNpcId),
-				NpcAttributes,
-				OutError))
+		if (!ActiveNpcId.IsNone())
 		{
-			return false;
-		}
-		FGameXXKCharacterStats NpcBareStats;
-		NpcBareStats.MaxHealth = NpcAttributes.Health;
-		NpcBareStats.MaxMana = NpcAttributes.Mana;
-		NpcBareStats.Attack = NpcAttributes.Attack;
-		NpcBareStats.Defense = NpcAttributes.Defense;
-		NpcBareStats.Speed = NpcAttributes.Speed;
-		FGameXXKEquipmentLoadoutSnapshot NpcSnapshot;
-		if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
-				State.EquipmentCollection,
+			FGameXXKCompanionAttributes NpcAttributes;
+			if (!FGameXXKCompanionRules::GetQuestNpcAttributes(
+					ActiveNpcId,
+					ResolveQuestNpcProgressionLevel(State, ActiveNpcId),
+					NpcAttributes,
+					OutError))
+			{
+				return false;
+			}
+			FGameXXKCharacterStats NpcBareStats;
+			NpcBareStats.MaxHealth = NpcAttributes.Health;
+			NpcBareStats.MaxMana = NpcAttributes.Mana;
+			NpcBareStats.Attack = NpcAttributes.Attack;
+			NpcBareStats.Defense = NpcAttributes.Defense;
+			NpcBareStats.Speed = NpcAttributes.Speed;
+			FGameXXKEquipmentLoadoutSnapshot NpcSnapshot;
+			if (!FGameXXKEquipmentRules::BuildLoadoutSnapshot(
+					State.EquipmentCollection,
+					ActiveNpcId,
+					NpcBareStats,
+					NpcSnapshot,
+					OutError))
+			{
+				return false;
+			}
+			OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
 				ActiveNpcId,
-				NpcBareStats,
-				NpcSnapshot,
-				OutError))
-		{
-			return false;
+				TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
+				TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
+				TalentAttack(NpcSnapshot.AttributesBeforeRoute.Attack)));
 		}
-		OutParty.Add(FGameXXKTrainingTravelPartyUnitRuntime(
-			ActiveNpcId,
-			TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
-			TalentHealth(NpcSnapshot.AttributesBeforeRoute.MaxHealth),
-			TalentAttack(NpcSnapshot.AttributesBeforeRoute.Attack)));
-		return OutParty.Num() == 3;
+		return !OutParty.IsEmpty() && OutParty.Num() <= 3;
 	}
 
 	static bool ReplaceTrainingTravelPartyPreservingProgress(
@@ -491,7 +497,7 @@ namespace
 		FGameXXKTrainingTravelRuntime& InOutRuntime)
 	{
 		TArray<FGameXXKTrainingTravelPartyUnitRuntime> FreshParty;
-		if (!BuildTrainingTravelParty(State, FreshParty) || FreshParty.Num() != 3)
+		if (!BuildTrainingTravelParty(State, FreshParty) || FreshParty.IsEmpty())
 		{
 			return false;
 		}
@@ -499,18 +505,18 @@ namespace
 		{
 			return true;
 		}
-		if (InOutRuntime.PartyUnits.Num() != 3)
+		if (InOutRuntime.PartyUnits.IsEmpty())
 		{
 			return false;
 		}
 		for (int32 SlotIndex = 0; SlotIndex < FreshParty.Num(); ++SlotIndex)
 		{
 			FGameXXKTrainingTravelPartyUnitRuntime& Fresh = FreshParty[SlotIndex];
-			const FGameXXKTrainingTravelPartyUnitRuntime& Previous =
-				InOutRuntime.PartyUnits[SlotIndex];
-			if (Fresh.UnitId == Previous.UnitId)
+			const auto* Previous = InOutRuntime.PartyUnits.FindByPredicate(
+				[&Fresh](const auto& Unit) { return Unit.UnitId == Fresh.UnitId; });
+			if (Previous)
 			{
-				const int32 MissingHealth = FMath::Max(0, Previous.MaxHP - Previous.HP);
+				const int32 MissingHealth = FMath::Max(0, Previous->MaxHP - Previous->HP);
 				Fresh.HP = FMath::Clamp(Fresh.MaxHP - MissingHealth, 0, Fresh.MaxHP);
 			}
 		}
@@ -1918,6 +1924,8 @@ bool UGameXXKMVPSubsystem::BuildDevelopmentTrainingBattle(FGameXXKRuntimeState& 
 	if (!Encounters.IsValidIndex(EncounterIndex))
 	{ OutError = TEXT("关卡或场次不存在。"); return false; }
 	FGameXXKRuntimeState Candidate = State;
+	// Authored developer probes keep the ordinary draw rules, even when based on a fresh profile.
+	Candidate.GuideProgress.bFirstBattleGuideEnabled = false;
 	if(FGameXXKHuntRules::IsHuntStage(StageId))
 	{
 		Candidate.Training.ClearedStageIds.Add(FGameXXKTrainingRules::MakeStageId(FGameXXKTrainingRules::DifficultyFromStageId(StageId),9));
@@ -2050,6 +2058,10 @@ bool UGameXXKMVPSubsystem::StartTrainingChallenge(const FName StageId)
 	}
 
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+	if(Candidate.Training.bProgressivePartySlots && StageId==TEXT("Training.Normal.1-2"))
+	{
+		Candidate.GuideProgress.CompletedGuideStepIds.Add(TEXT("UI.Progression.V1.FirstChallenge12.Commit"));
+	}
 	RuntimeState = MoveTemp(Candidate);
 	return true;
 }
@@ -2408,6 +2420,7 @@ bool UGameXXKMVPSubsystem::AdvanceTrainingChallengeEncounter(bool& bOutStageComp
 					OutReward,
 					&Error))
 			{
+				LastSaveLoadError=FText::FromString(Error);
 				return false;
 			}
 			if (!PersistTrainingCheckpoint(Candidate))
@@ -2887,6 +2900,22 @@ bool UGameXXKMVPSubsystem::ResolveTrainingTravelFailure()
 	{
 		return false;
 	}
+    if(Candidate.GuideProgress.TeachingChests.bEnabled&&Candidate.Training.bProgressivePartySlots
+        &&Candidate.Training.PartyProgressionStep==0&&Candidate.Training.CurrentTravelStageId==TEXT("Training.Normal.1-1")
+        &&!Candidate.GuideProgress.CompletedGuideStepIds.Contains(TEXT("Teaching.0.Retry.0")))
+    {
+        const auto* Hero=Candidate.EquipmentCollection.CharacterLoadouts.Find(TEXT("Player"));
+        bool Missing=!Hero;
+        for(int32 Index=1;Hero&&Index<=6;++Index)
+            Missing|=FGameXXKEquipmentRules::GetLoadoutSlotInstanceId(*Hero,static_cast<EGameXXKEquipmentSlot>(Index)).IsNone();
+        if(Missing)
+        {
+            // A real novice defeat gives the player time to gear up before retrying.
+            // Keep their auto-retry preference for subsequent ordinary play.
+            Candidate.Training.bTravelActive=false;Candidate.Training.ActiveTravelEncounterIndex=INDEX_NONE;
+            Candidate.Training.bTravelPausedAtDefeat=false;
+        }
+    }
 
 	if(!FGameXXKHuntRules::SettleTravelOrders(Candidate))return false;
 	FGameXXKHuntRules::SynchronizeTravelBudget(Candidate);
@@ -3681,6 +3710,29 @@ bool UGameXXKMVPSubsystem::StartGame()
 	return StartNewGame();
 }
 
+bool UGameXXKMVPSubsystem::CommitFirstBattleGuideStep(FName Topic)
+{
+	if(!RuntimeState.CardRun.bHasActiveCardBattle || !RuntimeState.CardRun.ActiveBattle.Deck.bFirstBattleGuidance)return false;
+	auto Candidate=RuntimeState;
+	bool Changed=GameXXKFirstBattleGuide::Observe(Candidate);
+	if(Topic==TEXT("Dismiss"))
+	{
+		auto& Deck=Candidate.CardRun.ActiveBattle.Deck;
+		Deck.bFirstBattleGuidance=false;Deck.FirstBattleDrawPhase=0;Deck.FirstBattleDeferredCardIds.Reset();Changed=true;
+	}
+	else if(!Topic.IsNone())
+	{
+		if(Topic!=TEXT("AttackView")&&Topic!=TEXT("Qi")&&Topic!=TEXT("ArmorView")&&Topic!=TEXT("Auto"))return false;
+		const FName Id=GameXXKFirstBattleGuide::Marker(*Topic.ToString());
+		if(!Candidate.GuideProgress.CompletedGuideStepIds.Contains(Id))
+		{Candidate.GuideProgress.CompletedGuideStepIds.Add(Id);Changed=true;}
+		GameXXKFirstBattleGuide::Observe(Candidate);
+	}
+	if(!Changed)return true;
+	if(!PersistTrainingCheckpoint(Candidate))return false;
+	RuntimeState=MoveTemp(Candidate);return true;
+}
+
 bool UGameXXKMVPSubsystem::CommitGuideProgress(
 	const FGameXXKGuideProgress& GuideProgress,
 	FString* OutError)
@@ -3727,7 +3779,88 @@ bool UGameXXKMVPSubsystem::ResetCombatGuideProgress(FString* OutError)
 	return CommitGuideProgress(Candidate, OutError);
 }
 
+bool UGameXXKMVPSubsystem::OpenTeachingChest(bool bMaterialBoxes,bool bAll,int32& Opened,FString& Error)
+{
+    auto Candidate=RuntimeState;
+    if(!FGameXXKTeachingChestRules::Open(Candidate,bMaterialBoxes,bAll,Opened,Error))return false;
+    auto Runner=TrainingTravelRuntime;
+    const bool Resume=!RuntimeState.Training.bTravelActive&&Candidate.Training.bTravelActive;
+    if(Resume)
+    {
+        Candidate.Training.TravelLastUpdatedUnixSeconds=GetCurrentTravelUnixSeconds();
+        if(!BuildTrainingTravelRuntimeForState(Candidate,Runner)){Opened=0;Error=TEXT("无法恢复游历，教学箱未消耗");return false;}
+    }
+    if(!PersistTrainingCheckpoint(Candidate)){Opened=0;Error=TEXT("保存失败，教学箱未消耗");return false;}
+    BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+    RuntimeState=MoveTemp(Candidate);if(Resume)TrainingTravelRuntime=MoveTemp(Runner);
+    return true;
+}
+bool UGameXXKMVPSubsystem::SetTeachingChestDismissed(bool bDismissed,FString& Error)
+{
+    Error.Reset();if(!RuntimeState.GuideProgress.TeachingChests.bEnabled)return false;
+    if(RuntimeState.GuideProgress.TeachingChests.bDismissed==bDismissed)return true;
+    auto Candidate=RuntimeState;Candidate.GuideProgress.TeachingChests.bDismissed=bDismissed;
+    if(!PersistTrainingCheckpoint(Candidate)){Error=TEXT("教学进度未能保存，请重试");return false;}
+    RuntimeState=MoveTemp(Candidate);return true;
+}
+bool UGameXXKMVPSubsystem::RecordTeachingGuideStep(FName Step,FString& Error)
+{
+    Error.Reset();
+    if(!RuntimeState.GuideProgress.TeachingChests.bEnabled||!Step.ToString().StartsWith(TEXT("Teaching.")))return false;
+    if(RuntimeState.GuideProgress.CompletedGuideStepIds.Contains(Step))return true;
+    auto Candidate=RuntimeState;Candidate.GuideProgress.CompletedGuideStepIds.Add(Step);
+    if(Step==TEXT("Teaching.3.Review.0")&&!FGameXXKTeachingChestRules::CompleteEnhancementReview(Candidate,Error))return false;
+    if(Step==TEXT("Teaching.5.Intro.0"))
+    {
+        auto& P=Candidate.GuideProgress.TeachingChests;
+        if(P.Stage!=5||!P.bOpened)return false;
+        if(!FGameXXKTrainingRules::AppendChestToken(Candidate.Training,EGameXXKTrainingRewardTier::NormalChest,TEXT("Training.Normal.1-1"),1,&Error))return false;
+        Candidate.Training.OwnedChestTokens.Last().FixedDropId=FGameXXKTeachingChestRules::StageName(6);
+        P.CompletedStages=5;P.Stage=6;P.bOpened=false;P.bDismissed=false;
+    }
+    // A lesson checkpoint must retain the carried item and tool preview.
+    if(!PersistTrainingCheckpoint(Candidate)){Error=TEXT("教学进度未能保存，请重试");return false;}
+    RuntimeState=MoveTemp(Candidate);return true;
+}
+bool UGameXXKMVPSubsystem::RecordTeachingAutoFill(const TArray<FName>& Inputs,FString& Error)
+{
+    Error.Reset();const auto& P=RuntimeState.GuideProgress.TeachingChests;
+    if(RuntimeState.Screen!=EGameXXKScreen::Town||RuntimeState.bDungeonActive||RuntimeState.Training.bChallengeActive
+        ||RuntimeState.CardRun.bHasActiveCardBattle||RuntimeState.EquipmentCollection.PendingReforge.bActive)return false;
+    if(!P.bEnabled||P.Stage!=6||!P.bOpened||Inputs.Num()!=9)return false;
+    TSet<FName> Seen;EGameXXKEquipmentQuality Quality=EGameXXKEquipmentQuality::Invalid;
+    for(FName Id:Inputs)
+    {
+        const auto* Item=FGameXXKEquipmentRules::FindInstance(RuntimeState.EquipmentCollection,Id);
+        if(!Item||Seen.Contains(Id)||Item->OwnerKind!=EGameXXKEquipmentOwnerKind::Warehouse
+            ||FGameXXKDesktopInventoryRules::IsEntryLocked(RuntimeState,FGameXXKDesktopInventoryRules::MakeEquipmentEntry(Id)))return false;
+        if(Seen.IsEmpty())Quality=Item->Quality;
+        if(Item->Quality!=Quality||Quality==EGameXXKEquipmentQuality::Cosmic)return false;
+        Seen.Add(Id);
+    }
+    if(P.bAutoFillPracticed)return true;
+    auto Candidate=RuntimeState;Candidate.GuideProgress.TeachingChests.bAutoFillPracticed=true;
+    Candidate.GuideProgress.TeachingChests.CompletedStages=6;
+    if(!PersistTrainingCheckpoint(Candidate)){Error=TEXT("教学进度未能保存，请重试");return false;}
+    RuntimeState=MoveTemp(Candidate);return true;
+}
+
 bool UGameXXKMVPSubsystem::StartNewGame()
+{
+	return InitializeNewGame(false);
+}
+
+#if GAMEXXK_WITH_DEV_TOOLS
+bool UGameXXKMVPSubsystem::ResetSaveForDevelopment(FString& OutError)
+{
+	OutError.Reset();
+	if (InitializeNewGame(true)) return true;
+	OutError = LastSaveLoadError.IsEmpty() ? TEXT("未能重置存档，原进度已保留。") : LastSaveLoadError.ToString();
+	return false;
+}
+#endif
+
+bool UGameXXKMVPSubsystem::InitializeNewGame(const bool bResetSavedProgress)
 {
 	PersistenceBoundaryDelegate.Broadcast();
 	FGameXXKRuntimeState Candidate = UGameXXKMVPRules::CreateNewGame();
@@ -3767,27 +3900,20 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 		}
 	}
 
-	// Every new game owns one representative of all six partner roles and all
-	// six named NPC definitions. The initial fixed three-person party is hero +
-	// Blade + Tusi Chief; clicking another portrait can replace either side slot.
+	// Ownership is preserved while deployment starts with the hero alone.
+	// Optional members become selectable after their chapter-gated talents.
 	if (StarterBladeId.IsNone()
-		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, StarterBladeId, &Error)
+		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(StarterRoster, NAME_None, &Error)
 		|| !FGameXXKCardBattleAdapter::EnsureCardRunInitialized(Candidate, &Error)
-		|| !FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
-			Candidate,
-			FName(TEXT("Npc.TusiChief")),
-			{},
-			&Error)
 		|| !FGameXXKPartyFormationRules::Normalize(Candidate, &Error)
 		|| !UGameXXKMVPRules::EnterWorldRegion(Candidate, UGameXXKMVPRules::RegionQingshan()))
 	{
 		return false;
 	}
 	FGameXXKTrainingTravelRuntime CandidateTravelRuntime;
-	if (!BuildTrainingTravelRuntimeForState(Candidate, CandidateTravelRuntime))
-	{
-		return false;
-	}
+	if (!BuildTrainingTravelRuntimeForState(Candidate, CandidateTravelRuntime))return false;
+    if(!FGameXXKTeachingChestRules::Initialize(Candidate,Error))return false;
+	Candidate.GuideProgress.bFirstBattleGuideEnabled=true;
 
 #if WITH_DEV_AUTOMATION_TESTS
 	if (StartNewGameCommitGateForTest && !StartNewGameCommitGateForTest())
@@ -3802,13 +3928,36 @@ bool UGameXXKMVPSubsystem::StartNewGame()
 #if GAMEXXK_WITH_DEV_TOOLS
     bWriteNewGame &= !bDevelopmentWritesSuppressed;
 #endif
-    if (bWriteNewGame)
+    if (bWriteNewGame || bResetSavedProgress)
     {
         auto* NewSave = NewObject<UGameXXKSaveGame>();
         NewSave->SaveState = UGameXXKMVPRules::MakeSaveState(Candidate);
         FString StorageError;
-        if (!FGameXXKSaveStorage::Write(NewSave, NewCommit.OwnerSlot, ActiveSaveUserIndex, &StorageError, &NewCommit))
+        bool bWritten = false;
+#if WITH_DEV_AUTOMATION_TESTS
+        if (bResetSavedProgress && SaveSlotWriteDelegateForTest.IsBound())
+            bWritten = SaveSlotWriteDelegateForTest.Execute(NewSave, NewCommit.OwnerSlot, ActiveSaveUserIndex);
+        else
+#endif
+            bWritten = FGameXXKSaveStorage::Write(NewSave, NewCommit.OwnerSlot, ActiveSaveUserIndex, &StorageError, &NewCommit);
+        if (!bWritten)
         { LastSaveLoadError = GameXXKLocalization::Text(TEXT("Save.Error.Write")); return false; }
+    }
+    if (bResetSavedProgress)
+    {
+        // Retire borrowed tutorial state only after the new save is durable.
+        // A failed write leaves the tutorial and Dev restore points intact.
+        if (auto* GI = GetGameInstance())
+        {
+            if (auto* Academy = GI->GetSubsystem<UGameXXKAcademySubsystem>(); Academy && Academy->IsActive()) Academy->CancelCourse();
+            if (auto* HudSession = GI->GetSubsystem<UGameXXKDesktopHudSessionSubsystem>()) HudSession->DiscardPending();
+        }
+        bAcademyWriteGuard = false;
+#if GAMEXXK_WITH_DEV_TOOLS
+        bDevelopmentWritesSuppressed = false;
+#endif
+        SetBattleAutoPlayEnabled(false);
+        RouteEncounterAcceptanceFixtureBackup.Reset();
     }
     PersistenceCommit = NewCommit;
     ActiveSaveSlot = NewCommit.OwnerSlot;
@@ -4321,10 +4470,26 @@ bool UGameXXKMVPSubsystem::EquipEquipmentInstance(
 	{
 		return false;
 	}
-
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+    // Quick-equip removes the backpack entry; normalize before the atomic lesson save.
+    FString TeachingInventoryError;
+    if(!FGameXXKDesktopInventoryRules::Normalize(Candidate,&TeachingInventoryError))
+    {SetEquipmentTransactionFailure(OutResult,EGameXXKEquipmentTransactionError::CollectionInvalid);return false;}
+    auto Runner=TrainingTravelRuntime;
+    const bool Resume=!RuntimeState.Training.bTravelActive&&Candidate.Training.bTravelActive;
+    if(Resume)
+    {
+        Candidate.Training.TravelLastUpdatedUnixSeconds=GetCurrentTravelUnixSeconds();
+        if(!BuildTrainingTravelRuntimeForState(Candidate,Runner))return false;
+    }
+    if(Candidate.GuideProgress.TeachingChests.CompletedStages!=RuntimeState.GuideProgress.TeachingChests.CompletedStages
+        &&!PersistTrainingCheckpoint(Candidate))
+    {
+        OutResult=FGameXXKEquipmentTransactionResult();OutResult.Error=EGameXXKEquipmentTransactionError::SaveMigrationFailed;
+        OutResult.Message=GameXXKLocalization::Text(TEXT("Save.Error.Write"));return false;
+    }
+    BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+    RuntimeState=MoveTemp(Candidate);if(Resume)TrainingTravelRuntime=MoveTemp(Runner);
+    return true;
 }
 
 TArray<FGameXXKTalentNodeView> UGameXXKMVPSubsystem::GetTalentNodeViews() const
@@ -4366,7 +4531,13 @@ bool UGameXXKMVPSubsystem::PurchaseTalentNode(
 		return false;
 	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+    const auto Previous=RuntimeState;
 	RuntimeState = MoveTemp(Candidate);
+    if(IsTrainingCheckpointWorld()&&!SaveCurrentGame())
+    {
+        RuntimeState=Previous; OutResult.bPurchased=false;
+        OutResult.Message=FText::FromString(TEXT("保存失败，金币与天赋未变更"));return false;
+    }
 	return true;
 }
 
@@ -4494,9 +4665,23 @@ bool UGameXXKMVPSubsystem::EquipEquipmentFromDesktopCell(
 		return false;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Equip,{IncomingInstanceId});
+    auto Runner=TrainingTravelRuntime;
+    const bool Resume=!RuntimeState.Training.bTravelActive&&Candidate.Training.bTravelActive;
+    if(Resume)
+    {
+        Candidate.Training.TravelLastUpdatedUnixSeconds=GetCurrentTravelUnixSeconds();
+        if(!BuildTrainingTravelRuntimeForState(Candidate,Runner))return false;
+    }
+    if(Candidate.GuideProgress.TeachingChests.CompletedStages!=RuntimeState.GuideProgress.TeachingChests.CompletedStages
+        &&!PersistTrainingCheckpoint(Candidate))
+    {
+        OutResult=FGameXXKEquipmentTransactionResult();OutResult.Error=EGameXXKEquipmentTransactionError::SaveMigrationFailed;
+        OutResult.Message=GameXXKLocalization::Text(TEXT("Save.Error.Write"));return false;
+    }
+    BeginRuntimeStateMutation(BattleHudFixtureView,&CardTooltipFixtureBackup);
+    RuntimeState=MoveTemp(Candidate);if(Resume)TrainingTravelRuntime=MoveTemp(Runner);
+    return true;
 }
 
 bool UGameXXKMVPSubsystem::UnequipEquipmentSlot(
@@ -4819,6 +5004,13 @@ bool UGameXXKMVPSubsystem::OpenOneTrainingChest(
 {
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	if (!FGameXXKTrainingChestRules::OpenOne(Candidate, Tier, OutResult)) return false;
+    auto Runner=TrainingTravelRuntime;
+    const bool Resume=!RuntimeState.Training.bTravelActive&&Candidate.Training.bTravelActive;
+    if(Resume)
+    {
+        Candidate.Training.TravelLastUpdatedUnixSeconds=GetCurrentTravelUnixSeconds();
+        if(!BuildTrainingTravelRuntimeForState(Candidate,Runner))return false;
+    }
 	if (!PersistTrainingCheckpoint(Candidate))
 	{
 		OutResult=FGameXXKTrainingChestOpenResult();
@@ -4827,7 +5019,7 @@ bool UGameXXKMVPSubsystem::OpenOneTrainingChest(
 		return false;
 	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
+	RuntimeState = MoveTemp(Candidate);if(Resume)TrainingTravelRuntime=MoveTemp(Runner);
 	FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
 	return true;
 }
@@ -4838,6 +5030,13 @@ bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
 {
 	FGameXXKRuntimeState Candidate = RuntimeState;
 	if (!FGameXXKTrainingChestRules::OpenAll(Candidate, Tier, OutResult)) return false;
+    auto Runner=TrainingTravelRuntime;
+    const bool Resume=!RuntimeState.Training.bTravelActive&&Candidate.Training.bTravelActive;
+    if(Resume)
+    {
+        Candidate.Training.TravelLastUpdatedUnixSeconds=GetCurrentTravelUnixSeconds();
+        if(!BuildTrainingTravelRuntimeForState(Candidate,Runner))return false;
+    }
 	if (!PersistTrainingCheckpoint(Candidate))
 	{
 		OutResult=FGameXXKTrainingChestOpenResult();
@@ -4846,7 +5045,7 @@ bool UGameXXKMVPSubsystem::OpenAllTrainingChests(
 		return false;
 	}
 	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
+	RuntimeState = MoveTemp(Candidate);if(Resume)TrainingTravelRuntime=MoveTemp(Runner);
 	FGameXXKSfx::Play(this, EGameXXKSfxCue::Reward);
 	return true;
 }
@@ -5704,9 +5903,25 @@ bool UGameXXKMVPSubsystem::SetOrderedPartyFormation(
 		return true;
 	}
 
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+    auto CandidateRunner = TrainingTravelRuntime;
+    if (Candidate.Training.bTravelActive && !ReplaceTrainingTravelPartyPreservingProgress(Candidate, CandidateRunner))
+    {
+        OutError = TEXT("Cannot synchronize the selected Travel party.");
+        return false;
+    }
+    const auto Previous = RuntimeState;
+    const auto PreviousRunner = TrainingTravelRuntime;
+    BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
+    RuntimeState = MoveTemp(Candidate);
+    TrainingTravelRuntime = MoveTemp(CandidateRunner);
+    if (IsTrainingCheckpointWorld() && !SaveCurrentGame())
+    {
+        RuntimeState = Previous;
+        TrainingTravelRuntime = PreviousRunner;
+        OutError = GetLastSaveLoadError().ToString();
+        return false;
+    }
+    return true;
 }
 
 bool UGameXXKMVPSubsystem::PrepareCompanionRosterForTown()
@@ -5948,93 +6163,33 @@ int32 UGameXXKMVPSubsystem::GetPermanentCompanionSigilCount() const
 
 bool UGameXXKMVPSubsystem::SetActivePermanentCompanion(const FName InstanceId)
 {
-	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || InstanceId.IsNone())
-	{
-		return false;
-	}
-
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	FString Error;
-	if (!EnsureCompanionCardRun(Candidate)
-		|| !Candidate.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate([InstanceId](const FGameXXKPermanentCompanion& Companion)
-		{
-			return Companion.InstanceId == InstanceId;
-		}))
-	{
-		return false;
-	}
-	TArray<FGameXXKPartyMemberRef>& Members = Candidate.CardRun.OrderedFormation.Members;
-	const int32 FirstCompanionSlot = Members.IndexOfByPredicate([](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
-	});
-	if (FirstCompanionSlot == INDEX_NONE)
-	{
-		return false;
-	}
-	const int32 SelectedCompanionSlot = Members.IndexOfByPredicate([InstanceId](const FGameXXKPartyMemberRef& Ref)
-	{
-		return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion
-			&& Ref.MemberId == InstanceId;
-	});
-	if (SelectedCompanionSlot != INDEX_NONE && SelectedCompanionSlot != FirstCompanionSlot)
-	{
-		Swap(Members[FirstCompanionSlot], Members[SelectedCompanionSlot]);
-	}
-	else
-	{
-		Members[FirstCompanionSlot].Kind = EGameXXKPartyMemberKind::PermanentCompanion;
-		Members[FirstCompanionSlot].MemberId = InstanceId;
-	}
-	if (!FGameXXKPartyFormationRules::Validate(Candidate, Candidate.CardRun.OrderedFormation, &Error))
-	{
-		return false;
-	}
-	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
-	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
-	{
-		return false;
-	}
-	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
-	if (Candidate.Training.bTravelActive)
-	{
-		if (!ReplaceTrainingTravelPartyPreservingProgress(Candidate, CandidateRunner))
-		{
-			return false;
-		}
-	}
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	TrainingTravelRuntime = MoveTemp(CandidateRunner);
-	return true;
+    if (!IsTownCompanionConfigurationAvailable(RuntimeState)) return false;
+    if (!InstanceId.IsNone()
+        && (!FGameXXKPartyFormationRules::IsSlotUnlocked(RuntimeState, EGameXXKPartyMemberKind::PermanentCompanion)
+            || !RuntimeState.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+                [InstanceId](const auto& Companion) { return Companion.InstanceId == InstanceId; }))) return false;
+    auto Formation = RuntimeState.CardRun.OrderedFormation;
+    const int32 Index = Formation.Members.IndexOfByPredicate([](const auto& Ref)
+        { return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion; });
+    if (InstanceId.IsNone())
+    {
+        if (Index != INDEX_NONE) Formation.Members.RemoveAt(Index);
+    }
+    else if (Index != INDEX_NONE) Formation.Members[Index].MemberId = InstanceId;
+    else
+    {
+        FGameXXKPartyMemberRef Member;
+        Member.Kind = EGameXXKPartyMemberKind::PermanentCompanion;
+        Member.MemberId = InstanceId;
+        Formation.Members.Add(Member);
+    }
+    FString Error;
+    return SetOrderedPartyFormation(Formation, Error);
 }
 
 bool UGameXXKMVPSubsystem::ClearActivePermanentCompanion()
 {
-	if (!IsTownCompanionConfigurationAvailable(RuntimeState)
-		|| RuntimeState.CardRun.OrderedFormation.Members.ContainsByPredicate([](const FGameXXKPartyMemberRef& Ref)
-		{
-			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
-		}))
-	{
-		return false;
-	}
-
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	FString Error;
-	if (!EnsureCompanionCardRun(Candidate)
-		|| !FGameXXKCompanionRules::SetActivePermanentCompanion(Candidate.CardRun.CompanionRoster, NAME_None, &Error))
-	{
-		return false;
-	}
-	Candidate.CardRun.PartySelection.ActivePermanentCompanionInstanceId = NAME_None;
-	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
-	{
-		return false;
-	}
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	return true;
+    return SetActivePermanentCompanion(NAME_None);
 }
 
 bool UGameXXKMVPSubsystem::SetPermanentCompanionCardLoadout(const FName InstanceId, const TArray<FName>& SelectedCardIds)
@@ -6063,45 +6218,11 @@ bool UGameXXKMVPSubsystem::SetHeroCardLoadout(const TArray<FName>& SelectedCardI
 
 bool UGameXXKMVPSubsystem::SelectTownQuestNpcForParty(const FName QuestNpcId)
 {
-	if (!IsTownCompanionConfigurationAvailable(RuntimeState) || QuestNpcId.IsNone())
-	{
-		return false;
-	}
-
-	FGameXXKRuntimeState Candidate = RuntimeState;
-	FString Error;
-	if (!EnsureCompanionCardRun(Candidate))
-	{
-		return false;
-	}
-	if (!FGameXXKPartyFormationRules::SetQuestNpc(Candidate, QuestNpcId, &Error))
-	{
-		return false;
-	}
-	if (!FGameXXKPartyFormationRules::Validate(Candidate, Candidate.CardRun.OrderedFormation, &Error))
-	{
-		return false;
-	}
-	FGameXXKPartyFormationRules::ProjectCompatibility(Candidate);
-	if (!FGameXXKSaveMigration::ValidateRuntimeState(Candidate, Error))
-	{
-		return false;
-	}
-	FGameXXKTrainingTravelRuntime CandidateRunner = TrainingTravelRuntime;
-	if (Candidate.Training.bTravelActive)
-	{
-		if (!ReplaceTrainingTravelPartyPreservingProgress(Candidate, CandidateRunner))
-		{
-			return false;
-		}
-	}
-
-	// Permanent combat formation is independent from the accepted story NPC that
-	// follows the player in town. Never discard that follower's saved state here.
-	BeginRuntimeStateMutation(BattleHudFixtureView, &CardTooltipFixtureBackup);
-	RuntimeState = MoveTemp(Candidate);
-	TrainingTravelRuntime = MoveTemp(CandidateRunner);
-	return true;
+    if (!IsTownCompanionConfigurationAvailable(RuntimeState)) return false;
+    auto Candidate = RuntimeState;
+    FString Error;
+    if (!FGameXXKPartyFormationRules::SetQuestNpc(Candidate, QuestNpcId, &Error)) return false;
+    return SetOrderedPartyFormation(Candidate.CardRun.OrderedFormation, Error);
 }
 
 bool UGameXXKMVPSubsystem::SetTemporaryQuestNpcCardLoadout(const FName QuestNpcId, const TArray<FName>& SelectedCardIds)

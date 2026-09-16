@@ -1,4 +1,5 @@
 #include "GameXXKEquipmentEconomyRules.h"
+#include "GameXXKTeachingChestRules.h"
 #include "GameXXKToolMaterialAccess.h"
 
 #include "GameXXKAffixCatalog.h"
@@ -596,6 +597,7 @@ bool FGameXXKEquipmentEconomyRules::Equip(
 		OutResult = MakeFailure(EGameXXKEquipmentTransactionError::CollectionInvalid);
 		return false;
 	}
+    FGameXXKTeachingChestRules::Observe(Candidate,EGameXXKTeachingChestEvidence::Equip,{InstanceId});
 	InOutState = MoveTemp(Candidate);
 	OutResult = CoreResult;
 	return true;

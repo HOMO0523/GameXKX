@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "GameXXKDesktopInventoryRules.h"
 #include "GameXXKTalentRules.h"
@@ -29,6 +30,7 @@ bool FGameXXKTalentSaveRoundTripTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(State);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Entry.Combat"), 1);
 	State.Talents.NodeRanks.Add(TEXT("Talent.Combat.FlatAttack.01"), 3);

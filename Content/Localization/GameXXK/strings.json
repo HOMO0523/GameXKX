@@ -16437,8 +16437,8 @@
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.objective",
-      "zh-Hans": "进入1-1，在剧情问号处击退拦路兽群",
-      "en": "Enter task map 1-1 and defeat the animals at the story question mark"
+      "zh-Hans": "进入战斗，击败兽群",
+      "en": "Enter battle and defeat the beasts"
     },
     {
       "namespace": "GameXXKMainStoryUI",
@@ -16533,20 +16533,20 @@
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.0",
-      "zh-Hans": "这一段得实际进图，先护住山客和手稿。",
-      "en": "This step requires entering the task map. Protect the traveler and his manuscript."
+      "zh-Hans": "准备好队伍，进入战斗，护住山客和手稿。",
+      "en": "Prepare your party and enter battle to protect the traveler and manuscript."
     },
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.1",
-      "zh-Hans": "到1-1剧情问号，用当前队伍击退拦路兽群。",
-      "en": "Reach the story question mark in task map 1-1 and defeat the animals with your current party."
+      "zh-Hans": "用当前队伍击败拦路兽群。",
+      "en": "Defeat the blocking beasts with your current party."
     },
     {
       "namespace": "GameXXKMainStoryUI",
       "key": "S00-04.hint.2",
-      "zh-Hans": "在必经剧情问号完成任务战斗并获胜，手稿才算保住。",
-      "en": "Win the task battle at the mandatory story question mark to secure the manuscript."
+      "zh-Hans": "战胜兽群后继续战后对白，再领取任务报酬。",
+      "en": "After winning, continue the aftermath dialogue and collect the task reward."
     },
     {
       "namespace": "GameXXKMainStoryUI",
@@ -25249,6 +25249,496 @@
       "zh-Hans": "连打直伤 +1%",
       "en": "Chain DMG +1%",
       "usage": "compact"
+    },
+    {
+      "key": "UI.Progression.Companion",
+      "zh-Hans": "结伴同行",
+      "en": "A companion joins"
+    },
+    {
+      "key": "UI.Progression.Npc",
+      "zh-Hans": "知己同行",
+      "en": "An ally joins"
+    },
+    {
+      "key": "UI.Progression.SelectTalent",
+      "zh-Hans": "新的出战位天赋已出现。点一下这个天赋。",
+      "en": "A party-slot talent is available. Select it."
+    },
+    {
+      "key": "UI.Progression.Pay",
+      "zh-Hans": "花200金币解锁出战位。解锁后，到编队选择同行角色。",
+      "en": "Spend 200 gold to unlock the slot. Then open Formation to choose a member."
+    },
+    {
+      "key": "UI.Progression.SelectMember",
+      "zh-Hans": "先点选一位同行角色。这里只教选人，稍后再调整卡组。",
+      "en": "Select a member first. You can adjust their cards later."
+    },
+    {
+      "key": "UI.Progression.Deploy",
+      "zh-Hans": "点“编入队伍”。以后可以卸下，装备和个人卡组都会保留。",
+      "en": "Select Deploy. You can remove them later; their equipment and cards are retained."
+    },
+    {
+      "key": "PartySlot.Empty",
+      "zh-Hans": "空位",
+      "en": "Empty slot"
+    },
+    {
+      "key": "PartySlot.Header",
+      "zh-Hans": "主角与同行角色 · 空位可保留 · 卡组随角色保存",
+      "en": "Hero and allies · Optional slots · Personal decks are retained"
+    },
+    {
+      "key": "PartySlot.Cost",
+      "zh-Hans": "解锁天赋 · 200金币",
+      "en": "Unlock talent · 200 gold"
+    },
+    {
+      "key": "PartySlot.Gate1",
+      "zh-Hans": "通关1-1后开放",
+      "en": "Available after 1-1"
+    },
+    {
+      "key": "PartySlot.Gate2",
+      "zh-Hans": "通关1-2后开放",
+      "en": "Available after 1-2"
+    },
+    {
+      "key": "PartySlot.Eligible",
+      "zh-Hans": "待解锁",
+      "en": "Ready to unlock"
+    },
+    {
+      "key": "PartySlot.Locked",
+      "zh-Hans": "尚未开放",
+      "en": "Not yet available"
+    },
+    {
+      "key": "PartySlot.SelectNpc",
+      "zh-Hans": "选择NPC",
+      "en": "Choose ally"
+    },
+    {
+      "key": "PartySlot.Unlocked",
+      "zh-Hans": "出战位已解锁，打开编队选择同行角色",
+      "en": "Slot unlocked. Open Formation to choose a member."
+    },
+    {
+      "key": "PartySlot.Removed",
+      "zh-Hans": "已卸下，装备与个人卡组已保留",
+      "en": "Removed. Equipment and personal cards are retained."
+    },
+    {
+      "key": "PartySlot.CompanionName",
+      "zh-Hans": "结伴同行",
+      "en": "Companion slot"
+    },
+    {
+      "key": "PartySlot.NpcName",
+      "zh-Hans": "知己同行",
+      "en": "Ally slot"
+    },
+    {
+      "key": "PartySlot.CompanionDescription",
+      "zh-Hans": "开放伙伴出战位，可编入或卸下一位伙伴。",
+      "en": "Unlock one optional companion slot."
+    },
+    {
+      "key": "PartySlot.NpcDescription",
+      "zh-Hans": "开放NPC出战位，可编入或卸下一位NPC。",
+      "en": "Unlock one optional ally slot."
+    },
+    {
+      "key": "UI.Progression.Story.Heading",
+      "zh-Hans": "新的旅程",
+      "en": "A new journey"
+    },
+    {
+      "key": "UI.Progression.Story.Open",
+      "zh-Hans": "1-3阶段已开启主线。点“任务”，看看旅程从哪里开始。",
+      "en": "The main story is available at stage 1-3. Open Tasks."
+    },
+    {
+      "key": "UI.Progression.Story.Chapter",
+      "zh-Hans": "点开天台山这一章。先看开场，不用一次读完所有任务。",
+      "en": "Open the Tiantai chapter. Start with its opening task."
+    },
+    {
+      "key": "UI.Progression.Story.First",
+      "zh-Hans": "点“天台山脚”，查看这一段要做什么。",
+      "en": "Select At the Foot of Tiantai to see your first objective."
+    },
+    {
+      "key": "UI.Progression.Story.Start",
+      "zh-Hans": "点“开始任务”，跟着这段对白走。",
+      "en": "Select Start Task and follow the dialogue."
+    },
+    {
+      "key": "UI.Progression.Story.Continue",
+      "zh-Hans": "点“继续主线”，去拾回卷轴。",
+      "en": "Continue the main story to retrieve the scroll."
+    },
+    {
+      "key": "UI.Progression.Story.Meet",
+      "zh-Hans": "开始这段任务，认识卷轴中的幽白。",
+      "en": "Start this task to meet the spirit in the scroll."
+    },
+    {
+      "key": "UI.Progression.Story.Reward",
+      "zh-Hans": "任务已完成。领取金币和宝箱，然后再继续。",
+      "en": "Task complete. Claim the gold and chests before continuing."
+    },
+    {
+      "key": "PartySlot.MeetFirst",
+      "zh-Hans": "进入1-3阶段，在主线拾回卷轴并认识幽白后可解锁",
+      "en": "At stage 1-3, retrieve the scroll and meet Youbai to unlock this talent."
+    },
+    {
+      "key": "PartySlot.ScrollGate",
+      "zh-Hans": "主线拾回卷轴后开放",
+      "en": "Retrieve the scroll to unlock"
+    },
+    {
+      "key": "PartySlot.StoryGate",
+      "zh-Hans": "1-3阶段开启主线",
+      "en": "Main story opens at 1-3"
+    },
+    {
+      "key": "UI.Progression.OpenFormation",
+      "zh-Hans": "出战位已解锁。点下方的编队图标，选择同行角色。",
+      "en": "Slot unlocked. Select Formation below to choose a member."
+    },
+    {
+      "key": "TeachingChest.Stage.1",
+      "zh-Hans": "装备武器",
+      "en": "Equip a weapon"
+    },
+    {
+      "key": "TeachingChest.Stage.2",
+      "zh-Hans": "镶嵌宝石",
+      "en": "Socket a gem"
+    },
+    {
+      "key": "TeachingChest.Stage.3",
+      "zh-Hans": "强化装备",
+      "en": "Enhance equipment"
+    },
+    {
+      "key": "TeachingChest.Stage.4",
+      "zh-Hans": "洗炼词缀",
+      "en": "Reforge an affix"
+    },
+    {
+      "key": "TeachingChest.Stage.5",
+      "zh-Hans": "分解装备",
+      "en": "Dismantle equipment"
+    },
+    {
+      "key": "TeachingChest.Stage.6",
+      "zh-Hans": "合成装备",
+      "en": "Combine equipment"
+    },
+    {
+      "key": "TeachingChest.Open",
+      "zh-Hans": "打开宝箱，看看里面有什么。",
+      "en": "Open the chest and see what is inside."
+    },
+    {
+      "key": "TeachingChest.Equip",
+      "zh-Hans": "左键拿起这把武器。",
+      "en": "Left-click to pick up this weapon."
+    },
+    {
+      "key": "TeachingChest.Unequip",
+      "zh-Hans": "右键卸下这件装备。",
+      "en": "Right-click to unequip this item."
+    },
+    {
+      "key": "TeachingChest.Tools",
+      "zh-Hans": "点击下方的工具图标。",
+      "en": "Select Tools below."
+    },
+    {
+      "key": "TeachingChest.ModeMenu",
+      "zh-Hans": "点开工具菜单。",
+      "en": "Open the tool menu."
+    },
+    {
+      "key": "TeachingChest.Mode",
+      "zh-Hans": "选择高亮的工具。",
+      "en": "Select the highlighted tool."
+    },
+    {
+      "key": "TeachingChest.PickEquipment",
+      "zh-Hans": "点击这件装备，把它拿起来。",
+      "en": "Click this item to pick it up."
+    },
+    {
+      "key": "TeachingChest.PlaceEquipment",
+      "zh-Hans": "点击装备格，将它放入。",
+      "en": "Click the equipment cell to place it."
+    },
+    {
+      "key": "TeachingChest.PickGem",
+      "zh-Hans": "点击这颗宝石。",
+      "en": "Click this gem."
+    },
+    {
+      "key": "TeachingChest.PlaceGem",
+      "zh-Hans": "点击装备的空孔，镶入宝石。",
+      "en": "Click the empty socket to insert the gem."
+    },
+    {
+      "key": "TeachingChest.Enhance",
+      "zh-Hans": "点击强化，消耗1颗强化石，让装备更强。",
+      "en": "Select Enhance to spend one enhancement stone and improve the item."
+    },
+    {
+      "key": "TeachingChest.Reforge",
+      "zh-Hans": "点击洗炼，消耗1份洗炼砂，试试新的词缀。",
+      "en": "Select Reforge to spend one refinement sand and roll a new affix."
+    },
+    {
+      "key": "TeachingChest.Resolve",
+      "zh-Hans": "比较两条词缀，选择保留或采用。",
+      "en": "Compare the affixes, then choose Keep or Accept."
+    },
+    {
+      "key": "TeachingChest.Dismantle",
+      "zh-Hans": "先看看能获得哪些材料，再决定是否分解。",
+      "en": "Check the materials you would receive before deciding whether to dismantle."
+    },
+    {
+      "key": "TeachingChest.Materials",
+      "zh-Hans": "打开这些宝箱，收集同品质的装备。",
+      "en": "Open these chests to collect matching-quality equipment."
+    },
+    {
+      "key": "TeachingChest.Fill",
+      "zh-Hans": "点击自动填入，看看合成的材料和概率。是否合成由你决定。",
+      "en": "Click Auto Fill to inspect the materials and odds. Choose whether to combine them yourself."
+    },
+    {
+      "key": "TeachingChest.Review",
+      "zh-Hans": "自动填入会帮你选好材料。点击合成后，才会消耗这些装备。",
+      "en": "Auto Fill selects materials. The items are only consumed when you click Combine."
+    },
+    {
+      "key": "TeachingChest.Resume",
+      "zh-Hans": "继续",
+      "en": "Continue"
+    },
+    {
+      "key": "TeachingChest.MaterialHint",
+      "zh-Hans": "左键打开一只，右键连续打开；背包满时会停下。",
+      "en": "Left-click to open one, or right-click to open several. Opening stops when the bag fills."
+    },
+    {
+      "key": "TeachingChest.Loot.1",
+      "zh-Hans": "获得了武器。",
+      "en": "A weapon was found."
+    },
+    {
+      "key": "TeachingChest.Loot.2",
+      "zh-Hans": "获得攻击宝石×1。",
+      "en": "Attack gem ×1 received."
+    },
+    {
+      "key": "TeachingChest.Loot.3",
+      "zh-Hans": "获得强化石×1。",
+      "en": "Enhancement stone ×1 received."
+    },
+    {
+      "key": "TeachingChest.Loot.4",
+      "zh-Hans": "获得装备和洗炼砂×1。",
+      "en": "Equipment and refinement sand ×1 received."
+    },
+    {
+      "key": "TeachingChest.Loot.5",
+      "zh-Hans": "获得了装备。",
+      "en": "Equipment was found."
+    },
+    {
+      "key": "TeachingChest.Loot.6",
+      "zh-Hans": "获得装备和普通宝箱×8。",
+      "en": "Equipment and ordinary chests ×8 received."
+    },
+    {
+      "key": "Tool.AutoFill.TeachingName",
+      "zh-Hans": "自动填入",
+      "en": "Auto Fill"
+    },
+    {
+      "key": "TeachingChest.EquipPlace",
+      "zh-Hans": "点击主角的武器格，把它装备上。",
+      "en": "Click your hero’s weapon slot to equip it."
+    },
+    {
+      "key": "TeachingChest.EnhanceResult",
+      "zh-Hans": "{0}\n强化 +{1} → +{2}\n基础属性",
+      "en": "{0}\nEnhancement +{1} → +{2}\nBase attributes"
+    },
+    {
+      "key": "TeachingChest.StatChange",
+      "zh-Hans": "{0}：{1} → {2}",
+      "en": "{0}: {1} → {2}"
+    },
+    {
+      "key": "TeachingChest.Stat.Health",
+      "zh-Hans": "生命",
+      "en": "Health"
+    },
+    {
+      "key": "TeachingChest.Stat.Mana",
+      "zh-Hans": "法力",
+      "en": "Mana"
+    },
+    {
+      "key": "TeachingChest.Stat.Attack",
+      "zh-Hans": "攻击",
+      "en": "Attack"
+    },
+    {
+      "key": "TeachingChest.Stat.Defense",
+      "zh-Hans": "防御",
+      "en": "Defense"
+    },
+    {
+      "key": "TeachingChest.Stat.Speed",
+      "zh-Hans": "速度",
+      "en": "Speed"
+    },
+    {
+      "key": "TeachingChest.ReviewThenContinue",
+      "zh-Hans": "看看装备属性的变化。",
+      "en": "Take a look at the changed attributes."
+    },
+    {
+      "key": "TeachingChest.Continue",
+      "zh-Hans": "继续",
+      "en": "Continue"
+    },
+    {
+      "key": "TeachingChest.InspectHeading",
+      "zh-Hans": "看看强化效果",
+      "en": "Inspect the enhancement"
+    },
+    {
+      "key": "TeachingChest.HoverEnhanced",
+      "zh-Hans": "将鼠标移到装备上，看看强化后的属性。",
+      "en": "Hover over the item to inspect its enhanced attributes."
+    },
+    {
+      "key": "TeachingChest.DismantleIntro",
+      "zh-Hans": "不用的装备可以分解成材料。先看看能获得什么，再决定是否分解。",
+      "en": "Unwanted equipment can be dismantled into materials. Check the returns and decide whether to dismantle it."
+    },
+    {
+      "key": "TeachingChest.DropCount",
+      "zh-Hans": "{0} × {1}",
+      "en": "{0} × {1}"
+    },
+    {
+      "key": "StarterGear.Title",
+      "zh-Hans": "穿好装备再出发",
+      "en": "Gear up and try again"
+    },
+    {
+      "key": "StarterGear.Open",
+      "zh-Hans": "打开宝箱，取出里面的武器。",
+      "en": "Open the chest to take out the weapon."
+    },
+    {
+      "key": "StarterGear.Pick",
+      "zh-Hans": "点击拿起这件装备。",
+      "en": "Click to pick up this item."
+    },
+    {
+      "key": "StarterGear.Equip",
+      "zh-Hans": "点击高亮的装备格，把它穿上。",
+      "en": "Click the highlighted equipment slot to equip it."
+    },
+    {
+      "key": "StarterGear.Map",
+      "zh-Hans": "装备穿齐了，打开历练地图。",
+      "en": "Your gear is ready. Open the training map."
+    },
+    {
+      "key": "StarterGear.Retry",
+      "zh-Hans": "点击游历，再试试现在的实力。",
+      "en": "Select Travel and try again with your new strength."
+    },
+    {
+      "key": "FirstBattle.Heading",
+      "zh-Hans": "战斗上手",
+      "en": "Getting started"
+    },
+    {
+      "key": "FirstBattle.AttackView",
+      "zh-Hans": "先将鼠标移到青锋一式上，看看这张攻击牌的效果和费用。",
+      "en": "Hover over Qingfeng Strike to see its attack effect and cost."
+    },
+    {
+      "key": "FirstBattle.Attack",
+      "zh-Hans": "点击青锋一式，再点敌人发动攻击。也可以试试其他攻击牌。",
+      "en": "Select Qingfeng Strike, then an enemy to attack. You can also try other attack cards."
+    },
+    {
+      "key": "FirstBattle.Target",
+      "zh-Hans": "点击这张牌可以作用的目标，打出这张牌。",
+      "en": "Choose a legal target to play this card."
+    },
+    {
+      "key": "FirstBattle.Qi",
+      "zh-Hans": "这里显示本回合还剩多少气力。出牌会消耗气力，新回合开始时会恢复。",
+      "en": "This shows your remaining Qi. Playing cards spends Qi, and a new turn restores it."
+    },
+    {
+      "key": "FirstBattle.EndTurn",
+      "zh-Hans": "点击结束回合，让敌人行动。",
+      "en": "End your turn to let the enemy act."
+    },
+    {
+      "key": "FirstBattle.Heal",
+      "zh-Hans": "用归元术给受伤的角色恢复气血：点选卡牌，再点击角色。",
+      "en": "Use Guiyuan Art to restore an injured ally’s health: select the card, then the ally."
+    },
+    {
+      "key": "FirstBattle.Armor",
+      "zh-Hans": "用横剑守势为角色增加护甲。也可以试试其他防护牌。",
+      "en": "Use Hengjian Guard to gain armor. You can also try other defensive cards."
+    },
+    {
+      "key": "FirstBattle.ArmorView",
+      "zh-Hans": "将鼠标移到护甲图标上，查看现在的护甲状态。",
+      "en": "Hover over the armor icon to inspect the current armor."
+    },
+    {
+      "key": "FirstBattle.Auto",
+      "zh-Hans": "这里可以开启自动出牌。路线和奖励仍由你选择；你也可以继续手动操作。",
+      "en": "This enables automatic card play. You still choose routes and rewards, and can keep playing manually."
+    },
+    {
+      "key": "FirstBattle.WaitTurn",
+      "zh-Hans": "这张牌暂时无法使用。你可以先打其他牌，或结束回合后再试。",
+      "en": "This card cannot be played right now. Try another card, or end your turn and try again."
+    },
+    {
+      "key": "UI.Progression.FirstChallenge12.Heading",
+      "zh-Hans": "新的挑战",
+      "en": "A new challenge"
+    },
+    {
+      "key": "UI.Progression.FirstChallenge12.Select",
+      "zh-Hans": "1-1已经走通了，选择1-2，继续下一段旅程。",
+      "en": "You have completed your travels through 1-1. Select 1-2 for the next journey."
+    },
+    {
+      "key": "UI.Progression.FirstChallenge12.Start",
+      "zh-Hans": "点击挑战，进入1-2的路线。挑战期间，游历会暂停。",
+      "en": "Select Challenge to enter the 1-2 route. Travel pauses during the challenge."
     }
   ]
 }

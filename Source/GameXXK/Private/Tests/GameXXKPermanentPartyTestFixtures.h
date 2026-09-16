@@ -3,19 +3,40 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKPartyFormationRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKDesktopInventoryRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Engine/GameInstance.h"
 
 namespace GameXXKPermanentPartyTestFixtures
 {
+    inline void SkipTeachingChests(FGameXXKRuntimeState& State)
+    {
+        auto& Progress=State.GuideProgress.TeachingChests;
+        if(!Progress.bEnabled)return;
+        if(!Progress.ReservedWeapon.InstanceId.IsNone())
+        {
+            State.EquipmentCollection.EquipmentInstances.Add(Progress.ReservedWeapon);
+            State.EquipmentCollection.WarehouseInstanceIds.Add(Progress.ReservedWeapon.InstanceId);
+        }
+        Progress=FGameXXKTeachingChestProgress();
+        State.Training.OwnedChestTokens.RemoveAll([](const auto& Token){return !Token.FixedDropId.IsNone();});
+        FGameXXKDesktopInventoryRules::Normalize(State);
+        FGameXXKTrainingRules::StartTravel(State.Training,TEXT("Training.Normal.1-1"));
+    }
 	inline FGameXXKRuntimeState MakeStartedState()
 	{
 		UGameXXKMVPSubsystem* Subsystem =
 			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-		return Subsystem && Subsystem->StartGame()
+		auto State = Subsystem && Subsystem->StartGame()
 			? Subsystem->GetRuntimeStateCopy()
 			: FGameXXKRuntimeState();
+        // This fixture exercises the established full-party systems, not onboarding.
+        SkipTeachingChests(State);
+        State.Training.bProgressivePartySlots=false;
+        FGameXXKPartyFormationRules::BuildLegacyProjection(State,State.CardRun.OrderedFormation);
+        FGameXXKPartyFormationRules::ProjectCompatibility(State);
+        return State;
 	}
 
 	inline bool SelectNpc(

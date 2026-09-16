@@ -345,6 +345,9 @@ struct GAMEXXK_API FGameXXKTrainingChestToken
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	int32 AcquisitionOrdinal = 0;
+    /** Optional per-box fixed drop. Presentation and ownership remain ordinary chests. */
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+    FName FixedDropId = NAME_None;
 };
 
 USTRUCT(BlueprintType)
@@ -353,6 +356,14 @@ struct GAMEXXK_API FGameXXKTrainingProgress
 	GENERATED_BODY()
     // Native-only test state: never reflected into saves or JSON snapshots.
     bool bDevelopmentUnlockAllStages = false;
+
+	/** v43 new profiles earn optional-party slots through real first-chapter clears. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	bool bProgressivePartySlots = false;
+
+	/** 0: 1-1, 1: companion talent available / 1-2, 2: NPC talent available / 1-3. */
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
+	int32 PartyProgressionStep = 0;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame)
 	FGameXXKTrainingSettlementReceipt PendingSettlement;

@@ -18,6 +18,12 @@
 #include "Misc/Parse.h"
 #include "Narrative/GameXXKMainStoryRules.h"
 #include "Narrative/GameXXKMainStoryCatalog.h"
+#include "MVP/GameXXKSaveGame.h"
+#include "MVP/GameXXKSaveMigration.h"
+#include "Kismet/GameplayStatics.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
+#include "UI/GameXXKInterfaceHelpWidget.h"
+#include "Blueprint/WidgetTree.h"
 
 #if WITH_DEV_AUTOMATION_TESTS && !UE_BUILD_SHIPPING
 namespace
@@ -239,6 +245,101 @@ bool FGameXXKDevResumedPhaseTest::RunTest(const FString&)
 		TestTrue(TEXT("regression covers automatic continuation through forced discard"),Trace.ContainsByPredicate([](const auto& T){return T.Action==TEXT("ForcedDiscard");}));
 		TestEqual(TEXT("resumed packets reconcile to the settlement ledger"),Metrics.DamageLedgerDifference,int64(0));
 	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDevResetSaveTest,"GameXXK.Development.ResetSave.NewBeginning",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKDevResetSaveTest::RunTest(const FString&)
+{
+	FDevFixture F;
+	const auto Initial=F.MVP->GetRuntimeStateCopy();
+	F.OK(TEXT("{\"command\":\"item.give\",\"args\":{\"id\":\"Currency.Gold\",\"quantity\":777}}"));
+	F.OK(TEXT("{\"command\":\"progress.unlock_tasks\"}"));
+	F.MVP->GetMutableRuntimeState().GuideProgress.CompletedGuideStepIds.Add(TEXT("Teaching.1.Open.0"));
+	F.MVP->GetMutableRuntimeState().GuideProgress.AcademyCompletedLessons.Add(TEXT("Attack"),3);
+	F.MVP->GetMutableRuntimeState().Training.PartyProgressionStep=2;
+	auto R=F.Call(TEXT("{\"command\":\"save.reset\"}"));
+	if(!TestTrue(R->GetStringField(TEXT("message")),R->GetBoolField(TEXT("ok"))))return false;
+	const auto& S=F.MVP->GetRuntimeState();
+	TestEqual(TEXT("New game balance restored"),S.PlayerGold,Initial.PlayerGold);
+	TestEqual(TEXT("New game level restored"),S.PlayerLevel,Initial.PlayerLevel);
+	TestTrue(TEXT("All guide completion reset"),S.GuideProgress.CompletedGuideStepIds.IsEmpty() && S.GuideProgress.AcademyCompletedLessons.IsEmpty());
+	TestEqual(TEXT("First teaching chest is unopened"),S.GuideProgress.TeachingChests.Stage,1);
+	TestFalse(TEXT("First chest not previously opened"),S.GuideProgress.TeachingChests.bOpened);
+	TestEqual(TEXT("Only initial chest entitlement exists"),S.Training.OwnedChestTokens.Num(),1);
+	TestEqual(TEXT("Hero-only progression restored"),S.Training.PartyProgressionStep,0);
+	TestFalse(TEXT("Temporary stage unlock removed"),S.Training.bDevelopmentUnlockAllStages);
+	TestFalse(TEXT("Temporary task unlock removed"),S.NarrativeProgress.MainStory.bDevelopmentUnlockAllTasks);
+	TestTrue(TEXT("Travel starts immediately"),S.Training.bTravelActive);
+	TestEqual(TEXT("Travel starts at 1-1"),S.Training.CurrentTravelStageId,FName(TEXT("Training.Normal.1-1")));
+	TestEqual(TEXT("One real write even inside prior Dev sandbox"),F.Writes,1);
+	TestFalse(TEXT("New progress is no longer a Dev sandbox"),F.Dev->IsSessionActive());
+	TestFalse(TEXT("Subsequent progress can persist"),F.MVP->AreDevelopmentWritesSuppressed());
+	TestFalse(TEXT("Restore cannot resurrect pre-reset progress"),F.OK(TEXT("{\"command\":\"session.restore\"}")));
+	TestTrue(TEXT("Can reset again outside a temporary session"),F.OK(TEXT("{\"command\":\"save.reset\"}")));
+	TestEqual(TEXT("Repeated reset still owns exactly one starting chest"),F.MVP->GetRuntimeState().Training.OwnedChestTokens.Num(),1);
+	TestEqual(TEXT("Each explicit reset has one durable commit"),F.Writes,2);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDevResetBattleTest,"GameXXK.Development.ResetSave.LeavesBattle",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKDevResetBattleTest::RunTest(const FString&)
+{
+	FDevFixture F;
+	if(!TestTrue(TEXT("Enter an actual developer battle"),F.OK(TEXT("{\"command\":\"battle.start\",\"args\":{\"stage\":\"Training.Normal.1-1\",\"encounter\":1,\"seed\":20260916}}"))))return false;
+	TestTrue(TEXT("Battle is active before reset"),F.MVP->GetRuntimeState().CardRun.bHasActiveCardBattle);
+	if(!TestTrue(TEXT("Can reset from battle"),F.OK(TEXT("{\"command\":\"save.reset\"}"))))return false;
+	TestFalse(TEXT("No active cards battle after reset"),F.MVP->GetRuntimeState().CardRun.bHasActiveCardBattle);
+	TestFalse(TEXT("No challenge after reset"),F.MVP->GetRuntimeState().Training.bChallengeActive);
+	TestTrue(TEXT("Hero is travelling again"),F.MVP->GetRuntimeState().Training.bTravelActive);
+	TestFalse(TEXT("Battle return cannot restore old progress"),F.OK(TEXT("{\"command\":\"battle.return\"}")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDevResetFailureTest,"GameXXK.Development.ResetSave.WriteFailurePreservesProgress",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKDevResetFailureTest::RunTest(const FString&)
+{
+	FDevFixture F;
+	F.OK(TEXT("{\"command\":\"item.give\",\"args\":{\"id\":\"Currency.Gold\",\"quantity\":777}}"));
+	const FString Before=StateText(F.MVP->GetRuntimeState());
+	F.MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([](USaveGame*,const FString&,int32){return false;}));
+	TestFalse(TEXT("Failed disk write is reported"),F.OK(TEXT("{\"command\":\"save.reset\"}")));
+	TestEqual(TEXT("All runtime progress survives failed reset"),StateText(F.MVP->GetRuntimeState()),Before);
+	TestTrue(TEXT("Old Dev restore point survives failure"),F.Dev->IsSessionActive());
+	TestTrue(TEXT("Suppression survives failure"),F.MVP->AreDevelopmentWritesSuppressed());
+	TestTrue(TEXT("Can still restore original after failed reset"),F.OK(TEXT("{\"command\":\"session.restore\"}")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKDevResetReloadTest,"GameXXK.Development.ResetSave.ReloadAndGuide",EAutomationTestFlags::EditorContext|EAutomationTestFlags::EngineFilter)
+bool FGameXXKDevResetReloadTest::RunTest(const FString&)
+{
+	FDevFixture F;
+	F.MVP->SaveCurrentGame(TEXT("Automation.Reset.Current"),7);
+	F.OK(TEXT("{\"command\":\"item.give\",\"args\":{\"id\":\"Currency.Gold\",\"quantity\":777}}"));
+	auto* Host=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
+	Host->SetMVPSubsystem(F.MVP);Host->OpenWorkbench();Host->OpenBackpack();
+	Host->ShowPartyProgressionGuide(TEXT("Teaching.1.Open"));
+	auto* Help=Cast<UGameXXKInterfaceHelpWidget>(Host->WidgetTree->FindWidget(TEXT("DesktopInterfaceHelp")));
+	if(!TestNotNull(TEXT("Existing guidance surface"),Help))return false;
+	TestTrue(TEXT("Old profile has an open guide"),Help->IsOpen());
+	TArray<uint8> Bytes;FString WrittenSlot;int32 WrittenUser=0;
+	F.MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([&](USaveGame* Save,const FString& Slot,int32 User)
+	{WrittenSlot=Slot;WrittenUser=User;return UGameplayStatics::SaveGameToMemory(Save,Bytes);}));
+	if(!TestTrue(TEXT("Reset commits through storage boundary"),F.OK(TEXT("{\"command\":\"save.reset\"}"))))return false;
+	TestEqual(TEXT("Reset writes the selected slot"),WrittenSlot,FString(TEXT("Automation.Reset.Current")));
+	TestEqual(TEXT("Reset preserves selected user index"),WrittenUser,7);
+	auto* Saved=Cast<UGameXXKSaveGame>(UGameplayStatics::LoadGameFromMemory(Bytes));
+	if(!TestNotNull(TEXT("Written new beginning reloads"),Saved))return false;
+	FGameXXKRuntimeState Restored;FGameXXKSaveMigrationReport Report;
+	TestTrue(TEXT("Reloaded new save passes real migration and validation"),FGameXXKSaveMigration::TryRestoreRuntimeState(Saved->SaveState,Restored,Report));
+	TestEqual(TEXT("Reload retains only first box"),Restored.Training.OwnedChestTokens.Num(),1);
+	TestFalse(TEXT("Reload leaves new guide ready"),Restored.GuideProgress.TeachingChests.bDismissed);
+	Host->ResetPresentationForNewGame();
+	TestFalse(TEXT("Retiring the old overlay cannot dismiss the new guide"),F.MVP->GetRuntimeState().GuideProgress.TeachingChests.bDismissed);
+	TestFalse(TEXT("Old overlay is closed"),Help->IsOpen());
+	Host->OfferTeachingChestGuide(true);Host->OfferTeachingChestGuide(true);
+	TestTrue(TEXT("First chest guide can start again"),Help->IsOpen());
 	return true;
 }
 

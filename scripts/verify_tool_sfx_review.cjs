@@ -1,0 +1,134 @@
+// Browser acceptance for the portable file: playback, replacement, and export.
+const fs = require('node:fs');
+const path = require('node:path');
+const {pathToFileURL} = require('node:url');
+const crypto = require('node:crypto');
+const assert = require('node:assert/strict');
+const {chromium} = require('C:/Users/shxuw/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root = path.resolve(__dirname, '..');
+const entry = path.join(root, 'Deliverables/音效需求/14_工具操作_v001/00_音效需求.html');
+const out = path.join(root, 'Saved/Codex/ToolSfxHtmlReview-20260914');
+fs.mkdirSync(out, {recursive:true});
+const report = {checks:[], errors:[], externalRequests:[]};
+const checked = (name, detail={}) => { report.checks.push({name,...detail}); process.stdout.write('PASS '+name+'\n'); };
+const sha = buffer => crypto.createHash('sha256').update(buffer).digest('hex');
+
+async function run() {
+  const browser=await chromium.launch({channel:'chrome',headless:true});
+  try {
+    const context=await browser.newContext({viewport:{width:1480,height:1060},acceptDownloads:true});
+    const page=await context.newPage();
+    const observe = p => {
+      p.on('pageerror',error=>report.errors.push(error.message));
+      p.on('request',request=>{if(/^https?:/.test(request.url()))report.externalRequests.push(request.url());});
+    };
+    observe(page);
+    await page.addInitScript(()=>{
+      window.liveSoundNodes=[];
+      const start=AudioBufferSourceNode.prototype.start, stop=AudioBufferSourceNode.prototype.stop;
+      AudioBufferSourceNode.prototype.start=function(...args){
+        const item={id:window.liveSoundNodes.length,duration:this.buffer?.duration,when:args[0]||0,offset:args[1]||0,videoTime:document.querySelector('video')?.currentTime||0,stopped:false,buffer:this.buffer};
+        this.__qaNode=item;window.liveSoundNodes.push(item);return start.apply(this,args);
+      };
+      AudioBufferSourceNode.prototype.stop=function(...args){if(this.__qaNode)this.__qaNode.stopped=true;return stop.apply(this,args);};
+    });
+    await page.goto(pathToFileURL(entry).href);
+    await page.waitForFunction(()=>!document.getElementById('play').disabled);
+    await page.waitForFunction(()=>document.getElementById('toolWave').getContext('2d').getImageData(0,0,20,80).data.some((v,i)=>i%4===3&&v>0));
+    const media=await page.locator('#video').evaluate(v=>({duration:v.duration,width:v.videoWidth,height:v.videoHeight,paused:v.paused,muted:v.muted}));
+    assert.equal(media.width,1280);assert.equal(media.height,720);assert.ok(Math.abs(media.duration-25)<.05);assert.ok(media.paused);assert.equal(await page.locator('.scene').count(),5);
+    checked('offline file loads embedded video, waveforms and five scenes',media);
+    await page.getByRole('button',{name:'定位第 420 帧',exact:true}).click();
+    await page.waitForFunction(()=>Math.abs(document.querySelector('video').currentTime-7)<.02&&document.getElementById('clock').textContent.includes('F0420'));
+    assert.match(await page.locator('#clock').textContent(),/F0420/);
+    await page.getByRole('button',{name:'下一帧',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('clock').textContent.includes('F0421'));
+    await page.getByRole('button',{name:'上一帧',exact:true}).click();
+    await page.waitForFunction(()=>document.getElementById('clock').textContent.includes('F0420'));
+    checked('click-to-seek and single-frame stepping');
+    await page.locator('#play').click();
+    await page.waitForFunction(()=>document.querySelector('video').currentTime>7.4&&!document.querySelector('video').paused);
+    assert.equal(await page.locator('#video').evaluate(v=>v.muted),false);
+    await page.locator('#play').click();
+    checked('original recording plays and pauses');
+    await page.getByRole('button',{name:'无声',exact:true}).click();
+    assert.equal(await page.locator('#video').evaluate(v=>v.muted),true);
+    await page.getByRole('button',{name:'试听 SFX_Tool_v01.wav',exact:true}).click();
+    await page.waitForFunction(()=>window.liveSoundNodes.some(n=>n.duration>.51&&n.duration<.53));
+    checked('reference WAV audition and silent-video mode');
+    const downloadPromise=page.waitForEvent('download');
+    await page.locator('[data-download="tool"]').click();
+    const downloaded=await downloadPromise;await downloaded.saveAs(path.join(out,'reference-download.wav'));
+    assert.equal(sha(fs.readFileSync(path.join(out,'reference-download.wav'))),sha(fs.readFileSync(path.join(root,'SourceArt/Audio/Essential/Waves/SFX_Tool_v01.wav'))));
+    checked('reference WAV download preserves exact bytes');
+
+    const fixture=path.join(out,'candidate_24bit.wav');
+    const pcm=fs.readFileSync(path.join(root,'SourceArt/Audio/Essential/Waves/SFX_Tool_v01.wav'));
+    let sourceData=null;
+    for(let at=12;at+8<=pcm.length;){const size=pcm.readUInt32LE(at+4);if(pcm.toString('ascii',at,at+4)==='data'){sourceData=pcm.subarray(at+8,at+8+size);break;}at+=8+size+(size%2);}
+    assert.ok(sourceData);
+    const wave=Buffer.alloc(44+sourceData.length/2*3);wave.write('RIFF');wave.writeUInt32LE(wave.length-8,4);wave.write('WAVEfmt ',8);wave.writeUInt32LE(16,16);wave.writeUInt16LE(1,20);wave.writeUInt16LE(1,22);wave.writeUInt32LE(48000,24);wave.writeUInt32LE(144000,28);wave.writeUInt16LE(3,32);wave.writeUInt16LE(24,34);wave.write('data',36);wave.writeUInt32LE(wave.length-44,40);
+    for(let i=0;i<sourceData.length/2;i++)wave.writeIntLE(sourceData.readInt16LE(i*2)*256,44+i*3,3);
+    fs.writeFileSync(fixture,wave);
+    await page.locator('#fileInput').setInputFiles(fixture);
+    await page.waitForFunction(()=>document.getElementById('candidateBadge').textContent==='已导入'&&!document.getElementById('exportReview').disabled);
+    assert.match(await page.locator('#candidateMeta').textContent(),/24-bit/);
+    assert.equal(await page.locator('[data-mode="candidate"]').getAttribute('aria-pressed'),'true');
+    checked('24-bit WAV import creates a candidate with correct metadata');
+    await page.getByRole('button',{name:'播放强化成功片段',exact:true}).click();
+    await page.waitForFunction(()=>!document.querySelector('video').paused&&window.liveSoundNodes.filter(n=>n.duration===25&&!n.stopped).length===2);
+    assert.equal(await page.locator('#video').evaluate(v=>v.muted),true);
+    const stems=await page.evaluate(()=>window.liveSoundNodes.filter(n=>n.duration===25&&!n.stopped).map(n=>{const data=n.buffer.getChannelData(0),rate=n.buffer.sampleRate;return {offset:n.offset,videoTime:n.videoTime,peaks:[2,7,12,17,22].map(t=>{let peak=0;for(let i=Math.floor(t*rate);i<Math.floor((t+.55)*rate);i++)peak=Math.max(peak,Math.abs(data[i]));return peak;})};}));
+    assert.ok(stems.every(n=>Math.abs(n.offset-n.videoTime)<.04));
+    assert.ok(stems[0].peaks[0]>.1&&stems[0].peaks[1]>.1&&stems[0].peaks[3]>.1);
+    assert.equal(stems[0].peaks[2],0);assert.equal(stems[0].peaks[4],0);
+    checked('new sound replaces old audio and follows exactly three completion cues',{stems:stems.map(n=>({offset:n.offset,peaks:n.peaks}))});
+    await page.getByRole('button',{name:'定位第 720 帧',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('video').paused);
+    assert.equal(await page.evaluate(()=>window.liveSoundNodes.filter(n=>n.duration===25&&!n.stopped).length),0);
+    checked('seeking stops the prior preview audio');
+    await page.locator('#loop').check();
+    await page.getByRole('button',{name:'播放洗炼 · 保留原属性片段',exact:true}).click();
+    await page.waitForTimeout(6100);
+    const looping=await page.locator('#video').evaluate(v=>({paused:v.paused,time:v.currentTime}));
+    assert.equal(looping.paused,false);assert.ok(looping.time>=20&&looping.time<25);
+    await page.locator('#play').click();await page.locator('#loop').uncheck();
+    checked('selected scene loops and remains within its bounds',looping);
+    fs.writeFileSync(path.join(out,'invalid.wav'),'not a wave file');
+    await page.locator('#fileInput').setInputFiles(path.join(out,'invalid.wav'));
+    await page.waitForFunction(()=>document.getElementById('importFeedback').classList.contains('error'));
+    assert.equal(await page.locator('#candidateName').textContent(),'candidate_24bit.wav');
+    checked('invalid import leaves the valid candidate intact');
+    const transfer=await page.evaluateHandle(base64=>{const raw=atob(base64),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0)),data=new DataTransfer();data.items.add(new File([bytes],'dropped_24bit.wav',{type:'audio/wav'}));return data;},wave.toString('base64'));
+    await page.dispatchEvent('#upload','drop',{dataTransfer:transfer});
+    await page.waitForFunction(()=>document.getElementById('candidateName').textContent==='dropped_24bit.wav'&&!document.getElementById('exportReview').disabled);
+    checked('dropping a WAV replaces the candidate');
+    const note='尾音再短一点。\n</script><img src=x onerror="window.injected=true">';
+    await page.locator('#version').fill('v002_review');await page.locator('#notes').fill(note);await page.locator('#candidateGain').fill('85');await page.locator('#keepButton').uncheck();
+    await page.getByRole('button',{name:'原效果',exact:true}).click();
+    const exportedPromise=page.waitForEvent('download');await page.locator('#exportReview').click();const exported=await exportedPromise;
+    const standalone=path.join(out,'roundtrip-review.html');await exported.saveAs(standalone);
+    const text=fs.readFileSync(standalone,'utf8');const data=JSON.parse(text.match(/<script id="reviewPayload" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+    assert.equal(data.review.notes,note);assert.equal(sha(Buffer.from(data.review.candidate.base64,'base64')),sha(wave));
+    const reopened=await context.newPage();observe(reopened);await reopened.goto(pathToFileURL(standalone).href);
+    await reopened.waitForFunction(()=>!document.getElementById('play').disabled&&document.getElementById('candidateBadge').textContent==='已导入');
+    assert.equal(await reopened.locator('#notes').inputValue(),note);assert.equal(await reopened.evaluate(()=>Boolean(window.injected)),false);
+    assert.equal(await reopened.locator('#version').inputValue(),'v002_review');assert.equal(await reopened.locator('#candidateGain').inputValue(),'85');assert.equal(await reopened.locator('#keepButton').isChecked(),false);
+    assert.equal(await reopened.locator('[data-mode="original"]').getAttribute('aria-pressed'),'true');
+    checked('exported HTML reopens alone with candidate, notes, settings and safe text');
+    const candidatePromise=reopened.waitForEvent('download');await reopened.locator('#downloadCandidate').click();const candidateDownload=await candidatePromise;await candidateDownload.saveAs(path.join(out,'candidate-roundtrip.wav'));assert.equal(sha(fs.readFileSync(path.join(out,'candidate-roundtrip.wav'))),sha(wave));
+    const againPromise=reopened.waitForEvent('download');await reopened.locator('#exportReview').click();const again=await againPromise;await again.saveAs(path.join(out,'roundtrip-second.html'));
+    const round2=fs.readFileSync(path.join(out,'roundtrip-second.html'),'utf8');assert.equal((round2.match(/id="reviewPayload"/g)||[]).length,1);assert.ok(round2.length<text.length+5000);
+    checked('re-export and candidate download preserve contents without duplication');
+    await page.goto(pathToFileURL(entry).href);await page.waitForFunction(()=>!document.getElementById('play').disabled);
+    await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
+    await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'mobile.png'),fullPage:true});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    checked('desktop and narrow-screen layouts render without horizontal overflow');
+    assert.deepEqual(report.errors,[]);assert.deepEqual(report.externalRequests,[]);
+    checked('no uncaught browser errors or external network requests');
+    report.status='passed';
+  } catch(error) {report.status='failed';report.failure=error.stack;throw error;}
+  finally {await browser.close();fs.writeFileSync(path.join(out,'browser-checks.json'),JSON.stringify(report,null,2));}
+}
+run().catch(error=>{console.error(error);process.exitCode=1;});

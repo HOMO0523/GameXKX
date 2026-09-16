@@ -84,7 +84,13 @@ public:
 	static constexpr int32 HuntExpansionIntroducedSaveVersion = 41;
 	/** v42 requires the raw-byte envelope; v41 executables must reject it instead of recovering stale backups. */
 	static constexpr int32 RawIntegrityEnvelopeIntroducedSaveVersion = 42;
-	static constexpr int32 CurrentSaveVersion = 42;
+	/** v43: first-chapter party-slot eligibility and legal empty optional members. */
+	static constexpr int32 ProgressivePartySlotsIntroducedSaveVersion = 43;
+	static constexpr int32 TeachingChestsIntroducedSaveVersion = 44;
+    static constexpr int32 OrdinaryTeachingChestDropsIntroducedSaveVersion = 45;
+    static constexpr int32 StarterEquipmentPowerIntroducedSaveVersion = 46;
+	static constexpr int32 FirstBattleGuidanceIntroducedSaveVersion = 47;
+	static constexpr int32 CurrentSaveVersion = 47;
 
 	static bool MigrateToCurrent(
 		const FGameXXKSaveState& Source,

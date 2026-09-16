@@ -879,7 +879,7 @@ namespace GameXXKMVP
 		State.CurrentRouteNodeId = State.ReachableRouteNodeIds.IsEmpty() ? INDEX_NONE : State.ReachableRouteNodeIds[0];
 		State.DungeonNodeIndex = State.VisitedRouteNodeIds.Num();
 		State.Screen = EGameXXKScreen::DungeonMap;
-		State.CurrentMapId = TEXT("HuangshanRoute");
+		State.CurrentMapId = State.Training.bChallengeActive ? TEXT("DesktopTrainingHUD") : TEXT("HuangshanRoute");
 		State.TownPanelMode = EGameXXKTownPanelMode::None;
 		ClearBattleEntryCheckpoint(State);
 		return true;
@@ -3375,7 +3375,7 @@ TArray<FName> UGameXXKMVPRules::BuildTurnOrder(const FGameXXKRuntimeState& State
 	TArray<FGameXXKBattleUnit> Units;
 	Units.Add(GameXXKMVP::MakeBattleUnit(TEXT("Player"), State.PlayerHP, State.PlayerAttack, State.PlayerDefense, State.PlayerSpeed, TEXT("Sword"), 1));
 	FName ActiveNpcId;
-	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId))
+	if (FGameXXKPartyFormationRules::ResolveQuestNpcId(State, ActiveNpcId) && !ActiveNpcId.IsNone())
 	{
 		Units.Add(GameXXKMVP::MakeBattleUnit(
 			ActiveNpcId,

@@ -74,7 +74,7 @@
     "S00-04": {
       "title": "First Fight",
       "summary": "Animals have surrounded a mountain traveler's manuscript. You suspect a priceless secret manual, until you discover the pages once wrapped sesame cakes.",
-      "objective": "Enter task map 1-1 and defeat the animals at the story question mark",
+      "objective": "Enter battle and defeat the beasts",
       "result": "The animals retreat. The traveler and his manuscript are safe. You learn that Guoqing Temple still keeps old route records.",
       "lines": [
         "At the top of the pine-root steps, a breathless traveler runs toward you. His empty arms make a convincing argument.",
@@ -95,9 +95,9 @@
         "Good. First we fill in the map. Then we fill our stomachs."
       ],
       "hints": [
-        "This step requires entering the task map. Protect the traveler and his manuscript.",
-        "Reach the story question mark in task map 1-1 and defeat the animals with your current party.",
-        "Win the task battle at the mandatory story question mark to secure the manuscript."
+        "Prepare your party and enter battle to protect the traveler and manuscript.",
+        "Defeat the blocking beasts with your current party.",
+        "After winning, continue the aftermath dialogue and collect the task reward."
       ]
     },
     "S00-05": {

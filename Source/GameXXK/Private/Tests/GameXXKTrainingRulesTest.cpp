@@ -763,6 +763,8 @@ bool FGameXXKTrainingTravelSubsystemBridgeTest::RunTest(const FString& Parameter
 		return false;
 	}
 	TestTrue(TEXT("travel bridge starts a new game"), Subsystem->StartGame());
+    // Bridge/economy regression uses the established party; new-profile behavior is covered separately.
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("travel bridge starts cleared 1-1"), Subsystem->StartTrainingTravel(StageOne));
 	TestEqual(TEXT("travel bridge exposes the walking phase"), Subsystem->GetTrainingTravelRuntimeCopy().Phase, EGameXXKTrainingTravelPhase::Walking);
@@ -777,7 +779,7 @@ bool FGameXXKTrainingTravelSubsystemBridgeTest::RunTest(const FString& Parameter
 		bool bDefeated = false;
 		TestTrue(TEXT("subsystem advances the travel runner"), Subsystem->AdvanceTrainingTravelStep(
 			bEncounterCompleted, bStageCompleted, bDefeated, Reward));
-		TestFalse(TEXT("default player survives the 1-1 travel loop"), bDefeated);
+		TestFalse(TEXT("configured party survives the 1-1 travel loop"), bDefeated);
 		if (bEncounterCompleted)
 		{
 			++CompletedEncounters;
@@ -799,54 +801,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKTrainingTravelDefaultPartyBridgeTest::RunTest(const FString& Parameters)
 {
-	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
-	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
-	TestNotNull(TEXT("default travel party subsystem exists"), Subsystem);
-	if (!Subsystem || !TestTrue(TEXT("default travel party starts a new game"), Subsystem->StartGame()))
-	{
-		return false;
-	}
-
-	const FGameXXKRuntimeState& State = Subsystem->GetRuntimeState();
-	const FName ActiveCompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
-	const FGameXXKPermanentCompanion* ActiveCompanion =
-		State.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
-			[ActiveCompanionId](const FGameXXKPermanentCompanion& Candidate)
-			{
-				return Candidate.InstanceId == ActiveCompanionId && Candidate.bIsActive;
-			});
-	TestNotNull(TEXT("new game selects one active permanent companion"), ActiveCompanion);
-	if (!ActiveCompanion)
-	{
-		return false;
-	}
-	TestEqual(TEXT("new-game default permanent companion is Blade"), ActiveCompanion->Role, EGameXXKCharacterRole::Blade);
-	TestEqual(TEXT("new-game default permanent NPC is Tusi Chief"),
-		GameXXKPermanentPartyTestFixtures::ResolveNpc(State),
-		FName(TEXT("Npc.TusiChief")));
-	TestTrue(TEXT("new-game default keeps temporary provenance empty"),
-		State.CardRun.ActiveTemporaryQuestNpcId.IsNone());
-
-	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
-	TestTrue(TEXT("default three-unit party starts 1-1 travel"), Subsystem->StartTrainingTravel(StageOne));
-	const FGameXXKTrainingTravelRuntime Runtime = Subsystem->GetTrainingTravelRuntimeCopy();
-	TestEqual(TEXT("subsystem materializes hero, Blade, and Tusi Chief"), Runtime.PartyUnits.Num(), 3);
-	if (Runtime.PartyUnits.Num() != 3)
-	{
-		return false;
-	}
-	TestEqual(TEXT("subsystem party slot zero is the fixed hero"),
-		Runtime.PartyUnits[0].UnitId, FGameXXKEquipmentRules::HeroCharacterId());
-	TestEqual(TEXT("subsystem party slot one uses the selected Blade instance"),
-		Runtime.PartyUnits[1].UnitId, ActiveCompanionId);
-	TestEqual(TEXT("subsystem party slot two uses Tusi Chief"),
-		Runtime.PartyUnits[2].UnitId, FName(TEXT("Npc.TusiChief")));
-	for (const FGameXXKTrainingTravelPartyUnitRuntime& Unit : Runtime.PartyUnits)
-	{
-		TestTrue(TEXT("each materialized party member has real maximum HP"), Unit.MaxHP > 1);
-		TestTrue(TEXT("each materialized party member has real attack"), Unit.Attack > 0);
-	}
-	return true;
+    auto* Subsystem=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+    if(!TestTrue(TEXT("new game starts"),Subsystem->StartGame()))return false;
+    const auto& State=Subsystem->GetRuntimeState();
+    TestTrue(TEXT("new game has no deployed companion"),State.CardRun.PartySelection.ActivePermanentCompanionInstanceId.IsNone());
+    TestTrue(TEXT("new game has no deployed NPC"),State.CardRun.PartySelection.QuestNpc.NpcId.IsNone());
+    TestTrue(TEXT("travel starts"),Subsystem->StartTrainingTravel(TEXT("Training.Normal.1-1")));
+    const auto Runtime=Subsystem->GetTrainingTravelRuntimeCopy();
+    if(!TestEqual(TEXT("new game travel has one hero"),Runtime.PartyUnits.Num(),1))return false;
+    TestEqual(TEXT("hero unit is real"),Runtime.PartyUnits[0].UnitId,FGameXXKEquipmentRules::HeroCharacterId());
+    TestTrue(TEXT("hero has real HP and attack"),Runtime.PartyUnits[0].MaxHP>1&&Runtime.PartyUnits[0].Attack>0);
+    return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
@@ -1109,6 +1074,8 @@ bool FGameXXKTrainingChallengeCancelToWorkbenchTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+    // Bridge/economy regression uses the established party; new-profile behavior is covered separately.
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	const EGameXXKQuestState QuestBefore = Subsystem->GetRuntimeState().QuestState;
 	TestFalse(TEXT("cancel fixture stage starts uncleared"),
@@ -1228,6 +1195,8 @@ bool FGameXXKTrainingTravelChestInventoryBridgeTest::RunTest(const FString& Para
 		return false;
 	}
 
+    // Bridge/economy regression uses the established party; new-profile behavior is covered separately.
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageTwo = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 2);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Training.ClearedStageIds.Add(StageTwo);
@@ -1365,6 +1334,8 @@ bool FGameXXKTrainingTravelOfflineSubsystemBridgeTest::RunTest(const FString& Pa
 		return false;
 	}
 
+    // Bridge/economy regression uses the established party; new-profile behavior is covered separately.
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	Subsystem->GetMutableRuntimeState().PlayerLevel = 1;
 	Subsystem->GetMutableRuntimeState().PlayerXP = 95;
@@ -1450,6 +1421,8 @@ bool FGameXXKTrainingTravelOfflineLoadTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+    // Bridge/economy regression uses the established party; new-profile behavior is covered separately.
+    SourceSubsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageOne = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("offline load source starts 1-1 travel"), SourceSubsystem->StartTrainingTravel(StageOne));
 

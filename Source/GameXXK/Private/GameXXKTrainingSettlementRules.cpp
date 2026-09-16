@@ -80,6 +80,7 @@ bool FGameXXKTrainingSettlementRules::CaptureAppliedResult(const FGameXXKRuntime
 	Receipt.RouteGold = RouteReceipt.PermanentGoldAward;
 	Receipt.SourceTravelMoney = RouteReceipt.SourceTravelMoney;
 	Receipt.Experience = Reward.Experience;
+	// The same cleared-stage authority controls entry, travel, and first-clear labels.
 	Receipt.bFirstClear = !Before.Training.ClearedStageIds.Contains(Stage.StageId);
 	Receipt.bUnlockedNextDifficulty = After.Training.UnlockedDifficultyIds.Num() > Before.Training.UnlockedDifficultyIds.Num();
 	Receipt.Stats = CaptureBattleStats(Before.CardRun.ActiveBattle);
@@ -104,18 +105,27 @@ bool FGameXXKTrainingSettlementRules::CaptureAppliedResult(const FGameXXKRuntime
 		Receipt.bHuntOrderPendingDelivery=After.Training.PendingHuntOrders.FindRef(Receipt.GrantedHuntOrderId)>0;
 		Receipt.UnlockedStageId=FGameXXKTrainingRules::MakeStageId(Stage.Difficulty,10);
 	}
-	AddMember(Receipt, FGameXXKEquipmentRules::HeroCharacterId(), FText::FromString(TEXT("主角")), Before.PlayerLevel, Before.PlayerXP, After.PlayerLevel, After.PlayerXP);
-	const FName CompanionId = Before.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
-	const auto* OldCompanion = Before.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([CompanionId](const auto& C){return C.InstanceId == CompanionId;});
-	const auto* NewCompanion = After.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([CompanionId](const auto& C){return C.InstanceId == CompanionId;});
-	if (!OldCompanion || !NewCompanion) return Fail(OutError, TEXT("结算缺少出战伙伴的成长记录。"));
-	AddMember(Receipt, CompanionId, FText::FromString(FGameXXKCompanionRules::GetCompanionDisplayName(NewCompanion->Role, NewCompanion->NameSeed)), OldCompanion->Level, OldCompanion->Experience, NewCompanion->Level, NewCompanion->Experience, true);
-	const FName NpcId = Before.CardRun.PartySelection.QuestNpc.NpcId;
-	const auto* Npc = FGameXXKCompanionCatalog::FindQuestNpcDefinition(NpcId);
-	const auto* OldNpc = Before.CardRun.PartySelection.QuestNpcProgressions.Find(NpcId);
-	const auto* NewNpc = After.CardRun.PartySelection.QuestNpcProgressions.Find(NpcId);
-	if (!Npc || !OldNpc || !NewNpc) return Fail(OutError, TEXT("结算缺少出战NPC的成长记录。"));
-	AddMember(Receipt, NpcId, NpcName(NpcId), OldNpc->Level, OldNpc->Experience, NewNpc->Level, NewNpc->Experience);
+	for (const auto& Ref : Before.CardRun.OrderedFormation.Members)
+	{
+		if (Ref.Kind == EGameXXKPartyMemberKind::Hero)
+			AddMember(Receipt, Ref.MemberId, FText::FromString(TEXT("主角")), Before.PlayerLevel, Before.PlayerXP, After.PlayerLevel, After.PlayerXP);
+		else if (Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion)
+		{
+			const auto* Old = Before.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([&](const auto& C){return C.InstanceId == Ref.MemberId;});
+			const auto* New = After.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate([&](const auto& C){return C.InstanceId == Ref.MemberId;});
+			if (!Old || !New) return Fail(OutError, TEXT("结算缺少出战伙伴的成长记录。"));
+			AddMember(Receipt, Ref.MemberId, FText::FromString(FGameXXKCompanionRules::GetCompanionDisplayName(New->Role, New->NameSeed)), Old->Level, Old->Experience, New->Level, New->Experience, true);
+		}
+		else if (Ref.Kind == EGameXXKPartyMemberKind::QuestNpc)
+		{
+			const auto* Old = Before.CardRun.PartySelection.QuestNpcProgressions.Find(Ref.MemberId);
+			const auto* New = After.CardRun.PartySelection.QuestNpcProgressions.Find(Ref.MemberId);
+			if (!FGameXXKCompanionCatalog::FindQuestNpcDefinition(Ref.MemberId) || !Old || !New)
+				return Fail(OutError, TEXT("结算缺少出战NPC的成长记录。"));
+			AddMember(Receipt, Ref.MemberId, NpcName(Ref.MemberId), Old->Level, Old->Experience, New->Level, New->Experience);
+		}
+		else return Fail(OutError, TEXT("结算包含无效出战成员。"));
+	}
 	After.Training.PendingSettlement = MoveTemp(Receipt);
 	After.Training.LastAppliedSettlementId = After.Training.PendingSettlement.ReceiptId;
 	After.Training.bTravelActive = false;
@@ -139,9 +149,9 @@ bool FGameXXKTrainingSettlementRules::ValidatePending(const FGameXXKRuntimeState
 		|| State.CurrentMapId != TEXT("DesktopTrainingHUD") || State.bDungeonActive || State.Training.bChallengeActive || State.Training.bTravelActive
 		|| R.Gold < 0 || R.RouteGold < 0 || R.RouteGold > R.Gold || R.Experience < 0 || R.SourceTravelMoney < 0
 		|| R.NormalChestCount < 0 || R.AdvancedChestCount < 0 || R.HuntChestCount < 0
-		|| (!R.GrantedHuntOrderId.IsNone()&&!FGameXXKHuntRules::IsOrder(R.GrantedHuntOrderId)) || R.ChestItemLevel < 0 || R.Members.Num() != 3
+		|| (!R.GrantedHuntOrderId.IsNone()&&!FGameXXKHuntRules::IsOrder(R.GrantedHuntOrderId)) || R.ChestItemLevel < 0 || R.Members.Num() < 1 || R.Members.Num() > 3
 		|| R.Stats.Rounds < 0 || R.Stats.ActiveCardsPlayed < 0 || R.Stats.PartyDamageDealt < 0 || R.Stats.PartyDamageTaken < 0
-		|| R.Stats.HealingDone < 0 || R.Stats.ArmorGenerated < 0 || R.Stats.SurvivingPartyUnits < 0 || R.Stats.SurvivingPartyUnits > 3
+		|| R.Stats.HealingDone < 0 || R.Stats.ArmorGenerated < 0 || R.Stats.SurvivingPartyUnits < 0 || R.Stats.SurvivingPartyUnits > R.Members.Num()
 		|| R.Stats.PartyEndingHealth < 0 || R.Stats.PartyEndingHealth > R.Stats.PartyEndingMaxHealth)
 		return Fail(OutError, TEXT("通关凭据无效或已脱离本次结算状态。"));
 	TSet<FName> Ids;
@@ -152,7 +162,8 @@ bool FGameXXKTrainingSettlementRules::ValidatePending(const FGameXXKRuntimeState
 			return Fail(OutError, TEXT("通关凭据的队伍成长记录无效。"));
 		Ids.Add(Member.MemberId);
 	}
-	return true;
+	return Ids.Contains(FGameXXKEquipmentRules::HeroCharacterId())
+		? true : Fail(OutError, TEXT("通关凭据缺少主角成长记录。"));
 }
 
 bool FGameXXKTrainingSettlementRules::Acknowledge(FGameXXKRuntimeState& State, FGuid ReceiptId, FString* OutError)

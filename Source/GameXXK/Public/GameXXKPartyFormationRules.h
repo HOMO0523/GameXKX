@@ -11,6 +11,10 @@ class GAMEXXK_API FGameXXKPartyFormationRules final
 public:
 	static constexpr int32 PartySize = 3;
 	static constexpr int32 MinimumOwnedPermanentCompanions = 2;
+	static FName SlotTalentId(EGameXXKPartyMemberKind Kind);
+	static bool IsSlotEligible(const FGameXXKRuntimeState& State, EGameXXKPartyMemberKind Kind);
+	static bool IsSlotUnlocked(const FGameXXKRuntimeState& State, EGameXXKPartyMemberKind Kind);
+    static bool IsFirstNpcPending(const FGameXXKRuntimeState& State);
 
 	static bool BuildLegacyProjection(
 		const FGameXXKRuntimeState& State,

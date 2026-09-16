@@ -1,3 +1,4 @@
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
@@ -22,6 +23,7 @@ bool FGameXXKPermanentNpcFormationAuthorityTest::RunTest(const FString& Paramete
 	{
 		return false;
 	}
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 
 	const TArray<FGameXXKQuestNpcDefinition>& Definitions =
 		FGameXXKCompanionCatalog::GetQuestNpcDefinitions();
@@ -32,7 +34,7 @@ bool FGameXXKPermanentNpcFormationAuthorityTest::RunTest(const FString& Paramete
 	TestTrue(TEXT("ordered formation resolves one permanent NPC"),
 		FGameXXKPartyFormationRules::ResolveQuestNpcId(
 			Subsystem->GetRuntimeState(), ActiveNpcId, &Error));
-	TestEqual(TEXT("new game defaults to Tusi Chief"),
+	TestEqual(TEXT("legacy fixture retains Tusi Chief"),
 		ActiveNpcId,
 		FName(TEXT("Npc.TusiChief")));
 	TestTrue(TEXT("temporary route provenance is retired"),
@@ -94,6 +96,7 @@ bool FGameXXKPermanentNpcChallengeLifecycleTest::RunTest(const FString& Paramete
 	{
 		return false;
 	}
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	TestTrue(TEXT("challenge fixture selects Yue Bai"),
 		Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
 	const FName StageId =
@@ -139,6 +142,7 @@ bool FGameXXKPermanentNpcIdleSwapTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	const FName StageId =
 		FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	if (!TestTrue(TEXT("idle travel starts"), Subsystem->StartTrainingTravel(StageId)))

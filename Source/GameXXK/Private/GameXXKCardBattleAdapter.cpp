@@ -1,4 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKEnemyActionStatusRules.h"
+#include "Guide/GameXXKFirstBattleGuideRules.h"
 
 #include "GameXXKCardCatalog.h"
 #include "GameXXKBattlePresentation.h"
@@ -426,50 +428,53 @@ namespace
 		{
 			return SetFailure(OutError, TEXT("The ordered NPC does not match the configured NPC cards."));
 		}
-		const FGameXXKQuestNpcProgression* QuestNpcProgression =
-			Run.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
-		const int32 QuestNpcLevel = QuestNpcProgression
-			? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
-			: 1;
-		FGameXXKCompanionAttributes QuestNpcAttributes;
-		FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
-		if (!BuildQuestNpcEquipmentSnapshot(
-			InOutState,
-			QuestNpcId,
-			QuestNpcLevel,
-			QuestNpcAttributes,
-			QuestNpcSnapshot,
-			OutError))
+		if (!QuestNpcId.IsNone())
 		{
-			return false;
+			const FGameXXKQuestNpcProgression* QuestNpcProgression =
+				Run.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
+			const int32 QuestNpcLevel = QuestNpcProgression
+				? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+				: 1;
+			FGameXXKCompanionAttributes QuestNpcAttributes;
+			FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
+			if (!BuildQuestNpcEquipmentSnapshot(
+				InOutState,
+				QuestNpcId,
+				QuestNpcLevel,
+				QuestNpcAttributes,
+				QuestNpcSnapshot,
+				OutError))
+			{
+				return false;
+			}
+			QuestNpcAttributes.Health = QuestNpcSnapshot.AttributesBeforeRoute.MaxHealth;
+			QuestNpcAttributes.Mana = QuestNpcSnapshot.AttributesBeforeRoute.MaxMana;
+			QuestNpcAttributes.Attack = QuestNpcSnapshot.AttributesBeforeRoute.Attack;
+			QuestNpcAttributes.Defense = QuestNpcSnapshot.AttributesBeforeRoute.Defense;
+			QuestNpcAttributes.Speed = QuestNpcSnapshot.AttributesBeforeRoute.Speed;
+			FGameXXKBattleRuntimeUnit QuestNpc = MakeLegacyProjectionUnit(
+				QuestNpcId,
+				FText::FromString(TEXT("NPC")),
+				QuestNpcAttributes,
+				false);
+			QuestNpc.MaxHP = FMath::Max(1, ScaleTalentStat(
+				QuestNpc.MaxHP + TalentProjection.FlatMaxHP,
+				TalentProjection.RouteMaxHPPercent));
+			QuestNpc.HP = QuestNpc.MaxHP;
+			QuestNpc.Attack = ScaleTalentStat(
+				QuestNpc.Attack + TalentProjection.FlatAttack,
+				TalentProjection.RouteAttackPercent);
+			QuestNpc.Defense = ScaleTalentStat(
+				QuestNpc.Defense + TalentProjection.FlatDefense,
+				TalentProjection.RouteDefensePercent);
+			QuestNpc.BattleSlotNumber = INDEX_NONE;
+			QuestNpc.EnemyDefinitionId = NAME_None;
+			QuestNpc.bDefending = false;
+			QuestNpc.CombatLevel = QuestNpcLevel;
+			NewParty.Add(MoveTemp(QuestNpc));
 		}
-		QuestNpcAttributes.Health = QuestNpcSnapshot.AttributesBeforeRoute.MaxHealth;
-		QuestNpcAttributes.Mana = QuestNpcSnapshot.AttributesBeforeRoute.MaxMana;
-		QuestNpcAttributes.Attack = QuestNpcSnapshot.AttributesBeforeRoute.Attack;
-		QuestNpcAttributes.Defense = QuestNpcSnapshot.AttributesBeforeRoute.Defense;
-		QuestNpcAttributes.Speed = QuestNpcSnapshot.AttributesBeforeRoute.Speed;
-		FGameXXKBattleRuntimeUnit QuestNpc = MakeLegacyProjectionUnit(
-			QuestNpcId,
-			FText::FromString(TEXT("NPC")),
-			QuestNpcAttributes,
-			false);
-		QuestNpc.MaxHP = FMath::Max(1, ScaleTalentStat(
-			QuestNpc.MaxHP + TalentProjection.FlatMaxHP,
-			TalentProjection.RouteMaxHPPercent));
-		QuestNpc.HP = QuestNpc.MaxHP;
-		QuestNpc.Attack = ScaleTalentStat(
-			QuestNpc.Attack + TalentProjection.FlatAttack,
-			TalentProjection.RouteAttackPercent);
-		QuestNpc.Defense = ScaleTalentStat(
-			QuestNpc.Defense + TalentProjection.FlatDefense,
-			TalentProjection.RouteDefensePercent);
-		QuestNpc.BattleSlotNumber = INDEX_NONE;
-		QuestNpc.EnemyDefinitionId = NAME_None;
-		QuestNpc.bDefending = false;
-		QuestNpc.CombatLevel = QuestNpcLevel;
-		NewParty.Add(MoveTemp(QuestNpc));
 
-		if (NewParty.Num() != 3)
+		if (NewParty.IsEmpty() || NewParty.Num() > 3)
 		{
 			return SetFailure(OutError, TEXT("The card battle party must contain hero, companion, and NPC."));
 		}
@@ -514,24 +519,27 @@ namespace
 		{
 			return false;
 		}
-		const FGameXXKQuestNpcProgression* QuestNpcProgression =
-			InOutState.CardRun.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
-		const int32 QuestNpcLevel = QuestNpcProgression
-			? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
-			: 1;
-		FGameXXKCompanionAttributes QuestNpcAttributes;
-		FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
-		if (!BuildQuestNpcEquipmentSnapshot(
-			InOutState,
-			QuestNpcId,
-			QuestNpcLevel,
-			QuestNpcAttributes,
-			QuestNpcSnapshot,
-			OutError))
+		if (!QuestNpcId.IsNone())
 		{
-			return false;
+			const FGameXXKQuestNpcProgression* QuestNpcProgression =
+				InOutState.CardRun.PartySelection.QuestNpcProgressions.Find(QuestNpcId);
+			const int32 QuestNpcLevel = QuestNpcProgression
+				? FMath::Clamp(QuestNpcProgression->Level, 1, FGameXXKCharacterStatRules::MaxCharacterLevel)
+				: 1;
+			FGameXXKCompanionAttributes QuestNpcAttributes;
+			FGameXXKEquipmentLoadoutSnapshot QuestNpcSnapshot;
+			if (!BuildQuestNpcEquipmentSnapshot(
+				InOutState,
+				QuestNpcId,
+				QuestNpcLevel,
+				QuestNpcAttributes,
+				QuestNpcSnapshot,
+				OutError))
+			{
+				return false;
+			}
+			Snapshots.Add(MoveTemp(QuestNpcSnapshot));
 		}
-		Snapshots.Add(MoveTemp(QuestNpcSnapshot));
 
 		// The ordered party may contain two permanent companions. Gem ownership follows
 		// every actual unit rather than the legacy single-companion / quest-NPC aliases.
@@ -657,16 +665,19 @@ namespace
 		{
 			return false;
 		}
-		if (Run.PartySelection.QuestNpc.NpcId != QuestNpcId
-			|| Run.PartySelection.QuestNpc.SelectedCardIds.Num() != QuestNpcSelectedCardCount)
+		if (!QuestNpcId.IsNone())
 		{
-			return SetFailure(OutError, TEXT("The selected NPC does not have a valid three-card loadout."));
-		}
-		for (const FName CardId : Run.PartySelection.QuestNpc.SelectedCardIds)
-		{
-			if (!AddInstance(CardId, QuestNpcId))
+			if (Run.PartySelection.QuestNpc.NpcId != QuestNpcId
+				|| Run.PartySelection.QuestNpc.SelectedCardIds.Num() != QuestNpcSelectedCardCount)
 			{
-				return false;
+				return SetFailure(OutError, TEXT("The selected NPC does not have a valid three-card loadout."));
+			}
+			for (const FName CardId : Run.PartySelection.QuestNpc.SelectedCardIds)
+			{
+				if (!AddInstance(CardId, QuestNpcId))
+				{
+					return false;
+				}
 			}
 		}
 
@@ -3055,6 +3066,8 @@ namespace
 					}
 					ResolveMoneyRatInterestAfterEnemyCard(ForecastRuntime, ForecastIntent, ForecastDamage);
 				}
+				TArray<FGameXXKCardDamageResult> ForecastBurn;
+				if(!GameXXKEnemyActionStatusRules::ResolveAfterIntent(ForecastRuntime,ForecastIntent.SourceUnitId,ForecastBurn,OutError))return false;
 				continue;
 			}
 
@@ -3368,7 +3381,10 @@ bool FGameXXKCardBattleAdapter::SetQuestNpcForCurrentRun(
 	}
 	if (QuestNpcId.IsNone())
 	{
-		return SetFailure(OutError, TEXT("The permanent NPC formation slot cannot be empty."));
+		if (!SelectedCardIds.IsEmpty()) return SetFailure(OutError, TEXT("An empty NPC slot cannot deploy NPC cards."));
+		if (!FGameXXKPartyFormationRules::SetQuestNpc(Candidate, NAME_None, OutError)) return false;
+		InOutState = MoveTemp(Candidate);
+		return true;
 	}
 	const FGameXXKQuestNpcDefinition* Definition =
 		FGameXXKCompanionCatalog::FindQuestNpcDefinition(QuestNpcId);
@@ -3483,6 +3499,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 		return false;
 	}
 	NewRuntime.SourceNodeKind = CardBattleNodeKind(NodeKind);
+	GameXXKFirstBattleGuide::PrepareOpening(NewState,NewRuntime);
 	if(bEnemyAttributesIncludeDifficulty)
 	{
 		FGameXXKTrainingStageDefinition Stage;
@@ -3608,6 +3625,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 	Run.PendingReward = FGameXXKPendingRouteCardReward();
 	Run.bActiveBattleRewardResolved = false;
 	if(!FGameXXKRelicRules::ApplyBattleStart(NewState,nullptr,OutError))return false;
+	GameXXKFirstBattleGuide::PrepareOpening(NewState,Run.ActiveBattle);
 	if (!ApplyCatalogEnemyRoundStartStatuses(Run.ActiveBattle, OutError)
 		|| !BuildEnemyIntents(Run, OutError)
 		|| !SyncCardBattleToLegacyProjection(NewState, OutError))
@@ -3620,6 +3638,7 @@ bool FGameXXKCardBattleAdapter::BeginCardBattle(
 
 bool FGameXXKCardBattleAdapter::SyncCardBattleToLegacyProjection(FGameXXKRuntimeState& InOutState, FString* OutError)
 {
+	GameXXKFirstBattleGuide::Observe(InOutState);
 	if (OutError)
 	{
 		OutError->Reset();
@@ -3904,6 +3923,7 @@ bool FGameXXKCardBattleAdapter::ResolveCardPlay(
 
 	InOutState = MoveTemp(NewState);
 	OutResult = MoveTemp(NewResult);
+	GameXXKFirstBattleGuide::ObserveDamage(InOutState,OutResult.DamageResults);
 	return true;
 }
 
@@ -4169,6 +4189,7 @@ static bool ResolveNextEnemyIntentImpl(
 	}
 	OutResolvedIntent = Intent;
 	bool bIntentConsumed = false;
+	bool bIntentExecuted = false;
 	int32 NextCatalogIntentCursor = INDEX_NONE;
 	if (!GetNextCatalogIntentCursor(Run.ActiveBattle, Intent, NextCatalogIntentCursor, OutError))
 	{
@@ -4199,6 +4220,7 @@ static bool ResolveNextEnemyIntentImpl(
 		});
 		if (bHasCatalogResolvedEffect)
 		{
+			bIntentExecuted = true;
 			if (!Intent.bCharging && !ResolveCatalogIntentEffects(Run.ActiveBattle, Intent, OutDamageResults, OutError))
 			{
 				return false;
@@ -4218,6 +4240,7 @@ static bool ResolveNextEnemyIntentImpl(
 			}
 			if (Target)
 			{
+				bIntentExecuted = true;
 				FGameXXKCardDamageContext Context;
 				Context.SourceUnitId = Intent.SourceUnitId;
 				Context.Element = ResolveSavedIntentElement(Run.ActiveBattle, Intent);
@@ -4278,6 +4301,12 @@ static bool ResolveNextEnemyIntentImpl(
 			return false;
 		}
 		OutDamageResults.Append(MoveTemp(ReactionDamageResults));
+	}
+	if(bIntentExecuted)
+	{
+		TArray<FGameXXKCardDamageResult> BurnDamage;
+		if(!GameXXKEnemyActionStatusRules::ResolveAfterIntent(Run.ActiveBattle,Intent.SourceUnitId,BurnDamage,OutError))return false;
+		OutDamageResults.Append(MoveTemp(BurnDamage));
 	}
 	if (bIntentConsumed)
 	{

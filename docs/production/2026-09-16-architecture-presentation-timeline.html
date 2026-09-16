@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GameXXK 架构层 / 表现层 演进时间线</title>
+<style>
+:root{
+  --ink:#251a12; --muted:#705d49; --paper:#f1ddb5; --paper2:#fff8e9;
+  --line:#ba9060; --red:#973e30; --green:#2f6b4b; --blue:#345f79; --shadow:#0006;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#17110d;color:var(--ink);
+     font:15px/1.75 "Microsoft YaHei","PingFang SC",sans-serif}
+a{color:var(--blue)}
+.wrap{max-width:1500px;margin:auto;padding:24px;display:grid;
+      grid-template-columns:266px minmax(0,1fr);gap:22px;align-items:start}
+nav.toc{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow:auto;
+        background:linear-gradient(135deg,#f8edd3,#e6c894);border:1px solid var(--line);
+        border-radius:15px;box-shadow:0 12px 30px var(--shadow);padding:16px 18px}
+nav.toc h2{font-family:KaiTi,serif;margin:0 0 10px;font-size:19px;color:var(--red)}
+nav.toc ul{list-style:none;margin:0;padding-left:0}
+nav.toc li{margin:2px 0}
+nav.toc ul ul{padding-left:14px;font-size:13.5px}
+nav.toc a{display:block;padding:3px 8px;border-radius:7px;text-decoration:none;
+          color:var(--ink);border-left:3px solid transparent}
+nav.toc a:hover{background:#fff8e7cc;border-left-color:var(--red)}
+main{background:linear-gradient(135deg,#f8edd3,#e6c894);border:1px solid var(--line);
+     border-radius:15px;box-shadow:0 12px 30px var(--shadow);padding:30px 34px;min-width:0}
+h1,h2,h3,h4{font-family:KaiTi,"Microsoft YaHei",serif;margin:1.1em 0 .45em;line-height:1.35}
+h1{font-size:30px;margin-top:0;padding-bottom:12px;border-bottom:3px double var(--line)}
+h2{font-size:24px;color:var(--red);padding-left:12px;border-left:6px solid var(--red)}
+h3{font-size:19px;color:#4a3425;background:#fff6e2cc;border:1px solid #d8b483;
+   border-radius:9px;padding:8px 12px}
+h4{font-size:16.5px;color:var(--muted)}
+p{margin:.7em 0}
+code{background:#fff8e7;border:1px solid #d9bb91;border-radius:5px;padding:1px 5px;
+     font-family:Consolas,"Courier New",monospace;font-size:13.5px;color:#7a3a26;
+     word-break:break-word;overflow-wrap:anywhere}
+pre{background:#2b211a;color:#f4e6cd;border-radius:11px;padding:14px 16px;overflow:auto;
+    border:1px solid #5b4433}
+pre code{background:none;border:none;color:inherit;padding:0;word-break:normal}
+blockquote{margin:.9em 0;background:#fff5dc;border-left:5px solid #a96f33;
+           border-radius:8px;padding:11px 16px;color:var(--muted)}
+blockquote p{margin:.3em 0}
+.tablewrap{overflow-x:auto;margin:1em 0;border:1px solid #c9a16f;border-radius:9px}
+table{width:100%;border-collapse:collapse;margin:0;font-size:14px}
+th{background:#4a3425;color:#fff4dc;text-align:left;padding:9px 11px;font-weight:600;
+   position:sticky;top:0;white-space:nowrap}
+td{padding:8px 11px;border-top:1px solid #d3b184;vertical-align:top}
+tbody tr:nth-child(even){background:#fff8e7aa}
+tbody tr:hover{background:#fff3d6}
+th:first-child,td:first-child{white-space:nowrap}
+ul,ol{padding-left:1.6em}
+li{margin:.25em 0}
+hr{border:none;border-top:2px dashed var(--line);margin:1.6em 0}
+strong{color:#7a2f22}
+.meta{color:var(--muted);font-size:13px;text-align:right;margin-top:26px;
+      border-top:2px dashed var(--line);padding-top:12px}
+@media(max-width:1080px){
+  .wrap{grid-template-columns:1fr;padding:14px}
+  nav.toc{position:static;max-height:none}
+  main{padding:22px 18px}
+  th:first-child,td:first-child{white-space:normal}
+}
+</style></head>
+<body><div class="wrap">
+<nav class="toc"><h2>目录</h2><div class="toc">
+<ul>
+<li><a href="#0">0. 这份文档回答什么</a></li>
+<li><a href="#1-prompt">1. 先澄清"prompt"在项目里指什么</a></li>
+<li><a href="#2-2026-07-01">2. 初始分工（2026-07-01）</a><ul>
+<li><a href="#21">2.1 三层职责</a></li>
+<li><a href="#22">2.2 同期定下的硬性要求</a></li>
+</ul>
+</li>
+<li><a href="#3">3. 时间线</a><ul>
+<li><a href="#1-2026-07-01">阶段 ① 2026-07-01 · 立项，分工确立</a></li>
+<li><a href="#2-2026-07-02-07-09">阶段 ② 2026-07-02 ~ 07-09 · 原型迁移，第一条闭环</a></li>
+<li><a href="#3-2026-07-10-07-13-3d">阶段 ③ 2026-07-10 ~ 07-13 · 3D 青山镇 —— 表现层第一次转向</a></li>
+<li><a href="#4-2026-07-14-07-26">阶段 ④ 2026-07-14 ~ 07-26 · 表现层成型</a></li>
+<li><a href="#5-2026-08-04-08-06-ui">阶段 ⑤ 2026-08-04 ~ 08-06 · UI 主轴统一</a></li>
+<li><a href="#6-2026-08-12">阶段 ⑥ 2026-08-12 · 表现层第二次转向：挂机桌面</a></li>
+<li><a href="#7-2026-08-17-08-30">阶段 ⑦ 2026-08-17 ~ 08-30 · 桌面工作台定型</a></li>
+<li><a href="#8-2026-08-31-09-11">阶段 ⑧ 2026-08-31 ~ 09-11 · 内容与交付</a></li>
+</ul>
+</li>
+<li><a href="#4">4. 两条主线的对照</a></li>
+<li><a href="#5">5. 关键文档索引</a></li>
+<li><a href="#6">6. 核对方法</a></li>
+<li><a href="#7">7. 本文不包含</a></li>
+</ul>
+</div>
+</nav>
+<main>
+<h1 id="_1">架构层 / 表现层 演进时间线</h1>
+<blockquote>
+<p>本文写于 2026-09-16，回顾 2026-07-01 → 2026-09-11 的设计演进。
+文中出现的 <code>2026-09-11-*</code> 名称（如打包目录 <code>ShippingF10-20260911-*</code>）是当时构建的真实名字，未改名。</p>
+</blockquote>
+<h2 id="0">0. 这份文档回答什么</h2>
+<p>项目里"架构层"和"表现层"的<strong>初始约定是什么、后来怎么变的、现在是什么</strong>。</p>
+<p>每个结论都标了出处文件，可以逐条核对。本文是回顾性整理，不改变任何运行时语义；语义仍然以
+<code>docs/production/current-goal-acceptance.md</code> 和 <code>docs/superpowers/specs/</code> 里的原始设计为准。</p>
+<p>规模参考：<code>docs/superpowers/specs/</code> <strong>118 份</strong>设计，<code>docs/superpowers/plans/</code> <strong>188 份</strong>计划，
+时间跨度 2026-07-01 → 2026-09-15（7 月 54 份、8 月 54 份、9 月 10 份设计）。</p>
+<h2 id="1-prompt">1. 先澄清"prompt"在项目里指什么</h2>
+<p><strong>项目没有独立的 prompt 文件。</strong> 这套工程用的是 <code>superpowers</code> 工作流，用两种文档承载需求：</p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>载体</th>
+<th>位置</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>specs/</code></td>
+<td><code>docs/superpowers/specs/</code></td>
+<td>设计：确认后的意图与契约</td>
+</tr>
+<tr>
+<td><code>plans/</code></td>
+<td><code>docs/superpowers/plans/</code></td>
+<td>实施：分步计划</td>
+</tr>
+<tr>
+<td><code>00-raw-input.md</code></td>
+<td><code>docs/production/&lt;unit&gt;/</code></td>
+<td><strong>逐字记录用户原话</strong>。全项目只有 1 份</td>
+</tr>
+<tr>
+<td><code>AGENTS.md</code></td>
+<td>项目根</td>
+<td>AI agent 的长期硬约束</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>初始 prompt</strong> ≈ <code>docs/superpowers/specs/2026-07-01-gamexxk-mvp-design.md</code>，首页写着
+  <code>Status: confirmed by user on 2026-07-01</code>。这是立项当天用户确认的设计。</li>
+<li><strong>唯一逐字 prompt</strong> = <code>docs/production/2026-07-03-playable-entry-flow/00-raw-input.md</code>。</li>
+<li><strong>长期约束 prompt</strong> = <code>AGENTS.md</code>。</li>
+</ul>
+<h2 id="2-2026-07-01">2. 初始分工（2026-07-01）</h2>
+<p>项目名《霞客行》，UE 5.8。出处：<code>2026-07-01-gamexxk-mvp-design.md</code> §Technical Architecture。</p>
+<h3 id="21">2.1 三层职责</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>层</th>
+<th>归属</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>规则层</strong></td>
+<td><strong>C++ 独占</strong></td>
+<td>世界地图区域解锁、任务状态、城镇交互规则、跟随者状态、节点地牢模型与可达性、战斗模型与回合结算、背包/装备/交易数据、SaveGame 读写</td>
+</tr>
+<tr>
+<td><strong>表现层</strong></td>
+<td><strong>Blueprint + UMG + Paper2D + PaperZD</strong></td>
+<td>城镇关卡拼装、TileMap 或 blockout 美术、Widget 布局、PaperZD 动画图与翻页书指派、右键面板、节点地图显示、战斗指令 UI</td>
+</tr>
+<tr>
+<td><strong>数据层</strong></td>
+<td><strong>DataAsset / DataTable</strong></td>
+<td>道具、装备数值、技能、敌人、Boss、商店库存、地牢节点定义、区域定义</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="22">2.2 同期定下的硬性要求</h3>
+<ul>
+<li><strong>可测试性</strong>：规则必须能在"不进入完整交互式 UE 场景"的情况下测试。文档列了 10 条最小验证目标
+  （任务未接受时阻止进地牢、只暴露可达节点、速度决定出手顺序、破盾持续一回合、失败保留经验金币、
+  Boss 胜利解锁潭江渡口、买卖正确改金币与堆叠、存档持久化区域/任务/等级/经验/金币）。</li>
+<li><strong>参考项目边界</strong>：<code>D:\UE5 demo\TestMap</code>（UE 5.4）只作为原型与参考内容迁移，
+  <strong>不允许其 Blueprint 原型逻辑成为全局运行时真相</strong>。</li>
+<li><strong>表现层可变性</strong>：文档写明"如果时间紧，<strong>先砍表现层</strong>——保留 C++ 规则和 UI 流程，推迟战斗动画和城镇打磨"。</li>
+</ul>
+<h2 id="3">3. 时间线</h2>
+<h3 id="1-2026-07-01">阶段 ① 2026-07-01 · 立项，分工确立</h3>
+<p><code>2026-07-01-gamexxk-mvp-design.md</code>（14.5 KB）。表现层基座 = Paper2D TileMap 城镇 + UMG 地牢/战斗。
+权威流程：主菜单 → 世界地图 UI → 青山驿站 → F 接任务 → 跟随者 → 节点地牢 → 战斗/事件/营地/Boss →
+失败回城交易重试，或胜利解锁下一区域。</p>
+<h3 id="2-2026-07-02-07-09">阶段 ② 2026-07-02 ~ 07-09 · 原型迁移，第一条闭环</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>日期</th>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>07-02</td>
+<td><code>1game-ui-framework-analysis</code></td>
+<td>迁移 <code>Content/1Game</code>（Slay-the-Spire 式节点地图原型）</td>
+</tr>
+<tr>
+<td><strong>07-03</strong></td>
+<td><code>playable-entry-flow</code></td>
+<td><strong>唯一的 <code>00-raw-input.md</code></strong>，逐字记录验收要求</td>
+</tr>
+<tr>
+<td>07-05</td>
+<td><code>1game-island-battle-map</code></td>
+<td>战斗地图</td>
+</tr>
+<tr>
+<td>07-06</td>
+<td><code>gamexxk-owned-route-map</code></td>
+<td>路线图由参考项目转为<strong>自有资产</strong></td>
+</tr>
+<tr>
+<td>07-07</td>
+<td><code>battle-command-targeting</code></td>
+<td>战斗指令与选靶（44.8 KB）</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="3-2026-07-10-07-13-3d">阶段 ③ 2026-07-10 ~ 07-13 · 3D 青山镇 —— 表现层第一次转向</h3>
+<p><code>qingshan-town-pcg-whitebox</code> → <code>qingshan-pcg-dress-b1</code> → <code>qingshan-golden-inn-gate1</code> →
+<code>asian-village-migration</code> → <code>player-occlusion-reveal</code> → <code>occlusion-foot-seal</code> → <code>player-occlusion-depth-gate</code></p>
+<p>城镇由 Paper2D TileMap 改为 <strong>3D PCG 场景</strong>（Asian Village 资产迁移）。角色仍是 Paper2D/PaperZD
+精灵贴在 3D 场景上。随之出现只在 3D 下才有的问题族：玩家遮挡、遮挡材质覆盖、脚部封印、深度门。</p>
+<h3 id="4-2026-07-14-07-26">阶段 ④ 2026-07-14 ~ 07-26 · 表现层成型</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>日期</th>
+<th>文档</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>07-14~16</td>
+<td><code>gamexxk-ui-world-map</code>、<code>town-hud-reference-refresh</code>、<code>two-tab-task-panel</code>、<strong><code>party-deck-companion-system</code>（56.9 KB）</strong></td>
+<td>UI 世界地图、城镇 HUD、双页签任务面板、伙伴系统</td>
+</tr>
+<tr>
+<td>07-17~21</td>
+<td><code>battle-card-readability</code>、<code>battle-intent-slot-feedback</code>、<code>battle-status-icon-language</code>、<code>central-battle-hud-projection</code>、<code>battle-fixed-slot-hud</code></td>
+<td>战斗可读性、意图槽、状态图标语言、HUD 投影、固定槽位</td>
+</tr>
+<tr>
+<td>07-22</td>
+<td><code>meta-equipment-partner-three-chapter-route</code>（32.4 KB）、<code>route-merchant-card-quality-upgrade</code>（31 KB）</td>
+<td>元层装备/伙伴/三章路线、商人与卡牌品质</td>
+</tr>
+<tr>
+<td>07-24~25</td>
+<td><code>video-matting-to-ue-flipbook</code>、<code>battle-animation-seven-asset-pilot</code></td>
+<td><strong>战斗动画由视频抠像转 PaperZD 翻页书</strong></td>
+</tr>
+<tr>
+<td>07-26</td>
+<td><code>fullscreen-hud-battle-visual-system</code></td>
+<td>全屏 HUD 战斗视觉体系</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="5-2026-08-04-08-06-ui">阶段 ⑤ 2026-08-04 ~ 08-06 · UI 主轴统一</h3>
+<p><code>ui-master-components</code> → <code>master-ui-family-correction</code> → <code>approved-ui-engine-integration</code> →
+<code>final-ui-runtime-integration</code></p>
+<p>表现层收敛为一套<strong>「主控件族 + PSD 权威源」</strong>。这是今天 <code>Content/GameXXK/UI/MasterV2/Approved/</code>
+那批资产的来源。</p>
+<h3 id="6-2026-08-12">阶段 ⑥ 2026-08-12 · 表现层第二次转向：挂机桌面</h3>
+<p>出处：<code>2026-08-12-gamexxk-idle-desktop-migration-design.md</code>（33 KB）。全项目最重要的一次架构重构。</p>
+<p><strong>方案裁决</strong>：「双结算器、统一状态与账本」。文档明确比较并淘汰了两种替代方案——
+"在线离线都用期望值"（怪物死亡与宝箱出现脱节，削弱放置反馈）和
+"在线离线都完整重放"（长离线成本、版本兼容、存档复杂度不成比例）。</p>
+<p><strong>架构层拆为 10 个单一职责模块（§5.1）：</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>单一职责</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TimeSource</code></td>
+<td>返回当前 UTC；现用本机时间，未来可替换为 Steam/服务器时间</td>
+</tr>
+<tr>
+<td><code>IdleState</code></td>
+<td>章节、效率快照、时间游标、双冷却、离线余额、容量、宝箱 FIFO</td>
+</tr>
+<tr>
+<td><code>IdleEncounterScheduler</code></td>
+<td>进程运行时按效率快照产生普通怪/精英怪死亡时间线，<strong>与 UI 帧率解耦</strong></td>
+</tr>
+<tr>
+<td><code>OnlineDropResolver</code></td>
+<td>消费真实怪物死亡事件，执行双宝箱冷却与概率抽取</td>
+</tr>
+<tr>
+<td><code>OfflineYieldCalculator</code></td>
+<td>按时间、刷图效率、掉落配置算期望收益，<strong>不运行完整战斗</strong></td>
+</tr>
+<tr>
+<td><code>RewardLedger</code></td>
+<td>待领金币、经验、宝箱，执行领取事务</td>
+</tr>
+<tr>
+<td><code>ChestResolver</code></td>
+<td>固定种子生成奖励，处理部分领取与剩余奖励</td>
+</tr>
+<tr>
+<td><code>IdlePresentationModel</code></td>
+<td>向完整界面和迷你窗提供<strong>相同的只读展示快照</strong></td>
+</tr>
+<tr>
+<td><code>AutoBattlePolicy</code></td>
+<td>从合法行动中选出牌/目标/结束回合，<strong>不选择路线</strong></td>
+</tr>
+<tr>
+<td><code>IdleRepository</code></td>
+<td>读取、校验、迁移并原子保存；未来可替换远端实现</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>三条边界规则（§5.2，硬约束）：</strong></p>
+<ol>
+<li><strong>规则模块不引用 UMG 或 Slate</strong>；UI 只能消费只读模型并发出命令。</li>
+<li><strong>动效和在线刷怪画面不是奖励权威来源</strong>；奖励只由结算器写入账本。</li>
+<li>活动历练在玩家查看背包/队伍/路线/首次通关战斗时<strong>仍在后台继续</strong>；切 UI 不暂停、不重置、不额外加速。</li>
+</ol>
+<p><strong>表现层：</strong> 新增<strong>桌面迷你窗</strong>（独立窗口形态）+ 完整 2D 历练界面。</p>
+<p><strong>3D 城镇退场三阶段（§16）：</strong></p>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>阶段</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 并行兼容</td>
+<td>新增历练状态与 2D 界面；保留 3D 地图/NPC/相机/手工资产；不删除或批量重定向资源；旧入口仍可用于开发验证</td>
+</tr>
+<tr>
+<td>2 2D 成为默认入口</td>
+<td>新游戏与继续游戏默认进 2D 历练主界面；3D 城镇降为可选旧内容或开发入口</td>
+</tr>
+<tr>
+<td>3 退役裁决</td>
+<td>仅在任务/商店/NPC/队伍/背包/章节入口/存档迁移全部通过真实流程验收后另行决定。<strong>本文不授权删除任何地图、角色、PaperZD、相机、PCG 或 HD2D 调整资产</strong></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="7-2026-08-17-08-30">阶段 ⑦ 2026-08-17 ~ 08-30 · 桌面工作台定型</h3>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>日期</th>
+<th>文档</th>
+<th>关键性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>08-17</td>
+<td><code>gamexxk-desktop-training-workbench-design</code>（33.5 KB）</td>
+<td>桌面工作台</td>
+</tr>
+<tr>
+<td>08-19</td>
+<td><code>desktop-training-hud-lazy-lifecycle</code>、<code>route-owned-auto-battle-correction</code></td>
+<td>懒加载生命周期、路线自动战斗纠偏</td>
+</tr>
+<tr>
+<td><strong>08-21</strong></td>
+<td><strong><code>desktop-2d-battle-canonical-flow</code>（3.5 KB）</strong></td>
+<td><strong>权威流程冻结</strong>；<code>status: approved</code>，<code>supersedes: default-3d-town-entry</code>、<code>desktop-challenge-route-prerequisite</code></td>
+</tr>
+<tr>
+<td>08-22</td>
+<td><code>gamexxk-graduation-showcase</code>、<code>workbench-route-formation-talent-system</code></td>
+<td>毕业展示、工作台路线/编队/天赋</td>
+</tr>
+<tr>
+<td>08-26</td>
+<td><code>desktop-background-layer-cutout</code>、<code>desktop-town-toggle-button</code></td>
+<td>桌面背景层、城镇切换</td>
+</tr>
+<tr>
+<td>08-28</td>
+<td><code>generic-dialogue-tutorial-shop</code>（30.4 KB）</td>
+<td>通用对话/教程/商店</td>
+</tr>
+<tr>
+<td>08-29→30</td>
+<td><code>dual-window-presentation-state-machine</code> → <code>desktop-single-viewport-rollback</code></td>
+<td><strong>双窗口方案回滚为单视口</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>08-21 冻结的权威玩家流程（原文要点）：</strong></p>
+<ol>
+<li>编辑器启动与游戏启动均进入 <code>/Game/GameXXK/Maps/L_DesktopTrainingHUD</code>。</li>
+<li><strong><code>Town</code> 语义 = 2D 桌面挂机主界面</strong>；进入或返回 <code>Town</code> <strong>不加载青山镇</strong>。</li>
+<li>桌面工作台的「挑战」<strong>不要求接受青山镇任务、不修改任务状态</strong>，也不依赖城镇 NPC。</li>
+<li>点击可挑战关卡后，在<strong>同一个 <code>L_DesktopTrainingHUD</code> 世界内</strong>关闭工作台并显示现有全屏
+   <code>UGameXXKBattleBoardWidget</code>；不得生成内嵌战斗画布或切入 3D 地图。</li>
+<li>退出/胜利/失败后的返回动作恢复 <code>Town</code> 状态与 2D 工作台，地图仍是 <code>L_DesktopTrainingHUD</code>。</li>
+<li>同期冻结<strong>目标箭头热点契约</strong>：浮动窗口 viewport-client 本地坐标 + <code>BattleHudSafeStage</code>
+   <code>Offset/Scale</code>；<code>NativePaint</code> 用 <code>SafeStage.Offset + StagePosition × SafeStage.Scale</code> 回 Board-local；
+   <strong>禁止</strong> <code>StageGeometry.LocalToAbsolute -&gt; AllottedGeometry.AbsoluteToLocal</code>。源图 <code>1254×1254</code>，
+   可见右侧箭尖热点 <code>(1082,608)</code>。</li>
+</ol>
+<h3 id="8-2026-08-31-09-11">阶段 ⑧ 2026-08-31 ~ 09-11 · 内容与交付</h3>
+<p>序章地图/月白教程 → <code>provider-vision-integration-retirement</code> →
+<strong><code>card-monster-progression-rebalance</code>（95.8 KB，全项目最大设计文档）</strong> → 雷击单段、术士内力 →
+卡牌/队伍/装备模拟 → 状态图标、遗物、宝石、剧情 → 讨伐与宝箱概率表、本地化总表、打包瘦身。</p>
+<h2 id="4">4. 两条主线的对照</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>2026-07-01 初始</th>
+<th>当前</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>架构层</strong></td>
+<td>C++ 独占规则，UMG 只负责显示</td>
+<td><strong>原则未变</strong>，且被强化为「规则层不引用 UMG/Slate」；新增 10 个挂机模块与奖励账本</td>
+</tr>
+<tr>
+<td><strong>表现层</strong></td>
+<td>Paper2D TileMap 城镇 + UMG 地牢/战斗</td>
+<td><strong>两度转向</strong>：3D 青山镇 → 2D 桌面浮窗。权威面是 <code>L_DesktopTrainingHUD</code></td>
+</tr>
+<tr>
+<td><strong>数据层</strong></td>
+<td>DataAsset / DataTable</td>
+<td>沿用；新增大量总表（<code>docs/design/</code>）与运行时目录（<code>GameXXK*Catalog</code>）</td>
+</tr>
+<tr>
+<td><strong>约束来源</strong></td>
+<td>开山设计文档 + 用户确认</td>
+<td><code>AGENTS.md</code> + <code>2026-08-21</code> 权威流程冻结</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>结论：架构层从第一天至今是同一个原则</strong>——规则用 C++ 且可脱离场景测试，表现层只读模型、发命令。
+真正反复变动的是<strong>表现层的形态</strong>，而不是分层方式。这也是为什么历次迁移都没有推翻 C++ 规则层。</p>
+<h2 id="5">5. 关键文档索引</h2>
+<div class="tablewrap"><table>
+<thead>
+<tr>
+<th>用途</th>
+<th>路径</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>初始设计（架构/表现分层出处）</td>
+<td><code>docs/superpowers/specs/2026-07-01-gamexxk-mvp-design.md</code></td>
+</tr>
+<tr>
+<td>唯一逐字用户需求</td>
+<td><code>docs/production/2026-07-03-playable-entry-flow/00-raw-input.md</code></td>
+</tr>
+<tr>
+<td>挂机迁移与 10 模块架构</td>
+<td><code>docs/superpowers/specs/2026-08-12-gamexxk-idle-desktop-migration-design.md</code></td>
+</tr>
+<tr>
+<td>权威 2D 流程冻结</td>
+<td><code>docs/superpowers/specs/2026-08-21-desktop-2d-battle-canonical-flow.md</code></td>
+</tr>
+<tr>
+<td>AI agent 硬约束</td>
+<td><code>AGENTS.md</code></td>
+</tr>
+<tr>
+<td>当前目标状态（语义真相）</td>
+<td><code>docs/production/current-goal-acceptance.md</code></td>
+</tr>
+<tr>
+<td>全部设计 / 计划</td>
+<td><code>docs/superpowers/specs/</code>（118 份）、<code>docs/superpowers/plans/</code>（188 份）</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="6">6. 核对方法</h2>
+<p>文中的阶段划分来自 <code>docs/superpowers/specs/</code> 的文件名日期序列与各文档正文。逐条复核方式：</p>
+<pre><code class="language-powershell"># 列出全部设计文档（按日期）
+Get-ChildItem docs\superpowers\specs -File -Filter *.md | Sort-Object Name | Select-Object Name
+
+# 取某份文档的章节结构
+Select-String -Path docs\superpowers\specs\&lt;文件&gt;.md -Pattern '^#{1,3} '
+
+# 取某份文档的某一段
+Select-String -Path docs\superpowers\specs\&lt;文件&gt;.md -Pattern '^## 5\. ' -Context 0,30
+</code></pre>
+<h2 id="7">7. 本文不包含</h2>
+<ul>
+<li>不重新定义任何运行时语义；如有冲突，以 <code>current-goal-acceptance.md</code> 与原始 <code>specs/</code> 为准。</li>
+<li>不评价历史决策的对错。</li>
+<li>不记录 3D 资产的存废结论——<code>2026-08-12</code> §16 明确把该裁决留到另行验收，本文不改变它。</li>
+</ul>
+<div class="meta">由 <code>scripts/render_production_html.py</code> 从
+<code>docs/production/2026-09-16-architecture-presentation-timeline.md</code> 生成 · 2026-09-16</div>
+</main></div></body></html>

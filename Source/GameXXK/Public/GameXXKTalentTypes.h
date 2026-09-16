@@ -43,7 +43,9 @@ enum class EGameXXKTalentEffect : uint8
 	AdvancedChestDropPercent,
 	OfflineChestMinutes,
 	ToolExperiencePercent,
-	ToolGoldPercent
+	ToolGoldPercent,
+	UnlockCompanionSlot,
+	UnlockNpcSlot
 };
 
 /** One reusable cell in the 4x4 talent icon atlas. */

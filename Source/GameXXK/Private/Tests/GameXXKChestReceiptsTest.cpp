@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/ScopeExit.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKTrainingChestRules.h"
@@ -15,6 +16,7 @@ bool FGameXXKChestReceiptsTest::RunTest(const FString&)
     const FString Language=GameXXKLocalization::GetLanguage();ON_SCOPE_EXIT{GameXXKLocalization::SetLanguage(Language,false);};
     auto* MVP=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());if(!MVP->StartGame())return false;
     auto Base=MVP->GetRuntimeState();Base.Screen=EGameXXKScreen::Town;Base.Talents.MinimumBackpackCapacity=200;
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Base);
     Base.Training.bTravelActive=false;Base.Training.ActiveTravelEncounterIndex=INDEX_NONE;Base.Training.OwnedChestTokens.Reset();
     Base.Training.ChallengeRewardSeed=20260910;FString Error;
     const auto Tier=EGameXXKTrainingRewardTier::NormalChest;

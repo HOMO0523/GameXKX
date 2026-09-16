@@ -45,6 +45,8 @@ public:
 	FGameXXKRuntimeState& GetMutableRuntimeState();
 
 #if GAMEXXK_WITH_DEV_TOOLS
+	/** Explicit F10 reset: writes a fresh beginning to the current slot before changing live state. */
+	bool ResetSaveForDevelopment(FString& OutError);
 	/** Dev sessions reuse normal transactions while suppressing all player-slot writes. */
 	void SetDevelopmentWritesSuppressed(bool bSuppressed) { bDevelopmentWritesSuppressed = bSuppressed; }
 	bool AreDevelopmentWritesSuppressed() const { return bDevelopmentWritesSuppressed; }
@@ -206,6 +208,7 @@ public:
 
 	/** Atomically validates and immediately saves semantic combat-guide progress. */
 	bool CommitGuideProgress(const FGameXXKGuideProgress& GuideProgress, FString* OutError = nullptr);
+	bool CommitFirstBattleGuideStep(FName Topic);
 
 	/** Resets only combat-guide preference/session/completions, preserving tasks and route rewards. */
 	bool ResetCombatGuideProgress(FString* OutError = nullptr);
@@ -350,6 +353,12 @@ public:
 	bool OpenOneTrainingChest(EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
 	UFUNCTION(BlueprintCallable, Category = "GameXXK|Training")
 	bool OpenAllTrainingChests(EGameXXKTrainingRewardTier Tier, FGameXXKTrainingChestOpenResult& OutResult);
+
+    UFUNCTION(BlueprintCallable, Category="GameXXK|Teaching")
+    bool OpenTeachingChest(bool bMaterialBoxes,bool bAll,int32& Opened,FString& Error);
+    bool SetTeachingChestDismissed(bool bDismissed,FString& Error);
+    bool RecordTeachingAutoFill(const TArray<FName>& Inputs,FString& Error);
+    bool RecordTeachingGuideStep(FName Step,FString& Error);
 
 #if WITH_DEV_AUTOMATION_TESTS
 	/** Per-subsystem deterministic disk-write seam used only by automation rollback tests. */
@@ -679,6 +688,7 @@ public:
 	TArray<FName> BuildTurnOrder(bool bBossBattle) const;
 
 private:
+	bool InitializeNewGame(bool bResetSavedProgress);
     FGameXXKSaveCommit PersistenceCommit;
     FString ActiveSaveSlot;
     int32 ActiveSaveUserIndex = 0;

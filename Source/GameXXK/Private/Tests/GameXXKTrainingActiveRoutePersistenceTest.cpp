@@ -10,7 +10,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKTrainingRouteSaveTest,
 bool FGameXXKTrainingRouteSaveTest::RunTest(const FString& Parameters)
 {
 	auto* Sub = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-	if (!Sub->StartGame() || !Sub->StartTrainingChallenge(TEXT("Training.Normal.1-2"))) return false;
+	if (!Sub->StartGame() || !Sub->StartTrainingChallenge(TEXT("Training.Normal.1-1"))) return false;
 	FString Error;
 	TestTrue(FString::Printf(TEXT("a real single-map challenge is saveable: %s"),*Error), FGameXXKSaveMigration::ValidateRuntimeState(Sub->GetRuntimeState(),Error));
 	FGameXXKSaveState Restored; FGameXXKSaveMigrationReport Report;

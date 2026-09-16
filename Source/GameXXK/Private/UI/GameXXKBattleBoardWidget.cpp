@@ -46,6 +46,9 @@
 #include "GameXXKRelicCatalog.h"
 #include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Guide/GameXXKTutorial01GuideHost.h"
+#include "Guide/GameXXKFirstBattleGuideRules.h"
+#include "UI/GameXXKInterfaceHelpWidget.h"
+#include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInterface.h"
 #include "HAL/PlatformTime.h"
@@ -175,6 +178,7 @@ namespace
 	static const FVector2D BattleTopRightButtonSize(186.0f, 60.0f);
 	static constexpr float BattleTopRightButtonGap = 48.0f;
 	static constexpr int32 BattleTopRightToolbarZOrder = 90;
+	static constexpr int32 BattleEnemyShowcaseZOrder = BattleTopRightToolbarZOrder - 10;
 	static constexpr int32 BattleRetreatModalZOrder = 200;
 	static constexpr float PlayerHandSelectedScale = 1.20f;
 	static constexpr float PlayerHandSelectedLift = -32.0f;
@@ -1546,6 +1550,7 @@ void UGameXXKBattleBoardWidget::NativeTick(const FGeometry& MyGeometry, float In
 		}
 	}
 	TickTutorial01Guide(InDeltaTime);
+	TickFirstBattleGuide();
 	TickAutoBattleAtRealTime(FPlatformTime::Seconds());
 }
 
@@ -7309,7 +7314,7 @@ void UGameXXKBattleBoardWidget::BuildProgrammaticLayout()
 		ShowcaseSlot->SetOffsets(FMargin(-EnemyIntentShowcaseCardSize.X * 0.5f, -EnemyIntentShowcaseCardSize.Y * 0.5f,
 			EnemyIntentShowcaseCardSize.X, EnemyIntentShowcaseCardSize.Y));
 		ShowcaseSlot->SetAlignment(FVector2D::ZeroVector);
-		ShowcaseSlot->SetZOrder(BattleEnemyCardZOrder);
+		ShowcaseSlot->SetZOrder(BattleEnemyShowcaseZOrder);
 	}
 
 	EnemyIntentRecoveryButton = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(), TEXT("BattleEnemyIntentRecoveryButton"));
@@ -8663,6 +8668,112 @@ void UGameXXKBattleBoardWidget::TickTutorial01Guide(const float DeltaSeconds)
 		bPaused,
 		bBattleBusy,
 		State->CardRun.ActiveBattle.Phase);
+}
+
+void UGameXXKBattleBoardWidget::TickFirstBattleGuide()
+{
+	auto Hide=[this]()
+	{
+		TGuardValue<bool> Changing(bChangingFirstBattleStep,true);
+		if(FirstBattleHelp)FirstBattleHelp->DiscardForNewGame();
+		FirstBattleStep=NAME_None;FirstBattleTarget.Reset();
+	};
+	auto* M=ResolveMVPSubsystem();
+	if(!M || !GameXXKFirstBattleGuide::Eligible(M->GetRuntimeState())
+		|| !M->GetRuntimeState().CardRun.bHasActiveCardBattle
+		|| !M->GetRuntimeState().CardRun.ActiveBattle.Deck.bFirstBattleGuidance
+		|| GetVisibility()==ESlateVisibility::Collapsed || IsBattlePresentationPending()
+		|| IsEnemyIntentPresentationActive() || bBattleRetreatConfirmationOpen
+		|| (Tutorial01GuideHost && Tutorial01GuideHost->IsStarted())) {Hide();return;}
+	for(const auto& Pair:HandMotions)
+	{
+		const auto& Motion=Pair.Value;
+		const int32 HandIndex=HandCardInstanceIds.IndexOfByKey(Pair.Key);
+		if(HandIndex!=INDEX_NONE && !GameXXKCardVisualEffects::Deal(Motion.Age,HandIndex,Motion.Order).Offset.IsNearlyZero())
+		{Hide();return;}
+	}
+	// Combat commits observe outcomes before saving; an idle UI tick must not copy the whole save.
+	const auto& S=M->GetRuntimeState();const auto& B=S.CardRun.ActiveBattle;
+	if(B.Deck.PendingChoice.Kind!=EGameXXKCardPendingChoiceKind::None){Hide();return;}
+	FName Topic=GameXXKFirstBattleGuide::NextTopic(S);
+	if(IsAutoBattleEnabled())
+	{
+		if(!GameXXKFirstBattleGuide::Has(S,TEXT("Auto")))M->CommitFirstBattleGuideStep(TEXT("Auto"));
+		Hide();return;
+	}
+	if(Topic.IsNone()){Hide();return;}
+	UWidget* Target=nullptr;bool Action=false,Hover=false,Targeting=false;
+	FString Key=FString(TEXT("FirstBattle."))+Topic.ToString();
+	// Qi is a display-only, hit-test-transparent widget: highlight it without requiring a hover event.
+	if(Topic==TEXT("Qi")){Target=PartyQiWidget;}
+	else if(Topic==TEXT("EndTurn")){Target=EndTurnButton;Action=true;}
+	else if(Topic==TEXT("Auto")){Target=AutoBattleButton;}
+	else if(Topic==TEXT("ArmorView"))
+	{
+		for(const auto& Unit:B.Units)
+		{
+			if(Unit.Side!=EGameXXKCardTargetSide::Party || Unit.Armor<=0)continue;
+			UGameXXKBattleUnitHudWidget* Hud=ProjectedUnitHuds.FindRef(Unit.UnitId);
+			auto* Status=Hud?Hud->GetStatusEffectsWidgetForTest():nullptr;
+			if(Status && Status->WidgetTree)Status->WidgetTree->ForEachWidget([&](UWidget* Widget)
+			{
+				if(auto* Icon=Cast<UGameXXKBattleStatusIconWidget>(Widget);Icon && Icon->GetIconIdForTest()==TEXT("ArmorShield"))Target=Icon;
+			});
+			if(Target)break;
+		}
+		Hover=true;
+	}
+	else
+	{
+		if(IsCardTargetingActive())
+		{
+			if(Topic==TEXT("AttackView"))Topic=TEXT("Attack");
+			for(const auto& Unit:B.Units)if(Unit.bLiving&&LegalCardTargetUnitIds.Contains(Unit.UnitId))
+			{Target=UnitTargetProxies.FindRef(Unit.UnitId);if(Target)break;}
+			Action=true;Targeting=true;Key=TEXT("FirstBattle.Target");
+		}
+		else
+		{
+			const FName CardId=GameXXKFirstBattleGuide::SuggestedCard(Topic);
+			for(int32 I=0;I<HandCardInstanceIds.Num()&&I<HandCardButtons.Num();++I)
+			{
+				const auto* Card=B.Deck.Hand.FindByPredicate([&](const auto& C){return C.InstanceId==HandCardInstanceIds[I] && C.CardId==CardId && C.OwnerUnitId==TEXT("Player");});
+				FGameXXKCardPlayPreview Preview;
+				if(Card && FGameXXKCardBattleAdapter::BuildCardPlayPreview(S,Card->InstanceId,Preview) && Preview.bCanPlay)
+				{Target=HandCardButtons[I];break;}
+			}
+			Hover=Topic==TEXT("AttackView");Action=!Hover;
+			if(!Target){Topic=TEXT("WaitTurn");Key=TEXT("FirstBattle.WaitTurn");Target=EndTurnButton;Action=true;Hover=false;}
+		}
+	}
+	if(!Target || (GetWorld() && Target->GetCachedGeometry().GetLocalSize().IsNearlyZero())){Hide();return;}
+	if(!FirstBattleHelp)
+	{
+		FirstBattleHelp=WidgetTree->ConstructWidget<UGameXXKInterfaceHelpWidget>(UGameXXKInterfaceHelpWidget::StaticClass(),TEXT("FirstBattleHelp"));
+		if(auto* GuideCanvasSlot=ViewportRootCanvas?ViewportRootCanvas->AddChildToCanvas(FirstBattleHelp):nullptr)
+		{GuideCanvasSlot->SetAnchors(FAnchors(0,0,1,1));GuideCanvasSlot->SetOffsets(FMargin(0));GuideCanvasSlot->SetZOrder(1000);}
+	}
+	const FName DisplayStep(*(Topic.ToString()+(Targeting?TEXT(".Target"):TEXT(""))));
+	const FName SnoozedStep(*(FString(TEXT("Snoozed."))+DisplayStep.ToString()));
+	// Closing this small prompt hides only this operation. A result, new target step,
+	// or the enemy/player round transition naturally offers the next relevant prompt.
+	if(!FirstBattleHelp->IsOpen() && FirstBattleStep==SnoozedStep)return;
+	if(FirstBattleHelp->IsOpen()&&FirstBattleStep==DisplayStep&&FirstBattleTarget.Get()==Target)return;
+	Hide();FirstBattleStep=DisplayStep;FirstBattleTarget=Target;
+	const TWeakObjectPtr<UGameXXKBattleBoardWidget> WeakThis(this);
+	FirstBattleHelp->ShowBattleStep(this,DisplayStep,Target,GameXXKLocalization::Text(*Key),Action,Hover,
+		[WeakThis,Topic,Targeting](FName)
+		{
+			auto* Host=WeakThis.Get();auto* MVP=Host?Host->ResolveMVPSubsystem():nullptr;if(!MVP)return false;
+			if(Topic==TEXT("AttackView")||Topic==TEXT("Qi")||Topic==TEXT("ArmorView")||Topic==TEXT("Auto"))return MVP->CommitFirstBattleGuideStep(Topic);
+			if(Topic==TEXT("EndTurn")||Topic==TEXT("WaitTurn"))return MVP->GetRuntimeState().CardRun.ActiveBattle.Phase!=EGameXXKCardBattlePhase::Player;
+			return Targeting?!Host->IsCardTargetingActive():Host->IsCardTargetingActive();
+		},FSimpleDelegate::CreateWeakLambda(this,[this]()
+		{
+			if(bChangingFirstBattleStep || !FirstBattleHelp || FirstBattleHelp->GetCurrentCompletionIdForTest().IsNone())return;
+			FirstBattleStep=FName(*(FString(TEXT("Snoozed."))+FirstBattleStep.ToString()));
+			FirstBattleTarget.Reset();
+		}));
 }
 
 FName UGameXXKBattleBoardWidget::ResolveTutorial01CardSelectAction(

@@ -1,4 +1,5 @@
 #include "MVP/GameXXKSaveMigration.h"
+#include "GameXXKTeachingChestRules.h"
 #include "GameXXKHuntRules.h"
 #include "GameXXKTrainingSettlementRules.h"
 #include "Narrative/GameXXKMainStoryRules.h"
@@ -552,6 +553,11 @@ namespace
 		FString& OutError)
 	{
 		OutError.Reset();
+		if (Report.SourceVersion >= FGameXXKSaveMigration::ProgressivePartySlotsIntroducedSaveVersion)
+		{
+			return FGameXXKPartyFormationRules::Normalize(State, &OutError);
+		}
+		State.Training.bProgressivePartySlots = false;
 		FName OrderedNpcId;
 		const bool bHasOrderedNpc =
 			FGameXXKPartyFormationRules::ResolveQuestNpcId(State, OrderedNpcId);
@@ -584,6 +590,16 @@ namespace
 		}
 		State.CardRun.PartySelection.QuestNpc.NpcId = RecoveredNpcId;
 		State.CardRun.PartySelection.QuestNpc.SelectedCardIds = RecoveredLoadout->SelectedCardIds;
+        // Before v43, sparse formations were legacy data to repair. Modern
+        // Normalize deliberately preserves empty optional slots instead.
+        if(!State.CardRun.OrderedFormation.Members.ContainsByPredicate([](const auto& Member){return Member.Kind==EGameXXKPartyMemberKind::QuestNpc;})
+            ||!State.CardRun.OrderedFormation.Members.ContainsByPredicate([](const auto& Member){return Member.Kind==EGameXXKPartyMemberKind::PermanentCompanion;}))
+        {
+            FGameXXKOrderedPartyFormation Recovered;
+            if(!FGameXXKPartyFormationRules::BuildLegacyProjection(State,Recovered))
+            {OutError=TEXT("Cannot reconstruct the legacy party.");return false;}
+            State.CardRun.OrderedFormation=MoveTemp(Recovered);
+        }
 		if (!FGameXXKPartyFormationRules::Normalize(State, &OutError))
 		{
 			return false;
@@ -2230,12 +2246,23 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		Fail(OutReport, TEXT("Unsupported save version."));
 		return false;
 	}
-	if (Source.SaveVersion == CurrentSaveVersion || Source.SaveVersion == HuntExpansionIntroducedSaveVersion)
+	if (Source.SaveVersion == CurrentSaveVersion || Source.SaveVersion == StarterEquipmentPowerIntroducedSaveVersion || Source.SaveVersion == OrdinaryTeachingChestDropsIntroducedSaveVersion || Source.SaveVersion == TeachingChestsIntroducedSaveVersion || Source.SaveVersion == ProgressivePartySlotsIntroducedSaveVersion || Source.SaveVersion == RawIntegrityEnvelopeIntroducedSaveVersion
+		|| Source.SaveVersion == HuntExpansionIntroducedSaveVersion)
 	{
 		FGameXXKSaveState Candidate = Source;
         Candidate.SaveVersion = CurrentSaveVersion;
+		if(Source.SaveVersion < FirstBattleGuidanceIntroducedSaveVersion)
+		{
+			Candidate.RuntimeState.GuideProgress.bFirstBattleGuideEnabled=false;
+			auto& Deck=Candidate.RuntimeState.CardRun.ActiveBattle.Deck;
+			Deck.bFirstBattleGuidance=false;Deck.FirstBattleDrawPhase=0;Deck.FirstBattleDeferredCardIds.Reset();
+		}
+		if (Source.SaveVersion < ProgressivePartySlotsIntroducedSaveVersion) Candidate.RuntimeState.Training.bProgressivePartySlots = false;
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		FString ValidationError;
+        if(Source.SaveVersion==TeachingChestsIntroducedSaveVersion
+            &&!FGameXXKTeachingChestRules::RestoreOrdinaryChestTokens(Candidate.RuntimeState,ValidationError))
+        {Fail(OutReport,ValidationError);return false;}
 		const int32 QuestNpcProgressionSeed = Candidate.RuntimeState.CardRun.RouteRandomSeed != 0
 			? Candidate.RuntimeState.CardRun.RouteRandomSeed
 			: FGameXXKTrainingRules::DefaultChallengeRewardSeed();
@@ -2254,6 +2281,13 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 			Fail(OutReport, ValidationError);
 			return false;
 		}
+        if(Source.SaveVersion<StarterEquipmentPowerIntroducedSaveVersion)
+        {
+            const bool HasEquippedStarter=Candidate.RuntimeState.EquipmentCollection.EquipmentInstances.ContainsByPredicate([](const auto& Item)
+            {const auto* D=FGameXXKEquipmentCatalog::FindDefinition(Item.BaseEquipmentId);return D&&D->Set==EGameXXKEquipmentSet::Starter&&!Item.OwnerCharacterId.IsNone();});
+            if(HasEquippedStarter&&!FGameXXKEquipmentEconomyRules::SynchronizeRuntimeMirrors(Candidate.RuntimeState))
+            {Fail(OutReport,TEXT("Starter equipment attribute migration failed."));return false;}
+        }
 		if (!MigrateLegacyHeroSpellTask(Candidate.RuntimeState, ValidationError)
 			|| !MigrateLegacyHeroTimedModifiers(Candidate.RuntimeState, ValidationError)
 			|| !ValidateRuntimeState(Candidate.RuntimeState, ValidationError))
@@ -2271,6 +2305,10 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 		// surgically so legacy category/progression/Training normalizers cannot
 		// rewrite valid-but-noncanonical player state.
 		FGameXXKSaveState Candidate = Source;
+		Candidate.RuntimeState.GuideProgress.bFirstBattleGuideEnabled = false;
+		Candidate.RuntimeState.CardRun.ActiveBattle.Deck.bFirstBattleGuidance = false;
+		Candidate.RuntimeState.CardRun.ActiveBattle.Deck.FirstBattleDrawPhase = 0;
+		Candidate.RuntimeState.CardRun.ActiveBattle.Deck.FirstBattleDeferredCardIds.Reset();
 		MigrateRefinementSandMirror(Candidate.RuntimeState);
 		Candidate.RuntimeState.DesktopInventory.LockedEquipmentInstanceIds.Reset();
 		Candidate.RuntimeState.DesktopInventory.LockedItemIds.Reset();
@@ -2318,6 +2356,11 @@ bool FGameXXKSaveMigration::MigrateToCurrent(
 
 	FGameXXKSaveState Candidate = Source;
 	Candidate.RuntimeState = RestoreOldChain(Source);
+	Candidate.RuntimeState.GuideProgress.bFirstBattleGuideEnabled = false;
+	Candidate.RuntimeState.CardRun.ActiveBattle.Deck.bFirstBattleGuidance = false;
+	Candidate.RuntimeState.CardRun.ActiveBattle.Deck.FirstBattleDrawPhase = 0;
+	Candidate.RuntimeState.CardRun.ActiveBattle.Deck.FirstBattleDeferredCardIds.Reset();
+	Candidate.RuntimeState.Training.bProgressivePartySlots = false;
 	FString MigrationError;
 	if (Source.SaveVersion < BladePartnerCardsIntroducedSaveVersion)
 	{
@@ -2738,6 +2781,7 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		OutError = TEXT("Saved physical inventory exceeds unlocked talent capacity.");
 		return false;
 	}
+	if (!FGameXXKTeachingChestRules::Validate(State,OutError))return false;
 	if (!FGameXXKEquipmentToolRules::ValidateProgress(State.ToolProgress, &OutError))
 	{
 		return false;
@@ -2770,6 +2814,11 @@ bool FGameXXKSaveMigration::ValidateRuntimeState(const FGameXXKRuntimeState& Sta
 		State.CardRun.OrderedFormation,
 		&OutError))
 	{
+		return false;
+	}
+	if (State.Training.PartyProgressionStep < 0 || State.Training.PartyProgressionStep > 2)
+	{
+		OutError = TEXT("Saved party-slot progression is invalid.");
 		return false;
 	}
 	if (!FGameXXKPartyFormationRules::ValidateCompatibilityProjection(State, &OutError))

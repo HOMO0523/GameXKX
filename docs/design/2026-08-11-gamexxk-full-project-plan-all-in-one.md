@@ -1,5 +1,7 @@
 # GameXXK 全项目规划全集（A：单文件全集阅读版）
 
+> **现行整体交接入口（2026-09-16）：[程序架构、玩法设计与完整待办](../handoff/README.md)。** 本文保留历史规划；3D 城镇主入口、198 张旧卡目录和早期开局流程不得直接作为当前版本规则。
+
 > ⚠ 本文件冻结于 2026-08-11/12 基线。之后任务 NPC 语义已切换：`AcceptTownQuest` **不再**把 `bFollowerJoined` 设为 true；玩家显式点“入队”后才跟随。现行语义以 `docs/production/current-goal-acceptance.md` 与代码为准。
 
 日期：2026-08-11

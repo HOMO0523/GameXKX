@@ -28,7 +28,7 @@ namespace
 	constexpr const TCHAR* PaperFrameTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_PanelLarge.T_MasterV2_PanelLarge");
 	constexpr const TCHAR* CloseInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_CloseInk.T_MasterV2_CloseInk");
 	constexpr const TCHAR* ItemSlotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ItemSlot.T_MasterV2_ItemSlot");
-	constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_Ingot.T_MasterV2_Ingot");
+	constexpr const TCHAR* IngotTexturePath = TEXT("/Game/GameXXK/UI/Items/T_Item_GoldCoin.T_Item_GoldCoin");
 	constexpr const TCHAR* SelectionInkTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	constexpr const TCHAR* PurchaseButtonTexturePath = TEXT("/Game/GameXXK/UI/MasterV2/Approved/T_MasterV2_ButtonPurchase.T_MasterV2_ButtonPurchase");
 	const FVector2D CloseButtonSize(74.0f, 74.0f);

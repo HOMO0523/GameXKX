@@ -27,6 +27,7 @@ class GAMEXXK_API UGameXXKTalentNodeButton : public UButton
 
 public:
 	void Configure(UGameXXKTalentTreeWidget* InOwner, FName InNodeId);
+    FName GetNodeId() const { return NodeId; }
 
 private:
 	UFUNCTION()
@@ -50,6 +51,7 @@ public:
 	void TickForTest(float DeltaSeconds);
 	bool ClickPurchaseButtonForTest();
 	bool SelectNodeForTest(FName NodeId);
+    void FocusNodeForGuide(FName NodeId, bool bSelect);
 	bool PurchaseSelectedForTest();
 	bool ToggleTotalsForTest();
 	bool IsTotalsVisibleForTest() const { return bShowTotals; }

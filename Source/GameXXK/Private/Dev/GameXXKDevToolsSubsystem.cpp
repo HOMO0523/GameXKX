@@ -18,6 +18,7 @@
 #include "GameXXKRelicRules.h"
 #include "GameXXKDesktopInventoryRules.h"
 #include "UI/GameXXKCharacterUiPresentation.h"
+#include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
@@ -300,7 +301,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	if (!Request) return Finish(false,TEXT("命令必须是有效JSON。"));
 	const FString Command=String(Request,TEXT("command"));
 	if(const auto* AcademyMVP=ResolveMVP();AcademyMVP && AcademyMVP->IsAcademySessionActive()
-		&& Command!=TEXT("help") && Command!=TEXT("inspect") && Command!=TEXT("catalog") && Command!=TEXT("snapshot.export"))
+		&& Command!=TEXT("help") && Command!=TEXT("inspect") && Command!=TEXT("catalog") && Command!=TEXT("snapshot.export") && Command!=TEXT("save.reset"))
 		return Finish(false,TEXT("请先退出教程，再修改测试场景。"));
 	Response->SetStringField(TEXT("command"),Command);
 	Response->SetStringField(TEXT("request_id"),String(Request,TEXT("request_id")));
@@ -313,6 +314,7 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 	static const TMap<FString,FString> Schemas={
 		{TEXT("help"),TEXT("")},{TEXT("catalog"),TEXT("query,category")},{TEXT("inspect"),TEXT("character,compact")},
 		{TEXT("session.begin"),TEXT("")},{TEXT("session.restore"),TEXT("")},
+		{TEXT("save.reset"),TEXT("")},
 		{TEXT("snapshot.save"),TEXT("name")},{TEXT("snapshot.load"),TEXT("name")},{TEXT("snapshot.list"),TEXT("")},{TEXT("snapshot.export"),TEXT("")},{TEXT("snapshot.import"),TEXT("scene")},
 		{TEXT("item.give"),TEXT("id,quantity,character")},{TEXT("character.level"),TEXT("level,character")},{TEXT("party.select"),TEXT("character")},{TEXT("cards.set"),TEXT("character,cards")},
         {TEXT("progress.unlock_stages"),TEXT("")},{TEXT("progress.unlock_tasks"),TEXT("")},
@@ -426,6 +428,17 @@ FString UGameXXKDevToolsSubsystem::ExecuteJson(const FString& RequestJson)
 		return Finish(true,TEXT("实时属性与战斗状态"),D);
 	}
 	if (Command==TEXT("session.begin")) { if (!BeginSession()) return Finish(false,Error);return Finish(true,TEXT("已开始临时试验；原进度保留。")); }
+	if (Command==TEXT("save.reset"))
+	{
+		if (!MVP->ResetSaveForDevelopment(Error)) return Finish(false,Error);
+		Impl->Original.Reset(); Impl->BeforeBattle.Reset(); Impl->BattleStart.Reset(); Impl->Batch.Reset();
+		Impl->OriginalTravel={}; Impl->BeforeBattleTravel={};
+		if (MVP->GetWorld())
+			if (auto* PC=Cast<AGameXXKMVPPlayerController>(MVP->GetWorld()->GetFirstPlayerController()))
+				if (auto* Workbench=PC->GetDesktopTrainingWorkbenchWidgetForTest()) Workbench->ResetPresentationForNewGame();
+		RefreshPresentation(MVP);
+		return Finish(true,TEXT("存档已重置，已回到最初的 1-1。"));
+	}
     if(Command==TEXT("progress.unlock_stages")||Command==TEXT("progress.unlock_tasks"))
     {
         if(Current.CardRun.bHasActiveCardBattle||Current.Training.bChallengeActive)

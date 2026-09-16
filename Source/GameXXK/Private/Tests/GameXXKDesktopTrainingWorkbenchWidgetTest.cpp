@@ -651,6 +651,7 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	int32 NavDiscCount = 0;
 	for (const FString& Path : ResourcePaths)
 	{
+		bHasIngot |= Path.Contains(TEXT("T_Item_GoldCoin"));
 		if (Path.Contains(TEXT("/Game/GameXXK/UI/MasterV2/Approved/")))
 		{
 			++ApprovedResourceCount;
@@ -659,7 +660,6 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 			bHasEquipmentSlot |= Path.Contains(TEXT("T_MasterV2_EquipmentSlot"));
 			bHasHeroFullBody |= Path.Contains(TEXT("T_MasterV2_HeroFullBody"));
 			bHasCloseInk |= Path.Contains(TEXT("T_MasterV2_CloseInk"));
-			bHasIngot |= Path.Contains(TEXT("T_MasterV2_Ingot"));
 			bHasRejectedStarButton |= Path.Contains(TEXT("T_MasterV2_ButtonNeutral"))
 				|| Path.Contains(TEXT("T_MasterV2_ButtonPrimary"))
 				|| Path.Contains(TEXT("T_MasterV2_ButtonDanger"));
@@ -676,7 +676,7 @@ bool FGameXXKDesktopTrainingWorkbenchMasterV2ResourceContractTest::RunTest(const
 	TestTrue(TEXT("workbench uses the approved equipment slot texture"), bHasEquipmentSlot);
 	TestTrue(TEXT("workbench reuses the approved PSD backpack hero"), bHasHeroFullBody);
 	TestTrue(TEXT("workbench reuses the approved PSD close ink"), bHasCloseInk);
-	TestTrue(TEXT("workbench reuses the approved PSD ingot"), bHasIngot);
+	TestTrue(TEXT("workbench uses the golden copper coin"), bHasIngot);
 	TestFalse(TEXT("workbench never advertises the user-rejected star button base"), bHasRejectedStarButton);
 	TestFalse(TEXT("workbench never substitutes the rejected generic star tabs"), bHasRejectedGenericTab);
 	TestTrue(TEXT("workbench advertises the approved normal tab state"), bHasApprovedNormalTab);
@@ -6339,6 +6339,8 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterTest::RunTest(const FString&
 	{
 		return false;
 	}
+    Subsystem->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
+    Subsystem->StartTrainingTravel(TEXT("Training.Normal.1-1"));
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	Widget->SetMVPSubsystem(Subsystem);
 	TestTrue(TEXT("character-roster fixture opens the workbench"), Widget->OpenWorkbench());

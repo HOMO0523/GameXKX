@@ -34,7 +34,7 @@ bool FGameXXKSettlementBossFlowTest::RunTest(const FString& Parameters)
 {
 	UGameXXKMVPSubsystem* Sub = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("fixture starts a valid permanent party"), Sub->StartGame())) return false;
-	const FName StageId(TEXT("Training.Normal.1-2"));
+	const FName StageId(TEXT("Training.Normal.1-1"));
 	if (!TestTrue(TEXT("fixture starts an unlocked challenge"), Sub->StartTrainingChallenge(StageId))) return false;
 	FGameXXKRuntimeState& State = Sub->GetMutableRuntimeState();
 	const FGameXXKRouteMapNode* Boss = State.RouteMapNodes.FindByPredicate([](const FGameXXKRouteMapNode& Node){return Node.NodeKind == EGameXXKNodeKind::Boss;});
@@ -51,7 +51,7 @@ bool FGameXXKSettlementBossFlowTest::RunTest(const FString& Parameters)
 	const auto Receipt = Sub->GetPendingTrainingSettlementCopy();
 	TestEqual(TEXT("receipt owns the actual stage"), Receipt.StageId, StageId);
 	TestEqual(TEXT("receipt shows actual gold already awarded"), Receipt.Gold, Sub->GetRuntimeState().PlayerGold - GoldBefore);
-	TestEqual(TEXT("receipt freezes all three deployed member outcomes"), Receipt.Members.Num(), 3);
+	TestEqual(TEXT("receipt freezes the actual solo deployment"), Receipt.Members.Num(), 1);
 	TestEqual(TEXT("receipt statistics identify the final Boss battle"), Receipt.Stats.Rounds, 5);
 	TestTrue(TEXT("Boss does not create ordinary reward choices"), Sub->GetRuntimeState().CardRun.PendingReward.Options.IsEmpty());
 	TestFalse(TEXT("idle waits for confirmation"), Sub->GetRuntimeState().Training.bTravelActive);

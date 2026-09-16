@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
+#include "GameXXKTeachingChestRules.h"
 
 #if WITH_EDITOR
 #include "Misc/DataValidation.h"
@@ -75,6 +76,13 @@ USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKGuideProgress
 {
 	GENERATED_BODY()
+
+	/** New profiles opt into the ordinary first-challenge guide; legacy profiles stay unchanged. */
+	UPROPERTY(BlueprintReadWrite, SaveGame, Category="Guide")
+	bool bFirstBattleGuideEnabled = false;
+
+    UPROPERTY(BlueprintReadWrite, SaveGame, Category="Guide")
+    FGameXXKTeachingChestProgress TeachingChests;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, SaveGame, Category = "Guide")
 	EGameXXKGuidePreference Preference = EGameXXKGuidePreference::Unset;

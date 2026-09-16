@@ -1,6 +1,7 @@
 #include "Misc/AutomationTest.h"
 
 #include "GameXXKTrainingRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "Engine/GameInstance.h"
@@ -38,6 +39,7 @@ bool FGameXXKTalentTravelPartyAndMovementIntegrationTest::RunTest(const FString&
 	{
 		return false;
 	}
+	Baseline->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	Talented->GetMutableRuntimeState() = Baseline->GetRuntimeStateCopy();
 	FGameXXKRuntimeState& TalentedState = Talented->GetMutableRuntimeState();
 	TalentedState.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
@@ -110,6 +112,7 @@ bool FGameXXKTalentTrainingIntegrationTest::RunTest(const FString& Parameters)
 	}
 	UGameXXKMVPSubsystem* Boosted =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Baseline->GetMutableRuntimeState());
 	Boosted->GetMutableRuntimeState() = Baseline->GetRuntimeStateCopy();
 	UnlockIdleEntry(Boosted->GetMutableRuntimeState());
 	Boosted->GetMutableRuntimeState().Talents.NodeRanks.Add(TEXT("Talent.Idle.OnlineGold.01"), 5);
@@ -149,6 +152,7 @@ bool FGameXXKTalentTrainingIntegrationTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* OfflineLocked =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	TestTrue(TEXT("offline-lock fixture starts"), OfflineLocked && OfflineLocked->StartGame());
+    GameXXKPermanentPartyTestFixtures::SkipTeachingChests(OfflineLocked->GetMutableRuntimeState());
 	FGameXXKTrainingOfflineReward OfflineReward;
 	TestFalse(TEXT("offline simulation is locked before the idle entry"),
 		OfflineLocked->SimulateTrainingTravelOffline(64, OfflineReward));

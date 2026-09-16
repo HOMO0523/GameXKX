@@ -4,6 +4,8 @@ void FGameXXKTrainingTravelVisualRuntime::Reset()
 {
 	LatestRuntime = FGameXXKTrainingTravelRuntime();
 	PendingCombatEvents.Reset();
+	LootBursts.Reset();
+	NextLootOrdinal = 0;
 	ActiveCombatEvent = FCombatEvent();
 	VisualPhase = EGameXXKTrainingTravelVisualPhase::Paused;
 	VisualPhaseElapsedSeconds = 0.0f;
@@ -68,7 +70,8 @@ void FGameXXKTrainingTravelVisualRuntime::NotifyTravelStep(
 	const FGameXXKTrainingTravelRuntime& After,
 	const bool bEncounterCompleted,
 	const bool bStageCompleted,
-	const bool bDefeated)
+	const bool bDefeated,
+	const FGameXXKTrainingReward& Reward)
 	{
 	LatestRuntime = After;
 	bHasAuthoritativeSnapshot = true;
@@ -87,7 +90,7 @@ void FGameXXKTrainingTravelVisualRuntime::NotifyTravelStep(
 			|| Before.PlayerHP != After.PlayerHP);
 	if (bCombatMutation)
 	{
-		EnqueueCombatEvent(Before, After, bEncounterCompleted, bDefeated);
+		EnqueueCombatEvent(Before, After, bEncounterCompleted, bDefeated, Reward);
 		return;
 	}
 
@@ -427,9 +430,11 @@ void FGameXXKTrainingTravelVisualRuntime::EnqueueCombatEvent(
 	const FGameXXKTrainingTravelRuntime& Before,
 	const FGameXXKTrainingTravelRuntime& After,
 	const bool bEncounterCompleted,
-	const bool bDefeated)
+	const bool bDefeated,
+	const FGameXXKTrainingReward& Reward)
 {
 	FCombatEvent Event;
+	if (bEncounterCompleted && !bDefeated) Event.Reward = Reward;
 	Event.EnemyDefinitionId = Before.EnemyDefinitionId;
 	Event.EnemySlotIndex = Before.ActiveEnemyIndex == INDEX_NONE ? 0 : Before.ActiveEnemyIndex;
 	Event.EnemiesBefore = Before.Enemies;
@@ -513,6 +518,15 @@ void FGameXXKTrainingTravelVisualRuntime::SetVisualPhase(const EGameXXKTrainingT
 	}
 	VisualPhase = Phase;
 	VisualPhaseElapsedSeconds = 0.0f;
+	if (Phase == EGameXXKTrainingTravelVisualPhase::EnemyDeath
+		&& (ActiveCombatEvent.Reward.Gold > 0 || ActiveCombatEvent.Reward.bChestRolled))
+	{
+		if (LootBursts.Num() >= 12) LootBursts.RemoveAt(0, 1, EAllowShrinking::No);
+		auto& Burst = LootBursts.AddDefaulted_GetRef();
+		Burst.Reward = ActiveCombatEvent.Reward;
+		Burst.EnemySlotIndex = ActiveCombatEvent.EnemySlotIndex;
+		Burst.Ordinal = NextLootOrdinal++;
+	}
 }
 
 void FGameXXKTrainingTravelVisualRuntime::CompleteTimedPhase()
@@ -581,6 +595,8 @@ float FGameXXKTrainingTravelVisualRuntime::GetCurrentPhaseDuration() const
 void FGameXXKTrainingTravelVisualRuntime::AdvanceMotion(const float DeltaSeconds)
 {
 	const float SafeDeltaSeconds = FMath::Max(0.0f, DeltaSeconds);
+	for (auto& Burst : LootBursts) Burst.Age += SafeDeltaSeconds;
+	LootBursts.RemoveAll([](const FGameXXKTravelLootBurst& Burst) { return Burst.Age >= 1.8f; });
 	if (SafeDeltaSeconds <= 0.0f)
 	{
 		return;

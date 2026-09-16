@@ -1,3 +1,4 @@
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 #include "Narrative/GameXXKMainStoryCatalog.h"
 #include "Narrative/GameXXKMainStoryRules.h"
@@ -37,7 +38,13 @@ bool FGameXXKMainStoryOpeningAndRewardTest::RunTest(const FString& Parameters)
 	FGameXXKRuntimeState State;
 	FGameXXKTrainingRules::InitializeNewGame(State.Training);
 	State.PlayerGold = 123;
-	TestTrue(TEXT("first chapter opens without requiring a new first clear"), FGameXXKMainStoryRules::IsChapterUnlocked(State, TEXT("S00")));
+    TestFalse(TEXT("main story waits until 1-3"),FGameXXKMainStoryRules::IsChapterUnlocked(State,TEXT("S00")));
+    FGameXXKTrainingRules::StartChallenge(State.Training,TEXT("Training.Normal.1-1"));
+    FGameXXKTrainingRules::CompleteChallenge(State.Training,TEXT("Training.Normal.1-1"));
+    TestFalse(TEXT("1-2 still focuses on companion"),FGameXXKMainStoryRules::IsChapterUnlocked(State,TEXT("S00")));
+    FGameXXKTrainingRules::StartChallenge(State.Training,TEXT("Training.Normal.1-2"));
+    FGameXXKTrainingRules::CompleteChallenge(State.Training,TEXT("Training.Normal.1-2"));
+	TestTrue(TEXT("first chapter opens at 1-3"), FGameXXKMainStoryRules::IsChapterUnlocked(State, TEXT("S00")));
 	TestFalse(TEXT("next chapter waits for mainline completion"), FGameXXKMainStoryRules::IsChapterUnlocked(State, TEXT("S01")));
 	TestTrue(TEXT("new chapter red dot"), FGameXXKMainStoryRules::HasUnseenChapter(State));
 	TestTrue(TEXT("view chapter records notification"), FGameXXKMainStoryRules::MarkChapterSeen(State, TEXT("S00")));
@@ -61,6 +68,7 @@ bool FGameXXKMainStoryGateRowTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State;
 	FGameXXKTrainingRules::InitializeNewGame(State.Training);
+    State.Training.bProgressivePartySlots=false; // Established story rule fixture.
 	State.Training.bChallengeActive = true;
 	State.Training.ActiveChallengeStageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	State.bHasGeneratedRouteMap = true; State.bDungeonActive = true; State.Screen = EGameXXKScreen::DungeonMap;
@@ -102,6 +110,7 @@ bool FGameXXKMainStoryTransactionTest::RunTest(const FString& Parameters)
 {
 	auto* Instance=NewObject<UGameInstance>(); auto* M=NewObject<UGameXXKMVPSubsystem>(Instance);
 	if(!TestTrue(TEXT("start valid party fixture"),M->StartGame()))return false;
+    M->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	TestTrue(TEXT("actual subsystem starts task"),Story->StartTask(TEXT("S00-01")));
 	for(int32 I=0;I<12&&!FGameXXKMainStoryRules::IsNodeCompleted(M->GetRuntimeState(),TEXT("S00-01"));++I)Story->AdvanceDialogue();
@@ -128,6 +137,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKMainStoryInvestigationTest,"GameXXK.Mai
 bool FGameXXKMainStoryInvestigationTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState S;FGameXXKTrainingRules::InitializeNewGame(S.Training);
+    S.Training.bProgressivePartySlots=false; // Established chapter/investigation fixture.
 	TestTrue(TEXT("opening 1 completes"),FinishStoryNode(S,TEXT("S00-01")));
 	TestTrue(TEXT("opening 2 completes"),FinishStoryNode(S,TEXT("S00-02")));
 	TestTrue(TEXT("start investigation"),FGameXXKMainStoryRules::StartNode(S,TEXT("S00-03")));
@@ -153,6 +163,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKMainStoryJourneyTest,"GameXXK.MainStory
 bool FGameXXKMainStoryJourneyTest::RunTest(const FString& Parameters)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* M=NewObject<UGameXXKMVPSubsystem>(Instance);if(!M->StartGame())return false;
+    M->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	for(FName Id:{FName(TEXT("S00-01")),FName(TEXT("S00-02")),FName(TEXT("S00-03"))})if(!FinishStoryNode(M->GetMutableRuntimeState(),Id))return false;
 	TestTrue(TEXT("task opens the outside prelude"),Story->StartTask(TEXT("S00-04")));
@@ -196,6 +207,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKMainStoryCampaignTest,"GameXXK.MainStor
 bool FGameXXKMainStoryCampaignTest::RunTest(const FString& Parameters)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* M=NewObject<UGameXXKMVPSubsystem>(Instance);if(!M->StartGame())return false;
+    M->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	// Stage availability is a fixture input. Story prerequisites, dialogue, choices,
 	// route creation, battle bridge, receipts and save validation run normally.
@@ -267,6 +279,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameXXKMainStoryExitSaveTest,"GameXXK.MainStor
 bool FGameXXKMainStoryExitSaveTest::RunTest(const FString& Parameters)
 {
 	auto* Instance=NewObject<UGameInstance>();auto* M=NewObject<UGameXXKMVPSubsystem>(Instance);if(!M->StartGame())return false;
+    M->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	auto* Story=NewObject<UGameXXKMainStorySubsystem>(Instance);Story->SetMVPForTest(M);
 	for(FName Id:{FName(TEXT("S00-01")),FName(TEXT("S00-02")),FName(TEXT("S00-03"))})if(!FinishStoryNode(M->GetMutableRuntimeState(),Id))return false;
 	if(!Story->StartTask(TEXT("S00-04")))return false;

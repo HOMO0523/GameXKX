@@ -1,4 +1,6 @@
 #include "UI/GameXXKMainStoryPanelWidget.h"
+#include "UI/GameXXKRewardPresentation.h"
+#include "Components/HorizontalBox.h"
 #include "Audio/GameXXKSfx.h"
 #include "UI/GameXXKAsyncStoryImage.h"
 #include "UI/GameXXKDesktopPaperStyle.h"
@@ -367,7 +369,7 @@ void UGameXXKMainStoryPanelWidget::BuildDetail()
 	BuildHeader(Node->Title);
 	auto* Art=WidgetTree->ConstructWidget<UGameXXKAsyncStoryImage>();Art->SetStoryTexture(Node->Illustration);Art->SetVisibility(ESlateVisibility::HitTestInvisible);
 	Place(Canvas,Art,FVector2D(45,76),FVector2D(855,285));
-	AddScrollableText(Node->Summary,FVector2D(36,365),FVector2D(873,74),18);
+	AddScrollableText(Node->Summary,FVector2D(36,365),FVector2D(873,44),18);
 	const auto Status=FGameXXKMainStoryRules::NodeState(*State,Node->Id);
 	FString Objective=Node->Objective.ToString();
 	if(Status==EGameXXKTaskState::Locked)
@@ -383,11 +385,12 @@ void UGameXXKMainStoryPanelWidget::BuildDetail()
 		Objective=GameXXKLocalization::Source(TEXT("先完成：")).ToString()+FString::Join(Missing,GameXXKLocalization::IsEnglish()?TEXT(", "):TEXT("、"));
 	}
 	else if(!Story->Feedback().IsEmpty())Objective=Story->Feedback().ToString();
-	AddText(FText::FromString(Objective),FVector2D(36,440),FVector2D(873,27),16,false,EGameXXKFontRole::Body,FGameXXKInRunUiStyle::MutedInk());
-	AddText(RewardText(Node->Id),FVector2D(36,472),FVector2D(590,28),16);
-	auto* Start=AddAction(TEXT("StoryStartTask"),FText::FromString(Status==EGameXXKTaskState::Active?TEXT("继续任务"):TEXT("开始任务")),1,FVector2D(668,470),FVector2D(236,46),true,Node->Id);
+	AddText(FText::FromString(Objective),FVector2D(36,408),FVector2D(873,28),16,false,EGameXXKFontRole::Body,FGameXXKInRunUiStyle::MutedInk());
+	const FGameXXKRewardBundle Rewards{Node->Gold,Node->NormalBoxes,Node->AdvancedBoxes,0,Node->BoxLevel};
+	Place(Canvas,GameXXKRewardPresentation::BuildRow(WidgetTree,Rewards,TEXT("StoryReward"),64),FVector2D(36,438),FVector2D(873,64));
+	auto* Start=AddAction(TEXT("StoryStartTask"),FText::FromString(Status==EGameXXKTaskState::Active?TEXT("继续任务"):TEXT("开始任务")),1,FVector2D(668,501),FVector2D(236,36),true,Node->Id);
 	Start->SetIsEnabled(Status!=EGameXXKTaskState::Locked);
-	AddAction(TEXT("StoryBackToTree"),FText::FromString(TEXT("返回流程树")),2,FVector2D(28,497),FVector2D(175,28),false);
+	AddAction(TEXT("StoryBackToTree"),FText::FromString(TEXT("返回流程树")),2,FVector2D(28,505),FVector2D(175,28),false);
 }
 void UGameXXKMainStoryPanelWidget::BuildResult()
 {
@@ -399,14 +402,15 @@ void UGameXXKMainStoryPanelWidget::BuildResult()
 	Illustration->SetVisibility(ESlateVisibility::HitTestInvisible);
 	auto* Fit = WidgetTree->ConstructWidget<UScaleBox>(); Fit->SetStretch(EStretch::ScaleToFit); Fit->SetContent(Illustration);
 	Place(Canvas,Fit,FVector2D(45,76),FVector2D(855,285));
-	AddScrollableText(Node->Result,FVector2D(36,367),FVector2D(873,70),18);
-	AddText(RewardText(Node->Id),FVector2D(36,445),FVector2D(873,28),16);
+	AddScrollableText(Node->Result,FVector2D(36,367),FVector2D(873,49),18);
+	const FGameXXKRewardBundle Rewards{Node->Gold,Node->NormalBoxes,Node->AdvancedBoxes,0,Node->BoxLevel};
+	Place(Canvas,GameXXKRewardPresentation::BuildRow(WidgetTree,Rewards,TEXT("StoryReward")),FVector2D(36,420),FVector2D(873,72));
 	const auto Status = FGameXXKMainStoryRules::NodeState(*State,Node->Id);
-	AddAction(TEXT("StoryResultBack"),FText::FromString(TEXT("返回流程树")),2,FVector2D(28,486),FVector2D(190,32),false);
-	AddAction(TEXT("StoryReplay"),FText::FromString(TEXT("回看对白")),8,FVector2D(246,486),FVector2D(190,32),false,Node->Id);
+	AddAction(TEXT("StoryResultBack"),FText::FromString(TEXT("返回流程树")),2,FVector2D(28,501),FVector2D(190,32),false);
+	AddAction(TEXT("StoryReplay"),FText::FromString(TEXT("回看对白")),8,FVector2D(246,501),FVector2D(190,32),false,Node->Id);
 	if (Status == EGameXXKTaskState::Completed)
-		AddAction(TEXT("StoryClaimReward"),FText::FromString(TEXT("领取奖励")),4,FVector2D(668,476),FVector2D(236,46),true,Node->Id);
-	else AddAction(TEXT("StoryContinueMainline"),FText::FromString(TEXT("继续主线")),7,FVector2D(668,476),FVector2D(236,46),true);
+		AddAction(TEXT("StoryClaimReward"),FText::FromString(TEXT("领取奖励")),4,FVector2D(668,499),FVector2D(236,38),true,Node->Id);
+	else AddAction(TEXT("StoryContinueMainline"),FText::FromString(TEXT("继续主线")),7,FVector2D(668,499),FVector2D(236,38),true);
 }
 void UGameXXKMainStoryPanelWidget::SelectNode(FName NodeId)
 {
@@ -426,7 +430,15 @@ void UGameXXKMainStoryPanelWidget::HandleAction(int32 Action, FName NodeId)
 	case 1: Story->StartTask(NodeId); break;
 	case 2: Story->PauseActivity(); bReplay=false; bDetail=false; if (bFullscreen) Story->OpenJourneyTree(); break;
 	case 3: Story->AdvanceDialogue(); break;
-	case 4: Story->ClaimReward(NodeId); break;
+	case 4:
+	{
+		const auto Origins=GameXXKRewardPresentation::Capture(WidgetTree,TEXT("StoryReward"));
+		const auto* Node=FGameXXKMainStoryCatalog::FindNode(NodeId);
+		if(Node && Story->ClaimReward(NodeId))
+			GameXXKRewardPresentation::Play(this,{Node->Gold,Node->NormalBoxes,Node->AdvancedBoxes,0,Node->BoxLevel},Origins,
+				FName(*(TEXT("Story.")+NodeId.ToString()+TEXT(".")+FGuid::NewGuid().ToString())));
+		break;
+	}
 	case 5: Story->RevealHint(); break;
 	case 6: Story->BeginTaskBattle(); break;
 	case 7:

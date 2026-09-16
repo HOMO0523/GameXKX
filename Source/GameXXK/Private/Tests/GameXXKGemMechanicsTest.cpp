@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKCombatGemRules.h"
 #include "GameXXKGemRules.h"
 #include "GameXXKEquipmentBonusRules.h"
@@ -199,14 +200,13 @@ bool FGameXXKGemEquipmentProjectionTest::RunTest(const FString& Parameters)
 {
 	auto* Sub=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());if(!Sub->StartGame())return false;
 	auto& State=Sub->GetMutableRuntimeState();const FName HeroId=FGameXXKEquipmentRules::HeroCharacterId();
+    State=GameXXKPermanentPartyTestFixtures::MakeStartedState();
 	FGameXXKSaveState Legacy=UGameXXKMVPRules::MakeSaveState(State);Legacy.SaveVersion=38;
 	FGameXXKSaveState Migrated;FGameXXKSaveMigrationReport Report;
 	TestTrue(TEXT("previous-version save migrates without inventing gem bonuses"),FGameXXKSaveMigration::MigrateToCurrent(Legacy,Migrated,Report));
 	TestEqual(TEXT("migration retains the player's gold"),Migrated.RuntimeState.PlayerGold,State.PlayerGold);
-	TArray<FName> Owners={HeroId};for(const auto& Companion:State.CardRun.CompanionRoster.PermanentCompanions)Owners.Add(Companion.InstanceId);
-	if(!TestTrue(TEXT("party projection has two permanent companions"),Owners.Num()>=3))return false;
-	State.CardRun.OrderedFormation.Members={{EGameXXKPartyMemberKind::Hero,HeroId},{EGameXXKPartyMemberKind::PermanentCompanion,Owners[1]},{EGameXXKPartyMemberKind::PermanentCompanion,Owners[2]}};
-	FGameXXKPartyFormationRules::ProjectCompatibility(State);
+	TArray<FName> Owners;for(const auto& Member:State.CardRun.OrderedFormation.Members)Owners.Add(Member.MemberId);
+	if(!TestTrue(TEXT("party projection includes hero, companion and NPC"),Owners.Num()==3))return false;
 	FName HeroItem;
 	for(const FName Owner:Owners)
 	{
@@ -241,7 +241,7 @@ bool FGameXXKGemEquipmentProjectionTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("hero keeps its direct gem"),Unit.GemBonusBasisPoints.FindRef(EGameXXKGemType::DirectDamage),8600);
 			TestEqual(TEXT("hero does not borrow companion healing"),Unit.GemBonusBasisPoints.FindRef(EGameXXKGemType::Healing),0);
 		}
-		else TestEqual(TEXT("each deployed companion including the second owns its healing gem"),Unit.GemBonusBasisPoints.FindRef(EGameXXKGemType::Healing),8600);
+		else TestEqual(TEXT("each other deployed wearer owns its healing gem"),Unit.GemBonusBasisPoints.FindRef(EGameXXKGemType::Healing),8600);
 	}
 	TestEqual(TEXT("all three deployed characters were checked"),Wearers,3);
 	return true;

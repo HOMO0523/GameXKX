@@ -12,7 +12,7 @@ bool FGameXXKSettlementRecoveryAtomicTest::RunTest(const FString& Parameters)
 {
 	auto* Sub = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("recovery fixture starts"), Sub->StartGame())
-		|| !TestTrue(TEXT("recovery fixture enters challenge"), Sub->StartTrainingChallenge(TEXT("Training.Normal.1-2")))) return false;
+		|| !TestTrue(TEXT("recovery fixture enters challenge"), Sub->StartTrainingChallenge(TEXT("Training.Normal.1-1")))) return false;
 	auto& State = Sub->GetMutableRuntimeState();
 	const auto* Boss = State.RouteMapNodes.FindByPredicate([](const auto& Node){return Node.NodeKind == EGameXXKNodeKind::Boss;});
 	if (!TestNotNull(TEXT("recovery fixture has a Boss"), Boss)) return false;

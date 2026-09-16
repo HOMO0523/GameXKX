@@ -1,4 +1,6 @@
 #include "GameXXKCardRules.h"
+#include "Guide/GameXXKFirstBattleGuideRules.h"
+#include "GameXXKEnemyActionStatusRules.h"
 #include "GameXXKCardCatalog.h"
 #include "GameXXKCardQualityRules.h"
 #include "GameXXKCharacterStatRules.h"
@@ -280,6 +282,16 @@ namespace
 	bool ValidateDeckStateInternal(const FGameXXKBattleDeckState& Deck, FString& OutError)
 	{
 		OutError.Reset();
+		if (Deck.FirstBattleDrawPhase<0 || Deck.FirstBattleDrawPhase>2
+			|| (!Deck.bFirstBattleGuidance && (Deck.FirstBattleDrawPhase!=0 || !Deck.FirstBattleDeferredCardIds.IsEmpty())))
+		{ OutError=TEXT("Invalid first-battle draw schedule.");return false; }
+		TSet<FName> DeferredIds;
+		for(FName Id:Deck.FirstBattleDeferredCardIds)
+		{
+			if(DeferredIds.Contains(Id)||!GameXXKFirstBattleGuide::IsSupportCard(Id))
+			{OutError=TEXT("Invalid first-battle deferred card.");return false;}
+			DeferredIds.Add(Id);
+		}
 		if (Deck.HandLimit <= 0 || Deck.HandLimit > MaxSupportedHandLimit)
 		{
 			OutError = TEXT("Hand limit is outside the supported serialized range.");
@@ -1690,8 +1702,33 @@ bool GameXXKCardRules::DrawCards(
 		&& NewDeck.Hand.Num() < BattleHandCapacity
 		&& EnsureDrawPileHasCard(NewDeck))
 	{
-		NewDeck.Hand.Add(MoveTemp(NewDeck.DrawPile.Last()));
-		NewDeck.DrawPile.Pop(EAllowShrinking::No);
+		int32 Pick=NewDeck.DrawPile.Num()-1;
+		if(NewDeck.bFirstBattleGuidance && NewDeck.FirstBattleDrawPhase==1)
+		{
+			auto FindEligible=[&]() -> int32
+			{
+				for(int32 I=NewDeck.DrawPile.Num()-1;I>=0;--I)
+					if(!GameXXKFirstBattleGuide::IsDeferred(NewDeck,NewDeck.DrawPile[I]))return I;
+				return INDEX_NONE;
+			};
+			Pick=FindEligible();
+			if(Pick==INDEX_NONE)
+			{
+				// The draw pile still owns held-back cards: do not replace it when recycling.
+				bool Recycled=false;
+				for(int32 I=NewDeck.DiscardPile.Num()-1;I>=0;--I)
+				{
+					const auto& Card=NewDeck.DiscardPile[I];
+					if(Card.InstanceId==NewDeck.ResolvingCardInstanceId || GameXXKFirstBattleGuide::IsDeferred(NewDeck,Card))continue;
+					NewDeck.DrawPile.Add(Card);NewDeck.DiscardPile.RemoveAt(I,1,EAllowShrinking::No);Recycled=true;
+				}
+				if(Recycled)ShufflePile(NewDeck.DrawPile,NewDeck.CurrentRandomState);
+				Pick=FindEligible();
+			}
+			if(Pick==INDEX_NONE)break;
+		}
+		NewDeck.Hand.Add(NewDeck.DrawPile[Pick]);
+		NewDeck.DrawPile.RemoveAt(Pick,1,EAllowShrinking::No);
 		--RemainingToDraw;
 	}
 
@@ -3615,6 +3652,24 @@ namespace
 		OutResult = MoveTemp(NewResult);
 		return true;
 	}
+}
+
+bool GameXXKEnemyActionStatusRules::ResolveAfterIntent(FGameXXKCardBattleRuntime& Runtime,FName OwnerUnitId,
+    TArray<FGameXXKCardDamageResult>& OutDamage,FString* OutError)
+{
+    OutDamage.Reset();if(OutError)OutError->Reset();
+    const auto* Owner=FindCombatUnitById(Runtime.Units,OwnerUnitId);
+    if(!Owner||Owner->Side!=EGameXXKCardTargetSide::Enemy)
+        return SetFailure(OutError,TEXT("Enemy action status settlement requires its actual enemy owner."));
+    const int32 Burn=GameXXKCardRules::GetCombatStatusStacks(*Owner,EGameXXKCardStatus::Burn);
+    if(!Owner->bLiving||Burn<=0)return true;
+    auto Candidate=Runtime;FGameXXKCardDamageResult Result;FString Error;
+    // No explicit trigger source: natural DOT uses the stored contributors, fire
+    // resistance, health-loss/phase rules, and bypasses armor without consuming stacks.
+    if(!ApplyStatusHealthLoss(Candidate,OwnerUnitId,EGameXXKCardDamageCause::Burn,Burn,Result,Error))
+        return SetFailure(OutError,Error);
+    GameXXKCardRules::RefreshCombatTerminalPhase(Candidate);
+    Runtime=MoveTemp(Candidate);OutDamage.Add(MoveTemp(Result));return true;
 }
 
 bool GameXXKCardRules::ApplyCombatEndPhaseDot(
@@ -18972,6 +19027,8 @@ bool GameXXKCardRules::BeginNextPlayerCardRound(
 		NewRuntime.PendingNextRoundEnergyPenalty = 0;
 		CancelBladeDelayIfOwnerDefeated(NewRuntime);
 		const int32 ReservedRetainedCardSlots = NewRuntime.PendingBladeDelayedCard.Rule == EGameXXKBladeChargeRule::RetainNextActiveNextRound ? 1 : 0;
+		if(const auto* Hero=FindCombatUnitById(NewRuntime.Units,TEXT("Player")); Hero && Hero->bLiving)
+			GameXXKFirstBattleGuide::DeliverSupportHand(NewRuntime.Deck);
 		const int32 DrawCount = FMath::Max(0, NewRuntime.Deck.HandLimit + NewRuntime.BonusRoundDrawCount - ReservedRetainedCardSlots - NewRuntime.Deck.Hand.Num());
 		// A party unit defeated last round must not contribute cards or an owner-bound
 		// Sorcerer task to this round. The task's locked-card and per-battle auto-hand

@@ -1,4 +1,5 @@
 #include "GameXXKTrainingRules.h"
+#include "GameXXKTeachingChestRules.h"
 #include "GameXXKHuntRules.h"
 #include "GameXXKEncounterRules.h"
 #include "GameXXKCharacterStatRules.h"
@@ -507,6 +508,8 @@ bool FGameXXKTrainingRules::ValidateChestTokens(const FGameXXKTrainingProgress& 
 			|| Token.SourceItemLevel < 1 || Token.SourceItemLevel > 100
 			|| Token.AcquisitionOrdinal <= PreviousOrdinal
 			|| Token.AcquisitionOrdinal > Progress.NextChestAcquisitionOrdinal
+
+            || (!Token.FixedDropId.IsNone()&&(Token.Tier!=EGameXXKTrainingRewardTier::NormalChest||!FGameXXKTeachingChestRules::IsFixedDropId(Token.FixedDropId)))
 			|| !TryGetStageDefinition(Token.SourceStageId, Stage))
 		{
 			if (OutError) *OutError = TEXT("Training chest token ledger is invalid.");
@@ -547,6 +550,8 @@ int32 FGameXXKTrainingRules::EnemyAttributePercent(EGameXXKTrainingDifficulty Di
 int32 FGameXXKTrainingRules::EnemyHealthPercent(FName StageId)
 {
 	const auto Difficulty=DifficultyFromStageId(StageId);
+    // The opening stage is a solo equipment check before companion slots unlock.
+    if(StageId==TEXT("Training.Normal.1-1"))return 50;
 	return EnemyAttributePercent(Difficulty)*(StageId==MakeStageId(Difficulty,10)?150:100)/100;
 }
 
@@ -640,6 +645,7 @@ TArray<FGameXXKTrainingEncounterDefinition> FGameXXKTrainingRules::BuildEncounte
 void FGameXXKTrainingRules::InitializeNewGame(FGameXXKTrainingProgress& Progress)
 {
 	Progress = FGameXXKTrainingProgress();
+	Progress.bProgressivePartySlots = true;
 	const FName NormalDifficulty = DifficultyId(EGameXXKTrainingDifficulty::Normal);
 	const FName StageOne = MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	Progress.UnlockedDifficultyIds.Add(NormalDifficulty);
@@ -684,6 +690,8 @@ bool FGameXXKTrainingRules::CanChallenge(const FGameXXKTrainingProgress& Progres
 	{
 		return false;
 	}
+	// Challenge access follows cleared stages. New games already count 1-1 as cleared;
+	// travel wins and onboarding counters only decide when to offer guidance.
 	if (Stage.StageNumber > 1)
 	{
 		const FName Previous = MakeStageId(Stage.Difficulty, Stage.StageNumber - 1);
@@ -752,6 +760,10 @@ bool FGameXXKTrainingRules::CompleteChallenge(FGameXXKTrainingProgress& Progress
 		return false;
 	}
 	Progress.ClearedStageIds.Add(StageId);
+	if (Stage.Difficulty == EGameXXKTrainingDifficulty::Normal && Stage.StageNumber <= 2)
+	{
+		Progress.PartyProgressionStep = FMath::Max(Progress.PartyProgressionStep, Stage.StageNumber);
+	}
 	Progress.bChallengeActive = false;
 	Progress.ActiveChallengeStageId = NAME_None;
 	Progress.ActiveChallengeEncounterIndex = INDEX_NONE;

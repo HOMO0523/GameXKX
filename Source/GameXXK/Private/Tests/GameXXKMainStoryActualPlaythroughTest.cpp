@@ -1,3 +1,4 @@
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/ScopeExit.h"
 #include "Misc/FileHelper.h"
@@ -47,6 +48,7 @@ bool FGameXXKMainStoryActualPlaythrough::RunTest(const FString&)
         return OK;
     };
     if(!Require(MVP->StartGame(),TEXT("new test game")))return false;
+    MVP->GetMutableRuntimeState()=GameXXKPermanentPartyTestFixtures::MakeStartedState();
     auto& Setup=MVP->GetMutableRuntimeState();
     while(Setup.PlayerLevel<50)UGameXXKMVPRules::ApplyPlayerExperience(Setup,UGameXXKMVPRules::GetPlayerExperienceRequiredForNextLevel(Setup.PlayerLevel));
     for(auto& Companion:Setup.CardRun.CompanionRoster.PermanentCompanions)

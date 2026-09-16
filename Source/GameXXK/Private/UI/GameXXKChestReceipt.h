@@ -21,8 +21,18 @@ namespace GameXXKChestReceipt
             bool Found=false;const auto Item=UGameXXKMVPRules::GetItemDef(Receipt.ItemId,Found);
             Name=Found?GameXXKLocalization::Localize(Item.DisplayName):FText::FromName(Receipt.ItemId);
         }
-        const FText Drop=FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Item")),Name,Receipt.Quantity,
-            GameXXKLocalization::Text(Receipt.bSentToWarehouse?TEXT("Chest.Receipt.Storage"):TEXT("Chest.Receipt.Bag")));
+        FText Drop=FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Item")),Name,Receipt.EquipmentBaseId.IsNone()?Receipt.Quantity:1,
+            GameXXKLocalization::Text(Receipt.EquipmentBaseId.IsNone()&&Receipt.bSentToWarehouse?TEXT("Chest.Receipt.Storage"):TEXT("Chest.Receipt.Bag")));
+        if(!Receipt.EquipmentBaseId.IsNone()&&!Receipt.ItemId.IsNone())
+        {
+            bool Found=false;const auto Extra=UGameXXKMVPRules::GetItemDef(Receipt.ItemId,Found);
+            const FText ExtraName=Found?GameXXKLocalization::Localize(Extra.DisplayName):FText::FromName(Receipt.ItemId);
+            const FText ExtraLine=Receipt.ItemId==UGameXXKMVPRules::ItemTrainingNormalChest()
+                ?FText::Format(GameXXKLocalization::Text(TEXT("TeachingChest.DropCount")),ExtraName,Receipt.Quantity)
+                :FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Item")),ExtraName,Receipt.Quantity,
+                    GameXXKLocalization::Text(Receipt.bSentToWarehouse?TEXT("Chest.Receipt.Storage"):TEXT("Chest.Receipt.Bag")));
+            Drop=FText::Format(GameXXKLocalization::Text(TEXT("Chest.Receipt.Lines")),Drop,ExtraLine);
+        }
         const FText Kind=GameXXKLocalization::Text(Receipt.Tier==EGameXXKTrainingRewardTier::NormalChest?TEXT("Chest.Report.Normal"):
             Receipt.Tier==EGameXXKTrainingRewardTier::AdvancedChest?TEXT("Chest.Report.Advanced"):TEXT("Chest.Report.Hunt"));
         FText Detail=FText::Format(GameXXKLocalization::Text(TEXT("Chest.Report.Header")),Receipt.OpenOrdinal,Kind,

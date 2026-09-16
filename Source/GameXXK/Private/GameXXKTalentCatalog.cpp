@@ -437,6 +437,14 @@ namespace
 			EGameXXKTalentBranch::Tools, EGameXXKTalentEffect::ToolGoldPercent, EGameXXKTalentIcon::ToolReward, 5, 10, 130.0f);
 
 		ApplyApprovedGridLayout(Nodes);
+		Nodes.Add(MakeNode(TEXT("Talent.Party.CompanionSlot"), TEXT("结伴同行"),
+			TEXT("开放伙伴出战位，可编入或卸下一位伙伴。"), EGameXXKTalentBranch::None,
+			EGameXXKTalentEffect::UnlockCompanionSlot, EGameXXKTalentIcon::Root,
+			1, 1, 0, 0, FVector2D(-180, 0)));
+		Nodes.Add(MakeNode(TEXT("Talent.Party.NpcSlot"), TEXT("知己同行"),
+			TEXT("开放NPC出战位，可编入或卸下一位NPC。"), EGameXXKTalentBranch::None,
+			EGameXXKTalentEffect::UnlockNpcSlot, EGameXXKTalentIcon::Root,
+			1, 1, 0, 0, FVector2D(180, 0)));
 		return Nodes;
 	}
 

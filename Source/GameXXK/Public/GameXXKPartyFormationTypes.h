@@ -36,7 +36,7 @@ struct GAMEXXK_API FGameXXKPartyMemberRef
 	}
 };
 
-/** Authoritative ordered 1P / 2P / 3P deployment. Rules enforce exactly three entries. */
+/** Authoritative ordered deployment: hero plus zero or one member of each unlocked optional kind. */
 USTRUCT(BlueprintType)
 struct GAMEXXK_API FGameXXKOrderedPartyFormation
 {

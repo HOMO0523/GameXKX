@@ -1,4 +1,16 @@
+---
+unit_id: 2026-09-11-final-package-size-breakdown
+status: reference
+owner: codex
+updated_at: 2026-09-16T13:30:00+08:00
+source_commit: edf280cbfb274655e381c9223b98d61904875e41
+depends_on: []
+---
+
 # GameXXK 试玩包体积构成（2026-09-11 final）
+
+> 本文配套数据（CSV）在 `docs/production/evidence/2026-09-11-final-package-size-breakdown/`。
+> 文件名保留构建当天的日期；文档写于 2026-09-16。
 
 成品：`Packaged\GameXXK-2D-Shipping-F10-20260911-final.zip`
 SHA-256 `ECE55024824AD6C88C70DB230271B25650F23C0CE0137DEB0572615145915D82`

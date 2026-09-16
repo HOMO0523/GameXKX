@@ -289,6 +289,8 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetRuntimeGoldForTest() const;
+	void ResetPresentationForNewGame();
+	const FGameXXKTrainingTravelVisualRuntime& GetTravelPresentation() const { return TravelVisualRuntime; }
 
 	UFUNCTION(BlueprintPure, Category = "GameXXK|DesktopTraining|Test")
 	int32 GetPendingTravelGoldForTest() const;
@@ -499,6 +501,16 @@ public:
 	void ShowInterfaceHelp();
     void PrepareInterfaceTutorialContext(FName Context);
     bool RecordInterfaceTutorialStep(FName StepId);
+    void ShowPartyProgressionGuide(FName Group);
+    void OfferPartyProgressionGuide(bool bAllowTestHost = false);
+    void OfferTeachingChestGuide(bool bAllowTestHost=false);
+    void PrepareTeachingChestContext(FName Context);
+    bool RecordTeachingChestStep(FName Step);
+    UWidget* ResolveTeachingChestTarget(FName Target) const;
+    FText BuildTeachingEnhancementReviewText() const;
+    FName ActiveTeachingGroup;
+    int32 ObservedTeachingStage=0;
+    TSet<FName> OfferedPartyProgressionGuides;
 	bool HandleActionAltClicked(int32 ActionId);
 	bool HandleActionRightClicked(int32 ActionId);
 	void HandleActionHoverChanged(int32 ActionId, bool bHovered);
