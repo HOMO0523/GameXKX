@@ -430,17 +430,31 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 
 	const FGameXXKBattlePresentationEvent First = MakePresentationEvent(
 		1, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 100, 70, false, false, 0, 7);
+	// The board resolves party attacks through the event-stable variant, not the bare Attack clip.
 	const FGameXXKBattleAnimationClipDescriptor FirstAttackClip =
-		FGameXXKBattleAnimationPresentation::ResolveClip(
-			First.AttackerUnitId, First.bAttackerEnemy, EGameXXKBattleAnimationAction::Attack);
+		FGameXXKBattleAnimationPresentation::ResolveAttackClipForEvent(
+			First.AttackerUnitId, NAME_None, First.bAttackerEnemy, First.EventId);
+	// By design: Hit resolves no atlas clip any more. The hit-VFX lane below replaced the retired
+	// per-unit Hit atlases, so the target holds its Idle pose while that lane plays over it.
 	const FGameXXKBattleAnimationClipDescriptor FirstHitClip =
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			First.TargetUnitId, First.bTargetEnemy, EGameXXKBattleAnimationAction::Hit);
+	const FGameXXKBattleAnimationClipDescriptor FirstTargetIdleClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			First.TargetUnitId, First.bTargetEnemy, EGameXXKBattleAnimationAction::Idle);
+	const int32 FirstBattleSeed =
+		Subsystem->GetRuntimeState().CardRun.ActiveBattle.Deck.InitialRandomSeed;
+	const FGameXXKBattleAnimationClipDescriptor FirstHitEffectClip =
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(
+			FGameXXKBattleAnimationPresentation::ResolveHitEffectClip(FirstBattleSeed, First.EventId),
+			FGameXXKBattleAnimationPresentation::GetHitEffectDurationSeconds());
 	FApi::Queue(Board, First);
 	TestTrue(TEXT("queueing prefetches the attacker Attack atlas before presentation starts"),
 		AtlasLoader->Requested(FirstAttackClip.TexturePath));
-	TestTrue(TEXT("queueing prefetches the target Hit atlas before presentation starts"),
-		AtlasLoader->Requested(FirstHitClip.TexturePath));
+	TestTrue(TEXT("queueing prefetches the hit-VFX lane that replaced the retired Hit atlas"),
+		AtlasLoader->Requested(FirstHitEffectClip.TexturePath));
+	TestEqual(TEXT("the retired Hit action resolves no per-unit atlas clip, by design"),
+		FirstHitClip.IsValid(), false);
 	TestFalse(TEXT("queueing never prefetches the retired generic Impact atlas"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 			EGameXXKBattleAnimationAction::Impact).TexturePath));
@@ -453,22 +467,23 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	// against 0.30 s here too.
 	const FGameXXKBattleAnimationClipDescriptor FittedFirstAttackClip =
 		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstAttackClip, 0.30f);
-	const FGameXXKBattleAnimationClipDescriptor FittedFirstHitClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstHitClip, 0.30f);
 	TestTrue(TEXT("the active packet duration is zero-point-three seconds"),
 		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.30, 0.0001));
 	TestEqual(TEXT("Attack playback fits the complete atlas to the packet rhythm"),
 		FApi::AttackerRate(Board), FittedFirstAttackClip.PlaybackRate);
-	TestEqual(TEXT("Hit playback fits the complete atlas to the packet rhythm"),
-		FApi::TargetRate(Board), FittedFirstHitClip.PlaybackRate);
-	// The retired generic Impact still has no playback; the lane now carries the hit VFX clip.
-	TestEqual(TEXT("the retired generic Impact has no active playback"), FApi::ImpactRate(Board), 1.5f);
+	// By design: Hit holds no atlas, so the target keeps its Idle clip and its Idle rate while
+	// the hit-VFX lane plays over it.
+	TestEqual(TEXT("the target keeps its Idle playback rate because Hit resolves no atlas"),
+		FApi::TargetRate(Board), FirstTargetIdleClip.PlaybackRate);
+	// The retired generic Impact atlas is dead; its lane now carries the fitted hit VFX clip.
+	TestEqual(TEXT("the hit-VFX lane owns the active impact playback"),
+		FApi::ImpactRate(Board), FirstHitEffectClip.PlaybackRate);
 	TestEqual(TEXT("the existing attacker visual binds the asynchronously loaded Attack atlas"),
 		AttackerVisual ? AttackerVisual->GetAtlasForTest() : nullptr,
 		AtlasLoader->GetTexture(FirstAttackClip.TexturePath));
-	TestEqual(TEXT("the existing target visual binds the asynchronously loaded Hit atlas"),
+	TestEqual(TEXT("the target visual keeps its Idle atlas because the Hit lane owns no atlas"),
 		TargetVisual ? TargetVisual->GetAtlasForTest() : nullptr,
-		AtlasLoader->GetTexture(FirstHitClip.TexturePath));
+		AtlasLoader->GetTexture(FirstTargetIdleClip.TexturePath));
 	TestTrue(TEXT("the real Attack visual is visible, enlarged, and positively scaled"),
 		AttackerVisual
 		&& AttackerVisual->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
@@ -510,35 +525,37 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the real fixed HUD retains pre-impact armor until the impact marker"),
 		GetRenderedArmor(Board, First.TargetUnitId), FString(TEXT("7")));
 
-	Board->AdvanceVisualsAtRealTime(0.15);
+	Board->AdvanceVisualsAtRealTime(0.05);
 	const int32 ExpectedAttackFrameAtPartial =
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedFirstAttackClip, 0.15f, false);
-	const int32 ExpectedHitFrameAtPartial =
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedFirstHitClip, 0.15f, false);
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedFirstAttackClip, 0.05f, false);
+	const int32 ExpectedTargetIdleFrameAtPartial =
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FirstTargetIdleClip, 0.05f, false);
 	TestEqual(TEXT("the real Attack visual advances at the authored absolute-time frame"),
 		AttackerVisual ? AttackerVisual->GetCurrentFrameForTest() : INDEX_NONE,
 		ExpectedAttackFrameAtPartial);
-	TestEqual(TEXT("the real Hit visual advances at the authored absolute-time frame"),
+	TestEqual(TEXT("the real target visual holds its Idle pose at the absolute-time frame"),
 		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
-		ExpectedHitFrameAtPartial);
-	TestEqual(TEXT("paired Attack and Hit visuals remain frame-synchronized"),
+		ExpectedTargetIdleFrameAtPartial);
+	// By design: Hit no longer resolves an atlas, so the target is intentionally no longer
+	// frame-locked to the attacker's Attack clip.
+	TestNotEqual(TEXT("the retired Hit pairing no longer frame-locks target and attacker"),
 		AttackerVisual ? AttackerVisual->GetCurrentFrameForTest() : INDEX_NONE,
 		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE);
 	TestEqual(TEXT("the first partial step retains pre-impact health"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
-	Board->AdvanceVisualsAtRealTime(0.299);
-	TestEqual(TEXT("the second partial step immediately before zero-point-three retains pre-impact health"),
+	Board->AdvanceVisualsAtRealTime(0.099);
+	TestEqual(TEXT("the sample immediately before the zero-point-one marker retains pre-impact health"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthBefore);
-	TestEqual(TEXT("impact has not fired before the zero-point-three marker"), FApi::ImpactCount(Board), 0);
-	TestEqual(TEXT("HUD shake has not fired before the zero-point-three marker"), FApi::ShakeCount(Board), 0);
+	TestEqual(TEXT("impact has not fired before the zero-point-one marker"), FApi::ImpactCount(Board), 0);
+	TestEqual(TEXT("HUD shake has not fired before the zero-point-one marker"), FApi::ShakeCount(Board), 0);
 
-	Board->AdvanceVisualsAtRealTime(0.301);
-	TestEqual(TEXT("crossing zero-point-three applies the immutable post-impact health"),
+	Board->AdvanceVisualsAtRealTime(0.101);
+	TestEqual(TEXT("crossing zero-point-one applies the immutable post-impact health"),
 		FApi::DisplayedHealth(Board, First.TargetUnitId), First.TargetHealthAfter);
-	TestEqual(TEXT("crossing zero-point-three redraws the actual fixed HUD"),
+	TestEqual(TEXT("crossing zero-point-one redraws the actual fixed HUD"),
 		GetRenderedHealth(Board, First.TargetUnitId), FString(TEXT("气血 70 / 120")));
-	TestEqual(TEXT("crossing zero-point-three fires impact exactly once"), FApi::ImpactCount(Board), 1);
-	TestEqual(TEXT("crossing zero-point-three fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
+	TestEqual(TEXT("crossing zero-point-one fires impact exactly once"), FApi::ImpactCount(Board), 1);
+	TestEqual(TEXT("crossing zero-point-one fires the HUD-root shake exactly once"), FApi::ShakeCount(Board), 1);
 	TestEqual(TEXT("mixed armor and health damage emits a semantic split readout at the marker"),
 		FApi::Readout(Board), FString(TEXT("护甲 -7 · 气血 -30")));
 	TestEqual(TEXT("the impact marker consumes the rendered armor alongside the packet"),
@@ -554,19 +571,21 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("crossing the marker moves the full viewport root for HUD shake"),
 		Board->GetBattleViewportRootForTest()
 		&& !Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
-	Board->AdvanceVisualsAtRealTime(0.50);
+	// Mid-fade sample: the readout has left its peak but the heavy shake window (0.10 -> 0.30)
+	// is still open.
+	Board->AdvanceVisualsAtRealTime(0.22);
 	TestEqual(TEXT("later samples cannot refire the same impact"), FApi::ImpactCount(Board), 1);
 	TestEqual(TEXT("later samples cannot restart the same shake"), FApi::ShakeCount(Board), 1);
 	TestTrue(TEXT("heavy readout settles toward unit scale after the impact peak"),
 		FApi::ReadoutScale(Board).X < 1.30f && FApi::ReadoutScale(Board).X > 1.0f);
 	TestTrue(TEXT("heavy readout fades after the impact peak"),
 		FApi::ReadoutOpacity(Board) < 1.0f && FApi::ReadoutOpacity(Board) > 0.0f);
-	TestTrue(TEXT("heavy shake is exactly settled at its authored duration"),
+	TestFalse(TEXT("heavy shake is still inside its authored zero-point-two window mid-fade"),
 		Board->GetBattleViewportRootForTest()
 		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
 
-	Board->AdvanceVisualsAtRealTime(0.82);
-	TestFalse(TEXT("a nonlethal presentation completes at exactly zero-point-eight-two real seconds"), FApi::IsActive(Board));
+	Board->AdvanceVisualsAtRealTime(0.301);
+	TestFalse(TEXT("a nonlethal presentation completes at exactly zero-point-three real seconds"), FApi::IsActive(Board));
 	TestEqual(TEXT("the paired Attack/Hit completion fires exactly once"), FApi::CompletionCount(Board), 1);
 	TestEqual(TEXT("completion hides the real cinematic dimmer"),
 		TimelineDimmer ? TimelineDimmer->GetVisibility() : ESlateVisibility::Visible,
@@ -628,16 +647,16 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.0);
 	TestEqual(TEXT("the first packet starts from its four-armor snapshot"),
 		GetRenderedArmor(InterHitArmorBoard, ArmorDrain.TargetUnitId), FString(TEXT("4")));
-	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.301);
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.101);
 	TestEqual(TEXT("the first packet drains its four armor at impact"),
 		GetRenderedArmor(InterHitArmorBoard, ArmorDrain.TargetUnitId), FString());
-	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.821);
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.35);
 	TestEqual(TEXT("the second packet restores its six-armor pre-impact snapshot after an inter-hit gain"),
 		GetRenderedArmor(InterHitArmorBoard, ArmorAfterGain.TargetUnitId), FString(TEXT("6")));
-	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.921);
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.401);
 	TestEqual(TEXT("the second packet applies its two-armor post-impact snapshot"),
 		GetRenderedArmor(InterHitArmorBoard, ArmorAfterGain.TargetUnitId), FString(TEXT("2")));
-	InterHitArmorBoard->AdvanceVisualsAtRealTime(3.121);
+	InterHitArmorBoard->AdvanceVisualsAtRealTime(2.601);
 
 	UGameInstance* const FiveHitGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const FiveHitSubsystem = NewObject<UGameXXKMVPSubsystem>(FiveHitGameInstance);
@@ -666,16 +685,16 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 			HitIndex));
 	}
 	FiveHitBoard->AdvanceVisualsAtRealTime(0.0);
-	TestTrue(TEXT("five-hit first packet uses the readable zero-point-eight-two duration"),
-		FMath::IsNearlyEqual(FApi::ActiveDuration(FiveHitBoard), 0.82, 0.0001));
-	FiveHitBoard->AdvanceVisualsAtRealTime(0.299);
+	TestTrue(TEXT("five-hit first packet uses the shipped zero-point-three duration"),
+		FMath::IsNearlyEqual(FApi::ActiveDuration(FiveHitBoard), 0.30, 0.0001));
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.099);
 	TestEqual(TEXT("five-hit packet one retains old HP before its own impact"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 70);
-	FiveHitBoard->AdvanceVisualsAtRealTime(0.301);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.101);
 	TestEqual(TEXT("five-hit packet one applies only its own HP at impact"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 60);
 	TestEqual(TEXT("five-hit packet one fires one impact"), FApi::ImpactCount(FiveHitBoard), 1);
-	FiveHitBoard->AdvanceVisualsAtRealTime(0.821);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.301);
 	TestEqual(TEXT("five-hit packet two starts after one completion"), FApi::ActiveEventId(FiveHitBoard), 101ull);
 	TestEqual(TEXT("five-hit packet one completes exactly once"), FApi::CompletionCount(FiveHitBoard), 1);
 	TestTrue(TEXT("five-hit follow-up packets use the compact zero-point-three duration"),
@@ -684,32 +703,32 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstAttackClip, 0.30f);
 	TestEqual(TEXT("five-hit follow-up refits the complete attack atlas to zero-point-three seconds"),
 		FApi::AttackerRate(FiveHitBoard), FittedFollowAttackClip.PlaybackRate);
-	FiveHitBoard->AdvanceVisualsAtRealTime(0.919);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.399);
 	TestEqual(TEXT("five-hit packet two still shows packet-one HP before its marker"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 60);
-	FiveHitBoard->AdvanceVisualsAtRealTime(0.921);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.401);
 	TestEqual(TEXT("five-hit packet two applies only its own HP at impact"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 50);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.121);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.221);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.699);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.701);
 	TestEqual(TEXT("five-hit packet three owns the third impact"), FApi::ImpactCount(FiveHitBoard), 3);
 	TestEqual(TEXT("five-hit packet three reaches its immutable HP"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 40);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.421);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.521);
+	FiveHitBoard->AdvanceVisualsAtRealTime(0.999);
+	FiveHitBoard->AdvanceVisualsAtRealTime(1.001);
 	TestEqual(TEXT("five-hit packet four owns the fourth impact"), FApi::ImpactCount(FiveHitBoard), 4);
 	TestEqual(TEXT("five-hit packet four reaches its immutable HP"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 30);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.721);
-	FiveHitBoard->AdvanceVisualsAtRealTime(1.821);
+	FiveHitBoard->AdvanceVisualsAtRealTime(1.299);
+	FiveHitBoard->AdvanceVisualsAtRealTime(1.301);
 	TestEqual(TEXT("five-hit packet five owns the fifth impact"), FApi::ImpactCount(FiveHitBoard), 5);
 	TestEqual(TEXT("five-hit packet five reaches its immutable HP"),
 		FApi::DisplayedHealth(FiveHitBoard, TEXT("Enemy.Tiger")), 20);
-	FiveHitBoard->AdvanceVisualsAtRealTime(2.019);
-	TestTrue(TEXT("five-hit queue remains active immediately before the two-point-zero-two boundary"),
+	FiveHitBoard->AdvanceVisualsAtRealTime(1.499);
+	TestTrue(TEXT("five-hit queue remains active immediately before the one-point-five boundary"),
 		FApi::IsActive(FiveHitBoard));
-	FiveHitBoard->AdvanceVisualsAtRealTime(2.0201);
-	TestFalse(TEXT("five-hit queue drains within the two-point-zero-two-second timing tolerance"),
+	FiveHitBoard->AdvanceVisualsAtRealTime(1.501);
+	TestFalse(TEXT("five-hit queue drains within the one-point-five-second timing tolerance"),
 		FApi::IsActive(FiveHitBoard));
 	TestEqual(TEXT("five-hit queue fires every impact exactly once"), FApi::ImpactCount(FiveHitBoard), 5);
 	TestEqual(TEXT("five-hit queue fires every completion exactly once"), FApi::CompletionCount(FiveHitBoard), 5);
@@ -746,7 +765,9 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 			bAvoided,
 			bDefeated));
 		FeedbackBoard->AdvanceVisualsAtRealTime(StartSeconds);
-		FeedbackBoard->AdvanceVisualsAtRealTime(StartSeconds + (bAvoided ? 0.161 : 0.301));
+		// Both the damage and the avoided packet share the shipped 0.30 s / 0.10 s rhythm, so the
+		// marker sample is the same for either tier.
+		FeedbackBoard->AdvanceVisualsAtRealTime(StartSeconds + 0.101);
 		return FeedbackBoard;
 	};
 	UGameXXKBattleBoardWidget* const LightFeedbackBoard =
@@ -775,8 +796,8 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		BuildImpactFeedbackBoard(1104, 36.0, 1, true);
 	TestTrue(TEXT("lethal transition uses the authored fourteen-by-seven shake"),
 		FApi::ShakeAmplitude(LethalFeedbackBoard).Equals(FVector2D(14.0f, 7.0f), 0.001f));
-	TestTrue(TEXT("lethal transition uses the authored zero-point-two-six shake"),
-		FMath::IsNearlyEqual(FApi::ShakeDuration(LethalFeedbackBoard), 0.26, 0.0001));
+	TestTrue(TEXT("lethal transition uses the authored zero-point-two shake"),
+		FMath::IsNearlyEqual(FApi::ShakeDuration(LethalFeedbackBoard), 0.20, 0.0001));
 	TestTrue(TEXT("lethal transition uses the one-point-four-two readout peak"),
 		FApi::ReadoutScale(LethalFeedbackBoard).Equals(FVector2D(1.42f, 1.42f), 0.001f));
 
@@ -859,7 +880,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	FApi::Queue(Board, LargeDelta);
 	FApi::Queue(Board, Overflow);
 	Board->AdvanceVisualsAtRealTime(10.0);
-	Board->AdvanceVisualsAtRealTime(10.90);
+	Board->AdvanceVisualsAtRealTime(10.38);
 	TestEqual(TEXT("one large delta still fires the crossed impact only once"),
 		FApi::ImpactCount(Board), ImpactBeforeLargeDelta + 1);
 	TestEqual(TEXT("one large delta still fires the crossed completion only once"),
@@ -868,14 +889,14 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		FApi::ActiveEventId(Board), Overflow.EventId);
 	TestTrue(TEXT("large-delta overflow carries exactly zero-point-zero-eight seconds into the next event"),
 		FMath::IsNearlyEqual(FApi::ActiveElapsed(Board), 0.08, 0.0001));
-	TestTrue(TEXT("the avoided overflow packet owns the zero-point-four-five duration"),
-		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.45, 0.0001));
-	Board->AdvanceVisualsAtRealTime(10.90);
+	TestTrue(TEXT("the avoided overflow packet owns the shipped zero-point-three duration"),
+		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.30, 0.0001));
+	Board->AdvanceVisualsAtRealTime(10.38);
 	TestEqual(TEXT("repeating the same absolute sample cannot refire impact"),
 		FApi::ImpactCount(Board), ImpactBeforeLargeDelta + 1);
 	TestEqual(TEXT("repeating the same absolute sample cannot refire completion"),
 		FApi::CompletionCount(Board), CompletionBeforeLargeDelta + 1);
-	Board->AdvanceVisualsAtRealTime(10.981);
+	Board->AdvanceVisualsAtRealTime(10.401);
 	TestEqual(TEXT("an avoided packet emits the avoid readout when its own marker crosses"),
 		FApi::Readout(Board), FString(TEXT("闪避")));
 	TestEqual(TEXT("the overflow event owns one distinct impact"),
@@ -891,32 +912,34 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("avoid keeps the viewport root motionless"),
 		Board->GetBattleViewportRootForTest()
 		&& Board->GetBattleViewportRootForTest()->GetRenderTransform().Translation.IsNearlyZero(0.001f));
-	Board->AdvanceVisualsAtRealTime(11.271);
-	TestFalse(TEXT("the overflow event completes on the inherited ten-point-eight-two epoch"), FApi::IsActive(Board));
+	Board->AdvanceVisualsAtRealTime(10.601);
+	TestFalse(TEXT("the avoided overflow completes at the inherited zero-point-three packet boundary"),
+		FApi::IsActive(Board));
 
 	const FGameXXKBattlePresentationEvent Lethal = MakePresentationEvent(
 		4, TEXT("Player"), false, TEXT("Enemy.Tiger"), true, 60, 0, false, true);
 	const FGameXXKBattleAnimationClipDescriptor DeathClip =
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			Lethal.TargetUnitId, Lethal.bTargetEnemy, EGameXXKBattleAnimationAction::Death);
-	const FGameXXKBattleAnimationClipDescriptor FittedDeathClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(DeathClip, 0.90f);
 	const FGameXXKBattlePresentationEvent AfterDeath = MakePresentationEvent(
 		5, TEXT("Enemy.BlackBear"), true, TEXT("Player"), false, 90, 82);
 	FApi::Queue(Board, Lethal);
 	FApi::Queue(Board, AfterDeath);
 	Board->AdvanceVisualsAtRealTime(20.0);
-	Board->AdvanceVisualsAtRealTime(20.821);
+	// The lethal Attack/Hit packet now owns 0.30 s, so Death starts on the 20.30 boundary.
+	Board->AdvanceVisualsAtRealTime(20.301);
 	TestTrue(TEXT("lethal Attack/Hit completion starts Death before the next event"), FApi::IsDeathActive(Board));
 	TestTrue(TEXT("active Death owns the zero-point-nine-second rhythm"),
 		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.90, 0.0001));
 	TestEqual(TEXT("Death keeps the lethal immutable event active"), FApi::ActiveEventId(Board), Lethal.EventId);
 	TestEqual(TEXT("the event behind Death remains queued"), FApi::QueueCount(Board), 1);
-	TestTrue(TEXT("lethal completion asynchronously requests the actual Death atlas"),
-		AtlasLoader->Requested(DeathClip.TexturePath));
-	TestEqual(TEXT("the persistent lethal visual binds the actual Death atlas"),
+	// By design: Death resolves no atlas clip. The hit assets are still in production, and a
+	// defeated unit fades out instead of playing one of the 76 unused death atlases.
+	TestEqual(TEXT("the Death lane resolves no atlas clip: a defeated unit fades out by design"),
+		DeathClip.IsValid(), false);
+	TestEqual(TEXT("the fade-out defeat keeps the persistent target on its Idle atlas"),
 		TargetVisual ? TargetVisual->GetAtlasForTest() : nullptr,
-		AtlasLoader->GetTexture(DeathClip.TexturePath));
+		AtlasLoader->GetTexture(FirstTargetIdleClip.TexturePath));
 	TestTrue(TEXT("the real Death visual remains visible, enlarged, and positively scaled"),
 		TargetVisual
 		&& TargetVisual->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
@@ -924,24 +947,30 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		&& TargetVisual->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
 		&& TargetVisual->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
 		&& TargetVisual->GetRenderTransform().Scale.X > 0.0f);
-	TestEqual(TEXT("the actual Death clip begins at frame zero"),
+	TestEqual(TEXT("the fade-only Death restarts the target's Idle pose at frame zero"),
 		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
 		0);
 	TestEqual(TEXT("the lethal visual is not removed before Death presentation"),
 		Board->GetUnitVisualForTest(Lethal.TargetUnitId), TargetVisual);
 	TestFalse(TEXT("the lethal visual is not marked removed before Death completes"),
 		TargetVisual ? TargetVisual->IsRemovedForTest() : true);
-	Board->AdvanceVisualsAtRealTime(21.20);
-	TestEqual(TEXT("the actual Death visual advances from its absolute start epoch"),
+	Board->AdvanceVisualsAtRealTime(20.68);
+	TestEqual(TEXT("the target's Idle pose advances from the Death start epoch while it fades"),
 		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedDeathClip, 0.38f, false));
-	Board->AdvanceVisualsAtRealTime(21.719);
-	TestEqual(TEXT("the actual Death visual reaches its authored terminal frame before removal"),
-		TargetVisual ? TargetVisual->GetCurrentFrameForTest() : INDEX_NONE,
-		DeathClip.FrameCount - 1);
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FirstTargetIdleClip, 0.38f, false));
+	// By design: the replaced Death animation is a plain opacity fade.
+	TestTrue(TEXT("the defeated target fades out instead of playing a Death atlas clip"),
+		TargetVisual
+		&& FMath::IsNearlyEqual(
+			TargetVisual->GetProceduralOpacityForTest(),
+			FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(0.38f / 0.90f),
+			0.01f));
+	Board->AdvanceVisualsAtRealTime(21.199);
+	TestTrue(TEXT("the faded target is almost fully transparent at the Death boundary"),
+		TargetVisual && TargetVisual->GetProceduralOpacityForTest() < 0.01f);
 	TestEqual(TEXT("the lethal visual remains until the zero-point-nine-second Death boundary"),
 		Board->GetUnitVisualForTest(Lethal.TargetUnitId), TargetVisual);
-	Board->AdvanceVisualsAtRealTime(21.721);
+	Board->AdvanceVisualsAtRealTime(21.201);
 	TestNull(TEXT("the lethal visual may be removed only after Death completes"),
 		Board->GetUnitVisualForTest(Lethal.TargetUnitId));
 	TestEqual(TEXT("the event behind Death starts only after Death removal"),
@@ -971,8 +1000,6 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 			ColdDeathEvent.TargetUnitId,
 			ColdDeathEvent.bTargetEnemy,
 			EGameXXKBattleAnimationAction::Death);
-	const FGameXXKBattleAnimationClipDescriptor FittedColdDeathClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(ColdDeathClip, 0.90f);
 	const FGameXXKBattleAnimationClipDescriptor ColdDeathIdleClip =
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			ColdDeathEvent.TargetUnitId,
@@ -983,25 +1010,27 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	FApi::Queue(ColdDeathBoard, ColdDeathEvent);
 	FApi::Queue(ColdDeathBoard, AfterColdDeathEvent);
 	ColdDeathBoard->AdvanceVisualsAtRealTime(80.0);
-	TestFalse(TEXT("Death atlas is not prefetched before the lethal Attack/Hit completes"),
-		ColdDeathLoader->Requested(ColdDeathClip.TexturePath));
-	ColdDeathBoard->AdvanceVisualsAtRealTime(80.821);
+	// By design there is no Death atlas to prefetch at all: a defeated unit fades out, so the
+	// cold fixture can never leave a Death request pending.
+	TestTrue(TEXT("the fade-only Death lane leaves no Death atlas request pending before the Hit completes"),
+		ColdDeathLoader->PendingDeathCompletions.IsEmpty());
+	ColdDeathBoard->AdvanceVisualsAtRealTime(80.301);
 	TestTrue(TEXT("cold Death starts at the lethal Attack/Hit completion boundary"),
 		FApi::IsDeathActive(ColdDeathBoard));
-	TestTrue(TEXT("cold Death asynchronously requests its atlas only when enqueued"),
-		ColdDeathLoader->Requested(ColdDeathClip.TexturePath));
+	TestTrue(TEXT("the fade-only cold Death still leaves no Death atlas request pending when enqueued"),
+		ColdDeathLoader->PendingDeathCompletions.IsEmpty());
 	TestEqual(TEXT("pending cold Death keeps the persistent target on its Idle atlas"),
 		ColdDeathTarget ? ColdDeathTarget->GetAtlasForTest() : nullptr,
 		ColdDeathLoader->GetTexture(ColdDeathIdleClip.TexturePath));
-	ColdDeathBoard->AdvanceVisualsAtRealTime(81.20);
-	TestTrue(TEXT("cold Death request completes while that exact Death entry is active"),
+	ColdDeathBoard->AdvanceVisualsAtRealTime(80.68);
+	TestFalse(TEXT("the fade-only Death has no late Death atlas completion to deliver"),
 		ColdDeathLoader->CompleteDeath(ColdDeathClip.TexturePath));
 	TestEqual(TEXT("late Death completion reuses the exact persistent target visual"),
 		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId),
 		ColdDeathTarget);
-	TestEqual(TEXT("late Death completion binds the actual Death atlas"),
+	TestEqual(TEXT("a fade-only Death keeps the persistent target on its Idle atlas"),
 		ColdDeathTarget ? ColdDeathTarget->GetAtlasForTest() : nullptr,
-		ColdDeathLoader->GetTexture(ColdDeathClip.TexturePath));
+		ColdDeathLoader->GetTexture(ColdDeathIdleClip.TexturePath));
 	TestTrue(TEXT("late Death remains visible at the 820 square cinematic placement with positive scale"),
 		ColdDeathTarget
 		&& ColdDeathTarget->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
@@ -1009,17 +1038,25 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		&& ColdDeathTarget->GetUnitImageForTest()->GetVisibility() == ESlateVisibility::SelfHitTestInvisible
 		&& ColdDeathTarget->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f)
 		&& ColdDeathTarget->GetRenderTransform().Scale.X > 0.0f);
-	TestEqual(TEXT("late Death catches up from its original start epoch rather than load time"),
+	TestEqual(TEXT("the fading target's Idle pose advances from its original Death start epoch"),
 		ColdDeathTarget ? ColdDeathTarget->GetCurrentFrameForTest() : INDEX_NONE,
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(FittedColdDeathClip, 0.38f, false));
-	ColdDeathBoard->AdvanceVisualsAtRealTime(81.719);
-	TestEqual(TEXT("late Death remains non-looping and reaches its authored terminal frame"),
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(ColdDeathIdleClip, 0.38f, false));
+	TestTrue(TEXT("the cold fade has visibly faded the target mid-Death"),
+		ColdDeathTarget
+		&& FMath::IsNearlyEqual(
+			ColdDeathTarget->GetProceduralOpacityForTest(),
+			FGameXXKBattleAnimationPresentation::CalculateProceduralDeathOpacity(0.38f / 0.90f),
+			0.01f));
+	ColdDeathBoard->AdvanceVisualsAtRealTime(81.199);
+	TestEqual(TEXT("the fading Idle pose keeps advancing non-looping to the Death boundary"),
 		ColdDeathTarget ? ColdDeathTarget->GetCurrentFrameForTest() : INDEX_NONE,
-		ColdDeathClip.FrameCount - 1);
+		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(ColdDeathIdleClip, 0.899f, false));
+	TestTrue(TEXT("the cold fade leaves the target almost fully transparent at the boundary"),
+		ColdDeathTarget && ColdDeathTarget->GetProceduralOpacityForTest() < 0.01f);
 	TestEqual(TEXT("late-loaded Death cannot remove its persistent target before completion"),
 		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId),
 		ColdDeathTarget);
-	ColdDeathBoard->AdvanceVisualsAtRealTime(81.721);
+	ColdDeathBoard->AdvanceVisualsAtRealTime(81.201);
 	TestNull(TEXT("late-loaded Death removes its persistent target only at completion"),
 		ColdDeathBoard->GetUnitVisualForTest(ColdDeathEvent.TargetUnitId));
 	TestEqual(TEXT("the event behind late-loaded Death starts only after removal"),
@@ -1052,23 +1089,24 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	FApi::Queue(StaleDeathBoard, StaleDeathEvent);
 	FApi::Queue(StaleDeathBoard, AfterStaleDeathEvent);
 	StaleDeathBoard->AdvanceVisualsAtRealTime(90.0);
-	StaleDeathBoard->AdvanceVisualsAtRealTime(90.821);
-	TestTrue(TEXT("stale-Death fixture leaves its cold Death request pending"),
+	StaleDeathBoard->AdvanceVisualsAtRealTime(90.301);
+	// By design the fade-only Death never issues an atlas request, so there is no stale Death
+	// callback that could ever arrive later.
+	TestTrue(TEXT("stale-Death fixture fades its defeated target with no pending Death atlas request"),
 		FApi::IsDeathActive(StaleDeathBoard)
-		&& StaleDeathLoader->Requested(StaleDeathClip.TexturePath));
-	StaleDeathBoard->AdvanceVisualsAtRealTime(91.721);
+		&& !StaleDeathClip.IsValid()
+		&& StaleDeathLoader->PendingDeathCompletions.IsEmpty());
+	StaleDeathBoard->AdvanceVisualsAtRealTime(91.201);
 	UGameXXKBattleUnitVisualWidget* const AfterStaleDeathTarget =
 		StaleDeathBoard->GetUnitVisualForTest(AfterStaleDeathEvent.TargetUnitId);
-	UTexture2D* const AfterStaleDeathAtlas =
-		AfterStaleDeathTarget ? AfterStaleDeathTarget->GetAtlasForTest() : nullptr;
 	TestEqual(TEXT("stale-Death fixture advances to the later queue entry"),
 		FApi::ActiveEventId(StaleDeathBoard),
 		AfterStaleDeathEvent.EventId);
-	TestTrue(TEXT("the completed Death request can still report late through the cache"),
+	TestFalse(TEXT("the completed fade-only Death can never report a late Death atlas completion"),
 		StaleDeathLoader->CompleteDeath(StaleDeathClip.TexturePath));
-	TestEqual(TEXT("a stale Death callback cannot pollute the later event atlas"),
+	TestEqual(TEXT("the later event keeps its own Idle atlas, undisturbed by the retired Death lane"),
 		AfterStaleDeathTarget ? AfterStaleDeathTarget->GetAtlasForTest() : nullptr,
-		AfterStaleDeathAtlas);
+		StaleDeathLoader->GetTexture(FirstTargetIdleClip.TexturePath));
 	TestEqual(TEXT("a stale Death callback cannot switch the later event identity"),
 		FApi::ActiveEventId(StaleDeathBoard),
 		AfterStaleDeathEvent.EventId);
@@ -1100,7 +1138,7 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		LateIdleEvent.bAttackerEnemy,
 		EGameXXKBattleAnimationAction::Attack);
 	const FGameXXKBattleAnimationClipDescriptor FittedLateIdleAttackClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(LateIdleAttackClip, 0.82f);
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(LateIdleAttackClip, 0.30f);
 	const FSoftObjectPath AttackPath = LateIdleAttackClip.TexturePath;
 	const FSoftObjectPath IdlePath = FGameXXKBattleAnimationPresentation::ResolveClip(
 		LateIdleEvent.AttackerUnitId,
@@ -1370,19 +1408,23 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		IdleFailureEvent.bTargetEnemy,
 		EGameXXKBattleAnimationAction::Hit);
 	const FGameXXKBattleAnimationClipDescriptor FittedFailureAttackClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(FailureAttackClip, 0.82f);
-	const FGameXXKBattleAnimationClipDescriptor FittedFailureHitClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(FailureHitClip, 0.82f);
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(FailureAttackClip, 0.30f);
+	const FGameXXKBattleAnimationClipDescriptor FailureTargetIdleClip =
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+		IdleFailureEvent.TargetUnitId,
+		IdleFailureEvent.bTargetEnemy,
+		EGameXXKBattleAnimationAction::Idle);
 	const FSoftObjectPath FailureAttackPath = FailureAttackClip.TexturePath;
-	const FSoftObjectPath FailureHitPath = FailureHitClip.TexturePath;
 	UTexture2D* const FailureAttackAtlas = IdleFailureLoader->GetTexture(FailureAttackPath);
-	UTexture2D* const FailureHitAtlas = IdleFailureLoader->GetTexture(FailureHitPath);
 	TestEqual(TEXT("Missing fixture begins with the real Attack atlas"),
 		MissingIdleAttacker ? MissingIdleAttacker->GetAtlasForTest() : nullptr,
 		FailureAttackAtlas);
-	TestEqual(TEXT("TimedOut fixture begins with the real Hit atlas"),
-		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr,
-		FailureHitAtlas);
+	// By design: Hit resolves no atlas clip, and this fixture deliberately keeps the target's Idle
+	// request pending, so the target holds no atlas at all while the presentation runs.
+	TestEqual(TEXT("the retired Hit action resolves no target atlas clip, by design"),
+		FailureHitClip.IsValid(), false);
+	TestNull(TEXT("the still-pending target Idle leaves the target without any atlas yet"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr);
 	TestTrue(TEXT("the delayed attacker Idle completes as Missing during Attack"),
 		IdleFailureLoader->CompleteIdleMissing(MissingIdlePath));
 	TestEqual(TEXT("a late Missing Idle cannot clear the active Attack atlas"),
@@ -1397,20 +1439,16 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 		MissingIdleAttacker ? MissingIdleAttacker->GetCurrentFrameForTest() : INDEX_NONE,
 		0);
 	IdleFailureBoard->AdvanceVisualsAtRealTime(60.101);
-	TestEqual(TEXT("a late TimedOut Idle cannot clear the active Hit atlas"),
-		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr,
-		FailureHitAtlas);
-	TestEqual(TEXT("a late TimedOut Idle cannot hide the active target widget"),
+	TestNull(TEXT("the retired Hit lane binds no atlas, so the target still holds none"),
+		TimedOutIdleTarget ? TimedOutIdleTarget->GetAtlasForTest() : nullptr);
+	TestEqual(TEXT("a late TimedOut Idle cannot hide the target's cinematic Idle pose"),
 		TimedOutIdleTarget ? TimedOutIdleTarget->GetVisibility() : ESlateVisibility::Hidden,
 		ESlateVisibility::SelfHitTestInvisible);
-	TestEqual(TEXT("a late TimedOut Idle cannot replace the active Hit clip"),
-		FApi::TargetRate(IdleFailureBoard), FittedFailureHitClip.PlaybackRate);
-	TestEqual(TEXT("a late TimedOut Idle keeps advancing the active Hit frames"),
+	TestEqual(TEXT("the target keeps its Idle clip because the Hit lane resolves no atlas"),
+		FApi::TargetRate(IdleFailureBoard), FailureTargetIdleClip.PlaybackRate);
+	TestEqual(TEXT("the retired Hit lane leaves the pending target with no frame to advance"),
 		TimedOutIdleTarget ? TimedOutIdleTarget->GetCurrentFrameForTest() : INDEX_NONE,
-		FGameXXKBattleAnimationPresentation::CalculateFrameIndex(
-			FittedFailureHitClip,
-			0.101f,
-			false));
+		INDEX_NONE);
 
 	UGameInstance* const FormationFailureGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* const FormationFailureSubsystem = NewObject<UGameXXKMVPSubsystem>(FormationFailureGameInstance);

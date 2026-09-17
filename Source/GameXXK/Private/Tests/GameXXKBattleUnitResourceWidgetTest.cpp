@@ -1,8 +1,10 @@
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
 #include "UObject/UnrealType.h"
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKInkResourceBarStyle.h"
 #include "UI/GameXXKInRunUiStyle.h"
+#include "UI/GameXXKLocalization.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
@@ -18,6 +20,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleUnitResourceWidgetTest::RunTest(const FString& Parameters)
 {
+	// This case asserts the English vitals labels (HP/MP), so it states its own
+	// locale like the other English-surface tests rather than depending on the
+	// ambient one; in Chinese the same rows read 气血/内力.
+	const FString OriginalLanguage = GameXXKLocalization::GetLanguage();
+	ON_SCOPE_EXIT { GameXXKLocalization::SetLanguage(OriginalLanguage, false); };
+	GameXXKLocalization::SetLanguage(TEXT("en"), false);
+
 	UGameXXKBattleUnitResourceWidget* ResourceWidget = NewObject<UGameXXKBattleUnitResourceWidget>();
 	TestNotNull(TEXT("resource widget is created"), ResourceWidget);
 	if (!ResourceWidget)

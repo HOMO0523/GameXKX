@@ -11,6 +11,7 @@
 #include "Engine/GameInstance.h"
 #include "GameXXKMVPRules.h"
 #include "Layout/Geometry.h"
+#include "Misc/ScopeExit.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKBattleAtlasCache.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -18,6 +19,7 @@
 #include "UI/GameXXKBattleUnitResourceWidget.h"
 #include "UI/GameXXKBattleUnitStatusEffectsWidget.h"
 #include "UI/GameXXKBattleUnitVisualWidget.h"
+#include "UI/GameXXKLocalization.h"
 #include "UObject/StrongObjectPtr.h"
 
 #include <type_traits>
@@ -539,6 +541,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleProjectedUnitHudIdleSyncTest::RunTest(const FString& Parameters)
 {
+	// This case asserts the English vitals labels, so it states its own locale
+	// like the other English-surface tests; in Chinese the same rows read 气血/内力.
+	const FString OriginalLanguage = GameXXKLocalization::GetLanguage();
+	ON_SCOPE_EXIT { GameXXKLocalization::SetLanguage(OriginalLanguage, false); };
+	GameXXKLocalization::SetLanguage(TEXT("en"), false);
+
 	const auto RenderedHealth = [](UGameXXKBattleBoardWidget* const Board, const FName UnitId) -> FString
 	{
 		const UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
