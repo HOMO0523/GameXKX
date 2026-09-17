@@ -146,5 +146,6 @@
     "bottom": 0
   },
   "firstLastMeanAbsoluteDifference": 1.0275,
-  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+  "runtimeReplacementStatus": "forbidden_pending_user_confirmation",
+  "note": "Not wired into runtime yet, so the runtime replacement authorisation is still unconfirmed for this candidate."
 }

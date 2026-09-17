@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "candidate_review_only",
+  "status": "approved",
   "candidateId": "enemy_11_graymane_attack_candidate",
   "replacementTargetSuggestion": "enemy_11_graymane_attack",
   "sourceManifest": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/enemy_11_graymane_attack_candidate/source_manifest.json",
@@ -146,5 +146,8 @@
     "bottom": 0
   },
   "firstLastMeanAbsoluteDifference": 0.7546,
-  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+  "runtimeReplacementStatus": "approved",
+  "atlasStatus": "built_and_imported",
+  "approvedBy": "user",
+  "approvedAt": "2026-09-16"
 }

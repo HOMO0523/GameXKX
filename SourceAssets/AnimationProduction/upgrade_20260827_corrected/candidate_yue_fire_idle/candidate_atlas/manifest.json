@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "status": "candidate_review_only",
+  "status": "approved",
   "candidateId": "candidate_yue_fire_idle",
   "replacementTargetSuggestion": "character_09_yue_bai_idle",
   "sourceManifest": "SourceAssets/AnimationProduction/upgrade_20260827_corrected/candidate_yue_fire_idle/source_manifest.json",
@@ -146,5 +146,8 @@
     "bottom": 0
   },
   "firstLastMeanAbsoluteDifference": 6.5011,
-  "runtimeReplacementStatus": "forbidden_pending_user_confirmation"
+  "runtimeReplacementStatus": "approved",
+  "atlasStatus": "built_and_imported",
+  "approvedBy": "user",
+  "approvedAt": "2026-09-16"
 }
