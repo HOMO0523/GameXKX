@@ -244,6 +244,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKPlayableRootWidgetTest::RunTest(const FString& Parameters)
 {
 	UGameplayStatics::DeleteGameInSlot(PlayableRootTestSlot, PlayableRootUserIndex);
+	// DoesSaveGameExist deliberately counts a rotated backup as an existing save
+	// (GameXXKMVPSubsystem.cpp:4044-4045), and saving rotates the slot first, so one
+	// run of this test leaves a "<slot>.Previous1" behind. Deleting only the main
+	// slot therefore left the Continue command enabled on the following run. Clear
+	// the rotation too so the fixture is genuinely slot-free.
+	for (int32 BackupIndex = 1; BackupIndex <= 3; ++BackupIndex)
+	{
+		UGameplayStatics::DeleteGameInSlot(
+			PlayableRootTestSlot + FString::Printf(TEXT(".Previous%d"), BackupIndex),
+			PlayableRootUserIndex);
+	}
 	const FString ManualSlot1 = UGameXXKMVPSubsystem::GetManualSaveSlotName(0);
 	FScopedSaveSlotBackup ManualSlot1Backup(ManualSlot1, PlayableRootUserIndex);
 	if (!TestTrue(TEXT("playable root safely isolates the player's manual slot 1"), ManualSlot1Backup.bReady))
