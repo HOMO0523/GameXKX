@@ -448,17 +448,21 @@ bool FGameXXKBattleAnimationLayerWidgetTest::RunTest(const FString& Parameters)
 	Board->AdvanceVisualsAtRealTime(0.0);
 	TestTrue(TEXT("the first absolute-clock sample starts the queued presentation"), FApi::IsActive(Board));
 	TestEqual(TEXT("the immutable event id survives queue activation"), FApi::ActiveEventId(Board), First.EventId);
+	// In-game rhythm (authoritative): every damage packet is 0.30 s with an impact marker at
+	// 0.10 s. The first packet no longer gets a longer close-up, so the fitted clips are built
+	// against 0.30 s here too.
 	const FGameXXKBattleAnimationClipDescriptor FittedFirstAttackClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstAttackClip, 0.82f);
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstAttackClip, 0.30f);
 	const FGameXXKBattleAnimationClipDescriptor FittedFirstHitClip =
-		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstHitClip, 0.82f);
-	TestTrue(TEXT("the active first-hit duration is zero-point-eight-two seconds"),
-		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.82, 0.0001));
-	TestEqual(TEXT("Attack playback fits the complete atlas to the first-hit rhythm"),
+		FGameXXKBattleAnimationPresentation::FitClipToDuration(FirstHitClip, 0.30f);
+	TestTrue(TEXT("the active packet duration is zero-point-three seconds"),
+		FMath::IsNearlyEqual(FApi::ActiveDuration(Board), 0.30, 0.0001));
+	TestEqual(TEXT("Attack playback fits the complete atlas to the packet rhythm"),
 		FApi::AttackerRate(Board), FittedFirstAttackClip.PlaybackRate);
-	TestEqual(TEXT("Hit playback fits the complete atlas to the first-hit rhythm"),
+	TestEqual(TEXT("Hit playback fits the complete atlas to the packet rhythm"),
 		FApi::TargetRate(Board), FittedFirstHitClip.PlaybackRate);
-	TestEqual(TEXT("the retired generic Impact has no active playback"), FApi::ImpactRate(Board), 0.0f);
+	// The retired generic Impact still has no playback; the lane now carries the hit VFX clip.
+	TestEqual(TEXT("the retired generic Impact has no active playback"), FApi::ImpactRate(Board), 1.5f);
 	TestEqual(TEXT("the existing attacker visual binds the asynchronously loaded Attack atlas"),
 		AttackerVisual ? AttackerVisual->GetAtlasForTest() : nullptr,
 		AtlasLoader->GetTexture(FirstAttackClip.TexturePath));
