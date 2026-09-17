@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<title>战斗动画节奏 · 现状与设计稿对照</title>
+<style>
+  :root{
+    --ink:#231a12; --paper:#f4ecd8; --paper2:#e8dcc0;
+    --line:#bfa87e; --accent:#8c2f19; --good:#1f6b3a; --warn:#a86a12;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#d9cdb2;color:var(--ink);
+       font-family:"Microsoft YaHei","PingFang SC","Noto Sans SC",system-ui,sans-serif;
+       line-height:1.75;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+  header{background:var(--paper);border:1px solid var(--line);border-radius:6px;
+         padding:22px 26px;margin-bottom:22px}
+  h1{margin:0 0 6px;font-size:25px;letter-spacing:.5px}
+  .sub{color:#6b5a44;font-size:13.5px}
+  section{background:var(--paper);border:1px solid var(--line);border-radius:6px;
+          padding:20px 26px;margin-bottom:20px}
+  h2{font-size:19px;margin:0 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:15.5px;margin:20px 0 8px}
+  p{margin:9px 0}
+  code{background:var(--paper2);padding:1px 5px;border-radius:3px;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  th{background:var(--paper2);font-weight:600}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .now{color:var(--accent);font-weight:600}
+  .spec{color:var(--good);font-weight:600}
+  .tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:9px;
+       border:1px solid var(--line);background:var(--paper2);margin-left:6px}
+  .callout{border-left:4px solid var(--warn);background:#fbf3df;padding:12px 16px;
+           margin:14px 0;border-radius:0 4px 4px 0}
+  .callout.bad{border-left-color:var(--accent);background:#fbeceb}
+  .callout.ok{border-left-color:var(--good);background:#eaf5ee}
+  /* timeline */
+  .tl{margin:18px 0 6px}
+  .tl-row{display:flex;align-items:center;gap:10px;margin:9px 0}
+  .tl-name{width:132px;flex:0 0 132px;font-size:13.5px}
+  .tl-track{position:relative;flex:1;height:30px;background:var(--paper2);
+            border:1px solid var(--line);border-radius:4px;overflow:hidden}
+  .tl-bar{position:absolute;top:0;bottom:0;background:#c8a26a;opacity:.55}
+  .tl-impact{position:absolute;top:0;bottom:0;width:3px;background:var(--accent)}
+  .tl-label{position:absolute;top:0;bottom:0;display:flex;align-items:center;
+            padding-left:8px;font-size:12.5px;white-space:nowrap;z-index:2}
+  .tl-axis{display:flex;gap:10px;margin-top:4px}
+  .tl-axis .tl-name{visibility:hidden}
+  .tl-ticks{position:relative;flex:1;height:18px;font-size:11.5px;color:#6b5a44}
+  .tl-tick{position:absolute;top:0;border-left:1px solid var(--line);padding-left:3px}
+  .legend{font-size:12.5px;color:#6b5a44;margin-top:10px}
+  .swatch{display:inline-block;width:11px;height:11px;border-radius:2px;
+          vertical-align:middle;margin:0 4px 0 12px}
+  /* frame strip */
+  .strip{display:flex;gap:2px;margin:10px 0;flex-wrap:nowrap;overflow:hidden}
+  .fx{flex:1 1 0;height:26px;border:1px solid var(--line);border-radius:2px;
+      background:var(--paper2);position:relative}
+  .fx.impact{background:#e5b7ad;border-color:var(--accent)}
+  .fnote{font-size:12.5px;color:#6b5a44}
+  ul{margin:8px 0 8px 20px;padding:0}
+  li{margin:5px 0}
+  footer{color:#6b5a44;font-size:12.5px;text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>战斗动画节奏 · 现状与设计稿对照</h1>
+  <div class="sub">
+    这份页面只用来说明一件事：<strong>一次攻击打出伤害时，画面用多长时间把它演完</strong>。<br>
+    数据来源：源码 <code>GameXXKBattleAnimationPresentation.cpp</code> 与设计稿
+    <code>docs/superpowers/specs/2026-08-12-balance-and-battle-rhythm-tuning-design.md</code> 第 6 节。
+  </div>
+</header>
+
+<section>
+  <h2>1. 先说结论</h2>
+  <div class="callout bad">
+    <strong>现在的代码比设计稿快了很多。</strong>一次普通攻击，设计稿要求演 <b>0.82 秒</b>，
+    现在只演 <b>0.30 秒</b>——差了 2.7 倍。<br>
+    因为素材总帧数不变，时间被压短就意味着<strong>每秒要播更多张画</strong>：
+    同一段 60 张的攻击动作，设计稿按 <b>1.59 倍速</b>播放，现在按 <b>4.33 倍速</b>播放。
+  </div>
+  <div class="callout">
+    <strong>这不是“测试写错了”。</strong>我一开始怀疑是测试过期，核对了设计稿后确认：
+    <span class="spec">测试里的数字和设计稿一致</span>，<span class="now">是程序实现偏离了设计稿</span>。
+    所以正确做法是把程序改回设计稿，而不是改测试。
+  </div>
+  <p style="margin-top:14px">
+    另外，现在<strong>死亡动画完全不播了</strong>：代码里死亡环节仍然等 0.90 秒，
+    但没有指定要播哪段动画，所以角色是<strong>停在原地定格 0.9 秒</strong>然后消失，而不是“倒下”。
+  </p>
+</section>
+
+<section>
+  <h2>2. 关键数字：一次攻击演多久</h2>
+  <p>
+    下面每一行都是同一件事的不同说法。<span class="spec">绿色是设计稿</span>，
+    <span class="now">红色是现在游戏里的实际值</span>。
+  </p>
+  <table>
+    <thead>
+      <tr><th>环节</th><th>设计稿</th><th>现在</th><th>差多少</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>第一次打中（首个伤害包）<br><span class="sub">保留特写、完整播完动作</span></td>
+        <td class="num spec">0.82 秒</td>
+        <td class="num now">0.30 秒</td>
+        <td>缩短到 37%</td>
+      </tr>
+      <tr>
+        <td>同一招后续连段（第 2 包起）</td>
+        <td class="num spec">0.30 秒</td>
+        <td class="num now">0.30 秒</td>
+        <td style="color:var(--good)">一致</td>
+      </tr>
+      <tr>
+        <td>命中瞬间（判定点）</td>
+        <td class="num spec">0.30 秒处</td>
+        <td class="num now">0.10 秒处</td>
+        <td>提前 0.20 秒</td>
+      </tr>
+      <tr>
+        <td>闪避（没打中）</td>
+        <td class="num spec">0.45 秒</td>
+        <td class="num now">0.30 秒</td>
+        <td>缩短 0.15 秒</td>
+      </tr>
+      <tr>
+        <td>闪避的命中点</td>
+        <td class="num spec">0.16 秒处</td>
+        <td class="num now">0.10 秒处</td>
+        <td>提前 0.06 秒</td>
+      </tr>
+      <tr>
+        <td>致死一击的震屏时长</td>
+        <td class="num spec">0.26 秒</td>
+        <td class="num now">0.20 秒</td>
+        <td>缩短 0.06 秒</td>
+      </tr>
+      <tr>
+        <td>死亡动画</td>
+        <td class="num spec">0.90 秒完整播完</td>
+        <td class="num now">0.90 秒但不播</td>
+        <td class="now">动作丢失</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="legend">震屏幅度、伤害数字放大倍数这些其余参数，现在和设计稿是一致的，所以这里不列。</p>
+</section>
+
+<section>
+  <h2>3. 为什么“0.30 秒”会让动作看起来很赶</h2>
+  <p>
+    攻击素材每套是 <strong>60 张画</strong>。设计稿里这些图是按
+    <strong>约 46 张/秒</strong>（每秒 46 张）的原速标准制作的——本来就是很细腻的动画。
+    程序要做的是把 60 张塞进指定的时长里，算法就一句：
+  </p>
+  <p style="margin-left:14px"><code>播放倍速 = 60 ÷ (46.15 × 目标时长)</code></p>
+  <p>代入两个时长：</p>
+  <table>
+    <thead><tr><th>目标时长</th><th>算式</th><th>播放倍速</th><th>看起来</th></tr></thead>
+    <tbody>
+      <tr><td class="spec">0.82 秒（设计稿）</td><td><code>60 ÷ (46.15 × 0.82)</code></td><td class="num spec">1.59 ×</td><td>接近原速，动作完整可读</td></tr>
+      <tr><td class="now">0.30 秒（现在）</td><td><code>60 ÷ (46.15 × 0.30)</code></td><td class="num now">4.33 ×</td><td>像快进，细节糊掉</td></tr>
+    </tbody>
+  </table>
+
+  <h3>同一段 60 张动作，两种时长的观感差别</h3>
+  <div class="strip" id="stripNow"></div>
+  <div class="fnote">现在：整段 <strong>0.30 秒</strong>放完 60 张，等于 <strong>200 张/秒</strong>。上面每一小格约等于 1/20 段。</div>
+  <div class="strip" id="stripSpec" style="margin-top:14px"></div>
+  <div class="fnote">设计稿：整段 <strong>0.82 秒</strong>放完 60 张，等于 <strong>73 张/秒</strong>。同样的格子数量，但真实时间长了 2.7 倍。</div>
+  <p class="legend">
+    粉色格 = 命中判定点出现的位置。现在它在整段刚开头就打出判定，后面大半段动作是在“打完之后还在播”。
+  </p>
+</section>
+
+<section>
+  <h2>4. 时间轴对照（按真实比例）</h2>
+  <p>横轴是真实时间，0 到 1.0 秒。<b>这是“一招五段攻击”的第一段</b>。竖红线是命中判定点。</p>
+  <div class="tl">
+    <div class="tl-row">
+      <div class="tl-name spec">设计稿</div>
+      <div class="tl-track" id="track0"></div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-name now">现在</div>
+      <div class="tl-track" id="track1"></div>
+    </div>
+    <div class="tl-axis">
+      <div class="tl-name">x</div>
+      <div class="tl-ticks" id="ticks"></div>
+    </div>
+  </div>
+  <div class="legend">
+    实际观感差别：设计稿把第一击做成一个<strong>稍微放慢、看清动作</strong>的节拍；
+    现在是一进入战斗画面就瞬间打完，五段连击会连成一串看不清的快闪。
+  </div>
+  <p>
+    设计稿对这个还有一句总时长约束：一次五段攻击的伤害演出
+    <strong>合计不超过 0.82 + 4×0.30 = 2.02 秒</strong>。
+    现在所有段都是 0.30 秒，合计变成 <strong>1.50 秒</strong>——不是变慢，是整体变快了。
+  </p>
+</section>
+
+<section>
+  <h2>5. 死亡动画为什么没了</h2>
+  <p>
+    死亡环节的代码仍然会创建一个 0.90 秒的演出项，也仍然按设计稿取 0.90 秒，
+    但<strong>没有给它指定要播放的动画片段</strong>。
+    没有片段时，角色就维持当前姿势，等这 0.90 秒走完再消失。
+  </p>
+  <div class="callout">
+    结果：设计稿写的是“<b>完整播放死亡 atlas 后再移除</b>”，实际变成“<b>原地定格 0.9 秒后消失</b>”。
+    这一条不需要你做任何判断，属于明显的实现缺失。
+  </div>
+</section>
+
+<section>
+  <h2>6. 需要你决定的地方（只有一个）</h2>
+  <p>
+    其余几条我都建议直接按设计稿改回。只有下面这一处是真正的二选一，
+    因为它牵扯到素材是按什么标准做的：
+  </p>
+  <p>
+    2026-09-01 那次改动同时给一批攻击素材<strong>实测了帧率</strong>
+    （英雄和公鸡的拳/踢标成约 46 张/秒，其他怪物 41～44 不等，待机约 30）。
+    这批素材的“原速”到底是设计稿假定的那个标准，还是实测出来的这个值，
+    决定了下面两条路：
+  </p>
+  <table>
+    <thead><tr><th>方案</th><th>做法</th><th>玩家看到什么</th><th>代价</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>A · 按设计稿恢复节奏</b><br><span class="sub">推荐</span></td>
+        <td>把首击恢复成 0.82 秒、闪避 0.45 秒、致死震屏 0.26 秒，死亡动画补回来。
+            播放倍速仍由 <code>帧数÷(帧率×时长)</code> 算出。</td>
+        <td>第一击放慢、看得清动作；连段依旧干脆；死亡会真的倒下。
+            <b>五段合计 2.02 秒</b>。</td>
+        <td>单次攻击演出变长 0.52 秒。若嫌拖，可只调时长不动结构。</td>
+      </tr>
+      <tr>
+        <td><b>B · 保留实测帧率并重新定节奏</b></td>
+        <td>承认素材原速就是实测值，把设计稿的 0.82/0.45/0.26 当过期数字，
+            重新定一套时长并同步改设计稿与测试。</td>
+        <td>可以做到比 A 更快，但要重新决定每档多长；在你定出新数字前，
+            测试会一直是红的。</td>
+        <td>需要你先给出新的时长偏好（例如“首击想要多长”），
+            否则我只能沿用现状。</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="callout ok">
+    <strong>我的建议是 A。</strong>因为设计稿不是随手写的数字，它带着完整推导
+    （首击 0.82 秒是为了“完整播放 atlas 且保留特写”，连段 0.30 秒才是为了快）。
+    现在的代码把“特写档”整个删掉了，等于所有攻击都按连段档在跑。
+    另外 A 能立刻让 79 条断言回到绿，不需要你额外给数字。
+  </div>
+</section>
+
+<section>
+  <h2>7. 如果你选 A，我会改这些</h2>
+  <ul>
+    <li>把首次伤害包改回 <b>0.82 秒 / 命中点 0.30 秒</b>，并恢复“是否首包”的判断。</li>
+    <li>闪避改回 <b>0.45 秒 / 命中点 0.16 秒</b>。</li>
+    <li>致死震屏改回 <b>0.26 秒</b>。</li>
+    <li>把死亡动画片段补回去，让 0.90 秒真的用在“倒下”上。</li>
+    <li>跑冷编译 + 这批动画断言，确认 79 条回到绿，且不引入新失败。</li>
+    <li><b>不会</b>动你手调过的相机、立绘位置或 HD2D 摆位等数值。</li>
+  </ul>
+  <p class="legend">
+    这些改完之后，画面节奏会和你 2026-08-12 定稿的那一版一致。如果你更想走 B，
+    只要告诉我“首击想多长、连段想多长”，我就按你的数字实现并把设计稿和测试一起同步。
+  </p>
+</section>
+
+<footer>
+  生成于 2026-09-16 · 数据全部来自仓库源码与设计稿，未修改任何游戏行为<br>
+  本页为静态说明页，不连接游戏、不改动存档
+</footer>
+
+</div>
+<script>
+(function(){
+  // ---- frame strips ----
+  function strip(el, total, impactAt, note){
+    var n = 20;
+    for (var i=0;i<n;i++){
+      var d = document.createElement('div');
+      d.className = 'fx';
+      // mark the cell containing the impact frame
+      var frame = Math.round((i/n)*total);
+      var next  = Math.round(((i+1)/n)*total);
+      if (impactAt >= frame && impactAt < next) d.className += ' impact';
+      el.appendChild(d);
+    }
+  }
+  strip(document.getElementById('stripNow'),  60, 0.10/0.30*60);   // impact at 1/3
+  strip(document.getElementById('stripSpec'), 60, 0.30/0.82*60);   // impact at ~36.6%
+
+  // ---- timeline (0 -> 1.0 s) ----
+  var MAX = 1.0;
+  function bar(track, dur, impact, cls){
+    var b = document.createElement('div');
+    b.className = 'tl-bar';
+    b.style.left = '0%';
+    b.style.width = (dur/MAX*100) + '%';
+    track.appendChild(b);
+    var im = document.createElement('div');
+    im.className = 'tl-impact';
+    im.style.left = (impact/MAX*100) + '%';
+    track.appendChild(im);
+    var t = document.createElement('div');
+    t.className = 'tl-label';
+    t.textContent = dur.toFixed(2) + 's　命中 ' + impact.toFixed(2) + 's';
+    track.appendChild(t);
+  }
+  bar(document.getElementById('track0'), 0.82, 0.30);
+  bar(document.getElementById('track1'), 0.30, 0.10);
+
+  // ---- axis ticks ----
+  var ticks = document.getElementById('ticks');
+  [0,0.2,0.4,0.6,0.8,1.0].forEach(function(v){
+    var d = document.createElement('div');
+    d.className = 'tl-tick';
+    d.style.left = (v/MAX*100) + '%';
+    d.textContent = v.toFixed(1) + 's';
+    ticks.appendChild(d);
+  });
+})();
+</script>
+</body>
+</html>
