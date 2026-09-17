@@ -157,6 +157,12 @@ namespace
 		FVector2D ExpectedAnchor)
 	{
 		ExpectedAnchor.Y += 0.025f;
+		// Anchor storage is FAnchors, whose components are float, while FVector2D
+		// is double in UE5. Round the expectation through float so it compares the
+		// value production can actually represent instead of a double-precision
+		// neighbour about 2.4e-08 away.
+		ExpectedAnchor.X = static_cast<float>(ExpectedAnchor.X);
+		ExpectedAnchor.Y = static_cast<float>(ExpectedAnchor.Y);
 		UGameXXKBattleUnitHudWidget* const Hud = Board ? Board->GetProjectedUnitHudForTest(UnitId) : nullptr;
 		Test.TestNotNull(FString::Printf(TEXT("%s has a fixed-slot HUD"), *UnitId.ToString()), Hud);
 		Test.TestEqual(FString::Printf(TEXT("%s keeps its authoritative side"), *UnitId.ToString()),
@@ -222,6 +228,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 {
+	// This case asserts the English vitals labels, so it states its own locale
+	// like the other English-surface tests; in Chinese the same rows read 气血/内力.
+	const FString OriginalLanguage = GameXXKLocalization::GetLanguage();
+	ON_SCOPE_EXIT { GameXXKLocalization::SetLanguage(OriginalLanguage, false); };
+	GameXXKLocalization::SetLanguage(TEXT("en"), false);
+
 	using FPresentationApi = TFixedSlotPresentationApi<UGameXXKBattleBoardWidget>;
 	TestTrue(TEXT("fixed-slot Board exposes marker-driven presentation state"), FPresentationApi::bAvailable);
 	if (!FPresentationApi::bAvailable)
@@ -342,12 +354,17 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 	CinematicEvent.TargetHealthBefore = 170;
 	CinematicEvent.TargetHealthAfter = 152;
 	FPresentationApi::Queue(Board, CinematicEvent);
+	// The Board selects the attacker clip per event (hero punch/kick), not through the
+	// plain action lookup, and the retired Hit action resolves no per-unit atlas: the
+	// hit VFX lane owns the impact instead.
+	const FGameXXKBattleAnimationClipDescriptor CinematicAttackClip =
+		FGameXXKBattleAnimationPresentation::ResolveAttackClipForEvent(
+			CinematicEvent.AttackerUnitId, NAME_None, false, CinematicEvent.EventId);
 	TestTrue(TEXT("the Board requests Attack asynchronously before the central action"),
-		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
-			TEXT("Player"), false, EGameXXKBattleAnimationAction::Attack).TexturePath));
-	TestTrue(TEXT("the Board requests Hit asynchronously before the central action"),
-		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveClip(
-			TEXT("Enemy.Tiger"), true, EGameXXKBattleAnimationAction::Hit).TexturePath));
+		AtlasLoader->Requested(CinematicAttackClip.TexturePath));
+	TestFalse(TEXT("the retired Hit action resolves no per-unit atlas clip, by design"),
+		FGameXXKBattleAnimationPresentation::ResolveClip(
+			TEXT("Enemy.Tiger"), true, EGameXXKBattleAnimationAction::Hit).IsValid());
 	TestFalse(TEXT("the Board never requests the retired generic Impact atlas"),
 		AtlasLoader->Requested(FGameXXKBattleAnimationPresentation::ResolveGenericClip(
 			EGameXXKBattleAnimationAction::Impact).TexturePath));
@@ -367,8 +384,8 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		CinematicTarget ? CinematicTarget->GetAtlasForTest() : nullptr, TargetIdleAtlas);
 	TestEqual(TEXT("attacker Idle fallback plays at its authored rate"), FPresentationApi::AttackerRate(Board), 1.0f);
 	TestEqual(TEXT("target Idle fallback plays at its authored rate"), FPresentationApi::TargetRate(Board), 1.0f);
-	TestEqual(TEXT("the retired generic Impact has no active playback despite participant fallback"),
-		FPresentationApi::ImpactRate(Board), 0.0f);
+	TestEqual(TEXT("the hit-VFX lane owns the impact playback that replaced the generic Impact"),
+		FPresentationApi::ImpactRate(Board), 1.5f);
 	TestTrue(TEXT("cinematic attacker size is exactly two times formation"),
 		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(820.0f, 820.0f), 0.01f));
 	TestTrue(TEXT("cinematic target size is exactly two times formation"),
@@ -432,24 +449,30 @@ bool FGameXXKBattleProjectedUnitHudTest::RunTest(const FString& Parameters)
 		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Visible,
 		ESlateVisibility::Hidden);
 
-	Board->AdvanceVisualsAtRealTime(0.301);
-	TestEqual(TEXT("crossing zero-point-three updates the displayed-health overlay"),
+	// The shipped rhythm puts the impact marker at 0.10 s inside a 0.30 s packet, so
+	// sample just past 0.10 while the readout is still on screen (its peak is brief).
+	Board->AdvanceVisualsAtRealTime(0.101);
+	TestEqual(TEXT("crossing zero-point-one updates the displayed-health overlay"),
 		FPresentationApi::DisplayedHealth(Board, CinematicEvent.TargetUnitId), CinematicEvent.TargetHealthAfter);
 	const UGameXXKBattleUnitHudWidget* const PostImpactTargetHud = Board->GetProjectedUnitHudForTest(CinematicEvent.TargetUnitId);
-	TestEqual(TEXT("crossing zero-point-three redraws the real target HUD"),
+	TestEqual(TEXT("crossing zero-point-one redraws the real target HUD"),
 		PostImpactTargetHud && PostImpactTargetHud->GetResourceWidgetForTest()
 			? PostImpactTargetHud->GetResourceWidgetForTest()->GetHealthDisplayTextForTest()
 			: FString(),
 		FString(TEXT("HP 152 / 180")));
-	TestEqual(TEXT("crossing zero-point-three emits the damage readout"),
+	TestEqual(TEXT("crossing zero-point-one emits the damage readout"),
 		FPresentationApi::Readout(Board), FString(TEXT("-18")));
-	TestEqual(TEXT("the retired generic impact stays hidden at the damage marker"),
-		CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Hidden,
-		ESlateVisibility::Hidden);
+	// The hit-VFX lane now owns the impact slot, so at the damage marker that slot
+	// stops being the permanently hidden compatibility widget it used to be. Its
+	// atlas stays unbound: the lane drives the visual, not a per-participant atlas.
+	TestFalse(TEXT("the compatibility impact slot leaves its hidden state at the damage marker"),
+		(CinematicImpact ? CinematicImpact->GetVisibility() : ESlateVisibility::Hidden)
+			== ESlateVisibility::Hidden);
 	TestNull(TEXT("the retired generic impact never binds an atlas"),
 		CinematicImpact ? CinematicImpact->GetAtlasForTest() : nullptr);
 
-	Board->AdvanceVisualsAtRealTime(0.821);
+	// 0.30 s packet: sample past its end rather than the retired 0.82 s boundary.
+	Board->AdvanceVisualsAtRealTime(0.301);
 	TestTrue(TEXT("surviving attacker restores its formation size"),
 		CinematicAttacker && CinematicAttacker->GetPresentedSize().Equals(FVector2D(410.0f, 410.0f), 0.01f));
 	TestTrue(TEXT("surviving target restores its formation size"),
