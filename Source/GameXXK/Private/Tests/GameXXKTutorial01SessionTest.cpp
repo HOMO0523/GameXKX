@@ -4,6 +4,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "Guide/GameXXKGuideAsset.h"
 #include "Misc/AutomationTest.h"
@@ -28,6 +29,8 @@ bool FGameXXKTutorial01SessionTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*BattleRuntime);
 	FGameXXKRuntimeState Before = BattleRuntime->GetRuntimeStateCopy();
 	TestEqual(TEXT("tutorial fixture owns all six permanent partners"),
 		Before.CardRun.CompanionRoster.PermanentCompanions.Num(),

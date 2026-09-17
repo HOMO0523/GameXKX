@@ -2,6 +2,7 @@
 #include "GameXXKCompanionRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRelicRules.h"
 #include "MVP/GameXXKMVPGameMode.h"
 #include "MVP/GameXXKMVPPlayerController.h"
@@ -202,6 +203,8 @@ bool FGameXXKMVPPlayableHUDTest::RunTest(const FString& Parameters)
 	UGameXXKMVPSubsystem* DirectTownSubsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestEqual(TEXT("fresh subsystem starts on main menu before direct town map normalization"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::MainMenu);
 	TestTrue(TEXT("direct Qingshan town PIE normalizes main menu state to town"), DirectTownSubsystem->EnsureQingshanTownRuntimeForDirectMap());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*DirectTownSubsystem);
 	TestEqual(TEXT("direct Qingshan town PIE hides main menu state"), DirectTownSubsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	TestEqual(TEXT("direct Qingshan town PIE selects Qingshan region"), DirectTownSubsystem->GetRuntimeState().CurrentRegion, UGameXXKMVPRules::RegionQingshan());
 	TestEqual(TEXT("direct Qingshan town owns all six starter partners"),
@@ -352,6 +355,8 @@ bool FGameXXKDesktopTrainingDirectEntryPartyTest::RunTest(const FString& Paramet
 		EGameXXKScreen::MainMenu);
 	TestTrue(TEXT("direct desktop-training HUD initializes a complete playable new-game state"),
 		Subsystem->EnsureDesktopTrainingRuntimeForDirectMap());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
 	TestEqual(TEXT("direct desktop-training HUD initializes all six deterministic starter companions"),
 		CardRun.CompanionRoster.PermanentCompanions.Num(),

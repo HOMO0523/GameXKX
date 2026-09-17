@@ -18,6 +18,7 @@
 #include "Misc/Parse.h"
 #include "Narrative/GameXXKMainStoryRules.h"
 #include "Narrative/GameXXKMainStoryCatalog.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveGame.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "Kismet/GameplayStatics.h"
@@ -38,6 +39,8 @@ namespace
 			auto* GI=NewObject<UGameInstance>();MVP=NewObject<UGameXXKMVPSubsystem>(GI);
 			MVP->SetSaveSlotWriteDelegateForTest(FGameXXKSaveSlotWriteDelegate::CreateLambda([this](USaveGame*,const FString&,int32){++Writes;return true;}));
 			MVP->StartGame();Dev=NewObject<UGameXXKDevToolsSubsystem>(GI);Dev->SetMVPForTest(MVP);Writes=0;
+			// This fixture exercises the established full-party systems, not onboarding.
+			GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*MVP);
 		}
 		~FDevFixture() { MVP->ResetSaveSlotWriteDelegateForTest(); }
 		TSharedPtr<FJsonObject> Call(const FString& Request)

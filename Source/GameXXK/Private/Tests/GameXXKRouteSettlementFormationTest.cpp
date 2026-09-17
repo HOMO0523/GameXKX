@@ -1,5 +1,6 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRouteSettlementRules.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
@@ -20,6 +21,8 @@ namespace
 			return false;
 		}
 		OutState = Subsystem->GetRuntimeStateCopy();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(OutState);
 		return FGameXXKPartyFormationRules::SetQuestNpc(OutState, NpcId)
 			&& UGameXXKMVPRules::AcceptTownQuest(OutState)
 			&& UGameXXKMVPRules::EnterDungeon(OutState);

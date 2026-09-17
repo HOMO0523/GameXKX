@@ -182,6 +182,8 @@ bool FGameXXKCompanionRecruitmentFacadePersistenceTest::RunTest(const FString& P
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	FGameXXKCompanionRecruitResult FirstTownRecruit;
 	TestTrue(TEXT("the town facade starts a random permanent recruitment"), Subsystem->StartRandomPermanentCompanionRecruitment(FirstTownRecruit));

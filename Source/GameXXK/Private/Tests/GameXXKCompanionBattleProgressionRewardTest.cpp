@@ -81,6 +81,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 bool FGameXXKCompanionBattleProgressionRewardTest::RunTest(const FString& Parameters)
 {
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	// This fixture exercises the established full-party systems, not onboarding.
+	State.Training.bProgressivePartySlots=false;
 	FString Error;
 	TestTrue(TEXT("the permanent card-run state initializes before recruiting"),
 		FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error));

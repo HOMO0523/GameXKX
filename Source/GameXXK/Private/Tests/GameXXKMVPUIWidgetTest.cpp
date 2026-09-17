@@ -1,6 +1,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/Button.h"
@@ -84,6 +85,8 @@ bool FGameXXKMVPUIWidgetTest::RunTest(const FString& Parameters)
 
 	TestFalse(TEXT("main menu continue rejects missing slot"), MainMenu->ContinueGameFromSlot(UiTestSlot, UserIndex));
 	TestTrue(TEXT("main menu start creates a new game"), MainMenu->StartGame());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	TestEqual(TEXT("main menu start lands directly in Qingshan town"), Subsystem->GetRuntimeState().Screen, EGameXXKScreen::Town);
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
 	TestEqual(TEXT("main menu StartNewGame grants all six profession companions"), StarterRoster.PermanentCompanions.Num(), 6);

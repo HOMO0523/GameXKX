@@ -331,6 +331,8 @@ namespace
 			OutError = TEXT("The fixture could not start the game.");
 			return false;
 		}
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*OutFixture.Subsystem);
 
 		FGameXXKRuntimeState& State = OutFixture.Subsystem->GetMutableRuntimeState();
 		FGameXXKPermanentCompanion* ActiveCompanion =
@@ -2550,6 +2552,8 @@ bool FGameXXKDesktopTrainingIdleStripControlRailTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	Widget->SetMVPSubsystem(Subsystem);
 	// This test verifies local reference coordinates, not the persisted choice
 	// to expand upward when the real desktop HUD was dragged near the taskbar.
@@ -2860,6 +2864,8 @@ bool FGameXXKDesktopTrainingNoticeRailStateMachineTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	Widget->SetMVPSubsystem(Subsystem);
 	Widget->ConstructForTest();
 	if (!TestTrue(TEXT("notice-rail fixture opens collapsed"), Widget->OpenWorkbench()))
@@ -4532,6 +4538,8 @@ bool FGameXXKDesktopTrainingWorkbenchCloseStackTest::RunTest(const FString& Para
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& CloseStackState = Subsystem->GetMutableRuntimeState();
 	const FName ToolInputEquipment = CreateCarryTestEquipment(
 		*this,
@@ -5177,6 +5185,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelPartyAtlasAsyncFallbackTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	FGameXXKRuntimeState& InitialState = Subsystem->GetMutableRuntimeState();
 	const FGameXXKPermanentCompanion* Blade = InitialState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
@@ -5813,6 +5823,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelVisualLoopTest::RunTest(const FString
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FName StageId = FGameXXKTrainingRules::MakeStageId(EGameXXKTrainingDifficulty::Normal, 1);
 	TestTrue(TEXT("travel visual loop fixture starts the cleared stage"), Subsystem->StartTrainingTravel(StageId));
@@ -5856,6 +5868,8 @@ bool FGameXXKDesktopTrainingWorkbenchTravelCombatPresentationTest::RunTest(const
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	FGameXXKRuntimeState& PartyState = Subsystem->GetMutableRuntimeState();
 	const FGameXXKPermanentCompanion* ActiveCompanion = PartyState.CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
@@ -6274,6 +6288,8 @@ bool FGameXXKDesktopTrainingWorkbenchFormationNpcPortraitTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
 	State.CardRun.ActiveTemporaryQuestNpcId = NAME_None;
@@ -6545,8 +6561,13 @@ bool FGameXXKDesktopTrainingWorkbenchMapTravelSessionPreservesNpcTest::RunTest(
 {
 	UGameXXKMVPSubsystem* Subsystem =
 		NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-	if (!TestTrue(TEXT("map-session fixture starts"), Subsystem && Subsystem->StartGame())
-		|| !TestTrue(TEXT("map-session fixture selects Yue Bai"),
+	if (!TestTrue(TEXT("map-session fixture starts"), Subsystem && Subsystem->StartGame()))
+	{
+		return false;
+	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
+	if (!TestTrue(TEXT("map-session fixture selects Yue Bai"),
 			Subsystem->SelectTownQuestNpcForParty(TEXT("Npc.YueBai"))))
 	{
 		return false;
@@ -6599,6 +6620,8 @@ bool FGameXXKDesktopTrainingWorkbenchCharacterRosterOwnerPresentationTest::RunTe
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
@@ -7021,6 +7044,8 @@ bool FGameXXKDesktopTrainingWorkbenchRosterCategoryRepresentativeTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Screen = EGameXXKScreen::Town;
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
@@ -7258,6 +7283,8 @@ bool FGameXXKDesktopTrainingWorkbenchRosterTwoLayerInteractionTest::RunTest(
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	UGameXXKDesktopTrainingWorkbenchWidget* Widget =
 		NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	Widget->SetMVPSubsystem(Subsystem);
@@ -7935,6 +7962,8 @@ bool FGameXXKDesktopTrainingWarehouseBatchPartialTest::RunTest(const FString& Pa
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.Talents.NodeRanks.Add(TEXT("Talent.Root"), 1);
 	State.DesktopInventory.WarehouseSlots.SetNum(

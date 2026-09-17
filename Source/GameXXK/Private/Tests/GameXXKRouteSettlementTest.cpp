@@ -4,6 +4,7 @@
 #include "GameXXKEquipmentEconomyRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKDesktopInventoryRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -22,6 +23,8 @@ namespace
 			return false;
 		}
 		OutState = Subsystem->GetRuntimeState();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(OutState);
 		return true;
 	}
 }

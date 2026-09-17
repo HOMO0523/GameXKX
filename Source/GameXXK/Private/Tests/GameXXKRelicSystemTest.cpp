@@ -10,6 +10,7 @@
 #include "GameXXKMVPRules.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "GameXXKRouteEncounterCatalog.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKRelicBarWidget.h"
@@ -418,6 +419,8 @@ namespace
 	FGameXXKRuntimeState BuildSingleEncounterRoute(const EGameXXKNodeKind EncounterKind)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 		State.Screen = EGameXXKScreen::DungeonMap;
 		State.CurrentMapId = TEXT("HuangshanRoute");
 		State.bDungeonActive = true;
@@ -535,6 +538,8 @@ bool FGameXXKRouteAttributeBattleProjectionTest::RunTest(const FString& Paramete
 	return false;
 #else
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 	TestTrue(TEXT("the fixture reaches an active route"),
 		UGameXXKMVPRules::OpenWorldMap(State)
 		&& UGameXXKMVPRules::EnterWorldRegion(State, UGameXXKMVPRules::RegionQingshan())

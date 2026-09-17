@@ -1,6 +1,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Engine/GameInstance.h"
@@ -24,6 +25,8 @@ bool FGameXXKQingshanTaskNpcRouteTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 	TestTrue(TEXT("the Qingshan main quest can be accepted"),
 		UGameXXKMVPRules::AcceptTownQuest(State));
 	// New semantics: accepting the quest keeps the guide NPC in town. Simulate the dialog

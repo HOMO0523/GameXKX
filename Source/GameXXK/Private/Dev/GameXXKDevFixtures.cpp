@@ -114,6 +114,8 @@ bool RecommendAll(FGameXXKRuntimeState& State,int32 Level,EGameXXKEquipmentSet H
 bool BuildBenchmark(EGameXXKCharacterRole Role,FName Npc,const FString& HeroDirection,int32 NpcOmit,FGameXXKRuntimeState& Out,FString& Error)
 {
  FGameXXKRuntimeState S=UGameXXKMVPRules::CreateNewGame();
+ // This fixture exercises the established full-party systems, not onboarding.
+ S.Training.bProgressivePartySlots=false;
  for(const auto& Template:FGameXXKCompanionCatalog::GetRecruitTemplates())
  {
   if(!Template.TemplateId.ToString().EndsWith(TEXT(".01")))continue;

@@ -1,5 +1,6 @@
 #include "GameXXKCompanionCatalog.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 
@@ -20,6 +21,9 @@ bool FGameXXKOwnedQuestNpcLoadoutTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Subsystem->GetMutableRuntimeState());
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const TArray<FGameXXKQuestNpcDefinition>& Definitions = FGameXXKCompanionCatalog::GetQuestNpcDefinitions();
 	TestEqual(TEXT("catalog exposes the six owned named NPCs"), Definitions.Num(), 6);

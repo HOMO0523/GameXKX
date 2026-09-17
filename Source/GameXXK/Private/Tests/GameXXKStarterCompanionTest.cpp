@@ -39,6 +39,8 @@ bool FGameXXKStarterCompanionTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKRuntimeState StartedState = Subsystem->GetRuntimeStateCopy();
 	const FGameXXKCompanionRosterState& StartedRoster = StartedState.CardRun.CompanionRoster;

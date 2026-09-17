@@ -6,6 +6,7 @@
 #include "GameXXKEncounterRules.h"
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRelicCatalog.h"
 #include "GameXXKRelicRules.h"
 #include "GameXXKRouteMerchantRules.h"
@@ -48,6 +49,8 @@ namespace
 	FGameXXKRuntimeState MakeMerchantState(const bool bPermanentParty = false)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		if (bPermanentParty)
 		{
 			UGameXXKMVPSubsystem* Subsystem =
@@ -55,6 +58,7 @@ namespace
 			if (Subsystem && Subsystem->StartGame())
 			{
 				State = Subsystem->GetRuntimeStateCopy();
+				GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 			}
 		}
 		State.Screen = EGameXXKScreen::RouteMerchant;
@@ -161,6 +165,8 @@ namespace
 	FGameXXKSaveState MakeLegacyMerchantSnapshot()
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		State.bDungeonActive = true;
 		State.RouteSeed = 0x6137;
 		State.bHasGeneratedRouteMap = true;

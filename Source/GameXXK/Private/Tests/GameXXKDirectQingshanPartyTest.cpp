@@ -1,4 +1,5 @@
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 
@@ -23,6 +24,8 @@ bool FGameXXKDirectQingshanPartyTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKCardRunState& CardRun = Subsystem->GetRuntimeState().CardRun;
 	TestEqual(TEXT("direct Qingshan owns all six starter partners"),

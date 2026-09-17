@@ -1,4 +1,5 @@
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Misc/AutomationTest.h"
 
@@ -13,6 +14,8 @@ namespace
 		const int32 NextRewardOrdinal)
 	{
 		OutState = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(OutState);
 		if (!UGameXXKMVPRules::OpenWorldMap(OutState)
 			|| !UGameXXKMVPRules::EnterWorldRegion(OutState, UGameXXKMVPRules::RegionQingshan())
 			|| !UGameXXKMVPRules::AcceptTownQuest(OutState)

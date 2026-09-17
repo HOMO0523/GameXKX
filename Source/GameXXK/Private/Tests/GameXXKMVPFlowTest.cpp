@@ -2,6 +2,7 @@
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKBattlePresentation.h"
 #include "GameXXKRelicRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKSaveMigration.h"
@@ -169,6 +170,9 @@ bool FGameXXKMVPFullFlowTest::RunTest(const FString& Parameters)
 	UGameInstance* TestGameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(TestGameInstance);
 	TestTrue(TEXT("the player-facing StartNewGame path initializes the full-flow runtime"), Subsystem->StartNewGame());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::SkipTeachingChests(Subsystem->GetMutableRuntimeState());
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 
 	TestEqual(TEXT("player-facing StartNewGame lands directly in Qingshan town"), State.Screen, EGameXXKScreen::Town);

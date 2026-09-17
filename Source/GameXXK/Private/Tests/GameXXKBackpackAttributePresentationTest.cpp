@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/WidgetTree.h"
 #include "Engine/GameInstance.h"
 #include "GameXXKEquipmentRules.h"
@@ -16,6 +17,8 @@ bool FGameXXKBackpackAttributePresentationTest::RunTest(const FString& Parameter
 {
 	auto* Sub=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if(!Sub->StartGame()) return false;
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Sub);
 	auto* Workbench=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	Workbench->SetMVPSubsystem(Sub); Workbench->ConstructForTest(); Workbench->OpenBackpack();
 	TArray<FName> Ids={FGameXXKEquipmentRules::HeroCharacterId()};

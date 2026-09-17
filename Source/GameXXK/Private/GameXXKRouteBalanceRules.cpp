@@ -407,6 +407,8 @@ namespace
 			return SetError(OutError, TEXT("A balance case needs a valid chapter, route snapshot level, and positive seed."));
 		}
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		State.PlayerLevel = Case.RouteLevel;
 		State.RouteSeed = Case.Seed;
 		UGameXXKMVPRules::RecalculatePlayerStatsFromEquipment(State);

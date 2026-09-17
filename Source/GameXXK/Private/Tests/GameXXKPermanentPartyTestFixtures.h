@@ -24,6 +24,24 @@ namespace GameXXKPermanentPartyTestFixtures
         FGameXXKDesktopInventoryRules::Normalize(State);
         FGameXXKTrainingRules::StartTravel(State.Training,TEXT("Training.Normal.1-1"));
     }
+	/**
+	 * Opts an already-started runtime state out of the party-slot onboarding and
+	 * materializes the established full party (hero, first owned partner, named NPC).
+	 * Use this in fixtures that exercise the established full-party systems rather
+	 * than the onboarding progression added by the progression-based party slots.
+	 */
+	inline void AdoptEstablishedParty(FGameXXKRuntimeState& State)
+	{
+		State.Training.bProgressivePartySlots=false;
+		FGameXXKPartyFormationRules::BuildLegacyProjection(State,State.CardRun.OrderedFormation);
+		FGameXXKPartyFormationRules::ProjectCompatibility(State);
+	}
+
+	inline void AdoptEstablishedParty(UGameXXKMVPSubsystem& Subsystem)
+	{
+		AdoptEstablishedParty(Subsystem.GetMutableRuntimeState());
+	}
+
 	inline FGameXXKRuntimeState MakeStartedState()
 	{
 		UGameXXKMVPSubsystem* Subsystem =
@@ -33,9 +51,7 @@ namespace GameXXKPermanentPartyTestFixtures
 			: FGameXXKRuntimeState();
         // This fixture exercises the established full-party systems, not onboarding.
         SkipTeachingChests(State);
-        State.Training.bProgressivePartySlots=false;
-        FGameXXKPartyFormationRules::BuildLegacyProjection(State,State.CardRun.OrderedFormation);
-        FGameXXKPartyFormationRules::ProjectCompatibility(State);
+        AdoptEstablishedParty(State);
         return State;
 	}
 

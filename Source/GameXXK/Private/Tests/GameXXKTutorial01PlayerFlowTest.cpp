@@ -2,6 +2,7 @@
 
 #include "Engine/GameInstance.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameFramework/HUD.h"
 #include "Misc/AutomationTest.h"
 #include "MVP/GameXXKLevelFlow.h"
@@ -77,6 +78,8 @@ bool FGameXXKTutorial01PlayerFlowTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState Before = Runtime->GetRuntimeStateCopy();
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(Before);
 	Before.Screen = EGameXXKScreen::Town;
 	Runtime->GetMutableRuntimeState() = Before;
 	TestTrue(TEXT("tutorial fixture owns a transient new-player session"),

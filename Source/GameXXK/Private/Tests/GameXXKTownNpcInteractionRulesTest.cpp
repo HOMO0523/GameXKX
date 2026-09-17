@@ -83,6 +83,8 @@ bool FGameXXKTownNpcInteractionRulesTest::RunTest(const FString& Parameters)
 	UGameInstance* GameInstance = NewObject<UGameInstance>();
 	UGameXXKMVPSubsystem* Subsystem = NewObject<UGameXXKMVPSubsystem>(GameInstance);
 	TestTrue(TEXT("town-NPC fixture starts a new game in Qingshan town"), Subsystem->StartGame());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	YueBai->SetMVPSubsystemForTest(Subsystem);
 	const FName PartyNpcBeforeWorldInteraction =
 		GameXXKPermanentPartyTestFixtures::ResolveNpc(Subsystem->GetRuntimeState());

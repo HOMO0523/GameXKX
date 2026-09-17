@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Engine/GameInstance.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -14,6 +15,8 @@ namespace
 	{
 		Sub=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 		if (!Sub->StartGame()) return nullptr;
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Sub);
 		auto* Widget=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 		Widget->SetMVPSubsystem(Sub); Widget->ConstructForTest(); Widget->OpenBackpack();
 		return Widget;

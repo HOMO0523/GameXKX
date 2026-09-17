@@ -133,6 +133,8 @@ bool FGameXXKEnglishRosterTermsTest::RunTest(const FString&)
     TestEqual(TEXT("Current view never enters the combat When template"),GameXXKLocalization::Source(TEXT("当前查看：主角")).ToString(),FString(TEXT("Viewing: Hero")));
     auto* MVP=NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
     if(!TestTrue(TEXT("Independent roster fixture starts"),MVP->StartGame()))return false;
+    // This fixture exercises the established full-party systems, not onboarding.
+    GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*MVP);
     auto* Workbench=NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
     Workbench->SetMVPSubsystem(MVP);Workbench->ConstructForTest();Workbench->OpenWorkbench();Workbench->OpenBackpack();
     Workbench->HandleDesktopActionForTest(81);Workbench->TickForTest(0);

@@ -107,6 +107,8 @@ namespace
 
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 		State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		State.Screen = EGameXXKScreen::Battle;
 		State.bHasActiveBattle = true;
 		State.ActiveBattleNodeId = 1701;

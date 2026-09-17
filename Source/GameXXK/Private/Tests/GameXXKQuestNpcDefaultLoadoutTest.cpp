@@ -22,6 +22,8 @@ bool FGameXXKQuestNpcDefaultLoadoutTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 	for (const FGameXXKQuestNpcDefinition& Definition :
 		FGameXXKCompanionCatalog::GetQuestNpcDefinitions())
 	{

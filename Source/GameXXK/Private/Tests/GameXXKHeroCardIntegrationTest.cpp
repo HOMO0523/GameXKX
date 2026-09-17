@@ -554,6 +554,8 @@ bool FGameXXKDeckCompositionIntegrationTest::RunTest(const FString& Parameters)
 {
 	using namespace GameXXKHeroCardIntegrationTest;
 	FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+	// This fixture exercises the established full-party systems, not onboarding.
+	State.Training.bProgressivePartySlots=false;
 	FString Error;
 	if (!TestTrue(FString::Printf(TEXT("the card run initializes: %s"), *Error), FGameXXKCardBattleAdapter::EnsureCardRunInitialized(State, &Error))) return false;
 	FGameXXKCompanionRecruitResult Recruit;

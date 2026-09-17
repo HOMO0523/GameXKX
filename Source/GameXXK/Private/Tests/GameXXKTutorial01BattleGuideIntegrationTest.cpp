@@ -2,6 +2,7 @@
 
 #include "Guide/GameXXKGuideTargetRegistry.h"
 #include "Guide/GameXXKTutorial01GuideHost.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPPlayerController.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKTutorial01SessionSubsystem.h"
@@ -35,6 +36,8 @@ namespace GameXXKTutorial01BattleGuideIntegrationTestPrivate
 			return false;
 		}
 		FGameXXKRuntimeState Before = Out.Runtime->GetRuntimeStateCopy();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(Before);
 		Before.Screen = EGameXXKScreen::Town;
 		Out.Runtime->GetMutableRuntimeState() = Before;
 		if (!Out.Session->BeginFromTown(

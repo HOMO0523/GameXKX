@@ -6,6 +6,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMetaShopRules.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
 #include "Engine/GameInstance.h"
@@ -22,6 +23,8 @@ namespace
 			return FGameXXKRuntimeState();
 		}
 		FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 		const FName ActiveId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
 		FName ReserveId = NAME_None;
 		for (const FGameXXKPermanentCompanion& Companion : State.CardRun.CompanionRoster.PermanentCompanions)

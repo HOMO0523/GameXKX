@@ -1,6 +1,7 @@
 #include "MVP/GameXXKMVPPlayerController.h"
 
 #include "GameXXKCardBattleAdapter.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKTutorial01SessionSubsystem.h"
 #include "UI/GameXXKBattleBoardWidget.h"
@@ -28,6 +29,8 @@ bool FGameXXKTutorial01BattleFlowTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Runtime);
 	FGameXXKRuntimeState Before = Runtime->GetRuntimeStateCopy();
 	Before.Screen = EGameXXKScreen::Town;
 	Before.PlayerGold = 9876;

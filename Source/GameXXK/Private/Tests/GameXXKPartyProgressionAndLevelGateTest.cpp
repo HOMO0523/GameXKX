@@ -8,6 +8,7 @@
 #include "GameXXKEquipmentRules.h"
 #include "GameXXKMVPRules.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "MVP/GameXXKSaveMigration.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
@@ -206,6 +207,8 @@ bool FGameXXKTrainingDeployedPartyExperienceTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Online);
 	TestTrue(TEXT("online XP fixture selects Yue Bai"),
 		Online->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
 	bool bStageCompleted = false;
@@ -220,6 +223,8 @@ bool FGameXXKTrainingDeployedPartyExperienceTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Offline);
 	TestTrue(TEXT("offline XP fixture selects Yue Bai"),
 		Offline->SelectTownQuestNpcForParty(TEXT("Npc.YueBai")));
 	constexpr int32 PendingOfflineExperience = 150;
@@ -247,6 +252,8 @@ bool FGameXXKTrainingTravelPartyLevelUpSynchronizationTest::RunTest(const FStrin
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 	State.PlayerXP = 99;
 	const FName CompanionId = State.CardRun.PartySelection.ActivePermanentCompanionInstanceId;
@@ -433,6 +440,8 @@ bool FGameXXKCompanionLockedCardInventoryPresentationTest::RunTest(const FString
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	const FName CompanionId =
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
 	UGameXXKInventoryWindowWidget* Inventory = NewObject<UGameXXKInventoryWindowWidget>();
@@ -507,6 +516,8 @@ bool FGameXXKEquipmentCharacterLevelGateTest::RunTest(const FString& Parameters)
 		{
 			return false;
 		}
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
 		FName CharacterId = FGameXXKEquipmentRules::HeroCharacterId();
 		if (TargetKind == 1)

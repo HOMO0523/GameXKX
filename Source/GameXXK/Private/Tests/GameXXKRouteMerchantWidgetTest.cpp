@@ -3,6 +3,7 @@
 
 #include "Misc/AutomationTest.h"
 #include "GameXXKTravelMoneyRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
@@ -33,6 +34,8 @@ namespace GameXXKRouteMerchantWidgetTest
 	FGameXXKRuntimeState MakeMerchantFixture(const int32 CarriedCardCount = 8)
 	{
 		FGameXXKRuntimeState State = UGameXXKMVPRules::CreateNewGame();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		State.Screen = EGameXXKScreen::DungeonMap;
 		State.CurrentMapId = TEXT("HuangshanRoute");
 		State.bDungeonActive = true;

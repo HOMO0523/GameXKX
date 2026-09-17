@@ -2,6 +2,7 @@
 
 #include "GameXXKCardBattleAdapter.h"
 #include "GameXXKPartyFormationRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "GameXXKRouteEconomyRules.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 
@@ -25,6 +26,8 @@ bool FGameXXKCardRouteLifecycleTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
 	TestTrue(TEXT("Yue Bai becomes the persistent NPC before route entry"),
 		FGameXXKPartyFormationRules::SetQuestNpc(State, TEXT("Npc.YueBai")));
 	TestTrue(TEXT("the accepted Qingshan quest enters a card-ready route"),

@@ -19,9 +19,14 @@ namespace
 	{
 		UGameXXKMVPSubsystem* Subsystem =
 			NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
-		return Subsystem && Subsystem->StartGame()
-			? Subsystem->GetRuntimeStateCopy()
-			: FGameXXKRuntimeState();
+		if (!Subsystem || !Subsystem->StartGame())
+		{
+			return FGameXXKRuntimeState();
+		}
+		FGameXXKRuntimeState State = Subsystem->GetRuntimeStateCopy();
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(State);
+		return State;
 	}
 
 	FGameXXKBattleRuntimeUnit MakeLegacyBattleUnit(
@@ -96,6 +101,8 @@ bool FGameXXKCardBattleAdapterTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*FixtureSubsystem);
 	FGameXXKRuntimeState State = FixtureSubsystem->GetRuntimeStateCopy();
 	FString Error;
 	TestTrue(FString::Printf(TEXT("a migrated or new runtime receives the approved card-run defaults: %s"), *Error),

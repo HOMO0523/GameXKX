@@ -1,4 +1,5 @@
 #include "Misc/AutomationTest.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/Button.h"
 #include "Components/ScrollBox.h"
@@ -136,6 +137,8 @@ bool FGameXXKDetailedAttributesEntryTest::RunTest(const FString& Parameters)
 {
 	auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
 	if (!TestTrue(TEXT("the detailed-attribute fixture starts"), Subsystem->StartGame())) return false;
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	auto* Workbench = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
 	Workbench->SetMVPSubsystem(Subsystem);
 	Workbench->ConstructForTest();

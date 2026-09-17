@@ -6,6 +6,7 @@
 #include "Engine/GameInstance.h"
 #include "MVP/GameXXKMVPSubsystem.h"
 #include "GameXXKMVPRules.h"
+#include "GameXXKPermanentPartyTestFixtures.h"
 #include "UI/GameXXKDesktopTrainingWorkbenchWidget.h"
 #include "UI/GameXXKInventoryWindowWidget.h"
 
@@ -57,6 +58,8 @@ bool FGameXXKFormationDeckEntryTest::RunTest(const FString& Parameters)
 {
     auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
     Subsystem->EnsureQingshanTownRuntimeForDirectMap();
+    // This fixture exercises the established full-party systems, not onboarding.
+    GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
     Subsystem->PrepareCompanionRosterForTown();
     auto* Workbench = NewObject<UGameXXKDesktopTrainingWorkbenchWidget>();
     Workbench->SetMVPSubsystem(Subsystem);
@@ -97,6 +100,8 @@ bool FGameXXKSorcererIncompleteDeckBoundaryTest::RunTest(const FString& Paramete
 {
     auto* Subsystem = NewObject<UGameXXKMVPSubsystem>(NewObject<UGameInstance>());
     if (!TestTrue(TEXT("start the current game"), Subsystem->StartGame())) return false;
+    // This fixture exercises the established full-party systems, not onboarding.
+    GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
     const auto* Mage = Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
         [](const auto& C) { return C.Role == EGameXXKCharacterRole::Sorcerer; });
     if (!TestNotNull(TEXT("current roster contains the mage"), Mage)) return false;
