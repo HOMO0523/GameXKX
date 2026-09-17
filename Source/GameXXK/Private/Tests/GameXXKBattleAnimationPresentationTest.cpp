@@ -258,13 +258,11 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("idle actions play at source speed"), HeroIdle.PlaybackRate, 1.0f);
 	TestEqual(TEXT("hit actions play at source speed"), HeroHit.PlaybackRate, 1.0f);
 	TestEqual(TEXT("death actions play at source speed"), HeroDeath.PlaybackRate, 1.0f);
-	// KNOWN ISSUE (not a design choice): ResolveClip returns an empty descriptor for Hit and
-	// Death, and EnqueueDeathPresentationAfterActive no longer assigns a death clip, so a dying
-	// unit holds its idle pose instead of playing its death atlas. These two lines pin the
-	// current behaviour so the suite is honest about it; when the death animation is restored
-	// they must go back to a valid descriptor with a non-zero runtime.
-	TestEqual(TEXT("death clips currently resolve empty"), HeroDeath.IsValid(), false);
-	TestEqual(TEXT("death actions currently report no runtime"),
+	// By design: Hit atlases are retired (replaced by the hit VFX lane) and the hit assets are
+	// still in production, so neither Hit nor Death resolves an atlas clip. A defeated unit
+	// fades out instead of playing a death animation; 76 death atlases remain unused on purpose.
+	TestEqual(TEXT("hit and death clips resolve no atlas by design"), HeroDeath.IsValid(), false);
+	TestEqual(TEXT("a fade-only death reports no runtime"),
 		FGameXXKBattleAnimationPresentation::GetRuntimeDuration(HeroDeath), 0.0f);
 
 	const FGameXXKBattleAnimationClipDescriptor GenericImpact =
@@ -352,13 +350,11 @@ bool FGameXXKBattleAnimationPresentationTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("gray-wolf idle remains available"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Idle).IsValid());
-	// KNOWN ISSUE (not a design choice): Hit and Death both resolve empty for every unit, so
-	// these two assert the current behaviour rather than availability. Restore them when the
-	// retired Hit atlas and the missing death atlas come back.
-	TestFalse(TEXT("gray-wolf hit currently resolves empty"),
+	// By design: the retired Hit atlas and the fade-only Death presentation both resolve empty.
+	TestFalse(TEXT("gray-wolf hit resolves no atlas by design"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Hit).IsValid());
-	TestFalse(TEXT("gray-wolf death currently resolves empty"),
+	TestFalse(TEXT("gray-wolf death resolves no atlas by design"),
 		FGameXXKBattleAnimationPresentation::ResolveClip(
 			TEXT("Enemy.Ch2.GrayWolf"), true, EGameXXKBattleAnimationAction::Death).IsValid());
 	TestEqual(TEXT("unknown Enemy_07 token uses the 2K rooster sibling by default"),

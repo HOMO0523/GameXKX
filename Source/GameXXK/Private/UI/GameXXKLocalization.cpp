@@ -327,6 +327,10 @@ bool GameXXKLocalization::SetLanguage(const FString& Language, bool bPersist, FS
     if (Data.Language == Normalized) return true;
     Data.Language = Normalized;
     ApplyLanguage();
+    // DisplayCache holds text already rendered in the previous language, and
+    // Source() consults it before the table. Without this the first lookup of a
+    // source string after a language switch would still return the old language.
+    Data.DisplayCache.Reset();
     ++Data.Revision;
     Data.Changed.Broadcast();
     RefreshGameTextMaterialAspects();
