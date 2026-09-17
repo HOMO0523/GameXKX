@@ -1,11 +1,14 @@
-# 2026-09-16 回归修复总记录（A0 → 动画 → 夹具）
+# 2026-09-16 回归修复总记录（A0 → 动画 → 夹具 → 编队）
 
-状态：进行中，最终数字待夹具批收尾后补。工作区 `main`。
+状态：本轮已完成。工作区 `main`。
 
 ## 一句话
 
-把"全量回归跑不完"变成"能跑、且失败数在下降"：**170 失败 → 94 失败**（1259 项，1165 通过），
-期间新增失败 **0**。
+把"全量回归跑不完"变成"能跑、且失败数大幅下降"：
+**170 失败 → 90 失败**（1259 项，1169 通过），**新增失败 0**，无测试缺失。
+
+参考报告：`Saved/Baseline-20260916/baseline-full2/index.json`（起点）、
+`Saved/Baseline-20260916/grand-final/index.json`（终局）。
 
 ## 起点：回归能力本身缺失
 
@@ -28,7 +31,28 @@
 | 动画 | 节奏对齐游戏内现状 | `AnimationPresentation` 11→**0**；`AnimationLayerWidget` 79→**0** |
 | 本地化 | 气血/内力 + 切语言文本缓存 | 中文显示气血/内力，英文 HP/MP |
 | 素材 | 运行时动画候选授权登记 | 14 批准 / 13 待确认 |
-| 夹具 | A1/A2 槽位门夹具修复 | **71 项修复**，94 失败 |
+| 夹具 | A1/A2 槽位门夹具修复 | **73 项修复** |
+| 编队 | 1–3 人 / 允许只剩主角 的测试对齐 | 再修 3 项，1259 / **1169 过 / 90 失** |
+
+## 期间真正抓到的两个产品级问题
+
+### 存档轮换让"Continue 可用性"自污染
+
+`GameXXK.MVP.PIE.MainMenuContinueWorldMap` 在干净目录能过、**在同一目录第二次跑就失败**。
+根因：`UGameXXKMVPSubsystem::DoesSaveGameExist`（`:4044-4045`）**有意把轮换备份也算作存在存档**，
+而保存会先轮换，所以这个测试跑一次就会留下 `<slot>.Previous1`。
+它只删了主槽，于是污染了自己的下一次运行，让 Continue 命令保持启用。
+修法是连轮换一起清（仓库里其它存档夹具本来就这么做）。
+
+### 营地奖励：两个测试互相矛盾
+
+| 测试 | 断言 |
+|---|---|
+| `RouteEncounterPanelTest`（2 处） | 营地回血 = **63**（30% × 210）；**不得**发放保命护符 |
+| `CampRewardTest`、`MVPFlowTest`、`RouteMapSeedRulesTest`、`MVPPlayableShellTest` | 营地**授予**保命护符 |
+
+两边不可能同时成立。生产侧 `MVPCommandRouter.cpp:137` 仍带 `!OwnsLifeSavingTalisman(State)` 条件，
+即支持"发放护符"那一侧，且回血也不等于 30% 上限。**待用户定案**，未猜。
 
 ## 关键判断（与一开始的怀疑不同）
 
@@ -72,8 +96,16 @@
 
 ## 未决
 
-1. 旧 3D 城镇任务确认路径：退役还是恢复？
-2. 编队拒绝规则：按新设计改测试？
-3. 模拟器敌方阶段分歧：排查。
-4. `Companion.Facade.RecruitAndRead` / `.RouteLock`：夹具期望空名册，但 `StartNewGame()` 预置六个模板（早于本轮窗口的既有回归）。
-5. `.git` 18 GB，gc 未做；`Deliverables/音效需求/` 未纳入备份。
+1. **营地奖励矛盾**（见上）——两个测试互相冲突，生产侧目前支持"发放护符"。需要你定。
+2. 旧 3D 城镇任务确认路径**已确认有意退役**（两个 NPC 类的 `ConfirmQuestDialogInteraction` 硬编码 `return false;`）——测试待标记为仅旧 3D 适用。
+3. 模拟器敌方阶段：`Enemy direct attacks can only resolve during the enemy phase.` ——**确定性**复现（同一用例同一 seed 两次全量一致），使 2400 例矩阵归零；你说先不管，已放下。
+4. `Training.Economy.Gold105AndFortyFiveDayTalents`：两个出战槽天赋在**两种模式下都买不了**（门禁开时提示阶段未到，门禁关时返回"该出战位已开放"），即非渐进存档里它们是**永久死节点**。疑似产品缺陷，待确认。
+5. `MVP.UI.PlayerControllerOwnsFlowWidgets`：实测编队为**合法 3 人**（含伙伴与土司首领），但路线节点战斗**零单位**、legacy 投影为空。疑似路线节点入场状态缺陷，非编队规则。
+6. `Companion.Facade.RecruitAndRead` / `.RouteLock` / 部分 CompanionRoster：夹具期望空名册，但 `StartNewGame()` 预置六个初始模板 → 招募变成 `DuplicateSigil`。早于本轮窗口。
+7. `.git` 18 GB，gc 未做；`Deliverables/音效需求/` 未纳入备份。
+
+## 覆盖率上的实情
+
+动画/命中/死亡那批改测试后，**晚期/冷启动/过期 Death 图集加载的竞态无法再端到端测**——
+死亡通道按设计不加载图集。已改写为"若有人重新引入死亡图集请求就会失败"的守卫，
+所以仍在检查真实行为，但这是设计变更带来的固有覆盖损失。
