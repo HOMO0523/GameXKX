@@ -168,6 +168,41 @@ namespace
 		return Bytes;
 	}
 
+	bool AssertFormationAcceptedAndCommitted(
+		FAutomationTestBase& Test,
+		UGameXXKMVPSubsystem* Subsystem,
+		const FGameXXKOrderedPartyFormation& Candidate,
+		const FString& Label)
+	{
+		if (!Subsystem)
+		{
+			return false;
+		}
+		FString Error;
+		bool bPassed = true;
+		const bool bAccepted = Subsystem->SetOrderedPartyFormation(Candidate, Error);
+		bPassed &= Test.TestTrue(FString::Printf(TEXT("%s is accepted"), *Label), bAccepted);
+		bPassed &= Test.TestTrue(
+			FString::Printf(TEXT("%s commits without a player-visible error: %s"), *Label, *Error),
+			Error.IsEmpty());
+		bPassed &= Test.TestEqual(
+			FString::Printf(TEXT("%s commits the exact ordered members"), *Label),
+			Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members,
+			Candidate.Members);
+		bPassed &= Test.TestEqual(
+			FString::Printf(TEXT("%s is returned by the effective formation getter"), *Label),
+			Subsystem->GetOrderedPartyFormation().Members,
+			Candidate.Members);
+		FString ValidationError;
+		const bool bValidSave = FGameXXKSaveMigration::ValidateRuntimeState(
+			Subsystem->GetRuntimeState(),
+			ValidationError);
+		bPassed &= Test.TestTrue(
+			FString::Printf(TEXT("%s remains a valid saved party: %s"), *Label, *ValidationError),
+			bValidSave);
+		return bPassed;
+	}
+
 	bool AssertFormationRejectedWithoutMutation(
 		FAutomationTestBase& Test,
 		UGameXXKMVPSubsystem* Subsystem,
@@ -260,6 +295,8 @@ bool FGameXXKCompanionFacadeLoadoutProgressionTest::RunTest(const FString& Param
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKPermanentCompanion* Configurable =
 		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
@@ -342,6 +379,8 @@ bool FGameXXKCompanionFacadeTownOnlyConfigurationTest::RunTest(const FString& Pa
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKPermanentCompanion* Configurable =
 		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.FindByPredicate(
@@ -476,6 +515,8 @@ bool FGameXXKOrderedFormationFacadeTransactionTest::RunTest(const FString& Param
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKRuntimeState InitialState = Subsystem->GetRuntimeStateCopy();
 	TestEqual(TEXT("StartGame materializes exactly three raw ordered members before save"),
@@ -583,15 +624,53 @@ bool FGameXXKOrderedFormationFacadeRejectionTest::RunTest(const FString& Paramet
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	const FGameXXKOrderedPartyFormation Valid = Subsystem->GetOrderedPartyFormation();
 	if (!TestEqual(TEXT("rejection fixture starts with three effective members"), Valid.Members.Num(), 3))
 	{
 		return false;
 	}
 
-	FGameXXKOrderedPartyFormation WrongSize = Valid;
-	WrongSize.Members.Pop();
-	AssertFormationRejectedWithoutMutation(*this, Subsystem, WrongSize, TEXT("wrong-size formation"));
+	// The shipped rule allows one to three members, so a party without its optional
+	// quest NPC is legal and must commit with the empty slot normalised away.
+	FGameXXKOrderedPartyFormation TwoMember;
+	FGameXXKOrderedPartyFormation HeroOnly;
+	for (const FGameXXKPartyMemberRef& Ref : Valid.Members)
+	{
+		if (Ref.Kind != EGameXXKPartyMemberKind::QuestNpc)
+		{
+			TwoMember.Members.Add(Ref);
+		}
+		if (Ref.Kind == EGameXXKPartyMemberKind::Hero)
+		{
+			HeroOnly.Members.Add(Ref);
+		}
+	}
+	if (!TestEqual(TEXT("the shorter-party probe keeps the hero and the deployed companion"),
+			TwoMember.Members.Num(), 2)
+		|| !TestEqual(TEXT("the hero-only probe keeps exactly the hero"), HeroOnly.Members.Num(), 1))
+	{
+		return false;
+	}
+	AssertFormationAcceptedAndCommitted(*this, Subsystem, TwoMember, TEXT("two-member formation"));
+	TestEqual(TEXT("a two-member commit leaves the optional NPC slot empty"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.QuestNpc.NpcId, NAME_None);
+	AssertFormationAcceptedAndCommitted(*this, Subsystem, HeroOnly, TEXT("hero-only formation"));
+	TestEqual(TEXT("a hero-only commit leaves the optional companion slot empty"),
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId, NAME_None);
+	TestFalse(TEXT("a hero-only commit leaves no roster companion active"),
+		Subsystem->GetRuntimeState().CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+			[](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.bIsActive;
+			}));
+	// Restore the full party before probing the shapes the rule still rejects.
+	AssertFormationAcceptedAndCommitted(*this, Subsystem, Valid, TEXT("restored three-member formation"));
+
+	FGameXXKOrderedPartyFormation Oversized = Valid;
+	Oversized.Members.Add(Valid.Members[0]);
+	AssertFormationRejectedWithoutMutation(*this, Subsystem, Oversized, TEXT("four-member formation"));
 
 	FGameXXKOrderedPartyFormation Duplicate = Valid;
 	Duplicate.Members[1] = Duplicate.Members[0];
@@ -652,8 +731,19 @@ bool FGameXXKOrderedFormationFacadeRejectionTest::RunTest(const FString& Paramet
 	AssertFormationRejectedWithoutMutation(*this, Subsystem, LegalSwap, TEXT("authoritatively-invalid candidate state"));
 
 	Mutable.PlayerGold = 0;
+	// A shorter party is legal now, so the raw-formation probe uses a genuinely
+	// unknown member instead of simply removing the optional NPC slot.
 	FGameXXKOrderedPartyFormation InvalidRaw = Valid;
-	InvalidRaw.Members.Pop();
+	FGameXXKPartyMemberRef* InvalidRawSlot = InvalidRaw.Members.FindByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	if (!TestNotNull(TEXT("the raw-formation probe finds its companion slot"), InvalidRawSlot))
+	{
+		return false;
+	}
+	InvalidRawSlot->MemberId = TEXT("Companion.Unknown.Raw");
 	Mutable.CardRun.OrderedFormation = InvalidRaw;
 	AddExpectedError(
 		TEXT("GetOrderedPartyFormation rejected invalid raw formation"),
@@ -683,6 +773,8 @@ bool FGameXXKOrderedFormationFacadePersistenceTest::RunTest(const FString& Param
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Source);
 	FGameXXKOrderedPartyFormation Swapped = Source->GetOrderedPartyFormation();
 	if (!TestEqual(TEXT("formation persistence source has three members"), Swapped.Members.Num(), 3))
 	{
@@ -722,6 +814,8 @@ bool FGameXXKLegacyFormationFacadeAuthorityTest::RunTest(const FString& Paramete
 		{
 			return static_cast<UGameXXKMVPSubsystem*>(nullptr);
 		}
+		// This fixture exercises the established full-party systems, not onboarding.
+		GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 		return Subsystem;
 	};
 	auto FindUndeployedCompanionId = [](const FGameXXKRuntimeState& State)
@@ -861,15 +955,77 @@ bool FGameXXKLegacyFormationFacadeAuthorityTest::RunTest(const FString& Paramete
 	{
 		return false;
 	}
-	const TArray<uint8> BeforeClear = SerializeFacadeRuntimeState(ClearSubsystem->GetRuntimeState());
-	TestFalse(TEXT("ClearActive rejects while exact formation still contains a companion"),
+	const FGameXXKOrderedPartyFormation BeforeClear = ClearSubsystem->GetOrderedPartyFormation();
+	const int32 ClearedCompanionSlot = BeforeClear.Members.IndexOfByPredicate(
+		[](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+		});
+	if (!TestTrue(TEXT("legacy clear fixture deploys one companion"), ClearedCompanionSlot != INDEX_NONE))
+	{
+		return false;
+	}
+	const FName ClearedCompanionId = BeforeClear.Members[ClearedCompanionSlot].MemberId;
+	FGameXXKOrderedPartyFormation ExpectedCleared = BeforeClear;
+	ExpectedCleared.Members.RemoveAt(ClearedCompanionSlot);
+
+	// Clearing the optional companion is legal: the slot simply becomes empty and the
+	// hero keeps standing with whatever optional members remain.
+	TestTrue(TEXT("ClearActive succeeds and leaves the optional companion slot empty"),
 		ClearSubsystem->ClearActivePermanentCompanion());
-	TestEqual(TEXT("rejected ClearActive leaves runtime bit-identical"),
-		SerializeFacadeRuntimeState(ClearSubsystem->GetRuntimeState()), BeforeClear);
-	TestFalse(TEXT("SetActive NAME_None also rejects exact formation authority"),
+	FGameXXKRuntimeState& ClearedState = ClearSubsystem->GetMutableRuntimeState();
+	const TArray<FGameXXKPartyMemberRef>& ClearedMembers = ClearedState.CardRun.OrderedFormation.Members;
+	TestEqual(TEXT("clearing the companion removes exactly one ordered member"),
+		ClearedMembers.Num(), BeforeClear.Members.Num() - 1);
+	TestFalse(TEXT("the cleared companion no longer occupies an ordered slot"),
+		ClearedMembers.ContainsByPredicate([ClearedCompanionId](const FGameXXKPartyMemberRef& Ref)
+		{
+			return Ref.MemberId == ClearedCompanionId;
+		}));
+	TestEqual(TEXT("the companion-free formation keeps every other slot in order"),
+		ClearedMembers, ExpectedCleared.Members);
+	TestEqual(TEXT("clearing the companion clears the compatibility projection"),
+		ClearedState.CardRun.PartySelection.ActivePermanentCompanionInstanceId, NAME_None);
+	TestFalse(TEXT("clearing the companion leaves no roster companion active"),
+		ClearedState.CardRun.CompanionRoster.PermanentCompanions.ContainsByPredicate(
+			[](const FGameXXKPermanentCompanion& Companion)
+			{
+				return Companion.bIsActive;
+			}));
+	AssertCurrentRoundTrip(TEXT("companion-free party"), ClearedState);
+
+	// Repeating the clear on an already companion-free party is an idempotent no-op.
+	TestTrue(TEXT("clearing an already companion-free party stays legal"),
+		ClearSubsystem->ClearActivePermanentCompanion());
+	TestEqual(TEXT("the repeated clear leaves the ordered members untouched"),
+		ClearSubsystem->GetOrderedPartyFormation().Members, ExpectedCleared.Members);
+	TestTrue(TEXT("SetActive NAME_None is the same legal clear"),
 		ClearSubsystem->SetActivePermanentCompanion(NAME_None));
-	TestEqual(TEXT("rejected SetActive NAME_None leaves runtime bit-identical"),
-		SerializeFacadeRuntimeState(ClearSubsystem->GetRuntimeState()), BeforeClear);
+
+	// Emptying the second optional slot leaves the hero standing alone.
+	TestTrue(TEXT("clearing the optional quest NPC leaves the hero alone"),
+		ClearSubsystem->SelectTownQuestNpcForParty(NAME_None));
+	const TArray<FGameXXKPartyMemberRef>& HeroOnlyMembers =
+		ClearSubsystem->GetRuntimeState().CardRun.OrderedFormation.Members;
+	if (!TestEqual(TEXT("the hero-alone party is a legal one-member formation"),
+		HeroOnlyMembers.Num(), 1))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the one-member party is the hero"),
+		HeroOnlyMembers[0].Kind, EGameXXKPartyMemberKind::Hero);
+	TestEqual(TEXT("the hero-alone party exposes no deployed NPC"),
+		GameXXKPermanentPartyTestFixtures::ResolveNpc(ClearSubsystem->GetRuntimeState()), NAME_None);
+	TestEqual(TEXT("the hero-alone party clears the ordered-NPC compatibility field"),
+		ClearSubsystem->GetRuntimeState().CardRun.PartySelection.QuestNpc.NpcId, NAME_None);
+	AssertCurrentRoundTrip(TEXT("hero-alone party"), ClearSubsystem->GetRuntimeState());
+
+	// The emptied slot can be filled again, which restores a two-member party.
+	TestTrue(TEXT("the cleared companion slot accepts a fresh deployment"),
+		ClearSubsystem->SetActivePermanentCompanion(ClearedCompanionId));
+	TestEqual(TEXT("re-deploying the companion restores the ordered companion slot"),
+		ClearSubsystem->GetOrderedPartyFormation().Members.Num(), 2);
+	AssertCurrentRoundTrip(TEXT("re-deployed companion party"), ClearSubsystem->GetRuntimeState());
 	return true;
 }
 
@@ -886,6 +1042,8 @@ bool FGameXXKDismissFormationSlotRepairTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Deployed);
 	const FGameXXKOrderedPartyFormation Before = Deployed->GetOrderedPartyFormation();
 	const int32 DismissedSlot = Before.Members.IndexOfByPredicate(
 		[](const FGameXXKPartyMemberRef& Ref)
@@ -965,6 +1123,8 @@ bool FGameXXKDismissFormationSlotRepairTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*NoReplacement);
 	FGameXXKRuntimeState& SparseState = NoReplacement->GetMutableRuntimeState();
 	const FName SparseDismissedId = SparseState.CardRun.CompanionRoster.PermanentCompanions[0].InstanceId;
 	SparseState.CardRun.CompanionRoster.PermanentCompanions.RemoveAll(

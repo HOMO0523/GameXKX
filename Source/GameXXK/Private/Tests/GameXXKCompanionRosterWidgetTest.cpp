@@ -30,6 +30,8 @@ namespace
 			return false;
 		}
 		FGameXXKRuntimeState& State = Subsystem->GetMutableRuntimeState();
+		// This fixture exercises the established full-party systems, not onboarding.
+		State.Training.bProgressivePartySlots=false;
 		FString Error;
 		if (!GameXXKPermanentPartyTestFixtures::SelectNpc(
 				State,
@@ -432,10 +434,17 @@ bool FGameXXKCompanionRosterWidgetPersonalDeckTest::RunTest(const FString& Param
 	TestFalse(TEXT("the active-partner fixture remains editable"), Widget->IsLoadoutReadOnlyForTest());
 	TestEqual(TEXT("the first visible portrait keeps the recruited stable id"), Widget->GetVisibleRosterSlotInstanceIdsForTest()[0], Companion.InstanceId);
 	TestTrue(TEXT("the selected companion is directly eligible for active-partner assignment"), Widget->SetSelectedCompanionAsActive());
-	TestFalse(TEXT("v24 exact formation rejects clearing its deployed companion"), Widget->ClearActivePermanentCompanion());
-	TestEqual(TEXT("rejected clear keeps the deployed companion active"),
+	// Standing the party down is legal now: the optional companion slot simply empties.
+	TestTrue(TEXT("the town-only clear action stands the deployed companion down"), Widget->ClearActivePermanentCompanion());
+	TestEqual(TEXT("the cleared formation keeps no active permanent companion"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
-		Companion.InstanceId);
+		FName(NAME_None));
+	TestFalse(TEXT("the cleared formation no longer carries a companion slot"),
+		Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members.ContainsByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			}));
 	if (FirstRosterSlot)
 	{
 		FirstRosterSlot->OnClicked.Broadcast();
@@ -645,6 +654,8 @@ bool FGameXXKCompanionRosterWidgetTaskNpcFixedDeckReadOnlyTest::RunTest(const FS
 	{
 		return false;
 	}
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 
 	const FGameXXKQuestNpcDefinition* TusiChief = FGameXXKCompanionCatalog::FindQuestNpcDefinition(TEXT("Npc.TusiChief"));
 	TestNotNull(TEXT("the fixed-deck roster fixture resolves the named task NPC"), TusiChief);
@@ -752,18 +763,41 @@ bool FGameXXKCompanionRosterWidgetProfileAndTownActionTest::RunTest(const FStrin
 		FGameXXKCompanionRules::GetExperienceRequiredForNextLevel(Profile.Level));
 
 	TestTrue(TEXT("the selected partner can be assigned before clearing"), Widget->SetSelectedCompanionAsActive());
-	// Page 18 removes the standalone 暂不编入 button; the town-only capability stays reachable.
-	TestFalse(TEXT("the town clear action rejects exact v24 formation authority"), Widget->ClearActivePermanentCompanion());
-	TestEqual(TEXT("the rejected town clear keeps the deployed partner"),
+	const FName DeployedCompanionId =
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	TestFalse(TEXT("the deployed partner has a real stable id before clearing"), DeployedCompanionId.IsNone());
+	// Page 18 removes the standalone 暂不编入 button; the town-only capability stays
+	// reachable and is now a legal optional-slot clear instead of a rejection.
+	TestTrue(TEXT("the town clear action empties the optional companion slot"), Widget->ClearActivePermanentCompanion());
+	TestEqual(TEXT("the town clear leaves the party without an active permanent companion"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
-		Companion.InstanceId);
+		FName(NAME_None));
+	TestFalse(TEXT("the town clear removes the companion slot from the ordered formation"),
+		Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members.ContainsByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			}));
+	TestTrue(TEXT("the companion-free party is still a legal formation"),
+		FGameXXKPartyFormationRules::Validate(
+			Subsystem->GetRuntimeState(),
+			Subsystem->GetRuntimeState().CardRun.OrderedFormation));
 
 	TestTrue(TEXT("the partner can be assigned again for the out-of-town safety check"), Widget->SetSelectedCompanionAsActive());
+	const FName RedeployedCompanionId =
+		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId;
+	TestFalse(TEXT("the re-deployed partner has a real stable id"), RedeployedCompanionId.IsNone());
 	Subsystem->GetMutableRuntimeState().Screen = EGameXXKScreen::WorldMap;
 	TestFalse(TEXT("the clear action is rejected if invoked after leaving town"), Widget->ClearActivePermanentCompanion());
 	TestEqual(TEXT("a rejected out-of-town clear preserves the active partner"),
 		Subsystem->GetRuntimeState().CardRun.PartySelection.ActivePermanentCompanionInstanceId,
-		Companion.InstanceId);
+		RedeployedCompanionId);
+	TestTrue(TEXT("a rejected out-of-town clear keeps the companion in the ordered formation"),
+		Subsystem->GetRuntimeState().CardRun.OrderedFormation.Members.ContainsByPredicate(
+			[](const FGameXXKPartyMemberRef& Ref)
+			{
+				return Ref.Kind == EGameXXKPartyMemberKind::PermanentCompanion;
+			}));
 	return true;
 }
 

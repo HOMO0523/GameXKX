@@ -125,7 +125,7 @@ bool FGameXXKPartyFormationOrderValidationTest::RunTest(const FString& Parameter
 	TwoCompanions.Members[2] = MakeMember(
 		EGameXXKPartyMemberKind::PermanentCompanion,
 		SecondCompanionId);
-	TestRejected(TEXT("formation must retain one fixed NPC"), TwoCompanions);
+	TestRejected(TEXT("formation cannot deploy two permanent companions"), TwoCompanions);
 	return true;
 }
 

@@ -916,6 +916,8 @@ bool FGameXXKPlayerControllerOwnsFlowWidgetsTest::RunTest(const FString& Paramet
 	TestFalse(TEXT("town overlay hidden on initial main menu state"), PlayerController->GetTownOverlayWidgetForTest()->IsTownOverlayVisible());
 
 	TestTrue(TEXT("start game opens Qingshan town for player controller flow"), Subsystem->StartGame());
+	// This fixture exercises the established full-party systems, not onboarding.
+	GameXXKPermanentPartyTestFixtures::AdoptEstablishedParty(*Subsystem);
 	// The v22 starter grant is itself deterministic: one fixed profile for each
 	// profession, with Blade active, so no test-only roster rewrite is needed.
 	const FGameXXKCompanionRosterState& StarterRoster = Subsystem->GetRuntimeState().CardRun.CompanionRoster;
